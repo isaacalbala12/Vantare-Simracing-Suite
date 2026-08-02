@@ -1,4 +1,11 @@
-# Vantare Engineer — Radio Overlay Visual Spec
+# Vantare Engineer — Radio Overlay Visual Spec (histórico)
+
+> **Sustituido por ISA-178 / ENG-08.** Este documento conserva la exploración
+> visual histórica, pero ya no es contrato de implementación. La autoridad
+> vigente es `docs/engineer/radio-output-contract.md`, el contrato de
+> presentación ENG-07 y la arquitectura de widgets V3. En particular, ENG-08
+> no usa timers React, no copia estética F1, no crea un renderer Original y no
+> reutiliza el widget legacy descrito aquí.
 
 > **Tipo:** spec visual de producto. NO codificar hasta aprobación de Isaac.
 > **Worktree:** `codex/engineer-release`.

@@ -28,10 +28,12 @@ añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada t
 re-review independiente `ACCEPT` sin P0/P1/P2/P3. ISA-133 / ENG-04 añade el
 runner y oráculo determinista test-only sobre la base final de Telemetry Core.
 ISA-158 / ENG-05 introduce la policy y el scheduler determinista. ISA-167 /
-ENG-06 cablea esa única policy al runtime productivo y un transporte cancelable
-con ACK; su commit final es la base exacta de ENG-07. ISA-177 / ENG-07 añade la
-presentación canónica multilingüe para visual y futura voz. Está implementada y
-pendiente de review independiente, sin promoción.
+ENG-06 cablea entrega productiva y preempción. ISA-177 / ENG-07 fija la
+presentación multilingüe. ISA-178 / ENG-08 añade salida visual productiva,
+routing por categoría y el widget funcional Vantare Crystal, actualmente en
+revisión sin promoción. ENG-06 mantiene una única policy y un transporte
+cancelable con ACK; ENG-07 aporta una única presentación para visual y futura
+voz; ENG-08 no duplica ninguna de estas autoridades.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -241,16 +243,27 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
 | Cerrada técnicamente | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
 | En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
+| En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Completar la review independiente de ISA-177 / ENG-07. Resolver cualquier
-P0/P1/P2/P3 razonable en la misma rama antes de cerrar técnicamente el corte;
-no promover esta cadena.
+Revisar de nuevo ISA-178 / ENG-08 contra los ocho hallazgos corregidos. Resolver
+cualquier P0/P1/P2/P3 razonable en esta misma rama antes de cerrar técnicamente
+el corte; no promover esta cadena.
 
 ## Última actualización
+
+2026-08-02, corrección completa de review ISA-178 / ENG-08: `engineer-radio`
+forma parte del contrato persistente Go y pasa roundtrip. `disabled` se filtra
+antes de policy/delivery y no preempta trabajo de otra familia. Wails y SSE usan
+un envelope único `generation+sequence` con snapshot de reconexión exacto.
+Subtítulos y radio son superficies independientes sobre el mismo ViewModel;
+Studio muestra fixture marcada y Desktop/OBS solo runtime real. El historial
+respeta rol, los renderers aplican `lang` y 12 capturas root-only se comparan
+contra baselines fijos sin máscaras. Gates focales Go/TS y build pasan; pendiente
+de gates globales finales y re-review, sin promoción.
 
 2026-08-02, corrección de review ISA-177 / ENG-07: el locale tipado de la
 presentación gobierna ambos lookups de audio. La voz configurada solo puede

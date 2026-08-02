@@ -35,9 +35,12 @@ const mockStatus = {
   enabled: true,
   connected: true,
   source: 'telemetry-core',
+  presentationLifecycle: 0,
   spotterEnabled: true,
   sensitivity: 'normal',
   ttsCacheCount: 0,
+  outputModes: { spotter: 'both', fuel: 'visual', penalties: 'both', laps: 'both', timings: 'both', pitstops: 'both' },
+  subtitlesEnabled: true,
   recentMessages: [
     {
       id: 'msg-1',
@@ -45,8 +48,14 @@ const mockStatus = {
       severity: 'info',
       textKey: 'spotter.car_left',
       text: 'Coche a la izquierda',
+      voiceText: 'Coche a la izquierda',
+      version: 1,
+      locale: 'es',
+      role: 'spotter',
+      channel: 'spotter',
       priority: 100,
       createdAt: 1623800000000,
+      expiresAt: 1623800003500,
       source: 'telemetry-core',
     },
   ],
@@ -155,6 +164,17 @@ describe('EngineerPage', () => {
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:spotter:set', false);
   });
 
+  it('routes subtitles independently and labels history with its real role', () => {
+    render(<EngineerPage />);
+    dispatch('engineer:status', {
+      ...mockStatus,
+      recentMessages: [{ ...mockStatus.recentMessages[0], id: 'engineer-1', role: 'engineer', channel: 'engineer' }],
+    });
+    expect(screen.getByText('Ingeniero')).toBeDefined();
+    fireEvent.click(screen.getByTestId('toggle-subtitles'));
+    expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:subtitles:set', false);
+  });
+
   it('shows the only canonical telemetry source without a product selector', () => {
     render(<EngineerPage />);
     dispatch('engineer:status', mockStatus);
@@ -173,6 +193,20 @@ describe('EngineerPage', () => {
     fireEvent.change(select, { target: { value: 'aggressive' } });
 
     expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:sensitivity:set', 'aggressive');
+  });
+
+  it('uses one bounded output mode per product category', () => {
+    render(<EngineerPage />);
+    dispatch('engineer:status', mockStatus);
+
+    const select = screen.getByTestId('output-mode-fuel') as HTMLSelectElement;
+    expect(select.value).toBe('visual');
+    fireEvent.change(select, { target: { value: 'audio' } });
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith('engineer:output:set', {
+      category: 'fuel',
+      mode: 'audio',
+    });
   });
 
   it('does not contain fake data from old HTML mock', () => {

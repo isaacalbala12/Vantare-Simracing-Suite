@@ -466,6 +466,11 @@ export const OVERLAY_SHADOW_POLICIES = {
     coverage: "external",
     rules: [{ kind: "external", path: "events" }],
   },
+  "engineer-radio": {
+    widgetType: "engineer-radio",
+    coverage: "external",
+    rules: [{ kind: "external", path: "engineerPresentation" }],
+  },
   "head-to-head": {
     widgetType: "head-to-head",
     coverage: "not-comparable",

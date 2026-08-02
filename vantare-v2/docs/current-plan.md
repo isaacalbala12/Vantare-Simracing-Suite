@@ -10,6 +10,28 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-178 / ENG-08 (2026-08-02, In Review):
+- `engineer-radio` es un único tipo funcional registrado en TypeScript y en el
+  contrato persistente Go. Guardar, cargar, exportar e importar conservan el
+  widget sin duplicarlo. Solo Vantare Crystal aporta su renderer.
+- Radio y subtítulos son dos salidas visuales independientes que comparten el
+  mismo ViewModel puro. Pueden coexistir; los subtítulos se activan de forma
+  global y no requieren añadir el widget al layout. Sin presentación real,
+  Desktop/OBS no inventan contenido; Studio usa una preview marcada. ENG-08
+  conserva esta preferencia solo durante el runtime y la reinicia habilitada;
+  la persistencia queda para el contrato central de Ajustes.
+- Go es la autoridad de routing `audio|visual|both|disabled` por las seis
+  familias aprobadas. `disabled` se aplica antes del scheduler, ACK, cooldown y
+  preempción y cancela solo la salida activa de esa familia.
+- Wails y SSE consumen un único stream ordenado por `generation+sequence`; tras
+  una reconexión rechazan status/presentation hasta que el snapshot autoritativo
+  establece el nuevo cursor. Así rehidratan el activo exacto o vacío y ningún
+  mensaje tardío de una generación anterior puede reaparecer.
+- Harness determinista: 12 comparaciones root-only contra baselines fijos para
+  cuatro locales, tres fondos y tres tamaños, sin máscaras ni overflow.
+- Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,
+  canvas, inspector, shell, TTS/STT/PTT, dependencias nuevas, merge o promoción.
+
 Nota ISA-177 / ENG-07 (2026-08-02, In Review):
 - `internal/engineer/presentation` es la autoridad pura y versionada para los
   20 intents aprobados por ENG-05 en `es`, `en`, `it` y `pt-BR`.

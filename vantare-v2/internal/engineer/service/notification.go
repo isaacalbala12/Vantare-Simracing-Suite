@@ -18,14 +18,40 @@ type EngineerNotification struct {
 }
 
 type EngineerStatus struct {
-	Enabled        bool                   `json:"enabled"`
-	Connected      bool                   `json:"connected"`
-	Source         string                 `json:"source"`
-	SpotterEnabled bool                   `json:"spotterEnabled"`
-	Sensitivity    string                 `json:"sensitivity"`
-	TTSCacheCount  int                    `json:"ttsCacheCount"`
-	RecentMessages []EngineerNotification `json:"recentMessages"`
-	LastError      string                 `json:"lastError,omitempty"`
+	Enabled               bool                   `json:"enabled"`
+	Connected             bool                   `json:"connected"`
+	Source                string                 `json:"source"`
+	PresentationLifecycle uint64                 `json:"presentationLifecycle"`
+	SpotterEnabled        bool                   `json:"spotterEnabled"`
+	Sensitivity           string                 `json:"sensitivity"`
+	OutputModes           map[string]OutputMode  `json:"outputModes"`
+	SubtitlesEnabled      bool                   `json:"subtitlesEnabled"`
+	TTSCacheCount         int                    `json:"ttsCacheCount"`
+	RecentMessages        []EngineerNotification `json:"recentMessages"`
+	LastError             string                 `json:"lastError,omitempty"`
+}
+
+const EngineerStreamVersion uint16 = 1
+
+type EngineerStreamKind string
+
+const (
+	EngineerStreamSnapshot     EngineerStreamKind = "snapshot"
+	EngineerStreamStatus       EngineerStreamKind = "status"
+	EngineerStreamPresentation EngineerStreamKind = "presentation"
+)
+
+// EngineerStreamEvent is the single ordered transport contract shared by
+// Wails and SSE. Generation invalidates prior presentations; Sequence orders
+// every event inside the service lifetime, including reconnect snapshots.
+type EngineerStreamEvent struct {
+	Version      uint16                `json:"version"`
+	Sequence     uint64                `json:"sequence"`
+	Generation   uint64                `json:"generation"`
+	Kind         EngineerStreamKind    `json:"kind"`
+	Active       bool                  `json:"active"`
+	Presentation *EngineerNotification `json:"presentation,omitempty"`
+	Status       *EngineerStatus       `json:"status,omitempty"`
 }
 
 // Translations holds localized spotter phrases in Spanish.

@@ -190,6 +190,27 @@ func (scheduler *Scheduler) Cancel(reason Reason) []PolicyOutcome {
 	return outcomes
 }
 
+// CancelFamily removes queued work for one output family without resetting
+// evidence or cooldowns belonging to unrelated families.
+func (scheduler *Scheduler) CancelFamily(family Family, reason Reason) []PolicyOutcome {
+	if !knownReason(reason) {
+		reason = ReasonDecisionNotApproved
+	}
+	now := scheduler.clock.NowMS()
+	var outcomes []PolicyOutcome
+	for index := 0; index < len(scheduler.pending); {
+		queued := scheduler.pending[index].candidate
+		if queued.Family != family {
+			index++
+			continue
+		}
+		outcomes = append(outcomes, scheduler.outcome(queued, OutcomeCancelled, reason, now))
+		scheduler.removePending(index)
+	}
+	scheduler.state.Pending = len(scheduler.pending)
+	return outcomes
+}
+
 // Submit validates and copies a candidate. Accepted candidates have no outcome
 // yet; returned outcomes describe rejected, coalesced or preempted candidates.
 func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) {

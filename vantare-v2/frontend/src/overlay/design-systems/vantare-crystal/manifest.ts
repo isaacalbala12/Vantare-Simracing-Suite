@@ -23,6 +23,7 @@ import { RaceScheduleCrystal } from "./race-schedule/RaceScheduleCrystal";
 import { TrackWeatherCrystal } from "./track-weather/TrackWeatherCrystal";
 import { CarDamageVisualCrystal } from "./car-damage-visual/CarDamageVisualCrystal";
 import { CarDamageNumbersCrystal } from "./car-damage-numbers/CarDamageNumbersCrystal";
+import { EngineerRadioCrystal } from "./engineer-radio/EngineerRadioCrystal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 
@@ -315,6 +316,7 @@ const raceScheduleRegistration = { widgetType: "race-schedule" as const, configV
 const trackWeatherRegistration = { widgetType: "track-weather" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: TrackWeatherCrystal as ComponentType<WidgetRendererProps> };
 const carDamageVisualRegistration = { widgetType: "car-damage-visual" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageVisualCrystal as ComponentType<WidgetRendererProps> };
 const carDamageNumbersRegistration = { widgetType: "car-damage-numbers" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: CarDamageNumbersCrystal as ComponentType<WidgetRendererProps> };
+const engineerRadioRegistration = { widgetType: "engineer-radio" as const, configVersion: 1, defaultSettings: {}, configMigrations: { 0: (settings: Record<string, unknown>) => ({ ...settings }) }, parseSettings(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {}; }, inspector: { appearance: [] }, Renderer: EngineerRadioCrystal as ComponentType<WidgetRendererProps> };
 
 export const vantareCrystalManifest: DesignSystemDefinition = {
   id: "vantare-crystal",
@@ -342,5 +344,6 @@ export const vantareCrystalManifest: DesignSystemDefinition = {
     trackWeatherRegistration,
     carDamageVisualRegistration,
     carDamageNumbersRegistration,
+    engineerRadioRegistration,
   ],
 };

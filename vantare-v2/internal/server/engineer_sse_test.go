@@ -59,18 +59,22 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 
 	// Read this subscribed stream while an explicit harness feeds fixtures.
 	scanner := bufio.NewScanner(resp.Body)
-	foundEvent := false
+	foundSnapshot := false
+	foundPresentation := false
 	var lines []string
 	for scanner.Scan() {
 		line := scanner.Text()
 		lines = append(lines, line)
-		if strings.HasPrefix(line, "event: engineer-notification") {
-			foundEvent = true
+		if strings.HasPrefix(line, "data:") && strings.Contains(line, `"kind":"snapshot"`) {
+			foundSnapshot = true
+		}
+		if strings.HasPrefix(line, "data:") && strings.Contains(line, `"kind":"presentation"`) {
+			foundPresentation = true
 			break
 		}
 	}
-	if !foundEvent {
-		t.Fatalf("expected event: engineer-notification in stream, got lines: %v, scan error: %v", lines, scanner.Err())
+	if !foundSnapshot || !foundPresentation {
+		t.Fatalf("expected ordered snapshot and presentation events in stream, got lines: %v, scan error: %v", lines, scanner.Err())
 	}
 }
 

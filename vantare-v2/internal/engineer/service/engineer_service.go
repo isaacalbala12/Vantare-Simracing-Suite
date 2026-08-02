@@ -51,19 +51,24 @@ func (cursor observationCursor) strictlyAfter(boundary observationCursor) bool {
 
 // EngineerService coordinates the telemetry input, runtime spotter engine, and notification store.
 type EngineerService struct {
-	mu             sync.Mutex
-	store          *NotificationStore
-	queue          *audio.Queue
-	runtime        *core.Runtime
-	input          *projectioninput.Adapter
-	emitter        EventEmitter
-	running        bool
-	enabled        bool
-	connected      bool
-	source         string
-	spotterEnabled bool
-	sensitivity    string
-	lastError      string
+	mu                    sync.Mutex
+	store                 *NotificationStore
+	queue                 *audio.Queue
+	runtime               *core.Runtime
+	input                 *projectioninput.Adapter
+	emitter               EventEmitter
+	running               bool
+	enabled               bool
+	connected             bool
+	source                string
+	spotterEnabled        bool
+	sensitivity           string
+	outputModes           map[messagepolicy.Family]OutputMode
+	subtitlesEnabled      bool
+	lastError             string
+	presentationLifecycle uint64
+	streamSequence        uint64
+	activePresentation    *EngineerNotification
 
 	lastContext            engineerprojection.Context
 	lastObservation        *observationCursor
@@ -76,10 +81,12 @@ type EngineerService struct {
 	policyClock            messagepolicy.Clock
 
 	// Loop management
-	ctx      context.Context
-	cancelFn context.CancelFunc
-	wg       sync.WaitGroup
-	subs     []chan EngineerNotification
+	ctx        context.Context
+	cancelFn   context.CancelFunc
+	wg         sync.WaitGroup
+	subs       []chan EngineerNotification
+	statusSubs []chan EngineerStatus
+	streamSubs []chan EngineerStreamEvent
 
 	// Drop counter: número de notificaciones que no pudieron entregarse a un
 	// suscriptor SSE porque su canal estaba lleno. Se incrementa atómicamente
@@ -187,6 +194,8 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		source:               "telemetry-core",
 		spotterEnabled:       true,
 		sensitivity:          "normal",
+		outputModes:          defaultOutputModes(),
+		subtitlesEnabled:     true,
 		audioResolver:        NoopAudioResolver{},
 		scheduler:            scheduler,
 		policyClock:          clock,
@@ -262,11 +271,21 @@ func (s *EngineerService) Stop() {
 	}
 	s.running = false
 	s.connected = false
+	s.advancePresentationLifecycleLocked()
+	s.emitStatusLocked()
 
 	for _, ch := range s.subs {
 		close(ch)
 	}
 	s.subs = nil
+	for _, ch := range s.statusSubs {
+		close(ch)
+	}
+	s.statusSubs = nil
+	for _, ch := range s.streamSubs {
+		close(ch)
+	}
+	s.streamSubs = nil
 	s.mu.Unlock()
 
 	s.wg.Wait()
@@ -314,14 +333,120 @@ func (s *EngineerService) Status() EngineerStatus {
 
 func (s *EngineerService) getStatusLocked() EngineerStatus {
 	return EngineerStatus{
-		Enabled:        s.enabled,
-		Connected:      s.connected,
-		Source:         s.source,
-		SpotterEnabled: s.spotterEnabled,
-		Sensitivity:    s.sensitivity,
-		TTSCacheCount:  0, // TTS audio is disabled in this checkpoint
-		RecentMessages: s.store.GetAll(),
-		LastError:      s.lastError,
+		Enabled:               s.enabled,
+		Connected:             s.connected,
+		Source:                s.source,
+		PresentationLifecycle: s.presentationLifecycle,
+		SpotterEnabled:        s.spotterEnabled,
+		Sensitivity:           s.sensitivity,
+		OutputModes:           s.outputModesSnapshotLocked(),
+		SubtitlesEnabled:      s.subtitlesEnabled,
+		TTSCacheCount:         0, // TTS audio is disabled in this checkpoint
+		RecentMessages:        s.store.GetAll(),
+		LastError:             s.lastError,
+	}
+}
+
+func (s *EngineerService) SetSubtitlesEnabled(enabled bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.subtitlesEnabled == enabled {
+		return
+	}
+	s.subtitlesEnabled = enabled
+	s.emitStatusLocked()
+}
+
+// advancePresentationLifecycleLocked invalidates visual output without
+// inventing a frontend TTL. Every status transport carries the generation so
+// Desktop and OBS clear the same canonical presentation at source/session
+// boundaries.
+func (s *EngineerService) advancePresentationLifecycleLocked() {
+	s.presentationLifecycle++
+	s.activePresentation = nil
+	// A buffered notification belongs to the generation being invalidated.
+	// Drain it before publishing the new status; otherwise an SSE select could
+	// observe the clear first and then resurrect the stale message.
+	for _, subscriber := range s.subs {
+		for {
+			select {
+			case <-subscriber:
+				continue
+			default:
+			}
+			break
+		}
+	}
+}
+
+// SubscribeStream returns the canonical ordered Engineer visual stream. The
+// first item is an exact snapshot of the current active presentation, or an
+// explicit empty snapshot when nothing valid remains.
+func (s *EngineerService) SubscribeStream() (<-chan EngineerStreamEvent, func()) {
+	ch := make(chan EngineerStreamEvent, 32)
+	s.mu.Lock()
+	s.streamSubs = append(s.streamSubs, ch)
+	event := s.streamSnapshotLocked()
+	ch <- event
+	s.mu.Unlock()
+	return ch, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for i, existing := range s.streamSubs {
+			if existing == ch {
+				copy(s.streamSubs[i:], s.streamSubs[i+1:])
+				s.streamSubs[len(s.streamSubs)-1] = nil
+				s.streamSubs = s.streamSubs[:len(s.streamSubs)-1]
+				close(ch)
+				return
+			}
+		}
+	}
+}
+
+// StreamSnapshot returns the same rehydration envelope used by a new SSE
+// subscriber so Wails surfaces cannot start from a different state.
+func (s *EngineerService) StreamSnapshot() EngineerStreamEvent {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.streamSnapshotLocked()
+}
+
+func (s *EngineerService) streamSnapshotLocked() EngineerStreamEvent {
+	s.streamSequence++
+	event := EngineerStreamEvent{
+		Version: EngineerStreamVersion, Sequence: s.streamSequence,
+		Generation: s.presentationLifecycle, Kind: EngineerStreamSnapshot,
+		Status: pointerToStatus(s.getStatusLocked()),
+	}
+	if s.activePresentation != nil && s.activePresentation.ExpiresAt > s.policyClock.NowMS() {
+		presentation := *s.activePresentation
+		event.Active = true
+		event.Presentation = &presentation
+	} else {
+		s.activePresentation = nil
+	}
+	return event
+}
+
+func pointerToStatus(status EngineerStatus) *EngineerStatus { return &status }
+
+func (s *EngineerService) publishStreamLocked(kind EngineerStreamKind, presentation *EngineerNotification, status *EngineerStatus) {
+	s.streamSequence++
+	event := EngineerStreamEvent{
+		Version: EngineerStreamVersion, Sequence: s.streamSequence,
+		Generation: s.presentationLifecycle, Kind: kind,
+		Active: s.activePresentation != nil, Presentation: presentation, Status: status,
+	}
+	for _, subscriber := range s.streamSubs {
+		select {
+		case subscriber <- event:
+		default:
+			s.dropCount.Add(1)
+		}
+	}
+	if s.emitter != nil {
+		s.emitter.Emit("engineer:stream", event)
 	}
 }
 
@@ -334,6 +459,7 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	s.runtime.SetEnabled(enabled && s.spotterEnabled)
 	if !enabled {
 		s.connected = false
+		s.advancePresentationLifecycleLocked()
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 		if s.scheduler != nil {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
@@ -352,6 +478,7 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	s.spotterEnabled = enabled
 	s.runtime.SetEnabled(s.enabled && enabled)
 	if !enabled {
+		s.advancePresentationLifecycleLocked()
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 		if s.scheduler != nil {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
@@ -412,15 +539,63 @@ func (s *EngineerService) Subscribe() (<-chan EngineerNotification, func()) {
 	}
 }
 
+func (s *EngineerService) SubscribeStatus() (<-chan EngineerStatus, func()) {
+	ch := make(chan EngineerStatus, 1)
+	s.mu.Lock()
+	s.statusSubs = append(s.statusSubs, ch)
+	ch <- s.getStatusLocked()
+	s.mu.Unlock()
+	return ch, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for i, existing := range s.statusSubs {
+			if existing == ch {
+				copy(s.statusSubs[i:], s.statusSubs[i+1:])
+				s.statusSubs[len(s.statusSubs)-1] = nil
+				s.statusSubs = s.statusSubs[:len(s.statusSubs)-1]
+				close(ch)
+				return
+			}
+		}
+	}
+}
+
 func (s *EngineerService) emitStatus() {
+	status := s.Status()
+	s.mu.Lock()
+	s.publishStatusLocked(status)
+	s.publishStreamLocked(EngineerStreamStatus, nil, &status)
+	s.mu.Unlock()
 	if s.emitter != nil {
-		s.emitter.Emit("engineer:status", s.Status())
+		s.emitter.Emit("engineer:status", status)
 	}
 }
 
 func (s *EngineerService) emitStatusLocked() {
+	status := s.getStatusLocked()
+	s.publishStatusLocked(status)
+	s.publishStreamLocked(EngineerStreamStatus, nil, &status)
 	if s.emitter != nil {
-		s.emitter.Emit("engineer:status", s.getStatusLocked())
+		s.emitter.Emit("engineer:status", status)
+	}
+}
+
+func (s *EngineerService) publishStatusLocked(status EngineerStatus) {
+	for _, subscriber := range s.statusSubs {
+		select {
+		case subscriber <- status:
+		default:
+			// Status is state, not history. Replace a stale buffered snapshot so
+			// lifecycle invalidation cannot be lost behind a slow SSE client.
+			select {
+			case <-subscriber:
+			default:
+			}
+			select {
+			case subscriber <- status:
+			default:
+			}
+		}
 	}
 }
 
@@ -459,6 +634,7 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 	if !status.State.Available() || reconnectBoundary {
 		s.markReconnectBoundaryLocked()
 		s.connected = false
+		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
 		if s.scheduler != nil {
@@ -502,6 +678,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 		if err != nil {
 			s.connected = false
 			s.lastError = err.Error()
+			s.advancePresentationLifecycleLocked()
 			s.runtime.Reset()
 			s.queue.Clear()
 			if s.scheduler != nil {
@@ -512,6 +689,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			return err
 		}
 		if boundary.CancelsPending() {
+			s.advancePresentationLifecycleLocked()
 			s.runtime.Reset()
 			s.queue.Clear()
 			s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
@@ -610,6 +788,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 
 	switch fact.Fact.Kind {
 	case engineerprojection.FactSessionStarted, engineerprojection.FactDriverChanged:
+		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
 		if s.scheduler != nil {
@@ -619,6 +798,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 	case engineerprojection.FactSessionEnded, engineerprojection.FactConnectionLost:
 		s.markReconnectBoundaryLocked()
 		s.connected = false
+		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
 		if s.scheduler != nil {
@@ -703,7 +883,7 @@ func (s *EngineerService) Health() EngineerHealth {
 		Source:    s.source,
 		Connected: s.connected,
 		Enabled:   s.enabled,
-		Subs:      len(s.subs),
+		Subs:      len(s.subs) + len(s.streamSubs),
 		DropCount: s.dropCount.Load(),
 		Policy:    policyMetrics,
 		Delivery:  s.deliveryMetrics.Snapshot(),

@@ -2,6 +2,7 @@ import type { FeatureId } from "../../lib/access-policy";
 import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
+import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
@@ -25,6 +26,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "track-weather": "overlays.advanced",
   "car-damage-visual": "overlays.advanced",
   "car-damage-numbers": "overlays.advanced",
+  "engineer-radio": "engineer.ai",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {
@@ -51,6 +53,11 @@ export type WidgetViewModelBase = {
   statusMessage?: string;
 };
 
+export type WidgetRuntimeInput = {
+  engineerPresentation?: EngineerPresentation | null;
+  engineerSubtitlesEnabled?: boolean;
+};
+
 export type WidgetCapabilities = {
   inspectorSections: readonly InspectorSectionId[];
   supportsAspectUnlock: boolean;
@@ -75,4 +82,14 @@ export type WidgetTypeDefinition<
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
   buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;
+  buildRuntimeViewModel?(
+    snapshot: TelemetrySnapshot,
+    content: TContent,
+    runtime: WidgetRuntimeInput,
+  ): TModel;
+  buildPreviewViewModel?(
+    snapshot: TelemetrySnapshot,
+    content: TContent,
+    runtime: WidgetRuntimeInput,
+  ): TModel;
 };

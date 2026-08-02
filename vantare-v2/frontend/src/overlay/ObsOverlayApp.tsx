@@ -9,6 +9,8 @@ import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
 import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
 import { createSseProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
+import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
+import { createSseEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -29,6 +31,11 @@ export function ObsOverlayApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
+  const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
+  const engineerAdapter = useMemo(
+    () => createSseEngineerPresentationAdapter({ store: engineerPresentations }),
+    [engineerPresentations],
+  );
   const adapter = useMemo(
     () =>
       createSseProjectionTelemetryAdapter({
@@ -42,11 +49,14 @@ export function ObsOverlayApp() {
 
   useEffect(() => {
     adapter.start();
+    engineerAdapter.start();
     return () => {
       adapter.stop();
+      engineerAdapter.stop();
+      engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator]);
+  }, [adapter, coordinator, engineerAdapter, engineerPresentations]);
 
   useEffect(() => {
     const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {
@@ -113,6 +123,7 @@ export function ObsOverlayApp() {
       revision={revision}
       layoutOrigin={layoutOrigin}
       telemetry={coordinator}
+      engineerPresentations={engineerPresentations}
     />
   );
 

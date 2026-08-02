@@ -97,6 +97,7 @@ export const studioV3Es: Record<string, string> = {
   "studio.v3.widgetTypes.trackWeather": "Clima de pista",
   "studio.v3.widgetTypes.carDamageVisual": "Daño visual del coche",
   "studio.v3.widgetTypes.carDamageNumbers": "Daño numérico del coche",
+  "studio.v3.widgetTypes.engineerRadio": "Radio del ingeniero",
   "studio.v3.dirtyDialog.title": "Cambios sin guardar",
   "studio.v3.dirtyDialog.body": "Tienes cambios pendientes. ¿Qué quieres hacer antes de salir?",
   "studio.v3.dirtyDialog.save": "Guardar",

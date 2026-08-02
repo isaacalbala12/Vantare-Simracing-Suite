@@ -12,17 +12,17 @@
 
 ## Estado
 
-- Billing: BIL-01..BIL-07 compuestos y validados localmente en ISA-203 para
-  promoción técnica; venta pública continúa **NO-GO**.
+- Billing: BIL-01..BIL-07 ya estaban en `nightly`; este corte BIL-N02 incorpora
+  BIL-08 tras validación acumulativa. Venta pública continúa **NO-GO**.
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
 - Calendar/Settings/Installer/Roadmap/Migración: proyecto o reconciliación
   pendientes.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
   `testers` → `master`.
-- Base ISA-203: `nightly@523840972673c2567cef75240ebe5a768f7742fc`.
-- Promoción nueva: BIL-01..BIL-07 preparados para PR/CI; BIL-08 no está
-  incluido.
+- Base ISA-212: `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`.
+- Promoción vigente: ISA-212/BIL-N02 hacia `nightly`; `testers` y `master`
+  quedan fuera.
 
 ## Cuenta
 
@@ -79,7 +79,7 @@ Autoridad y contrato:
 - Un refund total atribuible revoca únicamente su grant; refunds parciales,
   pendientes, fallidos o ambiguos no revocan acceso automáticamente.
 
-Estado local BIL-01..BIL-07:
+Estado BIL-01..BIL-08:
 
 - Inbox durable antes de efectos, efectos idempotentes, quarantine/replay y
   límites de request.
@@ -96,10 +96,23 @@ Estado local BIL-01..BIL-07:
   concurrency y restore), Deno 164/164, frontend focal 87/87, frontend global
   311 archivos/2.128 tests, build, lint focal, Go global, x20 y race detector
   focal. El workflow productivo es exclusivamente manual, protegido por
-  environment y limitado por allowlist a tres Functions.
+  environment.
+- BIL-08 añade una credencial offline Ed25519 ligada a UUID y dispositivo. Pro
+  y canales temporales vencen por `paidThrough`; Launch v1 conserva únicamente
+  su scope adquirido y Testers. Legacy, edición, copia, clock rollback y
+  rechazos online fallan cerrados.
+- El emisor `license-credential` entra en la allowlist protegida; la clave
+  privada existe solo como secreto server-side y el build incorpora únicamente
+  claves públicas versionadas. No se ha configurado ni desplegado nada remoto.
+- Evidencia BIL-08 sobre la composición final: frontend 311/311 archivos y
+  2.128/2.128 tests, build y lint focal; Deno 173/173, formato, check y guard de
+  deploy; Go focal x20, vet, race focal, Credential Manager real y fixture
+  WebCrypto→Go PASS. La suite Go global deja visible únicamente la deuda
+  heredada de Ajustes ISA-118, reproducida también en el `nightly` base; todos
+  los paquetes BIL-08 pasan.
 
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
-reembolsar o habilitar venta. BIL-08 y los gates monetarios siguen pendientes.
+reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Riesgos
 
@@ -112,18 +125,20 @@ reembolsar o habilitar venta. BIL-08 y los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. ISA-203 / BIL-N01: abrir PR y promover BIL-01..07 a `nightly` únicamente si
-   CI queda verde.
-2. Retomar BIL-08 desde su worktree aislado sobre la nueva base validada.
-3. Continuar gates monetarios y despliegue controlado sin venta pública.
-4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-5. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. ISA-212 / BIL-N02: integrar BIL-08 exclusivamente en `nightly` cuando el PR
+   protegido y el gate post-merge queden verdes.
+2. Ejecutar BIL-09 / ISA-74: fixtures sandbox y matriz de lifecycle.
+3. Recoger feedback Nightly de BIL-01..08 sin habilitar venta.
+4. Continuar gates monetarios y despliegue controlado sin venta pública.
+5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+6. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-203 compone y valida BIL-01..07 sobre `nightly` sin BIL-08 ni
-mutaciones remotas. Conserva el runtime moderno de Telemetry/Engineer, adopta
-el flujo OAuth endurecido de Billing y queda preparado para PR/CI.
+2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
+runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
+gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
+Sin mutaciones remotas y con venta pública NO-GO.

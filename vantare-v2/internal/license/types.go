@@ -38,12 +38,17 @@ const (
 type Result struct {
 	State         State
 	Entitlements  []Entitlement
+	Capabilities  []Capability
 	UserID        string
 	Email         string
 	DeviceOK      bool
 	GraceEndsAt   *time.Time
 	LastValidated time.Time
 	Error         error
+	// OnlineValidated is intentionally omitted from LicenseWire. It marks that
+	// Supabase authenticated this exact session during the current request, so
+	// only the native auth-session manager can decide whether to persist it.
+	OnlineValidated bool
 }
 
 // AccountInfo is the entitlement/device row returned by Supabase RPC.
@@ -59,7 +64,6 @@ type AccountInfo struct {
 type Config struct {
 	SupabaseURL     string
 	SupabaseAnonKey string
-	GracePeriod     time.Duration
 	CachePath       string
 }
 
@@ -70,6 +74,7 @@ type Config struct {
 type LicenseWire struct {
 	State         string        `json:"state"`
 	Entitlements  []Entitlement `json:"entitlements"`
+	Capabilities  []Capability  `json:"capabilities,omitempty"`
 	UserID        string        `json:"userId"`
 	Email         string        `json:"email"`
 	DeviceOK      bool          `json:"deviceOK"`
@@ -91,6 +96,7 @@ func (r *Result) ToWire() LicenseWire {
 	return LicenseWire{
 		State:         string(r.State),
 		Entitlements:  r.Entitlements,
+		Capabilities:  r.Capabilities,
 		UserID:        r.UserID,
 		Email:         r.Email,
 		DeviceOK:      r.DeviceOK,

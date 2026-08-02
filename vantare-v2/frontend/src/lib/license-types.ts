@@ -18,9 +18,16 @@ export type Entitlement =
   | "visionary_backer"
   | "ac_lua_pack";
 
+export type Capability =
+  | "vantare.plan.pro"
+  | "vantare.edition.launch_v1"
+  | "vantare.channel.testers"
+  | "vantare.channel.nightly";
+
 export type LicenseResult = {
   state: LicenseState;
   entitlements: Entitlement[];
+  capabilities?: Capability[];
   userId: string;
   email: string;
   deviceOK: boolean;

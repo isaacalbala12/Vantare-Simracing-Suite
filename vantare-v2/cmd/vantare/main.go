@@ -58,8 +58,9 @@ const (
 // VANTARE_SUPABASE_ANON_KEY still take precedence for development and
 // overrides.
 var (
-	supabaseURL     = ""
-	supabaseAnonKey = ""
+	supabaseURL       = ""
+	supabaseAnonKey   = ""
+	licensePublicKeys = ""
 )
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
@@ -1000,13 +1001,27 @@ func main() {
 	if supabaseAnonKeyResolved == "" {
 		supabaseAnonKeyResolved = supabaseAnonKey
 	}
+	licensePublicKeysResolved := resolveLicensePublicKeys(
+		licensePublicKeys,
+		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
-		GracePeriod:     24 * time.Hour,
 		CachePath:       licenseCachePath,
 	}, emitter, license.MachineFingerprint)
 	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
+	publicKeys, publicKeyErr := license.ParsePublicKeys(licensePublicKeysResolved)
+	if publicKeyErr != nil {
+		log.Printf("license: invalid public key configuration: %v", publicKeyErr)
+	} else if len(publicKeys) == 0 {
+		log.Printf("license: no offline credential public keys configured")
+	} else {
+		licenseSvc.WithVerifier(license.NewCredentialVerifier(
+			publicKeys,
+			license.NewProtectedClockStore("Vantare/LicenseClock"),
+		))
+	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
 		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURLResolved, supabaseAnonKeyResolved))
 	} else {
@@ -1036,7 +1051,18 @@ func main() {
 		// race with the frontend state machine.
 		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
 			len(payload.SessionToken), len(payload.RefreshToken))
-		res, verr := licenseSvc.Validate(context.Background(), payload.SessionToken)
+		trustedSessionToken := ""
+		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
+			trustedSessionToken = protectedSession.AccessToken
+		} else if !errors.Is(restoreErr, authsession.ErrNotFound) &&
+			!errors.Is(restoreErr, authsession.ErrInvalidStoredSessionRemoved) {
+			log.Printf("auth session restore for license fallback failed: %v", restoreErr)
+		}
+		res, verr := licenseSvc.ValidateWithTrustedSession(
+			context.Background(),
+			payload.SessionToken,
+			trustedSessionToken,
+		)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
 			emitter.Emit("license:error", map[string]any{"message": verr.Error()})
@@ -1048,7 +1074,7 @@ func main() {
 		}
 		// Persist only sessions that have been accepted by the backend. Windows
 		// Credential Manager owns persistence; the WebView only keeps memory.
-		if res != nil && res.UserID != "" && payload.SessionToken != "" && payload.RefreshToken != "" {
+		if shouldPersistValidatedSession(res, payload.SessionToken, payload.RefreshToken) {
 			if err := authManager.AcceptValidated(authsession.Session{
 				AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
 			}); err != nil {
@@ -2156,6 +2182,20 @@ func main() {
 	if err := wailsApp.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func shouldPersistValidatedSession(res *license.Result, sessionToken, refreshToken string) bool {
+	return res != nil && res.OnlineValidated && res.UserID != "" && sessionToken != "" && refreshToken != ""
+}
+
+func resolveLicensePublicKeys(embedded, developmentOverride string) string {
+	// Release builds embed a required trust root. Once present it must never be
+	// replaceable by the user process environment. Local development builds do
+	// not embed keys and may opt in through VANTARE_LICENSE_PUBLIC_KEYS.
+	if embedded != "" {
+		return embedded
+	}
+	return developmentOverride
 }
 
 // wailsWindowHandle adapts *application.WebviewWindow to window.WindowHandle.

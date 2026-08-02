@@ -16,9 +16,10 @@ son fases históricas.
 
 ## Estado
 
-STR-00 quedó aceptado tras review independiente. STR-01 rescata Product A solo
-como oráculo histórico aislado; no integra su rama ni conecta sus contratos al
-producto. La UI canónica usa estrategias a la izquierda, stints al centro e
+STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
+histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
+primer contrato productivo versionado, todavía sin persistencia, cálculo ni
+wiring. La UI canónica usa estrategias a la izquierda, stints al centro e
 inventario/entrada a la derecha.
 
 Actualización ISA-134 / STR-00:
@@ -37,8 +38,21 @@ Actualización ISA-134 / STR-00:
   borrar historia. El backlog canónico son 24 cortes: ISA-136..157 más
   ISA-162/163.
 - Productores: ISA-159 (Analysis histórico) e ISA-160/161 (Core live).
-- Promoción: ninguna; ISA-136 está implementada en su rama y pendiente de
-  review independiente.
+- STR-01: commit `f85fd31`, push y PR draft #60; sin promoción.
+- STR-02: corrección WIP sobre `f85fd31`. Añade activación idempotente
+  con historial exacto, decode execution estricto y corpus Go/TS de errores,
+  máximo entero compartido `2^53-1`, regresión UTF-8 real y precedencia de
+  versiones desconocidas equivalente en Go/TS. El encoder TS limita profundidad
+  también al verificar valores ya construidos. La verificación productiva ya no
+  materializa el hexadecimal del payload: calcula solo el digest; el hexadecimal
+  diagnóstico usa un búfer acotado. La regresión de 1.000.000 de elementos
+  canoniza `9.000.005` bytes y el benchmark reproducible está en
+  `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
+  Permanece sin commit, push, PR ni promoción hasta nueva review. Go focal x50,
+  dos fuzzers, frontend completo 299/299 archivos y 2.034/2.034 tests,
+  TypeScript, build, lint focal, vet focal y diff-check pasan. Go/vet global no
+  se repitieron en la reanudación del 2 de agosto; su última evidencia conserva
+  deuda Windows heredada fuera del diff.
 
 ## Decisiones
 
@@ -61,6 +75,35 @@ Actualización ISA-134 / STR-00:
 - Live explica cambio, impacto, propuesta y consecuencia.
 - Engineer propone, piloto acepta, Strategy actualiza, Overlays leen.
 - El LLM redacta voz/texto; no calcula la estrategia.
+- Contrato inicial `strategy.v1`: draft mutable, revisión inmutable/hash,
+  activación por referencia exacta, ejecución secuenciada y replan con
+  aceptación explícita.
+- Fuel y Virtual Energy son tipos incompatibles en Go y TypeScript.
+- Go crea y firma lógicamente revisiones; TypeScript las valida contra un
+  manifiesto y golden compartidos, sin segundo constructor divergente.
+- `sha256:strategy-c14n-v1` fija un encoder binario común Go/TypeScript con
+  orden de claves UTF-8, float64 big-endian, límites de recursos y corpus
+  adversarial de bytes/hash. Hashes son minúsculos y timestamps son UTC
+  RFC3339 canónicos con precisión máxima de milisegundos.
+- Replans se decodifican estrictamente y se validan antes/después de aceptar o
+  activar. Los estados de ejecución y propuestas aceptadas no conservan aliases
+  mutables del input ni de snapshots anteriores.
+- Repetir una propuesta ya aplicada devuelve el mismo snapshot activo sin una
+  segunda activación, únicamente si candidata, base y revisión anterior
+  concuerdan exactamente.
+- `LapCount`, `epoch` y `sequence` comparten el máximo entero `2^53-1`; el
+  decoder de execution rechaza shape anidado, duplicados, unknown fields,
+  trailing data, timestamps y capabilities inválidos con el mismo
+  `errorCode/errorField` en Go y TypeScript.
+- La segunda corrección fija los 25 nombres del corpus execution, usa paths
+  completos para revision/provenance/confidence y valida escalares antes del
+  decode Go. Los límites canónicos viven también en el manifiesto compartido;
+  strings ya no heredan por error el límite de elementos de un contenedor.
+- Una versión explícita desconocida se rechaza antes de interpretar la shape v1;
+  la ausencia del campo conserva `invalid_document`. El mismo corpus fija esa
+  precedencia para revisión y replan en Go/TypeScript.
+- El encoder TypeScript aplica límites de salida, elementos y profundidad por
+  sí mismo; no depende de que el input haya atravesado antes el parser JSON.
 
 ## Riesgos
 
@@ -85,15 +128,16 @@ Actualización ISA-134 / STR-00:
   fixture exacto y 24 blobs Go iguales salvo el namespace.
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
-- Issue activa: ISA-136 / STR-01, pendiente de review independiente.
+- Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
+- Issue activa: ISA-137 / STR-02, segunda corrección WIP lista para nueva review
+  independiente.
 
 ## Siguiente acción exacta
 
-Review independiente de ISA-136. Si queda `ACCEPT`, entregar commit/push/PR
-draft y continuar ISA-137 / STR-02 sobre esta rama apilada. No convertir
-`internal/strategy/producta` en contrato productivo ni tocar integraciones
-transversales antes de sus cortes.
+Ejecutar nueva review independiente de ISA-137. Si queda `ACCEPT`, entregar
+commit/push/PR draft y continuar ISA-138 / STR-03 apilada sobre el contrato. No
+añadir persistencia, cálculo o integraciones transversales a STR-02.
 
 ## Última actualización
 
-2026-08-01, ISA-136 / STR-01, Codex.
+2026-08-02, ISA-137 / STR-02, Codex.

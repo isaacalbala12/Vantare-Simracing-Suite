@@ -1,0 +1,22 @@
+{
+  "hashes": [
+    { "name": "lowercase sha256", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "accepted": true },
+    { "name": "uppercase sha256", "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "accepted": false },
+    { "name": "mixed sha256", "value": "aAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "accepted": false },
+    { "name": "short sha256", "value": "aaaaaaaa", "accepted": false },
+    { "name": "non hexadecimal", "value": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg", "accepted": false }
+  ],
+  "timestamps": [
+    { "name": "whole second utc", "value": "2026-08-01T20:01:00Z", "accepted": true },
+    { "name": "one millisecond digit", "value": "2026-08-01T20:01:00.1Z", "accepted": true },
+    { "name": "two millisecond digits", "value": "2026-08-01T20:01:00.12Z", "accepted": true },
+    { "name": "three millisecond digits", "value": "2026-08-01T20:01:00.123Z", "accepted": true },
+    { "name": "non canonical trailing zero", "value": "2026-08-01T20:01:00.120Z", "accepted": false },
+    { "name": "zero fraction", "value": "2026-08-01T20:01:00.000Z", "accepted": false },
+    { "name": "sub millisecond", "value": "2026-08-01T20:01:00.1234Z", "accepted": false },
+    { "name": "utc offset", "value": "2026-08-01T20:01:00+00:00", "accepted": false },
+    { "name": "invalid calendar date", "value": "2026-02-30T20:01:00Z", "accepted": false },
+    { "name": "lowercase z", "value": "2026-08-01T20:01:00z", "accepted": false },
+    { "name": "missing timezone", "value": "2026-08-01T20:01:00", "accepted": false }
+  ]
+}

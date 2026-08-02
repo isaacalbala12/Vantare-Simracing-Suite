@@ -31,7 +31,7 @@ almacenamiento privado de otro.
 | Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
 | Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
 | Engineer/Spotter | Acompañamiento live, seguridad, voz y Pit Manager | ISA-123/125/127/133 en review; siguiente ISA-158 | ISA-158 scheduler determinista |
-| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | STR-00 aceptado; ISA-136 rescate histórico listo para review | ISA-137 después de review STR-01 |
+| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | STR-01 aceptado; ISA-137 contrato v1 corregido y listo para re-review | ISA-138 después de review STR-02 |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |
 | Hub | Accesos y resumen real | conservar estructura | consistencia |
@@ -62,7 +62,7 @@ Contenido y marketing no se implementan autónomamente.
 1. Cerrar review ISA-117 sin promover; Core canónico permanece como base.
 2. Analysis: ISA-126/135 -> ISA-132 -> ISA-159 productor histórico Strategy.
 3. Engineer: continuar ISA-158 sobre ENG-04 sin reabrir adquisición LMU.
-4. Strategy: review ISA-136 -> ISA-137..157 + ISA-162/163.
+4. Strategy: review ISA-137 -> ISA-138..157 + ISA-162/163.
 5. Core: ISA-160 audita señales y ISA-161 produce live antes de STR-17.
 6. Strategy asistido se bloquea en ISA-159; live se bloquea en ISA-161.
 7. Cerrar Overlay con LMU real y gates visuales pendientes.

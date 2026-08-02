@@ -1,0 +1,119 @@
+{
+  "contractVersion": "strategy.v1",
+  "maxSafeInteger": 9007199254740991,
+  "canonicalLimits": {
+    "maxJsonBytes": 4194304,
+    "maxOutputBytes": 16777216,
+    "maxDepth": 64,
+    "maxContainerItems": 1048576
+  },
+  "hashAlgorithms": ["sha256:strategy-c14n-v1"],
+  "planModes": ["manual", "assisted", "live"],
+  "capabilities": [
+    "manual_inputs",
+    "telemetry_import",
+    "live_updates",
+    "tyre_inventory",
+    "fuel_strategy",
+    "virtual_energy_strategy",
+    "plan_comparison",
+    "replan"
+  ],
+  "provenanceKinds": [
+    "unknown",
+    "observed",
+    "corrected",
+    "manual",
+    "derived",
+    "estimated",
+    "range"
+  ],
+  "confidenceLevels": ["unknown", "low", "medium", "high"],
+  "executionStatuses": [
+    "idle",
+    "monitoring",
+    "deviated",
+    "awaiting_decision",
+    "completed",
+    "stopped"
+  ],
+  "replanStatuses": ["proposed", "accepted", "rejected", "expired", "superseded"],
+  "unitNames": [
+    "fuel_liters",
+    "virtual_energy_percent",
+    "duration_seconds",
+    "lap_count",
+    "distance_meters",
+    "tyre_remaining_percent"
+  ],
+  "errorCodes": [
+    "invalid_identifier",
+    "invalid_unit",
+    "invalid_state",
+    "invalid_provenance",
+    "invalid_confidence",
+    "unsupported_contract_version",
+    "revision_hash_mismatch",
+    "revision_conflict",
+    "proposal_not_accepted",
+    "proposal_expired",
+    "non_monotonic_sequence",
+    "incompatible_units",
+    "invalid_document"
+  ],
+  "documentRequiredFields": {
+    "planDraft": [
+      "contractVersion",
+      "draftId",
+      "planId",
+      "variantId",
+      "name",
+      "mode",
+      "capabilities",
+      "provenance",
+      "confidence",
+      "updatedAt",
+      "payload"
+    ],
+    "planRevision": [
+      "contractVersion",
+      "hashAlgorithm",
+      "revisionId",
+      "sourceDraftId",
+      "planId",
+      "variantId",
+      "name",
+      "mode",
+      "capabilities",
+      "provenance",
+      "confidence",
+      "createdAt",
+      "payload",
+      "contentHash"
+    ],
+    "activePlan": ["contractVersion", "activationId", "revision", "activatedAt"],
+    "executionState": [
+      "contractVersion",
+      "executionId",
+      "activePlan",
+      "epoch",
+      "sequence",
+      "status",
+      "capabilities",
+      "provenance",
+      "confidence",
+      "updatedAt"
+    ],
+    "replanProposal": [
+      "contractVersion",
+      "proposalId",
+      "base",
+      "candidate",
+      "status",
+      "reasonCode",
+      "provenance",
+      "confidence",
+      "createdAt"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "contractVersion": "strategy.v1",
+  "hashAlgorithm": "sha256:strategy-c14n-v1",
+  "revisionId": "revision-golden-001",
+  "sourceDraftId": "draft-golden-001",
+  "planId": "plan-golden",
+  "variantId": "balanced",
+  "name": "Golden balanced plan",
+  "mode": "assisted",
+  "capabilities": [
+    "fuel_strategy",
+    "telemetry_import"
+  ],
+  "provenance": {
+    "kind": "manual",
+    "sourceId": "user-input"
+  },
+  "confidence": {
+    "level": "medium",
+    "basis": "fuel sample available"
+  },
+  "createdAt": "2026-08-01T20:01:00Z",
+  "payload": {
+    "fuelLiters": 98.5,
+    "virtualEnergyPercent": 72,
+    "stintLaps": 17,
+    "labels": [
+      "dry",
+      "baseline"
+    ],
+    "parameters": {
+      "risk": 2,
+      "track": "le-mans"
+    }
+  },
+  "contentHash": "3388662ad3d6d94d506f76cc2612a3393201cd3b467260b1e3bd1a8989f0ba0d"
+}

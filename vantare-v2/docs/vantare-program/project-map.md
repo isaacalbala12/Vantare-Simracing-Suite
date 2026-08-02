@@ -19,6 +19,7 @@ Calendar ───────── eventos → perfiles, layouts y estrategias
 Settings ───────── configuración común
 Roadmap/Discord ── publicación sanitizada desde Linear
 Installer/Updater  Nightly → Testers → Master
+Testing Automation Reporte → Issue → PR → candidata → validación
 ```
 
 Los módulos consumen contratos versionados. Ninguno accede a la UI o al
@@ -41,6 +42,7 @@ almacenamiento privado de otro.
 | Settings | Configuración global/por perfil | por consolidar | ownership modular |
 | Installer/Updater | Instalación, rollback y canales | proyecto por crear | ramas y Billing |
 | Roadmap/Linear/Discord | Estado público seguro | workflows previos | resumen público |
+| Testing Center / Error Automation | Reporte in-app y corrección trazable | ISA-205 / TAU-00 en propuesta; sin implementación | review del plan; después TAU-01 |
 | Root migration | `vantare-v2` como raíz | auditoría ISA-14 | cerrar worktrees |
 
 Contenido y marketing no se implementan autónomamente.
@@ -56,6 +58,8 @@ Contenido y marketing no se implementan autónomamente.
 - **Strategy:** planes, stints, inventario, optimización y ejecución. Engineer
   propone; Strategy aplica tras aceptación.
 - **Overlay:** ViewModels puros. Sin fuentes, fusión ni lógica de producto.
+- **Testing Automation:** orquesta evidencia, issues, candidatas y validación;
+  no decide producto, no publica master y no convierte replay en autoridad.
 
 ## Orden global
 

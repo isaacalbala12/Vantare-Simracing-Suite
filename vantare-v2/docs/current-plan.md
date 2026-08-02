@@ -1,3 +1,22 @@
+Nota ISA-205 / TAU-00 (2026-08-02):
+- Plan maestro y ADR propuestos para `Testing Center` y el circuito
+  `reporte in-app -> Supabase -> GitHub Issue -> Codex PR -> candidata ->
+  validación -> promoción`.
+- Supabase será la autoridad de auth, roles, estados, idempotencia y
+  deduplicación; PostHog solo evidencia opcional; Discord solo comunica; Linear
+  conserva la planificación interna.
+- El MVP es serial, acepta una validación primary tester en nightly y una beta
+  en testers, liga toda aceptación al SHA exacto y permite un solo reintento.
+- Isaac revisa el PR antes de nightly y conserva la aprobación exclusiva de
+  master. Seguridad, privacidad, Billing, migraciones, dependencias,
+  arquitectura, workflows y secretos nunca se asignan automáticamente a Codex.
+- TAU-00 continúa siendo documental y no activa integraciones. TAU-01 está
+  implementado con datos sintéticos en ISA-206/PR #97 y CI verde; no inicializa
+  PostHog sin consentimiento ni usa proyecto cloud.
+- TAU-02 se dividió por riesgo en ISA-208 (contratos puros), ISA-209 (esquema
+  fail-closed) e ISA-210 (RLS/RPC). ISA-208 parte de
+  `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`; no hay deploy ni promoción.
+
 Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
 - Reconstrucción del árbol final BIL-01..BIL-07 sobre
   `nightly@523840972673c2567cef75240ebe5a768f7742fc`; BIL-08 queda fuera porque

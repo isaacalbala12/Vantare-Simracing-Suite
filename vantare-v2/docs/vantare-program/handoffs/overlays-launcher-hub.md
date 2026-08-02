@@ -13,6 +13,8 @@
 - Overlay: proyecto Linear activo; ramas ISA-92/93 e integraciones históricas.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
 - Hub: sin issue activa.
+- Testing Center: arquitectura propuesta en ISA-205 / TAU-00; no implementada.
+  Su estado vive en `testing-automation.md`.
 - Base/rama/SHA de próximo trabajo: no fijados.
 - Promoción nueva: ninguna; las integraciones en `develop` son históricas.
 
@@ -60,14 +62,20 @@ Conservar estructura. Solo consistencia visual, estados reales, responsive,
 accesibilidad y rendimiento. El selector superior abre módulos, apps, perfiles
 y recientes.
 
+Testing Center será una pestaña de aplicación separada en los canales nightly y
+testers. Hub puede enlazarla, pero no posee auth, roles, diagnósticos, estado de
+issues ni promociones. La visibilidad por canal no sustituye la autorización
+server-side.
+
 ## Issues y siguiente acción
 
 - Overlay: seguir su proyecto y TC-07; no abrir otro reader.
 - Launcher: crear LAU-AUDIT antes de nuevas features.
 - Hub: crear HUB-POLISH después de characterization visual.
+- Testing Center: no implementar desde este handoff; seguir TAU-01..TAU-13.
 - Checks: harness real, Playwright, transparencias, responsive, capturas,
   frontend test/build; no regenerar baselines para esconder fallos.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-02, ISA-205 / TAU-00, Codex orquestador.

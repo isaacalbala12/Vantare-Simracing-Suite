@@ -19,10 +19,13 @@
   pendientes.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
-  `testers` → `master`.
+  `testers` → `master` y `develop` está congelada.
 - Base ISA-203: `nightly@523840972673c2567cef75240ebe5a768f7742fc`.
-- Promoción nueva: BIL-01..BIL-07 preparados para PR/CI; BIL-08 no está
-  incluido.
+- Promoción nueva: BIL-01..BIL-07 integrados en
+  `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`; BIL-08 no está incluido.
+- Testing Automation: ISA-205 / TAU-00 define el plan; no hay integración
+  activada. Su handoff propio es `testing-automation.md`.
+- Base de TAU-00: `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6`.
 
 ## Cuenta
 
@@ -65,6 +68,9 @@ SmartScreen y guía; nunca bypass. Master produce versión pública.
 Archivar primero, preservar historia/secrets, simular y probar rollback. Borrado
 masivo requiere Isaac. La migración de ramas materializa issue → Nightly →
 Testers → Master y actualiza CI/webhooks/updater.
+
+Testing Automation no modifica esa topología: consume los canales existentes y
+deja `master` bajo aprobación exclusiva de Isaac.
 
 ## Billing
 
@@ -112,8 +118,8 @@ reembolsar o habilitar venta. BIL-08 y los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. ISA-203 / BIL-N01: abrir PR y promover BIL-01..07 a `nightly` únicamente si
-   CI queda verde.
+1. ISA-205 / TAU-00: revisar plan/ADR; después ejecutar los cortes TAU por
+   separado.
 2. Retomar BIL-08 desde su worktree aislado sobre la nueva base validada.
 3. Continuar gates monetarios y despliegue controlado sin venta pública.
 4. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
@@ -126,4 +132,6 @@ cambios monetarios reales y Master requieren Isaac.
 
 2026-08-02, ISA-203 compone y valida BIL-01..07 sobre `nightly` sin BIL-08 ni
 mutaciones remotas. Conserva el runtime moderno de Telemetry/Engineer, adopta
-el flujo OAuth endurecido de Billing y queda preparado para PR/CI.
+el flujo OAuth endurecido de Billing y queda integrado en `nightly`. ISA-205
+añade únicamente la planificación propuesta de Testing Automation, sin activar
+integraciones ni promociones.

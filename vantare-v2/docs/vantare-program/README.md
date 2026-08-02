@@ -42,6 +42,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,
   releases, roadmap y migración.
+- `handoffs/testing-automation.md`: Testing Center, reportes, PostHog,
+  Supabase, GitHub/Codex y validación por canales.
 
 ## Reglas de continuidad
 

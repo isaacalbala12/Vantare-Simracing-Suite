@@ -127,6 +127,10 @@ func (value Provenance) validate() error {
 	}
 }
 
+// Validate exposes the canonical provenance rules to domain packages without
+// making them duplicate the strategy.v1 contract.
+func (value Provenance) Validate() error { return value.validate() }
+
 type ConfidenceLevel string
 
 const (
@@ -157,3 +161,7 @@ func (value Confidence) validate() error {
 		return contractError(ErrorInvalidConfidence, "confidence.level", "unknown confidence level")
 	}
 }
+
+// Validate exposes the canonical confidence rules to domain packages without
+// making them duplicate the strategy.v1 contract.
+func (value Confidence) Validate() error { return value.validate() }

@@ -20,9 +20,10 @@ STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local
 canónico de drafts y revisiones. STR-04 añade la fachada de comandos y el store
-frontend transitorio, todavía sin cálculo, UI final ni wiring productivo. La UI
-canónica usa estrategias a la izquierda, stints al centro e inventario/entrada
-a la derecha.
+frontend transitorio. STR-05 añade el motor manual puro de carrera, Fuel,
+Virtual Energy y pit, todavía sin UI final ni wiring productivo. La UI canónica
+usa estrategias a la izquierda, stints al centro e inventario/entrada a la
+derecha.
 
 Actualización ISA-134 / STR-00:
 
@@ -89,6 +90,18 @@ Actualización ISA-134 / STR-00:
   2.052/2.052 tests, 36/36 focales, TypeScript, build y lint focal pasan. Una primera corrida
   frontend bajo carga paralela mostró flakiness heredada del canvas; la corrida
   final aislada quedó completamente verde.
+- STR-05: implementación sobre `ISA-139@f60f480`. El paquete puro
+  `internal/strategy/manual` calcula carreras por vueltas/tiempo, recursos y
+  pit sin wiring. Una carrera por tiempo completa la vuelta en curso mediante
+  `ceil` estable y solo añade otra con regla explícita; pit loss sigue siendo
+  input manual con procedencia y no crea un fixed-point oculto. Fuel/VE tienen
+  resultados incompatibles, reservas explícitas, repostajes/recargas y
+  fuel-save que cuenta el inicio real. Pit separa fijo/variable y cuantifica el
+  solape Fuel/neumáticos; repair y penalty son opcionales y no se ocultan.
+  Cada supuesto publica valor, unidad, procedencia y confianza. Evidencia:
+  `docs/strategy-planner/str-05-manual-calculation.md`. Lista para review
+  independiente, sin UI, solver, presets LMU, telemetría, persistencia, wiring,
+  merge o promoción.
 
 ## Decisiones
 
@@ -165,15 +178,15 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-139 / STR-04, correcciones P1/P2 listas para segunda review
-  independiente sobre el commit aceptado de STR-03.
+- Issue activa: ISA-140 / STR-05, implementación lista para review independiente
+  sobre el commit aceptado de STR-04.
 
 ## Siguiente acción exacta
 
-Revisar de nuevo ISA-139 / STR-04. Si queda `ACCEPT`, continuar ISA-140 / STR-05
-apilada sobre esta fachada. No añadir UI final, telemetría, solver o wiring
-transversal dentro de la revisión de STR-04.
+Revisar ISA-140 / STR-05. Si queda `ACCEPT`, continuar ISA-141 / STR-06 apilada
+sobre este motor. No añadir inventario de neumáticos, UI final, telemetría,
+solver o wiring transversal dentro de la revisión de STR-05.
 
 ## Última actualización
 
-2026-08-02, ISA-139 / STR-04, Codex.
+2026-08-02, ISA-140 / STR-05, Codex.

@@ -1,3 +1,28 @@
+Nota ISA-140 / STR-05 (2026-08-02):
+- Nuevo motor puro `internal/strategy/manual`, apilado sobre STR-04 exacto
+  `f60f480`, para carrera por vueltas/tiempo, Fuel, Virtual Energy, fuel-save y
+  pit manual.
+- Las carreras por tiempo completan vueltas enteras: `ceil` de la vuelta en
+  curso, sin vuelta fantasma en una frontera exacta, y `+1` únicamente mediante
+  regla explícita del evento. El pit loss es un input manual con procedencia;
+  no existe ciclo fixed-point o solver oculto.
+- Fuel y VE conservan APIs/resultados incompatibles. Necesidad = carrera +
+  formación + reserva; repostajes/recargas se enumeran contra capacidad
+  utilizable y fuel-save cuenta la cantidad inicial real.
+- Pit separa viaje/penalización fija de servicio variable; solo Fuel/neumáticos
+  solapan, reparación es secuencial y `overlapSaved` demuestra que no hay doble
+  conteo. Reparaciones y penalizaciones son manuales y opcionales.
+- Cada input usado y cada regla de selección aparecen en `Assumptions` con
+  valor, unidad, procedencia y confianza. Sin UI, solver, Monte Carlo, presets
+  LMU, telemetría, DuckDB, persistencia nueva, wiring ni dependencias.
+- Evidencia: `docs/strategy-planner/str-05-manual-calculation.md`. Manual x100,
+  property 10.000 casos, dos fuzzers, race x10, árbol Strategy, vet focal,
+  frontend 301/301 y build pasan. Go global conserva solo el P3 Windows
+  heredado de Settings; vet global conserva tres avisos Win32 heredados y lint
+  frontend 30 errores/2 warnings fuera del diff.
+- Estado: implementación lista para review independiente; sin merge ni
+  promoción. El siguiente corte solo tras `ACCEPT` es ISA-141 / STR-06.
+
 Nota ISA-139 / STR-04 (2026-08-02):
 - Nueva fachada `strategy.application.v1` en
   `internal/strategy/application`, apilada sobre el repositorio exacto de

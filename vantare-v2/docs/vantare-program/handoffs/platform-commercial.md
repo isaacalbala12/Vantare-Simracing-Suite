@@ -111,6 +111,13 @@ Estado BIL-01..BIL-08:
   heredada de Ajustes ISA-118, reproducida también en el `nightly` base; todos
   los paquetes BIL-08 pasan.
 
+BIL-09 / ISA-74 añade un contrato transversal sin cambiar lógica productiva:
+catálogo sandbox completo, matriz lifecycle versionada, Customer State,
+beneficios, compras múltiples y refunds en orden inverso. Los desconocidos
+fallan cerrados y la segunda ejecución converge. La evidencia y la tabla
+evento/precondición/resultado viven en
+`docs/billing/bil-09-lifecycle-matrix.md`.
+
 No existe autorización para desplegar migraciones, mutar Polar/Supabase, cobrar,
 reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
@@ -125,10 +132,9 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. ISA-212 / BIL-N02: integrar BIL-08 exclusivamente en `nightly` cuando el PR
-   protegido y el gate post-merge queden verdes.
-2. Ejecutar BIL-09 / ISA-74: fixtures sandbox y matriz de lifecycle.
-3. Recoger feedback Nightly de BIL-01..08 sin habilitar venta.
+1. Revisar BIL-09 / ISA-74 y promoverlo exclusivamente a `nightly` cuando sus
+   gates estén verdes.
+2. Recoger feedback Nightly de BIL-01..09 sin habilitar venta.
 4. Continuar gates monetarios y despliegue controlado sin venta pública.
 5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 6. Reauditar ISA-14 cuando se cierren worktrees grandes.

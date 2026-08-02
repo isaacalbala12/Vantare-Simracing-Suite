@@ -1,3 +1,13 @@
+Nota ISA-74 / BIL-09 (2026-08-02, matriz lifecycle sandbox):
+- Fixture sintética completa y explícitamente sandbox para Launch, Pro y Pro Plus; Pro incluye trial de siete días con antiabuso confirmado.
+- Matriz versionada para trial, active, renewal, cancel-at-period, uncancel, past_due, unpaid, revoked y estado desconocido fail-closed.
+- Customer State, beneficios, compras múltiples y refunds se ejecutan contra las funciones reales; una segunda pasada converge sin efectos nuevos.
+- Solo fixtures, tests y documentación: ningún endpoint, pago, refund, deploy, secreto o dato productivo. Autoridad: `docs/billing/bil-09-lifecycle-matrix.md`.
+- Gates locales: BIL-09 4/4, Deno activo 177/177, formato, type-check,
+  deploy-surface y `git diff --check` PASS.
+- Estado: implementación aislada pendiente de review independiente; venta
+  pública continúa **NO-GO**.
+
 Nota ISA-212 / BIL-N02 (2026-08-02, promoción a `nightly`):
 - BIL-08 reconstruida sobre `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`, que ya contiene BIL-01..BIL-07, Telemetry Core, Engineer, Strategy y Telemetry Analysis.
 - El corte añade envelope Ed25519 versionado ligado a UUID/fingerprint, expiración offline por capability, Launch v1 perpetuo por scope, high-watermark protegido, migración legacy fail-closed y el emisor `license-credential`.

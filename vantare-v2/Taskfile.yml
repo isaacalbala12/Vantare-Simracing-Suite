@@ -14,6 +14,9 @@ vars:
   VANTARE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL | default ""}}'
   VANTARE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY | default ""}}'
   VANTARE_LICENSE_PUBLIC_KEYS: '{{.VANTARE_LICENSE_PUBLIC_KEYS | default ""}}'
+  # Running release channel. Internal CI injects nightly/testers; public and
+  # local builds fail closed as master unless explicitly overridden.
+  VANTARE_BUILD_CHANNEL: '{{.VANTARE_BUILD_CHANNEL | default "master"}}'
 
 includes:
   common: ./build/Taskfile.yml

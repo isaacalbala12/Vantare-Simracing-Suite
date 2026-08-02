@@ -1,4 +1,11 @@
-Nota ISA-7-BILLING-RELAUNCH (2026-07-14):
+Nota ISA-166-BILLING-RECONCILIATION (2026-08-01):
+- Reconciliación vigente: `docs/analysis/isa-166-polar-catalog-policy-reconciliation-2026-08-01.md`; handoff: `docs/vantare-program/handoffs/platform-commercial.md`.
+- Contrato aprobado: Pro 4,99 EUR/mes; Launch Edition 30 EUR one-time; Pro Plus 9,99 EUR/mes; trial Pro de 7 días; recuperación de pago máxima de 72 h separada de `paidThrough`; un dispositivo activo reemplazable por login; offline firmado hasta expiración y Launch perpetuo para su alcance adquirido.
+- Inventario Polar GET/read-only: Pro y Launch correctos; Pro Plus y trial ausentes; metadata/benefits vacíos; webhook incompleto; pagos, renovaciones, refunds y payouts deshabilitados. No se consultó PII ni se hizo ninguna mutación.
+- ADR-0003 aceptada como contrato, no como autorización operativa. ISA-89 queda como snapshot histórico; ISA-166 es el gate vigente. Siguiente issue tras review: BIL-02 / ISA-68.
+- Venta pública y retirada de Stripe siguen **NO-GO** hasta completar BIL-02..BIL-13.
+
+Nota ISA-7-BILLING-RELAUNCH (2026-07-14, histórica):
 - Auditoria nueva desde `develop@c49e14a` completada en `docs/analysis/isa-7-billing-relaunch-2026-07-14.md`; la ejecucion ISA-7 anterior queda descartada.
 - Investigacion objetivo Polar: `docs/analysis/isa-7-polar-target-billing-architecture-2026-07-14.md`; ADR propuesta, no aceptada: `docs/adr/0003-proposed-polar-commercial-authority.md`.
 - Gate ISA-89 listo para decision: `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`. Pro y Launch coinciden con 4,99 EUR/mes y 30 EUR one-time; Supporter 9,99 EUR/mes no existe. La organization observada tiene pagos, renovaciones, refunds y payouts deshabilitados. La ADR sigue `Proposed` e ISA-68 no comienza sin aprobacion consolidada de Isaac.

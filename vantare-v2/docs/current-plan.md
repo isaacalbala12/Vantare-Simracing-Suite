@@ -1,3 +1,21 @@
+Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):
+- Nueva frontera server-only que comprueba payload/evento completos, calcula
+  fingerprints técnicos y funcionales deterministas y conserva cada reporte
+  como ocurrencia visible.
+- La unión automática exige firma técnica exacta o fingerprint funcional más
+  digest exacto de esperado/observado. La similitud textual nunca fusiona y el
+  código genérico actual `tester.report` no se acepta como firma técnica.
+- Cien repeticiones convergen en una issue técnica interna, cien ocurrencias y
+  una única reserva durable `github_issue_create`; la carrera entre dos
+  transacciones también converge.
+- RLS forzada, cero policies de cliente, pausa global/por flujo antes del
+  efecto y ningún assignee, body de GitHub o dispatch de Codex.
+- Gate PostgreSQL desechable: core 72 + access 56 + report 55 + triage 40,
+  rollback/reapply, 100 repeticiones y concurrencia PASS. Autoridad:
+  `docs/runbooks/testing-center-triage-outbox.md`.
+- Estado: implementación local lista para review; sin GitHub App, red, webhook,
+  Codex, Discord, deploy, merge, promoción o build distribuida.
+
 Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):
 - Nueva pestaña visible únicamente cuando el canal real embebido en la build
   coincide con su capability firmada; `master`, metadata desconocida o
@@ -12,7 +30,7 @@ Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):
   disponibles y bloquea ese opt-in en vez de inventar datos.
 - Gates focales Go, frontend, build, lint y harness visual 390/768/1024/1440
   PASS. Autoridad: `docs/runbooks/testing-center-ui.md`.
-- Estado: implementación local lista para review; sin Supabase remoto, GitHub
+- Estado: PR draft #110 con CI protegida verde; sin Supabase remoto, GitHub
   Issue, Codex, Discord, merge, promoción o build distribuida.
 
 Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):

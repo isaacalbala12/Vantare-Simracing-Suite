@@ -157,9 +157,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   semántica arbitraria.
 - No existe aún un buffer productivo de logs para este flujo. La UI declara
   cero disponibles y mantiene el control deshabilitado; no simula evidencia.
-- Siguiente acción: TAU-05 aplica deduplicación/triage antes de crear GitHub
-  Issues y activa Codex/Discord con límites y gates humanos. TAU-04C no activa
-  ninguna de esas automatizaciones.
+- ISA-222 / TAU-05A añade triage server-only, fingerprints exactos,
+  ocurrencias y una reserva durable de creación. Cien repeticiones y dos
+  transacciones concurrentes convergen en una issue técnica y un efecto
+  reservado. No existe todavía llamada externa.
+- Siguiente acción: TAU-05B proyecta el GitHub Issue en dry-run y TAU-05C añade
+  GitHub App mínimo, webhook firmado y reconciliación. Codex/Discord continúan
+  fuera de TAU-05 y conservan sus gates posteriores.
 
 ## Riesgos
 
@@ -184,8 +188,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-220 conecta la UI del Testing Center sobre TAU-04A/B: canal de
-build inyectado y capability coincidente, draft recuperable, preview exacta,
-offline y retry idempotente. No activa GitHub, Codex, Discord ni Supabase
-remoto. Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como
-deuda global heredada y la venta pública continúa NO-GO.
+2026-08-02, ISA-222 prepara el triage exact-compatible y una reserva outbox
+exactly-once sobre la UI/RPC de TAU-04. No llama GitHub ni activa Codex,
+Discord o Supabase remoto. Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118
+permanece como deuda global heredada y la venta pública continúa NO-GO.

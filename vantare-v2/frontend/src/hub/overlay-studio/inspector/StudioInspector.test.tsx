@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../designs/widget-design-client", () => ({
@@ -129,6 +129,24 @@ function AutoSelectWidget(props: { widgetId: string }) {
   return null;
 }
 
+function SelectAppearanceAsSoonAsRailCommits() {
+  const { selectedWidgetId } = useStudioDocument();
+  const selectedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (selectedRef.current) {
+      return;
+    }
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-testid="studio-inspector-rail-item-appearance"]',
+    );
+    if (button) {
+      selectedRef.current = true;
+      button.click();
+    }
+  }, [selectedWidgetId]);
+  return null;
+}
+
 function renderInspector(document: ProfileDocumentV3, widgetId = "delta-main") {
   return render(
     <StudioProvider client={createMockClient(document)} initialFile="profiles/a.json">
@@ -154,6 +172,24 @@ describe("StudioInspector", () => {
 
     fireEvent.click(screen.getByTestId("studio-inspector-rail-item-appearance"));
     await waitFor(() => expect(screen.getByTestId("studio-inspector-section-appearance")).toBeTruthy());
+    expect(screen.queryByTestId("studio-inspector-section-design")).toBeNull();
+  });
+
+  it("keeps an early rail selection made as soon as the inspector commits", async () => {
+    const document = buildDocument([deltaDefinition.createDefault("delta-main")]);
+    render(
+      <StudioProvider client={createMockClient(document)} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <AutoSelectWidget widgetId="delta-main" />
+          <StudioInspector />
+          <SelectAppearanceAsSoonAsRailCommits />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-inspector-section-appearance")).toBeTruthy(),
+    );
     expect(screen.queryByTestId("studio-inspector-section-design")).toBeNull();
   });
 

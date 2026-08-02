@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument } from "../state/studio-store";
@@ -41,8 +41,10 @@ export function StudioInspector(): React.ReactElement {
   } = useStudioDocument();
   const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
   const snapshot = useStudioTelemetrySnapshot();
-  const [activeSectionId, setActiveSectionId] = useState<InspectorSectionId | null>(null);
-  const previousWidgetIdRef = useRef<string | null>(null);
+  const [activeSection, setActiveSection] = useState<{
+    widgetId: string | null;
+    sectionId: InspectorSectionId | null;
+  }>({ widgetId: null, sectionId: null });
 
   const selectedWidget = useMemo(() => {
     if (!selectedWidgetId || !activeLayout) {
@@ -55,16 +57,13 @@ export function StudioInspector(): React.ReactElement {
     () => (selectedWidget ? resolveInspectorSections(selectedWidget) : []),
     [selectedWidget],
   );
-  const sectionIdsKey = useMemo(() => sections.map((section) => section.id).join(","), [sections]);
 
-  useEffect(() => {
-    if (selectedWidgetId !== previousWidgetIdRef.current) {
-      previousWidgetIdRef.current = selectedWidgetId;
-      setActiveSectionId(sections[0]?.id ?? null);
-      return;
-    }
-    setActiveSectionId((current) => resolveInitialSection(sections, current));
-  }, [selectedWidgetId, sectionIdsKey, sections]);
+  const preferredSectionId =
+    activeSection.widgetId === selectedWidgetId ? activeSection.sectionId : null;
+  const activeSectionId = resolveInitialSection(sections, preferredSectionId);
+  if (activeSection.widgetId !== selectedWidgetId || activeSection.sectionId !== activeSectionId) {
+    setActiveSection({ widgetId: selectedWidgetId, sectionId: activeSectionId });
+  }
 
   if (!selectedWidget) {
     return (
@@ -74,13 +73,14 @@ export function StudioInspector(): React.ReactElement {
     );
   }
 
-  const activeSection = sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null;
+  const resolvedActiveSection =
+    sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null;
 
   const sectionBody = (() => {
-    if (!activeSection || !selectedWidget || !activeLayout) {
+    if (!resolvedActiveSection || !selectedWidget || !activeLayout) {
       return null;
     }
-    if (activeSection.labelKey === "overlay.studio.inspector.sections.unsupported") {
+    if (resolvedActiveSection.labelKey === "overlay.studio.inspector.sections.unsupported") {
       return (
         <div
           data-testid="studio-inspector-section-design"
@@ -92,7 +92,7 @@ export function StudioInspector(): React.ReactElement {
         </div>
       );
     }
-    switch (activeSection.id) {
+    switch (resolvedActiveSection.id) {
       case "appearance":
         return (
           <AppearanceSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />
@@ -144,7 +144,10 @@ export function StudioInspector(): React.ReactElement {
         );
       default:
         return (
-          <InspectorSectionPlaceholder sectionId={activeSection.id} widgetId={selectedWidget.id} />
+          <InspectorSectionPlaceholder
+            sectionId={resolvedActiveSection.id}
+            widgetId={selectedWidget.id}
+          />
         );
     }
   })();
@@ -154,9 +157,11 @@ export function StudioInspector(): React.ReactElement {
       <InspectorRail
         widget={selectedWidget}
         sections={sections}
-        activeSectionId={activeSection?.id ?? "design"}
+        activeSectionId={resolvedActiveSection?.id ?? "design"}
         dirty={dirty}
-        onSelectSection={setActiveSectionId}
+        onSelectSection={(sectionId) =>
+          setActiveSection({ widgetId: selectedWidgetId, sectionId })
+        }
         onToggleVisibility={() =>
           dispatch({
             type: "widget/behavior",
@@ -167,9 +172,9 @@ export function StudioInspector(): React.ReactElement {
         }
       />
       <div className="osv3-inspector-content" data-testid="studio-inspector-content">
-        {activeSection ? (
+        {resolvedActiveSection ? (
           <InspectorSectionFrame
-            section={activeSection}
+            section={resolvedActiveSection}
             onResetSection={
               savedDocument
                 ? () =>
@@ -177,7 +182,7 @@ export function StudioInspector(): React.ReactElement {
                       type: "widget/reset-section",
                       session: activeSession,
                       widgetIds: [selectedWidget.id],
-                      section: activeSection.id as "design" | "appearance" | "content" | "behavior" | "layout",
+                      section: resolvedActiveSection.id as "design" | "appearance" | "content" | "behavior" | "layout",
                       saved: savedDocument,
                     })
                 : undefined

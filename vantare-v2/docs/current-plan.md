@@ -9,6 +9,12 @@ Nota REL-00 / ISA-121 (2026-08-02):
 - El segundo run remoto reprodujo la colisión Windows conocida de `TestConcurrentSavesDontCorruptFile` (`app-settings.json.tmp`, ISA-118). El gate mantiene bloqueantes todos los demás paquetes y todos los demás tests de `internal/app`; solo ese caso se ejecuta como aviso explícito hasta su corrección determinista.
 - Las builds internas de `nightly`/`testers` aplican el mismo aislamiento temporal y exacto a ISA-118/170/172/173/174. Las releases públicas desde `master` conservan Go, frontend y lint completos como gates estrictos.
 
+Nota OS-07 / ISA-176 (2026-08-02):
+- El primer run posterior a integrar REL-00 en `nightly` detectó una carrera real en `StudioInspector`: una selección del rail podía quedar sobrescrita por el ajuste asíncrono de la sección inicial del widget.
+- La selección activa queda asociada al `widgetId` y se normaliza durante el render cuando cambia el widget o desaparece una capability. Ya no depende de un efecto tardío capaz de pisar la interacción del usuario.
+- Se añadió una regresión que selecciona Apariencia en cuanto el rail queda disponible. El inspector pasa 5 ejecuciones focales consecutivas, lint focal y build. La suite bloqueante cubrió 277 archivos y 1813 tests en dos particiones por saturación local de workers; el comando remoto completo sigue siendo el gate definitivo antes de cerrar ISA-121.
+- Alcance limitado a estado/navegación del inspector y su test. No se modificaron canvas, renderizadores, diseño visual, allowlists, `testers` ni `master`.
+
 Nota INTEGRACION-ISA-93 (2026-07-19):
 - Isaac validó manualmente que los 21 diseños Vantare Crystal son suficientemente correctos para integrarlos y probar el conjunto desde `develop`.
 - Se integra la rama publicada `vantareapp/isa-93-os-03-paridad-11-de-los-21-disenos-vantare-crystal` en un worktree limpio basado en `develop@93d52bc`; se conserva íntegramente la historia vigente de `develop`.

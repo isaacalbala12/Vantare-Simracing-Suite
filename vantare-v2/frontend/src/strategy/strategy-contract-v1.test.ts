@@ -10,6 +10,7 @@ import {
   asFuelLiters,
   asLapCount,
   asVirtualEnergyPercent,
+  canonicalStrategyTimestamp,
   canonicalizeAndHashStrategyJSONV1,
   decodePlanRevisionV1,
   decodeReplanProposalV1,
@@ -110,6 +111,11 @@ const expectedReplanProposalValidationNames = [
 ] as const;
 
 describe("strategy contract v1", () => {
+  it("formats current timestamps with the canonical precision required by the contract", () => {
+    expect(canonicalStrategyTimestamp(new Date("2026-08-02T12:00:00.000Z"))).toBe("2026-08-02T12:00:00Z");
+    expect(canonicalStrategyTimestamp(new Date("2026-08-02T12:00:00.120Z"))).toBe("2026-08-02T12:00:00.12Z");
+    expect(canonicalStrategyTimestamp(new Date("2026-08-02T12:00:00.123Z"))).toBe("2026-08-02T12:00:00.123Z");
+  });
   it("matches the Go-owned contract manifest exactly", () => {
     const goManifest = JSON.parse(
       readFileSync(contractFixturePath, "utf8"),

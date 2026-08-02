@@ -1,14 +1,28 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import {
+  STRATEGY_APPLICATION_PROTOCOL_V1,
+  StrategyApplicationError,
+  type StrategyApplicationClient,
+  type StrategyApplicationCommandV1,
+  type StrategyApplicationResultV1,
+} from "../../strategy/strategy-application-client";
+import type { PlanDraftV1 } from "../../strategy/strategy-contract-v1";
+import type { StrategyEditorDocument } from "../../strategy/strategy-editor";
+import { createStrategyEditorDraft, createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
+import { createStrategyStore } from "../../strategy/strategy-store";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
+
+configure({ asyncUtilTimeout: 3_000 });
 
 afterEach(cleanup);
 
 describe("Strategy Planner shell", () => {
-  it("exposes the complete gallery to workspace flow without claiming live data", () => {
-    render(<StrategyPlannerPage demo />);
+  it("exposes the complete gallery to workspace flow without claiming live data", async () => {
+    await renderPlanner({ demo: true });
 
-    expect(screen.getByRole("heading", { name: "Mis planes" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Mis planes" })).toBeTruthy();
     expect(screen.getByText("Datos de ejemplo · sin telemetría live")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Crear plan" }));
@@ -25,9 +39,9 @@ describe("Strategy Planner shell", () => {
   });
 
   it("traps comparison focus, isolates the background and restores the opener", async () => {
-    render(<StrategyPlannerPage demo initialScreen="workspace" />);
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
 
-    const opener = screen.getByRole("button", { name: "Comparar planes" });
+    const opener = await screen.findByRole("button", { name: "Comparar planes" });
     opener.focus();
     fireEvent.click(opener);
     expect(screen.getByRole("dialog", { name: "Comparar estrategias" })).toBeTruthy();
@@ -44,24 +58,25 @@ describe("Strategy Planner shell", () => {
     expect(screen.queryByRole("dialog", { name: "Comparar estrategias" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(opener));
 
+    fireEvent.click(screen.getByRole("button", { name: "＋ Stint" }));
     fireEvent.click(screen.getByRole("button", { name: "Guardar plan" }));
-    expect(screen.getByRole("status").textContent).toContain("esta sesión de demostración");
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("guardado localmente"));
   });
 
-  it("labels wide panels without referring to hidden responsive controls", () => {
-    render(<StrategyPlannerPage demo initialScreen="workspace" />);
+  it("labels wide panels without referring to hidden responsive controls", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
 
-    expect(screen.getByRole("complementary", { name: "Estrategias" })).toBeTruthy();
+    expect(await screen.findByRole("complementary", { name: "Estrategias" })).toBeTruthy();
     expect(screen.getByRole("main", { name: "Stints" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "Inventario" })).toBeTruthy();
     expect(document.querySelector("[role=tabpanel]")).toBeNull();
     expect(document.querySelector("[aria-labelledby^=strategy-tab]")).toBeNull();
   });
 
-  it("renders a complete 78-lap plan and coherent metrics for every strategy", () => {
-    render(<StrategyPlannerPage demo initialScreen="workspace" />);
+  it("renders a complete 78-lap plan and coherent metrics for every strategy", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
 
-    const stints = screen.getAllByTestId(/^strategy-stint-/);
+    const stints = await screen.findAllByTestId(/^strategy-stint-/);
     expect(stints).toHaveLength(4);
     expect(stints.reduce((total, stint) => total + Number(stint.getAttribute("data-laps")), 0)).toBe(78);
     expect(within(stints[3]).getByText("v.59–78 · 20v")).toBeTruthy();
@@ -84,10 +99,10 @@ describe("Strategy Planner shell", () => {
     expect(screen.getByTestId("strategy-active-fuel-save").textContent).toBe("+1.0 v");
   });
 
-  it("supports keyboard navigation between compact workspace panels", () => {
-    render(<StrategyPlannerPage demo initialScreen="workspace" />);
+  it("supports keyboard navigation between compact workspace panels", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
 
-    const tab = screen.getByRole("button", { name: "Stints" });
+    const tab = await screen.findByRole("button", { name: "Stints" });
     tab.focus();
     fireEvent.keyDown(tab, { key: "ArrowRight" });
     expect(screen.getByRole("button", { name: "Inventario" }).getAttribute("aria-pressed")).toBe("true");
@@ -95,23 +110,213 @@ describe("Strategy Planner shell", () => {
     expect(screen.getByRole("button", { name: "Estrategias" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("returns from the workspace to the editable inputs", () => {
-    render(<StrategyPlannerPage demo initialScreen="workspace" />);
-    fireEvent.click(screen.getByRole("button", { name: "Editar datos" }));
+  it("returns from the workspace to the editable inputs", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    fireEvent.click(await screen.findByRole("button", { name: "Editar datos" }));
     expect(screen.getByRole("heading", { name: "Entrada de carrera" })).toBeTruthy();
   });
 
-  it("renders explicit loading, empty and error gallery states", () => {
-    const { rerender } = render(<StrategyPlannerPage demo galleryState="loading" />);
-    expect(screen.getByRole("status").textContent).toContain("Cargando planes");
+  it("renders explicit loading, empty and error gallery states", async () => {
+    const store = createTestStrategyStore();
+    const { rerender } = render(<StrategyPlannerPage strategyStore={store} demo galleryState="loading" />);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Cargando planes"));
 
-    rerender(<StrategyPlannerPage galleryState="empty" />);
+    rerender(<StrategyPlannerPage strategyStore={store} galleryState="empty" />);
     expect(screen.getByText("Todavía no tienes planes guardados")).toBeTruthy();
 
-    rerender(<StrategyPlannerPage galleryState="error" />);
+    rerender(<StrategyPlannerPage strategyStore={store} galleryState="error" />);
     expect(screen.getByRole("alert").textContent).toContain("No se pudo abrir la galería");
   });
+
+  it("edits stint order and preserves undo and redo as one canonical history", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    await screen.findByTestId("strategy-stint-stint-4");
+
+    fireEvent.click(screen.getByRole("button", { name: "＋ Stint" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(5));
+    fireEvent.click(screen.getByRole("button", { name: "Insertar antes del stint 2" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(6));
+    fireEvent.click(screen.getByRole("button", { name: "Duplicar stint 3" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(7));
+    fireEvent.click(screen.getByRole("button", { name: "Mover stint 4 arriba" }));
+    fireEvent.click(screen.getByRole("button", { name: "Eliminar stint 4" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(6));
+    expect(screen.getByText("Cambios sin guardar")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(7));
+    fireEvent.click(screen.getByRole("button", { name: "Rehacer" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(6));
+  });
+
+  it("assigns individual tyres by drag and keyboard, cancels cleanly and enforces corner identity", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    const tyre = await screen.findByTestId("strategy-tyre-S-05");
+    const slot = screen.getByTestId("strategy-slot-stint-1-front_left");
+    const transfer = createDataTransfer();
+
+    fireEvent.dragStart(tyre, { dataTransfer: transfer });
+    fireEvent.dragOver(slot, { dataTransfer: transfer });
+    fireEvent.drop(slot, { dataTransfer: transfer });
+    await waitFor(() => expect(within(slot).getByText("S-05")).toBeTruthy());
+    expect(screen.getByText("Cambios sin guardar")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    expect(within(slot).getByText("M-01")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Rehacer" }));
+    expect(within(slot).getByText("S-05")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByText("Asignación cancelada. El plan no ha cambiado.")).toBeTruthy();
+    expect(screen.getByTestId("strategy-tyre-S-06").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
+    fireEvent.click(screen.getByTestId("strategy-slot-stint-1-front_right"));
+    expect(within(screen.getByTestId("strategy-slot-stint-1-front_right")).getByText("S-06")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
+    fireEvent.click(screen.getByTestId("strategy-slot-stint-2-rear_right"));
+    expect(screen.getByRole("alert").textContent).toContain("S-06 está ligado a FR");
+  });
+
+  it("survives React StrictMode without duplicate opening or a disposed runtime", async () => {
+    const operations: string[] = [];
+    let disposed = 0;
+    const client = createTestStrategyClient((operation) => operations.push(operation));
+    const runtimeFactory = () => {
+      const runtime = createStrategyEditorRuntime(client);
+      return { store: runtime.store, dispose: () => { disposed += 1; runtime.dispose(); } };
+    };
+    const view = render(
+      <StrictMode>
+        <StrategyPlannerPage demo initialScreen="workspace" runtimeFactory={runtimeFactory} />
+      </StrictMode>,
+    );
+
+    await screen.findByTestId("strategy-stint-stint-1");
+    expect(operations).toEqual(["open", "create"]);
+    fireEvent.click(screen.getByRole("button", { name: "＋ Stint" }));
+    await waitFor(() => expect(screen.getAllByTestId(/^strategy-stint-/)).toHaveLength(5));
+    expect(disposed).toBe(0);
+
+    view.unmount();
+    await waitFor(() => expect(disposed).toBe(1));
+  });
+
+  it("sanitizes an opening failure and retries with a fresh request", async () => {
+    const operations: string[] = [];
+    let firstOpen = true;
+    const baseClient = createTestStrategyClient((operation) => operations.push(operation));
+    const client: StrategyApplicationClient<StrategyEditorDocument> = {
+      ...baseClient,
+      async execute(command) {
+        if (firstOpen && command.operation === "open") {
+          firstOpen = false;
+          throw new Error("C:\\Users\\private\\strategy-repository.json could not be read");
+        }
+        return baseClient.execute(command);
+      },
+    };
+    render(
+      <StrategyPlannerPage
+        demo
+        initialScreen="workspace"
+        runtimeFactory={() => createStrategyEditorRuntime(client)}
+      />,
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("No se pudo abrir el plan local");
+    expect(alert.textContent).not.toContain("Users");
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    await screen.findByTestId("strategy-stint-stint-1");
+    expect(operations).toEqual(["open", "create"]);
+  });
 });
+
+type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "strategyStore">;
+
+async function renderPlanner(props: PlannerTestProps) {
+  const store = createTestStrategyStore();
+  await store.create(createStrategyEditorDraft("2026-08-02T00:00:00Z"));
+  return render(<StrategyPlannerPage {...props} strategyStore={store} />);
+}
+
+function createTestStrategyStore() {
+  let id = 0;
+  return createStrategyStore(createTestStrategyClient(), { id: () => `test-${++id}` });
+}
+
+function createTestStrategyClient(onOperation?: (operation: string) => void) {
+  let persisted: PlanDraftV1<StrategyEditorDocument> | undefined;
+  let repositoryVersion = 0;
+  const client: StrategyApplicationClient<StrategyEditorDocument> = {
+    async execute(command) {
+      onOperation?.(command.operation);
+      if (command.operation === "open" || command.operation === "restore") {
+        if (!persisted) throw new StrategyApplicationError("draft_not_found", "draftId", "missing draft");
+        return result(command, persisted, repositoryVersion);
+      }
+      if (command.operation === "create") {
+        persisted = structuredClone(command.draft);
+        repositoryVersion += 1;
+        return result(command, persisted, repositoryVersion);
+      }
+      if (command.operation === "save_revision") {
+        persisted = structuredClone(command.draft);
+        persisted.baseRevision = {
+          planId: persisted.planId,
+          variantId: persisted.variantId,
+          revisionId: command.revisionId,
+          contentHash: "a".repeat(64),
+        };
+        repositoryVersion += 1;
+        return result(command, persisted, repositoryVersion);
+      }
+      return result(command, persisted ?? commandDraft(command), repositoryVersion);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+  return client;
+}
+
+function createDataTransfer(): DataTransfer {
+  const values = new Map<string, string>();
+  return {
+    dropEffect: "none",
+    effectAllowed: "all",
+    files: [] as unknown as FileList,
+    items: [] as unknown as DataTransferItemList,
+    types: [],
+    clearData: (format?: string) => format ? values.delete(format) : values.clear(),
+    getData: (format: string) => values.get(format) ?? "",
+    setData: (format: string, value: string) => { values.set(format, value); },
+    setDragImage: () => undefined,
+  };
+}
+
+function result(
+  command: StrategyApplicationCommandV1<StrategyEditorDocument>,
+  draft: PlanDraftV1<StrategyEditorDocument>,
+  repositoryVersion: number,
+): StrategyApplicationResultV1<StrategyEditorDocument> {
+  return {
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: command.commandId,
+    repositoryVersion,
+    draft: structuredClone(draft),
+    savedDraft: structuredClone(draft),
+    recoveredFromBackup: false,
+    closed: false,
+  };
+}
+
+function commandDraft(command: StrategyApplicationCommandV1<StrategyEditorDocument>) {
+  if ("draft" in command) return command.draft;
+  if ("sourceDraft" in command) return command.sourceDraft;
+  throw new Error("test command does not contain a draft");
+}
 
 function definitionValue(container: HTMLElement, term: string) {
   const dt = within(container).getByText(term, { selector: "dt" });

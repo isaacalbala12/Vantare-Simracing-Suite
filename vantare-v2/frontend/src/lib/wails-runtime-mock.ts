@@ -43,6 +43,12 @@ type HarnessWidgetDesign = {
 };
 
 const harnessDesignLibrary: HarnessWidgetDesign[] = [];
+const strategyRepositoryKey = "vantare.strategy.harness.repository.v1";
+
+type HarnessStrategyRepository = {
+  version: number;
+  drafts: Record<string, Record<string, unknown>>;
+};
 
 function createHarnessDesignId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -56,6 +62,93 @@ function readHarnessPayload(data: unknown): Record<string, unknown> {
     return data as Record<string, unknown>;
   }
   return {};
+}
+
+function loadHarnessStrategyRepository(): HarnessStrategyRepository {
+  try {
+    const raw = globalThis.localStorage?.getItem(strategyRepositoryKey);
+    if (!raw) return { version: 0, drafts: {} };
+    const parsed = JSON.parse(raw) as HarnessStrategyRepository;
+    if (!Number.isSafeInteger(parsed.version) || parsed.version < 0 || !parsed.drafts || typeof parsed.drafts !== "object") {
+      throw new Error("invalid harness Strategy repository");
+    }
+    return parsed;
+  } catch {
+    return { version: 0, drafts: {} };
+  }
+}
+
+function saveHarnessStrategyRepository(repository: HarnessStrategyRepository) {
+  globalThis.localStorage?.setItem(strategyRepositoryKey, JSON.stringify(repository));
+}
+
+function handleHarnessStrategyCommand(command: Record<string, unknown>) {
+  const commandId = typeof command.commandId === "string" ? command.commandId : "invalid-command";
+  const operation = command.operation;
+  const repository = loadHarnessStrategyRepository();
+  const baseResult = {
+    protocolVersion: "strategy.application.v1",
+    commandId,
+    repositoryVersion: repository.version,
+    recoveredFromBackup: false,
+    closed: false,
+  };
+  const fail = (code: string, field: string, message: string) => {
+    broadcast("strategy:application:error", { commandId, code, field, message });
+  };
+
+  if (operation === "open" || operation === "restore") {
+    const draftId = typeof command.draftId === "string" ? command.draftId : "";
+    const draft = repository.drafts[draftId];
+    if (!draft) return fail("draft_not_found", "draftId", "Strategy draft not found");
+    broadcast("strategy:application:result", { ...baseResult, draft, savedDraft: draft });
+    return;
+  }
+  if (operation === "create") {
+    const draft = readHarnessPayload(command.draft);
+    const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
+    if (!draftId) return fail("invalid_command", "draft.draftId", "Invalid Strategy draft");
+    repository.drafts[draftId] = structuredClone(draft);
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      draft: repository.drafts[draftId],
+      savedDraft: repository.drafts[draftId],
+    });
+    return;
+  }
+  if (operation === "save_revision") {
+    const draft = readHarnessPayload(command.draft);
+    const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
+    const revisionId = typeof command.revisionId === "string" ? command.revisionId : "";
+    if (!draftId || !revisionId) return fail("invalid_command", "draft", "Invalid Strategy save");
+    const stored = {
+      ...structuredClone(draft),
+      baseRevision: {
+        planId: draft.planId,
+        variantId: draft.variantId,
+        revisionId,
+        contentHash: "a".repeat(64),
+      },
+    };
+    repository.drafts[draftId] = stored;
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      draft: stored,
+      savedDraft: stored,
+    });
+    return;
+  }
+  if (operation === "close") {
+    broadcast("strategy:application:result", { ...baseResult, closed: true });
+    return;
+  }
+  fail("invalid_command", "operation", "Unsupported harness Strategy operation");
 }
 
 function broadcast(name: string, data: unknown) {
@@ -78,6 +171,11 @@ export const Events = {
     listeners.get(name)?.delete(handler);
   },
   Emit(name: string, data: unknown) {
+
+    if (name === "strategy:application:command") {
+      setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      return;
+    }
 
     // Auto-respond to license validation
     if (name === "license:validate") {

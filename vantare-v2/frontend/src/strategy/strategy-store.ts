@@ -1,4 +1,5 @@
 import {
+  canonicalStrategyTimestamp,
   parsePlanDraftV1,
   parseStrategyExecutionStateV1,
   type ActivePlanV1,
@@ -75,7 +76,7 @@ export function createStrategyStore<TPayload>(
   options: StrategyStoreOptions = {},
 ): StrategyStore<TPayload> {
   const id = options.id ?? defaultID;
-  const now = options.now ?? (() => new Date().toISOString());
+  const now = options.now ?? canonicalStrategyTimestamp;
   const historyLimit = options.historyLimit ?? DEFAULT_HISTORY_LIMIT;
   if (!Number.isSafeInteger(historyLimit) || historyLimit < 1) {
     throw new Error("Strategy history limit must be a positive integer");
@@ -88,9 +89,11 @@ export function createStrategyStore<TPayload>(
   let recoveredFromBackup = false;
   let busy = false;
   let pendingSave: SaveCommand<TPayload> | undefined;
+  let snapshotCache: StrategyStoreSnapshot<TPayload> | undefined;
   const listeners = new Set<() => void>();
 
   const notify = () => {
+    snapshotCache = undefined;
     for (const listener of listeners) listener();
   };
 
@@ -150,6 +153,7 @@ export function createStrategyStore<TPayload>(
 
   const store: StrategyStore<TPayload> = {
     getSnapshot() {
+      if (snapshotCache) return snapshotCache;
       const snapshot: StrategyStoreSnapshot<TPayload> = {
         repositoryVersion,
         ...(history
@@ -166,7 +170,8 @@ export function createStrategyStore<TPayload>(
         busy,
         recoveredFromBackup,
       };
-      return deepFreeze(snapshot);
+      snapshotCache = deepFreeze(snapshot);
+      return snapshotCache;
     },
 
     subscribe(listener) {

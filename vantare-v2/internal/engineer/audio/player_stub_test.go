@@ -2,7 +2,10 @@
 
 package audio
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // RecorderPlayer implements the AudioPlayer interface for testing.
 // Instead of playing audio, it records the paths passed to Play.
@@ -24,6 +27,13 @@ func (p *RecorderPlayer) Play(path string) error {
 	defer p.mu.Unlock()
 	p.played = append(p.played, path)
 	return nil
+}
+
+func (p *RecorderPlayer) PlayContext(ctx context.Context, path string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return p.Play(path)
 }
 
 // Played returns the list of paths that were played.

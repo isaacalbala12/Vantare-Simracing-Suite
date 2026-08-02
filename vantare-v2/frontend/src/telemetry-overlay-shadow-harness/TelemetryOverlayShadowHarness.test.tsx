@@ -114,12 +114,12 @@ describe("TelemetryOverlayShadowHarness", () => {
 
     expect(coverage).toMatchObject({
       contractVersion: 1,
-      registeredDefinitions: 18,
-      policyDefinitions: 18,
-      coveredDefinitions: 18,
+      registeredDefinitions: 19,
+      policyDefinitions: 19,
+      coveredDefinitions: 19,
       complete: true,
     });
-    expect(coverage.widgets).toHaveLength(18);
+    expect(coverage.widgets).toHaveLength(19);
     expect(report.summary).toEqual({
       widgets: 2,
       fields: 31,

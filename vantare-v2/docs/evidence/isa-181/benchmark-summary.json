@@ -1,0 +1,78 @@
+{
+  "schema": "vantare.engineer.human-corpus-summary.v1",
+  "captured_at_utc": "2026-08-02T08:47:05.4576016Z",
+  "hardware": {
+    "os": "Windows 11 Pro 10.0.26200 x64",
+    "cpu": "AMD Ryzen 7 3700X, 8 cores / 16 threads",
+    "ram_gib": 31.9
+  },
+  "runtime": {
+    "name": "whisper.cpp",
+    "version": "v1.9.1",
+    "archive_sha256": "7d8be46ecd31828e1eb7a2ecdd0d6b314feafd82163038ab6092594b0a063539",
+    "threads": 8,
+    "priority": "BelowNormal",
+    "decoding": "no-timestamps, no-fallback, best-of=1, beam-size=1"
+  },
+  "models": [
+    {
+      "model": "tiny",
+      "bytes": 77691713,
+      "sha256": "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
+      "load_ms": 2035.537,
+      "first_request_ms": 641.015,
+      "all_requests_ms_mean": 828.012,
+      "all_requests_ms_max": 1211.56,
+      "cpu_ms_mean": 5516.016,
+      "cpu_ms_max": 8531.25,
+      "working_set_bytes_max": 179318784,
+      "forced_cancel_ms": 11.48,
+      "heartbeat_gap_ms_max": 10
+    },
+    {
+      "model": "base",
+      "bytes": 147951465,
+      "sha256": "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+      "load_ms": 967.517,
+      "first_request_ms": 1267.502,
+      "all_requests_ms_mean": 1835.033,
+      "all_requests_ms_max": 3436.996,
+      "cpu_ms_mean": 10751.953,
+      "cpu_ms_max": 15515.625,
+      "working_set_bytes_max": 273588224,
+      "forced_cancel_ms": 18.187,
+      "heartbeat_gap_ms_max": 10
+    }
+  ],
+  "groups": [
+    {"model":"base","locale":"en_us","condition":"clean","samples":5,"micro_wer":0.1954,"micro_cer":0.064,"macro_utterance_wer":0.2287,"macro_utterance_cer":0.1065,"p50_ms":1288.928,"p95_ms":1863.813,"max_ms":1971.485},
+    {"model":"base","locale":"en_us","condition":"noise-10db","samples":5,"micro_wer":0.3563,"micro_cer":0.1589,"macro_utterance_wer":0.3971,"macro_utterance_cer":0.2267,"p50_ms":1311.463,"p95_ms":1479.494,"max_ms":1511.11},
+    {"model":"base","locale":"es_419","condition":"clean","samples":5,"micro_wer":0.0833,"micro_cer":0.0284,"macro_utterance_wer":0.1001,"macro_utterance_cer":0.0307,"p50_ms":1649.362,"p95_ms":1897.632,"max_ms":1956.846},
+    {"model":"base","locale":"es_419","condition":"noise-10db","samples":5,"micro_wer":0.1667,"micro_cer":0.0648,"macro_utterance_wer":0.1657,"macro_utterance_cer":0.065,"p50_ms":1801.461,"p95_ms":2002.702,"max_ms":2019.679},
+    {"model":"base","locale":"it_it","condition":"clean","samples":5,"micro_wer":0.14,"micro_cer":0.0365,"macro_utterance_wer":0.134,"macro_utterance_cer":0.0345,"p50_ms":2244.204,"p95_ms":3233.781,"max_ms":3436.996},
+    {"model":"base","locale":"it_it","condition":"noise-10db","samples":5,"micro_wer":0.19,"micro_cer":0.05,"macro_utterance_wer":0.1613,"macro_utterance_cer":0.0413,"p50_ms":2133.806,"p95_ms":2350.08,"max_ms":2380.368},
+    {"model":"base","locale":"pt_br","condition":"clean","samples":5,"micro_wer":0.217,"micro_cer":0.1044,"macro_utterance_wer":0.229,"macro_utterance_cer":0.1179,"p50_ms":1968.931,"p95_ms":2407.055,"max_ms":2511.968},
+    {"model":"base","locale":"pt_br","condition":"noise-10db","samples":5,"micro_wer":0.2736,"micro_cer":0.1423,"macro_utterance_wer":0.2933,"macro_utterance_cer":0.1556,"p50_ms":1878.423,"p95_ms":3242.583,"max_ms":3377.264},
+    {"model":"tiny","locale":"en_us","condition":"clean","samples":5,"micro_wer":0.2414,"micro_cer":0.0927,"macro_utterance_wer":0.258,"macro_utterance_cer":0.1189,"p50_ms":685.483,"p95_ms":1011.041,"max_ms":1076.435},
+    {"model":"tiny","locale":"en_us","condition":"noise-10db","samples":5,"micro_wer":0.4138,"micro_cer":0.1987,"macro_utterance_wer":0.4822,"macro_utterance_cer":0.2653,"p50_ms":877.516,"p95_ms":1147.838,"max_ms":1211.56},
+    {"model":"tiny","locale":"es_419","condition":"clean","samples":5,"micro_wer":0.0833,"micro_cer":0.0316,"macro_utterance_wer":0.1001,"macro_utterance_cer":0.0358,"p50_ms":894.242,"p95_ms":944.187,"max_ms":955.443},
+    {"model":"tiny","locale":"es_419","condition":"noise-10db","samples":5,"micro_wer":0.3409,"micro_cer":0.1359,"macro_utterance_wer":0.3496,"macro_utterance_cer":0.1357,"p50_ms":805.314,"p95_ms":1166.606,"max_ms":1202.537},
+    {"model":"tiny","locale":"it_it","condition":"clean","samples":5,"micro_wer":0.28,"micro_cer":0.0769,"macro_utterance_wer":0.2709,"macro_utterance_cer":0.0717,"p50_ms":766.497,"p95_ms":976.616,"max_ms":1001.19},
+    {"model":"tiny","locale":"it_it","condition":"noise-10db","samples":5,"micro_wer":0.47,"micro_cer":0.1481,"macro_utterance_wer":0.4744,"macro_utterance_cer":0.1464,"p50_ms":895.268,"p95_ms":1003.068,"max_ms":1017.984},
+    {"model":"tiny","locale":"pt_br","condition":"clean","samples":5,"micro_wer":0.2925,"micro_cer":0.1309,"macro_utterance_wer":0.3019,"macro_utterance_cer":0.1494,"p50_ms":885.049,"p95_ms":984.744,"max_ms":994.928},
+    {"model":"tiny","locale":"pt_br","condition":"noise-10db","samples":5,"micro_wer":0.3774,"micro_cer":0.1935,"macro_utterance_wer":0.4028,"macro_utterance_cer":0.2094,"p50_ms":773.218,"p95_ms":1154.83,"max_ms":1159.354}
+  ],
+  "intent_accuracy": null,
+  "false_accept_rate": null,
+  "false_reject_rate": null,
+  "wake_word_readiness": "NO-GO",
+  "command_readiness": "NO-GO",
+  "generic_language_candidate": "Whisper base is the accuracy candidate for the next consented command-corpus gate; it is not approved for release.",
+  "limitations": [
+    "FLEURS is generic human read speech, not a command corpus.",
+    "The sample has five recordings per locale but no stable speaker IDs; speaker diversity is unknown.",
+    "pt_br contains only the MALE gender category in this sample.",
+    "noise-10db is deterministic white noise, not LMU cockpit noise.",
+    "CPU milliseconds are aggregate process CPU time across cores; working set is sampled, not peak RSS."
+  ]
+}

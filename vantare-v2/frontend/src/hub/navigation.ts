@@ -6,6 +6,7 @@ export type Section =
   | "engineer"
   | "strategy"
   | "telemetry"
+  | "testing-center"
   | "setup"
   | "roadmap";
 
@@ -17,6 +18,7 @@ export type NavIcon =
   | "engineer"
   | "strategy"
   | "telemetry"
+  | "testing-center"
   | "settings"
   | "roadmap";
 
@@ -34,6 +36,7 @@ export const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { id: "engineer", label: "Ingeniero", icon: "engineer" },
   { id: "strategy", label: "Strategy", icon: "strategy" },
   { id: "telemetry", label: "Telemetría", icon: "telemetry" },
+  { id: "testing-center", label: "Testing Center", icon: "testing-center" },
   { id: "roadmap", label: "Roadmap", icon: "roadmap" },
   { id: "setup", label: "Ajustes", icon: "settings" },
 ] as const;

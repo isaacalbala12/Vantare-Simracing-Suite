@@ -12,6 +12,11 @@ import { TelemetryPage } from './pages/TelemetryPage';
 import { StrategyPlannerPage } from './strategy/StrategyPlannerPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { TestingCenterPage } from './testing-center/TestingCenterPage';
+import { resolveTestingCenterChannel } from './testing-center/channel-access';
+import { submitTestingCenterReport } from './testing-center/report-submission-client';
+import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
+import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
@@ -81,19 +86,28 @@ function LicenseGate({ children }: { children: ReactNode }) {
 }
 
 function HubShell() {
+  const { result: licenseResult } = useLicense();
   const [section, setSection] = useState<Section>('dashboard');
   const [version, setVersion] = useState<string | null>(null);
+  const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
+  const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
+
+  const visibleSection: Section = section === "testing-center" && !testingCenterChannel
+    ? "dashboard"
+    : section;
 
   useEffect(() => {
     document.body.classList.add('hub');
-    const unsub = Events.On('app:version', (event: { data: { version?: string } }) => {
+    const unsub = Events.On('app:version', (event: { data: { version?: string; buildChannel?: string } }) => {
       setVersion(event.data.version ?? null);
+      const channel = event.data.buildChannel;
+      setBuildChannel(channel === 'nightly' || channel === 'testers' || channel === 'master' ? channel : null);
     });
     const unsubSource = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
       setSourceStatus(event.data);
@@ -124,10 +138,10 @@ function HubShell() {
   }, []);
 
   const handleNavigate = useCallback((id: string) => {
-    if (isSection(id)) {
+    if (isSection(id) && (id !== "testing-center" || testingCenterChannel)) {
       setSection(id);
     }
-  }, []);
+  }, [testingCenterChannel]);
 
   const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
     setShowBetaWelcome(false);
@@ -151,10 +165,11 @@ function HubShell() {
 
   return (
     <V52Shell
-      activeSection={section}
+      activeSection={visibleSection}
       onNavigate={handleNavigate}
       version={version}
       sourceStatus={sourceStatus}
+      testingCenterChannel={testingCenterChannel}
     >
       {settingsLoaded && showBetaWelcome && (
         <BetaWelcome onComplete={handleBetaWelcomeClose} />
@@ -162,24 +177,32 @@ function HubShell() {
       {reminder && (
         <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
       )}
-      {section === "dashboard" && (
+      {visibleSection === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
         />
       )}
-      {section === "profiles" && (
+      {visibleSection === "profiles" && (
         <OverlaysStudioPage
           pendingRecommendedAutoStart={pendingRecommendedAutoStart}
           onAutoStartHandled={handleAutoStartHandled}
         />
       )}
-      {section === "launcher" && <LauncherPage />}
-      {section === "calendar" && <CalendarPage />}
-      {section === "setup" && <SettingsPage />}
-      {section === "engineer" && <EngineerPage />}
-      {section === "strategy" && <StrategyPlannerPage />}
-      {section === "telemetry" && <TelemetryPage />}
-      {section === "roadmap" && <RoadmapPage />}
+      {visibleSection === "launcher" && <LauncherPage />}
+      {visibleSection === "calendar" && <CalendarPage />}
+      {visibleSection === "setup" && <SettingsPage />}
+      {visibleSection === "engineer" && <EngineerPage />}
+      {visibleSection === "strategy" && <StrategyPlannerPage />}
+      {visibleSection === "telemetry" && <TelemetryPage />}
+      {visibleSection === "testing-center" && testingCenterChannel && (
+        <TestingCenterPage
+          channel={testingCenterChannel}
+          version={version}
+          client={wailsTestingCenterClient}
+          submitReport={submitTestingCenterReport}
+        />
+      )}
+      {visibleSection === "roadmap" && <RoadmapPage />}
     </V52Shell>
   );
 }

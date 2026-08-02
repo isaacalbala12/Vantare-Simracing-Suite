@@ -17,7 +17,9 @@ ejecución crea estado nuevo y aislado.
 ## Contrato de entrada y ejecución
 
 - `ScenarioVersionV1` fija el formato lógico del escenario.
-- `OracleVersionV1` fija la semántica del informe/golden.
+- `OracleVersionV1` conserva la semántica histórica de decisión. ENG-06 añade
+  `OracleVersionV2`, que distingue selección, entrega al transporte e inicio
+  confirmado.
 - `VirtualClock` solo avanza mediante deltas no negativos y no duerme.
 - La suma del reloj es checked. El rango deja 60 segundos de headroom para el
   mayor deadline de los monitores legacy; start, avance o deadline que puedan
@@ -47,6 +49,13 @@ motivo y, si existe, ID/text key/deadline del mensaje.
 | `expired` | Existía un candidato aprobado, pero venció antes del drenado explícito. |
 | `cancelled` | Una frontera de lifecycle/identidad invalidó una decisión pendiente. |
 | `unavailable` | La entrada, familia o decisión no tiene evidencia suficiente para autorizarse. |
+| `dispatched` | La decisión se entregó al puerto de transporte; todavía no demuestra inicio. |
+| `playback_started` | El transporte confirmó el comienzo y la policy lo revalidó. |
+
+El replay v2 modela también `connection.lost -> connection.recovered`. La
+desconexión cancela todo pendiente y bloquea snapshots mientras la fuente está
+caída. El hecho de recuperación no restaura decisiones ni prueba datos: el
+playback solo puede reanudarse después de una observación canónica fresca.
 
 Los motivos forman parte del contrato y distinguen, entre otros, stale,
 versiones desconocidas, capability incompleta, familia no aprobada y
@@ -132,6 +141,10 @@ uso de producto debe crear otra issue y no convertir este harness en fuente.
 - `git diff --check`: PASS.
 - Re-review independiente: `ACCEPT`, P0/P1/P2/P3 = 0.
 
+ENG-06 mantiene el runtime productivo fuera de este paquete, pero actualiza el
+oráculo y su golden v2 para que una regresión no vuelva a tratar `Next` como
+audio escuchado. El runner sigue sin goroutines, I/O o audio real.
+
 La primera suite global paralela reprodujo la contención Windows conocida de
 `TestConcurrentSavesDontCorruptFile`; la repetición global serial pasó. El
 primer intento race no tenía el directorio de runtime GCC en `PATH`; al
@@ -143,6 +156,5 @@ Rollback: revertir el commit de ISA-133. No hay datos, migraciones ni estado
 persistente que recuperar.
 
 ENG-05 define policy/scheduler a partir de estas evidencias en
-`docs/engineer/message-policy-scheduler.md`. Decide qué candidato se emite,
-reemplaza, expira o cancela sin ampliar capabilities y mantiene la integración
-exclusivamente test-only.
+`docs/engineer/message-policy-scheduler.md`. ENG-06 conserva el oráculo como
+test-only y añade el golden v2 para las fronteras de dispatch/start.

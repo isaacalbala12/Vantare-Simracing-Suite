@@ -58,9 +58,8 @@ su urgencia: una discrepancia resulta en `unavailable / priority_mismatch`.
 En este corte solo se habilitan las decisiones ya demostradas por ENG-04.
 
 Un candidato Spotter elimina todos los pendientes de prioridad inferior con
-`cancelled / preempted_by_spotter`. La policy no reproduce audio todavía; la
-preempción audible será responsabilidad de un corte posterior que consuma el
-`Decision`.
+`cancelled / preempted_by_spotter`. La policy no reproduce audio; ISA-167 /
+ENG-06 consume el `Decision` y aplica la preempción en el transporte.
 
 Spotter conserva prioridad absoluta. Para el resto, un burst configurable y
 acotado permite emitir el candidato inferior más antiguo después de una racha
@@ -82,8 +81,9 @@ deriva uno de cuatro estados finitos desde la evidencia (`all-clear`, `left`,
 
 `clear_left` y `clear_right` son transiciones contextuales, no estados
 autosuficientes. Solo se entregan como tales cuando un antecedente compatible
-ya salió por `Next` en el mismo lifecycle y la transición de ocupación actual
-lo conserva. Haber estado pendiente no cuenta como comunicación. Tampoco
+ya recibió `AcknowledgeStarted` en el mismo lifecycle y la transición de
+ocupación actual lo conserva. Haber estado pendiente o haber salido por
+`Next` no cuenta como comunicación. Tampoco
 cuentan `still_there` ni un aviso lateral parcial de `three-wide`. Si falta ese
 contexto, la policy sustituye el clear por el estado autosuficiente demostrado
 por la evidencia actual (`car_left`, `car_right`, `three_wide` o `all_clear`) y
@@ -96,12 +96,11 @@ antecedente, cambiar otra vez el estado, cancelar o cruzar un boundary. El
 límite es exactamente el `ExpiresAtMS` de la decisión autosuficiente: justo
 antes sigue siendo válido; en el límite y después ya no autoriza un clear.
 `still_there` no renueva ese deadline ni convierte un recordatorio en estado
-completo. Cada `Decision` Spotter devuelta por `Next` registra únicamente que
-el scheduler la despachó al siguiente transporte. Una decisión expirada o
-cancelada antes de `Next` nunca establece contexto. El registro no confirma
-que el audio se haya iniciado o escuchado; esa confirmación y la preempción
-audible pertenecen al siguiente corte. `all_clear` sigue siendo autosuficiente
-y no necesita historial.
+completo. Cada `Decision` devuelta por `Next` es solo una selección. El
+transporte llama a `AcknowledgeStarted` inmediatamente antes de hacer visible
+la notificación o iniciar audio; únicamente entonces avanza el contexto. Una
+decisión expirada, cancelada o rechazada antes del ACK nunca lo establece.
+`all_clear` sigue siendo autosuficiente y no necesita historial.
 
 El aviso de mayor valor reemplaza pendientes Spotter menos informativos con
 `suppressed / spotter_state_superseded`, incluso si siguen siendo literalmente
@@ -147,7 +146,9 @@ semánticamente falso nunca se emite tarde.
 - La clave es `intent + subject` y tiene tamaño máximo.
 - Un candidato más reciente con la misma clave sustituye al pendiente anterior
   y produce `suppressed / coalesced`.
-- El cooldown se registra únicamente después de una emisión real.
+- El cooldown se registra únicamente después de `AcknowledgeStarted`; una
+  decisión seleccionada cuyo transporte falla antes de comenzar puede volver a
+  intentarse.
 - La tabla de cooldowns tiene capacidad fija y descarta la entrada menos
   reciente cuando se llena.
 - La cola tiene capacidad fija. Bajo presión, un candidato solo desplaza a uno
@@ -246,13 +247,11 @@ no pudo repetirse después de esta corrección en el entorno actual: Go requiere
 CGO y no existe un toolchain C con headers Win32; no se añadió una dependencia
 para alterar ese entorno.
 
-## Fuera de alcance y siguiente corte
+## Integración posterior
 
-Este corte no conecta el scheduler a `EngineerService`, no reproduce ni corta
-audio, no crea TTS/STT, no expone UI y no amplía monitores o capabilities. El
-siguiente corte puede construir el transporte/runtime productivo consumiendo
-`Decision`, manteniendo esta policy como única autoridad y probando la
-preempción audible por separado.
+ISA-167 / ENG-06 conecta esta policy a `EngineerService` y documenta el ACK,
+transporte y preempción en `docs/engineer/delivery-runtime.md`. ENG-05 sigue sin
+crear TTS/STT, UI, nuevas capabilities o una fuente alternativa.
 
 Rollback: revertir el commit de ISA-158. No existen migraciones, datos
 persistidos ni estado remoto.

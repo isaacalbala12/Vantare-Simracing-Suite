@@ -325,7 +325,7 @@ func TestSpotterLateralClearNeverOmitsCurrentSide(t *testing.T) {
 							t.Fatalf("current side submit = %t, %+v", accepted, outcomes)
 						}
 						if currentMode == "dispatched" {
-							assertNextIntent(t, scheduler, tt.currentIntent)
+							startNextSpotter(t, scheduler, tt.currentIntent)
 						}
 					}
 
@@ -658,5 +658,16 @@ func submitAndDispatchSpotter(t *testing.T, scheduler *Scheduler, intent string,
 	if accepted, outcomes := scheduler.Submit(candidate); !accepted || len(outcomes) != 0 {
 		t.Fatalf("dispatch submit = %t, %+v", accepted, outcomes)
 	}
-	assertNextIntent(t, scheduler, intent)
+	startNextSpotter(t, scheduler, intent)
+}
+
+func startNextSpotter(t *testing.T, scheduler *Scheduler, intent string) {
+	t.Helper()
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.Intent != intent {
+		t.Fatalf("decision = %+v, ok=%t, want intent=%s", decision, ok, intent)
+	}
+	if reason := scheduler.AcknowledgeStarted(decision); reason != "" {
+		t.Fatalf("AcknowledgeStarted() reason = %q", reason)
+	}
 }

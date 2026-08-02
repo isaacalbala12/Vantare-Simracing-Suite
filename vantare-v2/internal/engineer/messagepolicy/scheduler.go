@@ -285,7 +285,7 @@ func (scheduler *Scheduler) applySpotterSupersession(candidate Candidate, now in
 		return false, outcomes
 	}
 	currentIntent, hasCurrentIntent := selfContainedSpotterIntent(currentSpotterSituation(scheduler.evidence.Semantic))
-	if hasCurrentIntent && !scheduler.spotter.currentSituationDispatched(now) {
+	if hasCurrentIntent && !scheduler.spotter.currentSituationStarted(now) {
 		if isContextualSpotterClear(candidate.Intent) {
 			for _, queued := range scheduler.pending {
 				if queued.candidate.Family == FamilySpotter && queued.candidate.Intent == currentIntent {
@@ -392,14 +392,65 @@ func (scheduler *Scheduler) Next() (Decision, []PolicyOutcome, bool) {
 		}
 		decision := decisionFrom(candidate)
 		scheduler.recordPriorityChoice(index, candidate.Priority)
-		scheduler.rememberCooldown(key, cooldownFor(candidate), now)
-		if decision.Family == FamilySpotter {
-			scheduler.spotter.recordDispatch(decision.Intent, decision.ExpiresAtMS, now)
-		}
 		outcomes = append(outcomes, scheduler.outcome(candidate, OutcomeEmitted, ReasonCandidateEmitted, now))
 		return decision, outcomes, true
 	}
 	return Decision{}, outcomes, false
+}
+
+// AcknowledgeStarted records transport evidence that a selected decision
+// actually began delivery. Scheduler.Next only hands a decision to the next
+// component; it is not proof that audio or another user-facing transport
+// started. Contextual Spotter clears may therefore rely only on this ACK.
+func (scheduler *Scheduler) AcknowledgeStarted(decision Decision) Reason {
+	now := scheduler.clock.NowMS()
+	if decision.Version != ContractVersionV1 || decision.CandidateID == "" ||
+		decision.Subject == "" || decision.CreatedAtMS < 0 ||
+		decision.ExpiresAtMS <= decision.CreatedAtMS {
+		return ReasonInvalidCandidate
+	}
+	if now >= decision.ExpiresAtMS {
+		return ReasonDeadlineElapsed
+	}
+	if !scheduler.hasEvidence {
+		return ReasonSourceUnavailable
+	}
+	if scheduler.evidenceErr != "" {
+		return scheduler.evidenceErr
+	}
+	if reason := validateEvidenceAtTime(scheduler.evidence, now); reason != "" {
+		return reason
+	}
+	if decision.Context.Epoch != scheduler.evidence.Context.Epoch {
+		return ReasonEpochReset
+	}
+	if decision.Context.Identity != scheduler.evidence.Context.Identity {
+		return ReasonIdentityChanged
+	}
+	priority, approved := approvedPriority(decision.Family, decision.Intent)
+	if !approved {
+		return ReasonDecisionNotApproved
+	}
+	if priority != decision.Priority {
+		return ReasonPriorityMismatch
+	}
+	if !validSemanticClaim(decision.Intent, decision.Semantic) ||
+		!semanticClaimMatches(decision.Semantic, scheduler.evidence.Semantic) {
+		return ReasonSemanticInvalidated
+	}
+	scheduler.rememberCooldown(dedupKeyFromDecision(decision), cooldownForDecision(decision), now)
+	if decision.Family == FamilySpotter {
+		scheduler.spotter.recordStarted(decision.Intent, decision.ExpiresAtMS, now)
+	}
+	return ""
+}
+
+func dedupKeyFromDecision(decision Decision) string {
+	return decision.Intent + "\x00" + decision.Subject
+}
+
+func cooldownForDecision(decision Decision) int64 {
+	return cooldownFor(Candidate{Family: decision.Family, Intent: decision.Intent})
 }
 
 func (scheduler *Scheduler) replaceContextlessSpotterClear(candidate Candidate, now int64) (Candidate, []PolicyOutcome, bool) {

@@ -96,7 +96,7 @@ func TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation(t
 	if got := len(emitter.Events()); got != eventsAfterFirstLive {
 		t.Fatalf("unchanged source state emitted duplicate status: got %d events, want %d", got, eventsAfterFirstLive)
 	}
-	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 2, 2.8)); err != nil {
 		t.Fatal(err)
 	}
 	if !svc.Status().Connected {
@@ -108,7 +108,7 @@ func TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation(t
 	if svc.Status().Connected {
 		t.Fatal("stale canonical source left Engineer connected")
 	}
-	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, -2.8)); !errors.Is(err, service.ErrCanonicalSourceUnavailable) {
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, -2.8)); !errors.Is(err, service.ErrCanonicalSourceUnavailable) {
 		t.Fatalf("observation while stale error = %v", err)
 	}
 	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 1}); err != nil {
@@ -117,21 +117,81 @@ func TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation(t
 	if svc.Status().Connected {
 		t.Fatal("live status alone must not reconnect Engineer")
 	}
-	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, -2.8)); err != nil {
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 2, 2.8)); !errors.Is(err, service.ErrCanonicalObservationNotFresh) {
+		t.Fatalf("same reconnect observation error = %v, want not-fresh", err)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, -2.8)); !errors.Is(err, service.ErrCanonicalObservationNotFresh) {
+		t.Fatalf("stale reconnect observation error = %v, want not-fresh", err)
+	}
+	if svc.Status().Connected {
+		t.Fatal("stale or same observation reconnected Engineer")
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 3, -2.8)); err != nil {
 		t.Fatal(err)
 	}
 	if !svc.Status().Connected {
 		t.Fatal("fresh observation after recovery did not reconnect Engineer")
 	}
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceStale, ReconnectAttempt: 2}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 2}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 2, 1, 2.8)); err != nil {
+		t.Fatalf("new epoch after recovery error = %v", err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("new epoch after recovery did not reconnect Engineer")
+	}
+}
+
+func TestEngineerServiceReconnectAttemptAdvanceRequiresObservationAfterBoundary(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	svc.Start(ctx)
+	defer svc.Stop()
+
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 7}); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := canonicalSpotterObservationAt(t, 1, 2, 2.8)
+	if err := svc.ConsumeObservation(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("initial live snapshot did not connect Engineer")
+	}
+
+	if err := svc.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceLive, ReconnectAttempt: 8}); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Status().Connected {
+		t.Fatal("advanced reconnect attempt with live state did not create a boundary")
+	}
+	if err := svc.ConsumeObservation(snapshot); !errors.Is(err, service.ErrCanonicalObservationNotFresh) {
+		t.Fatalf("same snapshot after reconnect attempt error = %v, want not-fresh", err)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 3, -2.8)); err != nil {
+		t.Fatalf("newer snapshot after reconnect attempt error = %v", err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("newer snapshot after reconnect attempt did not reconnect Engineer")
+	}
 }
 
 func canonicalSpotterObservation(t *testing.T, epoch uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
+	return canonicalSpotterObservationAt(t, epoch, 1, rivalX)
+}
+
+func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	clock := schema.NewClock(observedField(t, time.Second), observedField(t, time.Second), time.Now().UTC())
 	header := envelope.Header{
 		Source:   "canonical-service-test",
-		Cursor:   schema.Cursor{Epoch: schema.Epoch(epoch), Sequence: 1},
+		Cursor:   schema.Cursor{Epoch: schema.Epoch(epoch), Sequence: schema.Sequence(sequence)},
 		Clock:    clock,
 		Identity: run,
 	}

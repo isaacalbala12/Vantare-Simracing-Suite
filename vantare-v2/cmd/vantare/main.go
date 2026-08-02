@@ -23,11 +23,13 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/calendar"
+	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -944,6 +946,17 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
+	engineerAudioConfig := engineeraudio.DefaultAudioConfig()
+	engSvc.SetAudioPlayer(engineeraudio.NewPlayer())
+	engSvc.SetAudioConfig(engineerAudioConfig)
+	// ENG-06 is cache-only: a miss remains a visual notification. TTS
+	// synthesis stays outside the preemptible product delivery path.
+	engineerAudioCache, cacheErr := tts.NewCache(tts.DefaultCacheRoot(), "kokoro")
+	if cacheErr != nil {
+		log.Printf("engineer audio cache unavailable; using visual delivery only: %v", cacheErr)
+	} else {
+		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
+	}
 	engSvc.Start(ctx)
 
 	// Register Wails bridge for Engineer events and commands

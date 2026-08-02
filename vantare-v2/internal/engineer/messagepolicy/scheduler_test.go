@@ -340,12 +340,36 @@ func TestSchedulerCoalescesAndAppliesCooldown(t *testing.T) {
 	if !ok || decision.CandidateID != "gap-2" {
 		t.Fatalf("decision = %+v, %t", decision, ok)
 	}
+	if reason := scheduler.AcknowledgeStarted(decision); reason != "" {
+		t.Fatalf("start acknowledgement = %q", reason)
+	}
 
 	clock.now = 2_000
 	third := candidateFor("gap-3", FamilyTimings, "timings.gap_report", "car-a", PriorityInformation, 2_000)
 	accepted, outcomes = scheduler.Submit(third)
 	if accepted || len(outcomes) != 1 || outcomes[0].Reason != ReasonCooldownActive {
 		t.Fatalf("cooldown = %t, %+v", accepted, outcomes)
+	}
+}
+
+func TestSchedulerDoesNotStartCooldownBeforeDeliveryStarts(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_500}
+	scheduler := newTestScheduler(t, clock, 8)
+	scheduler.Observe(validEvidence(t, 10_000))
+	first := candidateFor("gap-1", FamilyTimings, IntentTimingGapReport, "car-a", PriorityInformation, 1_000)
+	if accepted, _ := scheduler.Submit(first); !accepted {
+		t.Fatal("first candidate was rejected")
+	}
+	if _, _, ok := scheduler.Next(); !ok {
+		t.Fatal("first candidate was not selected")
+	}
+
+	clock.now = 2_000
+	second := candidateFor("gap-2", FamilyTimings, IntentTimingGapReport, "car-a", PriorityInformation, 2_000)
+	if accepted, outcomes := scheduler.Submit(second); !accepted || len(outcomes) != 0 {
+		t.Fatalf("unstarted decision activated cooldown = %t, %+v", accepted, outcomes)
 	}
 }
 
@@ -663,8 +687,12 @@ func TestLifecycleCancellationClearsPendingAndCooldown(t *testing.T) {
 	if accepted, _ := scheduler.Submit(first); !accepted {
 		t.Fatal("first timing candidate was rejected")
 	}
-	if _, _, ok := scheduler.Next(); !ok {
+	decision, _, ok := scheduler.Next()
+	if !ok {
 		t.Fatal("first timing candidate was not emitted")
+	}
+	if reason := scheduler.AcknowledgeStarted(decision); reason != "" {
+		t.Fatalf("first timing candidate did not start: %q", reason)
 	}
 
 	clock.now = 2_000

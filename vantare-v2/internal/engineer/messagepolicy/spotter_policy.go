@@ -39,17 +39,18 @@ const (
 	spotterMessageCurrent
 )
 
-// spotterDeliveryState records only handoff through Next. Pending candidates
-// are not communication: a later contextual clear cannot rely on them.
+// spotterDeliveryState records only a confirmed started acknowledgement.
+// Pending or merely selected candidates are not communication: a later
+// contextual clear cannot rely on them.
 // generation changes with every proven occupancy transition and prevents an
-// older dispatched state from authorizing a clear after an unseen transition.
+// older started state from authorizing a clear after an unseen transition.
 type spotterDeliveryState struct {
 	observed             bool
 	situation            spotterSituation
 	generation           uint64
-	dispatchedSituation  spotterSituation
-	dispatchedGeneration uint64
-	dispatchedUntilMS    int64
+	startedSituation     spotterSituation
+	startedGeneration    uint64
+	startedUntilMS       int64
 	clearLeftGeneration  uint64
 	clearRightGeneration uint64
 	clearLeftFrom        spotterSituation
@@ -153,7 +154,7 @@ func (state *spotterDeliveryState) observe(situation spotterSituation, now int64
 
 	previous := state.situation
 	previousGeneration := state.generation
-	previousUntilMS := state.dispatchedUntilMS
+	previousUntilMS := state.startedUntilMS
 	state.generation++
 	state.situation = situation
 	state.clearLeftGeneration = 0
@@ -162,7 +163,7 @@ func (state *spotterDeliveryState) observe(situation spotterSituation, now int64
 	state.clearRightFrom = spotterSituationUnknown
 	state.clearLeftUntilMS = 0
 	state.clearRightUntilMS = 0
-	if state.dispatchedGeneration != previousGeneration || state.dispatchedSituation != previous || previousUntilMS <= now {
+	if state.startedGeneration != previousGeneration || state.startedSituation != previous || previousUntilMS <= now {
 		return
 	}
 	if spotterSituationHasLeft(previous) && !spotterSituationHasLeft(situation) {
@@ -186,14 +187,14 @@ func (state *spotterDeliveryState) clearCanDeliver(intent string, now int64) boo
 		if state.clearLeftGeneration != state.generation || state.clearLeftUntilMS <= now {
 			return false
 		}
-		return state.currentSituationDispatched(now) ||
+		return state.currentSituationStarted(now) ||
 			(state.clearLeftFrom == spotterSituationLeft && state.situation == spotterSituationAllClear) ||
 			(state.clearLeftFrom == spotterSituationThreeWide && state.situation == spotterSituationRight)
 	case IntentSpotterClearRight:
 		if state.clearRightGeneration != state.generation || state.clearRightUntilMS <= now {
 			return false
 		}
-		return state.currentSituationDispatched(now) ||
+		return state.currentSituationStarted(now) ||
 			(state.clearRightFrom == spotterSituationRight && state.situation == spotterSituationAllClear) ||
 			(state.clearRightFrom == spotterSituationThreeWide && state.situation == spotterSituationLeft)
 	default:
@@ -201,12 +202,12 @@ func (state *spotterDeliveryState) clearCanDeliver(intent string, now int64) boo
 	}
 }
 
-func (state *spotterDeliveryState) currentSituationDispatched(now int64) bool {
-	return state.observed && state.dispatchedGeneration == state.generation &&
-		state.dispatchedSituation == state.situation && state.dispatchedUntilMS > now
+func (state *spotterDeliveryState) currentSituationStarted(now int64) bool {
+	return state.observed && state.startedGeneration == state.generation &&
+		state.startedSituation == state.situation && state.startedUntilMS > now
 }
 
-func (state *spotterDeliveryState) recordDispatch(intent string, expiresAtMS, now int64) {
+func (state *spotterDeliveryState) recordStarted(intent string, expiresAtMS, now int64) {
 	if !state.observed {
 		return
 	}
@@ -215,9 +216,9 @@ func (state *spotterDeliveryState) recordDispatch(intent string, expiresAtMS, no
 	if !contextualClear && (!selfContained || intent != currentIntent) {
 		return
 	}
-	state.dispatchedSituation = state.situation
-	state.dispatchedGeneration = state.generation
-	state.dispatchedUntilMS = expiresAtMS
+	state.startedSituation = state.situation
+	state.startedGeneration = state.generation
+	state.startedUntilMS = expiresAtMS
 	switch intent {
 	case IntentSpotterClearLeft:
 		state.clearLeftGeneration = 0

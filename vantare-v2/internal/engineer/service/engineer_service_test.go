@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 )
@@ -221,6 +222,13 @@ func (p *spyPlayer) Play(path string) error {
 	return p.err
 }
 
+func (p *spyPlayer) PlayContext(ctx context.Context, path string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return p.Play(path)
+}
+
 func (p *spyPlayer) Calls() []string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -232,12 +240,16 @@ func (p *spyPlayer) Calls() []string {
 // staticResolver implementa service.AudioResolver devolviendo siempre el mismo path.
 type staticResolver struct{ path string }
 
-func (r staticResolver) Resolve(textKey string) string { return r.path }
+func (r staticResolver) ResolveCached(context.Context, string, audio.Channel) (string, error) {
+	return r.path, nil
+}
 
 // mapResolver implementa service.AudioResolver con tabla textKey->path.
 type mapResolver struct{ m map[string]string }
 
-func (r mapResolver) Resolve(textKey string) string { return r.m[textKey] }
+func (r mapResolver) ResolveCached(_ context.Context, textKey string, _ audio.Channel) (string, error) {
+	return r.m[textKey], nil
+}
 
 func feedScenario(svc *service.EngineerService, scenario simulator.Scenario) {
 	base := time.Now().UnixMilli()
@@ -358,8 +370,9 @@ func TestEngineerService_QueueLoop_Cooldown(t *testing.T) {
 
 func TestNoopAudioResolver_ReturnsEmpty(t *testing.T) {
 	r := service.NoopAudioResolver{}
-	if got := r.Resolve("any.text.key"); got != "" {
-		t.Errorf("NoopAudioResolver.Resolve should return empty, got %q", got)
+	got, err := r.ResolveCached(context.Background(), "any.text.key", audio.ChannelEngineer)
+	if err != nil || got != "" {
+		t.Errorf("NoopAudioResolver.ResolveCached = %q, %v; want empty, nil", got, err)
 	}
 }
 

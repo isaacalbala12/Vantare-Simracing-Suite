@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/core"
+	"github.com/vantare/overlays/v2/internal/engineer/delivery"
+	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
@@ -20,7 +20,31 @@ type EventEmitter interface {
 	Emit(name string, data any)
 }
 
-var ErrCanonicalSourceUnavailable = errors.New("canonical Engineer source is unavailable")
+var (
+	ErrCanonicalSourceUnavailable   = errors.New("canonical Engineer source is unavailable")
+	ErrCanonicalObservationNotFresh = errors.New("canonical Engineer observation is not newer than the disconnect boundary")
+)
+
+// observationCursor is the ordering boundary captured when the canonical
+// source becomes unavailable. Sequence is monotonic inside an epoch; a newer
+// epoch is a legitimate lifecycle transition and is therefore always newer.
+// Context is retained with the cursor so boundary classification still owns
+// identity changes rather than treating them as a clock reset.
+type observationCursor struct {
+	context  engineerprojection.Context
+	sequence uint64
+}
+
+func cursorFromObservation(snapshot engineerprojection.ObservationSnapshotV1) observationCursor {
+	return observationCursor{context: snapshot.Context, sequence: uint64(snapshot.Sequence)}
+}
+
+func (cursor observationCursor) strictlyAfter(boundary observationCursor) bool {
+	if cursor.context.Epoch != boundary.context.Epoch {
+		return cursor.context.Epoch > boundary.context.Epoch
+	}
+	return cursor.sequence > boundary.sequence
+}
 
 // EngineerService coordinates the telemetry input, runtime spotter engine, and notification store.
 type EngineerService struct {
@@ -38,10 +62,15 @@ type EngineerService struct {
 	sensitivity    string
 	lastError      string
 
-	lastContext  engineerprojection.Context
-	factEpoch    uint64
-	factSequence uint64
-	sourceState  engineerprojection.SourceState
+	lastContext            engineerprojection.Context
+	lastObservation        *observationCursor
+	reconnectBoundary      *observationCursor
+	factEpoch              uint64
+	factSequence           uint64
+	sourceState            engineerprojection.SourceState
+	sourceReconnectAttempt int
+	scheduler              *messagepolicy.Scheduler
+	policyClock            messagepolicy.Clock
 
 	// Loop management
 	ctx      context.Context
@@ -54,37 +83,37 @@ type EngineerService struct {
 	// en el fan-out y se expone vía DropCount() / Health() / /api/engineer/health.
 	dropCount atomic.Uint64
 
-	// Audio playback (opcional). Si audioPlayer != nil y audioResolver devuelve
-	// un path, queueLoop invoca Player.Play tras desencolar mensajes spotter.
-	// Sin tts/ aún, el resolver por defecto devuelve "" y la reproducción se
-	// salta silenciosamente. Esto cablea el flujo de extremo a extremo y deja
-	// listo el cambio cuando internal/tts/ entre.
-	audioPlayer    AudioPlayer
-	audioResolver  AudioResolver
-	audioConfig    *audio.AudioConfig
-	audioRouter    *audio.AudioRouter
-	lastWasSpotter bool
+	// Audio playback opcional. El puerto productivo resuelve una ruta ya
+	// disponible y la reproduce con contexto cancelable. La síntesis TTS no
+	// pertenece a este corte y nunca debe bloquear este resolver.
+	audioPlayer   AudioPlayer
+	audioResolver AudioResolver
+	audioConfig   *audio.AudioConfig
+	audioRouter   *audio.AudioRouter
 
-	// skipAudioUntilMS evita reproducir el mismo spotter de nuevo si llegó
-	// hace muy poco (evita spam audible).
-	skipAudioUntilMS int64
+	deliveryPort    delivery.Port
+	deliveryMetrics *delivery.Metrics
+	deliveryWake    chan struct{}
+	deliveryDone    chan deliveryResult
+	activeDelivery  *activeDelivery
+	deliveryNext    uint64
 }
 
-// AudioPlayer es la interfaz mínima que queueLoop necesita del reproductor.
+// AudioPlayer es la interfaz mínima que el puerto productivo necesita.
 // *audio.Player (internal/engineer/audio) la implementa.
 type AudioPlayer interface {
-	Play(path string) error
+	PlayContext(ctx context.Context, path string) error
 }
 
-// AudioResolver resuelve un textKey de spotter a un path de audio reproducible
-// en disco (típicamente .mp3 cacheado por internal/tts/). Devuelve "" si no hay
-// cache disponible (en cuyo caso el servicio omite la reproducción silenciosamente).
+// AudioResolver resuelve un textKey a un path de audio ya cacheado. Debe
+// respetar el contexto, no sintetizar ni descargar y devolver "" si no hay
+// audio disponible (en cuyo caso se mantiene la notificación visual).
 //
 // Implementación por defecto: NoopAudioResolver (siempre devuelve "").
-// Implementación real: cuando internal/tts/ exista, un TTSResolver que consulte
-// el cache TTS y sintetice si no existe (de forma síncrona o asíncrona según TTL).
+// Este contrato solo puede consultar rutas ya preparadas; sintetizar o descargar
+// audio pertenece al futuro transporte TTS y no puede bloquear el camino crítico.
 type AudioResolver interface {
-	Resolve(textKey string) string
+	ResolveCached(ctx context.Context, textKey string, channel audio.Channel) (string, error)
 }
 
 // NoopAudioResolver es el resolver por defecto: nunca encuentra audio.
@@ -92,8 +121,10 @@ type AudioResolver interface {
 // inyectar el resolver real vía SetAudioResolver.
 type NoopAudioResolver struct{}
 
-// Resolve devuelve "" (sin audio). Implementa AudioResolver.
-func (NoopAudioResolver) Resolve(textKey string) string { return "" }
+// ResolveCached devuelve "" (sin audio). Implementa AudioResolver.
+func (NoopAudioResolver) ResolveCached(context.Context, string, audio.Channel) (string, error) {
+	return "", nil
+}
 
 // SetAudioPlayer inyecta el reproductor de audio. Si es nil, queueLoop no
 // intenta reproducir (modo silencioso).
@@ -136,18 +167,29 @@ func (s *EngineerService) SetAudioRouter(r *audio.AudioRouter) {
 // NewEngineerService creates a new instance of EngineerService.
 func NewEngineerService(emitter EventEmitter) *EngineerService {
 	queue := audio.NewQueue()
+	clock := wallClock{}
+	scheduler, schedulerErr := messagepolicy.NewScheduler(clock, messagepolicy.Limits{})
 	s := &EngineerService{
-		store:          NewNotificationStore(50),
-		queue:          queue,
-		runtime:        core.NewRuntime(queue, spotter.SensitivityNormal, true),
-		input:          projectioninput.NewAdapter(),
-		emitter:        emitter,
-		enabled:        true,
-		connected:      false,
-		source:         "telemetry-core",
-		spotterEnabled: true,
-		sensitivity:    "normal",
-		audioResolver:  NoopAudioResolver{},
+		store:           NewNotificationStore(50),
+		queue:           queue,
+		runtime:         core.NewRuntime(queue, spotter.SensitivityNormal, true),
+		input:           projectioninput.NewAdapter(),
+		emitter:         emitter,
+		enabled:         true,
+		connected:       false,
+		source:          "telemetry-core",
+		spotterEnabled:  true,
+		sensitivity:     "normal",
+		audioResolver:   NoopAudioResolver{},
+		scheduler:       scheduler,
+		policyClock:     clock,
+		deliveryMetrics: delivery.NewMetrics(128),
+		deliveryWake:    make(chan struct{}, 1),
+		deliveryDone:    make(chan deliveryResult, 1),
+	}
+	if schedulerErr != nil {
+		s.enabled = false
+		s.lastError = schedulerErr.Error()
 	}
 	return s
 }
@@ -165,6 +207,11 @@ func (s *EngineerService) Start(ctx context.Context) {
 // Stop cancels the running loops and waits for them to terminate.
 func (s *EngineerService) Stop() {
 	s.mu.Lock()
+	if s.scheduler != nil {
+		s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+	}
+	s.queue.Clear()
+	s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	if s.cancelFn != nil {
 		s.cancelFn()
 		s.cancelFn = nil
@@ -179,6 +226,12 @@ func (s *EngineerService) Stop() {
 	s.mu.Unlock()
 
 	s.wg.Wait()
+	s.mu.Lock()
+	s.activeDelivery = nil
+	for len(s.deliveryDone) > 0 {
+		<-s.deliveryDone
+	}
+	s.mu.Unlock()
 }
 
 func (s *EngineerService) startLoopsLocked() {
@@ -237,6 +290,11 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	s.runtime.SetEnabled(enabled && s.spotterEnabled)
 	if !enabled {
 		s.connected = false
+		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
+		if s.scheduler != nil {
+			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		}
+		s.queue.Clear()
 	}
 	s.emitStatusLocked()
 	return nil
@@ -249,6 +307,13 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 
 	s.spotterEnabled = enabled
 	s.runtime.SetEnabled(s.enabled && enabled)
+	if !enabled {
+		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
+		if s.scheduler != nil {
+			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		}
+		s.queue.Clear()
+	}
 	s.emitStatusLocked()
 	return nil
 }
@@ -336,20 +401,37 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 	if !s.running || !s.enabled {
 		return nil
 	}
-	if s.sourceState == status.State {
+	stateChanged := s.sourceState != status.State
+	reconnectAdvanced := status.ReconnectAttempt > s.sourceReconnectAttempt
+	s.sourceState = status.State
+	s.sourceReconnectAttempt = status.ReconnectAttempt
+	// An increased reconnect attempt is a source boundary even when an
+	// intermediate non-live status was coalesced before reaching Engineer.
+	// Without an accepted observation there is no cursor to invalidate yet.
+	reconnectBoundary := reconnectAdvanced && s.lastObservation != nil
+	if !stateChanged && !reconnectBoundary {
 		return nil
 	}
-	wasAvailable := s.sourceState.Available()
-	s.sourceState = status.State
-	if !status.State.Available() {
+	if !status.State.Available() || reconnectBoundary {
+		s.markReconnectBoundaryLocked()
 		s.connected = false
-		if wasAvailable {
-			s.runtime.Reset()
-			s.queue.Clear()
+		s.runtime.Reset()
+		s.queue.Clear()
+		if s.scheduler != nil {
+			s.scheduler.Cancel(messagepolicy.ReasonSourceUnavailable)
 		}
+		s.cancelDeliveryLocked(delivery.ErrSourceUnavailable)
 	}
 	s.emitStatusLocked()
 	return nil
+}
+
+func (s *EngineerService) markReconnectBoundaryLocked() {
+	if s.lastObservation == nil || s.reconnectBoundary != nil {
+		return
+	}
+	boundary := *s.lastObservation
+	s.reconnectBoundary = &boundary
 }
 
 // ConsumeObservation is the sole production telemetry entry for Engineer.
@@ -365,19 +447,42 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if s.sourceState.Known() && !s.sourceState.Available() {
 		return ErrCanonicalSourceUnavailable
 	}
+	if s.reconnectBoundary != nil && !cursorFromObservation(snapshot).strictlyAfter(*s.reconnectBoundary) {
+		s.connected = false
+		s.lastError = ErrCanonicalObservationNotFresh.Error()
+		s.emitStatusLocked()
+		return ErrCanonicalObservationNotFresh
+	}
 	if s.lastContext.Epoch != 0 {
 		boundary, err := engineerprojection.ClassifyBoundary(s.lastContext, snapshot.Context)
 		if err != nil {
 			s.connected = false
 			s.lastError = err.Error()
+			s.runtime.Reset()
+			s.queue.Clear()
+			if s.scheduler != nil {
+				s.scheduler.Cancel(messagepolicy.ReasonIdentityChanged)
+			}
+			s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 			s.emitStatusLocked()
 			return err
 		}
 		if boundary.CancelsPending() {
 			s.runtime.Reset()
 			s.queue.Clear()
+			s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 		}
 	}
+
+	source := s.sourceState
+	if !source.Known() {
+		source = engineerprojection.SourceLive
+	}
+	evidence := projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000)
+	if s.scheduler == nil {
+		return errors.New("engineer message scheduler is unavailable")
+	}
+	s.scheduler.Observe(evidence)
 
 	processed := false
 	for _, family := range approvedProjectionFamilies {
@@ -408,6 +513,18 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 		}
 		processed = true
 	}
+	for {
+		message, ok := s.queue.Next(0)
+		if !ok {
+			break
+		}
+		candidate, err := projectioninput.CandidateFromMessage(message, snapshot, evidence.Semantic)
+		if err != nil {
+			s.lastError = err.Error()
+			continue
+		}
+		s.submitCandidateLocked(candidate)
+	}
 	if !processed {
 		s.connected = false
 		s.lastError = projectioninput.ErrObservationNotReady.Error()
@@ -416,8 +533,12 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	}
 
 	s.lastContext = snapshot.Context
+	lastObservation := cursorFromObservation(snapshot)
+	s.lastObservation = &lastObservation
+	s.reconnectBoundary = nil
 	s.connected = true
 	s.lastError = ""
+	s.signalDeliveryLocked()
 	s.emitStatusLocked()
 	return nil
 }
@@ -444,10 +565,22 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 	s.factSequence = sequence
 
 	switch fact.Fact.Kind {
-	case engineerprojection.FactConnectionLost, engineerprojection.FactSessionEnded:
+	case engineerprojection.FactSessionStarted, engineerprojection.FactDriverChanged:
+		s.runtime.Reset()
+		s.queue.Clear()
+		if s.scheduler != nil {
+			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		}
+		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
+	case engineerprojection.FactSessionEnded, engineerprojection.FactConnectionLost:
+		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.runtime.Reset()
 		s.queue.Clear()
+		if s.scheduler != nil {
+			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		}
+		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	case engineerprojection.FactConnectionRecovered:
 		// A recovery fact is not proof that a usable observation exists.
 		s.connected = false
@@ -460,103 +593,18 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 // and explicit tools. The application composition root never calls it.
 func (s *EngineerService) ProcessHarnessFrame(nowMS int64, frame *telemetry.Frame) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.runtime.ProcessFrame(nowMS, frame)
-}
-
-func (s *EngineerService) queueLoop(ctx context.Context) {
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-
+	messages := make([]audio.Message, 0, s.queue.Len())
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			now := time.Now().UnixMilli()
-			msg, ok := s.queue.Next(now)
-			if !ok {
-				continue
-			}
-
-			s.mu.Lock()
-			currentSource := s.source
-			s.mu.Unlock()
-
-			// Map spotter message to EngineerNotification
-			notif := EngineerNotification{
-				ID:        msg.ID,
-				Category:  string(msg.Category),
-				Severity:  string(msg.Severity),
-				TextKey:   msg.TextKey,
-				Text:      Translate(msg.TextKey),
-				Priority:  int(msg.Priority),
-				CreatedAt: msg.CreatedAt,
-				ExpiresAt: msg.ExpiresAt,
-				Source:    currentSource,
-			}
-
-			s.store.Add(notif)
-			if s.emitter != nil {
-				s.emitter.Emit("engineer:notification", notif)
-				s.emitter.Emit("engineer:status", s.Status())
-			}
-
-			s.mu.Lock()
-			for _, sub := range s.subs {
-				select {
-				case sub <- notif:
-				default:
-					s.dropCount.Add(1)
-				}
-			}
-			s.mu.Unlock()
-
-			// Reproducir audio: primero con AudioRouter (channel-aware),
-			// fallback al resolver legacy si AudioRouter no está configurado.
-			s.mu.Lock()
-			player := s.audioPlayer
-			resolver := s.audioResolver
-			skipUntil := s.skipAudioUntilMS
-
-			// NEW: channel-aware audio routing
-			if player != nil && s.audioRouter != nil && now >= skipUntil {
-				ch := audio.ChannelEngineer
-				if msg.Priority >= audio.PrioritySpotter {
-					ch = audio.ChannelSpotter
-				}
-				path := s.audioRouter.Resolve(msg.TextKey, ch)
-				if path != "" {
-					s.skipAudioUntilMS = now + 2500
-					s.lastWasSpotter = msg.Priority >= audio.PrioritySpotter
-					s.wg.Add(1)
-					s.mu.Unlock()
-					go func(p string) {
-						defer s.wg.Done()
-						if err := player.Play(p); err != nil {
-							log.Printf("audio play error: %v", err)
-						}
-					}(path)
-					continue
-				}
-			} else if player != nil && resolver != nil && msg.Priority >= audio.PrioritySpotter && now >= skipUntil {
-				// Legacy fallback: old resolver interface
-				if path := resolver.Resolve(msg.TextKey); path != "" {
-					s.skipAudioUntilMS = now + 2500
-					s.lastWasSpotter = true
-					s.wg.Add(1)
-					s.mu.Unlock()
-					go func(p string) {
-						defer s.wg.Done()
-						if err := player.Play(p); err != nil {
-							log.Printf("audio play error: %v", err)
-						}
-					}(path)
-					continue
-				}
-			}
-			s.mu.Unlock()
+		message, ok := s.queue.Next(nowMS)
+		if !ok {
+			break
 		}
+		messages = append(messages, message)
+	}
+	s.mu.Unlock()
+	for _, message := range messages {
+		s.publishLegacyHarness(message)
 	}
 }
 
@@ -569,19 +617,43 @@ func (s *EngineerService) DropCount() uint64 {
 // EngineerHealth es un snapshot ligero para /api/engineer/health.
 // Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
 type EngineerHealth struct {
-	OK        bool   `json:"ok"`
-	Source    string `json:"source"`
-	Connected bool   `json:"connected"`
-	Enabled   bool   `json:"enabled"`
-	Subs      int    `json:"subscribers"`
-	DropCount uint64 `json:"dropCount"`
-	LastError string `json:"lastError,omitempty"`
+	OK        bool                     `json:"ok"`
+	Source    string                   `json:"source"`
+	Connected bool                     `json:"connected"`
+	Enabled   bool                     `json:"enabled"`
+	Subs      int                      `json:"subscribers"`
+	DropCount uint64                   `json:"dropCount"`
+	Policy    EngineerPolicyMetrics    `json:"policy"`
+	Delivery  delivery.MetricsSnapshot `json:"delivery"`
+	LastError string                   `json:"lastError,omitempty"`
+}
+
+// EngineerPolicyMetrics exposes counters only. Candidate IDs, message text,
+// telemetry payloads and identity never cross the health boundary.
+type EngineerPolicyMetrics struct {
+	Pending     int    `json:"pending"`
+	Capacity    int    `json:"capacity"`
+	Accepted    uint64 `json:"accepted"`
+	Emitted     uint64 `json:"emitted"`
+	Suppressed  uint64 `json:"suppressed"`
+	Expired     uint64 `json:"expired"`
+	Cancelled   uint64 `json:"cancelled"`
+	Unavailable uint64 `json:"unavailable"`
 }
 
 // Health devuelve el estado de salud del servicio.
 func (s *EngineerService) Health() EngineerHealth {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var policyMetrics EngineerPolicyMetrics
+	if s.scheduler != nil {
+		state := s.scheduler.State()
+		policyMetrics = EngineerPolicyMetrics{
+			Pending: state.Pending, Capacity: state.Capacity,
+			Accepted: state.Accepted, Emitted: state.Emitted, Suppressed: state.Suppressed,
+			Expired: state.Expired, Cancelled: state.Cancelled, Unavailable: state.Unavailable,
+		}
+	}
 	return EngineerHealth{
 		OK:        s.engineerSvcOKLocked(),
 		Source:    s.source,
@@ -589,6 +661,8 @@ func (s *EngineerService) Health() EngineerHealth {
 		Enabled:   s.enabled,
 		Subs:      len(s.subs),
 		DropCount: s.dropCount.Load(),
+		Policy:    policyMetrics,
+		Delivery:  s.deliveryMetrics.Snapshot(),
 		LastError: s.lastError,
 	}
 }

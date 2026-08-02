@@ -10,6 +10,37 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-167 / ENG-06 (2026-08-02, WIP):
+- `EngineerService` conserva un solo runtime productivo y una sola policy sobre
+  la observación canónica. No se añade fuente, reader, parser o runtime.
+- El contrato `internal/engineer/delivery` exige ACK `queued`, `started` y un
+  terminal; revalida antes de `started` y expone solo métricas sanitizadas.
+- Spotter P0 cancela audio Engineer no crítico activo; nunca ocurre al revés.
+  Stop, source loss y lifecycle cancelan y unen la entrega.
+- El contexto de clears y los cooldowns avanzan únicamente tras ACK de inicio,
+  no al seleccionar una decisión. Replay v2 separa decision, dispatch y start.
+- Health separa contadores de policy, delivery y backpressure sin exponer IDs,
+  mensajes, telemetría, rutas o identidad; decision-a-start parte del instante
+  real de selección, no del timestamp de captura.
+- La composición real instala el player cancelable existente y un router
+  cache-only sin engine TTS sobre la caché canónica hash de Kokoro. Cada lookup
+  respeta contexto y un límite de 100 ms; miss/error conserva la entrega visual
+  sin síntesis en el hot path.
+- Replay v2 prueba disconnect/reconnect: cancela el trabajo anterior, guarda
+  el borde `epoch`/identidad/`sequence` y rechaza snapshots iguales o
+  anteriores antes de reanudar con uno estrictamente posterior. Un incremento
+  de `ReconnectAttempt` crea el mismo borde aunque el status siga en `live`.
+  Replay solo libera el borde después de aceptar cursor e identidad/lifecycle;
+  un cursor posterior con contexto inválido no lo consume. El benchmark
+  completo atraviesa `productDeliveryPort -> ResolveCached -> PlayContext` y
+  detiene el tiempo al inicio real de `PlayContext` bajo presión concurrente y
+  preempción.
+- Contrato vivo: `docs/engineer/delivery-runtime.md`. Corrección final WIP
+  comprobada con service/replay x10 y benchmark productivo 20x (65.310 ns/op);
+  race no ejecutable con `CGO_ENABLED=0`, Go global sin concluir en 124 s y vet
+  global con tres avisos Win32 heredados. Pendiente de re-review, sin commit,
+  push, merge o promoción.
+
 Nota ISA-158 / ENG-05 (2026-08-01):
 - Policy y scheduler determinista implementados de forma síncrona y acotada en
   `internal/engineer/messagepolicy/`; contratos v1: Candidate, Decision,

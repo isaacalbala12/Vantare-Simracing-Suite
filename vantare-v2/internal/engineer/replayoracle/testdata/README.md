@@ -8,6 +8,11 @@ para las seis familias con paridad aprobada: Spotter, fuel, penalties, laps,
 timings y pit entry/exit. El `oracleVersion` y `scenarioVersion` impiden aceptar
 un cambio de contrato por accidente.
 
+`v2/approved-families.golden.json` conserva esas decisiones y añade dos
+fronteras observables por cada decisión aprobada: entrega al transporte e
+inicio confirmado. El v1 permanece intacto como evidencia histórica; los
+tests activos usan v2.
+
 Una familia aprobada no convierte en válida cualquier salida de su monitor
 legacy. Las decisiones fuera del escenario caracterizado se conservan en el
 golden como `unavailable / decision_not_approved`; en particular, el contador

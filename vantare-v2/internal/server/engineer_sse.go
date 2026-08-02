@@ -27,6 +27,9 @@ func (s *Server) handleEngineerSSE(w http.ResponseWriter, r *http.Request) {
 
 	ch, unsubscribe := s.engineerSvc.Subscribe()
 	defer unsubscribe()
+	// Commit the stream immediately. Clients must not depend on a future
+	// Engineer message merely to finish the HTTP handshake.
+	flusher.Flush()
 
 	keepAlive := time.NewTicker(15 * time.Second)
 	defer keepAlive.Stop()

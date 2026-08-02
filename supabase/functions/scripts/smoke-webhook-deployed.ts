@@ -6,12 +6,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { signStandardWebhookForTest } from "../_shared/webhook-verify.ts";
 
-const WEBHOOK_URL =
-  "https://ombjshwzqgeisazijduq.supabase.co/functions/v1/billing-webhook";
-const USER_ID = "4b6d8919-1c89-492d-a0e2-364124c17878";
-const LAUNCH_PRODUCT = "fd15a961-ed86-4cbc-9ffa-f8c16716b22f";
-const PRO_PRODUCT = "41cffd72-bd41-4904-a0e4-9083243d26d7";
-
 function requireEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`Missing env: ${name}`);
@@ -19,6 +13,7 @@ function requireEnv(name: string): string {
 }
 
 async function postSignedEvent(
+  webhookUrl: string,
   secret: string,
   eventId: string,
   body: Record<string, unknown>,
@@ -32,7 +27,7 @@ async function postSignedEvent(
     timestamp,
   );
 
-  const res = await fetch(WEBHOOK_URL, {
+  const res = await fetch(webhookUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -57,6 +52,12 @@ async function main() {
   const secret = requireEnv("POLAR_WEBHOOK_SECRET");
   const supabaseUrl = requireEnv("SUPABASE_URL");
   const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const userId = requireEnv("BILLING_SMOKE_USER_ID");
+  const launchProduct = requireEnv("BILLING_SMOKE_LAUNCH_PRODUCT_ID");
+  const proProduct = requireEnv("BILLING_SMOKE_PRO_PRODUCT_ID");
+  const webhookUrl = `${
+    supabaseUrl.replace(/\/$/, "")
+  }/functions/v1/billing-webhook`;
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -70,63 +71,71 @@ async function main() {
     data: {
       id: `order_smoke_${suffix}`,
       modified_at: new Date().toISOString(),
-      product_id: LAUNCH_PRODUCT,
-      external_customer_id: USER_ID,
+      product_id: launchProduct,
+      external_customer_id: userId,
       customer_id: "polar_smoke_cus",
-      customer: { email: "billing-smoke@example.invalid" },
     },
   };
   const lifetimeRes = await postSignedEvent(
+    webhookUrl,
     secret,
     evtLifetime,
     lifetimePayload,
   );
-  console.log("   HTTP", lifetimeRes.status, lifetimeRes.json);
+  console.log("   HTTP", lifetimeRes.status);
 
   const { data: entAfterLifetime, error: entErr } = await supabase
     .from("user_entitlements")
     .select("product_key,status,source,expires_at,metadata")
-    .eq("user_id", USER_ID)
+    .eq("user_id", userId)
     .eq("product_key", "bundle")
     .maybeSingle();
   if (entErr) throw entErr;
-  console.log("   entitlement:", entAfterLifetime);
+  console.log("   entitlement present:", entAfterLifetime !== null);
 
   const { data: licLifetime } = await supabase
     .from("license_events")
     .select("event_type,idempotency_key")
     .eq("idempotency_key", evtLifetime)
     .maybeSingle();
-  console.log("   license_event:", licLifetime);
+  console.log("   audit event present:", licLifetime !== null);
 
   console.log("2) idempotency duplicate");
-  const dupRes = await postSignedEvent(secret, evtLifetime, lifetimePayload);
-  console.log("   HTTP", dupRes.status, dupRes.json);
+  const dupRes = await postSignedEvent(
+    webhookUrl,
+    secret,
+    evtLifetime,
+    lifetimePayload,
+  );
+  console.log("   HTTP", dupRes.status);
 
   console.log("3) subscription.active pro_monthly");
   const evtMonthly = `smoke_monthly_${suffix}`;
   const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     .toISOString();
-  const monthlyRes = await postSignedEvent(secret, evtMonthly, {
+  const monthlyRes = await postSignedEvent(webhookUrl, secret, evtMonthly, {
     type: "subscription.active",
     data: {
       id: `sub_smoke_${suffix}`,
       modified_at: new Date().toISOString(),
-      product_id: PRO_PRODUCT,
-      external_customer_id: USER_ID,
+      product_id: proProduct,
+      external_customer_id: userId,
       status: "active",
       current_period_end: periodEnd,
     },
   });
-  console.log("   HTTP", monthlyRes.status, monthlyRes.json);
+  console.log("   HTTP", monthlyRes.status);
 
   const { data: entAfterMonthly } = await supabase
     .from("user_entitlements")
     .select("product_key,status,source,expires_at,metadata")
-    .eq("user_id", USER_ID)
+    .eq("user_id", userId)
     .eq("product_key", "bundle")
     .maybeSingle();
-  console.log("   entitlement (lifetime should win):", entAfterMonthly);
+  console.log(
+    "   lifetime precedence preserved:",
+    entAfterMonthly?.expires_at === null,
+  );
 
   const failures: string[] = [];
   if (lifetimeRes.status !== 202) failures.push("lifetime not 202");

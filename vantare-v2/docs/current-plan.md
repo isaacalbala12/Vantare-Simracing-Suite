@@ -1,3 +1,17 @@
+Nota ISA-214 / BIL-10B (2026-08-02, preflight remoto Supabase):
+- BIL-01…10 están compuestas en `nightly`, pero el proyecto oficial no está
+  accesible para el perfil CLI actual y no existe el GitHub Environment de
+  despliegue.
+- Producción `ombjshwzqgeisazijduq` responde con checkout, portal y webhook;
+  esto no demuestra versión ni migraciones. `license-credential` no aparece.
+- El proyecto histórico `olhwhfaczmrmooeaoqqf` está `INACTIVE`, solo enumera
+  `validate-license` y no contiene configuración Billing por nombre.
+- El pipeline local queda preparado con preflight/apply manual, confirmación
+  exacta, migraciones antes que Functions y smoke sanitizado. No hubo mutación
+  remota.
+- BIL-11 queda bloqueada hasta completar ISA-214, su gate humano de despliegue
+  y después su autorización monetaria independiente. Billing continúa NO-GO.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

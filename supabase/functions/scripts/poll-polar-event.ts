@@ -1,6 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const USER_ID = Deno.args[0] ?? "4b6d8919-1c89-492d-a0e2-364124c17878";
+const USER_ID = Deno.args[0];
+if (!USER_ID) {
+  console.error("Usage: poll-polar-event.ts <user_id>");
+  Deno.exit(1);
+}
 const startedAt = new Date().toISOString();
 const timeoutMs = Number(Deno.env.get("POLL_TIMEOUT_MS") ?? "180000");
 const intervalMs = 5000;
@@ -16,7 +20,7 @@ const deadline = Date.now() + timeoutMs;
 while (Date.now() < deadline) {
   const { data: events, error } = await supabase
     .from("license_events")
-    .select("id,event_type,idempotency_key,payload,created_at")
+    .select("event_type,idempotency_key")
     .eq("user_id", USER_ID)
     .gte("created_at", startedAt)
     .order("created_at", { ascending: false });
@@ -30,7 +34,15 @@ while (Date.now() < deadline) {
 
   if (polarReal.length > 0) {
     console.log("POLAR_EVENT_DETECTED");
-    console.log(JSON.stringify(polarReal, null, 2));
+    console.log(JSON.stringify(
+      {
+        eventCount: polarReal.length,
+        eventTypes: [...new Set(polarReal.map((event) => event.event_type))]
+          .sort(),
+      },
+      null,
+      2,
+    ));
     Deno.exit(0);
   }
 

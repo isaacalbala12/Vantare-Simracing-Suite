@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-178",
+  "type": "feature",
+  "summary": "Engineer muestra sus mensajes como subtítulos y mediante un nuevo widget de radio Vantare Crystal en Desktop y OBS.",
+  "technicalNotes": [
+    "Wails y SSE validan y proyectan el mismo contrato multilingüe de ENG-07, con limpieza común al cambiar la fuente o la sesión.",
+    "Las categorías Spotter, combustible, penalizaciones, vueltas, diferencias y boxes permiten salida de audio, visual, ambas o desactivada.",
+    "El widget Engineer Radio es un tipo funcional independiente y su renderizador Crystal no accede a telemetría, persistencia ni reglas de prioridad.",
+    "La caducidad y la preempción siguen perteneciendo al backend; la interfaz solo representa el lifecycle canónico."
+  ],
+  "testing": [
+    "Comprobar mensajes de Spotter y Engineer en español, inglés, italiano y portugués brasileño.",
+    "Cambiar cada categoría entre audio, visual, ambas y desactivada y verificar que el resultado coincide.",
+    "Probar Desktop y OBS con fondo transparente y los tamaños wide, medium y compact."
+  ],
+  "knownLimitations": [
+    "Este corte no añade síntesis de voz, reconocimiento de voz, push-to-talk ni una variante Vantare Original del widget."
+  ]
+}

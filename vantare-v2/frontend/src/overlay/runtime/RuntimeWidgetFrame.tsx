@@ -5,6 +5,7 @@ import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
@@ -13,10 +14,11 @@ export type RuntimeWidgetFrameProps = {
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
+  engineerPresentation?: EngineerPresentation | null;
 };
 
 export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics } = props;
+  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation } = props;
   const snapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
@@ -45,6 +47,7 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
+          runtime={{ engineerPresentation }}
         />
       </WidgetVisualViewport>
     </div>

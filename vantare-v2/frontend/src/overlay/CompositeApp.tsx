@@ -7,6 +7,8 @@ import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
 import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
+import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
+import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -22,6 +24,14 @@ export function CompositeApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
+  const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
+  const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({
+    store: engineerPresentations,
+    subscribe: (event, handler) => {
+      const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
+      return () => unsubscribe?.();
+    },
+  }), [engineerPresentations]);
   const adapter = useMemo(
     () => {
       const subscribe = (event: string, handler: (data: unknown) => void) => {
@@ -41,11 +51,14 @@ export function CompositeApp() {
 
   useEffect(() => {
     adapter.start();
+    engineerAdapter.start();
     return () => {
       adapter.stop();
+      engineerAdapter.stop();
+      engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator]);
+  }, [adapter, coordinator, engineerAdapter, engineerPresentations]);
 
   useEffect(() => {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {
@@ -90,6 +103,7 @@ export function CompositeApp() {
         revision={revision}
         layoutOrigin={layoutOrigin}
         telemetry={coordinator}
+        engineerPresentations={engineerPresentations}
       />
       {reminder && (
         <OverlayCalendarReminderBanner

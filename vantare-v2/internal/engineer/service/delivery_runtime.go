@@ -236,8 +236,11 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 	if err != nil {
 		return err
 	}
+	mode := port.service.OutputMode(presented.Family)
+	visualEnabled := mode == OutputVisual || mode == OutputBoth
+	audioEnabled := mode == OutputAudio || mode == OutputBoth
 	path := ""
-	if port.player != nil {
+	if audioEnabled && port.player != nil {
 		channel := audio.Channel(presented.Channel)
 		resolveCtx, cancelResolve := context.WithTimeout(ctx, audioCacheResolveTimeout)
 		var resolveErr error
@@ -266,8 +269,10 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 	if err := reporter.Acknowledge(delivery.StateStarted, delivery.ReasonNone); err != nil {
 		return err
 	}
-	port.service.publishDecision(request.Decision, presented)
-	if port.player == nil {
+	if visualEnabled {
+		port.service.publishDecision(request.Decision, presented)
+	}
+	if !audioEnabled || port.player == nil {
 		return reporter.Acknowledge(delivery.StateCompleted, delivery.ReasonNone)
 	}
 	if path == "" {

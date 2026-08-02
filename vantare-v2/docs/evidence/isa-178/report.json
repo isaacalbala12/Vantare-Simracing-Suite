@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-08-02T05:27:22.758Z",
+  "captures": [
+    {
+      "locale": "es",
+      "severity": "critical",
+      "scene": "transparent",
+      "surface": "desktop",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "file": "engineer-radio-es-critical-transparent-wide.png",
+      "text": "Coche a la izquierda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "alphaLt255Ratio": 0.9836850649350649
+    },
+    {
+      "locale": "en",
+      "severity": "warning",
+      "scene": "solid",
+      "surface": "obs",
+      "size": "medium",
+      "width": 340,
+      "height": 92,
+      "file": "engineer-radio-en-warning-solid-medium.png",
+      "text": "Fuel critical, pit now",
+      "geometry": {
+        "clientWidth": 338,
+        "clientHeight": 90,
+        "scrollWidth": 338,
+        "scrollHeight": 90
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "it",
+      "severity": "info",
+      "scene": "grid",
+      "surface": "desktop",
+      "size": "compact",
+      "width": 260,
+      "height": 76,
+      "file": "engineer-radio-it-info-grid-compact.png",
+      "text": "Distacchi aggiornati",
+      "geometry": {
+        "clientWidth": 258,
+        "clientHeight": 74,
+        "scrollWidth": 258,
+        "scrollHeight": 74
+      },
+      "alphaLt255Ratio": 0
+    },
+    {
+      "locale": "pt-BR",
+      "severity": "critical",
+      "scene": "solid",
+      "surface": "obs",
+      "size": "wide",
+      "width": 440,
+      "height": 112,
+      "file": "engineer-radio-pt-BR-critical-solid-wide.png",
+      "text": "Carro à esquerda",
+      "geometry": {
+        "clientWidth": 438,
+        "clientHeight": 110,
+        "scrollWidth": 438,
+        "scrollHeight": 110
+      },
+      "alphaLt255Ratio": 0
+    }
+  ]
+}

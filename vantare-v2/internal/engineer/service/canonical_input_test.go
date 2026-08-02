@@ -126,6 +126,7 @@ func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 2, -2.8)); err != nil {
 		t.Fatal(err)
 	}
+	beforeBoundary := svc.Status().PresentationLifecycle
 
 	fact := engineerprojection.FactEnvelopeV1{
 		Metadata: projection.Metadata{Epoch: 2},
@@ -139,6 +140,9 @@ func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	}
 	if svc.Status().Connected {
 		t.Fatal("connection-lost fact must disconnect Engineer")
+	}
+	if got := svc.Status().PresentationLifecycle; got != beforeBoundary+1 {
+		t.Fatalf("presentation lifecycle = %d, want %d after connection boundary", got, beforeBoundary+1)
 	}
 	if err := svc.ConsumeFact(fact); err == nil {
 		t.Fatal("duplicate fact cursor must fail closed")

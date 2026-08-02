@@ -147,7 +147,12 @@ describe("OverlayParityHarness", () => {
           throw new Error(parsed.error);
         }
         render(<OverlayParityHarness query={parsed} />);
-        expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy();
+        const renderer = document.querySelector(`[data-widget-renderer="${widget}"]`);
+        if (widget === "engineer-radio") {
+          expect(renderer).toBeNull();
+        } else {
+          expect(renderer).toBeTruthy();
+        }
       }
     }
   });

@@ -10,6 +10,23 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-178 / ENG-08 (2026-08-02, In Review):
+- `engineer-radio` es un tipo funcional nuevo registrado únicamente en Vantare
+  Crystal. Desktop y OBS comparten definición, ViewModel puro y renderer; el
+  widget no accede a telemetría, transporte, persistencia ni policy.
+- El texto localizado de ENG-07 funciona como subtítulo accesible y visual sin
+  depender de audio. Rol, severidad y categoría se distinguen por texto y no
+  solo por color. Sin presentación activa el root no existe.
+- Go es la autoridad de routing `audio|visual|both|disabled` por las seis
+  familias aprobadas y de la generación de lifecycle. Wails y SSE comparten el
+  mismo payload y limpian mensajes ante source/session/reconnect/stop sin
+  reinterpretar TTL desde React.
+- Harness determinista: cuatro locales, info/warning/critical, Desktop/OBS,
+  transparent/solid/grid y tamaños wide/medium/compact sin overflow. Evidencia
+  root-only en `docs/evidence/isa-178/`.
+- Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,
+  canvas, inspector, shell, TTS/STT/PTT, dependencias nuevas, merge o promoción.
+
 Nota ISA-177 / ENG-07 (2026-08-02, In Review):
 - `internal/engineer/presentation` es la autoridad pura y versionada para los
   20 intents aprobados por ENG-05 en `es`, `en`, `it` y `pt-BR`.

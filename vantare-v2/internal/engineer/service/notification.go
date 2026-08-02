@@ -18,14 +18,16 @@ type EngineerNotification struct {
 }
 
 type EngineerStatus struct {
-	Enabled        bool                   `json:"enabled"`
-	Connected      bool                   `json:"connected"`
-	Source         string                 `json:"source"`
-	SpotterEnabled bool                   `json:"spotterEnabled"`
-	Sensitivity    string                 `json:"sensitivity"`
-	TTSCacheCount  int                    `json:"ttsCacheCount"`
-	RecentMessages []EngineerNotification `json:"recentMessages"`
-	LastError      string                 `json:"lastError,omitempty"`
+	Enabled               bool                   `json:"enabled"`
+	Connected             bool                   `json:"connected"`
+	Source                string                 `json:"source"`
+	PresentationLifecycle uint64                 `json:"presentationLifecycle"`
+	SpotterEnabled        bool                   `json:"spotterEnabled"`
+	Sensitivity           string                 `json:"sensitivity"`
+	OutputModes           map[string]OutputMode  `json:"outputModes"`
+	TTSCacheCount         int                    `json:"ttsCacheCount"`
+	RecentMessages        []EngineerNotification `json:"recentMessages"`
+	LastError             string                 `json:"lastError,omitempty"`
 }
 
 // Translations holds localized spotter phrases in Spanish.

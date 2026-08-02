@@ -73,6 +73,22 @@ func (b *EngineerBridge) Start() {
 		}
 	}))
 
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:output:set", func(event *application.CustomEvent) {
+		category, err := parseStringData(event.Data, "category")
+		if err != nil {
+			log.Printf("EngineerBridge: error parsing output category: %v", err)
+			return
+		}
+		mode, err := parseStringData(event.Data, "mode")
+		if err != nil {
+			log.Printf("EngineerBridge: error parsing output mode: %v", err)
+			return
+		}
+		if err := b.service.SetOutputMode(category, mode); err != nil {
+			log.Printf("EngineerBridge: error setting output mode: %v", err)
+		}
+	}))
+
 	b.mu.Lock()
 	b.unsubs = unsubs
 	b.mu.Unlock()

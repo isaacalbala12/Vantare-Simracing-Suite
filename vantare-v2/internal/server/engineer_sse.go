@@ -27,6 +27,8 @@ func (s *Server) handleEngineerSSE(w http.ResponseWriter, r *http.Request) {
 
 	ch, unsubscribe := s.engineerSvc.Subscribe()
 	defer unsubscribe()
+	statusCh, unsubscribeStatus := s.engineerSvc.SubscribeStatus()
+	defer unsubscribeStatus()
 	// Commit the stream immediately. Clients must not depend on a future
 	// Engineer message merely to finish the HTTP handshake.
 	flusher.Flush()
@@ -53,6 +55,19 @@ func (s *Server) handleEngineerSSE(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if _, err := fmt.Fprintf(w, "event: engineer-notification\ndata: %s\n\n", data); err != nil {
+				return
+			}
+			flusher.Flush()
+		case status, ok := <-statusCh:
+			if !ok {
+				return
+			}
+			data, err := json.Marshal(status)
+			if err != nil {
+				log.Printf("Engineer SSE status marshal error: %v", err)
+				continue
+			}
+			if _, err := fmt.Fprintf(w, "event: engineer-status\ndata: %s\n\n", data); err != nil {
 				return
 			}
 			flusher.Flush()

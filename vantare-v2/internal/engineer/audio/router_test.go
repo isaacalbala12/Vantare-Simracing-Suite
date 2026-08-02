@@ -1,11 +1,14 @@
 package audio
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
+	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/tts"
 )
 
@@ -68,6 +71,179 @@ func TestAudioRouter_CacheHit(t *testing.T) {
 	path := r.Resolve("spotter.car_left", ChannelSpotter)
 	if path != cachePath {
 		t.Errorf("expected %q, got %q", cachePath, path)
+	}
+}
+
+func TestAudioRouterResolveCachedReturnsOnlyPreparedAudio(t *testing.T) {
+	t.Parallel()
+	cacheDir := t.TempDir()
+	engine := mockEngine(t, cacheDir)
+	router := NewAudioRouter(DefaultAudioConfig(), engine, cacheDir)
+
+	path, err := router.ResolveCached(context.Background(), "spotter.cache-miss", ChannelSpotter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "" {
+		t.Fatalf("ResolveCached synthesized a cache miss: %q", path)
+	}
+
+	targetDir := filepath.Join(cacheDir, "en", "af_bella")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(targetDir, "spotter.cache-hit.mp3")
+	if err := os.WriteFile(want, []byte("prepared"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path, err = router.ResolveCached(context.Background(), "spotter.cache-hit", ChannelSpotter)
+	if err != nil || path != want {
+		t.Fatalf("ResolveCached() = %q, %v; want %q, nil", path, err, want)
+	}
+}
+
+func TestAudioRouterResolvePresentationCachedIsBoundToPresentationLocale(t *testing.T) {
+	root := t.TempDir()
+	cache, err := tts.NewCache(root, "kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := DefaultAudioConfig()
+	config.SetSpotter("es", "voice")
+	router := NewCacheOnlyAudioRouter(config, cache)
+	voiceText := "Coche a la izquierda"
+	source := filepath.Join(t.TempDir(), "voice.mp3")
+	if err := os.WriteFile(source, []byte("canonical"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wantCanonical, err := cache.Put(cache.Key("es", "voice", voiceText), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := PresentationRequest{Locale: presentation.LocaleSpanish, VoiceText: voiceText, LegacyIntent: "spotter.car_left", Channel: ChannelSpotter}
+	got, err := router.ResolvePresentationCached(context.Background(), request)
+	if err != nil || got != wantCanonical {
+		t.Fatalf("canonical ResolvePresentationCached() = %q, %v, want %q", got, err, wantCanonical)
+	}
+
+	legacyRoot := t.TempDir()
+	legacyCache, err := tts.NewCache(legacyRoot, "kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyPath := filepath.Join(legacyRoot, "es", "voice", "spotter.car_left.mp3")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("legacy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = NewCacheOnlyAudioRouter(config, legacyCache).ResolvePresentationCached(context.Background(), request)
+	if err != nil || got != legacyPath {
+		t.Fatalf("legacy ResolvePresentationCached() = %q, %v, want %q", got, err, legacyPath)
+	}
+}
+
+func TestAudioRouterResolvePresentationCachedNeverCrossesLocales(t *testing.T) {
+	for _, locale := range []presentation.Locale{presentation.LocaleSpanish, presentation.LocaleItalian, presentation.LocalePortugueseBrazil} {
+		t.Run(string(locale), func(t *testing.T) {
+			root := t.TempDir()
+			cache, err := tts.NewCache(root, "kokoro")
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := DefaultAudioConfig() // Spotter defaults to English.
+			router := NewCacheOnlyAudioRouter(config, cache)
+			wrongSource := filepath.Join(t.TempDir(), "wrong.mp3")
+			if err := os.WriteFile(wrongSource, []byte("wrong-language"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := cache.Put(cache.Key("en", config.Voice(ChannelSpotter), "localized"), wrongSource); err != nil {
+				t.Fatal(err)
+			}
+			englishLegacy := filepath.Join(root, "en", config.Voice(ChannelSpotter), "spotter.car_left.mp3")
+			if err := os.MkdirAll(filepath.Dir(englishLegacy), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(englishLegacy, []byte("wrong-language"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			got, err := router.ResolvePresentationCached(context.Background(), PresentationRequest{
+				Locale: locale, VoiceText: "localized", LegacyIntent: "spotter.car_left", Channel: ChannelSpotter,
+			})
+			if err != nil || got != "" {
+				t.Fatalf("ResolvePresentationCached(%s) = %q, %v; want visual-only", locale, got, err)
+			}
+		})
+	}
+}
+
+func TestAudioRouterResolvePresentationCachedReadsEveryMatchingLocale(t *testing.T) {
+	for _, locale := range []presentation.Locale{
+		presentation.LocaleSpanish, presentation.LocaleEnglish,
+		presentation.LocaleItalian, presentation.LocalePortugueseBrazil,
+	} {
+		t.Run(string(locale), func(t *testing.T) {
+			root := t.TempDir()
+			cache, err := tts.NewCache(root, "kokoro")
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := DefaultAudioConfig()
+			config.SetSpotter(string(locale), "voice")
+			voiceText := "canonical " + string(locale)
+			source := filepath.Join(t.TempDir(), "voice.mp3")
+			if err := os.WriteFile(source, []byte(locale), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			want, err := cache.Put(cache.Key(string(locale), "voice", voiceText), source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := NewCacheOnlyAudioRouter(config, cache).ResolvePresentationCached(context.Background(), PresentationRequest{
+				Locale: locale, VoiceText: voiceText, LegacyIntent: "spotter.car_left", Channel: ChannelSpotter,
+			})
+			if err != nil || got != want {
+				t.Fatalf("ResolvePresentationCached(%s) = %q, %v; want %q", locale, got, err, want)
+			}
+		})
+	}
+}
+
+func TestCacheOnlyAudioRouterReadsCanonicalTTSCacheWithoutEngine(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	cache, err := tts.NewCache(root, "kokoro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(t.TempDir(), "prepared.mp3")
+	if err := os.WriteFile(source, []byte("prepared"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	key := cache.Key("en", "af_bella", "spotter.car_left")
+	want, err := cache.Put(key, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	router := NewCacheOnlyAudioRouter(DefaultAudioConfig(), cache)
+	got, err := router.ResolveCached(context.Background(), "spotter.car_left", ChannelSpotter)
+	if err != nil || got != want {
+		t.Fatalf("ResolveCached() = %q, %v; want %q, nil", got, err, want)
+	}
+	if router.engine != nil {
+		t.Fatal("cache-only router retained a TTS engine")
+	}
+}
+
+func TestAudioRouterResolveCachedHonoursCancellation(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	path, err := NewAudioRouter(DefaultAudioConfig(), nil, t.TempDir()).ResolveCached(ctx, "spotter.car_left", ChannelSpotter)
+	if !errors.Is(err, context.Canceled) || path != "" {
+		t.Fatalf("ResolveCached(cancelled) = %q, %v; want empty, context.Canceled", path, err)
 	}
 }
 

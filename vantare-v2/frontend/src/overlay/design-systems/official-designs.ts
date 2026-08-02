@@ -226,6 +226,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "car-damage-visual-crystal", name: "Crystal Car Damage Visual", widgetType: "car-damage-visual", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "car-damage-numbers-original", name: "Original Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "car-damage-numbers-crystal", name: "Crystal Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "engineer-radio-crystal", name: "Crystal Engineer Radio", widgetType: "engineer-radio", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

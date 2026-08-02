@@ -367,6 +367,311 @@ Nota VANTARE-PROGRAM (2026-07-27):
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
 
+Nota ISA-201 / ENG-N01 (2026-08-02, promoción a `nightly`):
+- Composición final sobre `nightly@4e549bb`: ENG-01..ENG-12, ENG-14 y ENG-15.
+  Los dos cortes hermanos conservan sus responsabilidades: PTT físico Windows
+  y diálogo determinista confirmable. ENG-13 continúa bloqueando voz real.
+- Gates locales: 37 paquetes Engineer y vet focal PASS; PTT x20, benchmark y
+  `-race` en delivery/policy/PTT/commands/service PASS; tooling de voz 48/48;
+  frontend focal 42/42, global 2.117/2.117, build, lint focal y 12 capturas de
+  radio PASS; suite Go global PASS en repetición limpia.
+- El primer global Go reprodujo una vez el budget temporal del soak de recording;
+  el focal posterior pasó 20/20 y el global limpio pasó. El vet global conserva
+  tres warnings `unsafe.Pointer` previos en LMU/Launcher, fuera de este delta.
+- El probe nativo observa teclado y `joy-0` disponibles, XInput ausente y ninguna
+  pulsación física. Esto no sustituye el gate humano de hardware ENG-29.
+- Estado: listo para PR y CI de rama protegida; `testers` y `master` no se tocan.
+
+Nota roadmap Engineer Beta ENG-12..29 (2026-08-02, planificado):
+- ISA-182 / ENG-11 queda aceptada en `5b4e0d3`. Se crea el roadmap canónico
+  `docs/engineer/engineer-beta-roadmap.md` y 18 microcortes Linear ISA-183 a
+  ISA-200, organizados en cuatro milestones y dependencias DAG.
+- Primer corte ejecutable: ISA-183 / ENG-12, catálogo/intents y protocolo de
+  corpus humano. Después pueden avanzar sin esperar personas ENG-14/15/16/17,
+  Spotter ENG-18, monitores ENG-19 y gate técnico TTS ENG-22.
+- ENG-13 conserva command intent/FAR/FRR/wake word **NO-GO** hasta corpus humano
+  consentido real. ENG-20/21 quedan bloqueadas por esa evidencia. Fixtures no
+  sustituyen humanos.
+- Kokoro dinámico continúa NO-GO. TTS puede investigarse/integrarse disabled,
+  pero escucha perceptual se agrupa en ENG-29.
+- Pit Manager exige confirmación + readback; Strategy/Overlays usan contratos
+  versionados; ningún LLM decide hechos, intent, números o acciones críticas.
+- Esta rama es solo documental. Sin producto, merge, promoción o gate cerrado.
+
+Nota ISA-183 / ENG-12 (2026-08-02, In Review):
+- Catálogo cerrado `engineer.commands.v1` con 20 intents propios: 14 consultas
+  y 6 acciones. Cada intent declara slots tipados, precondición, respuesta,
+  mutabilidad y confirmación; las acciones siempre exigen confirmación.
+- Paridad estructural completa en `es`, `en`, `it` y `pt-BR`, incluidos wake
+  words y vocabulario de confirmar/cancelar. El parser estricto rechaza IDs,
+  locales, campos, placeholders, frases o slots fuera del contrato.
+- El harness es exclusivamente textual y fail-closed: no ejecuta acciones ni
+  conecta STT, PTT, micrófono, audio o runtime productivo. Conserva números de
+  coche con ceros iniciales y valida números, unidades, enums y rangos.
+- Sanitización demostrada: la salida de evaluación no contiene transcripciones,
+  nombres ni valores de slots. El protocolo de corpus humano exige consentimiento,
+  almacenamiento externo a Git, separación por hablante y métricas por locale,
+  micrófono, ruido, intent, slot y wake word.
+- Evidencia sintética y tests no autorizan voz real: command readiness,
+  intent accuracy humana, FAR/FRR y wake word siguen **NO-GO** hasta ENG-13.
+- Checks: paquete focal x20, fuzz 5 s, Engineer completo, vet Engineer,
+  `go test ./...` y build frontend pasan. `-race` no está disponible porque el
+  entorno usa `CGO_ENABLED=0`.
+- Re-review independiente final: `APPROVED`, P0/P1/P2/P3 = 0.
+
+Nota ISA-186 / ENG-15 (2026-08-02, In Review):
+- Router determinista `engineer.dialogue.v1` sobre el catálogo ENG-12: las 14
+  consultas y 6 acciones conservan paridad `es/en/it/pt-BR`.
+- Consultas missing/stale/invalid no publican valores. Las acciones siguen
+  `propuesta -> readback -> confirmación -> resultado`, revalidan evidencia en
+  el puerto y consumen una propuesta una sola vez incluso con double-submit.
+- Session/driver/source/epoch, locale, timeout, rollback de reloj o contexto
+  cancelado invalidan el diálogo. Dos fallos usan fallback PTT/UI sin adivinar.
+- Solo existen puertos falsos en tests: sin STT/TTS/wake word, LMU, Pit,
+  Strategy, efectos reales, dependencia o wiring productivo. Contrato:
+  `docs/engineer/dialogue-router-isa-186.md`.
+- Checks: commands x20, fuzz 5 s, Engineer completo, vet Engineer, build
+  frontend, `go test ./...` y diff-check pasan. `-race` no está disponible con
+  `CGO_ENABLED=0`.
+- Revisión independiente final: `APPROVE`, P0/P1/P2/P3 = 0.
+
+Nota ISA-185 / ENG-14 (2026-08-02, In Review):
+- Contrato `engineer.ptt.v1` para bindings globales/locales, conflictos físicos,
+  estados visibles y un único owner de captura. No contiene micrófono, STT,
+  wake word, persistencia, UI ni acciones.
+- Adaptadores Windows sin dependencias nuevas: teclado Win32 con key down/up,
+  gamepad XInput y volante/button box joystick-compatible mediante WinMM.
+  Raw HID genérico queda `unsupported` de forma explícita.
+- Polling de 8 ms cancelable y sin goroutine oculta; hotplug, pérdida de foco,
+  permiso, cambio de configuración, errores y shutdown fallan cerrados.
+- La re-review corrigió dos bordes: el estado `processing` ahora se cancela
+  realmente aguas abajo, y un fallo de cancelación conserva ownership para
+  reintentar sin fingir liberación. La primera muestra unpressed ya no genera
+  un release fantasma.
+- La revisión independiente corrigió además el commit prematuro de muestras:
+  si el handler falla, release, disconnect y device-error se reintentan y no
+  pueden dejar una captura activa por una transición perdida.
+- Terminar `Poller.Run` cancela explícitamente capturing/processing con timeout.
+  Un fallo queda visible, conserva ownership y permite `Controller.Shutdown`
+  externo; no puede quedar un puerto poseído por la ausencia de futuros polls.
+- En el equipo de validación: teclado conectado, `joy-0` conectado, XInput 0..3
+  y `joy-1` ausentes. Esto demuestra las llamadas nativas y la ausencia honesta,
+  no una pulsación física de cada categoría.
+- Contrato y comandos: `docs/engineer/ptt-input-isa-185.md`. Evidencia:
+  `docs/evidence/isa-185/windows-input-probe.json`.
+- ENG-24 será dueño de UI/persistencia; ENG-20 solo podrá conectar el host STT
+  después del gate humano de ENG-13.
+- Focal x20, fuzz, benchmark, Engineer completo, vet y build frontend pasan.
+  La suite global queda no verde solo por discovery Launcher y un budget
+  temporal Telemetry Core ajenos a las rutas de ENG-14. Pulsación física sigue
+  pendiente del gate de hardware; no se declara como probada.
+
+Nota ISA-182 / ENG-11 (2026-08-02, In Review):
+- Package manager test-only con manifest v1 cerrado y versionado, descargas
+  acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y
+  eliminación fallan cerrados ante symlink, junction o reparse point.
+- Voice-host local hijo con PID/protocolo/nonce/loopback demostrados,
+  timeouts finitos, request acotada, shutdown/terminate/kill y limpieza de
+  token, nonce, lease, proceso y puerto. `last_pid`/`last_exit_code` quedan como
+  única auditoría de lifecycle.
+- Un reinstall válido descarga/verifica pero no reemplaza un target idéntico ya
+  verificado; missing/corrupt solo se promociona tras validación completa.
+- Harness 200 probes: startup 349,598 ms, p50 13,774 ms, p95 20,445 ms, máximo
+  26,926 ms, shutdown limpio y cero leases. Usa fixture sintética externa: no
+  ejecuta inferencia ni demuestra precisión o rendimiento Whisper.
+- Suite ENG-11 31/31 PASS; suite histórica del tooling 48/48 PASS tres veces
+  consecutivas. Sin micrófono, raw, modelo, binario, dependencia, wiring o
+  promoción. Command readiness, PTT, wake word y TTS permanecen **NO-GO**.
+- Contrato: `docs/engineer/voice-package-host-isa-182.md`; evidencia:
+  `docs/evidence/isa-182/lifecycle-summary.json`. No iniciar ENG-12 hasta cerrar
+  review independiente.
+
+Nota ISA-181 / ENG-10 (2026-08-02, In Review):
+- Corpus FLEURS original CC BY 4.0 fijado por revisión: 5 grabaciones humanas
+  por `en_us/es_419/it_it/pt_br`, clean y ruido blanco determinista 10 dB. El
+  TSV no aporta speaker ID estable; no se afirma diversidad de locutor y la
+  muestra portuguesa solo contiene categoría `MALE`.
+- Whisper `tiny` y `base` procesaron 40 casos cada uno. `base` mejora WER/CER
+  en casi todas las celdas, a cambio de ~1,84 s medios y ~274 MB observados;
+  queda candidato condicionado para el siguiente gate, no selección de release.
+- Validez lingüística humana genérica y command readiness son conclusiones
+  distintas. Intent accuracy, FAR/FRR y wake word siguen **NO-GO** porque no
+  existe corpus humano consentido de comandos. TTS dinámico también sigue
+  NO-GO. Radio, subtítulos y UI son el fallback completo.
+- Tooling test-only añade extracción acotada, ruido reproducible, captura/import
+  con consentimiento explícito, preview/delete/cleanup y benchmark residente.
+  Audio, modelos, ejecutables, paths y raw permanecen fuera de Git. Sin wiring,
+  dependencia, package manager, voice-host productivo o promoción.
+- Decisión y protocolo: `docs/engineer/human-corpus-voice-host-isa-181.md`;
+  evidencia agregada: `docs/evidence/isa-181/`. Review independiente sin
+  hallazgos P0/P1/P2 ni P3 razonables abiertos; no iniciar ENG-11 todavía.
+
+Nota ISA-180 / ENG-09 (2026-08-02, In Review):
+- Gate offline de TTS/STT ejecutado sin cableado productivo. La pila medida
+  `kokoro-onnx 0.5.0` funciona en `en/es/it/pt-BR`, pero tarda 4,0–5,3 s por
+  frase corta en Ryzen 7 3700X y su G2P instala componentes GPL. DirectML falla
+  en int8 y fp16 sobre RX 7800 XT. Resultado: NO-GO para voz dinámica y bundle
+  propietario; ENG-08 conserva visual/subtítulos/radio como fallback.
+- `whisper.cpp v1.9.1` + Whisper tiny multilingual supera licencia y rendimiento
+  preliminar: ~0,60 s, ~173–176 MB, cancelable como worker aislado. Inglés da
+  0 WER sintético; `es/it/pt-BR` no superan gate lingüístico. Resultado: GO
+  técnico condicionado, no release.
+- Los probes son tooling no productivo, no leen micrófono y no versionan
+  modelos, voces, WAV, venv ni ejecutables. Contrato, licencias, threat model,
+  hashes y microcorte siguiente: `docs/engineer/tts-stt-selection-isa-180.md` y
+  `docs/engineer/tts-stt-benchmark-isa-180.md`.
+- Review independiente final `ACCEPT`, sin P0/P1/P2/P3 razonables abiertos. La
+  PR permanece draft y la cadena no se promociona. ENG-10 no se inicia todavía.
+
+Nota ISA-178 / ENG-08 (2026-08-02, In Review):
+- `engineer-radio` es un único tipo funcional registrado en TypeScript y en el
+  contrato persistente Go. Guardar, cargar, exportar e importar conservan el
+  widget sin duplicarlo. Solo Vantare Crystal aporta su renderer.
+- Radio y subtítulos son dos salidas visuales independientes que comparten el
+  mismo ViewModel puro. Pueden coexistir; los subtítulos se activan de forma
+  global y no requieren añadir el widget al layout. Sin presentación real,
+  Desktop/OBS no inventan contenido; Studio usa una preview marcada. ENG-08
+  conserva esta preferencia solo durante el runtime y la reinicia habilitada;
+  la persistencia queda para el contrato central de Ajustes.
+- Go es la autoridad de routing `audio|visual|both|disabled` por las seis
+  familias aprobadas. `disabled` se aplica antes del scheduler, ACK, cooldown y
+  preempción y cancela solo la salida activa de esa familia.
+- Wails y SSE consumen un único stream ordenado por `generation+sequence`; tras
+  una reconexión rechazan status/presentation hasta que el snapshot autoritativo
+  establece el nuevo cursor. Así rehidratan el activo exacto o vacío y ningún
+  mensaje tardío de una generación anterior puede reaparecer.
+- Harness determinista: 12 comparaciones root-only contra baselines fijos para
+  cuatro locales, tres fondos y tres tamaños, sin máscaras ni overflow.
+- Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,
+  canvas, inspector, shell, TTS/STT/PTT, dependencias nuevas, merge o promoción.
+
+Nota ISA-177 / ENG-07 (2026-08-02, In Review):
+- `internal/engineer/presentation` es la autoridad pura y versionada para los
+  20 intents aprobados por ENG-05 en `es`, `en`, `it` y `pt-BR`.
+- Rol, canal y severidad se derivan de la decisión admitida. Texto visual y
+  futuro audio comparten una sola presentación; ningún raw key es fallback.
+- Resolver o locale inválidos fallan antes del ACK `started`, sin notificación
+  ni audio. La penalización permanece neutral y no inventa su tipo.
+- Español es el locale productivo predeterminado y la configuración queda
+  validada e inmutable mientras el servicio está activo.
+- Wails y SSE reciben exactamente el mismo objeto observable. El lookup de
+  audio cache-only usa texto de voz y el locale tipado de Presentation. Caché
+  canónica y fallback legacy solo consultan ese idioma; un `AudioConfig`
+  divergente produce visual-only y nunca audio cruzado. `all_clear` español es
+  «Todo libre», sin afirmar que toda la pista está libre.
+- Contrato: `docs/engineer/presentation-contract.md`. Corrección de review:
+  focal x20, fuzz 2,24 M, benchmarks, Engineer, Server, Telemetry y Go global
+  serial pasan. Vet focal
+  pasa; vet global conserva tres warnings Win32 heredados. Race no está
+  disponible con `CGO_ENABLED=0`. Sin frontend, TTS/STT, nuevos intents,
+  Telemetry Core, merge o promoción.
+
+Nota ISA-167 / ENG-06 (2026-08-02, WIP):
+- `EngineerService` conserva un solo runtime productivo y una sola policy sobre
+  la observación canónica. No se añade fuente, reader, parser o runtime.
+- El contrato `internal/engineer/delivery` exige ACK `queued`, `started` y un
+  terminal; revalida antes de `started` y expone solo métricas sanitizadas.
+- Spotter P0 cancela audio Engineer no crítico activo; nunca ocurre al revés.
+  Stop, source loss y lifecycle cancelan y unen la entrega.
+- El contexto de clears y los cooldowns avanzan únicamente tras ACK de inicio,
+  no al seleccionar una decisión. Replay v2 separa decision, dispatch y start.
+- Health separa contadores de policy, delivery y backpressure sin exponer IDs,
+  mensajes, telemetría, rutas o identidad; decision-a-start parte del instante
+  real de selección, no del timestamp de captura.
+- La composición real instala el player cancelable existente y un router
+  cache-only sin engine TTS sobre la caché canónica hash de Kokoro. Cada lookup
+  respeta contexto y un límite de 100 ms; miss/error conserva la entrega visual
+  sin síntesis en el hot path.
+- Replay v2 prueba disconnect/reconnect: cancela el trabajo anterior, guarda
+  el borde `epoch`/identidad/`sequence` y rechaza snapshots iguales o
+  anteriores antes de reanudar con uno estrictamente posterior. Un incremento
+  de `ReconnectAttempt` crea el mismo borde aunque el status siga en `live`.
+  Replay solo libera el borde después de aceptar cursor e identidad/lifecycle;
+  un cursor posterior con contexto inválido no lo consume. El benchmark
+  completo atraviesa `productDeliveryPort -> ResolveCached -> PlayContext` y
+  detiene el tiempo al inicio real de `PlayContext` bajo presión concurrente y
+  preempción.
+- Contrato vivo: `docs/engineer/delivery-runtime.md`. Corrección final WIP
+  comprobada con service/replay x10 y benchmark productivo 20x (65.310 ns/op);
+  race no ejecutable con `CGO_ENABLED=0`, Go global sin concluir en 124 s y vet
+  global con tres avisos Win32 heredados. Pendiente de re-review, sin commit,
+  push, merge o promoción.
+
+Nota ISA-158 / ENG-05 (2026-08-01):
+- Policy y scheduler determinista implementados de forma síncrona y acotada en
+  `internal/engineer/messagepolicy/`; contratos v1: Candidate, Decision,
+  PolicyOutcome y SchedulerState, con reloj y evidencia inyectados.
+- Admisión y emisión revalidan versión, epoch, identidad, fuente, freshness,
+  capabilities, prioridad, TTL y el claim semántico contra la observación más
+  reciente. `Cancel` invalida la evidencia hasta recibir otra observación.
+  Spotter P0 cancela pendientes inferiores; dedupe, coalescing, cooldown, cola,
+  identidades y diagnósticos tienen límites duros.
+- Spotter conserva prioridad absoluta. El resto de prioridades tiene un burst
+  máximo determinista para impedir starvation sin debilitar mensajes críticos.
+- La re-review detectó y corrigió presión P0 con capacidad uno: pendientes
+  invalidados se podan antes de competir por cola, por lo que el estado Spotter
+  vigente reemplaza siempre al obsoleto con diagnósticos deterministas.
+- Una segunda re-review detectó estados compatibles con distinto valor
+  informativo (`left/right -> three_wide`). Una tabla tipada y exclusiva de
+  Spotter hace supersession del aviso menos específico, impide el reemplazo
+  inverso sin cambio de evidencia y cubre la matriz completa con capacidad uno
+  y mayor que uno.
+- Una tercera re-review cerró el contexto delivery-aware de los clears
+  parciales. `clear_left/right` solo conserva su forma contextual si un
+  antecedente autosuficiente compatible ya fue devuelto por `Next` dentro de
+  la misma generación de ocupación. Un pendiente, `still_there` o un lateral
+  parcial de `three_wide` no cuentan. Sin contexto, el scheduler sustituye el
+  clear por el estado autosuficiente derivado de Evidence; expiración,
+  cancelación y otra transición eliminan el permiso. La condición se revalida
+  también inmediatamente antes de `Next`, por lo que un clear ya encolado no
+  puede cruzar una generación posterior. El registro significa `dispatched`
+  al transporte siguiente, todavía no confirmación audible.
+- Una cuarta re-review cerró lifecycle y caducidad del contexto Spotter. Los
+  boundaries válidos resetean delivery state antes de observar el nuevo estado
+  en la misma llamada; una identidad inválida falla cerrada. Cada antecedente
+  conserva su `ExpiresAtMS`: justo antes autoriza el clear, en el límite o
+  después se sustituye por estado autosuficiente. `still_there` no renueva el
+  contexto, y una decisión expirada/cancelada antes de `Next` nunca lo crea.
+- ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
+  únicamente entry/exit. El contador genérico de sanción se convierte a
+  `penalties.count_increased` y nunca afirma drive-through.
+- Golden v1 actualizado deliberadamente; tests de tabla, invariantes,
+  invalidación semántica, presión/starvation, ownership, lifecycle, fuzz, soak
+  virtual, benchmark saturado, Engineer y race focal pasan. El gate Go global
+  también pasa; el test real de discovery de Launcher es deuda heredada lenta,
+  no un bloqueo de ENG-05. Contrato:
+  `docs/engineer/message-policy-scheduler.md`.
+- No hay audio/TTS/STT, UI, Wails/SSE, wiring productivo, nueva capability,
+  dependencia, migración, merge o promoción. Pendiente: re-review independiente
+  después de publicar la corrección en la misma rama y PR draft.
+
+Nota ISA-133 / ENG-04 (2026-08-01):
+- Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios
+  Engineer/Spotter. Consume exclusivamente `ObservationSnapshotV1` y
+  `FactEnvelopeV1`, usa reloj virtual y produce resultados versionados con
+  motivos explícitos.
+- La matriz 21/21 permanece fail-closed: seis familias acotadas y quince
+  parciales/deshabilitadas. Incluso dentro de una familia aprobada, una salida
+  legacy no demostrada se marca `decision_not_approved`.
+- Hallazgo para ENG-05: pits solo autoriza entry/exit; box-now, limitador,
+  ventana y tráfico no están demostrados. El contador genérico de sanción no
+  permite afirmar drive-through.
+- Golden v1, fixtures sintéticas, límites y regresiones de epoch, identidad,
+  freshness, capabilities, hechos y versiones quedan en
+  `internal/engineer/replayoracle/`. Contrato y rollback:
+  `docs/engineer/replay-oracle.md`.
+- La re-review endurece tres fronteras: suma checked y headroom para deadlines,
+  máximo canónico de 104 vehículos antes del adapter y `session.started` como
+  cancelación de lifecycle incluso sin snapshot posterior.
+- Evidencia fresca: oracle x50, regresión ENG-03 x20, Engineer, Telemetry, Go
+  global serial, race focal x10, build de embed y aislamiento de producto PASS.
+  El vet focal pasa; el amplio conserva dos warnings Win32 heredados fuera del
+  diff. La ejecución global paralela reprodujo la contención Settings conocida
+  y la repetición serial pasó.
+- Re-review independiente final: `ACCEPT`, P0/P1/P2/P3 = 0.
+- No hay wiring, audio, UI, fuente de telemetría, dependencia, merge o
+  promoción. Siguiente corte tras review: ENG-05 policy/scheduler.
+
 Nota ISA-117 / TC-09F (2026-08-01):
 - Telemetry Core queda técnicamente cerrado sobre ISA-87 `4233c9f`: una sola
   adquisición LMU, un runtime canónico y proyecciones separadas por producto.

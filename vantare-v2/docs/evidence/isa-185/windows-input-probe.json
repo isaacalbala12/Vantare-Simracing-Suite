@@ -1,0 +1,41 @@
+{
+  "schema_version": "engineer.ptt.windows-probe.v1",
+  "captured_at": "2026-08-02",
+  "platform": "windows",
+  "capture": "read-only, no microphone, no STT",
+  "results": [
+    {
+      "device_kind": "keyboard",
+      "device_id": "keyboard-0",
+      "control": "f24",
+      "connected": true,
+      "pressed": false,
+      "focused": true
+    },
+    {
+      "device_kind": "gamepad",
+      "device_id": "xinput-0..3",
+      "control": "a",
+      "connected": false,
+      "pressed": false,
+      "focused": true
+    },
+    {
+      "device_kind": "hid",
+      "device_id": "joy-0",
+      "control": "button-1",
+      "connected": true,
+      "pressed": false,
+      "focused": true
+    },
+    {
+      "device_kind": "hid",
+      "device_id": "joy-1",
+      "control": "button-1",
+      "connected": false,
+      "pressed": false,
+      "focused": true
+    }
+  ],
+  "interpretation": "Keyboard and joy-0 native calls succeeded. XInput slots and joy-1 were queried successfully and reported absent. No button actuation was performed during this automated probe."
+}

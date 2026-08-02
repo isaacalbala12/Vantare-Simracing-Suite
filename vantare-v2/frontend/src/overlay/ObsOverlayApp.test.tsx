@@ -96,6 +96,7 @@ describe("ObsOverlayApp", () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
       "/telemetry/overlay/projection",
+      "/engineer/stream",
     ]);
     expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
   });

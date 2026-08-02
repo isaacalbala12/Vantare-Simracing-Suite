@@ -3,6 +3,7 @@
 package audio
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os/exec"
@@ -16,9 +17,6 @@ import (
 // maxPlaybackDuration is the maximum time a single playback can take
 // before it's killed. Spotter phrases are 1-3 seconds; 8s gives margin.
 const maxPlaybackDuration = 8 * time.Second
-
-// killTimeout is how long we wait after killing a process before giving up.
-const killTimeout = 2 * time.Second
 
 // Player plays audio files on Windows using WPF MediaPlayer via a
 // PowerShell subprocess. Play() blocks until the audio finishes or
@@ -85,6 +83,16 @@ func encodeUTF16LE(s string) []byte {
 // the previous playback first. Returns an error if the file cannot
 // be played or the process times out.
 func (p *Player) Play(path string) error {
+	return p.PlayContext(context.Background(), path)
+}
+
+// PlayContext plays one file and stops the child process when the caller
+// cancels. It performs no detached wait goroutine; the caller owns the
+// lifecycle and joins this blocking call.
+func (p *Player) PlayContext(ctx context.Context, path string) error {
+	playCtx, cancel := context.WithTimeout(ctx, maxPlaybackDuration)
+	defer cancel()
+
 	p.mu.Lock()
 
 	// Stop any currently playing audio.
@@ -103,7 +111,7 @@ func (p *Player) Play(path string) error {
 	psScript := buildPSScript(escapePSQuote(absPath))
 	encoded := encodePSCommand(psScript)
 
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded)
+	cmd := exec.CommandContext(playCtx, "powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded)
 	// Do NOT set cmd.Stderr — it creates a pipe that blocks cmd.Wait()
 	// after Kill(). We rely on the exit code for error detection.
 
@@ -114,34 +122,19 @@ func (p *Player) Play(path string) error {
 	p.current = cmd
 	p.mu.Unlock()
 
-	// Wait for playback with timeout.
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	select {
-	case err := <-done:
-		p.mu.Lock()
+	err = cmd.Wait()
+	p.mu.Lock()
+	if p.current == cmd {
 		p.current = nil
-		p.mu.Unlock()
-		if err != nil {
-			return fmt.Errorf("audio: playback error: %w", err)
-		}
-		return nil
-	case <-time.After(maxPlaybackDuration):
-		// Timeout — kill the process and wait briefly.
-		_ = cmd.Process.Kill()
-		select {
-		case <-done:
-		case <-time.After(killTimeout):
-			// Process won't die — abandon it.
-		}
-		p.mu.Lock()
-		p.current = nil
-		p.mu.Unlock()
-		return fmt.Errorf("audio: playback timed out after %v", maxPlaybackDuration)
 	}
+	p.mu.Unlock()
+	if playCtx.Err() != nil {
+		return fmt.Errorf("audio: playback cancelled: %w", playCtx.Err())
+	}
+	if err != nil {
+		return fmt.Errorf("audio: playback error: %w", err)
+	}
+	return nil
 }
 
 // Stop kills any currently playing audio process.
@@ -155,16 +148,6 @@ func (p *Player) Stop() {
 func (p *Player) stopLocked() {
 	if p.current != nil && p.current.Process != nil {
 		_ = p.current.Process.Kill()
-		// Wait briefly for the process to die — don't block forever.
-		done := make(chan struct{})
-		go func() {
-			_ = p.current.Wait()
-			close(done)
-		}()
-		select {
-		case <-done:
-		case <-time.After(killTimeout):
-		}
 	}
 	p.current = nil
 }

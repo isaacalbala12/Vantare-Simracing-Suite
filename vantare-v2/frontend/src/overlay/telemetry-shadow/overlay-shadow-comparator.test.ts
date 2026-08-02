@@ -176,11 +176,11 @@ function resultFor(
 }
 
 describe("overlay shadow comparator policies", () => {
-  it("covers exactly the 18 registered widget types", () => {
+  it("covers every registered widget type", () => {
     const registered = widgetTypeRegistry.list().map((definition) => definition.type).sort();
     const policyTypes = Object.keys(OVERLAY_SHADOW_POLICIES).sort();
 
-    expect(registered).toHaveLength(18);
+    expect(registered).toHaveLength(19);
     expect(policyTypes).toEqual(registered);
     expect(OVERLAY_SHADOW_POLICIES.pedals.coverage).toBe("exact");
     expect(OVERLAY_SHADOW_POLICIES["race-schedule"].coverage).toBe("external");
@@ -196,7 +196,7 @@ describe("overlay shadow comparator policies", () => {
       exact: 2,
       partial: 10,
       "not-comparable": 5,
-      external: 1,
+      external: 2,
     });
     for (const [type, policy] of Object.entries(OVERLAY_SHADOW_POLICIES)) {
       expect(policy.widgetType).toBe(type);
@@ -225,11 +225,11 @@ describe("overlay shadow comparator policies", () => {
       widgets: [...widgets].reverse(),
     });
 
-    expect(report.widgets).toHaveLength(18);
+    expect(report.widgets).toHaveLength(19);
     expect(report.widgets.map((entry) => entry.widgetType)).toEqual(
       [...report.widgets.map((entry) => entry.widgetType)].sort(),
     );
-    expect(report.summary.widgets).toBe(18);
+    expect(report.summary.widgets).toBe(19);
     expect(report.widgets.find((entry) => entry.widgetType === "race-schedule")?.entries)
       .toContainEqual(expect.objectContaining({ classification: "external-consumer" }));
     for (const entry of report.widgets) {

@@ -35,6 +35,9 @@ func (b *EngineerBridge) Start() {
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:status:get", func(event *application.CustomEvent) {
 		b.emitter.Emit("engineer:status", b.service.Status())
 	}))
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:stream:get", func(event *application.CustomEvent) {
+		b.emitter.Emit("engineer:stream", b.service.StreamSnapshot())
+	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:enabled:set", func(event *application.CustomEvent) {
 		enabled, err := parseBoolData(event.Data, "enabled")
@@ -71,6 +74,31 @@ func (b *EngineerBridge) Start() {
 		if err := b.service.SetSensitivity(sensitivity); err != nil {
 			log.Printf("EngineerBridge: error setting sensitivity: %v", err)
 		}
+	}))
+
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:output:set", func(event *application.CustomEvent) {
+		category, err := parseStringData(event.Data, "category")
+		if err != nil {
+			log.Printf("EngineerBridge: error parsing output category: %v", err)
+			return
+		}
+		mode, err := parseStringData(event.Data, "mode")
+		if err != nil {
+			log.Printf("EngineerBridge: error parsing output mode: %v", err)
+			return
+		}
+		if err := b.service.SetOutputMode(category, mode); err != nil {
+			log.Printf("EngineerBridge: error setting output mode: %v", err)
+		}
+	}))
+
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:subtitles:set", func(event *application.CustomEvent) {
+		enabled, err := parseBoolData(event.Data, "enabled")
+		if err != nil {
+			log.Printf("EngineerBridge: error parsing subtitles data: %v", err)
+			return
+		}
+		b.service.SetSubtitlesEnabled(enabled)
 	}))
 
 	b.mu.Lock()

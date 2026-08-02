@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-177",
+  "type": "feature",
+  "summary": "Engineer unifica sus mensajes visuales y de voz en español, inglés, italiano y portugués brasileño.",
+  "technicalNotes": [
+    "Los 20 avisos aprobados utilizan un catálogo cerrado y versionado con el mismo contenido observable en Wails y SSE.",
+    "Los mensajes inválidos se rechazan antes de mostrarse o iniciar audio y nunca exponen claves internas como texto.",
+    "Spotter y Engineer conservan roles, canales, prioridad y caducidad independientes del idioma seleccionado.",
+    "La caché de audio nunca utiliza una voz o un archivo de otro idioma: si no existe coincidencia exacta, el aviso permanece únicamente visual."
+  ],
+  "testing": [
+    "Cambiar el locale antes de iniciar Engineer y comprobar mensajes en los cuatro idiomas.",
+    "Confirmar que Spotter aparece como Spotter y los avisos informativos como Engineer.",
+    "Comprobar que una penalización solo informa de una sanción pendiente sin inventar su tipo."
+  ],
+  "knownLimitations": [
+    "Este corte prepara texto para voz, pero no añade síntesis TTS, selector visual de idioma, subtítulos ni widget de radio."
+  ]
+}

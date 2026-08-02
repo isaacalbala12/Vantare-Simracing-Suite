@@ -56,10 +56,20 @@ describe("official-designs", () => {
       .sort();
     const actualIds = listOfficialDesigns()
       .filter((design) => design.systemId === "vantare-crystal")
+      .filter((design) => design.id !== "engineer-radio-crystal")
       .map((design) => design.id)
       .sort();
 
     expect(actualIds).toEqual(expectedIds);
+  });
+
+  it("registers Engineer radio as its own functional widget outside the HTML reference manifest", () => {
+    expect(getOfficialDesign("engineer-radio-crystal")).toMatchObject({
+      widgetType: "engineer-radio",
+      systemId: "vantare-crystal",
+      origin: "vantare",
+      isDefault: true,
+    });
   });
 
   it("uses manifest-compatible visual defaults for every official design", () => {
@@ -80,10 +90,11 @@ describe("official-designs", () => {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }
-    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => [
-      `${definition.type}:vantare-crystal`,
-      `${definition.type}:vantare-original`,
-    ]);
+    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) =>
+      definition.type === "engineer-radio"
+        ? [`${definition.type}:vantare-crystal`]
+        : [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`],
+    );
     expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 

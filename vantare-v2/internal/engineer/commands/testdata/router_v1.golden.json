@@ -1,0 +1,51 @@
+{
+  "schema_version": "engineer.dialogue.v1",
+  "turns": [
+    {
+      "schema_version": "engineer.dialogue.v1",
+      "at_ms": 1000,
+      "outcome": "query_answered",
+      "intent_id": "query.fuel",
+      "response_key": "response.fuel",
+      "values": {
+        "litres": "42"
+      }
+    },
+    {
+      "schema_version": "engineer.dialogue.v1",
+      "at_ms": 1100,
+      "outcome": "action_proposed",
+      "intent_id": "action.pit.request",
+      "response_key": "response.pit_request.readback",
+      "requires_confirmation": true,
+      "proposal_id": "proposal-1"
+    },
+    {
+      "schema_version": "engineer.dialogue.v1",
+      "at_ms": 1200,
+      "outcome": "action_applied",
+      "intent_id": "action.pit.request",
+      "response_key": "response.pit_request",
+      "values": {
+        "result": "accepted"
+      },
+      "proposal_id": "proposal-1"
+    },
+    {
+      "schema_version": "engineer.dialogue.v1",
+      "at_ms": 1300,
+      "outcome": "query_answered",
+      "intent_id": "query.position",
+      "response_key": "response.position",
+      "values": {
+        "position": "3"
+      }
+    },
+    {
+      "schema_version": "engineer.dialogue.v1",
+      "at_ms": 1400,
+      "outcome": "unknown",
+      "reason": "unknown_utterance"
+    }
+  ]
+}

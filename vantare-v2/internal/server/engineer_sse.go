@@ -25,8 +25,11 @@ func (s *Server) handleEngineerSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	ch, unsubscribe := s.engineerSvc.Subscribe()
+	ch, unsubscribe := s.engineerSvc.SubscribeStream()
 	defer unsubscribe()
+	// Commit the stream immediately. Clients must not depend on a future
+	// Engineer message merely to finish the HTTP handshake.
+	flusher.Flush()
 
 	keepAlive := time.NewTicker(15 * time.Second)
 	defer keepAlive.Stop()
@@ -40,16 +43,16 @@ func (s *Server) handleEngineerSSE(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			flusher.Flush()
-		case notif, ok := <-ch:
+		case event, ok := <-ch:
 			if !ok {
 				return
 			}
-			data, err := json.Marshal(notif)
+			data, err := json.Marshal(event)
 			if err != nil {
 				log.Printf("Engineer SSE marshal error: %v", err)
 				continue
 			}
-			if _, err := fmt.Fprintf(w, "event: engineer-notification\ndata: %s\n\n", data); err != nil {
+			if _, err := fmt.Fprintf(w, "event: engineer-stream\ndata: %s\n\n", data); err != nil {
 				return
 			}
 			flusher.Flush()

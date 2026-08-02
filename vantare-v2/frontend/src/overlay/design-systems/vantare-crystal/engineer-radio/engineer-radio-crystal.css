@@ -1,0 +1,103 @@
+.vc-engineer-radio {
+  --radio-accent: #f4f4f5;
+  --radio-glow: rgba(255, 255, 255, 0.14);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 15px 18px 14px 22px;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(18, 20, 25, 0.78), rgba(5, 6, 9, 0.62));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 12px 34px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(14px) saturate(118%);
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+.vc-engineer-radio--warning { --radio-accent: #f5c542; --radio-glow: rgba(245, 197, 66, 0.2); }
+.vc-engineer-radio--critical { --radio-accent: #ff3347; --radio-glow: rgba(255, 51, 71, 0.24); }
+
+.vc-engineer-radio__rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--radio-accent);
+  box-shadow: 0 0 18px var(--radio-glow);
+}
+
+.vc-engineer-radio__header {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  margin-bottom: 9px;
+}
+
+.vc-engineer-radio__signal {
+  display: inline-flex;
+  align-items: end;
+  gap: 2px;
+  width: 13px;
+  height: 10px;
+  color: var(--radio-accent);
+}
+.vc-engineer-radio__signal i { display: block; width: 2px; border-radius: 2px; background: currentColor; }
+.vc-engineer-radio__signal i:nth-child(1) { height: 4px; }
+.vc-engineer-radio__signal i:nth-child(2) { height: 8px; }
+.vc-engineer-radio__signal i:nth-child(3) { height: 6px; }
+
+.vc-engineer-radio__speaker {
+  color: var(--radio-accent);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.vc-engineer-radio__category {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.48);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vc-engineer-radio__message {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: clamp(13px, 4.2cqw, 17px);
+  font-weight: 720;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+
+.vc-engineer-radio__preview {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  color: rgba(255, 255, 255, 0.34);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vc-engineer-radio__signal i { animation: vc-radio-level 900ms ease-in-out infinite alternate; }
+  .vc-engineer-radio__signal i:nth-child(2) { animation-delay: -300ms; }
+  .vc-engineer-radio__signal i:nth-child(3) { animation-delay: -600ms; }
+}
+
+@keyframes vc-radio-level { to { transform: scaleY(0.45); opacity: 0.55; } }

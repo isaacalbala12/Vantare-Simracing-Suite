@@ -539,9 +539,32 @@ describe("HubApp gate (production)", () => {
       expect(screen.getByTestId("topbar-nav-launcher")).toBeTruthy();
       expect(screen.getByTestId("topbar-nav-calendar")).toBeTruthy();
       expect(screen.getByTestId("topbar-nav-engineer")).toBeTruthy();
+      expect(screen.getByTestId("topbar-nav-strategy")).toBeTruthy();
       expect(screen.getByTestId("topbar-nav-telemetry")).toBeTruthy();
       expect(screen.getByTestId("topbar-nav-roadmap")).toBeTruthy();
       expect(screen.getByTestId("topbar-nav-setup")).toBeTruthy();
+    });
+  });
+
+  it("renders Strategy Planner when the Strategy section is selected", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    fireEvent.click(await waitFor(() => screen.getByTestId("topbar-nav-strategy")));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Mis planes" })).toBeTruthy();
+      expect(screen.getByText("Workspace local · sin conexión live")).toBeTruthy();
     });
   });
 

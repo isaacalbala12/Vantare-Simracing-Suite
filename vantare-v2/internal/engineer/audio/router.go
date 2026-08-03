@@ -3,10 +3,13 @@
 package audio
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 
+	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/tts"
 )
 
@@ -19,7 +22,18 @@ import (
 type AudioRouter struct {
 	config   atomic.Value // stores *AudioConfig
 	engine   *tts.Engine
+	cache    *tts.Cache
 	cacheDir string
+}
+
+// PresentationRequest is the complete audio lookup key derived from one
+// already validated canonical presentation. Locale is authoritative: channel
+// configuration may choose a voice only when it belongs to this exact locale.
+type PresentationRequest struct {
+	Locale       presentation.Locale
+	VoiceText    string
+	Channel      Channel
+	LegacyIntent string
 }
 
 // NewAudioRouter builds an AudioRouter. All parameters are optional — nil-safe
@@ -28,6 +42,25 @@ func NewAudioRouter(config *AudioConfig, engine *tts.Engine, cacheDir string) *A
 	r := &AudioRouter{
 		engine:   engine,
 		cacheDir: cacheDir,
+	}
+	if engine != nil {
+		r.cache = engine.Cache()
+	}
+	if config != nil {
+		r.config.Store(config)
+	}
+	return r
+}
+
+// NewCacheOnlyAudioRouter builds a router that can read audio previously
+// prepared by a TTS engine without retaining the engine or invoking a
+// provider. This is the production ENG-06 path.
+func NewCacheOnlyAudioRouter(config *AudioConfig, cache *tts.Cache) *AudioRouter {
+	r := &AudioRouter{cache: cache}
+	if cache != nil {
+		// Preserve compatibility with the older unpacked phrase layout while
+		// making the canonical hashed TTS cache authoritative.
+		r.cacheDir = filepath.Dir(cache.Root())
 	}
 	if config != nil {
 		r.config.Store(config)
@@ -69,6 +102,104 @@ func (r *AudioRouter) Resolve(textKey string, ch Channel) string {
 		return ""
 	}
 	return path
+}
+
+// ResolveCached returns an already prepared audio path without invoking the
+// TTS engine. Product delivery uses this method so cache misses can never put
+// synthesis, downloads or an external process on the latency-critical path.
+//
+// The caches are local and the only I/O is bounded metadata lookup. The
+// context is checked between lookups so lifecycle cancellation is observed
+// before playback can start.
+func (r *AudioRouter) ResolveCached(ctx context.Context, textKey string, ch Channel) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if r == nil {
+		return "", nil
+	}
+	cfg := r.config.Load()
+	if cfg == nil {
+		return "", nil
+	}
+	ac := cfg.(*AudioConfig)
+	if textKey == "" {
+		return "", nil
+	}
+	lang, voice := ac.Lang(ch), ac.Voice(ch)
+	if r.cache != nil {
+		key := r.cache.Key(lang, voice, textKey)
+		if path := r.cache.Get(key); path != "" {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return "", ctxErr
+			}
+			return path, nil
+		}
+	}
+	if r.cacheDir == "" {
+		return "", nil
+	}
+	expectedPath := filepath.Join(r.cacheDir, lang, voice, textKey+".mp3")
+	info, err := os.Stat(expectedPath)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return "", ctxErr
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil || info.IsDir() {
+		return "", err
+	}
+	return expectedPath, nil
+}
+
+// ResolvePresentationCached resolves the canonical voice text from ENG-07's
+// hashed cache while preserving read-only compatibility with the historical
+// unpacked intent-key layout. It never synthesizes or downloads audio.
+func (r *AudioRouter) ResolvePresentationCached(ctx context.Context, request PresentationRequest) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if r == nil || request.VoiceText == "" || !request.Locale.Supported() ||
+		(request.Channel != ChannelSpotter && request.Channel != ChannelEngineer) {
+		return "", nil
+	}
+	cfg := r.config.Load()
+	if cfg == nil {
+		return "", nil
+	}
+	ac := cfg.(*AudioConfig)
+	if ac.Lang(request.Channel) != string(request.Locale) {
+		return "", nil
+	}
+	voice := ac.Voice(request.Channel)
+	if voice == "" {
+		return "", nil
+	}
+	if r.cache != nil {
+		key := r.cache.Key(string(request.Locale), voice, request.VoiceText)
+		if path := r.cache.Get(key); path != "" {
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
+			return path, nil
+		}
+	}
+	if r.cacheDir == "" || request.LegacyIntent == "" {
+		return "", nil
+	}
+	legacyPath := filepath.Join(r.cacheDir, string(request.Locale), voice, request.LegacyIntent+".mp3")
+	info, err := os.Stat(legacyPath)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return "", ctxErr
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil || info.IsDir() {
+		return "", err
+	}
+	return legacyPath, nil
 }
 
 // SetConfig atomically swaps the config. Nil-safe: nil receiver or nil config

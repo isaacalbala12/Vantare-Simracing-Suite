@@ -95,14 +95,15 @@ func (c *AudioConfig) Voice(ch Channel) string {
 	}
 }
 
-// Validate checks that all configured languages are supported ("es" or "en").
+// Validate checks that all configured languages are supported by the
+// canonical Engineer presentation contract.
 func (c *AudioConfig) Validate() error {
 	if c == nil {
 		return fmt.Errorf("audio: nil AudioConfig")
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	validLangs := map[string]bool{"es": true, "en": true}
+	validLangs := map[string]bool{"es": true, "en": true, "it": true, "pt-BR": true}
 	if !validLangs[c.spotterLang] {
 		return fmt.Errorf("audio: unsupported spotter language %q", c.spotterLang)
 	}

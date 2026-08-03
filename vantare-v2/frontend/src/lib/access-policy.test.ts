@@ -52,10 +52,11 @@ describe("access-policy", () => {
       expect(canUseFeature(access, "settings.account")).toBe(true);
     });
 
-    it("blocks premium features: overlays.advanced, engineer.ai, telemetry.live, roadmap.feedback", () => {
+    it("blocks premium features: overlays.advanced, engineer.ai, strategy.planner, telemetry.live, roadmap.feedback", () => {
       const access = buildAccessContext({ license: baseLicense() });
       expect(canUseFeature(access, "overlays.advanced")).toBe(false);
       expect(canUseFeature(access, "engineer.ai")).toBe(false);
+      expect(canUseFeature(access, "strategy.planner")).toBe(false);
       expect(canUseFeature(access, "telemetry.live")).toBe(false);
       expect(canUseFeature(access, "roadmap.feedback")).toBe(false);
     });
@@ -66,8 +67,9 @@ describe("access-policy", () => {
       license: baseLicense({ state: "active", entitlements: ["overlays"] }),
     });
 
-    it("grants overlays.advanced, telemetry.live, calendar.followReminders, roadmap.feedback", () => {
+    it("grants overlays.advanced, strategy.planner, telemetry.live, calendar.followReminders, roadmap.feedback", () => {
       expect(canUseFeature(access, "overlays.advanced")).toBe(true);
+      expect(canUseFeature(access, "strategy.planner")).toBe(true);
       expect(canUseFeature(access, "telemetry.live")).toBe(true);
       expect(canUseFeature(access, "calendar.followReminders")).toBe(true);
       expect(canUseFeature(access, "roadmap.feedback")).toBe(true);
@@ -83,8 +85,9 @@ describe("access-policy", () => {
       license: baseLicense({ state: "active", entitlements: ["engineer"] }),
     });
 
-    it("grants engineer.ai, telemetry.live, calendar.followReminders, roadmap.feedback", () => {
+    it("grants engineer.ai, strategy.planner, telemetry.live, calendar.followReminders, roadmap.feedback", () => {
       expect(canUseFeature(access, "engineer.ai")).toBe(true);
+      expect(canUseFeature(access, "strategy.planner")).toBe(true);
       expect(canUseFeature(access, "telemetry.live")).toBe(true);
       expect(canUseFeature(access, "calendar.followReminders")).toBe(true);
       expect(canUseFeature(access, "roadmap.feedback")).toBe(true);
@@ -104,6 +107,7 @@ describe("access-policy", () => {
     it("grants all premium features", () => {
       expect(canUseFeature(access, "overlays.advanced")).toBe(true);
       expect(canUseFeature(access, "engineer.ai")).toBe(true);
+      expect(canUseFeature(access, "strategy.planner")).toBe(true);
       expect(canUseFeature(access, "telemetry.live")).toBe(true);
       expect(canUseFeature(access, "calendar.followReminders")).toBe(true);
       expect(canUseFeature(access, "roadmap.feedback")).toBe(true);
@@ -118,6 +122,7 @@ describe("access-policy", () => {
       });
       expect(canUseFeature(access, "overlays.advanced")).toBe(true);
       expect(canUseFeature(access, "engineer.ai")).toBe(true);
+      expect(canUseFeature(access, "strategy.planner")).toBe(true);
       expect(canUseFeature(access, "telemetry.live")).toBe(true);
       expect(canUseFeature(access, "calendar.followReminders")).toBe(true);
       expect(canUseFeature(access, "roadmap.feedback")).toBe(true);
@@ -194,9 +199,10 @@ describe("access-policy", () => {
       expect(canSeeSection(access, "settings")).toBe(true);
     });
 
-    it("blocks engineer and telemetry sections for free users", () => {
+    it("blocks engineer, strategy and telemetry sections for free users", () => {
       const access = buildAccessContext({ license: baseLicense() });
       expect(canSeeSection(access, "engineer")).toBe(false);
+      expect(canSeeSection(access, "strategy")).toBe(false);
       expect(canSeeSection(access, "telemetry")).toBe(false);
     });
 
@@ -206,6 +212,7 @@ describe("access-policy", () => {
         roles: ["tester"],
       });
       expect(canSeeSection(access, "engineer")).toBe(true);
+      expect(canSeeSection(access, "strategy")).toBe(true);
       expect(canSeeSection(access, "telemetry")).toBe(true);
     });
   });

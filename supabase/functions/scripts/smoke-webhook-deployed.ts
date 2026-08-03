@@ -65,15 +65,22 @@ async function main() {
 
   console.log("1) order.paid launch_lifetime");
   const evtLifetime = `smoke_lifetime_${suffix}`;
-  const lifetimeRes = await postSignedEvent(secret, evtLifetime, {
+  const lifetimePayload = {
     type: "order.paid",
     data: {
+      id: `order_smoke_${suffix}`,
+      modified_at: new Date().toISOString(),
       product_id: LAUNCH_PRODUCT,
       external_customer_id: USER_ID,
       customer_id: "polar_smoke_cus",
-      customer: { email: "fase16.smoke.test@gmail.com" },
+      customer: { email: "billing-smoke@example.invalid" },
     },
-  });
+  };
+  const lifetimeRes = await postSignedEvent(
+    secret,
+    evtLifetime,
+    lifetimePayload,
+  );
   console.log("   HTTP", lifetimeRes.status, lifetimeRes.json);
 
   const { data: entAfterLifetime, error: entErr } = await supabase
@@ -93,22 +100,18 @@ async function main() {
   console.log("   license_event:", licLifetime);
 
   console.log("2) idempotency duplicate");
-  const dupRes = await postSignedEvent(secret, evtLifetime, {
-    type: "order.paid",
-    data: {
-      product_id: LAUNCH_PRODUCT,
-      external_customer_id: USER_ID,
-    },
-  });
+  const dupRes = await postSignedEvent(secret, evtLifetime, lifetimePayload);
   console.log("   HTTP", dupRes.status, dupRes.json);
 
   console.log("3) subscription.active pro_monthly");
   const evtMonthly = `smoke_monthly_${suffix}`;
-  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString();
   const monthlyRes = await postSignedEvent(secret, evtMonthly, {
     type: "subscription.active",
     data: {
       id: `sub_smoke_${suffix}`,
+      modified_at: new Date().toISOString(),
       product_id: PRO_PRODUCT,
       external_customer_id: USER_ID,
       status: "active",
@@ -131,16 +134,21 @@ async function main() {
     failures.push("duplicate not idempotent");
   }
   if (monthlyRes.status !== 202) failures.push("monthly not 202");
-  if (!entAfterLifetime?.source || entAfterLifetime.source !== "polar") {
-    failures.push("source not polar");
+  if (
+    !entAfterLifetime?.source ||
+    entAfterLifetime.source !== "billing_projection"
+  ) {
+    failures.push("source not billing_projection");
   }
-  if (entAfterLifetime?.metadata?.lifetime !== true) {
-    failures.push("lifetime metadata false");
+  if (entAfterLifetime?.metadata?.derived !== true) {
+    failures.push("derived metadata false");
   }
   if (entAfterLifetime?.expires_at !== null) {
     failures.push("expires_at not null for lifetime");
   }
-  if (!licLifetime?.idempotency_key) failures.push("license_events missing webhook-id");
+  if (!licLifetime?.idempotency_key) {
+    failures.push("license_events missing webhook-id");
+  }
 
   if (failures.length) {
     console.error("SMOKE FAILED:", failures.join(", "));

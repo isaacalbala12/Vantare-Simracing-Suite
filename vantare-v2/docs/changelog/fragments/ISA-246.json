@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-246",
+  "type": "fix",
+  "summary": "La sesión de cuenta permanece disponible al volver del acceso seguro en el navegador externo.",
+  "technicalNotes": [
+    "El callback OAuth hidrata la sesión temporal del WebView antes de validar la licencia.",
+    "La sesión solo se guarda en el almacén protegido de Windows después de una validación online correcta.",
+    "Un callback inválido no puede eliminar una credencial protegida anterior."
+  ],
+  "testing": [
+    "Iniciar sesión con Google desde el navegador externo y volver a Vantare.",
+    "Abrir Ajustes, Cuenta y pulsar Actualizar estado de licencia sin reiniciar la aplicación.",
+    "Cerrar y volver a abrir Vantare después de una validación correcta para comprobar la restauración de sesión."
+  ],
+  "knownLimitations": [
+    "Los grants legacy continúan bloqueados hasta su clasificación y migración controlada en ISA-247."
+  ]
+}

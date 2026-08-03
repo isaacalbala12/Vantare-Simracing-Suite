@@ -1,3 +1,105 @@
+Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
+- Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
+  originales, payloads, PII ni errores libres.
+- Inbox durable particionado por `sandbox`/`production`; el histórico queda
+  `unclassified` y se excluye de métricas atribuidas en vez de adivinarlo.
+- Snapshot agregado server-only para lag, retry, quarantine, orphan, replay,
+  reconciliación, drift e incoherencia de grants.
+- Alertas deterministas con cooldown de 15 minutos y runbooks con owner,
+  recuperación, rollback y autorización.
+- Sin plataforma/dependencia nueva y sin deploy o mutación remota. Autoridad:
+  `docs/billing/bil-10-observability-runbook.md`.
+- Gates frescos: Deno activo 181/181, type-check y PostgreSQL desechable
+  clean/upgrade/restore PASS, con 20/20 pruebas de observabilidad por ruta.
+- La transición de deploy conserva temporalmente un overload RPC server-only:
+  migración primero, Edge después y retirada posterior solo tras tráfico cero.
+
+Nota ISA-74 / BIL-09 (2026-08-02, matriz lifecycle sandbox):
+- Fixture sintética completa y explícitamente sandbox para Launch, Pro y Pro Plus; Pro incluye trial de siete días con antiabuso confirmado.
+- Matriz versionada para trial, active, renewal, cancel-at-period, uncancel, past_due, unpaid, revoked y estado desconocido fail-closed.
+- Customer State, beneficios, compras múltiples y refunds se ejecutan contra las funciones reales; una segunda pasada converge sin efectos nuevos.
+- Solo fixtures, tests y documentación: ningún endpoint, pago, refund, deploy, secreto o dato productivo. Autoridad: `docs/billing/bil-09-lifecycle-matrix.md`.
+- Gates locales: BIL-09 4/4, Deno activo 177/177, formato, type-check,
+  deploy-surface y `git diff --check` PASS.
+- Estado: review y gates protegidos PASS; promovido mediante PR #101 a
+  `nightly@59d7202444fc278f74cc1964e8993f62a3b7171b`. Venta pública continúa
+  **NO-GO**.
+
+Nota ISA-212 / BIL-N02 (2026-08-02, promoción a `nightly`):
+- BIL-08 reconstruida sobre `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`, que ya contiene BIL-01..BIL-07, Telemetry Core, Engineer, Strategy y Telemetry Analysis.
+- El corte añade envelope Ed25519 versionado ligado a UUID/fingerprint, expiración offline por capability, Launch v1 perpetuo por scope, high-watermark protegido, migración legacy fail-closed y el emisor `license-credential`.
+- `authsession` y licencia comparten una única implementación de Windows Credential Manager mediante `internal/protectedstore`; el cliente solo recibe claves públicas versionadas.
+- La auditoría de recuperación reconstruyó `service_test.go`, que había quedado vacío tras el reinicio, y sustituyó un fixture Deno→Go inválido por uno generado y verificado realmente con WebCrypto.
+- Gates de la composición final: frontend 311/311 archivos y 2.128/2.128 tests, build y lint focal PASS; Deno 173/173, formato, check y deploy-surface PASS; Go focal x20, `vet`, Credential Manager real y `-race` focal PASS. La suite Go global confirma todos los paquetes BIL-08 y conserva un único fallo intermitente heredado en `internal/app.TestConcurrentSavesDontCorruptFile`, reproducido también sobre la base y trazado en ISA-118. La intermitencia heredada del canvas apareció en una primera pasada frontend, no existe diff de canvas y la repetición global final quedó completamente verde.
+- Estado: candidato técnico listo para PR/CI y promoción exclusiva a `nightly`. Sin deploy, secretos, credenciales productivas, pagos, refunds ni mutaciones remotas. Venta pública continúa **NO-GO** y `testers`/`master` no se tocan.
+
+Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
+- Reconstrucción del árbol final BIL-01..BIL-07 sobre
+  `nightly@523840972673c2567cef75240ebe5a768f7742fc`; BIL-08 queda fuera porque
+  continúa sin commit en su worktree aislado.
+- Incluye inbox durable e idempotente, checkout/portal endurecidos, sesión OAuth
+  protegida, reconciliación monotónica, recuperación de pago de 72 horas y ledger
+  atribuible de orders/refunds. No ejecuta deploy, migraciones remotas, pagos,
+  refunds ni cambios productivos en Polar o Supabase.
+- Los conflictos reales se limitan a composition root, servidor OAuth y los dos
+  documentos vivos. La resolución conserva Telemetry Core, Engineer, Strategy,
+  Overlay Projection y sustituye el nonce simple por intentos OAuth ligados a
+  provider/state y consumidos atómicamente.
+- Gates locales acumulativos completos: PostgreSQL desechable (checkout,
+  hardening, upgrades legacy, restore y concurrencia), Deno 164/164, frontend
+  focal 87/87, frontend global 311 archivos/2.128 tests, build y lint focal,
+  Go global, repetición x20 y race detector focal. El deploy surface acepta
+  únicamente `billing-checkout`, `billing-portal` y `billing-webhook`.
+- Estado: preparado para PR y CI de promoción técnica; venta pública continúa
+  **NO-GO**, BIL-08 permanece fuera y `testers`/`master` no se tocan.
+
+Nota ISA-204 / TA-N01 (2026-08-02):
+- Promoción acumulativa TA-01…TA-03C reconstruida sobre
+  `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6` desde el stack técnico
+  aprobado `9c92836b90dacc5d82cc86569954cb11f0cf9460`.
+- El corte incorpora discovery e importación local LMU, contrato histórico,
+  adaptador DuckDB mediante helper fuera de proceso, staging privado,
+  manifest/SBOM/notices y lifecycle Windows. El proceso principal conserva
+  `CGO_ENABLED=0` y no incorpora DuckDB a su grafo.
+- La v1 solo acepta archivos LMU locales descubiertos e indexados. Las
+  importaciones externas o comunitarias siguen bloqueadas por TA-03D; no se
+  presenta Job Object como sandbox ni se modifican archivos originales.
+- Los únicos conflictos de reconstrucción fueron los documentos de estado. Se
+  conservaron las promociones previas de Telemetry Core y Strategy y se actualizó
+  el siguiente paso a TA-04/TA-05.
+- El gate de packaging falló cerrado porque el hash confiado de TA-03C no
+  correspondía a su árbol final. TA-N01 reconstruyó dos veces el helper final,
+  verificó el grafo y las 37 licencias, actualizó la confianza explícitamente y
+  confirmó con una tercera construcción limpia y smoke Windows x64 que el
+  bundle vuelve a ser reproducible y cargable.
+- El primer CI del PR detectó que la regresión DACL comparaba texto SDDL y no
+  identidad de SID: Windows representa cuentas well-known como `LA` en vez del
+  SID numérico. El test enumera ahora las ACE y compara el SID binario exacto;
+  conserva el rechazo de grupos amplios y la exigencia de DACL protegida.
+- Estado: preparado para repetir gates combinados y, si permanecen verdes,
+  validar el lector local con el grupo Nightly/Pro Plus. `testers` y `master`
+  permanecen fuera del alcance.
+
+Nota ISA-202 / STR-N01 (2026-08-02):
+- Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
+  `nightly@1f3bcc825d45b5900eb798cbeedf7dd3ac2d06fa` desde el stack técnico
+  aprobado que culmina en `1dda42ae33f1471847562415316a274a70fb1f74`.
+- El corte ofrece el dominio y contrato `strategy.v1`, persistencia local,
+  servicio de aplicación, cálculo manual Fuel/Virtual Energy, inventario de
+  neumáticos individuales, shell 3/6/3, edición de stints y entradas manuales
+  no destructivas. No incluye todavía solver avanzado, telemetría live ni
+  publicación comunitaria.
+- Los únicos conflictos de reconstrucción fueron documentales. Se conservaron
+  la gobernanza vigente, la promoción previa de Telemetry Core y los follow-ups
+  TC-10A/B; no se modificaron `testers` ni `master`.
+- Gates frescos: Strategy Go PASS; Go global PASS; frontend Strategy 65/65 PASS
+  con concurrencia controlada; frontend global 305 archivos/2.083 tests PASS;
+  build PASS; Playwright visual wide/medium/compact PASS, overflow de documento
+  y errores de navegador en cero; diff-check PASS.
+- Estado: listo para validación funcional y visual del grupo Nightly/Pro Plus.
+  El feedback se corregirá en ramas de issue antes de cualquier promoción a
+  `testers`.
+
 Nota ISA-171 / TC-09G (2026-08-02):
 - Promoción controlada completada desde `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c` hasta `nightly@c5eb3c906bc0f93a747adac13f3efcc9f731f8b9`, con procedencia en el stack aprobado de Telemetry Core `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
 - El primer gate del PR #65 detectó en Windows CI que una ruta 8.3 (`RUNNER~1`) y su ruta larga equivalente eran rechazadas como distintas por comparación textual en raw capture. El segundo gate confirmó ese paquete verde y reveló la misma comparación en la frontera del catálogo Wails. Ambas rutas comparan ahora identidad real con `os.SameFile`, conservan el rechazo de junctions/symlinks y tienen regresiones Windows 8.3. El timeout del spy permanece en 2 s: no se oculta el fallo funcional. Review independiente y reruns posteriores: PASS, P0/P1/P2/P3 = 0.
@@ -24,6 +126,289 @@ Nota OS-07 / ISA-176 (2026-08-02):
 - La selección activa queda asociada al `widgetId` y se normaliza durante el render cuando cambia el widget o desaparece una capability. Ya no depende de un efecto tardío capaz de pisar la interacción del usuario.
 - Se añadió una regresión que selecciona Apariencia en cuanto el rail queda disponible. El inspector pasa 5 ejecuciones focales consecutivas, lint focal y build. El gate del PR y el gate posterior al merge pasan completos sobre `nightly@328c631c356f5e5550f934396bbdd09313c5ef6c`; ISA-176 e ISA-121 están cerradas.
 - Alcance limitado a estado/navegación del inspector y su test. No se modificaron canvas, renderizadores, diseño visual, allowlists, `testers` ni `master`.
+Nota ISA-144 / STR-09 (2026-08-02):
+
+- Entrada rápida y tabla de 78 vueltas usan correcciones no destructivas con
+  valor original, valor efectivo, motivo, fecha y restauración individual.
+- `strategy.manual.v1` conecta frontend, Wails y el dominio Go. Fuel y VE se
+  calculan por separado; tarjetas, fuel-save y boxes consumen una misma
+  respuesta correlacionada.
+- La pérdida configurada es por parada: cuatro stints producen tres paradas.
+  Reparaciones y penalizaciones permanecen extras explícitos. No se publica
+  una cifra de impacto en ritmo sin modelo demostrable.
+- El cálculo anterior desaparece durante una revisión y los inputs rechazados
+  vuelven al valor válido sin ensuciar el documento.
+- Playwright real valida correcciones, rechazo, guardado/recarga,
+  wide/medium/compact, overflow cero y navegador sin errores. Evidencia:
+  `docs/strategy-planner/str-09-manual-inputs.md`.
+- Estado: listo para review independiente; sin merge o promoción.
+  Tras la review continúa ISA-168 / TA-03C; STR-10 sigue bloqueado por ISA-159.
+
+Nota ISA-143 / STR-08 (2026-08-02):
+
+- El workspace de Strategy ya edita stints y neumáticos físicos: crear,
+  insertar, duplicar, borrar, reordenar, DnD, teclado, cancelación, undo/redo,
+  guardado y recarga.
+- `strategy.editor.v1` viaja por STR-04 y se persiste únicamente en STR-03;
+  `cmd/vantare` conecta el bridge productivo. El mock persistente queda limitado
+  al harness.
+- La primera asignación fija FL/FR/RL/RR; quitar un neumático conserva su
+  identidad. Documentos corruptos y cambios de esquina se rechazan.
+- Apertura lazy, reintento real, mensajes sanitizados, timestamps canónicos,
+  snapshot estable y StrictMode están cubiertos por regresión.
+- Focal `48/48`, frontend global `2072/2072`, Go global, build, lint focal y Playwright real pasan. Chrome
+  valida edición, guardado/recarga, responsive y cero errores/overflow.
+  Evidencia: `docs/strategy-planner/str-08-stint-editor.md`.
+- Rama apilada sobre ISA-142 aceptada; sin merge ni promoción. Siguiente corte
+  tras `ACCEPT`: ISA-144 / STR-09.
+
+Nota ISA-142 / STR-07 (2026-08-02):
+
+- Strategy Planner ya está registrado en el topbar, la política de acceso y el
+  `HubApp` reales.
+- Galería, entrada, revisión, workspace 3/6/3, comparación y guardado honesto de
+  sesión están implementados sin solver, telemetría, persistencia ni drag/drop.
+- El demo renderiza cuatro stints que suman 78 vueltas. Tiempo, pits, uso por
+  compuesto y ahorro pertenecen a cada estrategia y no se presentan como sets
+  físicos.
+- El harness autocontenido arranca y termina Vite, recorre el flujo, valida
+  teclado, aislamiento/foco del modal y captura wide/medium/compact con overflow
+  y errores de navegador en cero. Baseline serial `2059/2059`; corrección final
+  focal `7/7`, build y lint focal pasan. Evidencia:
+  `docs/strategy-planner/str-07-shell-visual.md`.
+- Rama apilada sobre `ISA-141@52d2466`; sin merge ni promoción. El siguiente
+  corte solo tras `ACCEPT` es ISA-143 / STR-08.
+
+Nota ISA-141 / STR-06 (2026-08-02):
+- Nuevo dominio puro `internal/strategy/tyres`, apilado sobre STR-05 exacto
+  `2d0af85`, para neumáticos físicos individuales con ID, Soft/Medium/Hard/Wet,
+  condición/procedencia, estado, stints y esquina persistente.
+- La condición nunca colapsa incertidumbre: clasificación sin dato conserva
+  80–90 %, ausencia general conserva 40–70 %, y un estimado no puede declararse
+  exacto. Un valor manual exacto sigue permitido y queda trazado.
+- Antes del primer uso se puede corregir la posición; el primer uso liga el
+  neumático permanentemente a FL/FR/RL/RR. Descartar conserva el historial.
+- Selección determinista de cuatro unidades, mezclas de compuestos permitidas y
+  errores tipados que explican stock total o incompatibilidad por esquina.
+- Operaciones inmutables; sin UI, drag/drop, persistencia, telemetría, editor de
+  stints, solver, wiring ni dependencias. Evidencia:
+  `docs/strategy-planner/str-06-tyre-inventory.md`.
+- Estado: implementación lista para review independiente; sin merge ni
+  promoción. El siguiente corte solo tras `ACCEPT` es ISA-142 / STR-07.
+
+Nota ISA-140 / STR-05 (2026-08-02):
+- Nuevo motor puro `internal/strategy/manual`, apilado sobre STR-04 exacto
+  `f60f480`, para carrera por vueltas/tiempo, Fuel, Virtual Energy, fuel-save y
+  pit manual.
+- Las carreras por tiempo completan vueltas enteras: `ceil` de la vuelta en
+  curso, sin vuelta fantasma en una frontera exacta, y `+1` únicamente mediante
+  regla explícita del evento. El pit loss es un input manual con procedencia;
+  no existe ciclo fixed-point o solver oculto.
+- Fuel y VE conservan APIs/resultados incompatibles. Necesidad = carrera +
+  formación + reserva; repostajes/recargas se enumeran conservadoramente y
+  nunca subasignan ni superan la capacidad por servicio. Fuel-save cuenta la
+  cantidad inicial real.
+- Pit separa viaje/penalización fija de servicio variable; solo Fuel/neumáticos
+  solapan, reparación es secuencial y `overlapSaved` demuestra que no hay doble
+  conteo. Reparaciones y penalizaciones son manuales y opcionales.
+- Cada input usado y cada regla de selección aparecen en `Assumptions` con
+  valor, unidad, procedencia y confianza. Sin UI, solver, Monte Carlo, presets
+  LMU, telemetría, DuckDB, persistencia nueva, wiring ni dependencias.
+- Evidencia: `docs/strategy-planner/str-05-manual-calculation.md`. Manual x100,
+  property 10.000 casos, dos fuzzers, race x10, árbol Strategy, vet focal,
+  frontend 301/301 y build pasan. Go global conserva solo el P3 Windows
+  heredado de Settings; vet global conserva tres avisos Win32 heredados y lint
+  frontend 30 errores/2 warnings fuera del diff.
+- Corrección de review: la vuelta temporizada usa frontera decimal racional sin
+  epsilon y conserva medias vueltas representables; la asignación de recursos
+  ya no reutiliza ese redondeo ni descarta restos pequeños. Regresiones Fuel/VE
+  cubren múltiplos por debajo, exactos y por encima sin tolerancia contractual.
+- Estado: correcciones P1/P2 listas para nueva review independiente; sin merge
+  ni promoción. El siguiente corte solo tras `ACCEPT` es ISA-141 / STR-06.
+
+Nota ISA-139 / STR-04 (2026-08-02):
+- Nueva fachada `strategy.application.v1` en
+  `internal/strategy/application`, apilada sobre el repositorio exacto de
+  STR-03 `8e151b8`.
+- Comandos versionados para crear, abrir, editar, guardar revisión, duplicar,
+  activar, desactivar, restaurar y cerrar. Undo/redo quedan en el único store
+  frontend transitorio y no escriben revisiones.
+- Dirty se deriva de snapshots; comandos mutadores respetan generación
+  optimista, reconcilian commits inciertos e impiden sobrescrituras stale.
+- El bridge JSON falla cerrado ante versiones futuras, duplicados, unknown
+  fields, campos obligatorios ausentes o trailing data; el cliente correlaciona
+  respuestas y limpia listeners.
+- Las observaciones de ejecución/telemetría se mantienen separadas y no mutan
+  draft, snapshot o historial. Cerrar el editor tampoco desactiva el plan.
+- Sin UI final, cálculos, LMU, Shared Memory, REST, DuckDB, persistencia nueva,
+  wiring productivo ni dependencias. Evidencia:
+  `docs/strategy-planner/str-04-application-service.md`.
+- Evidencia fresca: Go application x100, árbol Strategy, Go global, vet focal,
+  race x10 con UCRT64, 36 tests frontend focales, frontend completo 301/301
+  archivos y 2.052/2.052 tests, TypeScript, build, lint focal y diff-check
+  pasan. Una corrida frontend inicial bajo carga paralela reprodujo timings
+  inestables preexistentes del canvas; la repetición final aislada pasó entera.
+- Corrección tras review: save/close bloquean edit/undo/redo hasta aplicar su
+  resultado; create/open no descartan dirty; un save incierto conserva y
+  reintenta exactamente su identidad; bridge y atajos idempotentes fallan
+  cerrados; el cliente soporta cancel/dispose y limpia todos los listeners.
+- Estado: correcciones listas para segunda review independiente; sin merge ni
+  promoción. El siguiente corte, solo tras `ACCEPT`, es ISA-140 / STR-05.
+
+Nota ISA-138 / STR-03 (2026-08-02):
+- Nuevo repositorio local `strategy.repository.v1` en
+  `internal/strategy/repository`, apilado sobre STR-02 exacto `91c16c2`.
+- Una API mínima `Snapshot` + `Commit(ChangeSet)` posee drafts, revisiones,
+  borrado y futuros lotes transaccionales de STR-15A sin exponer filesystem.
+- Escritura durable con temporal+sync+replace, backup único, lease del sistema
+  operativo y generación optimista. Dos escritores se serializan o reciben
+  `ErrWriteInProgress`/`ErrStaleWrite`; nunca se pisan silenciosamente.
+- Drafts son mutables y recuperables; revisiones STR-02 se vuelven a verificar,
+  son inmutables por identidad+hash e idempotentes si son exactas.
+- Recovery restaura el último backup válido ante corrupción, ignora temporales
+  interrumpidos y falla cerrado si principal/backup no son válidos. Versiones
+  futuras no se degradan mediante rollback.
+- Corrección de review: recovery solo se activa ante ausencia o corrupción
+  demostrada. Límites, permisos/I/O y versiones incompatibles se propagan sin
+  tocar el principal; la regresión generación 1/2 demuestra que un límite más
+  estricto no revierte silenciosamente al backup antiguo.
+- El lease queda probado entre procesos y se libera tras una muerte abrupta.
+  Bajo ese lease se limpian solo temporales regulares privados; symlinks,
+  reparse points, directorios, rutas externas y nombres ajenos permanecen
+  intactos.
+- Drafts y revisiones atraviesan la puerta canónica `strategy.v1`, con fixtures
+  actual/futuro. Un fallo después del replace se informa como
+  `ErrCommitUncertain` con generación para reconciliar mediante `Snapshot`.
+- Segunda corrección de review: el primer commit crea primero un backup de su
+  misma generación. Un root nuevo con ambos archivos ausentes sigue siendo gen0,
+  pero retirar el principal tras inicializar recupera inequívocamente gen1; un
+  commit posterior con versión 0 falla stale y no consolida el vacío. Fallar el
+  backup antes del replace deja un repo genuinamente nuevo; fallar después o
+  interrumpir el principal devuelve resultado incierto recuperable. No se añade
+  marker ni otra fuente de verdad.
+- Migración v1 es un no-op explícito con fixture/golden; no se inventa un
+  formato Product A. Límites, JSON estricto y borrado dentro del documento
+  impiden crecimiento sin cota o tocar archivos externos.
+- Sin UI, queries de galería, paquetes, telemetría, cloud, wiring ni
+  dependencias nuevas. Evidencia:
+  `docs/strategy-planner/str-03-repository.md`.
+- Evidencia fresca: focal x100, lease cross-process x50, árbol Strategy, vet
+  focal, race x10 con
+  CGO/UCRT64, compilación Linux, frontend build y suite Go global excluyendo el
+  único P3 Windows heredado de `TestConcurrentSavesDontCorruptFile` pasan. La
+  suite global completa posterior a la corrección agotó cinco minutos sin
+  salida; la entrega inicial ya había aislado ese test como único fallo. Vet
+  global conserva tres avisos Win32 `unsafe.Pointer` fuera del diff.
+- Estado: implementación local lista para review independiente y entrega; sin
+  promoción ni merge.
+
+Nota ISA-137 / STR-02 (2026-08-01, reanudada 2026-08-02):
+- Nuevo contrato productivo `strategy.v1` en `internal/strategy/contract` para
+  `PlanDraft`, `PlanRevision`, `ActivePlan`, `StrategyExecutionState` y
+  `ReplanProposal`; Product A sigue aislado como oráculo histórico.
+- El draft es mutable, la revisión captura un snapshot independiente con hash
+  `sha256:strategy-c14n-v1` y el plan activo solo cambia tras aceptar
+  explícitamente una propuesta basada en la revisión que continúa activa.
+- Fuel, Virtual Energy, tiempo, vueltas, distancia y neumático son unidades
+  distintas y validadas. Fuel y VE no comparten operaciones ni en Go ni en TS.
+- Procedencia, confianza, capabilities, estados, errores y campos obligatorios
+  se verifican contra un único manifiesto JSON compartido. Una revisión golden,
+  un corpus de canonicalización adversarial y otro de hashes/timestamps
+  demuestran paridad Go/TypeScript sin duplicación silenciosa.
+- Corrección de review: el hash ya no depende del serializador JSON; usa tags
+  binarios, orden UTF-8, float64 big-endian y límites compartidos. Decode de
+  revisiones/replans rechaza duplicados y campos desconocidos; replan valida
+  pre/post transición; execution y aceptación conservan snapshots profundos.
+- Segunda corrección de review: activar dos veces la misma propuesta es
+  idempotente solo con historial exacto; execution dispone de decode estricto
+  Go/TS y corpus compartido de 25 casos con `code+field`; `LapCount`, `epoch` y
+  `sequence` aceptan como máximo `2^53-1`; bytes UTF-8 realmente inválidos se
+  rechazan antes de convertir el documento.
+- Cierre de hallazgos STR-02: los 25 casos del corpus quedan fijados por nombre
+  y orden; escalares y paths anidados se validan con el mismo `code+field` en
+  Go/TS; y los límites de canonicalización están en el manifiesto compartido,
+  sin aplicar el límite de elementos de arrays/objetos a los bytes de strings.
+- Reanudación tras interrupción: una versión explícita desconocida precede a la
+  validación de shape v1 en revisión, replan y execution, con regresiones
+  compartidas Go/TS para revisión y replan. El encoder TypeScript aplica su
+  propio límite de profundidad y rechaza objetos sobredimensionados antes de
+  ordenar claves, incluso cuando verifica un valor ya construido.
+- Corrección final P2: la verificación productiva calcula únicamente el hash;
+  el hexadecimal canónico completo queda limitado al corpus diagnóstico y se
+  construye en un búfer acotado, sin un array temporal por byte. Una regresión
+  canoniza 1.000.000 de números (`9.000.005` bytes canónicos) y el benchmark
+  manual comparable está en
+  `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
+- `strategy.v1` es la primera versión; la migración actual es un no-op explícito
+  y cualquier versión desconocida se rechaza.
+- Sin persistencia, UI, cálculo, LMU, Telemetry Core, DuckDB, Wails ni wiring.
+  Evidencia: `docs/strategy-planner/str-02-contract.md`.
+- Estado: `ACCEPT`, commit `91c16c2`, push y PR draft #66; sin merge ni
+  promoción. Go focal x50, ambos fuzzers, TypeScript, frontend completo
+  299/299 archivos y 2.034/2.034 tests, build, lint focal, vet focal y
+  diff-check pasan. Go/vet global no se repitieron en esta reanudación; la
+  última evidencia conserva el fallo Windows heredado de Settings y tres avisos
+  Win32 `unsafe.Pointer` fuera del diff.
+
+Nota ISA-136 / STR-01 (2026-08-01):
+- Product A queda rescatado únicamente como oráculo histórico aislado en
+  `internal/strategy/producta`; no existe wiring ni consumidor productivo.
+- La allowlist está completa: fixture JSON exacto y 24 archivos Go idénticos a
+  `b9f1937` salvo `package producta`; un guard verifica blobs y manifiesto.
+- La denylist 69/69 se valida contra la matriz y contra un manifiesto versionado
+  del delta; tests de regresión rechazan app service, Hub, locales y CSS. El
+  discovery de raíz pasa también con `-trimpath`.
+- Se reproducen casos canónicos, 10.000 seeds, carrera, recursos, pit,
+  neumáticos, stints, unidades, ranking y sensibilidad sin elevar el solver
+  histórico a autoridad.
+- Se conservan explícitos los defectos históricos: degradación fuera del tiempo
+  total, margen Fuel+VE inválido, optimalidad no demostrada y semánticas LMU
+  pendientes. STR-02/05/06/08/12 poseen sus reemplazos.
+- TDD rojo antes del port y Go focal verde después. Evidencia:
+  `docs/strategy-planner/str-01-product-a-characterization.md`.
+- Estado: `ACCEPT`, commit `f85fd31`, push y PR draft #60; sin merge ni
+  promoción. ISA-137 / STR-02 continúa apilada sobre esa revisión.
+
+Nota ISA-134 / STR-00 (2026-08-01):
+- Strategy Planner queda replanificado como un solo producto; Product A/B/C
+  pasan a ser fases históricas.
+- Product A exacto `b9f1937` fue auditado contra `ISA-117@170eaeb`: Go focal,
+  vet, 25 tests frontend y build pasan; el smoke Playwright histórico se queda
+  bloqueado y debe sustituirse en STR-07.
+- La simulación contiene 94 paths: 87 auto-merged + 7 conflictos. La matriz
+  enumera 94/94 y limita STR-01 a un fixture exacto y 24 ports manuales; los
+  otros 69 paths quedan en denylist.
+- ADR 0006 fija ownership: Analysis publica histórico, Core publica live,
+  Strategy posee planes/cálculo, Engineer envía comandos y Overlays solo leen.
+- Evidencia y ejecución: `docs/strategy-planner/str-00-audit.md`,
+  `rescue-matrix.md`, `pb-to-str-map.md`, `projection-ownership.md` y
+  `docs/superpowers/plans/2026-08-01-strategy-planner-unified-master.md`.
+- Linear conserva ISA-42..67 como `Canceled`/superseded y define 24 cortes:
+  ISA-136..157 más ISA-162/163 (galería privada, oficial y comunidad).
+- Ownership de planes locales: ISA-138/STR-03 posee repositorio, atomicidad,
+  migraciones, drafts, revisiones y recovery; ISA-150/STR-15A consume ese
+  repositorio para la UI de `Mis planes` y paquetes import/export, sin duplicar
+  persistencia.
+- Productores explícitos: ISA-159 / TA-05 para histórico e ISA-160/161 /
+  TC-10A/B para live. Bloquean ISA-145 y ISA-152 respectivamente.
+- Estado: `ACCEPT` tras review; ISA-136 / STR-01 está en ejecución apilada. Sin
+  merge ni promoción.
+Nota ISA-168 / TA-03C (2026-08-02):
+- Implementado el adapter DuckDB histórico productivo fuera de proceso sobre
+  ISA-135. Wails conserva `CGO_ENABLED=0`; DuckDB 1.5.5 vive en un módulo y
+  runtime separados.
+- Staging privado, manifest confiado, locks anti-TOCTOU, read-only, IPC tipado
+  sin SQL, Job Object, cancel/retry/close, rollback confiado, notices y SBOM
+  reproducibles quedan cubiertos.
+- Parser sintético real y benchmark 50×16.384 PASS. En cierre intercalado y
+  con CPU al 93–100 %, TA-03C obtuvo mediana 27,154 ms/página frente a 45,290
+  de TA-03B (ratio 0,5995×; gate <=2×). Smoke host Windows x64, fuzz, race y
+  build principal PASS. Evidencia:
+  `docs/vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`.
+- Review independiente `APPROVE`, cero P0/P1/P2/P3 razonables. Estado: cierre
+  técnico listo para `In Review`; sin promoción.
+  TA-04 continúa después de aceptar este corte. Imports externos/comunitarios
+  siguen bloqueados por ISA-164 / TA-03D.
 
 Nota VANTARE-PROGRAM (2026-07-27):
 - ISA-120 crea la autoridad de continuidad en `docs/vantare-program/`.
@@ -36,6 +421,311 @@ Nota VANTARE-PROGRAM (2026-07-27):
   requieren proyecto, investigación profunda y plan propios.
 - Strategy Planner es un único producto; Product A/B/C son fases históricas.
 - La skill `vantare-core` no es autoridad.
+
+Nota ISA-201 / ENG-N01 (2026-08-02, promoción a `nightly`):
+- Composición final sobre `nightly@4e549bb`: ENG-01..ENG-12, ENG-14 y ENG-15.
+  Los dos cortes hermanos conservan sus responsabilidades: PTT físico Windows
+  y diálogo determinista confirmable. ENG-13 continúa bloqueando voz real.
+- Gates locales: 37 paquetes Engineer y vet focal PASS; PTT x20, benchmark y
+  `-race` en delivery/policy/PTT/commands/service PASS; tooling de voz 48/48;
+  frontend focal 42/42, global 2.117/2.117, build, lint focal y 12 capturas de
+  radio PASS; suite Go global PASS en repetición limpia.
+- El primer global Go reprodujo una vez el budget temporal del soak de recording;
+  el focal posterior pasó 20/20 y el global limpio pasó. El vet global conserva
+  tres warnings `unsafe.Pointer` previos en LMU/Launcher, fuera de este delta.
+- El probe nativo observa teclado y `joy-0` disponibles, XInput ausente y ninguna
+  pulsación física. Esto no sustituye el gate humano de hardware ENG-29.
+- Estado: listo para PR y CI de rama protegida; `testers` y `master` no se tocan.
+
+Nota roadmap Engineer Beta ENG-12..29 (2026-08-02, planificado):
+- ISA-182 / ENG-11 queda aceptada en `5b4e0d3`. Se crea el roadmap canónico
+  `docs/engineer/engineer-beta-roadmap.md` y 18 microcortes Linear ISA-183 a
+  ISA-200, organizados en cuatro milestones y dependencias DAG.
+- Primer corte ejecutable: ISA-183 / ENG-12, catálogo/intents y protocolo de
+  corpus humano. Después pueden avanzar sin esperar personas ENG-14/15/16/17,
+  Spotter ENG-18, monitores ENG-19 y gate técnico TTS ENG-22.
+- ENG-13 conserva command intent/FAR/FRR/wake word **NO-GO** hasta corpus humano
+  consentido real. ENG-20/21 quedan bloqueadas por esa evidencia. Fixtures no
+  sustituyen humanos.
+- Kokoro dinámico continúa NO-GO. TTS puede investigarse/integrarse disabled,
+  pero escucha perceptual se agrupa en ENG-29.
+- Pit Manager exige confirmación + readback; Strategy/Overlays usan contratos
+  versionados; ningún LLM decide hechos, intent, números o acciones críticas.
+- Esta rama es solo documental. Sin producto, merge, promoción o gate cerrado.
+
+Nota ISA-183 / ENG-12 (2026-08-02, In Review):
+- Catálogo cerrado `engineer.commands.v1` con 20 intents propios: 14 consultas
+  y 6 acciones. Cada intent declara slots tipados, precondición, respuesta,
+  mutabilidad y confirmación; las acciones siempre exigen confirmación.
+- Paridad estructural completa en `es`, `en`, `it` y `pt-BR`, incluidos wake
+  words y vocabulario de confirmar/cancelar. El parser estricto rechaza IDs,
+  locales, campos, placeholders, frases o slots fuera del contrato.
+- El harness es exclusivamente textual y fail-closed: no ejecuta acciones ni
+  conecta STT, PTT, micrófono, audio o runtime productivo. Conserva números de
+  coche con ceros iniciales y valida números, unidades, enums y rangos.
+- Sanitización demostrada: la salida de evaluación no contiene transcripciones,
+  nombres ni valores de slots. El protocolo de corpus humano exige consentimiento,
+  almacenamiento externo a Git, separación por hablante y métricas por locale,
+  micrófono, ruido, intent, slot y wake word.
+- Evidencia sintética y tests no autorizan voz real: command readiness,
+  intent accuracy humana, FAR/FRR y wake word siguen **NO-GO** hasta ENG-13.
+- Checks: paquete focal x20, fuzz 5 s, Engineer completo, vet Engineer,
+  `go test ./...` y build frontend pasan. `-race` no está disponible porque el
+  entorno usa `CGO_ENABLED=0`.
+- Re-review independiente final: `APPROVED`, P0/P1/P2/P3 = 0.
+
+Nota ISA-186 / ENG-15 (2026-08-02, In Review):
+- Router determinista `engineer.dialogue.v1` sobre el catálogo ENG-12: las 14
+  consultas y 6 acciones conservan paridad `es/en/it/pt-BR`.
+- Consultas missing/stale/invalid no publican valores. Las acciones siguen
+  `propuesta -> readback -> confirmación -> resultado`, revalidan evidencia en
+  el puerto y consumen una propuesta una sola vez incluso con double-submit.
+- Session/driver/source/epoch, locale, timeout, rollback de reloj o contexto
+  cancelado invalidan el diálogo. Dos fallos usan fallback PTT/UI sin adivinar.
+- Solo existen puertos falsos en tests: sin STT/TTS/wake word, LMU, Pit,
+  Strategy, efectos reales, dependencia o wiring productivo. Contrato:
+  `docs/engineer/dialogue-router-isa-186.md`.
+- Checks: commands x20, fuzz 5 s, Engineer completo, vet Engineer, build
+  frontend, `go test ./...` y diff-check pasan. `-race` no está disponible con
+  `CGO_ENABLED=0`.
+- Revisión independiente final: `APPROVE`, P0/P1/P2/P3 = 0.
+
+Nota ISA-185 / ENG-14 (2026-08-02, In Review):
+- Contrato `engineer.ptt.v1` para bindings globales/locales, conflictos físicos,
+  estados visibles y un único owner de captura. No contiene micrófono, STT,
+  wake word, persistencia, UI ni acciones.
+- Adaptadores Windows sin dependencias nuevas: teclado Win32 con key down/up,
+  gamepad XInput y volante/button box joystick-compatible mediante WinMM.
+  Raw HID genérico queda `unsupported` de forma explícita.
+- Polling de 8 ms cancelable y sin goroutine oculta; hotplug, pérdida de foco,
+  permiso, cambio de configuración, errores y shutdown fallan cerrados.
+- La re-review corrigió dos bordes: el estado `processing` ahora se cancela
+  realmente aguas abajo, y un fallo de cancelación conserva ownership para
+  reintentar sin fingir liberación. La primera muestra unpressed ya no genera
+  un release fantasma.
+- La revisión independiente corrigió además el commit prematuro de muestras:
+  si el handler falla, release, disconnect y device-error se reintentan y no
+  pueden dejar una captura activa por una transición perdida.
+- Terminar `Poller.Run` cancela explícitamente capturing/processing con timeout.
+  Un fallo queda visible, conserva ownership y permite `Controller.Shutdown`
+  externo; no puede quedar un puerto poseído por la ausencia de futuros polls.
+- En el equipo de validación: teclado conectado, `joy-0` conectado, XInput 0..3
+  y `joy-1` ausentes. Esto demuestra las llamadas nativas y la ausencia honesta,
+  no una pulsación física de cada categoría.
+- Contrato y comandos: `docs/engineer/ptt-input-isa-185.md`. Evidencia:
+  `docs/evidence/isa-185/windows-input-probe.json`.
+- ENG-24 será dueño de UI/persistencia; ENG-20 solo podrá conectar el host STT
+  después del gate humano de ENG-13.
+- Focal x20, fuzz, benchmark, Engineer completo, vet y build frontend pasan.
+  La suite global queda no verde solo por discovery Launcher y un budget
+  temporal Telemetry Core ajenos a las rutas de ENG-14. Pulsación física sigue
+  pendiente del gate de hardware; no se declara como probada.
+
+Nota ISA-182 / ENG-11 (2026-08-02, In Review):
+- Package manager test-only con manifest v1 cerrado y versionado, descargas
+  acotadas, cancelables y verificadas por tamaño/SHA-256. Root, temporales y
+  eliminación fallan cerrados ante symlink, junction o reparse point.
+- Voice-host local hijo con PID/protocolo/nonce/loopback demostrados,
+  timeouts finitos, request acotada, shutdown/terminate/kill y limpieza de
+  token, nonce, lease, proceso y puerto. `last_pid`/`last_exit_code` quedan como
+  única auditoría de lifecycle.
+- Un reinstall válido descarga/verifica pero no reemplaza un target idéntico ya
+  verificado; missing/corrupt solo se promociona tras validación completa.
+- Harness 200 probes: startup 349,598 ms, p50 13,774 ms, p95 20,445 ms, máximo
+  26,926 ms, shutdown limpio y cero leases. Usa fixture sintética externa: no
+  ejecuta inferencia ni demuestra precisión o rendimiento Whisper.
+- Suite ENG-11 31/31 PASS; suite histórica del tooling 48/48 PASS tres veces
+  consecutivas. Sin micrófono, raw, modelo, binario, dependencia, wiring o
+  promoción. Command readiness, PTT, wake word y TTS permanecen **NO-GO**.
+- Contrato: `docs/engineer/voice-package-host-isa-182.md`; evidencia:
+  `docs/evidence/isa-182/lifecycle-summary.json`. No iniciar ENG-12 hasta cerrar
+  review independiente.
+
+Nota ISA-181 / ENG-10 (2026-08-02, In Review):
+- Corpus FLEURS original CC BY 4.0 fijado por revisión: 5 grabaciones humanas
+  por `en_us/es_419/it_it/pt_br`, clean y ruido blanco determinista 10 dB. El
+  TSV no aporta speaker ID estable; no se afirma diversidad de locutor y la
+  muestra portuguesa solo contiene categoría `MALE`.
+- Whisper `tiny` y `base` procesaron 40 casos cada uno. `base` mejora WER/CER
+  en casi todas las celdas, a cambio de ~1,84 s medios y ~274 MB observados;
+  queda candidato condicionado para el siguiente gate, no selección de release.
+- Validez lingüística humana genérica y command readiness son conclusiones
+  distintas. Intent accuracy, FAR/FRR y wake word siguen **NO-GO** porque no
+  existe corpus humano consentido de comandos. TTS dinámico también sigue
+  NO-GO. Radio, subtítulos y UI son el fallback completo.
+- Tooling test-only añade extracción acotada, ruido reproducible, captura/import
+  con consentimiento explícito, preview/delete/cleanup y benchmark residente.
+  Audio, modelos, ejecutables, paths y raw permanecen fuera de Git. Sin wiring,
+  dependencia, package manager, voice-host productivo o promoción.
+- Decisión y protocolo: `docs/engineer/human-corpus-voice-host-isa-181.md`;
+  evidencia agregada: `docs/evidence/isa-181/`. Review independiente sin
+  hallazgos P0/P1/P2 ni P3 razonables abiertos; no iniciar ENG-11 todavía.
+
+Nota ISA-180 / ENG-09 (2026-08-02, In Review):
+- Gate offline de TTS/STT ejecutado sin cableado productivo. La pila medida
+  `kokoro-onnx 0.5.0` funciona en `en/es/it/pt-BR`, pero tarda 4,0–5,3 s por
+  frase corta en Ryzen 7 3700X y su G2P instala componentes GPL. DirectML falla
+  en int8 y fp16 sobre RX 7800 XT. Resultado: NO-GO para voz dinámica y bundle
+  propietario; ENG-08 conserva visual/subtítulos/radio como fallback.
+- `whisper.cpp v1.9.1` + Whisper tiny multilingual supera licencia y rendimiento
+  preliminar: ~0,60 s, ~173–176 MB, cancelable como worker aislado. Inglés da
+  0 WER sintético; `es/it/pt-BR` no superan gate lingüístico. Resultado: GO
+  técnico condicionado, no release.
+- Los probes son tooling no productivo, no leen micrófono y no versionan
+  modelos, voces, WAV, venv ni ejecutables. Contrato, licencias, threat model,
+  hashes y microcorte siguiente: `docs/engineer/tts-stt-selection-isa-180.md` y
+  `docs/engineer/tts-stt-benchmark-isa-180.md`.
+- Review independiente final `ACCEPT`, sin P0/P1/P2/P3 razonables abiertos. La
+  PR permanece draft y la cadena no se promociona. ENG-10 no se inicia todavía.
+
+Nota ISA-178 / ENG-08 (2026-08-02, In Review):
+- `engineer-radio` es un único tipo funcional registrado en TypeScript y en el
+  contrato persistente Go. Guardar, cargar, exportar e importar conservan el
+  widget sin duplicarlo. Solo Vantare Crystal aporta su renderer.
+- Radio y subtítulos son dos salidas visuales independientes que comparten el
+  mismo ViewModel puro. Pueden coexistir; los subtítulos se activan de forma
+  global y no requieren añadir el widget al layout. Sin presentación real,
+  Desktop/OBS no inventan contenido; Studio usa una preview marcada. ENG-08
+  conserva esta preferencia solo durante el runtime y la reinicia habilitada;
+  la persistencia queda para el contrato central de Ajustes.
+- Go es la autoridad de routing `audio|visual|both|disabled` por las seis
+  familias aprobadas. `disabled` se aplica antes del scheduler, ACK, cooldown y
+  preempción y cancela solo la salida activa de esa familia.
+- Wails y SSE consumen un único stream ordenado por `generation+sequence`; tras
+  una reconexión rechazan status/presentation hasta que el snapshot autoritativo
+  establece el nuevo cursor. Así rehidratan el activo exacto o vacío y ningún
+  mensaje tardío de una generación anterior puede reaparecer.
+- Harness determinista: 12 comparaciones root-only contra baselines fijos para
+  cuatro locales, tres fondos y tres tamaños, sin máscaras ni overflow.
+- Contrato: `docs/engineer/radio-output-contract.md`. Sin Vantare Original,
+  canvas, inspector, shell, TTS/STT/PTT, dependencias nuevas, merge o promoción.
+
+Nota ISA-177 / ENG-07 (2026-08-02, In Review):
+- `internal/engineer/presentation` es la autoridad pura y versionada para los
+  20 intents aprobados por ENG-05 en `es`, `en`, `it` y `pt-BR`.
+- Rol, canal y severidad se derivan de la decisión admitida. Texto visual y
+  futuro audio comparten una sola presentación; ningún raw key es fallback.
+- Resolver o locale inválidos fallan antes del ACK `started`, sin notificación
+  ni audio. La penalización permanece neutral y no inventa su tipo.
+- Español es el locale productivo predeterminado y la configuración queda
+  validada e inmutable mientras el servicio está activo.
+- Wails y SSE reciben exactamente el mismo objeto observable. El lookup de
+  audio cache-only usa texto de voz y el locale tipado de Presentation. Caché
+  canónica y fallback legacy solo consultan ese idioma; un `AudioConfig`
+  divergente produce visual-only y nunca audio cruzado. `all_clear` español es
+  «Todo libre», sin afirmar que toda la pista está libre.
+- Contrato: `docs/engineer/presentation-contract.md`. Corrección de review:
+  focal x20, fuzz 2,24 M, benchmarks, Engineer, Server, Telemetry y Go global
+  serial pasan. Vet focal
+  pasa; vet global conserva tres warnings Win32 heredados. Race no está
+  disponible con `CGO_ENABLED=0`. Sin frontend, TTS/STT, nuevos intents,
+  Telemetry Core, merge o promoción.
+
+Nota ISA-167 / ENG-06 (2026-08-02, WIP):
+- `EngineerService` conserva un solo runtime productivo y una sola policy sobre
+  la observación canónica. No se añade fuente, reader, parser o runtime.
+- El contrato `internal/engineer/delivery` exige ACK `queued`, `started` y un
+  terminal; revalida antes de `started` y expone solo métricas sanitizadas.
+- Spotter P0 cancela audio Engineer no crítico activo; nunca ocurre al revés.
+  Stop, source loss y lifecycle cancelan y unen la entrega.
+- El contexto de clears y los cooldowns avanzan únicamente tras ACK de inicio,
+  no al seleccionar una decisión. Replay v2 separa decision, dispatch y start.
+- Health separa contadores de policy, delivery y backpressure sin exponer IDs,
+  mensajes, telemetría, rutas o identidad; decision-a-start parte del instante
+  real de selección, no del timestamp de captura.
+- La composición real instala el player cancelable existente y un router
+  cache-only sin engine TTS sobre la caché canónica hash de Kokoro. Cada lookup
+  respeta contexto y un límite de 100 ms; miss/error conserva la entrega visual
+  sin síntesis en el hot path.
+- Replay v2 prueba disconnect/reconnect: cancela el trabajo anterior, guarda
+  el borde `epoch`/identidad/`sequence` y rechaza snapshots iguales o
+  anteriores antes de reanudar con uno estrictamente posterior. Un incremento
+  de `ReconnectAttempt` crea el mismo borde aunque el status siga en `live`.
+  Replay solo libera el borde después de aceptar cursor e identidad/lifecycle;
+  un cursor posterior con contexto inválido no lo consume. El benchmark
+  completo atraviesa `productDeliveryPort -> ResolveCached -> PlayContext` y
+  detiene el tiempo al inicio real de `PlayContext` bajo presión concurrente y
+  preempción.
+- Contrato vivo: `docs/engineer/delivery-runtime.md`. Corrección final WIP
+  comprobada con service/replay x10 y benchmark productivo 20x (65.310 ns/op);
+  race no ejecutable con `CGO_ENABLED=0`, Go global sin concluir en 124 s y vet
+  global con tres avisos Win32 heredados. Pendiente de re-review, sin commit,
+  push, merge o promoción.
+
+Nota ISA-158 / ENG-05 (2026-08-01):
+- Policy y scheduler determinista implementados de forma síncrona y acotada en
+  `internal/engineer/messagepolicy/`; contratos v1: Candidate, Decision,
+  PolicyOutcome y SchedulerState, con reloj y evidencia inyectados.
+- Admisión y emisión revalidan versión, epoch, identidad, fuente, freshness,
+  capabilities, prioridad, TTL y el claim semántico contra la observación más
+  reciente. `Cancel` invalida la evidencia hasta recibir otra observación.
+  Spotter P0 cancela pendientes inferiores; dedupe, coalescing, cooldown, cola,
+  identidades y diagnósticos tienen límites duros.
+- Spotter conserva prioridad absoluta. El resto de prioridades tiene un burst
+  máximo determinista para impedir starvation sin debilitar mensajes críticos.
+- La re-review detectó y corrigió presión P0 con capacidad uno: pendientes
+  invalidados se podan antes de competir por cola, por lo que el estado Spotter
+  vigente reemplaza siempre al obsoleto con diagnósticos deterministas.
+- Una segunda re-review detectó estados compatibles con distinto valor
+  informativo (`left/right -> three_wide`). Una tabla tipada y exclusiva de
+  Spotter hace supersession del aviso menos específico, impide el reemplazo
+  inverso sin cambio de evidencia y cubre la matriz completa con capacidad uno
+  y mayor que uno.
+- Una tercera re-review cerró el contexto delivery-aware de los clears
+  parciales. `clear_left/right` solo conserva su forma contextual si un
+  antecedente autosuficiente compatible ya fue devuelto por `Next` dentro de
+  la misma generación de ocupación. Un pendiente, `still_there` o un lateral
+  parcial de `three_wide` no cuentan. Sin contexto, el scheduler sustituye el
+  clear por el estado autosuficiente derivado de Evidence; expiración,
+  cancelación y otra transición eliminan el permiso. La condición se revalida
+  también inmediatamente antes de `Next`, por lo que un clear ya encolado no
+  puede cruzar una generación posterior. El registro significa `dispatched`
+  al transporte siguiente, todavía no confirmación audible.
+- Una cuarta re-review cerró lifecycle y caducidad del contexto Spotter. Los
+  boundaries válidos resetean delivery state antes de observar el nuevo estado
+  en la misma llamada; una identidad inválida falla cerrada. Cada antecedente
+  conserva su `ExpiresAtMS`: justo antes autoriza el clear, en el límite o
+  después se sustituye por estado autosuficiente. `still_there` no renueva el
+  contexto, y una decisión expirada/cancelada antes de `Next` nunca lo crea.
+- ENG-04 atraviesa la policy con el Runtime real solo en tests. Pits conserva
+  únicamente entry/exit. El contador genérico de sanción se convierte a
+  `penalties.count_increased` y nunca afirma drive-through.
+- Golden v1 actualizado deliberadamente; tests de tabla, invariantes,
+  invalidación semántica, presión/starvation, ownership, lifecycle, fuzz, soak
+  virtual, benchmark saturado, Engineer y race focal pasan. El gate Go global
+  también pasa; el test real de discovery de Launcher es deuda heredada lenta,
+  no un bloqueo de ENG-05. Contrato:
+  `docs/engineer/message-policy-scheduler.md`.
+- No hay audio/TTS/STT, UI, Wails/SSE, wiring productivo, nueva capability,
+  dependencia, migración, merge o promoción. Pendiente: re-review independiente
+  después de publicar la corrección en la misma rama y PR draft.
+
+Nota ISA-133 / ENG-04 (2026-08-01):
+- Runner/oráculo determinista test-only creado sobre ISA-117 para escenarios
+  Engineer/Spotter. Consume exclusivamente `ObservationSnapshotV1` y
+  `FactEnvelopeV1`, usa reloj virtual y produce resultados versionados con
+  motivos explícitos.
+- La matriz 21/21 permanece fail-closed: seis familias acotadas y quince
+  parciales/deshabilitadas. Incluso dentro de una familia aprobada, una salida
+  legacy no demostrada se marca `decision_not_approved`.
+- Hallazgo para ENG-05: pits solo autoriza entry/exit; box-now, limitador,
+  ventana y tráfico no están demostrados. El contador genérico de sanción no
+  permite afirmar drive-through.
+- Golden v1, fixtures sintéticas, límites y regresiones de epoch, identidad,
+  freshness, capabilities, hechos y versiones quedan en
+  `internal/engineer/replayoracle/`. Contrato y rollback:
+  `docs/engineer/replay-oracle.md`.
+- La re-review endurece tres fronteras: suma checked y headroom para deadlines,
+  máximo canónico de 104 vehículos antes del adapter y `session.started` como
+  cancelación de lifecycle incluso sin snapshot posterior.
+- Evidencia fresca: oracle x50, regresión ENG-03 x20, Engineer, Telemetry, Go
+  global serial, race focal x10, build de embed y aislamiento de producto PASS.
+  El vet focal pasa; el amplio conserva dos warnings Win32 heredados fuera del
+  diff. La ejecución global paralela reprodujo la contención Settings conocida
+  y la repetición serial pasó.
+- Re-review independiente final: `ACCEPT`, P0/P1/P2/P3 = 0.
+- No hay wiring, audio, UI, fuente de telemetría, dependencia, merge o
+  promoción. Siguiente corte tras review: ENG-05 policy/scheduler.
 
 Nota ISA-117 / TC-09F (2026-08-01):
 - Telemetry Core queda técnicamente cerrado sobre ISA-87 `4233c9f`: una sola
@@ -663,6 +1353,161 @@ Nota ISA-38 / TC-04D (2026-07-28):
   para entrega aislada; sin wiring, merge o promoción.
   Sin wiring, cambios frontend tracked, dependencias, recording, Wails/SSE,
   commit, merge o promoción.
+Nota ISA-122 / TA-01 (2026-07-27):
+- Investigación canónica de Telemetry Analysis entregada en
+  `docs/vantare-program/research/telemetry-analysis/`: fuentes primarias,
+  matriz competitiva, auditoría LMU/repo, contrato propuesto, arquitectura,
+  UI/UX, referencia HTML propia y microcortes TDD.
+- Decisiones propuestas: post-sesión, resumen + workspace, galería local,
+  comparación por distancia condicionada a evidencia, máximo cuatro trazas,
+  derivados oficiales, notas no destructivas y consejos deterministas con
+  evidencia/confianza; LLM no es autoridad.
+- Gate: no hay implementación aún. TA-02 puede continuar de forma autónoma en
+  su propia rama: la revisión independiente final del 2026-07-28 dio `ACCEPT`
+  sin P0/P1/P2/P3. Playwright verificó selección A/B, trazas, canal,
+  sincronización de zona, tabs por teclado, responsive 1440/390 y cero errores.
+  La promoción a
+  `nightly` sí requiere la aprobación inicial de Isaac y permanece además
+  bloqueada hasta que ISA-121 cree la topología física de ramas/CI. El catálogo
+  actual no demuestra distancia/longitud/geometría LMU suficientes para delta o
+  mapa espacial productivo; no se permitirá fallback sintético.
+
+Nota ISA-124 / TA-02 (2026-07-28):
+- Implementado en rama aislada el contrato neutral
+  `internal/telemetryanalysis`: discovery metadata-only, estados explícitos,
+  gate de estabilidad sin sleeps, manifest v1 sanitizado, dedupe por hash,
+  autorización de acceso, políticas reference/managed-copy, cancelación y
+  presupuestos.
+- Para LMU, un `.duckdb.wal` hermano siempre significa `active`. Solo ausencia
+  de WAL más tamaño/mtime sin cambios durante una ventana positiva inyectada
+  emite el gate interno que permite calcular el manifest. Nunca se lee el WAL,
+  se fuerza checkpoint ni se modifica el original.
+- La apertura de contenido exige siempre permiso `user_approved`; una
+  procedencia `vantare_owned` no es autoridad y queda aplazada hasta una
+  capability no falsificable de recording. El WAL se revalida antes y después
+  de leer, y el handle abierto debe conservar la misma identidad de archivo
+  regular mediante `os.SameFile` o el token equivalente del seam.
+- Corpus mínimo versionado exclusivamente sintético: no contiene bytes de LMU,
+  datos personales ni una base DuckDB válida. Hash, tamaño, dedupe y procedencia
+  se verifican de forma reproducible con el mismo validador de manifest que usa
+  producción. Parser ID y versión son obligatorios; `none@0` declara ausencia.
+- Alcance cerrado: no hay parser DuckDB, índice/base de datos, UI, galería,
+  copia gestionada real, comparación, delta, mapa ni imports de Telemetry Core.
+  Contrato: `docs/vantare-program/research/telemetry-analysis/import-contract.md`.
+- Evidencia fresca tras el endurecimiento: focal x20, vet focal, race x10 con
+  GCC UCRT64, fuzz de redacción 10 s (2.186.642 ejecuciones), suite global Go y
+  `git diff --check` PASS. Para el embed global se conserva `frontend/dist`
+  ignorado desde un worktree con el mismo árbol frontend; no hay delta frontend.
+- Review independiente final: `ACCEPT` sin P0/P1/P2/P3. El cierre añadió una
+  única función canónica de deduplicación y una regresión que rechaza claves
+  hexadecimales bien formadas pero incompatibles con hash+tamaño.
+- Estado: técnicamente cerrado y preparado para commit/push, PR draft apilada
+  sobre TA-01 y Linear `In Review`; sin promoción a `nightly`.
+
+Nota ISA-126 / TA-03 (actualizada 2026-08-01):
+- Caracterizado read-only un DuckDB LMU completado mediante copia temporal:
+  original y copia con SHA-256 coincidente, metadata original intacta, cero
+  WAL y conexión `read_only`. No se leyeron valores de metadata ni se ejecutó
+  checkpoint/escritura/reparación sobre la biblioteca.
+- El schema observado contiene 12 claves de metadata, 56 canales continuos sin
+  `ts`, 42 eventos con `ts` y 101 tablas. Frecuencias: 1/2/5/7/10/20/50/100 Hz.
+  El diccionario completo sanitizado no contiene DB, muestras, valores, rutas,
+  nombres ni IDs.
+- Implementado en `internal/telemetryanalysis` el modelo histórico v1 y el
+  parser/normalizador paginado LMU: sesión, canales,
+  columnas, unidades, calidad, provenance, fingerprint y tipos desconocidos.
+  Cero/false permanecen presentes; NULL, stale, invalid y unknown no se
+  colapsan.
+- Corrección tras review independiente: `Inspect` congela un catálogo interno
+  y `ReadPage` resuelve solo IDs descubiertos, sin confiar en descriptores
+  mutables del llamador. Hay máximo duro de 16.384 filas, contexto de una sola
+  fila para eventos, EOF/predecesor-only coherentes y duplicados de
+  identificador rechazados también por diferencias de mayúsculas.
+- Metadata nueva queda sensible por defecto mediante allowlist pública y sus
+  valores se redacted antes de entrar al modelo. Metadata pública fuera de
+  presupuesto queda invalid sin invalidar la sesión. `DECIMAL` permanece
+  `unknown` hasta demostrar su representación.
+- El continuo conserva eje relativo `index/frequency` con origen `unknown`; los
+  eventos conservan `ts`. No se inventa alineación entre ambos. El nombre
+  `Lap` no forma límites: esa semántica queda pendiente de evidencia en TA-04.
+- `LMUDuckDBReader` es un puerto mínimo fuera de Telemetry Core. El parser ya
+  exige una `AuthorizedHistoricalArtifact` emitida por el gate TA-02 y
+  revalida hash/tamaño/mtime/identidad antes y después de catálogo y páginas.
+  TA-03 no añade `database/sql`, CGO, binarios, CLI ni dependencia DuckDB de
+  producto. El driver Go oficial es MIT, pero requiere decisión propia de
+  build/empaquetado Windows antes de integrarlo.
+- Alcance actual: sin reader concreto, índice, galería, UI, delta, mapa,
+  coaching, live o wiring. Docs:
+  `lmu-duckdb-characterization.md` y `historical-model.md`.
+- Evidencia fresca tras la corrección: focal x20, vet, race x10 y dos fuzz de
+  10 s PASS (1.091.635 normalización; 1.436.728 redacción). Benchmark de
+  720.000 muestras paginadas: 58,04–75,16 ms/op,
+  103.686.400–103.696.592 B/op acumulados y 355–368 allocs/op. Suite Go global
+  paralela PASS. No se repitieron frontend/build porque este delta no toca
+  frontend ni contratos embebidos.
+- La copia temporal de inspección fue eliminada tras derivar/verificar el schema
+  sanitizado. Un review adversarial posterior dio `REQUEST CHANGES`: P2/P3 y
+  la frontera arquitectónica del P1 están corregidos con regresiones de
+  mismatch/TOCTOU, determinismo, redacción y límite. Sigue faltando el reader
+  DuckDB productivo y un test de integración sobre DuckDB sintético real; por
+  ello TA-03 permanece abierta en su PR draft/Linear actuales y TA-04 queda
+  bloqueada. Sin promoción.
+
+Nota ISA-135 / TA-03B (2026-08-01):
+- Comparadas cinco rutas de integración DuckDB en Windows: driver oficial
+  estático/dinámico dentro de Wails, CLI gestionado y helper propio con enlace
+  estático/dinámico. La recomendación es un helper local de corta vida,
+  propiedad de Vantare, con `duckdb-go/v2` y `duckdb.dll` oficial fijados. La
+  app principal permanece en `CGO_ENABLED=0`; no se crea daemon ni SQL remoto.
+- Se descarta el CLI porque la guía oficial de DuckDB no lo recomienda para
+  embedding y expone capacidades innecesarias. Se descarta el enlace estático
+  actual porque el spike reprodujo una incompatibilidad entre los archivos
+  precompilados 1.5.5 y MSYS2 UCRT64 GCC 16 tras el cambio a TLS nativo.
+- Spike aislado, solo sintético y sin dependencias de producto: enlace dinámico
+  1.5.5 PASS, helper reproducible en dos rutas, 44.317.091 bytes totales,
+  read-only/NULL/cero/bool/identificadores/hash estable y cancelación coordinada
+  con `context.Canceled` PASS. En
+  720.000 filas, apertura 17–27 ms y páginas de 16.384 filas 20,72–23,84 ms de
+  media en la pasada de 50 páginas.
+- La v1 acepta exclusivamente archivos LMU locales descubiertos e indexados por
+  Vantare. El helper fuera de proceso, Job Object y límites son defensa en
+  profundidad, no un sandbox. Imports externos/comunitarios quedan bloqueados
+  por ISA-164 / TA-03D hasta demostrar una frontera real.
+- La arquitectura exige staging privado desde el handle autorizado TA-02,
+  revalidación antes/después, límites de memoria/threads/tiempo/disco,
+  extensiones/red desactivadas, protocolo tipado sin SQL, manifest/checksums y
+  rollback atómico de helper + DLL.
+- Inventario exacto cerrado con fuentes primarias: cuatro módulos Go, cinco
+  extensiones estáticas y 26 componentes C/C++ vendorizados. El SBOM SPDX de 37
+  componentes se regeneró dos veces con SHA
+  `959ab3ae08e2a6ff36c28c0773552a81048700c123dc899d2af89d48f1d4bfa5`;
+  todas las opciones elegidas son permisivas y compatibles con uso comercial.
+- No se añadió DuckDB/CGO al `go.mod` principal, no se abrió LMU ni archivos
+  personales, no se tocó Telemetry Core, UI, packaging de release o producto.
+- Documentos: `duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `ta03c-duckdb-adapter-plan.md` y spike reproducible `spikes/ta03b/`.
+- El primer review independiente dio `REQUEST CHANGES`; las cuatro objeciones
+  están corregidas en rama, pero ISA-135 permanece `In Progress` hasta una nueva
+  review. Después, Isaac deberá aprobar dependencia fijada, redistribución del
+  DLL, incremento aproximado de 44,32 MB, VC++ runtime y packaging/notices
+  atómicos antes de TA-03C. TA-04 continúa bloqueada hasta implementar TA-03C.
+  Sin promoción.
+- Evidencia fresca de corrección: spike 50 páginas, test y vet focales PASS;
+  cancelación coordinada 5/5; una extracción temporal manipulada fue rechazada
+  por SHA; dos SBOM limpios fueron idénticos; suite Go global PASS en 231,4 s y
+  `git diff --check` PASS. Un primer intento global agotó el timeout externo de
+  cuatro minutos sin reportar fallo y no se contabilizó.
+- Una re-review focal dejó únicamente un P2 en la allowlist Go del SBOM. Ya se
+  compara bidireccionalmente el conjunto exacto `módulo@versión` de
+  `go version -m` y se rechazan replacements, módulos añadidos, esperados
+  ausentes y cambios de versión. Una segunda revisión encontró que PowerShell
+  comparaba sin distinguir mayúsculas; ahora rutas y versiones usan igualdad
+  ordinal y cinco regresiones fail-closed cubren también ambos cambios de
+  `casing`. Las cinco regresiones pasan también en Windows PowerShell 5.1 y una
+  regeneración real conserva el mismo SBOM de 37 componentes y SHA. Dos
+  generaciones limpias anteriores conservaron igualmente ese SHA; spike 50
+  páginas, test/vet focales y tamper de extracción PASS. Pendiente una nueva
+  review independiente de la corrección ordinal; ISA-135 sigue `In Progress`.
 
 Nota ISA-37 / TC-04C (2026-07-27):
 - Implementado de forma aislada `internal/telemetry/derive.Pipeline`: consume snapshots inmutables aceptados por el reducer y publica un snapshot final `observed + derived` preservando el header. El harness contractual compone reducer, `SessionCoordinator` y derivación sin wiring productivo.

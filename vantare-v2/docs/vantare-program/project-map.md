@@ -1,6 +1,6 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-07-27. Linear es la fuente del estado operativo.
+Estado: 2026-08-01. Linear es la fuente del estado operativo.
 
 ## Grafo principal
 
@@ -8,8 +8,10 @@ Estado: 2026-07-27. Linear es la fuente del estado operativo.
 Telemetry Core
   ├─ Overlay Studio / Desktop / OBS
   ├─ Engineer / Spotter
-  ├─ Strategy Planner live
+  ├─ StrategyLiveProjection v1 → Strategy Planner live
   └─ Telemetry Analysis
+
+Telemetry Analysis ── StrategyInputProjection v1 → Strategy Planner assisted
 
 Account + Billing ─ permisos y canales
 Launcher ───────── activación de LMU y módulos
@@ -24,12 +26,12 @@ almacenamiento privado de otro.
 
 ## Proyectos
 
-| Proyecto | Resultado | Estado inicial | Dependencia inmediata |
+| Proyecto | Resultado | Estado actual | Dependencia inmediata |
 |---|---|---|---|
-| Telemetry Core | Runtime live modular | ISA-37 en review; TC-04D/TC-05–09 pendientes | ISA-38 |
-| Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | proyecto creado; investigación pendiente | TC-05/06 |
-| Engineer/Spotter | Acompañamiento live, seguridad, voz y Pit Manager | proyecto creado; código no confiable | TC-05 y auditoría |
-| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | proyecto unificado; B/C quedan como historia | reauditar backlog |
+| Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
+| Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
+| Engineer/Spotter | Acompañamiento live, seguridad, voz y Pit Manager | ISA-123/125/127/133 en review; siguiente ISA-158 | ISA-158 scheduler determinista |
+| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | ISA-144 / STR-09 implementado: entrada rápida/por vuelta y cálculo manual | Review STR-09; después ISA-168 / TA-03C; STR-10 bloqueado por ISA-159 |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |
 | Hub | Accesos y resumen real | conservar estructura | consistencia |
@@ -57,13 +59,23 @@ Contenido y marketing no se implementan autónomamente.
 
 ## Orden global
 
-1. GOV-01 y reconciliación de Linear.
-2. Completar Telemetry Core TC-04D–TC-09.
-3. Investigación profunda de Analysis y Engineer en paralelo.
-4. Implementar Analysis sobre TC-06.
-5. Implementar Engineer sobre TC-05/08.
-6. Unificar y completar Strategy.
-7. Cerrar Overlay con LMU real.
-8. Completar plataforma comercial y distribución.
-9. Migrar raíz y ramas cuando se cierren grandes worktrees.
-10. Auditoría transversal, Testers y gate final de Master.
+1. Cerrar review ISA-117 sin promover; Core canónico permanece como base.
+2. Analysis: ISA-126/135 -> ISA-132 -> ISA-159 productor histórico Strategy.
+3. Engineer: continuar ISA-158 sobre ENG-04 sin reabrir adquisición LMU.
+4. Strategy: review ISA-137 -> ISA-138..157 + ISA-162/163.
+5. Core: ISA-160 audita señales y ISA-161 produce live antes de STR-17.
+6. Strategy asistido se bloquea en ISA-159; live se bloquea en ISA-161.
+7. Cerrar Overlay con LMU real y gates visuales pendientes.
+8. Completar plataforma comercial, distribución y migración de raíz.
+9. Solo después: `nightly` -> feedback -> `testers` -> aprobación -> `master`.
+
+## Contratos Strategy pendientes
+
+| Contrato | Owner | Productor | Consumidor bloqueado |
+| --- | --- | --- | --- |
+| `StrategyInputProjection v1` | Telemetry Analysis | ISA-159 / TA-05 | ISA-145 / STR-10 |
+| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A, ISA-161 / TC-10B | ISA-152 / STR-17 |
+
+La proyección Strategy presente en ISA-117 solo cubre sesión, progreso y pit;
+no es una entrada productiva suficiente para Fuel, Virtual Energy, neumáticos
+o weather. No se autoriza un fallback local dentro de Strategy.

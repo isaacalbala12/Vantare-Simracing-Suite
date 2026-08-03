@@ -18,6 +18,7 @@ import {
 import { buildInputTelemetryViewModel } from "../overlay/widget-types/input-telemetry/input-telemetry-view-model";
 import { parseRelativeContent, updateRelativeFilters } from "../overlay/widget-types/relative/relative-content";
 import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
+import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 
 export type HarnessWidget = WidgetType;
 export type CrystalHarnessDesign = {
@@ -52,6 +53,7 @@ export type HarnessVariant =
 
 export const HARNESS_WIDGETS: readonly HarnessWidget[] = [
   ...new Set(CRYSTAL_HARNESS_DESIGNS.map((design) => design.widgetType)),
+  "engineer-radio",
 ];
 
 export function isHarnessWidget(value: string): value is HarnessWidget {
@@ -359,6 +361,11 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
         clutch: item.clutch ?? 0,
       })) ?? [],
     );
+  }
+  if (widget.type === "engineer-radio" && definition.buildRuntimeViewModel) {
+    return definition.buildRuntimeViewModel(snapshot, content as never, {
+      engineerPresentation: buildEngineerPresentationFixture(),
+    });
   }
   return definition.buildViewModel(snapshot, content as never);
 }

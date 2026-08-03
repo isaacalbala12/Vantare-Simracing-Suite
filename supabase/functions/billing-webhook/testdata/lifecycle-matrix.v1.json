@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-08-02T12:00:00.000Z",
+  "subscriptionCases": [
+    {
+      "id": "trial",
+      "status": "trialing",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-08-09T12:00:00.000Z",
+      "previousPaidThrough": null,
+      "expectedGrant": "active",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "active",
+      "status": "active",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-08-02T12:00:00.000Z",
+      "expectedGrant": "active",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "renewal",
+      "status": "active",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-10-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "active",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "cancel-at-period-end",
+      "status": "canceled",
+      "cancelAtPeriodEnd": true,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "active",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "uncancel",
+      "status": "uncanceled",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "active",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "past-due-with-expired-paid-cycle",
+      "status": "past_due",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-08-02T11:59:59.000Z",
+      "expectedGrant": "revoked",
+      "expectedRecovery": "open"
+    },
+    {
+      "id": "past-due-without-proven-cycle",
+      "status": "past_due",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": null,
+      "expectedGrant": "revoked",
+      "expectedRecovery": "none"
+    },
+    {
+      "id": "unpaid",
+      "status": "unpaid",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "revoked",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "revoked",
+      "status": "revoked",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "revoked",
+      "expectedRecovery": "close"
+    },
+    {
+      "id": "unknown-fails-closed",
+      "status": "provider_future_state",
+      "cancelAtPeriodEnd": false,
+      "periodEnd": "2026-09-02T12:00:00.000Z",
+      "previousPaidThrough": "2026-09-02T12:00:00.000Z",
+      "expectedGrant": "revoked",
+      "expectedRecovery": "close"
+    }
+  ]
+}

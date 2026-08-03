@@ -146,6 +146,35 @@ func TestProfileDocumentStoreSaveAcceptsEmptyGeneralWidgets(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "engineer-radio.json")
+	widget := validWidget("engineer-radio-main", WidgetTypeEngineerRadio)
+	widget.Visual.SystemID = DesignSystemVantareCrystal
+	widget.Content = map[string]any{"display": "radio"}
+	doc := validProfileV3(widget)
+	store := ProfileDocumentStore{}
+
+	revision, err := store.Save(path, "", doc, ProfileSchemaVersionV3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Revision != revision {
+		t.Fatalf("revision=%q want %q", loaded.Revision, revision)
+	}
+	got := loaded.Document.Layouts[LayoutGeneral].Widgets
+	if len(got) != 1 || got[0].Type != WidgetTypeEngineerRadio {
+		t.Fatalf("widgets=%+v want one %q widget", got, WidgetTypeEngineerRadio)
+	}
+	if got[0].Content["display"] != "radio" {
+		t.Fatalf("content=%v want preserved display=radio", got[0].Content)
+	}
+}
+
 func TestProfileDocumentStoreSaveConflictLeavesDiskUnchanged(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

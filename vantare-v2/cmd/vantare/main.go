@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -22,12 +23,18 @@ import (
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
+	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
+	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -51,8 +58,9 @@ const (
 // VANTARE_SUPABASE_ANON_KEY still take precedence for development and
 // overrides.
 var (
-	supabaseURL     = ""
-	supabaseAnonKey = ""
+	supabaseURL       = ""
+	supabaseAnonKey   = ""
+	licensePublicKeys = ""
 )
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
@@ -178,6 +186,124 @@ func samePath(left, right string) bool {
 		return strings.EqualFold(left, right)
 	}
 	return left == right
+}
+
+func strategyRepositoryRoot(cfgDir string) (string, error) {
+	if cfgDir == "" || !filepath.IsAbs(cfgDir) {
+		return "", fmt.Errorf("configs directory must be absolute")
+	}
+	return filepath.Join(filepath.Dir(filepath.Clean(cfgDir)), "data", "strategy"), nil
+}
+
+type strategyCommandExecutor interface {
+	Execute(context.Context, []byte) ([]byte, error)
+}
+
+func executeStrategyApplicationCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy command"}
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	_ = json.Unmarshal(document, &header)
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategyapplication.ErrorInvalidCommand
+		field := ""
+		var applicationErr *strategyapplication.ApplicationError
+		if errors.As(err, &applicationErr) {
+			if _, known := publicStrategyApplicationMessage(applicationErr.Code); known {
+				code = applicationErr.Code
+				field = applicationErr.Field
+			}
+		}
+		message, _ := publicStrategyApplicationMessage(code)
+		return nil, map[string]any{
+			"commandId": header.CommandID,
+			"code":      string(code),
+			"field":     field,
+			"message":   message,
+		}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy result"}
+	}
+	return result, nil
+}
+
+func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) (string, bool) {
+	switch code {
+	case strategyapplication.ErrorInvalidCommand:
+		return "The Strategy request could not be completed.", true
+	case strategyapplication.ErrorStaleCommand:
+		return "The Strategy document changed. Reopen it and try again.", true
+	case strategyapplication.ErrorDraftNotFound:
+		return "The Strategy draft was not found.", true
+	case strategyapplication.ErrorDraftConflict:
+		return "The Strategy draft conflicts with another saved document.", true
+	case strategyapplication.ErrorRevisionNotFound:
+		return "The Strategy revision was not found.", true
+	case strategyapplication.ErrorActiveConflict:
+		return "The active Strategy plan changed. Reopen it and try again.", true
+	case strategyapplication.ErrorUnsavedChanges:
+		return "The Strategy draft has unsaved changes.", true
+	default:
+		return "The Strategy request could not be completed.", false
+	}
+}
+
+func executeStrategyManualCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if err := json.Unmarshal(document, &header); err != nil {
+		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy request could not be completed."}
+	}
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategymanual.ErrorInvalidInput
+		field := ""
+		var calculationErr *strategymanual.CalculationError
+		if errors.As(err, &calculationErr) {
+			if _, known := publicStrategyManualMessage(calculationErr.Code); known {
+				code = calculationErr.Code
+				field = calculationErr.Field
+			}
+		}
+		message, _ := publicStrategyManualMessage(code)
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(code), "field": field, "message": message}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy result was invalid."}
+	}
+	return result, nil
+}
+
+func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
+	switch code {
+	case strategymanual.ErrorInvalidInput:
+		return "Review the highlighted manual Strategy input.", true
+	case strategymanual.ErrorOverflow:
+		return "The manual Strategy calculation exceeds supported limits.", true
+	case strategymanual.ErrorInsufficientCapacity:
+		return "The configured resource capacity is insufficient.", true
+	default:
+		return "The manual Strategy request could not be completed.", false
+	}
 }
 
 type wailsEmitter struct {
@@ -746,6 +872,47 @@ func main() {
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
+	var strategyBridge strategyCommandExecutor
+	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
+		log.Printf("warning: Strategy repository is unavailable")
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
+		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+	} else {
+		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
+	}
+	wailsApp.Event.On("strategy:application:command", func(event *application.CustomEvent) {
+		if strategyBridge == nil {
+			commandID := "unavailable"
+			if document, marshalErr := json.Marshal(event.Data); marshalErr == nil {
+				var header struct {
+					CommandID string `json:"commandId"`
+				}
+				if json.Unmarshal(document, &header) == nil && header.CommandID != "" {
+					commandID = header.CommandID
+				}
+			}
+			emitter.Emit("strategy:application:error", map[string]any{
+				"commandId": commandID, "code": string(strategyapplication.ErrorInvalidCommand),
+				"field": "", "message": "Strategy repository is unavailable",
+			})
+			return
+		}
+		result, failure := executeStrategyApplicationCommand(ctx, strategyBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:application:error", failure)
+			return
+		}
+		emitter.Emit("strategy:application:result", result)
+	})
+	strategyManualBridge := strategymanual.JSONBridge{}
+	wailsApp.Event.On("strategy:manual:calculate", func(event *application.CustomEvent) {
+		result, failure := executeStrategyManualCommand(ctx, strategyManualBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:manual:error", failure)
+			return
+		}
+		emitter.Emit("strategy:manual:result", result)
+	})
 
 	// Resolve the profile path relative to the config directory if it's relative
 	resolvedProfilePath := *profilePath
@@ -834,13 +1001,27 @@ func main() {
 	if supabaseAnonKeyResolved == "" {
 		supabaseAnonKeyResolved = supabaseAnonKey
 	}
+	licensePublicKeysResolved := resolveLicensePublicKeys(
+		licensePublicKeys,
+		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
-		GracePeriod:     24 * time.Hour,
 		CachePath:       licenseCachePath,
 	}, emitter, license.MachineFingerprint)
 	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
+	publicKeys, publicKeyErr := license.ParsePublicKeys(licensePublicKeysResolved)
+	if publicKeyErr != nil {
+		log.Printf("license: invalid public key configuration: %v", publicKeyErr)
+	} else if len(publicKeys) == 0 {
+		log.Printf("license: no offline credential public keys configured")
+	} else {
+		licenseSvc.WithVerifier(license.NewCredentialVerifier(
+			publicKeys,
+			license.NewProtectedClockStore("Vantare/LicenseClock"),
+		))
+	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
 		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURLResolved, supabaseAnonKeyResolved))
 	} else {
@@ -850,6 +1031,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
@@ -869,23 +1051,106 @@ func main() {
 		// race with the frontend state machine.
 		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
 			len(payload.SessionToken), len(payload.RefreshToken))
-		res, verr := licenseSvc.Validate(context.Background(), payload.SessionToken)
+		trustedSessionToken := ""
+		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
+			trustedSessionToken = protectedSession.AccessToken
+		} else if !errors.Is(restoreErr, authsession.ErrNotFound) &&
+			!errors.Is(restoreErr, authsession.ErrInvalidStoredSessionRemoved) {
+			log.Printf("auth session restore for license fallback failed: %v", restoreErr)
+		}
+		res, verr := licenseSvc.ValidateWithTrustedSession(
+			context.Background(),
+			payload.SessionToken,
+			trustedSessionToken,
+		)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
 			emitter.Emit("license:error", map[string]any{"message": verr.Error()})
 			return
 		}
 		if res != nil {
-			log.Printf("license:validate result state=%s email=%s deviceOK=%v entitlements=%v err=%v",
-				res.State, res.Email, res.DeviceOK, res.Entitlements, res.Error)
+			log.Printf("license:validate result state=%s deviceOK=%v entitlementCount=%d err=%v",
+				res.State, res.DeviceOK, len(res.Entitlements), res.Error)
 		}
-		// Emit auth:session so the frontend can persist the Supabase session
-		// in the WebView's localStorage. This survives app restarts.
-		if payload.SessionToken != "" {
+		// Persist only sessions that have been accepted by the backend. Windows
+		// Credential Manager owns persistence; the WebView only keeps memory.
+		if shouldPersistValidatedSession(res, payload.SessionToken, payload.RefreshToken) {
+			if err := authManager.AcceptValidated(authsession.Session{
+				AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
+			}); err != nil {
+				log.Printf("auth session save failed: %v", err)
+			}
 			emitter.Emit("auth:session", map[string]any{
 				"access_token":  payload.SessionToken,
 				"refresh_token": payload.RefreshToken,
+				"source":        "validated",
 			})
+		}
+	})
+
+	wailsApp.Event.On("auth:session:get", func(_ *application.CustomEvent) {
+		session, err := authManager.Restore()
+		if err != nil {
+			if errors.Is(err, authsession.ErrInvalidStoredSessionRemoved) {
+				log.Printf("invalid protected auth session removed")
+				emitter.Emit("auth:session:invalidated", map[string]any{"reason": "invalid_credential"})
+			} else if !errors.Is(err, authsession.ErrNotFound) {
+				log.Printf("auth session restore failed: %v", err)
+				emitter.Emit("auth:session:error", map[string]any{"code": "restore_failed"})
+			}
+			return
+		}
+		emitter.Emit("auth:session", map[string]any{
+			"access_token": session.AccessToken, "refresh_token": session.RefreshToken, "source": "restore",
+		})
+	})
+
+	wailsApp.Event.On("auth:session:clear:request", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.RequestID == "" {
+			log.Printf("auth session clear ignored: missing request id")
+			return
+		}
+		if err := authManager.Clear(); err != nil {
+			log.Printf("auth session clear failed: %v", err)
+			emitter.Emit("auth:session:clear:result", map[string]any{
+				"requestId": payload.RequestID, "ok": false, "code": "credential_delete_failed",
+			})
+			return
+		}
+		emitter.Emit("auth:session:clear:result", map[string]any{
+			"requestId": payload.RequestID, "ok": true,
+		})
+	})
+
+	// Token rotation may only replace a session that the backend has already
+	// validated or restored from Credential Manager. An arbitrary WebView event
+	// can never establish the first trusted session.
+	wailsApp.Event.On("auth:session:save", func(event *application.CustomEvent) {
+		var payload struct {
+			AccessToken  string `json:"accessToken"`
+			RefreshToken string `json:"refreshToken"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		if payload.AccessToken == "" || payload.RefreshToken == "" {
+			log.Printf("auth session rotation ignored: incomplete token pair")
+			return
+		}
+		if err := authManager.Rotate(authsession.Session{
+			AccessToken: payload.AccessToken, RefreshToken: payload.RefreshToken,
+		}); err != nil {
+			log.Printf("auth session rotation save failed: %v", err)
 		}
 	})
 
@@ -944,7 +1209,20 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
-	engSvc.Start(ctx)
+	engineerAudioConfig := engineeraudio.DefaultAudioConfig()
+	engSvc.SetAudioPlayer(engineeraudio.NewPlayer())
+	engSvc.SetAudioConfig(engineerAudioConfig)
+	// ENG-06 is cache-only: a miss remains a visual notification. TTS
+	// synthesis stays outside the preemptible product delivery path.
+	engineerAudioCache, cacheErr := tts.NewCache(tts.DefaultCacheRoot(), "kokoro")
+	if cacheErr != nil {
+		log.Printf("engineer audio cache unavailable; using visual delivery only: %v", cacheErr)
+	} else {
+		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
+	}
+	if err := engSvc.Start(ctx); err != nil {
+		log.Printf("engineer service start error: %v", err)
+	}
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
@@ -981,6 +1259,27 @@ func main() {
 		}(),
 	})
 	httpSrv.Start()
+	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+			Provider  string `json:"provider"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		attempt, err := httpSrv.CreateAuthAttempt(payload.Provider)
+		if err != nil {
+			emitter.Emit("auth:attempt:error", map[string]any{
+				"requestId": payload.RequestID, "message": err.Error(),
+			})
+			return
+		}
+		emitter.Emit("auth:attempt:created", map[string]any{
+			"requestId": payload.RequestID, "redirectUrl": attempt.RedirectURL,
+		})
+	})
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
@@ -1883,6 +2182,20 @@ func main() {
 	if err := wailsApp.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func shouldPersistValidatedSession(res *license.Result, sessionToken, refreshToken string) bool {
+	return res != nil && res.OnlineValidated && res.UserID != "" && sessionToken != "" && refreshToken != ""
+}
+
+func resolveLicensePublicKeys(embedded, developmentOverride string) string {
+	// Release builds embed a required trust root. Once present it must never be
+	// replaceable by the user process environment. Local development builds do
+	// not embed keys and may opt in through VANTARE_LICENSE_PUBLIC_KEYS.
+	if embedded != "" {
+		return embedded
+	}
+	return developmentOverride
 }
 
 // wailsWindowHandle adapts *application.WebviewWindow to window.WindowHandle.

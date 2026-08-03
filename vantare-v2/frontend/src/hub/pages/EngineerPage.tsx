@@ -1,15 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Events } from '@wailsio/runtime';
-import type { EngineerStatus, EngineerNotification } from '../../engineer/engineer-types';
+import type { EngineerStatus, EngineerNotification, EngineerOutputMode } from '../../engineer/engineer-types';
+
+const OUTPUT_CATEGORIES = [
+  ['spotter', 'Spotter'],
+  ['fuel', 'Combustible'],
+  ['penalties', 'Penalizaciones'],
+  ['laps', 'Vueltas'],
+  ['timings', 'Diferencias'],
+  ['pitstops', 'Boxes'],
+] as const;
+
+const OUTPUT_MODES: ReadonlyArray<{ value: EngineerOutputMode; label: string }> = [
+  { value: 'both', label: 'Audio y visual' },
+  { value: 'visual', label: 'Solo visual' },
+  { value: 'audio', label: 'Solo audio' },
+  { value: 'disabled', label: 'Desactivado' },
+];
 
 const INITIAL_STATUS: EngineerStatus = {
   enabled: true,
   connected: false,
   source: 'telemetry-core',
+  presentationLifecycle: 0,
   spotterEnabled: true,
   sensitivity: 'normal',
   ttsCacheCount: 0,
   recentMessages: [],
+  outputModes: Object.fromEntries(OUTPUT_CATEGORIES.map(([category]) => [category, 'both'])),
+  subtitlesEnabled: true,
 };
 
 export function EngineerPage() {
@@ -49,6 +68,14 @@ export function EngineerPage() {
 
   const handleSensitivityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     Events.Emit('engineer:sensitivity:set', e.target.value);
+  };
+
+  const handleOutputChange = (category: string, mode: EngineerOutputMode) => {
+    Events.Emit('engineer:output:set', { category, mode });
+  };
+
+  const handleToggleSubtitles = () => {
+    Events.Emit('engineer:subtitles:set', !status.subtitlesEnabled);
   };
 
   const formatTime = (timestamp: number) => {
@@ -150,6 +177,24 @@ export function EngineerPage() {
                   className="w-4 h-4 rounded border-white/10 bg-[#0a0a0a] text-vantare-red-500 focus:ring-vantare-red-500"
                 />
               </label>
+
+              <label className="flex items-center justify-between cursor-pointer group">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-white group-hover:text-vantare-red-400 transition-colors">
+                    Subtítulos independientes
+                  </span>
+                  <span className="text-xs text-vantare-textMuted">
+                    Muestra el mensaje aunque el layout no incluya el widget de radio.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  data-testid="toggle-subtitles"
+                  checked={status.subtitlesEnabled}
+                  onChange={handleToggleSubtitles}
+                  className="w-4 h-4 rounded border-white/10 bg-[#0a0a0a] text-vantare-red-500 focus:ring-vantare-red-500"
+                />
+              </label>
             </div>
 
             <div className="h-px bg-white/5" />
@@ -178,6 +223,27 @@ export function EngineerPage() {
                   <option value="normal">Normal (Estándar)</option>
                   <option value="aggressive">Agresiva (Margen lateral estrecho)</option>
                 </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="v52-eyebrow">Salidas por categoría</span>
+                <p className="text-[11px] text-vantare-textDim leading-relaxed">
+                  El modo visual alimenta subtítulos y el widget de radio. Si no hay audio disponible, la salida visual sigue funcionando.
+                </p>
+                <div className="grid gap-2">
+                  {OUTPUT_CATEGORIES.map(([category, label]) => (
+                    <label key={category} className="grid grid-cols-[1fr_150px] items-center gap-3">
+                      <span className="text-xs text-vantare-textMuted">{label}</span>
+                      <select
+                        data-testid={`output-mode-${category}`}
+                        value={status.outputModes?.[category] ?? 'both'}
+                        onChange={(event) => handleOutputChange(category, event.target.value as EngineerOutputMode)}
+                        className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-vantare-red-500 transition-colors"
+                      >
+                        {OUTPUT_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
+                      </select>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -213,7 +279,7 @@ export function EngineerPage() {
                   <div className="flex-1 flex flex-col gap-1">
                     <div className="flex items-center justify-between w-full">
                       <span className="text-xs font-bold uppercase tracking-wider text-vantare-textMuted">
-                        Spotter
+                        {msg.role === 'spotter' ? 'Spotter' : 'Ingeniero'}
                       </span>
                       <span className="font-mono text-[10px] text-vantare-textDim">
                         {formatTime(msg.createdAt)}

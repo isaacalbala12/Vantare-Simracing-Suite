@@ -7,6 +7,8 @@ import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
+import { createEngineerPresentationStore } from "../../engineer/engineer-presentation-store";
+import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 
 afterEach(() => cleanup());
 
@@ -136,5 +138,27 @@ describe("RuntimeOverlaySurface", () => {
     expect(onDiagnostic).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(diagnostics.list())).not.toMatch(/profile|telemetry|driver/i);
     coordinator.dispose();
+  });
+
+  it("renders optional subtitles independently from the radio widget", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const document = buildDocument();
+    document.layouts.general.widgets = [];
+    const presentations = createEngineerPresentationStore({ now: () => 1_000 });
+    presentations.publish(buildEngineerPresentationFixture("en", "warning"));
+
+    const view = render(
+      <RuntimeOverlaySurface
+        document={document}
+        telemetry={coordinator}
+        renderMode="desktop"
+        engineerPresentations={presentations}
+      />,
+    );
+    expect(view.container.querySelector("[data-engineer-subtitles]")).toBeTruthy();
+    expect(view.container.querySelector("[data-engineer-radio-root]")).toBeNull();
+    coordinator.dispose();
+    presentations.dispose();
   });
 });

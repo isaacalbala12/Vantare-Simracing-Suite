@@ -1,0 +1,166 @@
+{
+  "schema": "vantare.engineer.voice-gate.v1",
+  "capturedAt": "2026-08-02T07:21:38Z",
+  "host": {
+    "os": "Windows 11 Pro 10.0.26200 x64",
+    "cpu": "AMD Ryzen 7 3700X",
+    "physicalCores": 8,
+    "logicalProcessors": 16,
+    "ramGiB": 31.9,
+    "python": "3.12.10",
+    "go": "1.26.4"
+  },
+  "artifacts": [
+    {
+      "id": "kokoro-v1.0-int8",
+      "bytes": 92361271,
+      "sha256": "6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb"
+    },
+    {
+      "id": "kokoro-voices-v1.0",
+      "bytes": 28214398,
+      "sha256": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
+    },
+    {
+      "id": "kokoro-v1.0-fp16",
+      "bytes": 177464787,
+      "sha256": "c1610a859f3bdea01107e73e50100685af38fff88f5cd8e5c56df109ec880204"
+    },
+    {
+      "id": "whisper-cpp-v1.9.1-windows-x64-zip",
+      "bytes": 7982101,
+      "sha256": "7d8be46ecd31828e1eb7a2ecdd0d6b314feafd82163038ab6092594b0a063539"
+    },
+    {
+      "id": "whisper-ggml-tiny-multilingual",
+      "bytes": 77691713,
+      "sha256": "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"
+    }
+  ],
+  "installedResearchFootprint": {
+    "kokoroPythonVenvBytes": 185953886,
+    "whisperExtractedRuntimeBytes": 20355072
+  },
+  "tts": {
+    "engine": "kokoro-onnx 0.5.0",
+    "model": "kokoro-v1.0.int8.onnx",
+    "loadWallMs": 1865.37,
+    "workingSetAfterLoadBytes": 334721024,
+    "firstAverageWallMs": 4590.002,
+    "warmAverageWallMs": 4486.255,
+    "workingSetObservedBytes": {
+      "min": 283803648,
+      "max": 334712832
+    },
+    "directML": {
+      "runtime": "onnxruntime-directml 1.23.0",
+      "gpu": "AMD Radeon RX 7800 XT",
+      "int8": "FAIL ConvTranspose 0x80070057",
+      "fp16": "FAIL ConvTranspose 0x80070057",
+      "audioProduced": false
+    },
+    "locales": [
+      {
+        "locale": "en",
+        "voice": "af_heart",
+        "audioSeconds": 1.92,
+        "firstWallMs": 4416.443,
+        "warmWallMs": 4401.207,
+        "warmRealTimeFactor": 2.2923
+      },
+      {
+        "locale": "es",
+        "voice": "ef_dora",
+        "audioSeconds": 2.069,
+        "firstWallMs": 4207.238,
+        "warmWallMs": 4167.372,
+        "warmRealTimeFactor": 2.0139
+      },
+      {
+        "locale": "it",
+        "voice": "if_sara",
+        "audioSeconds": 2.539,
+        "firstWallMs": 5200.635,
+        "warmWallMs": 5345.98,
+        "warmRealTimeFactor": 2.1058
+      },
+      {
+        "locale": "pt-BR",
+        "voice": "pf_dora",
+        "audioSeconds": 2.069,
+        "firstWallMs": 4535.691,
+        "warmWallMs": 4030.46,
+        "warmRealTimeFactor": 1.9477
+      }
+    ]
+  },
+  "stt": {
+    "runtime": "whisper.cpp v1.9.1 whisper-server",
+    "model": "ggml-tiny.bin multilingual",
+    "threads": 8,
+    "decoding": "no-timestamps, no-fallback, best-of=1, beam-size=1",
+    "serverLoadWallMs": 866.124,
+    "firstAverageWallMs": 601.958,
+    "warmAverageWallMs": 634.234,
+    "workingSetObservedBytes": {
+      "min": 172875776,
+      "max": 176025600
+    },
+    "locales": [
+      {
+        "locale": "en",
+        "firstWallMs": 597.176,
+        "warmWallMs": [696.145, 610.512],
+        "transcript": "Car on the left, hold your line.",
+        "wordErrorRate": 0.0
+      },
+      {
+        "locale": "es",
+        "firstWallMs": 627.826,
+        "warmWallMs": [579.245, 583.815],
+        "transcript": "coche a la izquierda mantentulinea.",
+        "wordErrorRate": 0.4286
+      },
+      {
+        "locale": "it",
+        "firstWallMs": 600.81,
+        "warmWallMs": [751.105, 596.838],
+        "transcript": "auto-assinistra mantiene la traiettoria",
+        "wordErrorRate": 0.5
+      },
+      {
+        "locale": "pt-BR",
+        "firstWallMs": 582.021,
+        "warmWallMs": [650.056, 606.16],
+        "transcript": "carro à esquerda mantém a sua linha.",
+        "wordErrorRate": 0.3333
+      }
+    ]
+  },
+  "isolation": {
+    "kokoro": {
+      "cancelAfterMs": 2000,
+      "heartbeatTargetMs": 10,
+      "heartbeatCount": 200,
+      "maxHeartbeatGapMs": 10.0,
+      "cancelLatencyMs": 2.232,
+      "childExited": true
+    },
+    "whisper": {
+      "cancelAfterMs": 500,
+      "heartbeatTargetMs": 10,
+      "heartbeatCount": 48,
+      "maxHeartbeatGapMs": 20.0,
+      "cancelLatencyMs": 41.065,
+      "childExited": true
+    }
+  },
+  "microphoneAccess": "none",
+  "limitations": [
+    "The four STT samples were synthetic Kokoro speech, not a human voice-command corpus.",
+    "Word error rate on one short phrase per language is a smoke signal, not a quality estimate.",
+    "No perceptual TTS claim was made; human listening remains required before any release.",
+    "Working set was sampled after requests and is not peak RSS.",
+    "Isolation measurements prove external-worker cancellation, not future product wiring."
+  ]
+}

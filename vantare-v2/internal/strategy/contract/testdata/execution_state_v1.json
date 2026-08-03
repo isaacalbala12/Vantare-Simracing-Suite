@@ -1,0 +1,175 @@
+{
+  "cases": [
+    {
+      "name": "root must be an object",
+      "document": "[]",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": ""
+    },
+    {
+      "name": "missing contract version",
+      "document": "{}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "contractVersion"
+    },
+    {
+      "name": "valid minimum counters",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[\"fuel_strategy\",\"live_updates\"],\"provenance\":{\"kind\":\"observed\",\"sourceId\":\"telemetry-core\",\"observedAt\":\"2026-08-01T18:00:00Z\"},\"confidence\":{\"level\":\"high\",\"basis\":\"fresh signals\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": true
+    },
+    {
+      "name": "valid maximum safe counters",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":9007199254740991,\"sequence\":9007199254740991,\"status\":\"monitoring\",\"capabilities\":[\"fuel_strategy\",\"live_updates\"],\"provenance\":{\"kind\":\"observed\",\"sourceId\":\"telemetry-core\"},\"confidence\":{\"level\":\"high\",\"basis\":\"fresh signals\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": true
+    },
+    {
+      "name": "unknown top level field",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\",\"unexpected\":true}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "unexpected"
+    },
+    {
+      "name": "unknown nested active plan field",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\",\"unexpected\":true},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "activePlan.unexpected"
+    },
+    {
+      "name": "missing nested revision",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "activePlan.revision"
+    },
+    {
+      "name": "duplicate top level key",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"sequence\":2,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "sequence"
+    },
+    {
+      "name": "duplicate nested key",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"activationId\":\"activation-2\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "activationId"
+    },
+    {
+      "name": "trailing data",
+      "document": "{\"contractVersion\":\"strategy.v1\"} true",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": ""
+    },
+    {
+      "name": "non canonical active timestamp",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00.000Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "activePlan.activatedAt"
+    },
+    {
+      "name": "non canonical updated timestamp",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01+00:00\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "updatedAt"
+    },
+    {
+      "name": "unknown capability",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[\"unknown\"],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "capabilities"
+    },
+    {
+      "name": "duplicate capabilities",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[\"fuel_strategy\",\"fuel_strategy\"],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "capabilities"
+    },
+    {
+      "name": "zero epoch",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":0,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_state",
+      "errorField": "epoch"
+    },
+    {
+      "name": "zero sequence",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":0,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_state",
+      "errorField": "sequence"
+    },
+    {
+      "name": "fractional epoch",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1.5,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_state",
+      "errorField": "epoch"
+    },
+    {
+      "name": "unknown execution status",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"unknown\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_state",
+      "errorField": "status"
+    },
+    {
+      "name": "unsorted capabilities",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[\"live_updates\",\"fuel_strategy\"],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "capabilities"
+    },
+    {
+      "name": "unknown provenance kind",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"invented\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_provenance",
+      "errorField": "provenance.kind"
+    },
+    {
+      "name": "known provenance without source",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"observed\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_provenance",
+      "errorField": "provenance.sourceId"
+    },
+    {
+      "name": "known confidence without basis",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"high\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_confidence",
+      "errorField": "confidence.basis"
+    },
+    {
+      "name": "non canonical provenance timestamp",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"observed\",\"sourceId\":\"telemetry-core\",\"observedAt\":\"2026-08-01T18:00:00.000Z\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "provenance.observedAt"
+    },
+    {
+      "name": "epoch above shared safe range",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":9007199254740992,\"sequence\":1,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "number"
+    },
+    {
+      "name": "sequence above shared safe range",
+      "document": "{\"contractVersion\":\"strategy.v1\",\"executionId\":\"execution-1\",\"activePlan\":{\"contractVersion\":\"strategy.v1\",\"activationId\":\"activation-1\",\"revision\":{\"planId\":\"plan\",\"variantId\":\"variant\",\"revisionId\":\"rev-1\",\"contentHash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"activatedAt\":\"2026-08-01T18:00:00Z\"},\"epoch\":1,\"sequence\":9007199254740992,\"status\":\"monitoring\",\"capabilities\":[],\"provenance\":{\"kind\":\"unknown\"},\"confidence\":{\"level\":\"unknown\"},\"updatedAt\":\"2026-08-01T18:00:01Z\"}",
+      "accepted": false,
+      "errorCode": "invalid_document",
+      "errorField": "number"
+    }
+  ]
+}

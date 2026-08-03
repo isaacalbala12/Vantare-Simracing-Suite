@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,54 +21,78 @@ import (
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 )
 
-// nonceStore tracks single-use nonces for /auth/token CSRF protection.
-type nonceStore struct {
-	mu      sync.Mutex
-	nonces  map[string]bool
-	created map[string]time.Time
-	ttl     time.Duration
+type authAttempt struct {
+	provider  string
+	state     string
+	createdAt time.Time
 }
 
-func newNonceStore() *nonceStore {
-	return &nonceStore{
-		nonces:  make(map[string]bool),
-		created: make(map[string]time.Time),
-		ttl:     5 * time.Minute,
-	}
+// authAttemptStore binds a provider and a high-entropy state to a login that
+// the desktop app initiated before opening the external browser. Attempts are
+// short-lived and consumed atomically by /auth/token.
+type authAttemptStore struct {
+	mu       sync.Mutex
+	attempts map[string]authAttempt
+	ttl      time.Duration
 }
 
-func (ns *nonceStore) Generate() string {
-	b := make([]byte, 16)
+func newAuthAttemptStore() *authAttemptStore {
+	return &authAttemptStore{attempts: make(map[string]authAttempt), ttl: 5 * time.Minute}
+}
+
+func randomHex(size int) (string, error) {
+	b := make([]byte, size)
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand: " + err.Error())
+		return "", fmt.Errorf("generate cryptographic random value: %w", err)
 	}
-	nonce := hex.EncodeToString(b)
-	ns.mu.Lock()
-	defer ns.mu.Unlock()
-	ns.nonces[nonce] = false
-	ns.created[nonce] = time.Now()
-	for k, t := range ns.created {
-		if time.Since(t) > ns.ttl {
-			delete(ns.nonces, k)
-			delete(ns.created, k)
+	return hex.EncodeToString(b), nil
+}
+
+func (s *authAttemptStore) Create(provider string) (string, string, error) {
+	id, err := randomHex(16)
+	if err != nil {
+		return "", "", err
+	}
+	state, err := randomHex(32)
+	if err != nil {
+		return "", "", err
+	}
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for key, attempt := range s.attempts {
+		if now.Sub(attempt.createdAt) > s.ttl {
+			delete(s.attempts, key)
 		}
 	}
-	return nonce
+	s.attempts[id] = authAttempt{provider: provider, state: state, createdAt: now}
+	return id, state, nil
 }
 
-func (ns *nonceStore) Consume(nonce string) bool {
-	ns.mu.Lock()
-	defer ns.mu.Unlock()
-	used, exists := ns.nonces[nonce]
-	created, hasCreatedAt := ns.created[nonce]
-	if !exists || used || !hasCreatedAt || time.Since(created) > ns.ttl {
-		delete(ns.nonces, nonce)
-		delete(ns.created, nonce)
+func (s *authAttemptStore) matches(id, provider, state string, consume bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	attempt, ok := s.attempts[id]
+	if !ok || time.Since(attempt.createdAt) > s.ttl {
+		delete(s.attempts, id)
 		return false
 	}
-	delete(ns.nonces, nonce)
-	delete(ns.created, nonce)
+	stateMatches := subtle.ConstantTimeCompare([]byte(attempt.state), []byte(state)) == 1
+	if attempt.provider != provider || !stateMatches {
+		return false
+	}
+	if consume {
+		delete(s.attempts, id)
+	}
 	return true
+}
+
+func (s *authAttemptStore) Validate(id, provider, state string) bool {
+	return s.matches(id, provider, state, false)
+}
+
+func (s *authAttemptStore) Consume(id, provider, state string) bool {
+	return s.matches(id, provider, state, true)
 }
 
 // rateLimiter is a simple in-memory sliding-window rate limiter.
@@ -155,14 +182,15 @@ type EventEmitter interface {
 }
 
 type Server struct {
-	mux         *http.ServeMux
-	srv         *http.Server
-	engineerSvc *engineerservice.EngineerService
-	distFS      fs.FS
-	cfgDir      string
-	emitter     EventEmitter
-	nonceStore  *nonceStore
-	rateLimiter *rateLimiter
+	mux          *http.ServeMux
+	srv          *http.Server
+	engineerSvc  *engineerservice.EngineerService
+	distFS       fs.FS
+	cfgDir       string
+	emitter      EventEmitter
+	authAttempts *authAttemptStore
+	rateLimiter  *rateLimiter
+	addr         string
 }
 
 type ServerConfig struct {
@@ -177,13 +205,14 @@ type ServerConfig struct {
 func New(cfg ServerConfig) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
-		mux:         mux,
-		engineerSvc: cfg.EngineerSvc,
-		distFS:      cfg.DistFS,
-		cfgDir:      cfg.CfgDir,
-		emitter:     cfg.Emitter,
-		nonceStore:  newNonceStore(),
-		rateLimiter: newRateLimiter(10, 1*time.Minute),
+		mux:          mux,
+		engineerSvc:  cfg.EngineerSvc,
+		distFS:       cfg.DistFS,
+		cfgDir:       cfg.CfgDir,
+		emitter:      cfg.Emitter,
+		authAttempts: newAuthAttemptStore(),
+		rateLimiter:  newRateLimiter(10, 1*time.Minute),
+		addr:         cfg.Addr,
 	}
 
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -296,10 +325,9 @@ func (s *Server) handleEngineerHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(h)
 }
 
-// authCallbackHTMLTmpl is served at /auth/callback with a one-time nonce
-// embedded via fmt.Sprintf. Supabase returns the access_token in the URL
-// fragment (#access_token=...); the page reads it, reads the nonce from
-// AUTH_NONCE, and POSTs both to /auth/token.
+// authCallbackHTMLTmpl is only served for a valid app-created OAuth attempt.
+// Supabase returns tokens in the URL fragment; the page posts them back with
+// the exact attempt tuple, which /auth/token consumes atomically.
 const authCallbackHTMLTmpl = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -330,7 +358,9 @@ const authCallbackHTMLTmpl = `<!DOCTYPE html>
 (function() {
   var msg = document.getElementById('msg');
   var hint = document.getElementById('hint');
-  var AUTH_NONCE = '%s';
+  var AUTH_ATTEMPT = '%s';
+  var AUTH_PROVIDER = '%s';
+  var AUTH_STATE = '%s';
   var hash = window.location.hash.substring(1);
   var params = new URLSearchParams(hash);
   var token = params.get('access_token');
@@ -346,7 +376,12 @@ const authCallbackHTMLTmpl = `<!DOCTYPE html>
     hint.textContent = 'Vuelve a la app Vantare e intenta de nuevo.';
     return;
   }
-  var body = { access_token: token, nonce: AUTH_NONCE };
+  var body = {
+    access_token: token,
+    attempt_id: AUTH_ATTEMPT,
+    provider: AUTH_PROVIDER,
+    state: AUTH_STATE
+  };
   if (refresh) { body.refresh_token = refresh; }
   fetch('/auth/token', {
     method: 'POST',
@@ -373,17 +408,25 @@ const authCallbackHTMLTmpl = `<!DOCTYPE html>
 </html>`
 
 func (s *Server) handleAuthCallback(w http.ResponseWriter, r *http.Request) {
-	nonce := s.nonceStore.Generate()
-	html := fmt.Sprintf(authCallbackHTMLTmpl, nonce)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	attemptID := r.URL.Query().Get("attempt")
+	provider := r.URL.Query().Get("provider")
+	state := r.URL.Query().Get("state")
+	if !s.authAttempts.Validate(attemptID, provider, state) {
+		http.Error(w, "invalid or expired authentication attempt", http.StatusUnauthorized)
+		return
+	}
+	html := fmt.Sprintf(authCallbackHTMLTmpl, attemptID, provider, state)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
 
 type authTokenPayload struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	Nonce        string `json:"nonce"`
+	AttemptID    string `json:"attempt_id"`
+	Provider     string `json:"provider"`
+	State        string `json:"state"`
 }
 
 func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
@@ -412,12 +455,19 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
-	if !s.nonceStore.Consume(payload.Nonce) {
-		http.Error(w, "invalid or expired nonce", http.StatusUnauthorized)
+	if !s.authAttempts.Consume(payload.AttemptID, payload.Provider, payload.State) {
+		http.Error(w, "invalid or expired authentication attempt", http.StatusUnauthorized)
 		return
 	}
 
-	log.Printf("auth: received OAuth token via local callback, forwarding to license:validate")
+	log.Printf("auth: received OAuth token via local callback, hydrating session and forwarding to license validation")
+	if payload.RefreshToken != "" {
+		s.emitter.Emit("auth:session", map[string]any{
+			"access_token":  payload.AccessToken,
+			"refresh_token": payload.RefreshToken,
+			"source":        "callback",
+		})
+	}
 	s.emitter.Emit("license:validate", map[string]any{
 		"sessionToken": payload.AccessToken,
 		"refreshToken": payload.RefreshToken,
@@ -427,8 +477,34 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
-// GenerateNonce generates a one-time nonce for auth token requests. Exported
-// for testing.
-func (s *Server) GenerateNonce() string {
-	return s.nonceStore.Generate()
+type AuthAttempt struct {
+	ID          string `json:"attemptId"`
+	Provider    string `json:"provider"`
+	State       string `json:"state"`
+	RedirectURL string `json:"redirectUrl"`
+}
+
+// CreateAuthAttempt must be called by the desktop UI before opening a browser.
+// Only supported providers are accepted and the resulting callback is bound to
+// this exact attempt, provider and state.
+func (s *Server) CreateAuthAttempt(provider string) (AuthAttempt, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider != "google" && provider != "discord" {
+		return AuthAttempt{}, fmt.Errorf("unsupported OAuth provider %q", provider)
+	}
+	id, state, err := s.authAttempts.Create(provider)
+	if err != nil {
+		return AuthAttempt{}, err
+	}
+	addr := s.addr
+	if addr == "" {
+		addr = "127.0.0.1:39261"
+	}
+	callback := url.URL{Scheme: "http", Host: addr, Path: "/auth/callback"}
+	query := callback.Query()
+	query.Set("attempt", id)
+	query.Set("provider", provider)
+	query.Set("state", state)
+	callback.RawQuery = query.Encode()
+	return AuthAttempt{ID: id, Provider: provider, State: state, RedirectURL: callback.String()}, nil
 }

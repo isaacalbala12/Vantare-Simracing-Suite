@@ -34,6 +34,9 @@ original sin obligar a crear una incidencia nueva.
   restringido; no es la fuente de instrucciones para Codex.
 - No hay modelo intermedio en el MVP. Un compositor determinista construye el
   expediente que Isaac revisa antes de mencionar o delegar a Codex.
+- La rama y el SHA se seleccionan en la superficie de ejecución de Codex y se
+  verifican antes de editar. Escribirlos únicamente en el prompt no otorga
+  autoridad ni se considera determinista.
 - Codex nunca se redelega automáticamente después de un rechazo.
 - La PR se crea tras revisión humana del resultado de Codex.
 - Discord publica avisos operativos anónimos para testers, nunca el expediente
@@ -132,6 +135,7 @@ El expediente incluye:
 - disponibilidad de PostHog y un enlace server-owned que exige autenticación
   del owner para la revisión humana;
 - estrategia elegida por Isaac: misma rama o sub-issue;
+- repositorio, rama objetivo, SHA esperado y base de PR server-owned;
 - criterios de finalización verificables;
 - versiones del contrato y digest del expediente.
 
@@ -168,9 +172,18 @@ Isaac puede registrar una de estas disposiciones:
 5. continuar en la misma rama;
 6. detener completamente el rollout.
 
-La delegación se inicia de forma humana asignando Codex o mencionando
-`@Codex` después de revisar el expediente. La creación de PR también permanece
-como gate humano.
+La delegación se inicia de forma humana después de revisar el expediente. La
+integración estándar de Linear inicia hoy sus chats desde la rama predeterminada
+del primer repositorio del environment; en Vantare esa rama debe continuar
+siendo `master`. Por tanto, una mención o asignación `@Codex` puede utilizarse
+para análisis y aclaraciones, pero no autoriza una modificación de código que
+requiera `nightly` o una rama de issue.
+
+Para modificar código se abre una tarea de Codex Cloud en una superficie que
+permita seleccionar la rama o el SHA exactos. Antes de editar, el preflight
+compara repositorio, `HEAD`, SHA esperado y relación con la base de PR. Cualquier
+diferencia termina en `needs_owner`. La creación de PR permanece como gate
+humano.
 
 ## Estrategias de corrección
 
@@ -188,9 +201,11 @@ Una PR ya fusionada no se reabre. Se añaden commits y se crea una nueva PR a
 Nightly. Por ello, las ramas no se eliminan automáticamente hasta superar la
 validación Nightly.
 
-La capacidad de Codex Cloud para continuar de forma fiable una rama ya
-fusionada debe probarse en un spike. Si no puede fijarse la rama y base exactas,
-la operación falla hacia `needs_owner` y se utiliza una sub-issue nueva.
+Codex Cloud permite que una tarea directa seleccione rama o commit SHA. El spike
+debe probar la continuidad de una rama ya fusionada y la creación de una segunda
+PR desde ella. Si esa continuidad concreta no funciona, se utiliza una
+sub-issue nueva; nunca se sustituye la selección técnica por una instrucción
+textual.
 
 ### Sub-issue y rama nueva
 
@@ -265,6 +280,8 @@ nuevo; no se edita el mensaje histórico para ocultar el rechazo.
 - Si Codex termina de forma ambigua, el estado es `needs_owner`; nunca se
   redelega automáticamente.
 - Si cambia el SHA, el expediente anterior no puede reutilizarse.
+- Si Codex empieza en otra rama o SHA, no edita, no crea PR y devuelve
+  `needs_owner`.
 
 ## Criterios de aceptación del diseño
 
@@ -275,6 +292,8 @@ nuevo; no se edita el mensaje histórico para ocultar el rechazo.
 - La identidad del tester no aparece en Discord.
 - Isaac puede elegir las seis disposiciones sin que ninguna delegue por sí
   sola a Codex.
+- El prompt no puede elegir la base: repositorio, rama, SHA y base de PR deben
+  coincidir con el preflight server-owned.
 - La misma rama solo está disponible bajo las condiciones cerradas de Nightly.
 - Un rechazo en Testers vuelve por Nightly y nunca se corrige directamente.
 - Una candidata corregida exige votos nuevos.
@@ -296,7 +315,8 @@ Tras revisar esta especificación se debe sustituir el plan TAU-07 anterior por
 microcortes que empiecen con spikes sin efectos reales:
 
 1. creación y proyección de una issue sintética en Linear;
-2. delegación humana y verificación de la base/rama de Codex Cloud;
+2. delegación humana directa con rama/SHA seleccionados y prueba de segunda PR
+   desde una rama ya fusionada;
 3. contrato de rechazo y expediente determinista en dry-run;
 4. persistencia, outbox y sincronización de estados;
 5. UI y notificaciones;

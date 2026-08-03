@@ -197,6 +197,10 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   por `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR
   revisada`. Un rechazo bloquea, genera expediente determinista y exige decisión
   de Isaac antes de cualquier nueva delegación.
+- La delegación con escritura selecciona y verifica rama/SHA fuera del prompt.
+  La mención Linear `@Codex` no autoriza código cuando parte de `master`; puede
+  utilizarse para análisis hasta validar un handoff exacto a Nightly o rama de
+  issue.
 - Siguiente acción: revisar la especificación
   `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`
   y replanificar TAU-07 por microcortes. TAU-07B no se ejecuta con su alcance

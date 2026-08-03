@@ -6,6 +6,9 @@ Nota de diseño Testing Center / Linear / Codex (2026-08-03):
 - Supabase compone un expediente determinista; no se añade un modelo
   intermedio. Isaac decide entre misma rama, sub-issue, entorno, issue nueva,
   descarte justificado o detener rollout.
+- Rama, SHA y base de PR se seleccionan y verifican fuera del prompt. La
+  integración Linear `@Codex`, que parte de la rama predeterminada, no puede
+  ejecutar cambios sobre Nightly hasta superar ese gate determinista.
 - La misma rama se conserva para correcciones pequeñas en Nightly. Testers
   siempre corrige desde Nightly y vuelve a recorrer los canales.
 - Especificación:

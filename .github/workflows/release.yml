@@ -79,16 +79,25 @@ jobs:
         env:
           DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
           DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
         run: |
           python - <<'PY'
           import json, os, urllib.request
 
-          destinations = (
-              ("DISCORD_PROGRESS_WEBHOOK_URL", "1519752249977340168"),
-              ("DISCORD_BUILD_WEBHOOK_URL", "1519747444315914512"),
+          secret_names = (
+              "DISCORD_PROGRESS_WEBHOOK_URL",
+              "DISCORD_BUILD_WEBHOOK_URL",
+              "DISCORD_RELEASE_WEBHOOK_URL",
+              "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
           )
+          required = {
+              "Nightly/Testers": "1519752249977340168",
+              "Changelog": "1519747444315914512",
+          }
           failed = False
-          for secret_name, expected in destinations:
+          channels = {}
+          for secret_name in secret_names:
               webhook = os.environ.get(secret_name, "")
               if not webhook:
                   print(f"::error::{secret_name} is not configured")
@@ -97,9 +106,12 @@ jobs:
               request = urllib.request.Request(webhook, headers={"User-Agent": "Vantare-GitHub-Actions/1.0"})
               with urllib.request.urlopen(request, timeout=20) as response:
                   actual = str(json.load(response).get("channel_id", "missing"))
-              print(f"{secret_name}: actual channel {actual}; expected {expected}")
-              if actual != expected:
-                  print(f"::error::{secret_name} targets channel {actual}, expected {expected}")
+              channels.setdefault(actual, []).append(secret_name)
+              print(f"{secret_name}: channel {actual}")
+          for label, expected in required.items():
+              matches = channels.get(expected, [])
+              if len(matches) != 1:
+                  print(f"::error::{label} requires exactly one webhook for channel {expected}; found {matches}")
                   failed = True
           if failed:
               raise SystemExit(1)
@@ -465,11 +477,44 @@ jobs:
           test -s "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png"
           test -s "$RUNNER_TEMP/vantare-changelog.png"
 
-      - name: Publish Nightly/Testers and changelog after verified release
+      - name: Resolve pre-release Discord routes by channel ID
         if: steps.contract.outputs.prerelease == 'true'
         env:
           DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
           DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          names = (
+              "DISCORD_PROGRESS_WEBHOOK_URL", "DISCORD_BUILD_WEBHOOK_URL",
+              "DISCORD_RELEASE_WEBHOOK_URL", "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+          )
+          targets = {
+              "VANTARE_TESTER_WEBHOOK": "1519752249977340168",
+              "VANTARE_CHANGELOG_WEBHOOK": "1519747444315914512",
+          }
+          by_channel = {}
+          for name in names:
+              value = os.environ.get(name, "")
+              if not value:
+                  continue
+              request = urllib.request.Request(value, headers={"User-Agent": "Vantare-GitHub-Actions/1.0"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  channel = str(json.load(response).get("channel_id", ""))
+              by_channel.setdefault(channel, []).append(value)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output_file:
+              for output, channel in targets.items():
+                  matches = by_channel.get(channel, [])
+                  if len(matches) != 1:
+                      raise SystemExit(f"Unable to resolve unique webhook for {channel}")
+                  output_file.write(f"{output}={matches[0]}\n")
+          PY
+
+      - name: Publish Nightly/Testers and changelog after verified release
+        if: steps.contract.outputs.prerelease == 'true'
+        env:
           NOTES: ${{ inputs.release_notes }}
         run: |
           manifest="vantare-v2/docs/releases/${{ steps.contract.outputs.tag }}.json"
@@ -481,8 +526,10 @@ jobs:
           PY
           )
           args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
+          DISCORD_PROGRESS_WEBHOOK_URL="$VANTARE_TESTER_WEBHOOK" \
           python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --revision "$GITHUB_SHA" \
             --image "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png" "${args[@]}"
+          DISCORD_BUILD_WEBHOOK_URL="$VANTARE_CHANGELOG_WEBHOOK" \
           python .github/scripts/discord_communications.py build --channel "${{ inputs.publish_channel }}" \
             --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
             --download-url "${{ steps.announce.outputs.download_url }}" --sha256 "${{ steps.announce.outputs.sha256 }}" \

@@ -460,7 +460,9 @@ def assert_channel(metadata: dict[str, Any], expected_channel_id: str) -> None:
     if not expected_channel_id:
         raise RuntimeError("Expected Discord channel ID is required")
     if not actual or actual != str(expected_channel_id):
-        raise RuntimeError("Discord webhook channel does not match the expected channel")
+        raise RuntimeError(
+            f"Discord webhook channel mismatch: actual={actual or 'missing'} expected={expected_channel_id}"
+        )
 
 
 def _request_json(request: urllib.request.Request, opener: Callable[..., Any]) -> dict[str, Any]:

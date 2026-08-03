@@ -74,6 +74,37 @@ jobs:
             exit 1
           }
 
+      - name: Verify pre-release Discord destinations
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel != 'none'
+        env:
+          DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
+          DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+
+          destinations = (
+              ("DISCORD_PROGRESS_WEBHOOK_URL", "1519752249977340168"),
+              ("DISCORD_BUILD_WEBHOOK_URL", "1519747444315914512"),
+          )
+          failed = False
+          for secret_name, expected in destinations:
+              webhook = os.environ.get(secret_name, "")
+              if not webhook:
+                  print(f"::error::{secret_name} is not configured")
+                  failed = True
+                  continue
+              request = urllib.request.Request(webhook, headers={"User-Agent": "Vantare-GitHub-Actions/1.0"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  actual = str(json.load(response).get("channel_id", "missing"))
+              print(f"{secret_name}: actual channel {actual}; expected {expected}")
+              if actual != expected:
+                  print(f"::error::{secret_name} targets channel {actual}, expected {expected}")
+                  failed = True
+          if failed:
+              raise SystemExit(1)
+          PY
+
   build:
     name: Build Windows release artifacts
     needs: source

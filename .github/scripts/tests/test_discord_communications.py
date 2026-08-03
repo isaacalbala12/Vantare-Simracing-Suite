@@ -254,7 +254,7 @@ class ReleaseAndBuildTests(unittest.TestCase):
 
 class SafetyTests(unittest.TestCase):
     def test_validate_channel_fails_closed(self):
-        with self.assertRaisesRegex(RuntimeError, "channel"):
+        with self.assertRaisesRegex(RuntimeError, "actual=wrong expected=expected"):
             communications.assert_channel({"channel_id": "wrong"}, "expected")
 
     def test_validate_channel_requires_expected_destination(self):

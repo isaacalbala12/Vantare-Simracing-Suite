@@ -31,9 +31,13 @@ PUBLIC_UPDATE_MARKER = "<!-- discord:development -->"
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
 VANTARE_RED = 0xFF3B3B
 DEVELOPMENT_IMAGE_NAME = "vantare-development.png"
+NIGHTLY_IMAGE_NAME = "vantare-nightly.png"
 TESTERS_IMAGE_NAME = "vantare-testers.png"
 RELEASE_IMAGE_NAME = "vantare-release.png"
-BUILD_IMAGE_NAME = "vantare-build.png"
+CHANGELOG_IMAGE_NAME = "vantare-changelog.png"
+TESTERS_CHANNEL_ID = "1519752249977340168"
+CHANGELOG_CHANNEL_ID = "1519747444315914512"
+DEVELOPMENT_CHANNEL_ID = "1519752544753291305"
 
 
 def validate_fragment(value: dict[str, Any], source: str = "fragment") -> dict[str, Any]:
@@ -48,9 +52,11 @@ def validate_fragment(value: dict[str, Any], source: str = "fragment") -> dict[s
         raise ValueError(f"{source}: issue must use ISA-N format")
     if value["type"] not in {"feature", "fix", "change", "security"}:
         raise ValueError(f"{source}: unsupported type")
-    for field in ("technicalNotes", "testing", "knownLimitations"):
+    for field in ("technicalNotes", "testing"):
         if not value[field] or not all(isinstance(item, str) and item.strip() for item in value[field]):
             raise ValueError(f"{source}: {field} must contain non-empty strings")
+    if not all(isinstance(item, str) and item.strip() for item in value["knownLimitations"]):
+        raise ValueError(f"{source}: knownLimitations must contain strings")
     return value
 
 
@@ -193,45 +199,93 @@ def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
 <section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">{''.join(rendered_cards)}</section><footer><span class="live">{html.escape(footer_left)}</span><span>{html.escape(footer_right)}</span></footer></main></body></html>"""
 
 
-def render_testers(fragments: list[dict[str, Any]], revision: str, *, include_image: bool = False) -> dict[str, Any]:
+def _channel_copy(channel: str) -> dict[str, str]:
+    contracts = {
+        "nightly": {
+            "title": "Vantare — nueva Nightly privada",
+            "description": "Primera validación con testers Nightly antes de ampliar el acceso.",
+            "footer": "Vantare Nightly · Puede contener funciones experimentales",
+            "eyebrow": "PRUEBA PRIVADA NIGHTLY",
+            "heading": "Primera",
+            "accent": "validación",
+            "footer_left": "PRUEBA EL CORTE COMPLETO",
+            "footer_right": "VANTARE · TESTERS NIGHTLY",
+        },
+        "testers": {
+            "title": "Vantare — candidata para testers",
+            "description": "Corte corregido y preparado para una validación más amplia.",
+            "footer": "Vantare Testers · Candidata previa a Stable",
+            "eyebrow": "ACTUALIZACIÓN PARA TESTERS",
+            "heading": "Cambios",
+            "accent": "para validar",
+            "footer_left": "VALIDACIÓN AMPLIADA",
+            "footer_right": "VANTARE · CANAL TESTERS",
+        },
+    }
+    if channel not in contracts:
+        raise ValueError("channel must be nightly or testers")
+    return contracts[channel]
+
+
+def _channel_image_name(channel: str) -> str:
+    return NIGHTLY_IMAGE_NAME if channel == "nightly" else TESTERS_IMAGE_NAME
+
+
+def render_channel_update(fragments: list[dict[str, Any]], revision: str, channel: str,
+                          *, include_image: bool = False) -> dict[str, Any]:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
+    copy = _channel_copy(channel)
     summary = [f"**{item['issue']}** — {item['summary']}" for item in fragments]
     technical = [note for item in fragments for note in item["technicalNotes"]]
     testing = [step for item in fragments for step in item["testing"]]
     limitations = [note for item in fragments for note in item["knownLimitations"]]
+    limitation_copy = limitations or ["No hay limitaciones conocidas declaradas para este corte."]
     payload = {
         "allowed_mentions": {"parse": []},
         "embeds": [{
-            "title": "Vantare — actualización para testers",
-            "description": f"Build candidata de `testers` · revisión `{revision[:12]}`",
+            "title": copy["title"],
+            "description": f"{copy['description']} Revisión `{revision[:12]}`.",
             "color": VANTARE_RED,
             "fields": [
                 {"name": "Resumen", "value": _embed_field(summary), "inline": False},
                 {"name": "Notas técnicas", "value": _embed_field(technical), "inline": False},
                 {"name": "Qué comprobar", "value": _embed_field(testing), "inline": False},
-                {"name": "Limitaciones conocidas", "value": _embed_field(limitations), "inline": False},
+                {"name": "Limitaciones conocidas", "value": _embed_field(limitation_copy), "inline": False},
             ],
-            "footer": {"text": "Vantare Beta · Solo cambios disponibles para testers"},
+            "footer": {"text": copy["footer"]},
         }],
     }
     if include_image:
-        payload["embeds"][0]["image"] = {"url": f"attachment://{TESTERS_IMAGE_NAME}"}
+        payload["embeds"][0]["image"] = {"url": f"attachment://{_channel_image_name(channel)}"}
     return payload
 
 
-def render_testers_html(fragments: list[dict[str, Any]], revision: str) -> str:
+def render_channel_update_html(fragments: list[dict[str, Any]], revision: str, channel: str) -> str:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
-    primary = fragments[0]
+    copy = _channel_copy(channel)
+    issue_list = " · ".join(item["issue"] for item in fragments)
+    summaries = " ".join(item["summary"] for item in fragments)
+    test_steps = [step for item in fragments for step in item["testing"]]
+    limitations = [note for item in fragments for note in item["knownLimitations"]]
     cards = [
-        ("CAMBIO PRINCIPAL", primary["summary"], primary["technicalNotes"][0]),
-        ("QUÉ DEBES PROBAR", primary["testing"][0], primary["testing"][1] if len(primary["testing"]) > 1 else ""),
-        ("LIMITACIÓN CONOCIDA", primary["knownLimitations"][0], ""),
+        (f"{len(fragments)} CAMBIO{'S' if len(fragments) != 1 else ''}", issue_list, summaries),
+        ("QUÉ DEBES PROBAR", test_steps[0], " ".join(test_steps[1:3])),
+        ("LIMITACIONES", limitations[0] if limitations else "Sin limitaciones conocidas",
+         " ".join(limitations[1:3]) if limitations else "El corte ha superado sus gates automáticos."),
     ]
-    return _branded_html(eyebrow="ACTUALIZACIÓN PARA TESTERS", title="Cambios", accent="para validar",
-                         stamp=f"TESTERS · {revision[:12]}", cards=cards,
-                         footer_left="REVISA LOS TRES PUNTOS", footer_right="VANTARE · CANAL DE TESTERS")
+    return _branded_html(eyebrow=copy["eyebrow"], title=copy["heading"], accent=copy["accent"],
+                         stamp=f"{channel.upper()} · {revision[:12]}", cards=cards,
+                         footer_left=copy["footer_left"], footer_right=copy["footer_right"])
+
+
+def render_testers(fragments: list[dict[str, Any]], revision: str, *, include_image: bool = False) -> dict[str, Any]:
+    return render_channel_update(fragments, revision, "testers", include_image=include_image)
+
+
+def render_testers_html(fragments: list[dict[str, Any]], revision: str) -> str:
+    return render_channel_update_html(fragments, revision, "testers")
 
 
 def render_release(tag: str, section: str, revision: str, release_url: str, *, include_image: bool = False) -> dict[str, Any]:
@@ -255,29 +309,31 @@ def render_release_html(tag: str, section: str, revision: str) -> str:
 
 
 def render_build(version: str, notes: str, download_url: str, sha256: str, release_url: str,
-                 known_issues_url: str, *, include_image: bool = False) -> dict[str, Any]:
-    fields = [{"name": "Resumen", "value": notes or "Build beta disponible para validación.", "inline": False},
+                 known_issues_url: str, channel: str = "testers", *, include_image: bool = False) -> dict[str, Any]:
+    copy = _channel_copy(channel)
+    fields = [{"name": "Resumen técnico", "value": notes or "Build disponible para validación.", "inline": False},
               {"name": "Descarga", "value": f"[Descargar build]({download_url})", "inline": False}]
     if release_url:
         fields.append({"name": "Release", "value": f"[Abrir release]({release_url})", "inline": True})
     if sha256:
         fields.append({"name": "SHA-256", "value": f"`{sha256}`", "inline": False})
     fields.append({"name": "Incidencias conocidas", "value": f"[Consultar lista]({known_issues_url})", "inline": False})
-    embed = {"title": f"Vantare — build beta {version}", "description": "Build pública preparada para testers.",
+    embed = {"title": f"Vantare — changelog {version}", "description": copy["description"],
              "color": VANTARE_RED, "fields": fields,
-             "footer": {"text": "Vantare Beta · SmartScreen puede solicitar confirmación"}}
+             "footer": {"text": f"Vantare {channel.title()} · SmartScreen puede solicitar confirmación"}}
     if include_image:
-        embed["image"] = {"url": f"attachment://{BUILD_IMAGE_NAME}"}
+        embed["image"] = {"url": f"attachment://{CHANGELOG_IMAGE_NAME}"}
     return {"allowed_mentions": {"parse": []}, "embeds": [embed]}
 
 
-def render_build_html(version: str, notes: str, sha256: str) -> str:
+def render_build_html(version: str, notes: str, sha256: str, channel: str = "testers") -> str:
+    _channel_copy(channel)
     cards = [("OBJETIVO", version, notes or "Instala esta versión y comprueba que Vantare inicia correctamente."),
              ("PRUEBA BÁSICA", "Instalación y arranque", "Confirma inicio, navegación y ausencia de regresiones visibles."),
              ("INTEGRIDAD", "SHA-256 VERIFICADO" if sha256 else "Checksum no indicado", sha256[:32] + "…" if sha256 else "Consulta el mensaje técnico.")]
-    return _branded_html(eyebrow="VERSIÓN BETA", title="Lista", accent="para probar",
+    return _branded_html(eyebrow="CHANGELOG TÉCNICO", title="Build", accent=channel.title(),
                          stamp=version, cards=cards,
-                         footer_left="DESCARGA Y COMPRUEBA", footer_right="VANTARE · CANAL BETA")
+                         footer_left="DESCARGA Y COMPRUEBA", footer_right="VANTARE · CHANGELOG")
 
 
 def parse_public_update(body: str | None) -> str | None:
@@ -335,7 +391,7 @@ def render_development(projects: list[dict[str, Any]], *, include_image: bool = 
         "description": description,
         "color": VANTARE_RED,
         "fields": fields,
-        "footer": {"text": "Vantare Development Pulse · Actualización automática"},
+        "footer": {"text": "Vantare · Resumen diario de desarrollo"},
     }
     if include_image:
         embed["image"] = {"url": f"attachment://{DEVELOPMENT_IMAGE_NAME}"}
@@ -401,7 +457,9 @@ h2{{height:58px;margin:24px 0 12px;font-size:22px;line-height:1.14;letter-spacin
 
 def assert_channel(metadata: dict[str, Any], expected_channel_id: str) -> None:
     actual = str(metadata.get("channel_id", ""))
-    if not actual or (expected_channel_id and actual != str(expected_channel_id)):
+    if not expected_channel_id:
+        raise RuntimeError("Expected Discord channel ID is required")
+    if not actual or actual != str(expected_channel_id):
         raise RuntimeError("Discord webhook channel does not match the expected channel")
 
 
@@ -501,7 +559,7 @@ def fetch_linear_projects(api_key: str) -> list[dict[str, Any]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("testers", "development", "release", "build", "select-fragments"))
+    parser.add_argument("mode", choices=("nightly", "testers", "development", "release", "build", "select-fragments"))
     parser.add_argument("--fragment", action="append", default=[])
     parser.add_argument("--revision", default=os.environ.get("GITHUB_SHA", "manual"))
     parser.add_argument("--dry-run", action="store_true")
@@ -518,6 +576,8 @@ def main() -> int:
     parser.add_argument("--download-url", default="")
     parser.add_argument("--sha256", default="")
     parser.add_argument("--known-issues-url", default="")
+    parser.add_argument("--channel-id", default="")
+    parser.add_argument("--channel", choices=("nightly", "testers"), default="testers")
     args = parser.parse_args()
 
     if args.mode == "select-fragments":
@@ -526,13 +586,15 @@ def main() -> int:
         for path in select_semantically_changed_files(args.fragment, args.base):
             print(path)
         return 0
-    if args.mode == "testers":
+    if args.mode in {"nightly", "testers"}:
         fragments = load_fragment_files(args.fragment)
         if args.html_output:
-            pathlib.Path(args.html_output).write_text(render_testers_html(fragments, args.revision), encoding="utf-8")
-        payload = render_testers(fragments, args.revision, include_image=bool(args.image))
+            pathlib.Path(args.html_output).write_text(
+                render_channel_update_html(fragments, args.revision, args.mode), encoding="utf-8"
+            )
+        payload = render_channel_update(fragments, args.revision, args.mode, include_image=bool(args.image))
         webhook = os.environ.get("DISCORD_PROGRESS_WEBHOOK_URL", "")
-        channel = "1519752249977340168"
+        channel = TESTERS_CHANNEL_ID
     elif args.mode == "release":
         if not args.tag or not args.section_file:
             raise ValueError("--tag and --section-file are required")
@@ -541,16 +603,18 @@ def main() -> int:
             pathlib.Path(args.html_output).write_text(render_release_html(args.tag, section, args.revision), encoding="utf-8")
         payload = render_release(args.tag, section, args.revision, args.release_url, include_image=bool(args.image))
         webhook = os.environ.get("DISCORD_RELEASE_WEBHOOK_URL", "")
-        channel = ""
+        channel = args.channel_id or os.environ.get("DISCORD_RELEASE_CHANNEL_ID", "")
     elif args.mode == "build":
         if not args.version or not args.download_url:
             raise ValueError("--version and --download-url are required")
         if args.html_output:
-            pathlib.Path(args.html_output).write_text(render_build_html(args.version, args.notes, args.sha256), encoding="utf-8")
+            pathlib.Path(args.html_output).write_text(
+                render_build_html(args.version, args.notes, args.sha256, args.channel), encoding="utf-8"
+            )
         payload = render_build(args.version, args.notes, args.download_url, args.sha256, args.release_url,
-                               args.known_issues_url, include_image=bool(args.image))
+                               args.known_issues_url, args.channel, include_image=bool(args.image))
         webhook = os.environ.get("DISCORD_BUILD_WEBHOOK_URL", "")
-        channel = ""
+        channel = args.channel_id or CHANGELOG_CHANNEL_ID
     else:
         if args.snapshot_input:
             selected_projects = json.loads(pathlib.Path(args.snapshot_input).read_text(encoding="utf-8"))
@@ -571,7 +635,7 @@ def main() -> int:
             pathlib.Path(args.html_output).write_text(render_development_html(selected_projects), encoding="utf-8")
         payload = render_development(selected_projects, include_image=bool(args.image))
         webhook = os.environ.get("DISCORD_KNOWN_ISSUES_WEBHOOK_URL", "")
-        channel = "1519752544753291305"
+        channel = DEVELOPMENT_CHANNEL_ID
     if not webhook and not args.dry_run:
         raise RuntimeError("dedicated Discord webhook secret is required")
     publish(webhook, payload, channel, dry_run=args.dry_run, attachment_path=pathlib.Path(args.image) if args.image else None)

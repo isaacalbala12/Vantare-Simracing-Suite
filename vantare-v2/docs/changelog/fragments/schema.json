@@ -11,7 +11,10 @@
     "summary": { "type": "string", "minLength": 1 },
     "technicalNotes": { "$ref": "#/$defs/nonEmptyStrings" },
     "testing": { "$ref": "#/$defs/nonEmptyStrings" },
-    "knownLimitations": { "$ref": "#/$defs/nonEmptyStrings" }
+    "knownLimitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
   },
   "$defs": {
     "nonEmptyStrings": {

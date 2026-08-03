@@ -128,6 +128,16 @@ describe("Topbar user display", () => {
 });
 
 describe("Topbar v5.2 navigation", () => {
+  it("hides Testing Center without a signed build channel", () => {
+    render(<Topbar activeSection="dashboard" onNavigate={vi.fn()} />);
+    expect(screen.queryByTestId("topbar-nav-testing-center")).toBeNull();
+  });
+
+  it("shows Testing Center only for an authorized nightly/testers channel", () => {
+    render(<Topbar activeSection="dashboard" onNavigate={vi.fn()} testingCenterChannel="nightly" />);
+    expect(screen.getByTestId("topbar-nav-testing-center")).toBeTruthy();
+  });
+
   it("renders Launcher in the top navigation", () => {
     render(
       <Topbar

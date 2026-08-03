@@ -96,6 +96,11 @@ deploy ni autoridad de ejecución; el wiring remoto continúa en TAU-07I.
 
 ### 6. TAU-07G — Rechazo, candidato y decisión del owner
 
+**Estado 2026-08-03:** implementación local validada en ISA-241 sobre ISA-240.
+Deno Testing Center 99/99; PostgreSQL 45/45, rollback protegido, reaplicación
+45/45 y carrera real de dos procesos exactly-once PASS. Sin UI, red, efectos
+externos, merge, deploy ni promoción.
+
 **Objetivo:** persistir el feedback de Nightly/Testers y convertirlo en una decisión explícita de Isaac.
 
 **Alcance:** candidato exacto; aprobación, rechazo y `Cannot verify`; un voto por tester/candidato; rol de tester principal; bloqueo; dossier digestado; cinco disposiciones: sub-issue/rama nueva, entorno, issue nueva, descarte justificado y detener rollout.

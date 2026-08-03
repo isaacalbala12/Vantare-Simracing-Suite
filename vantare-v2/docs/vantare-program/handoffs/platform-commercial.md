@@ -235,6 +235,16 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   + carrera de dos procesos pasan. Autoridad:
   `docs/runbooks/testing-center-linear-webhook.md`. Endpoint, secreto, red y
   deploy permanecen expresamente pendientes de TAU-07I y gate de Isaac.
+- ISA-241 materializa TAU-07G localmente sobre ISA-240. Los votos quedan
+  ligados a issue/candidata/canal/versión/SHA y a roles server-side;
+  `cannot_verify` no cambia el gate y un rechazo Testers posterior bloquea la
+  candidata exacta. Dossier y transporte se verifican por SHA-256 en
+  TypeScript y PostgreSQL. Solo Isaac registra una de cinco disposiciones;
+  `same_branch` está retirado y una corrección sigue `needs_owner`, sin
+  delegación automática. Deno Testing Center 99/99 y PostgreSQL 45/45 +
+  rollback/reapply + history guard + carrera exactly-once pasan. Autoridad:
+  `docs/runbooks/testing-center-candidate-feedback.md`. UI, PostHog, Discord,
+  red, Linear real, Codex, deploy, merge y promociones permanecen pendientes.
 
 ## Riesgos
 
@@ -259,10 +269,11 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-240 implementa localmente TAU-07F sobre ISA-239. TAU-07A
+2026-08-03, ISA-241 implementa localmente TAU-07G sobre ISA-240. TAU-07A
 continúa inerte y pinneado, sin caller o credencial. El outbox Linear sigue en
 dry-run; el receptor todavía no tiene endpoint ni secreto, y la reconciliación
-local solo observa señales autenticadas sin autorizar side effects externos.
+local solo observa señales autenticadas. Feedback, dossier y disposición de
+owner son privados y locales; ninguna disposición autoriza side effects.
 No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
 autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

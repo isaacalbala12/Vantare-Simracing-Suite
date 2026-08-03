@@ -1,3 +1,20 @@
+Nota ISA-241 / TAU-07G (2026-08-03, implementación validada localmente):
+- Rama apilada sobre `ISA-240@ca2fe763ae325c4600712fc2298125117af7df50`.
+  Persiste votos inmutables por issue/candidata/canal/versión/SHA, deriva roles
+  server-side y mantiene `cannot_verify` pendiente. Una aceptación Nightly de
+  primary tester basta funcionalmente; un rechazo Testers posterior bloquea.
+- Dossier determinista con snapshots `incomplete`/`complete`, digest interno y
+  de transporte verificados en TypeScript y PostgreSQL. `same_branch` está
+  retirado; la única corrección válida es sub-issue/rama nueva desde Nightly.
+- Las cinco disposiciones son owner-only. Una corrección permanece
+  `needs_owner` y no delega; entorno, issue nueva, descarte o stop cierran este
+  rollout como `stopped`.
+- Evidencia: Deno Testing Center 99/99; PostgreSQL 45/45, rollback/reaplicación
+  45/45, history guard y carrera real exactly-once PASS.
+- No existe UI, endpoint, red, PostHog, Discord, Linear real, Codex, rama/PR
+  automática, deploy, merge ni promoción. Autoridad:
+  `docs/runbooks/testing-center-candidate-feedback.md`.
+
 Nota ISA-240 / TAU-07F (2026-08-03, implementación validada localmente):
 - Rama apilada sobre `ISA-239@2a6a6b4ffd414ad8764f76d0e337877a589d2e5b`.
   Añade verificación HMAC-SHA256 sobre bytes exactos para los headers oficiales

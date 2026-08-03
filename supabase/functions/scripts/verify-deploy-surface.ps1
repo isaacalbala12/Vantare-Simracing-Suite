@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$allowed = @("billing-checkout", "billing-portal", "billing-webhook")
+$allowed = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
 $infrastructure = @("_deprecated", "_shared", "scripts")
 $known = $allowed + $infrastructure
 $unexpected = Get-ChildItem -LiteralPath $functionsRoot -Directory |

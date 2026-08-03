@@ -17,6 +17,9 @@ Deno.test("deploy surface rejects legacy and unknown top-level functions", () =>
 });
 
 Deno.test("official deploy workflow can only deploy through the guarded wrapper", () => {
+  const surfaceGuard = Deno.readTextFileSync(
+    new URL("./verify-deploy-surface.ps1", import.meta.url),
+  );
   const wrapper = Deno.readTextFileSync(
     new URL("./deploy-approved-functions.ps1", import.meta.url),
   );
@@ -38,6 +41,18 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   }
   if (!wrapper.includes('"license-credential"')) {
     throw new Error("official wrapper does not deploy the license issuer");
+  }
+  for (const functionName of [
+    "billing-checkout",
+    "billing-portal",
+    "billing-webhook",
+    "license-credential",
+  ]) {
+    if (!surfaceGuard.includes(`"${functionName}"`)) {
+      throw new Error(
+        `surface guard does not approve deployed function: ${functionName}`,
+      );
+    }
   }
   if (workflow.includes("supabase functions deploy")) {
     throw new Error(

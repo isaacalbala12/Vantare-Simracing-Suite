@@ -15,8 +15,17 @@ const KNOWN_CAPABILITIES = new Set([
   "vantare.channel.nightly",
   "vantare.channel.testers",
   "vantare.edition.launch_v1",
+  "vantare.operational.nightly_tester",
+  "vantare.operational.owner",
+  "vantare.operational.tester",
   "vantare.plan.pro",
 ]);
+
+export const OPERATIONAL_LEASE_MS = {
+  tester: 14 * 24 * 60 * 60 * 1000,
+  nightly_tester: 72 * 60 * 60 * 1000,
+  owner: 30 * 24 * 60 * 60 * 1000,
+} as const;
 
 export type CapabilityGrant = {
   key: string;
@@ -54,6 +63,12 @@ type StoredGrant = {
   source_type: string;
 };
 
+export type StoredOperationalAssignment = {
+  role: string;
+  expires_at: string | null;
+  policy_version: number;
+};
+
 export type CredentialStore = {
   load(
     userId: string,
@@ -61,7 +76,11 @@ export type CredentialStore = {
     fingerprint: string,
     environment: BillingEnvironment,
   ): Promise<
-    { deviceMatches: boolean; grants: StoredGrant[] }
+    {
+      deviceMatches: boolean;
+      grants: StoredGrant[];
+      operationalAssignments?: StoredOperationalAssignment[];
+    }
   >;
 };
 
@@ -129,6 +148,17 @@ export async function handleLicenseCredentialRequest(
         409,
       );
     }
+    const operational = normalizeOperationalAssignments(
+      loaded.operationalAssignments ?? [],
+      now,
+    );
+    if (!operational.ok) {
+      return errorResponse(
+        "invalid_operational_access",
+        "Operational access cannot be issued safely",
+        409,
+      );
+    }
     if (!loaded.deviceMatches) {
       return errorResponse(
         "device_limit",
@@ -141,7 +171,9 @@ export async function handleLicenseCredentialRequest(
       subject: auth.userId,
       device_fingerprint: fingerprint,
       issued_at: now.toISOString(),
-      capabilities: normalized.grants,
+      capabilities: [...normalized.grants, ...operational.grants].sort((a, b) =>
+        a.key.localeCompare(b.key)
+      ),
     };
     try {
       const credential = await (deps.sign ?? signWithEnvironmentKey)(claims);
@@ -167,6 +199,46 @@ export async function handleLicenseCredentialRequest(
   }
 }
 
+export function normalizeOperationalAssignments(
+  rows: StoredOperationalAssignment[],
+  now: Date,
+): { ok: true; grants: CapabilityGrant[] } | { ok: false } {
+  if (rows.length > 1) return { ok: false };
+  if (rows.length === 0) return { ok: true, grants: [] };
+  const row = rows[0];
+  if (
+    row.policy_version !== 1 ||
+    !Object.prototype.hasOwnProperty.call(OPERATIONAL_LEASE_MS, row.role)
+  ) {
+    return { ok: false };
+  }
+  const assignmentExpiry = row.expires_at === null
+    ? null
+    : new Date(row.expires_at);
+  if (
+    assignmentExpiry !== null &&
+    (!Number.isFinite(assignmentExpiry.getTime()) || assignmentExpiry <= now)
+  ) {
+    return assignmentExpiry !== null &&
+        Number.isFinite(assignmentExpiry.getTime())
+      ? { ok: true, grants: [] }
+      : { ok: false };
+  }
+  const role = row.role as keyof typeof OPERATIONAL_LEASE_MS;
+  const leaseExpiry = new Date(now.getTime() + OPERATIONAL_LEASE_MS[role]);
+  const paidThrough =
+    assignmentExpiry !== null && assignmentExpiry < leaseExpiry
+      ? assignmentExpiry
+      : leaseExpiry;
+  return {
+    ok: true,
+    grants: [{
+      key: `vantare.operational.${role}`,
+      paid_through: paidThrough.toISOString(),
+    }],
+  };
+}
+
 export function normalizeGrants(
   rows: StoredGrant[],
   now: Date,
@@ -180,6 +252,10 @@ export function normalizeGrants(
   >();
   const onlineCapabilities = new Set<string>();
   for (const row of rows) {
+    // Legacy rows are retained for audit but are never credential authority.
+    // Their explicit retirement is performed separately after a reviewed
+    // per-account dry-run.
+    if (row.provider === "legacy" && row.environment === "legacy") continue;
     if (!KNOWN_CAPABILITIES.has(row.capability)) return { ok: false };
     if (row.environment !== environment) return { ok: false };
     const isRecovery = row.provider === "vantare" &&
@@ -311,9 +387,16 @@ function createCredentialStore(): CredentialStore {
         )
         .eq("user_id", userId).eq("status", "active");
       if (grantsError) throw grantsError;
+      const { data: operationalAssignments, error: operationalError } =
+        await admin.from("operational_access_assignments").select(
+          "role,expires_at,policy_version",
+        ).eq("user_id", userId).eq("status", "active");
+      if (operationalError) throw operationalError;
       return {
         deviceMatches: device?.fingerprint_hash === fingerprint,
         grants: (grants ?? []) as StoredGrant[],
+        operationalAssignments:
+          (operationalAssignments ?? []) as StoredOperationalAssignment[],
       };
     },
   };

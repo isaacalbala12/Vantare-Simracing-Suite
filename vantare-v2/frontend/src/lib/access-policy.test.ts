@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allowedUpdateChannels,
   buildAccessContext,
   canUseFeature,
   getFeatureGate,
@@ -292,4 +293,30 @@ describe("feature matrix (table-driven)", () => {
       expect(canUseFeature(access, tc.feature as never)).toBe(tc.want);
     });
   }
+});
+
+describe("operational update channels", () => {
+  it.each([
+    [[], ["stable"]],
+    [["tester"], ["stable", "testers"]],
+    [["nightly_tester"], ["stable", "testers", "nightly"]],
+    [["owner"], ["stable", "testers", "nightly"]],
+  ] as const)("maps %j to %j", (roles, expected) => {
+    expect(allowedUpdateChannels({ roles: [...roles], capabilities: [] })).toEqual(expected);
+  });
+
+  it("keeps commercial channel capabilities independent from operational roles", () => {
+    expect(
+      allowedUpdateChannels({
+        roles: [],
+        capabilities: ["vantare.channel.testers"],
+      }),
+    ).toEqual(["stable", "testers"]);
+    expect(
+      allowedUpdateChannels({
+        roles: [],
+        capabilities: ["vantare.channel.nightly"],
+      }),
+    ).toEqual(["stable", "testers", "nightly"]);
+  });
 });

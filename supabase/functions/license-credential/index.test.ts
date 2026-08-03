@@ -3,6 +3,8 @@ import {
   CREDENTIAL_ISSUER,
   handleLicenseCredentialRequest,
   normalizeGrants,
+  normalizeOperationalAssignments,
+  OPERATIONAL_LEASE_MS,
   signCredential,
 } from "./index.ts";
 
@@ -179,7 +181,7 @@ Deno.test("normalization keeps the latest paid-through instant", () => {
   }
 });
 
-Deno.test("normalization rejects sandbox, legacy, and support grants", () => {
+Deno.test("normalization rejects cross-environment and unsupported grants", () => {
   const now = new Date("2026-08-02T12:00:00.000Z");
   const future = "2026-09-02T12:00:00.000Z";
   const invalid = [
@@ -244,4 +246,147 @@ Deno.test("credential request rejects arbitrary identity and device fields", asy
     { requireAuth: auth },
   );
   if (response.status !== 400) throw new Error(`status=${response.status}`);
+});
+
+Deno.test("classified legacy grants are retained for audit but issue no capability", () => {
+  const result = normalizeGrants(
+    [{
+      ...productionGrant("beta_access", null),
+      provider: "legacy",
+      environment: "legacy",
+      source_type: "legacy",
+    }],
+    new Date("2026-08-03T12:00:00.000Z"),
+    "production",
+  );
+  if (!result.ok || result.grants.length !== 0) {
+    throw new Error(`legacy authority leaked: ${JSON.stringify(result)}`);
+  }
+});
+
+Deno.test("operational roles receive exact bounded offline leases", () => {
+  const now = new Date("2026-08-03T12:00:00.000Z");
+  const cases = [
+    ["tester", "vantare.operational.tester"],
+    ["nightly_tester", "vantare.operational.nightly_tester"],
+    ["owner", "vantare.operational.owner"],
+  ] as const;
+  for (const [role, capability] of cases) {
+    const result = normalizeOperationalAssignments(
+      [{ role, expires_at: null, policy_version: 1 }],
+      now,
+    );
+    if (!result.ok || result.grants.length !== 1) {
+      throw new Error(`role rejected: ${role}`);
+    }
+    const expected = new Date(
+      now.getTime() + OPERATIONAL_LEASE_MS[role],
+    ).toISOString();
+    if (
+      result.grants[0].key !== capability ||
+      result.grants[0].paid_through !== expected ||
+      result.grants[0].perpetual !== undefined
+    ) {
+      throw new Error(`unexpected ${role} lease: ${JSON.stringify(result)}`);
+    }
+  }
+});
+
+Deno.test("operational assignment expiry caps its offline lease", () => {
+  const result = normalizeOperationalAssignments(
+    [{
+      role: "owner",
+      expires_at: "2026-08-04T12:00:00.000Z",
+      policy_version: 1,
+    }],
+    new Date("2026-08-03T12:00:00.000Z"),
+  );
+  if (
+    !result.ok ||
+    result.grants[0]?.paid_through !== "2026-08-04T12:00:00.000Z"
+  ) {
+    throw new Error(
+      `assignment expiry was not respected: ${JSON.stringify(result)}`,
+    );
+  }
+});
+
+Deno.test("expired operational assignments issue no capability", () => {
+  const result = normalizeOperationalAssignments(
+    [{
+      role: "tester",
+      expires_at: "2026-08-03T11:59:59.000Z",
+      policy_version: 1,
+    }],
+    new Date("2026-08-03T12:00:00.000Z"),
+  );
+  if (!result.ok || result.grants.length !== 0) {
+    throw new Error(`expired role survived: ${JSON.stringify(result)}`);
+  }
+});
+
+Deno.test("unknown, duplicated, or future-policy operational roles fail closed", () => {
+  const now = new Date("2026-08-03T12:00:00.000Z");
+  const invalid = [
+    [{ role: "staff", expires_at: null, policy_version: 1 }],
+    [{ role: "tester", expires_at: null, policy_version: 2 }],
+    [
+      { role: "tester", expires_at: null, policy_version: 1 },
+      { role: "owner", expires_at: null, policy_version: 1 },
+    ],
+  ];
+  for (const rows of invalid) {
+    if (normalizeOperationalAssignments(rows, now).ok) {
+      throw new Error(
+        `unsafe operational state accepted: ${JSON.stringify(rows)}`,
+      );
+    }
+  }
+});
+
+Deno.test("credential request combines commercial and operational authorities without relabeling", async () => {
+  const keys = await crypto.subtle.generateKey(
+    "Ed25519",
+    true,
+    ["sign", "verify"],
+  ) as CryptoKeyPair;
+  const response = await handleLicenseCredentialRequest(
+    new Request("http://local", {
+      method: "POST",
+      body: JSON.stringify({ deviceFingerprint: fingerprint }),
+    }),
+    {
+      requireAuth: auth,
+      environment: "production",
+      now: () => new Date("2026-08-03T12:00:00.000Z"),
+      store: {
+        load: async () => ({
+          deviceMatches: true,
+          grants: [
+            productionGrant(
+              "vantare.plan.pro",
+              "2026-09-03T12:00:00.000Z",
+            ),
+          ],
+          operationalAssignments: [{
+            role: "nightly_tester",
+            expires_at: null,
+            policy_version: 1,
+          }],
+        }),
+      },
+      sign: (claims) => signCredential(claims, "test-key", keys.privateKey),
+    },
+  );
+  const body = await response.json();
+  const grants = body.credential?.claims?.capabilities ?? [];
+  if (
+    response.status !== 200 ||
+    grants.map((grant: { key: string }) => grant.key).join(",") !==
+      "vantare.operational.nightly_tester,vantare.plan.pro"
+  ) {
+    throw new Error(
+      `authorities were mixed incorrectly: ${JSON.stringify(body)}`,
+    );
+  }
 });

@@ -1203,6 +1203,9 @@ func main() {
 	if err != nil {
 		log.Printf("updater service init error: %v", err)
 	} else {
+		updaterSvc.SetChannelAuthorizer(func(channel updater.Channel) bool {
+			return licenseSvc.AllowsUpdateChannel(string(channel))
+		})
 		wailsApp.RegisterService(application.NewService(updaterSvc))
 	}
 

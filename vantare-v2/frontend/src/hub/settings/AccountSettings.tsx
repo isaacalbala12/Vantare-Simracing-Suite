@@ -16,7 +16,8 @@ import {
   type DeviceResetReason,
   type EntitlementRefreshReason,
 } from "../../lib/entitlements-refresh";
-import type { LicenseResult } from "../../lib/license-types";
+import type { LicenseResult, OperationalRole } from "../../lib/license-types";
+import { allowedUpdateChannels } from "../../lib/access-policy";
 import { LicenseDiagnosticsPanel } from "./LicenseDiagnosticsPanel";
 
 type LicenseRefreshFeedback =
@@ -74,6 +75,12 @@ const STATUS_TONE: Record<string, string> = {
   blocked: "text-vantare-red-400",
   free: "text-vantare-textDim",
   anonymous: "text-vantare-textDim",
+};
+
+const OPERATIONAL_ROLE_KEYS: Record<OperationalRole, string> = {
+  tester: "account.operationalRoleTester",
+  nightly_tester: "account.operationalRoleNightlyTester",
+  owner: "account.operationalRoleOwner",
 };
 
 export function AccountSettings() {
@@ -212,6 +219,11 @@ export function AccountSettings() {
 
   const statusLabel = PLAN_STATUS_LABELS[summary.status];
   const statusTone = STATUS_TONE[summary.status] ?? "text-vantare-textDim";
+  const operationalRoles = result?.operationalRoles ?? [];
+  const updateChannels = allowedUpdateChannels({
+    roles: operationalRoles,
+    capabilities: result?.capabilities ?? [],
+  });
 
   return (
     <section className="space-y-4 text-white" aria-label="account-settings">
@@ -220,6 +232,27 @@ export function AccountSettings() {
         <p className="font-mono text-[10px] text-vantare-textDim">{t("account.email")}</p>
         <p className="font-mono text-xs">{result?.email ?? "—"}</p>
       </div>
+      {operationalRoles.length > 0 ? (
+        <div
+          data-testid="account-operational-access"
+          className="rounded border border-cyan-400/20 bg-cyan-400/[0.03] p-3"
+        >
+          <p className="font-mono text-[10px] text-vantare-textDim">
+            {t("account.operationalAccess")}
+          </p>
+          <p className="font-mono text-xs uppercase text-cyan-300">
+            {operationalRoles
+              .map((role) => t(OPERATIONAL_ROLE_KEYS[role]))
+              .join(", ")}
+          </p>
+          <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+            {t("account.allowedChannels")}: {updateChannels.join(" · ")}
+          </p>
+          <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+            {t("account.operationalAccessHint")}
+          </p>
+        </div>
+      ) : null}
       <div className="rounded border border-white/10 bg-[#111] p-3">
         <p className="font-mono text-[10px] text-vantare-textDim">{t("account.plan")}</p>
         <p

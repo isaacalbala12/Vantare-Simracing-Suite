@@ -210,6 +210,27 @@ describe("AccountSettings", () => {
     expect(screen.getByTestId("account-entitlement-overlays")).toBeTruthy();
   });
 
+  it("shows operational access separately from the commercial plan", () => {
+    mockUseLicense({
+      state: "authenticated-no-entitlement",
+      entitlements: [],
+      operationalRoles: ["nightly_tester"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+
+    render(<AccountSettings />);
+
+    expect(screen.getByTestId("account-plan").textContent).toMatch(/Free/);
+    expect(screen.getByTestId("account-operational-access").textContent).toMatch(
+      /Tester Nightly/,
+    );
+    expect(screen.getByTestId("account-operational-access").textContent).toMatch(
+      /stable · testers · nightly/,
+    );
+  });
+
   it("calls resetActiveDevice, refreshes license, and shows success on reset click", async () => {
     billingMocks.refreshCurrentUserEntitlements.mockResolvedValueOnce({
       ok: true,

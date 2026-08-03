@@ -1,3 +1,16 @@
+Nota ISA-247 / BIL-10C (2026-08-03, acceso operativo revocable):
+- Tester, Tester Nightly y Owner son roles server-side separados de Polar y de
+  los planes comerciales; solo se emiten como capabilities firmadas acotadas.
+- Leases: Tester 14 días, Tester Nightly 72 horas y Owner 30 días. La asignación
+  servidor puede ser permanente pero siempre revocable.
+- Los grants legacy se ignoran como autoridad de credencial y disponen de
+  preview/retiro por cuenta, idempotente y auditado; nunca se borran.
+- Cuenta muestra plan y acceso operativo por separado. Existe una política pura
+  de canales Stable/Testers/Nightly y una CLI UUID-only dry-run por defecto.
+- Autoridad operativa: `docs/billing/bil-10c-operational-access-runbook.md`.
+- Sin migración/deploy/apply remoto, Owner real, pagos, refunds o promoción a
+  Testers/Master. Billing continúa **NO-GO**.
+
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
   originales, payloads, PII ni errores libres.

@@ -22,14 +22,18 @@ const (
 type Capability string
 
 const (
-	CapabilityPro      Capability = "vantare.plan.pro"
-	CapabilityLaunchV1 Capability = "vantare.edition.launch_v1"
-	CapabilityTesters  Capability = "vantare.channel.testers"
-	CapabilityNightly  Capability = "vantare.channel.nightly"
+	CapabilityPro                      Capability = "vantare.plan.pro"
+	CapabilityLaunchV1                 Capability = "vantare.edition.launch_v1"
+	CapabilityTesters                  Capability = "vantare.channel.testers"
+	CapabilityNightly                  Capability = "vantare.channel.nightly"
+	CapabilityOperationalTester        Capability = "vantare.operational.tester"
+	CapabilityOperationalNightlyTester Capability = "vantare.operational.nightly_tester"
+	CapabilityOperationalOwner         Capability = "vantare.operational.owner"
 )
 
 var knownCapabilities = map[Capability]struct{}{
 	CapabilityPro: {}, CapabilityLaunchV1: {}, CapabilityTesters: {}, CapabilityNightly: {},
+	CapabilityOperationalTester: {}, CapabilityOperationalNightlyTester: {}, CapabilityOperationalOwner: {},
 }
 
 // OfflineCapability keeps independent commercial sources independent: a
@@ -150,11 +154,18 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 	}
 	active := make([]Capability, 0, len(c.Claims.Capabilities))
 	lastKey := Capability("")
+	operationalRoleCount := 0
 	for _, grant := range c.Claims.Capabilities {
 		if _, ok := knownCapabilities[grant.Key]; !ok || grant.Key <= lastKey {
 			return nil, ErrInvalidCredential
 		}
 		lastKey = grant.Key
+		if isOperationalCapability(grant.Key) {
+			operationalRoleCount++
+			if operationalRoleCount > 1 {
+				return nil, ErrInvalidCredential
+			}
+		}
 		if grant.Perpetual {
 			if grant.PaidThrough != "" {
 				return nil, ErrInvalidCredential
@@ -199,6 +210,7 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 		res.State = StateActive
 	}
 	res.Entitlements = legacyEntitlements(active)
+	res.OperationalRoles = operationalRoles(active)
 	return res, nil
 }
 
@@ -246,6 +258,29 @@ func legacyEntitlements(capabilities []Capability) []Entitlement {
 	for _, capability := range capabilities {
 		if capability == CapabilityPro || capability == CapabilityLaunchV1 {
 			return []Entitlement{EntitlementBundle}
+		}
+	}
+	return nil
+}
+
+func isOperationalCapability(capability Capability) bool {
+	switch capability {
+	case CapabilityOperationalTester, CapabilityOperationalNightlyTester, CapabilityOperationalOwner:
+		return true
+	default:
+		return false
+	}
+}
+
+func operationalRoles(capabilities []Capability) []OperationalRole {
+	for _, capability := range capabilities {
+		switch capability {
+		case CapabilityOperationalTester:
+			return []OperationalRole{OperationalRoleTester}
+		case CapabilityOperationalNightlyTester:
+			return []OperationalRole{OperationalRoleNightlyTester}
+		case CapabilityOperationalOwner:
+			return []OperationalRole{OperationalRoleOwner}
 		}
 	}
 	return nil

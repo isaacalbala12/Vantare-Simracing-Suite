@@ -12,6 +12,11 @@
 
 ## Estado
 
+- ISA-246/BIL-N05 está integrado en `nightly@55fba3d`: el callback OAuth
+  restaura la sesión del WebView y permite revalidar sin reiniciar.
+- ISA-247/BIL-10C está en implementación aislada: roles operativos, leases,
+  retiro legacy controlado, UI separada y herramienta administrativa. Ningún
+  apply remoto se ejecuta desde la rama.
 - Billing: BIL-01..BIL-07 ya estaban en `nightly`; este corte BIL-N02 incorpora
   BIL-08 tras validación acumulativa. Venta pública continúa **NO-GO**.
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
@@ -125,6 +130,13 @@ payloads, PII y errores libres quedan fuera. Replay, reparación, deploy y
 producción siguen necesitando autorización. Autoridad:
 `docs/billing/bil-10-observability-runbook.md`.
 
+BIL-10C / ISA-247 separa acceso interno de comercio. Tester, Tester Nightly y
+Owner viven en `operational_access_assignments`; el emisor limita sus leases a
+14 días, 72 horas y 30 días respectivamente. Los grants legacy no participan
+en credenciales y su retiro es por cuenta, reversible mediante backup,
+append-only y dry-run por defecto. Autoridad:
+`docs/billing/bil-10c-operational-access-runbook.md`.
+
 El inbox durable queda particionado por entorno. Las filas anteriores al corte
 se conservan como `unclassified`, visibles para operación pero excluidas de las
 métricas de sandbox y producción. Los gates frescos pasan con 181/181 tests
@@ -149,9 +161,9 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar BIL-10 / ISA-75 y promoverlo exclusivamente a `nightly` cuando sus
-   gates estén verdes.
-2. Recoger feedback Nightly de BIL-01..10 sin habilitar venta.
+1. Completar gates locales y review de BIL-10C / ISA-247.
+2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
+3. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
 4. Continuar gates monetarios y despliegue controlado sin venta pública.
 5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 6. Reauditar ISA-14 cuando se cierren worktrees grandes.
@@ -161,7 +173,6 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-212 compone y valida BIL-08 sobre `nightly@b8ffd7c6`, conserva el
-runtime moderno y unifica almacenamiento protegido. Frontend, Deno, build y
-gates focales Go están verdes; ISA-118 permanece como deuda global heredada.
-Sin mutaciones remotas y con venta pública NO-GO.
+2026-08-03, ISA-246 queda en `nightly@55fba3d` e ISA-247 implementa localmente
+la separación entre planes comerciales y accesos operativos. El apply remoto,
+Owner real y retiro de legacy siguen protegidos por gate. Venta pública NO-GO.

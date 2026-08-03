@@ -203,3 +203,66 @@ func TestParsePublicKeys(t *testing.T) {
 		t.Fatal("expected invalid entry")
 	}
 }
+
+func TestOperationalRoleIsSignedAccessButNotACommercialPlan(t *testing.T) {
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	public, private, _ := ed25519.GenerateKey(nil)
+	verifier := NewCredentialVerifier(
+		map[string]ed25519.PublicKey{"test-key": public},
+		&memoryClock{},
+	)
+	verifier.now = func() time.Time { return now }
+
+	credential := signTestCredential(t, private, now, []OfflineCapability{{
+		Key:         CapabilityOperationalNightlyTester,
+		PaidThrough: now.Add(72 * time.Hour).Format(time.RFC3339),
+	}}, testSubject, "device-1")
+	result, err := verifier.verifyOnline(credential, testSubject, "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Entitlements) != 0 {
+		t.Fatalf("operational role became commercial entitlements: %v", result.Entitlements)
+	}
+	if len(result.OperationalRoles) != 1 || result.OperationalRoles[0] != OperationalRoleNightlyTester {
+		t.Fatalf("operational roles = %v", result.OperationalRoles)
+	}
+}
+
+func TestCredentialRejectsMultipleOperationalRoles(t *testing.T) {
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	public, private, _ := ed25519.GenerateKey(nil)
+	verifier := NewCredentialVerifier(
+		map[string]ed25519.PublicKey{"test-key": public},
+		&memoryClock{},
+	)
+	verifier.now = func() time.Time { return now }
+	credential := signTestCredential(t, private, now, []OfflineCapability{
+		{Key: CapabilityOperationalNightlyTester, PaidThrough: now.Add(72 * time.Hour).Format(time.RFC3339)},
+		{Key: CapabilityOperationalOwner, PaidThrough: now.Add(30 * 24 * time.Hour).Format(time.RFC3339)},
+	}, testSubject, "device-1")
+	if _, err := verifier.verifyOnline(credential, testSubject, "device-1"); !errors.Is(err, ErrInvalidCredential) {
+		t.Fatalf("multiple operational roles error = %v", err)
+	}
+}
+
+func TestExpiredOperationalRoleDoesNotGrantAccess(t *testing.T) {
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	public, private, _ := ed25519.GenerateKey(nil)
+	verifier := NewCredentialVerifier(
+		map[string]ed25519.PublicKey{"test-key": public},
+		&memoryClock{},
+	)
+	verifier.now = func() time.Time { return now }
+	credential := signTestCredential(t, private, now, []OfflineCapability{{
+		Key:         CapabilityOperationalTester,
+		PaidThrough: now.Add(-time.Second).Format(time.RFC3339),
+	}}, testSubject, "device-1")
+	result, err := verifier.verifyOnline(credential, testSubject, "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != StateExpired || len(result.OperationalRoles) != 0 {
+		t.Fatalf("expired role survived: %#v", result)
+	}
+}

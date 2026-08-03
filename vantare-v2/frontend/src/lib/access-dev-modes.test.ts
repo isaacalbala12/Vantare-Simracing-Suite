@@ -89,6 +89,7 @@ describe("access-dev-modes", () => {
       expect(license!.state).toBe("authenticated-no-entitlement");
       expect(license!.entitlements).toEqual([]);
       expect(license!.deviceOK).toBe(true);
+      expect(license!.operationalRoles).toEqual(["tester"]);
     });
 
     it("returns authenticated license for 'power-tester' mode", () => {
@@ -96,6 +97,7 @@ describe("access-dev-modes", () => {
       expect(license!.state).toBe("authenticated-no-entitlement");
       expect(license!.entitlements).toEqual([]);
       expect(license!.deviceOK).toBe(true);
+      expect(license!.operationalRoles).toEqual(["nightly_tester"]);
     });
 
     it("returns expired license for 'blocked' mode", () => {
@@ -168,9 +170,9 @@ describe("access-dev-modes", () => {
       expect(canUseFeature(ctx, "telemetry.live")).toBe(true);
     });
 
-    it("power-tester mode: all features allowed (same tester role)", () => {
+    it("power-tester mode: all features allowed via nightly tester role", () => {
       const license = resolveLicenseForDevMode("power-tester")!;
-      const ctx = buildAccessContext({ license, roles: ["tester"] });
+      const ctx = buildAccessContext({ license, roles: ["nightly_tester"] });
       expect(canUseFeature(ctx, "overlays.advanced")).toBe(true);
       expect(canUseFeature(ctx, "engineer.ai")).toBe(true);
       expect(canUseFeature(ctx, "telemetry.live")).toBe(true);
@@ -184,7 +186,7 @@ describe("access-dev-modes", () => {
       expect(canUseFeature(ctx, "engineer.ai")).toBe(false);
     });
 
-    it("tester and power-tester produce identical feature gates", () => {
+    it("tester and power-tester unlock the same product features", () => {
       const testerLicense = resolveLicenseForDevMode("tester")!;
       const ptLicense = resolveLicenseForDevMode("power-tester")!;
       const testerCtx = buildAccessContext({
@@ -193,7 +195,7 @@ describe("access-dev-modes", () => {
       });
       const ptCtx = buildAccessContext({
         license: ptLicense,
-        roles: ["tester"],
+        roles: ["nightly_tester"],
       });
 
       const features = [

@@ -59,6 +59,7 @@ function licenseForMode(mode: AccessDevMode): LicenseResult {
         userId: "dev-tester",
         email: "dev-tester@test.local",
         deviceOK: true,
+        operationalRoles: ["tester"],
       };
 
     case "power-tester":
@@ -68,6 +69,7 @@ function licenseForMode(mode: AccessDevMode): LicenseResult {
         userId: "dev-power-tester",
         email: "dev-power-tester@test.local",
         deviceOK: true,
+        operationalRoles: ["nightly_tester"],
       };
 
     case "blocked":

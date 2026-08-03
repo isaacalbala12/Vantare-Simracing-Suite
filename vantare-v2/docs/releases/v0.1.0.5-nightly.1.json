@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.5-nightly.1",
+  "channel": "nightly",
+  "title": "Overlay Studio — primera validación Nightly",
+  "summary": "Primera versión privada para validar Overlay Studio, el acceso interno y el nuevo sistema de publicación.",
+  "issues": ["ISA-95", "ISA-247", "ISA-257"]
+}

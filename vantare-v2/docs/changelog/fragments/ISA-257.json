@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-257",
+  "type": "fix",
+  "summary": "Overlay Studio vuelve a cargar el perfil activo al utilizar la hotkey del overlay.",
+  "technicalNotes": [
+    "La apertura del overlay y la carga del perfil ya no compiten por el mismo estado.",
+    "La pantalla de edición abandona correctamente el estado Loading profile cuando el perfil está disponible."
+  ],
+  "testing": [
+    "Abrir Overlay Studio, activar el overlay mediante la hotkey y confirmar que el perfil termina de cargar.",
+    "Repetir la hotkey varias veces y comprobar que el layout activo no cambia ni queda bloqueado."
+  ],
+  "knownLimitations": []
+}

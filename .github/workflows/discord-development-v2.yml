@@ -1,0 +1,33 @@
+name: Discord active development v2
+
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build approved Linear digest
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          python .github/scripts/discord_communications.py development --dry-run \
+            --snapshot-output "$RUNNER_TEMP/projects.json" --html-output "$RUNNER_TEMP/vantare-development.html"
+      - name: Render Discord card
+        run: |
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-development.png" "file://$RUNNER_TEMP/vantare-development.html"
+          test -s "$RUNNER_TEMP/vantare-development.png"
+      - name: Publish approved digest
+        env:
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+        run: |
+          python .github/scripts/discord_communications.py development \
+            --snapshot-input "$RUNNER_TEMP/projects.json" --image "$RUNNER_TEMP/vantare-development.png"

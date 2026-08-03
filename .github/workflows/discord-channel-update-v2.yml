@@ -1,0 +1,40 @@
+name: Discord channel update v2
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Destino de la validación"
+        required: true
+        type: choice
+        options: [nightly, testers]
+      revision:
+        description: "Revisión mostrada"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build deterministic accessible preview
+        run: |
+          mapfile -t files < <(find vantare-v2/docs/changelog/fragments -maxdepth 1 -name 'ISA-*.json' -print | sort)
+          args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
+          python .github/scripts/discord_communications.py "${{ inputs.channel }}" --dry-run \
+            --revision "${{ inputs.revision || github.sha }}" --html-output "$RUNNER_TEMP/vantare-channel.html" "${args[@]}"
+      - name: render-discord-card
+        run: |
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-channel.png" "file://$RUNNER_TEMP/vantare-channel.html"
+          test -s "$RUNNER_TEMP/vantare-channel.png"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: discord-${{ inputs.channel }}-preview
+          path: |
+            ${{ runner.temp }}/vantare-channel.html
+            ${{ runner.temp }}/vantare-channel.png

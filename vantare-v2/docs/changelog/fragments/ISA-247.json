@@ -13,7 +13,5 @@
     "Validar que Tester no puede acceder a Nightly y que Tester Nightly y Owner sí pueden.",
     "Revocar una asignación de prueba y confirmar su efecto online y al expirar la credencial offline."
   ],
-  "knownLimitations": [
-    "La aplicación remota de roles, el saneamiento de las cinco cuentas legacy y el smoke real requieren el gate productivo explícito de Isaac."
-  ]
+  "knownLimitations": []
 }

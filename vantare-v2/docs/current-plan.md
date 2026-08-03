@@ -1738,6 +1738,13 @@ Nota ISA-95 (2026-07-14):
 - Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
 - Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
 - Validación real PASS (2026-07-14): release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`. Versión pública vigente verificada: `v0.1.0.2`.
+
+Extensión ISA-95 v2 (2026-08-03):
+
+- Los cuatro workflows históricos independientes se sustituyen por un pipeline coordinado: build, seis artefactos verificados, GitHub Release/pre-release y, solo entonces, Discord.
+- Nightly y Testers conservan contratos editoriales e imágenes distintas; Changelog mantiene enlace, checksum y notas técnicas; Stable usa una tarjeta propia y valida su canal de destino.
+- Cada pre-release declara un manifiesto canónico de issues para impedir anuncios históricos o contenido de relleno. Primer corte: `v0.1.0.5-nightly.1` con ISA-95, ISA-247 e ISA-257.
+- Evidencia local: 31 tests del comunicador PASS, `actionlint` sin hallazgos nuevos y captura Chrome 1200x630 de Changelog validada visualmente. La validación final será la ejecución real de `Release build` desde `nightly`.
 - Extensión híbrida completa (2026-07-15): Release, Testers, Desarrollo y Build combinan embed accesible con una tarjeta 1200×630 específica generada desde HTML inspirado en `roadmap_v5.2.html`. Sin IA ni dependencias nuevas. Las cuatro capturas locales están validadas; los POST reales de las imágenes siguen pendientes del gate manual.
 - Revisión editorial (2026-07-15): eliminadas tarjetas de relleno y etiquetas mixtas (`Tester briefing`, `Public preview`, `Development pulse`, `Building in public`); Release extrae solo highlights estructurados, Testers muestra cambio/prueba/limitación y los estados con 1–2 elementos se centran sin inventar contenido. Contrato editorial y tests anti-slop añadidos.
 - Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.

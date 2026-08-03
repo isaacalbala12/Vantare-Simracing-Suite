@@ -245,6 +245,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   rollback/reapply + history guard + carrera exactly-once pasan. Autoridad:
   `docs/runbooks/testing-center-candidate-feedback.md`. UI, PostHog, Discord,
   red, Linear real, Codex, deploy, merge y promociones permanecen pendientes.
+- ISA-253 materializa la frontera local TAU-07H1 sobre ISA-241. La proyección
+  PostHog sólo admite contexto técnico allowlisted y excluye mensajes, stacks,
+  logs, perfiles y texto libre. Consentimiento y replay son separados;
+  revocación y TTL 7/30 días se aplican en Supabase privado. Deno Testing
+  Center 107/107 (focal 8/8) y PostgreSQL 33/33 + rollback/reapply + history
+  guard pasan. No existe SDK,
+  red, secreto, endpoint, captura/replay real, UI ni efecto sobre Linear,
+  Discord, Codex o canales. Autoridad:
+  `docs/runbooks/testing-center-posthog-privacy.md`.
 
 ## Riesgos
 
@@ -269,12 +278,12 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-241 implementa localmente TAU-07G sobre ISA-240. TAU-07A
-continúa inerte y pinneado, sin caller o credencial. El outbox Linear sigue en
-dry-run; el receptor todavía no tiene endpoint ni secreto, y la reconciliación
-local solo observa señales autenticadas. Feedback, dossier y disposición de
-owner son privados y locales; ninguna disposición autoriza side effects.
-No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
-autoriza deploy, merge, promoción ni una build distribuida.
+2026-08-04, ISA-253 implementa localmente TAU-07H1 sobre ISA-241. La frontera
+PostHog está cerrada y validada, pero no hay SDK, proyecto, endpoint, secreto,
+captura ni replay real. TAU-07A continúa inerte y pinneado, sin caller o
+credencial. El outbox Linear sigue en dry-run; el receptor todavía no tiene
+endpoint ni secreto. Feedback, dossier, consentimiento y evidencia son
+privados y locales; nada ejecuta Codex, Linear, Discord, repo access o Supabase
+remoto, ni autoriza deploy, merge, promoción o una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

@@ -1,3 +1,19 @@
+Nota ISA-253 / TAU-07H1 (2026-08-04, frontera local validada):
+- Rama apilada sobre `ISA-241@8a12b8e76a330d1ef87a4d9e76288e9af1a67c65`.
+  Define `testing-center.posthog-evidence.v1`, contexto técnico cerrado y una
+  política de navegador que empieza apagada, sin autocapture, identidad,
+  console logs, persistencia local ni excepciones automáticas.
+- Consentimiento diagnóstico/replay separado, privado, append-only e
+  idempotente. Revocar replay elimina URL/autorización Linear; revocar
+  diagnóstico elimina evidencia local. TTL: replay 7 días, error 30 días.
+- Evidencia: Deno Testing Center 107/107 (focal 8/8); PostgreSQL 33/33,
+  rollback/reaplicación 33/33 y
+  history guard PASS. PostHog caído nunca bloquea reportar ni autoriza Codex o
+  promociones.
+- No se añade SDK, dependencia, red, secreto, endpoint, proyecto PostHog, UI,
+  captura/replay real, Linear, Discord, Codex, merge, deploy ni promoción.
+  Autoridad: `docs/runbooks/testing-center-posthog-privacy.md`.
+
 Nota ISA-241 / TAU-07G (2026-08-03, implementación validada localmente):
 - Rama apilada sobre `ISA-240@ca2fe763ae325c4600712fc2298125117af7df50`.
   Persiste votos inmutables por issue/candidata/canal/versión/SHA, deriva roles

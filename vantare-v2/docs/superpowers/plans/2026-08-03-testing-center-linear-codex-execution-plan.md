@@ -109,6 +109,14 @@ externos, merge, deploy ni promoción.
 
 ### 7. TAU-07H1 — PostHog: errores, contexto y replay
 
+**Estado 2026-08-04:** frontera local validada en ISA-253 sobre ISA-241. Deno
+Testing Center 107/107 (focal 8/8); PostgreSQL 33/33, rollback/reaplicación
+33/33 y history guard PASS.
+Consentimiento y replay son separados; la revocación borra la evidencia local
+correspondiente y las TTL son 7/30 días. Sin SDK, red, secreto, endpoint,
+captura real, UI, Linear, Codex, deploy, merge ni promoción. El wiring remoto
+permanece pendiente de un microcorte con gate explícito.
+
 **Objetivo:** validar la integración preparada y cerrar su frontera de privacidad antes de mostrar consentimientos en la UI.
 
 **Alcance:** captura de excepciones frontend y fallos backend permitidos; versión/canal/SHA/SO allowlisted; correlation ID con el reporte; session replay solo en Nightly/Testers y con masking de texto, inputs y superficies sensibles; URL interna/restringida almacenada en Supabase y proyectada a Linear únicamente cuando exista autorización.

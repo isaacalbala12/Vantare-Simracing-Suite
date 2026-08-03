@@ -187,8 +187,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - ISA-231 / TAU-06F añade loader `service_role`, tamaño de transporte,
   snapshot head+ancestros, reserva única, claim global, lease, fencing y pausa
   pre-dispatch. Ambigüedad y caída post-permiso no reintentan automáticamente.
-- Siguiente acción: TAU-06G reaudita y decide GO/NO-GO. TAU-07, red, API
-  Codex, repo access, App real, Discord y asignación automática siguen apagados.
+- ISA-232 / TAU-06G reaudita sin editar los módulos revisados: P0=0, P1=0,
+  P2=0; 0/96 falsos `eligible`, 0/35 falsos `needs_owner`, cero retención y
+  cero rutas sensibles aceptadas. Veredicto: GO condicionado para planear
+  TAU-07 por microcortes.
+- Siguiente acción: TAU-07 empieza con ancestry server-side y ejecución
+  read-only/dry-run. Red real, API Codex, repo write, App real, Discord y
+  asignación automática siguen apagados hasta gates separados.
 
 ## Riesgos
 
@@ -213,7 +218,8 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-231 cierra loader/lease/fencing en dry-run; el NO-GO sigue
-vigente hasta TAU-06G. No ejecuta Codex, Discord, repo access o Supabase remoto.
+2026-08-02, ISA-232 sustituye el NO-GO por GO condicionado para diseñar TAU-07.
+No ejecuta Codex, Discord, repo access o Supabase remoto; tampoco autoriza
+deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

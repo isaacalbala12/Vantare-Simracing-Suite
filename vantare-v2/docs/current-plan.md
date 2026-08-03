@@ -1,3 +1,15 @@
+Nota ISA-232 / TAU-06G (2026-08-02, reauditoría Codex GO condicionado):
+- Review independiente sobre `e9546d9`; no modifica los módulos TAU-06D/E/F.
+- Métricas: 0/96 falsos `eligible`, 0/35 falsos `needs_owner`, 0/48
+  retenciones, 4/4 fraudes de evidencia rechazados, 0/12 rutas sensibles
+  aceptadas y 5/5 ataques de SHA/ancestry rechazados.
+- PostgreSQL 61/61, rollback/reapply, carrera de dos workers y pausa tardía
+  concurrente PASS. P0=0, P1=0, P2=0.
+- Veredicto TAU-07: GO para diseñar el adaptador real por microcortes; no es
+  autorización de activación, red, Codex, repo write, deploy, merge o promoción.
+- Autoridad:
+  `docs/analysis/isa-232-tau-06g-codex-adversarial-audit-2026-08-02.md`.
+
 Nota ISA-231 / TAU-06F (2026-08-02, control Codex durable):
 - Loader exclusivo de `service_role` deriva una proyección canónica sin texto
   libre y liga digest/tamaño de transporte; filas legacy sin tamaño fallan.

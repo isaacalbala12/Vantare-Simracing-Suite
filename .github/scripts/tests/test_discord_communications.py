@@ -376,6 +376,7 @@ class SafetyTests(unittest.TestCase):
         self.assertIn("render-discord-card", tester)
         self.assertIn("Render Discord cards", release)
         self.assertIn("--prerelease", release)
+        self.assertIn("(\\.[0-9]+)?-${PUBLISH_CHANNEL}", release)
         self.assertIn("origin/master", release)
         self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release)
 

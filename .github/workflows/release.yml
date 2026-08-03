@@ -55,7 +55,7 @@ jobs:
             if [ "$PUBLISH_CHANNEL" != "none" ]; then
               test "$GITHUB_REF" = "refs/heads/$PUBLISH_CHANNEL" || { echo "::error::Channel and branch must match"; exit 1; }
               test -n "$RELEASE_TAG" || { echo "::error::release_tag is required"; exit 1; }
-              echo "$RELEASE_TAG" | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+-${PUBLISH_CHANNEL}\.[0-9]+$" || {
+              echo "$RELEASE_TAG" | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?-${PUBLISH_CHANNEL}\.[0-9]+$" || {
                 echo "::error::Invalid pre-release tag for $PUBLISH_CHANNEL"; exit 1;
               }
             fi

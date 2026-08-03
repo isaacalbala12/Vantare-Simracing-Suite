@@ -203,9 +203,14 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   issue.
 - Siguiente acción: revisar la especificación
   `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`
-  y replanificar TAU-07 por microcortes. TAU-07B no se ejecuta con su alcance
-  anterior. Red real, API Codex, repo write, App real, Discord y asignación
-  automática siguen apagados hasta gates separados.
+  y ejecutar el plan
+  `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`
+  empezando exclusivamente por TAU-07B/07C. El alcance anterior de TAU-07B/C
+  queda sustituido: no se exige una PR sin clic y la rama/SHA se selecciona
+  fuera de Linear. Red real, API Codex, repo write no sintético, App real,
+  Discord y asignación automática siguen apagados hasta gates separados. La
+  integración PostHog preparada no se da por válida: errores, replay, masking,
+  consentimiento y retención pasan un microcorte de privacidad antes de la UI.
 
 ## Riesgos
 
@@ -230,8 +235,9 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, el diseño de rechazo y delegación humana a Linear/Codex Cloud queda
-aprobado. ISA-234 mantiene TAU-07A inerte y pinneado, sin caller o credencial.
+2026-08-03, el diseño y su plan por microcortes de rechazo y delegación humana
+a Linear/Codex Cloud quedan aprobados. ISA-234 mantiene TAU-07A inerte y
+pinneado, sin caller o credencial.
 No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
 autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

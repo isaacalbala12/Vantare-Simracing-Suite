@@ -18,6 +18,12 @@ Nota de diseño Testing Center / Linear / Codex (2026-08-03):
   replanificar los microcortes y validar primero Linear/Codex Cloud.
 - Este corte es solo documental: sin red, credenciales, deploy, UI, Codex,
   Discord, merge o promoción.
+- Plan ejecutable aprobado por microcortes:
+  `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`.
+  Empieza por dos spikes sin backend: cuenta ChatGPT Pro y selección
+  determinista de rama/SHA, incluida la viabilidad de continuar una rama ya
+  integrada. El fallback es siempre sub-issue y rama nueva desde Nightly. La
+  captura PostHog preparada recibe un gate propio de privacidad antes de la UI.
 
 Nota ISA-234 / TAU-07A (2026-08-03, dispatch Codex inerte):
 - Envelope HMAC cerrado liga run/issue/request, SHA/proof, fencing, scope,

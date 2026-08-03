@@ -226,6 +226,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   Discord y asignación automática siguen apagados hasta gates separados. La
   integración PostHog preparada no se da por válida: errores, replay, masking,
   consentimiento y retención pasan un microcorte de privacidad antes de la UI.
+- ISA-240 materializa TAU-07F localmente sobre ISA-239. La firma Linear cubre
+  los bytes exactos, delivery y timestamps se validan, y solo IDs/acción/digest
+  entran a un ledger privado. El mapping de estados usa UUIDs revisados; replay,
+  digest conflictivo, estado desconocido y orden invertido fallan cerrados.
+  La reconciliación es observacional y no toca issue canónica, outbox, Codex,
+  Git o canales. Deno Testing Center 98/98 y PostgreSQL 27/27 + rollback/reapply
+  + carrera de dos procesos pasan. Autoridad:
+  `docs/runbooks/testing-center-linear-webhook.md`. Endpoint, secreto, red y
+  deploy permanecen expresamente pendientes de TAU-07I y gate de Isaac.
 
 ## Riesgos
 
@@ -250,9 +259,10 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-239 implementa localmente TAU-07E sobre ISA-238. TAU-07A
+2026-08-03, ISA-240 implementa localmente TAU-07F sobre ISA-239. TAU-07A
 continúa inerte y pinneado, sin caller o credencial. El outbox Linear sigue en
-dry-run y superó su gate local completo; no autoriza side effect externo.
+dry-run; el receptor todavía no tiene endpoint ni secreto, y la reconciliación
+local solo observa señales autenticadas sin autorizar side effects externos.
 No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
 autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

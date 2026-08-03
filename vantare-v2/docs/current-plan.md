@@ -1,3 +1,20 @@
+Nota ISA-240 / TAU-07F (2026-08-03, implementación validada localmente):
+- Rama apilada sobre `ISA-239@2a6a6b4ffd414ad8764f76d0e337877a589d2e5b`.
+  Añade verificación HMAC-SHA256 sobre bytes exactos para los headers oficiales
+  de Linear y reduce el evento a una proyección cerrada sin actor ni texto.
+- PostgreSQL incorpora binding externo único, mapping de estados por UUID,
+  ledger durable de deliveries y reconciliación exclusivamente observacional.
+  Replay exacto es idempotente; digest conflictivo falla; eventos antiguos no
+  cambian estado; estados desconocidos quedan `needs_owner`.
+- Evidencia: Deno Testing Center 98/98; PostgreSQL instalación limpia, 27/27,
+  rechazo de rollback con historial, rollback sin historial, reaplicación 27/27
+  y carrera real de dos procesos PASS.
+  La suite Deno global no arrancó por `npm:standardwebhooks` no instalado en el
+  worktree; no se alteraron dependencias.
+- No existe endpoint público, secreto, credencial, red, deploy, asignación de
+  Codex, rama, PR automática, merge o promoción. Autoridad:
+  `docs/runbooks/testing-center-linear-webhook.md`.
+
 Nota ISA-239 / TAU-07E (2026-08-03, implementación validada localmente):
 - Rama apilada sobre ISA-238. Implementa selección durable de un único destino,
   supersesión reversible de efectos GitHub pending/failed, preservación manual

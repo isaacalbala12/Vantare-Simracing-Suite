@@ -82,6 +82,12 @@ PASS. Sin red, merge, deploy ni promoción.
 
 ### 5. TAU-07F — Webhook Linear firmado y reconciliación
 
+**Estado 2026-08-03:** implementación local validada en ISA-240 sobre ISA-239.
+Deno Testing Center 98/98; PostgreSQL 27/27, rollback protegido, reaplicación
+27/27 y carrera real de dos procesos PASS; el rollback con historial se rechaza.
+No existe endpoint, secreto, red,
+deploy ni autoridad de ejecución; el wiring remoto continúa en TAU-07I.
+
 **Objetivo:** recibir señales autenticadas de Linear sin convertirlas en autoridad de ejecución.
 
 **Alcance:** HMAC sobre bytes exactos, delivery ID durable, replay/out-of-order, allowlist de eventos y estados gruesos: `linear_created`, `awaiting_owner`, `codex_in_progress`, `pr_in_review`, `needs_changes`, `stopped`.

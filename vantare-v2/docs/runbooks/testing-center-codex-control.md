@@ -78,6 +78,7 @@ real de dos procesos. Rollback: aplicar
 `20260802180000_testing_center_codex_control.down.sql`; los estados nuevos se
 conservan como `failed` antes de restaurar el contrato anterior.
 
-Siguiente gate: TAU-06G reaudita de forma independiente privacidad, scope,
-base, lease, fencing, pausa, restart y ambigüedad. TAU-07 sigue en NO-GO hasta
-un veredicto explícito favorable.
+TAU-06G reauditó privacidad, scope, base, lease, fencing, pausa, restart y
+ambigüedad con P0/P1/P2=0. El GO es condicionado: TAU-07 puede preparar sus
+microcortes, pero invocation, secreto, repo write, PR, deploy y promoción
+requieren gates y aprobación separados.

@@ -1,3 +1,16 @@
+Nota ISA-234 / TAU-07A (2026-08-03, dispatch Codex inerte):
+- Envelope HMAC cerrado liga run/issue/request, SHA/proof, fencing, scope,
+  versiones, TTL 30–300 s y nonce. Prosa, logs, replay, URL y paths externos no
+  entran; replay exige ledger durable del futuro adapter.
+- Prompt/output versionados; schema cerrado a cinco archivos, tres command IDs,
+  create/replace y cero efectos cuando no hay propuesta.
+- Workflow reusable sin caller, job `if: false`, `contents: read`, checkout sin
+  credenciales y acciones/CLI pinneadas. Codex es el último paso y no hay
+  secreto ni trigger automático.
+- Gates focales: 11/11. Sin invocation/API/token/repo write/rama/commit/PR/
+  deploy/merge/promoción. Autoridad:
+  `docs/runbooks/testing-center-codex-dispatch.md`.
+
 Nota ISA-232 / TAU-06G (2026-08-02, reauditoría Codex GO condicionado):
 - Review independiente sobre `e9546d9`; no modifica los módulos TAU-06D/E/F.
 - Métricas: 0/96 falsos `eligible`, 0/35 falsos `needs_owner`, 0/48

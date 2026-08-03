@@ -191,9 +191,11 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   P2=0; 0/96 falsos `eligible`, 0/35 falsos `needs_owner`, cero retención y
   cero rutas sensibles aceptadas. Veredicto: GO condicionado para planear
   TAU-07 por microcortes.
-- Siguiente acción: TAU-07 empieza con ancestry server-side y ejecución
-  read-only/dry-run. Red real, API Codex, repo write, App real, Discord y
-  asignación automática siguen apagados hasta gates separados.
+- ISA-234 / TAU-07A prepara envelope HMAC, prompt/schema y workflow reusable
+  inerte con acciones/CLI pinneadas. No tiene caller, secreto ni permisos write.
+- Siguiente acción: TAU-07B prepara el caller y ejecución read-only aislada.
+  Red real, API Codex, repo write, App real, Discord y asignación automática
+  siguen apagados hasta gates separados.
 
 ## Riesgos
 
@@ -218,7 +220,7 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-02, ISA-232 sustituye el NO-GO por GO condicionado para diseñar TAU-07.
+2026-08-03, ISA-234 deja TAU-07A inerte y pinneado, sin caller o credencial.
 No ejecuta Codex, Discord, repo access o Supabase remoto; tampoco autoriza
 deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

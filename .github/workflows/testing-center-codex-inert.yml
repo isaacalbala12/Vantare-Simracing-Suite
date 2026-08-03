@@ -1,0 +1,29 @@
+name: Testing Center Codex (inert contract)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  codex_contract_only:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned analysis tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Run pinned Codex contract (disabled in TAU-07A)
+        uses: openai/codex-action@b11346a6fa031e2e164ab4b7c7ea201afffd7d59
+        with:
+          prompt-file: .github/codex/testing-center-fix-prompt.md
+          output-schema-file: .github/codex/testing-center-fix-output.schema.json
+          working-directory: vantare-v2
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
+          codex-version: "0.146.0"
+          codex-args: '["--ephemeral", "--ignore-user-config", "--strict-config"]'

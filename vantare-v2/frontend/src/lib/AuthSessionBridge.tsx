@@ -11,7 +11,7 @@ type ProtectedSessionEvent = {
 	data?: {
 		access_token?: string;
 		refresh_token?: string;
-		source?: "restore" | "validated";
+		source?: "callback" | "restore" | "validated";
 	};
 };
 
@@ -29,7 +29,7 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 			if (!accessToken || !refreshToken) return;
 			const restored = await setSupabaseSession(accessToken, refreshToken);
 			if (!active) return;
-			if (restored.invalidCredential) {
+			if (restored.invalidCredential && event.data?.source !== "callback") {
 				void clearProtectedAuthSession();
 				return;
 			}

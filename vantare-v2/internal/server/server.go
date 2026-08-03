@@ -460,7 +460,14 @@ func (s *Server) handleAuthToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("auth: received OAuth token via local callback, forwarding to license:validate")
+	log.Printf("auth: received OAuth token via local callback, hydrating session and forwarding to license validation")
+	if payload.RefreshToken != "" {
+		s.emitter.Emit("auth:session", map[string]any{
+			"access_token":  payload.AccessToken,
+			"refresh_token": payload.RefreshToken,
+			"source":        "callback",
+		})
+	}
 	s.emitter.Emit("license:validate", map[string]any{
 		"sessionToken": payload.AccessToken,
 		"refreshToken": payload.RefreshToken,

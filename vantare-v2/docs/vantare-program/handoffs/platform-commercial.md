@@ -213,9 +213,12 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   La mención Linear `@Codex` no autoriza código cuando parte de `master`; puede
   utilizarse para análisis hasta validar un handoff exacto a Nightly o rama de
   issue.
-- Siguiente acción: cerrar review de ISA-238 y, tras aceptación, ejecutar
-  TAU-07E en una issue nueva para persistencia/outbox Linear exclusivamente en
-  dry-run. Autoridad de diseño:
+- ISA-239 materializa TAU-07E localmente: destino único durable, supersesión
+  reversible del outbox GitHub y proyección Linear exclusivamente en dry-run.
+  Deno 92/92 pasa; PostgreSQL 43/43, rollback exacto, reaplicación 43/43 y
+  carrera de dos workers pasan. Merge y promoción siguen bajo gate humano.
+  Autoridad operativa:
+  `docs/runbooks/testing-center-linear-outbox.md`. Autoridad de diseño:
   `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`
   y plan
   `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`
@@ -247,10 +250,9 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-238 materializa ADR y contratos locales de Linear, rechazo y
-dossier Codex sobre ISA-234. TAU-07A continúa inerte y pinneado, sin caller o
-credencial. El siguiente corte es TAU-07E, outbox Linear solo en dry-run tras
-review y aceptación humana.
+2026-08-03, ISA-239 implementa localmente TAU-07E sobre ISA-238. TAU-07A
+continúa inerte y pinneado, sin caller o credencial. El outbox Linear sigue en
+dry-run y superó su gate local completo; no autoriza side effect externo.
 No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
 autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

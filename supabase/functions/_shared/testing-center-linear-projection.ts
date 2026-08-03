@@ -40,6 +40,7 @@ export type TestingCenterLinearProjectionInput = {
   contractVersion: typeof TESTING_CENTER_LINEAR_PROJECTION_VERSION;
   effectId: string;
   technicalIssueId: string;
+  sourceDigest: string;
   occurrenceCount: number;
   replayAvailable: boolean;
   report: {
@@ -62,6 +63,9 @@ export type LinearIssueProjection = {
   contractVersion: typeof TESTING_CENTER_LINEAR_PROJECTION_VERSION;
   operation: "create_issue";
   effectId: string;
+  technicalIssueId: string;
+  sourceDigest: string;
+  marker: string;
   title: string;
   description: string;
   labels: readonly string[];
@@ -72,6 +76,69 @@ export type LinearIssueProjection = {
     truncatedFields: number;
   };
 };
+
+export type LinearDryRunResult =
+  | {
+    status: "dry_run";
+    operation: "create_issue";
+    effectId: string;
+    projectionDigest: string;
+    marker: string;
+    idempotent: boolean;
+    externalId: null;
+  }
+  | {
+    status: "failed";
+    operation: "create_issue";
+    effectId: string;
+    errorCode:
+      | "dry_run_idempotency_conflict"
+      | "dry_run_claim_invalid"
+      | "dry_run_projection_integrity_invalid"
+      | "dry_run_store_rejected";
+  };
+
+export type LinearProjectionSnapshot = {
+  contractVersion: typeof TESTING_CENTER_LINEAR_PROJECTION_VERSION;
+  operation: "create_issue";
+  effectId: string;
+  technicalIssueId: string;
+  sourceDigest: string;
+  marker: string;
+  title: string;
+  description: string;
+  labels: readonly string[];
+  team: string;
+  project: string;
+  status: string;
+  serverMetadataDigest: string;
+};
+
+export type TestingCenterLinearClaimContext = {
+  workerId: string;
+  fencingToken: number;
+};
+
+export interface TestingCenterLinearDryRunStore {
+  recordProjection(input: {
+    effectId: string;
+    technicalIssueId: string;
+    sourceDigest: string;
+    marker: string;
+    projectionDigest: string;
+    canonicalProjection: string;
+    projection: LinearProjectionSnapshot;
+    workerId: string;
+    fencingToken: number;
+  }): Promise<"recorded" | "duplicate" | "conflict" | "rejected">;
+}
+
+export interface TestingCenterLinearPort {
+  dispatchIssue(
+    projection: LinearIssueProjection,
+    claim: TestingCenterLinearClaimContext,
+  ): Promise<LinearDryRunResult>;
+}
 
 type ProjectionErrorCode =
   | "projection_invalid_shape"
@@ -146,6 +213,7 @@ export function parseTestingCenterLinearProjectionInput(
       "occurrenceCount",
       "replayAvailable",
       "report",
+      "sourceDigest",
       "technicalIssueId",
     ]) ||
     !isRecord(value.report) ||
@@ -194,6 +262,7 @@ export function parseTestingCenterLinearProjectionInput(
       /^issue_[0-9a-f]{64}$/,
       80,
     ),
+    sourceDigest: requiredString(value.sourceDigest, /^[0-9a-f]{64}$/, 64),
     occurrenceCount: value.occurrenceCount,
     replayAvailable: value.replayAvailable,
     report: {
@@ -328,6 +397,9 @@ export async function buildTestingCenterLinearIssueProjection(
       contractVersion: TESTING_CENTER_LINEAR_PROJECTION_VERSION,
       operation: "create_issue",
       effectId: input.effectId,
+      technicalIssueId: input.technicalIssueId,
+      sourceDigest: input.sourceDigest,
+      marker,
       title,
       description,
       labels,
@@ -342,6 +414,9 @@ export async function buildTestingCenterLinearIssueProjection(
     contractVersion: TESTING_CENTER_LINEAR_PROJECTION_VERSION,
     operation: "create_issue",
     effectId: input.effectId,
+    technicalIssueId: input.technicalIssueId,
+    sourceDigest: input.sourceDigest,
+    marker,
     title,
     description,
     labels,
@@ -350,6 +425,96 @@ export async function buildTestingCenterLinearIssueProjection(
     sanitization: {
       redactedValues,
       truncatedFields,
+    },
+  };
+}
+
+export function createTestingCenterLinearDryRunAdapter(
+  store: TestingCenterLinearDryRunStore,
+): TestingCenterLinearPort {
+  return {
+    async dispatchIssue(projection, claim) {
+      const snapshot: LinearProjectionSnapshot = {
+        contractVersion: projection.contractVersion,
+        operation: projection.operation,
+        effectId: projection.effectId,
+        technicalIssueId: projection.technicalIssueId,
+        sourceDigest: projection.sourceDigest,
+        marker: projection.marker,
+        title: projection.title,
+        description: projection.description,
+        labels: projection.labels,
+        team: projection.serverMetadata.team,
+        project: projection.serverMetadata.project,
+        status: projection.serverMetadata.status,
+        serverMetadataDigest: await sha256Hex(
+          JSON.stringify(projection.serverMetadata),
+        ),
+      };
+      if (
+        !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(claim.workerId) ||
+        !Number.isSafeInteger(claim.fencingToken) ||
+        claim.fencingToken < 1
+      ) {
+        return {
+          status: "failed",
+          operation: "create_issue",
+          effectId: projection.effectId,
+          errorCode: "dry_run_claim_invalid",
+        };
+      }
+      if (
+        !/^effect_[0-9a-f]{64}$/.test(projection.effectId) ||
+        !/^[0-9a-f]{64}$/.test(projection.sourceDigest) ||
+        projection.marker !==
+          `<!-- vantare-testing-center:linear:v1 effect=${projection.effectId} issue=${projection.technicalIssueId} -->` ||
+        !/^[0-9a-f]{64}$/.test(projection.projectionDigest) ||
+        await sha256Hex(JSON.stringify(snapshot)) !==
+          projection.projectionDigest
+      ) {
+        return {
+          status: "failed",
+          operation: "create_issue",
+          effectId: projection.effectId,
+          errorCode: "dry_run_projection_integrity_invalid",
+        };
+      }
+      const stored = await store.recordProjection({
+        effectId: projection.effectId,
+        technicalIssueId: projection.technicalIssueId,
+        sourceDigest: projection.sourceDigest,
+        marker: projection.marker,
+        projectionDigest: projection.projectionDigest,
+        canonicalProjection: JSON.stringify(snapshot),
+        projection: snapshot,
+        workerId: claim.workerId,
+        fencingToken: claim.fencingToken,
+      });
+      if (stored === "conflict") {
+        return {
+          status: "failed",
+          operation: "create_issue",
+          effectId: projection.effectId,
+          errorCode: "dry_run_idempotency_conflict",
+        };
+      }
+      if (stored === "rejected") {
+        return {
+          status: "failed",
+          operation: "create_issue",
+          effectId: projection.effectId,
+          errorCode: "dry_run_store_rejected",
+        };
+      }
+      return {
+        status: "dry_run",
+        operation: "create_issue",
+        effectId: projection.effectId,
+        projectionDigest: projection.projectionDigest,
+        marker: projection.marker,
+        idempotent: stored === "duplicate",
+        externalId: null,
+      };
     },
   };
 }

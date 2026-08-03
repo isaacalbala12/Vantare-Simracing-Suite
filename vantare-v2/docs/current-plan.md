@@ -1,3 +1,16 @@
+Nota ISA-239 / TAU-07E (2026-08-03, implementación validada localmente):
+- Rama apilada sobre ISA-238. Implementa selección durable de un único destino,
+  supersesión reversible de efectos GitHub pending/failed, preservación manual
+  de GitHub completed, identidad de build server-side y outbox Linear dry-run.
+- La proyección `testing-center.linear-issue.v1` tiene una sola fuente de verdad
+  TypeScript. PostgreSQL verifica claves, metadata, marker, fuente, JSON
+  canónico, digest, lease y fencing antes de persistirla; no existe red real.
+- Evidencia disponible: Deno 92/92, formato, type-check y `git diff --check`
+  PASS. PostgreSQL: instalación limpia, guards de pausa/claim, 43/43,
+  rollback exacto, reaplicación 43/43 y carrera real de dos procesos PASS.
+  Sigue sin autorizar merge, deploy ni promoción.
+- Autoridad: `docs/runbooks/testing-center-linear-outbox.md`.
+
 Nota de diseño Testing Center / Linear / Codex (2026-08-03):
 - ISA-238 se implementa como corte apilado sobre el prerrequisito
   `ISA-234@0e45228626adc59a5a90b72d1369bb110b1c4e8c`; no duplica el stack desde

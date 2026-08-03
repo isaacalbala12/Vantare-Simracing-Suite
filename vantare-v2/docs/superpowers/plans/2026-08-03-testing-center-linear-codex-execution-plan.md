@@ -70,6 +70,10 @@ Los efectos externos nacen apagados. Se aplicará este orden: contrato local, pe
 
 ### 4. TAU-07E — Proyección Linear y outbox durable en dry-run
 
+**Estado 2026-08-03:** implementación validada en ISA-239. Deno 92/92;
+PostgreSQL 43/43, rollback exacto, reaplicación 43/43 y carrera de dos workers
+PASS. Sin red, merge, deploy ni promoción.
+
 **Objetivo:** reservar y construir exactamente un efecto `linear_issue_create` por issue técnica, sin llamada externa.
 
 **Alcance:** mapping interno/Linear; fingerprint y ocurrencias; marker server-owned; pausa, claim, lease y fencing; reconciliación de respuesta ambigua; proyección sanitizada; política explícita de supersesión del antiguo destino GitHub.

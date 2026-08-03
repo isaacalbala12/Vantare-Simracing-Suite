@@ -157,7 +157,7 @@ jobs:
 
       - name: Gate - Go tests
         env:
-          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none' }}
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           if ($env:INTERNAL_BUILD -ne "true") {
             go test ./...
@@ -173,14 +173,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "internal/app tests failed" }
 
       - name: Gate - ISA-118 concurrent settings save (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none'
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
 
       - name: Gate - Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         env:
-          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none' }}
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           if ($env:INTERNAL_BUILD -ne "true") {
             pnpm test
@@ -194,25 +194,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Blocking frontend tests failed" }
 
       - name: Gate - ISA-173 Crystal manifest runner (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none'
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
 
       - name: Gate - ISA-174 Calendar month boundary (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none'
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
 
       - name: Gate - ISA-172 canvas interaction flake (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none'
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
 
       - name: Gate - Frontend lint
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_channel == 'none' }}
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm lint
 

@@ -93,3 +93,28 @@ Deno.test("client build receives public verification keys only", () => {
     throw new Error("server-side signing material leaked into client build");
   }
 });
+
+Deno.test("binding generation never receives client credential linker values", () => {
+  const taskfile = Deno.readTextFileSync(
+    new URL("../../../vantare-v2/build/windows/Taskfile.yml", import.meta.url),
+  );
+  const frontendDependency = taskfile.match(
+    /task: common:build:frontend[\s\S]*?ref: \.([A-Z_]+)/,
+  );
+  if (frontendDependency?.[1] !== "BINDING_FLAGS") {
+    throw new Error("Windows frontend build does not use isolated binding flags");
+  }
+  const bindingFlags = taskfile.match(
+    /BINDING_FLAGS:\s*'([^\n]+)'/,
+  )?.[1] ?? "";
+  for (const forbidden of [
+    "VANTARE_SUPABASE_URL",
+    "VANTARE_SUPABASE_ANON_KEY",
+    "VANTARE_LICENSE_PUBLIC_KEYS",
+    "ldflags",
+  ]) {
+    if (bindingFlags.includes(forbidden)) {
+      throw new Error(`binding flags contain linker-only value: ${forbidden}`);
+    }
+  }
+});

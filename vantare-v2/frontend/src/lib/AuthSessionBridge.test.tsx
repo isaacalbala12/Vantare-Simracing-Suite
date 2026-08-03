@@ -66,6 +66,33 @@ describe("AuthSessionBridge", () => {
 		expect(clearProtectedSession).not.toHaveBeenCalled();
 	});
 
+	it("hydrates an OAuth callback in memory without persisting or revalidating it twice", async () => {
+		restoreSession.mockResolvedValueOnce({
+			session: { access_token: "callback-at", refresh_token: "callback-rt" },
+		});
+		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
+		backendSession?.({ data: {
+			access_token: "callback-at",
+			refresh_token: "callback-rt",
+			source: "callback",
+		} });
+		await waitFor(() => expect(restoreSession).toHaveBeenCalledWith("callback-at", "callback-rt"));
+		expect(eventsEmit).not.toHaveBeenCalledWith("auth:session:save", expect.anything());
+		expect(eventsEmit).not.toHaveBeenCalledWith("license:validate", expect.anything());
+	});
+
+	it("does not delete a protected credential when an ephemeral callback is invalid", async () => {
+		restoreSession.mockResolvedValueOnce({ session: null, error: "expired", invalidCredential: true });
+		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
+		backendSession?.({ data: {
+			access_token: "callback-at",
+			refresh_token: "callback-rt",
+			source: "callback",
+		} });
+		await waitFor(() => expect(restoreSession).toHaveBeenCalled());
+		expect(clearProtectedSession).not.toHaveBeenCalled();
+	});
+
 	it("persists refresh rotation and clears on signed out", () => {
 		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
 		authChanged?.("TOKEN_REFRESHED", { access_token: "new-at", refresh_token: "new-rt" });

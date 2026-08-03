@@ -407,12 +407,28 @@ func TestAuthTokenForwardsRefreshToken(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("POST /auth/token = %d, want 200: %s", rr.Code, rr.Body.String())
 	}
-	if len(em.calls) != 1 {
-		t.Fatalf("expected 1 emit call, got %d", len(em.calls))
+	if len(em.calls) != 2 {
+		t.Fatalf("expected 2 emit calls, got %d", len(em.calls))
 	}
-	dataMap, ok := em.calls[0].data.(map[string]any)
+	if em.calls[0].name != "auth:session" {
+		t.Fatalf("first emit name = %s, want auth:session", em.calls[0].name)
+	}
+	sessionData, ok := em.calls[0].data.(map[string]any)
 	if !ok {
 		t.Fatalf("emit data type = %T, want map[string]any", em.calls[0].data)
+	}
+	if sessionData["access_token"] != "tok" || sessionData["refresh_token"] != "ref-456" {
+		t.Fatalf("session data = %#v, want callback token pair", sessionData)
+	}
+	if sessionData["source"] != "callback" {
+		t.Fatalf("session source = %v, want callback", sessionData["source"])
+	}
+	if em.calls[1].name != "license:validate" {
+		t.Fatalf("second emit name = %s, want license:validate", em.calls[1].name)
+	}
+	dataMap, ok := em.calls[1].data.(map[string]any)
+	if !ok {
+		t.Fatalf("emit data type = %T, want map[string]any", em.calls[1].data)
 	}
 	if dataMap["sessionToken"] != "tok" {
 		t.Fatalf("sessionToken = %v, want tok", dataMap["sessionToken"])

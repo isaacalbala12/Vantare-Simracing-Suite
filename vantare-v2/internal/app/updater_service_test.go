@@ -38,6 +38,42 @@ func TestUpdaterServiceContextCancellation(t *testing.T) {
 	}
 }
 
+func TestUpdaterServiceRejectsUnauthorizedProtectedChannel(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+	svc, err := app.NewUpdaterService("v0.1.0", settingsPath, &spyEmitter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SaveSettings(&updater.Settings{Channel: updater.ChannelTesters}); err == nil {
+		t.Fatal("default authorizer accepted Testers")
+	}
+	svc.SetChannelAuthorizer(func(channel updater.Channel) bool {
+		return channel == updater.ChannelStable || channel == updater.ChannelTesters
+	})
+	if err := svc.SaveSettings(&updater.Settings{Channel: updater.ChannelTesters}); err != nil {
+		t.Fatalf("authorized Testers rejected: %v", err)
+	}
+	if err := svc.SaveSettings(&updater.Settings{Channel: updater.ChannelNightly}); err == nil {
+		t.Fatal("Tester authorizer accepted Nightly")
+	}
+}
+
+func TestUpdaterServiceRejectsDirectNightlyInstallForTester(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+	svc, err := app.NewUpdaterService("v0.1.0", settingsPath, &spyEmitter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.SetChannelAuthorizer(func(channel updater.Channel) bool {
+		return channel == updater.ChannelStable || channel == updater.ChannelTesters
+	})
+	release := appUpdaterRelease("https://example.invalid", "v0.2.0-nightly")
+	release.Prerelease = true
+	if err := svc.InstallVerifiedVersion(release); err == nil {
+		t.Fatal("direct Nightly install bypassed the channel gate")
+	}
+}
+
 func TestUpdaterServiceConcurrentChecksAndIgnore(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

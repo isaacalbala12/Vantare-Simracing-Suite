@@ -23,6 +23,51 @@ type memoryClock struct {
 	saveErr error
 }
 
+func TestOperationalUpdateChannelAuthorization(t *testing.T) {
+	tests := []struct {
+		name         string
+		capabilities []Capability
+		testers      bool
+		nightly      bool
+	}{
+		{name: "free"},
+		{name: "tester", capabilities: []Capability{CapabilityOperationalTester}, testers: true},
+		{name: "nightly tester", capabilities: []Capability{CapabilityOperationalNightlyTester}, testers: true, nightly: true},
+		{name: "owner", capabilities: []Capability{CapabilityOperationalOwner}, testers: true, nightly: true},
+		{name: "launch", capabilities: []Capability{CapabilityTesters}, testers: true},
+		{name: "pro plus", capabilities: []Capability{CapabilityNightly}, testers: true, nightly: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := NewService(Config{}, nil, nil)
+			service.EmitChanged(&Result{State: StateActive, Capabilities: test.capabilities})
+			if !service.AllowsUpdateChannel("stable") {
+				t.Fatal("stable must always be allowed")
+			}
+			if got := service.AllowsUpdateChannel("testers"); got != test.testers {
+				t.Fatalf("testers=%v, want %v", got, test.testers)
+			}
+			if got := service.AllowsUpdateChannel("nightly"); got != test.nightly {
+				t.Fatalf("nightly=%v, want %v", got, test.nightly)
+			}
+			if service.AllowsUpdateChannel("prerelease") {
+				t.Fatal("ambiguous prerelease channel must fail closed")
+			}
+		})
+	}
+}
+
+func TestExpiredOperationalCredentialCannotAuthorizeAChannel(t *testing.T) {
+	service := NewService(Config{}, nil, nil)
+	service.EmitChanged(&Result{
+		State:        StateExpired,
+		Capabilities: []Capability{CapabilityOperationalOwner},
+	})
+	if service.AllowsUpdateChannel("nightly") {
+		t.Fatal("expired owner capability authorized nightly")
+	}
+}
+
 func (c *memoryClock) Load() (ClockState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

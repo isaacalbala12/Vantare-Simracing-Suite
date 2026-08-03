@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -9,9 +10,10 @@ import (
 
 // UpdaterService exposes auto-update operations to the Wails frontend.
 type UpdaterService struct {
-	updater *updater.Updater
-	emitter EventEmitter
-	mu      sync.Mutex
+	updater        *updater.Updater
+	emitter        EventEmitter
+	mu             sync.Mutex
+	channelAllowed func(updater.Channel) bool
 }
 
 // NewUpdaterService creates an updater service for the given current version.
@@ -21,9 +23,18 @@ func NewUpdaterService(currentVersion, settingsPath string, emitter EventEmitter
 		return nil, err
 	}
 	return &UpdaterService{
-		updater: u,
-		emitter: emitter,
+		updater:        u,
+		emitter:        emitter,
+		channelAllowed: func(channel updater.Channel) bool { return channel == updater.ChannelStable },
 	}, nil
+}
+
+func (s *UpdaterService) SetChannelAuthorizer(authorizer func(updater.Channel) bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if authorizer != nil {
+		s.channelAllowed = authorizer
+	}
 }
 
 // GetSettings loads updater settings from disk.
@@ -34,7 +45,14 @@ func (s *UpdaterService) GetSettings() (*updater.Settings, error) {
 }
 
 func (s *UpdaterService) loadSettings() (*updater.Settings, error) {
-	return updater.LoadSettings(s.updater.SettingsPath())
+	settings, err := updater.LoadSettings(s.updater.SettingsPath())
+	if err != nil {
+		return nil, err
+	}
+	if !s.channelAllowed(settings.Channel) {
+		settings.Channel = updater.ChannelStable
+	}
+	return settings, nil
 }
 
 // SaveSettings persists updater settings.
@@ -45,6 +63,10 @@ func (s *UpdaterService) SaveSettings(settings *updater.Settings) error {
 }
 
 func (s *UpdaterService) saveSettings(settings *updater.Settings) error {
+	settings.Channel = updater.NormalizeChannel(settings.Channel)
+	if !s.channelAllowed(settings.Channel) {
+		return fmt.Errorf("update channel %q is not authorized", settings.Channel)
+	}
 	return updater.SaveSettings(s.updater.SettingsPath(), settings)
 }
 
@@ -115,6 +137,10 @@ func (s *UpdaterService) InstallVerifiedVersion(release updater.Release) error {
 
 // InstallVerifiedVersionCtx is like InstallVerifiedVersion but accepts a context for cancellation.
 func (s *UpdaterService) InstallVerifiedVersionCtx(ctx context.Context, release updater.Release) error {
+	channel, known := updater.ReleaseChannel(release)
+	if !known || !s.channelAllowed(channel) {
+		return fmt.Errorf("release channel is not authorized")
+	}
 	return s.updater.InstallVerifiedCtx(ctx, release, func(percent int) {
 		s.emitter.Emit("updater:progress", map[string]any{"percent": percent})
 	})

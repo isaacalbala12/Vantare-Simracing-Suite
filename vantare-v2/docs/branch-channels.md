@@ -69,6 +69,20 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 | Launch Edition | Sí | Sí | No |
 | Vantare Pro Plus | Sí | Sí | Sí |
 
+Los accesos operativos son independientes del catálogo comercial y nunca
+cambian el plan mostrado al usuario:
+
+| Rol operativo | Stable | Testers | Nightly | Vigencia offline máxima |
+|---|---:|---:|---:|---:|
+| Tester | Sí | Sí | No | 14 días |
+| Tester Nightly | Sí | Sí | Sí | 72 horas |
+| Owner | Sí | Sí | Sí | 30 días |
+
+`Owner` es permanente hasta revocación en el servidor, pero su credencial local
+se renueva como máximo cada 30 días. Las builds prerelease deben identificarse
+explícitamente como `testers` o `nightly` en su tag o nombre. Una prerelease sin
+canal reconocible se rechaza de forma segura.
+
 La rama no es por sí sola un mecanismo de autorización. El actualizador debe
 validar el entitlement firmado antes de mostrar o descargar una build. Hasta
 que Billing entregue los planes finales, las builds no estables se distribuyen

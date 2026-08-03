@@ -5,6 +5,16 @@ import "time"
 // Entitlement is a product key a user has unlocked.
 type Entitlement string
 
+// OperationalRole grants revocable non-commercial access. It must never be
+// displayed as a Polar plan or treated as purchase evidence.
+type OperationalRole string
+
+const (
+	OperationalRoleTester        OperationalRole = "tester"
+	OperationalRoleNightlyTester OperationalRole = "nightly_tester"
+	OperationalRoleOwner         OperationalRole = "owner"
+)
+
 const (
 	EntitlementOverlays        Entitlement = "overlays"
 	EntitlementEngineer        Entitlement = "engineer"
@@ -36,15 +46,16 @@ const (
 
 // Result is the outcome of a license validation cycle.
 type Result struct {
-	State         State
-	Entitlements  []Entitlement
-	Capabilities  []Capability
-	UserID        string
-	Email         string
-	DeviceOK      bool
-	GraceEndsAt   *time.Time
-	LastValidated time.Time
-	Error         error
+	State            State
+	Entitlements     []Entitlement
+	Capabilities     []Capability
+	OperationalRoles []OperationalRole
+	UserID           string
+	Email            string
+	DeviceOK         bool
+	GraceEndsAt      *time.Time
+	LastValidated    time.Time
+	Error            error
 	// OnlineValidated is intentionally omitted from LicenseWire. It marks that
 	// Supabase authenticated this exact session during the current request, so
 	// only the native auth-session manager can decide whether to persist it.
@@ -72,15 +83,16 @@ type Config struct {
 // LastValidated is an RFC3339 string (not time.Time) so WebView2 receives a
 // parseable value instead of an opaque Go struct object.
 type LicenseWire struct {
-	State         string        `json:"state"`
-	Entitlements  []Entitlement `json:"entitlements"`
-	Capabilities  []Capability  `json:"capabilities,omitempty"`
-	UserID        string        `json:"userId"`
-	Email         string        `json:"email"`
-	DeviceOK      bool          `json:"deviceOK"`
-	GraceEndsAt   *time.Time    `json:"graceEndsAt,omitempty"`
-	LastValidated string        `json:"lastValidated,omitempty"`
-	Error         string        `json:"error,omitempty"`
+	State            string            `json:"state"`
+	Entitlements     []Entitlement     `json:"entitlements"`
+	Capabilities     []Capability      `json:"capabilities,omitempty"`
+	OperationalRoles []OperationalRole `json:"operationalRoles,omitempty"`
+	UserID           string            `json:"userId"`
+	Email            string            `json:"email"`
+	DeviceOK         bool              `json:"deviceOK"`
+	GraceEndsAt      *time.Time        `json:"graceEndsAt,omitempty"`
+	LastValidated    string            `json:"lastValidated,omitempty"`
+	Error            string            `json:"error,omitempty"`
 }
 
 // ToWire converts a Result into the UI-facing JSON wire format.
@@ -94,14 +106,15 @@ func (r *Result) ToWire() LicenseWire {
 		lastValidated = r.LastValidated.UTC().Format(time.RFC3339Nano)
 	}
 	return LicenseWire{
-		State:         string(r.State),
-		Entitlements:  r.Entitlements,
-		Capabilities:  r.Capabilities,
-		UserID:        r.UserID,
-		Email:         r.Email,
-		DeviceOK:      r.DeviceOK,
-		GraceEndsAt:   r.GraceEndsAt,
-		LastValidated: lastValidated,
-		Error:         errMsg,
+		State:            string(r.State),
+		Entitlements:     r.Entitlements,
+		Capabilities:     r.Capabilities,
+		OperationalRoles: r.OperationalRoles,
+		UserID:           r.UserID,
+		Email:            r.Email,
+		DeviceOK:         r.DeviceOK,
+		GraceEndsAt:      r.GraceEndsAt,
+		LastValidated:    lastValidated,
+		Error:            errMsg,
 	}
 }

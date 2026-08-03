@@ -22,12 +22,18 @@ export type Capability =
   | "vantare.plan.pro"
   | "vantare.edition.launch_v1"
   | "vantare.channel.testers"
-  | "vantare.channel.nightly";
+  | "vantare.channel.nightly"
+  | "vantare.operational.tester"
+  | "vantare.operational.nightly_tester"
+  | "vantare.operational.owner";
+
+export type OperationalRole = "tester" | "nightly_tester" | "owner";
 
 export type LicenseResult = {
   state: LicenseState;
   entitlements: Entitlement[];
   capabilities?: Capability[];
+  operationalRoles?: OperationalRole[];
   userId: string;
   email: string;
   deviceOK: boolean;

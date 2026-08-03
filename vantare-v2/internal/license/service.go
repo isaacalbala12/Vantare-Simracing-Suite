@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,8 @@ type Service struct {
 	fingerprint    func() (string, error)
 	subjectFromJWT func(string) (string, error)
 	emitter        EventEmitter
+	currentMu      sync.RWMutex
+	current        *Result
 }
 
 func NewService(cfg Config, emitter EventEmitter, fingerprint func() (string, error)) *Service {
@@ -44,7 +47,16 @@ func (s *Service) WithCache(c *LicenseCache) *Service          { s.cache = c; re
 func (s *Service) WithVerifier(v *CredentialVerifier) *Service { s.verifier = v; return s }
 
 func (s *Service) EmitChanged(res *Result) {
-	if s == nil || s.emitter == nil || res == nil {
+	if s == nil || res == nil {
+		return
+	}
+	s.currentMu.Lock()
+	copyResult := *res
+	copyResult.Capabilities = append([]Capability(nil), res.Capabilities...)
+	copyResult.OperationalRoles = append([]OperationalRole(nil), res.OperationalRoles...)
+	s.current = &copyResult
+	s.currentMu.Unlock()
+	if s.emitter == nil {
 		return
 	}
 	wire := res.ToWire()
@@ -52,6 +64,35 @@ func (s *Service) EmitChanged(res *Result) {
 		wire.LastValidated = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 	s.emitter.Emit(LicenseChangedEvent, wire)
+}
+
+func (s *Service) AllowsUpdateChannel(channel string) bool {
+	if channel == "stable" {
+		return true
+	}
+	s.currentMu.RLock()
+	defer s.currentMu.RUnlock()
+	if s.current == nil || (s.current.State != StateActive && s.current.State != StateGrace) {
+		return false
+	}
+	has := func(wanted ...Capability) bool {
+		for _, current := range s.current.Capabilities {
+			for _, capability := range wanted {
+				if current == capability {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	switch channel {
+	case "testers":
+		return has(CapabilityTesters, CapabilityNightly, CapabilityOperationalTester, CapabilityOperationalNightlyTester, CapabilityOperationalOwner)
+	case "nightly":
+		return has(CapabilityNightly, CapabilityOperationalNightlyTester, CapabilityOperationalOwner)
+	default:
+		return false
+	}
 }
 
 func (s *Service) Validate(ctx context.Context, sessionToken string) (*Result, error) {
@@ -151,6 +192,7 @@ func mergeOnlineCapabilities(res *Result, online []Capability) error {
 	}
 	res.Capabilities = SortedCapabilities(res.Capabilities)
 	res.Entitlements = legacyEntitlements(res.Capabilities)
+	res.OperationalRoles = operationalRoles(res.Capabilities)
 	if len(res.Capabilities) > 0 {
 		res.State = StateActive
 	}

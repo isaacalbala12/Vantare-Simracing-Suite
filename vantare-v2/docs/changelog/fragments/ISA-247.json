@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-247",
+  "type": "security",
+  "summary": "Los accesos internos de Vantare quedan separados de las compras y pueden revocarse de forma segura.",
+  "technicalNotes": [
+    "Tester, Tester Nightly y Owner usan asignaciones operativas propias y credenciales offline limitadas.",
+    "Los grants legacy permanecen auditables, pero dejan de participar en nuevas credenciales.",
+    "La concesión, consulta, revocación y retirada legacy son server-only, idempotentes y dry-run por defecto."
+  ],
+  "testing": [
+    "Comprobar que Cuenta muestra el rol operativo separado del plan comercial.",
+    "Validar que Tester no puede acceder a Nightly y que Tester Nightly y Owner sí pueden.",
+    "Revocar una asignación de prueba y confirmar su efecto online y al expirar la credencial offline."
+  ],
+  "knownLimitations": [
+    "La aplicación remota de roles, el saneamiento de las cinco cuentas legacy y el smoke real requieren el gate productivo explícito de Isaac."
+  ]
+}

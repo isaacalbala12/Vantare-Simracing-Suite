@@ -97,6 +97,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   docker cp (Join-Path $root "supabase\tests\billing_subscription_lifecycle_legacy_upgrade.test.sql") "${container}:/tmp/subscription-lifecycle-upgrade-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_order_refund_ledger.test.sql") "${container}:/tmp/order-refund-ledger-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_observability.test.sql") "${container}:/tmp/observability-test.sql"
+  docker cp (Join-Path $root "supabase\tests\operational_access.test.sql") "${container}:/tmp/operational-access-test.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
   foreach ($migration in $migrations) { docker cp $migration.FullName "${container}:/tmp/$($migration.Name)" }
 
@@ -109,6 +110,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   Assert-PgTap "clean" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Clean install subscription lifecycle"
   Assert-PgTap "clean" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Clean install order refund ledger"
   Assert-PgTap "clean" "/tmp/observability-test.sql" "1\.\.20" "Clean install billing observability"
+  Assert-PgTap "clean" "/tmp/operational-access-test.sql" "1\.\.56" "Clean install operational access"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
@@ -381,7 +383,8 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   $commercialProjectionMigration = "20260802100000_billing_commercial_projection.sql"
   $subscriptionLifecycleMigration = "20260802110000_billing_subscription_lifecycle.sql"
   $orderRefundLedgerMigration = "20260802120000_billing_order_refund_ledger.sql"
-  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration)) {
+  $operationalAccessMigration = "20260803140000_operational_access_assignments.sql"
+  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration)) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
@@ -394,6 +397,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   if ($LASTEXITCODE -ne 0) { throw "Could not seed legacy subscription lifecycle cases" }
   Invoke-Psql "upgrade" "/tmp/$subscriptionLifecycleMigration"
   Invoke-Psql "upgrade" "/tmp/$orderRefundLedgerMigration"
+  Invoke-Psql "upgrade" "/tmp/$operationalAccessMigration"
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.54" "Upgrade inbox"
   Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"
@@ -403,6 +407,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-upgrade-test.sql" "1\.\.8" "Upgrade subscription lifecycle migration"
   Assert-PgTap "upgrade" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Upgrade order refund ledger"
   Assert-PgTap "upgrade" "/tmp/observability-test.sql" "1\.\.20" "Upgrade billing observability"
+  Assert-PgTap "upgrade" "/tmp/operational-access-test.sql" "1\.\.56" "Upgrade operational access"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
@@ -426,6 +431,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "restore_drill" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Restored database subscription lifecycle"
   Assert-PgTap "restore_drill" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Restored database order refund ledger"
   Assert-PgTap "restore_drill" "/tmp/observability-test.sql" "1\.\.20" "Restored database billing observability"
+  Assert-PgTap "restore_drill" "/tmp/operational-access-test.sql" "1\.\.56" "Restored database operational access"
   $restored = docker exec $container psql -At -v ON_ERROR_STOP=1 -U postgres -d restore_drill -c `
     "select (select count(*) = 1 from public.user_entitlements where user_id = '00000000-0000-4000-8000-000000000091' and product_key = 'restore_sentinel') and (select relrowsecurity from pg_class where oid = 'public.user_entitlements'::regclass) and not has_function_privilege('anon','public.read_account_entitlements()','execute')"
   $restoredExit = $LASTEXITCODE
@@ -445,7 +451,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability + 56 operational access pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

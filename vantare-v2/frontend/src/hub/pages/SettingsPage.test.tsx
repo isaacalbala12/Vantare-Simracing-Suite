@@ -29,6 +29,7 @@ vi.mock('../../lib/license', () => ({
       email: 'test@example.com',
       state: 'active',
       entitlements: ['overlays', 'engineer'],
+      capabilities: ['vantare.channel.nightly'],
     },
     loading: false,
     refresh: vi.fn(),
@@ -107,8 +108,9 @@ describe('SettingsPage', () => {
   it('shows channel options when clicking Actualizaciones tab', () => {
     render(<SettingsPage />);
     clickTab('Actualizaciones');
-    expect(screen.getByLabelText('Solo releases estables')).toBeDefined();
-    expect(screen.getByLabelText('Incluir pre-releases')).toBeDefined();
+    expect(screen.getByLabelText('Stable')).toBeDefined();
+    expect(screen.getByLabelText('Testers')).toBeDefined();
+    expect(screen.getByLabelText('Nightly')).toBeDefined();
   });
 
   it('shows hotkeys when clicking Hotkeys tab', () => {
@@ -222,10 +224,10 @@ describe('SettingsPage', () => {
     dispatch('updater:settings', { settings: { channel: 'stable' } });
     clickTab('Actualizaciones');
 
-    fireEvent.click(screen.getByLabelText('Incluir pre-releases'));
+    fireEvent.click(screen.getByLabelText('Nightly'));
 
     expect(runtimeMock.emit).toHaveBeenCalledWith('updater:settings:save', {
-      channel: 'prerelease',
+      channel: 'nightly',
     });
   });
 

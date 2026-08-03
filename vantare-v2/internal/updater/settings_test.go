@@ -19,7 +19,7 @@ func TestLoadSettingsMissingReturnsDefault(t *testing.T) {
 
 func TestSaveAndLoadSettings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	want := &Settings{Channel: ChannelPrerelease, IgnoreVersion: "v0.1.0"}
+	want := &Settings{Channel: ChannelNightly, IgnoreVersion: "v0.1.0"}
 	if err := SaveSettings(path, want); err != nil {
 		t.Fatalf("save error: %v", err)
 	}
@@ -29,6 +29,20 @@ func TestSaveAndLoadSettings(t *testing.T) {
 	}
 	if got.Channel != want.Channel || got.IgnoreVersion != want.IgnoreVersion {
 		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadSettingsRetiresAmbiguousPrereleaseChannel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"channel":"prerelease"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadSettings(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Channel != ChannelStable {
+		t.Fatalf("channel=%s, want fail-closed stable", s.Channel)
 	}
 }
 

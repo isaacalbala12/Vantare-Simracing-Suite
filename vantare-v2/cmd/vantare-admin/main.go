@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"os"
 )
+
 func main() {
 	cmd, args := parseArgs(os.Args)
 	if cmd == "" {
-		fmt.Fprintln(os.Stderr, "uso: vantare-admin <lookup|grant|revoke|device-reset|events> [args...]")
+		fmt.Fprintln(os.Stderr, "uso: vantare-admin <lookup|grant|revoke|device-reset|events|operational-access> [args...]")
 		os.Exit(1)
 	}
 	if err := validateEnv(); err != nil {
@@ -28,6 +29,11 @@ func main() {
 		handleDeviceReset(args)
 	case "events":
 		handleEvents(args)
+	case "operational-access":
+		if err := runOperationalAccess(args, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "comando desconocido: %s\n", cmd)
 		os.Exit(1)

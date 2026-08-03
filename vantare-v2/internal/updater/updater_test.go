@@ -28,7 +28,8 @@ func TestCheckFiltersChannel(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`[
-			{"tag_name":"v0.1.2-prealpha","prerelease":true,"published_at":"2026-06-03T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/v0.1.2.exe"}]},
+			{"tag_name":"v0.1.3-nightly","prerelease":true,"published_at":"2026-06-04T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/v0.1.3.exe"}]},
+			{"tag_name":"v0.1.2-testers","prerelease":true,"published_at":"2026-06-03T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/v0.1.2.exe"}]},
 			{"tag_name":"v0.1.1","prerelease":false,"published_at":"2026-06-02T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/v0.1.1.exe"}]}
 		]`))
 	}))
@@ -48,12 +49,30 @@ func TestCheckFiltersChannel(t *testing.T) {
 		t.Fatalf("stable tag=%s, want v0.1.1", info.Releases[0].TagName)
 	}
 
-	info, err = u.Check(&Settings{Channel: ChannelPrerelease})
+	info, err = u.Check(&Settings{Channel: ChannelTesters})
 	if err != nil {
 		t.Fatalf("check error: %v", err)
 	}
 	if len(info.Releases) != 2 {
-		t.Fatalf("prerelease releases=%d, want 2", len(info.Releases))
+		t.Fatalf("tester releases=%d, want 2", len(info.Releases))
+	}
+
+	info, err = u.Check(&Settings{Channel: ChannelNightly})
+	if err != nil {
+		t.Fatalf("check error: %v", err)
+	}
+	if len(info.Releases) != 3 {
+		t.Fatalf("nightly releases=%d, want 3", len(info.Releases))
+	}
+}
+
+func TestUnclassifiedPrereleaseFailsClosed(t *testing.T) {
+	release := Release{TagName: "v0.2.0-prealpha", Prerelease: true}
+	if _, ok := ReleaseChannel(release); ok {
+		t.Fatal("unclassified prerelease must not enter a protected channel")
+	}
+	if ChannelIncludesRelease(ChannelNightly, release) {
+		t.Fatal("nightly must not include an unclassified prerelease")
 	}
 }
 

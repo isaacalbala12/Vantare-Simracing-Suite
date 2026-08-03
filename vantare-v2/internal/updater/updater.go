@@ -65,7 +65,7 @@ func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]R
 	}
 	var out []Release
 	for _, r := range releases {
-		if settings.Channel == ChannelStable && r.Prerelease {
+		if !ChannelIncludesRelease(settings.Channel, r) {
 			continue
 		}
 		if FindInstaller(r) == nil {
@@ -74,6 +74,35 @@ func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]R
 		out = append(out, r)
 	}
 	return out, nil
+}
+
+func ReleaseChannel(release Release) (Channel, bool) {
+	if !release.Prerelease {
+		return ChannelStable, true
+	}
+	marker := strings.ToLower(release.TagName + " " + release.Name)
+	if strings.Contains(marker, "nightly") {
+		return ChannelNightly, true
+	}
+	if strings.Contains(marker, "testers") {
+		return ChannelTesters, true
+	}
+	return "", false
+}
+
+func ChannelIncludesRelease(channel Channel, release Release) bool {
+	releaseChannel, known := ReleaseChannel(release)
+	if !known {
+		return false
+	}
+	switch NormalizeChannel(channel) {
+	case ChannelNightly:
+		return true
+	case ChannelTesters:
+		return releaseChannel == ChannelStable || releaseChannel == ChannelTesters
+	default:
+		return releaseChannel == ChannelStable
+	}
 }
 
 // UpdateInfo is the result of checking for updates.

@@ -132,29 +132,31 @@ type CandidateBuild struct {
 type ValidationDecision string
 
 const (
-	ValidationAccepted ValidationDecision = "accepted"
-	ValidationRejected ValidationDecision = "rejected"
+	ValidationAccepted     ValidationDecision = "accepted"
+	ValidationRejected     ValidationDecision = "rejected"
+	ValidationCannotVerify ValidationDecision = "cannot_verify"
 )
 
 type RejectionReason string
 
 const (
-	RejectionStillFails    RejectionReason = "still_fails"
-	RejectionRegression    RejectionReason = "regression"
-	RejectionIncompleteFix RejectionReason = "incomplete_fix"
-	RejectionNewFailure    RejectionReason = "new_failure"
-	RejectionOther         RejectionReason = "other"
+	RejectionIssuePersists     RejectionReason = "issue_persists"
+	RejectionNewRegression     RejectionReason = "new_regression"
+	RejectionCrash             RejectionReason = "crash"
+	RejectionDifferentBehavior RejectionReason = "different_behavior"
+	RejectionOther             RejectionReason = "other"
 )
 
 type Validation struct {
-	ContractVersion ContractVersion    `json:"contractVersion"`
-	ValidationID    string             `json:"validationId"`
-	CandidateID     string             `json:"candidateId"`
-	Channel         Channel            `json:"channel"`
-	ExactSHA        string             `json:"exactSha"`
-	Decision        ValidationDecision `json:"decision"`
-	ActorID         string             `json:"actorId"`
-	RejectionReason RejectionReason    `json:"rejectionReason,omitempty"`
+	ContractVersion   ContractVersion    `json:"contractVersion"`
+	ValidationID      string             `json:"validationId"`
+	CandidateID       string             `json:"candidateId"`
+	Channel           Channel            `json:"channel"`
+	ExactSHA          string             `json:"exactSha"`
+	CandidateAuthorID string             `json:"candidateAuthorId"`
+	Decision          ValidationDecision `json:"decision"`
+	ActorID           string             `json:"actorId"`
+	RejectionReason   RejectionReason    `json:"rejectionReason,omitempty"`
 }
 
 func (validation Validation) IsStale(currentSHA string) bool {

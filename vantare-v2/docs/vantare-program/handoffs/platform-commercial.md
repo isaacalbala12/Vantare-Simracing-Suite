@@ -193,6 +193,18 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   TAU-07 por microcortes.
 - ISA-234 / TAU-07A prepara envelope HMAC, prompt/schema y workflow reusable
   inerte con acciones/CLI pinneadas. No tiene caller, secreto ni permisos write.
+- ISA-237 / TAU-07B/C confirma que ChatGPT Pro puede ejecutar la prueba sin
+  Platform API y que una ref exacta se verifica por SHA. La continuidad de una
+  rama integrada es NO-GO: la PR no conservó de forma fiable el head/base
+  esperado. Toda corrección usa sub-issue y rama nueva desde `nightly` actual.
+- ISA-238 / TAU-07D fija Supabase como autoridad y Linear como único tracker
+  externo. GitHub queda para código/PR/CI; el efecto `github_issue_create`
+  permanece inerte hasta su supersesión aditiva, sin dual-write. Contratos
+  locales: proyección Linear, rechazo y dossier determinista para Codex. El
+  corte está apilado sobre `ISA-234@0e45228626adc59a5a90b72d1369bb110b1c4e8c`;
+  Deno focal 47/47, type-check/formato, frontend build y Go global pasan. Sin
+  schema, red, secretos, UI, servicios reales, merge o promoción. Review
+  adversarial final: ACCEPT, P0/P1/P2/P3=0.
 - El diseño aprobado el 2026-08-03 sustituye la activación automática posterior
   por `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR
   revisada`. Un rechazo bloquea, genera expediente determinista y exige decisión
@@ -201,13 +213,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   La mención Linear `@Codex` no autoriza código cuando parte de `master`; puede
   utilizarse para análisis hasta validar un handoff exacto a Nightly o rama de
   issue.
-- Siguiente acción: revisar la especificación
+- Siguiente acción: cerrar review de ISA-238 y, tras aceptación, ejecutar
+  TAU-07E en una issue nueva para persistencia/outbox Linear exclusivamente en
+  dry-run. Autoridad de diseño:
   `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`
-  y ejecutar el plan
+  y plan
   `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`
-  empezando exclusivamente por TAU-07B/07C. El alcance anterior de TAU-07B/C
-  queda sustituido: no se exige una PR sin clic y la rama/SHA se selecciona
-  fuera de Linear. Red real, API Codex, repo write no sintético, App real,
+  actualizado. Red real, API Codex, repo write no sintético, App real,
   Discord y asignación automática siguen apagados hasta gates separados. La
   integración PostHog preparada no se da por válida: errores, replay, masking,
   consentimiento y retención pasan un microcorte de privacidad antes de la UI.
@@ -235,9 +247,10 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, el diseño y su plan por microcortes de rechazo y delegación humana
-a Linear/Codex Cloud quedan aprobados. ISA-234 mantiene TAU-07A inerte y
-pinneado, sin caller o credencial.
+2026-08-03, ISA-238 materializa ADR y contratos locales de Linear, rechazo y
+dossier Codex sobre ISA-234. TAU-07A continúa inerte y pinneado, sin caller o
+credencial. El siguiente corte es TAU-07E, outbox Linear solo en dry-run tras
+review y aceptación humana.
 No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
 autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda

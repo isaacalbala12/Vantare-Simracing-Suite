@@ -2,7 +2,7 @@
 
 Fecha: 2026-08-03
 
-Estado: aprobado para planificación; sin autorización de implementación, deploy, secretos, delegación Codex, merge o promoción.
+Estado: TAU-07B/C completados; TAU-07D implementado localmente en ISA-238 y pendiente de review/PR draft. Sin autorización de deploy, secretos, integración remota, delegación automática, merge o promoción.
 Arquitectura: `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR revisada -> nightly -> testers -> master`.
 
 ## Objetivo
@@ -18,6 +18,8 @@ El circuito debe poder detenerse en cualquier fase. Ningún rechazo, comentario,
 - Un rechazo autorizado bloquea el candidato exacto. `Cannot verify` no aprueba, rechaza ni bloquea.
 - Un único tester principal puede aprobar Nightly. En Testers, un rechazo válido pausa preventivamente hasta decisión de Isaac. Isaac conserva el gate final de Master.
 - Un rechazo en Testers nunca se corrige directamente sobre `testers`: vuelve a Nightly y recorre de nuevo ambos canales.
+- Toda corrección rechazada usa una sub-issue y una rama nueva desde el SHA actual de Nightly. La continuidad `same_branch` quedó descartada por ISA-237.
+- La aprobación de testers es un gate funcional; solo Isaac autoriza las promociones `nightly -> testers` y `testers -> master`.
 - Linear contiene una proyección operativa; logs, diagnóstico completo y session replay permanecen en Supabase/PostHog y se enlazan con acceso restringido.
 - El texto del tester es evidencia no confiable, no instrucciones para Codex.
 - No hay modelo intermedio en el MVP. Supabase genera un expediente determinista y versionado.
@@ -50,11 +52,11 @@ Los efectos externos nacen apagados. Se aplicará este orden: contrato local, pe
 **Objetivo:** resolver antes del backend los dos caminos de corrección.
 
 1. **Rama nueva:** seleccionar el SHA exacto de Nightly, crear la rama generada por Linear y abrir una PR draft a `nightly` con un cambio documental inocuo.
-2. **Misma rama:** seleccionar una rama de issue ya integrada en Nightly, verificar su HEAD y demostrar si GitHub permite continuarla con commits nuevos y una segunda PR a `nightly` sin reabrir ni reescribir la anterior.
+2. **Continuidad:** se probó una rama ya integrada y la PR resultante no conservó de forma fiable el head/base esperado.
 
 **Gate GO:** checkout seleccionado fuera del prompt; preflight reproduce repo, rama/SHA y ancestry; PR base/head correctas; la creación de PR puede requerir confirmación humana y eso no invalida el MVP.
 
-**Fallback obligatorio:** si la segunda PR desde la rama antigua no es fiable, toda corrección usa sub-issue y rama nueva desde el SHA actual de Nightly.
+**Resultado ISA-237:** continuidad NO-GO. Toda corrección usa sub-issue y rama nueva desde el SHA actual de Nightly; no hay retry, reopen, force-push ni rebase de la rama anterior.
 
 ### 3. TAU-07D — ADR y contratos cerrados
 
@@ -86,7 +88,7 @@ Los efectos externos nacen apagados. Se aplicará este orden: contrato local, pe
 
 **Objetivo:** persistir el feedback de Nightly/Testers y convertirlo en una decisión explícita de Isaac.
 
-**Alcance:** candidato exacto; aprobación, rechazo y `Cannot verify`; un voto por tester/candidato; rol de tester principal; bloqueo; dossier digestado; seis disposiciones: misma rama, sub-issue, entorno, issue nueva, descarte justificado y detener rollout.
+**Alcance:** candidato exacto; aprobación, rechazo y `Cannot verify`; un voto por tester/candidato; rol de tester principal; bloqueo; dossier digestado; cinco disposiciones: sub-issue/rama nueva, entorno, issue nueva, descarte justificado y detener rollout.
 
 **Gate:** una aprobación Nightly válida basta; rechazo autorizado bloquea; votos antiguos no migran a SHA nuevo; rechazo Testers exige retorno por Nightly; expediente incompleto no se puede delegar.
 
@@ -191,13 +193,13 @@ Los efectos externos nacen apagados. Se aplicará este orden: contrato local, pe
 - La corrección intenta saltar Nightly, reabrir una PR merged o reescribir historial.
 - Los tests fallan por causa desconocida, aparece trabajo ajeno o el corte crece fuera de alcance.
 
-## Primer día recomendado
+## Primer día ejecutado
 
-1. Ejecutar solo TAU-07B y registrar GO/NO-GO.
-2. Si es GO, ejecutar TAU-07C con cambio documental sintético y conservar evidencia.
-3. Elegir y documentar el fallback de misma rama frente a sub-issue.
-4. No iniciar schema, credenciales, deploy ni UI ese día.
-5. Al cerrar los spikes, revalidar este plan y preparar TAU-07D en un worktree nuevo desde la base exacta autorizada.
+1. TAU-07B registró GO sin Platform API.
+2. TAU-07C conservó evidencia documental sintética de rama/SHA.
+3. El resultado definitivo es sub-issue y rama nueva; `same_branch` retirado.
+4. No se inició schema, credenciales, deploy ni UI.
+5. TAU-07D se preparó en un worktree nuevo sobre la base apilada exacta de ISA-234.
 
 ## Criterio de terminado global
 

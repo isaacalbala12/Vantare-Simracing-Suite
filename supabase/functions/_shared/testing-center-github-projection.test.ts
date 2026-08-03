@@ -6,12 +6,12 @@ import {
   assertNotMatch,
   assertRejects,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { sanitizeTestingCenterTesterText } from "./testing-center-projection-sanitization.ts";
 import {
   buildGitHubIssueProjection,
   buildGitHubOccurrenceProjection,
   createTestingCenterGitHubDryRunAdapter,
   parseTestingCenterGitHubProjectionInput,
-  sanitizeTestingCenterTesterText,
   type TestingCenterGitHubProjectionInput,
   TestingCenterProjectionError,
 } from "./testing-center-github-projection.ts";
@@ -124,6 +124,7 @@ Deno.test("Markdown, HTML and mentions remain inert inside delimited untrusted b
   assertNotMatch(projection.body, /@isaac/);
   assertNotMatch(projection.body, /https:\/\/evil[.]invalid/);
   assertMatch(projection.body, /@\u200bisaac/);
+  assertNotMatch(projection.body, /@\u200b\u200bisaac/);
 });
 
 Deno.test("prompt injection is never promoted to trusted metadata", async () => {

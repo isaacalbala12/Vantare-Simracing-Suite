@@ -1,28 +1,52 @@
 Nota de diseño Testing Center / Linear / Codex (2026-08-03):
+- ISA-238 se implementa como corte apilado sobre el prerrequisito
+  `ISA-234@0e45228626adc59a5a90b72d1369bb110b1c4e8c`; no duplica el stack desde
+  la Nightly actual ni mezcla cambios Billing. Rama:
+  `vantareapp/isa-238-tau-07d-adr-y-contratos-linear-rechazo-y-dossier-codex`.
+- Contratos locales materializados: `testing-center.linear-issue.v1`,
+  `testing-center.rejection.v1` y `testing-center.codex-dossier.v1`. Incluyen
+  decoder cerrado, sanitización compartida, digest, un voto actor/candidato/SHA,
+  `cannot_verify`, sub-issue/rama nueva y límites 32 KiB/5 paths/3 comandos.
+- Evidencia fresca: Deno focal 47/47, formato y type-check PASS; Go focal PASS;
+  frontend build PASS y `go test ./...` PASS tras generar el `dist` ignorado.
+  Review adversarial final: ACCEPT, P0/P1/P2/P3=0.
+  Sin schema, red de producto, secreto, Linear/PostHog/Discord/Codex real, UI,
+  deploy, merge o promoción.
+- ISA-238 / TAU-07D fija los contratos locales y el ADR 0007. Supabase es la
+  autoridad canónica, Linear el único tracker operativo externo y GitHub queda
+  limitado a código, PR y CI. Sin dual-write ni fallback a GitHub Issues.
+- El spike ISA-237 cerró el camino de continuidad como NO-GO: toda corrección
+  crea una sub-issue y una rama nueva desde el SHA actual de `nightly`.
+  `same_branch` queda retirado y nunca se reabre, reescribe o fuerza una rama.
+- Una aprobación de tester solo satisface el gate funcional. Isaac autoriza
+  explícitamente cada promoción a Testers y Master; rechazo o ambigüedad pasan
+  a `needs_owner`, nunca a retry automático.
+- Autoridad: `docs/adr/0007-testing-center-linear-operational-authority.md` y
+  `docs/runbooks/testing-center-linear-contracts.md`.
 - Isaac aprueba el MVP `Vantare -> Supabase -> Linear -> delegación humana a
   Codex Cloud -> PR revisada -> nightly -> testers -> master`.
 - Un rechazo bloquea la candidata y queda visible en Testing Center, Linear y
   Discord con detalle proporcional. No existe redelegación automática.
 - Supabase compone un expediente determinista; no se añade un modelo
-  intermedio. Isaac decide entre misma rama, sub-issue, entorno, issue nueva,
-  descarte justificado o detener rollout.
+  intermedio. Isaac decide entre sub-issue, entorno, issue nueva, descarte
+  justificado o detener rollout.
 - Rama, SHA y base de PR se seleccionan y verifican fuera del prompt. La
   integración Linear `@Codex`, que parte de la rama predeterminada, no puede
   ejecutar cambios sobre Nightly hasta superar ese gate determinista.
-- La misma rama se conserva para correcciones pequeñas en Nightly. Testers
-  siempre corrige desde Nightly y vuelve a recorrer los canales.
+- Toda corrección usa sub-issue y rama nueva desde Nightly. Testers siempre
+  corrige desde Nightly y vuelve a recorrer los canales.
 - Especificación:
   `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`.
 - Esta decisión sustituye la activación automática prevista después de
-  TAU-07A. El workflow firmado permanece inerte; TAU-07B no debe ejecutarse sin
-  replanificar los microcortes y validar primero Linear/Codex Cloud.
+  TAU-07A. El workflow firmado permanece inerte; TAU-07B/C ya se validaron y
+  TAU-07D permanece estrictamente local.
 - Este corte es solo documental: sin red, credenciales, deploy, UI, Codex,
   Discord, merge o promoción.
 - Plan ejecutable aprobado por microcortes:
   `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`.
-  Empieza por dos spikes sin backend: cuenta ChatGPT Pro y selección
-  determinista de rama/SHA, incluida la viabilidad de continuar una rama ya
-  integrada. El fallback es siempre sub-issue y rama nueva desde Nightly. La
+  Empezó por dos spikes sin backend: cuenta ChatGPT Pro y selección
+  determinista de rama/SHA. La continuidad de una rama integrada fue NO-GO;
+  el camino único es sub-issue y rama nueva desde Nightly. La
   captura PostHog preparada recibe un gate propio de privacidad antes de la UI.
 
 Nota ISA-234 / TAU-07A (2026-08-03, dispatch Codex inerte):

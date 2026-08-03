@@ -1,8 +1,8 @@
 # Testing Center — rechazo, Linear y delegación humana a Codex
 
-Estado: diseño aprobado por Isaac el 2026-08-03. Documento conceptual; no
-autoriza implementación, deploy, credenciales, red, asignación automática,
-merge ni promoción.
+Estado: diseño aprobado por Isaac el 2026-08-03 y contratos locales
+materializados en ISA-238. No autoriza deploy, credenciales, red, asignación
+automática, merge ni promoción.
 
 ## Objetivo
 
@@ -19,9 +19,9 @@ Codex Cloud
 rama de issue -> nightly -> testers -> master
 ```
 
-El diseño debe conservar el contexto cuando una build sea rechazada, impedir
-bucles automáticos de Codex y permitir correcciones pequeñas en la rama
-original sin obligar a crear una incidencia nueva.
+El diseño debe conservar el contexto cuando una build sea rechazada e impedir
+bucles automáticos de Codex. ISA-237 descartó continuar una rama integrada:
+toda corrección usa una sub-issue y una rama nueva desde Nightly actual.
 
 ## Decisiones aprobadas
 
@@ -41,8 +41,10 @@ original sin obligar a crear una incidencia nueva.
 - La PR se crea tras revisión humana del resultado de Codex.
 - Discord publica avisos operativos anónimos para testers, nunca el expediente
   técnico completo.
-- Un rechazo bloquea la candidata, pero no borra votos, reescribe ramas o
-  revierte código automáticamente.
+- Un rechazo bloquea la candidata, pero no borra votos, reescribe ramas,
+  reintenta trabajo ni revierte código automáticamente.
+- La aceptación de un tester es evidencia funcional; solo Isaac autoriza una
+  promoción de canal.
 
 ## Roles y permisos
 
@@ -134,7 +136,7 @@ El expediente incluye:
 - logs sanitizados y consentidos;
 - disponibilidad de PostHog y un enlace server-owned que exige autenticación
   del owner para la revisión humana;
-- estrategia elegida por Isaac: misma rama o sub-issue;
+- estrategia fija `sub_issue_new_branch`;
 - repositorio, rama objetivo, SHA esperado y base de PR server-owned;
 - criterios de finalización verificables;
 - versiones del contrato y digest del expediente.
@@ -169,8 +171,7 @@ Isaac puede registrar una de estas disposiciones:
 2. clasificar como problema del entorno;
 3. separar una incidencia nueva;
 4. descartar justificadamente el rechazo;
-5. continuar en la misma rama;
-6. detener completamente el rollout.
+5. detener completamente el rollout.
 
 La delegación se inicia de forma humana después de revisar el expediente. La
 integración estándar de Linear inicia hoy sus chats desde la rama predeterminada
@@ -185,29 +186,7 @@ compara repositorio, `HEAD`, SHA esperado y relación con la base de PR. Cualqui
 diferencia termina en `needs_owner`. La creación de PR permanece como gate
 humano.
 
-## Estrategias de corrección
-
-### Continuar en la misma rama
-
-Es la opción preferida para una corrección pequeña rechazada en Nightly cuando:
-
-- pertenece al mismo alcance y raíz causal;
-- la rama original existe y no contiene trabajo ajeno;
-- la corrección sigue siendo pequeña y verificable;
-- se compara contra el `nightly` actual;
-- no exige rebase con force-push ni reescritura de historial.
-
-Una PR ya fusionada no se reabre. Se añaden commits y se crea una nueva PR a
-Nightly. Por ello, las ramas no se eliminan automáticamente hasta superar la
-validación Nightly.
-
-Codex Cloud permite que una tarea directa seleccione rama o commit SHA. El spike
-debe probar la continuidad de una rama ya fusionada y la creación de una segunda
-PR desde ella. Si esa continuidad concreta no funciona, se utiliza una
-sub-issue nueva; nunca se sustituye la selección técnica por una instrucción
-textual.
-
-### Sub-issue y rama nueva
+## Estrategia de corrección: sub-issue y rama nueva
 
 Es la opción normal cuando el cambio crece, la rama ya no es segura o el
 rechazo ocurre en Testers:
@@ -228,7 +207,7 @@ mantiene el contrato una issue, una rama, un worktree y un contexto Codex.
 - Solo valida un `primary_tester` u owner.
 - Una aprobación es suficiente.
 - Un rechazo bloquea inmediatamente.
-- Una corrección pequeña puede continuar en la misma rama.
+- Toda corrección crea una sub-issue y rama nueva desde Nightly actual.
 
 ### Testers
 
@@ -290,19 +269,19 @@ nuevo; no se edita el mensaje histórico para ocultar el rechazo.
 - Un rechazo bloquea la candidata y aparece en Linear, Discord y Testing
   Center con el nivel de detalle correspondiente.
 - La identidad del tester no aparece en Discord.
-- Isaac puede elegir las seis disposiciones sin que ninguna delegue por sí
+- Isaac puede elegir las cinco disposiciones sin que ninguna delegue por sí
   sola a Codex.
 - El prompt no puede elegir la base: repositorio, rama, SHA y base de PR deben
   coincidir con el preflight server-owned.
-- La misma rama solo está disponible bajo las condiciones cerradas de Nightly.
+- `same_branch` está retirado; datos legacy son solo lectura y requieren owner.
 - Un rechazo en Testers vuelve por Nightly y nunca se corrige directamente.
 - Una candidata corregida exige votos nuevos.
 - El expediente se genera sin LLM, es versionado, digerido y falla cerrado.
 - Fallos de Linear, Discord o Codex no desbloquean una promoción.
 
-## Fuera de alcance
+## Fuera de alcance de ISA-238
 
-- Implementación de UI, schema, Edge Functions o webhooks.
+- Implementación de UI, schema, Edge Functions con red o webhooks.
 - Activación de la integración Linear/Codex.
 - Configuración de PostHog, Discord o secretos.
 - Automatización de asignación a Codex o creación de PR.
@@ -311,16 +290,11 @@ nuevo; no se edita el mensaje histórico para ocultar el rechazo.
 
 ## Siguiente gate
 
-Tras revisar esta especificación se debe sustituir el plan TAU-07 anterior por
-microcortes que empiecen con spikes sin efectos reales:
-
-1. creación y proyección de una issue sintética en Linear;
-2. delegación humana directa con rama/SHA seleccionados y prueba de segunda PR
-   desde una rama ya fusionada;
-3. contrato de rechazo y expediente determinista en dry-run;
-4. persistencia, outbox y sincronización de estados;
-5. UI y notificaciones;
-6. piloto remoto controlado antes de una build real.
+ISA-237 cerró los spikes y ISA-238 materializó los contratos locales. El
+siguiente corte es TAU-07E: persistencia y outbox `linear_issue_create` solo en
+dry-run, con supersesión aditiva del efecto GitHub y prueba de cero dual-write.
+Después siguen webhook/reconciliación, UI/notificaciones y, por último, un
+piloto remoto controlado.
 
 TAU-07A permanece como evidencia inerte. No se activa ni se convierte en el
 camino de producción por este diseño.

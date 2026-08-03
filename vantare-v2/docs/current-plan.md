@@ -1,3 +1,21 @@
+Nota de diseño Testing Center / Linear / Codex (2026-08-03):
+- Isaac aprueba el MVP `Vantare -> Supabase -> Linear -> delegación humana a
+  Codex Cloud -> PR revisada -> nightly -> testers -> master`.
+- Un rechazo bloquea la candidata y queda visible en Testing Center, Linear y
+  Discord con detalle proporcional. No existe redelegación automática.
+- Supabase compone un expediente determinista; no se añade un modelo
+  intermedio. Isaac decide entre misma rama, sub-issue, entorno, issue nueva,
+  descarte justificado o detener rollout.
+- La misma rama se conserva para correcciones pequeñas en Nightly. Testers
+  siempre corrige desde Nightly y vuelve a recorrer los canales.
+- Especificación:
+  `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`.
+- Esta decisión sustituye la activación automática prevista después de
+  TAU-07A. El workflow firmado permanece inerte; TAU-07B no debe ejecutarse sin
+  replanificar los microcortes y validar primero Linear/Codex Cloud.
+- Este corte es solo documental: sin red, credenciales, deploy, UI, Codex,
+  Discord, merge o promoción.
+
 Nota ISA-234 / TAU-07A (2026-08-03, dispatch Codex inerte):
 - Envelope HMAC cerrado liga run/issue/request, SHA/proof, fencing, scope,
   versiones, TTL 30–300 s y nonce. Prosa, logs, replay, URL y paths externos no

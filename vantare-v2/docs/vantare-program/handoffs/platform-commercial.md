@@ -193,9 +193,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   TAU-07 por microcortes.
 - ISA-234 / TAU-07A prepara envelope HMAC, prompt/schema y workflow reusable
   inerte con acciones/CLI pinneadas. No tiene caller, secreto ni permisos write.
-- Siguiente acción: TAU-07B prepara el caller y ejecución read-only aislada.
-  Red real, API Codex, repo write, App real, Discord y asignación automática
-  siguen apagados hasta gates separados.
+- El diseño aprobado el 2026-08-03 sustituye la activación automática posterior
+  por `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR
+  revisada`. Un rechazo bloquea, genera expediente determinista y exige decisión
+  de Isaac antes de cualquier nueva delegación.
+- Siguiente acción: revisar la especificación
+  `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`
+  y replanificar TAU-07 por microcortes. TAU-07B no se ejecuta con su alcance
+  anterior. Red real, API Codex, repo write, App real, Discord y asignación
+  automática siguen apagados hasta gates separados.
 
 ## Riesgos
 
@@ -220,8 +226,9 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-234 deja TAU-07A inerte y pinneado, sin caller o credencial.
-No ejecuta Codex, Discord, repo access o Supabase remoto; tampoco autoriza
-deploy, merge, promoción ni una build distribuida.
+2026-08-03, el diseño de rechazo y delegación humana a Linear/Codex Cloud queda
+aprobado. ISA-234 mantiene TAU-07A inerte y pinneado, sin caller o credencial.
+No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
+autoriza deploy, merge, promoción ni una build distribuida.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

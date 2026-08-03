@@ -89,7 +89,7 @@ describe("CompositeApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
     runtimeMock.onCalls = [];
-    runtimeMock.emit.mockClear();
+    runtimeMock.emit.mockReset();
     vi.useFakeTimers();
   });
 
@@ -102,9 +102,27 @@ describe("CompositeApp", () => {
   it("subscribes once to the profile and canonical Overlay transport", () => {
     render(<CompositeApp />);
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
+    expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(1);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(1);
+  });
+
+  it("recovers the active profile when the initial window event was emitted before mount", () => {
+    runtimeMock.emit.mockImplementation((name: string) => {
+      if (name !== "overlay:profile-v3:get") {
+        return;
+      }
+      for (const handler of runtimeMock.handlers.get("overlay:profile-v3-loaded") ?? []) {
+        handler({ data: buildProfilePayload(buildRelativeDocument()) });
+      }
+    });
+
+    render(<CompositeApp />);
+    tick(100);
+
+    expect(screen.queryByText("Loading profile...")).toBeNull();
+    expect(screen.getByText("RELATIVE")).toBeTruthy();
   });
 
   it("renders runtime widgets after overlay:profile-v3-loaded", () => {

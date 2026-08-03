@@ -73,6 +73,11 @@ export function CompositeApp() {
       }
     });
 
+    // A newly-created Wails window can mount after the initial profile event
+    // was broadcast. Subscribe first, then request the current snapshot so the
+    // desktop runtime cannot remain stuck in its loading state.
+    Events.Emit("overlay:profile-v3:get");
+
     return () => {
       unsub?.();
     };

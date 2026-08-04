@@ -228,7 +228,7 @@ y recientes.
   nunca entra en el Host, renderer, documento ni crop del widget.
 - Los presets 720p, 1080p y 1440p declaran dimensiones de prueba; escala,
   dimensiones, fixture y comparación son efímeros. `Reset controls` restaura
-  la selección inicial del deep-link sin persistir perfiles.
+  los defaults canónicos, no el deep-link inicial, sin persistir perfiles.
 - Studio, Desktop, OBS y Harness usan la misma función de superficie y el mismo
   `WidgetVisualViewport` + `WidgetVisualHost`. OBS no recibe etiqueta ni chrome
   técnico dentro de su superficie. El root capturable sigue siendo
@@ -243,7 +243,11 @@ y recientes.
   normal dinámicamente desde `AppShell.tsx`. Esto evita la antigua petición
   fallida a `wails/custom.js`; no cambia el runtime normal. HMR CSS se aplicó y
   revirtió sin reiniciar la ruta.
-- Evidencia focal final: 4 archivos/20 Vitest PASS, ESLint directo de bootstrap
+- Las dimensiones y escala se editan como borradores locales: una pareja de
+  dimensiones solo entra en URL/root cuando ambas son válidas; una escala
+  válida entre 0.25 y 2 conserva valores como `0.3`. Ningún input incompleto o
+  fuera de rango escribe una URL no reproducible.
+- Evidencia focal final: 6 archivos/29 Vitest PASS, ESLint directo de bootstrap
   y authoring PASS, `design-system:check` PASS, build productivo PASS y
   compile-out sin sentinel `overlay-workshop`, `Overlay Workshop` o `DEV ONLY`
   en los assets. El lint global sigue registrando 30 errores/2 warnings

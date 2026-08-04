@@ -1,3 +1,17 @@
+Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
+- Isaac autorizó un único reintento tras corregir el claim hosted. El worker
+  adquirió lease/fencing y devolvió `409 linear_response_ambiguous`; el
+  contrato limpió el lease, fijó el efecto y destino en `needs_owner` y
+  mantuvo la pausa global activa.
+- La reconciliación read-only por marker/`effectId` y el listado del proyecto
+  `Testing Center — Feedback` encontraron cero issues. Supabase mantiene
+  `attempt_count=1`, fencing 1 y cero bindings. No se permite una tercera
+  llamada aunque el resultado externo aparente ser cero.
+- El bearer temporal se eliminó del portapapeles. La evidencia quedó anotada
+  en ISA-243. El siguiente corte debe añadir diagnóstico sanitizado de fase,
+  HTTP status y códigos GraphQL allowlisted o revisar permisos/configuración
+  de la OAuth app antes de usar un nuevo reporte sintético separado.
+
 Nota ISA-243 / TAU-07I (2026-08-04, primer reporte remoto y stop seguro):
 - El reporte sintético `report_d9c99f...866ae8a` llegó desde la build exacta
   `nightly/v0.1.0.5@ef60adef4c42f21b87e3ad582927f574ea1d77ed`, sin

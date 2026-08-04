@@ -16,17 +16,19 @@ type CandidateFeedbackPanelProps = {
   client: TestingCenterFeedbackClient;
 };
 
-const EMPTY_REJECTION: RejectionDetails = {
-  category: "issue_persists",
-  description: "",
-  steps: "",
-  expected: "",
-  observed: "",
-  frequency: "always",
-  blocking: true,
-  diagnosticsConsent: false,
-  logsConsent: false,
-};
+function emptyRejection(): RejectionDetails {
+  return {
+    category: "issue_persists",
+    description: "",
+    steps: "",
+    expected: "",
+    observed: "",
+    frequency: "always",
+    blocking: true,
+    diagnosticsConsent: false,
+    logsConsent: false,
+  };
+}
 
 function validRejection(details: RejectionDetails): boolean {
   return [details.description, details.steps, details.expected, details.observed]
@@ -48,7 +50,7 @@ export function CandidateFeedbackPanel({
   const [candidates, setCandidates] = useState<CandidateReview[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [active, setActive] = useState<CandidateReview | null>(null);
-  const [rejection, setRejection] = useState<RejectionDetails>(EMPTY_REJECTION);
+  const [rejection, setRejection] = useState<RejectionDetails>(emptyRejection);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<"incomplete" | "submit" | null>(null);
   const [result, setResult] = useState<CandidateFeedbackResult | null>(null);
@@ -98,7 +100,7 @@ export function CandidateFeedbackPanel({
       });
       setResult(next);
       setActive(null);
-      setRejection(EMPTY_REJECTION);
+      setRejection(emptyRejection());
       setCandidates((current) =>
         current.filter((item) => item.candidateId !== candidate.candidateId)
       );
@@ -215,6 +217,10 @@ export function CandidateFeedbackPanel({
                 className="btn-secondary min-h-11 px-3 text-sm"
                 disabled={!candidate.canValidate || submitting}
                 onClick={() => {
+                  if (
+                    active?.candidateId !== candidate.candidateId ||
+                    active.candidateSha !== candidate.candidateSha
+                  ) setRejection(emptyRejection());
                   setActive(candidate);
                   setResult(null);
                   setFormError(null);
@@ -243,6 +249,7 @@ export function CandidateFeedbackPanel({
           onChange={setRejection}
           onCancel={() => {
             setActive(null);
+            setRejection(emptyRejection());
             setFormError(null);
           }}
           onSubmit={() => void submit(active, "rejected", rejection)}

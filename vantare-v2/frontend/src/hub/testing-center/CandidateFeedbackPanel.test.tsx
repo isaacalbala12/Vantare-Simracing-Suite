@@ -1,25 +1,34 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TestingCenterFeedbackClient } from "./candidate-feedback-client";
+import type { CandidateReview } from "./candidate-feedback-contracts";
 import { CandidateFeedbackPanel } from "./CandidateFeedbackPanel";
 
 afterEach(cleanup);
 
-function client(canValidate = true): TestingCenterFeedbackClient {
+function candidate(overrides: Partial<CandidateReview> = {}): CandidateReview {
   return {
-    listCandidates: vi.fn().mockResolvedValue([{
-      issueId: `issue_${"a".repeat(64)}`,
-      candidateId: "candidate-isa242",
-      channel: "nightly",
-      appVersion: "v0.1.0.5-nightly",
-      candidateSha: "b".repeat(40),
-      module: "testing_center",
-      summary: "The report form remains open",
-      criteria: ["The draft remains visible"],
-      knownFailure: "The draft used to disappear",
-      state: "pending",
-      canValidate,
-    }]),
+    issueId: `issue_${"a".repeat(64)}`,
+    candidateId: "candidate-isa242",
+    channel: "nightly",
+    appVersion: "v0.1.0.5-nightly",
+    candidateSha: "b".repeat(40),
+    module: "testing_center",
+    summary: "The report form remains open",
+    criteria: ["The draft remains visible"],
+    knownFailure: "The draft used to disappear",
+    state: "pending",
+    canValidate: true,
+    ...overrides,
+  };
+}
+
+function client(
+  canValidate = true,
+  candidates: CandidateReview[] = [candidate({ canValidate })],
+): TestingCenterFeedbackClient {
+  return {
+    listCandidates: vi.fn().mockResolvedValue(candidates),
     submitFeedback: vi.fn().mockImplementation(async (input) => ({
       validationId: `validation_${"c".repeat(64)}`,
       decision: input.decision,
@@ -76,5 +85,66 @@ describe("CandidateFeedbackPanel", () => {
     const accept = await screen.findByRole("button", { name: "Funciona" }) as HTMLButtonElement;
     expect(accept.disabled).toBe(true);
     expect(screen.getByText(/no validarla con esta cuenta/i)).toBeTruthy();
+  });
+
+  it("clears rejection details when switching candidates and submits the active one", async () => {
+    const testingClient = client(true, [
+      candidate({ candidateId: "candidate-one" }),
+      candidate({
+        issueId: `issue_${"d".repeat(64)}`,
+        candidateId: "candidate-two",
+        candidateSha: "e".repeat(40),
+        summary: "Second candidate",
+      }),
+    ]);
+    render(<CandidateFeedbackPanel channel="nightly" client={testingClient} />);
+    await screen.findByText("Second candidate");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Necesita cambios" })[0]);
+    fireEvent.change(screen.getByLabelText("Descripción breve"), {
+      target: { value: "Only the first candidate" },
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Necesita cambios" })[1]);
+    expect((screen.getByLabelText("Descripción breve") as HTMLTextAreaElement).value)
+      .toBe("");
+
+    fireEvent.change(screen.getByLabelText("Descripción breve"), {
+      target: { value: "Second candidate still fails" },
+    });
+    fireEvent.change(screen.getByLabelText("Pasos para reproducirlo"), {
+      target: { value: "Open the second candidate" },
+    });
+    fireEvent.change(screen.getByLabelText("Resultado esperado"), {
+      target: { value: "Second candidate works" },
+    });
+    fireEvent.change(screen.getByLabelText("Resultado observado"), {
+      target: { value: "Second candidate fails" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar cambios solicitados" }));
+
+    await waitFor(() => expect(testingClient.submitFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidateId: "candidate-two",
+        candidateSha: "e".repeat(40),
+        details: expect.objectContaining({
+          description: "Second candidate still fails",
+        }),
+      }),
+    ));
+  });
+
+  it("preserves rejection details when reopening the same candidate", async () => {
+    render(<CandidateFeedbackPanel channel="nightly" client={client()} />);
+    await screen.findByText("The report form remains open");
+
+    fireEvent.click(screen.getByRole("button", { name: "Necesita cambios" }));
+    fireEvent.change(screen.getByLabelText("Descripción breve"), {
+      target: { value: "Keep this draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Necesita cambios" }));
+
+    expect((screen.getByLabelText("Descripción breve") as HTMLTextAreaElement).value)
+      .toBe("Keep this draft");
   });
 });

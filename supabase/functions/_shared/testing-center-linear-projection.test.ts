@@ -8,15 +8,19 @@ import {
 
 import {
   buildTestingCenterLinearIssueProjection,
+  createTestingCenterLinearDryRunAdapter,
   parseTestingCenterLinearProjectionInput,
   TESTING_CENTER_LINEAR_PROJECTION_VERSION,
+  type TestingCenterLinearDryRunStore,
   type TestingCenterLinearProjectionInput,
   TestingCenterProjectionError,
 } from "./testing-center-linear-projection.ts";
+import { sha256Hex } from "./testing-center-projection-sanitization.ts";
 
 const reportId = `report_${"a".repeat(64)}`;
 const issueId = `issue_${"b".repeat(64)}`;
 const effectId = `effect_${"c".repeat(64)}`;
+const claim = { workerId: "linear-worker-1", fencingToken: 1 } as const;
 
 function input(
   overrides: Partial<TestingCenterLinearProjectionInput> = {},
@@ -25,6 +29,7 @@ function input(
     contractVersion: TESTING_CENTER_LINEAR_PROJECTION_VERSION,
     effectId,
     technicalIssueId: issueId,
+    sourceDigest: "d".repeat(64),
     occurrenceCount: 1,
     replayAvailable: false,
     report: {
@@ -55,9 +60,9 @@ Deno.test("linear projection uses server-owned team/project/status and forbid de
   assertEquals(Object.hasOwn(projection, "assignee"), false);
   assertEquals(Object.hasOwn(projection, "priority"), false);
   assertEquals(Object.hasOwn(projection, "delegate"), false);
-  assertEquals(projection.serverMetadata.team, "Vantare");
-  assertEquals(projection.serverMetadata.project, "Testing Center");
-  assertEquals(projection.serverMetadata.status, "Triage");
+  assertEquals(projection.serverMetadata.team, "My Live");
+  assertEquals(projection.serverMetadata.project, "Testing Center — Feedback");
+  assertEquals(projection.serverMetadata.status, "Backlog");
 });
 
 Deno.test("linear projection sanitizes adversarial reporter text into untrusted blocks", async () => {
@@ -196,4 +201,113 @@ Deno.test("adversarial corpus never leaks raw control payload", async () => {
       /@everyone|@here|https?:\/\/|<img|private-value|Users\\\\Pilot/,
     );
   }
+});
+
+Deno.test("linear dry-run records one effect and performs no external call", async () => {
+  const records = new Map<string, string>();
+  let canonicalProjection = "";
+  const store: TestingCenterLinearDryRunStore = {
+    recordProjection(candidate) {
+      canonicalProjection = candidate.canonicalProjection;
+      const previous = records.get(candidate.effectId);
+      if (previous !== undefined && previous !== candidate.projectionDigest) {
+        return Promise.resolve("conflict");
+      }
+      records.set(candidate.effectId, candidate.projectionDigest);
+      return Promise.resolve(previous === undefined ? "recorded" : "duplicate");
+    },
+  };
+  const adapter = createTestingCenterLinearDryRunAdapter(store);
+  const projection = await buildTestingCenterLinearIssueProjection(input());
+  const first = await adapter.dispatchIssue(projection, claim);
+  const duplicate = await adapter.dispatchIssue(
+    structuredClone(projection),
+    claim,
+  );
+
+  assertEquals(first.status, "dry_run");
+  assertEquals(first.status === "dry_run" && first.externalId, null);
+  assertEquals(first.status === "dry_run" && first.idempotent, false);
+  assertEquals(duplicate.status === "dry_run" && duplicate.idempotent, true);
+  assertEquals(records.size, 1);
+  assertEquals(JSON.parse(canonicalProjection), {
+    contractVersion: projection.contractVersion,
+    operation: projection.operation,
+    effectId: projection.effectId,
+    technicalIssueId: projection.technicalIssueId,
+    sourceDigest: projection.sourceDigest,
+    marker: projection.marker,
+    title: projection.title,
+    description: projection.description,
+    labels: projection.labels,
+    team: projection.serverMetadata.team,
+    project: projection.serverMetadata.project,
+    status: projection.serverMetadata.status,
+    serverMetadataDigest: await sha256Hex(
+      JSON.stringify(projection.serverMetadata),
+    ),
+  });
+});
+
+Deno.test("linear dry-run rejects marker, digest and idempotency tampering", async () => {
+  const records = new Map<string, string>();
+  const adapter = createTestingCenterLinearDryRunAdapter({
+    recordProjection(candidate) {
+      const previous = records.get(candidate.effectId);
+      if (previous !== undefined && previous !== candidate.projectionDigest) {
+        return Promise.resolve("conflict");
+      }
+      records.set(candidate.effectId, candidate.projectionDigest);
+      return Promise.resolve(previous === undefined ? "recorded" : "duplicate");
+    },
+  });
+  const projection = await buildTestingCenterLinearIssueProjection(input());
+  await adapter.dispatchIssue(projection, claim);
+
+  const badMarker = await adapter.dispatchIssue({
+    ...projection,
+    marker: "<!-- tester-owned -->",
+  }, claim);
+  assertEquals(
+    badMarker.status === "failed" && badMarker.errorCode,
+    "dry_run_projection_integrity_invalid",
+  );
+
+  const changedProjection = await buildTestingCenterLinearIssueProjection(
+    input({ report: { ...input().report, channel: "testers" } }),
+  );
+  const conflict = await adapter.dispatchIssue(changedProjection, claim);
+  assertEquals(
+    conflict.status === "failed" && conflict.errorCode,
+    "dry_run_idempotency_conflict",
+  );
+});
+
+Deno.test("linear dry-run rejects unbound worker or fencing context", async () => {
+  let calls = 0;
+  const adapter = createTestingCenterLinearDryRunAdapter({
+    recordProjection() {
+      calls += 1;
+      return Promise.resolve("recorded");
+    },
+  });
+  const projection = await buildTestingCenterLinearIssueProjection(input());
+
+  for (
+    const invalidClaim of [
+      { workerId: "Owner Worker", fencingToken: 1 },
+      { workerId: "linear-worker-1", fencingToken: 0 },
+      {
+        workerId: "linear-worker-1",
+        fencingToken: Number.MAX_SAFE_INTEGER + 1,
+      },
+    ]
+  ) {
+    const result = await adapter.dispatchIssue(projection, invalidClaim);
+    assertEquals(
+      result.status === "failed" && result.errorCode,
+      "dry_run_claim_invalid",
+    );
+  }
+  assertEquals(calls, 0);
 });

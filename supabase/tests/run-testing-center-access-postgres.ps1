@@ -8,7 +8,7 @@ $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
 $raceSeed = Join-Path $env:TEMP "$container-race-seed.sql"
 $raceCallA = Join-Path $env:TEMP "$container-race-a.sql"
 $raceCallB = Join-Path $env:TEMP "$container-race-b.sql"
-$coreMigration = "20260802130000_testing_center_core.sql"
+$coreMigration = "20260802130100_testing_center_core.sql"
 $accessMigration = "20260802140000_testing_center_access.sql"
 
 function Write-Utf8NoBom([string]$Path, [string]$Content) {

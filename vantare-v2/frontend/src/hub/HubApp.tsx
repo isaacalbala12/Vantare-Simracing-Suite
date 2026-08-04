@@ -16,6 +16,7 @@ import { TestingCenterPage } from './testing-center/TestingCenterPage';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
 import { submitTestingCenterReport } from './testing-center/report-submission-client';
 import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
+import { testingCenterFeedbackClient } from './testing-center/candidate-feedback-client';
 import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
@@ -200,6 +201,7 @@ function HubShell() {
           version={version}
           client={wailsTestingCenterClient}
           submitReport={submitTestingCenterReport}
+          feedbackClient={testingCenterFeedbackClient}
         />
       )}
       {visibleSection === "roadmap" && <RoadmapPage />}

@@ -122,6 +122,29 @@ export type TestingCenterCodexDossier = {
   noPromotionAllowed: true;
 };
 
+export async function verifyTestingCenterCodexDossier(
+  dossier: TestingCenterCodexDossier,
+): Promise<boolean> {
+  if (
+    !isRecord(dossier) ||
+    dossier.contractVersion !== TESTING_CENTER_CODEX_DOSSIER_VERSION ||
+    !/^[0-9a-f]{64}$/.test(dossier.dossierDigest) ||
+    dossier.strategy !== "sub_issue_new_branch" ||
+    dossier.hasReplayUrl !== false ||
+    dossier.includesRetryOrReleaseCommand !== false ||
+    dossier.noRetryAllowed !== true ||
+    dossier.noMergeAllowed !== true ||
+    dossier.noDeployAllowed !== true ||
+    dossier.noPromotionAllowed !== true ||
+    ENCODER.encode(JSON.stringify(dossier)).length > MAX_DOSSIER_BYTES
+  ) return false;
+  const digest = dossier.dossierDigest;
+  return digest === await sha256Hex(JSON.stringify({
+    ...dossier,
+    dossierDigest: "",
+  }));
+}
+
 function isRecord(value: unknown): value is RecordValue {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

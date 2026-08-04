@@ -1,3 +1,30 @@
+Nota ISA-258 / V1-07A (2026-08-03, Roadmap conectado a Linear):
+- La vista editorial `Roadmap actual` se conserva. La antigua vista manual
+  `Desarrollo por features` pasa a `Proyectos`, con tres pestañas públicas,
+  seis proyectos allowlisted y tareas limitadas inicialmente a ocho por
+  proyecto con expansión explícita.
+- Linear no entra en el cliente: un exporter Python stdlib read-only pagina
+  GraphQL, falla cerrado ante respuestas parciales/estados desconocidos,
+  sanitiza títulos y genera un snapshot público v1 sin UUIDs, identificadores
+  `ISA-*` ni prefijos internos de proyecto, URLs/dominios, descripciones,
+  comentarios, labels, asignados o workspace.
+- El cliente valida schema/canal/progreso/privacidad, distingue remoto actual,
+  remoto obsoleto y fallback empaquetado, e impone timeout. Las pestañas
+  superiores e internas usan semántica ARIA, roving tabindex y foco real.
+- Catálogo, snapshot y fixture quedan versionados; la publicación programada y
+  el endpoint por canal siguen fuera de este corte. Una lectura live mediante
+  el conector de Linear generó el bootstrap público actual con 3 pestañas, 6
+  proyectos y 145 tareas; 26 canceladas quedaron excluidas. Sin
+  `LINEAR_API_KEY` local no se ejecutó la ruta de red del exporter; su dry-run
+  end-to-end con fixture generó 3 pestañas, 6 proyectos y 6 tareas.
+- Gates: exporter 10/10, frontend Roadmap focal 54/54, build, lint focal, privacidad y
+  `git diff --check` PASS. La suite global terminó 312/313 y 2.147/2.148 dos
+  veces por dos intermitencias distintas en `useCanvasInteraction.test.tsx`,
+  archivo sin diff que aislado pasa 24/24. El lint global conserva 30 errores y
+  2 warnings preexistentes fuera del write set.
+- Estado: implementación en review, sin commit/push/PR ni promoción. Requiere
+  validación manual de Isaac antes de cualquier integración en `nightly`.
+
 Nota ISA-247 / BIL-10C (2026-08-03, acceso operativo revocable):
 - Tester, Tester Nightly y Owner son roles server-side separados de Polar y de
   los planes comerciales; solo se emiten como capabilities firmadas acotadas.

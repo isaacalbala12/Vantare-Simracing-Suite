@@ -76,10 +76,14 @@ describe("ROADMAP changelog + feedback links", () => {
     expect(ROADMAP_FEEDBACK_LINKS.discord).toContain("discord.gg");
   });
   it("changelog url points to public changelog", () => {
-    expect(ROADMAP_CHANGELOG_URL).toContain("docs/changelog.md");
+    expect(ROADMAP_CHANGELOG_URL).toBe(
+      "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/master/vantare-v2/docs/changelog.md",
+    );
   });
   it("source url points to the manual roadmap json", () => {
-    expect(ROADMAP_SOURCE_URL).toContain("docs/roadmap-source.json");
+    expect(ROADMAP_SOURCE_URL).toBe(
+      "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-source.json",
+    );
   });
 });
 

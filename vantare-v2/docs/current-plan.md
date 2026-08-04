@@ -4498,3 +4498,11 @@ Nota ISA-264 / OS-09E (2026-08-04, acceso Owner y exclusión física de Stable):
   secretos; el parser del verificador acepta el separador real que pnpm inserta.
   Sin cambios de Billing/auth, catálogo, canvas, persistencia, LMU, baselines o
   promoción. Estado: candidato técnico pendiente de review/PR.
+- Corrección P1 posterior a review: `AppShell` no contiene ya la ruta ni el
+  import del Workshop. La ruta vive en un módulo lazy cargado exclusivamente
+  bajo la constante Vite interna, por lo que Stable no conserva literal,
+  import graph, chunk, CSS ni sentinels; la build interna conserva los cinco y
+  sigue pasando el gate Owner/Tester en navegador. La constante de CI solo se
+  activa tras `push` directo a `nightly` o `testers`: los PR hacia esos canales,
+  ramas de issue, `master` y tags construyen Stable. El test stdlib fija esa
+  matriz y se ejecuta en el job de política. Sin promoción.

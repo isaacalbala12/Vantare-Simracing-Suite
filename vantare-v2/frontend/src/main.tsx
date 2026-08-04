@@ -7,8 +7,8 @@ import vantareLite from "./themes/vantare-lite.json";
 import { AppBootFallback } from "./AppBootFallback";
 const includeOverlayWorkshop =
   import.meta.env.DEV || import.meta.env.VITE_INCLUDE_OVERLAY_WORKSHOP === "true";
-const OverlayWorkshopAccessRoute = includeOverlayWorkshop
-  ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopAccessRoute }))
+const OverlayWorkshopInternalApp = includeOverlayWorkshop
+  ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopInternalApp")).OverlayWorkshopInternalApp }))
   : null;
 const AppRuntime = lazy(async () => ({ default: (await import("./AppShell")).AppRuntime }));
 
@@ -19,9 +19,10 @@ const themeId = getStoredThemeId();
 applyTheme(themeId === "vantare-lite" ? liteTheme : v5Theme);
 
 export function App() {
+  const Runtime = OverlayWorkshopInternalApp ?? AppRuntime;
   return (
     <Suspense fallback={<AppBootFallback />}>
-      <AppRuntime WorkshopRoute={OverlayWorkshopAccessRoute ?? undefined} />
+      <Runtime />
     </Suspense>
   );
 }

@@ -33,6 +33,7 @@ const { dist, expect: expected } = parseArgs(process.argv.slice(2));
 const absoluteDist = resolve(dist);
 const assets = readAssets(join(absoluteDist, "assets"));
 const markers = [
+  "/workshop",
   "data-overlay-workshop-page",
   "Workshop selection",
   "Internal Workshop access denied.",
@@ -42,7 +43,7 @@ const workshopAssets = assets.filter(({ source }) =>
   markers.some((marker) => source.includes(marker)),
 );
 const workshopNamedAssets = assets.filter(({ file }) => file.endsWith(".js") &&
-  basename(file).includes("OverlayWorkshopDevRoute"),
+  basename(file).includes("OverlayWorkshopInternalApp"),
 );
 
 if (expected === "stable") {
@@ -57,7 +58,7 @@ if (workshopNamedAssets.length !== 1) {
   fail("internal build must contain exactly one named Workshop route chunk");
 }
 const workshopAsset = workshopNamedAssets[0];
-const missingMarkers = markers.slice(0, 3).filter((marker) => !workshopAsset.source.includes(marker));
+const missingMarkers = markers.slice(0, 4).filter((marker) => !workshopAsset.source.includes(marker));
 if (missingMarkers.length > 0) fail(`Workshop chunk is missing markers: ${missingMarkers.join(", ")}`);
 if (!workshopAssets.some(({ source }) => source.includes(".overlay-workshop"))) {
   fail("internal build is missing the Workshop stylesheet sentinel");

@@ -56,10 +56,9 @@ describe("AppShell", () => {
     expect(screen.getByText(expected).closest("[data-auth-session-bridge]")).toBeTruthy();
   });
 
-  it("uses the supplied internal Workshop route without a second router", () => {
-    window.history.replaceState(null, "", "/workshop");
-    render(<AppRuntime WorkshopRoute={() => <div>workshop</div>} />);
-    expect(screen.getByText("workshop").closest("[data-auth-session-bridge]")).toBeTruthy();
-    expect(screen.getByText("workshop").closest("[data-license-provider]")).toBeTruthy();
+  it("renders an explicitly supplied internal child under the shared providers", () => {
+    render(<AppRuntime><div>internal child</div></AppRuntime>);
+    expect(screen.getByText("internal child").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(screen.getByText("internal child").closest("[data-license-provider]")).toBeTruthy();
   });
 });

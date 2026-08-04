@@ -255,6 +255,13 @@ y recientes.
 
 ### ISA-264 — acceso interno y exclusión de Stable
 
+Corrección P1 aplicada antes de cierre técnico: Stable se comprueba ahora contra
+la ausencia de ruta, import graph, chunk, CSS y sentinels del Workshop. El módulo
+interno lazy contiene la ruta sólo cuando la constante Vite de un build interno
+es verdadera. En CI, esa constante se limita a `push` directo a `nightly` o
+`testers`; un PR, una rama de issue, `master` o un tag generan el bundle Stable.
+El test sin dependencias adicionales bloquea cambios de esa matriz.
+
 - El Workshop se incluye automáticamente en desarrollo local. Las builds de
   canal internas lo incluyen mediante `VITE_INCLUDE_OVERLAY_WORKSHOP=true`; un
   tag estable lo elimina físicamente del bundle. No existe un selector de UI ni

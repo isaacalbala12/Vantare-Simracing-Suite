@@ -252,3 +252,12 @@ y recientes.
   compile-out sin sentinel `overlay-workshop`, `Overlay Workshop` o `DEV ONLY`
   en los assets. El lint global sigue registrando 30 errores/2 warnings
   heredados fuera del write set.
+
+### ISA-265 — protocolo visual aislado
+
+- Ejecutar `corepack pnpm --dir frontend visual:overlay-workshop -- --widget=delta --system=vantare-crystal --design=delta-crystal-simple --surface=all --viewport=1280x720`. Genera evidencia temporal para cuatro superficies y cuatro escenas sin baselines.
+- Stage es chrome de autoría. El root validado es el renderer real: `[data-widget-renderer="<type>"]`, excepto Delta Bar Crystal `.vc-delta-bar`; no usar `data-overlay-workshop-widget-root` como crop.
+- Se validan cardinalidad, font readiness, console/page errors, bounds, client/scroll, overflow declarado, alpha y guard. Los artefactos están bajo `frontend/.tmp/overlay-workshop-visual-protocol/` y no se versionan.
+- Única protrusión: `delta-crystal-simple`, Y ≤13px por su badge compacto; todo exceso adicional falla. El runner imprime progreso, escribe checkpoint y cierra navegador/Vite en `finally`.
+- El decode PNG canónico por CDP tiene un coste total aproximado de 5–8 min para la suite 4×4; no se alteran timeouts, helper Crystal, baselines ni umbrales para acortarlo.
+- Crystal report-only es un gate independiente: la ejecución limitada a 90s llegó a 7 diseños PASS sin terminar el manifiesto. Nunca tratarla como aprobación total ni tocar baselines; resolver duración en otra issue.

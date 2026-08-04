@@ -68,8 +68,8 @@ describe("Overlay Workshop characterization", () => {
       const normalizedPath = sourcePath(path);
       const source = readFileSync(path, "utf8");
       const findings: string[] = [];
-      if (normalizedPath !== hostPath && /\b(?:registration|resolved(?:System|WidgetSystem)?|system)\.Renderer\b/.test(source)) {
-        findings.push("executes a resolved renderer");
+      if (normalizedPath !== hostPath && /\.Renderer\b|\[\s*["']Renderer["']\s*\]|\b(?:const|let|var)\s*\{[^}]*\bRenderer\b[^}]*\}\s*=/.test(source)) {
+        findings.push("accesses or destructures Renderer outside WidgetVisualHost");
       }
       if (!isSystemRegistration(normalizedPath)
         && /from\s*["'][^"']*design-systems\/vantare-(?:original|crystal)\//.test(source)) {

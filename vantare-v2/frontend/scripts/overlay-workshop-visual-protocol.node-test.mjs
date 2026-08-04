@@ -6,7 +6,9 @@ import {
   evaluateWorkshopVisualGates,
   resolveAuthorisedOverflow,
   resolveContractualRendererSelector,
+  resolveRootOnlyCaptureScene,
   resolveReportProvenance,
+  WORKSHOP_SCENES,
 } from './overlay-workshop-visual-protocol.mjs';
 
 const passing = {
@@ -30,6 +32,12 @@ test('uses a contractual renderer selector and preserves the documented Delta Ba
   assert.equal(resolveContractualRendererSelector({ widget: 'delta', design: 'delta-crystal-simple' }), '[data-widget-renderer="delta"]');
   assert.deepEqual(resolveAuthorisedOverflow({ widget: 'delta', design: 'delta-crystal-simple', surface: 'studio' }), { surface: 'studio', xMaxPx: 0, yMaxPx: 13, reason: 'Crystal Simple badge protrusion' });
   assert.equal(resolveContractualRendererSelector({ widget: 'standings', design: 'standings-crystal-main' }), '[data-widget-renderer="standings"]');
+});
+
+test('always isolates root-only captures against the transparent control scene', () => {
+  for (const scene of WORKSHOP_SCENES) {
+    assert.equal(resolveRootOnlyCaptureScene().id, 'transparent', `root-only capture must ignore ${scene.id} backdrop`);
+  }
 });
 
 for (const [name, mutate] of [

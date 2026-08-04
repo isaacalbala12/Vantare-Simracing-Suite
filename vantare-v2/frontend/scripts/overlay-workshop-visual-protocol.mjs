@@ -62,6 +62,10 @@ export function resolveAuthorisedOverflow({ widget, design, surface }) {
     : { surface: 'none', xMaxPx: 0, yMaxPx: 0, reason: 'no authorised renderer overflow' };
 }
 
+export function resolveRootOnlyCaptureScene() {
+  return CONTROL_SCENES[0];
+}
+
 export function evaluateWorkshopVisualGates(input) {
   const errors = [];
   if (!input.provenanceValid) errors.push('report provenance is not a commit SHA');
@@ -219,14 +223,16 @@ async function captureScene(page, options, scene, errors) {
     content: '[data-overlay-workshop-visual-ancestor] { visibility: visible !important; }',
   });
   let captured;
-  let rootOnlyCapture;
+  let rootOnly;
   const captureStartedAt = Date.now();
   try {
-    rootOnlyCapture = await withTimeout(
-      `${options.surface}/${scene.id} transparent root screenshot`,
-      () => captureIsolatedElement(page, { selector, scene: CONTROL_SCENES[0] }),
-    );
     captured = await withTimeout(`${options.surface}/${scene.id} alpha screenshot`, () => captureIsolatedElement(page, { selector, scene }));
+    rootOnly = scene.id === resolveRootOnlyCaptureScene().id
+      ? captured.widget
+      : await withTimeout(
+        `${options.surface}/${scene.id} transparent root screenshot`,
+        () => captureIsolatedElement(page, { selector, scene: resolveRootOnlyCaptureScene() }),
+      ).then((capture) => capture.widget);
   } finally {
     await ancestorStyle.evaluate((element) => element.remove());
     await root.evaluate((element) => {
@@ -273,7 +279,7 @@ async function captureScene(page, options, scene, errors) {
   return {
     scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow, ancestorVisibility,
     alpha: alphaWithIntegrity, gateInput, gates: evaluateWorkshopVisualGates(gateInput),
-    rootOnlyHash: sha256(rootOnlyCapture.widget), capture: { ...captured, rootOnly: rootOnlyCapture.widget },
+    rootOnlyHash: sha256(rootOnly), capture: { ...captured, rootOnly },
   };
 }
 

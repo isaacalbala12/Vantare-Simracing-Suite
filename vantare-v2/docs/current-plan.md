@@ -15,11 +15,11 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   pasar instalación limpia, 18/18, rollback y reaplicación 18/18 usando el
   contenedor Supabase existente y bases temporales eliminadas al terminar.
 - Isaac autorizó exclusivamente el proyecto Supabase de testing
-  `lbaxvpzexoferfvfkplz`. El proyecto Linear y sus labels ya están configurados;
-  no existe todavía deploy, secreto remoto cargado, llamada `issueCreate`,
-  webhook activo, Codex, Discord, merge ni promoción. El siguiente gate es
-  cargar los secretos directamente en Supabase y ejecutar el preflight remoto
-  descrito en `docs/runbooks/testing-center-linear-pilot.md`.
+  `lbaxvpzexoferfvfkplz`. Las 24 migraciones coinciden local/remoto y las tres
+  Edge Functions del piloto están `ACTIVE` v1. Los probes sin credenciales
+  fallan cerrados; no existe todavía webhook firmado, llamada `issueCreate`,
+  Codex, Discord, merge ni promoción. El siguiente gate manual es crear el
+  webhook `Issue` de Linear y guardar su signing secret.
 - El preflight del proyecto vacío detectó dos migraciones locales con versión
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El

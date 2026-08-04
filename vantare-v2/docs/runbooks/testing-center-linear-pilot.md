@@ -1,7 +1,9 @@
 # Testing Center — piloto remoto Supabase → Linear
 
-Estado: ISA-243 / TAU-07I implementado localmente. **No desplegado**. El primer
-efecto externo requiere revisión y autorización explícita de Isaac.
+Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
+`lbaxvpzexoferfvfkplz`. Schema completo y tres Edge Functions `ACTIVE` v1; el
+webhook no tiene todavía signing secret y no se ha creado ningún issue. El
+primer efecto externo continúa pausado y requiere una prueba presenciada.
 
 ## Qué demuestra este corte
 
@@ -188,3 +190,9 @@ El primer intento del wrapper se detuvo antes de red porque comprobaba el
 `$LASTEXITCODE` residual tras ejecutar un guard PowerShell que ya falla mediante
 excepciones. El wrapper deja de reutilizar ese estado nativo; el test de la
 superficie cubre la regresión.
+
+El segundo intento desplegó únicamente `testing-center-feedback`,
+`testing-center-linear-webhook` y `testing-center-linear-worker`. Probes sin
+credenciales devolvieron respectivamente `401`, `400` y `401`; no crearon datos
+ni efectos. El siguiente gate manual es crear el webhook `Issue` para team
+`My Live` y guardar su signing secret directamente en Supabase.

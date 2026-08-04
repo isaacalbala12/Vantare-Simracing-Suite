@@ -266,9 +266,10 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   `lbaxvpzexoferfvfkplz`. Linear ya contiene el proyecto
   `Testing Center — Feedback` y labels agrupadas para origen, canal, módulo y
   flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
-  nombres reales `My Live` / `Backlog`. Aún no hay secretos cargados, deploy,
-  webhook activo ni llamada `issueCreate`; producción, Codex, Discord, merge y
-  promociones continúan fuera de alcance.
+  nombres reales `My Live` / `Backlog`. El baseline remoto y las tres Edge
+  Functions del piloto están activos solo en testing; probes sin credenciales
+  fallan cerrados. Aún no hay webhook firmado ni llamada `issueCreate`;
+  producción, Codex, Discord, merge y promociones continúan fuera de alcance.
 
 ## Riesgos
 

@@ -125,6 +125,10 @@ permanece pendiente de un microcorte con gate explícito.
 
 ### 8. TAU-07H2 — Testing Center in-app
 
+**Estado 2026-08-04:** implementado y validado localmente en ISA-242, apilado
+sobre ISA-253. La UI reutiliza TAU-04C y añade el gateway Edge autenticado para
+TAU-07G; no hay deploy, secretos, PostHog real, Linear real ni promoción.
+
 **Objetivo:** ofrecer una pestaña comprensible en builds Nightly/Testers, sin exponer Linear.
 
 **UI mínima:**

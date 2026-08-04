@@ -254,6 +254,14 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   red, secreto, endpoint, captura/replay real, UI ni efecto sobre Linear,
   Discord, Codex o canales. Autoridad:
   `docs/runbooks/testing-center-posthog-privacy.md`.
+- ISA-242 materializa TAU-07H2 sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.
+  La pestaña existente incorpora validación de candidatas y rechazo estructurado
+  sin exponer Linear ni acciones owner. Una Edge Function deriva identidad, rol,
+  canal y candidata server-side, sanea el contexto y usa el RPC service-role de
+  TAU-07G. Deno Testing Center 116/116 (Edge 9/9), frontend focal 32/32,
+  lint, build y visual 4/4 pasan.
+  Función, secretos y red siguen sin desplegar; PostHog/replay, Linear, Discord,
+  Codex, merge y promociones permanecen apagados.
 
 ## Riesgos
 

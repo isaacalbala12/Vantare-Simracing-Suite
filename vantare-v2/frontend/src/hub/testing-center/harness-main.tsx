@@ -5,6 +5,7 @@ import { TestingCenterPage } from "./TestingCenterPage";
 import type { ReportDraftFields } from "./contracts";
 import type { TestingCenterClient } from "./testing-center-client";
 import type { SubmitReportInput } from "./report-submission-client";
+import type { TestingCenterFeedbackClient } from "./candidate-feedback-client";
 
 const payload = JSON.stringify({
   contractVersion: "testing-center.diagnostic.v1",
@@ -18,6 +19,33 @@ const payload = JSON.stringify({
 
 const idempotencyKey = `draft_${"d".repeat(64)}`;
 const reportId = `report_${"e".repeat(64)}`;
+
+const feedbackClient: TestingCenterFeedbackClient = {
+  async listCandidates() {
+    return [{
+      issueId: `issue_${"a".repeat(64)}`,
+      candidateId: "candidate-isa242",
+      channel: "nightly",
+      appVersion: "v0.1.0.5-nightly",
+      candidateSha: "b".repeat(40),
+      module: "testing_center",
+      summary: "El formulario se cerraba al volver desde el diagnóstico.",
+      criteria: ["El borrador permanece visible al cambiar de sección."],
+      knownFailure: "El texto desaparecía antes de enviarlo.",
+      state: "pending",
+      canValidate: true,
+    }];
+  },
+  async submitFeedback(input) {
+    return {
+      validationId: `validation_${"c".repeat(64)}`,
+      decision: input.decision,
+      flowState: input.decision === "rejected" ? "needs_owner" : "nightly_accepted",
+      candidateState: input.decision === "rejected" ? "rejected" : "accepted",
+      idempotent: false,
+    };
+  },
+};
 
 const client: TestingCenterClient = {
   async loadDraft() { return null; },
@@ -67,7 +95,7 @@ if (!root) throw new Error("Testing Center harness root missing");
 createRoot(root).render(
   <I18nProvider>
     <main className="v52-shell-bg min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <TestingCenterPage channel="nightly" version="v0.1.0.5" client={client} submitReport={submitReport} />
+      <TestingCenterPage channel="nightly" version="v0.1.0.5" client={client} submitReport={submitReport} feedbackClient={feedbackClient} />
     </main>
   </I18nProvider>,
 );

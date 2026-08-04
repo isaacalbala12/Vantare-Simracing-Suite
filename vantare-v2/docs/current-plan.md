@@ -1,3 +1,23 @@
+Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
+- Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.
+  Extiende la única pestaña Testing Center con vistas `Reportar problema` y
+  `Validar corrección`; conserva el borrador al alternar y declara replay/logs
+  como no disponibles en lugar de simular captura.
+- Una Edge Function autenticada deriva membresía, rol, candidata y autor desde
+  Supabase, sanea el contexto antes de devolverlo y llama exclusivamente al RPC
+  endurecido service-role de TAU-07G. El cliente no envía actor, rol, autor,
+  estado, rama ni acción de owner.
+- Nightly requiere primary tester/owner; Testers admite tester/primary/owner;
+  auto-validación, SHA obsoleto, metadata desconocida y rechazo incompleto
+  fallan cerrados. `cannot_verify` permanece neutral y no hay controles owner.
+- Evidencia local: Deno Testing Center 116/116 (Edge focal 9/9) y check PASS;
+  frontend Testing Center 32/32,
+  lint focal, build y harness visual 4/4 (390/768/1024/1440, sin overflow ni
+  errores de consola) PASS.
+- No existe deploy de Edge, secreto nuevo, captura PostHog/replay real, Linear o
+  Discord real, delegación Codex, merge ni promoción. TAU-07I y el gate manual
+  de Isaac siguen pendientes.
+
 Nota ISA-253 / TAU-07H1 (2026-08-04, frontera local validada):
 - Rama apilada sobre `ISA-241@8a12b8e76a330d1ef87a4d9e76288e9af1a67c65`.
   Define `testing-center.posthog-evidence.v1`, contexto técnico cerrado y una

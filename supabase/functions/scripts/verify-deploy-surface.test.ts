@@ -152,4 +152,17 @@ Deno.test("client build receives public verification keys only", () => {
       );
     }
   }
+  for (
+    const variable of [
+      "VANTARE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
+      "VANTARE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
+    ]
+  ) {
+    const occurrences = windowsTask.split(variable).length - 1;
+    if (occurrences !== 2) {
+      throw new Error(
+        `Windows native and Docker builds must forward ${variable}: ${occurrences}`,
+      );
+    }
+  }
 });

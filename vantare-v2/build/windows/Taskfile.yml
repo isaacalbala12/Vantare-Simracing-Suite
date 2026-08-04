@@ -44,6 +44,10 @@ tasks:
             ref: .OBFUSCATED
           DEV:
             ref: .DEV
+          VANTARE_SUPABASE_URL:
+            ref: .VANTARE_SUPABASE_URL
+          VANTARE_SUPABASE_ANON_KEY:
+            ref: .VANTARE_SUPABASE_ANON_KEY
       - task: common:generate:icons
     preconditions:
       - sh: '{{if eq .OBFUSCATED "true"}}command -v garble >/dev/null 2>&1{{else}}true{{end}}'
@@ -76,6 +80,10 @@ tasks:
         vars:
           OBFUSCATED:
             ref: .OBFUSCATED
+          VANTARE_SUPABASE_URL:
+            ref: .VANTARE_SUPABASE_URL
+          VANTARE_SUPABASE_ANON_KEY:
+            ref: .VANTARE_SUPABASE_ANON_KEY
       - task: common:generate:icons
     preconditions:
       - sh: docker info > /dev/null 2>&1

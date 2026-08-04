@@ -4942,3 +4942,18 @@ Nota ISA-260 / OS-09A (2026-08-04, contrato y threat model Overlay Workshop):
   Handoff añade procedimiento seguro de arranque por worktree y puntero A2.
 - Alcance: docs y test focal; sin UI Workshop, catálogo/manifests, Billing,
   canvas, readers LMU, Wails/SSE, persistencia, baselines o configuraciones.
+
+Nota ISA-261 / OS-09B (2026-08-04, fixtures portables para autoría):
+- La autoridad de fixtures se mueve de `overlay-harness` a
+  `overlay/authoring/fixtures`, con un shim de compatibilidad temporal para
+  consumidores externos. El harness importa ya la frontera neutral.
+- El escenario tipado incluye tipo, sistema, diseño, estado, sesión,
+  localización y superficie; la superficie se declara pero no entra en el
+  ViewModel ni renderer. No se añadieron Wails, SSE, persistencia, perfiles o
+  datos live.
+- Los 19 tipos funcionales se derivan de `ALL_WIDGET_TYPES`. El contrato HTML
+  Crystal histórico conserva 21 diseños/18 tipos y Engineer Radio queda
+  declarado por separado, sin inflar la paridad clásica.
+- Tests focales y build pasan. El parity report-only agotó su timeout local sin
+  actualizar ningún baseline; su investigación queda pendiente antes del gate
+  de Nightly. Sin promoción.

@@ -13,7 +13,7 @@ import { StrategyPlannerPage } from './strategy/StrategyPlannerPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { type Section, isSection } from './navigation';
-import { LicenseProvider, useLicense } from '../lib/license';
+import { useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
@@ -186,18 +186,16 @@ function HubShell() {
 
 export function HubApp() {
   return (
-    <LicenseProvider>
-      <I18nProvider>
-        <LicenseGate>
-          <HubErrorBoundary>
-            <ChainRunnerProvider>
-              <LauncherStoreProvider>
-                <HubShell />
-              </LauncherStoreProvider>
-            </ChainRunnerProvider>
-          </HubErrorBoundary>
-        </LicenseGate>
-      </I18nProvider>
-    </LicenseProvider>
+    <I18nProvider>
+      <LicenseGate>
+        <HubErrorBoundary>
+          <ChainRunnerProvider>
+            <LauncherStoreProvider>
+              <HubShell />
+            </LauncherStoreProvider>
+          </ChainRunnerProvider>
+        </HubErrorBoundary>
+      </LicenseGate>
+    </I18nProvider>
   );
 }

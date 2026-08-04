@@ -1,15 +1,20 @@
+import type { ComponentType } from "react";
 import { CompositeApp } from "./overlay/CompositeApp";
 import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
 import { AuthSessionBridge } from "./lib/AuthSessionBridge";
+import { LicenseProvider } from "./lib/license";
 
 registerBuiltinDesignSystems();
 
-export function AppShell(): React.ReactElement {
+export function AppShell({ WorkshopRoute }: { WorkshopRoute?: ComponentType } = {}): React.ReactElement {
   const path = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
+  if (WorkshopRoute && path === "/workshop") {
+    return <WorkshopRoute />;
+  }
   if (path.startsWith("/overlay") || params.get("obs") === "1") {
     return <ObsOverlayApp />;
   }
@@ -23,6 +28,12 @@ export function AppShell(): React.ReactElement {
   return <CompositeApp />;
 }
 
-export function AppRuntime(): React.ReactElement {
-  return <AuthSessionBridge><AppShell /></AuthSessionBridge>;
+export function AppRuntime({ WorkshopRoute }: { WorkshopRoute?: ComponentType } = {}): React.ReactElement {
+  return (
+    <AuthSessionBridge>
+      <LicenseProvider>
+        <AppShell WorkshopRoute={WorkshopRoute} />
+      </LicenseProvider>
+    </AuthSessionBridge>
+  );
 }

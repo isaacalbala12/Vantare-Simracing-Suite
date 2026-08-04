@@ -14,6 +14,12 @@ vi.mock("./lib/AuthSessionBridge", () => ({
     return <div data-auth-session-bridge>{children}</div>;
   },
 }));
+vi.mock("./lib/license", () => ({
+  LicenseProvider: ({ children }: { children: React.ReactNode }) => {
+    renderOrder.push("license");
+    return <div data-license-provider>{children}</div>;
+  },
+}));
 vi.mock("./overlay/CompositeApp", () => ({ CompositeApp: () => <div>composite</div> }));
 vi.mock("./overlay/ObsOverlayApp", () => ({ ObsOverlayApp: () => <div>obs</div> }));
 vi.mock("./hub/HubApp", () => ({ HubApp: () => <div>hub</div> }));
@@ -31,8 +37,9 @@ describe("AppShell", () => {
 
     render(<AppRuntime />);
 
-    expect(renderOrder).toEqual(["auth"]);
+    expect(renderOrder).toEqual(["auth", "license"]);
     expect(screen.getByText("composite").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(screen.getByText("composite").closest("[data-license-provider]")).toBeTruthy();
   });
 
   it.each([
@@ -47,5 +54,12 @@ describe("AppShell", () => {
     render(<AppRuntime />);
 
     expect(screen.getByText(expected).closest("[data-auth-session-bridge]")).toBeTruthy();
+  });
+
+  it("uses the supplied internal Workshop route without a second router", () => {
+    window.history.replaceState(null, "", "/workshop");
+    render(<AppRuntime WorkshopRoute={() => <div>workshop</div>} />);
+    expect(screen.getByText("workshop").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(screen.getByText("workshop").closest("[data-license-provider]")).toBeTruthy();
   });
 });

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useLicense } from "../../lib/license";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { ALL_WIDGET_TYPES, type DesignSystemId, type WidgetInstanceV3, type WidgetType } from "../core/profile-document";
@@ -20,6 +21,7 @@ import {
   DEFAULT_OVERLAY_WORKSHOP_QUERY,
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
+import { canUseOverlayWorkshop } from "./overlay-workshop-access";
 import "./overlay-workshop.css";
 
 const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal"];
@@ -268,4 +270,28 @@ export function OverlayWorkshopDevRoute({ search = window.location.search }: { s
     );
   }
   return <OverlayWorkshopPage initialQuery={parsed} />;
+}
+
+/**
+ * The production entry point used only in explicitly internal builds. The
+ * underlying route stays independently testable and never owns a second
+ * license provider; AppRuntime supplies the shared provider at bootstrap.
+ */
+export function OverlayWorkshopAccessRoute({
+  isDevelopment = import.meta.env.DEV,
+}: {
+  isDevelopment?: boolean;
+} = {}): React.ReactElement {
+  const { result, loading } = useLicense();
+  if (loading && !isDevelopment) {
+    return <main data-overlay-workshop-access-pending>Checking internal access…</main>;
+  }
+  if (!canUseOverlayWorkshop(result, isDevelopment)) {
+    return (
+      <main data-overlay-workshop-access-denied role="alert">
+        Internal Workshop access denied.
+      </main>
+    );
+  }
+  return <OverlayWorkshopDevRoute />;
 }

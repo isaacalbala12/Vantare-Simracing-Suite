@@ -262,6 +262,36 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   lint, build y visual 4/4 pasan.
   Función, secretos y red siguen sin desplegar; PostHog/replay, Linear, Discord,
   Codex, merge y promociones permanecen apagados.
+- ISA-243 / TAU-07I tiene autorización limitada al proyecto Supabase de testing
+  `lbaxvpzexoferfvfkplz`. Linear ya contiene el proyecto
+  `Testing Center — Feedback` y labels agrupadas para origen, canal, módulo y
+  flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
+  nombres reales `My Live` / `Backlog`. El baseline remoto y las tres Edge
+  Functions del piloto están activos solo en testing; probes sin credenciales
+  fallan cerrados. Históricamente, el primer reporte Nightly quedó reservado
+  bajo pausa y la primera llamada al worker falló antes de claim/`issueCreate`
+  porque hosted no exponía `public.gen_random_uuid()`; el wrapper correctivo se
+  desplegó y el claim remoto pasó con rollback. En aquel punto todavía no
+  existían binding ni issue Linear. El reintento único autorizado devolvió
+  `linear_response_ambiguous`; Supabase quedó `needs_owner`, intento/fencing 1,
+  sin lease ni binding y con pausa activa. La reconciliación read-only encontró
+  cero issues en Linear y el contrato prohibió una tercera llamada sobre ese
+  efecto. El cierre actual del piloto se documenta en ISA-287/289 a continuación.
+- ISA-287 / TAU-07J añade diagnóstico sanitizado para la respuesta ambigua del
+  piloto. El contrato cerrado publica solo versión, fase
+  segura, HTTP status acotado y códigos GraphQL `RATELIMITED`/`UNKNOWN`; la
+  frontera HTTP lo canonicaliza en runtime para impedir campos añadidos. No
+  cambia claim, fencing, binding ni retries: después de `issueCreate` siempre
+  termina en `needs_owner`. Evidencia: focal 16/16, Testing Center 125/125,
+  deploy guard 4/4, typecheck, formato y diff PASS. Tras revisión humana, solo
+  el worker se desplegó en Supabase testing y quedó `ACTIVE` v7; un probe sin
+  credenciales devolvió `401 unauthorized`. El round-trip autorizado creó
+  exactamente ISA-288, completó un binding sin lease residual y recibió un
+  webhook firmado `create/applied`. Un segundo reporte idéntico quedó
+  `duplicate_linked`: dos ocurrencias, un efecto y una issue Linear. La pausa
+  global está activa, el efecto histórico `needs_owner` quedó congelado por
+  flujo y el bearer temporal fue revocado. Codex, Discord, merge y promociones
+  continúan fuera de alcance.
 
 ## Riesgos
 
@@ -286,12 +316,14 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-04, ISA-253 implementa localmente TAU-07H1 sobre ISA-241. La frontera
-PostHog está cerrada y validada, pero no hay SDK, proyecto, endpoint, secreto,
-captura ni replay real. TAU-07A continúa inerte y pinneado, sin caller o
-credencial. El outbox Linear sigue en dry-run; el receptor todavía no tiene
-endpoint ni secreto. Feedback, dossier, consentimiento y evidencia son
-privados y locales; nada ejecuta Codex, Linear, Discord, repo access o Supabase
-remoto, ni autoriza deploy, merge, promoción o una build distribuida.
+2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
+nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin
+lease residual y el primer webhook firmado fue `create/applied`. Un segundo
+reporte idéntico quedó `duplicate_linked`: dos ocurrencias, un efecto y una
+issue Linear. El efecto ambiguo histórico continúa `needs_owner` y congelado
+por flujo; la pausa global está activa y el bearer fue revocado. ISA-289 limita
+el tooling al project ref de testing, añade preflight de vínculo y separa fallos
+OAuth temporales de configuración permanente. No hay Codex, Discord,
+promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

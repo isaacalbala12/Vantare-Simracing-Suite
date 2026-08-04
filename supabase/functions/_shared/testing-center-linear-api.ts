@@ -29,6 +29,10 @@ export const TESTING_CENTER_LINEAR_DIAGNOSTIC_VERSION =
 
 export type TestingCenterLinearDiagnosticDetailCode =
   | "label_resolution_failed"
+  | "token_configuration_invalid"
+  | "token_http_rejected"
+  | "token_invalid_json"
+  | "token_contract_mismatch"
   | "issue_create_transport_failed"
   | "issue_create_invalid_json"
   | "issue_create_http_rejected"
@@ -136,6 +140,10 @@ const DIAGNOSTIC_DETAIL_CODES = new Set<
 >(
   [
     "label_resolution_failed",
+    "token_configuration_invalid",
+    "token_http_rejected",
+    "token_invalid_json",
+    "token_contract_mismatch",
     "issue_create_transport_failed",
     "issue_create_invalid_json",
     "issue_create_http_rejected",
@@ -230,7 +238,15 @@ function ambiguous(
 async function acquireToken(
   config: TestingCenterLinearConfig,
   transport: TestingCenterLinearTransport,
-): Promise<string | null> {
+): Promise<
+  | { status: "acquired"; token: string }
+  | { status: "retryable" }
+  | {
+    status: "rejected";
+    detailCode: TestingCenterLinearDiagnosticDetailCode;
+    httpStatus: number | null;
+  }
+> {
   const body = new URLSearchParams({
     grant_type: "client_credentials",
     scope: "issues:create",
@@ -239,7 +255,11 @@ async function acquireToken(
   try {
     authorization = btoa(`${config.clientId}:${config.clientSecret}`);
   } catch {
-    return null;
+    return {
+      status: "rejected",
+      detailCode: "token_configuration_invalid",
+      httpStatus: null,
+    };
   }
   let response: Response;
   try {
@@ -252,19 +272,37 @@ async function acquireToken(
       body,
     });
   } catch {
-    return null;
+    return { status: "retryable" };
   }
-  if (!response.ok) return null;
+  if (!response.ok) {
+    if (
+      response.status === 408 || response.status === 429 ||
+      response.status >= 500
+    ) return { status: "retryable" };
+    return {
+      status: "rejected",
+      detailCode: "token_http_rejected",
+      httpStatus: response.status,
+    };
+  }
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    return null;
+    return {
+      status: "rejected",
+      detailCode: "token_invalid_json",
+      httpStatus: response.status,
+    };
   }
   const token = record(payload)?.access_token;
   return typeof token === "string" && token.length >= 32 && token.length <= 4096
-    ? token
-    : null;
+    ? { status: "acquired", token }
+    : {
+      status: "rejected",
+      detailCode: "token_contract_mismatch",
+      httpStatus: response.status,
+    };
 }
 
 const ISSUE_CREATE_MUTATION =
@@ -358,13 +396,17 @@ export async function createTestingCenterLinearIssue(
   if (labelIds === null) {
     return ambiguous("label_resolution_failed");
   }
-  const token = await acquireToken(config, transport);
-  if (token === null) {
+  const tokenResult = await acquireToken(config, transport);
+  if (tokenResult.status === "retryable") {
     return {
       status: "retryable",
       errorCode: "linear_token_transport_unavailable",
     };
   }
+  if (tokenResult.status === "rejected") {
+    return ambiguous(tokenResult.detailCode, tokenResult.httpStatus);
+  }
+  const token = tokenResult.token;
   let response: Response;
   try {
     response = await transport.fetch(LINEAR_GRAPHQL_URL, {

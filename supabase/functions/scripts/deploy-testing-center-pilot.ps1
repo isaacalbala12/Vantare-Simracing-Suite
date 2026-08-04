@@ -11,19 +11,17 @@ param(
 $ErrorActionPreference = "Stop"
 $supabaseRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $guard = Join-Path $PSScriptRoot "verify-deploy-surface.ps1"
+$projectGuard = Join-Path $PSScriptRoot "assert-testing-center-pilot-project.ps1"
 $approved = @(
   "testing-center-feedback",
   "testing-center-linear-webhook",
   "testing-center-linear-worker"
 )
-$productionProjectRef = "ombjshwzqgeisazijduq"
 
 if ($Confirmation -ne "DEPLOY-ISA-243-TESTING-PILOT") {
   throw "Explicit ISA-243 testing pilot confirmation is required"
 }
-if ($ProjectRef -eq $productionProjectRef) {
-  throw "Testing Center pilot must never target the production Supabase project"
-}
+& $projectGuard -ProjectRef $ProjectRef
 
 & $guard
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {

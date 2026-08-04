@@ -140,6 +140,81 @@ Deno.test("token failure is the only automatically retryable network stage", asy
   }
 });
 
+Deno.test("temporary OAuth HTTP failures remain retryable before issueCreate", async () => {
+  for (const status of [408, 429, 500, 503]) {
+    let calls = 0;
+    const result = await createTestingCenterLinearIssue(
+      await projection(),
+      config(),
+      {
+        fetch() {
+          calls++;
+          return Promise.resolve(new Response("temporary", { status }));
+        },
+      },
+    );
+    if (result.status !== "retryable" || calls !== 1) {
+      throw new Error(`OAuth ${status} was not bounded before issueCreate`);
+    }
+  }
+});
+
+Deno.test("permanent OAuth failures become terminal sanitized ambiguity", async () => {
+  for (const status of [400, 401, 403]) {
+    let calls = 0;
+    const privateBody = "private OAuth response";
+    const result = await createTestingCenterLinearIssue(
+      await projection(),
+      config(),
+      {
+        fetch() {
+          calls++;
+          return Promise.resolve(new Response(privateBody, { status }));
+        },
+      },
+    );
+    const serialized = JSON.stringify(result);
+    if (
+      result.status !== "ambiguous" || calls !== 1 ||
+      result.diagnostic.detailCode !== "token_http_rejected" ||
+      result.diagnostic.httpStatus !== status ||
+      serialized.includes(privateBody)
+    ) throw new Error(`unsafe permanent OAuth ${status}: ${serialized}`);
+  }
+});
+
+Deno.test("invalid OAuth responses are terminal and never reach issueCreate", async () => {
+  const responses = [
+    {
+      response: new Response("private invalid JSON", { status: 200 }),
+      detailCode: "token_invalid_json",
+    },
+    {
+      response: Response.json({ access_token: "short-private-token" }),
+      detailCode: "token_contract_mismatch",
+    },
+  ] as const;
+  for (const entry of responses) {
+    let calls = 0;
+    const result = await createTestingCenterLinearIssue(
+      await projection(),
+      config(),
+      {
+        fetch() {
+          calls++;
+          return Promise.resolve(entry.response.clone());
+        },
+      },
+    );
+    const serialized = JSON.stringify(result);
+    if (
+      result.status !== "ambiguous" || calls !== 1 ||
+      result.diagnostic.detailCode !== entry.detailCode ||
+      serialized.includes("private")
+    ) throw new Error(`unsafe OAuth contract failure: ${serialized}`);
+  }
+});
+
 Deno.test("any uncertainty after issueCreate is sent becomes needs-owner ambiguity", async () => {
   let call = 0;
   const result = await createTestingCenterLinearIssue(

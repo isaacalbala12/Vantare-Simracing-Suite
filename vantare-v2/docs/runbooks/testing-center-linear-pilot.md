@@ -104,7 +104,16 @@ bearer del piloto permanecen fuera del repositorio.
 ## Orden de activación aprobado
 
 1. Crear snapshot/backup del proyecto de testing y confirmar pausa global.
-2. Aplicar migraciones hasta
+2. Verificar de forma determinista que el worktree está vinculado al proyecto
+   de testing antes de cualquier migración:
+
+   ```powershell
+   & .\supabase\functions\scripts\assert-testing-center-pilot-project.ps1 `
+     -ProjectRef lbaxvpzexoferfvfkplz `
+     -LinkedProjectRefPath .\supabase\.temp\project-ref
+   ```
+
+   Después, aplicar migraciones hasta
    `20260804100000_testing_center_linear_pilot.sql`; comprobar que no hay
    migraciones ajenas pendientes.
 3. Cargar secretos con `supabase secrets set --project-ref <TESTING_REF>` sin
@@ -113,7 +122,7 @@ bearer del piloto permanecen fuera del repositorio.
 
    ```powershell
    & .\supabase\functions\scripts\deploy-testing-center-pilot.ps1 `
-     -ProjectRef <TESTING_REF> `
+     -ProjectRef lbaxvpzexoferfvfkplz `
      -Confirmation DEPLOY-ISA-243-TESTING-PILOT
    ```
 

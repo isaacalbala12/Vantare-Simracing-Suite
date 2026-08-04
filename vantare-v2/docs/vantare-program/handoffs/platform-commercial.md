@@ -268,16 +268,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
   nombres reales `My Live` / `Backlog`. El baseline remoto y las tres Edge
   Functions del piloto están activos solo en testing; probes sin credenciales
-  fallan cerrados. El primer reporte Nightly real quedó reservado bajo pausa.
-  La primera llamada al worker falló antes de claim/`issueCreate` porque hosted
-  no exponía `public.gen_random_uuid()`; el wrapper correctivo ya está
-  desplegado y el claim remoto pasa con rollback. Siguen sin existir binding o
-  issue Linear. El reintento único autorizado devolvió
+  fallan cerrados. Históricamente, el primer reporte Nightly quedó reservado
+  bajo pausa y la primera llamada al worker falló antes de claim/`issueCreate`
+  porque hosted no exponía `public.gen_random_uuid()`; el wrapper correctivo se
+  desplegó y el claim remoto pasó con rollback. En aquel punto todavía no
+  existían binding ni issue Linear. El reintento único autorizado devolvió
   `linear_response_ambiguous`; Supabase quedó `needs_owner`, intento/fencing 1,
   sin lease ni binding y con pausa activa. La reconciliación read-only encontró
-  cero issues en Linear y el contrato prohíbe una tercera llamada. El webhook
-  existe pero su firma aún no tiene delivery real; producción, Codex, Discord,
-  merge y promociones continúan fuera de alcance.
+  cero issues en Linear y el contrato prohibió una tercera llamada sobre ese
+  efecto. El cierre actual del piloto se documenta en ISA-287/289 a continuación.
 - ISA-287 / TAU-07J añade diagnóstico sanitizado para la respuesta ambigua del
   piloto. El contrato cerrado publica solo versión, fase
   segura, HTTP status acotado y códigos GraphQL `RATELIMITED`/`UNKNOWN`; la
@@ -317,12 +316,14 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-04, ISA-243 recibió el primer reporte sintético desde la build Nightly
-exacta en Supabase testing. Tras corregir el claim hosted, el reintento único
-autorizado terminó en `linear_response_ambiguous`. El efecto está
-`needs_owner`, intento/fencing 1, sin lease ni binding y bajo pausa global. La
-reconciliación read-only encontró cero issues Linear; no habrá tercera llamada.
-El siguiente diagnóstico debe ser sanitizado y usar un caso sintético nuevo.
-No hay Codex, Discord, merge, promoción ni producción.
+2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
+nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin
+lease residual y el primer webhook firmado fue `create/applied`. Un segundo
+reporte idéntico quedó `duplicate_linked`: dos ocurrencias, un efecto y una
+issue Linear. El efecto ambiguo histórico continúa `needs_owner` y congelado
+por flujo; la pausa global está activa y el bearer fue revocado. ISA-289 limita
+el tooling al project ref de testing, añade preflight de vínculo y separa fallos
+OAuth temporales de configuración permanente. No hay Codex, Discord,
+promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

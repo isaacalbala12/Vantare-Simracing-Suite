@@ -68,10 +68,11 @@ contrato y microplan están en `docs/overlays-studio/os-09-overlay-workshop-cont
 5. Para binario rápido, sigue sin duplicarlo la **Opción A2** de
    `docs/release-beta-operations-runbook.md` y abre solo `bin\vantare.exe`, nunca
    un exe raíz/portable stale.
-6. Si aparece «Configuración incompleta», falta sesión/licencia o el backend no
-   tiene configuración, cierra, reconstruye/rearranca con el wrapper y confirma
-   binario/worktree. Smoke: app abre, sesión/licencia resuelve, Hub carga y
-   Overlay Studio abre; anota branch/SHA usados.
+6. Si aparece «Configuración incompleta», no es un problema de la cuenta ni de
+   su licencia: la build/backend no recibió la configuración pública de
+   Supabase o se abrió un binario antiguo. Cierra la app, reconstruye/rearranca
+   con el wrapper y confirma binario/worktree. Smoke: app abre, la sesión y el
+   acceso se resuelven, Hub carga y Overlay Studio abre; anota branch/SHA usados.
 7. Al cerrar, detén el stack Vantare/Wails del worktree y no borres
    `frontend/.env.local`.
 

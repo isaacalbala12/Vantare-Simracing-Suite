@@ -36,8 +36,7 @@ Deno.test("testing pilot functions are recognized but remain outside production 
   );
   if (
     !pilotWrapper.includes("DEPLOY-ISA-243-TESTING-PILOT") ||
-    !pilotWrapper.includes('"ombjshwzqgeisazijduq"') ||
-    !pilotWrapper.includes("ProjectRef -eq") ||
+    !pilotWrapper.includes("assert-testing-center-pilot-project.ps1") ||
     !pilotWrapper.includes("verify-deploy-surface.ps1") ||
     !pilotWrapper.includes('"testing-center-linear-worker"')
   ) throw new Error("testing pilot wrapper lacks explicit guards");

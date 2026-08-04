@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
@@ -33,6 +33,26 @@ describe("OverlayWorkshopDevRoute", () => {
 
     expect(screen.getByRole("alert").textContent).toContain("requires widget=delta");
     expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeNull();
+  });
+
+  it("keeps stage controls accessible and renders the comparison through the same host", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&compare=obs" />);
+    await waitFor(() => expect(document.querySelectorAll("[data-overlay-workshop-widget-root]")).toHaveLength(2));
+    expect(screen.getByLabelText("Stage background")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Stage background"), { target: { value: "transparent" } });
+    expect(document.querySelector(".overlay-workshop-stage--transparent")).toBeTruthy();
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-surface=obs] [data-overlay-workshop-widget-root]")).toBeTruthy());
+    expect(document.querySelector("[data-overlay-workshop-surface=obs] .overlay-workshop-surface-label")).toBeNull();
+  });
+
+  it("applies declared preset dimensions and resets controls to the reproducible URL selection", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&preset=720p" />);
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Apply declared dimensions" }));
+    await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("1280px"));
+    fireEvent.change(screen.getByLabelText("State"), { target: { value: "error" } });
+    fireEvent.click(screen.getByRole("button", { name: "Reset controls" }));
+    expect((screen.getByLabelText("State") as HTMLSelectElement).value).toBe("ready");
   });
 
   it("seeds Input Telemetry after render without clearing unrelated histories in StrictMode", async () => {

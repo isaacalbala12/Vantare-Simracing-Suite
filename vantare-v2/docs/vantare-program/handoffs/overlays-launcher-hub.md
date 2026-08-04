@@ -193,7 +193,7 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-262, MVP local dev-only Workshop; no promocionado.
+2026-08-04, ISA-263, controles efímeros y comparación de superficies del Workshop; no promocionado.
 
 ### ISA-262 — usar el Workshop local
 
@@ -219,3 +219,17 @@ y recientes.
   en `useLayoutEffect`, con cleanup por widget; StrictMode preserva historias de
   otras instancias y no duplica la fixture. HMR CSS se aplicó y revirtió sin
   reiniciar el Workshop.
+
+### ISA-263 — controles de autoría
+
+- La URL dev admite además `session`, `location`, `background`, `scale`,
+  `preset`, `width`, `height` y `compare`; todos se validan fail-closed y se
+  serializan de forma reproducible. `background` solo cambia el stage de CSS:
+  nunca entra en el Host, renderer, documento ni crop del widget.
+- Los presets 720p, 1080p y 1440p declaran dimensiones de prueba; escala,
+  dimensiones, fixture y comparación son efímeros. `Reset controls` restaura
+  la selección inicial del deep-link sin persistir perfiles.
+- Studio, Desktop, OBS y Harness usan la misma función de superficie y el mismo
+  `WidgetVisualViewport` + `WidgetVisualHost`. OBS no recibe etiqueta ni chrome
+  técnico dentro de su superficie. El root capturable sigue siendo
+  `data-overlay-workshop-widget-root`; el stage sigue separado.

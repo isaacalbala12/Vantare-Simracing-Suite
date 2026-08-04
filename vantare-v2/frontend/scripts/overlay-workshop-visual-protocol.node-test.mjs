@@ -21,7 +21,7 @@ const passing = {
   rootOverflowYpx: 0,
   allowOverflowXpx: 0,
   allowOverflowYpx: 0,
-  alpha: { guardClear: true, alphaZeroRatio: 0.2, sceneContaminated: false },
+  alpha: { guardClear: true, alphaZeroRatio: 0.2, meanAlpha: 200, sceneContaminated: false },
   scene: 'transparent',
 };
 
@@ -45,6 +45,7 @@ for (const [name, mutate] of [
   ['multiple roots', (value) => ({ ...value, rootCount: 2 })],
   ['stage alpha contamination', (value) => ({ ...value, alpha: { ...value.alpha, sceneContaminated: true } })],
   ['bounds guard contamination', (value) => ({ ...value, alpha: { ...value.alpha, guardClear: false } })],
+  ['fully transparent root capture', (value) => ({ ...value, alpha: { ...value.alpha, alphaZeroRatio: 1, meanAlpha: 0 } })],
   ['horizontal overflow', (value) => ({ ...value, rootOverflowXpx: 1 })],
   ['vertical overflow', (value) => ({ ...value, rootOverflowYpx: 1 })],
   ['fonts not ready', (value) => ({ ...value, fontsReady: false })],
@@ -71,8 +72,8 @@ test('marks every scene of a surface contaminated when a root-only hash differs'
     surface: 'studio',
     scene,
     rootOnlyHash: sha('a'),
-    alpha: { guardClear: true, sceneContaminated: false },
-    gateInput: { ...passing, alpha: { guardClear: true, sceneContaminated: false } },
+    alpha: { guardClear: true, alphaZeroRatio: 0.2, meanAlpha: 200, sceneContaminated: false },
+    gateInput: { ...passing, alpha: { guardClear: true, alphaZeroRatio: 0.2, meanAlpha: 200, sceneContaminated: false } },
   }));
   applySurfaceSceneIntegrity(scenarios);
   assert.deepEqual(scenarios.map((scenario) => scenario.alpha.sceneContaminated), [false, false, false, false]);

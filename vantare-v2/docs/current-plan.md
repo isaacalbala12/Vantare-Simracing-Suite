@@ -1,4 +1,4 @@
-Nota ISA-287 / TAU-07J (2026-08-04, diagnóstico local listo para revisión):
+Nota ISA-287 / TAU-07J (2026-08-04, round-trip remoto y deduplicación PASS):
 - El worker clasifica toda incertidumbre de Linear con el contrato cerrado
   `testing-center.linear-diagnostic.v1`: fase segura, HTTP status acotado y
   códigos GraphQL limitados a `RATELIMITED`/`UNKNOWN`. Nunca expone mensajes,
@@ -11,9 +11,17 @@ Nota ISA-287 / TAU-07J (2026-08-04, diagnóstico local listo para revisión):
   typecheck del worker, formato y `git diff --check` PASS. Tras aprobación
   humana, solo `testing-center-linear-worker` se desplegó en Supabase testing
   `lbaxvpzexoferfvfkplz` y quedó `ACTIVE` v7; un probe sin credenciales devolvió
-  `401 unauthorized`. No hubo Docker, secretos, nueva llamada a Linear ni nuevo
-  reporte. El siguiente gate exige bearer temporal y reporte sintético nuevos
-  con autorización separada de Isaac.
+  `401 unauthorized`.
+- El reporte nuevo `report_354511...c9241` creó exactamente ISA-288 con Backlog,
+  proyecto y cinco labels correctas, sin prioridad, assignee ni delegate. El
+  efecto quedó `completed`, intento/fencing 1, binding único y sin lease. El
+  primer webhook firmado fue `create/applied` y dejó reconciliación
+  `linear_created`, generación 1.
+- El segundo reporte idéntico `report_4067dc...0597a` quedó
+  `duplicate_linked`: dos ocurrencias, un solo efecto completado y una sola
+  issue Linear. La pausa global volvió a quedar activa, el efecto histórico en
+  `needs_owner` tiene pausa de flujo propia, y el bearer temporal fue revocado.
+  No hubo Docker, Codex, Discord, merge ni promoción.
 
 Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
 - Isaac autorizó un único reintento tras corregir el claim hosted. El worker

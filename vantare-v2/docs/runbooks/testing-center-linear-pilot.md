@@ -4,10 +4,10 @@ Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
 `lbaxvpzexoferfvfkplz`. Schema completo; `testing-center-feedback` y
 `testing-center-linear-webhook` están `ACTIVE` v6 y
 `testing-center-linear-worker` está `ACTIVE` v7 tras ISA-287. El
-webhook `Issue` existe y su signing secret está guardado en Supabase, pero su
-firma aún no se ha verificado con un delivery real y no se ha creado ningún
-issue. El primer efecto externo continúa pausado y requiere una prueba
-presenciada.
+round-trip presenciado creó exactamente ISA-288 y verificó el primer webhook
+firmado `create/applied`. Un segundo reporte idéntico quedó `duplicate_linked`
+sin crear otra issue ni efecto. La pausa global está activa y el bearer temporal
+está revocado.
 
 ## Qué demuestra este corte
 
@@ -169,9 +169,24 @@ obtener el token, anterior a la mutación, puede seguir el retry acotado.
 
 El código de ISA-287 fue revisado y el worker quedó desplegado exclusivamente
 en Supabase testing como versión 7. El probe sin credenciales posterior devolvió
-`401 unauthorized`. Crear otro reporte sintético requiere un gate separado y
-un bearer temporal nuevo; este despliegue no reabre el efecto anterior ni
-autoriza otra llamada sobre él.
+`401 unauthorized`.
+
+## Evidencia remota del round-trip
+
+- Reporte primario: `report_354511...c9241`.
+- Issue técnica: `issue_e16cb...d4ddf`.
+- Efecto: `effect_0b404f...fa61a`, `completed`, intento/fencing 1 y sin lease.
+- Linear: ISA-288, Backlog, proyecto y cinco labels exactas; sin prioridad,
+  assignee ni delegate.
+- Webhook: un delivery `create/applied`; reconciliación `linear_created`,
+  generación 1.
+- Reporte repetido: `report_4067dc...0597a`, `duplicate_linked`.
+- Resultado de deduplicación: dos ocurrencias, un efecto y una issue Linear.
+- Cierre seguro: pausa global activa, efecto histórico `needs_owner` congelado
+  por flujo, bearer revocado y portapapeles limpio.
+
+No se debe volver a llamar al efecto histórico ni al efecto completado. Otra
+prueba externa requiere un reporte nuevo y un gate separado.
 
 ## Verificación local
 

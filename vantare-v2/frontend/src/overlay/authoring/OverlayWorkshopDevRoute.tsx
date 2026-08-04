@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
@@ -13,6 +13,7 @@ import {
 } from "./fixtures/authoring-fixtures";
 import { getCrystalHarnessDesign } from "./fixtures/authoring-fixtures";
 import { listOfficialDesigns } from "../design-systems/official-designs";
+import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -59,6 +60,28 @@ function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
   return widget;
 }
 
+type PreparedFixture = {
+  key: string;
+  widget: WidgetInstanceV3;
+  snapshot: ReturnType<typeof buildAuthoringFixtureTelemetry>;
+};
+
+function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
+  const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
+  const widget = createScenarioWidget(query);
+  const snapshot = buildAuthoringFixtureTelemetry({
+    session: "race",
+    location: "track",
+    state: query.state,
+    widget: query.widget,
+    system: query.system,
+    surface: query.surface,
+    variant: query.variant,
+    ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
+  });
+  return { key: serializeOverlayWorkshopQuery(query), widget, snapshot };
+}
+
 function setSearch(query: OverlayWorkshopQuery): void {
   window.history.replaceState(null, "", `/workshop?${serializeOverlayWorkshopQuery(query)}`);
 }
@@ -89,24 +112,27 @@ function defaultSystem(widget: WidgetType): DesignSystemId {
 
 function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
+  const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const update = (next: OverlayWorkshopQuery) => {
     setSearch(next);
     setQuery(next);
   };
 
   const designs = listOfficialDesigns(parsed.widget).filter((design) => design.systemId === parsed.system);
-  const widget = createScenarioWidget(parsed);
-  const snapshot = buildAuthoringFixtureTelemetry({
-    session: "race",
-    location: "track",
-    state: parsed.state,
-    widget: parsed.widget,
-    system: parsed.system,
-    surface: parsed.surface,
-    variant: parsed.variant,
-    ...(parsed.designId && getCrystalHarnessDesign(parsed.designId) ? { designId: getCrystalHarnessDesign(parsed.designId)!.designId } : {}),
-  });
-  resetAndSeedAuthoringInputTelemetry(widget, snapshot);
+  const fixtureKey = serializeOverlayWorkshopQuery(parsed);
+
+  useLayoutEffect(() => {
+    const next = prepareFixture(parsed);
+    resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setPrepared(next);
+    });
+    return () => {
+      active = false;
+      clearInputTelemetryHistory(next.widget.id);
+    };
+  }, [parsed]);
 
   const chooseWidget = (value: string) => {
     const widgetType = value as WidgetType;
@@ -147,20 +173,22 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
         </SelectField>
       </section>
       <section className="overlay-workshop-stage" data-overlay-workshop-stage>
-        <div
-          className="overlay-workshop-widget-root"
-          data-overlay-workshop-widget-root
-          style={{ width: widget.layout.w, height: widget.layout.h }}
-        >
-          <WidgetVisualViewport widgetType={widget.type} layout={widget.layout} testId="overlay-workshop-viewport">
-            <WidgetVisualHost
-              widget={widget}
-              snapshot={snapshot}
-              renderMode={parsed.surface}
-              runtime={widget.type === "engineer-radio" ? { engineerPresentation: parsed.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined}
-            />
-          </WidgetVisualViewport>
-        </div>
+        {prepared?.key === fixtureKey && (
+          <div
+            className="overlay-workshop-widget-root"
+            data-overlay-workshop-widget-root
+            style={{ width: prepared.widget.layout.w, height: prepared.widget.layout.h }}
+          >
+            <WidgetVisualViewport widgetType={prepared.widget.type} layout={prepared.widget.layout} testId="overlay-workshop-viewport">
+              <WidgetVisualHost
+                widget={prepared.widget}
+                snapshot={prepared.snapshot}
+                renderMode={parsed.surface}
+                runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: parsed.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined}
+              />
+            </WidgetVisualViewport>
+          </div>
+        )}
       </section>
     </main>
   );

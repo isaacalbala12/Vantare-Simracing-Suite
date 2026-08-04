@@ -211,7 +211,11 @@ y recientes.
   (`data-overlay-workshop-widget-root`), que contiene el mismo Host/Viewport
   que producción. ISA-263 añade controles y comparativas, no debe duplicar el
   renderer.
-- Evidencia ISA-262: Vitest focal, lint focal, build productivo sin sentinels
-  Workshop, `design-system:check`, Playwright sin console/page errors y HMR CSS
-  aplicado/revertido. La corrección mínima de `index.html` espera a `body` antes
-  de añadir clases de boot; una smoke `#/hub` cubre la ruta normal.
+- Evidencia ISA-262: Vitest focal 4 archivos / 15 pruebas, lint focal, build
+  productivo sin sentinels Workshop, `design-system:check` y Playwright para
+  Workshop válido/inválido y Hub sin `console`/`page errors`. La prueba de boot
+  ejecuta el script real con `body` ausente, espera un solo listener de
+  `DOMContentLoaded` y cubre Hub. Input Telemetry se siembra después del render
+  en `useLayoutEffect`, con cleanup por widget; StrictMode preserva historias de
+  otras instancias y no duplica la fixture. HMR CSS se aplicó y revirtió sin
+  reiniciar el Workshop.

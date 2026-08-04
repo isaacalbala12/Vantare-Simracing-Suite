@@ -20,6 +20,7 @@
     "visual:overlay-studio:update": "node scripts/overlay-studio-visual.mjs --update",
     "visual:crystal-parity": "node scripts/crystal-renderer-parity.mjs",
     "visual:crystal-parity:report": "node scripts/crystal-renderer-parity.mjs --report-only",
+    "visual:overlay-workshop": "node scripts/overlay-workshop-visual-protocol.mjs",
     "visual:engineer-radio": "node scripts/engineer-radio-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",

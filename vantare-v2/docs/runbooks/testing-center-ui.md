@@ -1,7 +1,8 @@
 # Testing Center — UI, preview y retry v1
 
-Estado: TAU-04C / ISA-220 implementado en rama de issue. No hay merge,
-promoción, build distribuida, migración remota, GitHub Issue, Codex o Discord.
+Estado: TAU-04C / ISA-220 y TAU-07H2 / ISA-242 implementados en ramas de issue.
+No hay merge, promoción, build distribuida, deploy Edge, migración remota,
+PostHog real, Linear real, Codex o Discord.
 
 ## Acceso y autoridad
 
@@ -43,6 +44,24 @@ probar el canal en desarrollo hay que compilar explícitamente con
   y permanece deshabilitado. No se crean logs sintéticos.
 - El envío real necesita la migración TAU-04A aplicada y una sesión Supabase con
   membresía Testing Center. Este corte no despliega ni muta entornos remotos.
+- Session replay también aparece deshabilitado y se explica como no disponible:
+  TAU-07H1 preparó su frontera de privacidad, pero no existe SDK ni captura real.
+
+## Validación de correcciones
+
+- La segunda vista lista como máximo 20 candidatas del canal real de la build.
+  Solo muestra versión, SHA abreviado, módulo y texto saneado del reporte.
+- El frontend envía únicamente candidata, SHA, decisión y, al rechazar, cuatro
+  campos estructurados más impacto y consentimiento diagnóstico. Nunca envía
+  actor, rol, autor, rama, estado o disposición owner.
+- `testing-center-feedback` autentica la sesión, deriva membresía y candidata en
+  servidor, impide auto-validación y valida el SHA actual antes de llamar al RPC
+  service-role endurecido de TAU-07G.
+- Nightly exige `primary_tester` u `owner`; Testers admite también `tester`.
+  `No puedo verificar` registra evidencia neutral. Un rechazo incompleto se
+  conserva en pantalla y no produce efecto.
+- No existen controles de merge, promoción, redelegación o disposición owner en
+  esta UI. Un rechazo queda `needs_owner` para decisión humana.
 
 ## Verificación
 
@@ -55,11 +74,13 @@ go vet ./internal/testingcenter/diagnostic ./internal/testingcenter/reportdraft 
 pnpm --dir frontend test -- src/hub/testing-center src/hub/navigation.test.ts src/hub/components/Topbar.test.tsx src/hub/components/V52Shell.test.tsx src/hub/HubApp.test.tsx
 pnpm --dir frontend build
 pnpm --dir frontend visual:testing-center
+deno check --no-lock ../supabase/functions/testing-center-feedback/index.ts ../supabase/functions/testing-center-feedback/index.test.ts
+deno test --no-check --no-lock ../supabase/functions/testing-center-feedback/index.test.ts
 ```
 
-El harness visual valida 390, 768, 1.024 y 1.440 px, cero overflow, opt-ins
-apagados, logs no disponibles, igualdad exacta preview/transporte, clave estable,
-borrado tras éxito y consola limpia.
+El harness visual valida 390, 768, 1.024 y 1.440 px, ambas vistas, cero overflow,
+opt-ins apagados, replay/logs no disponibles, igualdad exacta preview/transporte,
+clave estable, borrado tras éxito y consola limpia.
 
 ## Rollback
 

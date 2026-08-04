@@ -226,6 +226,72 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   Discord y asignación automática siguen apagados hasta gates separados. La
   integración PostHog preparada no se da por válida: errores, replay, masking,
   consentimiento y retención pasan un microcorte de privacidad antes de la UI.
+- ISA-240 materializa TAU-07F localmente sobre ISA-239. La firma Linear cubre
+  los bytes exactos, delivery y timestamps se validan, y solo IDs/acción/digest
+  entran a un ledger privado. El mapping de estados usa UUIDs revisados; replay,
+  digest conflictivo, estado desconocido y orden invertido fallan cerrados.
+  La reconciliación es observacional y no toca issue canónica, outbox, Codex,
+  Git o canales. Deno Testing Center 98/98 y PostgreSQL 27/27 + rollback/reapply
+  + carrera de dos procesos pasan. Autoridad:
+  `docs/runbooks/testing-center-linear-webhook.md`. Endpoint, secreto, red y
+  deploy permanecen expresamente pendientes de TAU-07I y gate de Isaac.
+- ISA-241 materializa TAU-07G localmente sobre ISA-240. Los votos quedan
+  ligados a issue/candidata/canal/versión/SHA y a roles server-side;
+  `cannot_verify` no cambia el gate y un rechazo Testers posterior bloquea la
+  candidata exacta. Dossier y transporte se verifican por SHA-256 en
+  TypeScript y PostgreSQL. Solo Isaac registra una de cinco disposiciones;
+  `same_branch` está retirado y una corrección sigue `needs_owner`, sin
+  delegación automática. Deno Testing Center 99/99 y PostgreSQL 45/45 +
+  rollback/reapply + history guard + carrera exactly-once pasan. Autoridad:
+  `docs/runbooks/testing-center-candidate-feedback.md`. UI, PostHog, Discord,
+  red, Linear real, Codex, deploy, merge y promociones permanecen pendientes.
+- ISA-253 materializa la frontera local TAU-07H1 sobre ISA-241. La proyección
+  PostHog sólo admite contexto técnico allowlisted y excluye mensajes, stacks,
+  logs, perfiles y texto libre. Consentimiento y replay son separados;
+  revocación y TTL 7/30 días se aplican en Supabase privado. Deno Testing
+  Center 107/107 (focal 8/8) y PostgreSQL 33/33 + rollback/reapply + history
+  guard pasan. No existe SDK,
+  red, secreto, endpoint, captura/replay real, UI ni efecto sobre Linear,
+  Discord, Codex o canales. Autoridad:
+  `docs/runbooks/testing-center-posthog-privacy.md`.
+- ISA-242 materializa TAU-07H2 sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.
+  La pestaña existente incorpora validación de candidatas y rechazo estructurado
+  sin exponer Linear ni acciones owner. Una Edge Function deriva identidad, rol,
+  canal y candidata server-side, sanea el contexto y usa el RPC service-role de
+  TAU-07G. Deno Testing Center 116/116 (Edge 9/9), frontend focal 32/32,
+  lint, build y visual 4/4 pasan.
+  Función, secretos y red siguen sin desplegar; PostHog/replay, Linear, Discord,
+  Codex, merge y promociones permanecen apagados.
+- ISA-243 / TAU-07I tiene autorización limitada al proyecto Supabase de testing
+  `lbaxvpzexoferfvfkplz`. Linear ya contiene el proyecto
+  `Testing Center — Feedback` y labels agrupadas para origen, canal, módulo y
+  flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
+  nombres reales `My Live` / `Backlog`. El baseline remoto y las tres Edge
+  Functions del piloto están activos solo en testing; probes sin credenciales
+  fallan cerrados. Históricamente, el primer reporte Nightly quedó reservado
+  bajo pausa y la primera llamada al worker falló antes de claim/`issueCreate`
+  porque hosted no exponía `public.gen_random_uuid()`; el wrapper correctivo se
+  desplegó y el claim remoto pasó con rollback. En aquel punto todavía no
+  existían binding ni issue Linear. El reintento único autorizado devolvió
+  `linear_response_ambiguous`; Supabase quedó `needs_owner`, intento/fencing 1,
+  sin lease ni binding y con pausa activa. La reconciliación read-only encontró
+  cero issues en Linear y el contrato prohibió una tercera llamada sobre ese
+  efecto. El cierre actual del piloto se documenta en ISA-287/289 a continuación.
+- ISA-287 / TAU-07J añade diagnóstico sanitizado para la respuesta ambigua del
+  piloto. El contrato cerrado publica solo versión, fase
+  segura, HTTP status acotado y códigos GraphQL `RATELIMITED`/`UNKNOWN`; la
+  frontera HTTP lo canonicaliza en runtime para impedir campos añadidos. No
+  cambia claim, fencing, binding ni retries: después de `issueCreate` siempre
+  termina en `needs_owner`. Evidencia: focal 16/16, Testing Center 125/125,
+  deploy guard 4/4, typecheck, formato y diff PASS. Tras revisión humana, solo
+  el worker se desplegó en Supabase testing y quedó `ACTIVE` v7; un probe sin
+  credenciales devolvió `401 unauthorized`. El round-trip autorizado creó
+  exactamente ISA-288, completó un binding sin lease residual y recibió un
+  webhook firmado `create/applied`. Un segundo reporte idéntico quedó
+  `duplicate_linked`: dos ocurrencias, un efecto y una issue Linear. La pausa
+  global está activa, el efecto histórico `needs_owner` quedó congelado por
+  flujo y el bearer temporal fue revocado. Codex, Discord, merge y promociones
+  continúan fuera de alcance.
 
 ## Riesgos
 
@@ -250,10 +316,14 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-03, ISA-239 implementa localmente TAU-07E sobre ISA-238. TAU-07A
-continúa inerte y pinneado, sin caller o credencial. El outbox Linear sigue en
-dry-run y superó su gate local completo; no autoriza side effect externo.
-No ejecuta Codex, Linear, Discord, repo access o Supabase remoto; tampoco
-autoriza deploy, merge, promoción ni una build distribuida.
+2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
+nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin
+lease residual y el primer webhook firmado fue `create/applied`. Un segundo
+reporte idéntico quedó `duplicate_linked`: dos ocurrencias, un efecto y una
+issue Linear. El efecto ambiguo histórico continúa `needs_owner` y congelado
+por flujo; la pausa global está activa y el bearer fue revocado. ISA-289 limita
+el tooling al project ref de testing, añade preflight de vínculo y separa fallos
+OAuth temporales de configuración permanente. No hay Codex, Discord,
+promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

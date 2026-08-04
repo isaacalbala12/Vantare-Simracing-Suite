@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TestingCenterPage } from "./TestingCenterPage";
 import type { ReportDraft, SubmittedReport } from "./contracts";
 import type { TestingCenterClient } from "./testing-center-client";
+import type { TestingCenterFeedbackClient } from "./candidate-feedback-client";
 
 afterEach(() => {
   cleanup();
@@ -35,9 +36,16 @@ function client(overrides: Partial<TestingCenterClient> = {}): TestingCenterClie
   };
 }
 
+function feedbackClient(): TestingCenterFeedbackClient {
+  return {
+    listCandidates: vi.fn().mockResolvedValue([]),
+    submitFeedback: vi.fn(),
+  };
+}
+
 describe("TestingCenterPage", () => {
   it("restores only text fields while keeping both consents off", async () => {
-    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={client()} submitReport={vi.fn()} />);
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={client()} submitReport={vi.fn()} feedbackClient={feedbackClient()} />);
     expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
     const checkboxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
     expect(checkboxes[0].checked).toBe(false);
@@ -48,7 +56,7 @@ describe("TestingCenterPage", () => {
   it("blocks network submission offline but preserves the form", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     const submitReport = vi.fn();
-    render(<TestingCenterPage channel="testers" version="v0.1.0.5" client={client()} submitReport={submitReport} />);
+    render(<TestingCenterPage channel="testers" version="v0.1.0.5" client={client()} submitReport={submitReport} feedbackClient={feedbackClient()} />);
     expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
     const submit = screen.getByRole("button", { name: "Enviar reporte" }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
@@ -65,7 +73,7 @@ describe("TestingCenterPage", () => {
       createdAt: "2026-08-02T20:00:00Z",
     };
     const submitReport = vi.fn().mockResolvedValue(result);
-    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} />);
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} feedbackClient={feedbackClient()} />);
     expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
     fireEvent.submit(screen.getByRole("button", { name: "Enviar reporte" }).closest("form")!);
     await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
@@ -77,7 +85,7 @@ describe("TestingCenterPage", () => {
   it("keeps the same draft available after a failed submission", async () => {
     const testingClient = client();
     const submitReport = vi.fn().mockRejectedValue(new Error("network"));
-    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} />);
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} feedbackClient={feedbackClient()} />);
     expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
     fireEvent.submit(screen.getByRole("button", { name: "Enviar reporte" }).closest("form")!);
     expect(await screen.findByText(/borrador sigue guardado/i)).toBeTruthy();
@@ -99,7 +107,7 @@ describe("TestingCenterPage", () => {
         },
       }),
     });
-    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} />);
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={testingClient} submitReport={submitReport} feedbackClient={feedbackClient()} />);
     expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     expect(await screen.findByText(/no se pudo preparar un diagnóstico válido/i)).toBeTruthy();
@@ -112,7 +120,7 @@ describe("TestingCenterPage", () => {
     const submitReport = vi.fn().mockImplementation(() => new Promise<SubmittedReport>((resolve) => {
       resolveSubmission = resolve;
     }));
-    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={client()} submitReport={submitReport} />);
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={client()} submitReport={submitReport} feedbackClient={feedbackClient()} />);
     const action = await screen.findByDisplayValue("opened launcher") as HTMLTextAreaElement;
     fireEvent.submit(screen.getByRole("button", { name: "Enviar reporte" }).closest("form")!);
     await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
@@ -124,5 +132,20 @@ describe("TestingCenterPage", () => {
       createdAt: "2026-08-02T20:00:00Z",
     });
     expect(await screen.findByText(`report_${"e".repeat(64)}`)).toBeTruthy();
+  });
+
+  it("switches between report and validation without losing the report draft", async () => {
+    const candidateClient = feedbackClient();
+    render(<TestingCenterPage channel="nightly" version="v0.1.0.5" client={client()} submitReport={vi.fn()} feedbackClient={candidateClient} />);
+    const action = await screen.findByDisplayValue("opened launcher") as HTMLTextAreaElement;
+    fireEvent.change(action, { target: { value: "edited draft remains" } });
+    const replay = screen.getByRole("checkbox", { name: /repetición de sesión/i }) as HTMLInputElement;
+    expect(replay.disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Validar corrección" }));
+    await waitFor(() => expect(candidateClient.listCandidates).toHaveBeenCalledWith("nightly"));
+    expect(screen.getByRole("tabpanel")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Reportar problema" }));
+    expect(screen.getByDisplayValue("edited draft remains")).toBeTruthy();
   });
 });

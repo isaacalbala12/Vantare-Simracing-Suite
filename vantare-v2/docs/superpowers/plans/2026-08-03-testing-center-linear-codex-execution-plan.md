@@ -82,6 +82,12 @@ PASS. Sin red, merge, deploy ni promoción.
 
 ### 5. TAU-07F — Webhook Linear firmado y reconciliación
 
+**Estado 2026-08-03:** implementación local validada en ISA-240 sobre ISA-239.
+Deno Testing Center 98/98; PostgreSQL 27/27, rollback protegido, reaplicación
+27/27 y carrera real de dos procesos PASS; el rollback con historial se rechaza.
+No existe endpoint, secreto, red,
+deploy ni autoridad de ejecución; el wiring remoto continúa en TAU-07I.
+
 **Objetivo:** recibir señales autenticadas de Linear sin convertirlas en autoridad de ejecución.
 
 **Alcance:** HMAC sobre bytes exactos, delivery ID durable, replay/out-of-order, allowlist de eventos y estados gruesos: `linear_created`, `awaiting_owner`, `codex_in_progress`, `pr_in_review`, `needs_changes`, `stopped`.
@@ -89,6 +95,11 @@ PASS. Sin red, merge, deploy ni promoción.
 **Gate:** firma forjada, body mutado, replay y orden invertido fallan cerrados; ningún evento asigna Codex, crea rama, aprueba o promueve.
 
 ### 6. TAU-07G — Rechazo, candidato y decisión del owner
+
+**Estado 2026-08-03:** implementación local validada en ISA-241 sobre ISA-240.
+Deno Testing Center 99/99; PostgreSQL 45/45, rollback protegido, reaplicación
+45/45 y carrera real de dos procesos exactly-once PASS. Sin UI, red, efectos
+externos, merge, deploy ni promoción.
 
 **Objetivo:** persistir el feedback de Nightly/Testers y convertirlo en una decisión explícita de Isaac.
 
@@ -98,6 +109,14 @@ PASS. Sin red, merge, deploy ni promoción.
 
 ### 7. TAU-07H1 — PostHog: errores, contexto y replay
 
+**Estado 2026-08-04:** frontera local validada en ISA-253 sobre ISA-241. Deno
+Testing Center 107/107 (focal 8/8); PostgreSQL 33/33, rollback/reaplicación
+33/33 y history guard PASS.
+Consentimiento y replay son separados; la revocación borra la evidencia local
+correspondiente y las TTL son 7/30 días. Sin SDK, red, secreto, endpoint,
+captura real, UI, Linear, Codex, deploy, merge ni promoción. El wiring remoto
+permanece pendiente de un microcorte con gate explícito.
+
 **Objetivo:** validar la integración preparada y cerrar su frontera de privacidad antes de mostrar consentimientos en la UI.
 
 **Alcance:** captura de excepciones frontend y fallos backend permitidos; versión/canal/SHA/SO allowlisted; correlation ID con el reporte; session replay solo en Nightly/Testers y con masking de texto, inputs y superficies sensibles; URL interna/restringida almacenada en Supabase y proyectada a Linear únicamente cuando exista autorización.
@@ -105,6 +124,10 @@ PASS. Sin red, merge, deploy ni promoción.
 **Gate:** corpus de tokens, emails, rutas locales, perfiles y texto libre produce cero retenciones; replay se puede desactivar; consentimiento y disponibilidad reales coinciden; retención y borrado están documentados; un fallo de PostHog nunca impide reportar ni autoriza delegación.
 
 ### 8. TAU-07H2 — Testing Center in-app
+
+**Estado 2026-08-04:** implementado y validado localmente en ISA-242, apilado
+sobre ISA-253. La UI reutiliza TAU-04C y añade el gateway Edge autenticado para
+TAU-07G; no hay deploy, secretos, PostHog real, Linear real ni promoción.
 
 **Objetivo:** ofrecer una pestaña comprensible en builds Nightly/Testers, sin exponer Linear.
 

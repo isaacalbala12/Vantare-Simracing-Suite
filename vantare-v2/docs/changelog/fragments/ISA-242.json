@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-242",
+  "type": "feature",
+  "summary": "Testing Center permite consultar y validar correcciones desde las builds Nightly y Testers.",
+  "technicalNotes": [
+    "La aplicación separa el reporte de problemas y la validación de correcciones en dos vistas de la misma pestaña.",
+    "Los permisos, el canal y la candidata se verifican en servidor; la app no decide roles ni acciones de propietario.",
+    "Los rechazos requieren pasos, resultado esperado y observado antes de volver al flujo de corrección."
+  ],
+  "testing": [
+    "Abrir Testing Center, alternar entre ambas vistas y confirmar que el borrador del reporte se conserva.",
+    "Probar Funciona, Necesita cambios y No puedo verificar con una candidata autorizada.",
+    "Comprobar que una cuenta sin permiso ve las acciones deshabilitadas y que replay y logs no disponibles no pueden activarse."
+  ],
+  "knownLimitations": [
+    "La Edge Function y sus secretos todavía no están desplegados; la validación remota se habilitará en un corte posterior con aprobación de Isaac.",
+    "PostHog, session replay, Linear, Discord y la delegación a Codex continúan sin conexión productiva."
+  ]
+}

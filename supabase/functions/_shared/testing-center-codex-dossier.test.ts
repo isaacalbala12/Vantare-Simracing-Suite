@@ -7,6 +7,7 @@ import {
 import {
   buildTestingCenterCodexDossier,
   TESTING_CENTER_CODEX_DOSSIER_VERSION,
+  verifyTestingCenterCodexDossier,
 } from "./testing-center-codex-dossier.ts";
 import { TESTING_CENTER_REJECTION_VERSION } from "./testing-center-rejection.ts";
 
@@ -224,4 +225,28 @@ Deno.test("evidence shape is exact and numeric metrics never coerce", async () =
       buildTestingCenterCodexDossier(coerced, verifiedContext)
     );
   }
+});
+
+Deno.test("persisted dossier verifier rejects digest and execution-flag tampering", async () => {
+  const dossier = await buildTestingCenterCodexDossier(
+    input(),
+    verifiedContext,
+  );
+  assertEquals(await verifyTestingCenterCodexDossier(dossier), true);
+  assertEquals(
+    await verifyTestingCenterCodexDossier({
+      ...dossier,
+      dossierDigest: "0".repeat(64),
+    }),
+    false,
+  );
+  assertEquals(
+    await verifyTestingCenterCodexDossier(
+      {
+        ...dossier,
+        noMergeAllowed: false,
+      } as unknown as typeof dossier,
+    ),
+    false,
+  );
 });

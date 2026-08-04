@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -62,6 +64,7 @@ export function resolveAuthorisedOverflow({ widget, design, surface }) {
 
 export function evaluateWorkshopVisualGates(input) {
   const errors = [];
+  if (!input.provenanceValid) errors.push('report provenance is not a commit SHA');
   if (input.rootCount !== 1) errors.push(`renderer root must match exactly one element (matched ${input.rootCount})`);
   if (!input.fontsReady) errors.push('required fonts are not ready');
   if (input.consoleErrors > 0) errors.push(`${input.consoleErrors} console error(s)`);
@@ -71,6 +74,35 @@ export function evaluateWorkshopVisualGates(input) {
   if (!input.alpha.guardClear) errors.push('root reaches the capture guard ring');
   if (input.alpha.sceneContaminated) errors.push('root alpha/background is contaminated by the stage');
   return { pass: errors.length === 0, errors };
+}
+
+export function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+export function resolveReportProvenance({
+  environment = process.env,
+  readGit = (argumentsList) => execFileSync('git', argumentsList, { cwd: frontendRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(),
+} = {}) {
+  const sha = (environment.GITHUB_SHA || readGit(['rev-parse', 'HEAD'])).trim();
+  if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error('report provenance must resolve to a 40-character commit SHA');
+  return { sha: sha.toLowerCase(), dirty: readGit(['status', '--porcelain']).length > 0 };
+}
+
+export function applySurfaceSceneIntegrity(scenarios) {
+  for (const surface of new Set(scenarios.map((scenario) => scenario.surface))) {
+    const group = scenarios.filter((scenario) => scenario.surface === surface);
+    const hashes = group.map((scenario) => scenario.rootOnlyHash);
+    const sceneContaminated = hashes.length !== WORKSHOP_SCENES.length
+      || hashes.some((hash) => !/^[0-9a-f]{64}$/i.test(hash ?? ''))
+      || new Set(hashes).size !== 1;
+    for (const scenario of group) {
+      scenario.alpha.sceneContaminated = sceneContaminated;
+      scenario.gateInput.alpha.sceneContaminated = sceneContaminated;
+      scenario.gates = evaluateWorkshopVisualGates(scenario.gateInput);
+    }
+  }
+  return scenarios;
 }
 
 function parseArguments(argumentsList) {
@@ -123,6 +155,22 @@ async function waitForFonts(page) {
   }), 5000);
 }
 
+async function captureTransparentRoot(locator, page) {
+  const transparencyStyle = await page.addStyleTag({
+    content: `
+      html, body, [data-overlay-workshop-visual-ancestor] {
+        background: transparent !important;
+        background-image: none !important;
+      }
+    `,
+  });
+  try {
+    return await locator.screenshot({ animations: 'disabled', omitBackground: true });
+  } finally {
+    await transparencyStyle.evaluate((element) => element.remove());
+  }
+}
+
 async function captureScene(page, options, scene, errors) {
   const query = new URLSearchParams({
     widget: options.widget,
@@ -160,7 +208,8 @@ async function captureScene(page, options, scene, errors) {
       }),
     };
   }
-  const rootMetrics = await page.locator(selector).evaluate((element) => {
+  const root = page.locator(selector);
+  const rootMetrics = await root.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return {
       boundingBox: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
@@ -174,7 +223,7 @@ async function captureScene(page, options, scene, errors) {
       overflowYpx: Math.max(0, element.scrollHeight - element.clientHeight),
     };
   });
-  const ancestorVisibility = await page.locator(selector).evaluate((element) => {
+  const ancestorVisibility = await root.evaluate((element) => {
     let count = 0;
     for (let current = element.parentElement; current && current !== document.body; current = current.parentElement) {
       current.setAttribute('data-overlay-workshop-visual-ancestor', '');
@@ -186,12 +235,14 @@ async function captureScene(page, options, scene, errors) {
     content: '[data-overlay-workshop-visual-ancestor] { visibility: visible !important; }',
   });
   let captured;
+  let rootOnly;
   const captureStartedAt = Date.now();
   try {
-    captured = await withTimeout(`${options.surface}/${scene.id} root screenshot`, () => captureIsolatedElement(page, { selector, scene }));
+    rootOnly = await withTimeout(`${options.surface}/${scene.id} root-only screenshot`, () => captureTransparentRoot(root, page));
+    captured = await withTimeout(`${options.surface}/${scene.id} alpha screenshot`, () => captureIsolatedElement(page, { selector, scene }));
   } finally {
     await ancestorStyle.evaluate((element) => element.remove());
-    await page.locator(selector).evaluate((element) => {
+    await root.evaluate((element) => {
       for (let current = element.parentElement; current && current !== document.body; current = current.parentElement) {
         current.removeAttribute('data-overlay-workshop-visual-ancestor');
       }
@@ -218,7 +269,9 @@ async function captureScene(page, options, scene, errors) {
   });
   progress(`${options.surface}/${scene.id} alpha analysis ${Date.now() - analysisStartedAt}ms`);
   const authorisedOverflow = resolveAuthorisedOverflow(options);
-  const gates = evaluateWorkshopVisualGates({
+  const alphaWithIntegrity = { ...alpha, sceneContaminated: false };
+  const gateInput = {
+    provenanceValid: options.provenanceValid,
     rootCount,
     fontsReady,
     consoleErrors: errors.console.length,
@@ -227,14 +280,20 @@ async function captureScene(page, options, scene, errors) {
     rootOverflowYpx: rootMetrics.overflowYpx,
     allowOverflowXpx: authorisedOverflow.xMaxPx,
     allowOverflowYpx: authorisedOverflow.yMaxPx,
-    alpha,
+    alpha: alphaWithIntegrity,
     scene: scene.id,
-  });
-  return { scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow, ancestorVisibility, alpha, gates, capture: captured };
+  };
+  return {
+    scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow, ancestorVisibility,
+    alpha: alphaWithIntegrity, gateInput, gates: evaluateWorkshopVisualGates(gateInput),
+    rootOnlyHash: sha256(rootOnly), capture: { ...captured, rootOnly },
+  };
 }
 
 async function main() {
   const options = { ...parseArguments(process.argv.slice(2)), baseUrl: '' };
+  const provenance = resolveReportProvenance();
+  options.provenanceValid = true;
   await mkdir(outputDirectory, { recursive: true });
   let server;
   let browser;
@@ -256,7 +315,7 @@ async function main() {
     const writeCheckpoint = async () => writeFile(checkpointPath, `${JSON.stringify({
       protocol: 'overlay-workshop-visual-v1', generatedAt: new Date().toISOString(), inProgress: true,
       design: options.design, widgetType: options.widget, system: options.system, surface: options.surface,
-      viewport: options.viewport, scenarios, artifacts: outputDirectory,
+      viewport: options.viewport, sha: provenance.sha, dirty: provenance.dirty, scenarios, artifacts: outputDirectory,
     }, null, 2)}\n`);
     for (const surface of surfaces) {
       const surfaceOptions = { ...options, surface };
@@ -273,7 +332,8 @@ async function main() {
             selector: resolveContractualRendererSelector(surfaceOptions),
             rootCount: 0,
             fontsReady: false,
-            alpha: { guardClear: false, alphaZeroRatio: 0, sceneContaminated: false },
+            alpha: { guardClear: false, alphaZeroRatio: 0, sceneContaminated: true },
+            gateInput: { provenanceValid: options.provenanceValid, rootCount: 0, fontsReady: false, consoleErrors: errors.console.length, pageErrors: errors.page.length, rootOverflowXpx: 0, rootOverflowYpx: 0, allowOverflowXpx: 0, allowOverflowYpx: 0, alpha: { guardClear: false, alphaZeroRatio: 0, sceneContaminated: true } },
             gates: { pass: false, errors: [error instanceof Error ? error.message : String(error)] },
           };
         }
@@ -281,7 +341,7 @@ async function main() {
         await mkdir(artifactDirectory, { recursive: true });
         if (result.capture) {
           await Promise.all([
-            writeFile(path.join(artifactDirectory, 'root.png'), result.capture.widget),
+            writeFile(path.join(artifactDirectory, 'root.png'), result.capture.rootOnly),
             writeFile(path.join(artifactDirectory, 'scene.png'), result.capture.sceneOnly),
           ]);
         }
@@ -295,10 +355,12 @@ async function main() {
         await writeCheckpoint();
       }
     }
+    applySurfaceSceneIntegrity(scenarios);
     const report = {
       protocol: 'overlay-workshop-visual-v1',
       generatedAt: new Date().toISOString(),
-      sha: process.env.GITHUB_SHA ?? 'local',
+      sha: provenance.sha,
+      dirty: provenance.dirty,
       design: options.design,
       widgetType: options.widget,
       system: options.system,

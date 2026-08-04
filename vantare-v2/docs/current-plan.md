@@ -1,3 +1,155 @@
+Nota ISA-289 / TAU-07K (2026-08-04, hardening de revisión cerrado):
+- El tooling del piloto acepta únicamente el project ref exacto y sensible a
+  mayúsculas `lbaxvpzexoferfvfkplz`; el preflight comprueba también el ref
+  vinculado antes de migraciones. Tests conductuales rechazan producción, un
+  tercer proyecto, variantes en mayúsculas, vínculo ausente y vínculo distinto.
+- OAuth reintenta solo transporte, 408, 429 y 5xx antes de `issueCreate`.
+  400/401/403, JSON inválido y contrato/token inválido terminan sanitizados en
+  `needs_owner` sin segunda llamada. La incertidumbre post-dispatch no cambia.
+- El handoff canónico distingue ya el fallo histórico del round-trip exitoso.
+  Evidencia: PowerShell guard PASS, focal Deno 19/19, Testing Center 128/128,
+  deploy guard 4/4, typecheck, formato y diff PASS. Sin red, secretos, schema,
+  deploy ni promoción.
+
+Nota ISA-287 / TAU-07J (2026-08-04, round-trip remoto y deduplicación PASS):
+- El worker clasifica toda incertidumbre de Linear con el contrato cerrado
+  `testing-center.linear-diagnostic.v1`: fase segura, HTTP status acotado y
+  códigos GraphQL limitados a `RATELIMITED`/`UNKNOWN`. Nunca expone mensajes,
+  cuerpos, paths, extensions, texto del tester ni secretos.
+- La frontera HTTP reconstruye el diagnóstico en runtime y emite exactamente
+  cuatro campos; una revisión adversarial detectó y cerró esta protección P2.
+  La semántica sigue intacta: solo el fallo de token previo a `issueCreate`
+  puede reintentarse y toda incertidumbre posterior termina en `needs_owner`.
+- Evidencia local: Testing Center 125/125, focal 16/16, deploy guard 4/4,
+  typecheck del worker, formato y `git diff --check` PASS. Tras aprobación
+  humana, solo `testing-center-linear-worker` se desplegó en Supabase testing
+  `lbaxvpzexoferfvfkplz` y quedó `ACTIVE` v7; un probe sin credenciales devolvió
+  `401 unauthorized`.
+- El reporte nuevo `report_354511...c9241` creó exactamente ISA-288 con Backlog,
+  proyecto y cinco labels correctas, sin prioridad, assignee ni delegate. El
+  efecto quedó `completed`, intento/fencing 1, binding único y sin lease. El
+  primer webhook firmado fue `create/applied` y dejó reconciliación
+  `linear_created`, generación 1.
+- El segundo reporte idéntico `report_4067dc...0597a` quedó
+  `duplicate_linked`: dos ocurrencias, un solo efecto completado y una sola
+  issue Linear. La pausa global volvió a quedar activa, el efecto histórico en
+  `needs_owner` tiene pausa de flujo propia, y el bearer temporal fue revocado.
+  No hubo Docker, Codex, Discord, merge ni promoción.
+
+Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
+- Isaac autorizó un único reintento tras corregir el claim hosted. El worker
+  adquirió lease/fencing y devolvió `409 linear_response_ambiguous`; el
+  contrato limpió el lease, fijó el efecto y destino en `needs_owner` y
+  mantuvo la pausa global activa.
+- La reconciliación read-only por marker/`effectId` y el listado del proyecto
+  `Testing Center — Feedback` encontraron cero issues. Supabase mantiene
+  `attempt_count=1`, fencing 1 y cero bindings. No se permite una tercera
+  llamada aunque el resultado externo aparente ser cero.
+- El bearer temporal se eliminó del portapapeles. La evidencia quedó anotada
+  en ISA-243. El siguiente corte debe añadir diagnóstico sanitizado de fase,
+  HTTP status y códigos GraphQL allowlisted o revisar permisos/configuración
+  de la OAuth app antes de usar un nuevo reporte sintético separado.
+
+Nota ISA-243 / TAU-07I (2026-08-04, primer reporte remoto y stop seguro):
+- El reporte sintético `report_d9c99f...866ae8a` llegó desde la build exacta
+  `nightly/v0.1.0.5@ef60adef4c42f21b87e3ad582927f574ea1d77ed`, sin
+  diagnóstico, logs, replay ni evidencia PostHog. La identidad server-side se
+  corrigió del formato `0.1.0.5` al emitido realmente por la app
+  `v0.1.0.5`, conservando historial y una sola identidad activa.
+- El triage reservó una única issue técnica y un único efecto Linear bajo
+  pausa. La primera llamada al worker terminó en `pilot_store_unavailable`
+  antes del claim y antes de `issueCreate`: intento/fencing permanecieron en
+  cero y no existe binding externo.
+- Causa reproducida: Supabase hosted expone `gen_random_uuid()` en
+  `pg_catalog`/`extensions`, no en `public`, mientras el claim histórico usa la
+  referencia explícita `public.gen_random_uuid()`. La migración correctiva
+  `20260804110000_uuid_public_compatibility.sql` está aplicada solo en testing;
+  el harness hosted pasa clean install, 18/18, rollback y reapply 18/18.
+- Un probe remoto transaccional devuelve `claimed` con lease/fencing y termina
+  en `ROLLBACK`; el efecto real sigue `pending`, intento 0, sin lease/binding y
+  con pausa global activa. No se reintenta el worker sin un nuevo gate explícito
+  de Isaac.
+
+Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
+- Rama exacta apilada sobre `ISA-242@c215fcb21902649601086c3d71ce658d34261f52`.
+  Prepara el primer round-trip sintético Supabase -> Linear: OAuth
+  `client_credentials` con `issues:create`, worker manual por `reportId`,
+  mutación GraphQL fija, binding atómico y endpoint de webhook firmado.
+- Pausa, lease/fencing, destino y digests se revalidan inmediatamente antes de
+  abrir el efecto externo. Solo el fallo de token previo a `issueCreate` puede
+  reintentarse; toda incertidumbre posterior termina en `needs_owner`.
+- Team, proyecto, Backlog y labels se resuelven por UUID server-side. No se
+  envían assignee, prioridad, delegate, logs, replay URL ni instrucciones.
+- La superficie de testing está separada del wrapper de producción y exige la
+  confirmación literal `DEPLOY-ISA-243-TESTING-PILOT`.
+- Evidencia post-configuración: Deno Testing Center 120/120, guard de deploy
+  4/4, typecheck de ambos entrypoints, lint y formato PASS. PostgreSQL volvió a
+  pasar instalación limpia, 18/18, rollback y reaplicación 18/18 usando el
+  contenedor Supabase existente y bases temporales eliminadas al terminar.
+- Isaac autorizó exclusivamente el proyecto Supabase de testing
+  `lbaxvpzexoferfvfkplz`. Las 24 migraciones coinciden local/remoto y las tres
+  Edge Functions del piloto están `ACTIVE` v1. Los probes sin credenciales
+  fallan cerrados. El webhook `Issue` de Linear ya está creado y su signing
+  secret está guardado en Supabase; la firma continuará sin considerarse
+  verificada hasta observar el primer delivery real. No existe todavía llamada
+  `issueCreate`, Codex, Discord, merge ni promoción. El siguiente gate manual es
+  registrar una identidad sintética autorizada y la build Nightly exacta desde
+  la que se enviará el primer reporte.
+- Identidad sintética registrada como `primary_tester` y protegida por pausa
+  global activa. La capability `vantare.channel.nightly` procede de un grant
+  local `subscription_recovery` de sandbox, marcado sintético y revocable, con
+  expiración `2026-08-05T19:17:05Z`. No existen efectos ni bindings Linear.
+- `license-credential` está `ACTIVE` v1 en testing con la clave exclusiva
+  `testing-isa243-20260804`; fingerprint SHA-256 público
+  `3f520a864fec01d953edd60b88433ad52f63f2fbb5d4d9ad0bc77b425397ea27`.
+  La privada solo existe como Supabase Secret.
+- El primer build Nightly detectó que Task incluía URL, anon key y registro
+  público dentro del nombre de su caché al interpolar `BUILD_FLAGS`, inválido en
+  Windows. El generador existente pasa a incorporar también el registro público
+  y esos tres valores salen de `ldflags`; el guard de deploy cubre la regresión.
+- Las builds `nightly` y `testers` separan además sus targets de Credential
+  Manager por canal y digest del backend. `master` conserva los targets legacy.
+  El artefacto del piloto debe ejecutarse en modo portable para aislar también
+  caché de licencia, drafts y configuración de la instalación habitual.
+- La primera apertura manual reveló que el frontend leía solo
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, mientras el build recibía
+  únicamente las variables `VANTARE_*` del backend Go. El task común refleja
+  ahora esa misma configuración pública hacia Vite; el guard impide volver a
+  generar una pantalla de login sin backend en builds empaquetadas.
+- El preflight del proyecto vacío detectó dos migraciones locales con versión
+  `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
+  renombra mecánicamente a `20260802130100`; Billing conserva su historia. El
+  dry-run remoto posterior enumera 23 versiones únicas y ordenadas.
+- El primer push remoto aplicó el baseline hasta `20260802090000` y se detuvo
+  antes de Testing Center porque hosted ubica `pgcrypto.digest` en
+  `extensions`. `20260802095000_pgcrypto_public_compatibility` añade wrappers
+  condicionales `public.digest` sin mover ni reemplazar la extensión. La
+  simulación hosted y el harness completo PostgreSQL 18/18 + rollback/reapply
+  pasan antes de reanudar.
+- El primer intento de deploy no contactó Supabase: el wrapper reutilizaba un
+  `$LASTEXITCODE` residual tras un guard PowerShell correcto. Se elimina esa
+  comprobación redundante y se añade regresión antes de reintentar.
+
+Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
+- Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.
+  Extiende la única pestaña Testing Center con vistas `Reportar problema` y
+  `Validar corrección`; conserva el borrador al alternar y declara replay/logs
+  como no disponibles en lugar de simular captura.
+- Una Edge Function autenticada deriva membresía, rol, candidata y autor desde
+  Supabase, sanea el contexto antes de devolverlo y llama exclusivamente al RPC
+  endurecido service-role de TAU-07G. El cliente no envía actor, rol, autor,
+  estado, rama ni acción de owner.
+- Nightly requiere primary tester/owner; Testers admite tester/primary/owner;
+  auto-validación, SHA obsoleto, metadata desconocida y rechazo incompleto
+  fallan cerrados. `cannot_verify` permanece neutral y no hay controles owner.
+- Evidencia local: Deno Testing Center 116/116 (Edge focal 9/9) y check PASS;
+  frontend Testing Center 32/32,
+  lint focal, build y harness visual 4/4 (390/768/1024/1440, sin overflow ni
+  errores de consola) PASS.
+- No existe deploy de Edge, secreto nuevo, captura PostHog/replay real, Linear o
+  Discord real, delegación Codex, merge ni promoción. TAU-07I y el gate manual
+  de Isaac siguen pendientes.
+
 Nota ISA-253 / TAU-07H1 (2026-08-04, frontera local validada):
 - Rama apilada sobre `ISA-241@8a12b8e76a330d1ef87a4d9e76288e9af1a67c65`.
   Define `testing-center.posthog-evidence.v1`, contexto técnico cerrado y una

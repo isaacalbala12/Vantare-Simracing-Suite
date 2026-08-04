@@ -1,0 +1,101 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  fetchRoadmapProjectsDataset,
+  normalizeRoadmapProjectsSnapshot,
+  ROADMAP_PROJECTS_FALLBACK,
+} from "./projects-data";
+
+const response = (payload: unknown) => ({ ok: true, json: async () => payload });
+const cloneFallback = () => JSON.parse(JSON.stringify(ROADMAP_PROJECTS_FALLBACK));
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("projects-data", () => {
+  it("validates the v1 nightly contract and fallback shape", () => {
+    expect(normalizeRoadmapProjectsSnapshot(ROADMAP_PROJECTS_FALLBACK)?.tabs).toHaveLength(3);
+    expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects)).toHaveLength(6);
+    expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects).flatMap((project) => project.tasks)).toHaveLength(145);
+    expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, channel: "master" })).toBeNull();
+    expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, tabs: [] })).toBeNull();
+  });
+
+  it("rejects invalid task status and progress inconsistent with tasks", () => {
+    const invalidStatus = cloneFallback();
+    invalidStatus.tabs[0].projects[0].tasks[0].status = "blocked";
+    expect(normalizeRoadmapProjectsSnapshot(invalidStatus)).toBeNull();
+
+    const invalidTotal = cloneFallback();
+    invalidTotal.tabs[0].projects[0].progress.total = 4;
+    expect(normalizeRoadmapProjectsSnapshot(invalidTotal)).toBeNull();
+
+    const invalidDone = cloneFallback();
+    invalidDone.tabs[0].projects[0].progress.done = 2;
+    expect(normalizeRoadmapProjectsSnapshot(invalidDone)).toBeNull();
+
+    const invalidPercent = cloneFallback();
+    invalidPercent.tabs[0].projects[0].progress.percent = 66;
+    expect(normalizeRoadmapProjectsSnapshot(invalidPercent)).toBeNull();
+  });
+
+  it("fails closed on private identifiers in every public text boundary", () => {
+    const taskIssue = cloneFallback();
+    taskIssue.tabs[0].projects[0].tasks[0].title = "Entrega ISA-258";
+    expect(normalizeRoadmapProjectsSnapshot(taskIssue)).toBeNull();
+
+    const projectUrl = cloneFallback();
+    projectUrl.tabs[0].projects[0].title.es = "Ver https://linear.app/project";
+    expect(normalizeRoadmapProjectsSnapshot(projectUrl)).toBeNull();
+
+    const summaryEmail = cloneFallback();
+    summaryEmail.tabs[0].projects[0].summary.en = "Contact owner@example.com";
+    expect(normalizeRoadmapProjectsSnapshot(summaryEmail)).toBeNull();
+
+    const labelUuid = cloneFallback();
+    labelUuid.tabs[0].label.pt = "Projeto 123e4567-e89b-12d3-a456-426614174000";
+    expect(normalizeRoadmapProjectsSnapshot(labelUuid)).toBeNull();
+  });
+
+  it("reports fresh, stale, invalid and unavailable provenance explicitly", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(ROADMAP_PROJECTS_FALLBACK)));
+    const fresh = await fetchRoadmapProjectsDataset(undefined, new Date("2026-08-03T01:00:00Z"));
+    expect(fresh.status).toBe("remote-fresh");
+    expect(fresh.provenance).toBe("remote");
+
+    const stale = await fetchRoadmapProjectsDataset(undefined, new Date("2026-08-05T01:00:00Z"));
+    expect(stale.status).toBe("remote-stale");
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ schemaVersion: 1, channel: "nightly" })));
+    const invalid = await fetchRoadmapProjectsDataset();
+    expect(invalid.status).toBe("embedded-fallback");
+    expect(invalid.reason).toBe("invalid");
+    expect(invalid.provenance).toBe("embedded");
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    const unavailable = await fetchRoadmapProjectsDataset();
+    expect(unavailable.status).toBe("embedded-fallback");
+    expect(unavailable.reason).toBe("unavailable");
+    expect(unavailable.dataset).toBe(ROADMAP_PROJECTS_FALLBACK);
+  });
+
+  it("times out a pending remote request and exposes fallback provenance", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const resultPromise = fetchRoadmapProjectsDataset(undefined, new Date("2026-08-03T01:00:00Z"), 50);
+    await vi.advanceTimersByTimeAsync(50);
+    const result = await resultPromise;
+    expect(result.status).toBe("embedded-fallback");
+    expect(result.reason).toBe("unavailable");
+    expect(result.provenance).toBe("embedded");
+  });
+
+  it("treats an HTTP 404 as unavailable embedded fallback", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+    const result = await fetchRoadmapProjectsDataset();
+    expect(result.status).toBe("embedded-fallback");
+    expect(result.reason).toBe("unavailable");
+  });
+});

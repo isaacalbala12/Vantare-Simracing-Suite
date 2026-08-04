@@ -164,8 +164,13 @@ bases temporales dentro del contenedor Supabase local ya activo; todas quedaron
 eliminadas y la base de desarrollo no se modificó.
 
 Tras fijar los UUID y nombres reales de Linear, Deno 120/120, guard 4/4,
-typecheck, formato y `git diff --check` volvieron a pasar. El rerun PostgreSQL
-posterior se detuvo antes de TAU-07I: el contenedor desechable cerró la conexión
-durante `20260802090000_billing_webhook_inbox.sql`. El contenedor temporal se
-eliminó y el Supabase local continuó healthy; no se repitió la prueba para
-evitar presión adicional sobre el equipo.
+typecheck, formato y `git diff --check` volvieron a pasar. PostgreSQL pasó de
+nuevo instalación limpia, 18/18, rollback y reaplicación 18/18 usando el
+contenedor Supabase ya activo, sin crear otro; las bases temporales se
+eliminaron al terminar.
+
+El preflight remoto detectó una colisión histórica entre Billing y Testing
+Center en `20260802130000`. Como TAU-02B nunca había sido desplegado, su
+migración y rollback pasan a `20260802130100`; Billing conserva intacto su
+timestamp. El dry-run remoto debe mostrar cada versión una sola vez antes de
+aplicar el schema.

@@ -2,7 +2,7 @@
 
 ## Alcance
 
-La migración `20260802130000_testing_center_core.sql` crea persistencia aditiva
+La migración `20260802130100_testing_center_core.sql` crea persistencia aditiva
 y solo servidor para reports, evidencia, issues técnicas, ejecuciones Codex,
 candidatas, validaciones, promociones, auditoría, idempotencia y pausas. No crea
 RPCs ni ejecuta transiciones: la máquina de estados continúa en Go/orquestador.
@@ -38,7 +38,7 @@ No ejecutar este corte contra una instancia compartida y no usar
 
 ## Rollback local
 
-`supabase/rollbacks/20260802130000_testing_center_core.down.sql` elimina solo
+`supabase/rollbacks/20260802130100_testing_center_core.down.sql` elimina solo
 los diez objetos de este corte y en orden inverso de dependencias. El rollback
 borra sus datos; requiere una decisión operativa separada antes de cualquier
 uso fuera del runner desechable.

@@ -5,7 +5,7 @@ $container = "vantare-testing-center-$([Guid]::NewGuid().ToString('N').Substring
 $password = [Guid]::NewGuid().ToString("N")
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
-$targetMigration = "20260802130000_testing_center_core.sql"
+$targetMigration = "20260802130100_testing_center_core.sql"
 
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [IO.File]::WriteAllText($Path, $Content, (New-Object Text.UTF8Encoding($false)))
@@ -67,7 +67,7 @@ grant usage on schema public, auth to anon, authenticated, service_role;
   if ($LASTEXITCODE -ne 0) { throw "Could not create disposable test database" }
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
   docker cp (Join-Path $root "supabase\tests\testing_center_core.test.sql") "${container}:/tmp/testing-center.test.sql"
-  docker cp (Join-Path $root "supabase\rollbacks\20260802130000_testing_center_core.down.sql") "${container}:/tmp/testing-center.down.sql"
+  docker cp (Join-Path $root "supabase\rollbacks\20260802130100_testing_center_core.down.sql") "${container}:/tmp/testing-center.down.sql"
 
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") |
     Where-Object { $_.Name -le $targetMigration } |

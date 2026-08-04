@@ -11,17 +11,19 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
 - La superficie de testing está separada del wrapper de producción y exige la
   confirmación literal `DEPLOY-ISA-243-TESTING-PILOT`.
 - Evidencia post-configuración: Deno Testing Center 120/120, guard de deploy
-  4/4, typecheck de ambos entrypoints, lint y formato PASS. La implementación
-  inicial conserva evidencia PostgreSQL 18/18 + rollback/reaplicación; el
-  rerun posterior se detuvo en una migración Billing heredada porque el
-  contenedor desechable cerró la conexión, antes de alcanzar TAU-07I, y no se
-  reintentó para proteger el equipo local.
+  4/4, typecheck de ambos entrypoints, lint y formato PASS. PostgreSQL volvió a
+  pasar instalación limpia, 18/18, rollback y reaplicación 18/18 usando el
+  contenedor Supabase existente y bases temporales eliminadas al terminar.
 - Isaac autorizó exclusivamente el proyecto Supabase de testing
   `lbaxvpzexoferfvfkplz`. El proyecto Linear y sus labels ya están configurados;
   no existe todavía deploy, secreto remoto cargado, llamada `issueCreate`,
   webhook activo, Codex, Discord, merge ni promoción. El siguiente gate es
   cargar los secretos directamente en Supabase y ejecutar el preflight remoto
   descrito en `docs/runbooks/testing-center-linear-pilot.md`.
+- El preflight del proyecto vacío detectó dos migraciones locales con versión
+  `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
+  renombra mecánicamente a `20260802130100`; Billing conserva su historia. El
+  dry-run remoto posterior enumera 23 versiones únicas y ordenadas.
 
 Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
 - Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.

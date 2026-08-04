@@ -17,9 +17,12 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
 - Isaac autorizó exclusivamente el proyecto Supabase de testing
   `lbaxvpzexoferfvfkplz`. Las 24 migraciones coinciden local/remoto y las tres
   Edge Functions del piloto están `ACTIVE` v1. Los probes sin credenciales
-  fallan cerrados; no existe todavía webhook firmado, llamada `issueCreate`,
-  Codex, Discord, merge ni promoción. El siguiente gate manual es crear el
-  webhook `Issue` de Linear y guardar su signing secret.
+  fallan cerrados. El webhook `Issue` de Linear ya está creado y su signing
+  secret está guardado en Supabase; la firma continuará sin considerarse
+  verificada hasta observar el primer delivery real. No existe todavía llamada
+  `issueCreate`, Codex, Discord, merge ni promoción. El siguiente gate manual es
+  registrar una identidad sintética autorizada y la build Nightly exacta desde
+  la que se enviará el primer reporte.
 - El preflight del proyecto vacío detectó dos migraciones locales con versión
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El

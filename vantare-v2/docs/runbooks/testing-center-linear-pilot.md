@@ -1,9 +1,11 @@
 # Testing Center — piloto remoto Supabase → Linear
 
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
-`lbaxvpzexoferfvfkplz`. Schema completo y tres Edge Functions `ACTIVE` v1; el
-webhook no tiene todavía signing secret y no se ha creado ningún issue. El
-primer efecto externo continúa pausado y requiere una prueba presenciada.
+`lbaxvpzexoferfvfkplz`. Schema completo y tres Edge Functions `ACTIVE` v1. El
+webhook `Issue` existe y su signing secret está guardado en Supabase, pero su
+firma aún no se ha verificado con un delivery real y no se ha creado ningún
+issue. El primer efecto externo continúa pausado y requiere una prueba
+presenciada.
 
 ## Qué demuestra este corte
 
@@ -194,5 +196,7 @@ superficie cubre la regresión.
 El segundo intento desplegó únicamente `testing-center-feedback`,
 `testing-center-linear-webhook` y `testing-center-linear-worker`. Probes sin
 credenciales devolvieron respectivamente `401`, `400` y `401`; no crearon datos
-ni efectos. El siguiente gate manual es crear el webhook `Issue` para team
-`My Live` y guardar su signing secret directamente en Supabase.
+ni efectos. Después se creó el webhook `Issue` para team `My Live` y su signing
+secret se guardó directamente en Supabase. El siguiente gate manual es registrar
+la identidad sintética y la build Nightly exacta; el webhook solo quedará
+verificado tras el primer delivery real firmado.

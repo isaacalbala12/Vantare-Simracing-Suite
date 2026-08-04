@@ -24,13 +24,36 @@ export type TestingCenterLinearCreatedIssue = {
   organizationId: string;
 };
 
+export const TESTING_CENTER_LINEAR_DIAGNOSTIC_VERSION =
+  "testing-center.linear-diagnostic.v1" as const;
+
+export type TestingCenterLinearDiagnosticDetailCode =
+  | "label_resolution_failed"
+  | "issue_create_transport_failed"
+  | "issue_create_invalid_json"
+  | "issue_create_http_rejected"
+  | "issue_create_graphql_rejected"
+  | "issue_create_contract_mismatch"
+  | "dispatch_exception";
+
+export type TestingCenterLinearDiagnostic = Readonly<{
+  contractVersion: typeof TESTING_CENTER_LINEAR_DIAGNOSTIC_VERSION;
+  detailCode: TestingCenterLinearDiagnosticDetailCode;
+  httpStatus: number | null;
+  graphqlErrorCodes: readonly ("RATELIMITED" | "UNKNOWN")[];
+}>;
+
 export type TestingCenterLinearDispatchResult =
   | { status: "created"; issue: TestingCenterLinearCreatedIssue }
   | {
     status: "retryable";
     errorCode: "linear_token_transport_unavailable";
   }
-  | { status: "ambiguous"; errorCode: "linear_response_ambiguous" };
+  | {
+    status: "ambiguous";
+    errorCode: "linear_response_ambiguous";
+    diagnostic: TestingCenterLinearDiagnostic;
+  };
 
 export interface TestingCenterLinearTransport {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
@@ -106,6 +129,102 @@ function projectionLabelIds(
 ): string[] | null {
   const ids = projection.labels.map((label) => config.labelIds[label]);
   return ids.some((id) => !id) ? null : ids;
+}
+
+const DIAGNOSTIC_DETAIL_CODES = new Set<
+  TestingCenterLinearDiagnosticDetailCode
+>(
+  [
+    "label_resolution_failed",
+    "issue_create_transport_failed",
+    "issue_create_invalid_json",
+    "issue_create_http_rejected",
+    "issue_create_graphql_rejected",
+    "issue_create_contract_mismatch",
+    "dispatch_exception",
+  ],
+);
+
+function safeDiagnosticDetailCode(
+  detailCode: unknown,
+): TestingCenterLinearDiagnosticDetailCode {
+  return typeof detailCode === "string" &&
+      DIAGNOSTIC_DETAIL_CODES.has(
+        detailCode as TestingCenterLinearDiagnosticDetailCode,
+      )
+    ? detailCode as TestingCenterLinearDiagnosticDetailCode
+    : "dispatch_exception";
+}
+
+function safeHttpStatus(status: unknown): number | null {
+  return typeof status === "number" && Number.isInteger(status) &&
+      status >= 100 && status <= 599
+    ? status
+    : null;
+}
+
+function safeGraphqlErrorCodes(
+  codes: unknown,
+): readonly ("RATELIMITED" | "UNKNOWN")[] {
+  if (!Array.isArray(codes)) return [];
+  const safeCodes = new Set<"RATELIMITED" | "UNKNOWN">();
+  for (const code of codes.slice(0, 3)) {
+    safeCodes.add(code === "RATELIMITED" ? "RATELIMITED" : "UNKNOWN");
+  }
+  return [...safeCodes].sort();
+}
+
+function graphqlErrorCodes(
+  payload: unknown,
+): readonly ("RATELIMITED" | "UNKNOWN")[] | null {
+  const errors = record(payload)?.errors;
+  if (!Array.isArray(errors) || errors.length === 0) return null;
+  const codes = new Set<"RATELIMITED" | "UNKNOWN">();
+  for (const error of errors.slice(0, 3)) {
+    const code = record(record(error)?.extensions)?.code;
+    codes.add(code === "RATELIMITED" ? "RATELIMITED" : "UNKNOWN");
+  }
+  return [...codes].sort();
+}
+
+export function createTestingCenterLinearDiagnostic(
+  detailCode: unknown,
+  httpStatus: unknown = null,
+  graphqlCodes: unknown = [],
+): TestingCenterLinearDiagnostic {
+  return {
+    contractVersion: TESTING_CENTER_LINEAR_DIAGNOSTIC_VERSION,
+    detailCode: safeDiagnosticDetailCode(detailCode),
+    httpStatus: safeHttpStatus(httpStatus),
+    graphqlErrorCodes: safeGraphqlErrorCodes(graphqlCodes),
+  };
+}
+
+export function canonicalizeTestingCenterLinearDiagnostic(
+  diagnostic: unknown,
+): TestingCenterLinearDiagnostic {
+  const candidate = record(diagnostic);
+  return createTestingCenterLinearDiagnostic(
+    candidate?.detailCode,
+    candidate?.httpStatus,
+    candidate?.graphqlErrorCodes,
+  );
+}
+
+function ambiguous(
+  detailCode: TestingCenterLinearDiagnosticDetailCode,
+  httpStatus: number | null = null,
+  graphqlCodes: readonly ("RATELIMITED" | "UNKNOWN")[] = [],
+): TestingCenterLinearDispatchResult {
+  return {
+    status: "ambiguous",
+    errorCode: "linear_response_ambiguous",
+    diagnostic: createTestingCenterLinearDiagnostic(
+      detailCode,
+      httpStatus,
+      graphqlCodes,
+    ),
+  };
 }
 
 async function acquireToken(
@@ -237,7 +356,7 @@ export async function createTestingCenterLinearIssue(
 ): Promise<TestingCenterLinearDispatchResult> {
   const labelIds = projectionLabelIds(projection, config);
   if (labelIds === null) {
-    return { status: "ambiguous", errorCode: "linear_response_ambiguous" };
+    return ambiguous("label_resolution_failed");
   }
   const token = await acquireToken(config, transport);
   if (token === null) {
@@ -269,19 +388,27 @@ export async function createTestingCenterLinearIssue(
       }),
     });
   } catch {
-    return { status: "ambiguous", errorCode: "linear_response_ambiguous" };
+    return ambiguous("issue_create_transport_failed");
   }
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    return { status: "ambiguous", errorCode: "linear_response_ambiguous" };
+    return ambiguous("issue_create_invalid_json", response.status);
+  }
+  const errorCodes = graphqlErrorCodes(payload);
+  if (errorCodes !== null) {
+    return ambiguous(
+      "issue_create_graphql_rejected",
+      response.status,
+      errorCodes,
+    );
   }
   if (!response.ok) {
-    return { status: "ambiguous", errorCode: "linear_response_ambiguous" };
+    return ambiguous("issue_create_http_rejected", response.status);
   }
   const issue = decodeCreatedIssue(payload, config, labelIds);
   return issue
     ? { status: "created", issue }
-    : { status: "ambiguous", errorCode: "linear_response_ambiguous" };
+    : ambiguous("issue_create_contract_mismatch", response.status);
 }

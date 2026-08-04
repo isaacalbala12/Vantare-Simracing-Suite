@@ -278,6 +278,21 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   cero issues en Linear y el contrato prohíbe una tercera llamada. El webhook
   existe pero su firma aún no tiene delivery real; producción, Codex, Discord,
   merge y promociones continúan fuera de alcance.
+- ISA-287 / TAU-07J añade diagnóstico sanitizado para la respuesta ambigua del
+  piloto. El contrato cerrado publica solo versión, fase
+  segura, HTTP status acotado y códigos GraphQL `RATELIMITED`/`UNKNOWN`; la
+  frontera HTTP lo canonicaliza en runtime para impedir campos añadidos. No
+  cambia claim, fencing, binding ni retries: después de `issueCreate` siempre
+  termina en `needs_owner`. Evidencia: focal 16/16, Testing Center 125/125,
+  deploy guard 4/4, typecheck, formato y diff PASS. Tras revisión humana, solo
+  el worker se desplegó en Supabase testing y quedó `ACTIVE` v7; un probe sin
+  credenciales devolvió `401 unauthorized`. El round-trip autorizado creó
+  exactamente ISA-288, completó un binding sin lease residual y recibió un
+  webhook firmado `create/applied`. Un segundo reporte idéntico quedó
+  `duplicate_linked`: dos ocurrencias, un efecto y una issue Linear. La pausa
+  global está activa, el efecto histórico `needs_owner` quedó congelado por
+  flujo y el bearer temporal fue revocado. Codex, Discord, merge y promociones
+  continúan fuera de alcance.
 
 ## Riesgos
 

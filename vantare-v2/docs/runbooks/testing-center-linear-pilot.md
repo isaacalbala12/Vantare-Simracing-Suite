@@ -1,11 +1,13 @@
 # Testing Center — piloto remoto Supabase → Linear
 
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
-`lbaxvpzexoferfvfkplz`. Schema completo y tres Edge Functions `ACTIVE` v1. El
-webhook `Issue` existe y su signing secret está guardado en Supabase, pero su
-firma aún no se ha verificado con un delivery real y no se ha creado ningún
-issue. El primer efecto externo continúa pausado y requiere una prueba
-presenciada.
+`lbaxvpzexoferfvfkplz`. Schema completo; `testing-center-feedback` y
+`testing-center-linear-webhook` están `ACTIVE` v6 y
+`testing-center-linear-worker` está `ACTIVE` v7 tras ISA-287. El
+round-trip presenciado creó exactamente ISA-288 y verificó el primer webhook
+firmado `create/applied`. Un segundo reporte idéntico quedó `duplicate_linked`
+sin crear otra issue ni efecto. La pausa global está activa y el bearer temporal
+está revocado.
 
 ## Qué demuestra este corte
 
@@ -147,6 +149,44 @@ y reconciliar manualmente el marker en Linear antes de cualquier rollback.
 El rollback `20260804100000_testing_center_linear_pilot.down.sql` solo acepta
 cero bindings reales del piloto. Nunca elimina silenciosamente un issue Linear
 ya creado; primero debe resolverse su trazabilidad con revisión humana.
+
+## Diagnóstico seguro de respuestas ambiguas
+
+ISA-287 / TAU-07J añade el contrato `testing-center.linear-diagnostic.v1` para
+el siguiente despliegue controlado del worker. Una respuesta `409` puede incluir
+únicamente:
+
+- `contractVersion` fija.
+- `detailCode` de una lista cerrada de fases.
+- `httpStatus` entero entre 100 y 599, o `null`.
+- `graphqlErrorCodes` limitado a `RATELIMITED` y `UNKNOWN`.
+
+El handler reconstruye esos cuatro campos en runtime. Nunca propaga mensajes,
+cuerpos, paths, extensions, títulos, descripciones, texto del tester o secretos.
+El diagnóstico es observacional: no habilita un retry. Todo fallo posterior al
+envío de `issueCreate` conserva `needs_owner`; solo un fallo de transporte al
+obtener el token, anterior a la mutación, puede seguir el retry acotado.
+
+El código de ISA-287 fue revisado y el worker quedó desplegado exclusivamente
+en Supabase testing como versión 7. El probe sin credenciales posterior devolvió
+`401 unauthorized`.
+
+## Evidencia remota del round-trip
+
+- Reporte primario: `report_354511...c9241`.
+- Issue técnica: `issue_e16cb...d4ddf`.
+- Efecto: `effect_0b404f...fa61a`, `completed`, intento/fencing 1 y sin lease.
+- Linear: ISA-288, Backlog, proyecto y cinco labels exactas; sin prioridad,
+  assignee ni delegate.
+- Webhook: un delivery `create/applied`; reconciliación `linear_created`,
+  generación 1.
+- Reporte repetido: `report_4067dc...0597a`, `duplicate_linked`.
+- Resultado de deduplicación: dos ocurrencias, un efecto y una issue Linear.
+- Cierre seguro: pausa global activa, efecto histórico `needs_owner` congelado
+  por flujo, bearer revocado y portapapeles limpio.
+
+No se debe volver a llamar al efecto histórico ni al efecto completado. Otra
+prueba externa requiere un reporte nuevo y un gate separado.
 
 ## Verificación local
 

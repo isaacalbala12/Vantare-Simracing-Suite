@@ -154,9 +154,154 @@ Deno.test("any uncertainty after issueCreate is sent becomes needs-owner ambigui
       },
     },
   );
-  if (result.status !== "ambiguous") {
+  if (
+    result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "issue_create_transport_failed" ||
+    result.diagnostic.httpStatus !== null ||
+    result.diagnostic.graphqlErrorCodes.length !== 0
+  ) {
     throw new Error(`unexpected result: ${JSON.stringify(result)}`);
   }
+});
+
+Deno.test("GraphQL diagnostics expose only allowlisted bounded metadata", async () => {
+  let call = 0;
+  const privateMessage = "secret tester title and token must never escape";
+  const result = await createTestingCenterLinearIssue(
+    await projection(),
+    config(),
+    {
+      fetch() {
+        call++;
+        return Promise.resolve(
+          call === 1
+            ? Response.json({ access_token: "t".repeat(64) })
+            : Response.json({
+              data: null,
+              errors: [
+                {
+                  message: privateMessage,
+                  path: ["issueCreate", privateMessage],
+                  extensions: {
+                    code: "RATELIMITED",
+                    privateToken: privateMessage,
+                  },
+                },
+                {
+                  message: privateMessage,
+                  extensions: { code: "LEAK_PRIVATE_CONTEXT" },
+                },
+                {
+                  message: privateMessage,
+                  extensions: { code: "RATELIMITED" },
+                },
+                {
+                  message: privateMessage,
+                  extensions: { code: "ANOTHER_PRIVATE_CODE" },
+                },
+              ],
+            }, { status: 400 }),
+        );
+      },
+    },
+  );
+  const serialized = JSON.stringify(result);
+  if (
+    result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "issue_create_graphql_rejected" ||
+    result.diagnostic.httpStatus !== 400 ||
+    result.diagnostic.graphqlErrorCodes.join(",") !== "RATELIMITED,UNKNOWN" ||
+    serialized.includes(privateMessage) ||
+    serialized.includes("LEAK_PRIVATE_CONTEXT") ||
+    serialized.includes("ANOTHER_PRIVATE_CODE")
+  ) throw new Error(`unsafe GraphQL diagnostic: ${serialized}`);
+});
+
+Deno.test("HTTP rejection never echoes response payload", async () => {
+  let call = 0;
+  const privatePayload = "private upstream payload";
+  const result = await createTestingCenterLinearIssue(
+    await projection(),
+    config(),
+    {
+      fetch() {
+        call++;
+        return Promise.resolve(
+          call === 1
+            ? Response.json({ access_token: "t".repeat(64) })
+            : Response.json({ privatePayload }, { status: 503 }),
+        );
+      },
+    },
+  );
+  const serialized = JSON.stringify(result);
+  if (
+    result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "issue_create_http_rejected" ||
+    result.diagnostic.httpStatus !== 503 || serialized.includes(privatePayload)
+  ) throw new Error(`unsafe HTTP diagnostic: ${serialized}`);
+});
+
+Deno.test("invalid JSON response exposes status but never response bytes", async () => {
+  let call = 0;
+  const privateBody = "private non-json upstream response";
+  const result = await createTestingCenterLinearIssue(
+    await projection(),
+    config(),
+    {
+      fetch() {
+        call++;
+        return Promise.resolve(
+          call === 1
+            ? Response.json({ access_token: "t".repeat(64) })
+            : new Response(privateBody, { status: 502 }),
+        );
+      },
+    },
+  );
+  const serialized = JSON.stringify(result);
+  if (
+    result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "issue_create_invalid_json" ||
+    result.diagnostic.httpStatus !== 502 || serialized.includes(privateBody)
+  ) throw new Error(`unsafe invalid-JSON diagnostic: ${serialized}`);
+});
+
+Deno.test("unresolved label fails before network with a closed diagnostic", async () => {
+  const missingModuleConfig = parseTestingCenterLinearConfig({
+    LINEAR_CLIENT_ID: "client-id",
+    LINEAR_CLIENT_SECRET: "client-secret-that-is-long-enough",
+    LINEAR_ORGANIZATION_ID: ids.organization,
+    LINEAR_TEAM_ID: ids.team,
+    LINEAR_PROJECT_ID: ids.project,
+    LINEAR_TRIAGE_STATE_ID: ids.state,
+    LINEAR_WORKSPACE_SLUG: "vantareapp",
+    LINEAR_LABEL_IDS_JSON: JSON.stringify({
+      "testing-center": ids.testing,
+      "needs-triage": ids.triage,
+      "channel:nightly": ids.nightly,
+      "channel:testers": ids.testers,
+      "module:other": ids.module,
+      "status:needs-triage": ids.status,
+    }),
+  });
+  let calls = 0;
+  const result = await createTestingCenterLinearIssue(
+    await projection(),
+    missingModuleConfig,
+    {
+      fetch: () => {
+        calls++;
+        throw new Error("must not call network");
+      },
+    },
+  );
+  if (
+    calls !== 0 || result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "label_resolution_failed" ||
+    result.diagnostic.httpStatus !== null ||
+    result.diagnostic.graphqlErrorCodes.length !== 0
+  ) throw new Error(`unsafe label diagnostic: ${JSON.stringify(result)}`);
 });
 
 Deno.test("created response must match team project state labels and Vantare URL", async () => {
@@ -175,7 +320,11 @@ Deno.test("created response must match team project state labels and Vantare URL
       },
     },
   );
-  if (result.status !== "ambiguous") {
+  if (
+    result.status !== "ambiguous" ||
+    result.diagnostic.detailCode !== "issue_create_contract_mismatch" ||
+    result.diagnostic.httpStatus !== 200
+  ) {
     throw new Error("incomplete Linear response was accepted");
   }
 });

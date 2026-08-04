@@ -233,3 +233,7 @@ y recientes.
   `WidgetVisualViewport` + `WidgetVisualHost`. OBS no recibe etiqueta ni chrome
   técnico dentro de su superficie. El root capturable sigue siendo
   `data-overlay-workshop-widget-root`; el stage sigue separado.
+- Evidencia focal: 2 archivos/9 Vitest PASS, ESLint directo sobre los cuatro
+  archivos authoring PASS, `design-system:check` PASS y build productivo PASS
+  sin sentinel `overlay-workshop` ni `Overlay Workshop` en los assets. El lint
+  global sigue registrando 30 errores/2 warnings heredados fuera del write set.

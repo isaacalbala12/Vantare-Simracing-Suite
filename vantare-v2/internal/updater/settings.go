@@ -11,9 +11,24 @@ import (
 type Channel string
 
 const (
-	ChannelStable     Channel = "stable"
+	ChannelStable  Channel = "stable"
+	ChannelTesters Channel = "testers"
+	ChannelNightly Channel = "nightly"
+	// ChannelPrerelease is retained only to load old local settings. New UI and
+	// authorization code must use the explicit Testers/Nightly channels.
 	ChannelPrerelease Channel = "prerelease"
 )
+
+func NormalizeChannel(channel Channel) Channel {
+	switch channel {
+	case ChannelStable, ChannelTesters, ChannelNightly:
+		return channel
+	case ChannelPrerelease:
+		return ChannelStable
+	default:
+		return ChannelStable
+	}
+}
 
 // Settings stores updater preferences.
 type Settings struct {
@@ -40,14 +55,13 @@ func LoadSettings(path string) (*Settings, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
-	if s.Channel == "" {
-		s.Channel = ChannelStable
-	}
+	s.Channel = NormalizeChannel(s.Channel)
 	return &s, nil
 }
 
 // SaveSettings persists updater settings to disk.
 func SaveSettings(path string, s *Settings) error {
+	s.Channel = NormalizeChannel(s.Channel)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}

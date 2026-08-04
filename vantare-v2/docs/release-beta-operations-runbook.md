@@ -75,37 +75,27 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 
 | Workflow | Trigger | Secreto | Canal Discord |
 |----------|---------|---------|---------------|
-| Release announcement | push tag `v*` o manual | `DISCORD_RELEASE_WEBHOOK_URL` | `#beta-announcements` |
-| Tester progress | fragmento `docs/changelog/fragments/*.json` que alcanza `testers` | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
-| Public beta changelog | manual (`workflow_dispatch`) | `DISCORD_BUILD_WEBHOOK_URL` | changelog |
-| Active development | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
+| Release estable | tag `v*` verificado en `master`, tras subir artefactos | `DISCORD_RELEASE_WEBHOOK_URL` | canal de lanzamientos configurado |
+| Nightly/Testers | pre-release verificada desde la rama homónima | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
+| Changelog | después de publicar la misma pre-release | `DISCORD_BUILD_WEBHOOK_URL` | changelog (`1519747444315914512`) |
+| Desarrollo activo | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
 
 > Los canales exactos (`#beta-*`) son los publicos de la Beta Publica. Las builds internas previas (`v0.3.*`) que pudieran haber quedado apuntando a `#alpha-*` no se usan ya para esta linea.
 
 ### Disparar manualmente con `gh`
 
 ```bash
-# Anunciar una release (changelog)
-gh workflow run "Discord release announcement" --ref master -f tag=v0.1.0.0
+# Publicar una Nightly verificada con EXE, instalador, portable y checksums
+gh workflow run "Release build" --ref nightly \
+  -f publish_channel=nightly \
+  -f release_tag=v0.1.0.5-nightly.1 \
+  -f release_notes="Primera validación privada de Overlay Studio"
 
-# Publicar progreso
-gh workflow run "Discord tester progress" --ref testers -f base_revision=HEAD^
-
-# Anunciar build disponible (automatica desde release)
-gh workflow run "Discord public beta changelog" --ref testers \
-  -f version=v0.1.0.0 \
-  -f release_tag=v0.1.0.0 \
-  -f notes="Notas opcionales para testers"
-
-# Anunciar build disponible (manual con URL externa)
-gh workflow run "Discord public beta changelog" --ref testers \
-  -f version=v0.1.0.0 \
-  -f download_url="https://github.com/usuario/repo/releases/download/v0.1.0.0/vantare-amd64-installer.exe" \
-  -f sha256="HASH_SHA256_AQUI" \
-  -f notes="Notas opcionales"
+# Generar únicamente una build interna, sin GitHub pre-release ni Discord
+gh workflow run "Release build" --ref nightly -f publish_channel=none
 
 # Publicar el digest aprobado de proyectos activos
-gh workflow run "Discord active development" --ref master
+gh workflow run "Discord active development v2" --ref master
 ```
 
 ### Re-run seguro
@@ -117,10 +107,10 @@ Todos los workflows de Discord detectan `github.run_attempt > 1` y se saltan el 
 
 ### Separacion de triggers
 
-`Discord tester progress` solo escucha fragmentos en `testers`; una rama de issue
-o `nightly` no anuncia cambios al grupo amplio. `Discord active development`
-solo se ejecuta por horario o dispatch; y el changelog beta solo por dispatch.
-Un tag no puede activar ninguna de esas tres vías.
+La publicación de Nightly/Testers y su changelog forma parte del mismo workflow
+que construye y verifica la pre-release. Por ello nunca se anuncia una descarga
+antes de que existan sus seis artefactos. Desarrollo activo es independiente y
+solo se ejecuta por horario o dispatch desde la rama predeterminada.
 
 La ruta de promoción es `rama de issue -> nightly -> testers -> master`.
 `develop` permanece congelada como referencia histórica. Consulta
@@ -255,7 +245,7 @@ Si aparece `Configuracion incompleta`, casi siempre se esta ejecutando un binari
    git tag -a v0.1.0.0 -m "Release v0.1.0.0"
    git push origin v0.1.0.0
    ```
-2. El workflow `Release build` se dispara automaticamente, genera los 6 artefactos y crea la GitHub Release con los assets.
+2. El workflow `Release build` se dispara automaticamente, genera los 6 artefactos, crea la GitHub Release con los assets y solo entonces publica sus dos mensajes de Discord.
 
 ### Recoger el SHA256 para el anuncio de Discord
 
@@ -264,7 +254,7 @@ Si aparece `Configuracion incompleta`, casi siempre se esta ejecutando un binari
 
 ### Publicar la build
 
-Ejecuta `Discord public beta changelog` aportando versión, enlace y SHA256. `Discord release announcement` se dispara al pushear el tag `v*` y comprueba que su commit pertenece a `master`.
+No existe un anuncio separado. `Release build` obtiene el enlace y SHA256 de los artefactos verificados y publica Changelog junto con la tarjeta del canal. Para Stable, el tag `v*` debe pertenecer a `master`.
 
 ---
 

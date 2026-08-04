@@ -492,6 +492,21 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	}
 }
 
+func TestHandleOverlayProfileSnapshotRequestEmitsLoadedDocument(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+
+	handleOverlayProfileSnapshotRequest(studioSvc)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "overlay:profile-v3-loaded" {
+		t.Fatalf("events=%v", emitter.events)
+	}
+}
+
+func TestHandleOverlayProfileSnapshotRequestAllowsMissingService(t *testing.T) {
+	handleOverlayProfileSnapshotRequest(nil)
+}
+
 func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)

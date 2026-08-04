@@ -176,6 +176,27 @@ describe("Topbar v5.2 navigation", () => {
     expect(screen.getByText("Ajustes")).toBeTruthy();
     expect(screen.queryByText("Setup")).toBeNull();
   });
+
+  it("opens the mobile menu and closes it after navigating", () => {
+    const onNavigate = vi.fn();
+    render(
+      <Topbar
+        activeSection="dashboard"
+        onNavigate={onNavigate}
+        version="v0.1.0.3"
+        sourceStatus={null}
+      />,
+    );
+
+    const menu = screen.getByTestId("topbar-mobile-menu-toggle");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(menu);
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(screen.getAllByTestId("topbar-nav-launcher")[1]);
+    expect(onNavigate).toHaveBeenCalledWith("launcher");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+  });
 });
 
 describe("Topbar gated navigation", () => {

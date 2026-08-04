@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLicense } from "./license";
-import { buildAccessContext } from "./access-policy";
+import { buildAccessContext, operationalRolesFromLicense } from "./access-policy";
 import type { AccessContext, AccessRole } from "./access-policy";
 import { resolveAccessDevMode, resolveLicenseForDevMode } from "./access-dev-modes";
 
@@ -16,13 +16,20 @@ export function useAccess(options?: { roles?: AccessRole[] }): AccessContext {
     const effectiveResult = licenseOverride ?? result;
 
     // Resolve roles based on dev mode.
-    const effectiveRoles: AccessRole[] = [...roles];
-    if (devMode === "tester" || devMode === "power-tester") {
-      // ACCESS-DEV-MODES-01: tester and power-tester are equivalent.
-      // Both use the existing tester role. Differentiation is future work.
-      if (!effectiveRoles.includes("tester")) {
-        effectiveRoles.push("tester");
-      }
+    const effectiveRoles: AccessRole[] = Array.from(
+      new Set<AccessRole>([
+        ...roles,
+        ...operationalRolesFromLicense(effectiveResult),
+      ]),
+    );
+    if (devMode === "tester" && !effectiveRoles.includes("tester")) {
+      effectiveRoles.push("tester");
+    }
+    if (
+      devMode === "power-tester" &&
+      !effectiveRoles.includes("nightly_tester")
+    ) {
+      effectiveRoles.push("nightly_tester");
     }
 
     if (!effectiveResult) {
@@ -30,6 +37,7 @@ export function useAccess(options?: { roles?: AccessRole[] }): AccessContext {
         planLabel: "free",
         planStatus: "free",
         roles: effectiveRoles,
+        capabilities: [],
         isBlocked: false,
         isUnconfigured: false,
       };

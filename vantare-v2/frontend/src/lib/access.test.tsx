@@ -155,6 +155,25 @@ describe("useAccess", () => {
     expect(result.current.roles).toEqual(["tester"]);
   });
 
+  it("derives a signed operational role from the license", () => {
+    const { result } = renderHook(() => useAccess(), {
+      wrapper: LicenseProvider,
+    });
+
+    act(() => {
+      emitChanged({
+        state: "authenticated-no-entitlement",
+        entitlements: [],
+        operationalRoles: ["nightly_tester"],
+        userId: "user-1",
+        email: "driver@example.test",
+        deviceOK: true,
+      });
+    });
+
+    expect(result.current.roles).toEqual(["nightly_tester"]);
+  });
+
   it("throws when used outside LicenseProvider", () => {
     expect(() => renderHook(() => useAccess())).toThrow(
       "useLicense must be used inside LicenseProvider",

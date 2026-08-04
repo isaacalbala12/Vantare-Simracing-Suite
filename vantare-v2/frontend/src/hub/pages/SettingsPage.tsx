@@ -6,12 +6,14 @@ import { AccountSettings } from '../settings/AccountSettings';
 import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
 import { parseKeyEvent } from '../settings/hotkey-capture';
 import { isDowngrade } from '../../lib/version-compare';
+import { useAccess } from '../../lib/access';
+import { allowedUpdateChannels } from '../../lib/access-policy';
 import type {
   LauncherAppEntry,
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-export type Channel = 'stable' | 'prerelease';
+export type Channel = 'stable' | 'testers' | 'nightly';
 
 export type Asset = {
   name: string;
@@ -99,6 +101,12 @@ const HOTKEY_NAMES: Record<string, string> = {
   prevProfile: 'Perfil anterior',
 };
 
+const CHANNEL_LABELS: Record<Channel, string> = {
+  stable: 'Stable',
+  testers: 'Testers',
+  nightly: 'Nightly',
+};
+
 type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics' | 'advanced';
 
 
@@ -116,6 +124,8 @@ function SettingsPageInner() {
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
   const { t } = useI18n();
+  const access = useAccess();
+  const availableChannels = allowedUpdateChannels(access);
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
@@ -363,28 +373,22 @@ function SettingsPageInner() {
                 Canal de actualizaciones
               </h2>
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
-                  <input
-                    type="radio"
-                    name="channel"
-                    value="stable"
-                    checked={settings.channel === 'stable'}
-                    onChange={() => handleChannelChange('stable')}
-                    className="accent-vantare-red-500"
-                  />
-                  Solo releases estables
-                </label>
-                <label className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer">
-                  <input
-                    type="radio"
-                    name="channel"
-                    value="prerelease"
-                    checked={settings.channel === 'prerelease'}
-                    onChange={() => handleChannelChange('prerelease')}
-                    className="accent-vantare-red-500"
-                  />
-                  Incluir pre-releases
-                </label>
+                {availableChannels.map((channel) => (
+                  <label
+                    key={channel}
+                    className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name="channel"
+                      value={channel}
+                      checked={settings.channel === channel}
+                      onChange={() => handleChannelChange(channel)}
+                      className="accent-vantare-red-500"
+                    />
+                    {CHANNEL_LABELS[channel]}
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -632,7 +636,7 @@ function SettingsPageInner() {
               <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
               <div className="space-y-2 text-xs text-vantare-textMuted font-mono">
                 <p>Versión actual: {info?.currentVersion ?? '—'}</p>
-                <p>Canal: {settings.channel === 'prerelease' ? 'Incluir pre-releases' : 'Solo releases estables'}</p>
+                <p>Canal: {CHANNEL_LABELS[settings.channel]}</p>
               </div>
               <p className="text-xs text-vantare-textMuted mt-4 leading-relaxed">
                 Vantare se ejecuta localmente. Los datos de telemetría y configuración permanecen en tu equipo.

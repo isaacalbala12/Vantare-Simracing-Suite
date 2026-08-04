@@ -12,6 +12,11 @@
 
 ## Estado
 
+- ISA-246/BIL-N05 está integrado en `nightly@55fba3d`: el callback OAuth
+  restaura la sesión del WebView y permite revalidar sin reiniciar.
+- ISA-247/BIL-10C está en implementación aislada: roles operativos, leases,
+  retiro legacy controlado, UI separada y herramienta administrativa. Ningún
+  apply remoto se ejecuta desde la rama.
 - Billing: BIL-01..BIL-07 ya estaban en `nightly`; este corte BIL-N02 incorpora
   BIL-08 tras validación acumulativa. Venta pública continúa **NO-GO**.
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
@@ -124,6 +129,13 @@ señales sanitizadas del webhook, snapshot SQL agregado exclusivo de
 payloads, PII y errores libres quedan fuera. Replay, reparación, deploy y
 producción siguen necesitando autorización. Autoridad:
 `docs/billing/bil-10-observability-runbook.md`.
+
+BIL-10C / ISA-247 separa acceso interno de comercio. Tester, Tester Nightly y
+Owner viven en `operational_access_assignments`; el emisor limita sus leases a
+14 días, 72 horas y 30 días respectivamente. Los grants legacy no participan
+en credenciales y su retiro es por cuenta, reversible mediante backup,
+append-only y dry-run por defecto. Autoridad:
+`docs/billing/bil-10c-operational-access-runbook.md`.
 
 El inbox durable queda particionado por entorno. Las filas anteriores al corte
 se conservan como `unclassified`, visibles para operación pero excluidas de las
@@ -301,6 +313,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   release. Handoff Deno 8/8, Testing Center Deno 136/136 y Node 4/4 pasan. Falta
   observar una tarea sintética y su PR;
   no hay caller, secreto, deploy ni promoción.
+- La reconciliación local autorizada de PR #121 parte de
+  `ISA-234@a526e2b0a4e344f5841a7c216d77a0efc4f0b62e` e incorpora exactamente
+  `nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e` mediante merge incremental,
+  sin force-push. Linear no permitió crear otra issue por el límite gratuito;
+  la excepción queda registrada en ISA-234 y no cambia el contrato de rechazo
+  ni reactiva `same_branch`. Los gates locales pasan: deploy surface, Deno
+  vigente 165/165, preflight 4/4, frontend focal 150/150, build y Go focal.
+  CI, build de canal y prueba humana siguen pendientes; no hay merge ni
+  promoción.
 
 ## Riesgos
 
@@ -313,9 +334,9 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar BIL-10 / ISA-75 y promoverlo exclusivamente a `nightly` cuando sus
-   gates estén verdes.
-2. Recoger feedback Nightly de BIL-01..10 sin habilitar venta.
+1. Completar gates locales y review de BIL-10C / ISA-247.
+2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
+3. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
 4. Continuar gates monetarios y despliegue controlado sin venta pública.
 5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
 6. Reauditar ISA-14 cuando se cierren worktrees grandes.
@@ -336,3 +357,9 @@ OAuth temporales de configuración permanente. No hay Codex, Discord,
 promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.
+
+Estado Nightly previo integrado en esta reconciliación:
+
+2026-08-03, ISA-246 queda en `nightly@55fba3d` e ISA-247 implementa localmente
+la separación entre planes comerciales y accesos operativos. El apply remoto,
+Owner real y retiro de legacy siguen protegidos por gate. Venta pública NO-GO.

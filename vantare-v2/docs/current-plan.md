@@ -1,3 +1,22 @@
+Nota ISA-234 / reconciliación con Nightly (2026-08-05, candidata local):
+- Linear rechazó crear una issue de integración propia por el límite del plan
+  gratuito. Con autorización explícita de Isaac, la PR #121 continúa como
+  excepción trazada en ISA-234; no se archivan issues y no se modifica la
+  política de correcciones rechazadas, que mantiene `same_branch` retirado.
+- Origen exacto `ISA-234@a526e2b0a4e344f5841a7c216d77a0efc4f0b62e` y
+  base remota verificada
+  `nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e`. La reconciliación es
+  incremental, sin reescritura ni force-push.
+- Los cuatro conflictos se resolvieron preservando la allowlist del piloto, el
+  build channel fail-closed, la configuración pública generada fuera de la
+  identidad de caché y las dos líneas de documentación viva.
+- Evidencia local: deploy surface PASS; Deno vigente 165/165; preflight Codex
+  4/4; frontend integración 150/150 con un worker; build frontend PASS; Go
+  focal `cmd/vantare` + `internal/app` PASS; `git diff --check` PASS.
+- Sin Docker, Supabase remoto, secretos, Codex automático, deploy, release,
+  merge ni promoción. Pendiente: commit/push normal, CI de la PR y build
+  Nightly para revisión manual.
+
 Nota ISA-248 / TAU-07J (2026-08-05, handoff humano preparado localmente):
 - `testing-center.codex-human-handoff.v1` solo se construye desde un dossier
   completo, íntegro y con repo/rama/SHA/base, paths, command IDs y criterios
@@ -488,6 +507,45 @@ Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
 - Gates focales: x20, vet, race x10 y fuzzing PASS. Autoridad:
   `docs/runbooks/testing-center-diagnostics.md`.
 - Estado: implementación local en review; sin merge, promoción o build.
+Nota ISA-258 / V1-07A (2026-08-03, Roadmap conectado a Linear):
+- La vista editorial `Roadmap actual` se conserva. La antigua vista manual
+  `Desarrollo por features` pasa a `Proyectos`, con tres pestañas públicas,
+  seis proyectos allowlisted y tareas limitadas inicialmente a ocho por
+  proyecto con expansión explícita.
+- Linear no entra en el cliente: un exporter Python stdlib read-only pagina
+  GraphQL, falla cerrado ante respuestas parciales/estados desconocidos,
+  sanitiza títulos y genera un snapshot público v1 sin UUIDs, identificadores
+  `ISA-*` ni prefijos internos de proyecto, URLs/dominios, descripciones,
+  comentarios, labels, asignados o workspace.
+- El cliente valida schema/canal/progreso/privacidad, distingue remoto actual,
+  remoto obsoleto y fallback empaquetado, e impone timeout. Las pestañas
+  superiores e internas usan semántica ARIA, roving tabindex y foco real.
+- Catálogo, snapshot y fixture quedan versionados; la publicación programada y
+  el endpoint por canal siguen fuera de este corte. Una lectura live mediante
+  el conector de Linear generó el bootstrap público actual con 3 pestañas, 6
+  proyectos y 145 tareas; 26 canceladas quedaron excluidas. Sin
+  `LINEAR_API_KEY` local no se ejecutó la ruta de red del exporter; su dry-run
+  end-to-end con fixture generó 3 pestañas, 6 proyectos y 6 tareas.
+- Gates: exporter 10/10, frontend Roadmap focal 54/54, build, lint focal, privacidad y
+  `git diff --check` PASS. La suite global terminó 312/313 y 2.147/2.148 dos
+  veces por dos intermitencias distintas en `useCanvasInteraction.test.tsx`,
+  archivo sin diff que aislado pasa 24/24. El lint global conserva 30 errores y
+  2 warnings preexistentes fuera del write set.
+- Estado: implementación en review, sin commit/push/PR ni promoción. Requiere
+  validación manual de Isaac antes de cualquier integración en `nightly`.
+
+Nota ISA-247 / BIL-10C (2026-08-03, acceso operativo revocable):
+- Tester, Tester Nightly y Owner son roles server-side separados de Polar y de
+  los planes comerciales; solo se emiten como capabilities firmadas acotadas.
+- Leases: Tester 14 días, Tester Nightly 72 horas y Owner 30 días. La asignación
+  servidor puede ser permanente pero siempre revocable.
+- Los grants legacy se ignoran como autoridad de credencial y disponen de
+  preview/retiro por cuenta, idempotente y auditado; nunca se borran.
+- Cuenta muestra plan y acceso operativo por separado. Existe una política pura
+  de canales Stable/Testers/Nightly y una CLI UUID-only dry-run por defecto.
+- Autoridad operativa: `docs/billing/bil-10c-operational-access-runbook.md`.
+- Sin migración/deploy/apply remoto, Owner real, pagos, refunds o promoción a
+  Testers/Master. Billing continúa **NO-GO**.
 
 Nota ISA-75 / BIL-10 (2026-08-02, observabilidad Billing):
 - Señales del webhook sanitizadas con correlation ID hash; no se registran IDs
@@ -2216,6 +2274,13 @@ Nota ISA-95 (2026-07-14):
 - Fuente tester: `docs/changelog/fragments/*.json`; se elimina el parser de primeras coincidencias históricas de este documento.
 - Seguridad: secretos dedicados sin fallback, validación de IDs conocidos, dry-run sin red y gate manual de Isaac antes de `develop`.
 - Validación real PASS (2026-07-14): release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`. Versión pública vigente verificada: `v0.1.0.2`.
+
+Extensión ISA-95 v2 (2026-08-03):
+
+- Los cuatro workflows históricos independientes se sustituyen por un pipeline coordinado: build, seis artefactos verificados, GitHub Release/pre-release y, solo entonces, Discord.
+- Nightly y Testers conservan contratos editoriales e imágenes distintas; Changelog mantiene enlace, checksum y notas técnicas; Stable usa una tarjeta propia y valida su canal de destino.
+- Cada pre-release declara un manifiesto canónico de issues para impedir anuncios históricos o contenido de relleno. Primer corte: `v0.1.0.5-nightly.1` con ISA-95, ISA-247 e ISA-257.
+- Evidencia local: 31 tests del comunicador PASS, `actionlint` sin hallazgos nuevos y captura Chrome 1200x630 de Changelog validada visualmente. La validación final será la ejecución real de `Release build` desde `nightly`.
 - Extensión híbrida completa (2026-07-15): Release, Testers, Desarrollo y Build combinan embed accesible con una tarjeta 1200×630 específica generada desde HTML inspirado en `roadmap_v5.2.html`. Sin IA ni dependencias nuevas. Las cuatro capturas locales están validadas; los POST reales de las imágenes siguen pendientes del gate manual.
 - Revisión editorial (2026-07-15): eliminadas tarjetas de relleno y etiquetas mixtas (`Tester briefing`, `Public preview`, `Development pulse`, `Building in public`); Release extrae solo highlights estructurados, Testers muestra cambio/prueba/limitación y los estados con 1–2 elementos se centran sin inventar contenido. Contrato editorial y tests anti-slop añadidos.
 - Plan y operación: `docs/superpowers/plans/2026-07-14-isa-95-discord-linear-communications.md` y `docs/discord-communications.md`.

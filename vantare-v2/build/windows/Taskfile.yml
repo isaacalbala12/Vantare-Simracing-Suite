@@ -39,7 +39,7 @@ tasks:
       - task: common:build:frontend
         vars:
           BUILD_FLAGS:
-            ref: .BUILD_FLAGS
+            ref: .BINDING_FLAGS
           OBFUSCATED:
             ref: .OBFUSCATED
           DEV:
@@ -66,6 +66,10 @@ tasks:
           - test "{{.DEV}}" != "true"
       - '{{if ne .DEV "true"}}powershell -NoProfile -Command "Remove-Item cmd/vantare/supabase_build.go -ErrorAction SilentlyContinue; exit 0"{{end}}'
     vars:
+      # Bindings need build tags, but never linker values. Keeping public
+      # credentials out of this task also prevents Task from using them in its
+      # Windows checksum filename.
+      BINDING_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false{{end}}'
       BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l" -ldflags="-X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X main.version=v{{.APP_VERSION}} -X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}"{{end}}'
     env:
       GOOS: windows

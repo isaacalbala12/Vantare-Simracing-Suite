@@ -55,7 +55,7 @@ export type RoadmapDataset = {
 // sin tocar código: si más adelante usas un Google Doc exportado a JSON o
 // Supabase Storage, solo sustituyes esta constante.
 export const ROADMAP_SOURCE_URL =
-  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/main/docs/roadmap-source.json";
+  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-source.json";
 
 // Escala obligatoria de porcentajes (docs/roadmap-maintenance.md §3).
 export const PROGRESS_SCALE = [0, 10, 25, 50, 75, 100] as const;
@@ -383,7 +383,7 @@ export type RoadmapChangelogEntry = {
 
 // URL pública del changelog completo.
 export const ROADMAP_CHANGELOG_URL =
-  "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/main/docs/changelog.md";
+  "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/master/vantare-v2/docs/changelog.md";
 
 // Enlaces de feedback (TODO: reemplazar form por URL real cuando se decida).
 export const ROADMAP_FEEDBACK_LINKS = {

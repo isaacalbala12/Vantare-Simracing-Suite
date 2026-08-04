@@ -1,4 +1,4 @@
-import type { LicenseResult } from "./license-types";
+import type { Capability, LicenseResult, OperationalRole } from "./license-types";
 import { buildSummary, classifyStatus } from "./plan";
 import type { PlanLabel, PlanStatus } from "./plan";
 
@@ -29,7 +29,7 @@ export type SectionId =
   | "roadmap"
   | "settings";
 
-export type AccessRole = "tester" | "staff" | "dev";
+export type AccessRole = OperationalRole | "staff" | "dev";
 
 export type FeatureGate = {
   allowed: boolean;
@@ -43,11 +43,46 @@ export type AccessContext = {
   planStatus: PlanStatus;
   /** Non-commercial roles that override plan restrictions. */
   roles: AccessRole[];
+  capabilities?: Capability[];
   /** Whether the license is in a blocked state (expired, device-limit). */
   isBlocked: boolean;
   /** Whether the license is unconfigured (no Supabase client). */
   isUnconfigured: boolean;
 };
+
+export type UpdateChannel = "stable" | "testers" | "nightly";
+
+const OPERATIONAL_ROLE_ORDER: OperationalRole[] = [
+  "tester",
+  "nightly_tester",
+  "owner",
+];
+
+export function operationalRolesFromLicense(
+  license: LicenseResult | null | undefined,
+): OperationalRole[] {
+  const roles = license?.operationalRoles ?? [];
+  return OPERATIONAL_ROLE_ORDER.filter((role) => roles.includes(role));
+}
+
+export function allowedUpdateChannels(
+  access: Pick<AccessContext, "roles" | "capabilities">,
+): UpdateChannel[] {
+  if (
+    access.roles.includes("owner") ||
+    access.roles.includes("nightly_tester") ||
+    (access.capabilities ?? []).includes("vantare.channel.nightly")
+  ) {
+    return ["stable", "testers", "nightly"];
+  }
+  if (
+    access.roles.includes("tester") ||
+    (access.capabilities ?? []).includes("vantare.channel.testers")
+  ) {
+    return ["stable", "testers"];
+  }
+  return ["stable"];
+}
 
 // ── Policy matrix ──────────────────────────────────────────────────────
 
@@ -176,6 +211,7 @@ export function buildAccessContext(options: {
     planLabel: summary.label,
     planStatus: status,
     roles,
+    capabilities: license.capabilities ?? [],
     isBlocked,
     isUnconfigured,
   };
@@ -192,8 +228,13 @@ export function getFeatureGate(
   access: AccessContext,
   feature: FeatureId,
 ): FeatureGate {
-  // Tester role overrides plan restrictions for all features.
-  if (access.roles.includes("tester")) {
+  // Operational assignments unlock product modules without pretending to be
+  // a paid commercial plan. Their channel access is handled separately.
+  if (
+    access.roles.includes("tester") ||
+    access.roles.includes("nightly_tester") ||
+    access.roles.includes("owner")
+  ) {
     return { allowed: true };
   }
 

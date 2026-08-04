@@ -1227,6 +1227,9 @@ func main() {
 	if err != nil {
 		log.Printf("updater service init error: %v", err)
 	} else {
+		updaterSvc.SetChannelAuthorizer(func(channel updater.Channel) bool {
+			return licenseSvc.AllowsUpdateChannel(string(channel))
+		})
 		wailsApp.RegisterService(application.NewService(updaterSvc))
 	}
 
@@ -1747,6 +1750,10 @@ func main() {
 		}
 		overlayRunning.Store(status.Running)
 		resetOverlayDisplayMode(overlayController, studioProfileSvc)
+	})
+
+	wailsApp.Event.On("overlay:profile-v3:get", func(_ *application.CustomEvent) {
+		handleOverlayProfileSnapshotRequest(studioProfileSvc)
 	})
 
 	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {
@@ -2417,6 +2424,16 @@ func handleOpenOverlayStudio(studioProfileSvc *app.StudioProfileService, emitter
 		}
 	}
 	emitter.Emit("hub:open-overlay-studio", payload)
+}
+
+// handleOverlayProfileSnapshotRequest responds to the desktop WebView only
+// after its profile listener is ready. The startup broadcast can otherwise
+// race a newly-created window and leave it loading indefinitely.
+func handleOverlayProfileSnapshotRequest(studioProfileSvc *app.StudioProfileService) {
+	if studioProfileSvc == nil {
+		return
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
 }
 
 // resetOverlayDisplayMode forces the active V3 document back to racing mode and

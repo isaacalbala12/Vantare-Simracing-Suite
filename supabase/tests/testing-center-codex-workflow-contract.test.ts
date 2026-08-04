@@ -15,7 +15,10 @@ const promptPath = ".github/codex/testing-center-fix-prompt.md";
 const schemaPath = ".github/codex/testing-center-fix-output.schema.json";
 
 Deno.test("Codex workflow is callable-only inert read-only and secret-free", async () => {
-  const workflow = await Deno.readTextFile(workflowPath);
+  const workflow = (await Deno.readTextFile(workflowPath)).replaceAll(
+    "\r\n",
+    "\n",
+  );
   assertStringIncludes(workflow, "workflow_call:");
   assertStringIncludes(workflow, "if: ${{ false }}");
   assertStringIncludes(workflow, "permissions:\n  contents: read");

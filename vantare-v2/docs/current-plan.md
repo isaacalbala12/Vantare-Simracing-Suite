@@ -1,3 +1,16 @@
+Nota ISA-289 / TAU-07K (2026-08-04, hardening de revisión cerrado):
+- El tooling del piloto acepta únicamente el project ref exacto y sensible a
+  mayúsculas `lbaxvpzexoferfvfkplz`; el preflight comprueba también el ref
+  vinculado antes de migraciones. Tests conductuales rechazan producción, un
+  tercer proyecto, variantes en mayúsculas, vínculo ausente y vínculo distinto.
+- OAuth reintenta solo transporte, 408, 429 y 5xx antes de `issueCreate`.
+  400/401/403, JSON inválido y contrato/token inválido terminan sanitizados en
+  `needs_owner` sin segunda llamada. La incertidumbre post-dispatch no cambia.
+- El handoff canónico distingue ya el fallo histórico del round-trip exitoso.
+  Evidencia: PowerShell guard PASS, focal Deno 19/19, Testing Center 128/128,
+  deploy guard 4/4, typecheck, formato y diff PASS. Sin red, secretos, schema,
+  deploy ni promoción.
+
 Nota ISA-287 / TAU-07J (2026-08-04, round-trip remoto y deduplicación PASS):
 - El worker clasifica toda incertidumbre de Linear con el contrato cerrado
   `testing-center.linear-diagnostic.v1`: fase segura, HTTP status acotado y

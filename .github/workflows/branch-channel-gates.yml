@@ -38,6 +38,9 @@ jobs:
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py
 
+      - name: Test Overlay Workshop channel policy
+        run: python .github/scripts/test_overlay_workshop_channel_flag.py
+
   product:
     name: Validate Vantare blocking gates
     needs: policy
@@ -46,6 +49,8 @@ jobs:
       run:
         shell: powershell
         working-directory: ${{ env.VANTARE_DIR }}
+    env:
+      VITE_INCLUDE_OVERLAY_WORKSHOP: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/testers') && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,6 +76,12 @@ jobs:
       - name: Frontend build
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build
+
+      - name: Verify Overlay Workshop channel bundle
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          $expected = if ($env:VITE_INCLUDE_OVERLAY_WORKSHOP -eq "true") { "internal" } else { "stable" }
+          pnpm verify:overlay-workshop-bundle -- --dist dist --expect $expected
 
       - name: Go tests (blocking except isolated ISA-118)
         run: |

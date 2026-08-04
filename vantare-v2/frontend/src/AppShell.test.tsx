@@ -14,6 +14,12 @@ vi.mock("./lib/AuthSessionBridge", () => ({
     return <div data-auth-session-bridge>{children}</div>;
   },
 }));
+vi.mock("./lib/license", () => ({
+  LicenseProvider: ({ children }: { children: React.ReactNode }) => {
+    renderOrder.push("license");
+    return <div data-license-provider>{children}</div>;
+  },
+}));
 vi.mock("./overlay/CompositeApp", () => ({ CompositeApp: () => <div>composite</div> }));
 vi.mock("./overlay/ObsOverlayApp", () => ({ ObsOverlayApp: () => <div>obs</div> }));
 vi.mock("./hub/HubApp", () => ({ HubApp: () => <div>hub</div> }));
@@ -31,8 +37,9 @@ describe("AppShell", () => {
 
     render(<AppRuntime />);
 
-    expect(renderOrder).toEqual(["auth"]);
+    expect(renderOrder).toEqual(["auth", "license"]);
     expect(screen.getByText("composite").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(screen.getByText("composite").closest("[data-license-provider]")).toBeTruthy();
   });
 
   it.each([
@@ -47,5 +54,11 @@ describe("AppShell", () => {
     render(<AppRuntime />);
 
     expect(screen.getByText(expected).closest("[data-auth-session-bridge]")).toBeTruthy();
+  });
+
+  it("renders an explicitly supplied internal child under the shared providers", () => {
+    render(<AppRuntime><div>internal child</div></AppRuntime>);
+    expect(screen.getByText("internal child").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(screen.getByText("internal child").closest("[data-license-provider]")).toBeTruthy();
   });
 });

@@ -4478,3 +4478,31 @@ Nota ISA-263 / OS-09D (2026-08-04, controles y verificación real Workshop):
   normal, rutas OBS/OAuth/Hub/Composite y fallback de carga), ESLint focal,
   `design-system:check`, build y
   compile-out sin sentinels Workshop pasan. Sin promoción.
+
+Nota ISA-264 / OS-09E (2026-08-04, acceso Owner y exclusión física de Stable):
+- Desarrollo local mantiene Workshop automático; las builds internas de
+  Nightly/Testers lo optan mediante una constante Vite y los tags Stable lo
+  excluyen físicamente. El bundle se verifica por import graph, chunk,
+  sentinels y stylesheet: la ruta no queda solo oculta por UI.
+- En una build interna `/workshop` requiere exclusivamente `owner` en
+  `operationalRoles` y estado `active`/`grace` resultante de la credencial
+  nativa firmada y vigente o de su fallback válido. No depende de email,
+  localStorage, URL, plan ni entitlement; Owner con `entitlements: []` entra.
+  Tester, Tester Nightly, planes comerciales, capability owner aislada, ausencia,
+  expiración, revocación o rechazo de credencial se deniegan antes de montar el
+  Workshop.
+- Se eleva el proveedor de licencia único a `AppRuntime` y se elimina el
+  duplicado de Hub; las rutas Hub/OBS/OAuth/Composite siguen bajo el mismo bridge
+  de sesión y no se altera la autorización comercial de widgets.
+- Workflows de canal y release construyen con la constante correcta sin mostrar
+  secretos; el parser del verificador acepta el separador real que pnpm inserta.
+  Sin cambios de Billing/auth, catálogo, canvas, persistencia, LMU, baselines o
+  promoción. Estado: candidato técnico pendiente de review/PR.
+- Corrección P1 posterior a review: `AppShell` no contiene ya la ruta ni el
+  import del Workshop. La ruta vive en un módulo lazy cargado exclusivamente
+  bajo la constante Vite interna, por lo que Stable no conserva literal,
+  import graph, chunk, CSS ni sentinels; la build interna conserva los cinco y
+  sigue pasando el gate Owner/Tester en navegador. La constante de CI solo se
+  activa tras `push` directo a `nightly` o `testers`: los PR hacia esos canales,
+  ramas de issue, `master` y tags construyen Stable. El test stdlib fija esa
+  matriz y se ejecuta en el job de política. Sin promoción.

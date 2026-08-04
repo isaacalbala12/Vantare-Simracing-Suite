@@ -5,8 +5,10 @@ import { applyTheme, getStoredThemeId, type VantareTheme } from "./lib/theme";
 import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
 import { AppBootFallback } from "./AppBootFallback";
-const OverlayWorkshopDevRoute = import.meta.env.DEV
-  ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
+const includeOverlayWorkshop =
+  import.meta.env.DEV || import.meta.env.VITE_INCLUDE_OVERLAY_WORKSHOP === "true";
+const OverlayWorkshopInternalApp = includeOverlayWorkshop
+  ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopInternalApp")).OverlayWorkshopInternalApp }))
   : null;
 const AppRuntime = lazy(async () => ({ default: (await import("./AppShell")).AppRuntime }));
 
@@ -17,15 +19,12 @@ const themeId = getStoredThemeId();
 applyTheme(themeId === "vantare-lite" ? liteTheme : v5Theme);
 
 export function App() {
-  const path = window.location.pathname;
-  if (import.meta.env.DEV && OverlayWorkshopDevRoute && path === "/workshop") {
-    return (
-      <Suspense fallback={<AppBootFallback />}>
-        <OverlayWorkshopDevRoute />
-      </Suspense>
-    );
-  }
-  return <Suspense fallback={<AppBootFallback />}><AppRuntime /></Suspense>;
+  const Runtime = OverlayWorkshopInternalApp ?? AppRuntime;
+  return (
+    <Suspense fallback={<AppBootFallback />}>
+      <Runtime />
+    </Suspense>
+  );
 }
 
 createRoot(document.getElementById("root")!).render(

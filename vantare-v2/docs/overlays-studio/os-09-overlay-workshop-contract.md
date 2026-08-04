@@ -36,8 +36,8 @@ paridad Crystal histórica.
 ## Threat model y límites de OS-09
 
 - Dev/HMR: solo una ruta local de desarrollo; no hay conversión Workshop→producción.
-- Prerelease: Nightly/Testers será read-only y requerirá un entitlement `owner`
-  real y firmado. Un tester, Pro Plus o deep-link conocido no autoriza.
+- Prerelease: Nightly/Testers será read-only y requerirá el rol operativo
+  `owner` real y firmado. Un tester, Pro Plus o deep-link conocido no autoriza.
 - Stable: ruta, sentinel y chunk deben estar físicamente ausentes (compile-out),
   no solo ocultos. ISA-264 queda bloqueada hasta demostrar el owner firmado; esta
   issue no implementa auth ni Billing.

@@ -134,6 +134,9 @@ jobs:
       # Versioned Ed25519 public keys only (key-id:base64url-public-key). The
       # private signing key exists exclusively in the Supabase function env.
       VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
+      # Workshop remains physically absent from stable tags. Manual builds from
+      # nightly/testers opt in so the signed owner gate can be exercised.
+      VITE_INCLUDE_OVERLAY_WORKSHOP: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
     defaults:
       run:
         shell: powershell
@@ -197,6 +200,12 @@ jobs:
       - name: Gate - Frontend build
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build
+
+      - name: Gate - Overlay Workshop channel bundle
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          $expected = if ($env:VITE_INCLUDE_OVERLAY_WORKSHOP -eq "true") { "internal" } else { "stable" }
+          pnpm verify:overlay-workshop-bundle -- --dist dist --expect $expected
 
       - name: Gate - Go tests
         env:

@@ -193,7 +193,7 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-263, controles efímeros y comparación de superficies del Workshop; no promocionado.
+2026-08-04, ISA-264, acceso Owner firmado y compile-out de Stable del Workshop; no promocionado.
 
 ### ISA-262 — usar el Workshop local
 
@@ -252,3 +252,30 @@ y recientes.
   compile-out sin sentinel `overlay-workshop`, `Overlay Workshop` o `DEV ONLY`
   en los assets. El lint global sigue registrando 30 errores/2 warnings
   heredados fuera del write set.
+
+### ISA-264 — acceso interno y exclusión de Stable
+
+Corrección P1 aplicada antes de cierre técnico: Stable se comprueba ahora contra
+la ausencia de ruta, import graph, chunk, CSS y sentinels del Workshop. El módulo
+interno lazy contiene la ruta sólo cuando la constante Vite de un build interno
+es verdadera. En CI, esa constante se limita a `push` directo a `nightly` o
+`testers`; un PR, una rama de issue, `master` o un tag generan el bundle Stable.
+El test sin dependencias adicionales bloquea cambios de esa matriz.
+
+- El Workshop se incluye automáticamente en desarrollo local. Las builds de
+  canal internas lo incluyen mediante `VITE_INCLUDE_OVERLAY_WORKSHOP=true`; un
+  tag estable lo elimina físicamente del bundle. No existe un selector de UI ni
+  un parámetro URL que pueda cambiar esa decisión de compilación.
+- Una build interna solo monta `/workshop` cuando la credencial nativa
+  verificada expone el rol operativo `owner` y permanece `active` o `grace`.
+  El rol es independiente de Polar y de entitlements: Owner con una lista vacía
+  sigue autorizado. Planes comerciales, Tester, Tester Nightly, capability
+  aislada, URL conocida, credencial ausente, expirada, revocada o rechazada se
+  deniegan antes de montar controles.
+- `AppRuntime` comparte el único `LicenseProvider` con Hub, OBS, OAuth y
+  Composite; Hub ya no crea un proveedor duplicado. El Workshop no modifica las
+  reglas comerciales de widgets ni la persistencia de la licencia.
+- El verificador de bundle exige que la build interna tenga exactamente un
+  chunk lazy Workshop con sus sentinels y stylesheet, y que Stable no contenga
+  chunk, sentinels ni CSS Workshop. Acepta la forma de argumentos que usa pnpm
+  y CI para evitar un falso verde o rojo por el separador `--`.

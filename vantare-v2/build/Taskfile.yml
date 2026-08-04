@@ -89,13 +89,11 @@ tasks:
       - task: frontend:run
         vars:
           SCRIPT: '{{if eq .DEV "true"}}build:dev{{else}}build{{end}}'
-    env:
-      PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
-      # Vite only exposes VITE_* variables. Mirror the same public client
-      # configuration embedded in Go so auth and Testing Center share one
-      # backend in packaged builds.
-      VITE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL | default ""}}'
-      VITE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY | default ""}}'
+          PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
+          VITE_SUPABASE_URL:
+            ref: .VANTARE_SUPABASE_URL
+          VITE_SUPABASE_ANON_KEY:
+            ref: .VANTARE_SUPABASE_ANON_KEY
 
   frontend:run:
     summary: Run a frontend script with selected runner
@@ -103,6 +101,12 @@ tasks:
       - task: frontend:run:{{.PACKAGE_MANAGER}}
         vars:
           SCRIPT: "{{.SCRIPT}}"
+          PRODUCTION:
+            ref: .PRODUCTION
+          VITE_SUPABASE_URL:
+            ref: .VITE_SUPABASE_URL
+          VITE_SUPABASE_ANON_KEY:
+            ref: .VITE_SUPABASE_ANON_KEY
     vars:
       SCRIPT: "{{.SCRIPT}}"
 
@@ -112,6 +116,10 @@ tasks:
       - npm run {{.SCRIPT}} -q
     vars:
       SCRIPT: "{{.SCRIPT}}"
+    env: &frontend-build-env
+      PRODUCTION: '{{.PRODUCTION | default ""}}'
+      VITE_SUPABASE_URL: '{{.VITE_SUPABASE_URL | default ""}}'
+      VITE_SUPABASE_ANON_KEY: '{{.VITE_SUPABASE_ANON_KEY | default ""}}'
 
   frontend:run:yarn:
     dir: frontend
@@ -119,6 +127,7 @@ tasks:
       - yarn {{.SCRIPT}}
     vars:
       SCRIPT: "{{.SCRIPT}}"
+    env: *frontend-build-env
 
   frontend:run:pnpm:
     dir: frontend
@@ -126,6 +135,7 @@ tasks:
       - pnpm run {{.SCRIPT}}
     vars:
       SCRIPT: "{{.SCRIPT}}"
+    env: *frontend-build-env
 
   frontend:run:bun:
     dir: frontend
@@ -133,6 +143,7 @@ tasks:
       - bun run {{.SCRIPT}}
     vars:
       SCRIPT: "{{.SCRIPT}}"
+    env: *frontend-build-env
 
   frontend:vendor:puppertino:
     summary: Fetches Puppertino CSS into frontend/public for consistent mobile styling

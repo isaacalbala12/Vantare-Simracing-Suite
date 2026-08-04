@@ -141,15 +141,18 @@ Deno.test("client build receives public verification keys only", () => {
     new URL("../../../vantare-v2/build/Taskfile.yml", import.meta.url),
   );
   for (
-    const mapping of [
-      "VITE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY",
+    const forwarding of [
+      "VITE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL:\n            ref: .VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY:\n            ref: .VITE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL: '{{.VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY: '{{.VITE_SUPABASE_ANON_KEY",
+      "env: *frontend-build-env",
     ]
   ) {
-    if (!commonTask.includes(mapping)) {
-      throw new Error(
-        `frontend build omits public Supabase mapping: ${mapping}`,
-      );
+    if (!commonTask.includes(forwarding)) {
+      throw new Error(`frontend task chain omits forwarding: ${forwarding}`);
     }
   }
   for (

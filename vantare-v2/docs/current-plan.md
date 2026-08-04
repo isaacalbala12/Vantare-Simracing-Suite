@@ -1,3 +1,23 @@
+Nota ISA-243 / TAU-07I (2026-08-04, primer reporte remoto y stop seguro):
+- El reporte sintético `report_d9c99f...866ae8a` llegó desde la build exacta
+  `nightly/v0.1.0.5@ef60adef4c42f21b87e3ad582927f574ea1d77ed`, sin
+  diagnóstico, logs, replay ni evidencia PostHog. La identidad server-side se
+  corrigió del formato `0.1.0.5` al emitido realmente por la app
+  `v0.1.0.5`, conservando historial y una sola identidad activa.
+- El triage reservó una única issue técnica y un único efecto Linear bajo
+  pausa. La primera llamada al worker terminó en `pilot_store_unavailable`
+  antes del claim y antes de `issueCreate`: intento/fencing permanecieron en
+  cero y no existe binding externo.
+- Causa reproducida: Supabase hosted expone `gen_random_uuid()` en
+  `pg_catalog`/`extensions`, no en `public`, mientras el claim histórico usa la
+  referencia explícita `public.gen_random_uuid()`. La migración correctiva
+  `20260804110000_uuid_public_compatibility.sql` está aplicada solo en testing;
+  el harness hosted pasa clean install, 18/18, rollback y reapply 18/18.
+- Un probe remoto transaccional devuelve `claimed` con lease/fencing y termina
+  en `ROLLBACK`; el efecto real sigue `pending`, intento 0, sin lease/binding y
+  con pausa global activa. No se reintenta el worker sin un nuevo gate explícito
+  de Isaac.
+
 Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
 - Rama exacta apilada sobre `ISA-242@c215fcb21902649601086c3d71ce658d34261f52`.
   Prepara el primer round-trip sintético Supabase -> Linear: OAuth

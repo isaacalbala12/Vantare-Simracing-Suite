@@ -268,8 +268,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
   nombres reales `My Live` / `Backlog`. El baseline remoto y las tres Edge
   Functions del piloto están activos solo en testing; probes sin credenciales
-  fallan cerrados. Aún no hay webhook firmado ni llamada `issueCreate`;
-  producción, Codex, Discord, merge y promociones continúan fuera de alcance.
+  fallan cerrados. El primer reporte Nightly real quedó reservado bajo pausa.
+  La primera llamada al worker falló antes de claim/`issueCreate` porque hosted
+  no exponía `public.gen_random_uuid()`; el wrapper correctivo ya está
+  desplegado y el claim remoto pasa con rollback. Siguen sin existir binding o
+  issue Linear, y un reintento exige nuevo gate de Isaac. El webhook existe
+  pero su firma aún no tiene delivery real; producción, Codex, Discord, merge y
+  promociones continúan fuera de alcance.
 
 ## Riesgos
 
@@ -294,12 +299,12 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
-2026-08-04, ISA-253 implementa localmente TAU-07H1 sobre ISA-241. La frontera
-PostHog está cerrada y validada, pero no hay SDK, proyecto, endpoint, secreto,
-captura ni replay real. TAU-07A continúa inerte y pinneado, sin caller o
-credencial. El outbox Linear sigue en dry-run; el receptor todavía no tiene
-endpoint ni secreto. Feedback, dossier, consentimiento y evidencia son
-privados y locales; nada ejecuta Codex, Linear, Discord, repo access o Supabase
-remoto, ni autoriza deploy, merge, promoción o una build distribuida.
+2026-08-04, ISA-243 recibió el primer reporte sintético desde la build Nightly
+exacta en Supabase testing. Triage reservó un único efecto; la primera llamada
+se detuvo antes de Linear por la ausencia hosted de
+`public.gen_random_uuid()`. El fix `241d956` está desplegado y validado con
+harness hosted y claim remoto bajo rollback. El efecto continúa pendiente,
+pausado, con intento/fencing cero y sin binding; reintentar requiere gate
+explícito de Isaac. No hay Codex, Discord, merge, promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.

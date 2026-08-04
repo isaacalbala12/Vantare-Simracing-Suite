@@ -16,6 +16,7 @@ $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
 $linearMigration = "20260803100000_testing_center_linear_outbox.sql"
 $webhookMigration = "20260803110000_testing_center_linear_webhook.sql"
 $pilotMigration = "20260804100000_testing_center_linear_pilot.sql"
+$uuidCompatibilityMigration = "20260804110000_uuid_public_compatibility.sql"
 
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [IO.File]::WriteAllText($Path, $Content, (New-Object Text.UTF8Encoding($false)))
@@ -57,7 +58,7 @@ do $$ begin create role service_role noinherit bypassrls; exception when duplica
 create schema if not exists auth;
 create schema if not exists extensions;
 create extension if not exists pgtap;
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 create table if not exists auth.users(
   id uuid primary key,
   email text,
@@ -66,7 +67,7 @@ create table if not exists auth.users(
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
-grant usage on schema public, auth to anon, authenticated, service_role;
+grant usage on schema public, auth, extensions to anon, authenticated, service_role;
 '@
 
   Write-Output "[1/4] Preparing disposable pre-Linear database"
@@ -83,7 +84,9 @@ grant usage on schema public, auth to anon, authenticated, service_role;
     "supabase\migrations\$linearMigration",
     "supabase\migrations\$webhookMigration",
     "supabase\migrations\$pilotMigration",
+    "supabase\migrations\$uuidCompatibilityMigration",
     "supabase\rollbacks\20260804100000_testing_center_linear_pilot.down.sql",
+    "supabase\rollbacks\20260804110000_uuid_public_compatibility.down.sql",
     "supabase\tests\testing_center_linear_outbox_upgrade_seed.sql",
     "supabase\tests\testing_center_linear_pilot.test.sql"
   )) {
@@ -95,6 +98,7 @@ grant usage on schema public, auth to anon, authenticated, service_role;
   Invoke-PsqlFile $cleanDb "/tmp/$linearMigration"
   Invoke-PsqlFile $cleanDb "/tmp/$webhookMigration"
   Invoke-PsqlFile $cleanDb "/tmp/$pilotMigration"
+  Invoke-PsqlFile $cleanDb "/tmp/$uuidCompatibilityMigration"
   $clean = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $cleanDb -c `
     "select (to_regprocedure('public.testing_center_complete_linear_pilot(text,text,bigint,text,uuid,uuid,text,text,text)') is not null)::int || ':' || count(*) from public.testing_center_linear_issue_bindings"
   if ($LASTEXITCODE -ne 0 -or $clean.Trim() -ne "1:0") {
@@ -107,16 +111,19 @@ grant usage on schema public, auth to anon, authenticated, service_role;
   Invoke-PsqlFile $pilotDb "/tmp/$linearMigration"
   Invoke-PsqlFile $pilotDb "/tmp/$webhookMigration"
   Invoke-PsqlFile $pilotDb "/tmp/$pilotMigration"
+  Invoke-PsqlFile $pilotDb "/tmp/$uuidCompatibilityMigration"
   Assert-PgTap $pilotDb "/tmp/testing_center_linear_pilot.test.sql" "Initial Linear pilot"
 
   Write-Output "[4/4] Checking zero-history rollback and exact reapply"
   Invoke-PsqlFile $pilotDb "/tmp/20260804100000_testing_center_linear_pilot.down.sql"
+  Invoke-PsqlFile $pilotDb "/tmp/20260804110000_uuid_public_compatibility.down.sql"
   $rollback = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $pilotDb -c `
     "select (to_regprocedure('public.testing_center_complete_linear_pilot(text,text,bigint,text,uuid,uuid,text,text,text)') is null)::int || ':' || (to_regprocedure('public.testing_center_reconcile_linear_webhook(uuid,uuid,uuid,uuid,text,text,bigint,timestamptz,uuid,text)') is not null)::int"
   if ($LASTEXITCODE -ne 0 -or $rollback.Trim() -ne "1:1") {
     throw "Pilot rollback did not preserve TAU-07F: $rollback"
   }
   Invoke-PsqlFile $pilotDb "/tmp/$pilotMigration"
+  Invoke-PsqlFile $pilotDb "/tmp/$uuidCompatibilityMigration"
   Assert-PgTap $pilotDb "/tmp/testing_center_linear_pilot.test.sql" "Reapplied Linear pilot"
 
   Write-Output "Testing Center Linear pilot: clean install + 18/18 + exact rollback + reapply 18/18 PASS"

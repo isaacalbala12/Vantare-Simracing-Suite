@@ -17,6 +17,7 @@ import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/inpu
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
+  DEFAULT_OVERLAY_WORKSHOP_QUERY,
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
@@ -35,8 +36,8 @@ const VARIANTS: readonly HarnessVariant[] = [
 function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
   const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
   let widget = buildAuthoringFixtureWidget({
-    session: "race",
-    location: "track",
+    session: query.session,
+    location: query.location,
     state: query.state,
     widget: query.widget,
     system: query.system,
@@ -104,6 +105,10 @@ function SelectField(props: {
   );
 }
 
+function NumberField(props: { label: string; value: number | undefined; onChange(value: number): void }): React.ReactElement {
+  return <label className="overlay-workshop-control"><span>{props.label}</span><input type="number" min="64" max={props.label === "Width" ? 3840 : 2160} value={props.value ?? ""} onChange={(event) => props.onChange(Number(event.target.value))} /></label>;
+}
+
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
   return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
 }
@@ -166,11 +171,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const chooseScale = (value: string) => update({ ...parsed, scale: Number(value) });
   const choosePreset = (value: string) => update({ ...parsed, preset: value as OverlayWorkshopQuery["preset"] });
   const chooseCompare = (value: string) => update({ ...parsed, ...(value ? { compare: value as OverlayWorkshopQuery["surface"] } : { compare: undefined }) });
-  const reset = () => update({ ...initialQuery });
+  const reset = () => update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
   const applyPreset = () => {
     const [width, height] = PRESET_DIMENSIONS[parsed.preset];
     update({ ...parsed, width, height });
   };
+  const chooseWidth = (width: number) => update({ ...parsed, width, height: parsed.height ?? prepared?.widget.layout.h ?? 180 });
+  const chooseHeight = (height: number) => update({ ...parsed, width: parsed.width ?? prepared?.widget.layout.w ?? 320, height });
 
   return (
     <main className="overlay-workshop" data-overlay-workshop-page>
@@ -214,6 +221,8 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
         </SelectField>
         <button type="button" onClick={applyPreset}>Apply declared dimensions</button>
+        <NumberField label="Width" value={parsed.width} onChange={chooseWidth} />
+        <NumberField label="Height" value={parsed.height} onChange={chooseHeight} />
         <SelectField label="Compare" value={parsed.compare ?? ""} onChange={chooseCompare}>
           <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
         </SelectField>

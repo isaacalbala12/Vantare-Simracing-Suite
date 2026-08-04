@@ -22,7 +22,7 @@ export type OverlayWorkshopQuery = {
   compare?: "studio" | "desktop" | "obs" | "harness";
 };
 
-const DEFAULT_QUERY: OverlayWorkshopQuery = {
+export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
   widget: "delta",
   system: "vantare-original",
   state: "ready",
@@ -45,18 +45,18 @@ const PRESETS = new Set<OverlayWorkshopQuery["preset"]>(["720p", "1080p", "1440p
 
 export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
-  const widget = (params.get("widget") ?? DEFAULT_QUERY.widget) as WidgetType;
-  const system = (params.get("system") ?? DEFAULT_QUERY.system) as DesignSystemId;
-  const state = (params.get("state") ?? DEFAULT_QUERY.state) as MockDataState;
-  const surface = (params.get("surface") ?? DEFAULT_QUERY.surface) as OverlayWorkshopQuery["surface"];
-  const variant = (params.get("variant") ?? DEFAULT_QUERY.variant) as HarnessVariant;
+  const widget = (params.get("widget") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.widget) as WidgetType;
+  const system = (params.get("system") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system) as DesignSystemId;
+  const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as MockDataState;
+  const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
+  const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as HarnessVariant;
   const designId = params.get("design") ?? undefined;
-  const session = (params.get("session") ?? DEFAULT_QUERY.session) as MockSessionScenario;
-  const location = (params.get("location") ?? DEFAULT_QUERY.location) as MockLocationScenario;
-  const background = (params.get("background") ?? DEFAULT_QUERY.background) as OverlayWorkshopQuery["background"];
-  const preset = (params.get("preset") ?? DEFAULT_QUERY.preset) as OverlayWorkshopQuery["preset"];
+  const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as MockSessionScenario;
+  const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as MockLocationScenario;
+  const background = (params.get("background") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.background) as OverlayWorkshopQuery["background"];
+  const preset = (params.get("preset") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.preset) as OverlayWorkshopQuery["preset"];
   const compare = params.get("compare") as OverlayWorkshopQuery["surface"] | null;
-  const scaleRaw = params.get("scale") ?? String(DEFAULT_QUERY.scale);
+  const scaleRaw = params.get("scale") ?? String(DEFAULT_OVERLAY_WORKSHOP_QUERY.scale);
   const scale = Number(scaleRaw);
   const width = params.get("width");
   const height = params.get("height");
@@ -78,6 +78,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     || (parsedHeight !== undefined && (!Number.isInteger(parsedHeight) || parsedHeight < 64 || parsedHeight > 2160))) {
     return { error: "invalid declared dimensions" };
   }
+  if ((parsedWidth === undefined) !== (parsedHeight === undefined)) return { error: "width and height must be declared together" };
 
   if (designId) {
     const design = getOfficialDesign(designId);

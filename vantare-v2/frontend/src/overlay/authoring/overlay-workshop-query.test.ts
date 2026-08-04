@@ -32,6 +32,7 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?background=unsafe")).toEqual({ error: "invalid background parameter: unsafe" });
     expect(parseOverlayWorkshopQuery("?scale=9")).toEqual({ error: "invalid scale parameter: 9" });
     expect(parseOverlayWorkshopQuery("?width=12")).toEqual({ error: "invalid declared dimensions" });
+    expect(parseOverlayWorkshopQuery("?width=640")).toEqual({ error: "width and height must be declared together" });
   });
 
   it("rejects invalid or mismatched selections instead of silently falling back", () => {

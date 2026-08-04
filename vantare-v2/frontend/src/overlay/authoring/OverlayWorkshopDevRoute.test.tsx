@@ -53,6 +53,16 @@ describe("OverlayWorkshopDevRoute", () => {
     fireEvent.change(screen.getByLabelText("State"), { target: { value: "error" } });
     fireEvent.click(screen.getByRole("button", { name: "Reset controls" }));
     expect((screen.getByLabelText("State") as HTMLSelectElement).value).toBe("ready");
+    expect((screen.getByLabelText("System") as HTMLSelectElement).value).toBe("vantare-original");
+  });
+
+  it("edits width and height together through accessible fields", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />);
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "640" } });
+    fireEvent.change(screen.getByLabelText("Height"), { target: { value: "240" } });
+    await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
 
   it("seeds Input Telemetry after render without clearing unrelated histories in StrictMode", async () => {

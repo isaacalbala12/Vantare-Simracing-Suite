@@ -1,0 +1,143 @@
+# Testing Center — piloto remoto Supabase → Linear
+
+Estado: ISA-243 / TAU-07I implementado localmente. **No desplegado**. El primer
+efecto externo requiere revisión y autorización explícita de Isaac.
+
+## Qué demuestra este corte
+
+Un reporte sintético creado desde la app puede pasar por triage server-side,
+converger con ocurrencias repetidas y crear exactamente un issue de Linear. El
+webhook firmado devuelve después una observación durable a Supabase. No hay
+Codex, Discord, asignación, merge, release ni promoción de ramas.
+
+La activación es deliberadamente manual: el worker acepta únicamente un
+`reportId` generado por Supabase y un bearer secreto exclusivo del piloto. No
+hay cron, cola automática ni llamada desde el cliente. Esto limita el primer
+efecto real a una prueba presenciada y conserva la pausa como kill switch.
+
+## Contrato de seguridad
+
+- OAuth usa `client_credentials` y solicita solo `issues:create`.
+- La mutación GraphQL es fija y el texto del tester viaja solo en variables.
+- Team, proyecto, estado y cinco labels proceden de UUIDs server-side.
+- Nunca se envían assignee, prioridad, delegate, comandos, logs o replay URL.
+- Antes de la llamada se revalidan pausa, destino, lease, fencing, snapshot y
+  ambos digests.
+- Solo un fallo al obtener el token puede reintentarse. Cualquier incertidumbre
+  después de enviar `issueCreate` termina en `needs_owner` y nunca se reenvía.
+- La respuesta debe confirmar UUID, identificador, URL Vantare, team, proyecto,
+  estado y conjunto exacto de labels antes del binding atómico.
+- El webhook verifica los bytes crudos con HMAC-SHA256, los cuatro headers
+  oficiales y una ventana de 60 segundos. No persiste body, firma ni texto.
+
+Referencias oficiales:
+
+- <https://linear.app/developers/oauth-2-0-authentication>
+- <https://linear.app/developers/graphql?noRedirect=1>
+- <https://linear.app/developers/webhooks>
+- <https://supabase.com/docs/guides/functions/secrets>
+
+## Gate manual previo al deploy
+
+Isaac debe revisar y aprobar estas decisiones antes de ejecutar nada remoto:
+
+1. Proyecto Supabase **de testing**, nunca producción.
+2. OAuth app Linear con client credentials habilitado y acceso solo al team
+   Vantare; el worker pedirá `issues:create`.
+3. UUIDs exactos de organización, team, proyecto `Testing Center`, estado
+   `Triage` y labels revisadas.
+4. Webhook `Issue` creado manualmente por un admin hacia la función de testing.
+5. Reporte sintético concreto y confirmación de que la pausa global empieza
+   activa.
+
+No pegar valores de secretos en una issue, PR, terminal compartido o documento.
+El wrapper rechaza además de forma explícita el project ref vinculado de
+producción, aunque alguien confirme accidentalmente el comando del piloto.
+
+## Secretos y configuración server-side
+
+Guardar en Supabase Secrets del proyecto de testing:
+
+- `LINEAR_CLIENT_ID`
+- `LINEAR_CLIENT_SECRET`
+- `LINEAR_ORGANIZATION_ID`
+- `LINEAR_TEAM_ID`
+- `LINEAR_PROJECT_ID`
+- `LINEAR_TRIAGE_STATE_ID`
+- `LINEAR_WORKSPACE_SLUG=vantareapp`
+- `LINEAR_LABEL_IDS_JSON`
+- `LINEAR_WEBHOOK_SECRET`
+- `TESTING_CENTER_LINEAR_PILOT_SECRET` (aleatorio, mínimo 32 bytes)
+
+`LINEAR_LABEL_IDS_JSON` es un objeto nombre → UUID. Debe contener, como mínimo,
+`testing-center`, `needs-triage`, `channel:nightly`, `channel:testers`,
+`status:needs-triage` y cada `module:<módulo>` que pueda entrar al piloto. La
+ausencia de cualquier label necesaria falla cerrada antes de crear el issue.
+
+## Orden de activación aprobado
+
+1. Crear snapshot/backup del proyecto de testing y confirmar pausa global.
+2. Aplicar migraciones hasta
+   `20260804100000_testing_center_linear_pilot.sql`; comprobar que no hay
+   migraciones ajenas pendientes.
+3. Cargar secretos con `supabase secrets set --project-ref <TESTING_REF>` sin
+   imprimir valores.
+4. Desplegar solo la superficie de testing con:
+
+   ```powershell
+   & .\supabase\functions\scripts\deploy-testing-center-pilot.ps1 `
+     -ProjectRef <TESTING_REF> `
+     -Confirmation DEPLOY-ISA-243-TESTING-PILOT
+   ```
+
+5. Crear/activar el webhook de Linear para `Issue` y guardar su signing secret.
+6. Registrar la identidad exacta de la build sintética. Enviar desde la app un
+   reporte sin evidencia privada y anotar el `reportId` devuelto.
+7. Despausar solo ese flujo y llamar una vez al worker con:
+
+   ```json
+   {"contractVersion":"testing-center.linear-pilot.v1","reportId":"report_<sha256>"}
+   ```
+
+   usando `Authorization: Bearer <TESTING_CENTER_LINEAR_PILOT_SECRET>`.
+8. Verificar un único issue Linear, sin assignee/prioridad, con marker, SHA,
+   versión, SO y cinco labels exactas. El resultado del worker devuelve URL e
+   identificador, nunca el secreto ni evidencia privada.
+9. Repetir el mismo problema desde la app y confirmar una nueva ocurrencia pero
+   ningún segundo issue/effect. Mantener el segundo efecto pausado como prueba
+   del kill switch.
+10. Cambiar el estado del issue en Linear y comprobar delivery firmado y vista
+    observacional en Supabase. Un estado UUID no allowlisted debe quedar
+    `needs_owner`.
+11. Reactivar la pausa global al terminar y revocar el bearer del piloto si no
+    habrá otra prueba inmediata.
+
+## Criterio de parada y rollback
+
+Parar sin reintentar si la respuesta es ambigua, el binding no se completa, un
+UUID difiere, aparece un duplicado externo, falta una label o se observa
+evidencia privada. Pausar globalmente, revocar el secreto/OAuth si corresponde
+y reconciliar manualmente el marker en Linear antes de cualquier rollback.
+
+El rollback `20260804100000_testing_center_linear_pilot.down.sql` solo acepta
+cero bindings reales del piloto. Nunca elimina silenciosamente un issue Linear
+ya creado; primero debe resolverse su trazabilidad con revisión humana.
+
+## Verificación local
+
+```powershell
+$tests = (Get-ChildItem supabase/functions/_shared/testing-center-*.test.ts).FullName
+deno test --no-lock $tests
+deno test --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts
+deno check --no-config --node-modules-dir=none `
+  supabase/functions/testing-center-linear-worker/index.ts `
+  supabase/functions/testing-center-linear-webhook/index.ts
+& .\supabase\tests\run-testing-center-linear-pilot-postgres.ps1
+git diff --check
+```
+
+Evidencia local del corte: Testing Center 120/120, webhook endpoint 4/4 y
+deploy guard 4/4 PASS; typecheck, lint y formato PASS. PostgreSQL: instalación
+limpia, 18/18, rollback exacto y reaplicación 18/18 PASS. La ejecución usó tres
+bases temporales dentro del contenedor Supabase local ya activo; todas quedaron
+eliminadas y la base de desarrollo no se modificó.

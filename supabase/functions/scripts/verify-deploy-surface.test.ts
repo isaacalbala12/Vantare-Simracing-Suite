@@ -16,6 +16,33 @@ Deno.test("deploy surface rejects legacy and unknown top-level functions", () =>
   }
 });
 
+Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
+  const entries = [
+    { name: "testing-center-feedback", isDirectory: true },
+    { name: "testing-center-linear-webhook", isDirectory: true },
+    { name: "testing-center-linear-worker", isDirectory: true },
+  ] as Deno.DirEntry[];
+  if (invalidDeployableDirectories(entries).length !== 0) {
+    throw new Error("reviewed testing pilot surface was rejected");
+  }
+  const wrapper = Deno.readTextFileSync(
+    new URL("./deploy-approved-functions.ps1", import.meta.url),
+  );
+  if (wrapper.includes("testing-center-linear-worker")) {
+    throw new Error("testing pilot leaked into production deployment wrapper");
+  }
+  const pilotWrapper = Deno.readTextFileSync(
+    new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
+  );
+  if (
+    !pilotWrapper.includes("DEPLOY-ISA-243-TESTING-PILOT") ||
+    !pilotWrapper.includes('"ombjshwzqgeisazijduq"') ||
+    !pilotWrapper.includes("ProjectRef -eq") ||
+    !pilotWrapper.includes("verify-deploy-surface.ps1") ||
+    !pilotWrapper.includes('"testing-center-linear-worker"')
+  ) throw new Error("testing pilot wrapper lacks explicit guards");
+});
+
 Deno.test("official deploy workflow can only deploy through the guarded wrapper", () => {
   const wrapper = Deno.readTextFileSync(
     new URL("./deploy-approved-functions.ps1", import.meta.url),

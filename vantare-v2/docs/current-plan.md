@@ -8,9 +8,12 @@ Nota ISA-287 / TAU-07J (2026-08-04, diagnóstico local listo para revisión):
   La semántica sigue intacta: solo el fallo de token previo a `issueCreate`
   puede reintentarse y toda incertidumbre posterior termina en `needs_owner`.
 - Evidencia local: Testing Center 125/125, focal 16/16, deploy guard 4/4,
-  typecheck del worker, formato y `git diff --check` PASS. No hubo Docker,
-  despliegue, secretos, nueva llamada a Linear ni nuevo reporte. El siguiente
-  gate es revisión humana antes de desplegar el worker en Supabase testing.
+  typecheck del worker, formato y `git diff --check` PASS. Tras aprobación
+  humana, solo `testing-center-linear-worker` se desplegó en Supabase testing
+  `lbaxvpzexoferfvfkplz` y quedó `ACTIVE` v7; un probe sin credenciales devolvió
+  `401 unauthorized`. No hubo Docker, secretos, nueva llamada a Linear ni nuevo
+  reporte. El siguiente gate exige bearer temporal y reporte sintético nuevos
+  con autorización separada de Isaac.
 
 Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
 - Isaac autorizó un único reintento tras corregir el claim hosted. El worker

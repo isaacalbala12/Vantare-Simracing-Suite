@@ -1,7 +1,9 @@
 # Testing Center — piloto remoto Supabase → Linear
 
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
-`lbaxvpzexoferfvfkplz`. Schema completo y tres Edge Functions `ACTIVE` v1. El
+`lbaxvpzexoferfvfkplz`. Schema completo; `testing-center-feedback` y
+`testing-center-linear-webhook` están `ACTIVE` v6 y
+`testing-center-linear-worker` está `ACTIVE` v7 tras ISA-287. El
 webhook `Issue` existe y su signing secret está guardado en Supabase, pero su
 firma aún no se ha verificado con un delivery real y no se ha creado ningún
 issue. El primer efecto externo continúa pausado y requiere una prueba
@@ -165,9 +167,11 @@ El diagnóstico es observacional: no habilita un retry. Todo fallo posterior al
 envío de `issueCreate` conserva `needs_owner`; solo un fallo de transporte al
 obtener el token, anterior a la mutación, puede seguir el retry acotado.
 
-El código de ISA-287 está validado localmente pero no desplegado. Antes de
-actualizar la Edge Function se requiere revisión humana; antes de crear otro
-reporte sintético se requiere un gate separado y un bearer temporal nuevo.
+El código de ISA-287 fue revisado y el worker quedó desplegado exclusivamente
+en Supabase testing como versión 7. El probe sin credenciales posterior devolvió
+`401 unauthorized`. Crear otro reporte sintético requiere un gate separado y
+un bearer temporal nuevo; este despliegue no reabre el efecto anterior ni
+autoriza otra llamada sobre él.
 
 ## Verificación local
 

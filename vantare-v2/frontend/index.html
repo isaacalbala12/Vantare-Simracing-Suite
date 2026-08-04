@@ -14,9 +14,13 @@
         var isHub = window.location.hash.indexOf("#/hub") === 0;
         if (isObsOverlay || !isHub) {
           document.documentElement.classList.add("desktop-overlay", "desktop-overlay-boot");
-          document.body.classList.add("desktop-overlay");
-          var root = document.getElementById("root");
-          if (root) root.classList.add("desktop-overlay");
+          var applyOverlayClasses = function () {
+            document.body.classList.add("desktop-overlay");
+            var root = document.getElementById("root");
+            if (root) root.classList.add("desktop-overlay");
+          };
+          if (document.body) applyOverlayClasses();
+          else document.addEventListener("DOMContentLoaded", applyOverlayClasses, { once: true });
         }
       })();
     </script>

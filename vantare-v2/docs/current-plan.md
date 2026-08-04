@@ -4957,3 +4957,21 @@ Nota ISA-261 / OS-09B (2026-08-04, fixtures portables para autoría):
 - Tests focales y build pasan. El parity report-only agotó su timeout local sin
   actualizar ningún baseline; su investigación queda pendiente antes del gate
   de Nightly. Sin promoción.
+
+Nota ISA-262 / OS-09C (2026-08-04, Workshop local MVP):
+- Ruta de desarrollo única: `/workshop`, dentro del bootstrapping compartido y
+  cargada de manera dinámica sólo cuando `import.meta.env.DEV` es verdadero.
+  No existe segunda entrada Vite ni import estático desde `main.tsx` hacia
+  authoring; el build productivo no contiene los sentinels del módulo, parser o
+  fixtures Workshop.
+- La selección reproducible `widget/system/design/state/surface/variant` usa
+  fixtures ISA-261 y falla de forma cerrada. El render real pasa exclusivamente
+  por `WidgetVisualViewport` y `WidgetVisualHost`; stage y widget root tienen
+  selectores contractuales separados. No se añadieron renderers, Wails/SSE,
+  persistencia, perfiles, telemetría LMU ni cambios de canvas.
+- Se corrigió un pageerror preexistente en el boot de `index.html`: el script de
+  cabecera espera `DOMContentLoaded` si `body` todavía no existe. Hay regresión
+  estática y smoke de `#/hub`; no se cambió el shell fuera de esa condición.
+- Gate focal: parser/UI 6 tests PASS; lint focal PASS; build frontend PASS;
+  `design-system:check` PASS; Playwright Workshop y Hub sin errores;
+  HMR CSS aplicado y revertido. Sin promoción.

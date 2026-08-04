@@ -49,8 +49,10 @@ Riesgos:
 
 ## Overlay Workshop y apertura correcta desde rama/worktree
 
-Workshop no tiene UI aún: reutilizará `WidgetVisualHost` y renderers puros. Su
-contrato y microplan están en `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
+Workshop tiene un MVP local dev-only en `/workshop`: reutiliza
+`WidgetVisualViewport` y `WidgetVisualHost` productivos, con fixtures puros y
+query reproducible. Su contrato y microplan están en
+`docs/overlays-studio/os-09-overlay-workshop-contract.md`.
 ISA-261 establece `frontend/src/overlay/authoring/fixtures/` como única
 autoridad para escenarios deterministas; `overlay-harness/harness-fixtures.ts`
 solo conserva el re-export temporal. El contrato histórico Crystal (21/18) y
@@ -191,4 +193,25 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-260, contrato Workshop y runbook de apertura.
+2026-08-04, ISA-262, MVP local dev-only Workshop; no promocionado.
+
+### ISA-262 — usar el Workshop local
+
+- Desde este worktree, instalar dependencias desde el lockfile si faltan y abrir
+  `corepack pnpm --dir frontend dev`. La URL reproducible es
+  `http://localhost:5173/workshop?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default`.
+- Los parámetros `widget`, `system`, `design`, `state`, `surface` y `variant`
+  se validan fail-closed: una combinación inválida muestra un error y no escoge
+  otro diseño. Cambiar los selectores reescribe la URL sin persistir nada.
+- No usar esta ruta como preview de licencia, Wails, LMU o perfiles. Vite la
+  elimina del build productivo: `main.tsx` no importa estáticamente authoring y
+  el módulo sólo se carga con `import.meta.env.DEV`.
+- El stage (`data-overlay-workshop-stage`) es chrome de autoría. Para alpha,
+  bounds, overflow y paridad se inspecciona el root real
+  (`data-overlay-workshop-widget-root`), que contiene el mismo Host/Viewport
+  que producción. ISA-263 añade controles y comparativas, no debe duplicar el
+  renderer.
+- Evidencia ISA-262: Vitest focal, lint focal, build productivo sin sentinels
+  Workshop, `design-system:check`, Playwright sin console/page errors y HMR CSS
+  aplicado/revertido. La corrección mínima de `index.html` espera a `body` antes
+  de añadir clases de boot; una smoke `#/hub` cubre la ruta normal.

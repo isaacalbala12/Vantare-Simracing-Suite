@@ -4970,8 +4970,13 @@ Nota ISA-262 / OS-09C (2026-08-04, Workshop local MVP):
   selectores contractuales separados. No se añadieron renderers, Wails/SSE,
   persistencia, perfiles, telemetría LMU ni cambios de canvas.
 - Se corrigió un pageerror preexistente en el boot de `index.html`: el script de
-  cabecera espera `DOMContentLoaded` si `body` todavía no existe. Hay regresión
-  estática y smoke de `#/hub`; no se cambió el shell fuera de esa condición.
-- Gate focal: parser/UI 6 tests PASS; lint focal PASS; build frontend PASS;
-  `design-system:check` PASS; Playwright Workshop y Hub sin errores;
-  HMR CSS aplicado y revertido. Sin promoción.
+  cabecera espera `DOMContentLoaded` si `body` todavía no existe. La regresión
+  ejecuta el script real con `body` ausente, dispara el evento dos veces y
+  prueba clases únicas; también cubre `#/hub` sin clases de overlay.
+- El seed de Input Telemetry deja de mutar el acumulador durante render: ocurre
+  en `useLayoutEffect`, limpia sólo el historial de su widget y la regresión
+  StrictMode demuestra que no borra una historia ajena ni duplica la fixture.
+- Gate focal: 4 archivos / 15 tests PASS; lint focal PASS; build frontend PASS;
+  sentinels Workshop ausentes de producción; `design-system:check` PASS;
+  Playwright Workshop válido/inválido y Hub sin errores; HMR CSS aplicado y
+  revertido sin reinicio. Sin promoción.

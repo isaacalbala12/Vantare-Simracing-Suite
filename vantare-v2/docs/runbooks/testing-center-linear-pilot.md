@@ -231,3 +231,9 @@ backend. `master` conserva `Vantare/LicenseClock` y `Vantare/SupabaseAuth`. El
 piloto se distribuye además con un directorio `configs` contiguo al ejecutable,
 de modo que caché de licencia, draft y configuración permanecen dentro del
 paquete portable.
+
+El build común debe reflejar `VANTARE_SUPABASE_URL` y
+`VANTARE_SUPABASE_ANON_KEY` como `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY` durante la compilación del frontend. Embebirlas solo en
+Go deja la pantalla de login sin cliente Supabase aunque el backend nativo esté
+correctamente configurado.

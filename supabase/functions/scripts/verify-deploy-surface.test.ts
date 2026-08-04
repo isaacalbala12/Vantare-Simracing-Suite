@@ -137,4 +137,19 @@ Deno.test("client build receives public verification keys only", () => {
       "generated client config omits the public license registry",
     );
   }
+  const commonTask = Deno.readTextFileSync(
+    new URL("../../../vantare-v2/build/Taskfile.yml", import.meta.url),
+  );
+  for (
+    const mapping of [
+      "VITE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY",
+    ]
+  ) {
+    if (!commonTask.includes(mapping)) {
+      throw new Error(
+        `frontend build omits public Supabase mapping: ${mapping}`,
+      );
+    }
+  }
 });

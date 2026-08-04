@@ -91,6 +91,11 @@ tasks:
           SCRIPT: '{{if eq .DEV "true"}}build:dev{{else}}build{{end}}'
     env:
       PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
+      # Vite only exposes VITE_* variables. Mirror the same public client
+      # configuration embedded in Go so auth and Testing Center share one
+      # backend in packaged builds.
+      VITE_SUPABASE_URL: '{{.VANTARE_SUPABASE_URL | default ""}}'
+      VITE_SUPABASE_ANON_KEY: '{{.VANTARE_SUPABASE_ANON_KEY | default ""}}'
 
   frontend:run:
     summary: Run a frontend script with selected runner

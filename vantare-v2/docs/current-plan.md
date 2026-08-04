@@ -39,6 +39,11 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   Manager por canal y digest del backend. `master` conserva los targets legacy.
   El artefacto del piloto debe ejecutarse en modo portable para aislar también
   caché de licencia, drafts y configuración de la instalación habitual.
+- La primera apertura manual reveló que el frontend leía solo
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, mientras el build recibía
+  únicamente las variables `VANTARE_*` del backend Go. El task común refleja
+  ahora esa misma configuración pública hacia Vite; el guard impide volver a
+  generar una pantalla de login sin backend en builds empaquetadas.
 - El preflight del proyecto vacío detectó dos migraciones locales con versión
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El

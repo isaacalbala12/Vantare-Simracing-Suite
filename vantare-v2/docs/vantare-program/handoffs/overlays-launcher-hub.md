@@ -157,8 +157,9 @@ del checkout o worktree que se quiere validar.
 con HMR. No sustituye al smoke anterior y su resultado no demuestra que
 `bin\vantare.exe` se haya construido correctamente.
 
-Autoridades complementarias: `docs/release-beta-operations-runbook.md` (Opción
-A2) y `docs/tester-build-instructions.md`.
+Autoridades complementarias: `docs/release-beta-operations-runbook.md`
+(**Opción A2: build rápida de smoke local, no publicable**; no distribuye
+installer, zip ni release) y `docs/tester-build-instructions.md`.
 
 ## Launcher
 

@@ -193,7 +193,7 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-262, MVP local dev-only Workshop; no promocionado.
+2026-08-04, ISA-263, controles efímeros y comparación de superficies del Workshop; no promocionado.
 
 ### ISA-262 — usar el Workshop local
 
@@ -219,3 +219,36 @@ y recientes.
   en `useLayoutEffect`, con cleanup por widget; StrictMode preserva historias de
   otras instancias y no duplica la fixture. HMR CSS se aplicó y revirtió sin
   reiniciar el Workshop.
+
+### ISA-263 — controles de autoría
+
+- La URL dev admite además `session`, `location`, `background`, `scale`,
+  `preset`, `width`, `height` y `compare`; todos se validan fail-closed y se
+  serializan de forma reproducible. `background` solo cambia el stage de CSS:
+  nunca entra en el Host, renderer, documento ni crop del widget.
+- Los presets 720p, 1080p y 1440p declaran dimensiones de prueba; escala,
+  dimensiones, fixture y comparación son efímeros. `Reset controls` restaura
+  los defaults canónicos, no el deep-link inicial, sin persistir perfiles.
+- Studio, Desktop, OBS y Harness usan la misma función de superficie y el mismo
+  `WidgetVisualViewport` + `WidgetVisualHost`. OBS no recibe etiqueta ni chrome
+  técnico dentro de su superficie. El root capturable sigue siendo
+  `data-overlay-workshop-widget-root`; el stage sigue separado.
+- Verificación de cierre ISA-263: Chrome/Playwright cubre deep-link válido e
+  inválido, todos los fondos, Studio/Desktop/OBS/Harness, comparación,
+  teclado/foco, reset, presets, dimensiones y viewports 1280x720, medio y
+  compacto. El documento no produce overflow horizontal; el stage puede hacer
+  scroll local para alojar una previsualización grande en compacto. Cero errores
+  de consola, página o red relevantes.
+- El bootstrap de `/workshop` evita ya cargar Wails: `main.tsx` carga el runtime
+  normal dinámicamente desde `AppShell.tsx`. Esto evita la antigua petición
+  fallida a `wails/custom.js`; no cambia el runtime normal. HMR CSS se aplicó y
+  revirtió sin reiniciar la ruta.
+- Las dimensiones y escala se editan como borradores locales: una pareja de
+  dimensiones solo entra en URL/root cuando ambas son válidas; una escala
+  válida entre 0.25 y 2 conserva valores como `0.3`. Ningún input incompleto o
+  fuera de rango escribe una URL no reproducible.
+- Evidencia focal final: 6 archivos/29 Vitest PASS, ESLint directo de bootstrap
+  y authoring PASS, `design-system:check` PASS, build productivo PASS y
+  compile-out sin sentinel `overlay-workshop`, `Overlay Workshop` o `DEV ONLY`
+  en los assets. El lint global sigue registrando 30 errores/2 warnings
+  heredados fuera del write set.

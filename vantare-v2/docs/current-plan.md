@@ -4459,3 +4459,22 @@ Nota ISA-262 / OS-09C (2026-08-04, Workshop local MVP):
   sentinels Workshop ausentes de producción; `design-system:check` PASS;
   Playwright Workshop válido/inválido y Hub sin errores; HMR CSS aplicado y
   revertido sin reinicio. Sin promoción.
+
+Nota ISA-263 / OS-09D (2026-08-04, controles y verificación real Workshop):
+- La ruta dev conserva controles efímeros y fail-closed de sesión, localización,
+  fondo, escala, preset, dimensiones y comparación. Studio, Desktop, OBS y
+  Harness verifican el mismo `WorkshopSurface`/`WidgetVisualViewport`/
+  `WidgetVisualHost`; OBS sigue sin chrome dentro de su superficie.
+- La revisión Chrome detectó que el bootstrap compartido cargaba el runtime
+  Wails antes del Workshop y generaba 404/page errors en navegador. El runtime
+  normal se separa en `AppShell.tsx` y se carga dinámicamente; `/workshop`
+  queda sin Wails, con 0 errores de consola/página/red relevantes. No cambia
+  el comportamiento de la aplicación normal.
+- Evidencia: Playwright/Chrome cubre URL válida/inválida, cuatro fondos,
+  superficies, comparación, teclado/foco, reset, preset, dimensiones y
+  viewports 1280x720, medio y compacto; HMR CSS aplicado y revertido. Las
+  dimensiones y escala usan borradores locales validados, y Reset vuelve a
+  defaults canónicos. Vitest focal 6 archivos/29 tests (incluye bootstrap
+  normal, rutas OBS/OAuth/Hub/Composite y fallback de carga), ESLint focal,
+  `design-system:check`, build y
+  compile-out sin sentinels Workshop pasan. Sin promoción.

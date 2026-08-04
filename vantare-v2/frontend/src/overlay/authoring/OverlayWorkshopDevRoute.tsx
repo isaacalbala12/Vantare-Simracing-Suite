@@ -17,6 +17,7 @@ import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/inpu
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
+  DEFAULT_OVERLAY_WORKSHOP_QUERY,
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
@@ -35,8 +36,8 @@ const VARIANTS: readonly HarnessVariant[] = [
 function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
   const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
   let widget = buildAuthoringFixtureWidget({
-    session: "race",
-    location: "track",
+    session: query.session,
+    location: query.location,
     state: query.state,
     widget: query.widget,
     system: query.system,
@@ -70,8 +71,8 @@ function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
   const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
   const widget = createScenarioWidget(query);
   const snapshot = buildAuthoringFixtureTelemetry({
-    session: "race",
-    location: "track",
+    session: query.session,
+    location: query.location,
     state: query.state,
     widget: query.widget,
     system: query.system,
@@ -81,6 +82,8 @@ function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
   });
   return { key: serializeOverlayWorkshopQuery(query), widget, snapshot };
 }
+
+const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
 
 function setSearch(query: OverlayWorkshopQuery): void {
   window.history.replaceState(null, "", `/workshop?${serializeOverlayWorkshopQuery(query)}`);
@@ -102,6 +105,11 @@ function SelectField(props: {
   );
 }
 
+function DimensionField(props: { label: string; value: string; onChange(value: string): void }): React.ReactElement {
+  const max = props.label === "Width" ? 3840 : 2160;
+  return <label className="overlay-workshop-control"><span>{props.label}</span><input type="number" min="64" max={max} step="1" value={props.value} onChange={(event) => props.onChange(event.target.value)} /></label>;
+}
+
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
   return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
 }
@@ -110,9 +118,28 @@ function defaultSystem(widget: WidgetType): DesignSystemId {
   return compatibleSystems(widget)[0]!;
 }
 
+function WorkshopSurface({ prepared, surface, query, comparison = false }: { prepared: PreparedFixture; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+  const width = query.width ?? prepared.widget.layout.w;
+  const height = query.height ?? prepared.widget.layout.h;
+  return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
+    {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
+    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
+      <WidgetVisualViewport widgetType={prepared.widget.type} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
+        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} snapshot={prepared.snapshot} renderMode={surface}
+          runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined} />
+      </WidgetVisualViewport>
+    </div>
+  </div>;
+}
+
 function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
+  const [dimensionDraft, setDimensionDraft] = useState({
+    width: initialQuery.width?.toString() ?? "",
+    height: initialQuery.height?.toString() ?? "",
+  });
+  const [scaleDraft, setScaleDraft] = useState(String(initialQuery.scale));
   const update = (next: OverlayWorkshopQuery) => {
     setSearch(next);
     setQuery(next);
@@ -144,6 +171,35 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const chooseState = (value: string) => update({ ...parsed, state: value as OverlayWorkshopQuery["state"] });
   const chooseSurface = (value: string) => update({ ...parsed, surface: value as OverlayWorkshopQuery["surface"] });
   const chooseVariant = (value: string) => update({ ...parsed, variant: value as HarnessVariant });
+  const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
+  const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
+  const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
+  const chooseScale = (value: string) => {
+    setScaleDraft(value);
+    const scale = Number(value);
+    if (value !== "" && Number.isFinite(scale) && scale >= 0.25 && scale <= 2) update({ ...parsed, scale });
+  };
+  const choosePreset = (value: string) => update({ ...parsed, preset: value as OverlayWorkshopQuery["preset"] });
+  const chooseCompare = (value: string) => update({ ...parsed, ...(value ? { compare: value as OverlayWorkshopQuery["surface"] } : { compare: undefined }) });
+  const reset = () => {
+    setDimensionDraft({ width: "", height: "" });
+    setScaleDraft(String(DEFAULT_OVERLAY_WORKSHOP_QUERY.scale));
+    update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
+  };
+  const applyPreset = () => {
+    const [width, height] = PRESET_DIMENSIONS[parsed.preset];
+    setDimensionDraft({ width: String(width), height: String(height) });
+    update({ ...parsed, width, height });
+  };
+  const chooseDimension = (field: "width" | "height", value: string) => {
+    const next = { ...dimensionDraft, [field]: value };
+    setDimensionDraft(next);
+    const width = Number(next.width);
+    const height = Number(next.height);
+    const widthValid = next.width !== "" && Number.isInteger(width) && width >= 64 && width <= 3840;
+    const heightValid = next.height !== "" && Number.isInteger(height) && height >= 64 && height <= 2160;
+    if (widthValid && heightValid) update({ ...parsed, width, height });
+  };
 
   return (
     <main className="overlay-workshop" data-overlay-workshop-page>
@@ -165,29 +221,37 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
         <SelectField label="State" value={parsed.state} onChange={chooseState}>
           {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
         </SelectField>
+        <SelectField label="Session" value={parsed.session} onChange={chooseSession}>
+          {(["practice", "qualifying", "race"] as const).map((session) => <option key={session} value={session}>{session}</option>)}
+        </SelectField>
+        <SelectField label="Location" value={parsed.location} onChange={chooseLocation}>
+          {(["track", "pits"] as const).map((location) => <option key={location} value={location}>{location}</option>)}
+        </SelectField>
         <SelectField label="Surface" value={parsed.surface} onChange={chooseSurface}>
           {SURFACES.map((surface) => <option key={surface} value={surface}>{surface}</option>)}
         </SelectField>
         <SelectField label="Variant" value={parsed.variant} onChange={chooseVariant}>
           {VARIANTS.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
         </SelectField>
+        <SelectField label="Stage background" value={parsed.background} onChange={chooseBackground}>
+          {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
+        </SelectField>
+        <label className="overlay-workshop-control"><span>Scale</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
+        <SelectField label="Preset" value={parsed.preset} onChange={choosePreset}>
+          {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
+        </SelectField>
+        <button type="button" onClick={applyPreset}>Apply declared dimensions</button>
+        <DimensionField label="Width" value={dimensionDraft.width} onChange={(value) => chooseDimension("width", value)} />
+        <DimensionField label="Height" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
+        <SelectField label="Compare" value={parsed.compare ?? ""} onChange={chooseCompare}>
+          <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
+        </SelectField>
+        <button type="button" onClick={reset}>Reset controls</button>
       </section>
-      <section className="overlay-workshop-stage" data-overlay-workshop-stage>
+      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (
-          <div
-            className="overlay-workshop-widget-root"
-            data-overlay-workshop-widget-root
-            style={{ width: prepared.widget.layout.w, height: prepared.widget.layout.h }}
-          >
-            <WidgetVisualViewport widgetType={prepared.widget.type} layout={prepared.widget.layout} testId="overlay-workshop-viewport">
-              <WidgetVisualHost
-                widget={prepared.widget}
-                snapshot={prepared.snapshot}
-                renderMode={parsed.surface}
-                runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: parsed.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined}
-              />
-            </WidgetVisualViewport>
-          </div>
+          <><WorkshopSurface prepared={prepared} surface={parsed.surface} query={parsed} />
+          {parsed.compare && <WorkshopSurface prepared={prepared} surface={parsed.compare} query={parsed} comparison />}</>
         )}
       </section>
     </main>

@@ -224,3 +224,10 @@ La configuración pública Supabase y este registro se incorporan mediante
 ese valor para nombres de caché y Windows rechaza caracteres de URL, además de
 exponer configuración pública innecesariamente en logs. `ldflags` conserva solo
 versión y canal.
+
+Para no reemplazar la sesión protegida de una instalación habitual, las builds
+`nightly` y `testers` usan targets de Credential Manager derivados de canal y
+backend. `master` conserva `Vantare/LicenseClock` y `Vantare/SupabaseAuth`. El
+piloto se distribuye además con un directorio `configs` contiguo al ejecutable,
+de modo que caché de licencia, draft y configuración permanecen dentro del
+paquete portable.

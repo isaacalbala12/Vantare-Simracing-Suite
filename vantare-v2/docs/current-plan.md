@@ -35,6 +35,10 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   público dentro del nombre de su caché al interpolar `BUILD_FLAGS`, inválido en
   Windows. El generador existente pasa a incorporar también el registro público
   y esos tres valores salen de `ldflags`; el guard de deploy cubre la regresión.
+- Las builds `nightly` y `testers` separan además sus targets de Credential
+  Manager por canal y digest del backend. `master` conserva los targets legacy.
+  El artefacto del piloto debe ejecutarse en modo portable para aislar también
+  caché de licencia, drafts y configuración de la instalación habitual.
 - El preflight del proyecto vacío detectó dos migraciones locales con versión
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El

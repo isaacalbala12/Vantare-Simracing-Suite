@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -64,6 +65,15 @@ var (
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
 )
+
+func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
+	if channel != "nightly" && channel != "testers" {
+		return "Vantare/LicenseClock", "Vantare/SupabaseAuth"
+	}
+	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(backendURL))))
+	scope := fmt.Sprintf("Vantare/%s/%x", channel, digest[:8])
+	return scope + "/LicenseClock", scope + "/SupabaseAuth"
+}
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -1015,6 +1025,10 @@ func main() {
 		licensePublicKeys,
 		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
 	)
+	licenseClockTarget, authSessionTarget := protectedStoreTargets(
+		buildChannel,
+		supabaseURLResolved,
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
@@ -1029,7 +1043,7 @@ func main() {
 	} else {
 		licenseSvc.WithVerifier(license.NewCredentialVerifier(
 			publicKeys,
-			license.NewProtectedClockStore("Vantare/LicenseClock"),
+			license.NewProtectedClockStore(licenseClockTarget),
 		))
 	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
@@ -1041,7 +1055,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
-	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
+	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer

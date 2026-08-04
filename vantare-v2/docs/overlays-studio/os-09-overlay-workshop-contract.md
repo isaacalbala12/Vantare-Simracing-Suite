@@ -49,6 +49,19 @@ paridad Crystal histórica.
   persistencia, Wails/SSE ni configuración se añade. Captura: selector del root
   real; alpha/bounds/overflow se validan en el root, no en el fondo del stage.
 
+## Autoría declarativa piloto
+
+ISA-266 declara `delta-crystal-simple` junto al Delta Crystal existente. La
+declaración contiene el mismo `WidgetDesignV1` público y referencias directas al
+renderer, parser, defaults y migraciones del manifiesto, además de dimensiones y
+escenarios de autoría. El agregador actual proyecta esa declaración sin cambiar
+IDs, settings, orden, persistencia o salida visual.
+
+Un checker exige el piloto y rechaza IDs duplicados o incompatibilidades con los
+registros productivos. No decide qué renderer usar: `WidgetVisualHost` y el
+manifiesto siguen siendo las únicas autoridades de render. Retirar la declaración
+rompe el contract test; los otros diseños permanecen intactos hasta sus cortes.
+
 ## Plan de ejecución posterior
 
 1. ISA-261: fixtures portables/deterministas, sin runtime live.

@@ -39,7 +39,7 @@ const deltaAppearanceControls = [
 
 validateInspectorControls(deltaAppearanceControls);
 
-const deltaRegistration = {
+export const deltaRegistration = {
   widgetType: "delta" as const,
   configVersion: 2,
   defaultSettings: {

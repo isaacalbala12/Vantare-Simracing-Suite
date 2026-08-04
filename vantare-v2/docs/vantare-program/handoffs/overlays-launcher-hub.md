@@ -11,7 +11,8 @@
 ## Estado
 
 - Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; ISA-261
-  extrae sus fixtures neutrales en rama aislada, sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
+  extrae sus fixtures neutrales y ISA-266 declara el primer diseño tipado sin
+  migración masiva, todo en ramas aisladas y sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
   el gate HTML Crystal histórico 21/18 permanece separado. `engineer-radio-crystal`
   es oficial/productivo bajo contrato Engineer, no derivado del HTML clásico.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
@@ -193,7 +194,7 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-263, controles efímeros y comparación de superficies del Workshop; no promocionado.
+2026-08-05, ISA-266, declaración tipada piloto de `delta-crystal-simple`; no promocionado.
 
 ### ISA-262 — usar el Workshop local
 
@@ -261,3 +262,20 @@ y recientes.
 - Única protrusión: `delta-crystal-simple`, Y ≤13px por su badge compacto; todo exceso adicional falla. El runner imprime progreso, escribe checkpoint y cierra navegador/Vite en `finally`.
 - El decode PNG canónico por CDP tiene un coste total aproximado de 5–8 min para la suite 4×4; no se alteran timeouts, helper Crystal, baselines ni umbrales para acortarlo.
 - Crystal report-only es un gate independiente: la ejecución limitada a 90s llegó a 7 diseños PASS sin terminar el manifiesto. Nunca tratarla como aprobación total ni tocar baselines; resolver duración en otra issue.
+
+### ISA-266 — declaración tipada piloto
+
+- `frontend/src/overlay/design-systems/vantare-crystal/delta/official-designs.ts`
+  co-localiza la metadata de `delta-crystal-simple`: diseño público, renderer,
+  parser, defaults, migraciones, dimensiones y escenarios. Todas las referencias
+  apuntan a las piezas productivas existentes.
+- `official-designs.ts` sigue siendo el único agregador consumido por Studio,
+  Desktop, OBS y Workshop. Proyecta la declaración al mismo `WidgetDesignV1`;
+  no existe conversión ni segundo registro.
+- El checker exige el piloto y rechaza duplicados o incompatibilidades con el
+  manifiesto y el registro funcional. Retirar la declaración rompe el contrato
+  explícitamente. La migración del resto del catálogo pertenece a cortes
+  posteriores.
+- Gate de cierre: unit/contract, `design-system:check`, build, lint focal,
+  diff-check y protocolo visual ISA-265 sobre las cuatro superficies. Los PNG
+  y reportes siguen siendo temporales y no se versionan.

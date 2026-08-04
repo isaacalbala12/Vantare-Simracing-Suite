@@ -169,17 +169,44 @@ Deno.test("same_branch, wrong environment, extra fields and excessive budgets fa
   );
 });
 
-Deno.test("forbidden release instruction and replay URL never become ready", async () => {
-  const forbidden = input();
-  forbidden.criteria = ["Deploy the result after verification"];
-  (forbidden.evidence as Record<string, unknown>).text =
+Deno.test("authority instructions and replay URLs never become ready", async () => {
+  for (
+    const criterion of [
+      "Retry the task",
+      "Rerun the task",
+      "Merge the change",
+      "Deploy the result",
+      "Release the build",
+      "Publish the build",
+      "Assign the issue",
+      "Delegate the issue",
+      "Promote the candidate",
+      "Approve the change",
+      "Commit the change",
+      "Push the change",
+      "Open PR",
+      "Create a branch",
+    ]
+  ) {
+    const forbidden = input();
+    forbidden.criteria = [criterion];
+    const dossier = await buildTestingCenterCodexDossier(
+      forbidden,
+      verifiedContext,
+    );
+    assertEquals(dossier.status, "incomplete");
+    assertEquals(dossier.includesRetryOrReleaseCommand, true);
+    assertEquals(
+      dossier.incompleteReasons.includes("criteria_contains_forbidden_command"),
+      true,
+    );
+  }
+
+  const replay = input();
+  (replay.evidence as Record<string, unknown>).text =
     "See https://example.invalid/replay";
-  const dossier = await buildTestingCenterCodexDossier(
-    forbidden,
-    verifiedContext,
-  );
+  const dossier = await buildTestingCenterCodexDossier(replay, verifiedContext);
   assertEquals(dossier.status, "incomplete");
-  assertEquals(dossier.includesRetryOrReleaseCommand, true);
   assertEquals(dossier.hasReplayUrl, false);
 });
 

@@ -18,7 +18,22 @@ const MAX_FILES = 5;
 const MAX_COMMAND_IDS = 3;
 const MAX_PATH_BYTES = 220;
 const MAX_CRITERIA_BYTES = 2000;
-const FORBIDDEN_WORDS = ["retry", "merge", "deploy", "promotion"];
+const FORBIDDEN_AUTHORITY_PATTERNS = [
+  /\bretr(?:y|ies|ied|ying)\b/i,
+  /\brerun(?:s|ning)?\b/i,
+  /\bmerg(?:e|es|ed|ing)\b/i,
+  /\bdeploy(?:s|ed|ing|ment|ments)?\b/i,
+  /\breleas(?:e|es|ed|ing)\b/i,
+  /\bpublish(?:es|ed|ing)?\b/i,
+  /\bpromot(?:e|es|ed|ing|ion|ions)\b/i,
+  /\bassign(?:s|ed|ing|ment|ments)?\b/i,
+  /\bdelegat(?:e|es|ed|ing|ion|ions)\b/i,
+  /\bapprov(?:e|es|ed|ing|al|als)\b/i,
+  /\bcommit(?:s|ted|ting)?\b/i,
+  /\bpush(?:es|ed|ing)?\b/i,
+  /\b(?:pull[ -]?requests?|pr)\b/i,
+  /\bbranch(?:es|ed|ing)?\b/i,
+];
 const ALLOWED_COMMAND_IDS = [
   "frontend.test.focal",
   "frontend.test.global",
@@ -253,8 +268,10 @@ function assertPath(path: string): void {
   ) invalidValue();
 }
 
-function noForbiddenWords(value: string): boolean {
-  return rawContains([value], FORBIDDEN_WORDS);
+export function containsTestingCenterForbiddenCodexAuthority(
+  value: string,
+): boolean {
+  return FORBIDDEN_AUTHORITY_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 function hasReplayReference(value: string): boolean {
@@ -417,7 +434,7 @@ export async function buildTestingCenterCodexDossier(
       reasons.push("invalid_criterion");
       break;
     }
-    if (noForbiddenWords(criterion)) {
+    if (containsTestingCenterForbiddenCodexAuthority(criterion)) {
       reasons.push("criteria_contains_forbidden_command");
     }
     const sanitizedCriterion = sanitizeTestingCenterTesterText(criterion, 400);
@@ -455,7 +472,10 @@ export async function buildTestingCenterCodexDossier(
   ) {
     reasons.push("invalid_evidence_metrics");
   }
-  if (hasReplayReference(evidenceRaw) || noForbiddenWords(evidenceRaw)) {
+  if (
+    hasReplayReference(evidenceRaw) ||
+    containsTestingCenterForbiddenCodexAuthority(evidenceRaw)
+  ) {
     reasons.push("forbidden_evidence_content");
   }
   if (evidence.truncated) reasons.push("evidence_truncated");
@@ -463,7 +483,10 @@ export async function buildTestingCenterCodexDossier(
   if (ENCODER.encode(evidence.value).length > MAX_DOSSIER_BYTES) {
     reasons.push("evidence_too_large");
   }
-  if (hasReplayReference(evidence.value) || noForbiddenWords(evidence.value)) {
+  if (
+    hasReplayReference(evidence.value) ||
+    containsTestingCenterForbiddenCodexAuthority(evidence.value)
+  ) {
     reasons.push("forbidden_evidence_content");
   }
   if (
@@ -473,10 +496,10 @@ export async function buildTestingCenterCodexDossier(
     reasons.push("rejection_missing_details");
   }
 
-  const includesRetryOrReleaseCommand = rawContains([
+  const includesRetryOrReleaseCommand = [
     ...input.commandIds,
     ...input.criteria,
-  ], FORBIDDEN_WORDS);
+  ].some(containsTestingCenterForbiddenCodexAuthority);
   if (includesRetryOrReleaseCommand) reasons.push("forbidden_commands");
 
   const status: TestingCenterCodexDossier["status"] = reasons.length === 0
@@ -590,10 +613,4 @@ export async function buildTestingCenterCodexDossier(
   }
   output.dossierDigest = await sha256Hex(JSON.stringify(output));
   return output;
-}
-
-function rawContains(values: string[], forbidden: string[]): boolean {
-  return values.some((candidate) =>
-    forbidden.some((word) => new RegExp(`\\b${word}\\b`, "i").test(candidate))
-  );
 }

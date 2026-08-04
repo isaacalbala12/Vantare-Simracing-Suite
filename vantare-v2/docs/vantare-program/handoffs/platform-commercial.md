@@ -292,6 +292,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   global está activa, el efecto histórico `needs_owner` quedó congelado por
   flujo y el bearer temporal fue revocado. Codex, Discord, merge y promociones
   continúan fuera de alcance.
+- ISA-248 / TAU-07J prepara el handoff humano a Codex Cloud sin reactivar el
+  workflow automático. Un dossier completo produce una proyección digestada y
+  un texto fijo con evidencia no confiable delimitada. El preflight verifica
+  repositorio, árbol limpio, SHA/base y ancestry; tolera el nombre interno
+  `work` de Codex Cloud y exige confirmación humana cuando el sandbox no expone
+  remote. Los criterios no pueden conceder retry, asignación, autoridad Git o
+  release. Handoff Deno 8/8, Testing Center Deno 136/136 y Node 4/4 pasan. Falta
+  observar una tarea sintética y su PR;
+  no hay caller, secreto, deploy ni promoción.
 
 ## Riesgos
 

@@ -1,3 +1,20 @@
+Nota ISA-248 / TAU-07J (2026-08-05, handoff humano preparado localmente):
+- `testing-center.codex-human-handoff.v1` solo se construye desde un dossier
+  completo, íntegro y con repo/rama/SHA/base, paths, command IDs y criterios
+  cerrados. El texto del tester queda delimitado como evidencia no confiable y
+  no puede ampliar instrucciones ni permisos.
+- Los criterios confiables tampoco pueden conceder autoridad de repositorio o
+  release: retry, asignación, delegación, aprobación, commit/push/PR, merge,
+  deploy, publicación y promoción fallan cerrados desde el dossier.
+- El preflight Node multiplataforma exige repo reconocible, árbol limpio, HEAD
+  y base exactos y ancestry real. Codex Cloud puede usar la rama interna
+  `work`; se valida el SHA, no ese nombre local. Un remote presente y distinto
+  falla; un remote ausente exige la confirmación humana de la selección UI.
+- Evidencia: handoff Deno 8/8, Testing Center Deno 136/136 y preflight Node
+  4/4 PASS. Sin API OpenAI,
+  caller, secreto, red, deploy, PR automática ni promoción. Pendiente el gate
+  manual: una tarea sintética observada y una PR con head/base correctos.
+
 Nota ISA-289 / TAU-07K (2026-08-04, hardening de revisión cerrado):
 - El tooling del piloto acepta únicamente el project ref exacto y sensible a
   mayúsculas `lbaxvpzexoferfvfkplz`; el preflight comprueba también el ref

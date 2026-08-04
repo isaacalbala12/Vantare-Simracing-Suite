@@ -200,3 +200,27 @@ ni efectos. Después se creó el webhook `Issue` para team `My Live` y su signin
 secret se guardó directamente en Supabase. El siguiente gate manual es registrar
 la identidad sintética y la build Nightly exacta; el webhook solo quedará
 verificado tras el primer delivery real firmado.
+
+## Preparación de la build sintética Nightly
+
+La cuenta autorizada está registrada server-side como `primary_tester`. La
+pausa global `isa243-testing-pilot-global` permanece activa. Su acceso Nightly
+es un grant local de sandbox `isa243-nightly-pilot-584c2b85`, explícitamente
+sintético y revocable, que expira el `2026-08-05T19:17:05Z`; no representa una
+compra ni modifica producción.
+
+El emisor `license-credential` está `ACTIVE` v1 en el mismo proyecto de testing.
+Usa la clave exclusiva `testing-isa243-20260804`; su fingerprint público es
+`3f520a864fec01d953edd60b88433ad52f63f2fbb5d4d9ad0bc77b425397ea27`. La
+privada solo existe en Supabase Secrets. El registro público que debe confiar la
+build del piloto es:
+
+```text
+testing-isa243-20260804:UoXwaCjyOf0IgZDrpfeuq5L5p-g6PFY1u19CIW9ORPE
+```
+
+La configuración pública Supabase y este registro se incorporan mediante
+`tools/generate_supabase_config.ps1`. No deben viajar en `BUILD_FLAGS`: Task usa
+ese valor para nombres de caché y Windows rechaza caracteres de URL, además de
+exponer configuración pública innecesariamente en logs. `ldflags` conserva solo
+versión y canal.

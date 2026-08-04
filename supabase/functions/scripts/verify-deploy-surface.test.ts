@@ -42,7 +42,9 @@ Deno.test("testing pilot functions are recognized but remain outside production 
     !pilotWrapper.includes('"testing-center-linear-worker"')
   ) throw new Error("testing pilot wrapper lacks explicit guards");
   if (/& \$guard\s+if \(\$LASTEXITCODE/.test(pilotWrapper)) {
-    throw new Error("PowerShell guard incorrectly reuses stale native exit code");
+    throw new Error(
+      "PowerShell guard incorrectly reuses stale native exit code",
+    );
   }
 });
 
@@ -106,5 +108,33 @@ Deno.test("client build receives public verification keys only", () => {
     clientBuildSurface.includes("OFFLINE_LICENSE_KEY_ID")
   ) {
     throw new Error("server-side signing material leaked into client build");
+  }
+  const windowsTask = Deno.readTextFileSync(files[1]);
+  for (
+    const ldflag of [
+      "-X main.supabaseURL=",
+      "-X main.supabaseAnonKey=",
+      "-X main.licensePublicKeys=",
+    ]
+  ) {
+    if (windowsTask.includes(ldflag)) {
+      throw new Error(
+        `public client config leaked into Task cache key: ${ldflag}`,
+      );
+    }
+  }
+  const generator = Deno.readTextFileSync(
+    new URL(
+      "../../../vantare-v2/tools/generate_supabase_config.ps1",
+      import.meta.url,
+    ),
+  );
+  if (
+    !generator.includes("VANTARE_LICENSE_PUBLIC_KEYS") ||
+    !generator.includes("licensePublicKeys = string(decoded)")
+  ) {
+    throw new Error(
+      "generated client config omits the public license registry",
+    );
   }
 });

@@ -23,6 +23,18 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   `issueCreate`, Codex, Discord, merge ni promoción. El siguiente gate manual es
   registrar una identidad sintética autorizada y la build Nightly exacta desde
   la que se enviará el primer reporte.
+- Identidad sintética registrada como `primary_tester` y protegida por pausa
+  global activa. La capability `vantare.channel.nightly` procede de un grant
+  local `subscription_recovery` de sandbox, marcado sintético y revocable, con
+  expiración `2026-08-05T19:17:05Z`. No existen efectos ni bindings Linear.
+- `license-credential` está `ACTIVE` v1 en testing con la clave exclusiva
+  `testing-isa243-20260804`; fingerprint SHA-256 público
+  `3f520a864fec01d953edd60b88433ad52f63f2fbb5d4d9ad0bc77b425397ea27`.
+  La privada solo existe como Supabase Secret.
+- El primer build Nightly detectó que Task incluía URL, anon key y registro
+  público dentro del nombre de su caché al interpolar `BUILD_FLAGS`, inválido en
+  Windows. El generador existente pasa a incorporar también el registro público
+  y esos tres valores salen de `ldflags`; el guard de deploy cubre la regresión.
 - El preflight del proyecto vacío detectó dos migraciones locales con versión
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El

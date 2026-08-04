@@ -55,13 +55,10 @@ const (
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
 
-// supabaseURL and supabaseAnonKey are injected at build time via ldflags
-// (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
-// can validate OAuth tokens without requiring end users to set environment
-// variables. They are public values (the Supabase anon key is designed to be
-// shipped in client apps). Runtime env vars VANTARE_SUPABASE_URL /
-// VANTARE_SUPABASE_ANON_KEY still take precedence for development and
-// overrides.
+// Public Supabase configuration and license verification keys are injected by
+// the generated supabase_build.go source so values never become Task cache file
+// names. They are public client configuration, not server-side secrets. Runtime
+// VANTARE_* environment variables still take precedence for development.
 var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""

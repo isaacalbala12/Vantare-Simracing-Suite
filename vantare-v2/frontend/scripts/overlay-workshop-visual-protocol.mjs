@@ -155,22 +155,6 @@ async function waitForFonts(page) {
   }), 5000);
 }
 
-async function captureTransparentRoot(locator, page) {
-  const transparencyStyle = await page.addStyleTag({
-    content: `
-      html, body, [data-overlay-workshop-visual-ancestor] {
-        background: transparent !important;
-        background-image: none !important;
-      }
-    `,
-  });
-  try {
-    return await locator.screenshot({ animations: 'disabled', omitBackground: true });
-  } finally {
-    await transparencyStyle.evaluate((element) => element.remove());
-  }
-}
-
 async function captureScene(page, options, scene, errors) {
   const query = new URLSearchParams({
     widget: options.widget,
@@ -235,10 +219,13 @@ async function captureScene(page, options, scene, errors) {
     content: '[data-overlay-workshop-visual-ancestor] { visibility: visible !important; }',
   });
   let captured;
-  let rootOnly;
+  let rootOnlyCapture;
   const captureStartedAt = Date.now();
   try {
-    rootOnly = await withTimeout(`${options.surface}/${scene.id} root-only screenshot`, () => captureTransparentRoot(root, page));
+    rootOnlyCapture = await withTimeout(
+      `${options.surface}/${scene.id} transparent root screenshot`,
+      () => captureIsolatedElement(page, { selector, scene: CONTROL_SCENES[0] }),
+    );
     captured = await withTimeout(`${options.surface}/${scene.id} alpha screenshot`, () => captureIsolatedElement(page, { selector, scene }));
   } finally {
     await ancestorStyle.evaluate((element) => element.remove());
@@ -286,7 +273,7 @@ async function captureScene(page, options, scene, errors) {
   return {
     scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow, ancestorVisibility,
     alpha: alphaWithIntegrity, gateInput, gates: evaluateWorkshopVisualGates(gateInput),
-    rootOnlyHash: sha256(rootOnly), capture: { ...captured, rootOnly },
+    rootOnlyHash: sha256(rootOnlyCapture.widget), capture: { ...captured, rootOnly: rootOnlyCapture.widget },
   };
 }
 

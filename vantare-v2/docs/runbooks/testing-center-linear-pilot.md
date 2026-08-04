@@ -174,3 +174,12 @@ Center en `20260802130000`. Como TAU-02B nunca había sido desplegado, su
 migración y rollback pasan a `20260802130100`; Billing conserva intacto su
 timestamp. El dry-run remoto debe mostrar cada versión una sola vez antes de
 aplicar el schema.
+
+El primer push hosted se detuvo transaccionalmente en
+`20260802100000_billing_commercial_projection.sql`: Supabase gestiona
+`pgcrypto` bajo `extensions`, mientras el harness histórico exponía `digest`
+en `public`. La migración previa `20260802095000_pgcrypto_public_compatibility`
+crea únicamente los dos wrappers `public.digest` ausentes y delega en
+`extensions.digest`; nunca relocaliza ni reemplaza la extensión gestionada.
+La simulación con `pgcrypto` instalado solo en `extensions` y el harness local
+completo 18/18 + rollback/reapply pasan.

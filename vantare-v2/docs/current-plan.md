@@ -24,6 +24,12 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
   renombra mecánicamente a `20260802130100`; Billing conserva su historia. El
   dry-run remoto posterior enumera 23 versiones únicas y ordenadas.
+- El primer push remoto aplicó el baseline hasta `20260802090000` y se detuvo
+  antes de Testing Center porque hosted ubica `pgcrypto.digest` en
+  `extensions`. `20260802095000_pgcrypto_public_compatibility` añade wrappers
+  condicionales `public.digest` sin mover ni reemplazar la extensión. La
+  simulación hosted y el harness completo PostgreSQL 18/18 + rollback/reapply
+  pasan antes de reanudar.
 
 Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
 - Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.

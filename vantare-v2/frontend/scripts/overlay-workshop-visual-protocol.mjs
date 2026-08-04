@@ -211,36 +211,19 @@ async function captureScene(page, options, scene, errors) {
       overflowYpx: Math.max(0, element.scrollHeight - element.clientHeight),
     };
   });
-  const ancestorVisibility = await root.evaluate((element) => {
-    let count = 0;
-    for (let current = element.parentElement; current && current !== document.body; current = current.parentElement) {
-      current.setAttribute('data-overlay-workshop-visual-ancestor', '');
-      count += 1;
-    }
-    return count;
-  });
-  const ancestorStyle = await page.addStyleTag({
-    content: '[data-overlay-workshop-visual-ancestor] { visibility: visible !important; }',
-  });
   let captured;
   let rootOnly;
   const captureStartedAt = Date.now();
-  try {
-    captured = await withTimeout(`${options.surface}/${scene.id} alpha screenshot`, () => captureIsolatedElement(page, { selector, scene }));
-    rootOnly = scene.id === resolveRootOnlyCaptureScene().id
-      ? captured.widget
-      : await withTimeout(
-        `${options.surface}/${scene.id} transparent root screenshot`,
-        () => captureIsolatedElement(page, { selector, scene: resolveRootOnlyCaptureScene() }),
-      ).then((capture) => capture.widget);
-  } finally {
-    await ancestorStyle.evaluate((element) => element.remove());
-    await root.evaluate((element) => {
-      for (let current = element.parentElement; current && current !== document.body; current = current.parentElement) {
-        current.removeAttribute('data-overlay-workshop-visual-ancestor');
-      }
-    });
-  }
+  // captureIsolatedElement makes only the contractual root and its descendants
+  // visible. Revealing ancestors here would let the Workshop stage/backdrop
+  // enter the root-only capture and invalidate scene independence.
+  captured = await withTimeout(`${options.surface}/${scene.id} alpha screenshot`, () => captureIsolatedElement(page, { selector, scene }));
+  rootOnly = scene.id === resolveRootOnlyCaptureScene().id
+    ? captured.widget
+    : await withTimeout(
+      `${options.surface}/${scene.id} transparent root screenshot`,
+      () => captureIsolatedElement(page, { selector, scene: resolveRootOnlyCaptureScene() }),
+    ).then((capture) => capture.widget);
   progress(`${options.surface}/${scene.id} sceneOnly+widget screenshots ${Date.now() - captureStartedAt}ms`);
   const decodeStartedAt = Date.now();
   const widgetPromise = decodePng(page, captured.widget).then((value) => {
@@ -277,7 +260,7 @@ async function captureScene(page, options, scene, errors) {
     scene: scene.id,
   };
   return {
-    scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow, ancestorVisibility,
+    scene: scene.id, selector, rootCount, fontsReady, rootMetrics, authorisedOverflow,
     alpha: alphaWithIntegrity, gateInput, gates: evaluateWorkshopVisualGates(gateInput),
     rootOnlyHash: sha256(rootOnly), capture: { ...captured, rootOnly },
   };

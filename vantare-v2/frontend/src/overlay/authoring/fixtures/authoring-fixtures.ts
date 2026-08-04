@@ -11,8 +11,8 @@ import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import type { InputTelemetryContent } from "../../widget-types/input-telemetry/input-telemetry-definition";
 import {
+  clearInputTelemetryHistory,
   recordInputTelemetrySample,
-  resetInputTelemetryHistory,
   type InputTelemetrySample,
 } from "../../widget-types/input-telemetry/input-telemetry-accumulator";
 import { buildInputTelemetryViewModel } from "../../widget-types/input-telemetry/input-telemetry-view-model";
@@ -395,7 +395,7 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
 
 export function seedHarnessInputHistory(widget: WidgetInstanceV3, snapshot: TelemetrySnapshot): void {
   if (widget.type !== "input-telemetry") return;
-  resetInputTelemetryHistory();
+  clearInputTelemetryHistory(widget.id);
   for (const item of snapshot.derived?.inputHistory ?? []) {
     recordInputTelemetrySample(widget.id, {
       ...snapshot,

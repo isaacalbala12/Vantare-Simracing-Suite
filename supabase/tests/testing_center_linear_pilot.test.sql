@@ -80,10 +80,10 @@ update isa243_pilot pilot set
     'labels',pg_catalog.jsonb_build_array(
       'testing-center','needs-triage','channel:nightly',
       'module:testing_center','status:needs-triage'),
-    'team','Vantare',
-    'project','Testing Center',
-    'status','Triage',
-    'serverMetadataDigest','65511d3f3ca28f43acd775c2a25902825730c892ba6e76860576dd0fdfc0caff'
+    'team','My Live',
+    'project','Testing Center — Feedback',
+    'status','Backlog',
+    'serverMetadataDigest','c1fa41d3a00740a5a0978530c6210b856d1fa28befe24a2bf64bacd45fbaf09b'
   )
 from public.testing_center_linear_projection_snapshots snapshot
 where snapshot.effect_id = pilot.effect_id;

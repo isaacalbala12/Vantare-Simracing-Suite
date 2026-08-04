@@ -262,6 +262,13 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   lint, build y visual 4/4 pasan.
   Función, secretos y red siguen sin desplegar; PostHog/replay, Linear, Discord,
   Codex, merge y promociones permanecen apagados.
+- ISA-243 / TAU-07I tiene autorización limitada al proyecto Supabase de testing
+  `lbaxvpzexoferfvfkplz`. Linear ya contiene el proyecto
+  `Testing Center — Feedback` y labels agrupadas para origen, canal, módulo y
+  flujo; los UUID están fijados en el runbook. El runtime se ajusta a los
+  nombres reales `My Live` / `Backlog`. Aún no hay secretos cargados, deploy,
+  webhook activo ni llamada `issueCreate`; producción, Codex, Discord, merge y
+  promociones continúan fuera de alcance.
 
 ## Riesgos
 

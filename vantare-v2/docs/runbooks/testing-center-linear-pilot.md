@@ -43,9 +43,9 @@ Isaac debe revisar y aprobar estas decisiones antes de ejecutar nada remoto:
 
 1. Proyecto Supabase **de testing**, nunca producción.
 2. OAuth app Linear con client credentials habilitado y acceso solo al team
-   Vantare; el worker pedirá `issues:create`.
-3. UUIDs exactos de organización, team, proyecto `Testing Center`, estado
-   `Triage` y labels revisadas.
+   `My Live`; el worker pedirá `issues:create`.
+3. UUIDs exactos de organización, team, proyecto
+   `Testing Center — Feedback`, estado de entrada `Backlog` y labels revisadas.
 4. Webhook `Issue` creado manualmente por un admin hacia la función de testing.
 5. Reporte sintético concreto y confirmación de que la pausa global empieza
    activa.
@@ -69,10 +69,31 @@ Guardar en Supabase Secrets del proyecto de testing:
 - `LINEAR_WEBHOOK_SECRET`
 - `TESTING_CENTER_LINEAR_PILOT_SECRET` (aleatorio, mínimo 32 bytes)
 
-`LINEAR_LABEL_IDS_JSON` es un objeto nombre → UUID. Debe contener, como mínimo,
-`testing-center`, `needs-triage`, `channel:nightly`, `channel:testers`,
-`status:needs-triage` y cada `module:<módulo>` que pueda entrar al piloto. La
-ausencia de cualquier label necesaria falla cerrada antes de crear el issue.
+`LINEAR_LABEL_IDS_JSON` es un objeto clave lógica → UUID; las claves no son los
+nombres visibles de Linear. Debe contener, como mínimo, `testing-center`,
+`needs-triage`, `channel:nightly`, `channel:testers`, `status:needs-triage` y
+cada `module:<módulo>` que pueda entrar al piloto. Esto permite usar grupos
+visibles válidos (`Canal`, `Módulo`, `Flujo`) sin depender de la sintaxis
+`grupo:label` ni de nombres reservados. La ausencia de cualquier UUID necesario
+falla cerrada antes de crear el issue.
+
+Configuración revisada para el primer piloto:
+
+- Supabase testing ref: `lbaxvpzexoferfvfkplz`.
+- Team `My Live`: `09b576f9-94e3-46b9-abc1-535c0fb2c72f`.
+- Proyecto `Testing Center — Feedback`:
+  `0278f602-9c35-4885-b5ca-368218f14c28`.
+- Estado de entrada `Backlog`: `057df492-84d7-4d53-81ba-ce4f2efc155d`.
+- Labels lógicas del piloto:
+  - `testing-center` → `eb298f41-45a7-48b4-9713-ed44dd818ea7`.
+  - `needs-triage` → `6ac9888b-e041-4792-aa52-e14de753ad90`.
+  - `channel:nightly` → `0274d043-3a56-4c5d-95e5-d05dac450515`.
+  - `channel:testers` → `7abb1830-f096-48a6-8897-e9a4ed095844`.
+  - `module:testing_center` → `18326402-10b0-4a2b-8856-df0feba22f79`.
+  - `status:needs-triage` → `c9a3af00-8ca8-41a0-8d18-2d8455be8e85`.
+
+`LINEAR_ORGANIZATION_ID`, el client secret, el signing secret del webhook y el
+bearer del piloto permanecen fuera del repositorio.
 
 ## Orden de activación aprobado
 
@@ -141,3 +162,10 @@ deploy guard 4/4 PASS; typecheck, lint y formato PASS. PostgreSQL: instalación
 limpia, 18/18, rollback exacto y reaplicación 18/18 PASS. La ejecución usó tres
 bases temporales dentro del contenedor Supabase local ya activo; todas quedaron
 eliminadas y la base de desarrollo no se modificó.
+
+Tras fijar los UUID y nombres reales de Linear, Deno 120/120, guard 4/4,
+typecheck, formato y `git diff --check` volvieron a pasar. El rerun PostgreSQL
+posterior se detuvo antes de TAU-07I: el contenedor desechable cerró la conexión
+durante `20260802090000_billing_webhook_inbox.sql`. El contenedor temporal se
+eliminó y el Supabase local continuó healthy; no se repitió la prueba para
+evitar presión adicional sobre el equipo.

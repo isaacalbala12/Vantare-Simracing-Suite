@@ -225,11 +225,11 @@ begin
     or p_projection->>'technicalIssueId' <> v_snapshot.technical_issue_id
     or p_projection->>'sourceDigest' <> v_snapshot.source_digest
     or p_projection->>'marker' <> v_snapshot.marker
-    or p_projection->>'team' <> 'Vantare'
-    or p_projection->>'project' <> 'Testing Center'
-    or p_projection->>'status' <> 'Triage'
+    or p_projection->>'team' <> 'My Live'
+    or p_projection->>'project' <> 'Testing Center — Feedback'
+    or p_projection->>'status' <> 'Backlog'
     or p_projection->>'serverMetadataDigest'
-      <> '65511d3f3ca28f43acd775c2a25902825730c892ba6e76860576dd0fdfc0caff'
+      <> 'c1fa41d3a00740a5a0978530c6210b856d1fa28befe24a2bf64bacd45fbaf09b'
     or p_projection->'labels' is distinct from pg_catalog.jsonb_build_array(
       'testing-center','needs-triage','channel:' || (v_report->>'channel'),
       'module:' || (v_report->>'module'),'status:needs-triage')

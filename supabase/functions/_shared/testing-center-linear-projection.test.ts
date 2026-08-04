@@ -60,9 +60,9 @@ Deno.test("linear projection uses server-owned team/project/status and forbid de
   assertEquals(Object.hasOwn(projection, "assignee"), false);
   assertEquals(Object.hasOwn(projection, "priority"), false);
   assertEquals(Object.hasOwn(projection, "delegate"), false);
-  assertEquals(projection.serverMetadata.team, "Vantare");
-  assertEquals(projection.serverMetadata.project, "Testing Center");
-  assertEquals(projection.serverMetadata.status, "Triage");
+  assertEquals(projection.serverMetadata.team, "My Live");
+  assertEquals(projection.serverMetadata.project, "Testing Center — Feedback");
+  assertEquals(projection.serverMetadata.status, "Backlog");
 });
 
 Deno.test("linear projection sanitizes adversarial reporter text into untrusted blocks", async () => {

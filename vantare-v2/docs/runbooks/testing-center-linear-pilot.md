@@ -148,6 +148,27 @@ El rollback `20260804100000_testing_center_linear_pilot.down.sql` solo acepta
 cero bindings reales del piloto. Nunca elimina silenciosamente un issue Linear
 ya creado; primero debe resolverse su trazabilidad con revisión humana.
 
+## Diagnóstico seguro de respuestas ambiguas
+
+ISA-287 / TAU-07J añade el contrato `testing-center.linear-diagnostic.v1` para
+el siguiente despliegue controlado del worker. Una respuesta `409` puede incluir
+únicamente:
+
+- `contractVersion` fija.
+- `detailCode` de una lista cerrada de fases.
+- `httpStatus` entero entre 100 y 599, o `null`.
+- `graphqlErrorCodes` limitado a `RATELIMITED` y `UNKNOWN`.
+
+El handler reconstruye esos cuatro campos en runtime. Nunca propaga mensajes,
+cuerpos, paths, extensions, títulos, descripciones, texto del tester o secretos.
+El diagnóstico es observacional: no habilita un retry. Todo fallo posterior al
+envío de `issueCreate` conserva `needs_owner`; solo un fallo de transporte al
+obtener el token, anterior a la mutación, puede seguir el retry acotado.
+
+El código de ISA-287 está validado localmente pero no desplegado. Antes de
+actualizar la Edge Function se requiere revisión humana; antes de crear otro
+reporte sintético se requiere un gate separado y un bearer temporal nuevo.
+
 ## Verificación local
 
 ```powershell

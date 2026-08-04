@@ -278,6 +278,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   cero issues en Linear y el contrato prohíbe una tercera llamada. El webhook
   existe pero su firma aún no tiene delivery real; producción, Codex, Discord,
   merge y promociones continúan fuera de alcance.
+- ISA-287 / TAU-07J prepara, sin desplegar, diagnóstico sanitizado para la
+  respuesta ambigua del piloto. El contrato cerrado publica solo versión, fase
+  segura, HTTP status acotado y códigos GraphQL `RATELIMITED`/`UNKNOWN`; la
+  frontera HTTP lo canonicaliza en runtime para impedir campos añadidos. No
+  cambia claim, fencing, binding ni retries: después de `issueCreate` siempre
+  termina en `needs_owner`. Evidencia: focal 16/16, Testing Center 125/125,
+  deploy guard 4/4, typecheck, formato y diff PASS. Requiere revisión humana
+  antes de desplegar en Supabase testing y un gate separado antes de crear un
+  nuevo reporte sintético.
 
 ## Riesgos
 

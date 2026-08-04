@@ -1,3 +1,17 @@
+Nota ISA-287 / TAU-07J (2026-08-04, diagnóstico local listo para revisión):
+- El worker clasifica toda incertidumbre de Linear con el contrato cerrado
+  `testing-center.linear-diagnostic.v1`: fase segura, HTTP status acotado y
+  códigos GraphQL limitados a `RATELIMITED`/`UNKNOWN`. Nunca expone mensajes,
+  cuerpos, paths, extensions, texto del tester ni secretos.
+- La frontera HTTP reconstruye el diagnóstico en runtime y emite exactamente
+  cuatro campos; una revisión adversarial detectó y cerró esta protección P2.
+  La semántica sigue intacta: solo el fallo de token previo a `issueCreate`
+  puede reintentarse y toda incertidumbre posterior termina en `needs_owner`.
+- Evidencia local: Testing Center 125/125, focal 16/16, deploy guard 4/4,
+  typecheck del worker, formato y `git diff --check` PASS. No hubo Docker,
+  despliegue, secretos, nueva llamada a Linear ni nuevo reporte. El siguiente
+  gate es revisión humana antes de desplegar el worker en Supabase testing.
+
 Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
 - Isaac autorizó un único reintento tras corregir el claim hosted. El worker
   adquirió lease/fencing y devolvió `409 linear_response_ambiguous`; el

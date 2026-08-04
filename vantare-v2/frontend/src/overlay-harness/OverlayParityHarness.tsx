@@ -17,7 +17,7 @@ import {
   type HarnessVariant,
   type HarnessWidget,
   type CrystalHarnessDesignId,
-} from "./harness-fixtures";
+} from "../overlay/authoring/fixtures/authoring-fixtures";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 import type { EngineerLocale, EngineerSeverity } from "../engineer/engineer-presentation-store";
 

@@ -132,25 +132,83 @@ Deno.test("post-create uncertainty is terminal and never retried", async () => {
       Promise.resolve({
         status: "ambiguous",
         errorCode: "linear_response_ambiguous",
+        diagnostic: {
+          contractVersion: "testing-center.linear-diagnostic.v1",
+          detailCode: "issue_create_graphql_rejected",
+          httpStatus: 400,
+          graphqlErrorCodes: ["UNKNOWN"],
+        },
       }),
   });
+  const body = await response.json();
   if (
     response.status !== 409 || events.at(-1) !== "ambiguous" ||
-    events.includes("retry")
+    events.includes("retry") || body.code !== "linear_response_ambiguous" ||
+    body.diagnostic?.detailCode !== "issue_create_graphql_rejected" ||
+    body.diagnostic?.httpStatus !== 400 ||
+    body.diagnostic?.graphqlErrorCodes?.join(",") !== "UNKNOWN"
   ) throw new Error("ambiguous create was retried");
 });
 
-Deno.test("unexpected dispatch exception is also terminal ambiguity", async () => {
+Deno.test("ambiguous diagnostic is canonicalized at the HTTP boundary", async () => {
   const events: string[] = [];
   const response = await handleTestingCenterLinearPilotRequest(request(), {
     store: store(events),
     pilotSecret: "s".repeat(32),
     workerId: "isa243-linear-pilot",
-    dispatch: () => Promise.reject(new Error("unexpected")),
+    dispatch: () =>
+      Promise.resolve({
+        status: "ambiguous",
+        errorCode: "linear_response_ambiguous",
+        diagnostic: {
+          contractVersion: "malicious-contract",
+          detailCode: "private_detail_code",
+          httpStatus: 999,
+          graphqlErrorCodes: ["PRIVATE", "RATELIMITED", "PRIVATE_2"],
+          message: "private tester text",
+          path: ["issueCreate"],
+          extensions: { token: "private-token" },
+        },
+      } as never),
   });
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+  const diagnosticKeys = Object.keys(body.diagnostic ?? {}).sort().join(",");
   if (
     response.status !== 409 || events.at(-1) !== "ambiguous" ||
-    events.includes("retry")
+    events.includes("retry") ||
+    diagnosticKeys !==
+      "contractVersion,detailCode,graphqlErrorCodes,httpStatus" ||
+    body.diagnostic?.contractVersion !==
+      "testing-center.linear-diagnostic.v1" ||
+    body.diagnostic?.detailCode !== "dispatch_exception" ||
+    body.diagnostic?.httpStatus !== null ||
+    body.diagnostic?.graphqlErrorCodes?.join(",") !== "RATELIMITED,UNKNOWN" ||
+    serialized.includes("private tester text") ||
+    serialized.includes("private-token") || serialized.includes("issueCreate")
+  ) {
+    throw new Error(
+      "diagnostic crossed the HTTP boundary without sanitization",
+    );
+  }
+});
+
+Deno.test("unexpected dispatch exception is also terminal ambiguity", async () => {
+  const events: string[] = [];
+  const privateError = "private dispatch error with tester text";
+  const response = await handleTestingCenterLinearPilotRequest(request(), {
+    store: store(events),
+    pilotSecret: "s".repeat(32),
+    workerId: "isa243-linear-pilot",
+    dispatch: () => Promise.reject(new Error(privateError)),
+  });
+  const body = await response.json();
+  if (
+    response.status !== 409 || events.at(-1) !== "ambiguous" ||
+    events.includes("retry") || body.code !== "linear_response_ambiguous" ||
+    body.diagnostic?.detailCode !== "dispatch_exception" ||
+    body.diagnostic?.httpStatus !== null ||
+    JSON.stringify(body).includes(privateError)
   ) throw new Error("unexpected dispatch failure was allowed to retry");
 });
 

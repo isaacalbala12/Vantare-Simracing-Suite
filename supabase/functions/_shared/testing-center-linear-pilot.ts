@@ -7,6 +7,10 @@ import type {
   TestingCenterLinearCreatedIssue,
   TestingCenterLinearDispatchResult,
 } from "./testing-center-linear-api.ts";
+import {
+  canonicalizeTestingCenterLinearDiagnostic,
+  createTestingCenterLinearDiagnostic,
+} from "./testing-center-linear-api.ts";
 import { readJsonObject } from "./request.ts";
 
 const EFFECT_ID = /^effect_[0-9a-f]{64}$/;
@@ -200,7 +204,10 @@ export async function handleTestingCenterLinearPilotRequest(
     } catch {
       // Never retry an unexpected failure after the dispatch gate opened.
     }
-    return json({ code: "linear_response_ambiguous" }, 409);
+    return json({
+      code: "linear_response_ambiguous",
+      diagnostic: createTestingCenterLinearDiagnostic("dispatch_exception"),
+    }, 409);
   }
   if (result.status === "retryable") {
     try {
@@ -221,7 +228,12 @@ export async function handleTestingCenterLinearPilotRequest(
     } catch {
       return json({ code: "pilot_store_unavailable" }, 503);
     }
-    return json({ code: result.errorCode }, 409);
+    return json({
+      code: result.errorCode,
+      diagnostic: canonicalizeTestingCenterLinearDiagnostic(
+        result.diagnostic,
+      ),
+    }, 409);
   }
   try {
     await deps.store.complete({

@@ -4472,6 +4472,9 @@ Nota ISA-263 / OS-09D (2026-08-04, controles y verificación real Workshop):
   el comportamiento de la aplicación normal.
 - Evidencia: Playwright/Chrome cubre URL válida/inválida, cuatro fondos,
   superficies, comparación, teclado/foco, reset, preset, dimensiones y
-  viewports 1280x720, medio y compacto; HMR CSS aplicado y revertido. Vitest
-  focal 4 archivos/20 tests, ESLint focal, `design-system:check`, build y
+  viewports 1280x720, medio y compacto; HMR CSS aplicado y revertido. Las
+  dimensiones y escala usan borradores locales validados, y Reset vuelve a
+  defaults canónicos. Vitest focal 6 archivos/29 tests (incluye bootstrap
+  normal, rutas OBS/OAuth/Hub/Composite y fallback de carga), ESLint focal,
+  `design-system:check`, build y
   compile-out sin sentinels Workshop pasan. Sin promoción.

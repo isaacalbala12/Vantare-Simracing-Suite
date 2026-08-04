@@ -4,6 +4,7 @@ import "./index.css";
 import { applyTheme, getStoredThemeId, type VantareTheme } from "./lib/theme";
 import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
+import { AppBootFallback } from "./AppBootFallback";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
   : null;
@@ -19,12 +20,12 @@ export function App() {
   const path = window.location.pathname;
   if (import.meta.env.DEV && OverlayWorkshopDevRoute && path === "/workshop") {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppBootFallback />}>
         <OverlayWorkshopDevRoute />
       </Suspense>
     );
   }
-  return <Suspense fallback={null}><AppRuntime /></Suspense>;
+  return <Suspense fallback={<AppBootFallback />}><AppRuntime /></Suspense>;
 }
 
 createRoot(document.getElementById("root")!).render(

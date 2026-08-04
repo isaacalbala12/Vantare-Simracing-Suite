@@ -105,8 +105,9 @@ function SelectField(props: {
   );
 }
 
-function NumberField(props: { label: string; value: number | undefined; onChange(value: number): void }): React.ReactElement {
-  return <label className="overlay-workshop-control"><span>{props.label}</span><input type="number" min="64" max={props.label === "Width" ? 3840 : 2160} value={props.value ?? ""} onChange={(event) => props.onChange(Number(event.target.value))} /></label>;
+function DimensionField(props: { label: string; value: string; onChange(value: string): void }): React.ReactElement {
+  const max = props.label === "Width" ? 3840 : 2160;
+  return <label className="overlay-workshop-control"><span>{props.label}</span><input type="number" min="64" max={max} step="1" value={props.value} onChange={(event) => props.onChange(event.target.value)} /></label>;
 }
 
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
@@ -134,6 +135,11 @@ function WorkshopSurface({ prepared, surface, query, comparison = false }: { pre
 function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
+  const [dimensionDraft, setDimensionDraft] = useState({
+    width: initialQuery.width?.toString() ?? "",
+    height: initialQuery.height?.toString() ?? "",
+  });
+  const [scaleDraft, setScaleDraft] = useState(String(initialQuery.scale));
   const update = (next: OverlayWorkshopQuery) => {
     setSearch(next);
     setQuery(next);
@@ -168,16 +174,32 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
   const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
   const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
-  const chooseScale = (value: string) => update({ ...parsed, scale: Number(value) });
+  const chooseScale = (value: string) => {
+    setScaleDraft(value);
+    const scale = Number(value);
+    if (value !== "" && Number.isFinite(scale) && scale >= 0.25 && scale <= 2) update({ ...parsed, scale });
+  };
   const choosePreset = (value: string) => update({ ...parsed, preset: value as OverlayWorkshopQuery["preset"] });
   const chooseCompare = (value: string) => update({ ...parsed, ...(value ? { compare: value as OverlayWorkshopQuery["surface"] } : { compare: undefined }) });
-  const reset = () => update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
+  const reset = () => {
+    setDimensionDraft({ width: "", height: "" });
+    setScaleDraft(String(DEFAULT_OVERLAY_WORKSHOP_QUERY.scale));
+    update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
+  };
   const applyPreset = () => {
     const [width, height] = PRESET_DIMENSIONS[parsed.preset];
+    setDimensionDraft({ width: String(width), height: String(height) });
     update({ ...parsed, width, height });
   };
-  const chooseWidth = (width: number) => update({ ...parsed, width, height: parsed.height ?? prepared?.widget.layout.h ?? 180 });
-  const chooseHeight = (height: number) => update({ ...parsed, width: parsed.width ?? prepared?.widget.layout.w ?? 320, height });
+  const chooseDimension = (field: "width" | "height", value: string) => {
+    const next = { ...dimensionDraft, [field]: value };
+    setDimensionDraft(next);
+    const width = Number(next.width);
+    const height = Number(next.height);
+    const widthValid = next.width !== "" && Number.isInteger(width) && width >= 64 && width <= 3840;
+    const heightValid = next.height !== "" && Number.isInteger(height) && height >= 64 && height <= 2160;
+    if (widthValid && heightValid) update({ ...parsed, width, height });
+  };
 
   return (
     <main className="overlay-workshop" data-overlay-workshop-page>
@@ -214,15 +236,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
         <SelectField label="Stage background" value={parsed.background} onChange={chooseBackground}>
           {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
         </SelectField>
-        <SelectField label="Scale" value={String(parsed.scale)} onChange={chooseScale}>
-          {[0.5, 0.75, 1, 1.25, 1.5].map((scale) => <option key={scale} value={scale}>{scale}×</option>)}
-        </SelectField>
+        <label className="overlay-workshop-control"><span>Scale</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
         <SelectField label="Preset" value={parsed.preset} onChange={choosePreset}>
           {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
         </SelectField>
         <button type="button" onClick={applyPreset}>Apply declared dimensions</button>
-        <NumberField label="Width" value={parsed.width} onChange={chooseWidth} />
-        <NumberField label="Height" value={parsed.height} onChange={chooseHeight} />
+        <DimensionField label="Width" value={dimensionDraft.width} onChange={(value) => chooseDimension("width", value)} />
+        <DimensionField label="Height" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
         <SelectField label="Compare" value={parsed.compare ?? ""} onChange={chooseCompare}>
           <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
         </SelectField>

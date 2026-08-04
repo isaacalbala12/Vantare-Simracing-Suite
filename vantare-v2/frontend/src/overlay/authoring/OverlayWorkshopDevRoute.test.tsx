@@ -11,6 +11,7 @@ import {
   recordInputTelemetrySample,
   resetInputTelemetryHistory,
 } from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
 
 afterEach(() => {
   cleanup();
@@ -63,6 +64,28 @@ describe("OverlayWorkshopDevRoute", () => {
     fireEvent.change(screen.getByLabelText("Height"), { target: { value: "240" } });
     await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
+  });
+
+  it("keeps invalid declared dimensions as local drafts without changing the rendered root or URL", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=640&height=240" />);
+    await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
+    const initialSearch = window.location.search;
+
+    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "12" } });
+
+    expect((screen.getByLabelText("Width") as HTMLInputElement).value).toBe("12");
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px");
+    expect(window.location.search).toBe(initialSearch);
+    expect("error" in parseOverlayWorkshopQuery(window.location.search)).toBe(false);
+  });
+
+  it("represents valid non-preset scale deep-links honestly and preserves their round trip", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&scale=0.3" />);
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+
+    expect((screen.getByLabelText("Scale") as HTMLInputElement).value).toBe("0.3");
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.transform).toContain("scale(0.3)");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });
 
   it("seeds Input Telemetry after render without clearing unrelated histories in StrictMode", async () => {

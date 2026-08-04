@@ -6,6 +6,8 @@ import {
 } from "@supabase/supabase-js";
 import { Events } from "@wailsio/runtime";
 
+// Packaged builds receive these public values through the Task -> runner
+// VITE_* forwarding chain. They are compile-time inputs, not runtime overrides.
 function supabaseUrl(): string {
   return (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
 }

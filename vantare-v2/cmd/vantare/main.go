@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -55,18 +56,24 @@ const (
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
 
-// supabaseURL and supabaseAnonKey are injected at build time via ldflags
-// (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
-// can validate OAuth tokens without requiring end users to set environment
-// variables. They are public values (the Supabase anon key is designed to be
-// shipped in client apps). Runtime env vars VANTARE_SUPABASE_URL /
-// VANTARE_SUPABASE_ANON_KEY still take precedence for development and
-// overrides.
+// Public Supabase configuration and license verification keys are injected by
+// the generated supabase_build.go source so values never become Task cache file
+// names. They are public client configuration, not server-side secrets. Runtime
+// VANTARE_* environment variables still take precedence for development.
 var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
 )
+
+func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
+	if channel != "nightly" && channel != "testers" {
+		return "Vantare/LicenseClock", "Vantare/SupabaseAuth"
+	}
+	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(backendURL))))
+	scope := fmt.Sprintf("Vantare/%s/%x", channel, digest[:8])
+	return scope + "/LicenseClock", scope + "/SupabaseAuth"
+}
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -1018,6 +1025,10 @@ func main() {
 		licensePublicKeys,
 		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
 	)
+	licenseClockTarget, authSessionTarget := protectedStoreTargets(
+		buildChannel,
+		supabaseURLResolved,
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
@@ -1032,7 +1043,7 @@ func main() {
 	} else {
 		licenseSvc.WithVerifier(license.NewCredentialVerifier(
 			publicKeys,
-			license.NewProtectedClockStore("Vantare/LicenseClock"),
+			license.NewProtectedClockStore(licenseClockTarget),
 		))
 	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
@@ -1044,7 +1055,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
-	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
+	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer

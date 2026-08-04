@@ -4406,3 +4406,18 @@ Nota TELEMETRY-CORE-ISA-100 (2026-07-19) — ESTADO HISTÓRICO SUPERSEDED POR LA
 - Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
 - Estado al publicar ISA-100: TC-02–TC-05 seguían sin iniciar e ISA-26 estaba en Backlog. Esta línea ya no es operativa: ISA-26 está `In Review` sobre ISA-100 y ISA-27 permanece no iniciado/bloqueado por review humana, según la nota vigente al inicio del documento.
 - No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.
+Nota ISA-260 / OS-09A (2026-08-04, contrato y threat model Overlay Workshop):
+- Base limpia fijada: `origin/nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e`;
+  rama/worktree aislados. Sin promoción.
+- Characterization deriva 19 tipos, 2 sistemas, 41 diseños oficiales y 22 Crystal
+  sobre 19 tipos. El contrato visual histórico sigue siendo 21 Crystal/18 tipos;
+  el adicional oficial/productivo es `engineer-radio-crystal`, bajo contrato
+  Engineer y fuera del HTML clásico. Los gates quedan separados.
+- `WidgetVisualHost` es la frontera única caracterizada para Studio y runtime
+  Desktop/OBS. El plan fija tipo/sistema/diseño/configuración, stage/fondos,
+  deep-links fail-closed, fixtures, prerelease owner read-only y compile-out
+  Stable. Owner firmado real es precondición explícita de ISA-264; no se implementa auth.
+- Documentación ejecutable: `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
+  Handoff añade procedimiento seguro de arranque por worktree y puntero A2.
+- Alcance: docs y test focal; sin UI Workshop, catálogo/manifests, Billing,
+  canvas, readers LMU, Wails/SSE, persistencia, baselines o configuraciones.

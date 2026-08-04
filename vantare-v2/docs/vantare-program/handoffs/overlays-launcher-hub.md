@@ -10,7 +10,10 @@
 
 ## Estado
 
-- Overlay: proyecto Linear activo; ramas ISA-92/93 e integraciones históricas.
+- Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; queda en
+  review, sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
+  el gate HTML Crystal histórico 21/18 permanece separado. `engineer-radio-crystal`
+  es oficial/productivo bajo contrato Engineer, no derivado del HTML clásico.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
 - Hub: sin issue activa.
 - Base/rama/SHA de próximo trabajo: no fijados.
@@ -44,6 +47,37 @@ Riesgos:
 - **P2:** baselines obsoletos ocultando regresiones.
 - **P2:** cambios locales del checkout `refactor`.
 
+## Overlay Workshop y apertura correcta desde rama/worktree
+
+Workshop no tiene UI aún: reutilizará `WidgetVisualHost` y renderers puros. Su
+contrato y microplan están en `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
+
+1. Desde la raíz del **worktree correcto**, verifica `git branch --show-current`,
+   `git rev-parse --short HEAD` y `git status --short` antes de abrir la app.
+2. Confirma solo que existe `frontend/.env.local` y que declara
+   `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; no imprimas valores ni copies
+   el archivo entre worktrees.
+3. Ruta dev recomendada:
+   `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-wails-dev.ps1`.
+   El wrapper detiene stacks Vantare/Wails previos, mapea configuración pública
+   al backend, ejecuta `generate_supabase_config.ps1` y arranca
+   `wails3 dev -config ./build/config.yml -port 9245`. No uses `wails3 dev`
+   directo salvo que el entorno backend ya esté preparado.
+4. `cmd/vantare/supabase_build.go` es temporal e ignorado: nunca se commitea ni
+   se muestra. El wrapper puede dejarlo localmente; A2 lo limpia en `finally`.
+5. Para binario rápido, sigue sin duplicarlo la **Opción A2** de
+   `docs/release-beta-operations-runbook.md` y abre solo `bin\vantare.exe`, nunca
+   un exe raíz/portable stale.
+6. Si aparece «Configuración incompleta», falta sesión/licencia o el backend no
+   tiene configuración, cierra, reconstruye/rearranca con el wrapper y confirma
+   binario/worktree. Smoke: app abre, sesión/licencia resuelve, Hub carga y
+   Overlay Studio abre; anota branch/SHA usados.
+7. Al cerrar, detén el stack Vantare/Wails del worktree y no borres
+   `frontend/.env.local`.
+
+Autoridades complementarias: `docs/release-beta-operations-runbook.md` y
+`docs/tester-build-instructions.md`.
+
 ## Launcher
 
 MoTeC i2 Standard 1.1; fijados/recientes/no instaladas/catálogo; ejecutables,
@@ -70,4 +104,4 @@ y recientes.
 
 ## Última actualización
 
-2026-07-27, ISA-120, Codex orquestador.
+2026-08-04, ISA-260, contrato Workshop y runbook de apertura.

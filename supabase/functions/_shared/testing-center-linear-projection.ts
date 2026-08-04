@@ -26,9 +26,9 @@ const MODULES = [
   "unknown",
 ] as const;
 
-const TEAM = "Vantare";
-const PROJECT = "Testing Center";
-const STATUS = "Triage";
+const TEAM = "My Live";
+const PROJECT = "Testing Center — Feedback";
+const STATUS = "Backlog";
 
 type TestingCenterLinearServerMetadata = {
   team: string;

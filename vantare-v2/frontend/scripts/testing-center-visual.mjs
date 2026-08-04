@@ -77,20 +77,23 @@ try {
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) {
       throw new Error(`${viewport.name}: horizontal overflow`);
     }
-    const consents = page.getByRole("checkbox");
-    if (await consents.nth(0).isChecked() || await consents.nth(1).isChecked()) {
+    const diagnosticConsent = page.getByRole("checkbox", { name: /diagnóstico técnico/i });
+    const replayConsent = page.getByRole("checkbox", { name: /repetición de sesión/i });
+    const logsConsent = page.getByRole("checkbox", { name: /logs técnicos/i });
+    if (await diagnosticConsent.isChecked() || await replayConsent.isChecked() || await logsConsent.isChecked()) {
       throw new Error(`${viewport.name}: consent enabled by default`);
     }
+    if (!(await replayConsent.isDisabled())) throw new Error(`${viewport.name}: unavailable replay was enabled`);
     await page.locator("#tc-action").fill("Abrí el perfil endurance");
     await page.locator("#tc-expected").fill("El perfil debía iniciarse");
     await page.locator("#tc-observed").fill("El botón no respondió");
     await page.locator("#tc-module").selectOption("launcher");
-    await consents.nth(0).check();
+    await diagnosticConsent.check();
     const preview = page.getByTestId("testing-center-diagnostic-payload");
     await preview.waitFor();
     const expectedPayload = await page.evaluate(() => document.documentElement.dataset.testingCenterExpectedPayload);
     if (await preview.textContent() !== expectedPayload) throw new Error(`${viewport.name}: preview bytes changed`);
-    if (!(await consents.nth(1).isDisabled())) throw new Error(`${viewport.name}: unavailable logs were enabled`);
+    if (!(await logsConsent.isDisabled())) throw new Error(`${viewport.name}: unavailable logs were enabled`);
     if (viewport.name === "compact" || viewport.name === "wide") {
       await page.screenshot({ path: path.join(output, `testing-center-${viewport.name}-preview.png`), fullPage: true });
     }
@@ -104,6 +107,14 @@ try {
     }));
     if (transport.payload !== expectedPayload || transport.key !== transport.expectedKey || transport.discarded !== "true") {
       throw new Error(`${viewport.name}: submit/discard contract changed`);
+    }
+    await page.getByRole("tab", { name: "Validar corrección" }).click();
+    await page.getByText("El formulario se cerraba al volver desde el diagnóstico.").waitFor();
+    if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) {
+      throw new Error(`${viewport.name}: validation view horizontal overflow`);
+    }
+    if (viewport.name === "compact" || viewport.name === "wide") {
+      await page.screenshot({ path: path.join(output, `testing-center-${viewport.name}-validation.png`), fullPage: true });
     }
     await page.screenshot({ path: path.join(output, `testing-center-${viewport.name}.png`), fullPage: true });
     if (problems.length) throw new Error(`${viewport.name}: browser console not clean\n${problems.join("\n")}`);

@@ -31,7 +31,7 @@ grant usage on schema public,auth to anon,authenticated,service_role;
 '@
   docker exec $container createdb -U postgres testing_github
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
-  $core = Get-ChildItem (Join-Path $root 'supabase\migrations\*.sql') | Where-Object {$_.Name -le '20260802130000_testing_center_core.sql'} | Sort-Object Name
+  $core = Get-ChildItem (Join-Path $root 'supabase\migrations\*.sql') | Where-Object {$_.Name -le '20260802130100_testing_center_core.sql'} | Sort-Object Name
   $cuts = @('20260802140000_testing_center_access.sql','20260802150000_testing_center_report_submission.sql','20260802160000_testing_center_triage_outbox.sql','20260802170000_testing_center_github_delivery.sql')
   foreach($migration in $core){docker cp $migration.FullName "${container}:/tmp/$($migration.Name)"}
   foreach($name in $cuts){docker cp (Join-Path $root "supabase\migrations\$name") "${container}:/tmp/$name"}

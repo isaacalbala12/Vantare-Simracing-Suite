@@ -34,6 +34,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -46,13 +47,33 @@ describe("RoadmapPage", () => {
   it("renders dataset toggle", () => {
     render(<RoadmapPage />);
     expect(screen.getByText("Roadmap actual")).toBeTruthy();
-    expect(screen.getByText("Desarrollo por features")).toBeTruthy();
+    expect(screen.getByText("Proyectos")).toBeTruthy();
+  });
+
+  it("exposes the current/projects selector as linked tabs and panels", () => {
+    render(<RoadmapPage />);
+    expect(screen.getByRole("tablist", { name: "Vistas del roadmap" })).toBeTruthy();
+    const current = screen.getByRole("tab", { name: "Roadmap actual" });
+    const projects = screen.getByRole("tab", { name: "Proyectos" });
+    expect(current.getAttribute("aria-selected")).toBe("true");
+    expect(current.getAttribute("aria-controls")).toBe("roadmap-panel-current");
+    expect(screen.getByRole("tabpanel", { name: "Roadmap actual" }).id).toBe("roadmap-panel-current");
+
+    current.focus();
+    fireEvent.keyDown(current, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(projects);
+    expect(projects.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Proyectos" }).id).toBe("roadmap-panel-next");
+
+    fireEvent.keyDown(projects, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(current);
+    expect(current.getAttribute("aria-selected")).toBe("true");
   });
 
   it("switches dataset when toggle clicked (async)", async () => {
     render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    expect(await screen.findByText("Features por área")).toBeTruthy();
+    fireEvent.click(screen.getByText("Proyectos"));
+    expect(await screen.findByTestId("roadmap-project-tabs")).toBeTruthy();
   });
 
   it("hero buttons are external links (not disabled)", () => {
@@ -133,22 +154,11 @@ describe("RoadmapPage", () => {
     expect(screen.getByText("El roadmap vive con feedback")).toBeTruthy();
   });
 
-  it("renders 2 feature sections after switching to 'Desarrollo por features' tab", async () => {
+  it("renders public projects after switching to the projects tab", async () => {
     render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    const cards = await screen.findAllByTestId(/^feature-card-/);
-    expect(cards.length).toBe(8);
-    const devLabels = screen.getAllByText("En desarrollo");
-    expect(devLabels.length).toBeGreaterThanOrEqual(1);
-    const futureLabels = screen.getAllByText("Próximamente");
-    expect(futureLabels.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("does NOT show checkProgress (X/Y) on any feature card", async () => {
-    render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    await screen.findAllByTestId(/^feature-card-/);
-    expect(screen.queryByText(/\d+\/\d+/)).toBeNull();
+    fireEvent.click(screen.getByText("Proyectos"));
+    expect(await screen.findByTestId("roadmap-project-overlay-studio-v3")).toBeTruthy();
+    expect(screen.getByText("Telemetry Core")).toBeTruthy();
   });
 });
 

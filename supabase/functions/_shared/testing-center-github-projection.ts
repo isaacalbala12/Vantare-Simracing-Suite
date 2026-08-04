@@ -1,4 +1,10 @@
 // deno-lint-ignore-file no-control-regex
+import {
+  buildTestingCenterUntrustedBlock,
+  sanitizeTestingCenterTesterText,
+  sha256Hex,
+} from "./testing-center-projection-sanitization.ts";
+
 export const TESTING_CENTER_GITHUB_PROJECTION_VERSION =
   "testing-center.github-projection.v1" as const;
 
@@ -102,13 +108,7 @@ export class TestingCenterProjectionError extends Error {
   }
 }
 
-type SanitizedText = {
-  value: string;
-  redactedValues: number;
-  truncated: boolean;
-};
-
-const encoder = new TextEncoder();
+const ENCODER = new TextEncoder();
 const genericErrorCodes = new Set(["tester.report", "unknown", "none"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -139,7 +139,7 @@ function requiredString(
 ): string {
   if (
     typeof value !== "string" || value !== value.trim() ||
-    encoder.encode(value).length > maxBytes || !pattern.test(value)
+    ENCODER.encode(value).length > maxBytes || !pattern.test(value)
   ) invalidValue();
   return value;
 }
@@ -151,8 +151,8 @@ function testerText(
 ): string {
   if (
     typeof value !== "string" || value !== value.trim() ||
-    encoder.encode(value).length < minBytes ||
-    encoder.encode(value).length > maxBytes
+    ENCODER.encode(value).length < minBytes ||
+    ENCODER.encode(value).length > maxBytes
   ) invalidValue();
   return value;
 }
@@ -246,109 +246,10 @@ export function parseTestingCenterGitHubProjectionInput(
   };
 }
 
-function truncateUtf8(value: string, maxBytes: number): SanitizedText {
-  if (encoder.encode(value).length <= maxBytes) {
-    return { value, redactedValues: 0, truncated: false };
-  }
-  const suffix = "…[truncated]";
-  const suffixBytes = encoder.encode(suffix).length;
-  let output = "";
-  for (const character of value) {
-    if (encoder.encode(output + character).length > maxBytes - suffixBytes) {
-      break;
-    }
-    output += character;
-  }
-  return {
-    value: output + suffix,
-    redactedValues: 0,
-    truncated: true,
-  };
-}
-
-function replaceCounted(
-  value: string,
-  pattern: RegExp,
-  replacement: string,
-): { value: string; count: number } {
-  let count = 0;
-  return {
-    value: value.replace(pattern, () => {
-      count++;
-      return replacement;
-    }),
-    count,
-  };
-}
-
-export function sanitizeTestingCenterTesterText(
-  input: string,
-  maxBytes = 1024,
-): SanitizedText {
-  let value = input.normalize("NFKC");
-  let redactedValues = 0;
-  const replacements: Array<[RegExp, string]> = [
-    [
-      /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9_-]{16,})\b/g,
-      "[redacted-token]",
-    ],
-    [
-      /\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g,
-      "[redacted-token]",
-    ],
-    [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted-email]"],
-    [/\bhttps?:\/\/[^\s<>'\"]+/gi, "[redacted-url]"],
-    [/\b[A-Za-z]:[\\/][^\r\n]*/g, "[redacted-path]"],
-    [/\\\\[^\r\n]*/g, "[redacted-path]"],
-    [
-      /\bauthorization\s*[:=]\s*(?:bearer\s+)?[^\s,;]+/gi,
-      "authorization=[redacted-secret]",
-    ],
-    [
-      /\b(?:cookie|password|passwd|secret|token|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi,
-      "secret=[redacted-secret]",
-    ],
-    [
-      /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069]/g,
-      "[redacted-control]",
-    ],
-  ];
-  for (const [pattern, replacement] of replacements) {
-    const result = replaceCounted(value, pattern, replacement);
-    value = result.value;
-    redactedValues += result.count;
-  }
-
-  value = value
-    .replace(/`/g, "'")
-    .replace(/@/g, "@\u200b")
-    .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+$/gm, "")
-    .trim();
-  const truncated = truncateUtf8(value, maxBytes);
-  return {
-    value: truncated.value,
-    redactedValues,
-    truncated: truncated.truncated,
-  };
-}
-
-async function sha256(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
-  return Array.from(
-    new Uint8Array(digest),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
-}
-
 function safeErrorCode(errorCode: string | null): string | null {
   return errorCode !== null && !genericErrorCodes.has(errorCode)
     ? errorCode
     : null;
-}
-
-function untrustedBlock(label: string, value: string): string {
-  return `### ${label}\n\n<!-- vantare-untrusted-begin -->\n\`\`\`text\n${value}\n\`\`\`\n<!-- vantare-untrusted-end -->`;
 }
 
 export async function buildGitHubIssueProjection(
@@ -361,6 +262,7 @@ export async function buildGitHubIssueProjection(
   const context = input.report.contextText === null
     ? null
     : sanitizeTestingCenterTesterText(input.report.contextText, 1536);
+
   const redactedValues = action.redactedValues + expected.redactedValues +
     observed.redactedValues + (context?.redactedValues ?? 0);
   const truncatedFields = [action, expected, observed, context]
@@ -401,21 +303,22 @@ export async function buildGitHubIssueProjection(
     }`,
     "- Logs: no incluidos en GitHub por este corte",
     "",
-    untrustedBlock("Acción", action.value),
+    buildTestingCenterUntrustedBlock("Acción", action.value),
     "",
-    untrustedBlock("Resultado esperado", expected.value),
+    buildTestingCenterUntrustedBlock("Resultado esperado", expected.value),
     "",
-    untrustedBlock("Resultado observado", observed.value),
-    ...(context === null
-      ? []
-      : ["", untrustedBlock("Contexto adicional", context.value)]),
+    buildTestingCenterUntrustedBlock("Resultado observado", observed.value),
+    ...(context === null ? [] : [
+      "",
+      buildTestingCenterUntrustedBlock("Contexto adicional", context.value),
+    ]),
     "",
     "## Límites",
     "",
     "Proyección dry-run sanitizada. Sin assignee, Codex, comandos, logs, replay URL ni cambio de estado externo.",
   ].join("\n");
   const title = `[Testing Center] ${input.report.module} · ${issueShort}`;
-  const projectionDigest = await sha256(
+  const projectionDigest = await sha256Hex(
     JSON.stringify({
       contractVersion: TESTING_CENTER_GITHUB_PROJECTION_VERSION,
       operation: "create_issue",
@@ -464,7 +367,7 @@ export async function buildGitHubOccurrenceProjection(
     operation: "comment_occurrence",
     effectId: input.effectId,
     body,
-    projectionDigest: await sha256(JSON.stringify({
+    projectionDigest: await sha256Hex(JSON.stringify({
       contractVersion: TESTING_CENTER_GITHUB_PROJECTION_VERSION,
       operation: "comment_occurrence",
       effectId: input.effectId,
@@ -487,7 +390,7 @@ export function createTestingCenterGitHubDryRunAdapter():
     if (
       !/^effect_[0-9a-f]{64}$/.test(effectId) ||
       !/^[0-9a-f]{64}$/.test(projectionDigest) ||
-      await sha256(canonicalProjection) !== projectionDigest
+      await sha256Hex(canonicalProjection) !== projectionDigest
     ) {
       return {
         status: "failed",

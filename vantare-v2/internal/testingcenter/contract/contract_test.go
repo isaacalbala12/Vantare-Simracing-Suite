@@ -25,7 +25,7 @@ func TestVersionedDocumentsRoundTrip(t *testing.T) {
 		{name: "technical issue", value: TechnicalIssue{CurrentVersion, "issue-1", "report-1", TechnicalIssueOpen}, decode: decodeTechnicalIssue},
 		{name: "codex run", value: CodexRun{CurrentVersion, "run-1", "issue-1", 1, CodexRunQueued}, decode: decodeCodexRun},
 		{name: "candidate", value: CandidateBuild{CurrentVersion, "candidate-1", "issue-1", ChannelNightly, "0.1.0-nightly.1", testSHA, "codex-1", CandidatePending}, decode: decodeCandidate},
-		{name: "validation", value: Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, ValidationAccepted, "primary-1", ""}, decode: decodeValidation},
+		{name: "validation", value: Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, "codex-1", ValidationAccepted, "primary-1", ""}, decode: decodeValidation},
 		{name: "promotion", value: Promotion{CurrentVersion, "promotion-1", "candidate-1", ChannelNightly, ChannelTesters, testSHA, testSHA, PromotionAuthorized, "primary-1"}, decode: decodePromotion},
 	}
 
@@ -103,7 +103,7 @@ func TestActorMustComeFromVerifiedConstructor(t *testing.T) {
 func TestValidationSnapshotCannotAssertRole(t *testing.T) {
 	t.Parallel()
 
-	validation := Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, ValidationAccepted, "tester-1", ""}
+	validation := Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, "codex-1", ValidationAccepted, "tester-1", ""}
 	encoded, err := json.Marshal(validation)
 	if err != nil {
 		t.Fatal(err)
@@ -125,20 +125,32 @@ func TestSnapshotsBindToVerifiedActorAndRejectionReason(t *testing.T) {
 	t.Parallel()
 
 	primary := primaryTester()
-	validation := Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, ValidationAccepted, primary.ID(), ""}
+	validation := Validation{CurrentVersion, "validation-1", "candidate-1", ChannelNightly, testSHA, "codex-1", ValidationAccepted, primary.ID(), ""}
 	if err := validation.ValidateForActor(primary); err != nil {
 		t.Fatalf("verified validation error = %v", err)
 	}
+	validation.CandidateAuthorID = primary.ID()
+	if err := validation.ValidateForActor(primary); !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("self validation error = %v", err)
+	}
+	validation.CandidateAuthorID = "codex-1"
 	validation.ActorID = "spoofed-owner"
 	if err := validation.ValidateForActor(primary); !errors.Is(err, ErrPermissionDenied) {
 		t.Fatalf("spoofed actor error = %v", err)
 	}
 	validation.ActorID = primary.ID()
+	validation.Decision = ValidationCannotVerify
+	if validation.RejectionReason != "" {
+		t.Fatalf("cannot_verify with rejection reason should be invalid")
+	}
+	if err := validation.ValidateForActor(primary); err != nil {
+		t.Fatalf("cannot_verify validation error = %v", err)
+	}
 	validation.Decision = ValidationRejected
 	if err := validation.Validate(); !errors.Is(err, ErrInvalidDocument) {
 		t.Fatalf("rejection without reason error = %v", err)
 	}
-	validation.RejectionReason = RejectionStillFails
+	validation.RejectionReason = RejectionIssuePersists
 	if err := validation.ValidateForActor(primary); err != nil {
 		t.Fatalf("reasoned rejection error = %v", err)
 	}
@@ -169,9 +181,9 @@ func TestPromotionSnapshotBindsValidatedSHAAndRoute(t *testing.T) {
 		authorID string
 		want     error
 	}{
-		{name: "nightly to testers", from: ChannelNightly, to: ChannelTesters, exactSHA: testSHA, validSHA: testSHA, authorID: "primary-1"},
+		{name: "nightly to testers", from: ChannelNightly, to: ChannelTesters, exactSHA: testSHA, validSHA: testSHA, authorID: "owner-1"},
 		{name: "testers to master", from: ChannelTesters, to: ChannelMaster, exactSHA: testSHA, validSHA: testSHA, authorID: "owner-1"},
-		{name: "stale validated SHA", from: ChannelNightly, to: ChannelTesters, exactSHA: testSHA, validSHA: "cccccccccccccccccccccccccccccccccccccccc", authorID: "primary-1", want: ErrStaleSHA},
+		{name: "stale validated SHA", from: ChannelNightly, to: ChannelTesters, exactSHA: testSHA, validSHA: "cccccccccccccccccccccccccccccccccccccccc", authorID: "owner-1", want: ErrStaleSHA},
 		{name: "invalid route", from: ChannelNightly, to: ChannelMaster, exactSHA: testSHA, validSHA: testSHA, authorID: "owner-1", want: ErrInvalidTransition},
 		{name: "authorization missing", from: ChannelNightly, to: ChannelTesters, exactSHA: testSHA, validSHA: testSHA, want: ErrInvalidDocument},
 	}
@@ -186,14 +198,21 @@ func TestPromotionSnapshotBindsValidatedSHAAndRoute(t *testing.T) {
 			}
 		})
 	}
-	primary := primaryTester()
-	promotion := Promotion{CurrentVersion, "promotion-1", "candidate-1", ChannelNightly, ChannelTesters, testSHA, testSHA, PromotionAuthorized, primary.ID()}
-	if err := promotion.ValidateForActor(primary); err != nil {
+	owner := mustHumanActor("owner-1", RoleOwner)
+	promotion := Promotion{CurrentVersion, "promotion-1", "candidate-1", ChannelNightly, ChannelTesters, testSHA, testSHA, PromotionAuthorized, owner.ID()}
+	if err := promotion.ValidateForActor(owner); err != nil {
 		t.Fatalf("verified promotion actor error = %v", err)
 	}
 	promotion.AuthorizedByID = "spoofed"
-	if err := promotion.ValidateForActor(primary); !errors.Is(err, ErrPermissionDenied) {
+	if err := promotion.ValidateForActor(owner); !errors.Is(err, ErrPermissionDenied) {
 		t.Fatalf("spoofed promotion actor error = %v", err)
+	}
+	tester, err := NewHumanActor("tester-1", RoleTester)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := promotion.ValidateForActor(tester); !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("promotion actor role error = %v", err)
 	}
 }
 

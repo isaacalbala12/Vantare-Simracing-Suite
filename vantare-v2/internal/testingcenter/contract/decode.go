@@ -29,7 +29,7 @@ func DecodeCandidateBuild(document []byte) (CandidateBuild, error) {
 }
 
 func DecodeValidation(document []byte) (Validation, error) {
-	return decodeAndValidate(document, Validation.Validate, []string{"contractVersion", "validationId", "candidateId", "channel", "exactSha", "decision", "actorId"}, []string{"rejectionReason"})
+	return decodeAndValidate(document, Validation.Validate, []string{"contractVersion", "validationId", "candidateId", "channel", "exactSha", "candidateAuthorId", "decision", "actorId"}, []string{"rejectionReason"})
 }
 
 func DecodePromotion(document []byte) (Promotion, error) {

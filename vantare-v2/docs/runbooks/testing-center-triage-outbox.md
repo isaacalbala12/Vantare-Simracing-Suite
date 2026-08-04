@@ -3,6 +3,11 @@
 Estado: TAU-05A / ISA-222 implementado en rama de issue. No hay llamada de red,
 GitHub App, webhook, Codex, Discord, deploy ni migración remota.
 
+Nota posterior: ISA-239 / TAU-07E sustituye esta reserva GitHub por Linear sin
+dual-write. Los efectos GitHub históricos no se renombran: `pending`/`failed`
+se superseden con snapshot reversible y `completed` queda como legacy bajo
+decisión humana. Véase `testing-center-linear-outbox.md`.
+
 ## Frontera del corte
 
 La migración `20260802160000_testing_center_triage_outbox.sql` añade tres tablas

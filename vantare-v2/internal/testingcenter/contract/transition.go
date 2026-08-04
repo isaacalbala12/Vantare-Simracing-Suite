@@ -31,7 +31,6 @@ type TransitionContext struct {
 	TestedSHA         string
 	ValidatedSHA      string
 	CandidateAuthorID string
-	RetryCount        uint8
 	AggregateID       string
 	IdempotencyKey    string
 	OperationDigest   string
@@ -63,25 +62,19 @@ func ValidateTransition(from, to FlowState, context TransitionContext) error {
 	}
 
 	switch {
+	case (from == FlowNightlyAccepted && to == FlowTestersCandidate) ||
+		(from == FlowTestersAccepted && to == FlowMasterReview):
+		if err := requireHumanRole(context.Actor, RoleOwner); err != nil {
+			return err
+		}
+		return validateValidatedSHA(context)
 	case from == FlowNightlyCandidate && (to == FlowNightlyAccepted || to == FlowNightlyRejected):
 		return validateCandidateDecision(ChannelNightly, to, context)
 	case from == FlowTestersCandidate && (to == FlowTestersAccepted || to == FlowTestersRejected):
 		return validateCandidateDecision(ChannelTesters, to, context)
-	case (from == FlowNightlyRejected || from == FlowTestersRejected) && to == FlowQueued:
-		if !context.Actor.automated || context.Actor.origin != OriginOrchestrator {
-			return ErrPermissionDenied
-		}
-		if context.RetryCount >= 1 {
-			return ErrRetryExhausted
-		}
-		return validateValidatedSHA(context)
 	case requiresAutomation(from, to):
 		if !context.Actor.automated || context.Actor.origin != OriginOrchestrator {
 			return ErrPermissionDenied
-		}
-		if from == FlowNightlyAccepted && to == FlowTestersCandidate ||
-			from == FlowTestersAccepted && to == FlowMasterReview {
-			return validateValidatedSHA(context)
 		}
 		return nil
 	case from == FlowNeedsInfo && to == FlowReported:
@@ -96,8 +89,6 @@ func ValidateTransition(from, to FlowState, context TransitionContext) error {
 			return err
 		}
 		return validateValidatedSHA(context)
-	case from == FlowNeedsOwner && to == FlowQueued:
-		return requireHumanRole(context.Actor, RoleOwner)
 	default:
 		return nil
 	}
@@ -176,8 +167,7 @@ func transitionRequiresSHA(from, to FlowState) bool {
 		return false
 	}
 	switch from {
-	case FlowOwnerReview, FlowNightlyCandidate, FlowNightlyAccepted, FlowNightlyRejected,
-		FlowTestersCandidate, FlowTestersAccepted, FlowTestersRejected, FlowMasterReview:
+	case FlowOwnerReview, FlowNightlyCandidate, FlowNightlyAccepted, FlowNightlyRejected, FlowTestersCandidate, FlowTestersAccepted, FlowTestersRejected, FlowMasterReview:
 		return true
 	default:
 		return to == FlowNightlyCandidate
@@ -203,16 +193,12 @@ func requiresAutomation(from, to FlowState) bool {
 		return to == FlowNeedsOwner
 	case FlowNightlyCandidate:
 		return to == FlowNeedsOwner
-	case FlowNightlyAccepted:
-		return to == FlowTestersCandidate || to == FlowNeedsOwner
 	case FlowNightlyRejected:
-		return to == FlowQueued || to == FlowNeedsOwner
+		return to == FlowNeedsOwner
 	case FlowTestersCandidate:
 		return to == FlowNeedsOwner
-	case FlowTestersAccepted:
-		return to == FlowMasterReview || to == FlowNeedsOwner
 	case FlowTestersRejected:
-		return to == FlowQueued || to == FlowNeedsOwner
+		return to == FlowNeedsOwner
 	default:
 		return false
 	}
@@ -257,17 +243,15 @@ func allowedFlowTransition(from, to FlowState) bool {
 	case FlowNightlyAccepted:
 		return to == FlowTestersCandidate || to == FlowNeedsOwner
 	case FlowNightlyRejected:
-		return to == FlowQueued || to == FlowNeedsOwner
+		return to == FlowNeedsOwner
 	case FlowTestersCandidate:
 		return to == FlowTestersAccepted || to == FlowTestersRejected || to == FlowNeedsOwner
 	case FlowTestersAccepted:
 		return to == FlowMasterReview || to == FlowNeedsOwner
 	case FlowTestersRejected:
-		return to == FlowQueued || to == FlowNeedsOwner
+		return to == FlowNeedsOwner
 	case FlowMasterReview:
 		return to == FlowReleased
-	case FlowNeedsOwner:
-		return to == FlowQueued
 	default:
 		return false
 	}

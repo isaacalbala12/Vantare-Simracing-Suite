@@ -27,12 +27,12 @@ func TestFlowTransitionMatrix(t *testing.T) {
 	allow(FlowOwnerReview, FlowNightlyCandidate, FlowNeedsOwner, FlowStopped)
 	allow(FlowNightlyCandidate, FlowNightlyAccepted, FlowNightlyRejected, FlowNeedsOwner, FlowStopped)
 	allow(FlowNightlyAccepted, FlowTestersCandidate, FlowNeedsOwner, FlowStopped)
-	allow(FlowNightlyRejected, FlowQueued, FlowNeedsOwner, FlowStopped)
+	allow(FlowNightlyRejected, FlowNeedsOwner, FlowStopped)
 	allow(FlowTestersCandidate, FlowTestersAccepted, FlowTestersRejected, FlowNeedsOwner, FlowStopped)
 	allow(FlowTestersAccepted, FlowMasterReview, FlowNeedsOwner, FlowStopped)
-	allow(FlowTestersRejected, FlowQueued, FlowNeedsOwner, FlowStopped)
+	allow(FlowTestersRejected, FlowNeedsOwner, FlowStopped)
 	allow(FlowMasterReview, FlowReleased, FlowStopped)
-	allow(FlowNeedsOwner, FlowQueued, FlowStopped)
+	allow(FlowNeedsOwner, FlowStopped)
 
 	for _, from := range states {
 		for _, to := range states {
@@ -93,9 +93,9 @@ func TestCandidateDecisionGuards(t *testing.T) {
 	}{
 		{name: "tester cannot accept nightly", from: FlowNightlyCandidate, to: FlowNightlyAccepted, context: candidateContext(RoleTester), want: ErrPermissionDenied},
 		{name: "primary accepts nightly", from: FlowNightlyCandidate, to: FlowNightlyAccepted, context: candidateContext(RolePrimaryTester)},
-		{name: "primary rejects nightly", from: FlowNightlyCandidate, to: FlowNightlyRejected, context: withRejection(candidateContext(RolePrimaryTester), RejectionStillFails)},
+		{name: "primary rejects nightly", from: FlowNightlyCandidate, to: FlowNightlyRejected, context: withRejection(candidateContext(RolePrimaryTester), RejectionIssuePersists)},
 		{name: "tester accepts testers", from: FlowTestersCandidate, to: FlowTestersAccepted, context: candidateContext(RoleTester)},
-		{name: "tester rejects testers", from: FlowTestersCandidate, to: FlowTestersRejected, context: withRejection(candidateContext(RoleTester), RejectionRegression)},
+		{name: "tester rejects testers", from: FlowTestersCandidate, to: FlowTestersRejected, context: withRejection(candidateContext(RoleTester), RejectionNewRegression)},
 		{name: "rejection needs reason", from: FlowTestersCandidate, to: FlowTestersRejected, context: candidateContext(RoleTester), want: ErrInvalidDocument},
 		{name: "stale SHA", from: FlowNightlyCandidate, to: FlowNightlyAccepted, context: withTestedSHA(candidateContext(RolePrimaryTester), "cccccccccccccccccccccccccccccccccccccccc"), want: ErrStaleSHA},
 		{name: "self validation", from: FlowNightlyCandidate, to: FlowNightlyAccepted, context: withAuthor(candidateContext(RolePrimaryTester), "validator-1"), want: ErrSelfValidation},
@@ -123,8 +123,8 @@ func TestAcceptedSHAFollowsPromotionChain(t *testing.T) {
 		to   FlowState
 		role Role
 	}{
-		{name: "nightly to testers", from: FlowNightlyAccepted, to: FlowTestersCandidate},
-		{name: "testers to master review", from: FlowTestersAccepted, to: FlowMasterReview},
+		{name: "nightly to testers", from: FlowNightlyAccepted, to: FlowTestersCandidate, role: RoleOwner},
+		{name: "testers to master review", from: FlowTestersAccepted, to: FlowMasterReview, role: RoleOwner},
 		{name: "master release", from: FlowMasterReview, to: FlowReleased, role: RoleOwner},
 	}
 	for _, test := range tests {
@@ -132,6 +132,8 @@ func TestAcceptedSHAFollowsPromotionChain(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			context := contextForTransition(test.from, test.to)
+			context.Actor = mustHumanActor("owner-1", test.role)
+			context.ActorClaimID = context.Actor.ID()
 			context.ValidatedSHA = "cccccccccccccccccccccccccccccccccccccccc"
 			if err := ValidateTransition(test.from, test.to, context); !errors.Is(err, ErrStaleSHA) {
 				t.Fatalf("stale promotion error = %v", err)
@@ -140,22 +142,17 @@ func TestAcceptedSHAFollowsPromotionChain(t *testing.T) {
 	}
 }
 
-func TestRetryIsBoundedToOne(t *testing.T) {
+func TestRejectionNoAutoRetry(t *testing.T) {
 	t.Parallel()
 
 	for _, from := range []FlowState{FlowNightlyRejected, FlowTestersRejected} {
 		context := defaultContext()
 		context.IdempotencySHA = testSHA
-		context.RetryCount = 0
-		if err := ValidateTransition(from, FlowQueued, context); err != nil {
-			t.Fatalf("first retry from %s error = %v", from, err)
-		}
-		context.RetryCount = 1
-		if err := ValidateTransition(from, FlowQueued, context); !errors.Is(err, ErrRetryExhausted) {
-			t.Fatalf("second retry from %s error = %v", from, err)
-		}
 		if err := ValidateTransition(from, FlowNeedsOwner, context); err != nil {
-			t.Fatalf("needs-owner after exhausted retry from %s error = %v", from, err)
+			t.Fatalf("needs-owner after failed rejection for %s error = %v", from, err)
+		}
+		if err := ValidateTransition(from, FlowQueued, context); !errors.Is(err, ErrInvalidTransition) {
+			t.Fatalf("auto retry from %s error = %v", from, err)
 		}
 	}
 }
@@ -174,8 +171,12 @@ func TestOwnerAndAutomationGates(t *testing.T) {
 		{name: "primary cannot approve PR", from: FlowOwnerReview, to: FlowNightlyCandidate, role: RolePrimaryTester, want: ErrPermissionDenied},
 		{name: "owner authorizes master", from: FlowMasterReview, to: FlowReleased, role: RoleOwner},
 		{name: "primary cannot authorize master", from: FlowMasterReview, to: FlowReleased, role: RolePrimaryTester, want: ErrPermissionDenied},
-		{name: "owner resumes needs-owner", from: FlowNeedsOwner, to: FlowQueued, role: RoleOwner},
-		{name: "tester cannot resume needs-owner", from: FlowNeedsOwner, to: FlowQueued, role: RoleTester, want: ErrPermissionDenied},
+		{name: "primary cannot promote nightly", from: FlowNightlyAccepted, to: FlowTestersCandidate, role: RolePrimaryTester, want: ErrPermissionDenied},
+		{name: "tester cannot promote nightly", from: FlowNightlyAccepted, to: FlowTestersCandidate, role: RoleTester, want: ErrPermissionDenied},
+		{name: "primary cannot promote to master review", from: FlowTestersAccepted, to: FlowMasterReview, role: RolePrimaryTester, want: ErrPermissionDenied},
+		{name: "tester cannot promote to master review", from: FlowTestersAccepted, to: FlowMasterReview, role: RoleTester, want: ErrPermissionDenied},
+		{name: "owner cannot resume same aggregate", from: FlowNeedsOwner, to: FlowQueued, role: RoleOwner, want: ErrInvalidTransition},
+		{name: "tester cannot resume needs-owner", from: FlowNeedsOwner, to: FlowQueued, role: RoleTester, want: ErrInvalidTransition},
 		{name: "owner stops flow", from: FlowCodexWorking, to: FlowStopped, role: RoleOwner},
 		{name: "tester cannot stop flow", from: FlowCodexWorking, to: FlowStopped, role: RoleTester, want: ErrPermissionDenied},
 	}
@@ -250,7 +251,7 @@ func TestPauseBlocksProgressButAllowsRejectAndStop(t *testing.T) {
 			if err := ValidateTransition(FlowMasterReview, FlowReleased, ownerRelease); !errors.Is(err, ErrPaused) {
 				t.Fatalf("owner release during pause error = %v", err)
 			}
-			reject := withRejection(candidateContext(RolePrimaryTester), RejectionStillFails)
+			reject := withRejection(candidateContext(RolePrimaryTester), RejectionIssuePersists)
 			reject.GlobalPaused, reject.FlowPaused = paused.global, paused.flow
 			if err := ValidateTransition(FlowNightlyCandidate, FlowNightlyRejected, reject); err != nil {
 				t.Fatalf("human rejection error = %v", err)
@@ -321,19 +322,20 @@ func contextForTransition(from, to FlowState) TransitionContext {
 		context.Actor = mustHumanActor("owner-1", RoleOwner)
 	case from == FlowOwnerReview && to == FlowNightlyCandidate,
 		from == FlowMasterReview && to == FlowReleased,
-		from == FlowNeedsOwner && to == FlowQueued:
+		from == FlowNightlyAccepted && to == FlowTestersCandidate,
+		from == FlowTestersAccepted && to == FlowMasterReview:
 		context.Actor = mustHumanActor("owner-1", RoleOwner)
 	case from == FlowNeedsInfo && to == FlowReported:
 		context.Actor = mustHumanActor("tester-1", RoleTester)
 	case from == FlowNightlyCandidate && (to == FlowNightlyAccepted || to == FlowNightlyRejected):
 		context = candidateContext(RolePrimaryTester)
 		if to == FlowNightlyRejected {
-			context.RejectionReason = RejectionStillFails
+			context.RejectionReason = RejectionIssuePersists
 		}
 	case from == FlowTestersCandidate && (to == FlowTestersAccepted || to == FlowTestersRejected):
 		context = candidateContext(RoleTester)
 		if to == FlowTestersRejected {
-			context.RejectionReason = RejectionStillFails
+			context.RejectionReason = RejectionCrash
 		}
 	}
 	if transitionRequiresSHA(from, to) {

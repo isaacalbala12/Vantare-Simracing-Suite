@@ -16,6 +16,8 @@ import {
 import type { SubmitReportInput } from "./report-submission-client";
 import { DiagnosticPreviewPanel } from "./DiagnosticPreviewPanel";
 import { hasReportFieldErrors, normalizedReportFields, validateReportFields } from "./validation";
+import { CandidateFeedbackPanel } from "./CandidateFeedbackPanel";
+import type { TestingCenterFeedbackClient } from "./candidate-feedback-client";
 
 const EMPTY_FIELDS: ReportDraftFields = {
   actionText: "",
@@ -30,6 +32,7 @@ type TestingCenterPageProps = {
   version: string | null;
   client: TestingCenterClient;
   submitReport: (input: SubmitReportInput) => Promise<SubmittedReport>;
+  feedbackClient: TestingCenterFeedbackClient;
 };
 
 const MODULE_LABELS: Record<TestingCenterModule, string> = {
@@ -57,6 +60,7 @@ export function TestingCenterPage({
   version,
   client,
   submitReport,
+  feedbackClient,
 }: TestingCenterPageProps) {
   const { t } = useI18n();
   const [fields, setFields] = useState<ReportDraftFields>(EMPTY_FIELDS);
@@ -72,6 +76,7 @@ export function TestingCenterPage({
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState<SubmittedReport | null>(null);
   const [discardWarning, setDiscardWarning] = useState(false);
+  const [activeView, setActiveView] = useState<"report" | "validate">("report");
   const edited = useRef(false);
   const draftReady = useRef(false);
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
@@ -266,7 +271,32 @@ export function TestingCenterPage({
         {statusText && <span className="text-vantare-textMuted">{statusText}</span>}
       </div>
 
-      {submitted && (
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 sm:grid-cols-2" role="tablist" aria-label={t("testingCenter.views.label")}>
+        <button
+          type="button"
+          role="tab"
+          id="testing-center-report-tab"
+          aria-controls="testing-center-report-panel"
+          aria-selected={activeView === "report"}
+          className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${activeView === "report" ? "bg-vantare-red-600 text-white" : "text-vantare-textMuted hover:bg-white/5 hover:text-white"}`}
+          onClick={() => setActiveView("report")}
+        >
+          {t("testingCenter.views.report")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="testing-center-validate-tab"
+          aria-controls="testing-center-validate-panel"
+          aria-selected={activeView === "validate"}
+          className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${activeView === "validate" ? "bg-vantare-red-600 text-white" : "text-vantare-textMuted hover:bg-white/5 hover:text-white"}`}
+          onClick={() => setActiveView("validate")}
+        >
+          {t("testingCenter.views.validate")}
+        </button>
+      </div>
+
+      {activeView === "report" && submitted && (
         <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-4" role="status">
           <h2 className="font-semibold text-green-200">{t("testingCenter.success.title")}</h2>
           <p className="mt-1 text-sm text-green-100">{t("testingCenter.success.description")}</p>
@@ -279,7 +309,7 @@ export function TestingCenterPage({
         </section>
       )}
 
-      <form className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]" onSubmit={onSubmit} noValidate>
+      {activeView === "report" && <form id="testing-center-report-panel" role="tabpanel" aria-labelledby="testing-center-report-tab" className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]" onSubmit={onSubmit} noValidate>
         <section className="flex min-w-0 flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-white">{t("testingCenter.form.title")}</h2>
           <p className="text-sm leading-relaxed text-vantare-textMuted">{t("testingCenter.form.privacy")}</p>
@@ -306,6 +336,10 @@ export function TestingCenterPage({
               <input type="checkbox" className="mt-1 h-5 w-5" checked={includeDiagnostic} disabled={submitting} onChange={(event) => changeDiagnosticConsent(event.target.checked)} />
               <span><strong>{t("testingCenter.consent.diagnostic")}</strong><small className="mt-1 block leading-relaxed text-vantare-textMuted">{t("testingCenter.consent.diagnosticHelp")}</small></span>
             </label>
+            <label className="mt-3 flex min-h-11 cursor-not-allowed items-start gap-3 text-sm text-vantare-textMuted">
+              <input type="checkbox" className="mt-1 h-5 w-5" checked={false} disabled />
+              <span><strong>{t("testingCenter.consent.replay")}</strong><small className="mt-1 block leading-relaxed">{t("testingCenter.consent.replayUnavailable")}</small></span>
+            </label>
             <label className={`mt-3 flex min-h-11 items-start gap-3 text-sm ${logsUnavailable || !includeDiagnostic ? "cursor-not-allowed text-vantare-textMuted" : "cursor-pointer text-white"}`}>
               <input type="checkbox" className="mt-1 h-5 w-5" checked={includeLogs} disabled={submitting || !includeDiagnostic || logsUnavailable} onChange={(event) => changeLogsConsent(event.target.checked)} />
               <span><strong>{t("testingCenter.consent.logs")}</strong><small className="mt-1 block leading-relaxed text-vantare-textMuted">{diagnostic && logsUnavailable ? t("testingCenter.consent.noLogs") : t("testingCenter.consent.logsHelp")}</small></span>
@@ -327,7 +361,12 @@ export function TestingCenterPage({
             {idempotencyKey && !submitted && <p className="mt-3 text-xs text-vantare-textMuted">{t("testingCenter.retry.safe")}</p>}
           </section>
         </aside>
-      </form>
+      </form>}
+      {activeView === "validate" && (
+        <div id="testing-center-validate-panel" role="tabpanel" aria-labelledby="testing-center-validate-tab">
+          <CandidateFeedbackPanel channel={channel} client={feedbackClient} />
+        </div>
+      )}
     </div>
   );
 }

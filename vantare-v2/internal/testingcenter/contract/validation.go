@@ -23,7 +23,6 @@ var (
 	ErrPaused              = errors.New("testing center automated flow is paused")
 	ErrInvalidIdempotency  = errors.New("testing center idempotency data is invalid")
 	ErrIdempotencyConflict = errors.New("testing center idempotency key conflicts with another digest")
-	ErrRetryExhausted      = errors.New("testing center automatic retry is exhausted")
 )
 
 func NewHumanActor(id string, role Role) (Actor, error) {
@@ -171,11 +170,14 @@ func (validation Validation) Validate() error {
 	if err := validateSHA("exactSha", validation.ExactSHA); err != nil {
 		return err
 	}
+	if err := validateID("candidateAuthorId", validation.CandidateAuthorID); err != nil {
+		return err
+	}
 	if err := validateID("actorId", validation.ActorID); err != nil {
 		return err
 	}
 	switch validation.Decision {
-	case ValidationAccepted:
+	case ValidationAccepted, ValidationCannotVerify:
 		if validation.RejectionReason != "" {
 			return fmt.Errorf("rejectionReason: %w", ErrInvalidDocument)
 		}
@@ -207,7 +209,8 @@ func (validation Validation) ValidateForActor(actor Actor) error {
 	if err := validateActor(actor); err != nil {
 		return err
 	}
-	if validation.ActorID != actor.id || actor.automated || !canValidate(validation.Channel, actor.role) {
+	if validation.ActorID != actor.id || validation.CandidateAuthorID == actor.id ||
+		actor.automated || !canValidate(validation.Channel, actor.role) {
 		return ErrPermissionDenied
 	}
 	return nil
@@ -362,7 +365,7 @@ func validateDigest(field, value string) error {
 
 func validateRejectionReason(reason RejectionReason) error {
 	switch reason {
-	case RejectionStillFails, RejectionRegression, RejectionIncompleteFix, RejectionNewFailure, RejectionOther:
+	case RejectionIssuePersists, RejectionNewRegression, RejectionCrash, RejectionDifferentBehavior, RejectionOther:
 		return nil
 	default:
 		return fmt.Errorf("rejectionReason: %w", ErrInvalidDocument)
@@ -383,7 +386,7 @@ func canValidate(channel Channel, role Role) bool {
 func canAuthorizePromotion(from, to Channel, role Role) bool {
 	switch {
 	case from == ChannelNightly && to == ChannelTesters:
-		return role == RolePrimaryTester || role == RoleOwner
+		return role == RoleOwner
 	case from == ChannelTesters && to == ChannelMaster:
 		return role == RoleOwner
 	default:

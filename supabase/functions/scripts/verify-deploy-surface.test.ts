@@ -41,6 +41,9 @@ Deno.test("testing pilot functions are recognized but remain outside production 
     !pilotWrapper.includes("verify-deploy-surface.ps1") ||
     !pilotWrapper.includes('"testing-center-linear-worker"')
   ) throw new Error("testing pilot wrapper lacks explicit guards");
+  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(pilotWrapper)) {
+    throw new Error("PowerShell guard incorrectly reuses stale native exit code");
+  }
 });
 
 Deno.test("official deploy workflow can only deploy through the guarded wrapper", () => {

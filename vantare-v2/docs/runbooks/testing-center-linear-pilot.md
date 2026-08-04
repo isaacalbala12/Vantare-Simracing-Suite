@@ -183,3 +183,8 @@ crea únicamente los dos wrappers `public.digest` ausentes y delega en
 `extensions.digest`; nunca relocaliza ni reemplaza la extensión gestionada.
 La simulación con `pgcrypto` instalado solo en `extensions` y el harness local
 completo 18/18 + rollback/reapply pasan.
+
+El primer intento del wrapper se detuvo antes de red porque comprobaba el
+`$LASTEXITCODE` residual tras ejecutar un guard PowerShell que ya falla mediante
+excepciones. El wrapper deja de reutilizar ese estado nativo; el test de la
+superficie cubre la regresión.

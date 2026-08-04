@@ -30,6 +30,9 @@ Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
   condicionales `public.digest` sin mover ni reemplazar la extensión. La
   simulación hosted y el harness completo PostgreSQL 18/18 + rollback/reapply
   pasan antes de reanudar.
+- El primer intento de deploy no contactó Supabase: el wrapper reutilizaba un
+  `$LASTEXITCODE` residual tras un guard PowerShell correcto. Se elimina esa
+  comprobación redundante y se añade regresión antes de reintentar.
 
 Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
 - Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.

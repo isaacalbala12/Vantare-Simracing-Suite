@@ -26,9 +26,6 @@ if ($ProjectRef -eq $productionProjectRef) {
 }
 
 & $guard
-if ($LASTEXITCODE -ne 0) {
-  throw "Supabase deploy surface guard failed"
-}
 if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
   throw "Supabase CLI is required"
 }

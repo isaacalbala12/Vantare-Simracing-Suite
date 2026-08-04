@@ -233,7 +233,18 @@ y recientes.
   `WidgetVisualViewport` + `WidgetVisualHost`. OBS no recibe etiqueta ni chrome
   técnico dentro de su superficie. El root capturable sigue siendo
   `data-overlay-workshop-widget-root`; el stage sigue separado.
-- Evidencia focal: 2 archivos/9 Vitest PASS, ESLint directo sobre los cuatro
-  archivos authoring PASS, `design-system:check` PASS y build productivo PASS
-  sin sentinel `overlay-workshop` ni `Overlay Workshop` en los assets. El lint
-  global sigue registrando 30 errores/2 warnings heredados fuera del write set.
+- Verificación de cierre ISA-263: Chrome/Playwright cubre deep-link válido e
+  inválido, todos los fondos, Studio/Desktop/OBS/Harness, comparación,
+  teclado/foco, reset, presets, dimensiones y viewports 1280x720, medio y
+  compacto. El documento no produce overflow horizontal; el stage puede hacer
+  scroll local para alojar una previsualización grande en compacto. Cero errores
+  de consola, página o red relevantes.
+- El bootstrap de `/workshop` evita ya cargar Wails: `main.tsx` carga el runtime
+  normal dinámicamente desde `AppShell.tsx`. Esto evita la antigua petición
+  fallida a `wails/custom.js`; no cambia el runtime normal. HMR CSS se aplicó y
+  revirtió sin reiniciar la ruta.
+- Evidencia focal final: 4 archivos/20 Vitest PASS, ESLint directo de bootstrap
+  y authoring PASS, `design-system:check` PASS, build productivo PASS y
+  compile-out sin sentinel `overlay-workshop`, `Overlay Workshop` o `DEV ONLY`
+  en los assets. El lint global sigue registrando 30 errores/2 warnings
+  heredados fuera del write set.

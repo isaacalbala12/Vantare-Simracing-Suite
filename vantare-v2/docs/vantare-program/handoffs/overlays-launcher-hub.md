@@ -52,32 +52,113 @@ Riesgos:
 Workshop no tiene UI aún: reutilizará `WidgetVisualHost` y renderers puros. Su
 contrato y microplan están en `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
 
-1. Desde la raíz del **worktree correcto**, verifica `git branch --show-current`,
-   `git rev-parse --short HEAD` y `git status --short` antes de abrir la app.
-2. Confirma solo que existe `frontend/.env.local` y que declara
-   `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; no imprimas valores ni copies
-   el archivo entre worktrees.
-3. Ruta dev recomendada:
-   `powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start-wails-dev.ps1`.
-   El wrapper detiene stacks Vantare/Wails previos, mapea configuración pública
-   al backend, ejecuta `generate_supabase_config.ps1` y arranca
-   `wails3 dev -config ./build/config.yml -port 9245`. No uses `wails3 dev`
-   directo salvo que el entorno backend ya esté preparado.
-4. `cmd/vantare/supabase_build.go` es temporal e ignorado: nunca se commitea ni
-   se muestra. El wrapper puede dejarlo localmente; A2 lo limpia en `finally`.
-5. Para binario rápido, sigue sin duplicarlo la **Opción A2** de
-   `docs/release-beta-operations-runbook.md` y abre solo `bin\vantare.exe`, nunca
-   un exe raíz/portable stale.
-6. Si aparece «Configuración incompleta», no es un problema de la cuenta ni de
-   su licencia: la build/backend no recibió la configuración pública de
-   Supabase o se abrió un binario antiguo. Cierra la app, reconstruye/rearranca
-   con el wrapper y confirma binario/worktree. Smoke: app abre, la sesión y el
-   acceso se resuelven, Hub carga y Overlay Studio abre; anota branch/SHA usados.
-7. Al cerrar, detén el stack Vantare/Wails del worktree y no borres
-   `frontend/.env.local`.
+### Smoke real de la aplicación que se ha verificado
 
-Autoridades complementarias: `docs/release-beta-operations-runbook.md` y
-`docs/tester-build-instructions.md`.
+La ruta que se utilizó correctamente para probar la aplicación completa fue una
+build local de producción y **no** `wails3 dev`. Debe ejecutarse desde la raíz
+del checkout o worktree que se quiere validar.
+
+1. Confirma primero la fuente que vas a compilar. No continúes desde una rama o
+   worktree distinto al que se quiere probar:
+
+   ```powershell
+   git branch --show-current
+   git rev-parse --short HEAD
+   git status --short
+   ```
+
+2. Cierra cualquier binario anterior para no confundir la build nueva con una
+   instancia antigua:
+
+   ```powershell
+   Get-Process vantare -ErrorAction SilentlyContinue | Stop-Process -Force
+   ```
+
+3. Indica el `.env.local` autorizado. En el checkout habitual será
+   `frontend\.env.local`. Un worktree limpio normalmente no contiene ese archivo
+   porque está ignorado por Git; en ese caso apunta `$envFilePath` al archivo
+   local autorizado, sin copiarlo al repo, imprimirlo ni mostrar sus valores:
+
+   ```powershell
+   $envFilePath = Join-Path $PWD 'frontend\.env.local'
+   if (-not (Test-Path -LiteralPath $envFilePath)) {
+     throw 'Set $envFilePath to the authorised local frontend/.env.local'
+   }
+
+   foreach ($line in Get-Content -LiteralPath $envFilePath) {
+     if ($line -notmatch '^\s*(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY)\s*=') {
+       continue
+     }
+     $parts = $line -split '=', 2
+     $name = $parts[0].Trim()
+     $value = $parts[1].Trim()
+     Set-Item -Path "Env:$name" -Value $value
+     if ($name -eq 'VITE_SUPABASE_URL') {
+       $env:VANTARE_SUPABASE_URL = $value
+     }
+     if ($name -eq 'VITE_SUPABASE_ANON_KEY') {
+       $env:VANTARE_SUPABASE_ANON_KEY = $value
+     }
+   }
+
+   if (-not $env:VITE_SUPABASE_URL -or
+       -not $env:VITE_SUPABASE_ANON_KEY -or
+       -not $env:VANTARE_SUPABASE_URL -or
+       -not $env:VANTARE_SUPABASE_ANON_KEY) {
+     throw 'Missing public Supabase configuration'
+   }
+   ```
+
+   Es necesario cargar ambos pares: Vite usa `VITE_SUPABASE_*` y el backend Go
+   necesita `VANTARE_SUPABASE_*`. Cargar solo uno deja media aplicación sin
+   configurar.
+
+4. Compila el frontend, genera la configuración temporal del backend, construye
+   el ejecutable y elimina siempre el archivo generado:
+
+   ```powershell
+   corepack pnpm --dir frontend build
+
+   powershell -NoProfile -ExecutionPolicy Bypass -File `
+     .\tools\generate_supabase_config.ps1 `
+     -OutFile .\cmd\vantare\supabase_build.go
+
+   try {
+     go build -tags production -trimpath -buildvcs=false `
+       -ldflags "-w -s -H windowsgui -X main.version=v$(Get-Content VERSION)" `
+       -o .\bin\vantare.exe .\cmd\vantare
+   } finally {
+     Remove-Item .\cmd\vantare\supabase_build.go -ErrorAction SilentlyContinue
+   }
+   ```
+
+   `cmd/vantare/supabase_build.go` contiene configuración generada: está
+   ignorado por Git, no se abre, no se imprime y nunca se commitea.
+
+5. Abre exclusivamente el ejecutable recién construido:
+
+   ```powershell
+   Start-Process -FilePath .\bin\vantare.exe -WorkingDirectory .\bin
+   ```
+
+   No abras `vantare.exe` desde la raíz, `build\bin`, un portable antiguo ni una
+   build de otro worktree.
+
+6. Smoke mínimo: la app abre; la sesión y el acceso se resuelven; Hub carga; y
+   Overlay Studio abre. Registra la rama y SHA probados. Si aparece
+   «Configuración incompleta», la build/backend no recibió la configuración
+   pública de Supabase o se abrió un binario stale: no es un problema de la
+   cuenta ni de su licencia.
+
+### Cuándo usar Wails dev
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File
+.\tools\start-wails-dev.ps1` queda como alternativa para depuración interactiva
+con HMR. No sustituye al smoke anterior y su resultado no demuestra que
+`bin\vantare.exe` se haya construido correctamente.
+
+Autoridades complementarias: `docs/release-beta-operations-runbook.md` (Opción
+A2) y `docs/tester-build-instructions.md`.
 
 ## Launcher
 

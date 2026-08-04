@@ -4486,3 +4486,19 @@ Nota ISA-265 / OS-09F (2026-08-05, protocolo visual de root/alpha/bounds):
 - Overflow permitido únicamente para `delta-crystal-simple`, eje Y, máximo 13 px y superficie declarada. TDD demuestra 13 px PASS, 14 px FAIL y otro diseño con 1 px FAIL; no hay threshold global.
 - TDD focal: pruebas Node para root ausente/múltiple, contaminación alpha/fondo (hashes iguales/diferentes por grupo), guard, overflow, fuentes, console/page y provenance local/fail-closed. La excepción tipada prueba 13 px PASS, 14 px FAIL y 1 px FAIL en otro diseño. La suite real debe ejecutarse tras el commit, con `sha=HEAD`, `dirty=false` y 16 escenarios PASS. El decode PNG canónico por CDP fija un coste total aproximado de 5–8 min para la suite; se conserva timeout/progreso honesto sin cambiar el helper Crystal.
 - `visual:crystal-parity:report` se ejecutó una vez con límite 90 s y emitió 7 diseños PASS antes de quedar incompleto. Sin baseline tocado; deuda de duración separada, no aprobación total. Sin promoción.
+
+Nota ISA-266 / OS-09G (2026-08-05, declaración tipada piloto):
+- `delta-crystal-simple` es el primer diseño oficial declarado junto a su
+  implementación Crystal. La declaración referencia el `DeltaCrystal`, parser,
+  defaults, migraciones, versiones y dimensiones ya existentes; no crea
+  renderer, host, dispatch ni migración alternativos.
+- `official-designs.ts` continúa siendo el agregador compatible para todos los
+  consumidores. La declaración se proyecta al mismo `WidgetDesignV1`, con
+  idéntico ID, settings y orden de catálogo.
+- El checker focal falla ante retirada del piloto, ID duplicado, renderer,
+  parser, versión, defaults, migraciones, dimensiones o entrada de catálogo
+  incompatibles. No se migran los otros 40 diseños ni se modifican píxeles,
+  baselines o umbrales.
+- El gate visual final usa el protocolo ISA-265 desde un commit limpio para las
+  cuatro superficies y conserva sus artefactos únicamente en `frontend/.tmp/`.
+  Estado: rama de issue, sin promoción.

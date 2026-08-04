@@ -2,6 +2,10 @@ import type { WidgetType } from "../core/profile-document";
 import { validateWidgetDesign, type WidgetDesignV1 } from "../core/widget-design";
 import { PEDALS_DEFAULT_APPEARANCE } from "../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../widget-types/relative/relative-renderer-helpers";
+import { designSystemRegistry } from "../core/design-system-registry";
+import { widgetTypeRegistry } from "../core/widget-registry";
+import { checkOfficialWidgetDesignDeclarations } from "./official-design-declaration";
+import { deltaCrystalSimpleDesign } from "./vantare-crystal/delta/official-designs";
 
 export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
@@ -41,17 +45,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     includesContent: false,
     origin: "vantare",
   },
-  {
-    id: "delta-crystal-simple",
-    name: "Crystal Simple",
-    widgetType: "delta",
-    systemId: "vantare-crystal",
-    systemVersion: 1,
-    configVersion: 2,
-    visual: { templateId: "delta-simple", showHeader: true },
-    includesContent: false,
-    origin: "vantare",
-  },
+  deltaCrystalSimpleDesign.design,
   {
     id: "standings-original-base",
     name: "Original Base",
@@ -234,6 +228,16 @@ const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((desi
 );
 
 const OFFICIAL_BY_ID = new Map(OFFICIAL_DESIGNS.map((design) => [design.id, design]));
+
+export const OFFICIAL_WIDGET_DESIGN_DECLARATIONS = [deltaCrystalSimpleDesign] as const;
+
+checkOfficialWidgetDesignDeclarations({
+  declarations: OFFICIAL_WIDGET_DESIGN_DECLARATIONS,
+  requiredIds: ["delta-crystal-simple"],
+  officialDesigns: OFFICIAL_DESIGNS,
+  resolveSystem: (design) => designSystemRegistry.get(design.systemId, design.systemVersion),
+  resolveDefaultSize: (widgetType) => widgetTypeRegistry.get(widgetType).capabilities.defaultSize,
+});
 
 export function listOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
   if (!widgetType) {

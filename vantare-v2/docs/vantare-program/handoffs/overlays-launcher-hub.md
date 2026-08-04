@@ -10,8 +10,8 @@
 
 ## Estado
 
-- Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; queda en
-  review, sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
+- Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; ISA-261
+  extrae sus fixtures neutrales en rama aislada, sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
   el gate HTML Crystal histórico 21/18 permanece separado. `engineer-radio-crystal`
   es oficial/productivo bajo contrato Engineer, no derivado del HTML clásico.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
@@ -51,6 +51,10 @@ Riesgos:
 
 Workshop no tiene UI aún: reutilizará `WidgetVisualHost` y renderers puros. Su
 contrato y microplan están en `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
+ISA-261 establece `frontend/src/overlay/authoring/fixtures/` como única
+autoridad para escenarios deterministas; `overlay-harness/harness-fixtures.ts`
+solo conserva el re-export temporal. El contrato histórico Crystal (21/18) y
+el contrato adicional de Engineer Radio permanecen separados.
 
 ### Smoke real de la aplicación que se ha verificado
 

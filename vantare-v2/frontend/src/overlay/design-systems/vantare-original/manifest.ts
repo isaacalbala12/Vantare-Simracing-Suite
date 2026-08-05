@@ -24,6 +24,7 @@ import { CarDamageVisualOriginal } from "./car-damage-visual/CarDamageVisualOrig
 import { CarDamageNumbersOriginal } from "./car-damage-numbers/CarDamageNumbersOriginal";
 import { PEDALS_DEFAULT_APPEARANCE } from "../../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
+import { STANDINGS_DEFAULT_APPEARANCE } from "../../widget-types/standings/standings-renderer-helpers";
 
 const deltaAppearanceControls = [
   {
@@ -79,6 +80,48 @@ const standingsAppearanceControls = [
     path: "compactRows",
     defaultValue: false,
   },
+  {
+    kind: "color" as const,
+    id: "accent-color",
+    labelKey: "overlay.inspector.standings.accentColor",
+    path: "accentColor",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.accentColor,
+  },
+  {
+    kind: "color" as const,
+    id: "class-hypercar-color",
+    labelKey: "overlay.inspector.standings.classHypercarColor",
+    path: "classHypercarColor",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.classHypercarColor,
+  },
+  {
+    kind: "color" as const,
+    id: "class-lmp2-color",
+    labelKey: "overlay.inspector.standings.classLmp2Color",
+    path: "classLmp2Color",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.classLmp2Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-lmp3-color",
+    labelKey: "overlay.inspector.standings.classLmp3Color",
+    path: "classLmp3Color",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.classLmp3Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-gt3-color",
+    labelKey: "overlay.inspector.standings.classGt3Color",
+    path: "classGt3Color",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.classGt3Color,
+  },
+  {
+    kind: "color" as const,
+    id: "class-unknown-color",
+    labelKey: "overlay.inspector.standings.classUnknownColor",
+    path: "classUnknownColor",
+    defaultValue: STANDINGS_DEFAULT_APPEARANCE.classUnknownColor,
+  },
 ];
 
 validateInspectorControls(standingsAppearanceControls);
@@ -86,24 +129,19 @@ validateInspectorControls(standingsAppearanceControls);
 const standingsRegistration = {
   widgetType: "standings" as const,
   configVersion: 1,
-  defaultSettings: {
-    showSessionHeader: true,
-    compactRows: false,
-  },
+  defaultSettings: { ...STANDINGS_DEFAULT_APPEARANCE },
   configMigrations: {
     0: (settings: Record<string, unknown>) => ({
-      showSessionHeader: true,
-      compactRows: false,
+      ...STANDINGS_DEFAULT_APPEARANCE,
       ...settings,
     }),
   },
   parseSettings(input: unknown): Record<string, unknown> {
     if (input == null || typeof input !== "object" || Array.isArray(input)) {
-      return { showSessionHeader: true, compactRows: false };
+      return { ...STANDINGS_DEFAULT_APPEARANCE };
     }
     return {
-      showSessionHeader: true,
-      compactRows: false,
+      ...STANDINGS_DEFAULT_APPEARANCE,
       ...(input as Record<string, unknown>),
     };
   },

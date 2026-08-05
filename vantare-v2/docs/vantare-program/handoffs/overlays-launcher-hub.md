@@ -261,3 +261,26 @@ y recientes.
 - Única protrusión: `delta-crystal-simple`, Y ≤13px por su badge compacto; todo exceso adicional falla. El runner imprime progreso, escribe checkpoint y cierra navegador/Vite en `finally`.
 - El decode PNG canónico por CDP tiene un coste total aproximado de 5–8 min para la suite 4×4; no se alteran timeouts, helper Crystal, baselines ni umbrales para acortarlo.
 - Crystal report-only es un gate independiente: la ejecución limitada a 90s llegó a 7 diseños PASS sin terminar el manifiesto. Nunca tratarla como aprobación total ni tocar baselines; resolver duración en otra issue.
+
+### ISA-291 — autoría directa planificada y aprobada
+
+- Rama: `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`.
+  Worktree: `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
+  Base exacta: ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`.
+- Decisión: editar el TSX/CSS productivo y observarlo por HMR en el mismo
+  `WidgetVisualHost`. HTML es referencia visual, no fuente ni compilador. Se
+  descartan DSL, scaffolder obligatorio, catálogo paralelo, generated barrel,
+  `catalogPosition`, `import.meta.glob` y migración de los 41 diseños.
+- Autoridades: spec
+  `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
+  y plan `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`.
+- Commits documentales: `41a3f02` (spec), `426f7c6` (plan), `2864846`,
+  `57cf199` y `2b18e02` (endurecimiento adversarial).
+- Revisión adversarial final: GO. El plan protege drift concurrente, cancelación,
+  recovery, HMR sin reload, arranque parcial y cierre de procesos/puerto. El
+  revisor no editó archivos ni Linear y no delegó.
+- Estado real: planificación cerrada; implementación no iniciada; ningún cambio
+  productivo, push, PR o promoción de canal derivado de ISA-291.
+- Para continuar en otro chat: leer AGENTS, `docs/agent-workflow.md`, la spec y
+  el plan; verificar rama/worktree limpios; comenzar por Task 0. El root
+  orquestador asigna cortes, pero cada worker ejecuta inline sin subagentes.

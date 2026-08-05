@@ -4486,3 +4486,23 @@ Nota ISA-265 / OS-09F (2026-08-05, protocolo visual de root/alpha/bounds):
 - Overflow permitido únicamente para `delta-crystal-simple`, eje Y, máximo 13 px y superficie declarada. TDD demuestra 13 px PASS, 14 px FAIL y otro diseño con 1 px FAIL; no hay threshold global.
 - TDD focal: pruebas Node para root ausente/múltiple, contaminación alpha/fondo (hashes iguales/diferentes por grupo), guard, overflow, fuentes, console/page y provenance local/fail-closed. La excepción tipada prueba 13 px PASS, 14 px FAIL y 1 px FAIL en otro diseño. La suite real debe ejecutarse tras el commit, con `sha=HEAD`, `dirty=false` y 16 escenarios PASS. El decode PNG canónico por CDP fija un coste total aproximado de 5–8 min para la suite; se conserva timeout/progreso honesto sin cambiar el helper Crystal.
 - `visual:crystal-parity:report` se ejecutó una vez con límite 90 s y emitió 7 diseños PASS antes de quedar incompleto. Sin baseline tocado; deuda de duración separada, no aprobación total. Sin promoción.
+
+Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
+- Isaac aprobó que TSX/CSS productivo sea la única fuente de verdad: `/workshop`
+  observa el mismo renderer mediante `WidgetVisualHost`; no convierte, copia ni
+  exporta otra representación.
+- Especificación: `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
+  (`41a3f02`). Plan ejecutable: `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`
+  (`426f7c6`, endurecido hasta `2b18e02`).
+- El plan contiene 8 tareas (Task 0–7) y cinco cortes funcionales: preflight,
+  contratos, mutaciones reversibles, HMR real, guía y cierre. Cada worker tiene
+  prohibido delegar o lanzar subagentes.
+- La revisión adversarial read-only exigió y verificó: protección ante edición
+  concurrente, evidencia ignorada de recuperación, SIGINT/SIGTERM sin saltar
+  cleanup, señal HMR sin reload, Chrome fallback, dependencias congeladas,
+  cleanup parcial de Vite y cierres acotados con handles conservados.
+- Veredicto final adversarial sobre `2b18e02`: GO, sin regresiones bloqueantes ni
+  hallazgos razonables abiertos. No se ejecutó todavía código del plan, no se
+  cambió ningún píxel y no hubo promoción a `nightly`.
+- Próxima acción exacta: ejecutar Task 0 desde la rama/worktree ISA-291 y avanzar
+  microcorte a microcorte con review entre commits.

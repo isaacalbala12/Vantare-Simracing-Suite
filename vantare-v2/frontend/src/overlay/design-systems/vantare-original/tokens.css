@@ -149,18 +149,21 @@
   padding: 0.5rem 0.75rem 0.35rem;
   background: linear-gradient(180deg, #9b2226 0%, #3a050a 100%);
   border-bottom: 2px solid #1a0104;
-  font-size: 0.68rem;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--vo-text);
 }
 
+[data-widget-system="vantare-original"] .vo-standings-session-label {
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.2em;
+}
+
 [data-widget-system="vantare-original"] .vo-standings-remaining {
-  font-style: normal;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.24em;
   color: var(--vo-muted);
 }
 
@@ -205,12 +208,17 @@
   text-transform: uppercase;
 }
 
+[data-widget-system="vantare-original"] .vo-standings-table tbody td {
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 [data-widget-system="vantare-original"] .vo-standings-table td[data-metric="gap"],
 [data-widget-system="vantare-original"] .vo-standings-table td[data-metric="interval"],
 [data-widget-system="vantare-original"] .vo-standings-table td[data-metric="bestLap"],
 [data-widget-system="vantare-original"] .vo-standings-table td[data-metric="lastLap"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
 }
 
 [data-widget-system="vantare-original"] .vo-standings-table tbody td:first-child {

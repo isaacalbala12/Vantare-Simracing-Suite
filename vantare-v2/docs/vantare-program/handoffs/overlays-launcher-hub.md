@@ -284,3 +284,55 @@ y recientes.
 - Para continuar en otro chat: leer AGENTS, `docs/agent-workflow.md`, la spec y
   el plan; verificar rama/worktree limpios; comenzar por Task 0. El root
   orquestador asigna cortes, pero cada worker ejecuta inline sin subagentes.
+
+#### Paquete activo de delegación entre chats
+
+Este bloque es la autoridad operativa mientras ISA-291 esté en ejecución. Un
+chat nuevo no necesita el historial de Codex si sigue este orden:
+
+1. Abrir `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
+2. Leer `AGENTS.md`, `docs/agent-workflow.md`, la spec ISA-291 y el plan ISA-291.
+3. Verificar rama `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`,
+   `git status --short` vacío y que `HEAD` contiene `366308e`.
+4. Consultar el ledger inferior y ejecutar únicamente la primera Task pendiente.
+5. Actualizar este ledger después de cada worker/review/commit, antes de lanzar
+   el siguiente corte.
+6. Reflejar el mismo estado en Linear ISA-291. No promover a `nightly`.
+
+Reglas de delegación:
+
+- Solo el orquestador raíz crea workers.
+- Un worker recibe una Task o microcorte acotado y tiene prohibido delegar,
+  lanzar subagentes, cambiar arquitectura o ampliar archivos.
+- El worker debe parar ante cambios ajenos, dependencia nueva, test no entendido,
+  contradicción documental o imposibilidad de verificar.
+- El orquestador revisa diff, tests, alcance y commit antes de continuar.
+- La revisión adversarial final debe ser read-only y ejecutada por un agente
+  distinto del implementador, también sin subagentes.
+
+Formato obligatorio del encargo a un worker:
+
+```text
+Ejecuta exclusivamente Task <N> del plan ISA-291 en el worktree y rama canónicos.
+Lee AGENTS, agent-workflow, spec y plan completos. No lances ni delegues a otros
+agentes. Conserva el write set exacto, aplica TDD y comandos del plan, haz staging
+por rutas y crea solo el commit indicado. Si aparece una stop condition, detente.
+Entrega: rama/HEAD, archivos, tests/checks, omisiones, riesgos, commit y status.
+No push, PR, Linear ni promoción de canal salvo instrucción del orquestador.
+```
+
+Ledger de ejecución vivo:
+
+| Task | Contenido | Estado | Commit/evidencia | Próxima condición |
+|---|---|---|---|---|
+| 0 | Preflight reproducible | Pendiente | — | dependencias congeladas y árbol limpio |
+| 1 | Guard complementario del Host | Pendiente | — | test focal PASS |
+| 2 | Invariantes del catálogo | Pendiente | — | catálogo productivo intacto |
+| 3 | Mutaciones reversibles | Pendiente | — | tests de drift/recovery/cancelación PASS |
+| 4 | Smoke HMR real | Pendiente | — | HMR sin reload y cleanup completo |
+| 5 | Guía de autoría | Pendiente | — | contrato anterior corregido |
+| 6 | Gates acumulativos | Pendiente | — | suite/build/compile-out/visual PASS |
+| 7 | Handoff y cierre | Pendiente | — | Linear y evidencia final actualizados |
+
+Estado al crear este paquete: implementación autorizada por Isaac el 2026-08-05,
+pero ninguna Task de código iniciada. Próxima acción exacta: Task 0.

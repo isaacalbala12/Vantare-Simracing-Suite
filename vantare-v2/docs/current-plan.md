@@ -5074,8 +5074,33 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   ningún test y es deuda heredada.
 - **Estado Git/Linear:** rama
   `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo` sobre base
-  ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`. **Sin push, sin PR y sin
-  cambio de estado en Linear**; no hubo promoción a `nightly`, `testers` ni
-  `master`.
-- **Próxima acción:** verificación manual de Isaac (sección del plan), y solo con
-  su aprobación explícita, ISA-280 / OS-09L.
+  ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`. Sin cambio de estado en
+  Linear hecho por el agente.
+
+### Promoción a nightly (2026-08-05)
+
+- **Aprobación:** Isaac validó ISA-291 al 100 % el 2026-08-05 y autorizó la
+  promoción a `nightly`. Verificación manual realizada por él sobre este worktree.
+- **Alcance real de la promoción:** no es solo ISA-291. La rama iba **40 commits**
+  por delante de `origin/nightly`: 20 commits de ISA-260–265 (contrato, fixtures
+  deterministas, ruta `/workshop`, controles de autoría, exclusión de Stable y
+  protocolo de captura visual) y 20 commits de ISA-291. Se promueve por tanto el
+  **Overlay Workshop completo**, no una parte. Los commits están apilados y no
+  admiten separación técnica.
+- **Impacto para usuarios y testers: ninguno.** Todo el Workshop es herramienta de
+  desarrollo excluida de Stable; el scan de compile-out sobre `frontend/dist` da
+  cero coincidencias. No se añade fragmento de changelog porque no hay
+  comportamiento visible que un tester deba probar.
+- **Mecánica:** rama de integración
+  `vantareapp/os-09-n01-promocion-overlay-workshop-a-nightly` creada desde
+  `origin/nightly` (`fb2c355`), con merge `--no-ff` de ISA-291 en `10be06d`. Merge
+  **sin conflictos**: 30 archivos, 5025 inserciones. Se sigue el paso 12 de
+  `docs/agent-workflow.md` (issue de integración), no un push directo.
+- **Gates sobre el resultado combinado** (no sobre ISA-291 aislado):
+  - `pnpm --dir frontend test` → **329 archivos, 2217 tests PASS**.
+  - `pnpm --dir frontend build` → PASS en 872 ms.
+  - Compile-out en `frontend/dist` → **0 sentinels** del Workshop.
+  - `design-system:check` → 2 sistemas PASS.
+- **Próxima acción:** merge del PR a `nightly` por parte de Isaac. Después,
+  ISA-280 / OS-09L (gate técnico final) y la resolución de la cuestión abierta
+  sobre `assertNoReload` del smoke descrita en el handoff.

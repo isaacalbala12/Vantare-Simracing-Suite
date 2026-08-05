@@ -4502,3 +4502,19 @@ Nota ISA-266 / OS-09G (2026-08-05, declaración tipada piloto):
 - El gate visual final usa el protocolo ISA-265 desde un commit limpio para las
   cuatro superficies y conserva sus artefactos únicamente en `frontend/.tmp/`.
   Estado: rama de issue, sin promoción.
+
+Nota ISA-268 / OS-09I0 (2026-08-05, matriz congelada y checker):
+- La matriz ejecutable deriva el catálogo vigente de `official-designs`, los dos
+  manifests y el registro de tipos, y lo congela como snapshot versionado. El
+  resultado real es 19 tipos, 41 diseños: 19 Original y 22 Crystal. El contrato
+  histórico HTML Crystal sigue separado en 21 diseños/18 tipos; Engineer Radio
+  queda en su lote productivo propio y no entra en las secciones 01–16.
+- El checker falla cerrado ante diseños desaparecidos o nuevos, IDs duplicados,
+  pares widget/sistema inválidos, huérfanos, defaults ausentes/múltiples,
+  lotes ausentes/duplicados y cambios de metadata, dimensiones, versiones,
+  settings, migraciones, parser o provenance de renderer. No migra ni elimina
+  diseños, ni modifica renderers, host, persistencia o baselines.
+- Original conserva cuatro lotes en el orden actual, máximo cinco diseños por
+  lote. Crystal usa los lotes canónicos 01–16; 10A/B/C permanecen tres diseños
+  del mismo tipo, 15 comparte Delta con 06 y 13/14/16 siguen siendo tipos
+  distintos. V2/reestilizados se excluyen explícitamente.

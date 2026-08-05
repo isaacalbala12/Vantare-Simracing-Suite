@@ -29,15 +29,26 @@ describe("catalog migration matrix", () => {
     ["dimensions", (matrix: ReturnType<typeof buildAndCheckCatalogMatrix>) => matrix.map((entry, index) => index === 0 ? { ...entry, defaultSize: { width: 1, height: 1 } } : entry), "catalog metadata changed"],
     ["renderer provenance", (matrix: ReturnType<typeof buildAndCheckCatalogMatrix>) => matrix.map((entry, index) => index === 0 ? { ...entry, renderer: "changed" } : entry), "catalog metadata changed"],
     ["lot", (matrix: ReturnType<typeof buildAndCheckCatalogMatrix>) => matrix.map((entry, index) => index === 0 ? { ...entry, lotId: "changed" } : entry), "catalog metadata changed"],
+    ["reorder", (matrix: ReturnType<typeof buildAndCheckCatalogMatrix>) => [matrix[1], matrix[0], ...matrix.slice(2)], "catalog design order changed"],
+    ["duplicate candidate ID", (matrix: ReturnType<typeof buildAndCheckCatalogMatrix>) => matrix.map((entry, index) => index === 1 ? { ...entry, id: matrix[0].id } : entry), "duplicate candidate catalog design ID"],
   ])("rejects %s during a migration equivalence comparison", (_name, mutate, message) => {
     const frozen = buildAndCheckCatalogMatrix(input());
     expect(() => assertCatalogMatrixEquivalent(frozen, mutate(frozen))).toThrow(message);
   });
 
+  it("rejects duplicate design IDs in the frozen baseline", () => {
+    const frozen = buildAndCheckCatalogMatrix(input());
+    const invalidFrozen = frozen.map((entry, index) => index === 1 ? { ...entry, id: frozen[0].id } : entry);
+    expect(() => assertCatalogMatrixEquivalent(invalidFrozen, frozen)).toThrow(
+      "duplicate frozen catalog design ID",
+    );
+  });
+
   it.each([
     ["duplicate", (value: CatalogMatrixInput) => ({ ...value, officialDesigns: [...value.officialDesigns, value.officialDesigns[0]] }), "duplicate design ID"],
     ["missing lot", (value: CatalogMatrixInput) => ({ ...value, lots: value.lots.slice(1) }), "design missing lot"],
-    ["duplicate lot", (value: CatalogMatrixInput) => ({ ...value, lots: [...value.lots, { ...value.lots[0], id: "duplicate" }] }), "design appears in multiple lots"],
+    ["duplicate lot assignment", (value: CatalogMatrixInput) => ({ ...value, lots: [...value.lots, { ...value.lots[0], id: "duplicate" }] }), "design appears in multiple lots"],
+    ["duplicate lot ID", (value: CatalogMatrixInput) => ({ ...value, lots: value.lots.map((lot, index) => index === 1 ? { ...lot, id: value.lots[0].id } : lot) }), "duplicate lot ID"],
     ["multiple default", (value: CatalogMatrixInput) => ({ ...value, officialDesigns: value.officialDesigns.map((design, index) => index === 2 ? { ...design, isDefault: true } : design) }), "multiple default designs"],
     ["invalid pair", (value: CatalogMatrixInput) => ({ ...value, officialDesigns: value.officialDesigns.map((design, index) => index === 0 ? { ...design, systemVersion: 99 } : design) }), "invalid widget/system pair"],
     ["orphan", (value: CatalogMatrixInput) => ({ ...value, widgetTypes: value.widgetTypes.slice(1) }), "orphan design widget type"],

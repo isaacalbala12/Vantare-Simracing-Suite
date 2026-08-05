@@ -52,7 +52,10 @@ function registrationFor(
  */
 export function buildAndCheckCatalogMatrix(input: CatalogMatrixInput): CatalogMatrixEntry[] {
   const lotsByDesignId = new Map<string, string>();
+  const lotIds = new Set<string>();
   for (const lot of input.lots) {
+    if (lotIds.has(lot.id)) throw new Error(`duplicate lot ID: ${lot.id}`);
+    lotIds.add(lot.id);
     for (const designId of lot.designIds) {
       if (lotsByDesignId.has(designId)) throw new Error(`design appears in multiple lots: ${designId}`);
       lotsByDesignId.set(designId, lot.id);
@@ -120,15 +123,44 @@ export function assertCatalogMatrixEquivalent(
   frozen: readonly CatalogMatrixEntry[],
   candidate: readonly CatalogMatrixEntry[],
 ): void {
-  const expected = new Map(frozen.map((entry) => [entry.id, entry]));
-  const actual = new Map(candidate.map((entry) => [entry.id, entry]));
-  for (const id of expected.keys()) if (!actual.has(id)) throw new Error(`catalog design disappeared: ${id}`);
-  for (const id of actual.keys()) if (!expected.has(id)) throw new Error(`catalog design appeared: ${id}`);
-  for (const [id, before] of expected) {
-    const after = actual.get(id)!;
-    if (JSON.stringify(before) !== JSON.stringify(after)) {
-      throw new Error(`catalog metadata changed: ${id}`);
+  assertUniqueMatrixIds("frozen", frozen);
+  assertUniqueMatrixIds("candidate", candidate);
+
+  if (candidate.length < frozen.length) {
+    const missing = frozen.find((entry) => !candidate.some((other) => other.id === entry.id));
+    throw new Error(`catalog design disappeared: ${missing?.id ?? "unknown"}`);
+  }
+  if (candidate.length > frozen.length) {
+    const added = candidate.find((entry) => !frozen.some((other) => other.id === entry.id));
+    throw new Error(`catalog design appeared: ${added?.id ?? "unknown"}`);
+  }
+
+  for (let index = 0; index < frozen.length; index += 1) {
+    const before = frozen[index];
+    const after = candidate[index];
+    if (before.id !== after.id) {
+      if (!candidate.some((entry) => entry.id === before.id)) {
+        throw new Error(`catalog design disappeared: ${before.id}`);
+      }
+      if (!frozen.some((entry) => entry.id === after.id)) {
+        throw new Error(`catalog design appeared: ${after.id}`);
+      }
+      throw new Error(`catalog design order changed at index ${index}: ${before.id} -> ${after.id}`);
     }
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      throw new Error(`catalog metadata changed: ${before.id}`);
+    }
+  }
+}
+
+function assertUniqueMatrixIds(
+  side: "frozen" | "candidate",
+  matrix: readonly CatalogMatrixEntry[],
+): void {
+  const ids = new Set<string>();
+  for (const entry of matrix) {
+    if (ids.has(entry.id)) throw new Error(`duplicate ${side} catalog design ID: ${entry.id}`);
+    ids.add(entry.id);
   }
 }
 

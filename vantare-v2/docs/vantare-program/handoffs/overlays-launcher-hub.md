@@ -382,7 +382,30 @@ Task 4.
    y está documentado en la guía. (b) El smoke exige todo el subárbol `vantare-v2`
    limpio, no solo los dos archivos objetivo. (c) La suite completa emite un
    `AbortError` de teardown de happy-dom que no falla ningún test; es deuda
-   heredada, ajena a este corte.
+   heredada, ajena a este corte. (d) Ver el punto 6b: cuestión abierta sobre el
+   assert de "sin reload" del smoke.
+
+6b. **Cuestión abierta — el CSS recarga, no hace hot-update.** Verificación manual
+   del 2026-08-05 sobre este worktree, con Vite en `localhost:5173` y Delta
+   Original en `/workshop`: editar `vantare-original/tokens.css` **sí** aplica el
+   cambio al instante sin reiniciar Vite (fondo `rgb(16,16,20)` → `rgb(120,0,180)`,
+   y restauración byte a byte verificada por SHA-256), pero lo hace mediante una
+   **recarga completa de documento**, no mediante hot-update de CSS. Evidencia: un
+   centinela en `window` se perdió en las tres ediciones (un control sin editar
+   nada demostró que el contexto persiste normalmente) y la consola registró
+   cuatro ciclos `[vite] connecting… connected` sin ningún `[vite] css hot updated`.
+   Causa probable: `tokens.css` entra por `@import` desde `src/index.css` y pasa
+   por Tailwind v4, que regenera el grafo CSS completo.
+
+   Esto **no invalida el bucle de autoría**, que es la propiedad que interesa: el
+   cambio se ve sin reiniciar el servidor. Pero entra en conflicto aparente con
+   `assertNoReload` del smoke, que muta ese mismo archivo y afirma verificar la
+   ausencia de recarga. El smoke **no se ejecutó** en esta verificación y sus
+   condiciones difieren (Chromium propio de Playwright, y el TSX mutado en vuelo
+   durante la fase CSS). Acción pendiente para quien retome ISA-280: ejecutar
+   `smoke:overlay-workshop-hmr` y resolver la discrepancia. Si el assert resulta
+   ser demasiado estricto para este grafo CSS, relajarlo a "el cambio se aplica sin
+   reiniciar el servidor" en lugar de debilitar la evidencia.
 7. **Fuera de alcance de ISA-291.** Migración de los 41 diseños, canvas
    drag/resize, perfiles, persistencia, lectores LMU, Billing, Wails/SSE y
    baselines visuales. No se cambió ningún píxel ni ningún archivo de producto.

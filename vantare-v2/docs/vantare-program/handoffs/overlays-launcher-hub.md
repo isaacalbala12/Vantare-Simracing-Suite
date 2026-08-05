@@ -329,10 +329,11 @@ Ledger de ejecución vivo:
 | 1 | Guard complementario del Host | Completada | `f9c6617`; Vitest focal 3/3 PASS; revisión de diff sin hallazgos | Task 2 |
 | 2 | Invariantes del catálogo | Completada | `c0fff0d`; catálogo 11/11 y contratos acumulados 14/14 PASS | Task 3 |
 | 3 | Mutaciones reversibles | Completada | `d2555a4`; Node 8/8 PASS; revisión raíz sin hallazgos | Task 4 |
-| 4 | Smoke HMR real | Pendiente | — | HMR sin reload y cleanup completo |
-| 5 | Guía de autoría | Pendiente | — | contrato anterior corregido |
-| 6 | Gates acumulativos | Pendiente | — | suite/build/compile-out/visual PASS |
-| 7 | Handoff y cierre | Pendiente | — | Linear y evidencia final actualizados |
+| 4 | Smoke HMR real | Completada | `1a7bf80` + `a5ed874`; Node 15/15 PASS; smoke ejecutado sobre HEAD limpio | Task 5 |
+| 4b | Correcciones P3 de revisión | Completada | `339e81a`; mensaje de guard, carve-out muerto y fragilidad del ancla documentada | Task 5 |
+| 5 | Guía de autoría | Completada | `ca978d0`; guía con 4 recetas y contrato OS-09 corregido | Task 6 |
+| 6 | Gates acumulativos | Completada (parcial) | suite 2181/2181, lint focal, `design-system:check`, build y compile-out PASS; smoke y protocolo visual omitidos por decisión de Isaac | Task 7 |
+| 7 | Handoff y cierre | Completada | docs cerrados; sin push, sin PR y sin cambio en Linear | Revisión manual de Isaac |
 
 Estado actual: implementación autorizada por Isaac el 2026-08-05. Task 0 pasó:
 se instalaron dependencias ignoradas con `--frozen-lockfile`, el lockfile real de
@@ -348,3 +349,44 @@ restauración byte a byte, preservación de drift externo, evidencia de recovery
 guard de worktree y cleanup bajo cancelación; la revisión raíz repitió 8/8
 tests y confirmó un commit de exactamente dos scripts. Próxima acción exacta:
 Task 4.
+
+## ISA-291 — autoría directa (cierre técnico)
+
+1. **Decisión aprobada.** Overlay Workshop es un bucle de autoría sobre el TSX/CSS
+   productivo. No hay conversión Workshop→app, catálogo paralelo, DSL ni
+   scaffolder obligatorio. Autoridades:
+   `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
+   (spec), `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`
+   (plan) y `docs/overlays-studio/overlay-workshop-authoring-guide.md` (guía operativa).
+2. **Rama y base.** `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`,
+   base ISA-265 en `54088b2e5ad25d9a897cb89187ee9684b75c645f`, worktree
+   `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`. Commits de
+   implementación: `f9c6617`, `c0fff0d`, `d2555a4`, `1a7bf80`, `a5ed874`, `339e81a`,
+   `ca978d0`, más los commits documentales de cada corte.
+3. **Arquitectura conservada.** `WidgetVisualHost` → `designSystemRegistry` /
+   manifest → renderer productivo. Workshop es el cuarto consumidor del host,
+   junto a Studio canvas, runtime y ProfilePreview. Ningún renderer nuevo, host
+   alternativo ni segundo catálogo.
+4. **Cómo abrir el bucle.** `corepack pnpm --dir frontend dev` y abrir
+   `http://localhost:5173/workshop?widget=delta&system=vantare-original&design=delta-original-base&state=ready&surface=studio&variant=default&session=race&location=track&background=grid&scale=1&preset=1080p`.
+   El smoke reversible es `corepack pnpm --dir frontend smoke:overlay-workshop-hmr`
+   y sus tests unitarios `corepack pnpm --dir frontend test:overlay-workshop-hmr`.
+5. **Qué demostró cada gate.** El guard de caracterización bloquea que Workshop
+   importe un renderer concreto o esquive el host, nombrando el archivo ofensor.
+   Los invariantes de catálogo garantizan IDs únicos y exactamente un default por
+   pareja widget/sistema registrada, sin tocar `official-designs.ts`. El smoke
+   demuestra que un cambio de TSX y otro de CSS se aplican por HMR sin navegación
+   ni reload, y que los bytes se restauran exactamente.
+6. **Riesgos restantes.** (a) `TSX_ANCHOR` del smoke depende de dos líneas
+   literales de `DeltaOriginal.tsx`; un reformateo lo rompe, aunque falla en seco
+   y está documentado en la guía. (b) El smoke exige todo el subárbol `vantare-v2`
+   limpio, no solo los dos archivos objetivo. (c) La suite completa emite un
+   `AbortError` de teardown de happy-dom que no falla ningún test; es deuda
+   heredada, ajena a este corte.
+7. **Fuera de alcance de ISA-291.** Migración de los 41 diseños, canvas
+   drag/resize, perfiles, persistencia, lectores LMU, Billing, Wails/SSE y
+   baselines visuales. No se cambió ningún píxel ni ningún archivo de producto.
+8. **Próxima acción exacta para un chat nuevo.** Verificación manual de Isaac
+   según la sección homónima del plan; después, revisión adversarial si Isaac la
+   solicita y, solo con su aprobación explícita, ISA-280 (OS-09L, gate técnico
+   final previo a Nightly). No promover a `nightly` antes de eso.

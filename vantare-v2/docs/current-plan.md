@@ -1,3 +1,23 @@
+Nota ISA-293 / TC-SUP-01 (2026-08-05, restore drill en NO-GO):
+- El backup principal quedó cifrado con EFS; sus 7/7 checksums permanecen
+  idénticos. El certificado de recuperación se exportó a un PFX protegido y su
+  ACL permite solo Isaac, `SYSTEM` y Administradores. Falta copiar el PFX fuera
+  del equipo para cerrar la protección física.
+- El restore se ensayó sin red remota en PostgreSQL Supabase 17.6.1.155, sin
+  puertos, con 1 CPU/1 GiB y backup read-only. Roles pasó; schema falló antes de
+  datos por ausencia del baseline administrado `extensions`/Storage y se
+  revirtió completamente. Datos e historial no comenzaron.
+- El dump de schema solo reconstruye `public`, mientras el dump de datos
+  contiene `auth`, `public` y `storage`. Una imagen PostgreSQL sola no sustituye
+  las migraciones de los servicios Supabase. Su recuperabilidad aún no está
+  demostrada.
+- Contenedor y volumen efímeros fueron eliminados; los 16 contenedores previos,
+  producción, staging y piloto quedaron intactos.
+- Siguiente gate: autorizar una ventana para generar un baseline vacío con un
+  stack Supabase CLI aislado, cifrarlo y repetir el restore completo. TC-SUP-02,
+  staging y producción continúan bloqueados.
+- Evidencia: `docs/evidence/isa-293-supabase-primary-backup-restore-drill.md`.
+
 Nota ISA-292 / TAU-07L (2026-08-05, planificación de Supabase principal):
 - PR #121 está integrada en
   `nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a`; Testing Center no está

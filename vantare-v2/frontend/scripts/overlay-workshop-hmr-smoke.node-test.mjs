@@ -10,6 +10,7 @@ import {
   buildCssMutation,
   buildTsxMutation,
   closeWithTimeout,
+  formatError,
   listenWorkshopServer,
   mutateFileTemporarily,
   sha256,
@@ -184,4 +185,11 @@ test('listenWorkshopServer closes its own handle before propagating listen failu
 
   await assert.rejects(listenWorkshopServer(server), /listen failed/);
   assert.equal(closeCalls, 1);
+});
+
+test('formatError includes nested cleanup failures from AggregateError', () => {
+  const error = new AggregateError([new Error('css did not update')], 'smoke failed');
+
+  assert.match(formatError(error), /smoke failed/);
+  assert.match(formatError(error), /css did not update/);
 });

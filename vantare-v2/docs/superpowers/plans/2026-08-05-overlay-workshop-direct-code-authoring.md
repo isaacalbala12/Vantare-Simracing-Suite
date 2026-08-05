@@ -511,7 +511,7 @@ Expected: commit con exactamente los dos scripts.
 
 - [ ] **Step 1: añadir tests de las mutaciones contractuales**
 
-Ampliar el import del test con `buildCssMutation` y `buildTsxMutation`, y añadir:
+Ampliar el import del test con `buildCssMutation`, `buildTsxMutation`, `closeWithTimeout` y `listenWorkshopServer`, y añadir:
 
 ```js
 for (const [name, newline] of [['LF', '\n'], ['CRLF', '\r\n']]) {
@@ -538,6 +538,24 @@ test('buildCssMutation appends one scoped custom property', () => {
   assert.match(mutation.mutated.toString('utf8'), /\.vo-delta\[data-overlay-workshop-hmr-tsx="active"\]/);
   assert.match(mutation.mutated.toString('utf8'), /--overlay-workshop-hmr-css: 17px/);
   assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
+});
+
+test('closeWithTimeout resolves a completed cleanup and rejects a blocked cleanup', async () => {
+  await assert.doesNotReject(closeWithTimeout('fast close', async () => {}, 20));
+  await assert.rejects(
+    closeWithTimeout('blocked close', () => new Promise(() => {}), 10),
+    /blocked close timed out after 10ms/,
+  );
+});
+
+test('listenWorkshopServer closes its own handle before propagating listen failure', async () => {
+  let closeCalls = 0;
+  const server = {
+    listen: async () => { throw new Error('listen failed'); },
+    close: async () => { closeCalls += 1; },
+  };
+  await assert.rejects(listenWorkshopServer(server), /listen failed/);
+  assert.equal(closeCalls, 1);
 });
 ```
 
@@ -584,7 +602,7 @@ export function buildCssMutation(bytes) {
 }
 ```
 
-Run de nuevo el test Node. Expected: `12 pass`; cancelación, LF, CRLF, BOM y newline final quedan cubiertos.
+Run de nuevo el test Node. Expected: `14 pass`; cancelación, LF, CRLF, BOM, newline final, cleanup acotado y fallo parcial de `listen()` quedan cubiertos.
 
 - [ ] **Step 3: añadir servidor, navegador y errores observables**
 
@@ -604,6 +622,33 @@ function progress(phase) {
   process.stdout.write(`[overlay-workshop-hmr] ${phase}\n`);
 }
 
+export async function closeWithTimeout(label, close, timeoutMs = 5000) {
+  let timer;
+  try {
+    await Promise.race([
+      Promise.resolve().then(close),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function listenWorkshopServer(server) {
+  try {
+    await server.listen();
+  } catch (listenError) {
+    try {
+      await closeWithTimeout('Vite cleanup after failed listen', () => server.close());
+    } catch (closeError) {
+      throw new AggregateError([listenError, closeError], 'Vite listen and cleanup failed');
+    }
+    throw listenError;
+  }
+}
+
 async function startWorkshopServer() {
   const { createServer } = await import('vite');
   const server = await createServer({
@@ -611,7 +656,7 @@ async function startWorkshopServer() {
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 5183, strictPort: false },
   });
-  await server.listen();
+  await listenWorkshopServer(server);
   const address = server.httpServer?.address();
   const port = typeof address === 'object' && address ? address.port : 5183;
   return { server, baseUrl: `http://127.0.0.1:${port}` };
@@ -782,8 +827,8 @@ async function main() {
     operationError = error;
   } finally {
     const cleanupResults = await Promise.allSettled([
-      browser ? browser.close() : Promise.resolve(),
-      server ? server.close() : Promise.resolve(),
+      browser ? closeWithTimeout('browser close', () => browser.close()) : Promise.resolve(),
+      server ? closeWithTimeout('Vite close', () => server.close()) : Promise.resolve(),
     ]);
     for (const result of cleanupResults) {
       if (result.status === 'rejected') cleanupErrors.push(result.reason);
@@ -814,7 +859,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
 }
 ```
 
-Las mutaciones restauran o retiran su propio marcador **antes** de cerrar navegador y servidor. SIGINT/SIGTERM desactivan la salida inmediata de Node, marcan cancelación y dejan terminar la operación Playwright acotada en curso; al volver de ella se lanza el error, se recorren los `finally` y solo después se asigna 130/143. No se utiliza `Promise.race` para startup, por lo que nunca se pierde la referencia a un Vite o Chromium que resuelva tarde; Playwright usa su timeout nativo de launch. El cierre de un recurso no omite los demás y el gate comprueba navegador desconectado y puerto sin responder. Un kill forzado o corte eléctrico no puede ejecutar cleanup: la siguiente ejecución falla en el guard Git y exige restaurar/revisar el marcador antes de continuar.
+Las mutaciones restauran o retiran su propio marcador **antes** de cerrar navegador y servidor. SIGINT/SIGTERM desactivan la salida inmediata de Node, marcan cancelación y dejan terminar la operación Playwright acotada en curso; al volver de ella se lanza el error, se recorren los `finally` y solo después se asigna 130/143. No se utiliza `Promise.race` para startup, por lo que nunca se pierde la referencia a un Vite o Chromium que resuelva tarde; Playwright usa su timeout nativo de launch. Si `server.listen()` falla, su propio helper cierra el handle antes de propagar. Los timeouts solo envuelven cierres cuyos handles siguen en memoria; si vencen, los gates de conexión/puerto aún se ejecutan y fallan de forma visible. Un kill forzado o corte eléctrico no puede ejecutar cleanup: la siguiente ejecución falla en el guard Git y exige restaurar/revisar el marcador antes de continuar.
 
 - [ ] **Step 5: exponer comandos estables**
 
@@ -838,7 +883,7 @@ git diff --check -- frontend/scripts/overlay-workshop-hmr-smoke.mjs frontend/scr
 Expected:
 
 ```text
-12 tests passed
+14 tests passed
 ```
 
 ESLint y `git diff --check` también terminan sin errores.

@@ -280,3 +280,20 @@ y recientes.
 - Gate de cierre: unit/contract, `design-system:check`, build, lint focal,
   diff-check y protocolo visual ISA-265 sobre las cuatro superficies. Los PNG
   y reportes siguen siendo temporales y no se versionan.
+
+### ISA-267 — crear una declaración sin inventar renderer
+
+- Previsualizar sin escribir:
+  `corepack pnpm --dir frontend overlay:new -- --widget delta --system vantare-crystal --design mi-delta-crystal --name "Mi Delta Crystal" --dry-run`.
+- Ejecutar el mismo comando sin `--dry-run` para crear la declaración. La salida
+  imprime el archivo, el barrel generado, `corepack pnpm --dir frontend dev` y la
+  URL exacta `/workshop?...`.
+- Antes de commit ejecutar `corepack pnpm --dir frontend official-designs:check`.
+  `build` incluye este gate y falla si alguien añadió, retiró o movió una
+  declaración sin regenerar el barrel.
+- El diseño nuevo reutiliza la forma visual por defecto del registro salvo que
+  se pasen settings que el parser productivo acepte. El CLI no crea renderer,
+  JSX ni CSS. Si la forma pedida no existe, se necesita otro microcorte previo.
+- No se promete atomicidad absoluta del volumen: hay preflight, no-overwrite y
+  rollback acotado a la invocación. El checker por bytes es la recuperación
+  fail-closed ante una interrupción externa.

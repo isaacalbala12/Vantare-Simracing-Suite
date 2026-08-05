@@ -5,11 +5,12 @@ import { RELATIVE_DEFAULT_APPEARANCE } from "../widget-types/relative/relative-r
 import { designSystemRegistry } from "../core/design-system-registry";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import { checkOfficialWidgetDesignDeclarations } from "./official-design-declaration";
-import { deltaCrystalSimpleDesign } from "./vantare-crystal/delta/official-designs";
+import { OFFICIAL_WIDGET_DESIGN_DECLARATIONS } from "./official-design-declarations.generated";
 
 export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
-const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
+// Transitional catalog entries not yet migrated to co-located typed declarations.
+const LEGACY_OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   {
     id: "delta-original-base",
     name: "Original Base",
@@ -45,7 +46,6 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     includesContent: false,
     origin: "vantare",
   },
-  deltaCrystalSimpleDesign.design,
   {
     id: "standings-original-base",
     name: "Original Base",
@@ -223,17 +223,59 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "engineer-radio-crystal", name: "Crystal Engineer Radio", widgetType: "engineer-radio", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
 ];
 
-const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>
+const DECLARED_OFFICIAL_DESIGN_DEFINITIONS = OFFICIAL_WIDGET_DESIGN_DECLARATIONS.map(
+  (declaration) => declaration.design,
+);
+
+export function combineOfficialDesignDefinitions(
+  legacy: readonly WidgetDesignV1[],
+  declared: readonly WidgetDesignV1[],
+  preservedPositions: Readonly<Record<string, string>> = {},
+): WidgetDesignV1[] {
+  const combined = [...legacy, ...declared];
+  const seenDesignIds = new Set<string>();
+  for (const design of combined) {
+    if (seenDesignIds.has(design.id)) {
+      throw new Error(`duplicate official design id across legacy and declared catalogs: ${design.id}`);
+    }
+    seenDesignIds.add(design.id);
+  }
+
+  const ordered = [...legacy];
+  const positionedIds = new Set<string>();
+  for (const [designId, afterDesignId] of Object.entries(preservedPositions)) {
+    const design = declared.find((candidate) => candidate.id === designId);
+    const anchorIndex = ordered.findIndex((candidate) => candidate.id === afterDesignId);
+    if (!design || anchorIndex < 0) {
+      throw new Error(`invalid preserved catalog position: ${designId} after ${afterDesignId}`);
+    }
+    ordered.splice(anchorIndex + 1, 0, design);
+    positionedIds.add(designId);
+  }
+  ordered.push(...declared.filter((design) => !positionedIds.has(design.id)));
+  return ordered;
+}
+
+const ALL_OFFICIAL_DESIGN_DEFINITIONS = combineOfficialDesignDefinitions(
+  LEGACY_OFFICIAL_DESIGN_DEFINITIONS,
+  DECLARED_OFFICIAL_DESIGN_DEFINITIONS,
+  { "delta-crystal-simple": "delta-time-attack" },
+);
+
+const OFFICIAL_DESIGNS: WidgetDesignV1[] = ALL_OFFICIAL_DESIGN_DEFINITIONS.map((design) =>
   validateWidgetDesign(design),
 );
 
 const OFFICIAL_BY_ID = new Map(OFFICIAL_DESIGNS.map((design) => [design.id, design]));
 
-export const OFFICIAL_WIDGET_DESIGN_DECLARATIONS = [deltaCrystalSimpleDesign] as const;
+export { OFFICIAL_WIDGET_DESIGN_DECLARATIONS };
 
 checkOfficialWidgetDesignDeclarations({
   declarations: OFFICIAL_WIDGET_DESIGN_DECLARATIONS,
-  requiredIds: ["delta-crystal-simple"],
+  requiredIds: [
+    "delta-crystal-simple",
+    ...OFFICIAL_WIDGET_DESIGN_DECLARATIONS.map((declaration) => declaration.design.id),
+  ],
   officialDesigns: OFFICIAL_DESIGNS,
   resolveSystem: (design) => designSystemRegistry.get(design.systemId, design.systemVersion),
   resolveDefaultSize: (widgetType) => widgetTypeRegistry.get(widgetType).capabilities.defaultSize,

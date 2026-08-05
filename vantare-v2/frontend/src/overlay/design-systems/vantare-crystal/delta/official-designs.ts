@@ -18,3 +18,5 @@ export const deltaCrystalSimpleDesign = defineOfficialWidgetDesign({
   defaultSize: deltaDefinition.capabilities.defaultSize,
   scenarios: ["ready", "stale", "disconnected", "error"],
 });
+
+export const officialWidgetDesignDeclarations = [deltaCrystalSimpleDesign] as const;

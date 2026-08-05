@@ -1,8 +1,31 @@
-Nota ISA-234 / reconciliación con Nightly (2026-08-05, candidata local):
-- Linear rechazó crear una issue de integración propia por el límite del plan
-  gratuito. Con autorización explícita de Isaac, la PR #121 continúa como
-  excepción trazada en ISA-234; no se archivan issues y no se modifica la
-  política de correcciones rechazadas, que mantiene `same_branch` retirado.
+Nota ISA-292 / TAU-07L (2026-08-05, planificación de Supabase principal):
+- PR #121 está integrada en
+  `nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a`; Testing Center no está
+  desplegado en el Supabase principal.
+- Isaac aprobó usar `ombjshwzqgeisazijduq` como autoridad futura, validar antes
+  en staging `rilwmlbnucbbayaulnxw` y congelar el piloto
+  `lbaxvpzexoferfvfkplz` sin nuevos pushes desde mainline.
+- ADR 0008 fija doble autorización server-side, anonimización al borrar cuentas,
+  efectos externos apagados, handoff humano a Codex y contención mediante pausa
+  más migraciones forward.
+- El backup lógico principal existe y sus checksums pasaron, pero continúa sin
+  restore proof; staging y producción permanecen en NO-GO.
+- El plan maestro activo es
+  `docs/superpowers/plans/2026-08-05-testing-center-primary-supabase-rollout.md`.
+  Empieza por protección/restauración del backup, manifiesto de migraciones,
+  FKs/retención y doble gate; solo después permite staging inerte.
+- Para liberar el límite gratuito de Linear se eliminaron diez issues `Done`
+  cuya entrega está contenida en PR #121: ISA-238, ISA-239, ISA-240, ISA-241,
+  ISA-243, ISA-248, ISA-253, ISA-287, ISA-289 e ISA-290. Linear permite
+  recuperarlas durante 30 días. La issue operativa nueva es ISA-292.
+- Este corte es exclusivamente documental: sin SQL, Docker, secrets, Supabase
+  remoto, Linear runtime, deploy, merge o promoción.
+
+Nota ISA-234 / reconciliación con Nightly (2026-08-05, integrada):
+- Linear rechazó en aquel momento crear una issue de integración propia por el
+  límite gratuito. Con autorización explícita de Isaac, PR #121 continuó como
+  excepción trazada en ISA-234. ISA-292 documenta la limpieza posterior de
+  issues cerradas; `same_branch` continúa retirado.
 - Origen exacto `ISA-234@a526e2b0a4e344f5841a7c216d77a0efc4f0b62e` y
   base remota verificada
   `nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e`. La reconciliación es
@@ -13,9 +36,10 @@ Nota ISA-234 / reconciliación con Nightly (2026-08-05, candidata local):
 - Evidencia local: deploy surface PASS; Deno vigente 165/165; preflight Codex
   4/4; frontend integración 150/150 con un worker; build frontend PASS; Go
   focal `cmd/vantare` + `internal/app` PASS; `git diff --check` PASS.
-- Sin Docker, Supabase remoto, secretos, Codex automático, deploy, release,
-  merge ni promoción. Pendiente: commit/push normal, CI de la PR y build
-  Nightly para revisión manual.
+- Cierre remoto: PR #121 fue fusionada en
+  `nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a` y produjo la build Nightly
+  `30962662203`. No hubo deploy de Testing Center al Supabase principal,
+  release público ni promoción a Testers/Master.
 
 Nota ISA-248 / TAU-07J (2026-08-05, handoff humano preparado localmente):
 - `testing-center.codex-human-handoff.v1` solo se construye desde un dossier

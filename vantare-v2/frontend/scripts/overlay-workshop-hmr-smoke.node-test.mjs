@@ -117,8 +117,8 @@ test('assertGitClean accepts clean output and rejects modified and untracked out
     return '';
   }));
   assert.deepEqual(receivedPaths, ['one.tsx']);
-  assert.throws(() => assertGitClean(['one.tsx'], () => ' M one.tsx'), /must be clean/);
-  assert.throws(() => assertGitClean(['one.tsx'], () => '?? one.tsx'), /must be clean/);
+  assert.throws(() => assertGitClean(['one.tsx'], () => ' M one.tsx'), /requires a clean worktree/);
+  assert.throws(() => assertGitClean(['one.tsx'], () => '?? one.tsx'), /requires a clean worktree/);
 });
 
 test('abort during verification restores exact bytes before propagating cancellation', async () => {

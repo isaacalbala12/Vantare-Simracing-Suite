@@ -54,7 +54,15 @@ paridad Crystal histórica.
 1. ISA-261: fixtures portables/deterministas, sin runtime live.
 2. ISA-262/263: MVP local HMR y contract tests de stage/root/alpha/bounds.
 3. ISA-264: owner firmado y compile-out Stable, solo tras demostrar la autoridad.
-4. Autoría declarativa y scaffolder; catálogo solo por consumidores cero y su issue.
+4. ISA-291: autoría directa sobre TSX/CSS productivo, smoke HMR reversible y guía ejecutable. No existe conversión Workshop→app ni scaffolder obligatorio.
+
+La especificación aprobada para ISA-291 es
+`docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
+y su guía operativa es `docs/overlays-studio/overlay-workshop-authoring-guide.md`.
+Esa decisión sustituye el enfoque declarativo de ISA-266–278: sus declaraciones
+universales, migración masiva, barrel generado, scaffolder y `catalogPosition` no
+forman parte del producto. Un HTML puede seguir siendo referencia visual, pero la
+única fuente de verdad ejecutable es el renderer productivo registrado y su CSS.
 
 No tocar en estas fases canvas drag/resize, manifests/official-designs en masa,
 Billing, lectores LMU, Wails/SSE o baselines sin issue propia. La promoción sigue

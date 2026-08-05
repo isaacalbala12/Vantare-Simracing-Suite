@@ -5031,3 +5031,7 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   añadió el paquete canónico de delegación y ledger vivo al handoff
   `docs/vantare-program/handoffs/overlays-launcher-hub.md`; otro chat debe
   continuar desde ese bloque y actualizarlo tras cada entrega.
+- Task 0 PASS: instalación frontend congelada, blob del lockfile workspace
+  `8ecdce49a78adc664e4796f388889fbd41a67c08` inalterado, `node_modules`
+  ignorado y Vitest/Vite/Playwright disponibles. Se corrigió el plan para
+  apuntar al lockfile real `..\pnpm-lock.yaml`. Próxima acción: Task 1.

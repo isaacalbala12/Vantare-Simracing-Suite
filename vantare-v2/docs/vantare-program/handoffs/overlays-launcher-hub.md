@@ -11,8 +11,9 @@
 ## Estado
 
 - Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; ISA-261
-  extrae sus fixtures neutrales y ISA-266 declara el primer diseño tipado sin
-  migración masiva, todo en ramas aisladas y sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
+  extrae sus fixtures neutrales, ISA-266 declara el primer diseño tipado e
+  ISA-268 congela la matriz/checker sin migración masiva, todo en ramas aisladas
+  y sin promoción. El catálogo actual es 19 tipos/41 diseños (19 Original, 22 Crystal);
   el gate HTML Crystal histórico 21/18 permanece separado. `engineer-radio-crystal`
   es oficial/productivo bajo contrato Engineer, no derivado del HTML clásico.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
@@ -194,7 +195,7 @@ y recientes.
 
 ## Última actualización
 
-2026-08-05, ISA-266, declaración tipada piloto de `delta-crystal-simple`; no promocionado.
+2026-08-05, ISA-268, matriz/checker de catálogo congelados sobre ISA-266; no promocionado.
 
 ### ISA-262 — usar el Workshop local
 

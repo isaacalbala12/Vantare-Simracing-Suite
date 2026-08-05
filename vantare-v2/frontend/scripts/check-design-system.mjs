@@ -7,7 +7,9 @@ const forbidden = [
   /from\s+["'][^"']*(?:wails|telemetry-(?:store|ref|adapter)|supabase|profile-document|permissions)[^"']*["']/i,
   /https?:\/\//i,
 ];
-const systems = readdirSync(rootPath).filter((name) => name !== "_template" && statSync(join(rootPath, name)).isDirectory());
+const systems = readdirSync(rootPath).filter(
+  (name) => name !== "_template" && name !== "__snapshots__" && statSync(join(rootPath, name)).isDirectory(),
+);
 const failures = [];
 const coreWidgets = ["delta", "standings", "relative", "pedals"];
 

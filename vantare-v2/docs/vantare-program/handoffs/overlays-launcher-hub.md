@@ -327,7 +327,7 @@ Ledger de ejecución vivo:
 |---|---|---|---|---|
 | 0 | Preflight reproducible | Completada | Node 24.14.1; pnpm 9.1.0; lock blob `8ecdce49`; sin commit de producto | Task 1 |
 | 1 | Guard complementario del Host | Completada | `f9c6617`; Vitest focal 3/3 PASS; revisión de diff sin hallazgos | Task 2 |
-| 2 | Invariantes del catálogo | Pendiente | — | catálogo productivo intacto |
+| 2 | Invariantes del catálogo | Completada | `c0fff0d`; catálogo 11/11 y contratos acumulados 14/14 PASS | Task 3 |
 | 3 | Mutaciones reversibles | Pendiente | — | tests de drift/recovery/cancelación PASS |
 | 4 | Smoke HMR real | Pendiente | — | HMR sin reload y cleanup completo |
 | 5 | Guía de autoría | Pendiente | — | contrato anterior corregido |
@@ -340,4 +340,7 @@ la raíz Git conservó el blob `8ecdce49a78adc664e4796f388889fbd41a67c08` y
 Vitest 4.1.9, Vite 8.0.16 y Playwright 1.60.0 están disponibles. Task 1 añadió
 Workshop al guard de consumidores de `WidgetVisualHost`; la revisión raíz
 repitió la caracterización focal con 3/3 PASS y confirmó un diff de un solo
-archivo, sin renderer ni excepción paralelos. Próxima acción exacta: Task 2.
+archivo, sin renderer ni excepción paralelos. Task 2 extendió los invariantes a
+todos los diseños y parejas realmente registrados: IDs únicos y exactamente un
+default por pareja, sin tocar `official-designs.ts`. El test de catálogo pasó
+11/11 y ambos contratos juntos 14/14. Próxima acción exacta: Task 3.

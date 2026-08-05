@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -141,4 +141,34 @@ test("rolls back only invocation-created files and restores the previous barrel 
     await assert.rejects(() => stat(declarationPath), { code: "ENOENT" });
     assert.deepEqual(await readFile(barrelPath), barrelBefore);
   });
+});
+
+test("rejects a pre-existing system symlink or junction and creates nothing outside the canonical root", async () => {
+  const container = await mkdtemp(path.join(tmpdir(), "vantare-overlay-new-link-"));
+  const root = path.join(container, "frontend");
+  const outside = path.join(container, "outside-system");
+  try {
+    const systemsRoot = path.join(root, "src", "overlay", "design-systems");
+    const outsideWidget = path.join(outside, "delta");
+    await mkdir(systemsRoot, { recursive: true });
+    await mkdir(outsideWidget, { recursive: true });
+    await symlink(outside, path.join(systemsRoot, "vantare-crystal"), process.platform === "win32" ? "junction" : "dir");
+    const barrelPath = path.join(systemsRoot, "official-design-declarations.generated.ts");
+    await writeFile(barrelPath, "// unchanged\n", "utf8");
+
+    await assert.rejects(
+      () => scaffoldOverlayDesign(
+        { ...valid, design: "escaped-design", frontendRoot: root },
+        { catalog },
+      ),
+      /unsafe symbolic link or reparse point/,
+    );
+    await assert.rejects(
+      () => stat(path.join(outsideWidget, "escaped-design", "official-designs.ts")),
+      { code: "ENOENT" },
+    );
+    assert.equal(await readFile(barrelPath, "utf8"), "// unchanged\n");
+  } finally {
+    await rm(container, { recursive: true, force: true });
+  }
 });

@@ -4537,3 +4537,8 @@ Nota ISA-267 / OS-09H (2026-08-05, scaffolder seguro `overlay:new`):
   cleanup en `finally`, compilación/build y resolución real de catálogo/query.
 - Sin cambios visuales, baselines, canvas, perfiles, LMU, Billing, calendario,
   Hub registry o canales. Rama de issue apilada sobre ISA-268; sin promoción.
+- Corrección P1 de review: root canónico por `realpath`, `lstat` componente a
+  componente y rechazo de symlink/junction/reparse para discovery, barrel,
+  destinos y rollback. Regresiones con junction real Windows demuestran cero
+  escritura externa. Revalidar antes/después de las syscalls reduce TOCTOU; el
+  contrato sigue exigiendo worktree controlado sin mutadores concurrentes.

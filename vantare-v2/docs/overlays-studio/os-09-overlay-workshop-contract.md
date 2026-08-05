@@ -93,6 +93,18 @@ filesystem absoluta: un corte de energía o fallo del volumen puede interrumpir
 una escritura. El gate por bytes `official-designs:check` detecta el barrel
 incompleto u obsoleto antes de compilar.
 
+La frontera de escritura canoniza el frontend existente con `realpath`, recorre
+con `lstat` cada componente existente bajo esa raíz y rechaza symlinks, junctions
+o reparse points antes de discovery, lectura del barrel, creación y rollback.
+También revalida containment canónica justo antes y después de `mkdir`/write;
+rollback solo actúa sobre rutas creadas que sigan siendo internas y seguras.
+Node expone las junctions de Windows como enlaces simbólicos a través de `lstat`.
+Sigue existiendo una ventana TOCTOU inevitable sin primitivas `openat`/handles de
+directorio: un actor con acceso concurrente al mismo árbol podría sustituir una
+ruta entre comprobación y syscall. El scaffolder reduce esa ventana y falla
+cerrado al revalidar, pero exige ejecutar en un worktree controlado sin mutadores
+concurrentes.
+
 ## Plan de ejecución posterior
 
 1. ISA-261: fixtures portables/deterministas, sin runtime live.

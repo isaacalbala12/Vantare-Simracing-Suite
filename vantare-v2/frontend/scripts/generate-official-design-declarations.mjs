@@ -1,6 +1,13 @@
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import {
+  assertSafeDirectory,
+  assertSafeFile,
+  canonicalizeFrontendRoot,
+  inspectSafePath,
+} from "./safe-authoring-paths.mjs";
 
 const REQUIRED_EXPORT = "export const officialWidgetDesignDeclarations";
 const OUTPUT_RELATIVE_PATH = "src/overlay/design-systems/official-design-declarations.generated.ts";
@@ -9,32 +16,42 @@ function toPosix(value) {
   return value.split(path.sep).join("/");
 }
 
-async function walkOfficialDesignModules(directory, root, output) {
+async function walkOfficialDesignModules(directory, moduleRoot, canonicalRoot, output) {
+  await assertSafeDirectory(canonicalRoot, directory);
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
   for (const entry of entries) {
     const absolute = path.join(directory, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`unsafe symbolic link or reparse point: ${absolute}`);
+    }
     if (entry.isDirectory()) {
-      await walkOfficialDesignModules(absolute, root, output);
+      await walkOfficialDesignModules(absolute, moduleRoot, canonicalRoot, output);
       continue;
     }
     if (!entry.isFile() || entry.name !== "official-designs.ts") continue;
+    await assertSafeFile(canonicalRoot, absolute);
     const source = await readFile(absolute, "utf8");
     if (!source.includes(REQUIRED_EXPORT)) {
       throw new Error(`missing export officialWidgetDesignDeclarations: ${absolute}`);
     }
-    const relative = toPosix(path.relative(root, absolute)).replace(/\.ts$/, "");
+    const relative = toPosix(path.relative(moduleRoot, absolute)).replace(/\.ts$/, "");
     output.push(`./${relative}`);
   }
 }
 
 export async function discoverDeclarationModules(frontendRoot) {
-  const systemsRoot = path.join(frontendRoot, "src", "overlay", "design-systems");
+  const canonicalRoot = await canonicalizeFrontendRoot(frontendRoot);
+  const systemsRoot = path.join(canonicalRoot, "src", "overlay", "design-systems");
+  await assertSafeDirectory(canonicalRoot, systemsRoot);
   const entries = await readdir(systemsRoot, { withFileTypes: true });
   const modules = [];
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name, "en"))) {
+    if (entry.name.startsWith("vantare-") && entry.isSymbolicLink()) {
+      throw new Error(`unsafe symbolic link or reparse point: ${path.join(systemsRoot, entry.name)}`);
+    }
     if (!entry.isDirectory() || !entry.name.startsWith("vantare-")) continue;
-    await walkOfficialDesignModules(path.join(systemsRoot, entry.name), systemsRoot, modules);
+    await walkOfficialDesignModules(path.join(systemsRoot, entry.name), systemsRoot, canonicalRoot, modules);
   }
   return modules.sort((left, right) => left.localeCompare(right, "en"));
 }
@@ -57,16 +74,20 @@ export function renderGeneratedBarrel(modules) {
 }
 
 export async function expectedGeneratedBarrel(frontendRoot) {
-  const modules = await discoverDeclarationModules(frontendRoot);
+  const canonicalRoot = await canonicalizeFrontendRoot(frontendRoot);
+  const modules = await discoverDeclarationModules(canonicalRoot);
   return {
     content: renderGeneratedBarrel(modules),
     modules,
-    outputPath: path.join(frontendRoot, ...OUTPUT_RELATIVE_PATH.split("/")),
+    outputPath: path.join(canonicalRoot, ...OUTPUT_RELATIVE_PATH.split("/")),
+    canonicalRoot,
   };
 }
 
 export async function generateOfficialDesignDeclarations(frontendRoot) {
   const expected = await expectedGeneratedBarrel(frontendRoot);
+  await assertSafeDirectory(expected.canonicalRoot, path.dirname(expected.outputPath));
+  await inspectSafePath(expected.canonicalRoot, expected.outputPath, { allowMissing: true });
   let current = null;
   try {
     current = await readFile(expected.outputPath, "utf8");
@@ -74,8 +95,10 @@ export async function generateOfficialDesignDeclarations(frontendRoot) {
     if (error?.code !== "ENOENT") throw error;
   }
   if (current === expected.content) return { ...expected, changed: false };
-  await mkdir(path.dirname(expected.outputPath), { recursive: true });
+  await assertSafeDirectory(expected.canonicalRoot, path.dirname(expected.outputPath));
+  await inspectSafePath(expected.canonicalRoot, expected.outputPath, { allowMissing: true });
   await writeFile(expected.outputPath, expected.content, "utf8");
+  await assertSafeFile(expected.canonicalRoot, expected.outputPath);
   return { ...expected, changed: true };
 }
 
@@ -83,7 +106,7 @@ export async function checkGeneratedBarrel(frontendRoot) {
   const expected = await expectedGeneratedBarrel(frontendRoot);
   let current;
   try {
-    await access(expected.outputPath);
+    await assertSafeFile(expected.canonicalRoot, expected.outputPath);
     current = await readFile(expected.outputPath, "utf8");
   } catch (error) {
     if (error?.code === "ENOENT") {

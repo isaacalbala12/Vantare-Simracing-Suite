@@ -297,3 +297,7 @@ y recientes.
 - No se promete atomicidad absoluta del volumen: hay preflight, no-overwrite y
   rollback acotado a la invocación. El checker por bytes es la recuperación
   fail-closed ante una interrupción externa.
+- La raíz y todos los componentes usados por discovery/escritura/rollback se
+  validan con `realpath` + `lstat`; symlinks, junctions y reparse points se
+  rechazan. Ejecutar solo en un worktree controlado: la revalidación reduce pero
+  no elimina la ventana TOCTOU de un mutador concurrente del filesystem.

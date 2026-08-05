@@ -1,11 +1,18 @@
-import { mkdir, readFile, rm, rmdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
+  checkGeneratedBarrel,
   discoverDeclarationModules,
   renderGeneratedBarrel,
 } from "./generate-official-design-declarations.mjs";
+import {
+  assertSafeDirectory,
+  assertSafeFile,
+  canonicalizeFrontendRoot,
+  inspectSafePath,
+} from "./safe-authoring-paths.mjs";
 
 const KEBAB_CASE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const DESIGN_SYSTEMS_RELATIVE = "src/overlay/design-systems";
@@ -64,16 +71,6 @@ export const officialWidgetDesignDeclarations = [${exportName}] as const;
 `;
 }
 
-async function exists(target) {
-  try {
-    await stat(target);
-    return true;
-  } catch (error) {
-    if (error?.code === "ENOENT") return false;
-    throw error;
-  }
-}
-
 function workshopUrl(widget, system, design) {
   const params = new URLSearchParams({
     widget,
@@ -108,20 +105,26 @@ export async function scaffoldOverlayDesign(options, dependencies) {
     throw new Error("unsupported visual form; implement and register the renderer form in a prior cut");
   }
 
-  const frontendRoot = path.resolve(options.frontendRoot);
+  const frontendRoot = await canonicalizeFrontendRoot(options.frontendRoot);
   const systemsRoot = path.join(frontendRoot, ...DESIGN_SYSTEMS_RELATIVE.split("/"));
+  await assertSafeDirectory(frontendRoot, systemsRoot);
   const parentDirectory = path.join(systemsRoot, system, widget);
-  if (!(await exists(parentDirectory))) {
+  try {
+    await assertSafeDirectory(frontendRoot, parentDirectory);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
     throw new Error(`unsupported widget/system source path: ${system}/${widget}`);
   }
   const targetDirectory = path.join(parentDirectory, design);
   const declarationPath = path.join(targetDirectory, "official-designs.ts");
-  if (await exists(targetDirectory)) throw new Error(`target already exists: ${targetDirectory}`);
+  const targetBefore = await inspectSafePath(frontendRoot, targetDirectory, { allowMissing: true });
+  if (targetBefore.exists) throw new Error(`target already exists: ${targetDirectory}`);
 
   const currentModules = await discoverDeclarationModules(frontendRoot);
   const targetModule = `./${[system, widget, design, "official-designs"].join("/")}`;
   const nextModules = [...currentModules, targetModule].sort((left, right) => left.localeCompare(right, "en"));
   const barrelPath = path.join(systemsRoot, "official-design-declarations.generated.ts");
+  await assertSafeFile(frontendRoot, barrelPath);
   const barrelBefore = await readFile(barrelPath, "utf8");
   const barrelAfter = renderGeneratedBarrel(nextModules);
   const declaration = renderDeclaration({ design, name: name.trim(), widget, system, settings, registration });
@@ -141,26 +144,69 @@ export async function scaffoldOverlayDesign(options, dependencies) {
   let createdDeclaration = false;
   let barrelAttempted = false;
   try {
+    await assertSafeDirectory(frontendRoot, parentDirectory);
+    const immediateTarget = await inspectSafePath(frontendRoot, targetDirectory, { allowMissing: true });
+    if (immediateTarget.exists) throw new Error(`target already exists: ${targetDirectory}`);
     await mkdir(targetDirectory);
     createdDirectory = true;
+    await assertSafeDirectory(frontendRoot, targetDirectory);
+    const declarationBefore = await inspectSafePath(frontendRoot, declarationPath, { allowMissing: true });
+    if (declarationBefore.exists) throw new Error(`target already exists: ${declarationPath}`);
     await writeFile(declarationPath, declaration, { encoding: "utf8", flag: "wx" });
     createdDeclaration = true;
+    await assertSafeFile(frontendRoot, declarationPath);
     barrelAttempted = true;
+    await assertSafeFile(frontendRoot, barrelPath);
     await writeFile(barrelPath, barrelAfter, "utf8");
+    await assertSafeFile(frontendRoot, barrelPath);
     dependencies.afterBarrelWrite?.();
     return { written: true, declarationPath, barrelPath, workshopUrl: url, output };
   } catch (error) {
-    if (barrelAttempted) await writeFile(barrelPath, barrelBefore, "utf8");
-    if (createdDeclaration) await rm(declarationPath, { force: true });
-    if (createdDirectory) await rmdir(targetDirectory);
+    const rollbackErrors = [];
+    if (barrelAttempted) {
+      try {
+        await assertSafeFile(frontendRoot, barrelPath);
+        await writeFile(barrelPath, barrelBefore, "utf8");
+        await assertSafeFile(frontendRoot, barrelPath);
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (createdDeclaration) {
+      try {
+        const inspected = await inspectSafePath(frontendRoot, declarationPath, { allowMissing: true });
+        if (inspected.exists) {
+          if (!inspected.stats.isFile()) throw new Error(`unsafe rollback target is not a file: ${declarationPath}`);
+          await rm(declarationPath);
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (createdDirectory) {
+      try {
+        const inspected = await inspectSafePath(frontendRoot, targetDirectory, { allowMissing: true });
+        if (inspected.exists) {
+          if (!inspected.stats.isDirectory()) throw new Error(`unsafe rollback target is not a directory: ${targetDirectory}`);
+          await rmdir(targetDirectory);
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+    if (rollbackErrors.length > 0 && error && typeof error === "object") {
+      error.rollbackErrors = rollbackErrors;
+    }
     throw error;
   }
 }
 
 async function loadProductCatalog(frontendRoot) {
+  const canonicalRoot = await canonicalizeFrontendRoot(frontendRoot);
+  await checkGeneratedBarrel(canonicalRoot);
   const { createServer } = await import("vite");
   const server = await createServer({
-    root: frontendRoot,
+    root: canonicalRoot,
     logLevel: "error",
     appType: "custom",
     server: { middlewareMode: true },
@@ -220,6 +266,7 @@ function parseCli(argv) {
 
 async function main() {
   const options = parseCli(process.argv.slice(2));
+  options.frontendRoot = await canonicalizeFrontendRoot(options.frontendRoot);
   const catalog = await loadProductCatalog(options.frontendRoot);
   const result = await scaffoldOverlayDesign(options, { catalog });
   console.log(result.output);

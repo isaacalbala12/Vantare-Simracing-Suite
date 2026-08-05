@@ -1,6 +1,6 @@
 # Vantare — expediente canónico del programa
 
-Estado: vigente desde ISA-120, 2026-07-27.
+Estado: vigente desde ISA-120; revisado el 2026-08-05.
 
 Este directorio concentra las decisiones confirmadas por Isaac y el contexto
 mínimo para continuar Vantare sin depender de conversaciones anteriores. No
@@ -14,8 +14,9 @@ sigue vigente y registra el estado operativo.
 3. `product-contract.md`.
 4. `project-map.md`.
 5. `execution-policy.md`.
-6. El handoff del proyecto asignado en `handoffs/`.
-7. La issue de Linear, el ADR y el plan o microplan activo.
+6. `../branch-channels.md` cuando haya ramas, promociones o releases.
+7. El handoff del proyecto asignado en `handoffs/`.
+8. La issue de Linear, el ADR y el plan o microplan activo.
 
 Si dos documentos se contradicen:
 
@@ -48,20 +49,24 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - Cada proyecto mantiene un único handoff vivo.
 - Todo worker lo actualiza si cambia estado, arquitectura, decisiones, tests,
   riesgos o siguiente acción.
+- El orquestador lo actualiza inmediatamente despues de revisar cada worker o
+  tomar una decision material; no se espera al final de una fase larga.
+- Los workers no crean subagentes por defecto. La delegacion anidada requiere
+  autorizacion expresa y acotada del orquestador.
 - El comentario final de Linear enlaza el handoff y enumera evidencia real.
 - Mocks, capturas y tests no pueden presentarse como prueba de runtime real.
 - Los hallazgos fuera de alcance se registran en Linear.
 - Contenido pertenece a Isaac y queda fuera de la ejecución autónoma. Los
   agentes solo preparan borradores cuando se les solicita.
 
-## Situación al crear este expediente
+## Situacion operativa vigente
 
-- El checkout compartido `refactor` contiene cambios locales y no es una base
-  segura para nuevos cortes.
-- ISA-37 (`44c7513499f1ab88ebf1aedbc02d3b8e5feda99e`) es el último corte apilado
-  de Telemetry Core y está en revisión.
-- TC-04D y TC-05–TC-09 permanecen pendientes.
-- Billing sigue en NO-GO comercial.
-- ISA-120 consolidó Strategy en `Strategy Planner — Race Strategy Suite`,
-  conservó Product C como proyecto histórico y creó proyectos propios para
-  Telemetry Analysis y Engineer/Spotter.
+- El flujo fisico es `rama de issue -> nightly -> testers -> master`.
+- El checkout principal se usa para ejecutar el conjunto de `nightly`; cada
+  issue conserva rama y worktree propios.
+- `develop` y `refactor` son historia y no reciben trabajo nuevo. Los checkouts
+  historicos sucios se preservan hasta una limpieza trazada.
+- Los handoffs de este directorio, Linear y `docs/current-plan.md` contienen el
+  estado por proyecto; este indice no duplica listas de issues que caducan.
+- Testing Center es un proyecto independiente y no se mezcla con la
+  orquestacion de los modulos de producto salvo que una issue lo indique.

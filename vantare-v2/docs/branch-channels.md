@@ -15,6 +15,18 @@ master
 `master` continúa siendo la rama pública y la rama predeterminada de GitHub.
 Una rama de issue nunca se integra directamente en `testers` o `master`.
 
+## Checkouts de trabajo
+
+- El checkout principal para abrir la aplicacion y validar el conjunto debe
+  seguir `nightly` y estar limpio.
+- Las features, bugs, investigaciones con docs y refactors se ejecutan en
+  ramas/worktrees de issue; no se desarrollan directamente sobre `nightly`.
+- Un checkout historico sucio en `refactor` o `develop` se preserva. No se
+  cambia de rama, limpia, resetea ni reutiliza hasta inventariar su trabajo.
+- La rama local puede quedar atrasada: antes de afirmar que algo esta en
+  Nightly se verifica `origin/nightly`, su SHA, PR/CI y, si aplica, la
+  pre-release remota.
+
 ## Responsabilidad de cada rama
 
 | Rama | Contenido | Audiencia | Puede publicar una release estable |

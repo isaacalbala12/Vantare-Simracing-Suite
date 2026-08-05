@@ -1,6 +1,6 @@
 # Política de ejecución, ramas y promoción
 
-Estado: decisión confirmada por Isaac el 2026-07-27.
+Estado: vigente, actualizado el 2026-08-05 tras ISA-121.
 
 ## Flujo
 
@@ -18,18 +18,10 @@ aprobación final explícita de Isaac
 master
 ```
 
-Este es el flujo objetivo, no el estado físico actual. A 2026-07-27 existen
-`develop` y `master`; `nightly` y `testers` aún no existen y los workflows de
-Discord siguen ligados a `develop`.
-
-Hasta ejecutar la migración:
-
-- todo trabajo continúa apilado en ramas de issue;
-- los PR quedan draft/sin merge;
-- no se inventa un destino Nightly/Testers;
-- `develop` solo describe integraciones históricas ya autorizadas;
-- ISA-121 / REL-00 creará ramas, adaptará CI/webhooks/updater y probará rollback
-  antes de habilitar promociones.
+ISA-121 materializo `nightly` y `testers`. El checkout principal de ejecucion
+debe seguir `nightly`, pero el trabajo se implementa siempre en una rama y
+worktree de issue. `develop` y `refactor` son referencias historicas: no
+reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 
 ## Contrato por issue
 
@@ -39,6 +31,17 @@ Hasta ejecutar la migración:
 - Commits pequeños y staging limitado.
 - PR draft y `In Review` con evidencia; nunca merge implícito.
 - La promoción utiliza issues de integración separadas.
+- Cada proyecto tiene un unico handoff vivo y se actualiza tras cada worker,
+  decision o cambio material junto con Linear.
+
+## Delegacion y responsabilidad
+
+- El orquestador puede delegar cortes acotados y sigue siendo responsable de
+  revisar diff, checks, riesgos y entrega.
+- Un worker no crea subagentes salvo autorizacion expresa y acotada.
+- No se comparten worktrees o ramas entre agentes concurrentes.
+- La ejecucion directa es preferible para trabajo trivial cuando evita coste y
+  coordinacion innecesarios.
 
 ## Autonomía
 
@@ -62,6 +65,10 @@ Requieren a Isaac:
 - borrado masivo irreversible;
 - exposición/rotación de secretos;
 - eliminación de cuentas/datos reales.
+
+La promocion a `nightly` y la promocion final a `master` son autorizaciones
+distintas. La primera valida una implementacion inicial; la segunda valida el
+producto corregido tras Nightly y Testers.
 
 El desarrollo puede continuar apilado hasta completar un módulo, pero no se
 promociona a Nightly sin aprobación inicial.
@@ -90,3 +97,6 @@ de promoción alcanzado.
 Una issue terminada en rama queda `In Review`. Solo queda `Done` cuando cumple
 criterios y está integrada en el nivel autorizado. Master siempre requiere
 Isaac.
+
+`Done` no equivale por si mismo a release publicada. Una publicacion requiere
+tag, artefactos, checksums, workflow y estado remoto verificados.

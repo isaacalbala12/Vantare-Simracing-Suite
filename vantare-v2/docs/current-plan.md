@@ -1,3 +1,15 @@
+Nota ISA-294 / GOV-02 (2026-08-05, entrega documental):
+- La fuente de integracion activa es `nightly`; el checkout principal sirve
+  para ejecutar ese conjunto, mientras cada cambio se desarrolla en una rama
+  y worktree de issue. `develop` y `refactor` quedan como referencias
+  historicas y no se limpian ni reciben trabajo nuevo.
+- Se actualizan `AGENTS.md`, workflow, politica de ejecucion, expediente y
+  canales para reflejar delegacion de un solo nivel, handoff inmediato tras
+  cada worker, autoridad de Linear, estados de entrega verificables y limites
+  de acciones remotas.
+- Alcance exclusivamente documental sobre `origin/nightly@41e62a5`; sin
+  cambios de producto, promocion, release ni modificacion de `master`.
+
 Nota ISA-234 / reconciliación con Nightly (2026-08-05, candidata local):
 - Linear rechazó crear una issue de integración propia por el límite del plan
   gratuito. Con autorización explícita de Isaac, la PR #121 continúa como

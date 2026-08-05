@@ -4927,3 +4927,155 @@ Nota TELEMETRY-CORE-ISA-100 (2026-07-19) — ESTADO HISTÓRICO SUPERSEDED POR LA
 - Autoridad y fronteras: `docs/telemetry-core/README.md`. Se rescatan exclusivamente el plan maestro, cinco microplanes y el índice Telemetry Core.
 - Estado al publicar ISA-100: TC-02–TC-05 seguían sin iniciar e ISA-26 estaba en Backlog. Esta línea ya no es operativa: ISA-26 está `In Review` sobre ISA-100 y ISA-27 permanece no iniciado/bloqueado por review humana, según la nota vigente al inicio del documento.
 - No se ha tocado código de producto, Strategy Planner ni la arquitectura runtime en ISA-100.
+Nota ISA-260 / OS-09A (2026-08-04, contrato y threat model Overlay Workshop):
+- Base limpia fijada: `origin/nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e`;
+  rama/worktree aislados. Sin promoción.
+- Characterization deriva 19 tipos, 2 sistemas, 41 diseños oficiales y 22 Crystal
+  sobre 19 tipos. El contrato visual histórico sigue siendo 21 Crystal/18 tipos;
+  el adicional oficial/productivo es `engineer-radio-crystal`, bajo contrato
+  Engineer y fuera del HTML clásico. Los gates quedan separados.
+- `WidgetVisualHost` es la frontera única caracterizada para Studio y runtime
+  Desktop/OBS. El plan fija tipo/sistema/diseño/configuración, stage/fondos,
+  deep-links fail-closed, fixtures, prerelease owner read-only y compile-out
+  Stable. Owner firmado real es precondición explícita de ISA-264; no se implementa auth.
+- Documentación ejecutable: `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
+  Handoff añade procedimiento seguro de arranque por worktree y puntero A2.
+- Alcance: docs y test focal; sin UI Workshop, catálogo/manifests, Billing,
+  canvas, readers LMU, Wails/SSE, persistencia, baselines o configuraciones.
+
+Nota ISA-261 / OS-09B (2026-08-04, fixtures portables para autoría):
+- La autoridad de fixtures se mueve de `overlay-harness` a
+  `overlay/authoring/fixtures`, con un shim de compatibilidad temporal para
+  consumidores externos. El harness importa ya la frontera neutral.
+- El escenario tipado incluye tipo, sistema, diseño, estado, sesión,
+  localización y superficie; la superficie se declara pero no entra en el
+  ViewModel ni renderer. No se añadieron Wails, SSE, persistencia, perfiles o
+  datos live.
+- Los 19 tipos funcionales se derivan de `ALL_WIDGET_TYPES`. El contrato HTML
+  Crystal histórico conserva 21 diseños/18 tipos y Engineer Radio queda
+  declarado por separado, sin inflar la paridad clásica.
+- Tests focales y build pasan. El parity report-only agotó su timeout local sin
+  actualizar ningún baseline; su investigación queda pendiente antes del gate
+  de Nightly. Sin promoción.
+
+Nota ISA-262 / OS-09C (2026-08-04, Workshop local MVP):
+- Ruta de desarrollo única: `/workshop`, dentro del bootstrapping compartido y
+  cargada de manera dinámica sólo cuando `import.meta.env.DEV` es verdadero.
+  No existe segunda entrada Vite ni import estático desde `main.tsx` hacia
+  authoring; el build productivo no contiene los sentinels del módulo, parser o
+  fixtures Workshop.
+- La selección reproducible `widget/system/design/state/surface/variant` usa
+  fixtures ISA-261 y falla de forma cerrada. El render real pasa exclusivamente
+  por `WidgetVisualViewport` y `WidgetVisualHost`; stage y widget root tienen
+  selectores contractuales separados. No se añadieron renderers, Wails/SSE,
+  persistencia, perfiles, telemetría LMU ni cambios de canvas.
+- Se corrigió un pageerror preexistente en el boot de `index.html`: el script de
+  cabecera espera `DOMContentLoaded` si `body` todavía no existe. La regresión
+  ejecuta el script real con `body` ausente, dispara el evento dos veces y
+  prueba clases únicas; también cubre `#/hub` sin clases de overlay.
+- El seed de Input Telemetry deja de mutar el acumulador durante render: ocurre
+  en `useLayoutEffect`, limpia sólo el historial de su widget y la regresión
+  StrictMode demuestra que no borra una historia ajena ni duplica la fixture.
+- Gate focal: 4 archivos / 15 tests PASS; lint focal PASS; build frontend PASS;
+  sentinels Workshop ausentes de producción; `design-system:check` PASS;
+  Playwright Workshop válido/inválido y Hub sin errores; HMR CSS aplicado y
+  revertido sin reinicio. Sin promoción.
+
+Nota ISA-263 / OS-09D (2026-08-04, controles y verificación real Workshop):
+- La ruta dev conserva controles efímeros y fail-closed de sesión, localización,
+  fondo, escala, preset, dimensiones y comparación. Studio, Desktop, OBS y
+  Harness verifican el mismo `WorkshopSurface`/`WidgetVisualViewport`/
+  `WidgetVisualHost`; OBS sigue sin chrome dentro de su superficie.
+- La revisión Chrome detectó que el bootstrap compartido cargaba el runtime
+  Wails antes del Workshop y generaba 404/page errors en navegador. El runtime
+  normal se separa en `AppShell.tsx` y se carga dinámicamente; `/workshop`
+  queda sin Wails, con 0 errores de consola/página/red relevantes. No cambia
+  el comportamiento de la aplicación normal.
+- Evidencia: Playwright/Chrome cubre URL válida/inválida, cuatro fondos,
+  superficies, comparación, teclado/foco, reset, preset, dimensiones y
+  viewports 1280x720, medio y compacto; HMR CSS aplicado y revertido. Las
+  dimensiones y escala usan borradores locales validados, y Reset vuelve a
+  defaults canónicos. Vitest focal 6 archivos/29 tests (incluye bootstrap
+  normal, rutas OBS/OAuth/Hub/Composite y fallback de carga), ESLint focal,
+  `design-system:check`, build y
+  compile-out sin sentinels Workshop pasan. Sin promoción.
+
+Nota ISA-265 / OS-09F (2026-08-05, protocolo visual de root/alpha/bounds):
+- `visual:overlay-workshop` reutiliza el protocolo Crystal para captura aislada sin cambiar umbrales, baselines ni semántica. Sus PNG y `report.json` solo viven en `frontend/.tmp/overlay-workshop-visual-protocol/`.
+- Root contractual: `[data-widget-renderer="<type>"]`, salvo Delta Bar Crystal (`.vc-delta-bar`). Nunca se deduce por bounding box ni se captura stage, showcase o fondo.
+- El reporte incluye selector, diseño, tipo, sistema, superficie, viewport, SHA real y `dirty`, escena, bounds, scroll/client, alpha, guard, fuentes, console/page errors y artefactos. `root.png` es el renderer contractual aislado y transparente; su SHA-256 debe ser idéntico en transparent/solid/grid/context de cada superficie o todos sus escenarios quedan `sceneContaminated=true` y fallan. Ejecuta en un único Vite+Chromium, con checkpoint por escena y cleanup.
+- Overflow permitido únicamente para `delta-crystal-simple`, eje Y, máximo 13 px y superficie declarada. TDD demuestra 13 px PASS, 14 px FAIL y otro diseño con 1 px FAIL; no hay threshold global.
+- TDD focal: pruebas Node para root ausente/múltiple, contaminación alpha/fondo (hashes iguales/diferentes por grupo), guard, overflow, fuentes, console/page y provenance local/fail-closed. La excepción tipada prueba 13 px PASS, 14 px FAIL y 1 px FAIL en otro diseño. La suite real debe ejecutarse tras el commit, con `sha=HEAD`, `dirty=false` y 16 escenarios PASS. El decode PNG canónico por CDP fija un coste total aproximado de 5–8 min para la suite; se conserva timeout/progreso honesto sin cambiar el helper Crystal.
+- `visual:crystal-parity:report` se ejecutó una vez con límite 90 s y emitió 7 diseños PASS antes de quedar incompleto. Sin baseline tocado; deuda de duración separada, no aprobación total. Sin promoción.
+
+Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
+- Isaac aprobó que TSX/CSS productivo sea la única fuente de verdad: `/workshop`
+  observa el mismo renderer mediante `WidgetVisualHost`; no convierte, copia ni
+  exporta otra representación.
+- Especificación: `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
+  (`41a3f02`). Plan ejecutable: `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`
+  (`426f7c6`, endurecido hasta `2b18e02`).
+- El plan contiene 8 tareas (Task 0–7) y cinco cortes funcionales: preflight,
+  contratos, mutaciones reversibles, HMR real, guía y cierre. Cada worker tiene
+  prohibido delegar o lanzar subagentes.
+- La revisión adversarial read-only exigió y verificó: protección ante edición
+  concurrente, evidencia ignorada de recuperación, SIGINT/SIGTERM sin saltar
+  cleanup, señal HMR sin reload, Chrome fallback, dependencias congeladas,
+  cleanup parcial de Vite y cierres acotados con handles conservados.
+- Veredicto final adversarial sobre `2b18e02`: GO, sin regresiones bloqueantes ni
+  hallazgos razonables abiertos. No se ejecutó todavía código del plan, no se
+  cambió ningún píxel y no hubo promoción a `nightly`.
+- Próxima acción exacta: ejecutar Task 0 desde la rama/worktree ISA-291 y avanzar
+  microcorte a microcorte con review entre commits.
+- Isaac autorizó la ejecución tras aprobar el plan. Antes de tocar código se
+  añadió el paquete canónico de delegación y ledger vivo al handoff
+  `docs/vantare-program/handoffs/overlays-launcher-hub.md`; otro chat debe
+  continuar desde ese bloque y actualizarlo tras cada entrega.
+- Task 0 PASS: instalación frontend congelada, blob del lockfile workspace
+  `8ecdce49a78adc664e4796f388889fbd41a67c08` inalterado, `node_modules`
+  ignorado y Vitest/Vite/Playwright disponibles. Se corrigió el plan para
+  apuntar al lockfile real `..\pnpm-lock.yaml`. Próxima acción: Task 1.
+
+## Nota ISA-291 / OS-09G2 — autoría directa sobre código productivo
+
+- **Autoría directa:** el TSX/CSS productivo es la única fuente de verdad. Workshop
+  no convierte, exporta ni copia; `/workshop` renderiza ese mismo código. Queda
+  descartado el enfoque declarativo de ISA-266–278 (DSL, scaffolder, barrel
+  generado, `catalogPosition`, migración masiva del catálogo).
+- **Frontera intacta:** Workshop sigue renderizando por `WidgetVisualHost` y el
+  catálogo explícito de `official-designs.ts`. Es el cuarto consumidor del host,
+  junto a Studio canvas, runtime y ProfilePreview.
+- **Smoke HMR:** un único Vite + Chromium muta `DeltaOriginal.tsx` y
+  `vantare-original/tokens.css`, observa ambos cambios sin navegación ni reload y
+  restaura los bytes exactos. Falla en seco si los archivos objetivo no están
+  limpios, y conserva cualquier edición concurrente ajena.
+- **Contratos:** Workshop añadido al guard de consumidores del host; catálogo con
+  IDs únicos y exactamente un default por pareja widget/sistema registrada, sin
+  modificar `official-designs.ts`.
+- **Exclusiones respetadas:** sin DSL, scaffolder, catálogo paralelo, migración
+  masiva, dependencia nueva ni cambio visual. **Cero archivos de producto
+  modificados**: el corte es tests, scripts de desarrollo y documentación.
+- **Evidencia (2026-08-05):**
+  - `corepack pnpm --dir frontend test` → **320 archivos, 2181 tests PASS**.
+  - `corepack pnpm --dir frontend test:overlay-workshop-hmr` → **15/15 PASS**.
+  - Focal `overlay-workshop-characterization` + `official-designs` → **14/14 PASS**.
+  - ESLint focal (4 archivos) → PASS. `design-system:check` → 2 sistemas PASS.
+  - `corepack pnpm --dir frontend build` → PASS en 957 ms.
+  - Compile-out: **0 sentinels** de Workshop en `frontend/dist` (`grep` exit 1).
+- **Checks omitidos y motivo:** `smoke:overlay-workshop-hmr` y
+  `visual:overlay-workshop` **no se ejecutaron en este cierre**, por decisión
+  expresa de Isaac (el smoke ya se había ejecutado con PASS en `a5ed874`, y el
+  protocolo visual requiere navegador y 5–8 minutos). El criterio de aceptación
+  correspondiente queda pendiente de la verificación manual.
+- **Riesgos restantes:** `TSX_ANCHOR` del smoke depende de dos líneas literales de
+  `DeltaOriginal.tsx` y un reformateo lo rompe (falla ruidosamente, documentado en
+  la guía); el smoke exige todo `vantare-v2` limpio, no solo sus dos objetivos; la
+  suite completa emite un `AbortError` de teardown de happy-dom que no falla
+  ningún test y es deuda heredada.
+- **Estado Git/Linear:** rama
+  `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo` sobre base
+  ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`. **Sin push, sin PR y sin
+  cambio de estado en Linear**; no hubo promoción a `nightly`, `testers` ni
+  `master`.
+- **Próxima acción:** verificación manual de Isaac (sección del plan), y solo con
+  su aprobación explícita, ISA-280 / OS-09L.

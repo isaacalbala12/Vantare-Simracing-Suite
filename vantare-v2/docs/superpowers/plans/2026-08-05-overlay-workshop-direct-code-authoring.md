@@ -407,14 +407,17 @@ export async function mutateFileTemporarily({
   buildMutation,
   verify,
   recoveryDirectory,
+  signal,
 }) {
   const original = await readFile(file);
   const mutation = buildMutation(original);
   let verificationError;
   let cleanupError;
   try {
+    if (signal?.aborted) throw signal.reason ?? new Error('operation aborted');
     await writeFile(file, mutation.mutated);
     await verify();
+    if (signal?.aborted) throw signal.reason ?? new Error('operation aborted');
   } catch (error) {
     verificationError = error;
   } finally {
@@ -461,7 +464,29 @@ Run:
 node --test frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs
 ```
 
-Expected: `7 tests`, `7 pass`, `0 fail`. Un test concurrente conserva `EXTERNAL_EDIT` y elimina solo `OWN_MARKER`; el segundo demuestra que, si el marcador ya no puede aislarse, se preservan todos los bytes observados y se escribe evidencia.
+Añadir este caso:
+
+```js
+test('abort during verification restores exact bytes before propagating cancellation', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'vantare-hmr-'));
+  const file = path.join(directory, 'sample.tsx');
+  const controller = new AbortController();
+  try {
+    await writeFile(file, 'ORIGINAL\n');
+    await assert.rejects(mutateFileTemporarily({
+        file,
+        buildMutation: markerMutation,
+        signal: controller.signal,
+        verify: async () => controller.abort(new Error('SIGINT requested')),
+      }), /SIGINT requested/);
+    assert.equal(await readFile(file, 'utf8'), 'ORIGINAL\n');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+```
+
+Expected: `8 tests`, `8 pass`, `0 fail`. Un test concurrente conserva `EXTERNAL_EDIT` y elimina solo `OWN_MARKER`; el segundo demuestra que, si el marcador ya no puede aislarse, se preservan todos los bytes observados y se escribe evidencia; el último demuestra cleanup exacto bajo cancelación.
 
 - [ ] **Step 5: commit del piloto reversible**
 
@@ -559,7 +584,7 @@ export function buildCssMutation(bytes) {
 }
 ```
 
-Run de nuevo el test Node. Expected: `11 pass`; LF, CRLF, BOM y newline final quedan cubiertos.
+Run de nuevo el test Node. Expected: `12 pass`; cancelación, LF, CRLF, BOM y newline final quedan cubiertos.
 
 - [ ] **Step 3: añadir servidor, navegador y errores observables**
 
@@ -579,20 +604,6 @@ function progress(phase) {
   process.stdout.write(`[overlay-workshop-hmr] ${phase}\n`);
 }
 
-async function withTimeout(label, operation, timeoutMs = 15_000) {
-  let timer;
-  try {
-    return await Promise.race([
-      operation(),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function startWorkshopServer() {
   const { createServer } = await import('vite');
   const server = await createServer({
@@ -604,6 +615,27 @@ async function startWorkshopServer() {
   const address = server.httpServer?.address();
   const port = typeof address === 'object' && address ? address.port : 5183;
   return { server, baseUrl: `http://127.0.0.1:${port}` };
+}
+
+function installSignalCancellation(controller) {
+  let requestedExitCode = 0;
+  const onSigint = () => {
+    requestedExitCode = 130;
+    if (!controller.signal.aborted) controller.abort(new Error('SIGINT requested'));
+  };
+  const onSigterm = () => {
+    requestedExitCode = 143;
+    if (!controller.signal.aborted) controller.abort(new Error('SIGTERM requested'));
+  };
+  process.once('SIGINT', onSigint);
+  process.once('SIGTERM', onSigterm);
+  return {
+    exitCode: () => requestedExitCode,
+    dispose: () => {
+      process.off('SIGINT', onSigint);
+      process.off('SIGTERM', onSigterm);
+    },
+  };
 }
 
 function workshopUrl(baseUrl) {
@@ -675,23 +707,24 @@ async function main() {
   const cleanupErrors = [];
   const consoleErrors = [];
   const pageErrors = [];
+  const cancellationController = new AbortController();
+  const signalCancellation = installSignalCancellation(cancellationController);
   try {
-    const started = await withTimeout('Vite startup', startWorkshopServer);
+    const started = await startWorkshopServer();
     server = started.server;
     baseUrl = started.baseUrl;
+    if (cancellationController.signal.aborted) throw cancellationController.signal.reason;
     const executablePath = process.platform === 'win32' && existsSync(chromeExecutable)
       ? chromeExecutable
       : undefined;
     try {
-      browser = await withTimeout(
-        'Chromium launch',
-        () => chromium.launch({ headless: true, executablePath }),
-      );
+      browser = await chromium.launch({ headless: true, executablePath, timeout: 15_000 });
     } catch (error) {
       throw new Error(
         `No usable Chromium was found. Install Playwright Chromium or Google Chrome at ${chromeExecutable}. ${error instanceof Error ? error.message : error}`,
       );
     }
+    if (cancellationController.signal.aborted) throw cancellationController.signal.reason;
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text());
@@ -713,6 +746,7 @@ async function main() {
       file: tsxFile,
       buildMutation: buildTsxMutation,
       recoveryDirectory: path.join(recoveryRoot, 'tsx'),
+      signal: cancellationController.signal,
       verify: async () => {
       await page.locator('[data-widget-renderer="delta"][data-overlay-workshop-hmr-tsx="active"]').waitFor();
       await waitForComputedProperty(page, '');
@@ -722,6 +756,7 @@ async function main() {
         file: cssFile,
         buildMutation: buildCssMutation,
         recoveryDirectory: path.join(recoveryRoot, 'css'),
+        signal: cancellationController.signal,
         verify: async () => {
           await waitForComputedProperty(page, '17px');
           await assertNoReload(page, sentinel, () => navigationCount, 'css apply');
@@ -747,11 +782,17 @@ async function main() {
     operationError = error;
   } finally {
     const cleanupResults = await Promise.allSettled([
-      browser ? withTimeout('browser close', () => browser.close(), 5000) : Promise.resolve(),
-      server ? withTimeout('Vite close', () => server.close(), 5000) : Promise.resolve(),
+      browser ? browser.close() : Promise.resolve(),
+      server ? server.close() : Promise.resolve(),
     ]);
     for (const result of cleanupResults) {
       if (result.status === 'rejected') cleanupErrors.push(result.reason);
+    }
+    const requestedExitCode = signalCancellation.exitCode();
+    signalCancellation.dispose();
+    if (requestedExitCode) {
+      process.exitCode = requestedExitCode;
+      operationError ??= new Error(`signal cancellation completed with exit code ${requestedExitCode}`);
     }
   }
   if (browser?.isConnected()) cleanupErrors.push(new Error('browser remains connected'));
@@ -768,12 +809,12 @@ async function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
   main().catch((error) => {
     process.stderr.write(`${error.stack ?? error.message}\n`);
-    process.exitCode = 1;
+    if (!process.exitCode) process.exitCode = 1;
   });
 }
 ```
 
-Las mutaciones restauran o retiran su propio marcador **antes** de cerrar navegador y servidor. El cierre de un recurso no omite los demás, cada operación tiene timeout y el gate comprueba navegador desconectado y puerto sin responder.
+Las mutaciones restauran o retiran su propio marcador **antes** de cerrar navegador y servidor. SIGINT/SIGTERM desactivan la salida inmediata de Node, marcan cancelación y dejan terminar la operación Playwright acotada en curso; al volver de ella se lanza el error, se recorren los `finally` y solo después se asigna 130/143. No se utiliza `Promise.race` para startup, por lo que nunca se pierde la referencia a un Vite o Chromium que resuelva tarde; Playwright usa su timeout nativo de launch. El cierre de un recurso no omite los demás y el gate comprueba navegador desconectado y puerto sin responder. Un kill forzado o corte eléctrico no puede ejecutar cleanup: la siguiente ejecución falla en el guard Git y exige restaurar/revisar el marcador antes de continuar.
 
 - [ ] **Step 5: exponer comandos estables**
 
@@ -797,7 +838,7 @@ git diff --check -- frontend/scripts/overlay-workshop-hmr-smoke.mjs frontend/scr
 Expected:
 
 ```text
-11 tests passed
+12 tests passed
 ```
 
 ESLint y `git diff --check` también terminan sin errores.

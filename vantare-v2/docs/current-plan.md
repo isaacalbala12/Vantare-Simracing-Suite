@@ -5027,3 +5027,7 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   cambió ningún píxel y no hubo promoción a `nightly`.
 - Próxima acción exacta: ejecutar Task 0 desde la rama/worktree ISA-291 y avanzar
   microcorte a microcorte con review entre commits.
+- Isaac autorizó la ejecución tras aprobar el plan. Antes de tocar código se
+  añadió el paquete canónico de delegación y ledger vivo al handoff
+  `docs/vantare-program/handoffs/overlays-launcher-hub.md`; otro chat debe
+  continuar desde ese bloque y actualizarlo tras cada entrega.

@@ -3,6 +3,10 @@ import type { WidgetRendererProps } from "../../../core/design-system-definition
 import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
 import { STANDINGS_COLUMN_TEMPLATES } from "../../../widget-types/standings/standings-content";
 import {
+  buildStandingsAppearanceStyle,
+  resolveStandingsClassColor,
+} from "../../../widget-types/standings/standings-renderer-helpers";
+import {
   resolveStandingsCellValue,
   type StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
@@ -30,6 +34,7 @@ export function StandingsOriginal({ model, settings }: WidgetRendererProps<Stand
       data-status={model.status}
       data-compact={compactRows ? "true" : undefined}
       className="vo-standings"
+      style={buildStandingsAppearanceStyle(settings)}
     >
       {showSessionHeader ? (
         <header className="vo-standings-session">
@@ -71,7 +76,16 @@ export function StandingsOriginal({ model, settings }: WidgetRendererProps<Stand
                 data-leader={row.isLeader ? "true" : undefined}
                 data-pit={row.pitText ? "true" : undefined}
                 data-tire={row.tireCompound || undefined}
+                data-class={row.vehicleClass || undefined}
                 className={index % 2 === 1 ? "vo-standings-row-even" : undefined}
+                style={
+                  {
+                    "--vo-standings-row-class": resolveStandingsClassColor(
+                      row.vehicleClass,
+                      settings,
+                    ),
+                  } as CSSProperties
+                }
               >
                 {model.columns.map((column) => (
                   <td

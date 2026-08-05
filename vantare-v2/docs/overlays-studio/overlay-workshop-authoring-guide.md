@@ -81,6 +81,33 @@ de `design-systems/vantare-original/tokens.css`.
 
 Checks: `vitest run src/overlay/design-systems/vantare-original/delta/DeltaOriginal.test.tsx`
 
+### Trampa de selector: el root lleva su propio `data-widget-system`
+
+El elemento raíz del renderer **es** el que tiene el atributo del sistema, no un
+descendiente suyo. Por eso el combinador importa:
+
+```css
+/* NO aplica al root: exige un ancestro con el atributo */
+[data-widget-system="vantare-original"] .vo-delta { background: purple; }
+
+/* SÍ aplica al root: atributo y clase en el mismo elemento */
+[data-widget-system="vantare-original"].vo-delta { background: purple; }
+```
+
+Las reglas base del repo declaran ambas formas separadas por coma
+(`[data-widget-system="…"].vo-delta, [data-widget-system="…"] .vo-delta`) para
+cubrir root y descendientes. Si escribes una regla nueva y "no pinta nada", este
+espacio de más es la primera causa que debes descartar.
+
+### Cómo se aplica el cambio de CSS
+
+`tokens.css` entra por `@import` desde `src/index.css`, que pasa por Tailwind v4.
+Un cambio en tokens **recarga la página completa** en vez de hacer un hot-update
+aislado de CSS: verás `[vite] connecting… connected` en consola y no
+`[vite] css hot updated`. El servidor de Vite no se reinicia y el cambio se ve de
+inmediato, pero cualquier estado efímero de la página se pierde. Cuenta con ello
+si estabas depurando un estado concreto.
+
 ## Receta 2 — Nueva composición del mismo widget y sistema
 
 Otra forma de dibujar el mismo dato, dentro del mismo sistema visual.

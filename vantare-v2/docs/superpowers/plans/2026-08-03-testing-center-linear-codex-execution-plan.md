@@ -2,6 +2,12 @@
 
 Fecha: 2026-08-03
 
+Estado histórico: PR #121 integró este stack en
+`nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a`. La preparación y el rollout
+hacia staging y el Supabase principal se rigen desde 2026-08-05 por
+`2026-08-05-testing-center-primary-supabase-rollout.md`. Este documento conserva
+la secuencia y evidencia TAU-07; no autoriza un deploy nuevo.
+
 Estado: TAU-07B/C completados; TAU-07D implementado localmente en ISA-238 y pendiente de review/PR draft. Sin autorización de deploy, secretos, integración remota, delegación automática, merge o promoción.
 Arquitectura: `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR revisada -> nightly -> testers -> master`.
 

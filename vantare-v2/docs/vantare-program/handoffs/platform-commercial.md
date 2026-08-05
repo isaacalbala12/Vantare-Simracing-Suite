@@ -152,6 +152,14 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Testing Center
 
+- ISA-292 / TAU-07L abre la reconciliación posterior a PR #121. La autoridad
+  futura es el Supabase principal `ombjshwzqgeisazijduq`; staging
+  `rilwmlbnucbbayaulnxw` debe pasar primero y el piloto
+  `lbaxvpzexoferfvfkplz` queda congelado como evidencia. ADR 0008 y el plan
+  `2026-08-05-testing-center-primary-supabase-rollout.md` son las autoridades
+  vigentes para este rollout. El backup principal aún no tiene restore proof,
+  las migraciones requieren manifiesto/renumeración y staging/producción siguen
+  en NO-GO. No hay autorización de schema, funciones ni efectos externos.
 - TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus
   gates locales y remotos sin deploy ni merge.
 - ISA-215 / TAU-03 añade el paquete local
@@ -313,15 +321,17 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
   release. Handoff Deno 8/8, Testing Center Deno 136/136 y Node 4/4 pasan. Falta
   observar una tarea sintética y su PR;
   no hay caller, secreto, deploy ni promoción.
-- La reconciliación local autorizada de PR #121 parte de
+- La reconciliación de PR #121 partió de
   `ISA-234@a526e2b0a4e344f5841a7c216d77a0efc4f0b62e` e incorpora exactamente
   `nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e` mediante merge incremental,
   sin force-push. Linear no permitió crear otra issue por el límite gratuito;
   la excepción queda registrada en ISA-234 y no cambia el contrato de rechazo
   ni reactiva `same_branch`. Los gates locales pasan: deploy surface, Deno
   vigente 165/165, preflight 4/4, frontend focal 150/150, build y Go focal.
-  CI, build de canal y prueba humana siguen pendientes; no hay merge ni
-  promoción.
+  PR #121 quedó fusionada en
+  `nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a` y la build Nightly
+  `30962662203` terminó correctamente. No existe deploy al Supabase principal
+  ni promoción a Testers/Master.
 
 ## Riesgos
 
@@ -345,6 +355,13 @@ Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
+
+2026-08-05, PR #121 queda registrada en
+`nightly@41e62a5b5914526e01d6ec402a9c5d58ed2d3c2a`. ISA-292 documenta el paso
+seguro del piloto al Supabase principal: restore proof, reconciliación de
+migraciones, borrado/anonimización, doble gate de canal, staging inerte y
+activación Linear presenciada. Staging, producción, PostHog, Discord y Codex
+automático continúan en NO-GO. El handoff humano a Codex se mantiene.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

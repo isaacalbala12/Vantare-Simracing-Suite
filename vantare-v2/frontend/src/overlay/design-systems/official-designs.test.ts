@@ -98,13 +98,23 @@ describe("official-designs", () => {
     expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 
-  it("marks exactly one default design for every widget/system pair", () => {
-    for (const type of ["delta", "standings", "relative", "pedals"] as const) {
-      for (const systemId of ["vantare-original", "vantare-crystal"] as const) {
-        expect(
-          listOfficialDesigns(type).filter((design) => design.systemId === systemId && design.isDefault),
-        ).toHaveLength(1);
-      }
+  it("uses a unique stable ID for every official design", () => {
+    const ids = listOfficialDesigns().map((design) => design.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("marks exactly one default design for every registered widget/system pair", () => {
+    const expectedPairs = designSystemRegistry.list().flatMap((system) =>
+      system.widgets.map((widget) => [widget.widgetType, system.id] as const),
+    );
+
+    for (const [widgetType, systemId] of expectedPairs) {
+      expect(
+        listOfficialDesigns(widgetType).filter(
+          (design) => design.systemId === systemId && design.isDefault,
+        ),
+        `${widgetType}:${systemId} must have exactly one default design`,
+      ).toHaveLength(1);
     }
   });
 

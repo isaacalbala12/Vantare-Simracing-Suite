@@ -152,6 +152,16 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Testing Center
 
+- ISA-293 / TC-SUP-01 protege el backup con EFS, PFX recuperable y checksums
+  7/7, pero el restore drill queda en `NO-GO`. El contenedor Supabase
+  PostgreSQL 17.6.1.155 pasó roles y revirtió schema antes de datos porque el
+  dump presupone el baseline administrado de Auth/Storage: `schema.sql` solo
+  reconstruye `public` y `data.sql` incluye los tres schemas. No se acepta un
+  restore parcial ni tablas inventadas. Contenedor/volumen efímeros fueron
+  eliminados y los servicios existentes no se tocaron. El siguiente gate es
+  generar, con ventana y autorización propias, un baseline vacío en un stack
+  Supabase CLI aislado y repetir el restore completo. Autoridad de evidencia:
+  `docs/evidence/isa-293-supabase-primary-backup-restore-drill.md`.
 - ISA-292 / TAU-07L abre la reconciliación posterior a PR #121. La autoridad
   futura es el Supabase principal `ombjshwzqgeisazijduq`; staging
   `rilwmlbnucbbayaulnxw` debe pasar primero y el piloto

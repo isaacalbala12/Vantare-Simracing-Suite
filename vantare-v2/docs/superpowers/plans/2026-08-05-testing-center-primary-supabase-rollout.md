@@ -195,6 +195,16 @@ Cada corte necesita una issue Linear propia antes de editar. Los nombres
   necesidad de tocar producción.
 - Gate humano: Isaac confirma protección del backup y acepta la evidencia.
 
+Estado ISA-293, 2026-08-05: `NO-GO`. EFS, PFX y checksums quedaron verificados,
+pero el primer restore demostró que el paquete no incluye el baseline gestionado
+completo. `schema.sql` reconstruye `public`; `data.sql` depende también de las
+estructuras Auth/Storage creadas por los servicios Supabase. El fallo ocurrió en
+schema antes de datos, se revirtió y el destino efímero se destruyó. El retry no
+puede crear namespaces/tablas ad hoc ni reutilizar el stack activo. Requiere una
+ventana aprobada para generar un baseline vacío con Supabase CLI fijado, añadirlo
+cifrado y por checksum al paquete y repetir todos los gates. Evidencia:
+`docs/evidence/isa-293-supabase-primary-backup-restore-drill.md`.
+
 ### TC-SUP-02 — Manifiesto y reconciliación de historial
 
 - Tipo: tooling/migraciones; riesgo alto.

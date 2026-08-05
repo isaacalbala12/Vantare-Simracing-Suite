@@ -74,6 +74,14 @@ function progress(phase) {
   process.stdout.write(`[overlay-workshop-hmr] ${phase}\n`);
 }
 
+export function formatError(error) {
+  if (!(error instanceof Error)) return String(error);
+  const nested = error instanceof AggregateError
+    ? error.errors.map(formatError).join('\n')
+    : '';
+  return [error.stack ?? error.message, nested].filter(Boolean).join('\n');
+}
+
 export async function closeWithTimeout(label, close, timeoutMs = 5000) {
   let timer;
   try {
@@ -356,7 +364,7 @@ async function main() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
   main().catch((error) => {
-    process.stderr.write(`${error.stack ?? error.message}\n`);
+    process.stderr.write(`${formatError(error)}\n`);
     if (!process.exitCode) process.exitCode = 1;
   });
 }

@@ -4514,3 +4514,47 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   `8ecdce49a78adc664e4796f388889fbd41a67c08` inalterado, `node_modules`
   ignorado y Vitest/Vite/Playwright disponibles. Se corrigió el plan para
   apuntar al lockfile real `..\pnpm-lock.yaml`. Próxima acción: Task 1.
+
+## Nota ISA-291 / OS-09G2 — autoría directa sobre código productivo
+
+- **Autoría directa:** el TSX/CSS productivo es la única fuente de verdad. Workshop
+  no convierte, exporta ni copia; `/workshop` renderiza ese mismo código. Queda
+  descartado el enfoque declarativo de ISA-266–278 (DSL, scaffolder, barrel
+  generado, `catalogPosition`, migración masiva del catálogo).
+- **Frontera intacta:** Workshop sigue renderizando por `WidgetVisualHost` y el
+  catálogo explícito de `official-designs.ts`. Es el cuarto consumidor del host,
+  junto a Studio canvas, runtime y ProfilePreview.
+- **Smoke HMR:** un único Vite + Chromium muta `DeltaOriginal.tsx` y
+  `vantare-original/tokens.css`, observa ambos cambios sin navegación ni reload y
+  restaura los bytes exactos. Falla en seco si los archivos objetivo no están
+  limpios, y conserva cualquier edición concurrente ajena.
+- **Contratos:** Workshop añadido al guard de consumidores del host; catálogo con
+  IDs únicos y exactamente un default por pareja widget/sistema registrada, sin
+  modificar `official-designs.ts`.
+- **Exclusiones respetadas:** sin DSL, scaffolder, catálogo paralelo, migración
+  masiva, dependencia nueva ni cambio visual. **Cero archivos de producto
+  modificados**: el corte es tests, scripts de desarrollo y documentación.
+- **Evidencia (2026-08-05):**
+  - `corepack pnpm --dir frontend test` → **320 archivos, 2181 tests PASS**.
+  - `corepack pnpm --dir frontend test:overlay-workshop-hmr` → **15/15 PASS**.
+  - Focal `overlay-workshop-characterization` + `official-designs` → **14/14 PASS**.
+  - ESLint focal (4 archivos) → PASS. `design-system:check` → 2 sistemas PASS.
+  - `corepack pnpm --dir frontend build` → PASS en 957 ms.
+  - Compile-out: **0 sentinels** de Workshop en `frontend/dist` (`grep` exit 1).
+- **Checks omitidos y motivo:** `smoke:overlay-workshop-hmr` y
+  `visual:overlay-workshop` **no se ejecutaron en este cierre**, por decisión
+  expresa de Isaac (el smoke ya se había ejecutado con PASS en `a5ed874`, y el
+  protocolo visual requiere navegador y 5–8 minutos). El criterio de aceptación
+  correspondiente queda pendiente de la verificación manual.
+- **Riesgos restantes:** `TSX_ANCHOR` del smoke depende de dos líneas literales de
+  `DeltaOriginal.tsx` y un reformateo lo rompe (falla ruidosamente, documentado en
+  la guía); el smoke exige todo `vantare-v2` limpio, no solo sus dos objetivos; la
+  suite completa emite un `AbortError` de teardown de happy-dom que no falla
+  ningún test y es deuda heredada.
+- **Estado Git/Linear:** rama
+  `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo` sobre base
+  ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`. **Sin push, sin PR y sin
+  cambio de estado en Linear**; no hubo promoción a `nightly`, `testers` ni
+  `master`.
+- **Próxima acción:** verificación manual de Isaac (sección del plan), y solo con
+  su aprobación explícita, ISA-280 / OS-09L.

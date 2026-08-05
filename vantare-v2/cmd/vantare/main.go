@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -34,6 +35,7 @@ import (
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
@@ -45,23 +47,33 @@ import (
 // version is the current application version.
 var version = "v0.1.0.5"
 
+// buildChannel is injected by release builds. Local and public builds fail
+// closed as master so the internal Testing Center cannot appear accidentally.
+var buildChannel = "master"
+
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
 
-// supabaseURL and supabaseAnonKey are injected at build time via ldflags
-// (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
-// can validate OAuth tokens without requiring end users to set environment
-// variables. They are public values (the Supabase anon key is designed to be
-// shipped in client apps). Runtime env vars VANTARE_SUPABASE_URL /
-// VANTARE_SUPABASE_ANON_KEY still take precedence for development and
-// overrides.
+// Public Supabase configuration and license verification keys are injected by
+// the generated supabase_build.go source so values never become Task cache file
+// names. They are public client configuration, not server-side secrets. Runtime
+// VANTARE_* environment variables still take precedence for development.
 var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
 )
+
+func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
+	if channel != "nightly" && channel != "testers" {
+		return "Vantare/LicenseClock", "Vantare/SupabaseAuth"
+	}
+	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(backendURL))))
+	scope := fmt.Sprintf("Vantare/%s/%x", channel, digest[:8])
+	return scope + "/LicenseClock", scope + "/SupabaseAuth"
+}
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -783,6 +795,8 @@ func main() {
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var diagnosticsBridge *app.DiagnosticsBridge
+	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
+	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -844,6 +858,12 @@ func main() {
 				{name: "diagnostics", stop: func(context.Context) error {
 					if diagnosticsBridge != nil {
 						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "testing-center-report-draft", stop: func(context.Context) error {
+					if testingCenterReportDraftBridge != nil {
+						testingCenterReportDraftBridge.Close()
 					}
 					return nil
 				}},
@@ -1005,6 +1025,10 @@ func main() {
 		licensePublicKeys,
 		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
 	)
+	licenseClockTarget, authSessionTarget := protectedStoreTargets(
+		buildChannel,
+		supabaseURLResolved,
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
@@ -1019,7 +1043,7 @@ func main() {
 	} else {
 		licenseSvc.WithVerifier(license.NewCredentialVerifier(
 			publicKeys,
-			license.NewProtectedClockStore("Vantare/LicenseClock"),
+			license.NewProtectedClockStore(licenseClockTarget),
 		))
 	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
@@ -1031,7 +1055,7 @@ func main() {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
 	wailsApp.RegisterService(application.NewService(licenseSvc))
-	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
+	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
@@ -1371,6 +1395,22 @@ func main() {
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
 
+	// Testing Center report drafts persist only resumable form text. The path is
+	// selected here; frontend events can never provide filesystem locations.
+	var reportDraftStore *reportdraft.Store
+	if cfgDir != "" {
+		reportDraftPath := filepath.Clean(filepath.Join(cfgDir, reportdraft.DirectoryName, reportdraft.FileName))
+		if store, storeErr := reportdraft.NewStore(reportDraftPath); storeErr == nil {
+			reportDraftStore = store
+		} else {
+			log.Printf("warning: Testing Center report draft storage is unavailable")
+		}
+	}
+	testingCenterReportDraftBridge = app.NewTestingCenterReportDraftBridge(ctx, reportDraftStore, emitter)
+	testingCenterReportDraftBridge.RegisterHandlers(wailsApp)
+	testingCenterDiagnosticBridge = app.NewTestingCenterDiagnosticBridge(version, buildChannel, emitter)
+	testingCenterDiagnosticBridge.RegisterHandlers(wailsApp)
+
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
 
@@ -1410,10 +1450,10 @@ func main() {
 	}
 
 	// Version info broadcast for UI.
-	emitter.Emit("app:version", map[string]any{"version": version})
+	emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 
 	wailsApp.Event.On("app:version:get", func(event *application.CustomEvent) {
-		emitter.Emit("app:version", map[string]any{"version": version})
+		emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 	})
 
 	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {

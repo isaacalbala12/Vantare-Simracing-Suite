@@ -6,6 +6,7 @@ import { NAV_ITEMS, type Section } from '../navigation';
 import { useAccess } from '../../lib/access';
 import { canSeeSection, type SectionId } from '../../lib/access-policy';
 import type { TelemetrySourceStatus } from '../../telemetry-transport/source-status';
+import type { TestingCenterChannel } from '../testing-center/contracts';
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
@@ -15,6 +16,7 @@ type TopbarProps = {
   onNavigate: (id: Section) => void;
   version?: string | null;
   sourceStatus?: TelemetrySourceStatus | null;
+  testingCenterChannel?: TestingCenterChannel | null;
 };
 
 const SECTION_TO_FEATURE: Record<string, SectionId> = {
@@ -29,16 +31,18 @@ const SECTION_TO_FEATURE: Record<string, SectionId> = {
   setup: "settings",
 };
 
-export function Topbar({ activeSection, onNavigate, version, sourceStatus }: TopbarProps) {
+export function Topbar({ activeSection, onNavigate, version, sourceStatus, testingCenterChannel }: TopbarProps) {
   const access = useAccess();
 
   const navItems = useMemo(
     () =>
-      NAV_ITEMS.map((item) => ({
+      NAV_ITEMS.filter((item) => item.id !== "testing-center" || testingCenterChannel).map((item) => ({
         ...item,
-        allowed: canSeeSection(access, SECTION_TO_FEATURE[item.id] ?? item.id),
+        allowed: item.id === "testing-center"
+          ? Boolean(testingCenterChannel)
+          : canSeeSection(access, SECTION_TO_FEATURE[item.id] ?? item.id),
       })),
-    [access],
+    [access, testingCenterChannel],
   );
   const [liteMode, setLiteMode] = useState(() => getStoredThemeId() === 'vantare-lite');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

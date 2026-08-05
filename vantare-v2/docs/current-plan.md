@@ -1,3 +1,512 @@
+Nota ISA-234 / reconciliación con Nightly (2026-08-05, candidata local):
+- Linear rechazó crear una issue de integración propia por el límite del plan
+  gratuito. Con autorización explícita de Isaac, la PR #121 continúa como
+  excepción trazada en ISA-234; no se archivan issues y no se modifica la
+  política de correcciones rechazadas, que mantiene `same_branch` retirado.
+- Origen exacto `ISA-234@a526e2b0a4e344f5841a7c216d77a0efc4f0b62e` y
+  base remota verificada
+  `nightly@4981e6fac5b2c95af9deb4ad2a64f0592a7b4d1e`. La reconciliación es
+  incremental, sin reescritura ni force-push.
+- Los cuatro conflictos se resolvieron preservando la allowlist del piloto, el
+  build channel fail-closed, la configuración pública generada fuera de la
+  identidad de caché y las dos líneas de documentación viva.
+- Evidencia local: deploy surface PASS; Deno vigente 165/165; preflight Codex
+  4/4; frontend integración 150/150 con un worker; build frontend PASS; Go
+  focal `cmd/vantare` + `internal/app` PASS; `git diff --check` PASS.
+- Sin Docker, Supabase remoto, secretos, Codex automático, deploy, release,
+  merge ni promoción. Pendiente: commit/push normal, CI de la PR y build
+  Nightly para revisión manual.
+
+Nota ISA-248 / TAU-07J (2026-08-05, handoff humano preparado localmente):
+- `testing-center.codex-human-handoff.v1` solo se construye desde un dossier
+  completo, íntegro y con repo/rama/SHA/base, paths, command IDs y criterios
+  cerrados. El texto del tester queda delimitado como evidencia no confiable y
+  no puede ampliar instrucciones ni permisos.
+- Los criterios confiables tampoco pueden conceder autoridad de repositorio o
+  release: retry, asignación, delegación, aprobación, commit/push/PR, merge,
+  deploy, publicación y promoción fallan cerrados desde el dossier.
+- El preflight Node multiplataforma exige repo reconocible, árbol limpio, HEAD
+  y base exactos y ancestry real. Codex Cloud puede usar la rama interna
+  `work`; se valida el SHA, no ese nombre local. Un remote presente y distinto
+  falla; un remote ausente exige la confirmación humana de la selección UI.
+- Evidencia: handoff Deno 8/8, Testing Center Deno 136/136 y preflight Node
+  4/4 PASS. Sin API OpenAI,
+  caller, secreto, red, deploy, PR automática ni promoción. Pendiente el gate
+  manual: una tarea sintética observada y una PR con head/base correctos.
+
+Nota ISA-289 / TAU-07K (2026-08-04, hardening de revisión cerrado):
+- El tooling del piloto acepta únicamente el project ref exacto y sensible a
+  mayúsculas `lbaxvpzexoferfvfkplz`; el preflight comprueba también el ref
+  vinculado antes de migraciones. Tests conductuales rechazan producción, un
+  tercer proyecto, variantes en mayúsculas, vínculo ausente y vínculo distinto.
+- OAuth reintenta solo transporte, 408, 429 y 5xx antes de `issueCreate`.
+  400/401/403, JSON inválido y contrato/token inválido terminan sanitizados en
+  `needs_owner` sin segunda llamada. La incertidumbre post-dispatch no cambia.
+- El handoff canónico distingue ya el fallo histórico del round-trip exitoso.
+  Evidencia: PowerShell guard PASS, focal Deno 19/19, Testing Center 128/128,
+  deploy guard 4/4, typecheck, formato y diff PASS. Sin red, secretos, schema,
+  deploy ni promoción.
+
+Nota ISA-287 / TAU-07J (2026-08-04, round-trip remoto y deduplicación PASS):
+- El worker clasifica toda incertidumbre de Linear con el contrato cerrado
+  `testing-center.linear-diagnostic.v1`: fase segura, HTTP status acotado y
+  códigos GraphQL limitados a `RATELIMITED`/`UNKNOWN`. Nunca expone mensajes,
+  cuerpos, paths, extensions, texto del tester ni secretos.
+- La frontera HTTP reconstruye el diagnóstico en runtime y emite exactamente
+  cuatro campos; una revisión adversarial detectó y cerró esta protección P2.
+  La semántica sigue intacta: solo el fallo de token previo a `issueCreate`
+  puede reintentarse y toda incertidumbre posterior termina en `needs_owner`.
+- Evidencia local: Testing Center 125/125, focal 16/16, deploy guard 4/4,
+  typecheck del worker, formato y `git diff --check` PASS. Tras aprobación
+  humana, solo `testing-center-linear-worker` se desplegó en Supabase testing
+  `lbaxvpzexoferfvfkplz` y quedó `ACTIVE` v7; un probe sin credenciales devolvió
+  `401 unauthorized`.
+- El reporte nuevo `report_354511...c9241` creó exactamente ISA-288 con Backlog,
+  proyecto y cinco labels correctas, sin prioridad, assignee ni delegate. El
+  efecto quedó `completed`, intento/fencing 1, binding único y sin lease. El
+  primer webhook firmado fue `create/applied` y dejó reconciliación
+  `linear_created`, generación 1.
+- El segundo reporte idéntico `report_4067dc...0597a` quedó
+  `duplicate_linked`: dos ocurrencias, un solo efecto completado y una sola
+  issue Linear. La pausa global volvió a quedar activa, el efecto histórico en
+  `needs_owner` tiene pausa de flujo propia, y el bearer temporal fue revocado.
+  No hubo Docker, Codex, Discord, merge ni promoción.
+
+Nota ISA-243 / TAU-07I (2026-08-04, reintento único en `needs_owner`):
+- Isaac autorizó un único reintento tras corregir el claim hosted. El worker
+  adquirió lease/fencing y devolvió `409 linear_response_ambiguous`; el
+  contrato limpió el lease, fijó el efecto y destino en `needs_owner` y
+  mantuvo la pausa global activa.
+- La reconciliación read-only por marker/`effectId` y el listado del proyecto
+  `Testing Center — Feedback` encontraron cero issues. Supabase mantiene
+  `attempt_count=1`, fencing 1 y cero bindings. No se permite una tercera
+  llamada aunque el resultado externo aparente ser cero.
+- El bearer temporal se eliminó del portapapeles. La evidencia quedó anotada
+  en ISA-243. El siguiente corte debe añadir diagnóstico sanitizado de fase,
+  HTTP status y códigos GraphQL allowlisted o revisar permisos/configuración
+  de la OAuth app antes de usar un nuevo reporte sintético separado.
+
+Nota ISA-243 / TAU-07I (2026-08-04, primer reporte remoto y stop seguro):
+- El reporte sintético `report_d9c99f...866ae8a` llegó desde la build exacta
+  `nightly/v0.1.0.5@ef60adef4c42f21b87e3ad582927f574ea1d77ed`, sin
+  diagnóstico, logs, replay ni evidencia PostHog. La identidad server-side se
+  corrigió del formato `0.1.0.5` al emitido realmente por la app
+  `v0.1.0.5`, conservando historial y una sola identidad activa.
+- El triage reservó una única issue técnica y un único efecto Linear bajo
+  pausa. La primera llamada al worker terminó en `pilot_store_unavailable`
+  antes del claim y antes de `issueCreate`: intento/fencing permanecieron en
+  cero y no existe binding externo.
+- Causa reproducida: Supabase hosted expone `gen_random_uuid()` en
+  `pg_catalog`/`extensions`, no en `public`, mientras el claim histórico usa la
+  referencia explícita `public.gen_random_uuid()`. La migración correctiva
+  `20260804110000_uuid_public_compatibility.sql` está aplicada solo en testing;
+  el harness hosted pasa clean install, 18/18, rollback y reapply 18/18.
+- Un probe remoto transaccional devuelve `claimed` con lease/fencing y termina
+  en `ROLLBACK`; el efecto real sigue `pending`, intento 0, sin lease/binding y
+  con pausa global activa. No se reintenta el worker sin un nuevo gate explícito
+  de Isaac.
+
+Nota ISA-243 / TAU-07I (2026-08-04, configuración remota autorizada):
+- Rama exacta apilada sobre `ISA-242@c215fcb21902649601086c3d71ce658d34261f52`.
+  Prepara el primer round-trip sintético Supabase -> Linear: OAuth
+  `client_credentials` con `issues:create`, worker manual por `reportId`,
+  mutación GraphQL fija, binding atómico y endpoint de webhook firmado.
+- Pausa, lease/fencing, destino y digests se revalidan inmediatamente antes de
+  abrir el efecto externo. Solo el fallo de token previo a `issueCreate` puede
+  reintentarse; toda incertidumbre posterior termina en `needs_owner`.
+- Team, proyecto, Backlog y labels se resuelven por UUID server-side. No se
+  envían assignee, prioridad, delegate, logs, replay URL ni instrucciones.
+- La superficie de testing está separada del wrapper de producción y exige la
+  confirmación literal `DEPLOY-ISA-243-TESTING-PILOT`.
+- Evidencia post-configuración: Deno Testing Center 120/120, guard de deploy
+  4/4, typecheck de ambos entrypoints, lint y formato PASS. PostgreSQL volvió a
+  pasar instalación limpia, 18/18, rollback y reaplicación 18/18 usando el
+  contenedor Supabase existente y bases temporales eliminadas al terminar.
+- Isaac autorizó exclusivamente el proyecto Supabase de testing
+  `lbaxvpzexoferfvfkplz`. Las 24 migraciones coinciden local/remoto y las tres
+  Edge Functions del piloto están `ACTIVE` v1. Los probes sin credenciales
+  fallan cerrados. El webhook `Issue` de Linear ya está creado y su signing
+  secret está guardado en Supabase; la firma continuará sin considerarse
+  verificada hasta observar el primer delivery real. No existe todavía llamada
+  `issueCreate`, Codex, Discord, merge ni promoción. El siguiente gate manual es
+  registrar una identidad sintética autorizada y la build Nightly exacta desde
+  la que se enviará el primer reporte.
+- Identidad sintética registrada como `primary_tester` y protegida por pausa
+  global activa. La capability `vantare.channel.nightly` procede de un grant
+  local `subscription_recovery` de sandbox, marcado sintético y revocable, con
+  expiración `2026-08-05T19:17:05Z`. No existen efectos ni bindings Linear.
+- `license-credential` está `ACTIVE` v1 en testing con la clave exclusiva
+  `testing-isa243-20260804`; fingerprint SHA-256 público
+  `3f520a864fec01d953edd60b88433ad52f63f2fbb5d4d9ad0bc77b425397ea27`.
+  La privada solo existe como Supabase Secret.
+- El primer build Nightly detectó que Task incluía URL, anon key y registro
+  público dentro del nombre de su caché al interpolar `BUILD_FLAGS`, inválido en
+  Windows. El generador existente pasa a incorporar también el registro público
+  y esos tres valores salen de `ldflags`; el guard de deploy cubre la regresión.
+- Las builds `nightly` y `testers` separan además sus targets de Credential
+  Manager por canal y digest del backend. `master` conserva los targets legacy.
+  El artefacto del piloto debe ejecutarse en modo portable para aislar también
+  caché de licencia, drafts y configuración de la instalación habitual.
+- La primera apertura manual reveló que el frontend leía solo
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, mientras el build recibía
+  únicamente las variables `VANTARE_*` del backend Go. El task común refleja
+  ahora esa misma configuración pública hacia Vite; el guard impide volver a
+  generar una pantalla de login sin backend en builds empaquetadas.
+- El preflight del proyecto vacío detectó dos migraciones locales con versión
+  `20260802130000`. Para evitar un push parcial, TAU-02B —nunca desplegada— se
+  renombra mecánicamente a `20260802130100`; Billing conserva su historia. El
+  dry-run remoto posterior enumera 23 versiones únicas y ordenadas.
+- El primer push remoto aplicó el baseline hasta `20260802090000` y se detuvo
+  antes de Testing Center porque hosted ubica `pgcrypto.digest` en
+  `extensions`. `20260802095000_pgcrypto_public_compatibility` añade wrappers
+  condicionales `public.digest` sin mover ni reemplazar la extensión. La
+  simulación hosted y el harness completo PostgreSQL 18/18 + rollback/reapply
+  pasan antes de reanudar.
+- El primer intento de deploy no contactó Supabase: el wrapper reutilizaba un
+  `$LASTEXITCODE` residual tras un guard PowerShell correcto. Se elimina esa
+  comprobación redundante y se añade regresión antes de reintentar.
+
+Nota ISA-242 / TAU-07H2 (2026-08-04, implementación local validada):
+- Rama exacta apilada sobre `ISA-253@aaff314411288927d97d52c05eb93b6c7d5b8729`.
+  Extiende la única pestaña Testing Center con vistas `Reportar problema` y
+  `Validar corrección`; conserva el borrador al alternar y declara replay/logs
+  como no disponibles en lugar de simular captura.
+- Una Edge Function autenticada deriva membresía, rol, candidata y autor desde
+  Supabase, sanea el contexto antes de devolverlo y llama exclusivamente al RPC
+  endurecido service-role de TAU-07G. El cliente no envía actor, rol, autor,
+  estado, rama ni acción de owner.
+- Nightly requiere primary tester/owner; Testers admite tester/primary/owner;
+  auto-validación, SHA obsoleto, metadata desconocida y rechazo incompleto
+  fallan cerrados. `cannot_verify` permanece neutral y no hay controles owner.
+- Evidencia local: Deno Testing Center 116/116 (Edge focal 9/9) y check PASS;
+  frontend Testing Center 32/32,
+  lint focal, build y harness visual 4/4 (390/768/1024/1440, sin overflow ni
+  errores de consola) PASS.
+- No existe deploy de Edge, secreto nuevo, captura PostHog/replay real, Linear o
+  Discord real, delegación Codex, merge ni promoción. TAU-07I y el gate manual
+  de Isaac siguen pendientes.
+
+Nota ISA-253 / TAU-07H1 (2026-08-04, frontera local validada):
+- Rama apilada sobre `ISA-241@8a12b8e76a330d1ef87a4d9e76288e9af1a67c65`.
+  Define `testing-center.posthog-evidence.v1`, contexto técnico cerrado y una
+  política de navegador que empieza apagada, sin autocapture, identidad,
+  console logs, persistencia local ni excepciones automáticas.
+- Consentimiento diagnóstico/replay separado, privado, append-only e
+  idempotente. Revocar replay elimina URL/autorización Linear; revocar
+  diagnóstico elimina evidencia local. TTL: replay 7 días, error 30 días.
+- Evidencia: Deno Testing Center 107/107 (focal 8/8); PostgreSQL 33/33,
+  rollback/reaplicación 33/33 y
+  history guard PASS. PostHog caído nunca bloquea reportar ni autoriza Codex o
+  promociones.
+- No se añade SDK, dependencia, red, secreto, endpoint, proyecto PostHog, UI,
+  captura/replay real, Linear, Discord, Codex, merge, deploy ni promoción.
+  Autoridad: `docs/runbooks/testing-center-posthog-privacy.md`.
+
+Nota ISA-241 / TAU-07G (2026-08-03, implementación validada localmente):
+- Rama apilada sobre `ISA-240@ca2fe763ae325c4600712fc2298125117af7df50`.
+  Persiste votos inmutables por issue/candidata/canal/versión/SHA, deriva roles
+  server-side y mantiene `cannot_verify` pendiente. Una aceptación Nightly de
+  primary tester basta funcionalmente; un rechazo Testers posterior bloquea.
+- Dossier determinista con snapshots `incomplete`/`complete`, digest interno y
+  de transporte verificados en TypeScript y PostgreSQL. `same_branch` está
+  retirado; la única corrección válida es sub-issue/rama nueva desde Nightly.
+- Las cinco disposiciones son owner-only. Una corrección permanece
+  `needs_owner` y no delega; entorno, issue nueva, descarte o stop cierran este
+  rollout como `stopped`.
+- Evidencia: Deno Testing Center 99/99; PostgreSQL 45/45, rollback/reaplicación
+  45/45, history guard y carrera real exactly-once PASS.
+- No existe UI, endpoint, red, PostHog, Discord, Linear real, Codex, rama/PR
+  automática, deploy, merge ni promoción. Autoridad:
+  `docs/runbooks/testing-center-candidate-feedback.md`.
+
+Nota ISA-240 / TAU-07F (2026-08-03, implementación validada localmente):
+- Rama apilada sobre `ISA-239@2a6a6b4ffd414ad8764f76d0e337877a589d2e5b`.
+  Añade verificación HMAC-SHA256 sobre bytes exactos para los headers oficiales
+  de Linear y reduce el evento a una proyección cerrada sin actor ni texto.
+- PostgreSQL incorpora binding externo único, mapping de estados por UUID,
+  ledger durable de deliveries y reconciliación exclusivamente observacional.
+  Replay exacto es idempotente; digest conflictivo falla; eventos antiguos no
+  cambian estado; estados desconocidos quedan `needs_owner`.
+- Evidencia: Deno Testing Center 98/98; PostgreSQL instalación limpia, 27/27,
+  rechazo de rollback con historial, rollback sin historial, reaplicación 27/27
+  y carrera real de dos procesos PASS.
+  La suite Deno global no arrancó por `npm:standardwebhooks` no instalado en el
+  worktree; no se alteraron dependencias.
+- No existe endpoint público, secreto, credencial, red, deploy, asignación de
+  Codex, rama, PR automática, merge o promoción. Autoridad:
+  `docs/runbooks/testing-center-linear-webhook.md`.
+
+Nota ISA-239 / TAU-07E (2026-08-03, implementación validada localmente):
+- Rama apilada sobre ISA-238. Implementa selección durable de un único destino,
+  supersesión reversible de efectos GitHub pending/failed, preservación manual
+  de GitHub completed, identidad de build server-side y outbox Linear dry-run.
+- La proyección `testing-center.linear-issue.v1` tiene una sola fuente de verdad
+  TypeScript. PostgreSQL verifica claves, metadata, marker, fuente, JSON
+  canónico, digest, lease y fencing antes de persistirla; no existe red real.
+- Evidencia disponible: Deno 92/92, formato, type-check y `git diff --check`
+  PASS. PostgreSQL: instalación limpia, guards de pausa/claim, 43/43,
+  rollback exacto, reaplicación 43/43 y carrera real de dos procesos PASS.
+  Sigue sin autorizar merge, deploy ni promoción.
+- Autoridad: `docs/runbooks/testing-center-linear-outbox.md`.
+
+Nota de diseño Testing Center / Linear / Codex (2026-08-03):
+- ISA-238 se implementa como corte apilado sobre el prerrequisito
+  `ISA-234@0e45228626adc59a5a90b72d1369bb110b1c4e8c`; no duplica el stack desde
+  la Nightly actual ni mezcla cambios Billing. Rama:
+  `vantareapp/isa-238-tau-07d-adr-y-contratos-linear-rechazo-y-dossier-codex`.
+- Contratos locales materializados: `testing-center.linear-issue.v1`,
+  `testing-center.rejection.v1` y `testing-center.codex-dossier.v1`. Incluyen
+  decoder cerrado, sanitización compartida, digest, un voto actor/candidato/SHA,
+  `cannot_verify`, sub-issue/rama nueva y límites 32 KiB/5 paths/3 comandos.
+- Evidencia fresca: Deno focal 47/47, formato y type-check PASS; Go focal PASS;
+  frontend build PASS y `go test ./...` PASS tras generar el `dist` ignorado.
+  Review adversarial final: ACCEPT, P0/P1/P2/P3=0.
+  Sin schema, red de producto, secreto, Linear/PostHog/Discord/Codex real, UI,
+  deploy, merge o promoción.
+- ISA-238 / TAU-07D fija los contratos locales y el ADR 0007. Supabase es la
+  autoridad canónica, Linear el único tracker operativo externo y GitHub queda
+  limitado a código, PR y CI. Sin dual-write ni fallback a GitHub Issues.
+- El spike ISA-237 cerró el camino de continuidad como NO-GO: toda corrección
+  crea una sub-issue y una rama nueva desde el SHA actual de `nightly`.
+  `same_branch` queda retirado y nunca se reabre, reescribe o fuerza una rama.
+- Una aprobación de tester solo satisface el gate funcional. Isaac autoriza
+  explícitamente cada promoción a Testers y Master; rechazo o ambigüedad pasan
+  a `needs_owner`, nunca a retry automático.
+- Autoridad: `docs/adr/0007-testing-center-linear-operational-authority.md` y
+  `docs/runbooks/testing-center-linear-contracts.md`.
+- Isaac aprueba el MVP `Vantare -> Supabase -> Linear -> delegación humana a
+  Codex Cloud -> PR revisada -> nightly -> testers -> master`.
+- Un rechazo bloquea la candidata y queda visible en Testing Center, Linear y
+  Discord con detalle proporcional. No existe redelegación automática.
+- Supabase compone un expediente determinista; no se añade un modelo
+  intermedio. Isaac decide entre sub-issue, entorno, issue nueva, descarte
+  justificado o detener rollout.
+- Rama, SHA y base de PR se seleccionan y verifican fuera del prompt. La
+  integración Linear `@Codex`, que parte de la rama predeterminada, no puede
+  ejecutar cambios sobre Nightly hasta superar ese gate determinista.
+- Toda corrección usa sub-issue y rama nueva desde Nightly. Testers siempre
+  corrige desde Nightly y vuelve a recorrer los canales.
+- Especificación:
+  `docs/superpowers/specs/2026-08-03-testing-center-rejection-linear-codex-design.md`.
+- Esta decisión sustituye la activación automática prevista después de
+  TAU-07A. El workflow firmado permanece inerte; TAU-07B/C ya se validaron y
+  TAU-07D permanece estrictamente local.
+- Este corte es solo documental: sin red, credenciales, deploy, UI, Codex,
+  Discord, merge o promoción.
+- Plan ejecutable aprobado por microcortes:
+  `docs/superpowers/plans/2026-08-03-testing-center-linear-codex-execution-plan.md`.
+  Empezó por dos spikes sin backend: cuenta ChatGPT Pro y selección
+  determinista de rama/SHA. La continuidad de una rama integrada fue NO-GO;
+  el camino único es sub-issue y rama nueva desde Nightly. La
+  captura PostHog preparada recibe un gate propio de privacidad antes de la UI.
+
+Nota ISA-234 / TAU-07A (2026-08-03, dispatch Codex inerte):
+- Envelope HMAC cerrado liga run/issue/request, SHA/proof, fencing, scope,
+  versiones, TTL 30–300 s y nonce. Prosa, logs, replay, URL y paths externos no
+  entran; replay exige ledger durable del futuro adapter.
+- Prompt/output versionados; schema cerrado a cinco archivos, tres command IDs,
+  create/replace y cero efectos cuando no hay propuesta.
+- Workflow reusable sin caller, job `if: false`, `contents: read`, checkout sin
+  credenciales y acciones/CLI pinneadas. Codex es el último paso y no hay
+  secreto ni trigger automático.
+- Gates focales: 11/11. Sin invocation/API/token/repo write/rama/commit/PR/
+  deploy/merge/promoción. Autoridad:
+  `docs/runbooks/testing-center-codex-dispatch.md`.
+
+Nota ISA-232 / TAU-06G (2026-08-02, reauditoría Codex GO condicionado):
+- Review independiente sobre `e9546d9`; no modifica los módulos TAU-06D/E/F.
+- Métricas: 0/96 falsos `eligible`, 0/35 falsos `needs_owner`, 0/48
+  retenciones, 4/4 fraudes de evidencia rechazados, 0/12 rutas sensibles
+  aceptadas y 5/5 ataques de SHA/ancestry rechazados.
+- PostgreSQL 61/61, rollback/reapply, carrera de dos workers y pausa tardía
+  concurrente PASS. P0=0, P1=0, P2=0.
+- Veredicto TAU-07: GO para diseñar el adaptador real por microcortes; no es
+  autorización de activación, red, Codex, repo write, deploy, merge o promoción.
+- Autoridad:
+  `docs/analysis/isa-232-tau-06g-codex-adversarial-audit-2026-08-02.md`.
+
+Nota ISA-231 / TAU-06F (2026-08-02, control Codex durable):
+- Loader exclusivo de `service_role` deriva una proyección canónica sin texto
+  libre y liga digest/tamaño de transporte; filas legacy sin tamaño fallan.
+- La base exacta se comprueba contra un snapshot cerrado head+ancestros del
+  puerto server-owned; no acepta un booleano de ancestry autoafirmado.
+- Una fila automática por issue, claim global, lease 10–300 s, fencing
+  monotónico y pausa revalidada justo antes del permiso de dispatch.
+- Tras el permiso no existe retry automático: ambigüedad va a `needs_owner` y
+  una caída queda `dispatching` para reconciliación humana, evitando duplicado.
+- Gates: PostgreSQL 61/61 + rollback/reapply + carrera dos workers; Deno focal
+  20/20. Sin Codex/API/repo/red/write/deploy/merge/promoción.
+
+Nota ISA-230 / TAU-06E (2026-08-02, scope leaf-level y SHA):
+- Prefijos amplios sustituidos por reglas de paths por módulo. Access, clients,
+  state, canvas, bridge, workflows, case aliases y rutas desconocidas fallan.
+- El request exige SHA exacto de 40 hex, lo incluye en repository y digest; una
+  mutación posterior invalida la respuesta.
+- El resolver server-side que prueba ancestry con `nightly` queda para TAU-06F;
+  aquí continúa prohibido abrir repo/red. Focal 11/11.
+- Estado: local para review; sin Codex/API/checkout/write/deploy/merge/promoción.
+
+Nota ISA-229 / TAU-06D (2026-08-02, evidencia Codex mínima):
+- El dry-run deja de consumir texto libre/etiqueta autoafirmada y exige una
+  proyección ligada a IDs, bytes, tamaño, SHA-256 y consentimientos.
+- Shape diagnóstico cerrado; mensajes, códigos, versión y timestamp nunca
+  salen. Solo enums, offsets y booleanos allowlisted pueden llegar al sobre.
+- Corpus sintético de PII/secrets/rutas/URL/prompt injection: cero retenciones;
+  tampering de digest/tamaño/schema/evidencia/identidad falla cerrado.
+- Pendiente TAU-06F: loader service-role desde la fila persistida. Autoridad:
+  `docs/runbooks/testing-center-codex-evidence.md`.
+- Estado: local para review; sin API Codex, DB loader, red, repo access, deploy,
+  Discord, merge o promoción.
+
+Nota ISA-228 / TAU-06C (2026-08-02, auditoría Codex NO-GO):
+- Review independiente sobre `a4239a4`, sin editar policy ni contrato dry-run.
+- Métricas: 0/96 falsos `eligible` sensibles, 0/35 falsos `needs_owner`
+  benignos y rechazo de workflow path/campos extra.
+- Bloqueantes: P1 procedencia/redacción no demostrada, P1 prefijos que incluyen
+  access/clients, P1 exclusión solo in-memory y P2 base `nightly` sin SHA.
+- Veredicto TAU-07: NO-GO (P0=0, P1=3, P2=1). Autoridad:
+  `docs/analysis/isa-228-tau-06c-codex-adversarial-audit-2026-08-02.md`.
+- Siguiente: hardening en cortes nuevos y reauditoría; Codex/API/repo access,
+  Discord, deploy, merge y promoción continúan apagados.
+
+Nota ISA-227 / TAU-06B (2026-08-02, sobre Codex dry-run):
+- Prompt y objetivos fijos separados de evidencia server-redacted no
+  confiable; la policy TAU-06A se recalcula y el módulo debe coincidir.
+- Módulos/rutas y command IDs cerrados. La salida JSON exacta rechaza extras,
+  traversal, shell, scope growth, duplicados e inconsistencias.
+- Budgets: 8 KiB de evidencia, 32 KiB de salida, 12k tokens, 600 s, hasta
+  cinco archivos/tres tests y cero tool calls; concurrency key global.
+- El registro in-memory solo prueba el contrato local, no sustituye un lease
+  distribuido. Gates focales: 10/10. Autoridad:
+  `docs/runbooks/testing-center-codex-dry-run.md`.
+- Estado: implementación local lista para review; sin API Codex, checkout,
+  repo read/write, comando, red, deploy, rama/PR automática o promoción.
+
+Nota ISA-226 / TAU-06A (2026-08-02, policy Codex fail-closed):
+- Clasificador puro y versionado: solo trabajo frontend allowlisted, completo,
+  determinista, de un módulo/1–5 archivos y con harness puede ser `eligible`.
+- Seguridad, privacidad, auth, permisos, secretos, billing/licencias, datos,
+  migraciones, release/workflows, dependencias, arquitectura y cambios masivos
+  siempre exigen owner; también retries y rechazos de testers.
+- Texto, logs y prompt injection del reporte no pueden cambiar decisión ni
+  digest. Los hechos confiables deben proceder del servidor, no de app/issue.
+- Decoder cerrado y hash canónico; input inválido/ausente nunca autoriza.
+  Corpus focal: 8/8, con cero falsos `eligible` sensibles. Autoridad:
+  `docs/runbooks/testing-center-codex-risk.md`.
+- Estado: implementación local lista para review; sin API Codex, repo write,
+  red, deploy, rama, PR automática, Discord, merge o promoción.
+
+Nota ISA-224 / TAU-05C (2026-08-02, entrega GitHub preparada):
+- Outbox con claim/lease, cinco intentos, backoff, pausa global/por flujo
+  comprobada justo antes del efecto y reconciliación por marker app-authored.
+- Servicio Deno por puertos, sin `fetch`, endpoint, variables de entorno o
+  superficie desplegable. Respuestas ambiguas buscan antes de repetir.
+- Webhook HMAC-SHA256 sobre bytes exactos y delivery ID durable. GitHub no
+  envía timestamp firmado; `received_at` server-side + ledger sustituye ese
+  supuesto sin inventar headers. El webhook no autoriza reconciliaciones.
+- GitHub App propuesta: privada, repo único, Metadata read + Issues read/write,
+  evento issues; cero Contents/PR/Actions/Workflows.
+- Gates: PostgreSQL 28/28 + rollback/reapply; Deno focal 7/7 y 208/208 activo;
+  deploy-surface sin cambios. Autoridad:
+  `docs/runbooks/testing-center-github-delivery.md`.
+- Estado: implementación local lista para review; sin App/secretos reales,
+  red, deploy, Supabase remoto, Codex, Discord, merge o promoción.
+
+Nota ISA-223 / TAU-05B (2026-08-02, proyección GitHub dry-run):
+- Contrato Deno cerrado para proyectar un GitHub Issue y comentarios de
+  ocurrencia sin efectuar llamadas de red ni confirmar el outbox.
+- Título, labels y markers proceden solo de IDs/enums allowlisted. No existe
+  assignee, label Codex, token, configuración GitHub, logs o URL de replay.
+- El texto del tester se trata como dato no confiable: neutraliza Markdown,
+  menciones, controles y patrones conocidos de secretos/PII, con límites por
+  bytes. La PII semántica arbitraria sigue requiriendo revisión humana.
+- El adaptador dry-run recalcula SHA-256, converge en retries idénticos y
+  distingue corrupción de conflicto idempotente.
+- Gates: 20/20 focales, 201/201 Deno activos, type-check, formato y superficie
+  de deploy PASS. Autoridad:
+  `docs/runbooks/testing-center-github-projection.md`.
+- Estado: PR draft #112 con CI protegida verde; sin GitHub App, Edge
+  Function desplegable, credencial, webhook, deploy o mutación remota.
+
+Nota ISA-222 / TAU-05A (2026-08-02, triage y outbox exactly-once):
+- Nueva frontera server-only que comprueba payload/evento completos, calcula
+  fingerprints técnicos y funcionales deterministas y conserva cada reporte
+  como ocurrencia visible.
+- La unión automática exige firma técnica exacta o fingerprint funcional más
+  digest exacto de esperado/observado. La similitud textual nunca fusiona y el
+  código genérico actual `tester.report` no se acepta como firma técnica.
+- Cien repeticiones convergen en una issue técnica interna, cien ocurrencias y
+  una única reserva durable `github_issue_create`; la carrera entre dos
+  transacciones también converge.
+- RLS forzada, cero policies de cliente, pausa global/por flujo antes del
+  efecto y ningún assignee, body de GitHub o dispatch de Codex.
+- Gate PostgreSQL desechable: core 72 + access 56 + report 55 + triage 40,
+  rollback/reapply, 100 repeticiones y concurrencia PASS. Autoridad:
+  `docs/runbooks/testing-center-triage-outbox.md`.
+- Estado: PR draft #111 con CI protegida verde; sin GitHub App, red, webhook,
+  Codex, Discord, deploy, merge, promoción o build distribuida.
+
+Nota ISA-220 / TAU-04C (2026-08-02, UI del Testing Center):
+- Nueva pestaña visible únicamente cuando el canal real embebido en la build
+  coincide con su capability firmada; `master`, metadata desconocida o
+  permisos cruzados fallan cerrados. Supabase conserva la autoridad final.
+- Formulario responsive y accesible con acción, esperado y observado
+  obligatorios, contexto opcional, módulo cerrado, modo offline y draft local
+  recuperable. Los consentimientos nunca se persisten y arrancan apagados.
+- El backend prepara `testing-center.diagnostic.v1` en memoria. La UI muestra
+  los bytes exactos, recalcula SHA-256 antes de aceptarlos y envía esos mismos
+  bytes mediante la RPC idempotente de TAU-04A.
+- No existe todavía un collector productivo de logs: la UI muestra cero
+  disponibles y bloquea ese opt-in en vez de inventar datos.
+- Gates focales Go, frontend, build, lint y harness visual 390/768/1024/1440
+  PASS. Autoridad: `docs/runbooks/testing-center-ui.md`.
+- Estado: PR draft #110 con CI protegida verde; sin Supabase remoto, GitHub
+  Issue, Codex, Discord, merge, promoción o build distribuida.
+
+Nota ISA-219 / TAU-04B (2026-08-02, draft local y bridge Wails):
+- Nuevo store local para reanudar exclusivamente acción, esperado, observado,
+  contexto y módulo; no persiste consentimiento, diagnóstico, logs, replay,
+  tokens, identidad remota ni rutas aportadas por frontend.
+- El backend genera y conserva una clave idempotente estable hasta descartar el
+  draft. Escritura temporal + sync + reemplazo atómico; corrupción, campos
+  desconocidos y tamaños fuera de contrato se eliminan cerradamente.
+- Bridge Wails con DTOs cerrados, request IDs, límites, timeout, cancelación y
+  códigos de error sin detalles locales. La ruta nace en composition root bajo
+  el directorio privado de configuración.
+- Gates focales x20 y race detector x5 PASS. Autoridad:
+  `docs/runbooks/testing-center-report-draft.md`.
+- Estado: PR draft #109 en review; sin UI, red, Supabase remoto, merge,
+  promoción o build distribuida.
+
+Nota ISA-218 / TAU-04A (2026-08-02, envío idempotente de reportes):
+- Nueva RPC autenticada `testing_center_submit_report(...)`, apilada sobre
+  TAU-03R, sin UI, bridge Wails, GitHub, Codex, Discord o deploy.
+- Identidad, rol y canal permitido se derivan en servidor; el cliente no puede
+  escribir tablas directamente ni elegir una asignación automática.
+- Acción, resultado esperado y observado son obligatorios. Diagnóstico y logs
+  conservan consentimientos separados; el JSON se valida con shape y tipos
+  cerrados, límites, SHA-256 exacto y contadores reconciliados.
+- La clave idempotente se serializa como JSON tipado canónico, se bloquea por
+  usuario y produce un único reporte/evento incluso con peticiones concurrentes.
+- Gates locales x3: core 72, access 56, report 55, rollback/reaplicación y
+  carrera exactly-once PASS. Autoridad:
+  `docs/runbooks/testing-center-report-submission.md`.
+- Estado: PR draft #108 en review; sin migración remota, merge, promoción o
+  build.
+
+Nota ISA-215 / TAU-03 (2026-08-02, diagnóstico local del Testing Center):
+- Nuevo paquete puro `testing-center.diagnostic.v1`, apilado sobre TAU-02C, sin
+  UI, red, persistencia, PostHog, GitHub, Codex o Discord.
+- Metadata y logs usan allowlists cerradas, límites de 4 KiB crudos/512 B
+  sanitizados, máximo 100 entradas y payload final de 64 KiB.
+- Preview y transporte comparten exactamente los mismos bytes y SHA-256; el
+  draft puede descartarse y deja de ser accesible.
+- La revisión adversarial corrigió rutas con espacios y acotó el texto antes de
+  aplicar regex. Texto libre no garantiza anonimización semántica, por lo que
+  TAU-04 deberá mantener logs opt-in y preview obligatorio.
+- Gates focales: x20, vet, race x10 y fuzzing PASS. Autoridad:
+  `docs/runbooks/testing-center-diagnostics.md`.
+- Estado: implementación local en review; sin merge, promoción o build.
 Nota ISA-258 / V1-07A (2026-08-03, Roadmap conectado a Linear):
 - La vista editorial `Roadmap actual` se conserva. La antigua vista manual
   `Desarrollo por features` pasa a `Proyectos`, con tres pestañas públicas,

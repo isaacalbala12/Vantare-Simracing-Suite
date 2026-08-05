@@ -16,6 +16,37 @@ Deno.test("deploy surface rejects legacy and unknown top-level functions", () =>
   }
 });
 
+Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
+  const entries = [
+    { name: "testing-center-feedback", isDirectory: true },
+    { name: "testing-center-linear-webhook", isDirectory: true },
+    { name: "testing-center-linear-worker", isDirectory: true },
+  ] as Deno.DirEntry[];
+  if (invalidDeployableDirectories(entries).length !== 0) {
+    throw new Error("reviewed testing pilot surface was rejected");
+  }
+  const wrapper = Deno.readTextFileSync(
+    new URL("./deploy-approved-functions.ps1", import.meta.url),
+  );
+  if (wrapper.includes("testing-center-linear-worker")) {
+    throw new Error("testing pilot leaked into production deployment wrapper");
+  }
+  const pilotWrapper = Deno.readTextFileSync(
+    new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
+  );
+  if (
+    !pilotWrapper.includes("DEPLOY-ISA-243-TESTING-PILOT") ||
+    !pilotWrapper.includes("assert-testing-center-pilot-project.ps1") ||
+    !pilotWrapper.includes("verify-deploy-surface.ps1") ||
+    !pilotWrapper.includes('"testing-center-linear-worker"')
+  ) throw new Error("testing pilot wrapper lacks explicit guards");
+  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(pilotWrapper)) {
+    throw new Error(
+      "PowerShell guard incorrectly reuses stale native exit code",
+    );
+  }
+});
+
 Deno.test("official deploy workflow can only deploy through the guarded wrapper", () => {
   const surfaceGuard = Deno.readTextFileSync(
     new URL("./verify-deploy-surface.ps1", import.meta.url),
@@ -91,6 +122,65 @@ Deno.test("client build receives public verification keys only", () => {
     clientBuildSurface.includes("OFFLINE_LICENSE_KEY_ID")
   ) {
     throw new Error("server-side signing material leaked into client build");
+  }
+  const windowsTask = Deno.readTextFileSync(files[1]);
+  for (
+    const ldflag of [
+      "-X main.supabaseURL=",
+      "-X main.supabaseAnonKey=",
+      "-X main.licensePublicKeys=",
+    ]
+  ) {
+    if (windowsTask.includes(ldflag)) {
+      throw new Error(
+        `public client config leaked into Task cache key: ${ldflag}`,
+      );
+    }
+  }
+  const generator = Deno.readTextFileSync(
+    new URL(
+      "../../../vantare-v2/tools/generate_supabase_config.ps1",
+      import.meta.url,
+    ),
+  );
+  if (
+    !generator.includes("VANTARE_LICENSE_PUBLIC_KEYS") ||
+    !generator.includes("licensePublicKeys = string(decoded)")
+  ) {
+    throw new Error(
+      "generated client config omits the public license registry",
+    );
+  }
+  const commonTask = Deno.readTextFileSync(
+    new URL("../../../vantare-v2/build/Taskfile.yml", import.meta.url),
+  );
+  for (
+    const forwarding of [
+      "VITE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL:\n            ref: .VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY:\n            ref: .VITE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL: '{{.VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY: '{{.VITE_SUPABASE_ANON_KEY",
+      "env: *frontend-build-env",
+    ]
+  ) {
+    if (!commonTask.includes(forwarding)) {
+      throw new Error(`frontend task chain omits forwarding: ${forwarding}`);
+    }
+  }
+  for (
+    const variable of [
+      "VANTARE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
+      "VANTARE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
+    ]
+  ) {
+    const occurrences = windowsTask.split(variable).length - 1;
+    if (occurrences !== 2) {
+      throw new Error(
+        `Windows native and Docker builds must forward ${variable}: ${occurrences}`,
+      );
+    }
   }
 });
 

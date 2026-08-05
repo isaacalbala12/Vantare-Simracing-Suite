@@ -134,6 +134,10 @@ jobs:
       # Versioned Ed25519 public keys only (key-id:base64url-public-key). The
       # private signing key exists exclusively in the Supabase function env.
       VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
+      # Branch builds identify their actual channel inside the binary. Tagged
+      # public builds are always master; the source job already proves the tag
+      # belongs to master.
+      VANTARE_BUILD_CHANNEL: ${{ github.ref_type == 'branch' && github.ref_name || 'master' }}
     defaults:
       run:
         shell: powershell

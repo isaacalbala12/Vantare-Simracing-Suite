@@ -44,6 +44,10 @@ tasks:
             ref: .OBFUSCATED
           DEV:
             ref: .DEV
+          VANTARE_SUPABASE_URL:
+            ref: .VANTARE_SUPABASE_URL
+          VANTARE_SUPABASE_ANON_KEY:
+            ref: .VANTARE_SUPABASE_ANON_KEY
       - task: common:generate:icons
     preconditions:
       - sh: '{{if eq .OBFUSCATED "true"}}command -v garble >/dev/null 2>&1{{else}}true{{end}}'
@@ -66,7 +70,7 @@ tasks:
       # credentials out of this task also prevents Task from using them in its
       # Windows checksum filename.
       BINDING_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false{{end}}'
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X main.version=v{{.APP_VERSION}} -X main.supabaseURL={{.VANTARE_SUPABASE_URL}} -X main.supabaseAnonKey={{.VANTARE_SUPABASE_ANON_KEY}} -X main.licensePublicKeys={{.VANTARE_LICENSE_PUBLIC_KEYS}}"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l" -ldflags="-X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X main.version=v{{.APP_VERSION}} -X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}"{{end}}'
     env:
       GOOS: windows
       CGO_ENABLED: '{{.CGO_ENABLED | default "0"}}'
@@ -80,6 +84,10 @@ tasks:
         vars:
           OBFUSCATED:
             ref: .OBFUSCATED
+          VANTARE_SUPABASE_URL:
+            ref: .VANTARE_SUPABASE_URL
+          VANTARE_SUPABASE_ANON_KEY:
+            ref: .VANTARE_SUPABASE_ANON_KEY
       - task: common:generate:icons
     preconditions:
       - sh: docker info > /dev/null 2>&1

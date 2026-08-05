@@ -37,6 +37,29 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 	}
 }
 
+func TestProtectedStoreTargetsIsolateInternalChannelsByBackend(t *testing.T) {
+	legacyClock, legacyAuth := protectedStoreTargets("master", "https://production.invalid")
+	if legacyClock != "Vantare/LicenseClock" || legacyAuth != "Vantare/SupabaseAuth" {
+		t.Fatalf("master targets = %q, %q", legacyClock, legacyAuth)
+	}
+
+	clock, auth := protectedStoreTargets("nightly", "https://testing.invalid")
+	if clock == legacyClock || auth == legacyAuth {
+		t.Fatal("nightly reused production credential targets")
+	}
+	if !strings.HasPrefix(clock, "Vantare/nightly/") || !strings.HasSuffix(clock, "/LicenseClock") {
+		t.Fatalf("nightly clock target = %q", clock)
+	}
+	if !strings.HasPrefix(auth, "Vantare/nightly/") || !strings.HasSuffix(auth, "/SupabaseAuth") {
+		t.Fatalf("nightly auth target = %q", auth)
+	}
+
+	otherClock, otherAuth := protectedStoreTargets("nightly", "https://other.invalid")
+	if otherClock == clock || otherAuth == auth {
+		t.Fatal("different backends shared internal credential targets")
+	}
+}
+
 type fakeStrategyCommandExecutor struct {
 	result []byte
 	err    error

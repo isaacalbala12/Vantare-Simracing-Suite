@@ -333,7 +333,8 @@ Ledger de ejecución vivo:
 | 4b | Correcciones P3 de revisión | Completada | `339e81a`; mensaje de guard, carve-out muerto y fragilidad del ancla documentada | Task 5 |
 | 5 | Guía de autoría | Completada | `ca978d0`; guía con 4 recetas y contrato OS-09 corregido | Task 6 |
 | 6 | Gates acumulativos | Completada (parcial) | suite 2181/2181, lint focal, `design-system:check`, build y compile-out PASS; smoke y protocolo visual omitidos por decisión de Isaac | Task 7 |
-| 7 | Handoff y cierre | Completada | docs cerrados; sin push, sin PR y sin cambio en Linear | Revisión manual de Isaac |
+| 7 | Handoff y cierre | Completada | docs cerrados | Revisión manual de Isaac |
+| 8 | Promoción a nightly | En revisión | Isaac validó al 100 % el 2026-08-05; rama de integración `os-09-n01` con merge `10be06d`; gates combinados 2217/2217, build y compile-out PASS | Merge del PR por Isaac |
 
 Estado actual: implementación autorizada por Isaac el 2026-08-05. Task 0 pasó:
 se instalaron dependencias ignoradas con `--frozen-lockfile`, el lockfile real de
@@ -409,7 +410,14 @@ Task 4.
 7. **Fuera de alcance de ISA-291.** Migración de los 41 diseños, canvas
    drag/resize, perfiles, persistencia, lectores LMU, Billing, Wails/SSE y
    baselines visuales. No se cambió ningún píxel ni ningún archivo de producto.
-8. **Próxima acción exacta para un chat nuevo.** Verificación manual de Isaac
-   según la sección homónima del plan; después, revisión adversarial si Isaac la
-   solicita y, solo con su aprobación explícita, ISA-280 (OS-09L, gate técnico
-   final previo a Nightly). No promover a `nightly` antes de eso.
+8. **Próxima acción exacta para un chat nuevo.** Isaac completó la verificación
+   manual el 2026-08-05, validó ISA-291 al 100 % y autorizó la promoción. El
+   trabajo vive ahora en la rama de integración
+   `vantareapp/os-09-n01-promocion-overlay-workshop-a-nightly` (creada desde
+   `origin/nightly` `fb2c355`, merge `--no-ff` en `10be06d`, sin conflictos), con
+   PR abierto hacia `nightly` y **pendiente de que Isaac dé el merge**. Esa
+   promoción mueve el Overlay Workshop completo: ISA-260–265 (la herramienta) más
+   ISA-291 (sus barandillas y manual); los commits están apilados y no se pueden
+   separar. Impacto para usuarios y testers: ninguno, el Workshop está excluido de
+   Stable y el compile-out lo confirma. Tras el merge: ISA-280 (OS-09L, gate
+   técnico final) y resolver la cuestión abierta del punto 6b.

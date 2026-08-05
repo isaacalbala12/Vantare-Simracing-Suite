@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import {
+  combineOfficialDesignDefinitions,
   getOfficialDesign,
   listOfficialDesigns,
   OFFICIAL_DESIGNS_SECTION_LABEL,
@@ -10,6 +11,27 @@ import crystalReferenceManifest from "../../../testdata/crystal-reference/manife
 import type { WidgetType } from "../core/profile-document";
 
 describe("official-designs", () => {
+  it("fails closed when legacy and declared catalogs collide", () => {
+    const design = getOfficialDesign("delta-crystal-simple")!;
+    expect(() => combineOfficialDesignDefinitions([design], [design])).toThrow(
+      "duplicate official design id across legacy and declared catalogs: delta-crystal-simple",
+    );
+  });
+
+  it("preserves the pilot position while appending newly declared designs", () => {
+    const timeAttack = getOfficialDesign("delta-time-attack")!;
+    const simple = getOfficialDesign("delta-crystal-simple")!;
+    const standings = getOfficialDesign("standings-original-base")!;
+    const appended = { ...simple, id: "new-declared-design" };
+    expect(
+      combineOfficialDesignDefinitions(
+        [timeAttack, standings],
+        [simple, appended],
+        { "delta-crystal-simple": "delta-time-attack" },
+      ).map((design) => design.id),
+    ).toEqual(["delta-time-attack", "delta-crystal-simple", "standings-original-base", "new-declared-design"]);
+  });
+
   it("exposes the Vantare section label", () => {
     expect(OFFICIAL_DESIGNS_SECTION_LABEL).toBe("Diseños de Vantare");
   });

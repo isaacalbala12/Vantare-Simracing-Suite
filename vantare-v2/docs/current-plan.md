@@ -4518,3 +4518,27 @@ Nota ISA-268 / OS-09I0 (2026-08-05, matriz congelada y checker):
   lote. Crystal usa los lotes canónicos 01–16; 10A/B/C permanecen tres diseños
   del mismo tipo, 15 comparte Delta con 06 y 13/14/16 siguen siendo tipos
   distintos. V2/reestilizados se excluyen explícitamente.
+
+Nota ISA-267 / OS-09H (2026-08-05, scaffolder seguro `overlay:new`):
+- Las declaraciones co-localizadas bajo `design-systems/vantare-*/**/official-designs.ts`
+  alimentan un barrel TS generado, ordenado y versionado. Es una proyección
+  mecánica; `official-designs.ts` sigue siendo el catálogo final único y combina
+  entradas legacy no migradas con declaraciones sin duplicar el piloto.
+- `official-designs:check` compara bytes y forma parte de build. El generador
+  usa solo Node stdlib, rutas convencionales e imports POSIX; no analiza ni
+  modifica manifests/agregadores con regex y no añade dependencias.
+- `overlay:new` exige widget/system/design explícitos, valida kebab-case,
+  catálogo, registro y parser productivos, y rechaza colisiones o formas
+  visuales no soportadas. Genera metadata tipada que reutiliza renderer,
+  ViewModel, defaults y migraciones; no crea JSX, CSS, host ni dispatch.
+- Dry-run enumera declaración, barrel, comando y URL Workshop sin escribir.
+  La ejecución usa no-overwrite y rollback acotado; no afirma transacción de
+  filesystem absoluta. La integración se prueba en un árbol temporal con
+  cleanup en `finally`, compilación/build y resolución real de catálogo/query.
+- Sin cambios visuales, baselines, canvas, perfiles, LMU, Billing, calendario,
+  Hub registry o canales. Rama de issue apilada sobre ISA-268; sin promoción.
+- Corrección P1 de review: root canónico por `realpath`, `lstat` componente a
+  componente y rechazo de symlink/junction/reparse para discovery, barrel,
+  destinos y rollback. Regresiones con junction real Windows demuestran cero
+  escritura externa. Revalidar antes/después de las syscalls reduce TOCTOU; el
+  contrato sigue exigiendo worktree controlado sin mutadores concurrentes.

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:dev": "tsc -b && vite build --mode development",
+    "build": "pnpm official-designs:check && tsc -b && vite build",
+    "build:dev": "pnpm official-designs:check && tsc -b && vite build --mode development",
     "test": "vitest run",
     "test:isa13-mono": "node scripts/isa-13-mono-legibility.playwright.mjs",
     "test:telemetry-overlay-shadow": "node scripts/telemetry-overlay-shadow.playwright.mjs",
@@ -24,7 +24,12 @@
     "visual:engineer-radio": "node scripts/engineer-radio-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
-    "design-system:check": "node scripts/check-design-system.mjs"
+    "design-system:check": "node scripts/check-design-system.mjs",
+    "official-designs:generate": "node scripts/generate-official-design-declarations.mjs",
+    "official-designs:check": "node scripts/generate-official-design-declarations.mjs --check",
+    "overlay:new": "node scripts/new-overlay-design.mjs",
+    "test:overlay-new": "node --test scripts/generate-official-design-declarations.node-test.mjs scripts/new-overlay-design.node-test.mjs",
+    "test:overlay-new:integration": "node --test scripts/new-overlay-design.integration.node-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

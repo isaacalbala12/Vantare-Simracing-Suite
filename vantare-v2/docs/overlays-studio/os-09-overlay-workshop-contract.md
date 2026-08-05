@@ -62,6 +62,49 @@ registros productivos. No decide qué renderer usar: `WidgetVisualHost` y el
 manifiesto siguen siendo las únicas autoridades de render. Retirar la declaración
 rompe el contract test; los otros diseños permanecen intactos hasta sus cortes.
 
+## Scaffolder seguro `overlay:new`
+
+ISA-267 convierte las declaraciones co-localizadas en una convención restringida:
+solo `frontend/src/overlay/design-systems/vantare-*/**/official-designs.ts` puede
+exportar `officialWidgetDesignDeclarations`. El script
+`official-designs:generate` descubre esos módulos por nombre y ruta, los ordena
+y genera el barrel versionado `official-design-declarations.generated.ts`.
+`official-designs:check` compara bytes y bloquea build si el barrel está obsoleto.
+El barrel es una proyección mecánica; `official-designs.ts` conserva la API y el
+catálogo final que consumen Workshop, Studio y runtimes.
+
+Uso determinista:
+
+```powershell
+corepack pnpm --dir frontend overlay:new -- --widget delta --system vantare-crystal --design mi-delta-crystal --name "Mi Delta Crystal" --dry-run
+corepack pnpm --dir frontend overlay:new -- --widget delta --system vantare-crystal --design mi-delta-crystal --name "Mi Delta Crystal"
+```
+
+El CLI valida kebab-case, colisiones, registro productivo y settings mediante el
+parser vigente antes de escribir. Genera solo metadata tipada que reutiliza el
+renderer, ViewModel, parser, defaults y migraciones productivos; no crea JSX,
+CSS, host, dispatch ni forma visual nueva. Una forma no soportada exige primero
+su propio corte de renderer.
+
+El preflight calcula declaración, barrel y URL antes de escribir; usa creación
+exclusiva y, ante fallo, elimina solo la declaración/directorio creados por esa
+invocación y restaura los bytes previos del barrel. Esto no es una transacción de
+filesystem absoluta: un corte de energía o fallo del volumen puede interrumpir
+una escritura. El gate por bytes `official-designs:check` detecta el barrel
+incompleto u obsoleto antes de compilar.
+
+La frontera de escritura canoniza el frontend existente con `realpath`, recorre
+con `lstat` cada componente existente bajo esa raíz y rechaza symlinks, junctions
+o reparse points antes de discovery, lectura del barrel, creación y rollback.
+También revalida containment canónica justo antes y después de `mkdir`/write;
+rollback solo actúa sobre rutas creadas que sigan siendo internas y seguras.
+Node expone las junctions de Windows como enlaces simbólicos a través de `lstat`.
+Sigue existiendo una ventana TOCTOU inevitable sin primitivas `openat`/handles de
+directorio: un actor con acceso concurrente al mismo árbol podría sustituir una
+ruta entre comprobación y syscall. El scaffolder reduce esa ventana y falla
+cerrado al revalidar, pero exige ejecutar en un worktree controlado sin mutadores
+concurrentes.
+
 ## Plan de ejecución posterior
 
 1. ISA-261: fixtures portables/deterministas, sin runtime live.

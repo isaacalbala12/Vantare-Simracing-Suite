@@ -21,6 +21,8 @@
     "visual:crystal-parity": "node scripts/crystal-renderer-parity.mjs",
     "visual:crystal-parity:report": "node scripts/crystal-renderer-parity.mjs --report-only",
     "visual:overlay-workshop": "node scripts/overlay-workshop-visual-protocol.mjs",
+    "test:overlay-workshop-hmr": "node --test scripts/overlay-workshop-hmr-smoke.node-test.mjs",
+    "smoke:overlay-workshop-hmr": "node scripts/overlay-workshop-hmr-smoke.mjs",
     "visual:engineer-radio": "node scripts/engineer-radio-visual.mjs",
     "visual:testing-center": "node scripts/testing-center-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",

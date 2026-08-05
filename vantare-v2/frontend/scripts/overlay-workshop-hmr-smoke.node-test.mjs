@@ -7,6 +7,10 @@ import test from 'node:test';
 import {
   assertGitClean,
   assertExactlyOne,
+  buildCssMutation,
+  buildTsxMutation,
+  closeWithTimeout,
+  listenWorkshopServer,
   mutateFileTemporarily,
   sha256,
 } from './overlay-workshop-hmr-smoke.mjs';
@@ -132,4 +136,52 @@ test('abort during verification restores exact bytes before propagating cancella
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+for (const [name, newline] of [['LF', '\n'], ['CRLF', '\r\n']]) {
+  test(`buildTsxMutation preserves ${name} and removes only its own attribute`, () => {
+    const source = Buffer.from(`      data-tone={model.tone}${newline}      className="vo-delta"${newline}`);
+    const mutation = buildTsxMutation(source);
+
+    assert.match(mutation.mutated.toString('utf8'), /data-overlay-workshop-hmr-tsx="active"/);
+    assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
+  });
+}
+
+test('buildTsxMutation preserves a UTF-8 BOM and final newline', () => {
+  const source = Buffer.concat([
+    Buffer.from([0xef, 0xbb, 0xbf]),
+    Buffer.from('      data-tone={model.tone}\n      className="vo-delta"\n'),
+  ]);
+  const mutation = buildTsxMutation(source);
+
+  assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
+});
+
+test('buildCssMutation appends one scoped custom property', () => {
+  const source = Buffer.from('.vo-delta {}\n');
+  const mutation = buildCssMutation(source);
+
+  assert.match(mutation.mutated.toString('utf8'), /\.vo-delta\[data-overlay-workshop-hmr-tsx="active"\]/);
+  assert.match(mutation.mutated.toString('utf8'), /--overlay-workshop-hmr-css: 17px/);
+  assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
+});
+
+test('closeWithTimeout resolves a completed cleanup and rejects a blocked cleanup', async () => {
+  await assert.doesNotReject(closeWithTimeout('fast close', async () => {}, 20));
+  await assert.rejects(
+    closeWithTimeout('blocked close', () => new Promise(() => {}), 10),
+    /blocked close timed out after 10ms/,
+  );
+});
+
+test('listenWorkshopServer closes its own handle before propagating listen failure', async () => {
+  let closeCalls = 0;
+  const server = {
+    listen: async () => { throw new Error('listen failed'); },
+    close: async () => { closeCalls += 1; },
+  };
+
+  await assert.rejects(listenWorkshopServer(server), /listen failed/);
+  assert.equal(closeCalls, 1);
 });

@@ -31,9 +31,12 @@ export function readGitStatus(paths) {
 
 export function assertGitClean(paths, readStatus = readGitStatus) {
   const output = readStatus(paths);
-  if (output) throw new Error(`HMR smoke target files must be clean:\n${output}`);
+  if (output) throw new Error(`HMR smoke requires a clean worktree under ${paths.join(', ')}:\n${output}`);
 }
 
+// Ancla literal: depende de la indentación exacta y de que ambas líneas sigan
+// siendo adyacentes en DeltaOriginal.tsx. Si reformateas o reordenas ese JSX,
+// actualiza esta constante; el smoke falla en seco con "found 0", nunca en silencio.
 const TSX_ANCHOR = '      data-tone={model.tone}\r\n      className="vo-delta"';
 const TSX_MARKER = '      data-overlay-workshop-hmr-tsx="active"\r\n';
 const CSS_MARKER = '\r\n[data-widget-system="vantare-original"].vo-delta[data-overlay-workshop-hmr-tsx="active"] {\r\n  --overlay-workshop-hmr-css: 17px;\r\n}\r\n';

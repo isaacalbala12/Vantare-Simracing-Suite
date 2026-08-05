@@ -86,7 +86,7 @@ describe("official-designs", () => {
   it("covers every implemented widget/system registration with a base official design", () => {
     const pairs = new Set<string>();
     for (const design of listOfficialDesigns()) {
-      if (design.isDefault || design.id === "delta-crystal-bar") {
+      if (design.isDefault) {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }

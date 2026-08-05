@@ -326,7 +326,7 @@ Ledger de ejecución vivo:
 | Task | Contenido | Estado | Commit/evidencia | Próxima condición |
 |---|---|---|---|---|
 | 0 | Preflight reproducible | Completada | Node 24.14.1; pnpm 9.1.0; lock blob `8ecdce49`; sin commit de producto | Task 1 |
-| 1 | Guard complementario del Host | Pendiente | — | test focal PASS |
+| 1 | Guard complementario del Host | Completada | `f9c6617`; Vitest focal 3/3 PASS; revisión de diff sin hallazgos | Task 2 |
 | 2 | Invariantes del catálogo | Pendiente | — | catálogo productivo intacto |
 | 3 | Mutaciones reversibles | Pendiente | — | tests de drift/recovery/cancelación PASS |
 | 4 | Smoke HMR real | Pendiente | — | HMR sin reload y cleanup completo |
@@ -337,6 +337,7 @@ Ledger de ejecución vivo:
 Estado actual: implementación autorizada por Isaac el 2026-08-05. Task 0 pasó:
 se instalaron dependencias ignoradas con `--frozen-lockfile`, el lockfile real de
 la raíz Git conservó el blob `8ecdce49a78adc664e4796f388889fbd41a67c08` y
-Vitest 4.1.9, Vite 8.0.16 y Playwright 1.60.0 están disponibles. El plan quedó
-corregido para apuntar a `..\pnpm-lock.yaml`; no existe lockfile dentro de
-`frontend`. Próxima acción exacta: Task 1.
+Vitest 4.1.9, Vite 8.0.16 y Playwright 1.60.0 están disponibles. Task 1 añadió
+Workshop al guard de consumidores de `WidgetVisualHost`; la revisión raíz
+repitió la caracterización focal con 3/3 PASS y confirmó un diff de un solo
+archivo, sin renderer ni excepción paralelos. Próxima acción exacta: Task 2.

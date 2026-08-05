@@ -204,7 +204,9 @@
   color: var(--vo-muted);
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  /* 0.03em, no 0.06em: en sans-serif la cabecera más larga ("Posición") se pasa
+     1px del ancho de su columna y se trunca. */
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Delegation for this issue:** only the root orchestrator may assign one microcorte to a fresh worker. Every assigned worker must use `executing-plans` inline and is forbidden from spawning, delegating or coordinating other agents.
+
 **Goal:** Convertir el Overlay Workshop existente en un bucle de autoría directa sobre el TSX/CSS productivo, con HMR real, catálogo explícito, restauración byte a byte y una guía que permita crear o modificar widgets sin traducción intermedia.
 
 **Architecture:** `WidgetVisualHost`, los manifests y `official-designs.ts` continúan siendo las únicas fronteras productivas; `/workshop` solo selecciona fixtures y superficies para renderizar exactamente esos componentes. Un smoke de desarrollo modifica temporalmente un atributo TSX y una regla CSS del Delta Original, observa ambos cambios mediante un único servidor Vite y restaura siempre los bytes originales. No se introduce DSL, generador, renderer alternativo, segundo catálogo ni conversor HTML.
@@ -38,9 +40,61 @@
 
 Los archivos productivos `DeltaOriginal.tsx` y `vantare-original/tokens.css` solo se modifican temporalmente durante el smoke. Sus hashes y su estado Git deben terminar exactamente como empezaron.
 
+## Microcorte D0 — Preflight reproducible
+
+### Task 0: preparar el worktree sin alterar dependencias
+
+**Files:**
+- Verify: `frontend/pnpm-lock.yaml`
+- Generated ignored: `frontend/node_modules/**`
+
+- [ ] **Step 1: verificar checkout y toolchain**
+
+Run:
+
+```powershell
+git branch --show-current
+git rev-parse HEAD
+git status --short
+node --version
+corepack pnpm --version
+```
+
+Expected: rama exacta ISA-291, `HEAD` incluye los commits aprobados de spec/plan, worktree limpio, Node y pnpm responden.
+
+- [ ] **Step 2: instalar solo si falta Vitest local**
+
+Run:
+
+```powershell
+$lockBefore = (Get-FileHash frontend/pnpm-lock.yaml -Algorithm SHA256).Hash
+if (-not (Test-Path frontend/node_modules/.bin/vitest.cmd)) {
+  corepack pnpm --dir frontend install --frozen-lockfile
+}
+$lockAfter = (Get-FileHash frontend/pnpm-lock.yaml -Algorithm SHA256).Hash
+if ($lockBefore -ne $lockAfter) { throw 'pnpm-lock.yaml changed during frozen install' }
+git status --short
+```
+
+Expected: instalación PASS, lockfile idéntico y worktree limpio. `node_modules` permanece ignorado.
+
+- [ ] **Step 3: verificar ejecutables locales**
+
+Run:
+
+```powershell
+corepack pnpm --dir frontend exec vitest --version
+corepack pnpm --dir frontend exec vite --version
+corepack pnpm --dir frontend exec node -e "import('playwright').then(() => console.log('playwright: available'))"
+```
+
+Expected: los tres componentes responden. Si Playwright no encuentra navegador, Task 4 utilizará el Chrome del sistema antes de escribir archivos.
+
 ## Microcorte D1 — Contratos de host y catálogo
 
 ### Task 1: Workshop como consumidor protegido del host real
+
+Este es un guard estático complementario: la prueba renderizada de `OverlayWorkshopDevRoute.test.tsx` sigue siendo la evidencia dinámica. Ninguno de los dos sustituye al otro.
 
 **Files:**
 - Modify: `frontend/src/overlay/core/overlay-workshop-characterization.test.ts`
@@ -104,13 +158,8 @@ it("uses a unique stable ID for every official design", () => {
 });
 
 it("marks exactly one default design for every registered widget/system pair", () => {
-  const expectedPairs = widgetTypeRegistry.list().flatMap((definition) =>
-    definition.type === "engineer-radio"
-      ? [[definition.type, "vantare-crystal"] as const]
-      : [
-          [definition.type, "vantare-original"] as const,
-          [definition.type, "vantare-crystal"] as const,
-        ],
+  const expectedPairs = designSystemRegistry.list().flatMap((system) =>
+    system.widgets.map((widget) => [widget.widgetType, system.id] as const),
   );
 
   for (const [widgetType, systemId] of expectedPairs) {
@@ -134,7 +183,7 @@ Run:
 corepack pnpm --dir frontend exec vitest run src/overlay/design-systems/official-designs.test.ts
 ```
 
-Expected: todos los tests pasan con el catálogo actual. Si aparece un ID duplicado o falta un default, corregir exclusivamente la entrada concreta en `official-designs.ts`, añadirla al staging de esta tarea y explicar el dato corregido en el commit.
+Expected: todos los tests pasan con el catálogo actual. Si aparece un ID duplicado o falta un default, detener la tarea, registrar la evidencia en ISA-291 y abrir una issue de corrección de catálogo separada. ISA-291 no modifica `official-designs.ts` para fabricar una demostración verde.
 
 - [ ] **Step 3: ejecutar ambos contratos juntos**
 
@@ -151,12 +200,12 @@ Expected: ambos archivos y todos sus tests pasan.
 Run:
 
 ```powershell
-git diff --check -- frontend/src/overlay/design-systems/official-designs.test.ts frontend/src/overlay/design-systems/official-designs.ts
+git diff --check -- frontend/src/overlay/design-systems/official-designs.test.ts
 git add frontend/src/overlay/design-systems/official-designs.test.ts
 git commit -m "test(overlay): enforce official design invariants"
 ```
 
-Expected: solo el test entra en el caso normal; `official-designs.ts` no cambia si el catálogo ya cumple.
+Expected: solo el test entra en el commit; `official-designs.ts` permanece intacto.
 
 ## Microcorte D2 — Piloto de mutaciones reversibles
 
@@ -172,12 +221,13 @@ Crear `frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs` con este conte
 
 ```js
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
+  assertGitClean,
   assertExactlyOne,
   mutateFileTemporarily,
   sha256,
@@ -194,14 +244,21 @@ test('sha256 changes with bytes and is stable for equal input', () => {
   assert.notEqual(sha256(Buffer.from('same')), sha256(Buffer.from('other')));
 });
 
+const markerMutation = (original) => ({
+  mutated: Buffer.concat([original, Buffer.from('OWN_MARKER\n')]),
+  removeOwnMarker: (observed) => Buffer.from(
+    assertExactlyOne(observed.toString('utf8'), 'OWN_MARKER\n', ''),
+  ),
+});
+
 test('mutateFileTemporarily restores exact bytes after success', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'vantare-hmr-'));
   const file = path.join(directory, 'sample.tsx');
   const original = Buffer.from('alpha\r\nbeta\r\n');
   try {
     await writeFile(file, original);
-    await mutateFileTemporarily(file, () => Buffer.from('changed\n'), async () => {
-      assert.equal(await readFile(file, 'utf8'), 'changed\n');
+    await mutateFileTemporarily({ file, buildMutation: markerMutation, verify: async () => {
+      assert.match(await readFile(file, 'utf8'), /OWN_MARKER/);
     });
     assert.deepEqual(await readFile(file), original);
   } finally {
@@ -216,15 +273,69 @@ test('mutateFileTemporarily restores exact bytes when verification throws', asyn
   try {
     await writeFile(file, original);
     await assert.rejects(
-      mutateFileTemporarily(file, () => Buffer.from('.root { color: blue; }\n'), async () => {
+      mutateFileTemporarily({ file, buildMutation: markerMutation, verify: async () => {
         throw new Error('verification failed');
-      }),
+      }}),
       /verification failed/,
     );
     assert.deepEqual(await readFile(file), original);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('concurrent edits survive while the owned marker is removed and evidence is written', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'vantare-hmr-'));
+  const file = path.join(directory, 'sample.tsx');
+  const recoveryDirectory = path.join(directory, 'recovery');
+  try {
+    await writeFile(file, 'ORIGINAL\n');
+    await assert.rejects(
+      mutateFileTemporarily({
+        file,
+        buildMutation: markerMutation,
+        recoveryDirectory,
+        verify: async () => writeFile(file, 'ORIGINAL\nEXTERNAL_EDIT\nOWN_MARKER\n'),
+      }),
+      /concurrent drift/,
+    );
+    assert.equal(await readFile(file, 'utf8'), 'ORIGINAL\nEXTERNAL_EDIT\n');
+    assert.deepEqual((await readdir(recoveryDirectory)).sort(), [
+      'cleaned.bin', 'manifest.json', 'original.bin', 'observed.bin',
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('unknown drift is never overwritten when the owned marker disappeared', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'vantare-hmr-'));
+  const file = path.join(directory, 'sample.tsx');
+  const recoveryDirectory = path.join(directory, 'recovery');
+  try {
+    await writeFile(file, 'ORIGINAL\n');
+    await assert.rejects(mutateFileTemporarily({
+      file,
+      buildMutation: markerMutation,
+      recoveryDirectory,
+      verify: async () => writeFile(file, 'EXTERNAL_WITHOUT_MARKER\n'),
+    }), /own marker could not be isolated/);
+    assert.equal(await readFile(file, 'utf8'), 'EXTERNAL_WITHOUT_MARKER\n');
+    assert.ok((await readdir(recoveryDirectory)).includes('manifest.json'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('assertGitClean accepts clean output and rejects modified and untracked output', () => {
+  let receivedPaths;
+  assert.doesNotThrow(() => assertGitClean(['one.tsx'], (paths) => {
+    receivedPaths = paths;
+    return '';
+  }));
+  assert.deepEqual(receivedPaths, ['one.tsx']);
+  assert.throws(() => assertGitClean(['one.tsx'], () => ' M one.tsx'), /must be clean/);
+  assert.throws(() => assertGitClean(['one.tsx'], () => '?? one.tsx'), /must be clean/);
 });
 ```
 
@@ -245,7 +356,7 @@ Crear `frontend/scripts/overlay-workshop-hmr-smoke.mjs` inicialmente con:
 ```js
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -264,37 +375,83 @@ export function assertExactlyOne(source, anchor, replacement) {
   return source.replace(anchor, replacement);
 }
 
-export function assertGitClean(paths) {
-  const output = execFileSync('git', ['status', '--porcelain', '--', ...paths], {
+export function readGitStatus(paths) {
+  return execFileSync('git', ['status', '--porcelain', '--', ...paths], {
     cwd: repositoryRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
+}
+
+export function assertGitClean(paths, readStatus = readGitStatus) {
+  const output = readStatus(paths);
   if (output) throw new Error(`HMR smoke target files must be clean:\n${output}`);
 }
 
-export async function mutateFileTemporarily(file, mutate, verify) {
+async function writeRecoveryEvidence(directory, { original, observed, cleaned }) {
+  await mkdir(directory, { recursive: true });
+  await Promise.all([
+    writeFile(path.join(directory, 'original.bin'), original),
+    writeFile(path.join(directory, 'observed.bin'), observed),
+    writeFile(path.join(directory, 'cleaned.bin'), cleaned),
+    writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify({
+      originalSha256: sha256(original),
+      observedSha256: sha256(observed),
+      cleanedSha256: sha256(cleaned),
+    }, null, 2)}\n`),
+  ]);
+}
+
+export async function mutateFileTemporarily({
+  file,
+  buildMutation,
+  verify,
+  recoveryDirectory,
+}) {
   const original = await readFile(file);
-  const originalHash = sha256(original);
+  const mutation = buildMutation(original);
   let verificationError;
+  let cleanupError;
   try {
-    const changed = mutate(original);
-    await writeFile(file, changed);
+    await writeFile(file, mutation.mutated);
     await verify();
   } catch (error) {
     verificationError = error;
   } finally {
-    await writeFile(file, original);
+    const observed = await readFile(file);
+    if (observed.equals(mutation.mutated)) {
+      await writeFile(file, original);
+    } else {
+      let cleaned = observed;
+      let markerRemovalError;
+      try {
+        cleaned = mutation.removeOwnMarker(observed);
+      } catch (error) {
+        markerRemovalError = error;
+      }
+      if (!cleaned.equals(observed)) await writeFile(file, cleaned);
+      if (recoveryDirectory) {
+        await writeRecoveryEvidence(recoveryDirectory, { original, observed, cleaned });
+      }
+      cleanupError = markerRemovalError
+        ? new AggregateError(
+            [markerRemovalError],
+            'concurrent drift detected; own marker could not be isolated and observed bytes were preserved',
+          )
+        : new Error('concurrent drift detected; external bytes preserved and recovery evidence written');
+    }
   }
-  const restored = await readFile(file);
-  if (sha256(restored) !== originalHash || !restored.equals(original)) {
-    throw new Error(`${path.relative(repositoryRoot, file)} was not restored byte-for-byte`);
+  if (cleanupError && verificationError) {
+    throw new AggregateError([verificationError, cleanupError], 'verification and cleanup both failed');
   }
+  if (cleanupError) throw cleanupError;
   if (verificationError) throw verificationError;
+  const restored = await readFile(file);
+  if (!restored.equals(original)) throw new Error('restoration was not byte-for-byte');
 }
 ```
 
-No incluir aún Vite o Playwright: este paso solo demuestra que el mecanismo destructivo temporal es seguro.
+No incluir aún Vite o Playwright: este paso demuestra restauración exacta cuando no hay drift y conservación de ediciones externas cuando sí lo hay. La evidencia no contiene rutas personales.
 
 - [ ] **Step 4: ejecutar el test hasta PASS**
 
@@ -304,24 +461,9 @@ Run:
 node --test frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs
 ```
 
-Expected: `4 tests`, `4 pass`, `0 fail`.
+Expected: `7 tests`, `7 pass`, `0 fail`. Un test concurrente conserva `EXTERNAL_EDIT` y elimina solo `OWN_MARKER`; el segundo demuestra que, si el marcador ya no puede aislarse, se preservan todos los bytes observados y se escribe evidencia.
 
-- [ ] **Step 5: probar el guard con una ruta limpia real**
-
-Añadir al test:
-
-```js
-test('assertGitClean accepts the two clean product targets', () => {
-  assert.doesNotThrow(() => assertGitClean([
-    'vantare-v2/frontend/src/overlay/design-systems/vantare-original/delta/DeltaOriginal.tsx',
-    'vantare-v2/frontend/src/overlay/design-systems/vantare-original/tokens.css',
-  ]));
-});
-```
-
-Y añadir `assertGitClean` al import nombrado del test. Ejecutar de nuevo el mismo comando; expected: `5 pass`.
-
-- [ ] **Step 6: commit del piloto reversible**
+- [ ] **Step 5: commit del piloto reversible**
 
 Run:
 
@@ -347,17 +489,30 @@ Expected: commit con exactamente los dos scripts.
 Ampliar el import del test con `buildCssMutation` y `buildTsxMutation`, y añadir:
 
 ```js
-test('buildTsxMutation adds only the temporary data attribute', () => {
-  const source = Buffer.from('      data-tone={model.tone}\n      className="vo-delta"\n');
-  const changed = buildTsxMutation(source).toString('utf8');
-  assert.match(changed, /data-overlay-workshop-hmr-tsx="active"/);
-  assert.match(changed, /className="vo-delta"/);
+for (const [name, newline] of [['LF', '\n'], ['CRLF', '\r\n']]) {
+  test(`buildTsxMutation preserves ${name} and removes only its own attribute`, () => {
+    const source = Buffer.from(`      data-tone={model.tone}${newline}      className="vo-delta"${newline}`);
+    const mutation = buildTsxMutation(source);
+    assert.match(mutation.mutated.toString('utf8'), /data-overlay-workshop-hmr-tsx="active"/);
+    assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
+  });
+}
+
+test('buildTsxMutation preserves a UTF-8 BOM and final newline', () => {
+  const source = Buffer.concat([
+    Buffer.from([0xef, 0xbb, 0xbf]),
+    Buffer.from('      data-tone={model.tone}\n      className="vo-delta"\n'),
+  ]);
+  const mutation = buildTsxMutation(source);
+  assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
 });
 
 test('buildCssMutation appends one scoped custom property', () => {
-  const changed = buildCssMutation(Buffer.from('.vo-delta {}\n')).toString('utf8');
-  assert.match(changed, /\.vo-delta\[data-overlay-workshop-hmr-tsx="active"\]/);
-  assert.match(changed, /--overlay-workshop-hmr-css: 17px/);
+  const source = Buffer.from('.vo-delta {}\n');
+  const mutation = buildCssMutation(source);
+  assert.match(mutation.mutated.toString('utf8'), /\.vo-delta\[data-overlay-workshop-hmr-tsx="active"\]/);
+  assert.match(mutation.mutated.toString('utf8'), /--overlay-workshop-hmr-css: 17px/);
+  assert.deepEqual(mutation.removeOwnMarker(mutation.mutated), source);
 });
 ```
 
@@ -375,16 +530,19 @@ Añadir al script:
 
 ```js
 const TSX_ANCHOR = '      data-tone={model.tone}\r\n      className="vo-delta"';
-const TSX_REPLACEMENT = '      data-tone={model.tone}\r\n      data-overlay-workshop-hmr-tsx="active"\r\n      className="vo-delta"';
+const TSX_MARKER = '      data-overlay-workshop-hmr-tsx="active"\r\n';
 const CSS_MARKER = `\r\n[data-widget-system="vantare-original"].vo-delta[data-overlay-workshop-hmr-tsx="active"] {\r\n  --overlay-workshop-hmr-css: 17px;\r\n}\r\n`;
 
 export function buildTsxMutation(bytes) {
   const source = bytes.toString('utf8');
   const anchor = source.includes(TSX_ANCHOR) ? TSX_ANCHOR : TSX_ANCHOR.replaceAll('\r\n', '\n');
-  const replacement = source.includes(TSX_ANCHOR)
-    ? TSX_REPLACEMENT
-    : TSX_REPLACEMENT.replaceAll('\r\n', '\n');
-  return Buffer.from(assertExactlyOne(source, anchor, replacement));
+  const newline = source.includes(TSX_ANCHOR) ? '\r\n' : '\n';
+  const marker = TSX_MARKER.replaceAll('\r\n', newline);
+  const replacement = anchor.replace(`      className`, `${marker}      className`);
+  return {
+    mutated: Buffer.from(assertExactlyOne(source, anchor, replacement)),
+    removeOwnMarker: (observed) => Buffer.from(assertExactlyOne(observed.toString('utf8'), marker, '')),
+  };
 }
 
 export function buildCssMutation(bytes) {
@@ -393,23 +551,48 @@ export function buildCssMutation(bytes) {
     throw new Error('temporary HMR CSS marker already exists');
   }
   const newline = source.includes('\r\n') ? '\r\n' : '\n';
-  return Buffer.from(`${source.replace(/\s*$/, '')}${CSS_MARKER.replaceAll('\r\n', newline)}`);
+  const marker = CSS_MARKER.replaceAll('\r\n', newline);
+  return {
+    mutated: Buffer.from(`${source}${marker}`),
+    removeOwnMarker: (observed) => Buffer.from(assertExactlyOne(observed.toString('utf8'), marker, '')),
+  };
 }
 ```
 
-Run de nuevo el test Node. Expected: `7 pass`.
+Run de nuevo el test Node. Expected: `11 pass`; LF, CRLF, BOM y newline final quedan cubiertos.
 
 - [ ] **Step 3: añadir servidor, navegador y errores observables**
 
 Añadir los imports:
 
 ```js
+import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 ```
 
 Añadir estas funciones:
 
 ```js
+const chromeExecutable = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+function progress(phase) {
+  process.stdout.write(`[overlay-workshop-hmr] ${phase}\n`);
+}
+
+async function withTimeout(label, operation, timeoutMs = 15_000) {
+  let timer;
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function startWorkshopServer() {
   const { createServer } = await import('vite');
   const server = await createServer({
@@ -446,6 +629,28 @@ async function waitForComputedProperty(page, expected) {
     return root && getComputedStyle(root).getPropertyValue('--overlay-workshop-hmr-css').trim() === value;
   }, expected);
 }
+
+async function assertNoReload(page, sentinel, navigationCount, phase) {
+  const current = await page.evaluate(() => window.__vantareWorkshopHmrSentinel);
+  if (current !== sentinel) throw new Error(`${phase}: page sentinel changed; HMR became a reload`);
+  if (navigationCount() !== 0) throw new Error(`${phase}: main frame navigated during HMR`);
+}
+
+async function assertEndpointClosed(baseUrl) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1500);
+  try {
+    const response = await fetch(baseUrl, { signal: controller.signal });
+    throw new Error(`Vite endpoint still responds after cleanup: ${response.status}`);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Vite endpoint still responds')) throw error;
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Vite endpoint did not close before timeout');
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
 ```
 
 - [ ] **Step 4: implementar el escenario completo con cleanup anidado**
@@ -458,46 +663,106 @@ async function main() {
   const relativeCss = 'vantare-v2/frontend/src/overlay/design-systems/vantare-original/tokens.css';
   const tsxFile = path.join(repositoryRoot, relativeTsx);
   const cssFile = path.join(repositoryRoot, relativeCss);
-  assertGitClean([relativeTsx, relativeCss]);
+  const recoveryRoot = path.join(frontendRoot, '.tmp', 'overlay-workshop-hmr-smoke');
+  assertGitClean(['vantare-v2']);
 
   const originalTsx = await readFile(tsxFile);
   const originalCss = await readFile(cssFile);
-  const { server, baseUrl } = await startWorkshopServer();
+  let server;
+  let baseUrl;
   let browser;
+  let operationError;
+  const cleanupErrors = [];
   const consoleErrors = [];
   const pageErrors = [];
   try {
-    browser = await chromium.launch({ headless: true });
+    const started = await withTimeout('Vite startup', startWorkshopServer);
+    server = started.server;
+    baseUrl = started.baseUrl;
+    const executablePath = process.platform === 'win32' && existsSync(chromeExecutable)
+      ? chromeExecutable
+      : undefined;
+    try {
+      browser = await withTimeout(
+        'Chromium launch',
+        () => chromium.launch({ headless: true, executablePath }),
+      );
+    } catch (error) {
+      throw new Error(
+        `No usable Chromium was found. Install Playwright Chromium or Google Chrome at ${chromeExecutable}. ${error instanceof Error ? error.message : error}`,
+      );
+    }
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text());
     });
     page.on('pageerror', (error) => pageErrors.push(error.message));
+    let navigationCount = 0;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) navigationCount += 1;
+    });
     await page.goto(workshopUrl(baseUrl), { waitUntil: 'domcontentloaded' });
     await page.locator('[data-widget-renderer="delta"]').waitFor();
+    navigationCount = 0;
+    const sentinel = `hmr-${Date.now()}-${Math.random()}`;
+    await page.evaluate((value) => { window.__vantareWorkshopHmrSentinel = value; }, sentinel);
+    await page.waitForFunction(() => !document.querySelector('[data-overlay-workshop-hmr-tsx="active"]'));
+    await waitForComputedProperty(page, '');
 
-    await mutateFileTemporarily(tsxFile, buildTsxMutation, async () => {
+    await mutateFileTemporarily({
+      file: tsxFile,
+      buildMutation: buildTsxMutation,
+      recoveryDirectory: path.join(recoveryRoot, 'tsx'),
+      verify: async () => {
       await page.locator('[data-widget-renderer="delta"][data-overlay-workshop-hmr-tsx="active"]').waitFor();
-      await mutateFileTemporarily(cssFile, buildCssMutation, async () => {
-        await waitForComputedProperty(page, '17px');
+      await waitForComputedProperty(page, '');
+      await assertNoReload(page, sentinel, () => navigationCount, 'tsx apply');
+      progress('tsx transition observed without navigation');
+      await mutateFileTemporarily({
+        file: cssFile,
+        buildMutation: buildCssMutation,
+        recoveryDirectory: path.join(recoveryRoot, 'css'),
+        verify: async () => {
+          await waitForComputedProperty(page, '17px');
+          await assertNoReload(page, sentinel, () => navigationCount, 'css apply');
+          progress('css transition observed without navigation');
+        },
       });
       await waitForComputedProperty(page, '');
+      await assertNoReload(page, sentinel, () => navigationCount, 'css restore');
+      progress('css restoration observed without navigation');
+      },
     });
     await page.waitForFunction(() => !document.querySelector('[data-overlay-workshop-hmr-tsx="active"]'));
+    await assertNoReload(page, sentinel, () => navigationCount, 'tsx restore');
+    progress('tsx restoration observed without navigation');
 
     if (!(await readFile(tsxFile)).equals(originalTsx)) throw new Error('TSX restoration mismatch');
     if (!(await readFile(cssFile)).equals(originalCss)) throw new Error('CSS restoration mismatch');
-    assertGitClean([relativeTsx, relativeCss]);
+    assertGitClean(['vantare-v2']);
     if (consoleErrors.length || pageErrors.length) {
       throw new Error(`browser errors: ${JSON.stringify({ consoleErrors, pageErrors })}`);
     }
-    process.stdout.write('overlay-workshop-hmr-smoke: PASS (tsx + css + byte restoration)\n');
+  } catch (error) {
+    operationError = error;
   } finally {
-    await browser?.close();
-    await server.close();
-    await writeFile(tsxFile, originalTsx);
-    await writeFile(cssFile, originalCss);
+    const cleanupResults = await Promise.allSettled([
+      browser ? withTimeout('browser close', () => browser.close(), 5000) : Promise.resolve(),
+      server ? withTimeout('Vite close', () => server.close(), 5000) : Promise.resolve(),
+    ]);
+    for (const result of cleanupResults) {
+      if (result.status === 'rejected') cleanupErrors.push(result.reason);
+    }
   }
+  if (browser?.isConnected()) cleanupErrors.push(new Error('browser remains connected'));
+  if (baseUrl) await assertEndpointClosed(baseUrl).catch((error) => cleanupErrors.push(error));
+  if (operationError || cleanupErrors.length) {
+    throw new AggregateError(
+      [operationError, ...cleanupErrors].filter(Boolean),
+      'overlay-workshop-hmr-smoke failed',
+    );
+  }
+  process.stdout.write('overlay-workshop-hmr-smoke: PASS (tsx + css + byte restoration + resource cleanup)\n');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
@@ -508,7 +773,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
 }
 ```
 
-La restauración exterior en `finally` es deliberadamente redundante: protege también fallos ocurridos fuera de `mutateFileTemporarily`.
+Las mutaciones restauran o retiran su propio marcador **antes** de cerrar navegador y servidor. El cierre de un recurso no omite los demás, cada operación tiene timeout y el gate comprueba navegador desconectado y puerto sin responder.
 
 - [ ] **Step 5: exponer comandos estables**
 
@@ -519,37 +784,53 @@ Añadir a `frontend/package.json` después de `visual:overlay-workshop`:
 "smoke:overlay-workshop-hmr": "node scripts/overlay-workshop-hmr-smoke.mjs",
 ```
 
-- [ ] **Step 6: ejecutar unit tests y smoke real**
+- [ ] **Step 6: ejecutar unit tests y lint antes del commit**
 
 Run:
 
 ```powershell
 corepack pnpm --dir frontend test:overlay-workshop-hmr
-corepack pnpm --dir frontend smoke:overlay-workshop-hmr
-git status --short -- frontend/src/overlay/design-systems/vantare-original/delta/DeltaOriginal.tsx frontend/src/overlay/design-systems/vantare-original/tokens.css
+corepack pnpm --dir frontend exec eslint scripts/overlay-workshop-hmr-smoke.mjs scripts/overlay-workshop-hmr-smoke.node-test.mjs
+git diff --check -- frontend/scripts/overlay-workshop-hmr-smoke.mjs frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs frontend/package.json
 ```
 
 Expected:
 
 ```text
-7 tests passed
-overlay-workshop-hmr-smoke: PASS (tsx + css + byte restoration)
+11 tests passed
 ```
 
-El último comando no imprime nada. Si cualquiera de los dos archivos queda dirty, el corte falla aunque el navegador haya observado HMR.
+ESLint y `git diff --check` también terminan sin errores.
 
-- [ ] **Step 7: lint y commit del smoke real**
+- [ ] **Step 7: commit del smoke antes de ejecutarlo sobre producto**
 
 Run:
 
 ```powershell
-corepack pnpm --dir frontend exec eslint scripts/overlay-workshop-hmr-smoke.mjs scripts/overlay-workshop-hmr-smoke.node-test.mjs
-git diff --check -- frontend/scripts/overlay-workshop-hmr-smoke.mjs frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs frontend/package.json
 git add frontend/scripts/overlay-workshop-hmr-smoke.mjs frontend/scripts/overlay-workshop-hmr-smoke.node-test.mjs frontend/package.json
 git commit -m "test(overlay): verify direct code HMR"
+git status --short
 ```
 
-Expected: ESLint y diff PASS; commit limitado a tres archivos.
+Expected: commit limitado a tres archivos y árbol completamente limpio. El smoke no se ejecuta sobre cambios sin commit.
+
+- [ ] **Step 8: ejecutar el smoke real sobre `HEAD` limpio**
+
+Run:
+
+```powershell
+corepack pnpm --dir frontend smoke:overlay-workshop-hmr
+git check-ignore frontend/.tmp/overlay-workshop-hmr-smoke
+git status --short
+```
+
+Expected:
+
+```text
+overlay-workshop-hmr-smoke: PASS (tsx + css + byte restoration + resource cleanup)
+```
+
+`git check-ignore` imprime la ruta temporal; `git status` no imprime nada, el navegador queda desconectado y el puerto Vite ya no responde. Si el smoke falla, corregir script/test en un commit `fix(overlay): harden direct code HMR`, volver a dejar el árbol limpio y repetir este paso; no esconder el fallo ni borrar evidencia de recuperación.
 
 ## Microcorte D4 — Guía ejecutable de autoría
 
@@ -694,9 +975,10 @@ Run:
 corepack pnpm --dir frontend test:overlay-workshop-hmr
 corepack pnpm --dir frontend smoke:overlay-workshop-hmr
 corepack pnpm --dir frontend exec vitest run src/overlay/core/overlay-workshop-characterization.test.ts src/overlay/design-systems/official-designs.test.ts src/overlay/authoring/OverlayWorkshopDevRoute.test.tsx src/overlay/authoring/overlay-workshop-query.test.ts
+corepack pnpm --dir frontend test
 ```
 
-Expected: todos los tests PASS, smoke TSX+CSS PASS, cero archivo productivo dirty.
+Expected: tests focales y suite frontend completa PASS, smoke TSX+CSS PASS y cero archivo productivo dirty. Si la suite completa descubre deuda heredada, registrar el test y error exactos; no ocultarlo ni reducir cobertura.
 
 - [ ] **Step 2: ejecutar lint focal y contrato de diseño**
 
@@ -836,6 +1118,8 @@ qué gates pasaron realmente y cuáles no. Si no hay hallazgos, dilo explícitam
 Todo P0/P1/P2 y P3 razonable se devuelve al worker correspondiente, se corrige con test de regresión y se revisa de nuevo antes de solicitar aprobación a Isaac.
 
 ## Verificación manual final para Isaac
+
+Realizar esta prueba con un único operador, autosave y formatter desactivados para los dos archivos objetivo, y sin ningún smoke automatizado ejecutándose en paralelo.
 
 1. Desde el worktree de ISA-291, ejecutar `corepack pnpm --dir frontend dev`.
 2. Abrir el Delta Original en `/workshop` y dejar la ventana visible.

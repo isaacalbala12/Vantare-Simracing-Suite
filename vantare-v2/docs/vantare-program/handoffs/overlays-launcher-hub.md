@@ -325,7 +325,7 @@ Ledger de ejecución vivo:
 
 | Task | Contenido | Estado | Commit/evidencia | Próxima condición |
 |---|---|---|---|---|
-| 0 | Preflight reproducible | Pendiente | — | dependencias congeladas y árbol limpio |
+| 0 | Preflight reproducible | Completada | Node 24.14.1; pnpm 9.1.0; lock blob `8ecdce49`; sin commit de producto | Task 1 |
 | 1 | Guard complementario del Host | Pendiente | — | test focal PASS |
 | 2 | Invariantes del catálogo | Pendiente | — | catálogo productivo intacto |
 | 3 | Mutaciones reversibles | Pendiente | — | tests de drift/recovery/cancelación PASS |
@@ -334,5 +334,9 @@ Ledger de ejecución vivo:
 | 6 | Gates acumulativos | Pendiente | — | suite/build/compile-out/visual PASS |
 | 7 | Handoff y cierre | Pendiente | — | Linear y evidencia final actualizados |
 
-Estado al crear este paquete: implementación autorizada por Isaac el 2026-08-05,
-pero ninguna Task de código iniciada. Próxima acción exacta: Task 0.
+Estado actual: implementación autorizada por Isaac el 2026-08-05. Task 0 pasó:
+se instalaron dependencias ignoradas con `--frozen-lockfile`, el lockfile real de
+la raíz Git conservó el blob `8ecdce49a78adc664e4796f388889fbd41a67c08` y
+Vitest 4.1.9, Vite 8.0.16 y Playwright 1.60.0 están disponibles. El plan quedó
+corregido para apuntar a `..\pnpm-lock.yaml`; no existe lockfile dentro de
+`frontend`. Próxima acción exacta: Task 1.

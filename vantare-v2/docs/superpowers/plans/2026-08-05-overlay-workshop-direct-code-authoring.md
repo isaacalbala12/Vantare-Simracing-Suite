@@ -45,7 +45,7 @@ Los archivos productivos `DeltaOriginal.tsx` y `vantare-original/tokens.css` sol
 ### Task 0: preparar el worktree sin alterar dependencias
 
 **Files:**
-- Verify: `frontend/pnpm-lock.yaml`
+- Verify from the Vantare working directory: `../pnpm-lock.yaml` (workspace-root lockfile)
 - Generated ignored: `frontend/node_modules/**`
 
 - [ ] **Step 1: verificar checkout y toolchain**
@@ -67,16 +67,16 @@ Expected: rama exacta ISA-291, `HEAD` incluye los commits aprobados de spec/plan
 Run:
 
 ```powershell
-$lockBefore = (Get-FileHash frontend/pnpm-lock.yaml -Algorithm SHA256).Hash
+$lockBefore = (Get-FileHash ..\pnpm-lock.yaml -Algorithm SHA256).Hash
 if (-not (Test-Path frontend/node_modules/.bin/vitest.cmd)) {
   corepack pnpm --dir frontend install --frozen-lockfile
 }
-$lockAfter = (Get-FileHash frontend/pnpm-lock.yaml -Algorithm SHA256).Hash
-if ($lockBefore -ne $lockAfter) { throw 'pnpm-lock.yaml changed during frozen install' }
+$lockAfter = (Get-FileHash ..\pnpm-lock.yaml -Algorithm SHA256).Hash
+if ($lockBefore -ne $lockAfter) { throw 'workspace-root pnpm-lock.yaml changed during frozen install' }
 git status --short
 ```
 
-Expected: instalación PASS, lockfile idéntico y worktree limpio. `node_modules` permanece ignorado.
+Expected: instalación PASS, lockfile de la raíz Git idéntico y worktree limpio. `node_modules` permanece ignorado. No crear un segundo lockfile dentro de `frontend`.
 
 - [ ] **Step 3: verificar ejecutables locales**
 

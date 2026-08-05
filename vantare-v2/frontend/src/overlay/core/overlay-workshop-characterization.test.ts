@@ -11,6 +11,7 @@ const hostConsumers = [
   "hub/overlay-studio/canvas/StudioWidgetFrame.tsx",
   "overlay/runtime/RuntimeWidgetFrame.tsx",
   "hub/overlays/ProfilePreview.tsx",
+  "overlay/authoring/OverlayWorkshopDevRoute.tsx",
 ] as const;
 const hostPath = "overlay/core/WidgetVisualHost.tsx";
 
@@ -51,7 +52,7 @@ describe("Overlay Workshop characterization", () => {
     expect(historical.some((entry) => entry.widgetType === "engineer-radio")).toBe(false);
   });
 
-  it("keeps Studio and production runtime frames on the sole WidgetVisualHost boundary", () => {
+  it("keeps Studio, Workshop and production runtime frames on the sole WidgetVisualHost boundary", () => {
     for (const consumer of hostConsumers) {
       const source = readFileSync(join(sourceRoot, consumer), "utf8");
       expect(source).toMatch(/import\s+\{\s*WidgetVisualHost\s*\}/);

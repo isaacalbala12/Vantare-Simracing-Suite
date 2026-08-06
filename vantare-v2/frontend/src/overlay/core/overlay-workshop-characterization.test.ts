@@ -30,7 +30,7 @@ function sourcePath(path: string): string {
 
 function isSystemRegistration(path: string): boolean {
   return path === "overlay/core/design-system-registry.ts"
-    || /^overlay\/design-systems\/vantare-(?:original|crystal)\/manifest\.ts$/.test(path);
+    || /^overlay\/design-systems\/vantare-(?:original|crystal|endurance)\/manifest\.ts$/.test(path);
 }
 
 describe("Overlay Workshop characterization", () => {
@@ -43,9 +43,9 @@ describe("Overlay Workshop characterization", () => {
 
     expect(ALL_WIDGET_TYPES).toHaveLength(19);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 4],
     ]);
-    expect(designs).toHaveLength(41);
+    expect(designs).toHaveLength(57);
     expect(crystal).toHaveLength(22);
     expect(new Set(crystal.map((design) => design.widgetType)).size).toBe(19);
     expect(crystal.find((design) => design.id === "engineer-radio-crystal")?.widgetType).toBe("engineer-radio");

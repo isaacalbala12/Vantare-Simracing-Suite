@@ -24,7 +24,7 @@ export type WidgetType =
   | "car-damage-visual"
   | "car-damage-numbers"
   | "engineer-radio";
-export type DesignSystemId = "vantare-original" | "vantare-crystal";
+export type DesignSystemId = "vantare-original" | "vantare-crystal" | "vantare-endurance";
 export type SessionLayoutType = "general" | "practice" | "qualifying" | "race" | "endurance";
 export type DisplayMode = "racing" | "edit" | "streaming";
 
@@ -50,7 +50,7 @@ export const ALL_WIDGET_TYPES = [
   "engineer-radio",
 ] as const satisfies readonly WidgetType[];
 export const WIDGET_TYPES = new Set<WidgetType>(ALL_WIDGET_TYPES);
-const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
+const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
 const SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([
   "general",
   "practice",

@@ -22,13 +22,14 @@ import {
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
 
-const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal"];
+const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
 const STATES = ["ready", "stale", "disconnected", "error"] as const;
 const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
 const VARIANTS: readonly HarnessVariant[] = [
   "default",
   "relative-fill",
   "standings-stress60",
+  "standings-multiclass",
   "pedals-zero",
   "pedals-full",
 ];

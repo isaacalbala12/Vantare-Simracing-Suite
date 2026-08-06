@@ -19,8 +19,11 @@ export type StandingsMetricId =
   | "pit"
   | "tireCompound";
 
+export type StandingsClassScope = "player-class" | "all-classes";
+
 export type StandingsContent = {
   columns: WidgetColumnV3[];
+  classScope: StandingsClassScope;
 };
 
 export const STANDINGS_METRIC_IDS: readonly StandingsMetricId[] = [
@@ -125,6 +128,7 @@ export function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
 
 export function createDefaultStandingsContent(): StandingsContent {
   return {
+    classScope: "player-class",
     columns: STANDINGS_COLUMN_TEMPLATES.map((template) => ({
       id: template.id,
       metricId: template.metricId,
@@ -177,9 +181,12 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     throw new Error("standings content must be an object");
   }
   const defaults = createDefaultStandingsContent();
+  const rawScope = (input as Record<string, unknown>).classScope;
+  const classScope: StandingsClassScope =
+    rawScope === "all-classes" ? "all-classes" : "player-class";
   const rawColumns = (input as Record<string, unknown>).columns;
   if (!Array.isArray(rawColumns)) {
-    return defaults;
+    return { ...defaults, classScope };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -197,7 +204,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns };
+  return { columns, classScope };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {
@@ -206,6 +213,7 @@ export function getEnabledStandingsColumns(content: StandingsContent): WidgetCol
 
 export function toggleStandingsColumn(content: StandingsContent, columnId: string): StandingsContent {
   return {
+    ...content,
     columns: content.columns.map((column) =>
       column.id === columnId ? { ...column, enabled: !column.enabled } : column,
     ),
@@ -231,7 +239,7 @@ export function moveStandingsColumn(
     return content;
   }
   columns.splice(targetIndex, 0, entry);
-  return { columns };
+  return { ...content, columns };
 }
 
 export function updateStandingsColumn(
@@ -240,6 +248,7 @@ export function updateStandingsColumn(
   patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
 ): StandingsContent {
   return {
+    ...content,
     columns: content.columns.map((column) =>
       column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
     ),

@@ -6,6 +6,7 @@ import {
   type WidgetSystemRegistration,
 } from "./design-system-definition";
 import { vantareCrystalManifest } from "../design-systems/vantare-crystal/manifest";
+import { vantareEnduranceManifest } from "../design-systems/vantare-endurance/manifest";
 import { vantareOriginalManifest } from "../design-systems/vantare-original/manifest";
 
 type MigrationStep = (settings: Record<string, unknown>) => Record<string, unknown>;
@@ -132,3 +133,4 @@ export class DesignSystemRegistry {
 export const designSystemRegistry = new DesignSystemRegistry();
 designSystemRegistry.register(vantareOriginalManifest);
 designSystemRegistry.register(vantareCrystalManifest);
+designSystemRegistry.register(vantareEnduranceManifest);

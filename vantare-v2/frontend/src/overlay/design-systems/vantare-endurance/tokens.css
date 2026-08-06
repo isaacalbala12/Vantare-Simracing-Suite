@@ -1,0 +1,1576 @@
+/* Vantare Endurance — timing-screen system inspired by pro endurance broadcast overlays.
+   Flat near-black panels, class-colored chips, condensed dense typography, semaphore deltas. */
+
+:root {
+  --ven-bg: rgba(9, 12, 18, 0.92);
+  --ven-bg-header: rgba(15, 21, 32, 0.97);
+  --ven-row-alt: rgba(255, 255, 255, 0.035);
+  --ven-line: rgba(255, 255, 255, 0.09);
+  --ven-text: #e8edf5;
+  --ven-text-dim: #93a0b4;
+  --ven-accent: #38b6ff;
+  --ven-positive: #3ddc7a;
+  --ven-negative: #ff5d5d;
+  --ven-best: #c17bff;
+  --ven-player-bg: rgba(56, 150, 255, 0.26);
+  --ven-font:
+    "Barlow Semi Condensed", "Roboto Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+}
+
+/* ---------- shared shell ---------- */
+
+[data-widget-system="vantare-endurance"].ven-root,
+[data-widget-system="vantare-endurance"] .ven-root {
+  font-family: var(--ven-font);
+  color: var(--ven-text);
+  background: var(--ven-bg);
+  border: 1px solid var(--ven-line);
+  border-radius: 4px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+[data-widget-system="vantare-endurance"] .ven-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--ven-bg-header);
+  border-bottom: 1px solid var(--ven-line);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-widget-system="vantare-endurance"] .ven-brand {
+  color: var(--ven-accent);
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-title {
+  color: var(--ven-text-dim);
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-endurance"] .ven-titlebar-meta {
+  margin-left: auto;
+  color: var(--ven-text-dim);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+[data-widget-system="vantare-endurance"] .ven-status-message {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--ven-text-dim);
+  font-size: 11px;
+}
+
+/* ---------- standings ---------- */
+
+[data-widget-system="vantare-endurance"].ven-standings table,
+[data-widget-system="vantare-endurance"] .ven-standings table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-head th {
+  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ven-text-dim);
+  background: var(--ven-bg-header);
+  border-bottom: 1px solid var(--ven-line);
+}
+
+[data-widget-system="vantare-endurance"] .ven-class-block {
+  margin-top: 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-class-block:first-of-type {
+  margin-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-class-header .ven-class-count {
+  float: right;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+[data-widget-system="vantare-endurance"] .ven-class-header td {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0b0e14;
+  background: var(--ven-class-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row td {
+  padding: 2px 4px;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row[data-even="true"] td {
+  background: var(--ven-row-alt);
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row[data-player="true"] td {
+  background: var(--ven-player-bg);
+}
+
+[data-widget-system="vantare-endurance"] .ven-pos-chip {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 3px;
+  border-radius: 2px;
+  text-align: center;
+  font-weight: 700;
+  color: #0b0e14;
+  background: var(--ven-class-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row td[data-metric="driverName"] {
+  text-align: left;
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row td[data-metric="bestLap"] {
+  color: var(--ven-best);
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row td[data-metric="gap"],
+[data-widget-system="vantare-endurance"] .ven-standings-row td[data-metric="interval"] {
+  color: var(--ven-text-dim);
+}
+
+[data-widget-system="vantare-endurance"] .ven-standings-row[data-pit="true"] td[data-metric="driverName"]::after {
+  content: "PIT";
+  margin-left: 6px;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #0b0e14;
+  background: var(--ven-accent);
+}
+
+/* ---------- standings: F1 tower template (palette sampled from broadcast capture) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-f1"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-f1"] .ven-standings {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  width: 250px;
+  box-sizing: border-box;
+  font-size: 15px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border-bottom: 0;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-header .ven-brand {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(13, 13, 18, 0.92);
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  padding: 12px 10px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-session {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(28, 26, 36, 0.9);
+  color: #e9e9ee;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  margin-bottom: 2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-session strong {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 17px;
+  margin-left: 6px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-block {
+  margin-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-class-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(13, 13, 18, 0.92);
+  border-left: 3px solid var(--ven-class-color, #d90b1d);
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-class-header .ven-class-count {
+  color: #9a9aa4;
+  font-style: normal;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-row {
+  display: grid;
+  grid-template-columns: 40px 24px 1fr auto 18px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  line-height: 30px;
+  height: 30px;
+  font-weight: 700;
+  background: rgba(38, 37, 45, 0.88);
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-row[data-player="true"] {
+  background: rgba(70, 68, 82, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-pos {
+  background: rgba(10, 10, 16, 0.85);
+  color: #ffffff;
+  text-align: center;
+  font-weight: 800;
+  font-size: 15px;
+  align-self: stretch;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-row[data-class-leader="true"] .ven-f1-pos {
+  background: #d90b1d;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-team {
+  background: var(--ven-class-color, var(--ven-accent));
+  height: 16px;
+  width: 16px;
+  justify-self: center;
+  margin: 0;
+  border-radius: 3px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-code {
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: left;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-gap {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: right;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-row[data-pit="true"] .ven-f1-gap {
+  color: #c9c9d2;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-tire {
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-tire[data-tire="H"] {
+  color: #e9e9ee;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-tire[data-tire="M"] {
+  color: #e8d23c;
+}
+
+[data-widget-system="vantare-endurance"] .ven-f1-tire[data-tire="S"] {
+  color: #e03b3b;
+}
+
+/* ---------- standings: WEC tower template (palette sampled from reference file) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-wec"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-wec"] .ven-standings {
+  background:
+    radial-gradient(150px 62px at 16% 0%, #02549b 0%, #013168 48%, rgba(1, 6, 46, 0) 80%),
+    #02062e;
+  border: 2px solid #14161f;
+  border-radius: 6px;
+  width: 260px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 14px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-logo {
+  font-size: 23px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  color: #fafbfd;
+  text-align: center;
+  padding: 9px 10px 5px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-clock {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #f4f7fd;
+  text-align: center;
+  padding: 2px 10px 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-block {
+  margin-top: 6px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-header + .ven-wec-block {
+  margin-top: 3px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-class-header {
+  color: #ffffff;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-row {
+  display: grid;
+  grid-template-columns: 24px 27px 36px 1px 1fr 84px;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 8px 0 4px;
+  font-weight: 700;
+  font-style: italic;
+  background: #03072e;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-row[data-player="true"] {
+  background: #123a80;
+  box-shadow: inset 0 0 0 1px rgba(140, 185, 255, 0.6);
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-pos {
+  color: #f4f7fd;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-team {
+  background: var(--ven-team-color, #2a3a5c);
+  height: 25px;
+  border-radius: 2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-number {
+  color: #f4f7fd;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-divider {
+  background: rgba(255, 255, 255, 0.28);
+  height: 18px;
+  width: 1px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-code {
+  letter-spacing: 0.08em;
+  color: #f4f7fd;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  padding-left: 2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-gap {
+  height: 24px;
+  line-height: 22px;
+  border-radius: 3px;
+  background: #3c455b;
+  border: 1px solid #59647f;
+  color: #f4f7fd;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-row[data-pit="true"] .ven-wec-gap {
+  color: #ffd23f;
+  border-color: rgba(255, 210, 63, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-wec-footer {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: linear-gradient(180deg, #1281b1 0%, #086391 100%);
+  border-radius: 0 0 4px 4px;
+  padding: 4px 6px 5px;
+}
+
+/* ---------- standings: LMU template (palette sampled from in-sim capture) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-lmu"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-lmu"] .ven-standings {
+  background: rgba(13, 15, 23, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  width: 380px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: #0d0f1b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e8eaf0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-meta {
+  font-size: 12px;
+  color: #8f93a0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-block {
+  border-top: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-header + .ven-lmu-block,
+[data-widget-system="vantare-endurance"] .ven-lmu-block:first-child {
+  border-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-row {
+  display: grid;
+  grid-template-columns: 38px 44px 1fr auto;
+  align-items: center;
+  gap: 0;
+  height: 36px;
+  padding: 0 10px 0 0;
+  background: rgba(20, 22, 30, 0.82);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-pos {
+  background: var(--lmu-chip, #0b5097);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 17px;
+  height: 27px;
+  margin: 0 0 0 5px;
+  border: 2px solid #f2f4f8;
+  border-right: 0;
+  border-radius: 3px 0 0 3px;
+  box-sizing: border-box;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-class {
+  background: #f2f4f8;
+  color: #14161c;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  height: 27px;
+  line-height: 23px;
+  border: 2px solid #f2f4f8;
+  border-left: 0;
+  border-radius: 0 3px 3px 0;
+  box-sizing: border-box;
+  margin-right: 10px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-name {
+  color: #f2f4f8;
+  font-size: 18px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-gap {
+  color: #f2f4f8;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: right;
+  min-width: 44px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-row[data-pit="true"] .ven-lmu-gap {
+  color: #f0c419;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-row[data-player="true"] {
+  background: #868892;
+}
+
+[data-widget-system="vantare-endurance"] .ven-lmu-row[data-player="true"] .ven-lmu-name,
+[data-widget-system="vantare-endurance"] .ven-lmu-row[data-player="true"] .ven-lmu-gap {
+  color: #101318;
+}
+
+/* ---------- standings: Racelabs template (palette sampled from reference capture) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-racelabs"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-racelabs"] .ven-standings {
+  background: transparent;
+  border: 0;
+  width: 460px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-family: "Poppins", "Nunito Sans", var(--ven-font);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-header {
+  display: grid;
+  grid-template-columns: 1fr 8px 62px 6px 92px;
+  align-items: stretch;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-session {
+  background: #252d36;
+  border-radius: 3px 3px 0 0;
+  padding: 7px 12px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-col-label {
+  background: rgba(52, 64, 75, 0.75);
+  border-radius: 3px 3px 0 0;
+  padding: 7px 0 7px 8px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-col-gap {
+  grid-column: 3;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-col-fastest {
+  grid-column: 5;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-session {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eef1f4;
+  text-align: left;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-session strong {
+  color: #eef1f4;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-col-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b9c2c9;
+  text-align: left;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-block {
+  border-top: 2px solid rgba(255, 255, 255, 0.14);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-header + .ven-rl-block,
+[data-widget-system="vantare-endurance"] .ven-rl-block:first-child {
+  border-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-row {
+  display: grid;
+  grid-template-columns: 34px 6px 1fr 8px 62px 6px 92px;
+  align-items: stretch;
+  height: 32px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-pos {
+  background: #202024;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #d3d6da;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-row[data-even="true"] .ven-rl-pos {
+  background: #18181b;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-stripe {
+  background: #15171c;
+  position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-stripe::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 5px;
+  bottom: 5px;
+  width: 4px;
+  border-radius: 1px;
+  background: var(--ven-team-color, #6d1f30);
+  transform: skewX(-12deg);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-name {
+  background: #15171c;
+  color: #f4f6f8;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-pit {
+  display: inline-block;
+  background: #d8af0f;
+  color: #17181b;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 2px;
+  padding: 0 5px;
+  line-height: 16px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-gap,
+[data-widget-system="vantare-endurance"] .ven-rl-fastest {
+  background: rgba(72, 86, 99, 0.55);
+  color: #eef1f4;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  padding-left: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-gap {
+  grid-column: 5;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-fastest {
+  grid-column: 7;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-fastest[data-session-best="true"] {
+  color: #dc61fe;
+  font-weight: 800;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rl-row[data-player="true"] .ven-rl-pos,
+[data-widget-system="vantare-endurance"] .ven-rl-row[data-player="true"] .ven-rl-name,
+[data-widget-system="vantare-endurance"] .ven-rl-row[data-player="true"] .ven-rl-gap,
+[data-widget-system="vantare-endurance"] .ven-rl-row[data-player="true"] .ven-rl-fastest {
+  background: #8a7c45;
+  color: #ffffff;
+}
+
+
+/* ---------- standings: Apex template (Vantare signature) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-apex"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-apex"] .ven-standings {
+  background:
+    linear-gradient(165deg, rgba(20, 26, 40, 0.9) 0%, rgba(8, 10, 17, 0.96) 55%),
+    rgba(8, 10, 17, 0.96);
+  border: 1px solid rgba(56, 182, 255, 0.25);
+  border-radius: 10px;
+  min-width: 280px;
+  font-size: 13px;
+  box-shadow: 0 0 24px rgba(56, 182, 255, 0.08) inset;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid rgba(56, 182, 255, 0.3);
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-brand {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  background: linear-gradient(90deg, #38b6ff 0%, #7de3ff 50%, #38b6ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-session {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ven-text-dim);
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-session strong {
+  color: var(--ven-text);
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-block {
+  position: relative;
+  margin: 6px 8px 0;
+  padding-left: 3px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-block::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--ven-class-color, var(--ven-accent)) 0%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px var(--ven-class-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-class-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1px 8px 2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-class-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ven-class-color, var(--ven-accent));
+  text-shadow: 0 0 12px var(--ven-class-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-class-count {
+  font-size: 10px;
+  color: var(--ven-text-dim);
+}
+
+@keyframes ven-apex-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto 76px 64px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 0;
+  line-height: 27px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  animation: ven-apex-enter 320ms both;
+  animation-delay: var(--ven-apex-delay, 0ms);
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-row[data-player="true"] {
+  background: linear-gradient(90deg, rgba(56, 182, 255, 0.28) 0%, rgba(56, 182, 255, 0.06) 100%);
+  border-bottom-color: rgba(56, 182, 255, 0.5);
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-pos {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
+  padding-right: 7px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-pos-value {
+  font-size: 15px;
+  font-weight: 800;
+  font-style: italic;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-row[data-class-leader="true"] .ven-apex-pos {
+  background: linear-gradient(
+    165deg,
+    var(--ven-class-color, var(--ven-accent)) 0%,
+    rgba(255, 255, 255, 0.06) 130%
+  );
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-row[data-class-leader="true"] .ven-apex-pos-value {
+  color: #0b0e14;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-id {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-code {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-name {
+  font-size: 10px;
+  color: var(--ven-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-pit {
+  background: var(--ven-accent);
+  color: #0b0e14;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 2px;
+  padding: 0 5px;
+  line-height: 15px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-best {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ven-text-dim);
+  text-align: right;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-best[data-session-best="true"] {
+  color: var(--ven-best);
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(193, 123, 255, 0.6);
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-gap {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  font-size: 12px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-apex-row[data-class-leader="true"] .ven-apex-gap {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ven-class-color, var(--ven-accent));
+}
+
+/* ---------- standings: Neo template (Vantare premium dark neumorphism) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="standings-neo"].ven-standings,
+[data-widget-system="vantare-endurance"][data-template="standings-neo"] .ven-standings {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  width: 348px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 14px;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px 12px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-header .ven-neo-brand {
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.7),
+    0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-brand {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  color: #cdd6e4;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #eef1f6;
+  background: #171a21;
+  border-radius: 10px;
+  padding: 4px 12px;
+  box-shadow:
+    inset 3px 3px 7px #0c0e13,
+    inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-clock-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8b93a3;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-card {
+  background: linear-gradient(160deg, #20242e 0%, #1a1d25 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 8px 10px 6px;
+  margin-top: 12px;
+  box-shadow:
+    8px 8px 20px rgba(0, 0, 0, 0.5),
+    -4px -4px 12px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-card:first-of-type {
+  margin-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-class {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 7px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-class-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neo-class, #7fb8e8);
+  box-shadow: 0 0 8px var(--neo-class, #7fb8e8);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-class-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #aab3c2;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-class-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  color: #676f7e;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 60px 56px;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 2px;
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row + .ven-neo-row::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(9, 11, 15, 0.7) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-pos {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #232833 0%, #191c24 100%);
+  color: #eef1f6;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow:
+    3px 3px 7px rgba(0, 0, 0, 0.5),
+    -2px -2px 5px rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-class-leader="true"] .ven-neo-pos {
+  color: var(--neo-class, #7fb8e8);
+  box-shadow:
+    3px 3px 7px rgba(0, 0, 0, 0.5),
+    -2px -2px 5px rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px var(--neo-class, #7fb8e8);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-id {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-code {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #eef1f6;
+  line-height: 1;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-name {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #767e8e;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-gap[data-pit="true"] {
+  color: #d9b87a;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-best {
+  font-size: 11px;
+  font-weight: 600;
+  color: #767e8e;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-best[data-session-best="true"] {
+  color: #b18cff;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(177, 140, 255, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-gap {
+  height: 24px;
+  line-height: 24px;
+  border-radius: 8px;
+  background: #171a21;
+  color: #dfe4ec;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    inset 3px 3px 6px #0c0e13,
+    inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-class-leader="true"] .ven-neo-gap {
+  color: var(--neo-class, #7fb8e8);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-player="true"] {
+  background: linear-gradient(145deg, #262b37 0%, #1e222c 100%);
+  border-radius: 12px;
+  box-shadow:
+    4px 4px 10px rgba(0, 0, 0, 0.5),
+    -2px -2px 8px rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(127, 184, 232, 0.35);
+  padding: 0 8px;
+  margin: 2px -2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-player="true"]::before,
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-player="true"] + .ven-neo-row::before {
+  display: none;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-row[data-player="true"] .ven-neo-code {
+  color: #ffffff;
+}
+
+/* ---------- relative ---------- */
+
+[data-widget-system="vantare-endurance"] .ven-relative-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-row[data-even="true"] {
+  background: var(--ven-row-alt);
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-row[data-player="true"] {
+  background: var(--ven-player-bg);
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-weight: 600;
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-number {
+  color: var(--ven-text-dim);
+  min-width: 28px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-gap {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-gap[data-tone="ahead"] {
+  color: var(--ven-negative);
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-gap[data-tone="behind"] {
+  color: var(--ven-positive);
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-gap[data-tone="player"],
+[data-widget-system="vantare-endurance"] .ven-relative-gap[data-tone="neutral"] {
+  color: var(--ven-text-dim);
+}
+
+/* ---------- delta ---------- */
+
+[data-widget-system="vantare-endurance"].ven-delta,
+[data-widget-system="vantare-endurance"] .ven-delta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  min-width: 180px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-value {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-value[data-tone="gaining"] {
+  color: var(--ven-positive);
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-value[data-tone="losing"] {
+  color: var(--ven-negative);
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-track {
+  position: relative;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--ven-text);
+  opacity: 0.7;
+  z-index: 1;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: calc(50% * max(var(--delta-progress, 0), -1 * var(--delta-progress, 0)));
+  background: var(--ven-negative);
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-fill[data-tone="gaining"] {
+  transform: translateX(-100%);
+  background: var(--ven-positive);
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-laps {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ven-text-dim);
+  font-size: 11px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-laps strong {
+  color: var(--ven-text);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+[data-widget-system="vantare-endurance"][data-template="delta-block"] .ven-delta-value {
+  font-size: 30px;
+}
+
+/* ---------- pedals ---------- */
+
+[data-widget-system="vantare-endurance"].ven-pedals,
+[data-widget-system="vantare-endurance"] .ven-pedals {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 8px;
+  min-height: 90px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-pedal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+[data-widget-system="vantare-endurance"] .ven-pedal-bar {
+  position: relative;
+  width: 14px;
+  height: 60px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-pedal-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100% * var(--pedal-value, 0));
+  background: var(--pedal-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-pedal-text {
+  font-size: 10px;
+  color: var(--ven-text-dim);
+}
+
+/* ---------- relative: Neo template ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="relative-neo"].ven-relative,
+[data-widget-system="vantare-endurance"][data-template="relative-neo"] .ven-relative {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  width: 348px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 14px;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-card {
+  margin-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-row[data-player="true"] {
+  box-shadow:
+    4px 4px 10px rgba(0, 0, 0, 0.5),
+    -2px -2px 8px rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(127, 184, 232, 0.35);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-row .ven-neor-pos {
+  color: var(--neo-class, #eef1f6);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-gap[data-tone="ahead"] {
+  color: #ff8585;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-gap[data-tone="behind"] {
+  color: #7fe3a8;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neor-gap[data-tone="player"] {
+  color: #7fb8e8;
+  letter-spacing: 0.16em;
+  font-size: 10px;
+}
+
+/* ---------- delta: Neo template ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="delta-neo"].ven-delta,
+[data-widget-system="vantare-endurance"][data-template="delta-neo"] .ven-delta {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  min-width: 240px;
+  box-shadow: none;
+  overflow: visible;
+  gap: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-value {
+  text-align: center;
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #eef1f6;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-value[data-tone="gaining"] {
+  color: #7fe3a8;
+  text-shadow: 0 0 16px rgba(127, 227, 168, 0.45);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-value[data-tone="losing"] {
+  color: #ff8585;
+  text-shadow: 0 0 16px rgba(255, 133, 133, 0.45);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-track {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: #171a21;
+  overflow: hidden;
+  box-shadow:
+    inset 3px 3px 6px #0c0e13,
+    inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-center {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: rgba(238, 241, 246, 0.55);
+  z-index: 1;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-fill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  border-radius: 4px;
+  width: calc((50% - 4px) * max(var(--delta-progress, 0), -1 * var(--delta-progress, 0)));
+  background: #ff8585;
+  box-shadow: 0 0 10px rgba(255, 133, 133, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-fill[data-tone="gaining"] {
+  transform: translateX(-100%);
+  background: #7fe3a8;
+  box-shadow: 0 0 10px rgba(127, 227, 168, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-laps {
+  display: flex;
+  gap: 10px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-well {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  background: #171a21;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dfe4ec;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    inset 3px 3px 6px #0c0e13,
+    inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+}
+
+[data-widget-system="vantare-endurance"] .ven-neod-well-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #8b93a3;
+}
+
+/* ---------- pedals: Neo template ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="pedals-neo"].ven-pedals,
+[data-widget-system="vantare-endurance"][data-template="pedals-neo"] .ven-pedals {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neop-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  padding: 12px 14px 10px;
+  margin-top: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neop-card .ven-pedal {
+  gap: 6px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neop-card .ven-pedal-bar {
+  width: 18px;
+  height: 74px;
+  border-radius: 9px;
+  background: #171a21;
+  box-shadow:
+    inset 3px 3px 6px #0c0e13,
+    inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neop-card .ven-pedal-fill {
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  border-radius: 6px;
+  height: calc((100% - 6px) * var(--pedal-value, 0));
+  box-shadow: 0 0 10px var(--pedal-color, var(--ven-accent));
+}
+
+[data-widget-system="vantare-endurance"] .ven-neop-card .ven-pedal-text {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #8b93a3;
+}

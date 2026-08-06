@@ -35,7 +35,7 @@ export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
   preset: "1080p",
 };
 
-const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
+const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
 const STATES = new Set<MockDataState>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<OverlayWorkshopQuery["surface"]>(["studio", "desktop", "obs", "harness"]);
 const SESSIONS = new Set<MockSessionScenario>(["practice", "qualifying", "race"]);
@@ -92,6 +92,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   }
   if (variant === "standings-stress60" && widget !== "standings") {
     return { error: "standings-stress60 variant requires widget=standings" };
+  }
+  if (variant === "standings-multiclass" && widget !== "standings") {
+    return { error: "standings-multiclass variant requires widget=standings" };
   }
   if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
     return { error: `${variant} variant requires widget=pedals` };

@@ -41,10 +41,14 @@ func (s *spyEmitter) Emit(name string, data any) {
 	s.data = append(s.data, data)
 }
 
+// Estos tests leen su propio fixture en testdata y no configs/. El fichero de
+// configs es ademas un perfil vivo que la aplicacion reescribe al arrancar --
+// migrandolo al esquema V3, donde el cargador heredado ya no encuentra widgets
+// --, asi que cualquiera que abriese la app rompia la bateria.
 func TestProfileServiceLoadAndGet(t *testing.T) {
 	fw := &fakeWindow{}
 	mgr := window.NewManager(fw, 0)
-	svc := app.NewProfileService("../../configs/example-racing.json", mgr, nil)
+	svc := app.NewProfileService("testdata/example-racing.json", mgr, nil)
 
 	if err := svc.Load(); err != nil {
 		t.Fatal(err)
@@ -181,7 +185,7 @@ func TestProfileServiceSaveLayoutShrinkWrapWhenNotFullscreen(t *testing.T) {
 func TestProfileServiceSetDisplayMode(t *testing.T) {
 	fw := &fakeWindow{}
 	mgr := window.NewManager(fw, 0)
-	svc := app.NewProfileService("../../configs/example-racing.json", mgr, nil)
+	svc := app.NewProfileService("testdata/example-racing.json", mgr, nil)
 	svc.Load()
 
 	// Switch to edit mode
@@ -284,7 +288,7 @@ func TestProfileServiceEmitLoaded(t *testing.T) {
 	fw := &fakeWindow{}
 	mgr := window.NewManager(fw, 0)
 	spy := &spyEmitter{}
-	svc := app.NewProfileService("../../configs/example-racing.json", mgr, spy)
+	svc := app.NewProfileService("testdata/example-racing.json", mgr, spy)
 	svc.Load()
 
 	svc.EmitLoaded()

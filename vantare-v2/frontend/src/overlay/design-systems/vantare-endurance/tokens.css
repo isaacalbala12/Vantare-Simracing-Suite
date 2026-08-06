@@ -1843,13 +1843,21 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-motion="rise"]::after {
-  background: linear-gradient(90deg, rgba(53, 199, 123, 0.28), transparent 65%);
-  box-shadow: inset 2px 0 0 rgba(53, 199, 123, 0.9);
+  background: radial-gradient(
+    120% 160% at 0% 50%,
+    rgba(53, 199, 123, 0.34) 0%,
+    rgba(53, 199, 123, 0.1) 45%,
+    transparent 75%
+  );
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-motion="fall"]::after {
-  background: linear-gradient(90deg, rgba(230, 57, 70, 0.22), transparent 65%);
-  box-shadow: inset 2px 0 0 rgba(230, 57, 70, 0.75);
+  background: radial-gradient(
+    120% 160% at 0% 50%,
+    rgba(230, 57, 70, 0.26) 0%,
+    rgba(230, 57, 70, 0.08) 45%,
+    transparent 75%
+  );
 }
 
 @keyframes ven-red-hot-wave {

@@ -1801,3 +1801,243 @@
 [data-widget-system="vantare-endurance"] .ven-red-row .ven-red-best[data-session-best="true"] {
   color: #b18cff;
 }
+
+/* ---------- Redline motion engine (CSS side: transform/opacity only) ---------- */
+
+@keyframes ven-red-flip {
+  from {
+    transform: translateY(var(--flip-from, 0));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-flip="true"] {
+  animation: ven-red-flip 380ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+  will-change: transform;
+  z-index: 1;
+}
+
+@keyframes ven-red-flash-rise {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-motion]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  pointer-events: none;
+  opacity: 0;
+  animation: ven-red-flash-rise 1100ms ease-out both;
+  animation-delay: var(--flash-delay, 0ms);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-motion="rise"]::after {
+  background: linear-gradient(90deg, rgba(53, 199, 123, 0.28), transparent 65%);
+  box-shadow: inset 2px 0 0 rgba(53, 199, 123, 0.9);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-motion="fall"]::after {
+  background: linear-gradient(90deg, rgba(230, 57, 70, 0.22), transparent 65%);
+  box-shadow: inset 2px 0 0 rgba(230, 57, 70, 0.75);
+}
+
+@keyframes ven-red-hot-wave {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateX(220%);
+    opacity: 0;
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-hot="true"] {
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row[data-hot="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  border-radius: 7px;
+  background: linear-gradient(100deg, transparent, rgba(177, 140, 255, 0.28), transparent);
+  animation: ven-red-hot-wave 1300ms ease-out both;
+  pointer-events: none;
+}
+
+@keyframes ven-red-tire-pop {
+  0% {
+    transform: scale(0.2) rotate(-160deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.15) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 800;
+  align-self: center;
+  border: 1.5px solid currentColor;
+  animation: ven-red-tire-pop 460ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  color: #e8e8e8;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire[data-compound="S"] {
+  color: #e63946;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire[data-compound="M"] {
+  color: #e8c93c;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire[data-compound="H"] {
+  color: #e8e8e8;
+}
+
+/* — batalla: costura → caja cristalizada — */
+
+@keyframes ven-red-battle-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle {
+  position: relative;
+  border-radius: 10px;
+  margin: 0 -2px;
+  padding: 0 2px;
+  animation: ven-red-battle-in 300ms ease-out both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle[data-stage="box"] {
+  background: linear-gradient(180deg, #221114 0%, #170c0e 100%);
+  border: 1px solid rgba(230, 57, 70, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 14px rgba(193, 18, 31, 0.18);
+  margin: 3px -2px;
+  padding: 2px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle .ven-red-row {
+  background: transparent;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle .ven-red-row[data-player="true"] {
+  background: radial-gradient(
+    120% 160% at 0% 50%,
+    rgba(193, 18, 31, 0.5) 0%,
+    rgba(193, 18, 31, 0.16) 45%,
+    transparent 75%
+  );
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-seam {
+  position: relative;
+  height: 3px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle[data-stage="box"] .ven-red-seam {
+  height: 12px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-seam::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 1.5px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 77, 92, 0.85) 28%,
+    rgba(255, 77, 92, 0.85) 72%,
+    transparent
+  );
+  box-shadow: 0 0 9px rgba(255, 77, 92, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-seam span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a0d0f;
+  border: 1px solid rgba(255, 77, 92, 0.8);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1.5px 10px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 10px rgba(255, 77, 92, 0.45);
+  opacity: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-battle[data-stage="box"] .ven-red-seam span {
+  opacity: 1;
+}
+
+/* — presión: celda del gap cargada (solo en batalla cristalizada) — */
+
+[data-widget-system="vantare-endurance"] .ven-red-gapcell {
+  justify-self: end;
+  position: relative;
+  min-width: 52px;
+  height: 21px;
+  line-height: 21px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(232, 232, 232, 0.07);
+  text-align: center;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gapcell b {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #c1121f, #ff4d5c);
+  box-shadow: 0 0 12px rgba(255, 77, 92, 0.55);
+  transition: width 600ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gapcell span {
+  position: relative;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

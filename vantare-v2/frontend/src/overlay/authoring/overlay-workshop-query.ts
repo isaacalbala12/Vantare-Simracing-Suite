@@ -96,6 +96,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (variant === "standings-multiclass" && widget !== "standings") {
     return { error: "standings-multiclass variant requires widget=standings" };
   }
+  if (variant === "standings-replay" && widget !== "standings") {
+    return { error: "standings-replay variant requires widget=standings" };
+  }
   if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
     return { error: `${variant} variant requires widget=pedals` };
   }

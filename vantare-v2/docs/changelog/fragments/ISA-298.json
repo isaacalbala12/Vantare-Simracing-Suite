@@ -2,20 +2,20 @@
   "schemaVersion": 1,
   "issue": "ISA-298",
   "type": "feature",
-  "summary": "Nuevo sistema de diseño Vantare Endurance con la dirección visual Redline y standings multiclase por segmentos.",
+  "summary": "Nuevo sistema de diseño Vantare Endurance con la dirección Redline: standings multiclase con motor de movimiento (adelantamientos, batallas, presión y vuelta rápida animados).",
   "technicalNotes": [
-    "Tercer sistema de diseño (vantare-endurance) con delta, standings, relative y pedals, creado con la autoría directa del Overlay Workshop.",
-    "Nueve composiciones de standings seleccionables por diseño: Redline (por defecto), Tower, Strip, F1, WEC, LMU, Racelabs, Apex y Neo.",
-    "Los standings pueden mostrar todas las clases en pista como paneles separados (la clase del jugador siempre abajo) con gaps calculados por líder de clase.",
-    "Redline incorpora slots de información (sesión, tiempo restante y vuelta), líder de clase en fila invertida y vuelta rápida de la sesión marcada en morado."
+    "Tercer sistema de diseño (vantare-endurance) con delta, standings, relative y pedals; Redline es el diseño por defecto y nueve composiciones siguen disponibles por diseño.",
+    "Motor de movimiento en los standings Redline: los adelantamientos deslizan las filas físicamente con flash direccional y chips de posiciones ganadas/perdidas.",
+    "Las batallas por posición se marcan con una costura de luz que cristaliza en una caja con el intervalo cuando el duelo se sostiene, y la celda del gap del perseguidor se carga de carmín según se acerca.",
+    "Vuelta rápida de la sesión con cronómetro morado que cambia de dueño animado; los pit stops muestran el compuesto nuevo al salir.",
+    "Los standings pueden mostrar todas las clases como paneles separados (la clase del jugador siempre abajo) y llevan slots de información (sesión, tiempo, vuelta)."
   ],
   "testing": [
-    "Abrir el Overlay Workshop con widget=standings, system=vantare-endurance, design=standings-endurance-redline y variant=standings-multiclass; verificar los tres paneles de clase con la clase del jugador abajo.",
-    "Cambiar el diseño entre Redline, WEC, F1, LMU, Racelabs y Neo, y comprobar estados ready, stale, disconnected y error.",
-    "Verificar en el panel de clase GT3 que la fila del jugador queda destacada en carmín y que la vuelta rápida de la sesión muestra el cronómetro morado."
+    "Abrir el Overlay Workshop con widget=standings, system=vantare-endurance, design=standings-endurance-redline y variant=standings-replay para ver el ciclo completo de animaciones en bucle.",
+    "Con variant=standings-multiclass, verificar los tres paneles de clase con la clase del jugador abajo y estados ready, stale, disconnected y error.",
+    "Confirmar que ninguna animación parpadea en bucle y que las filas se leen con claridad durante los adelantamientos."
   ],
   "knownLimitations": [
-    "Las animaciones de eventos (adelantamientos, batalla, presión) llegarán con el motor de movimiento en una entrega posterior.",
-    "Los chips de cambio de posición se muestran vacíos hasta que el motor de movimiento derive los cambios entre actualizaciones."
+    "El motor de movimiento cubre por ahora el widget de standings; relative, delta y pedals lo recibirán en una entrega posterior."
   ]
 }

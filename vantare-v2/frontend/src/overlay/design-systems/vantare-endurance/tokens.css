@@ -1783,10 +1783,10 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-player="true"] {
   background: radial-gradient(
-    120% 160% at 0% 50%,
-    rgba(193, 18, 31, 0.5) 0%,
-    rgba(193, 18, 31, 0.16) 45%,
-    transparent 75%
+    70% 300% at 50% 50%,
+    rgba(193, 18, 31, 0.4) 0%,
+    rgba(193, 18, 31, 0.12) 60%,
+    transparent 90%
   );
 }
 
@@ -1844,19 +1844,19 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-motion="rise"]::after {
   background: radial-gradient(
-    120% 160% at 0% 50%,
-    rgba(53, 199, 123, 0.34) 0%,
-    rgba(53, 199, 123, 0.1) 45%,
-    transparent 75%
+    70% 300% at 50% 50%,
+    rgba(53, 199, 123, 0.28) 0%,
+    rgba(53, 199, 123, 0.08) 60%,
+    transparent 90%
   );
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-motion="fall"]::after {
   background: radial-gradient(
-    120% 160% at 0% 50%,
-    rgba(230, 57, 70, 0.26) 0%,
-    rgba(230, 57, 70, 0.08) 45%,
-    transparent 75%
+    70% 300% at 50% 50%,
+    rgba(230, 57, 70, 0.22) 0%,
+    rgba(230, 57, 70, 0.07) 60%,
+    transparent 90%
   );
 }
 
@@ -1963,10 +1963,10 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-battle .ven-red-row[data-player="true"] {
   background: radial-gradient(
-    120% 160% at 0% 50%,
-    rgba(193, 18, 31, 0.5) 0%,
-    rgba(193, 18, 31, 0.16) 45%,
-    transparent 75%
+    70% 300% at 50% 50%,
+    rgba(193, 18, 31, 0.4) 0%,
+    rgba(193, 18, 31, 0.12) 60%,
+    transparent 90%
   );
 }
 

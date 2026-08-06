@@ -58,8 +58,10 @@ Iterada en prototipos HTML de referencia (bucle de capturas). Referencia final:
   (RACE·tiempo, LAP, SOF…) — primitiva generalizable a todos los widgets.
 - **Chip de clase**: contorneado `1.5px #E63946`, con contador a la derecha.
 - **Líder de clase**: fila invertida `#E8E8E8` con texto oscuro, posición carmín.
-- **Jugador**: ambient — luz radial carmín desde el borde izquierdo
-  (`radial-gradient at 0% 50%, rgba(193,18,31,.5) → transparent`), sin barras.
+- **Jugador**: ambient — núcleo de luz carmín que respira desde el centro de
+  la fila (`radial-gradient(70% 300% at 50% 50%, rgba(193,18,31,.4) →
+  transparent 90%)`), sin barras ni bordes encendidos. Mismo tratamiento (en
+  verde/rojo) para los flashes de adelantamiento. Decisión G6, 2026-08-06.
 - **Presión (P1)**: la celda del gap se llena de carmín (`#C1121F → #ff4d5c`)
   conforme el gap baja; a 0.0s llena y con halo.
 - **Batalla (B1+B2)**: caja que captura a los dos coches (fondo `#221114→#170c0e`,

@@ -7,10 +7,11 @@ import {
 } from "./design-system-registry";
 
 describe("designSystemRegistry", () => {
-  it("registers Original and Crystal at version 1", () => {
+  it("registers Original, Crystal and Endurance at version 1", () => {
     expect(designSystemRegistry.list().map((system) => system.id)).toEqual([
       "vantare-original",
       "vantare-crystal",
+      "vantare-endurance",
     ]);
     expect(designSystemRegistry.list().every((system) => system.version === 1)).toBe(true);
   });

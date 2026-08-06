@@ -62,6 +62,7 @@ export type HarnessVariant =
   | "default"
   | "relative-fill"
   | "standings-stress60"
+  | "standings-multiclass"
   | "pedals-zero"
   | "pedals-full";
 
@@ -77,6 +78,7 @@ export function isHarnessVariant(value: string): value is HarnessVariant {
     value === "default"
     || value === "relative-fill"
     || value === "standings-stress60"
+    || value === "standings-multiclass"
     || value === "pedals-zero"
     || value === "pedals-full"
   );
@@ -104,6 +106,62 @@ function buildStandingsStressScoring(): Record<string, unknown>[] {
     bestLapTime: 90 + index * 0.01,
     lastLapTime: 91 + index * 0.01,
   }));
+}
+
+type MulticlassEntry = readonly [
+  driverName: string,
+  driverNumber: number,
+  bestLap: number,
+  teamColor: string,
+];
+
+const MULTICLASS_GRID: readonly (readonly [vehicleClass: string, entries: readonly MulticlassEntry[]])[] = [
+  ["LMP2", [
+    ["James Allen", 22, 86.408, "#1d5ee0"],
+    ["Ben Hanley", 21, 87.489, "#e8b41e"],
+    ["Filipe Albuquerque", 23, 86.742, "#ed7c02"],
+  ]],
+  ["LMP3", [
+    ["Rik Koen", 31, 92.845, "#c22456"],
+    ["Quentin Antonel", 32, 92.502, "#18a37f"],
+    ["Adrien Closmenil", 33, 94.024, "#3f6fd1"],
+  ]],
+  ["GT3", [
+    ["William Friedl", 51, 98.434, "#f20205"],
+    ["Rui Andrade", 55, 98.543, "#f20205"],
+    ["Sarah Bovy", 85, 98.921, "#e5439b"],
+    ["Gianmaria Bruni", 91, 99.192, "#25272e"],
+    ["Andrew Gilbert", 60, 98.026, "#1fae54"],
+    ["Michael Birch", 88, 98.086, "#25272e"],
+    ["Duncan Cameron", 57, 98.057, "#fcbf1e"],
+    ["Martin Berry", 46, 98.038, "#0546a5"],
+    ["Matteo Cressoni", 61, 97.306, "#d7dbe4"],
+    ["Conrad Laursen", 50, 98.243, "#f20205"],
+  ]],
+];
+
+function buildStandingsMulticlassScoring(): Record<string, unknown>[] {
+  let place = 0;
+  return MULTICLASS_GRID.flatMap(([vehicleClass, entries]) =>
+    entries.map(([driverName, driverNumber, bestLapTime, teamBrandColor], index) => {
+      place += 1;
+      return {
+        id: `multiclass-${place}`,
+        place,
+        driverNumber: String(driverNumber),
+        driverName,
+        vehicleClass,
+        teamBrandColor,
+        isPlayer: vehicleClass === "GT3" && index === 0,
+        inPits: vehicleClass === "LMP3" && index === 2,
+        timeBehindLeader: place === 1 ? 0 : place * 2.15,
+        timeGapToLeader: place === 1 ? 0 : place * 2.15,
+        bestLapTime,
+        lastLapTime: bestLapTime + 0.4 + index * 0.05,
+        tireCompound: index % 3 === 0 ? "S" : "M",
+      };
+    }),
+  );
 }
 
 const CANONICAL_DRIVERS = [
@@ -234,6 +292,15 @@ export function buildHarnessWidget(
   if (widgetType === "multiclass-relative") {
     widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
   }
+  if (widgetType === "standings" && variant === "standings-multiclass") {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "bestLap" ? { ...column, enabled: true } : column,
+        )
+      : content.columns;
+    widget.content = { ...content, classScope: "all-classes", columns };
+  }
   const referenceDesign = designId ? getCrystalHarnessDesign(designId) : undefined;
   widget.layout = {
     ...widget.layout,
@@ -278,6 +345,9 @@ export function buildHarnessTelemetry(input: {
   if (input.system === "vantare-original") {
     if (input.widget === "standings" && variant === "standings-stress60") {
       return { ...base, scoring: buildStandingsStressScoring() };
+    }
+    if (input.widget === "standings" && variant === "standings-multiclass") {
+      return { ...base, scoring: buildStandingsMulticlassScoring() };
     }
     if (input.widget === "pedals" && (variant === "pedals-zero" || variant === "pedals-full")) {
       const value = variant === "pedals-full" ? 1 : 0;
@@ -340,6 +410,13 @@ export function buildHarnessTelemetry(input: {
     return {
       ...readyBase,
       scoring: buildStandingsStressScoring(),
+    };
+  }
+
+  if (input.widget === "standings" && variant === "standings-multiclass") {
+    return {
+      ...readyBase,
+      scoring: buildStandingsMulticlassScoring(),
     };
   }
 

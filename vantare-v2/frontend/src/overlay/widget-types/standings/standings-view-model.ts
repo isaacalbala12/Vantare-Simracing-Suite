@@ -164,17 +164,35 @@ export function buildStandingsViewModel(
   const mode = resolveStandingsSessionMode(snapshot.session.type);
   const sorted = sortScoringRows(snapshot.scoring);
   const activeClass = resolveActiveClass(sorted).toUpperCase();
-  const classRows = sorted.filter((row) => {
-    const rowClass = String(row.vehicleClass ?? "").toUpperCase();
-    if (!rowClass) {
-      return true;
-    }
-    return rowClass === activeClass;
-  });
+  const classRows =
+    content.classScope === "all-classes"
+      ? sorted
+      : sorted.filter((row) => {
+          const rowClass = String(row.vehicleClass ?? "").toUpperCase();
+          if (!rowClass) {
+            return true;
+          }
+          return rowClass === activeClass;
+        });
   const limited = classRows.slice(0, MAX_ROWS);
   const leader = limited[0];
+  const classLeaders = new Map<string, StandingsScoringRow>();
+  if (content.classScope === "all-classes") {
+    for (const row of limited) {
+      const rowClass = String(row.vehicleClass ?? "").toUpperCase();
+      if (!classLeaders.has(rowClass)) {
+        classLeaders.set(rowClass, row);
+      }
+    }
+  }
   const rows = limited
-    .map((row, index) => buildRowViewModel(row, leader, mode, columns, index))
+    .map((row, index) => {
+      const rowLeader =
+        content.classScope === "all-classes"
+          ? classLeaders.get(String(row.vehicleClass ?? "").toUpperCase()) ?? leader
+          : leader;
+      return buildRowViewModel(row, rowLeader, mode, columns, index);
+    })
     .filter((row): row is StandingsRowViewModel => row !== null);
 
   return {

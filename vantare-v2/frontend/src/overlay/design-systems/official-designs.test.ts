@@ -94,11 +94,17 @@ describe("official-designs", () => {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }
-    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) =>
-      definition.type === "engineer-radio"
-        ? [`${definition.type}:vantare-crystal`]
-        : [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`],
-    );
+    const enduranceTypes = new Set(["delta", "standings", "relative", "pedals"]);
+    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
+      if (definition.type === "engineer-radio") {
+        return [`${definition.type}:vantare-crystal`];
+      }
+      const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
+      if (enduranceTypes.has(definition.type)) {
+        pairs.push(`${definition.type}:vantare-endurance`);
+      }
+      return pairs;
+    });
     expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 

@@ -52,6 +52,17 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
 
     let cancelled = false;
+    // El refresco inicial se emite sin token, antes de que la sesion guardada
+    // se restaure, y responde "anonymous". La guarda de setResult no puede
+    // protegerlo porque todavia no hay estado previo del que no retroceder, asi
+    // que la puerta mostraba LoginScreen y, al llegar la sesion real, cambiaba
+    // de rama: eso destruia y reconstruia el Hub entero en cada arranque.
+    //
+    // Un anonimo asi no es autoritativo: no significa "esta sesion no vale",
+    // sino "no he preguntado por ninguna". Se ignora hasta que el temporizador
+    // de seguridad decide que no va a llegar sesion alguna, momento en el que
+    // un usuario realmente sin sesion si debe ver LoginScreen.
+    let settled = false;
 
     const unsubChanged = Events.On(
       "license:changed",
@@ -81,6 +92,10 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
           }
           return data;
         });
+        if (data?.state === "anonymous" && !settled) {
+          return;
+        }
+        settled = true;
         setLoading(false);
       },
     );
@@ -91,8 +106,17 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       },
     );
 
-    // Skip getSession in standalone mode (no Wails backend)
-    // Just call refresh directly after a short delay
+    // Cache primero: Go responde con el estado guardado, verificado offline y
+    // atado a este dispositivo, sin tocar la red. El Hub puede pintar de
+    // inmediato y la validacion online llega despues para corregirlo.
+    Events.Emit("license:cached:get", {});
+
+    // Este refresco va sin token: se emite antes de que auth:session:get haya
+    // restaurado la sesion, asi que responde "anonymous". Se conserva porque en
+    // modo standalone -- sin backend Wails -- es lo unico que resuelve la carga,
+    // y quitarlo dejaba a quien no tiene sesion tres segundos ante una pantalla
+    // en blanco antes de poder iniciarla. Su respuesta ya no hace dano: la
+    // guarda de mas abajo ignora los anonimos no concluyentes.
     setTimeout(() => {
       if (!cancelled) refresh();
     }, 500);
@@ -102,6 +126,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     // state (LoginScreen) with one automatic retry.
     const timeoutId = setTimeout(() => {
       if (cancelled) return;
+      // A partir de aqui un anonimo si es concluyente: nadie va a traer sesion.
+      settled = true;
       setLoading(false);
       // Call refresh directly, don't wait for getSession which may hang
       Events.Emit("license:validate", {});

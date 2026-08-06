@@ -41,47 +41,70 @@ import {
 // recomendado y está promovido a botón principal en LoginScreen.
 function LicenseGate({ children }: { children: ReactNode }) {
   const { result, loading } = useLicense();
-  if (loading) {
-    return (
-      <div
-        data-testid="license-loading"
-        className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
-      >
-        <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
-          Cargando licencia...
-        </p>
-      </div>
-    );
+  // Una vez que el Hub se ha renderizado, no se desmonta jamas por un cambio de
+  // estado de licencia. Antes cada transicion cambiaba de rama, y cambiar de
+  // rama destruye todo el subarbol: el Hub entero -- Studio, lienzo, widgets --
+  // se reconstruia desde cero en cada revalidacion. Los bloqueos posteriores se
+  // pintan como capa superpuesta, que impide interactuar igual que antes pero
+  // conserva el estado de React.
+  const hasRenderedHub = useRef(false);
+
+  // Pantalla bloqueante que corresponde al estado actual, o null si se puede
+  // usar la aplicacion.
+  const blocking = loading
+    ? null
+    : !result || result.state === 'anonymous'
+      ? (
+        <LoginScreen
+          onLoggedIn={(tokens) => {
+            if (!tokens?.accessToken) return;
+            Events.Emit('license:validate', {
+              sessionToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken ?? '',
+            });
+          }}
+        />
+      )
+      // Unconfigured is a backend configuration error (missing Supabase env
+      // vars in the release build). It must never block the user behind a
+      // paywall. Show an actionable message instead.
+      : result.state === 'unconfigured'
+        ? <UnconfiguredScreen />
+        : result.state === 'expired' || result.state === 'device-limit'
+          ? <PaywallScreen email={result.email} result={result} />
+          : null;
+
+  if (!hasRenderedHub.current) {
+    if (loading) {
+      return (
+        <div
+          data-testid="license-loading"
+          className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
+        >
+          <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
+            Cargando licencia...
+          </p>
+        </div>
+      );
+    }
+    if (blocking) {
+      return blocking;
+    }
+    hasRenderedHub.current = true;
   }
-  if (!result || result.state === 'anonymous') {
-    return (
-      <LoginScreen
-        onLoggedIn={(tokens) => {
-          if (!tokens?.accessToken) return;
-          Events.Emit('license:validate', {
-            sessionToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken ?? '',
-          });
-        }}
-      />
-    );
-  }
-  // Unconfigured is a backend configuration error (missing Supabase env
-  // vars in the release build). It must never block the user behind a
-  // paywall. Show an actionable message instead.
-  if (result.state === 'unconfigured') {
-    return <UnconfiguredScreen />;
-  }
-  if (
-    result.state === 'expired' ||
-    result.state === 'device-limit'
-  ) {
-    return <PaywallScreen email={result.email} result={result} />;
-  }
+
   return (
     <>
       <LicenseBanner />
       {children}
+      {blocking ? (
+        <div
+          data-testid="license-blocked-overlay"
+          className="fixed inset-0 z-[9999] overflow-auto bg-[#0a0a0a]"
+        >
+          {blocking}
+        </div>
+      ) : null}
     </>
   );
 }

@@ -1054,12 +1054,28 @@ func main() {
 	if err := licenseSvc.LoadCache(); err != nil {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
+	// Publica el estado cacheado en cuanto haya un suscriptor, para que el Hub
+	// pinte sin esperar a la validacion de red. Sin esto, LoadCache cargaba la
+	// cache y nadie la usaba: el frontend se quedaba en "Cargando licencia..."
+	// uno a tres segundos en cada arranque.
+	wailsApp.Event.On("license:cached:get", func(_ *application.CustomEvent) {
+		licenseSvc.EmitCachedState()
+	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
 	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
 	// by running Validate and re-emitting license:changed.
+	// Deduplica validaciones concurrentes con el mismo token. El frontend las
+	// emite en rafaga desde varios sitios -- se han observado cuatro seguidas en
+	// un solo arranque -- y cada una era una llamada de red a Supabase
+	// redundante. Quien llega tarde no se queda sin respuesta: EmitChanged es un
+	// broadcast, asi que recibe el resultado de la validacion en curso.
+	var (
+		licenseValidateMu       sync.Mutex
+		licenseValidateInFlight = map[string]bool{}
+	)
 	wailsApp.Event.On("license:validate", func(event *application.CustomEvent) {
 		var payload struct {
 			SessionToken string `json:"sessionToken"`
@@ -1075,6 +1091,19 @@ func main() {
 		// race with the frontend state machine.
 		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
 			len(payload.SessionToken), len(payload.RefreshToken))
+		licenseValidateMu.Lock()
+		if licenseValidateInFlight[payload.SessionToken] {
+			licenseValidateMu.Unlock()
+			log.Printf("license:validate coalesced into the in-flight request")
+			return
+		}
+		licenseValidateInFlight[payload.SessionToken] = true
+		licenseValidateMu.Unlock()
+		defer func() {
+			licenseValidateMu.Lock()
+			delete(licenseValidateInFlight, payload.SessionToken)
+			licenseValidateMu.Unlock()
+		}()
 		trustedSessionToken := ""
 		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
 			trustedSessionToken = protectedSession.AccessToken

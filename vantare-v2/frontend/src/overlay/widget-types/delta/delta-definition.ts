@@ -28,7 +28,13 @@ export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel>
   capabilities: {
     inspectorSections: ["design", "appearance", "behavior", "layout", "actions"],
     supportsAspectUnlock: false,
-    minimumSize: { width: 120, height: 48 },
+    // 140x48 y no 120x48: con supportsAspectUnlock:false el tipo declara que su
+    // proporcion no es negociable, y 120x48 daba 2,5 frente a la natural 2,92.
+    // El minimo contradecia la proporcion que el propio widget bloquea, y
+    // obligaba a conformAspectLockedLayout a recalcular el ancho. 140 es el
+    // ancho que corresponde a los 48 de alto, asi que respeta ambos minimos
+    // originales como cota inferior.
+    minimumSize: { width: 140, height: 48 },
     defaultSize: { width: 280, height: 96 },
     requiredFeature: getWidgetRequiredFeature("delta"),
   },

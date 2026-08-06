@@ -6,6 +6,7 @@ import {
   type WidgetInstanceV3,
 } from "../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../overlay/core/widget-registry";
+import { conformAspectLockedLayouts } from "../../overlay/core/profile-layout-conform";
 
 const WIDGET_TYPES = new Set<WidgetType>(["delta", "standings", "relative", "pedals"]);
 
@@ -63,11 +64,16 @@ export function resolveProfilePreviewDocument(
   profile?: ProfileConfig | null,
   previewDocument?: ProfileDocumentV3 | null,
 ): ProfileDocumentV3 | null {
+  // Se conforma igual que en el Studio y en la ventana de overlay: esta ruta
+  // construye el documento desde el formato heredado, que guardaba ancho y alto
+  // libres, y sin conformar la tarjeta mostraba una geometria que el editor no
+  // permite crear -- con el contenido recortado. Las cuatro superficies que
+  // pintan widgets deben coincidir.
   if (previewDocument) {
-    return previewDocument;
+    return conformAspectLockedLayouts(previewDocument);
   }
   if (!profile || !Array.isArray(profile.widgets) || profile.widgets.length === 0) {
     return null;
   }
-  return buildPreviewDocumentFromProfileConfig(profile);
+  return conformAspectLockedLayouts(buildPreviewDocumentFromProfileConfig(profile));
 }

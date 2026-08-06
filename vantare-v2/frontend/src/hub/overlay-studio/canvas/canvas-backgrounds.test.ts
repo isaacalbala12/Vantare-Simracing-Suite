@@ -9,11 +9,14 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 
 describe("CANVAS_BACKGROUNDS", () => {
   it("registers local css backgrounds without remote URLs", () => {
-    expect(CANVAS_BACKGROUNDS.map((entry) => entry.id)).toEqual(["grid", "solid-black"]);
+    expect(CANVAS_BACKGROUNDS.map((entry) => entry.id)).toEqual(["grid", "gradient", "solid-black"]);
     for (const background of CANVAS_BACKGROUNDS) {
       expect(background.kind).toBe("css");
       expect(background.className.startsWith("osv3-bg-")).toBe(true);
       expect(JSON.stringify(background).includes("http")).toBe(false);
+      // labelKey existia sin traducciones y sin usarse, asi que el selector
+      // mostraba identificadores en crudo.
+      expect(background.labelKey.startsWith("studio.v3.canvas.background.")).toBe(true);
     }
   });
 });

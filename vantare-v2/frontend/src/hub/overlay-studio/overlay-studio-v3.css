@@ -887,6 +887,15 @@
   background-size: 80px 80px, 80px 80px, auto;
 }
 
+/* Mismo degradado que el fondo "context" del Workshop: da profundidad sin
+   competir con los widgets, y evita juzgar un diseno contra negro plano, que
+   exagera contrastes que luego no se dan sobre la imagen del juego. */
+.osv3-bg-gradient {
+  background:
+    radial-gradient(circle at 18% 20%, #353b52, transparent 40%),
+    linear-gradient(135deg, #08090d, #202635);
+}
+
 .osv3-bg-black {
   background: #000;
 }
@@ -1375,11 +1384,37 @@
   position: relative;
 }
 
-.osv3-inspector-rail__preview-mark {
-  width: 16px;
-  height: 8px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
+/* El icono hereda color: apagado en reposo, encendido en la seccion activa.
+   Sustituye al rectangulo gris que compartian las seis secciones. */
+.osv3-inspector-rail__preview svg {
+  color: rgba(255, 255, 255, 0.42);
+  transition: color 120ms ease;
+}
+
+.osv3-inspector-rail__item:hover .osv3-inspector-rail__preview svg {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Activo: el icono toma el acento que la seccion ya declaraba para su barra
+   lateral, en vez de un blanco plano igual para todas. */
+.osv3-inspector-rail__item--active .osv3-inspector-rail__preview svg {
+  color: #fff;
+}
+
+.osv3-inspector-rail__item[data-accent="purple"].osv3-inspector-rail__item--active .osv3-inspector-rail__preview svg {
+  color: #a855f7;
+}
+
+.osv3-inspector-rail__item[data-accent="blue"].osv3-inspector-rail__item--active .osv3-inspector-rail__preview svg {
+  color: #3b82f6;
+}
+
+.osv3-inspector-rail__item[data-accent="amber"].osv3-inspector-rail__item--active .osv3-inspector-rail__preview svg {
+  color: #f59e0b;
+}
+
+.osv3-inspector-rail__item[data-accent="cyan"].osv3-inspector-rail__item--active .osv3-inspector-rail__preview svg {
+  color: #06b6d4;
 }
 
 .osv3-inspector-rail__badge {
@@ -1762,13 +1797,9 @@ html.osv3-harness #root {
   box-shadow: inset 3px 0 8px rgba(193, 18, 31, 0.12);
 }
 
-.osv3-canvas-stage {
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    #0c0f19;
-  background-size: 80px 80px, 80px 80px, auto;
-}
+/* El fondo lo aporta la clase del selector sobre este mismo elemento. Aqui
+   vivia una rejilla cableada que lo ignoraba: coincidia con la opcion "grid"
+   por casualidad y con cualquier otra se veia el corte. */
 
 .osv3-canvas-scene {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.025), 0 18px 48px rgba(0, 0, 0, 0.35);
@@ -1907,15 +1938,6 @@ html.osv3-harness #root {
   border-color: rgba(193, 18, 31, 0.4);
   background: rgba(193, 18, 31, 0.12);
   box-shadow: 0 0 12px rgba(193, 18, 31, 0.2);
-}
-
-.osv3-inspector-rail__item--active .osv3-inspector-rail__preview-mark[data-section="appearance"] {
-  background: linear-gradient(90deg, rgba(255,255,255,.65) 50%, rgba(255,255,255,.15) 50%);
-}
-
-.osv3-inspector-rail__item--active .osv3-inspector-rail__preview-mark[data-section="behavior"] {
-  border-radius: 999px;
-  background: #f59e0b;
 }
 
 .osv3-inspector-section-frame__header {

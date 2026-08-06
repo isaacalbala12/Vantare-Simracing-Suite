@@ -81,7 +81,9 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
             >
               {CANVAS_BACKGROUNDS.map((background) => (
                 <option key={background.id} value={background.id}>
-                  {background.id}
+                  {/* labelKey estaba declarado desde el principio pero nadie lo
+                      usaba, asi que el selector mostraba el id en crudo. */}
+                  {t(background.labelKey)}
                 </option>
               ))}
             </select>

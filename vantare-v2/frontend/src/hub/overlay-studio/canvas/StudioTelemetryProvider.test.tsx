@@ -52,7 +52,11 @@ function SourceSwitcher(): React.ReactElement {
 describe("StudioTelemetryProvider", () => {
   afterEach(() => cleanup());
 
-  it("serves mock telemetry while preview source is mock", () => {
+  it("serves mock telemetry for the active preview before the first paint", () => {
+    // Se siembra otra sesion a proposito: el proveedor debe imponer la de la
+    // vista previa activa -- "practice" por defecto -- y hacerlo antes de que
+    // se pinte. Con useEffect publicaba despues del primer fotograma, asi que
+    // los widgets aparecian un instante sin datos al entrar en el Studio.
     const coordinator = createTelemetryRateCoordinator();
     coordinator.publish(
       buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
@@ -66,7 +70,7 @@ describe("StudioTelemetryProvider", () => {
       </StudioProvider>,
     );
 
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("qualifying");
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
   });
 
   it("republishes mock telemetry when mock session changes", async () => {
@@ -159,6 +163,7 @@ describe("ConnectedStudioTelemetryProvider", () => {
       </StudioProvider>,
     );
 
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("qualifying");
+    // Igual que arriba: la vista previa activa manda sobre lo sembrado.
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
   });
 });

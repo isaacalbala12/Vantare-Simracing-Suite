@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { canMutateWidget } from "../access/studio-access";
@@ -38,6 +38,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const { t } = useI18n();
   const {
     access,
+    document,
     activeLayout,
     activeSession,
     selectedWidgetId,
@@ -53,20 +54,40 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+  // null mientras no se haya podido medir de verdad. El valor inicial anterior
+  // fingia que el contenedor media lo que el lienzo, que con "fit" da escala 1:
+  // el lienzo se pintaba a 1920x1080 dentro de un area mas pequena y, con el
+  // margin:auto del contenedor, lo visible era su parte central. De ahi que los
+  // widgets aparecieran centrados un instante y luego saltaran a su sitio
+  // cambiando de tamano.
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
 
-  useEffect(() => {
+  // useLayoutEffect y no useEffect: la medida tiene que ocurrir antes de que el
+  // navegador pinte. El estado inicial finge que el contenedor mide lo que el
+  // lienzo, 1920x1080, asi que con "fit" la primera escala sale 1 y los widgets
+  // se dibujan a tamano real -- casi el doble del que les toca -- hasta que la
+  // medida real llega. Ese fotograma a escala equivocada era el salto al abrir
+  // Overlay Studio.
+  useLayoutEffect(() => {
     const node = stageRef.current;
     if (!node) {
       return;
     }
 
     const updateSize = () => {
-      setContainerSize({
-        width: node.clientWidth || CANVAS_WIDTH,
-        height: node.clientHeight || CANVAS_HEIGHT,
-      });
+      // Sin medida no se inventa una: en desarrollo el CSS entra de forma
+      // asincrona y el contenedor puede valer 0 en el primer layout.
+      const width = node.clientWidth;
+      const height = node.clientHeight;
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      setContainerSize((current) =>
+        current && current.width === width && current.height === height
+          ? current
+          : { width, height },
+      );
     };
     updateSize();
 
@@ -80,9 +101,15 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     return () => observer.disconnect();
   }, []);
 
+  // El lienzo espera a dos cosas antes de pintarse: saber cuanto mide y tener
+  // el perfil. El perfil llega de forma asincrona, asi que sin esta condicion
+  // el lienzo aparecia vacio y los widgets entraban despues. Se distingue "aun
+  // no ha llegado" de "no tiene widgets": un perfil sin widgets es valido y
+  // debe pintarse vacio.
+  const ready = containerSize !== null && document !== null;
   const scale = resolveCanvasScale({
-    containerWidth: containerSize.width,
-    containerHeight: containerSize.height,
+    containerWidth: containerSize?.width ?? CANVAS_WIDTH,
+    containerHeight: containerSize?.height ?? CANVAS_HEIGHT,
     zoom: preview.zoom,
   });
   const displayWidth = Math.round(CANVAS_WIDTH * scale);
@@ -283,18 +310,32 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
           )
         ) : null}
       </div>
-      <div ref={stageRef} className="osv3-canvas-stage">
+      {/* El fondo se dibuja una sola vez, aqui, y cubre todo el area de trabajo.
+          El lienzo es 16:9 y el area no, asi que al ajustar siempre sobra
+          espacio arriba y abajo; pintarlo tambien en el lienzo dejaba ese
+          sobrante como bandas y duplicaba el degradado a dos escalas, con una
+          costura visible al encoger la ventana. El lienzo queda delimitado por
+          su sombra y su borde, no por un cambio de fondo. */}
+      <div
+        ref={stageRef}
+        data-testid="studio-canvas-stage"
+        className={`osv3-canvas-stage ${background.className}`}
+      >
         <div
           className="osv3-canvas-scene-stage"
           style={{
             width: `${displayWidth}px`,
             height: `${displayHeight}px`,
+            // Oculto hasta estar listo: se mantiene en el DOM para no alterar
+            // el flujo, pero no llega a pintarse a una escala inventada ni sin
+            // los widgets del perfil.
+            visibility: ready ? undefined : "hidden",
           }}
         >
           <div
             ref={sceneRef}
             data-testid="studio-canvas-scene"
-            className={`osv3-canvas-scene ${background.className}`}
+            className="osv3-canvas-scene"
             data-scale={String(scale)}
             style={{
               width: `${CANVAS_WIDTH}px`,

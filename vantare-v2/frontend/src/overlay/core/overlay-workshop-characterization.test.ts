@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { ALL_WIDGET_TYPES } from "./profile-document";
 import { designSystemRegistry } from "./design-system-registry";
-import { listOfficialDesigns } from "../design-systems/official-designs";
+import { listAllOfficialDesigns } from "../design-systems/official-designs";
 import historicalCrystalManifest from "../../../testdata/crystal-reference/manifest.json";
 
 const sourceRoot = join(process.cwd(), "src");
@@ -35,7 +35,9 @@ function isSystemRegistration(path: string): boolean {
 
 describe("Overlay Workshop characterization", () => {
   it("derives the current catalog and keeps Engineer distinct from historical Crystal parity", () => {
-    const designs = listOfficialDesigns();
+    // Caracteriza el catalogo completo: incluye los retirados, que siguen
+    // teniendo entrada aunque el panel ya no los ofrezca.
+    const designs = listAllOfficialDesigns();
     const crystal = designs.filter((design) => design.systemId === "vantare-crystal");
     const historical = historicalCrystalManifest.entries;
 

@@ -92,6 +92,13 @@ export function eventName(product: ProductID, kind: EventKind): string {
   return `telemetry:${product}:${kind}`;
 }
 
+// Espejo de telemetrytransport.StatusRequestEventName. El estado solo se emite
+// cuando cambia, asi que un consumidor que aparece a mitad de sesion necesita
+// pedirlo: sin estado el observador no pinta, aunque le lleguen snapshots.
+export function statusRequestEventName(product: ProductID): string {
+  return `${eventName(product, "status")}:get`;
+}
+
 export function projectionRoute(product: ProductID): string {
   return `/telemetry/${product}/projection`;
 }

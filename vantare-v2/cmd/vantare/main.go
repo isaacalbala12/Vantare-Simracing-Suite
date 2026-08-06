@@ -1271,6 +1271,31 @@ func main() {
 		return telemetryCoreRuntime.SourceStatus()
 	}
 
+	// DriverManager no registra ninguna transicion, asi que un fallo de conexion
+	// solo era observable desde fuera como "no llega telemetria": el unico
+	// rastro en el log era la foto que se toma justo despues de Start, tomada
+	// antes de que la deteccion termine. Este decorador escribe una linea por
+	// cada cambio de estado o de intento, que es lo minimo para distinguir un
+	// reintento en curso de un error terminal. El sampler ya lo invoca de forma
+	// periodica; se llama desde varias goroutines, de ahi el mutex.
+	telemetrySourceStatus = func(next func() driver.SourceStatus) func() driver.SourceStatus {
+		var mu sync.Mutex
+		var lastState string
+		var lastAttempt int
+		var seen bool
+		return func() driver.SourceStatus {
+			status := next()
+			mu.Lock()
+			if !seen || status.State != lastState || status.ReconnectAttempt != lastAttempt {
+				seen, lastState, lastAttempt = true, status.State, status.ReconnectAttempt
+				log.Printf("telemetry source: state=%s available=%v reconnectAttempt=%d",
+					status.State, status.Available, status.ReconnectAttempt)
+			}
+			mu.Unlock()
+			return status
+		}
+	}(telemetrySourceStatus)
+
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
 		Addr:        *httpAddr,
@@ -1459,6 +1484,30 @@ func main() {
 	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {
 		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
+
+	// Mismo patron para el transporte de overlays. Sin esto, una ventana abierta
+	// a mitad de sesion no recibe estado -- solo se publica cuando cambia -- y el
+	// observador se queda esperando indefinidamente con el widget en blanco.
+	wailsApp.Event.On(
+		telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay),
+		func(event *application.CustomEvent) {
+			if telemetryCoreRuntime == nil {
+				return
+			}
+			hub := telemetryCoreRuntime.Hub()
+			if hub == nil {
+				return
+			}
+			replay, ok, err := hub.ReplayStatus()
+			if err != nil {
+				log.Printf("overlay status replay error: %v", err)
+				return
+			}
+			if !ok {
+				return
+			}
+			emitter.Emit(telemetrytransport.EventName(replay.Product, replay.Kind), replay.Data)
+		})
 
 	if updaterSvc != nil {
 		emitUpdaterError := func(message string) {

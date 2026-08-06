@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -427,6 +428,14 @@ func (hub *Hub) Subscribe(ctx context.Context) (*Subscription, error) {
 	}
 	subscription := &Subscription{hub: hub, state: state}
 	hub.subscribers[subscription] = state
+	// Un suscriptor que entra sin snapshot pendiente se queda a oscuras hasta
+	// la siguiente publicacion. Se registran las tres condiciones por separado
+	// para poder distinguir "aun no hay snapshot" de "las revisiones no
+	// coinciden", que es la ventana sospechosa al cambiar de widget o al abrir
+	// un overlay con la hotkey. Solo metadatos de transporte: ningun payload.
+	log.Printf("transport subscribe: subscribers=%d hasSnapshot=%v hasStatus=%v fullStatusRev=%d statusRev=%d pendingSnapshot=%v",
+		len(hub.subscribers), hub.hasSnapshot, hub.hasStatus,
+		hub.latest.full.StatusRevision, hub.status.StatusRevision, state.pendingSnapshot)
 	if state.pendingStatus || state.pendingSnapshot {
 		notify(state)
 	}
@@ -504,6 +513,40 @@ func (subscription *Subscription) Next(ctx context.Context) (Event, error) {
 	}
 }
 
+// StatusRequestEventName nombra la peticion de reenvio de estado, simetrica a
+// telemetry-core:source-status:get, que el Hub ya usaba para lo mismo.
+func StatusRequestEventName(product ProductID) string {
+	return EventName(product, EventStatus) + ":get"
+}
+
+// ReplayStatus devuelve el ultimo estado publicado, listo para emitir.
+//
+// El estado solo se publica cuando cambia, y el puente Wails comparte una unica
+// suscripcion para todas las ventanas: los eventos ya emitidos no se repiten.
+// Un consumidor que aparece a mitad de sesion -- un overlay abierto con la
+// hotkey, o un cambio de diseno desde la preview -- se quedaba por tanto sin
+// estado, y el observador del frontend exige estado ademas de snapshot para
+// pintar. El resultado era un widget en blanco hasta que algo forzara una
+// transicion, tipicamente entrar y salir de boxes.
+func (hub *Hub) ReplayStatus() (Event, bool, error) {
+	if hub == nil {
+		return Event{}, false, nil
+	}
+	hub.mu.Lock()
+	if hub.closed || !hub.hasStatus {
+		hub.mu.Unlock()
+		return Event{}, false, nil
+	}
+	status := cloneStatus(hub.status)
+	product := hub.product
+	hub.mu.Unlock()
+	event, err := marshalEvent(product, EventStatus, status)
+	if err != nil {
+		return Event{}, false, err
+	}
+	return event, true, nil
+}
+
 func (subscription *Subscription) Close() error {
 	if subscription == nil || subscription.hub == nil || subscription.state == nil {
 		return nil
@@ -513,6 +556,11 @@ func (subscription *Subscription) Close() error {
 	if _, exists := subscription.hub.subscribers[subscription]; exists {
 		delete(subscription.hub.subscribers, subscription)
 		close(subscription.state.done)
+		// deliveredAny distingue "se cerro sin haber recibido nunca nada" de un
+		// cierre normal: lo primero es el sintoma de un widget que se quedo en
+		// blanco desde que se abrio.
+		log.Printf("transport unsubscribe: subscribers=%d deliveredAny=%v delivered=%d",
+			len(subscription.hub.subscribers), subscription.state.deliveredAny, subscription.state.delivered)
 	}
 	return nil
 }

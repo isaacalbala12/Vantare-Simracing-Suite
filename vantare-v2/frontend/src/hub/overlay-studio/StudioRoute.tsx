@@ -9,6 +9,7 @@ import {
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from "../../telemetry-transport/source-status";
+import { statusRequestEventName } from "../../telemetry-transport/contracts";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
@@ -378,6 +379,9 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       coordinator,
       runtime: "studio",
       subscribe,
+      // Igual que en los overlays: la preview tampoco recibe estado si entra
+      // entre dos transiciones, y sin estado no pinta.
+      requestStatus: () => Events.Emit(statusRequestEventName("overlay")),
     });
   }, [coordinator, telemetryAdapterProp]);
 

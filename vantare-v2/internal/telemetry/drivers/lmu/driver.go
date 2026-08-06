@@ -211,6 +211,11 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			if current != previousSource || !unchangedSince.set {
 				unchangedSince = monotonicStamp{elapsed: elapsed, set: true}
 			} else if elapsed < unchangedSince.elapsed || elapsed-unchangedSince.elapsed >= driver.config.freshnessLimit {
+				// Medido en LMU 1.4: el simulador refresca su bloque de sesion a
+				// 5 Hz constantes (200 ms), asi que este limite deja 2,5x de
+				// margen y solo se alcanza en parones reales -- pausa, menu,
+				// carga. No es un umbral ajustado: no lo subas para tapar un
+				// parpadeo sin medir antes la cadencia.
 				observation = withFreshness(observation, schema.FreshnessStale)
 			}
 			previousSource = current
@@ -342,6 +347,14 @@ func combinedRuntimeState(shared drivercontract.State, rest RESTStatus) driverco
 func IsRetryable(err error) bool {
 	if errors.Is(err, drivercontract.ErrTeardown) {
 		return false
+	}
+	// El consumidor ya absorbe estos frames antes de que lleguen aqui, de modo
+	// que en condiciones normales esta rama no se ejerce. Se mantiene como red
+	// de seguridad: un fallo de mapeo describe un frame, nunca un driver
+	// inservible, y clasificarlo como terminal apagaba la telemetria hasta el
+	// siguiente reinicio.
+	if IsUnmappableFrame(err) {
+		return true
 	}
 	return errors.Is(err, ErrDisconnected) || errors.Is(err, ErrMappingUnavailable) || errors.Is(err, ErrMappingRead) || errors.Is(err, ErrIncoherentSnapshot)
 }

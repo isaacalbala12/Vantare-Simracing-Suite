@@ -274,6 +274,36 @@ func (s *Service) LoadCache() error {
 	return nil
 }
 
+// EmitCachedState publica el estado guardado en cache nada mas arrancar, sin
+// esperar a la red.
+//
+// La arquitectura ya lo especifica -- "User opens app -> LoadCache() -> gate by
+// cached state" -- y LoadCache se llamaba en el arranque, pero nadie emitia el
+// resultado. El frontend se quedaba bloqueado en "Cargando licencia..." durante
+// la validacion contra Supabase, que tarda entre uno y tres segundos.
+//
+// No relaja ninguna comprobacion: usa la misma verificacion offline que la ruta
+// de gracia, sobre una credencial firmada Ed25519 y atada a la huella de este
+// dispositivo. La validacion online sigue su curso y corrige el estado despues.
+func (s *Service) EmitCachedState() {
+	if s == nil || s.cache == nil || s.verifier == nil {
+		return
+	}
+	credential, err := s.cache.Read()
+	if err != nil {
+		return
+	}
+	fingerprint, err := s.fingerprint()
+	if err != nil {
+		return
+	}
+	result, err := s.verifier.verifyCached(credential, credential.Claims.Subject, fingerprint)
+	if err != nil || result == nil {
+		return
+	}
+	s.EmitChanged(result)
+}
+
 func subjectFromJWT(token string) (string, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {

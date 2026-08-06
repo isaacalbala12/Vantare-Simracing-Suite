@@ -184,7 +184,15 @@ func (runtime *TelemetryCoreRuntime) SourceStatus() driver.SourceStatus {
 		Kind:             "lmu",
 		Name:             "Le Mans Ultimate",
 		Live:             true,
-		Available:        runtime.statusState == driver.StateLive || runtime.statusState == driver.StateDegraded,
+		// Available responde a "hay conexion con el simulador", que es para lo
+		// que lo usan sus consumidores: el indicador del Topbar y si se puede
+		// elegir la fuente LIVE en el Studio. Stale no rompe esa conexion --
+		// significa que el simulador no ha movido su reloj de sesion, tipico de
+		// una pausa o un menu -- y excluirlo deshabilitaba LIVE por un bache de
+		// medio segundo. Quedaba ademas al reves que degraded, que significa "no
+		// reconozco esta version" y si contaba como disponible. La frescura
+		// sigue expuesta en State para quien la necesite.
+		Available:        runtime.statusState == driver.StateLive || runtime.statusState == driver.StateDegraded || runtime.statusState == driver.StateStale,
 		State:            runtime.statusState.String(),
 		ReconnectAttempt: runtime.statusAttempt,
 	}

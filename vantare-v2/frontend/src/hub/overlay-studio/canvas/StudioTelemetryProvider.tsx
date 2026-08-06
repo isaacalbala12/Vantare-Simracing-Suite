@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   type ReactNode,
 } from "react";
@@ -32,7 +33,13 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   const { coordinator, liveAvailable, telemetryAdapter = null, children } = props;
   const { preview } = useStudioPreview();
 
-  useEffect(() => {
+  // useLayoutEffect y no useEffect: los datos mock se generan aqui mismo, sin
+  // esperar a nadie, asi que no hay motivo para que el primer fotograma salga
+  // vacio. Con useEffect se publicaban despues de pintar y los widgets
+  // aparecian un instante sin datos al entrar en el Studio. publish actualiza
+  // el snapshot de forma sincrona y useSyncExternalStore lo lee en el mismo
+  // ciclo, de modo que el primer pintado ya lleva datos.
+  useLayoutEffect(() => {
     if (preview.source !== "mock") {
       return;
     }

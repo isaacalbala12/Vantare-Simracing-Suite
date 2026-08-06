@@ -237,8 +237,11 @@ describe("StudioCanvas", () => {
     renderCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
 
-    const scene = screen.getByTestId("studio-canvas-scene");
-    expect(scene.className).toContain("osv3-bg-grid");
+    // El fondo vive en el area de trabajo, no en el lienzo: dibujarlo tambien
+    // dentro dejaba el sobrante de encajar 16:9 como bandas visibles.
+    const stage = screen.getByTestId("studio-canvas-stage");
+    expect(stage.className).toContain("osv3-bg-gradient");
+    expect(screen.getByTestId("studio-canvas-scene").className).not.toContain("osv3-bg-");
     expect(screen.queryByTestId("studio-safe-area-overlay")).toBeNull();
 
     fireEvent.change(screen.getByTestId("studio-background-select"), {
@@ -246,7 +249,7 @@ describe("StudioCanvas", () => {
     });
     fireEvent.click(screen.getByTestId("studio-safe-area-toggle"));
 
-    expect(screen.getByTestId("studio-canvas-scene").className).toContain("osv3-bg-black");
+    expect(screen.getByTestId("studio-canvas-stage").className).toContain("osv3-bg-black");
     const overlay = screen.getByTestId("studio-safe-area-overlay");
     expect(overlay.style.top).toBe(`${Math.round(CANVAS_HEIGHT * SAFE_AREA_INSET_RATIO)}px`);
     expect(overlay.style.left).toBe(`${Math.round(CANVAS_WIDTH * SAFE_AREA_INSET_RATIO)}px`);

@@ -53,7 +53,10 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   mockSession: "practice",
   mockLocation: "track",
   zoom: "fit",
-  backgroundId: "grid",
+  // El degradado se parece mas a lo que hay detras de un overlay en carrera que
+  // una rejilla plana, asi que juzgar contraste y legibilidad sobre el es mas
+  // fiel. La rejilla sigue disponible en el selector para alinear a ojo.
+  backgroundId: "gradient",
   safeArea: false,
 };
 

@@ -358,14 +358,6 @@ func (manager *DriverManager[T]) applyRuntimeSnapshot(runtime driver.RuntimeSnap
 		if errors.Is(manager.err, ErrInvalidDriverTransition) {
 			manager.err = nil
 		}
-		// Volver a estado vivo cierra el episodio de reconexion. Sin esto el
-		// contador solo se reiniciaba al arrancar o al parar, asi que sumaba
-		// durante toda la vida de la aplicacion: quien juegue una tarde larga
-		// con desconexiones ocasionales agotaba MaxReconnects y el driver moria
-		// de forma permanente. El limite cuenta fallos seguidos, no totales.
-		if runtime.State == driver.StateLive {
-			manager.attempt = 0
-		}
 		return
 	}
 	from := manager.state

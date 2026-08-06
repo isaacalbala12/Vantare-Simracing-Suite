@@ -395,6 +395,9 @@ func (s *HubService) StartActiveOverlay() (OverlayStatus, error) {
 	if err != nil {
 		return status, err
 	}
+	// Medido: crear la ventana cuesta ~80 ms y este emit sale de inmediato, pero
+	// la WebView no esta lista hasta ~470 ms. Esta emision temprana casi siempre
+	// se pierde; quien realmente entrega el perfil es overlay:profile-v3:get.
 	if s.studioProfileSvc != nil {
 		s.studioProfileSvc.EmitRuntimeLoaded()
 	}

@@ -3,6 +3,8 @@ import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
 import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
+import { conformAspectLockedLayouts } from "./core/profile-layout-conform";
+import { statusRequestEventName } from "../telemetry-transport/contracts";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
@@ -43,6 +45,10 @@ export function CompositeApp() {
         coordinator,
         runtime: "desktop",
         subscribe,
+        // Una ventana de overlay abierta a mitad de sesion no recibe estado,
+        // porque solo se publica al cambiar y el puente Wails no repite lo ya
+        // emitido. Sin estado el observador no pinta nada.
+        requestStatus: () => Events.Emit(statusRequestEventName("overlay")),
       });
     },
     [coordinator],
@@ -65,7 +71,9 @@ export function CompositeApp() {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {
       try {
         const data = event.data as ProfileV3LoadedPayload;
-        setDocument(parseProfileDocumentV3(data.document));
+        // Misma conformacion que aplica el Studio: la ventana de overlay debe
+        // pintar la geometria que el editor muestra, no la del perfil heredado.
+        setDocument(conformAspectLockedLayouts(parseProfileDocumentV3(data.document)));
         setRevision(data.revision ?? "");
         setLayoutOrigin(data.layoutOrigin ?? { x: 0, y: 0 });
       } catch (err) {
@@ -93,12 +101,14 @@ export function CompositeApp() {
     };
   }, []);
 
+  // Sin perfil no se pinta nada. Esta ventana es una capa transparente sobre el
+  // juego: un marcador de carga aqui no informa a nadie, aparece centrado en
+  // mitad de la pantalla -- y en emision -- durante los ~390 ms que tarda la
+  // WebView en arrancar y pedir el perfil, y desaparece de golpe cuando llega.
+  // Ese era el "salto" al abrir un overlay. El vacio es invisible: los widgets
+  // simplemente aparecen cuando hay algo que mostrar.
   if (!document) {
-    return (
-      <div className="flex items-center justify-center w-full h-full text-white/40 text-sm font-mono">
-        Loading profile...
-      </div>
-    );
+    return null;
   }
 
   return (

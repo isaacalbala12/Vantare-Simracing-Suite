@@ -9,6 +9,7 @@ export const STANDINGS_ENDURANCE_TEMPLATE_IDS = [
   "standings-racelabs",
   "standings-apex",
   "standings-neo",
+  "standings-redline",
 ] as const;
 
 export type StandingsEnduranceTemplateId = (typeof STANDINGS_ENDURANCE_TEMPLATE_IDS)[number];

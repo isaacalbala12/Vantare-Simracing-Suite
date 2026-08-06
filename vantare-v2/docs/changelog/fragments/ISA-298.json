@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-298",
+  "type": "feature",
+  "summary": "Nuevo sistema de diseño Vantare Endurance con la dirección visual Redline y standings multiclase por segmentos.",
+  "technicalNotes": [
+    "Tercer sistema de diseño (vantare-endurance) con delta, standings, relative y pedals, creado con la autoría directa del Overlay Workshop.",
+    "Nueve composiciones de standings seleccionables por diseño: Redline (por defecto), Tower, Strip, F1, WEC, LMU, Racelabs, Apex y Neo.",
+    "Los standings pueden mostrar todas las clases en pista como paneles separados (la clase del jugador siempre abajo) con gaps calculados por líder de clase.",
+    "Redline incorpora slots de información (sesión, tiempo restante y vuelta), líder de clase en fila invertida y vuelta rápida de la sesión marcada en morado."
+  ],
+  "testing": [
+    "Abrir el Overlay Workshop con widget=standings, system=vantare-endurance, design=standings-endurance-redline y variant=standings-multiclass; verificar los tres paneles de clase con la clase del jugador abajo.",
+    "Cambiar el diseño entre Redline, WEC, F1, LMU, Racelabs y Neo, y comprobar estados ready, stale, disconnected y error.",
+    "Verificar en el panel de clase GT3 que la fila del jugador queda destacada en carmín y que la vuelta rápida de la sesión muestra el cronómetro morado."
+  ],
+  "knownLimitations": [
+    "Las animaciones de eventos (adelantamientos, batalla, presión) llegarán con el motor de movimiento en una entrega posterior.",
+    "Los chips de cambio de posición se muestran vacíos hasta que el motor de movimiento derive los cambios entre actualizaciones."
+  ]
+}

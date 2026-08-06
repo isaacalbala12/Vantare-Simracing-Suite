@@ -23,6 +23,7 @@ import {
 } from "./standings-endurance-settings";
 import { StandingsApexTemplate } from "./StandingsApexTemplate";
 import { StandingsNeoTemplate } from "./StandingsNeoTemplate";
+import { StandingsRedlineTemplate } from "./StandingsRedlineTemplate";
 import { StandingsLmuTemplate } from "./StandingsLmuTemplate";
 import { StandingsRacelabsTemplate } from "./StandingsRacelabsTemplate";
 import { StandingsWecTemplate } from "./StandingsWecTemplate";
@@ -301,6 +302,14 @@ function templateBody(
     case "standings-neo":
       return (
         <StandingsNeoTemplate model={model} settings={settings} showSessionHeader={showSessionHeader} />
+      );
+    case "standings-redline":
+      return (
+        <StandingsRedlineTemplate
+          model={model}
+          settings={settings}
+          showSessionHeader={showSessionHeader}
+        />
       );
     case "standings-tower":
     case "standings-strip":

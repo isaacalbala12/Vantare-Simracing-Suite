@@ -1,8 +1,12 @@
 import { designSystemRegistry } from "../../../overlay/core/design-system-registry";
-import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { prepareWidgetVisualSettings } from "../../../overlay/core/widget-visual-settings";
-import { listOfficialDesigns } from "../../../overlay/design-systems/official-designs";
+import {
+  getOfficialDesign,
+  listOfficialDesigns,
+  migrateRetiredDesignId,
+} from "../../../overlay/design-systems/official-designs";
 
 export function isDesignCompatibleWithWidget(design: WidgetDesignV1, widget: WidgetInstanceV3): boolean {
   if (design.widgetType !== widget.type) {
@@ -51,6 +55,54 @@ export function buildUserDesignFromWidget(
 
 export function isActiveDesign(widget: WidgetInstanceV3, design: WidgetDesignV1): boolean {
   return widget.visual.provenance?.designId === design.id;
+}
+
+// Reescribe un widget cuyo diseno haya sido retirado al sustituto vigente.
+//
+// No basta con cambiar la procedencia: lo que se renderiza sale de baseSettings
+// -- DeltaCrystal elige plantilla con settings.templateId --, asi que dejar los
+// ajustes intactos mantendria la variante retirada en pantalla. Se sustituyen
+// los ajustes base como haria aplicar el diseno a mano, y se respetan los
+// appearanceOverrides, que son del usuario y no del preset.
+// Aplica la migracion a todo el documento, en cada layout de sesion. Se llama
+// al cargar un perfil: es el unico momento en que un id retirado puede entrar.
+export function migrateRetiredDesigns(document: ProfileDocumentV3): ProfileDocumentV3 {
+  let changed = false;
+  const layouts = {} as ProfileDocumentV3["layouts"];
+  for (const [session, layout] of Object.entries(document.layouts)) {
+    if (!layout) continue;
+    const widgets = layout.widgets.map((widget) => {
+      const migrated = migrateRetiredWidgetDesign(widget);
+      if (migrated !== widget) changed = true;
+      return migrated;
+    });
+    Object.assign(layouts, { [session]: { ...layout, widgets } });
+  }
+  return changed ? { ...document, layouts } : document;
+}
+
+export function migrateRetiredWidgetDesign(widget: WidgetInstanceV3): WidgetInstanceV3 {
+  const current = widget.visual.provenance?.designId;
+  if (!current) return widget;
+  const replacementId = migrateRetiredDesignId(current);
+  if (replacementId === current) return widget;
+  const replacement = getOfficialDesign(replacementId);
+  if (!replacement || !isDesignCompatibleWithWidget(replacement, widget)) return widget;
+  return {
+    ...widget,
+    visual: {
+      ...widget.visual,
+      systemVersion: replacement.systemVersion,
+      configVersion: replacement.configVersion,
+      baseSettings: structuredClone(replacement.visual),
+      provenance: {
+        designId: replacement.id,
+        designName: replacement.name,
+        origin: replacement.origin,
+        appliedAt: widget.visual.provenance?.appliedAt ?? "",
+      },
+    },
+  };
 }
 
 export function getDefaultOfficialDesign(

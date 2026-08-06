@@ -51,6 +51,10 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { templateId: "delta-simple", showHeader: true },
     includesContent: false,
     origin: "vantare",
+    // Sustituido por delta-crystal-bar. Se conserva la entrada para que los
+    // perfiles guardados sigan resolviendo su diseno; migrateRetiredDesignId
+    // los reescribe al cargarlos.
+    retired: true,
   },
   {
     id: "standings-original-base",
@@ -235,11 +239,34 @@ const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((desi
 
 const OFFICIAL_BY_ID = new Map(OFFICIAL_DESIGNS.map((design) => [design.id, design]));
 
+// El catalogo es lo que se ofrece: los retirados no aparecen. getOfficialDesign
+// si los resuelve, para que un perfil que aun los referencie no se quede sin
+// diseno mientras la migracion no lo haya reescrito.
 export function listOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
+  const offered = OFFICIAL_DESIGNS.filter((design) => design.retired !== true);
+  if (!widgetType) {
+    return offered;
+  }
+  return offered.filter((design) => design.widgetType === widgetType);
+}
+
+// Catalogo completo, retirados incluidos. Para comprobaciones de cobertura
+// -- que todo diseno de referencia siga teniendo entrada -- no para ofrecer.
+export function listAllOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
   if (!widgetType) {
     return [...OFFICIAL_DESIGNS];
   }
   return OFFICIAL_DESIGNS.filter((design) => design.widgetType === widgetType);
+}
+
+// Diseno retirado -> sustituto vigente. Al cargar un perfil, un id retirado se
+// reescribe aqui para que el usuario no vea una variante que ya no ofrecemos.
+const RETIRED_DESIGN_REPLACEMENTS: Readonly<Record<string, string>> = {
+  "delta-crystal-simple": "delta-crystal-bar",
+};
+
+export function migrateRetiredDesignId(designId: string): string {
+  return RETIRED_DESIGN_REPLACEMENTS[designId] ?? designId;
 }
 
 export function getOfficialDesign(id: string): WidgetDesignV1 | undefined {

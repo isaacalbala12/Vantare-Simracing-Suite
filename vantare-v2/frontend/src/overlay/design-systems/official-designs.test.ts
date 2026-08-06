@@ -3,6 +3,7 @@ import { designSystemRegistry } from "../core/design-system-registry";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import {
   getOfficialDesign,
+  listAllOfficialDesigns,
   listOfficialDesigns,
   OFFICIAL_DESIGNS_SECTION_LABEL,
 } from "./official-designs";
@@ -54,7 +55,10 @@ describe("official-designs", () => {
       .filter((entry) => registeredTypes.has(entry.widgetType as WidgetType))
       .map((entry) => entry.designId)
       .sort();
-    const actualIds = listOfficialDesigns()
+    // Cobertura del manifiesto de referencia: cuenta el catalogo completo, no
+    // solo lo que se oferta. Un diseno retirado deja de aparecer en el panel
+    // pero debe seguir teniendo entrada para que los perfiles lo resuelvan.
+    const actualIds = listAllOfficialDesigns()
       .filter((design) => design.systemId === "vantare-crystal")
       .filter((design) => design.id !== "engineer-radio-crystal")
       .map((design) => design.id)

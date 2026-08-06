@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
@@ -6,6 +6,7 @@ import { ALL_WIDGET_TYPES, type DesignSystemId, type WidgetInstanceV3, type Widg
 import { applyWidgetDesign } from "../core/widget-design";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
+  STANDINGS_REPLAY_FRAME_COUNT,
   buildAuthoringFixtureTelemetry,
   buildAuthoringFixtureWidget,
   resetAndSeedAuthoringInputTelemetry,
@@ -30,6 +31,7 @@ const VARIANTS: readonly HarnessVariant[] = [
   "relative-fill",
   "standings-stress60",
   "standings-multiclass",
+  "standings-replay",
   "pedals-zero",
   "pedals-full",
 ];
@@ -149,6 +151,18 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const designs = listOfficialDesigns(parsed.widget).filter((design) => design.systemId === parsed.system);
   const fixtureKey = serializeOverlayWorkshopQuery(parsed);
 
+  const [replayFrame, setReplayFrame] = useState(0);
+  useEffect(() => {
+    if (parsed.variant !== "standings-replay") {
+      return;
+    }
+    const timer = setInterval(
+      () => setReplayFrame((frame) => (frame + 1) % STANDINGS_REPLAY_FRAME_COUNT),
+      1400,
+    );
+    return () => clearInterval(timer);
+  }, [parsed.variant, fixtureKey]);
+
   useLayoutEffect(() => {
     const next = prepareFixture(parsed);
     resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
@@ -161,6 +175,23 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       clearInputTelemetryHistory(next.widget.id);
     };
   }, [parsed]);
+
+  const preparedForRender =
+    prepared && parsed.variant === "standings-replay"
+      ? {
+          ...prepared,
+          snapshot: buildAuthoringFixtureTelemetry({
+            session: parsed.session,
+            location: parsed.location,
+            state: parsed.state,
+            widget: parsed.widget,
+            system: parsed.system,
+            surface: parsed.surface,
+            variant: parsed.variant,
+            replayFrame,
+          }),
+        }
+      : prepared;
 
   const chooseWidget = (value: string) => {
     const widgetType = value as WidgetType;
@@ -251,8 +282,8 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={prepared} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={prepared} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.surface} query={parsed} />
+          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.compare} query={parsed} comparison />}</>
         )}
       </section>
     </main>

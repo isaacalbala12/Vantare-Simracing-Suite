@@ -63,6 +63,7 @@ export type HarnessVariant =
   | "relative-fill"
   | "standings-stress60"
   | "standings-multiclass"
+  | "standings-replay"
   | "pedals-zero"
   | "pedals-full";
 
@@ -79,6 +80,7 @@ export function isHarnessVariant(value: string): value is HarnessVariant {
     || value === "relative-fill"
     || value === "standings-stress60"
     || value === "standings-multiclass"
+    || value === "standings-replay"
     || value === "pedals-zero"
     || value === "pedals-full"
   );
@@ -93,6 +95,7 @@ export type AuthoringFixtureScenario = {
   surface: AuthoringFixtureSurface;
   variant?: HarnessVariant;
   designId?: CrystalHarnessDesignId;
+  replayFrame?: number;
 };
 
 function buildStandingsStressScoring(): Record<string, unknown>[] {
@@ -139,6 +142,71 @@ const MULTICLASS_GRID: readonly (readonly [vehicleClass: string, entries: readon
     ["Conrad Laursen", 50, 98.243, "#f20205"],
   ]],
 ];
+
+type ReplayOverride = {
+  place?: number;
+  timeBehindLeader?: number;
+  inPits?: boolean;
+  tireCompound?: string;
+  bestLapTime?: number;
+};
+
+export const STANDINGS_REPLAY_FRAME_COUNT = 10;
+
+/**
+ * Deterministic replay timeline for the Workshop motion preview: battle forms
+ * and crystallizes (f1-f3), an overtake resolves it (f4-f5), pit stop with a
+ * tire change (f6-f7) and a session-best takeover (f7), then back to baseline.
+ */
+function replayOverrides(frame: number): Record<string, ReplayOverride> {
+  const bovyBase = 19.35;
+  const step = ((frame % STANDINGS_REPLAY_FRAME_COUNT) + STANDINGS_REPLAY_FRAME_COUNT) % STANDINGS_REPLAY_FRAME_COUNT;
+  if (step === 1) {
+    return { "Gianmaria Bruni": { timeBehindLeader: bovyBase + 0.6 } };
+  }
+  if (step === 2) {
+    return { "Gianmaria Bruni": { timeBehindLeader: bovyBase + 0.35 } };
+  }
+  if (step === 3) {
+    return { "Gianmaria Bruni": { timeBehindLeader: bovyBase + 0.15 } };
+  }
+  if (step === 4) {
+    return {
+      "Gianmaria Bruni": { place: 9, timeBehindLeader: bovyBase - 0.05 },
+      "Sarah Bovy": { place: 10, timeBehindLeader: bovyBase + 0.2 },
+    };
+  }
+  if (step === 5) {
+    return {
+      "Gianmaria Bruni": { place: 9, timeBehindLeader: bovyBase - 0.1 },
+      "Sarah Bovy": { place: 10, timeBehindLeader: bovyBase + 1.3 },
+    };
+  }
+  if (step === 6) {
+    return {
+      "Gianmaria Bruni": { place: 9, timeBehindLeader: bovyBase - 0.1 },
+      "Sarah Bovy": { place: 10, timeBehindLeader: bovyBase + 1.3 },
+      "Duncan Cameron": { inPits: true },
+    };
+  }
+  if (step === 7 || step === 8) {
+    return {
+      "Gianmaria Bruni": { place: 9, timeBehindLeader: bovyBase - 0.1 },
+      "Sarah Bovy": { place: 10, timeBehindLeader: bovyBase + 1.3 },
+      "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 },
+      "Ben Hanley": { bestLapTime: 85.902 },
+    };
+  }
+  return {};
+}
+
+export function buildStandingsReplayScoring(frame: number): Record<string, unknown>[] {
+  const overrides = replayOverrides(frame);
+  return buildStandingsMulticlassScoring().map((row) => {
+    const patch = overrides[String(row.driverName)];
+    return patch ? { ...row, ...patch } : row;
+  });
+}
 
 function buildStandingsMulticlassScoring(): Record<string, unknown>[] {
   let place = 0;
@@ -292,7 +360,7 @@ export function buildHarnessWidget(
   if (widgetType === "multiclass-relative") {
     widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
   }
-  if (widgetType === "standings" && variant === "standings-multiclass") {
+  if (widgetType === "standings" && (variant === "standings-multiclass" || variant === "standings-replay")) {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) =>
@@ -330,6 +398,7 @@ export function buildHarnessTelemetry(input: {
   system?: DesignSystemId;
   variant?: HarnessVariant;
   designId?: CrystalHarnessDesignId;
+  replayFrame?: number;
 }): TelemetrySnapshot {
   const variant = input.variant ?? "default";
   const base = buildMockTelemetry({
@@ -348,6 +417,9 @@ export function buildHarnessTelemetry(input: {
     }
     if (input.widget === "standings" && variant === "standings-multiclass") {
       return { ...base, scoring: buildStandingsMulticlassScoring() };
+    }
+    if (input.widget === "standings" && variant === "standings-replay") {
+      return { ...base, scoring: buildStandingsReplayScoring(input.replayFrame ?? 0) };
     }
     if (input.widget === "pedals" && (variant === "pedals-zero" || variant === "pedals-full")) {
       const value = variant === "pedals-full" ? 1 : 0;
@@ -417,6 +489,13 @@ export function buildHarnessTelemetry(input: {
     return {
       ...readyBase,
       scoring: buildStandingsMulticlassScoring(),
+    };
+  }
+
+  if (input.widget === "standings" && variant === "standings-replay") {
+    return {
+      ...readyBase,
+      scoring: buildStandingsReplayScoring(input.replayFrame ?? 0),
     };
   }
 
@@ -505,6 +584,7 @@ export function buildAuthoringFixtureTelemetry(scenario: AuthoringFixtureScenari
     system: scenario.system,
     variant: scenario.variant,
     designId: scenario.designId,
+    replayFrame: scenario.replayFrame,
   });
 }
 

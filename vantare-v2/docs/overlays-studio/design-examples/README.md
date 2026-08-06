@@ -18,9 +18,9 @@ clase). Detectado en los flashes de adelantamiento del motor Redline
 IA ("Fable-ism") y delata falta de intención. Isaac lo vetó explícitamente:
 "es una cosa muy típica de diseños con Fable y evitable".
 
-**Qué usar en su lugar:** luz ambient radial anclada al borde
-(`radial-gradient(... at 0% 50%, color → transparent)`) — comunica lo mismo
-sin geometría añadida. Ver A2.
+**Qué usar en su lugar:** el núcleo de luz central (A2/G6). Ojo: el radial
+anclado al borde (`at 0% 50%`) también queda rechazado — deja el canto
+encendido y vuelve a leerse como línea.
 
 ### R2 — Gamificación literal (badges "OVERTAKE!", medallas, speed-lines)
 
@@ -56,11 +56,13 @@ pastilla del intervalo (B1+B2). Rechazado 2026-08-06.
 Fondo `#E8E8E8`, texto oscuro, posición carmín. Contraste por inversión,
 no por ornamento. (Origen: referencia iRacing/GTP de Isaac.)
 
-### A2 — Luz ambient radial para la fila del jugador y los eventos
+### A2 — Núcleo de luz central para la fila del jugador y los eventos (G6)
 
-`radial-gradient(120% 160% at 0% 50%, rgba(193,18,31,.5) → transparent 75%)`.
-La fila emite luz desde el borde; sin líneas, sin bordes. Es el sustituto
-canónico de R1, también en verde/rojo para los flashes de adelantamiento.
+`radial-gradient(70% 300% at 50% 50%, rgba(193,18,31,.4) 0%, rgba(193,18,31,.12) 60%, transparent 90%)`.
+El halo emana del centro de la fila y respira hacia los bordes — ningún canto
+queda encendido (los radiales anclados a un borde también leen como línea y
+quedan rechazados junto a R1). Mismo tratamiento en verde/rojo para los
+flashes de adelantamiento. Elegido entre 6 variantes (G6), 2026-08-06.
 
 ### A3 — Chips de delta contorneados (+2 / -1)
 

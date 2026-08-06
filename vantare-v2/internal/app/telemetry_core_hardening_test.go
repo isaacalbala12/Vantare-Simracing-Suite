@@ -132,12 +132,15 @@ func TestTelemetryCoreMetricsCountRejectedObservationWithoutPayload(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	// El frame se cuenta como rechazado pero no se propaga: llegar hasta
+	// DriverManager lo convertia en un error terminal y apagaba la telemetria
+	// hasta reiniciar la aplicacion. Rechazado no es fatal.
 	err = (runtimeObservationSink{runtime: runtime}).WriteObservation(
 		context.Background(),
 		structuralInvalidObservation(),
 	)
-	if err == nil {
-		t.Fatal("invalid observation error = nil")
+	if err != nil {
+		t.Fatalf("unmappable observation must not be fatal, got %v", err)
 	}
 	metrics := runtime.Metrics()
 	if metrics.ObservationsReceived != 1 || metrics.ObservationsRejected != 1 {

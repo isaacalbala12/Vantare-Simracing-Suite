@@ -211,6 +211,7 @@ describe("vantare-endurance contract", () => {
       "standings-racelabs",
       "standings-apex",
       "standings-neo",
+      "standings-redline",
     ] as const) {
       const view = render(
         <StandingsEndurance model={model} settings={{ templateId }} renderMode="harness" />,

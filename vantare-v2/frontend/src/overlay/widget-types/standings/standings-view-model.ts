@@ -39,6 +39,7 @@ export type StandingsViewModel = WidgetViewModelBase & {
   activeClass: string;
   sessionLabel: string;
   remainingText: string;
+  lapText?: string;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
 };
@@ -195,12 +196,22 @@ export function buildStandingsViewModel(
     })
     .filter((row): row is StandingsRowViewModel => row !== null);
 
+  const lapNumber = snapshot.player.lapNumber;
+  const totalLaps = snapshot.player.totalLaps;
+  const lapText =
+    typeof lapNumber === "number" && lapNumber > 0
+      ? typeof totalLaps === "number" && totalLaps > 0
+        ? `${lapNumber}/${totalLaps}`
+        : String(lapNumber)
+      : undefined;
+
   return {
     type: "standings",
     status: "ready",
     activeClass,
     sessionLabel: sessionLabelFromSnapshot(snapshot),
     remainingText: formatRemainingTime(snapshot.session.remainingSeconds),
+    ...(lapText ? { lapText } : {}),
     columns,
     rows,
   };

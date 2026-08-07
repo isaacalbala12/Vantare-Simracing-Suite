@@ -2532,3 +2532,104 @@
   height: 1px;
   background: linear-gradient(90deg, rgba(75, 159, 255, 0.6), transparent);
 }
+
+/* ---------- delta: Redline (bipolar bar anchored at zero) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template="delta-redline"].ven-delta,
+[data-widget-system="vantare-endurance"][data-template="delta-redline"] .ven-delta {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  padding: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root {
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-block {
+  background: linear-gradient(180deg, #17171a 0%, #101012 40%, #0c0c0d 100%);
+  border: 1px solid rgba(232, 232, 232, 0.1);
+  border-top-color: rgba(232, 232, 232, 0.18);
+  border-radius: 6px;
+  padding: 7px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-bar {
+  position: relative;
+  height: 46px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0a0a0b;
+  border: 1px solid rgba(232, 232, 232, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Only width/opacity move, so the compositor carries every frame. */
+  transition: width 220ms ease-out, opacity 220ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-fill[data-dir="gain"] {
+  right: 50%;
+  background: #35c77b;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-fill[data-dir="loss"] {
+  left: 50%;
+  background: #ff6b76;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  z-index: 3;
+  transform: translateX(-50%);
+  background: rgba(232, 232, 232, 0.85);
+  box-shadow: 0 0 6px rgba(232, 232, 232, 0.4);
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-value {
+  position: relative;
+  z-index: 4;
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 7px rgba(0, 0, 0, 0.85);
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-ref {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 3px 1px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-ref small {
+  color: #7a7a7a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-ref b {
+  color: #e8e8e8;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

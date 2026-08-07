@@ -112,6 +112,8 @@ export const it: Record<string, string> = {
   "settings.hotkeys.save": "Salva scorciatoie",
   "settings.hotkeys.capturing": "Premi una combinazione...",
   "settings.hotkeys.cancel": "Annulla",
+  "settings.status.saving": "Salvataggio...",
+  "settings.status.saved": "Impostazioni salvate.",
   "settings.hotkeys.change": "Modifica",
   "settings.hotkeys.toggleOverlay": "Attiva overlay",
   "settings.hotkeys.nextProfile": "Profilo successivo",

@@ -1,32 +1,34 @@
 import { useI18n } from "../../i18n/I18nProvider";
 import { HOTKEY_KEYS } from "./settings-contract";
+import { SaveStatus } from "./SaveStatus";
 import type { useAppSettings } from "./useAppSettings";
 
 type Props = {
   app: ReturnType<typeof useAppSettings>;
 };
 
-/**
- * Global hotkeys. Markup preserved verbatim from the original page so the
- * existing SettingsPage tests keep passing unchanged.
- */
+/** Global hotkeys, with the save status reported next to the save button. */
 export function HotkeysSettings({ app }: Props) {
   const { t } = useI18n();
-  const { appSettings, capturingKey, startCapture, cancelCapture, saveHotkeys } = app;
+  const { appSettings, capturingKey, startCapture, cancelCapture, saveHotkeys, settingsStatus } =
+    app;
 
   return (
-    <div className="card-sleek rounded-xl p-5 border border-white/5">
+    <div className="card-sleek rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display font-semibold text-lg text-white">
           {t("settings.hotkeys.title")}
         </h2>
-        <button
-          type="button"
-          onClick={saveHotkeys}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
-        >
-          {t("settings.hotkeys.save")}
-        </button>
+        <div className="flex items-center gap-3">
+          <SaveStatus status={settingsStatus} />
+          <button
+            type="button"
+            onClick={saveHotkeys}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
+          >
+            {t("settings.hotkeys.save")}
+          </button>
+        </div>
       </div>
       <div className="space-y-3">
         {HOTKEY_KEYS.map((key) => {

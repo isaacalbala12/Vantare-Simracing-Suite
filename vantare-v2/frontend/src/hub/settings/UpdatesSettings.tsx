@@ -40,7 +40,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="card-sleek rounded-xl p-5 border border-white/5">
+      <div className="card-sleek rounded-xl p-5">
         <h2 className="font-display font-semibold text-lg text-white mb-4">
           {t("settings.updates.channel")}
         </h2>
@@ -64,7 +64,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
         </div>
       </div>
 
-      <div className="card-sleek rounded-xl p-5 border border-white/5">
+      <div className="card-sleek rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display font-semibold text-lg text-white">
           {t("settings.updates.available")}

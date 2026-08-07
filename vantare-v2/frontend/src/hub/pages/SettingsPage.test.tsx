@@ -201,22 +201,23 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('diagnostics-panel')).toBeDefined();
   });
 
-  it('shows Condiciones and Información when clicking Avanzado tab', () => {
+  // The Avanzado tab is gone. Nothing in Go or in the frontend read deltaMode
+  // or cpuSampling to change behaviour, so it offered two controls that did
+  // nothing. Its Información card was the part worth keeping and now sits
+  // beside the diagnostics panel.
+  it('no longer offers an Avanzado tab or its inert controls', () => {
     render(<SettingsPage />);
-    clickTab('Avanzado');
-    expect(screen.getByRole('heading', { name: 'Condiciones' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
-    expect(screen.getByText('Modo delta')).toBeDefined();
-    expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
-    expect(screen.getByText(/Versión actual:/)).toBeDefined();
-    expect(screen.getByText(/Canal:/)).toBeDefined();
+    expect(screen.queryByRole('tab', { name: 'Avanzado' })).toBeNull();
+    expect(screen.queryByText('Modo delta')).toBeNull();
+    expect(screen.queryByText('Monitorizar uso de CPU')).toBeNull();
   });
 
-  it('avanzado does not show old headings (Rendimiento, Modo delta as heading)', () => {
+  it('shows the Información card inside the Diagnóstico tab', () => {
     render(<SettingsPage />);
-    clickTab('Avanzado');
-    expect(screen.queryByRole('heading', { name: 'Rendimiento' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Modo delta' })).toBeNull();
+    clickTab('Diagnóstico');
+    expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
+    expect(screen.getByText(/Versión actual:/)).toBeDefined();
+    expect(screen.getByText(/Canal:/)).toBeDefined();
   });
 
   it('emits settings save when channel changes', () => {
@@ -325,14 +326,18 @@ describe('SettingsPage', () => {
     const tablist = screen.getByRole('tablist');
     expect(tablist).toBeDefined();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBeGreaterThanOrEqual(5);
-    expect(tabs[0].textContent).toBe('Cuenta');
-    expect(tabs[1].textContent).toBe('Actualizaciones');
-    expect(tabs[2].textContent).toBe('Hotkeys');
-    expect(tabs[3].textContent).toBe('Diagnóstico');
-    expect(tabs[4].textContent).toBe('Avanzado');
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Cuenta',
+      'Actualizaciones',
+      'Hotkeys',
+      'Diagnóstico',
+    ]);
   });
 
+  // TD-041: saving one setting must not wipe unrelated fields. The delta-mode
+  // and cpuSampling variants of this test went with the Avanzado tab; saving
+  // hotkeys is now the surviving path and carries the invariant alone -- it is
+  // also the strongest case, because it writes the whole settings object.
   it('preserves activeOverlayProfileId when saving hotkeys (anti TD-041)', () => {
     render(<SettingsPage />);
     dispatch('settings', {
@@ -351,41 +356,6 @@ describe('SettingsPage', () => {
     expect(payload.activeOverlayProfileId).toBe('must-survive-hotkeys');
   });
 
-  it('preserves activeOverlayProfileId when changing delta mode (anti TD-041)', () => {
-    render(<SettingsPage />);
-    dispatch('settings', {
-      deltaMode: 'self',
-      cpuSampling: true,
-      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
-      activeOverlayProfileId: 'must-survive-delta',
-    });
-    clickTab('Avanzado');
-    fireEvent.click(screen.getByLabelText('Sesion (mejor vuelta de la sesion)'));
-    const saveCalls = runtimeMock.emit.mock.calls.filter(
-      (call: unknown[]) => call[0] === 'settings:save',
-    );
-    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
-    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
-    expect(payload.activeOverlayProfileId).toBe('must-survive-delta');
-  });
-
-  it('preserves activeOverlayProfileId when toggling cpuSampling (anti TD-041)', () => {
-    render(<SettingsPage />);
-    dispatch('settings', {
-      deltaMode: 'self',
-      cpuSampling: true,
-      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
-      activeOverlayProfileId: 'must-survive-cpu',
-    });
-    clickTab('Avanzado');
-    fireEvent.click(screen.getByText('Monitorizar uso de CPU'));
-    const saveCalls = runtimeMock.emit.mock.calls.filter(
-      (call: unknown[]) => call[0] === 'settings:save',
-    );
-    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
-    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
-    expect(payload.activeOverlayProfileId).toBe('must-survive-cpu');
-  });
 });
 describe('SettingsPage i18n', () => {
   beforeEach(() => {

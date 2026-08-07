@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
-import { AdvancedSettings } from '../settings/AdvancedSettings';
+import { AboutSettings } from '../settings/AboutSettings';
 import { HotkeysSettings } from '../settings/HotkeysSettings';
 import { UpdatesSettings } from '../settings/UpdatesSettings';
 import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
@@ -30,7 +30,7 @@ export type {
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics' | 'advanced';
+type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics';
 
 function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
@@ -45,7 +45,6 @@ function SettingsPageInner() {
     { id: 'updates' as const, label: t('settings.tab.updates') },
     { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
     { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
-    { id: 'advanced' as const, label: t('settings.tab.advanced') },
   ];
 
   return (
@@ -65,7 +64,7 @@ function SettingsPageInner() {
       <nav
         className="glass-panel rounded-xl p-1.5 flex gap-1 opacity-0 animate-fade-in-up delay-100"
         role="tablist"
-        aria-label="Secciones de ajustes"
+        aria-label={t("settings.nav.label")}
       >
         {TABS.map((tab) => (
           <button
@@ -108,14 +107,9 @@ function SettingsPageInner() {
         )}
 
         {activeTab === 'diagnostics' && (
-          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico">
+          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico" className="space-y-4">
             <WailsDiagnosticsPanel />
-          </div>
-        )}
-
-        {activeTab === 'advanced' && (
-          <div key="panel-advanced" id="panel-advanced" role="tabpanel" aria-label="Avanzado" className="space-y-4">
-            <AdvancedSettings app={app} info={updater.info} updaterSettings={updater.settings} />
+            <AboutSettings info={updater.info} updaterSettings={updater.settings} />
           </div>
         )}
       </div>
@@ -128,13 +122,14 @@ function SettingsPageInner() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="glass-panel rounded-xl p-6 border border-white/10 max-w-md w-full">
             <h3 className="font-display font-semibold text-lg text-white mb-2">
-              Confirmar downgrade
+              {t("settings.downgrade.title")}
             </h3>
             <p className="text-sm text-vantare-textMuted mb-4">
-              Vas a instalar <strong className="text-white">{updater.confirmDowngrade.tag_name}</strong>,
-              que es anterior a la versión actual{' '}
-              <strong className="text-white">{updater.info?.currentVersion}</strong>. Esto puede perder
-              datos o configuraciones nuevas. ¿Continuar?
+              {t("settings.downgrade.bodyBefore")}{' '}
+              <strong className="text-white">{updater.confirmDowngrade.tag_name}</strong>,{' '}
+              {t("settings.downgrade.bodyMiddle")}{' '}
+              <strong className="text-white">{updater.info?.currentVersion}</strong>.{' '}
+              {t("settings.downgrade.bodyAfter")}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -142,14 +137,14 @@ function SettingsPageInner() {
                 onClick={() => updater.setConfirmDowngrade(null)}
                 className="px-4 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white transition-colors"
               >
-                Cancelar
+                {t("settings.downgrade.cancel")}
               </button>
               <button
                 type="button"
                 onClick={() => updater.startInstall(updater.confirmDowngrade!)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
               >
-                Sí, instalar
+                {t("settings.downgrade.confirm")}
               </button>
             </div>
           </div>

@@ -25,9 +25,14 @@ describe("projects-data", () => {
   });
 
   it("validates the v1 nightly contract and fallback shape", () => {
+    // Tabs and projects come from the versioned catalog, so they are pinned.
+    // The task count is whatever Linear held when the exporter last ran, and
+    // pinning it made every snapshot refresh look like a regression.
     expect(normalizeRoadmapProjectsSnapshot(ROADMAP_PROJECTS_FALLBACK)?.tabs).toHaveLength(3);
     expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects)).toHaveLength(6);
-    expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects).flatMap((project) => project.tasks)).toHaveLength(145);
+    expect(
+      ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects).flatMap((project) => project.tasks).length,
+    ).toBeGreaterThan(0);
     expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, channel: "master" })).toBeNull();
     expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, tabs: [] })).toBeNull();
   });
@@ -69,12 +74,18 @@ describe("projects-data", () => {
   });
 
   it("reports fresh, stale, invalid and unavailable provenance explicitly", async () => {
+    // Freshness is measured against the snapshot's own generatedAt, so the
+    // clock is derived from it. Hardcoded dates broke the moment the exporter
+    // published a newer snapshot, which it now does on every merge.
+    const generatedAt = Date.parse(ROADMAP_PROJECTS_FALLBACK.generatedAt);
+    const staleAfterMs = ROADMAP_PROJECTS_FALLBACK.staleAfterSeconds * 1000;
+
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(ROADMAP_PROJECTS_FALLBACK)));
-    const fresh = await fetchRoadmapProjectsDataset(undefined, new Date("2026-08-03T01:00:00Z"));
+    const fresh = await fetchRoadmapProjectsDataset(undefined, new Date(generatedAt + staleAfterMs / 2));
     expect(fresh.status).toBe("remote-fresh");
     expect(fresh.provenance).toBe("remote");
 
-    const stale = await fetchRoadmapProjectsDataset(undefined, new Date("2026-08-05T01:00:00Z"));
+    const stale = await fetchRoadmapProjectsDataset(undefined, new Date(generatedAt + staleAfterMs * 2));
     expect(stale.status).toBe("remote-stale");
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ schemaVersion: 1, channel: "nightly" })));

@@ -105,9 +105,19 @@ func (r *Result) ToWire() LicenseWire {
 	if !r.LastValidated.IsZero() {
 		lastValidated = r.LastValidated.UTC().Format(time.RFC3339Nano)
 	}
+	// A nil slice marshals to `null`, and the TypeScript side declares
+	// entitlements as a plain array. An account with none therefore handed the
+	// UI a null where it had promised a list, and every consumer that trusted
+	// the type and called a method on it crashed. An empty list is the honest
+	// wire value for "no entitlements". Capabilities and roles are omitempty,
+	// so they arrive absent rather than null and the `?? []` on that side holds.
+	entitlements := r.Entitlements
+	if entitlements == nil {
+		entitlements = []Entitlement{}
+	}
 	return LicenseWire{
 		State:            string(r.State),
-		Entitlements:     r.Entitlements,
+		Entitlements:     entitlements,
 		Capabilities:     r.Capabilities,
 		OperationalRoles: r.OperationalRoles,
 		UserID:           r.UserID,

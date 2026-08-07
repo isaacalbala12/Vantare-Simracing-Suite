@@ -45,7 +45,7 @@ import (
 )
 
 // version is the current application version.
-var version = "v0.1.0.5"
+var version = "v0.1.0.7"
 
 // buildChannel is injected by release builds. Local and public builds fail
 // closed as master so the internal Testing Center cannot appear accidentally.

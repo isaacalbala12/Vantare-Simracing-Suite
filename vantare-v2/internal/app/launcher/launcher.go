@@ -193,6 +193,9 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	defer s.discoveryRunMu.Unlock()
 	s.BeginDiscovery()
 	s.emitDiscoveryProgress(0, DiscoveryStarting, true, nil)
+	// Drop the cached shortcut index so a rescan sees apps installed since the
+	// last scan instead of replaying the first scan's view of the disk.
+	resetShortcutIndex()
 	detected := Discover()
 	s.emitDiscoveryProgress(15, DiscoveryDiscovering, true, nil)
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
@@ -215,6 +218,9 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	s.emitDiscoveryProgress(75, DiscoveryResolvingIcons, true, nil)
 	for i, a := range appsList {
 		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
+		// Report per app: icon extraction is the longest phase, and a single
+		// emit at 75% left the bar parked there for its whole duration.
+		s.emitDiscoveryProgress(75+(25*(i+1))/len(appsList), DiscoveryResolvingIcons, true, nil)
 	}
 	now := time.Now()
 	s.discoveryMu.Lock()

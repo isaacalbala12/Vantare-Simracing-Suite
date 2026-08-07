@@ -1,7 +1,6 @@
 package launcher
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,6 +83,45 @@ func findExecutableRecursive(root string, names []string, maxDepth int) string {
 	return ""
 }
 
+// indexExecutables walks root once (up to maxDepth) and returns the paths of
+// every file whose lower-cased name is in wanted, keyed by that name. Callers
+// that look for several executables under the same root use this instead of one
+// findExecutableRecursive pass each: a Steam library is large and walking it
+// once per catalogued app dominated discovery time.
+func indexExecutables(root string, wanted map[string]struct{}, maxDepth int) map[string]string {
+	found := map[string]string{}
+	if root == "" || len(wanted) == 0 {
+		return found
+	}
+	var walk func(dir string, depth int)
+	walk = func(dir string, depth int) {
+		if depth < 0 || len(found) == len(wanted) {
+			return
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				if depth > 0 {
+					walk(filepath.Join(dir, e.Name()), depth-1)
+				}
+				continue
+			}
+			name := strings.ToLower(e.Name())
+			if _, ok := wanted[name]; !ok {
+				continue
+			}
+			if _, seen := found[name]; !seen {
+				found[name] = filepath.Join(dir, e.Name())
+			}
+		}
+	}
+	walk(root, maxDepth)
+	return found
+}
+
 func knownAppEntry(known KnownApp, evidence DetectionEvidence, executablePath, pathSource string) app.LauncherAppEntry {
 	evidence.Catalogued = true
 	evidence.ExecutableExists = fileExists(executablePath)
@@ -159,22 +197,16 @@ func probeKnownPaths(found map[string]app.LauncherAppEntry) map[string]app.Launc
 		if existing, ok := out[known.ID]; ok && existing.ExecutablePath != "" {
 			continue
 		}
-		log.Printf("LAUNCHER-DBG: probing %s paths=%v", known.ID, known.KnownPaths)
-		if known.ID == "obs" {
-			log.Printf("LAUNCHER-DBG: PROGRAMFILES=%q LOCALAPPDATA=%q", os.Getenv("PROGRAMFILES"), os.Getenv("LOCALAPPDATA"))
-		}
 		for _, p := range known.KnownPaths {
 			expanded := expandWindowsEnv(p)
 			if expanded == "" {
 				continue
 			}
-			log.Printf("LAUNCHER-DBG: checking dir=%s names=%v", expanded, known.ExecutableNames)
 			exe := findFirstExisting(expanded, known.ExecutableNames)
 			if exe == "" {
 				exe = findExecutableRecursive(expanded, known.ExecutableNames, 2)
 			}
 			if exe != "" {
-				log.Printf("LAUNCHER-DBG: FOUND %s at %s", known.ID, exe)
 				if existing, ok := out[known.ID]; ok {
 					existing.ExecutablePath = exe
 					existing.PathSource = "known-path"

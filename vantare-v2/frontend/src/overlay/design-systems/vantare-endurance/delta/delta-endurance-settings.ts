@@ -1,4 +1,9 @@
-export const DELTA_ENDURANCE_TEMPLATE_IDS = ["delta-strip", "delta-block", "delta-neo"] as const;
+export const DELTA_ENDURANCE_TEMPLATE_IDS = [
+  "delta-strip",
+  "delta-block",
+  "delta-neo",
+  "delta-redline",
+] as const;
 
 export type DeltaEnduranceTemplateId = (typeof DELTA_ENDURANCE_TEMPLATE_IDS)[number];
 export type DeltaEnduranceTemplateDiagnostic = "unknown-template";

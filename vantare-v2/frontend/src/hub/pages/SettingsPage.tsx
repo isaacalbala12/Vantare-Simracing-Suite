@@ -1,76 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Events } from '@wailsio/runtime';
+import { useState } from 'react';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
+import { AdvancedSettings } from '../settings/AdvancedSettings';
+import { HotkeysSettings } from '../settings/HotkeysSettings';
+import { UpdatesSettings } from '../settings/UpdatesSettings';
 import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
-import { parseKeyEvent } from '../settings/hotkey-capture';
-import { isDowngrade } from '../../lib/version-compare';
+import { useAppSettings } from '../settings/useAppSettings';
+import { useUpdaterSettings } from '../settings/useUpdaterSettings';
 import { useAccess } from '../../lib/access';
 import { allowedUpdateChannels } from '../../lib/access-policy';
-import type {
-  LauncherAppEntry,
-  LaunchProfile,
-} from "../launcher/launcher-state";
 
-export type Channel = 'stable' | 'testers' | 'nightly';
-
-export type Asset = {
-  name: string;
-  size: number;
-  browser_download_url: string;
-};
-
-export type Release = {
-  tag_name: string;
-  name: string;
-  body: string;
-  prerelease: boolean;
-  published_at: string;
-  html_url: string;
-  assets: Asset[];
-};
-
-export type UpdateInfo = {
-  currentVersion: string;
-  latestVersion?: string;
-  latestRelease?: Release;
-  hasUpdate: boolean;
-  isDowngrade: boolean;
-  releases?: Release[];
-  ignoredVersion?: string;
-};
-
-export type UpdaterSettings = {
-  channel: Channel;
-  ignoreVersion?: string;
-};
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString();
-  } catch {
-    return iso;
-  }
-}
-
-function findInstallerAsset(release: Release): Asset | undefined {
-  return release.assets.find((a) => a.name === 'vantare-amd64-installer.exe');
-}
-
-function findChecksumAsset(release: Release): Asset | undefined {
-  return release.assets.find((a) => a.name === 'vantare-amd64-installer.exe.sha256');
-}
-export type AppSettings = {
-  deltaMode: string;
-  cpuSampling: boolean;
-  hotkeys: Record<string, string>;
-  activeOverlayProfileId?: string;
-  betaWelcomeCompleted?: boolean;
-  betaUserRole?: string;
-  launcherApps?: Record<string, LauncherAppEntry>;
-  launcherProfiles?: LaunchProfile[];
-};
+// The settings contract moved to hub/settings/settings-contract.ts. These
+// re-exports keep the existing importers working; a page should not be the
+// home of a domain type, and they will be repointed in a later cut.
+export type {
+  AppSettings,
+  Asset,
+  Channel,
+  Release,
+  UpdateInfo,
+  UpdaterSettings,
+} from '../settings/settings-contract';
 
 export type {
   LauncherAppEntry,
@@ -79,53 +30,15 @@ export type {
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-const DEFAULT_APP_SETTINGS: AppSettings = {
-  deltaMode: 'self',
-  cpuSampling: true,
-  hotkeys: {
-    toggleOverlay: 'ctrl+shift+v',
-    nextProfile: 'ctrl+shift+right',
-    prevProfile: 'ctrl+shift+left',
-  },
-};
-
-const DELTA_MODES = [
-  { value: 'self', label: 'Personal (mejor vuelta propia)' },
-  { value: 'session', label: 'Sesion (mejor vuelta de la sesion)' },
-  { value: 'global', label: 'Global (mejor vuelta global)' },
-] as const;
-
-const HOTKEY_NAMES: Record<string, string> = {
-  toggleOverlay: 'Toggle overlay',
-  nextProfile: 'Siguiente perfil',
-  prevProfile: 'Perfil anterior',
-};
-
-const CHANNEL_LABELS: Record<Channel, string> = {
-  stable: 'Stable',
-  testers: 'Testers',
-  nightly: 'Nightly',
-};
-
 type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics' | 'advanced';
-
 
 function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
-  const [settings, setSettings] = useState<UpdaterSettings>({ channel: 'stable' });
-  const [info, setInfo] = useState<UpdateInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [installingTag, setInstallingTag] = useState<string | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [confirmDowngrade, setConfirmDowngrade] = useState<Release | null>(null);
-  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
-  const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
-  const [expandedTag, setExpandedTag] = useState<string | null>(null);
   const { t } = useI18n();
   const access = useAccess();
   const availableChannels = allowedUpdateChannels(access);
+  const updater = useUpdaterSettings();
+  const app = useAppSettings();
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
@@ -134,190 +47,6 @@ function SettingsPageInner() {
     { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
     { id: 'advanced' as const, label: t('settings.tab.advanced') },
   ];
-
-
-  useEffect(() => {
-    const handlers: (() => void)[] = [];
-
-    const unsubSettings = Events.On(
-      'updater:settings',
-      (event: { data: { settings?: UpdaterSettings } }) => {
-        if (event.data.settings) {
-          setSettings(event.data.settings);
-        }
-      },
-    );
-    handlers.push(unsubSettings);
-
-    const unsubAvailable = Events.On(
-      'updater:available',
-      (event: { data: { info?: UpdateInfo } }) => {
-        setLoading(false);
-        if (event.data.info) {
-          setInfo(event.data.info);
-          setStatus(`Versión instalada: ${event.data.info.currentVersion}`);
-        }
-      },
-    );
-    handlers.push(unsubAvailable);
-
-    const unsubProgress = Events.On('updater:progress', (event: { data: { percent?: number } }) => {
-      setProgress(event.data.percent ?? null);
-      setStatus(`Descargando... ${event.data.percent ?? 0}%`);
-    });
-    handlers.push(unsubProgress);
-
-    const unsubInstalled = Events.On('updater:installed', () => {
-      setInstallingTag(null);
-      setProgress(null);
-      setStatus('Instalador lanzado. La app se cerrará para completar la actualización.');
-    });
-    handlers.push(unsubInstalled);
-
-    const unsubIgnored = Events.On('updater:ignored', (event: { data: { version?: string } }) => {
-      setStatus(`Versión ${event.data.version ?? ''} ignorada.`);
-      Events.Emit('updater:check');
-    });
-    handlers.push(unsubIgnored);
-
-    const unsubSaved = Events.On('updater:settings-saved', () => {
-      setStatus('Preferencias guardadas.');
-      Events.Emit('updater:check');
-      setLoading(true);
-    });
-    handlers.push(unsubSaved);
-
-    const unsubError = Events.On('updater:error', (event: { data: { message?: string } }) => {
-      setLoading(false);
-      setInstallingTag(null);
-      setProgress(null);
-      setError(event.data.message ?? 'Error desconocido');
-    });
-    handlers.push(unsubError);
-
-    const unsubAppSettings = Events.On(
-      'settings',
-      (event: { data: AppSettings }) => {
-        if (event.data && event.data.deltaMode) {
-          setAppSettings(event.data);
-        }
-      },
-    );
-    handlers.push(unsubAppSettings);
-
-    const unsubAppSettingsSaved = Events.On('settings-saved', () => {
-      setSettingsStatus('Ajustes guardados.');
-      setTimeout(() => setSettingsStatus(null), 3000);
-    });
-    handlers.push(unsubAppSettingsSaved);
-
-    Events.Emit('settings:get');
-
-    Events.Emit('updater:settings:get');
-    Events.Emit('updater:check');
-
-    return () => {
-      handlers.forEach((h) => h?.());
-    };
-  }, []);
-
-  function handleChannelChange(channel: Channel) {
-    const next = { ...settings, channel };
-    setSettings(next);
-    Events.Emit('updater:settings:save', next);
-  }
-
-  function handleInstall(release: Release) {
-    const current = info?.currentVersion;
-    if (current && isDowngrade(current, release.tag_name)) {
-      setConfirmDowngrade(release);
-      return;
-    }
-    startInstall(release);
-  }
-
-  function startInstall(release: Release) {
-    const asset = findInstallerAsset(release);
-    if (!asset) {
-      setError('No se encontró el instalador para esta versión.');
-      return;
-    }
-    setConfirmDowngrade(null);
-    setInstallingTag(release.tag_name);
-    setError(null);
-    setStatus(`Preparando instalación de ${release.tag_name}...`);
-    Events.Emit('updater:install:verified', release);
-  }
-
-  function handleIgnore(release: Release) {
-    Events.Emit('updater:ignore', { version: release.tag_name });
-  }
-
-  function handleRefresh() {
-    setError(null);
-    setLoading(true);
-    Events.Emit('updater:check');
-  }
-
-  function handleDeltaModeChange(deltaMode: string) {
-    const next = { ...appSettings, deltaMode };
-    setAppSettings(next);
-    setSettingsStatus('Guardando...');
-    Events.Emit('settings:save', next);
-  }
-
-  function handleCpuToggle() {
-    const next = { ...appSettings, cpuSampling: !appSettings.cpuSampling };
-    setAppSettings(next);
-    setSettingsStatus('Guardando...');
-    Events.Emit('settings:save', next);
-  }
-
-  const [capturingKey, setCapturingKey] = useState<string | null>(null);
-
-  function handleStartCapture(name: string) {
-    setCapturingKey(name);
-  }
-
-  function handleCancelCapture() {
-    setCapturingKey(null);
-  }
-
-  const handleCaptureKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (!capturingKey) return;
-      event.preventDefault();
-      event.stopPropagation();
-
-      const result = parseKeyEvent(event);
-
-      if (result.isCancel) {
-        setCapturingKey(null);
-        return;
-      }
-
-      if (result.combo === null) return;
-
-      const next = {
-        ...appSettings,
-        hotkeys: { ...appSettings.hotkeys, [capturingKey]: result.combo },
-      };
-      setAppSettings(next);
-      setCapturingKey(null);
-    },
-    [capturingKey, appSettings],
-  );
-
-  useEffect(() => {
-    if (!capturingKey) return;
-    document.addEventListener('keydown', handleCaptureKeyDown, true);
-    return () => document.removeEventListener('keydown', handleCaptureKeyDown, true);
-  }, [capturingKey, handleCaptureKeyDown]);
-
-  function handleSaveHotkeys() {
-    setSettingsStatus('Guardando...');
-    Events.Emit('settings:save', appSettings);
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -368,219 +97,13 @@ function SettingsPageInner() {
 
         {activeTab === 'updates' && (
           <div key="panel-updates" id="panel-updates" role="tabpanel" aria-label="Actualizaciones" className="space-y-4">
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <h2 className="font-display font-semibold text-lg text-white mb-4">
-                Canal de actualizaciones
-              </h2>
-              <div className="flex items-center gap-4">
-                {availableChannels.map((channel) => (
-                  <label
-                    key={channel}
-                    className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
-                  >
-                    <input
-                      type="radio"
-                      name="channel"
-                      value={channel}
-                      checked={settings.channel === channel}
-                      onChange={() => handleChannelChange(channel)}
-                      className="accent-vantare-red-500"
-                    />
-                    {CHANNEL_LABELS[channel]}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-semibold text-lg text-white">
-                  Versiones disponibles
-                </h2>
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className="px-3 py-1.5 rounded-lg bg-vantare-surface border border-white/10 text-xs text-white hover:border-vantare-red-500/50 disabled:opacity-50 transition-colors"
-                >
-                  {loading ? 'Buscando...' : 'Buscar actualizaciones'}
-                </button>
-              </div>
-
-              {status && (
-                <div className="mb-4 text-xs text-vantare-textMuted font-mono">{status}</div>
-              )}
-
-              {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-950/30 border border-red-900/50 text-xs text-red-200">
-                  {error}
-                </div>
-              )}
-
-              {info?.releases && info.releases.length === 0 && !loading && (
-                <div className="text-sm text-vantare-textMuted">
-                  No hay versiones disponibles para este canal.
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {info?.releases?.map((release) => {
-                  const asset = findInstallerAsset(release);
-                  const checksum = findChecksumAsset(release);
-                  const isInstalling = installingTag === release.tag_name;
-                  const isCurrent = release.tag_name === info.currentVersion;
-                  const isIgnored = release.tag_name === info.ignoredVersion;
-                  const isExpanded = expandedTag === release.tag_name;
-                  const isDowngradeVersion = info.currentVersion
-                    ? isDowngrade(info.currentVersion, release.tag_name)
-                    : false;
-                  return (
-                    <div
-                      key={release.tag_name}
-                      className="p-4 rounded-xl bg-vantare-surface border border-white/5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-white text-sm">
-                              {release.tag_name}
-                            </span>
-                            {release.prerelease && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-vantare-red-950/50 text-vantare-red-300 border border-vantare-red-900/30">
-                                Pre-release
-                              </span>
-                            )}
-                            {isCurrent && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-900/30">
-                                Instalada
-                              </span>
-                            )}
-                            {isIgnored && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-300 border border-gray-700">
-                                Ignorada
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-vantare-textMuted">
-                            {release.name} · {formatDate(release.published_at)}
-                            {asset && ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB`}
-                            {checksum && ' · SHA256'}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!isCurrent && !isIgnored && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleIgnore(release)}
-                                disabled={isInstalling}
-                                className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
-                              >
-                                Saltar
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isInstalling || !asset}
-                                onClick={() => handleInstall(release)}
-                                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                              >
-                                {isInstalling
-                                  ? `${progress ?? 0}%`
-                                  : isDowngradeVersion
-                                    ? 'Downgrade'
-                                    : 'Instalar'}
-                              </button>
-                            </>
-                          )}
-                          {asset && (
-                            <a
-                              href={asset.browser_download_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 transition-colors"
-                              title="Descargar manualmente"
-                            >
-                              ↓
-                            </a>
-                          )}
-                        </div>
-                      </div>
-
-                      {release.body && (
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedTag(isExpanded ? null : release.tag_name)}
-                            className="text-xs text-vantare-red-300 hover:text-vantare-red-200"
-                          >
-                            {isExpanded ? 'Ocultar cambios' : 'Ver cambios'}
-                          </button>
-                          {isExpanded && (
-                            <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5 text-xs text-vantare-textMuted whitespace-pre-wrap max-h-48 overflow-y-auto">
-                              {release.body}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <UpdatesSettings updater={updater} availableChannels={availableChannels} />
           </div>
         )}
 
         {activeTab === 'hotkeys' && (
           <div key="panel-hotkeys" id="panel-hotkeys" role="tabpanel" aria-label="Hotkeys">
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-semibold text-lg text-white">
-                  Atajos de teclado globales
-                </h2>
-                <button
-                  type="button"
-                  onClick={handleSaveHotkeys}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
-                >
-                  Guardar atajos
-                </button>
-              </div>
-              <div className="space-y-3">
-                {Object.entries(HOTKEY_NAMES).map(([key, label]) => {
-                  const isCapturing = capturingKey === key;
-                  return (
-                    <div key={key} className="flex items-center gap-3">
-                      <span className="text-sm text-vantare-textMuted w-36">{label}</span>
-                      {isCapturing ? (
-                        <div
-                          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-vantare-red-950/30 border border-vantare-red-500/50 text-sm text-vantare-red-200 font-mono"
-                        >
-                          <span className="animate-pulse">Pulsa una combinación...</span>
-                          <button
-                            type="button"
-                            onClick={handleCancelCapture}
-                            className="ml-auto px-2 py-0.5 rounded text-[10px] text-vantare-textMuted hover:text-white border border-white/10 hover:border-white/30 transition-colors"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleStartCapture(key)}
-                          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-sm text-white font-mono hover:border-vantare-red-500/50 transition-colors text-left"
-                        >
-                          <span className="flex-1">{appSettings.hotkeys[key] ?? ''}</span>
-                          <span className="text-[10px] text-vantare-textMuted uppercase tracking-wider">
-                            Cambiar
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <HotkeysSettings app={app} />
           </div>
         )}
 
@@ -592,88 +115,38 @@ function SettingsPageInner() {
 
         {activeTab === 'advanced' && (
           <div key="panel-advanced" id="panel-advanced" role="tabpanel" aria-label="Avanzado" className="space-y-4">
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <h2 className="font-display font-semibold text-lg text-white mb-4">
-                Condiciones
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-vantare-textMuted mb-2">Modo delta</p>
-                  <div className="space-y-2">
-                    {DELTA_MODES.map((mode) => (
-                      <label
-                        key={mode.value}
-                        className="flex items-center gap-2 text-sm text-vantare-textMuted cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="deltaMode"
-                          value={mode.value}
-                          checked={appSettings.deltaMode === mode.value}
-                          onChange={() => handleDeltaModeChange(mode.value)}
-                          className="accent-vantare-red-500"
-                        />
-                        {mode.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="border-t border-white/5 pt-4">
-                  <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={appSettings.cpuSampling}
-                      onChange={handleCpuToggle}
-                      className="accent-vantare-red-500 w-4 h-4"
-                    />
-                    <span>Monitorizar uso de CPU</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
-              <h3 className="font-display font-semibold text-lg text-white mb-4">Información</h3>
-              <div className="space-y-2 text-xs text-vantare-textMuted font-mono">
-                <p>Versión actual: {info?.currentVersion ?? '—'}</p>
-                <p>Canal: {CHANNEL_LABELS[settings.channel]}</p>
-              </div>
-              <p className="text-xs text-vantare-textMuted mt-4 leading-relaxed">
-                Vantare se ejecuta localmente. Los datos de telemetría y configuración permanecen en tu equipo.
-                Las actualizaciones se descargan desde GitHub Releases.
-              </p>
-            </div>
+            <AdvancedSettings app={app} info={updater.info} updaterSettings={updater.settings} />
           </div>
         )}
       </div>
 
-      {settingsStatus && (
-        <div className="text-xs text-vantare-textMuted font-mono">{settingsStatus}</div>
+      {app.settingsStatus && (
+        <div className="text-xs text-vantare-textMuted font-mono">{app.settingsStatus}</div>
       )}
 
-      {confirmDowngrade && (
+      {updater.confirmDowngrade && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="glass-panel rounded-xl p-6 border border-white/10 max-w-md w-full">
             <h3 className="font-display font-semibold text-lg text-white mb-2">
               Confirmar downgrade
             </h3>
             <p className="text-sm text-vantare-textMuted mb-4">
-              Vas a instalar <strong className="text-white">{confirmDowngrade.tag_name}</strong>,
+              Vas a instalar <strong className="text-white">{updater.confirmDowngrade.tag_name}</strong>,
               que es anterior a la versión actual{' '}
-              <strong className="text-white">{info?.currentVersion}</strong>. Esto puede perder
+              <strong className="text-white">{updater.info?.currentVersion}</strong>. Esto puede perder
               datos o configuraciones nuevas. ¿Continuar?
             </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setConfirmDowngrade(null)}
+                onClick={() => updater.setConfirmDowngrade(null)}
                 className="px-4 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={() => startInstall(confirmDowngrade)}
+                onClick={() => updater.startInstall(updater.confirmDowngrade!)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
               >
                 Sí, instalar
@@ -685,6 +158,7 @@ function SettingsPageInner() {
     </div>
   );
 }
+
 export function SettingsPage() {
   return (
     <I18nProvider>

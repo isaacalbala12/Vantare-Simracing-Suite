@@ -130,6 +130,49 @@
           }
         }
       ]
+    },
+    {
+      "id": "app",
+      "label": {
+        "es": "Aplicación",
+        "en": "Application",
+        "pt": "Aplicação",
+        "it": "Applicazione"
+      },
+      "projects": [
+        {
+          "sourceId": "97a91d30-3033-46bb-894a-fb14535e6fd1",
+          "id": "launcher",
+          "title": {
+            "es": "Launcher",
+            "en": "Launcher",
+            "pt": "Launcher",
+            "it": "Launcher"
+          },
+          "summary": {
+            "es": "Detección de apps y cadenas de lanzamiento.",
+            "en": "App detection and launch chains.",
+            "pt": "Deteção de apps e cadeias de lançamento.",
+            "it": "Rilevamento app e catene di avvio."
+          }
+        },
+        {
+          "sourceId": "22a8ae34-cb36-43d6-b97e-62f02e216687",
+          "id": "races-calendar",
+          "title": {
+            "es": "Carreras",
+            "en": "Races",
+            "pt": "Corridas",
+            "it": "Gare"
+          },
+          "summary": {
+            "es": "Calendario local y cadencia de sesiones.",
+            "en": "Local calendar and session cadence.",
+            "pt": "Calendário local e cadência de sessões.",
+            "it": "Calendario locale e cadenza delle sessioni."
+          }
+        }
+      ]
     }
   ]
 }

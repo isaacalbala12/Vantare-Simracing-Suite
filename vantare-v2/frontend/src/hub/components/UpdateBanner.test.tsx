@@ -227,3 +227,30 @@ describe('UpdateBanner', () => {
     expect((screen.getByRole('button', { name: 'Instalar actualización' }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
+
+// The point of the notification settings is that they govern something. Muting
+// updates has to actually take the banner off the screen.
+describe('UpdateBanner notification preference', () => {
+  beforeEach(() => {
+    runtimeMock.handlers.clear();
+    runtimeMock.emit.mockClear();
+  });
+
+  afterEach(cleanup);
+
+  it('hides the banner when update alerts are muted', () => {
+    render(<UpdateBanner />);
+    dispatch('settings', { notifications: { updatesMuted: true } });
+    dispatch('updater:notify', notifyData);
+
+    expect(screen.queryByText(/Nueva versión disponible/)).toBeNull();
+  });
+
+  it('shows the banner when nothing has been muted', () => {
+    render(<UpdateBanner />);
+    dispatch('settings', { notifications: {} });
+    dispatch('updater:notify', notifyData);
+
+    expect(screen.getByText(/Nueva versión disponible/)).toBeDefined();
+  });
+});

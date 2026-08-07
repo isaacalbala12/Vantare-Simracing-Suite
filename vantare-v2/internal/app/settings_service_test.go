@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -824,5 +825,142 @@ func TestSettingsReadAPIsReturnDeepCopies(t *testing.T) {
 	if current.LauncherProfiles[0].LastLaunchedAt == nil ||
 		!current.LauncherProfiles[0].LastLaunchedAt.Equal(time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)) {
 		t.Fatalf("launcher timestamp leaked mutation: %v", current.LauncherProfiles[0].LastLaunchedAt)
+	}
+}
+
+// Notification preferences are stored as opt-outs so the zero value is the
+// shipping default. A file written before the field existed must therefore load
+// with the banner and the toasts on, and system notifications off.
+func TestSettingsNotificationDefaultsSurviveAnOlderFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":2,"cpuSampling":true}`), 0o644); err != nil {
+		t.Fatalf("seed settings: %v", err)
+	}
+
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	got := svc.Snapshot().Notifications
+	if got.UpdatesMuted || got.LauncherMuted {
+		t.Fatalf("an older file must keep notifications on, got %+v", got)
+	}
+	if got.SystemEnabled {
+		t.Fatal("system notifications must stay off until the user grants permission")
+	}
+}
+
+func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	next := *svc.Snapshot()
+	next.Notifications = app.NotificationSettings{UpdatesMuted: true, SystemEnabled: true}
+	if err := svc.Save(&next); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	got := reloaded.Snapshot().Notifications
+	if !got.UpdatesMuted || got.LauncherMuted || !got.SystemEnabled {
+		t.Fatalf("round trip = %+v, want updates muted and system enabled", got)
+	}
+}
+
+// applyLoaded rebuilds AppSettings field by field, so a field added to the
+// struct and forgotten there is read from disk and then silently dropped --
+// which is exactly how notifications were lost the first time. This walks the
+// struct with reflection, gives every field a non-zero value, saves, reloads
+// and compares, so the next forgotten field fails here instead of in the app.
+func TestApplyLoadedKeepsEveryPersistedField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+
+	populated := app.DefaultAppSettings()
+	value := reflect.ValueOf(populated).Elem()
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		name := value.Type().Field(i).Name
+		if name == "SchemaVersion" {
+			// Owned by the migration, not by the user.
+			continue
+		}
+		fill(t, field, name)
+	}
+
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := svc.Save(populated); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+
+	got := reflect.ValueOf(reloaded.Snapshot()).Elem()
+	for i := 0; i < value.NumField(); i++ {
+		name := value.Type().Field(i).Name
+		if name == "SchemaVersion" {
+			continue
+		}
+		if got.Field(i).IsZero() {
+			t.Errorf(
+				"%s survived neither the save nor the load; it is probably missing from applyLoaded",
+				name,
+			)
+		}
+	}
+}
+
+// fill gives a field a value distinguishable from its zero value.
+func fill(t *testing.T, field reflect.Value, name string) {
+	t.Helper()
+	switch field.Kind() {
+	case reflect.Bool:
+		field.SetBool(true)
+	case reflect.String:
+		field.SetString("filled")
+	case reflect.Int, reflect.Int64:
+		field.SetInt(1)
+	case reflect.Uint, reflect.Uint32, reflect.Uint64:
+		field.SetUint(1)
+	case reflect.Map:
+		filled := reflect.MakeMap(field.Type())
+		key := reflect.New(field.Type().Key()).Elem()
+		fill(t, key, name+".key")
+		item := reflect.New(field.Type().Elem()).Elem()
+		fill(t, item, name+".value")
+		filled.SetMapIndex(key, item)
+		field.Set(filled)
+	case reflect.Slice:
+		item := reflect.New(field.Type().Elem()).Elem()
+		fill(t, item, name+"[0]")
+		field.Set(reflect.Append(reflect.MakeSlice(field.Type(), 0, 1), item))
+	case reflect.Ptr:
+		field.Set(reflect.New(field.Type().Elem()))
+		fill(t, field.Elem(), name+".*")
+	case reflect.Struct:
+		if field.Type() == reflect.TypeOf(time.Time{}) {
+			field.Set(reflect.ValueOf(time.Unix(1, 0).UTC()))
+			return
+		}
+		for i := 0; i < field.NumField(); i++ {
+			fill(t, field.Field(i), name+"."+field.Type().Field(i).Name)
+		}
+	default:
+		t.Fatalf("%s has kind %s, which this test does not know how to fill", name, field.Kind())
 	}
 }

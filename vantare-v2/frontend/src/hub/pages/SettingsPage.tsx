@@ -4,6 +4,7 @@ import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { HubSubnav } from '../components/HubSubnav';
 import { StartupSettings } from '../settings/StartupSettings';
 import { useStartupSettings } from '../settings/useStartupSettings';
+import { NotificationsSettings } from '../settings/NotificationsSettings';
 import { StorageSettings } from '../settings/StorageSettings';
 import { useStorageSettings } from '../settings/useStorageSettings';
 import { AccountSettings } from '../settings/AccountSettings';
@@ -139,6 +140,7 @@ function SettingsPageInner() {
               <LanguageSelector />
             </div>
             <StartupSettings startup={startup} />
+            <NotificationsSettings app={app} />
           </div>
         )}
 

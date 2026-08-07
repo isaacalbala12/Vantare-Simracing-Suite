@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { HubSubnav } from '../components/HubSubnav';
+import { StartupSettings } from '../settings/StartupSettings';
+import { useStartupSettings } from '../settings/useStartupSettings';
 import { AccountSettings } from '../settings/AccountSettings';
 import { AboutSettings } from '../settings/AboutSettings';
 import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
@@ -33,7 +35,7 @@ export type {
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-type TabId = 'account' | 'updates' | 'hotkeys' | 'diagnostics';
+type TabId = 'account' | 'application' | 'updates' | 'hotkeys' | 'diagnostics';
 
 function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
@@ -43,9 +45,11 @@ function SettingsPageInner() {
   const availableChannels = allowedUpdateChannels(access);
   const updater = useUpdaterSettings();
   const app = useAppSettings();
+  const startup = useStartupSettings();
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
+    { id: 'application' as const, label: t('settings.tab.application') },
     { id: 'updates' as const, label: t('settings.tab.updates') },
     { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
     { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
@@ -103,16 +107,13 @@ function SettingsPageInner() {
         </div>
       </HubSubnav>
 
-      <header className="flex items-start justify-between opacity-0 animate-fade-in-up">
-        <div>
-          <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
-            {t('settings.title')}
-          </h1>
-          <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
-            {t('settings.subtitle')}
-          </p>
-        </div>
-        <LanguageSelector />
+      <header className="opacity-0 animate-fade-in-up">
+        <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
+          {t('settings.title')}
+        </h1>
+        <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
+          {t('settings.subtitle')}
+        </p>
       </header>
 
       <div className="opacity-0 animate-fade-in-up delay-150 space-y-4">
@@ -121,6 +122,20 @@ function SettingsPageInner() {
             <div className="card-sleek rounded-xl p-5">
               <AccountSettings />
             </div>
+          </div>
+        )}
+
+        {activeTab === 'application' && (
+          <div key="panel-application" id="panel-application" role="tabpanel" aria-label={t('settings.tab.application')} className="space-y-4">
+            {/* The language selector used to sit loose in the page header,
+                which is not where anyone looks for a setting. */}
+            <div className="card-sleek rounded-xl p-5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                {t('settings.language.title')}
+              </h2>
+              <LanguageSelector />
+            </div>
+            <StartupSettings startup={startup} />
           </div>
         )}
 

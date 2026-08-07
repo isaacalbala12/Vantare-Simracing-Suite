@@ -40,11 +40,19 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
   const chain = useChainState(profile.id);
   const lastResult = useLastResult(profile.id);
 
+  const displayName =
+    profile.id === "creator"
+      ? t("launcher.profiles.creator.name")
+      : profile.id === "pro"
+        ? t("launcher.profiles.pro.name")
+        : profile.name;
+
   if (chain) {
     return (
       <ProfileCardTimeline
         chain={chain}
         apps={apps}
+        title={displayName}
         onCancel={() => dispatchLauncherCommand("launcher:profile:cancel", { id: profile.id })}
       />
     );
@@ -66,11 +74,7 @@ export function ProfileCard({ profile, apps, className, onEdit }: ProfileCardPro
             className="font-display font-bold text-lg text-white flex items-center"
             data-testid={`profile-name-${profile.id}`}
           >
-            {profile.id === "creator"
-              ? t("launcher.profiles.creator.name")
-              : profile.id === "pro"
-                ? t("launcher.profiles.pro.name")
-                : profile.name}
+            {displayName}
             {profile.isFavorite && (
               <span className="text-amber-400 ml-2" data-testid={`profile-favorite-badge-${profile.id}`} aria-label="Favorita">
                 ★

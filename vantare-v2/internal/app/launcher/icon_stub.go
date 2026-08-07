@@ -13,3 +13,7 @@ func GetAppIconForApp(id, exePath string) []byte { return nil }
 
 // GetAppIconForAppBase64 is a no-op on non-Windows platforms.
 func GetAppIconForAppBase64(id, exePath string) string { return "" }
+
+// resetShortcutIndex is a no-op on non-Windows platforms: there is no .lnk
+// index to invalidate.
+func resetShortcutIndex() {}

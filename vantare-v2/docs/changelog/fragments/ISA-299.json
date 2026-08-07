@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-299",
+  "type": "change",
+  "summary": "El Launcher detecta las apps siete veces más rápido, el escaneo pasa a un aviso centrado que puedes cerrar, y la telemetría deja de morir después de una tarde larga.",
+  "technicalNotes": [
+    "Descubrimiento de apps: 1470 ms a 213 ms. El recorrido de accesos directos aplicaba una profundidad de 4 a todas las carpetas, incluido el Escritorio; ahora cada carpeta tiene su presupuesto y solo se resuelven por COM los accesos cuyo nombre encaja con el catálogo (338 a 33).",
+    "Reescanear ya detecta apps instaladas después de abrir Vantare: el índice de accesos directos se invalida en cada escaneo, cosa que antes no ocurría nunca.",
+    "El progreso del escaneo se muestra en un aviso centrado con cierre por X o Esc; cerrarlo oculta el aviso pero el escaneo termina en segundo plano.",
+    "Telemetría: el presupuesto de reconexión se restaura tras una ejecución que haya durado (RetryPolicy.StableRun, 30 s). Antes se gastaba a lo largo de toda la vida del proceso, así que un driver que funcionaba horas acababa muriendo del todo.",
+    "El Roadmap muestra de nuevo el estado real del producto, y la pestaña de Proyectos se regenera a diario desde Linear en lugar de servir datos congelados en la fecha de la build.",
+    "La app, su instalador y sus propiedades de fichero ya muestran la versión correcta; venían informando una versión dos cortes por detrás de la etiquetada."
+  ],
+  "testing": [
+    "Abrir Launcher y comprobar que la lista de apps aparece casi al instante y que el aviso de escaneo sale centrado, se cierra con la X y con Esc, y vuelve a salir al pulsar Reescanear.",
+    "Instalar o desinstalar una app conocida con Vantare abierto, pulsar Reescanear y confirmar que el cambio se refleja sin reiniciar la aplicación.",
+    "Lanzar un perfil y verificar que la tarjeta de la cadena mantiene el nombre del perfil, los iconos reales y el contador de pasos.",
+    "Dejar Vantare abierto sin el simulador durante un rato largo, arrancar después Le Mans Ultimate y confirmar que la telemetría conecta igualmente.",
+    "Abrir Roadmap y recorrer las dos vistas; en Proyectos, comprobar el aviso de origen de los datos."
+  ],
+  "knownLimitations": [
+    "Cerrar el aviso de escaneo no cancela el escaneo, solo lo oculta.",
+    "La regeneración diaria del snapshot de proyectos no se activará hasta que el workflow llegue a master: GitHub solo lanza tareas programadas desde la rama por defecto."
+  ]
+}

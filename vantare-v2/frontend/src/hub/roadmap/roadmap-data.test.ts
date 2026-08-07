@@ -36,12 +36,24 @@ describe("nearestOnScale", () => {
 });
 
 describe("ROADMAP_FALLBACK dataset", () => {
-  it("has 4 phases and 6 areas", () => {
+  // The counts are editorial and change whenever the roadmap is updated
+  // (docs/roadmap-maintenance.md), so what is pinned here is the structure the
+  // page depends on: every section populated, with ids unique enough to key by.
+  it("has the four narrative phases, with populated areas and milestones", () => {
     expect(ROADMAP_FALLBACK.phases.length).toBe(4);
-    expect(ROADMAP_FALLBACK.areas.length).toBe(6);
+    expect(ROADMAP_FALLBACK.areas.length).toBeGreaterThan(0);
+    expect(ROADMAP_FALLBACK.milestones.length).toBeGreaterThan(0);
   });
-  it("has 5 milestones", () => {
-    expect(ROADMAP_FALLBACK.milestones.length).toBe(5);
+  it("uses unique ids within each section", () => {
+    for (const section of [
+      ROADMAP_FALLBACK.phases,
+      ROADMAP_FALLBACK.areas,
+      ROADMAP_FALLBACK.milestones,
+    ]) {
+      const ids = section.map((entry) => entry.id);
+      expect(ids.every((id) => id.length > 0)).toBe(true);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
   });
   it("all phase/area progress values are on the scale", () => {
     for (const p of ROADMAP_FALLBACK.phases) {

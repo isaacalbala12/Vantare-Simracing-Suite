@@ -91,9 +91,13 @@ jobs:
               "DISCORD_RELEASE_WEBHOOK_URL",
               "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
           )
+          # Only the Nightly/Testers route is required: it is the one testers
+          # actually receive. The changelog channel has no webhook configured,
+          # and requiring it blocked every pre-release. It stays optional here
+          # and in the resolve step, so creating that webhook later restores
+          # the announcement without touching this workflow.
           required = {
               "Nightly/Testers": "1519752249977340168",
-              "Changelog": "1519747444315914512",
           }
           failed = False
           channels = {}
@@ -495,10 +499,11 @@ jobs:
               "DISCORD_PROGRESS_WEBHOOK_URL", "DISCORD_BUILD_WEBHOOK_URL",
               "DISCORD_RELEASE_WEBHOOK_URL", "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
           )
-          targets = {
-              "VANTARE_TESTER_WEBHOOK": "1519752249977340168",
-              "VANTARE_CHANGELOG_WEBHOOK": "1519747444315914512",
-          }
+          # The tester route must resolve; the changelog one is written only if
+          # a webhook uniquely matches its channel, and its absence leaves the
+          # variable unset for the publish step to skip.
+          targets = {"VANTARE_TESTER_WEBHOOK": "1519752249977340168"}
+          optional = {"VANTARE_CHANGELOG_WEBHOOK": "1519747444315914512"}
           by_channel = {}
           for name in names:
               value = os.environ.get(name, "")
@@ -514,6 +519,12 @@ jobs:
                   if len(matches) != 1:
                       raise SystemExit(f"Unable to resolve unique webhook for {channel}")
                   output_file.write(f"{output}={matches[0]}\n")
+              for output, channel in optional.items():
+                  matches = by_channel.get(channel, [])
+                  if len(matches) == 1:
+                      output_file.write(f"{output}={matches[0]}\n")
+                  else:
+                      print(f"::notice::No unique webhook for channel {channel}; skipping {output}")
           PY
 
       - name: Publish Nightly/Testers and changelog after verified release
@@ -533,13 +544,20 @@ jobs:
           DISCORD_PROGRESS_WEBHOOK_URL="$VANTARE_TESTER_WEBHOOK" \
           python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --revision "$GITHUB_SHA" \
             --image "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png" "${args[@]}"
-          DISCORD_BUILD_WEBHOOK_URL="$VANTARE_CHANGELOG_WEBHOOK" \
-          python .github/scripts/discord_communications.py build --channel "${{ inputs.publish_channel }}" \
-            --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
-            --download-url "${{ steps.announce.outputs.download_url }}" --sha256 "${{ steps.announce.outputs.sha256 }}" \
-            --release-url "${{ steps.announce.outputs.release_url }}" \
-            --known-issues-url "${{ github.server_url }}/${{ github.repository }}/blob/master/vantare-v2/docs/tester-known-issues.md" \
-            --image "$RUNNER_TEMP/vantare-changelog.png"
+          # The changelog channel is optional. Posting it to whatever webhook
+          # happened to be configured would put the card in the wrong channel,
+          # so with no route resolved the card is simply not published.
+          if [ -n "${VANTARE_CHANGELOG_WEBHOOK:-}" ]; then
+            DISCORD_BUILD_WEBHOOK_URL="$VANTARE_CHANGELOG_WEBHOOK" \
+            python .github/scripts/discord_communications.py build --channel "${{ inputs.publish_channel }}" \
+              --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
+              --download-url "${{ steps.announce.outputs.download_url }}" --sha256 "${{ steps.announce.outputs.sha256 }}" \
+              --release-url "${{ steps.announce.outputs.release_url }}" \
+              --known-issues-url "${{ github.server_url }}/${{ github.repository }}/blob/master/vantare-v2/docs/tester-known-issues.md" \
+              --image "$RUNNER_TEMP/vantare-changelog.png"
+          else
+            echo "::notice::No changelog webhook resolved; skipping the changelog card"
+          fi
 
       - name: Build stable release card
         if: steps.contract.outputs.prerelease != 'true'

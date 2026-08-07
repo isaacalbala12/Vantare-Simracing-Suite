@@ -88,8 +88,28 @@ func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	if _, ok := appsByID["lmu"]; !ok {
 		t.Fatal("lmu must be present after discovery")
 	}
-	if len(emitter.events) != 5 {
-		t.Fatalf("expected five progress events, got %v", emitter.events)
+	// The icon phase reports once per app, so the event count tracks the app
+	// count rather than being fixed. What the UI depends on is the shape:
+	// discovery-progress events only, never going backwards, ending at a
+	// complete 100% that clears the scanning flag.
+	for _, name := range emitter.events {
+		if name != "launcher:discovery:progress" {
+			t.Fatalf("discovery must emit only progress events, got %v", emitter.events)
+		}
+	}
+	if len(emitter.discovery) == 0 {
+		t.Fatal("expected at least one discovery progress payload")
+	}
+	previous := -1
+	for _, event := range emitter.discovery {
+		if event.Progress < previous {
+			t.Fatalf("progress must not go backwards, got %+v", emitter.discovery)
+		}
+		previous = event.Progress
+	}
+	last := emitter.discovery[len(emitter.discovery)-1]
+	if last.Progress != 100 || last.Phase != DiscoveryComplete || last.Scanning {
+		t.Fatalf("discovery must finish at a complete 100%%, got %+v", last)
 	}
 	if snapshot := svc.Snapshot(); snapshot.Discovery.LastScanAt == nil || snapshot.Discovery.Scanning {
 		t.Fatalf("discovery snapshot must be complete after a successful scan: %+v", snapshot.Discovery)

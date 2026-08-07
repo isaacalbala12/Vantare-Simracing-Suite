@@ -118,6 +118,45 @@ describe("AppsPanel", () => {
     expect(screen.getByTestId("app-args-input-obs")).toBeTruthy();
   });
 
+  it("shows the scan overlay while scanning and lets the user dismiss it", () => {
+    renderPanel();
+    dispatch("launcher:discovery:progress", {
+      scanning: true,
+      progress: 40,
+      phase: "discovering",
+      error: null,
+    });
+    expect(screen.getByTestId("launcher-scan-overlay")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("launcher-scan-dismiss"));
+    expect(screen.queryByTestId("launcher-scan-overlay")).toBeNull();
+
+    // Dismissing hides this scan only; discovery keeps running, so a later
+    // progress event for the same scan must not bring the overlay back.
+    dispatch("launcher:discovery:progress", {
+      scanning: true,
+      progress: 80,
+      phase: "resolving-icons",
+      error: null,
+    });
+    expect(screen.queryByTestId("launcher-scan-overlay")).toBeNull();
+
+    // A new scan is a new user request and shows the overlay again.
+    dispatch("launcher:discovery:progress", {
+      scanning: false,
+      progress: 100,
+      phase: "complete",
+      error: null,
+    });
+    dispatch("launcher:discovery:progress", {
+      scanning: true,
+      progress: 0,
+      phase: "starting",
+      error: null,
+    });
+    expect(screen.getByTestId("launcher-scan-overlay")).toBeTruthy();
+  });
+
   it("emits launcher:app:update when editing args", () => {
     renderPanel();
     dispatchSnapshot([

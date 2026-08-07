@@ -3,6 +3,7 @@ import {
   fetchRoadmapProjectsDataset,
   normalizeRoadmapProjectsSnapshot,
   ROADMAP_PROJECTS_FALLBACK,
+  ROADMAP_PROJECTS_SOURCE_URL,
 } from "./projects-data";
 
 const response = (payload: unknown) => ({ ok: true, json: async () => payload });
@@ -15,6 +16,14 @@ afterEach(() => {
 });
 
 describe("projects-data", () => {
+  // The URL previously pointed at a path on master that was never published,
+  // so every user silently fell back to the snapshot baked into their build.
+  // Nothing caught it, because nothing asserted where the source lives.
+  it("reads the snapshot from the branch the publishing workflow writes to", () => {
+    expect(ROADMAP_PROJECTS_SOURCE_URL).toContain("/roadmap-data/");
+    expect(ROADMAP_PROJECTS_SOURCE_URL).toMatch(/roadmap-public\.snapshot\.json$/);
+  });
+
   it("validates the v1 nightly contract and fallback shape", () => {
     expect(normalizeRoadmapProjectsSnapshot(ROADMAP_PROJECTS_FALLBACK)?.tabs).toHaveLength(3);
     expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects)).toHaveLength(6);

@@ -85,57 +85,76 @@ Reglas:
   contexto de ejecución; el roadmap de la app los consume como inspiración
   manual, no los lee ni los edita automáticamente.
 
-## 7. Fuente de "Desarrollo por features" (features)
+## 7. Segunda pestaña: "Proyectos" (conectada a Linear)
 
-La pestaña "Desarrollo por features" tiene fuente manual con **subtasks
-(checkboxes)**. El progreso se calcula del ratio done/total de las subtasks.
+La segunda pestaña del Roadmap ya **no** es "Desarrollo por features". Desde
+ISA-258 muestra proyectos agrupados en tabs, cuya fuente operativa es Linear.
 
-### Dónde vive
+### Cómo funciona
 
-- **Fuente manual:** `docs/features-source.json`.
-- **URL pública:** `FEATURES_SOURCE_URL` en `features-data.ts`.
-- **Fallback offline:** `FEATURES_FALLBACK` en `features-data.ts` (sincronizado
-  a mano con el JSON).
-- **UI:** `FeatureCard` muestra checkboxes + barra de progreso calculada.
-- **Script eliminado:** `scripts/generate-roadmap-progress.mjs` no existe.
+- **Catálogo privado (qué es público):** `docs/roadmap-linear-catalog.json`.
+  Fija qué proyectos de Linear se publican, con qué `id` opaco, en qué pestaña
+  y con qué copy en `es/en/pt/it`. El UUID de Linear vive aquí y **nunca** sale
+  en la salida pública.
+- **Snapshot público:** `docs/roadmap-public.snapshot.json`. Es lo que consume
+  la app. Incluye `generatedAt` y `staleAfterSeconds`.
+- **Cliente:** `frontend/src/hub/roadmap/projects-data.ts` valida el snapshot
+  entero antes de aceptarlo y distingue `remote-fresh`, `remote-stale` y
+  `embedded-fallback`. La app **nunca** habla con Linear ni recibe credenciales.
+- **UI:** `frontend/src/hub/roadmap/RoadmapProjectTabs.tsx`.
 
-### Schema de features
+### Publicación automática
 
-```json
-{
-  "id": "string (kebab-case, único)",
-  "category": "string (debe existir en categories[].id)",
-  "label": LocalizedText,
-  "description": LocalizedText,
-  "tipo": "feature | bugfix | improve | component",
-  "status": "in-development | research | future",
-  "subtasks": [
-    { "label": LocalizedText, "done": boolean }
-  ]
-}
+`.github/workflows/roadmap-snapshot.yml` regenera el snapshot **a diario** y lo
+publica en la rama de datos `roadmap-data`, que es de donde lo lee la app.
+
+- Se ejecuta sobre `nightly`, porque el exportador y el catálogo viven ahí;
+  `master` va por detrás y ni siquiera tiene `.github/scripts`.
+- Usa el secreto `LINEAR_API_KEY` que ya existe en el repositorio.
+- Antes de publicar, un paso de validación rechaza cualquier snapshot que
+  filtre datos privados o que el validador del frontend fuese a rechazar.
+- Si solo cambia `generatedAt`, no commitea: la rama no acumula ruido diario.
+- Si un día falla, la app enseña el aviso ámbar de "obsoleto" en vez de dar
+  datos viejos por actuales.
+
+El snapshot es contenido generado, así que **no** viaja por el camino
+issue → nightly → testers → master: un cambio de estado en una tarea de Linear
+no debe exigir una promoción de producto. Por eso vive en su propia rama.
+
+Para forzar una regeneración: lanzar el workflow por `workflow_dispatch`.
+Para regenerarlo en local con tu propia clave:
+
+```powershell
+$env:LINEAR_API_KEY = "..."
+python .github/scripts/roadmap_linear_snapshot.py `
+  --catalog vantare-v2/docs/roadmap-linear-catalog.json `
+  --output vantare-v2/docs/roadmap-public.snapshot.json
 ```
 
-**No hay campo `percent`.** El % se calcula: `Math.round((done / total) * 100)`.
+Sin clave, se puede probar toda la cadena contra el fixture:
 
-### Cómo editar el progreso
+```powershell
+python .github/scripts/roadmap_linear_snapshot.py --catalog vantare-v2/docs/roadmap-linear-catalog.json --fixture .github/scripts/tests/fixtures/roadmap-linear-input.json --output "$env:TEMP/snap.json"
+```
 
-1. Abrir `docs/features-source.json`.
-2. Localizar la feature por `id`.
-3. Cambiar `done: true` en las subtasks completadas.
-4. Sincronizar `FEATURES_FALLBACK` en `features-data.ts`.
-5. Checks + commit.
+### Qué edita cada quién
 
-### Cómo añadir una feature
+- **Catálogo** (`docs/roadmap-linear-catalog.json`): lo editas tú. Decide qué
+  proyectos son públicos, en qué pestaña y con qué copy en cuatro idiomas.
+- **Snapshot** (`docs/roadmap-public.snapshot.json`): lo genera el exportador.
+  La copia del repo es el **fallback empaquetado** que entra en el build; la
+  copia viva está en `roadmap-data`. No lo edites a mano.
+- **Progreso y estados**: salen de Linear. No hay porcentaje manual aquí, a
+  diferencia del roadmap editorial (§3 y §4).
 
-1. Añadir categoría si no existe (con `id`, `label` 4 idiomas, `order`).
-2. Añadir feature con todos los campos incluyendo `subtasks[]`.
-3. Sincronizar `FEATURES_FALLBACK`.
-4. Checks + commit.
+### Invariantes que valida el cliente
 
-### Status → UI
+`progress.total` = número de tareas, `progress.done` = tareas en `done`,
+`percent` = `Math.round(done/total*100)` y `null` si no hay tareas. Los estados
+`canceled` se excluyen. Ningún texto público puede contener `ISA-*`, URLs,
+dominios, correos ni UUID.
 
-| Status | Badge | Color |
-|---|---|---|
-| `in-development` | EN DESARROLLO | Rojo |
-| `research` | EN INVESTIGACIÓN | Violeta |
-| `future` | PRÓXIMAMENTE | Gris |
+### Código muerto pendiente de retirar
+
+`features-data.ts`, `roadmap-features.ts`, sus tests y `docs/features-source.json`
+ya no los importa nadie. ISA-258 los dejó como compatibilidad transitoria.

@@ -58,14 +58,18 @@ export type RoadmapProjectsLoadResult = {
 };
 
 /**
- * Public snapshot contract. This master URL becomes a remote source only after
- * that file is published there. Until then, 404/network/invalid content is
- * reported visibly as embedded-fallback; this client does not invent a
- * publishing endpoint or workflow.
+ * Public snapshot contract. The source is the data-only `roadmap-data` branch,
+ * which .github/workflows/roadmap-snapshot.yml refreshes daily from Linear.
+ * The snapshot is generated content, so it is published there rather than
+ * through the issue -> nightly -> testers -> master promotion path: a Linear
+ * task changing state must not require a product promotion.
+ *
+ * 404, network failure or invalid content is still reported visibly as
+ * embedded-fallback; a fallback is never presented as current.
  */
 export const ROADMAP_PROJECTS_SOURCE_URL =
   (import.meta.env.VITE_ROADMAP_PROJECTS_SOURCE_URL as string | undefined)?.trim() ||
-  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-public.snapshot.json";
+  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/roadmap-data/roadmap-public.snapshot.json";
 
 export const ROADMAP_PROJECTS_FETCH_TIMEOUT_MS = 8000;
 

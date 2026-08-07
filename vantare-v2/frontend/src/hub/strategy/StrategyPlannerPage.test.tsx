@@ -13,6 +13,7 @@ import type { StrategyEditorDocument } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft, createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import { effectiveLapRows } from "../../strategy/strategy-manual-input";
 import type { StrategyManualClient, StrategyManualResult } from "../../strategy/strategy-manual-client";
+import type { StrategyPlanViolation, StrategyTyreClient } from "../../strategy/strategy-tyre-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
 import { StrategyPlannerPage, type StrategyCandidate } from "./StrategyPlannerPage";
 
@@ -113,6 +114,31 @@ describe("Strategy Planner shell", () => {
     expect(within(option).getByTestId("strategy-option-usage").textContent).toBe("1M · 2H · 1S");
     expect(screen.queryByTestId("strategy-candidates-empty")).toBeNull();
     expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("reports what the physical tyre domain rejected", async () => {
+    await renderPlanner({
+      demo: true,
+      initialScreen: "workspace",
+      tyreClient: createTestTyreClient([{
+        code: "corner_locked",
+        message: "tyre is permanently assigned to front_left",
+        stintId: "stint-2",
+        tyreId: "M-01",
+        corner: "rear_right",
+      }]),
+    });
+
+    const report = await screen.findByTestId("strategy-plan-violations");
+    expect(report.textContent).toContain("M-01");
+    expect(report.textContent).toContain("RR");
+    expect(report.textContent).toContain("permanently assigned to front_left");
+  });
+
+  it("says nothing when the domain accepts the plan", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    await screen.findAllByTestId(/^strategy-stint-/);
+    expect(screen.queryByTestId("strategy-plan-violations")).toBeNull();
   });
 
   it("supports keyboard navigation between compact workspace panels", async () => {
@@ -342,7 +368,22 @@ type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "
 async function renderPlanner(props: PlannerTestProps) {
   const store = createTestStrategyStore();
   await store.create(createStrategyEditorDraft("2026-08-02T00:00:00Z"));
-  return render(<StrategyPlannerPage {...props} strategyStore={store} manualClient={createTestManualClient()} />);
+  return render(
+    <StrategyPlannerPage
+      tyreClient={createTestTyreClient()}
+      {...props}
+      strategyStore={store}
+      manualClient={createTestManualClient()}
+    />,
+  );
+}
+
+/** Stands in for the Go tyre domain so the shell tests stay deterministic. */
+function createTestTyreClient(violations: readonly StrategyPlanViolation[] = []): StrategyTyreClient {
+  return {
+    async validate() { return { valid: violations.length === 0, violations }; },
+    dispose() {},
+  };
 }
 
 function createTestManualClient(): StrategyManualClient {

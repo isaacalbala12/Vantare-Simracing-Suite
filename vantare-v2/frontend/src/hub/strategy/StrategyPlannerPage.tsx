@@ -42,6 +42,11 @@ import {
   type StrategyManualClient,
   type StrategyManualResult,
 } from "../../strategy/strategy-manual-client";
+import {
+  createWailsStrategyTyreClient,
+  type StrategyPlanViolation,
+  type StrategyTyreClient,
+} from "../../strategy/strategy-tyre-client";
 import { StrategyManualInputPanel } from "./StrategyManualInputPanel";
 import "./strategy-planner.css";
 
@@ -56,6 +61,8 @@ type StrategyPlannerPageProps = {
   strategyStore?: StrategyStore<StrategyEditorDocument>;
   runtimeFactory?: () => StrategyEditorRuntime;
   manualClient?: StrategyManualClient;
+  /** Validates the planned tyre set against the physical domain in Go. */
+  tyreClient?: StrategyTyreClient;
   /** Strategies produced by the solver. Empty until STR-12 lands. */
   candidates?: readonly StrategyCandidate[];
 };
@@ -116,6 +123,7 @@ export function StrategyPlannerPage({
   strategyStore,
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
+  tyreClient,
   candidates = [],
 }: StrategyPlannerPageProps) {
   const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
@@ -128,6 +136,12 @@ export function StrategyPlannerPage({
   const calculationClient = manualClient ?? ownedManualClient;
   if (!calculationClient) throw new Error("Strategy manual calculation client is required");
   const ownedManualClientMountedRef = useRef(false);
+  const [ownedTyreClient] = useState<StrategyTyreClient | null>(() => (
+    tyreClient ? null : createWailsStrategyTyreClient()
+  ));
+  const inventoryClient = tyreClient ?? ownedTyreClient;
+  if (!inventoryClient) throw new Error("Strategy tyre client is required");
+  const ownedTyreClientMountedRef = useRef(false);
   const loadRef = useRef<{ store: StrategyStore<StrategyEditorDocument>; promise: Promise<void> } | null>(null);
   const store = strategyStore ?? ownedRuntime?.store;
   if (!store) throw new Error("Strategy editor store is required");
@@ -149,6 +163,10 @@ export function StrategyPlannerPage({
     error?: string;
   } | null>(null);
   const [manualMode, setManualMode] = useState<"quick" | "laps">("quick");
+  const [planViolations, setPlanViolations] = useState<{
+    draft: NonNullable<typeof storeSnapshot.draft>;
+    violations: readonly StrategyPlanViolation[];
+  } | null>(null);
   const [editorLoadAttempt, setEditorLoadAttempt] = useState(0);
   const backgroundRef = useRef<HTMLDivElement>(null);
   const comparisonOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -177,6 +195,17 @@ export function StrategyPlannerPage({
       });
     };
   }, [ownedManualClient]);
+
+  useEffect(() => {
+    ownedTyreClientMountedRef.current = true;
+    return () => {
+      ownedTyreClientMountedRef.current = false;
+      if (!ownedTyreClient) return;
+      queueMicrotask(() => {
+        if (!ownedTyreClientMountedRef.current) ownedTyreClient.dispose();
+      });
+    };
+  }, [ownedTyreClient]);
 
   useEffect(() => {
     if (screen !== "workspace") return;
@@ -227,6 +256,31 @@ export function StrategyPlannerPage({
     );
     return () => { active = false; };
   }, [calculationClient, screen, storeSnapshot.draft]);
+
+  // The Go domain is the authority: the editor blocks illegal moves as they
+  // happen, and this confirms the whole plan against the real inventory.
+  const violations = planViolations && planViolations.draft === storeSnapshot.draft
+    ? planViolations.violations
+    : [];
+
+  useEffect(() => {
+    const draft = storeSnapshot.draft;
+    if (screen !== "workspace" || !draft) return;
+    const document = tryParseStrategyEditorDocument(draft.payload);
+    if (!document) return;
+    let active = true;
+    void inventoryClient.validate(document).then(
+      (validation) => {
+        if (active) setPlanViolations({ draft, violations: validation.violations });
+      },
+      () => {
+        // A transport failure is not a plan problem: say nothing rather than
+        // accusing a plan that may well be legal.
+        if (active) setPlanViolations({ draft, violations: [] });
+      },
+    );
+    return () => { active = false; };
+  }, [inventoryClient, screen, storeSnapshot.draft]);
 
   const editDocument = useCallback((change: (document: StrategyEditorDocument) => StrategyEditorDocument) => {
     setEditorError("");
@@ -360,6 +414,7 @@ export function StrategyPlannerPage({
           titleId={titleId}
           planName={planName}
           candidates={candidates}
+          violations={violations}
           document={editorDocument}
           dirty={storeSnapshot.dirty}
           canUndo={storeSnapshot.canUndo}
@@ -591,7 +646,7 @@ function ReviewScreen({ titleId, planName, entry, mode, onBack, onContinue }: { 
 }
 
 function Workspace({
-  titleId, planName, candidates, document, dirty, canUndo, canRedo, busy, error,
+  titleId, planName, candidates, violations, document, dirty, canUndo, canRedo, busy, error,
   manualResult, manualLoading, manualError, manualMode,
   activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
   onManualModeChange, onCorrectQuick, onClearQuick, onCorrectLap, onClearLap,
@@ -599,6 +654,7 @@ function Workspace({
   onUndo, onRedo, onSave,
 }: {
   titleId: string; planName: string; candidates: readonly StrategyCandidate[];
+  violations: readonly StrategyPlanViolation[];
   document: StrategyEditorDocument;
   dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
   manualResult: StrategyManualResult | null; manualLoading: boolean; manualError: string;
@@ -729,6 +785,21 @@ function Workspace({
           <div className="strategy-legend"><span><i className="is-green" /> Desgaste cae</span><span><i /> Ritmo previsto</span></div>
           <div className="strategy-stint-columns" aria-hidden="true"><span>STINT</span><span>FRONT LEFT</span><span>FRONT RIGHT</span><span>REAR LEFT</span><span>REAR RIGHT</span></div>
           {error && <div className="strategy-editor-error" role="alert">{error}</div>}
+          {violations.length > 0 && (
+            <div className="strategy-plan-violations" role="alert" data-testid="strategy-plan-violations">
+              <b>El inventario físico rechaza {violations.length === 1 ? "una asignación" : `${violations.length} asignaciones`}</b>
+              <ul>
+                {violations.map((violation) => (
+                  <li key={`${violation.stintId ?? ""}-${violation.corner ?? ""}-${violation.tyreId ?? ""}`}>
+                    {violation.tyreId ? <b>{violation.tyreId}</b> : null}
+                    {violation.corner ? ` · ${cornerLabel(violation.corner)}` : ""}
+                    {violation.stintId ? ` · ${violation.stintId}` : ""}
+                    {` — ${violation.message}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {document.stints.map((stint, index) => (
             <StintCard
               key={stint.id}

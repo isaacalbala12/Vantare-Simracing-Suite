@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.5",
+  "channel": "nightly",
+  "title": "Vantare — el actualizador vuelve a actualizar y el calendario deja de bailar un día",
+  "summary": "La app ya reporta la versión que realmente lleva, así que actualizar deja de ofrecer la misma versión en bucle, y el calendario mensual muestra cada día en su columna para quien no esté en UTC.",
+  "issues": ["ISA-302", "ISA-303"]
+}

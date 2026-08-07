@@ -137,6 +137,22 @@ class RoadmapLinearSnapshotTests(unittest.TestCase):
         with self.assertRaises(exporter.ExportError):
             exporter.transform_issue(issue(state_type="triaged"))
 
+    def test_channel_review_states_read_as_done(self):
+        # Nightly and Testers are typed "started" because they are not Linear's
+        # terminal state, but the work sitting in them is built, reviewed and
+        # already shipped to a channel. The public roadmap reports it finished.
+        for name in ("Nightly", "Testers", "nightly", "TESTERS"):
+            with self.subTest(name=name):
+                task = exporter.transform_issue(issue(state_type="started", state_name=name))
+                self.assertEqual(task["status"], "done")
+        # Ordinary in-flight work is unaffected.
+        self.assertEqual(
+            exporter.transform_issue(issue(state_type="started", state_name="In Progress"))["status"],
+            "in-progress",
+        )
+        # Exclusion still wins: a cancelled issue stays out whatever its name.
+        self.assertIsNone(exporter.transform_issue(issue(state_type="canceled", state_name="Nightly")))
+
     def test_title_sanitization_and_private_residue(self):
         self.assertEqual(exporter.sanitize_title(" ISA-258 — Safe title "), "Safe title")
         self.assertEqual(exporter.sanitize_title("TC-01E — Safe title"), "Safe title")

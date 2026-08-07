@@ -4,6 +4,8 @@ import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { HubSubnav } from '../components/HubSubnav';
 import { StartupSettings } from '../settings/StartupSettings';
 import { useStartupSettings } from '../settings/useStartupSettings';
+import { StorageSettings } from '../settings/StorageSettings';
+import { useStorageSettings } from '../settings/useStorageSettings';
 import { AccountSettings } from '../settings/AccountSettings';
 import { AboutSettings } from '../settings/AboutSettings';
 import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
@@ -46,13 +48,14 @@ function SettingsPageInner() {
   const updater = useUpdaterSettings();
   const app = useAppSettings();
   const startup = useStartupSettings();
+  const storage = useStorageSettings();
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
     { id: 'application' as const, label: t('settings.tab.application') },
     { id: 'updates' as const, label: t('settings.tab.updates') },
     { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
-    { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
+    { id: 'diagnostics' as const, label: t('settings.tab.data') },
   ];
 
   // A tablist is expected to be walkable with the arrow keys, with a single
@@ -152,7 +155,8 @@ function SettingsPageInner() {
         )}
 
         {activeTab === 'diagnostics' && (
-          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label={t('settings.tab.diagnostics')} className="space-y-4">
+          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label={t('settings.tab.data')} className="space-y-4">
+            <StorageSettings storage={storage} />
             <WailsDiagnosticsPanel />
             <CpuSamplingSetting app={app} />
             <AboutSettings info={updater.info} updaterSettings={updater.settings} />

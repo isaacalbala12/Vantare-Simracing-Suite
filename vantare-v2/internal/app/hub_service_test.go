@@ -237,7 +237,7 @@ func TestHubServiceListProfilesSkipsNonProfileJSONFiles(t *testing.T) {
 	if err := config.SaveFile(filepath.Join(dir, "preview-profile.json"), profile); err != nil {
 		t.Fatalf("save profile: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "app-settings.json"), []byte(`{"deltaMode":"self","cpuSampling":true}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "app-settings.json"), []byte(`{"activeOverlayProfileId":"self","cpuSampling":true}`), 0644); err != nil {
 		t.Fatalf("write settings: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "updater-settings.json"), []byte(`{"channel":"stable"}`), 0644); err != nil {

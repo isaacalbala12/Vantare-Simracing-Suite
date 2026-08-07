@@ -75,7 +75,6 @@ export const Events = {
             betaWelcomeCompleted: true,
             betaUserRole: "racer",
             activeOverlayProfileId: null,
-            deltaMode: "relative",
           }),
         50,
       );

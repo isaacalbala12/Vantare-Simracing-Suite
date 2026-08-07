@@ -17,8 +17,11 @@ export function useAppSettings() {
     const handlers: (() => void)[] = [];
 
     handlers.push(
+      // The old guard probed event.data.deltaMode for truthiness, so it doubled
+      // as "is this a real payload". With that field gone the check has to say
+      // what it means: accept any settings object.
       Events.On("settings", (event: { data: AppSettings }) => {
-        if (event.data && event.data.deltaMode) setAppSettings(event.data);
+        if (event.data && typeof event.data === "object") setAppSettings(event.data);
       }),
     );
 
@@ -40,10 +43,6 @@ export function useAppSettings() {
     setAppSettings(next);
     setSettingsStatus("Guardando...");
     Events.Emit("settings:save", next);
-  }
-
-  function changeDeltaMode(deltaMode: string) {
-    save({ ...appSettings, deltaMode });
   }
 
   function toggleCpuSampling() {
@@ -91,7 +90,6 @@ export function useAppSettings() {
     capturingKey,
     startCapture: (name: string) => setCapturingKey(name),
     cancelCapture: () => setCapturingKey(null),
-    changeDeltaMode,
     toggleCpuSampling,
     saveHotkeys,
   };

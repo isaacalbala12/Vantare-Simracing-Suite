@@ -17,8 +17,8 @@ func TestDefaultAppSettings(t *testing.T) {
 	if s == nil {
 		t.Fatal("expected non-nil defaults")
 	}
-	if s.DeltaMode != "self" {
-		t.Errorf("expected deltaMode=self, got %q", s.DeltaMode)
+	if !s.CpuSampling {
+		t.Errorf("expected cpuSampling enabled by default")
 	}
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
@@ -60,13 +60,13 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 		t.Fatalf("Load on missing file: %v", err)
 	}
 	s := svc.Settings()
-	if s.DeltaMode != "self" {
-		t.Errorf("expected default deltaMode=self, got %q", s.DeltaMode)
+	if !s.CpuSampling {
+		t.Errorf("expected default cpuSampling enabled")
 	}
 
 	// Save custom settings
 	custom := app.DefaultAppSettings()
-	custom.DeltaMode = "session"
+	custom.CpuSampling = false
 	custom.CpuSampling = false
 	custom.Hotkeys["toggleOverlay"] = "alt+v"
 	if err := svc.Save(custom); err != nil {
@@ -79,8 +79,8 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 		t.Fatalf("Load after save: %v", err)
 	}
 	s2 := svc2.Settings()
-	if s2.DeltaMode != "session" {
-		t.Errorf("expected deltaMode=session, got %q", s2.DeltaMode)
+	if s2.CpuSampling {
+		t.Errorf("expected cpuSampling to persist as disabled")
 	}
 	if s2.CpuSampling {
 		t.Errorf("expected cpuSampling=false")
@@ -108,31 +108,8 @@ func TestSettingsServiceLoadDefaultsOnCorruptFile(t *testing.T) {
 
 	// Settings should be defaults despite corruption
 	s := svc.Settings()
-	if s.DeltaMode != "self" {
-		t.Errorf("expected defaults on error, got %q", s.DeltaMode)
-	}
-}
-
-func TestSettingsServiceSaveInvalidDeltaMode(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "app-settings.json")
-
-	emitter := &spyEmitter{}
-	svc := app.NewSettingsService(path, emitter, nil)
-	_ = svc.Load()
-
-	custom := app.DefaultAppSettings()
-	custom.DeltaMode = "invalid"
-	if err := svc.Save(custom); err != nil {
-		t.Fatalf("Save should succeed but got: %v", err)
-	}
-	// Verify the invalid delta mode is persisted (validation moved to caller)
-	loaded := app.NewSettingsService(path, nil, nil)
-	if err := loaded.Load(); err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if loaded.Settings().DeltaMode != "invalid" {
-		t.Errorf("expected DeltaMode=invalid to be persisted, got %q", loaded.Settings().DeltaMode)
+	if !s.CpuSampling {
+		t.Errorf("expected defaults on error, got cpuSampling disabled")
 	}
 }
 
@@ -187,7 +164,7 @@ func TestSettingsServiceMergePersistedWithDefaults(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 
 	// Write partial settings (only delta mode, no hotkeys)
-	partial := `{"deltaMode":"global","cpuSampling":false}`
+	partial := `{"activeOverlayProfileId":"global","cpuSampling":false}`
 	if err := os.WriteFile(path, []byte(partial), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -199,8 +176,8 @@ func TestSettingsServiceMergePersistedWithDefaults(t *testing.T) {
 	}
 
 	s := svc.Settings()
-	if s.DeltaMode != "global" {
-		t.Errorf("expected deltaMode=global, got %q", s.DeltaMode)
+	if s.ActiveOverlayProfileID != "global" {
+		t.Errorf("expected activeOverlayProfileId=global, got %q", s.ActiveOverlayProfileID)
 	}
 	if s.CpuSampling {
 		t.Errorf("expected cpuSampling=false")
@@ -247,7 +224,7 @@ func TestSettingsServiceMergeKeepsActiveOverlayProfileID(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 
-	partial := `{"deltaMode":"self","cpuSampling":true,"activeOverlayProfileId":"custom-saved"}`
+	partial := `{"activeOverlayProfileId":"self","cpuSampling":true,"activeOverlayProfileId":"custom-saved"}`
 	if err := os.WriteFile(path, []byte(partial), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +298,7 @@ func TestSettingsServiceMergeKeepsBetaUserRole(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 
-	partial := `{"deltaMode":"self","cpuSampling":true,"betaUserRole":"organizer"}`
+	partial := `{"activeOverlayProfileId":"self","cpuSampling":true,"betaUserRole":"organizer"}`
 	if err := os.WriteFile(path, []byte(partial), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +327,7 @@ func TestConcurrentReadWriteNoRace(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			s := app.DefaultAppSettings()
-			s.DeltaMode = fmt.Sprintf("m-%d", i)
+			s.ActiveOverlayProfileID = fmt.Sprintf("m-%d", i)
 			_ = svc.Save(s)
 		}(i)
 	}
@@ -378,13 +355,13 @@ func TestSidecarStaleIsIgnored(t *testing.T) {
 	path := filepath.Join(dir, "app-settings.json")
 	sidecarPath := path + ".failed"
 	// main primero.
-	mainJSON := `{"schemaVersion": 1, "deltaMode": "main", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	mainJSON := `{"schemaVersion": 1, "activeOverlayProfileId": "main", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
 	if err := os.WriteFile(path, []byte(mainJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(10 * time.Millisecond)
 	// sidecar después (más nuevo en mtime, pero más viejo semánticamente).
-	sidecarJSON := `{"schemaVersion": 1, "deltaMode": "sidecar", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	sidecarJSON := `{"schemaVersion": 1, "activeOverlayProfileId": "sidecar", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
 	if err := os.WriteFile(sidecarPath, []byte(sidecarJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -396,8 +373,8 @@ func TestSidecarStaleIsIgnored(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().DeltaMode != "main" {
-		t.Errorf("expected main, got %s", svc.Settings().DeltaMode)
+	if svc.Settings().ActiveOverlayProfileID != "main" {
+		t.Errorf("expected main, got %s", svc.Settings().ActiveOverlayProfileID)
 	}
 	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
 		t.Errorf("stale sidecar should be removed")
@@ -420,7 +397,7 @@ func TestSaveNilSettingsWithValidPathReturnsError(t *testing.T) {
 func TestLoadPreservesSchemaVersion(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
-	data := `{"schemaVersion": 2, "deltaMode": "x", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
+	data := `{"schemaVersion": 2, "activeOverlayProfileId": "x", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
@@ -448,7 +425,7 @@ func TestSettingsServiceSaveProducesValidJSON(t *testing.T) {
 
 	svc := app.NewSettingsService(path, nil, nil)
 	custom := app.DefaultAppSettings()
-	custom.DeltaMode = "session"
+	custom.CpuSampling = false
 	if err := svc.Save(custom); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -546,10 +523,10 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 	}
 }
 
-func TestDefaultAppSettingsHasSchemaVersion1(t *testing.T) {
+func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 1 {
-		t.Fatalf("expected SchemaVersion=1, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 2 {
+		t.Fatalf("expected SchemaVersion=2, got %d", s.SchemaVersion)
 	}
 }
 
@@ -565,7 +542,7 @@ func TestSaveIsAtomic(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("main should exist: %v", err)
 	}
-	s.DeltaMode = "relative"
+	s.ActiveOverlayProfileID = "relative"
 	if err := svc.Save(s); err != nil {
 		t.Fatalf("save 2: %v", err)
 	}
@@ -608,7 +585,7 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 	legacy := `{
-		"deltaMode": "self",
+		"activeOverlayProfileId": "self",
 		"cpuSampling": true,
 		"hotkeys": {}
 	}`
@@ -619,8 +596,8 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 1 {
-		t.Errorf("expected SchemaVersion=1 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 2 {
+		t.Errorf("expected SchemaVersion=2 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -637,15 +614,15 @@ func TestLoadToleratesCorruptedJSONFallsBackToBak(t *testing.T) {
 	if err := os.WriteFile(path, []byte("{ \"deltaMode\":"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(bakPath, []byte(`{"schemaVersion": 1, "deltaMode": "self", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`), 0o644); err != nil {
+	if err := os.WriteFile(bakPath, []byte(`{"schemaVersion": 1, "activeOverlayProfileId": "self", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().DeltaMode != "self" {
-		t.Errorf("expected DeltaMode=self from .bak, got %s", svc.Settings().DeltaMode)
+	if svc.Settings().ActiveOverlayProfileID != "self" {
+		t.Errorf("expected ActiveOverlayProfileID=self from .bak, got %s", svc.Settings().ActiveOverlayProfileID)
 	}
 }
 
@@ -659,8 +636,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 1 {
-		t.Errorf("expected defaults with SchemaVersion=1")
+	if svc.Settings().SchemaVersion != 2 {
+		t.Errorf("expected defaults with SchemaVersion=2")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")
@@ -671,15 +648,15 @@ func TestSidecarAppliedOnStartup(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 	sidecarPath := path + ".failed"
-	if err := os.WriteFile(sidecarPath, []byte(`{"schemaVersion": 1, "deltaMode": "absolute", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": [{"id":"x","name":"X","steps":[]}]}`), 0o644); err != nil {
+	if err := os.WriteFile(sidecarPath, []byte(`{"schemaVersion": 1, "activeOverlayProfileId": "absolute", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": [{"id":"x","name":"X","steps":[]}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	svc := app.NewSettingsService(path, nil, nil)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().DeltaMode != "absolute" {
-		t.Errorf("expected sidecar applied, got %s", svc.Settings().DeltaMode)
+	if svc.Settings().ActiveOverlayProfileID != "absolute" {
+		t.Errorf("expected sidecar applied, got %s", svc.Settings().ActiveOverlayProfileID)
 	}
 	if len(svc.Settings().LauncherProfiles) != 1 {
 		t.Errorf("expected 1 profile from sidecar")

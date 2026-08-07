@@ -18,7 +18,6 @@ export type HubMockSettings = {
   betaWelcomeCompleted: boolean;
   betaUserRole: string;
   activeOverlayProfileId: string | null;
-  deltaMode: string;
   cpuSampling: boolean;
   hotkeys: Record<string, unknown>;
 };
@@ -34,7 +33,6 @@ function defaultSettings(): HubMockSettings {
     betaWelcomeCompleted: true,
     betaUserRole: "racer",
     activeOverlayProfileId: null,
-    deltaMode: "relative",
     cpuSampling: true,
     hotkeys: {},
   };

@@ -158,12 +158,12 @@
         },
         {
           "sourceId": "22a8ae34-cb36-43d6-b97e-62f02e216687",
-          "id": "races-calendar",
+          "id": "calendar",
           "title": {
-            "es": "Carreras",
-            "en": "Races",
-            "pt": "Corridas",
-            "it": "Gare"
+            "es": "Calendario",
+            "en": "Calendar",
+            "pt": "Calendário",
+            "it": "Calendario"
           },
           "summary": {
             "es": "Calendario local y cadencia de sesiones.",

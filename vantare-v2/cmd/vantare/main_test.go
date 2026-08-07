@@ -670,8 +670,20 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 6 || emitter.events[5] != "launcher:snapshot" {
-		t.Fatalf("expected canonical discovery snapshot, got %v", emitter.events)
+	// The icon phase reports once per app, so the number of progress events
+	// tracks how many apps were found rather than being fixed. What this
+	// handler owes its caller is that the canonical snapshot lands last,
+	// after the progress stream and nothing else.
+	if len(emitter.events) < 2 {
+		t.Fatalf("expected progress events followed by a snapshot, got %v", emitter.events)
+	}
+	if last := emitter.events[len(emitter.events)-1]; last != "launcher:snapshot" {
+		t.Fatalf("discovery must end with the canonical snapshot, got %v", emitter.events)
+	}
+	for _, name := range emitter.events[:len(emitter.events)-1] {
+		if name != "launcher:discovery:progress" {
+			t.Fatalf("only progress may precede the snapshot, got %v", emitter.events)
+		}
 	}
 }
 

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { parseKeyEvent } from "./hotkey-capture";
-import { DEFAULT_APP_SETTINGS, type AppSettings } from "./settings-contract";
+import {
+  DEFAULT_APP_SETTINGS,
+  type AppSettings,
+  type NotificationSettings,
+} from "./settings-contract";
 
 /**
  * The persisted app settings plus the hotkey capture loop. Capture lives here
@@ -57,6 +61,15 @@ export function useAppSettings() {
     save({ ...appSettings, cpuSampling: !appSettings.cpuSampling });
   }
 
+  // Merged, not replaced: each switch writes only its own key, so turning one
+  // off cannot quietly reset the others.
+  function setNotifications(patch: Partial<NotificationSettings>) {
+    save({
+      ...appSettings,
+      notifications: { ...(appSettings.notifications ?? {}), ...patch },
+    });
+  }
+
   // Hotkeys are edited locally and written only when the user saves, so this
   // updates state without emitting.
   const captureKeyDown = useCallback(
@@ -99,6 +112,7 @@ export function useAppSettings() {
     startCapture: (name: string) => setCapturingKey(name),
     cancelCapture: () => setCapturingKey(null),
     toggleCpuSampling,
+    setNotifications,
     saveHotkeys,
   };
 }

@@ -24,10 +24,27 @@ var ErrAppNotFound = errors.New("settings: app not found")
 // saveBackoffs defines the backoff durations for retries.
 var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second}
 
+// NotificationSettings records what the user has turned off, not what they have
+// turned on.
+//
+// Stated as opt-outs, the zero value is the shipping default: banner and toasts
+// on, system notifications off because they cannot work until the operating
+// system grants permission. A settings file written before this field existed
+// therefore loads with the right behaviour, and no migration is needed.
+type NotificationSettings struct {
+	// UpdatesMuted hides the banner shown when a new version is available.
+	UpdatesMuted bool `json:"updatesMuted,omitempty"`
+	// LauncherMuted hides the toast a launch chain shows when it finishes.
+	LauncherMuted bool `json:"launcherMuted,omitempty"`
+	// SystemEnabled sends a desktop notification when the window is hidden.
+	SystemEnabled bool `json:"systemEnabled,omitempty"`
+}
+
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
+	Notifications               NotificationSettings        `json:"notifications"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
 	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
@@ -561,9 +578,13 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		s.migrateSettings(s.settings)
 		return
 	}
+	// Every scalar field has to be named here, so a field added to AppSettings
+	// and forgotten in this list is read from disk and then dropped on the
+	// floor. TestApplyLoadedKeepsEveryPersistedField exists to catch that.
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
+		Notifications:               loaded.Notifications,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,

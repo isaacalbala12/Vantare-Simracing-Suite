@@ -40,8 +40,22 @@ export type UpdaterSettings = {
   ignoreVersion?: string;
 };
 
+/**
+ * What the user has turned off, not what they have turned on.
+ *
+ * Stated as opt-outs so that an absent value means the shipping default:
+ * banner and toasts on, system notifications off because they cannot work
+ * until the operating system grants permission. Mirrors the Go struct.
+ */
+export type NotificationSettings = {
+  updatesMuted?: boolean;
+  launcherMuted?: boolean;
+  systemEnabled?: boolean;
+};
+
 export type AppSettings = {
   cpuSampling: boolean;
+  notifications?: NotificationSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
@@ -52,6 +66,7 @@ export type AppSettings = {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   cpuSampling: true,
+  notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",
     nextProfile: "ctrl+shift+right",

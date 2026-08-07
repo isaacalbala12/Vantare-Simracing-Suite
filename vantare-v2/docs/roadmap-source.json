@@ -253,15 +253,15 @@
     {
       "id": "calendar-local",
       "title": {
-        "es": "Carreras",
-        "en": "Races",
-        "pt": "Corridas",
-        "it": "Gare"
+        "es": "Calendario",
+        "en": "Calendar",
+        "pt": "Calendário",
+        "it": "Calendario"
       },
       "progress": 50,
       "status": "in-progress",
       "projects": [
-        "races-calendar"
+        "calendar"
       ]
     },
     {

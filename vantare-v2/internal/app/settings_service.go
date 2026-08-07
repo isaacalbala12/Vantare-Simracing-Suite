@@ -304,7 +304,12 @@ func defaultLauncherProfiles() []LaunchProfile {
 
 // SettingsService persists AppSettings to a JSON file and emits Wails events.
 type SettingsService struct {
-	mu       sync.RWMutex
+	mu sync.RWMutex
+	// writeMu serialises the temp-file-then-rename dance. s.mu guards the
+	// in-memory settings and is deliberately released during I/O, so without a
+	// separate lock two savers could rename onto the same destination at once —
+	// which Windows rejects outright while the other holds the file open.
+	writeMu  sync.Mutex
 	path     string
 	settings *AppSettings
 	emitter  EventEmitter
@@ -653,15 +658,36 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	return fmt.Errorf("save failed after retries: %w", err)
 }
 
-// atomicWrite performs a safe write: .tmp → rename → .bak rotation.
-// It does NOT take s.mu; callers that need memory consistency
-// (e.g. s.settings = settings) must do so separately.
+// atomicWrite performs a safe write: temp file → rename → .bak rotation.
+// It serialises writers on s.writeMu but does NOT take s.mu; callers that need
+// memory consistency (e.g. s.settings = settings) must do so separately.
 func (s *SettingsService) atomicWrite(data []byte) error {
-	tmpPath := s.path + ".tmp"
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	bakPath := s.path + ".bak"
 
-	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
+	// One temp file per write. A fixed ".tmp" name made concurrent savers fight
+	// over the same path: on Windows the second writer cannot even open it while
+	// the first holds a handle, and whoever renamed first left the other renaming
+	// a file that no longer existed. os.CreateTemp gives each write its own name,
+	// which is what widget_design_service already does.
+	tmp, err := os.CreateTemp(filepath.Dir(s.path), filepath.Base(s.path)+".tmp-*")
+	if err != nil {
 		return fmt.Errorf("write tmp: %w", err)
+	}
+	tmpPath := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("write tmp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("write tmp: %w", err)
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		s.logger.Warn("failed to chmod tmp, continuing", "err", err)
 	}
 
 	var oldData []byte
@@ -670,6 +696,7 @@ func (s *SettingsService) atomicWrite(data []byte) error {
 	}
 
 	if err := os.Rename(tmpPath, s.path); err != nil {
+		os.Remove(tmpPath)
 		return fmt.Errorf("rename tmp: %w", err)
 	}
 

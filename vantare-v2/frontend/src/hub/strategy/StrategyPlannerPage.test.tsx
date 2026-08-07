@@ -14,9 +14,23 @@ import { createStrategyEditorDraft, createStrategyEditorRuntime } from "../../st
 import { effectiveLapRows } from "../../strategy/strategy-manual-input";
 import type { StrategyManualClient, StrategyManualResult } from "../../strategy/strategy-manual-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
-import { StrategyPlannerPage } from "./StrategyPlannerPage";
+import { StrategyPlannerPage, type StrategyCandidate } from "./StrategyPlannerPage";
 
 configure({ asyncUtilTimeout: 3_000 });
+
+/** Stand-ins for solver output. Production renders whatever STR-12 produces. */
+const TEST_CANDIDATES: readonly StrategyCandidate[] = [
+  {
+    label: "A", title: "Plan A", deltaText: "−0.8s", totalTimeText: "6h 04m 12.0s",
+    risk: "Bajo", pitStops: 3, compounds: ["M", "H", "H", "S"],
+    fuelSaveText: "+1.0 v/stint", summary: "Fixture.", active: true,
+  },
+  {
+    label: "B", title: "Plan B", deltaText: "+2.4s", totalTimeText: "6h 04m 15.2s",
+    risk: "Medio", pitStops: 3, compounds: ["S", "M", "S", "S"],
+    fuelSaveText: "+3.0 v/stint", summary: "Fixture.", active: false,
+  },
+];
 
 afterEach(cleanup);
 
@@ -41,7 +55,7 @@ describe("Strategy Planner shell", () => {
   });
 
   it("traps comparison focus, isolates the background and restores the opener", async () => {
-    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    await renderPlanner({ demo: true, initialScreen: "workspace", candidates: TEST_CANDIDATES });
 
     const opener = await screen.findByRole("button", { name: "Comparar planes" });
     opener.focus();
@@ -75,7 +89,7 @@ describe("Strategy Planner shell", () => {
     expect(document.querySelector("[aria-labelledby^=strategy-tab]")).toBeNull();
   });
 
-  it("renders a complete 78-lap plan and coherent metrics for every strategy", async () => {
+  it("renders the plan from the document and never invents strategies", async () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
 
     const stints = await screen.findAllByTestId(/^strategy-stint-/);
@@ -83,22 +97,22 @@ describe("Strategy Planner shell", () => {
     expect(stints.reduce((total, stint) => total + Number(stint.getAttribute("data-laps")), 0)).toBe(78);
     expect(within(stints[3]).getByText("v.59–78 · 20v")).toBeTruthy();
 
-    const expectations = [
-      { label: "A", compounds: ["M", "H", "H", "S"], usage: "1M · 2H · 1S", time: "6h 04m 12.0s", fuelSave: "+1.0 v/stint" },
-      { label: "B", compounds: ["S", "M", "S", "S"], usage: "3S · 1M", time: "6h 04m 15.2s", fuelSave: "+3.0 v/stint" },
-      { label: "C", compounds: ["H", "H", "H", "M"], usage: "3H · 1M", time: "6h 04m 17.9s", fuelSave: "0 v/stint" },
-    ];
-
-    for (const expected of expectations) {
-      const option = screen.getByTestId(`strategy-option-${expected.label}`);
-      const compounds = Array.from(option.querySelectorAll<HTMLElement>("[data-compound]"), (chip) => chip.dataset.compound);
-      expect(compounds).toEqual(expected.compounds);
-      expect(within(option).getByTestId("strategy-option-usage").textContent).toBe(expected.usage);
-      expect(definitionValue(option, "Tiempo")).toBe(expected.time);
-      expect(definitionValue(option, "Pits")).toBe("3");
-      expect(definitionValue(option, "Ahorro")).toBe(expected.fuelSave);
-    }
+    // No solver yet, so the panel says so instead of showing invented plans.
+    expect(screen.getByTestId("strategy-candidates-empty")).toBeTruthy();
+    expect(screen.queryByTestId(/^strategy-option-/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.95 L/v");
+  });
+
+  it("shows solver output verbatim once candidates exist", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace", candidates: TEST_CANDIDATES });
+
+    const option = await screen.findByTestId("strategy-option-A");
+    expect(definitionValue(option, "Tiempo")).toBe("6h 04m 12.0s");
+    expect(definitionValue(option, "Pits")).toBe("3");
+    expect(within(option).getByTestId("strategy-option-usage").textContent).toBe("1M · 2H · 1S");
+    expect(screen.queryByTestId("strategy-candidates-empty")).toBeNull();
+    expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("supports keyboard navigation between compact workspace panels", async () => {

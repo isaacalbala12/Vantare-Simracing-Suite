@@ -53,6 +53,8 @@ type StrategyPlannerPageProps = {
   strategyStore?: StrategyStore<StrategyEditorDocument>;
   runtimeFactory?: () => StrategyEditorRuntime;
   manualClient?: StrategyManualClient;
+  /** Strategies produced by the solver. Empty until STR-12 lands. */
+  candidates?: readonly StrategyCandidate[];
 };
 
 const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
@@ -61,44 +63,48 @@ const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
   { id: "inventory", label: "Inventario" },
 ];
 
-const STRATEGIES = [
-  {
-    label: "A",
-    title: "Conservadora",
-    delta: "−0.8s",
-    time: "6h 04m 12.0s",
-    risk: "Bajo",
-    pits: 3,
-    compounds: ["M", "H", "H", "S"],
-    fuelSave: "+1.0 v/stint",
-    summary: "Fuel-save ligero. Un stint Medium, dos Hard y uno Soft con carga controlada.",
-    active: true,
-  },
-  {
-    label: "B",
-    title: "Agresiva",
-    delta: "+2.4s",
-    time: "6h 04m 15.2s",
-    risk: "Medio",
-    pits: 3,
-    compounds: ["S", "M", "S", "S"],
-    fuelSave: "+3.0 v/stint",
-    summary: "Tres stints Soft, uno Medium y ahorro intensivo en los stints centrales.",
-    active: false,
-  },
-  {
-    label: "C",
-    title: "Segura",
-    delta: "+5.1s",
-    time: "6h 04m 17.9s",
-    risk: "Bajo",
-    pits: 3,
-    compounds: ["H", "H", "H", "M"],
-    fuelSave: "0 v/stint",
-    summary: "Tres stints Hard y uno Medium, sin fuel-save y con margen de combustible.",
-    active: false,
-  },
-] as const;
+/**
+ * A strategy the solver has produced. Nothing in this module invents one: the
+ * page renders whatever it is given and states the panel is empty otherwise,
+ * so the workspace can never show a plan that was not computed.
+ */
+export type StrategyCandidate = {
+  label: string;
+  title: string;
+  deltaText: string;
+  totalTimeText: string;
+  risk: string;
+  pitStops: number;
+  compounds: readonly string[];
+  fuelSaveText: string;
+  summary: string;
+  active: boolean;
+};
+
+/** Race context captured on the entry screen. */
+type RaceEntry = {
+  durationHours: string;
+  plannedLaps: string;
+  tankLiters: string;
+  consumptionPerLap: string;
+  tyreCount: string;
+};
+
+const DEFAULT_RACE_ENTRY: RaceEntry = {
+  durationHours: "",
+  plannedLaps: "",
+  tankLiters: "",
+  consumptionPerLap: "",
+  tyreCount: "",
+};
+
+const RACE_ENTRY_FIELDS: Array<{ key: keyof RaceEntry; label: string; unit: string; step?: string }> = [
+  { key: "durationHours", label: "Duración", unit: "horas" },
+  { key: "plannedLaps", label: "Vueltas previstas", unit: "vueltas" },
+  { key: "tankLiters", label: "Capacidad de tanque", unit: "litros" },
+  { key: "consumptionPerLap", label: "Consumo medio", unit: "L/vuelta", step: "0.1" },
+  { key: "tyreCount", label: "Neumáticos máximos", unit: "individuales" },
+];
 
 export function StrategyPlannerPage({
   demo = false,
@@ -107,6 +113,7 @@ export function StrategyPlannerPage({
   strategyStore,
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
+  candidates = [],
 }: StrategyPlannerPageProps) {
   const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
     strategyStore ? null : runtimeFactory()
@@ -127,7 +134,8 @@ export function StrategyPlannerPage({
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [entryMode, setEntryMode] = useState<"manual" | "telemetry">("manual");
-  const [planName, setPlanName] = useState("6h Spa · Hypercar");
+  const [planName, setPlanName] = useState("");
+  const [raceEntry, setRaceEntry] = useState<RaceEntry>(DEFAULT_RACE_ENTRY);
   const [editorLoading, setEditorLoading] = useState(
     initialScreen === "workspace" && !storeSnapshot.draft,
   );
@@ -317,6 +325,8 @@ export function StrategyPlannerPage({
           titleId={titleId}
           mode={entryMode}
           planName={planName}
+          entry={raceEntry}
+          onEntryChange={(key, value) => setRaceEntry((current) => ({ ...current, [key]: value }))}
           onModeChange={setEntryMode}
           onNameChange={setPlanName}
           onBack={() => setScreen("gallery")}
@@ -328,6 +338,7 @@ export function StrategyPlannerPage({
         <ReviewScreen
           titleId={titleId}
           planName={planName}
+          entry={raceEntry}
           mode={entryMode}
           onBack={() => setScreen("entry")}
           onContinue={enterWorkspace}
@@ -345,6 +356,7 @@ export function StrategyPlannerPage({
         ) : <Workspace
           titleId={titleId}
           planName={planName}
+          candidates={candidates}
           document={editorDocument}
           dirty={storeSnapshot.dirty}
           canUndo={storeSnapshot.canUndo}
@@ -395,7 +407,7 @@ export function StrategyPlannerPage({
       </div>
 
       {comparisonOpen && (
-        <ComparisonDialog onClose={closeComparison} />
+        <ComparisonDialog strategies={candidates} onClose={closeComparison} />
       )}
     </section>
   );
@@ -484,16 +496,20 @@ function EntryScreen({
   titleId,
   mode,
   planName,
+  entry,
   onModeChange,
   onNameChange,
+  onEntryChange,
   onBack,
   onContinue,
 }: {
   titleId: string;
   mode: "manual" | "telemetry";
   planName: string;
+  entry: RaceEntry;
   onModeChange: (mode: "manual" | "telemetry") => void;
   onNameChange: (name: string) => void;
+  onEntryChange: (key: keyof RaceEntry, value: string) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -515,11 +531,19 @@ function EntryScreen({
         ) : (
           <form className="strategy-form" onSubmit={(event) => { event.preventDefault(); onContinue(); }}>
             <label className="strategy-field strategy-field--wide">Nombre del plan<input value={planName} onChange={(event) => onNameChange(event.target.value)} required /></label>
-            <label className="strategy-field">Duración<input type="number" defaultValue="6" min="1" /><span>horas</span></label>
-            <label className="strategy-field">Vueltas previstas<input type="number" defaultValue="78" min="1" /><span>vueltas</span></label>
-            <label className="strategy-field">Capacidad de tanque<input type="number" defaultValue="100" min="1" /><span>litros</span></label>
-            <label className="strategy-field">Consumo medio<input type="number" defaultValue="4.8" min="0" step="0.1" /><span>L/vuelta</span></label>
-            <label className="strategy-field">Neumáticos máximos<input type="number" defaultValue="8" min="1" /><span>individuales</span></label>
+            {RACE_ENTRY_FIELDS.map((field) => (
+              <label className="strategy-field" key={field.key}>
+                {field.label}
+                <input
+                  type="number"
+                  min={field.step ? "0" : "1"}
+                  step={field.step}
+                  value={entry[field.key]}
+                  onChange={(event) => onEntryChange(field.key, event.target.value)}
+                />
+                <span>{field.unit}</span>
+              </label>
+            ))}
           </form>
         )}
       </div>
@@ -528,16 +552,34 @@ function EntryScreen({
   );
 }
 
-function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId: string; planName: string; mode: string; onBack: () => void; onContinue: () => void }) {
-  const rows = [
-    ["Plan", planName], ["Fuente", mode === "manual" ? "Entrada manual" : "Telemetría pendiente"],
-    ["Carrera", "6 horas · 78 vueltas previstas"], ["Recursos", "100 L · 4,8 L/vuelta · 8 neumáticos individuales"],
+/** Describes only what the user actually entered; blanks stay blank. */
+function describeRace(entry: RaceEntry): string {
+  const parts: string[] = [];
+  if (entry.durationHours.trim()) parts.push(`${entry.durationHours} horas`);
+  if (entry.plannedLaps.trim()) parts.push(`${entry.plannedLaps} vueltas previstas`);
+  return parts.length > 0 ? parts.join(" · ") : "Sin definir";
+}
+
+function describeResources(entry: RaceEntry): string {
+  const parts: string[] = [];
+  if (entry.tankLiters.trim()) parts.push(`${entry.tankLiters} L`);
+  if (entry.consumptionPerLap.trim()) parts.push(`${entry.consumptionPerLap} L/vuelta`);
+  if (entry.tyreCount.trim()) parts.push(`${entry.tyreCount} neumáticos individuales`);
+  return parts.length > 0 ? parts.join(" · ") : "Sin definir";
+}
+
+function ReviewScreen({ titleId, planName, entry, mode, onBack, onContinue }: { titleId: string; planName: string; entry: RaceEntry; mode: string; onBack: () => void; onContinue: () => void }) {
+  const rows: Array<[string, string]> = [
+    ["Plan", planName || "Sin nombre"],
+    ["Fuente", mode === "manual" ? "Entrada manual" : "Telemetría pendiente"],
+    ["Carrera", describeRace(entry)],
+    ["Recursos", describeResources(entry)],
   ];
   return (
     <div className="strategy-screen strategy-flow-screen">
       <FlowHeader step={2} titleId={titleId} title="Revisar datos" description="Confirma los valores que formarán el workspace." />
       <div className="strategy-flow-card strategy-review">
-        <div className="strategy-review__notice"><span aria-hidden="true">i</span><p>Estos valores son de demostración. No proceden de una sesión live ni constituyen una estrategia calculada.</p></div>
+        <div className="strategy-review__notice"><span aria-hidden="true">i</span><p>Estos valores son los que has introducido. No proceden de una sesión live ni constituyen una estrategia calculada.</p></div>
         <dl>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       </div>
       <FlowActions onBack={onBack} nextLabel="Crear workspace" onNext={onContinue} />
@@ -546,14 +588,15 @@ function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId
 }
 
 function Workspace({
-  titleId, planName, document, dirty, canUndo, canRedo, busy, error,
+  titleId, planName, candidates, document, dirty, canUndo, canRedo, busy, error,
   manualResult, manualLoading, manualError, manualMode,
   activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
   onManualModeChange, onCorrectQuick, onClearQuick, onCorrectLap, onClearLap,
   onAppend, onInsert, onDuplicate, onDelete, onMove, onAssign, onClear,
   onUndo, onRedo, onSave,
 }: {
-  titleId: string; planName: string; document: StrategyEditorDocument;
+  titleId: string; planName: string; candidates: readonly StrategyCandidate[];
+  document: StrategyEditorDocument;
   dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
   manualResult: StrategyManualResult | null; manualLoading: boolean; manualError: string;
   manualMode: "quick" | "laps";
@@ -577,6 +620,7 @@ function Workspace({
   const [pickedTyre, setPickedTyre] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const totalLaps = document.stints.reduce((total, stint) => total + stint.lapCount, 0);
+  const canCompare = candidates.length > 0;
 
   useEffect(() => {
     function cancelTransfer(event: globalThis.KeyboardEvent) {
@@ -613,7 +657,15 @@ function Workspace({
           </div>
           <h1 id={titleId}>Plan offline</h1>
         </div>
-        <div className="strategy-workspace__context"><span>● DRY</span><b>{planName}</b><i /><small>PRÓX. <b>en 2h 14m</b></small><i /><small>PLANES <b>3</b></small><em>DEMO</em></div>
+        {/* Only figures derived from the open document: no session clock, no
+            plan count and no weather until something actually reports them. */}
+        <div className="strategy-workspace__context">
+          <b>{planName}</b>
+          <i />
+          <small>STINTS <b>{document.stints.length}</b></small>
+          <i />
+          <small>VUELTAS <b>{totalLaps}</b></small>
+        </div>
       </header>
 
       <ol className="strategy-stepper" aria-label="Progreso del plan">
@@ -637,16 +689,40 @@ function Workspace({
       <div className="strategy-workspace__grid">
         <aside aria-label="Estrategias" data-compact-active={activePanel === "plans"} data-testid="strategy-column-plans" className="strategy-column strategy-column--plans">
           <section className="strategy-panel">
-            <PanelHeading title="Estrategias" meta="3 planes · 1 activo" />
-            {STRATEGIES.map((strategy) => (
-              <StrategyOption key={strategy.label} strategy={strategy} />
-            ))}
+            <PanelHeading
+              title="Estrategias"
+              meta={candidates.length > 0 ? `${candidates.length} planes` : "Sin calcular"}
+            />
+            {candidates.length > 0 ? (
+              candidates.map((candidate) => (
+                <StrategyOption key={candidate.label} strategy={candidate} />
+              ))
+            ) : (
+              <p className="strategy-panel__empty" data-testid="strategy-candidates-empty">
+                Todavía no hay estrategias calculadas. El motor que las genera llegará con STR-12;
+                hasta entonces el plan se construye a mano en la columna de stints.
+              </p>
+            )}
           </section>
           <FuelSavePanel result={manualResult} loading={manualLoading} error={manualError} document={document} />
         </aside>
 
         <main aria-label="Stints" data-compact-active={activePanel === "stints"} data-testid="strategy-column-stints" className="strategy-column strategy-column--stints strategy-panel">
-          <div className="strategy-plan-heading"><PanelHeading title="Plan de carrera" meta={`${document.stints.length} stints · ${totalLaps} vueltas · ${Math.max(0, document.stints.length - 1)} paradas · 6h 04m`} /><div><button type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar</button><button type="button" onClick={onAppend}>＋ Stint</button></div></div>
+          <div className="strategy-plan-heading">
+            <PanelHeading
+              title="Plan de carrera"
+              meta={`${document.stints.length} stints · ${totalLaps} vueltas · ${Math.max(0, document.stints.length - 1)} paradas`}
+            />
+            <div>
+              <button
+                type="button"
+                onClick={(event) => onCompare(event.currentTarget)}
+                disabled={!canCompare}
+                title={canCompare ? undefined : "Sin estrategias calculadas que comparar"}
+              >Comparar</button>
+              <button type="button" onClick={onAppend}>＋ Stint</button>
+            </div>
+          </div>
           <div className="strategy-legend"><span><i className="is-green" /> Desgaste cae</span><span><i /> Ritmo previsto</span></div>
           <div className="strategy-stint-columns" aria-hidden="true"><span>STINT</span><span>FRONT LEFT</span><span>FRONT RIGHT</span><span>REAR LEFT</span><span>REAR RIGHT</span></div>
           {error && <div className="strategy-editor-error" role="alert">{error}</div>}
@@ -715,7 +791,13 @@ function Workspace({
         <div>
           <button type="button" disabled={!canUndo || busy} onClick={onUndo}>Deshacer</button>
           <button type="button" disabled={!canRedo || busy} onClick={onRedo}>Rehacer</button>
-          <button className="strategy-button strategy-button--secondary" type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar planes</button>
+          <button
+            className="strategy-button strategy-button--secondary"
+            type="button"
+            onClick={(event) => onCompare(event.currentTarget)}
+            disabled={!canCompare}
+            title={canCompare ? undefined : "Sin estrategias calculadas que comparar"}
+          >Comparar planes</button>
           <button className="strategy-button strategy-button--primary" type="button" onClick={onSave} disabled={!dirty || busy}>Guardar plan</button>
         </div>
       </footer>
@@ -758,7 +840,7 @@ function PanelHeading({ title, meta }: { title: string; meta: string }) {
   );
 }
 
-function StrategyOption({ strategy }: { strategy: (typeof STRATEGIES)[number] }) {
+function StrategyOption({ strategy }: { strategy: StrategyCandidate }) {
   const compoundUsage = summarizeCompoundUsage(strategy.compounds);
 
   return (
@@ -772,7 +854,7 @@ function StrategyOption({ strategy }: { strategy: (typeof STRATEGIES)[number] })
           <h3>{strategy.title}</h3>
           {strategy.active && <b>ACTIVA</b>}
         </div>
-        <strong>{strategy.delta}</strong>
+        <strong>{strategy.deltaText}</strong>
       </header>
       <div className="strategy-compounds">
         {strategy.compounds.map((compound, index) => (
@@ -786,10 +868,10 @@ function StrategyOption({ strategy }: { strategy: (typeof STRATEGIES)[number] })
         ))}
       </div>
       <dl>
-        <div><dt>Tiempo</dt><dd>{strategy.time}</dd></div>
-        <div><dt>Pits</dt><dd>{strategy.pits}</dd></div>
+        <div><dt>Tiempo</dt><dd>{strategy.totalTimeText}</dd></div>
+        <div><dt>Pits</dt><dd>{strategy.pitStops}</dd></div>
         <div><dt>Stints</dt><dd data-testid="strategy-option-usage">{compoundUsage}</dd></div>
-        <div><dt>Ahorro</dt><dd>{strategy.fuelSave}</dd></div>
+        <div><dt>Ahorro</dt><dd>{strategy.fuelSaveText}</dd></div>
       </dl>
       <p>{strategy.summary}</p>
     </article>
@@ -940,7 +1022,10 @@ function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {
   );
 }
 
-function ComparisonDialog({ onClose }: { onClose: () => void }) {
+function ComparisonDialog({ strategies, onClose }: {
+  strategies: readonly StrategyCandidate[];
+  onClose: () => void;
+}) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -991,19 +1076,25 @@ function ComparisonDialog({ onClose }: { onClose: () => void }) {
           <div><p className="strategy-eyebrow">Comparación</p><h2>Comparar estrategias</h2></div>
           <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar comparación">×</button>
         </header>
-        <div className="strategy-comparison-grid">
-          <span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span>
-          {STRATEGIES.map((strategy) => (
-            <Fragment key={strategy.label}>
-              <b>{strategy.title}</b>
-              <strong>{strategy.time}</strong>
-              <em>{strategy.risk}</em>
-              <span>{strategy.pits}</span>
-            </Fragment>
-          ))}
-        </div>
+        {strategies.length > 0 ? (
+          <div className="strategy-comparison-grid">
+            <span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span>
+            {strategies.map((strategy) => (
+              <Fragment key={strategy.label}>
+                <b>{strategy.title}</b>
+                <strong>{strategy.totalTimeText}</strong>
+                <em>{strategy.risk}</em>
+                <span>{strategy.pitStops}</span>
+              </Fragment>
+            ))}
+          </div>
+        ) : (
+          <p className="strategy-dialog__note" data-testid="strategy-comparison-empty">
+            No hay estrategias calculadas que comparar.
+          </p>
+        )}
         <p className="strategy-dialog__note">
-          Comparación visual con datos de ejemplo; el optimizador avanzado no forma parte de STR-07.
+          El ranking, los rangos y la sensibilidad llegan con STR-13.
         </p>
       </section>
     </div>

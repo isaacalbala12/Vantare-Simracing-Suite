@@ -61,17 +61,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   },
 };
 
-export const DELTA_MODES = [
-  { value: "self", label: "Personal (mejor vuelta propia)" },
-  { value: "session", label: "Sesion (mejor vuelta de la sesion)" },
-  { value: "global", label: "Global (mejor vuelta global)" },
-] as const;
-
-export const HOTKEY_NAMES: Record<string, string> = {
-  toggleOverlay: "Toggle overlay",
-  nextProfile: "Siguiente perfil",
-  prevProfile: "Perfil anterior",
-};
+/**
+ * The hotkeys the user can rebind, in display order. Their labels live in the
+ * i18n dictionaries under settings.hotkeys.<key>; this list only decides which
+ * ones exist and in what order.
+ */
+export const HOTKEY_KEYS = ["toggleOverlay", "nextProfile", "prevProfile"] as const;
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
   stable: "Stable",

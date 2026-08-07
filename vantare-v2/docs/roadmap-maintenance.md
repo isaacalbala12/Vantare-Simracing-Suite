@@ -35,25 +35,57 @@ Si más adelante quieres editar desde otro sitio (p.ej. un Google Doc exportado
 a JSON o Supabase Storage), solo cambias la constante `ROADMAP_SOURCE_URL` en
 `roadmap-data.ts`. No tocas otra cosa.
 
-## 3. Escala de porcentajes (OBLIGATORIA)
+## 3. Porcentajes: se calculan solos
 
-Solo: `0, 10, 25, 50, 75, 100`.
+**Los porcentajes de las áreas ya no se escriben a mano.** Cada área declara en
+`docs/roadmap-source.json` los proyectos del snapshot publico que la componen:
 
-- `0` — ni empezado / bloqueado.
-- `10` — explorado, sin trabajo real.
-- `25` — base puesta, bastante por hacer.
-- `50` — mitad del camino.
-- `75` — casi hecho, pulido / restante menor.
-- `100` — cerrado.
+```json
+{
+  "id": "telemetry",
+  "title": { "es": "Telemetría", "...": "..." },
+  "progress": 25,
+  "status": "in-progress",
+  "projects": ["telemetry-core", "telemetry-analysis"]
+}
+```
 
-Cualquier `%` fuera de esa escala se considera bug. `nearestOnScale` lo ajusta
-al valor más cercano al renderizar el progreso global.
+La app suma las tareas de esos proyectos y muestra `hechas / totales`. El campo
+`progress` queda **solo como respaldo** para cuando no hay red o el área no
+tiene proyecto enlazado.
 
-## 4. Cómo valorar el % (criterio del producto)
+El motivo es concreto: mantener números a mano al lado de números vivos
+garantiza que se desincronicen, y se desincronizaron. La vista editorial
+publicaba 25% de telemetria mientras la pestaña de Proyectos, leyendo el mismo
+Linear, mostraba 94%.
 
-- El `%` refleja trabajo real restante, no esperanza ni marketing.
-- Lo fijas tú manualmente al cerrar cada fase o avanzar una área.
-- `%` global = media entera de las áreas, redondeada a la escala.
+El porcentaje global es la media de las áreas, redondeada a entero. **Ya no se
+ajusta a la escala 0/10/25/50/75/100**: redondear un 94% medido hasta 100%
+anunciaría como terminado algo que no lo está. `nearestOnScale` y
+`PROGRESS_SCALE` siguen existiendo para el progreso de las *fases*, que sí es
+editorial.
+
+### Áreas sin fuente automática
+
+Tres áreas no tienen proyecto en Linear y conservan su número manual:
+
+| Área | Estado |
+|---|---|
+| Launcher | sin proyecto en Linear |
+| Calendario local | sin proyecto en Linear |
+| UI v5.2 | sin proyecto en Linear |
+
+Para automatizarlas hay que crear su proyecto en Linear, añadirlo a
+`docs/roadmap-linear-catalog.json` y enlazarlo desde el área.
+
+## 4. Que sigue siendo manual
+
+- **El texto** de fases, áreas e hitos, en los cuatro idiomas.
+- **El estado** de cada área y fase (`done`, `in-progress`, `planned`,
+  `future`).
+- **El progreso de las fases**, que sí es un juicio editorial sobre un bloque
+  de roadmap y no se corresponde con ningun proyecto concreto.
+- **Qué proyectos componen cada área**, es decir, el enlace `projects`.
 
 ## 5. Procedimiento de changelog (paso a paso)
 

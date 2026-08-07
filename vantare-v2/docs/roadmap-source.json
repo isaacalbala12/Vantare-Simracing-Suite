@@ -216,7 +216,10 @@
         "it": "Overlays Studio"
       },
       "progress": 75,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "overlay-studio-v3"
+      ]
     },
     {
       "id": "launcher-lmu",
@@ -238,7 +241,11 @@
         "it": "Telemetria"
       },
       "progress": 25,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "telemetry-core",
+        "telemetry-analysis"
+      ]
     },
     {
       "id": "calendar-local",
@@ -260,7 +267,10 @@
         "it": "Engineer"
       },
       "progress": 25,
-      "status": "planned"
+      "status": "planned",
+      "projects": [
+        "engineer-spotter"
+      ]
     },
     {
       "id": "strategy",
@@ -271,7 +281,10 @@
         "it": "Strategia"
       },
       "progress": 25,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "strategy-planner"
+      ]
     },
     {
       "id": "licensing",
@@ -282,7 +295,10 @@
         "it": "Licenze e account"
       },
       "progress": 50,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "billing"
+      ]
     },
     {
       "id": "ui-v52",

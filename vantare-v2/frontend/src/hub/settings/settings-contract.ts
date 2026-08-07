@@ -41,7 +41,6 @@ export type UpdaterSettings = {
 };
 
 export type AppSettings = {
-  deltaMode: string;
   cpuSampling: boolean;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
@@ -52,7 +51,6 @@ export type AppSettings = {
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  deltaMode: "self",
   cpuSampling: true,
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",

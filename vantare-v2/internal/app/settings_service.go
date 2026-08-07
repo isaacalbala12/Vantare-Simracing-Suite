@@ -27,7 +27,6 @@ var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millise
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
-	DeltaMode                   string                      `json:"deltaMode"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
@@ -180,8 +179,7 @@ type LaunchProfile struct {
 // DefaultAppSettings returns settings with sensible defaults.
 func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
-		SchemaVersion: 1,
-		DeltaMode:     "self",
+		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
 		Hotkeys: map[string]string{
 			"toggleOverlay":  "ctrl+shift+v",
@@ -253,8 +251,18 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 	return &copy
 }
 
-// migrateSettings applies additive schema migrations in place.
-// v0 (no SchemaVersion) -> v1: set version and ensure launcher collections exist.
+// appSettingsSchemaVersion is the current shape of the persisted settings.
+const appSettingsSchemaVersion = 2
+
+// migrateSettings applies schema migrations in place.
+//
+//	v0 (no SchemaVersion) -> v1: set version and ensure launcher collections exist.
+//	v1 -> v2: drop deltaMode. Nothing in Go, in cmd or in the frontend ever read
+//	          it to change behaviour, so there is nothing to carry forward: the
+//	          field leaves the struct and disappears on the next save. Unknown
+//	          keys in an older file are ignored by the decoder, so a v1 file
+//	          loads cleanly. cpuSampling stays -- it drives the runtime CPU
+//	          sampler through SetCPUEnabled.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -264,6 +272,9 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		if settings.LauncherProfiles == nil {
 			settings.LauncherProfiles = defaultLauncherProfiles()
 		}
+	}
+	if settings.SchemaVersion < appSettingsSchemaVersion {
+		settings.SchemaVersion = appSettingsSchemaVersion
 	}
 }
 
@@ -552,7 +563,6 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	}
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
-		DeltaMode:                   loaded.DeltaMode,
 		CpuSampling:                 loaded.CpuSampling,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,

@@ -3,6 +3,7 @@ import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { AccountSettings } from '../settings/AccountSettings';
 import { AboutSettings } from '../settings/AboutSettings';
+import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
 import { HotkeysSettings } from '../settings/HotkeysSettings';
 import { UpdatesSettings } from '../settings/UpdatesSettings';
 import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
@@ -109,6 +110,7 @@ function SettingsPageInner() {
         {activeTab === 'diagnostics' && (
           <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico" className="space-y-4">
             <WailsDiagnosticsPanel />
+            <CpuSamplingSetting app={app} />
             <AboutSettings info={updater.info} updaterSettings={updater.settings} />
           </div>
         )}

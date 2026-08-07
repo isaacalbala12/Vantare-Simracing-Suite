@@ -33,6 +33,14 @@ export default defineConfig(({ mode }) => {
     test: {
       setupFiles: ["./src/test-setup.ts"],
       environment: "happy-dom",
+      // A test must outlast the waits inside it. Suites that render the Studio
+      // raise Testing Library's asyncUtilTimeout to 5s for the async profile
+      // load, which is exactly Vitest's default test budget: the test was
+      // killed at the same instant its wait ran out, so a slow CI runner
+      // aborted a different test on every pass instead of either passing or
+      // reporting which element never appeared.
+      testTimeout: 20000,
+      hookTimeout: 20000,
     },
   };
 });

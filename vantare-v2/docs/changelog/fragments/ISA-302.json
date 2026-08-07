@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-302",
+  "type": "fix",
+  "summary": "El actualizador no podía actualizar: la app decía ser siempre la v0.1.0.4, así que volvía a ofrecer la misma versión una y otra vez.",
+  "technicalNotes": [
+    "La versión embebida salía de un valor fijo en la configuración de build en lugar del tag que se estaba publicando; ahora se deriva del tag, con la parte numérica en los recursos de Windows y el tag completo, sufijo incluido, en el binario.",
+    "Los sufijos de pre-release se comparaban como texto, de modo que nightly.10 quedaba por debajo de nightly.9; ahora los tramos numéricos comparan como números.",
+    "La lista de versiones disponibles se ordenaba por fecha de publicación en vez de por versión, así que un tag con número mayor pero fecha anterior nunca se elegía como el más reciente.",
+    "El endpoint de releases apuntaba al nombre antiguo del repositorio y funcionaba sólo por la redirección de GitHub."
+  ],
+  "testing": [
+    "Instalar esta versión sobre una anterior y comprobar en Ajustes > Actualizaciones que la versión instalada que muestra coincide con el tag descargado.",
+    "Tras actualizar, volver a comprobar actualizaciones y confirmar que ya no ofrece la misma versión otra vez.",
+    "Con el canal correspondiente seleccionado, verificar que la versión ofrecida es la de número más alto y no simplemente la publicada más recientemente."
+  ],
+  "knownLimitations": []
+}

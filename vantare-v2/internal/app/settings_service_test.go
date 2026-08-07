@@ -586,16 +586,17 @@ func TestSaveRetriesOnLock(t *testing.T) {
 	svc := app.NewSettingsService(path, nil, nil)
 	_ = svc.Load()
 
-	// Create a directory at the .tmp path to simulate a lock
-	tmpPath := path + ".tmp"
-	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
-		t.Fatalf("mkdir tmp dir: %v", err)
+	// Block the destination with a directory so the rename cannot land. This
+	// used to block the ".tmp" path instead, which stopped being a lock once
+	// every write got its own temp name.
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatalf("mkdir settings dir: %v", err)
 	}
 
 	s := app.DefaultAppSettings()
 	err := svc.Save(s)
 	if err == nil {
-		t.Fatal("expected error when .tmp is locked by a directory")
+		t.Fatal("expected error when the destination is blocked by a directory")
 	}
 	// The .failed sidecar should exist after retries exhausted
 	if _, err := os.Stat(path + ".failed"); os.IsNotExist(err) {

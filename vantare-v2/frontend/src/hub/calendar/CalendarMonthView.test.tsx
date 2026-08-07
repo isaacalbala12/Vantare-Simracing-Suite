@@ -114,22 +114,39 @@ describe("CalendarMonthView", () => {
   });
 
   it("checks that the week starts on Monday", () => {
-    // July 1, 2026 is Wednesday.
-    // The grid for July 2026 will start on June 28 (Sunday).
+    // July 1, 2026 is Wednesday, and the header runs Lunes-first, so the grid
+    // for July 2026 starts on Monday June 29.
     const anchorDate = new Date("2026-07-01T12:00:00Z");
     render(<CalendarMonthView anchorDate={anchorDate} calendar={mockCalendar} timeZone="UTC" />);
 
-    // First cell (index 0) should correspond to June 28 (28)
+    // First cell (index 0) should correspond to June 29 (Monday)
     const firstCellDay = screen.getByTestId("calendar-month-cell-day-0");
-    expect(firstCellDay.textContent).toBe("28");
+    expect(firstCellDay.textContent).toBe("29");
 
-    // Second cell (index 1) is June 29 (29)
+    // Second cell (index 1) is June 30
     const secondCellDay = screen.getByTestId("calendar-month-cell-day-1");
-    expect(secondCellDay.textContent).toBe("29");
+    expect(secondCellDay.textContent).toBe("30");
 
-    // Third cell (index 2) is June 30 (30)
+    // Third cell (index 2) is July 1, the anchor itself
     const thirdCellDay = screen.getByTestId("calendar-month-cell-day-2");
-    expect(thirdCellDay.textContent).toBe("30");
+    expect(thirdCellDay.textContent).toBe("1");
+  });
+
+  it("keeps the grid day numbers independent of the display timezone", () => {
+    // The labels used to be reformatted in `timeZone`, so local midnight fell
+    // into the previous day and every number shifted by one. The grid is the
+    // same set of local calendar days whatever zone the events are shown in.
+    const anchorDate = new Date("2026-07-01T12:00:00Z");
+    render(
+      <CalendarMonthView
+        anchorDate={anchorDate}
+        calendar={mockCalendar}
+        timeZone="Pacific/Auckland"
+      />,
+    );
+
+    expect(screen.getByTestId("calendar-month-cell-day-0").textContent).toBe("29");
+    expect(screen.getByTestId("calendar-month-cell-day-2").textContent).toBe("1");
   });
 
   it("highlights current day and dims days outside current month", () => {

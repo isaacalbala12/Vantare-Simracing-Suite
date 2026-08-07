@@ -496,3 +496,31 @@ func TestCheckContextCancellation(t *testing.T) {
 		t.Fatal("expected context cancellation error")
 	}
 }
+
+func TestListAvailableSortsByVersionNotDate(t *testing.T) {
+	// GitHub returns releases newest-first by creation date. v0.3.10.0 is the
+	// highest version but the oldest publication, so date order would hide it.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[
+			{"tag_name":"v0.1.0.2","prerelease":false,"published_at":"2026-06-29T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/a.exe"}]},
+			{"tag_name":"v0.1.0.1","prerelease":false,"published_at":"2026-06-28T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/b.exe"}]},
+			{"tag_name":"v0.3.10.0","prerelease":false,"published_at":"2026-06-27T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/c.exe"}]}
+		]`))
+	}))
+	defer server.Close()
+
+	u := newTestUpdater(t, "v0.1.0.4")
+	u.releasesURL = server.URL
+
+	info, err := u.Check(&Settings{Channel: ChannelStable})
+	if err != nil {
+		t.Fatalf("check error: %v", err)
+	}
+	if info.LatestVersion != "v0.3.10.0" {
+		t.Fatalf("latest=%s, want v0.3.10.0", info.LatestVersion)
+	}
+	if !info.HasUpdate {
+		t.Fatal("expected an update to be offered")
+	}
+}

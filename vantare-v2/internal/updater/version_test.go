@@ -54,3 +54,23 @@ func TestCompare(t *testing.T) {
 		}
 	}
 }
+
+func TestCompareNumericSuffixSegments(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"v0.1.0.7-nightly.10", "v0.1.0.7-nightly.9", 1},
+		{"v0.1.0.7-nightly.9", "v0.1.0.7-nightly.10", -1},
+		{"v0.1.0.7-nightly.2", "v0.1.0.7-nightly.3", -1},
+		{"v0.1.0.7-nightly.3", "v0.1.0.7-nightly.3", 0},
+		{"v0.1.0.7-nightly.1", "v0.1.0.7-testers.1", -1},
+		{"v0.1.0.7-nightly", "v0.1.0.7-nightly.1", -1},
+		{"v0.1.0.7", "v0.1.0.7-nightly.99", 1},
+	}
+	for _, c := range cases {
+		if got := ParseVersion(c.a).Compare(ParseVersion(c.b)); got != c.want {
+			t.Fatalf("compare %s vs %s: got %d, want %d", c.a, c.b, got, c.want)
+		}
+	}
+}

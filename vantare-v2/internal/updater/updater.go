@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -73,6 +74,12 @@ func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]R
 		}
 		out = append(out, r)
 	}
+	// GitHub returns releases ordered by creation date, which is not the same as
+	// version order (an older-dated tag can carry a higher version). Sort newest
+	// version first so callers can rely on out[0] being the latest.
+	sort.SliceStable(out, func(i, j int) bool {
+		return ParseVersion(out[i].TagName).Compare(ParseVersion(out[j].TagName)) > 0
+	})
 	return out, nil
 }
 

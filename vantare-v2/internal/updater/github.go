@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const githubReleasesURL = "https://api.github.com/repos/isaacalbala12/Vantare-Overlays/releases"
+const githubReleasesURL = "https://api.github.com/repos/isaacalbala12/Vantare-Simracing-Suite/releases"
 
 // Release represents a GitHub release.
 type Release struct {

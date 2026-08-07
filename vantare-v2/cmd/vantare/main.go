@@ -31,6 +31,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	"github.com/vantare/overlays/v2/internal/startup"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -988,6 +989,12 @@ func main() {
 		MinHeight:      600,
 	})
 	hubW.Show()
+	// Show first, then minimise: on Windows a window has to exist on screen
+	// before it can be minimised. Launched at sign-in with this flag, Vantare
+	// stays out of the way until the user asks for it.
+	if startup.WantsMinimised(os.Args) {
+		hubW.Minimise()
+	}
 
 	requestQuit := func(_ *application.WindowEvent) {
 		go wailsApp.Quit()
@@ -1671,6 +1678,39 @@ func main() {
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
+	})
+
+	// Autostart lives in the Windows Run key and nowhere else. Keeping a copy
+	// in app-settings would let the two disagree the moment the user turns it
+	// off from Task Manager, and the settings page would then report a lie.
+	emitStartup := func() {
+		options, err := startup.Read()
+		if err != nil {
+			log.Printf("startup:get error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("startup", options)
+	}
+
+	wailsApp.Event.On("startup:get", func(event *application.CustomEvent) {
+		emitStartup()
+	})
+
+	wailsApp.Event.On("startup:set", func(event *application.CustomEvent) {
+		var options startup.Options
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &options)
+			}
+		}
+		if err := startup.Apply(options); err != nil {
+			log.Printf("startup:set error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+		}
+		// Re-read either way: the registry, not the request, is the truth, and
+		// after a failure the UI has to go back to showing what is really set.
+		emitStartup()
 	})
 
 	emitHubError := func(message string) {

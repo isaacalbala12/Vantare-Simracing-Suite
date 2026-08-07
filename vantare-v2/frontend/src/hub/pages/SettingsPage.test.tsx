@@ -201,15 +201,25 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('diagnostics-panel')).toBeDefined();
   });
 
-  // The Avanzado tab is gone. Nothing in Go or in the frontend read deltaMode
-  // or cpuSampling to change behaviour, so it offered two controls that did
-  // nothing. Its Información card was the part worth keeping and now sits
-  // beside the diagnostics panel.
-  it('no longer offers an Avanzado tab or its inert controls', () => {
+  // The Avanzado tab is gone. deltaMode had no consumer anywhere -- not in
+  // internal/, not in cmd/, not in the frontend -- so it was a control that did
+  // nothing. Its Información card was worth keeping and now sits beside the
+  // diagnostics panel.
+  it('no longer offers an Avanzado tab or the inert delta mode', () => {
     render(<SettingsPage />);
     expect(screen.queryByRole('tab', { name: 'Avanzado' })).toBeNull();
+    clickTab('Diagnóstico');
     expect(screen.queryByText('Modo delta')).toBeNull();
+  });
+
+  // cpuSampling went out with it by mistake and came back: cmd/vantare wires it
+  // to RuntimeSampler.SetCPUEnabled, which starts and stops the sampler. It
+  // belongs beside diagnostics, because what it controls is instrumentation.
+  it('keeps the CPU sampling control, in the Diagnóstico tab', () => {
+    render(<SettingsPage />);
     expect(screen.queryByText('Monitorizar uso de CPU')).toBeNull();
+    clickTab('Diagnóstico');
+    expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
   });
 
   it('shows the Información card inside the Diagnóstico tab', () => {
@@ -329,7 +339,7 @@ describe('SettingsPage', () => {
     expect(tabs.filter((tab) => tab.getAttribute('tabindex') === '0')).toHaveLength(1);
 
     fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Actualizaciones' }).getAttribute('aria-selected')).toBe(
+    expect(screen.getByRole('tab', { name: 'Aplicación' }).getAttribute('aria-selected')).toBe(
       'true',
     );
 
@@ -377,6 +387,7 @@ describe('SettingsPage', () => {
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       'Cuenta',
+      'Aplicación',
       'Actualizaciones',
       'Hotkeys',
       'Diagnóstico',
@@ -422,8 +433,9 @@ describe('SettingsPage i18n', () => {
     localStorage.clear();
   });
 
-  it('shows language selector in settings', () => {
+  it('shows the language selector inside the Aplicación tab', () => {
     render(<SettingsPage />);
+    clickTab('Aplicación');
     expect(screen.getByTestId('language-selector')).toBeTruthy();
   });
 
@@ -435,6 +447,7 @@ describe('SettingsPage i18n', () => {
   it('changes visible text when language is switched to Portuguese', () => {
     render(<SettingsPage />);
     expect(screen.getByText('Ajustes')).toBeTruthy();
+    clickTab('Aplicación');
     const select = screen.getByTestId('language-selector') as HTMLSelectElement;
     select.value = 'pt';
     fireEvent.change(select);
@@ -443,6 +456,7 @@ describe('SettingsPage i18n', () => {
 
   it('persists language choice in localStorage', () => {
     render(<SettingsPage />);
+    clickTab('Aplicación');
     const select = screen.getByTestId('language-selector') as HTMLSelectElement;
     select.value = 'it';
     fireEvent.change(select);

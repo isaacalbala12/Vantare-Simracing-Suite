@@ -21,6 +21,10 @@ LINEAR_API_URL = "https://api.linear.app/graphql"
 PAGE_SIZE = 50
 LOCALES = ("es", "en", "pt", "it")
 PUBLIC_STATUSES = {"planned", "in-progress", "done"}
+# Workflow states that mean "delivered to a release channel, awaiting
+# promotion". Matched by name because Linear types them as started, and the
+# public roadmap should read them as finished work.
+SHIPPED_STATE_NAMES = {"nightly", "testers"}
 
 ISSUES_QUERY = """
 query PublicRoadmapProject($projectId: String!, $after: String) {
@@ -171,6 +175,14 @@ def _public_status(state: Any) -> str | None:
     state_name = str(state.get("name", "")).strip().lower()
     if state_type in {"canceled", "cancelled", "duplicate"} or state_name in {"canceled", "cancelled", "duplicate"}:
         return None
+    # The workflow names its review states after the release channels, and
+    # Linear types them "started" because they are not its terminal state. To a
+    # reader of the public roadmap they are finished: the work is built,
+    # reviewed and shipped to a channel, and only promotion remains. Reporting
+    # them as in progress understated Telemetry Core as 26% complete while 94%
+    # of it had already shipped to nightly.
+    if state_name in SHIPPED_STATE_NAMES:
+        return "done"
     mapping = {"completed": "done", "started": "in-progress", "unstarted": "planned", "backlog": "planned"}
     if state_type not in mapping:
         raise ExportError("unknown Linear issue state type")

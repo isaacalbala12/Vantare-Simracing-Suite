@@ -1,0 +1,136 @@
+name: Roadmap public snapshot
+
+# Regenerates the public roadmap projects snapshot from Linear and publishes it
+# to the data-only `roadmap-data` branch, which is what the app fetches. The
+# snapshot is generated content, so it does not travel through the
+# issue -> nightly -> testers -> master promotion path: publishing it there
+# would mean a product promotion every time a Linear task changes state.
+#
+# The exporter is read-only against Linear and never emits UUIDs, ISA-* codes,
+# URLs, e-mails, descriptions, comments or assignees; see
+# .github/scripts/roadmap_linear_snapshot.py.
+
+on:
+  schedule:
+    # Daily, matching the snapshot's own staleAfterSeconds of 86400. A missed
+    # run makes the app show its amber "stale" badge rather than pass old data
+    # off as current.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roadmap-snapshot
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the integration branch
+        uses: actions/checkout@v4
+        with:
+          # The exporter and the allowlist catalog live on nightly; master is
+          # behind and does not carry .github/scripts at all.
+          ref: nightly
+
+      - name: Verify the exporter still behaves
+        run: python .github/scripts/tests/test_roadmap_linear_snapshot.py
+
+      - name: Export the snapshot from Linear
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          python .github/scripts/roadmap_linear_snapshot.py \
+            --catalog vantare-v2/docs/roadmap-linear-catalog.json \
+            --output "$RUNNER_TEMP/roadmap-public.snapshot.json"
+          test -s "$RUNNER_TEMP/roadmap-public.snapshot.json"
+
+      - name: Reject a snapshot that would leak or that the app would refuse
+        run: |
+          python - "$RUNNER_TEMP/roadmap-public.snapshot.json" <<'PY'
+          import json, re, sys
+
+          snapshot = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert snapshot["schemaVersion"] == 1, "unexpected schemaVersion"
+          assert snapshot["channel"] == "nightly", "unexpected channel"
+          assert snapshot["tabs"], "snapshot has no tabs"
+
+          # Same shapes the frontend validator enforces. Catching a violation
+          # here keeps a broken snapshot from ever reaching the branch.
+          for tab in snapshot["tabs"]:
+              assert tab["projects"], f"tab {tab['id']} has no projects"
+              for project in tab["projects"]:
+                  tasks = project["tasks"]
+                  progress = project["progress"]
+                  done = sum(1 for task in tasks if task["status"] == "done")
+                  if not tasks:
+                      assert progress is None, f"{project['id']}: empty project must have null progress"
+                      continue
+                  expected = round(done / len(tasks) * 100)
+                  assert progress["total"] == len(tasks), f"{project['id']}: total mismatch"
+                  assert progress["done"] == done, f"{project['id']}: done mismatch"
+                  assert progress["percent"] == expected, f"{project['id']}: percent mismatch"
+
+          forbidden = [
+              re.compile(r"ISA-\d+", re.I),
+              re.compile(r"(?:https?://|www\.)\S+", re.I),
+              re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
+              re.compile(r"\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b", re.I),
+          ]
+          for tab in snapshot["tabs"]:
+              for project in tab["projects"]:
+                  for task in project["tasks"]:
+                      for pattern in forbidden:
+                          assert not pattern.search(task["title"]), "snapshot leaks private data"
+          print("snapshot ok")
+          PY
+
+      - name: Publish to the roadmap-data branch
+        env:
+          SNAPSHOT: ${{ runner.temp }}/roadmap-public.snapshot.json
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          publish="$RUNNER_TEMP/publish"
+          rm -rf "$publish"
+          # A fresh clone would not inherit the checkout's credentials, so the
+          # remote carries the job token explicitly. Actions masks it in logs.
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # Depth 1: this branch only ever holds one generated file, so its
+          # history is not worth dragging down on every run.
+          if git ls-remote --exit-code --heads "$remote" roadmap-data >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch roadmap-data "$remote" "$publish"
+          else
+            mkdir -p "$publish"
+            git -C "$publish" init -q -b roadmap-data
+            git -C "$publish" remote add origin "$remote"
+          fi
+
+          # generatedAt moves on every run, so a plain diff would never be
+          # empty and the branch would collect a daily no-op commit. Compare
+          # everything except that field to decide whether anything happened.
+          previous="$publish/roadmap-public.snapshot.json"
+          if [ -f "$previous" ] && python - "$previous" "$SNAPSHOT" <<'PY'
+          import json, sys
+
+          def content(path):
+              snapshot = json.load(open(path, encoding="utf-8"))
+              snapshot.pop("generatedAt", None)
+              return snapshot
+
+          sys.exit(0 if content(sys.argv[1]) == content(sys.argv[2]) else 1)
+          PY
+          then
+            echo "snapshot unchanged apart from its timestamp, nothing to publish"
+            exit 0
+          fi
+
+          cp "$SNAPSHOT" "$previous"
+          git -C "$publish" config user.name "github-actions[bot]"
+          git -C "$publish" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$publish" add roadmap-public.snapshot.json
+          git -C "$publish" commit -q -m "chore(roadmap): refresh public projects snapshot"
+          git -C "$publish" push --quiet origin roadmap-data

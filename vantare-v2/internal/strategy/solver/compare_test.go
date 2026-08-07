@@ -1,6 +1,8 @@
 package solver
 
 import (
+	"context"
+	"encoding/json"
 	"math"
 	"testing"
 )
@@ -342,4 +344,61 @@ func FuzzCompareKeepsItsInvariants(f *testing.F) {
 			}
 		}
 	})
+}
+
+func TestJSONBridgeReturnsAComparison(t *testing.T) {
+	command := CompareCommandV1{
+		ProtocolVersion: SolverProtocolV1,
+		CommandID:       "solver-1",
+		Input:           compareInput(),
+		Sensitivity:     DefaultSensitivity(),
+	}
+	document, err := json.Marshal(command)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	encoded, err := JSONBridge{}.Execute(context.Background(), document)
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	var result CompareResultV1
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if result.ProtocolVersion != SolverProtocolV1 || result.CommandID != "solver-1" {
+		t.Fatalf("result lost its envelope: %+v", result)
+	}
+	if len(result.Result.Variants) == 0 {
+		t.Fatal("the comparison came back empty")
+	}
+	// The reasoning has to survive the transport, not just the numbers.
+	if len(result.Result.Assumptions) == 0 {
+		t.Fatal("assumptions did not survive encoding")
+	}
+	for _, variant := range result.Result.Variants {
+		if len(variant.Reasons) == 0 {
+			t.Fatalf("%s lost its explanation in transport", variant.Kind)
+		}
+		if variant.Total.ExpectedSeconds == 0 {
+			t.Fatalf("%s lost its range in transport", variant.Kind)
+		}
+	}
+}
+
+func TestJSONBridgeRejectsMalformedCommands(t *testing.T) {
+	bridge := JSONBridge{}
+	cases := map[string]string{
+		"empty":          ``,
+		"unknown field":  `{"protocolVersion":"strategy.solver.v1","commandId":"a","input":{},"extra":1}`,
+		"bad protocol":   `{"protocolVersion":"strategy.solver.v0","commandId":"a","input":{}}`,
+		"bad command id": `{"protocolVersion":"strategy.solver.v1","commandId":"","input":{}}`,
+		"trailing data":  `{"protocolVersion":"strategy.solver.v1","commandId":"a","input":{}} {}`,
+		"impossible race": `{"protocolVersion":"strategy.solver.v1","commandId":"a",` +
+			`"input":{"raceLaps":0,"baseLapSeconds":90}}`,
+	}
+	for name, document := range cases {
+		if _, err := bridge.Execute(context.Background(), []byte(document)); err == nil {
+			t.Fatalf("%s: expected an error", name)
+		}
+	}
 }

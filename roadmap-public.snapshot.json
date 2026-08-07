@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-07T02:25:51Z",
+  "generatedAt": "2026-08-07T18:11:08Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -1142,6 +1142,91 @@
               "title": "Suscripción y recuperación de pago de 3 días",
               "status": "done",
               "updatedAt": "2026-08-03T00:33:16.676Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "app",
+      "label": {
+        "es": "Aplicación",
+        "en": "Application",
+        "pt": "Aplicação",
+        "it": "Applicazione"
+      },
+      "projects": [
+        {
+          "id": "launcher",
+          "title": {
+            "es": "Launcher",
+            "en": "Launcher",
+            "pt": "Launcher",
+            "it": "Launcher"
+          },
+          "summary": {
+            "es": "Detección de apps y cadenas de lanzamiento.",
+            "en": "App detection and launch chains.",
+            "pt": "Deteção de apps e cadeias de lançamento.",
+            "it": "Rilevamento app e catene di avvio."
+          },
+          "progress": {
+            "done": 1,
+            "total": 3,
+            "percent": 33
+          },
+          "tasks": [
+            {
+              "id": "task_cca9fdc720de2f324d29",
+              "title": "LAU-11 — Aislar discovery real en test de handlers",
+              "status": "planned",
+              "updatedAt": "2026-08-07T17:17:55.379Z"
+            },
+            {
+              "id": "task_f6e06c7556f90dc734c4",
+              "title": "LAU-12 — Eliminar carrera del emitter en tests de perfiles",
+              "status": "planned",
+              "updatedAt": "2026-08-07T17:17:58.609Z"
+            },
+            {
+              "id": "task_e571a352de5bdafb73f9",
+              "title": "V1-01 — Launcher",
+              "status": "done",
+              "updatedAt": "2026-08-07T17:17:52.217Z"
+            }
+          ]
+        },
+        {
+          "id": "races-calendar",
+          "title": {
+            "es": "Carreras",
+            "en": "Races",
+            "pt": "Corridas",
+            "it": "Gare"
+          },
+          "summary": {
+            "es": "Calendario local y cadencia de sesiones.",
+            "en": "Local calendar and session cadence.",
+            "pt": "Calendário local e cadência de sessões.",
+            "it": "Calendario locale e cadenza delle sessioni."
+          },
+          "progress": {
+            "done": 0,
+            "total": 2,
+            "percent": 0
+          },
+          "tasks": [
+            {
+              "id": "task_ba64cd103ff7c4c79c6f",
+              "title": "V1-05 — Auditoría y evolución del Calendario",
+              "status": "planned",
+              "updatedAt": "2026-08-07T17:18:02.120Z"
+            },
+            {
+              "id": "task_1685a2278ec2f485c3e7",
+              "title": "V1-05A — Estabilizar el contrato de fechas de CalendarMonthView",
+              "status": "planned",
+              "updatedAt": "2026-08-07T17:18:05.786Z"
             }
           ]
         }

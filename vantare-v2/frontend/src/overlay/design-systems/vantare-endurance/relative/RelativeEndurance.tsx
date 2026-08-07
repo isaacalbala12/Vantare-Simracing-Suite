@@ -3,6 +3,16 @@ import type { WidgetRendererProps } from "../../../core/design-system-definition
 import { resolveRelativeClassColor } from "../../../widget-types/relative/relative-renderer-helpers";
 import type { RelativeViewModel } from "../../../widget-types/relative/relative-view-model";
 import { parseRelativeEnduranceSettings } from "./relative-endurance-settings";
+import {
+  RelativeRedlineTemplate,
+  type RelativeRedlineVariant,
+} from "./RelativeRedlineTemplates";
+
+const REDLINE_VARIANTS: Record<string, RelativeRedlineVariant> = {
+  "relative-redline-mirror": "mirror",
+  "relative-redline-proximity": "proximity",
+  "relative-redline-traffic": "traffic",
+};
 
 function driverCode(driverName: string): string {
   const words = driverName
@@ -69,6 +79,27 @@ function NeoTemplate({
 
 export function RelativeEndurance({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
   const parsed = parseRelativeEnduranceSettings(settings);
+
+  const redlineVariant = REDLINE_VARIANTS[parsed.templateId];
+  if (redlineVariant) {
+    return (
+      <section
+        data-widget-system="vantare-endurance"
+        data-widget-renderer="relative"
+        data-status={model.status}
+        data-template={parsed.templateId}
+        data-row-height={model.rowHeightMode}
+        className="ven-root ven-relative ven-rel"
+      >
+        <RelativeRedlineTemplate
+          model={model}
+          settings={settings}
+          variant={redlineVariant}
+          showHeader={parsed.showHeader}
+        />
+      </section>
+    );
+  }
 
   if (parsed.templateId === "relative-neo") {
     return (

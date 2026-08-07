@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-07T02:12:30Z",
+  "generatedAt": "2026-08-07T02:25:51Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 2,
+            "done": 6,
             "total": 28,
-            "percent": 7
+            "percent": 21
           },
           "tasks": [
             {
@@ -58,34 +58,10 @@
               "updatedAt": "2026-08-04T20:20:31.913Z"
             },
             {
-              "id": "task_7a01dcafb5e466f56f0b",
-              "title": "Estabilizar navegación del inspector Studio en suite completa",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:24.924Z"
-            },
-            {
               "id": "task_1c2e46998c6410a27ffa",
               "title": "Fixtures portables y deterministas para autoría",
               "status": "in-progress",
               "updatedAt": "2026-08-04T18:59:27.315Z"
-            },
-            {
-              "id": "task_25155cac20d0277fde0e",
-              "title": "Hotkey del overlay bloquea el perfil activo en carga",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T17:49:25.893Z"
-            },
-            {
-              "id": "task_beebe898787a315d33d5",
-              "title": "Paridad 1:1 de los 21 diseños Vantare Crystal",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:32.833Z"
-            },
-            {
-              "id": "task_2302a9f5b61cd8720fe1",
-              "title": "Paridad 1:1 del editor Overlay Studio",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:28.969Z"
             },
             {
               "id": "task_4e80bf0cc5d5f9cbf949",
@@ -196,10 +172,34 @@
               "updatedAt": "2026-07-14T21:38:09.417Z"
             },
             {
+              "id": "task_7a01dcafb5e466f56f0b",
+              "title": "Estabilizar navegación del inspector Studio en suite completa",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:24.924Z"
+            },
+            {
+              "id": "task_25155cac20d0277fde0e",
+              "title": "Hotkey del overlay bloquea el perfil activo en carga",
+              "status": "done",
+              "updatedAt": "2026-08-03T17:49:25.893Z"
+            },
+            {
               "id": "task_367a1821d1d72d958291",
               "title": "N01: promover Overlay Workshop, restyle de Standings y baselines a Nightly",
               "status": "done",
               "updatedAt": "2026-08-05T21:48:07.650Z"
+            },
+            {
+              "id": "task_beebe898787a315d33d5",
+              "title": "Paridad 1:1 de los 21 diseños Vantare Crystal",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:32.833Z"
+            },
+            {
+              "id": "task_2302a9f5b61cd8720fe1",
+              "title": "Paridad 1:1 del editor Overlay Studio",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:28.969Z"
             }
           ]
         },
@@ -218,203 +218,11 @@
             "it": "Fonte canonica della telemetria."
           },
           "progress": {
-            "done": 12,
+            "done": 44,
             "total": 47,
-            "percent": 26
+            "percent": 94
           },
           "tasks": [
-            {
-              "id": "task_1205fc683ae8a646b9c5",
-              "title": ".1 — Geometría canónica Spotter con evidencia LMU real",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:09.435Z"
-            },
-            {
-              "id": "task_53a02e95fd28a7c602a1",
-              "title": ".1 — Señales canónicas Overlay y retirada del mock conectado",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:06.752Z"
-            },
-            {
-              "id": "task_abfe78c943009e056e1e",
-              "title": "Adquisición REST local del driver LMU",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:12.796Z"
-            },
-            {
-              "id": "task_817ad825f7966f54aa59",
-              "title": "Adquisición Shared Memory del driver LMU",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:10.774Z"
-            },
-            {
-              "id": "task_69233bfd142a392822bc",
-              "title": "Contratos TypeScript y harness de observabilidad",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:11.740Z"
-            },
-            {
-              "id": "task_96f98c67ba07d0b69f82",
-              "title": "Cutover Engineer/Spotter sobre LMU real",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:47.381Z"
-            },
-            {
-              "id": "task_2bd7d4757be2c6509eab",
-              "title": "Cutover Overlay y validación LMU real",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:38.797Z"
-            },
-            {
-              "id": "task_32fcd0710ed309d0bd52",
-              "title": "Derivaciones ordenadas, acotadas y versionadas",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:03.798Z"
-            },
-            {
-              "id": "task_0e616ed5a054928f2dcf",
-              "title": "DriverManager, lifecycle y selección de simulador",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:08.560Z"
-            },
-            {
-              "id": "task_733c58bca92eb9bad946",
-              "title": "Fan-out, backpressure, observabilidad y soak",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:05.662Z"
-            },
-            {
-              "id": "task_eabb815e2ffd24b211fc",
-              "title": "Hardening de seguridad, rendimiento y observabilidad",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:52.800Z"
-            },
-            {
-              "id": "task_8f4dd9cd1a2232eaf9de",
-              "title": "Harness Wails, lifecycle y teardown completo",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:24.519Z"
-            },
-            {
-              "id": "task_3b319db5203bd2c4e487",
-              "title": "Inspector local, privacidad y export diagnóstico",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:32.501Z"
-            },
-            {
-              "id": "task_88055e4156b3cfdecf29",
-              "title": "Inventario raw, fixtures y compatibilidad LMU",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:05.682Z"
-            },
-            {
-              "id": "task_991b4957fe9e0f6eee13",
-              "title": "Matriz de autoridad y fusión por campo LMU",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:15.172Z"
-            },
-            {
-              "id": "task_3eb67b759e1eaf2ad7e3",
-              "title": "Presencia, calidad, tiempo e identidad de sesión",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:58.845Z"
-            },
-            {
-              "id": "task_5edaaf9f7e125562a3df",
-              "title": "Proyecciones versionadas por producto",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:07.698Z"
-            },
-            {
-              "id": "task_afe5abf8fda210510939",
-              "title": "Proyección canónica y adapter puro Engineer",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:40.786Z"
-            },
-            {
-              "id": "task_fab065db83de658caae2",
-              "title": "Proyección Overlay y shadow comparator",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:34.836Z"
-            },
-            {
-              "id": "task_f73e4dddced00f0ffa74",
-              "title": "Puertos mínimos y guardarraíles de dependencias",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:02.016Z"
-            },
-            {
-              "id": "task_bc74effc437a9e56bb22",
-              "title": "RecordingSink, sesiones y recuperación",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:27.708Z"
-            },
-            {
-              "id": "task_90add955cbfe8d661534",
-              "title": "Reducer single-writer y snapshot inmutable",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:17.477Z"
-            },
-            {
-              "id": "task_298bae08d00f99b85a0f",
-              "title": "Replay parity de monitores, Spotter y eventos",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:42.664Z"
-            },
-            {
-              "id": "task_4cd3eb40cb3e3378c249",
-              "title": "Replay raw, canónico e histórico",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:29.879Z"
-            },
-            {
-              "id": "task_2017b82f62b4ddbf34ee",
-              "title": "Retirar backend de telemetría duplicado",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:49.163Z"
-            },
-            {
-              "id": "task_027e48a64e1f33a47b4f",
-              "title": "Retirar frontend y transportes legacy",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:50.887Z"
-            },
-            {
-              "id": "task_ceadf0961eed154af66c",
-              "title": "Schema tipado, catálogo e invariantes de unidades",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:55.846Z"
-            },
-            {
-              "id": "task_bf050e31d00b6627c854",
-              "title": "Separar runtime Engineer sin cambiar comportamiento",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:45.651Z"
-            },
-            {
-              "id": "task_e43db1eff598de108e52",
-              "title": "SessionCoordinator, relojes y hechos ordenados",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:19.428Z"
-            },
-            {
-              "id": "task_0e0f25ff96c6480d8d62",
-              "title": "Shadow Wails/SSE en Studio, Desktop y OBS",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:36.964Z"
-            },
-            {
-              "id": "task_2c42a652696faf8748fa",
-              "title": "Validación one-time de nonce OAuth y baseline Go verde",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:36.441Z"
-            },
-            {
-              "id": "task_052a06db81e21551e09b",
-              "title": "Wails y SSE con full snapshot, sequence y resync",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:10.084Z"
-            },
             {
               "id": "task_29bb95734264dbf20964",
               "title": "Auditoría de señales live para Strategy",
@@ -432,6 +240,30 @@
               "title": "Productor StrategyLiveProjection v1",
               "status": "planned",
               "updatedAt": "2026-08-01T18:48:33.490Z"
+            },
+            {
+              "id": "task_1205fc683ae8a646b9c5",
+              "title": ".1 — Geometría canónica Spotter con evidencia LMU real",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:09.435Z"
+            },
+            {
+              "id": "task_53a02e95fd28a7c602a1",
+              "title": ".1 — Señales canónicas Overlay y retirada del mock conectado",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:06.752Z"
+            },
+            {
+              "id": "task_abfe78c943009e056e1e",
+              "title": "Adquisición REST local del driver LMU",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:12.796Z"
+            },
+            {
+              "id": "task_817ad825f7966f54aa59",
+              "title": "Adquisición Shared Memory del driver LMU",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:10.774Z"
             },
             {
               "id": "task_3710abfe6197fa4d41a7",
@@ -470,10 +302,76 @@
               "updatedAt": "2026-07-18T16:49:16.041Z"
             },
             {
+              "id": "task_69233bfd142a392822bc",
+              "title": "Contratos TypeScript y harness de observabilidad",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:11.740Z"
+            },
+            {
+              "id": "task_96f98c67ba07d0b69f82",
+              "title": "Cutover Engineer/Spotter sobre LMU real",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:47.381Z"
+            },
+            {
+              "id": "task_2bd7d4757be2c6509eab",
+              "title": "Cutover Overlay y validación LMU real",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:38.797Z"
+            },
+            {
+              "id": "task_32fcd0710ed309d0bd52",
+              "title": "Derivaciones ordenadas, acotadas y versionadas",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:03.798Z"
+            },
+            {
+              "id": "task_0e616ed5a054928f2dcf",
+              "title": "DriverManager, lifecycle y selección de simulador",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:08.560Z"
+            },
+            {
+              "id": "task_733c58bca92eb9bad946",
+              "title": "Fan-out, backpressure, observabilidad y soak",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:05.662Z"
+            },
+            {
               "id": "task_8e98a4ab8b20d8a9cf61",
               "title": "Gate final Telemetry Core y handoff sin merge",
               "status": "done",
               "updatedAt": "2026-08-02T01:59:50.019Z"
+            },
+            {
+              "id": "task_eabb815e2ffd24b211fc",
+              "title": "Hardening de seguridad, rendimiento y observabilidad",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:52.800Z"
+            },
+            {
+              "id": "task_8f4dd9cd1a2232eaf9de",
+              "title": "Harness Wails, lifecycle y teardown completo",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:24.519Z"
+            },
+            {
+              "id": "task_3b319db5203bd2c4e487",
+              "title": "Inspector local, privacidad y export diagnóstico",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:32.501Z"
+            },
+            {
+              "id": "task_88055e4156b3cfdecf29",
+              "title": "Inventario raw, fixtures y compatibilidad LMU",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:05.682Z"
+            },
+            {
+              "id": "task_991b4957fe9e0f6eee13",
+              "title": "Matriz de autoridad y fusión por campo LMU",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:15.172Z"
             },
             {
               "id": "task_d0864479368b0f2dc96c",
@@ -488,10 +386,64 @@
               "updatedAt": "2026-07-19T13:36:27.738Z"
             },
             {
+              "id": "task_3eb67b759e1eaf2ad7e3",
+              "title": "Presencia, calidad, tiempo e identidad de sesión",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:58.845Z"
+            },
+            {
               "id": "task_2e71d535d8c48ff4de45",
               "title": "Promoción aprobada de Telemetry Core a Nightly",
               "status": "done",
               "updatedAt": "2026-08-02T03:20:53.232Z"
+            },
+            {
+              "id": "task_5edaaf9f7e125562a3df",
+              "title": "Proyecciones versionadas por producto",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:07.698Z"
+            },
+            {
+              "id": "task_afe5abf8fda210510939",
+              "title": "Proyección canónica y adapter puro Engineer",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:40.786Z"
+            },
+            {
+              "id": "task_fab065db83de658caae2",
+              "title": "Proyección Overlay y shadow comparator",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:34.836Z"
+            },
+            {
+              "id": "task_f73e4dddced00f0ffa74",
+              "title": "Puertos mínimos y guardarraíles de dependencias",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:02.016Z"
+            },
+            {
+              "id": "task_bc74effc437a9e56bb22",
+              "title": "RecordingSink, sesiones y recuperación",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:27.708Z"
+            },
+            {
+              "id": "task_90add955cbfe8d661534",
+              "title": "Reducer single-writer y snapshot inmutable",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:17.477Z"
+            },
+            {
+              "id": "task_298bae08d00f99b85a0f",
+              "title": "Replay parity de monitores, Spotter y eventos",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:42.664Z"
+            },
+            {
+              "id": "task_4cd3eb40cb3e3378c249",
+              "title": "Replay raw, canónico e histórico",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:29.879Z"
             },
             {
               "id": "task_a7c44c3160e262a05dd9",
@@ -500,10 +452,58 @@
               "updatedAt": "2026-07-18T16:49:20.907Z"
             },
             {
+              "id": "task_2017b82f62b4ddbf34ee",
+              "title": "Retirar backend de telemetría duplicado",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:49.163Z"
+            },
+            {
+              "id": "task_027e48a64e1f33a47b4f",
+              "title": "Retirar frontend y transportes legacy",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:50.887Z"
+            },
+            {
+              "id": "task_ceadf0961eed154af66c",
+              "title": "Schema tipado, catálogo e invariantes de unidades",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:55.846Z"
+            },
+            {
+              "id": "task_bf050e31d00b6627c854",
+              "title": "Separar runtime Engineer sin cambiar comportamiento",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:45.651Z"
+            },
+            {
               "id": "task_b5f1bfa9b243a81da3d2",
               "title": "Separar y reconciliar la planificación de Telemetry Core",
               "status": "done",
               "updatedAt": "2026-07-19T15:00:37.763Z"
+            },
+            {
+              "id": "task_e43db1eff598de108e52",
+              "title": "SessionCoordinator, relojes y hechos ordenados",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:19.428Z"
+            },
+            {
+              "id": "task_0e0f25ff96c6480d8d62",
+              "title": "Shadow Wails/SSE en Studio, Desktop y OBS",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:36.964Z"
+            },
+            {
+              "id": "task_2c42a652696faf8748fa",
+              "title": "Validación one-time de nonce OAuth y baseline Go verde",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:36.441Z"
+            },
+            {
+              "id": "task_052a06db81e21551e09b",
+              "title": "Wails y SSE con full snapshot, sequence y resync",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:10.084Z"
             }
           ]
         },
@@ -522,29 +522,11 @@
             "it": "Analisi storica delle sessioni."
           },
           "progress": {
-            "done": 3,
+            "done": 6,
             "total": 9,
-            "percent": 33
+            "percent": 67
           },
           "tasks": [
-            {
-              "id": "task_7176d410d0ef064a24b1",
-              "title": "Adaptador DuckDB productivo y packaging Windows",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:34.646Z"
-            },
-            {
-              "id": "task_1139647671949b65a7b3",
-              "title": "Corpus sanitizado y contrato de importación",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:54.690Z"
-            },
-            {
-              "id": "task_f12b965962c43adb3ceb",
-              "title": "Decisión y packaging del adaptador DuckDB en Windows",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:13.803Z"
-            },
             {
               "id": "task_62bf4878e08849125f60",
               "title": "Productor StrategyInputProjection v1",
@@ -564,10 +546,28 @@
               "updatedAt": "2026-08-01T22:24:52.625Z"
             },
             {
+              "id": "task_7176d410d0ef064a24b1",
+              "title": "Adaptador DuckDB productivo y packaging Windows",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:34.646Z"
+            },
+            {
               "id": "task_a054d22f28012668b44e",
               "title": "Caracterización DuckDB LMU y modelo histórico canónico",
               "status": "done",
               "updatedAt": "2026-08-03T00:27:18.159Z"
+            },
+            {
+              "id": "task_1139647671949b65a7b3",
+              "title": "Corpus sanitizado y contrato de importación",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:54.690Z"
+            },
+            {
+              "id": "task_f12b965962c43adb3ceb",
+              "title": "Decisión y packaging del adaptador DuckDB en Windows",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:13.803Z"
             },
             {
               "id": "task_c452bf78ee78722c9f27",
@@ -609,89 +609,11 @@
             "it": "Avvisi di gara con regole esplicite."
           },
           "progress": {
-            "done": 2,
+            "done": 15,
             "total": 30,
-            "percent": 7
+            "percent": 50
           },
           "tasks": [
-            {
-              "id": "task_82b760540ce9018f6d20",
-              "title": "Adaptación del payload Engineer sobre",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:00.626Z"
-            },
-            {
-              "id": "task_cffbaafc791564e5f78b",
-              "title": "Catálogo de comandos, intents y protocolo de corpus humano",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:49.073Z"
-            },
-            {
-              "id": "task_a7cfc71de665d8858298",
-              "title": "Contrato canónico de presentación multilingüe",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:36.708Z"
-            },
-            {
-              "id": "task_0e114138dd99f64b7c97",
-              "title": "Contratos EngineerProjection, capabilities y envelope",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:56.754Z"
-            },
-            {
-              "id": "task_c806a80b6ead9d0027dd",
-              "title": "Corpus humano multilingüe y selección condicionada de voice-host",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:44.821Z"
-            },
-            {
-              "id": "task_7939c2df4db451da4f2b",
-              "title": "Gate TTS/STT offline, licencias y benchmarks",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:43.136Z"
-            },
-            {
-              "id": "task_2a1e83b15e0b2ee5f617",
-              "title": "Package manager y voice-host test-only",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:47.016Z"
-            },
-            {
-              "id": "task_0f5a05a7185cd3cae333",
-              "title": "Policy y scheduler determinista de mensajes",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:30.354Z"
-            },
-            {
-              "id": "task_177507e5bd80fa78461b",
-              "title": "PTT, teclado, volante, gamepad y HID",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:51.790Z"
-            },
-            {
-              "id": "task_54b82c8bf4e7e37a59f2",
-              "title": "Router determinista de intents, diálogo y confirmaciones",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:53.782Z"
-            },
-            {
-              "id": "task_0387ce1b820aec748e58",
-              "title": "Runner y oráculo determinista de replays",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:11.170Z"
-            },
-            {
-              "id": "task_b8ebbbe3400d838e46b9",
-              "title": "Subtítulos y widget de radio Vantare Crystal",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:39.041Z"
-            },
-            {
-              "id": "task_b232ed089e78224fa6ee",
-              "title": "Wiring productivo y transporte preemptivo",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:32.627Z"
-            },
             {
               "id": "task_e250e212ceccd1f036a6",
               "title": "Audio offline, dispositivos, hot-plug y ducking",
@@ -783,16 +705,94 @@
               "updatedAt": "2026-08-02T10:24:03.614Z"
             },
             {
+              "id": "task_82b760540ce9018f6d20",
+              "title": "Adaptación del payload Engineer sobre",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:00.626Z"
+            },
+            {
               "id": "task_b6eecc59450dff41fb85",
               "title": "Auditoría clean-room CrewChief/DRE y código Vantare",
               "status": "done",
               "updatedAt": "2026-08-03T00:27:16.224Z"
             },
             {
+              "id": "task_cffbaafc791564e5f78b",
+              "title": "Catálogo de comandos, intents y protocolo de corpus humano",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:49.073Z"
+            },
+            {
+              "id": "task_a7cfc71de665d8858298",
+              "title": "Contrato canónico de presentación multilingüe",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:36.708Z"
+            },
+            {
+              "id": "task_0e114138dd99f64b7c97",
+              "title": "Contratos EngineerProjection, capabilities y envelope",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:56.754Z"
+            },
+            {
+              "id": "task_c806a80b6ead9d0027dd",
+              "title": "Corpus humano multilingüe y selección condicionada de voice-host",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:44.821Z"
+            },
+            {
+              "id": "task_7939c2df4db451da4f2b",
+              "title": "Gate TTS/STT offline, licencias y benchmarks",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:43.136Z"
+            },
+            {
+              "id": "task_2a1e83b15e0b2ee5f617",
+              "title": "Package manager y voice-host test-only",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:47.016Z"
+            },
+            {
+              "id": "task_0f5a05a7185cd3cae333",
+              "title": "Policy y scheduler determinista de mensajes",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:30.354Z"
+            },
+            {
               "id": "task_1af6312f000b88be5ae1",
               "title": "Promoción acumulativa … a Nightly",
               "status": "done",
               "updatedAt": "2026-08-02T15:30:54.672Z"
+            },
+            {
+              "id": "task_177507e5bd80fa78461b",
+              "title": "PTT, teclado, volante, gamepad y HID",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:51.790Z"
+            },
+            {
+              "id": "task_54b82c8bf4e7e37a59f2",
+              "title": "Router determinista de intents, diálogo y confirmaciones",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:53.782Z"
+            },
+            {
+              "id": "task_0387ce1b820aec748e58",
+              "title": "Runner y oráculo determinista de replays",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:11.170Z"
+            },
+            {
+              "id": "task_b8ebbbe3400d838e46b9",
+              "title": "Subtítulos y widget de radio Vantare Crystal",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:39.041Z"
+            },
+            {
+              "id": "task_b232ed089e78224fa6ee",
+              "title": "Wiring productivo y transporte preemptivo",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:32.627Z"
             }
           ]
         },
@@ -811,65 +811,11 @@
             "it": "Pianificazione manuale della gara."
           },
           "progress": {
-            "done": 2,
+            "done": 11,
             "total": 26,
-            "percent": 8
+            "percent": 42
           },
           "tasks": [
-            {
-              "id": "task_8c35adb04ba9edd75006",
-              "title": "Contrato unificado, unidades y estados",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:17.109Z"
-            },
-            {
-              "id": "task_c167617e4549c82c48b6",
-              "title": "Cálculo manual de carrera, recursos y pit",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:22.247Z"
-            },
-            {
-              "id": "task_9e7c3c70a2324cd2707d",
-              "title": "Editor de stints y drag and drop de neumáticos",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:27.017Z"
-            },
-            {
-              "id": "task_e64e80d5188f1cf83bf3",
-              "title": "Entrada manual avanzada y fuel-save",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:28.706Z"
-            },
-            {
-              "id": "task_637de38f9ebdb077cecd",
-              "title": "Inventario físico de neumáticos",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:23.820Z"
-            },
-            {
-              "id": "task_d1887ce040959ff772e0",
-              "title": "Repositorio local y dominio de persistencia",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:18.776Z"
-            },
-            {
-              "id": "task_ded4151cd59c6a6134d0",
-              "title": "Rescate selectivo y caracterización de Product A",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:15.374Z"
-            },
-            {
-              "id": "task_eb530df68c47dc328641",
-              "title": "Servicio, comandos, dirty y undo/redo",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:20.492Z"
-            },
-            {
-              "id": "task_77ac45148ca5a44ea9c5",
-              "title": "Shell visual y navegación del workspace",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:25.429Z"
-            },
             {
               "id": "task_b40051fa6a37306acaac",
               "title": "Activación y lifecycle del plan",
@@ -967,10 +913,64 @@
               "updatedAt": "2026-08-03T00:27:19.956Z"
             },
             {
+              "id": "task_8c35adb04ba9edd75006",
+              "title": "Contrato unificado, unidades y estados",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:17.109Z"
+            },
+            {
+              "id": "task_c167617e4549c82c48b6",
+              "title": "Cálculo manual de carrera, recursos y pit",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:22.247Z"
+            },
+            {
+              "id": "task_9e7c3c70a2324cd2707d",
+              "title": "Editor de stints y drag and drop de neumáticos",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:27.017Z"
+            },
+            {
+              "id": "task_e64e80d5188f1cf83bf3",
+              "title": "Entrada manual avanzada y fuel-save",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:28.706Z"
+            },
+            {
+              "id": "task_637de38f9ebdb077cecd",
+              "title": "Inventario físico de neumáticos",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:23.820Z"
+            },
+            {
               "id": "task_58fbf16c0e6d19d83172",
               "title": "Promoción acumulativa … a Nightly",
               "status": "done",
               "updatedAt": "2026-08-02T14:26:11.967Z"
+            },
+            {
+              "id": "task_d1887ce040959ff772e0",
+              "title": "Repositorio local y dominio de persistencia",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:18.776Z"
+            },
+            {
+              "id": "task_ded4151cd59c6a6134d0",
+              "title": "Rescate selectivo y caracterización de Product A",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:15.374Z"
+            },
+            {
+              "id": "task_eb530df68c47dc328641",
+              "title": "Servicio, comandos, dirty y undo/redo",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:20.492Z"
+            },
+            {
+              "id": "task_77ac45148ca5a44ea9c5",
+              "title": "Shell visual y navegación del workspace",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:25.429Z"
             }
           ]
         }
@@ -1000,41 +1000,11 @@
             "it": "Accesso e licenze Vantare."
           },
           "progress": {
-            "done": 6,
+            "done": 18,
             "total": 23,
-            "percent": 26
+            "percent": 78
           },
           "tasks": [
-            {
-              "id": "task_d7a9445eccd63ccff77b",
-              "title": "Accesos operativos revocables y saneamiento de grants legacy",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T17:49:25.893Z"
-            },
-            {
-              "id": "task_294b95450534bfedf83e",
-              "title": "Credencial offline íntegra y vinculada a cuenta",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T11:55:32.391Z"
-            },
-            {
-              "id": "task_09b6722759dda72c3d65",
-              "title": "Evitar secretos públicos en identidad de caché Wails y generar artefactos Nightly",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T18:39:26.445Z"
-            },
-            {
-              "id": "task_47b815142b9683d67ce7",
-              "title": "Fixtures sandbox y matriz lifecycle",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:21.350Z"
-            },
-            {
-              "id": "task_e587033e5549471efcd7",
-              "title": "Hardening de checkout, mapping y portal",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:20.257Z"
-            },
             {
               "id": "task_eeb7695d14abe0e5a53f",
               "title": "Hardening y recuperación Supabase",
@@ -1042,52 +1012,10 @@
               "updatedAt": "2026-08-03T12:35:33.702Z"
             },
             {
-              "id": "task_5219c93260a783e4fd66",
-              "title": "Inbox webhook atómica y replay seguro",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:13.358Z"
-            },
-            {
-              "id": "task_53fae3bfac37f76ba845",
-              "title": "Integración controlada de inbox, checkout y hardening Supabase",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:34:41.320Z"
-            },
-            {
-              "id": "task_3117bbb9f8ef0af79c2d",
-              "title": "Ledger de orders y refunds",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:18.626Z"
-            },
-            {
-              "id": "task_ca0bf6800e530d18dec9",
-              "title": "Observabilidad y runbook Billing",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:35:23.294Z"
-            },
-            {
-              "id": "task_0a04cfbfd3564b67773b",
-              "title": "Orden monótono y reconciliación Polar",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:14.969Z"
-            },
-            {
               "id": "task_0f126849570bae3c0788",
               "title": "Programa Billing Polar seguro",
               "status": "in-progress",
               "updatedAt": "2026-08-02T18:22:41.230Z"
-            },
-            {
-              "id": "task_7874f2e30c995877e490",
-              "title": "Restaurar sesión WebView tras OAuth externo y permitir revalidación",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T13:09:45.812Z"
-            },
-            {
-              "id": "task_dbb345590d9f7c710a4a",
-              "title": "Suscripción y recuperación de pago de 3 días",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T00:33:16.676Z"
             },
             {
               "id": "task_e4c70ca51f855e66a16b",
@@ -1108,10 +1036,70 @@
               "updatedAt": "2026-08-02T18:22:41.618Z"
             },
             {
+              "id": "task_d7a9445eccd63ccff77b",
+              "title": "Accesos operativos revocables y saneamiento de grants legacy",
+              "status": "done",
+              "updatedAt": "2026-08-03T17:49:25.893Z"
+            },
+            {
               "id": "task_4d8dd77269c3c988c021",
               "title": "Catálogo Polar y políticas comerciales cerradas",
               "status": "done",
               "updatedAt": "2026-08-03T00:27:01.848Z"
+            },
+            {
+              "id": "task_294b95450534bfedf83e",
+              "title": "Credencial offline íntegra y vinculada a cuenta",
+              "status": "done",
+              "updatedAt": "2026-08-03T11:55:32.391Z"
+            },
+            {
+              "id": "task_09b6722759dda72c3d65",
+              "title": "Evitar secretos públicos en identidad de caché Wails y generar artefactos Nightly",
+              "status": "done",
+              "updatedAt": "2026-08-03T18:39:26.445Z"
+            },
+            {
+              "id": "task_47b815142b9683d67ce7",
+              "title": "Fixtures sandbox y matriz lifecycle",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:21.350Z"
+            },
+            {
+              "id": "task_e587033e5549471efcd7",
+              "title": "Hardening de checkout, mapping y portal",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:20.257Z"
+            },
+            {
+              "id": "task_5219c93260a783e4fd66",
+              "title": "Inbox webhook atómica y replay seguro",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:13.358Z"
+            },
+            {
+              "id": "task_53fae3bfac37f76ba845",
+              "title": "Integración controlada de inbox, checkout y hardening Supabase",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:34:41.320Z"
+            },
+            {
+              "id": "task_3117bbb9f8ef0af79c2d",
+              "title": "Ledger de orders y refunds",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:18.626Z"
+            },
+            {
+              "id": "task_ca0bf6800e530d18dec9",
+              "title": "Observabilidad y runbook Billing",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:35:23.294Z"
+            },
+            {
+              "id": "task_0a04cfbfd3564b67773b",
+              "title": "Orden monótono y reconciliación Polar",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:14.969Z"
             },
             {
               "id": "task_3d64d0e1d29dab6c2439",
@@ -1142,6 +1130,18 @@
               "title": "Reparar gate de release tras y validar build Nightly",
               "status": "done",
               "updatedAt": "2026-08-03T12:25:32.265Z"
+            },
+            {
+              "id": "task_7874f2e30c995877e490",
+              "title": "Restaurar sesión WebView tras OAuth externo y permitir revalidación",
+              "status": "done",
+              "updatedAt": "2026-08-03T13:09:45.812Z"
+            },
+            {
+              "id": "task_dbb345590d9f7c710a4a",
+              "title": "Suscripción y recuperación de pago de 3 días",
+              "status": "done",
+              "updatedAt": "2026-08-03T00:33:16.676Z"
             }
           ]
         }

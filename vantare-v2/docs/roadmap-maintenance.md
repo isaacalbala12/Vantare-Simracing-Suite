@@ -105,8 +105,20 @@ ISA-258 muestra proyectos agrupados en tabs, cuya fuente operativa es Linear.
 
 ### Publicación automática
 
-`.github/workflows/roadmap-snapshot.yml` regenera el snapshot **a diario** y lo
-publica en la rama de datos `roadmap-data`, que es de donde lo lee la app.
+`.github/workflows/roadmap-snapshot.yml` regenera el snapshot y lo publica en la
+rama de datos `roadmap-data`, que es de donde lo lee la app. Se dispara de tres
+formas:
+
+- **En cada push a `nightly`.** Es lo que hace que funcione hoy: un disparador
+  por `push` se ejecuta con el fichero tal como está en la rama que recibe el
+  push, sin depender de la rama por defecto. Sin filtro de rutas, a propósito.
+- **A diario a las 04:00.** El snapshot proyecta Linear, no el código, así que
+  se queda obsoleto cuando se mueve una tarea aunque nadie mergee nada. Este
+  disparador **solo se activará cuando el workflow llegue a `master`**: GitHub
+  únicamente lanza `schedule` desde la rama por defecto.
+- **A mano**, por `workflow_dispatch`.
+
+Detalles:
 
 - Se ejecuta sobre `nightly`, porque el exportador y el catálogo viven ahí;
   `master` va por detrás y ni siquiera tiene `.github/scripts`.

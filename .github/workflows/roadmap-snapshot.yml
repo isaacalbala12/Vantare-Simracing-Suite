@@ -11,10 +11,22 @@ name: Roadmap public snapshot
 # .github/scripts/roadmap_linear_snapshot.py.
 
 on:
+  push:
+    # A push trigger runs the workflow as it exists on the pushed ref, so this
+    # works from nightly today. Only `schedule` is restricted to the default
+    # branch, and master is far enough behind that waiting for it would leave
+    # the snapshot unpublished indefinitely.
+    #
+    # Deliberately unfiltered by path. Restricting it to the exporter and the
+    # catalog would mean an ordinary merge refreshes nothing, which leaves the
+    # snapshot depending on the schedule again -- the exact gap this closes.
+    # A run that finds nothing new costs a minute and commits nothing.
+    branches: [nightly]
   schedule:
-    # Daily, matching the snapshot's own staleAfterSeconds of 86400. A missed
-    # run makes the app show its amber "stale" badge rather than pass old data
-    # off as current.
+    # The snapshot projects Linear, not the code, so it goes stale when a task
+    # moves rather than when something merges. Daily matches the snapshot's own
+    # staleAfterSeconds of 86400; a missed run makes the app show its amber
+    # "stale" badge rather than pass old data off as current.
     - cron: "0 4 * * *"
   workflow_dispatch:
 

@@ -230,7 +230,10 @@
         "it": "Launcher"
       },
       "progress": 75,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "launcher"
+      ]
     },
     {
       "id": "telemetry",
@@ -250,13 +253,16 @@
     {
       "id": "calendar-local",
       "title": {
-        "es": "Calendario local",
-        "en": "Local calendar",
-        "pt": "Calendario local",
-        "it": "Calendario locale"
+        "es": "Carreras",
+        "en": "Races",
+        "pt": "Corridas",
+        "it": "Gare"
       },
       "progress": 50,
-      "status": "in-progress"
+      "status": "in-progress",
+      "projects": [
+        "races-calendar"
+      ]
     },
     {
       "id": "engineer",
@@ -299,17 +305,6 @@
       "projects": [
         "billing"
       ]
-    },
-    {
-      "id": "ui-v52",
-      "title": {
-        "es": "UI v5.2",
-        "en": "UI v5.2",
-        "pt": "UI v5.2",
-        "it": "UI v5.2"
-      },
-      "progress": 75,
-      "status": "in-progress"
     }
   ],
   "milestones": [

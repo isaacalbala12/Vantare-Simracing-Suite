@@ -228,13 +228,12 @@ export const ROADMAP_FALLBACK: RoadmapDataset = {
   ],
   areas: [
     { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", pt: "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress", projects: ["overlay-studio-v3"] },
-    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress" },
+    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress", projects: ["launcher"] },
     { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", pt: "Telemetria", it: "Telemetria" }, progress: 25, status: "in-progress", projects: ["telemetry-core", "telemetry-analysis"] },
-    { id: "calendar-local", title: { es: "Calendario local", en: "Local calendar", pt: "Calendario local", it: "Calendario locale" }, progress: 50, status: "in-progress" },
+    { id: "calendar-local", title: { es: "Carreras", en: "Races", pt: "Corridas", it: "Gare" }, progress: 50, status: "in-progress", projects: ["races-calendar"] },
     { id: "engineer", title: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, progress: 25, status: "planned", projects: ["engineer-spotter"] },
     { id: "strategy", title: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, progress: 25, status: "in-progress", projects: ["strategy-planner"] },
     { id: "licensing", title: { es: "Licencias y cuenta", en: "Licensing and account", pt: "Licenças e conta", it: "Licenze e account" }, progress: 50, status: "in-progress", projects: ["billing"] },
-    { id: "ui-v52", title: { es: "UI v5.2", en: "UI v5.2", pt: "UI v5.2", it: "UI v5.2" }, progress: 75, status: "in-progress" },
   ],
   milestones: [
     {

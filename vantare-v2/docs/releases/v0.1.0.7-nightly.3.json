@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.3",
+  "channel": "nightly",
+  "title": "Vantare Endurance — motor de movimiento pulido y acceso desde el Studio",
+  "summary": "Pulido del motor de movimiento Redline (corona viajera, conteo de posiciones, retiradas, transiciones suaves) y arreglo del selector del Studio para que Vantare Endurance sea elegible dentro de la app.",
+  "issues": ["ISA-298"]
+}

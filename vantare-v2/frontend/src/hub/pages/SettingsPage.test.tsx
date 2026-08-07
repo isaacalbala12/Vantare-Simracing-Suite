@@ -196,7 +196,7 @@ describe('SettingsPage', () => {
 
   it('shows diagnostics when clicking Diagnóstico tab', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
     expect(screen.getByTestId('diagnostics-panel')).toBeDefined();
   });
@@ -208,7 +208,7 @@ describe('SettingsPage', () => {
   it('no longer offers an Avanzado tab or the inert delta mode', () => {
     render(<SettingsPage />);
     expect(screen.queryByRole('tab', { name: 'Avanzado' })).toBeNull();
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.queryByText('Modo delta')).toBeNull();
   });
 
@@ -218,13 +218,13 @@ describe('SettingsPage', () => {
   it('keeps the CPU sampling control, in the Diagnóstico tab', () => {
     render(<SettingsPage />);
     expect(screen.queryByText('Monitorizar uso de CPU')).toBeNull();
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
   });
 
   it('shows the Información card inside the Diagnóstico tab', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
     expect(screen.getByText(/Versión actual:/)).toBeDefined();
     expect(screen.getByText(/Canal:/)).toBeDefined();
@@ -349,13 +349,13 @@ describe('SettingsPage', () => {
 
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
   });
 
   it('does not retain the legacy immediate diagnostics copy flow', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(runtimeMock.emit).not.toHaveBeenCalledWith('diagnostics:get');
     expect(runtimeMock.handlers.has('diagnostics')).toBe(false);
   });
@@ -390,7 +390,7 @@ describe('SettingsPage', () => {
       'Aplicación',
       'Actualizaciones',
       'Hotkeys',
-      'Diagnóstico',
+      'Datos y diagnóstico',
     ]);
   });
 

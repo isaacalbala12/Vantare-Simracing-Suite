@@ -32,6 +32,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/startup"
+	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -1455,6 +1456,51 @@ func main() {
 	}
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
+
+	// Local data. The service is handed the two directories resolved here and
+	// answers only for those: the frontend sends a location key, never a path,
+	// so nothing else on the disk is reachable through these events.
+	storageSvc := storage.New(cfgDir, sessionsRoot)
+
+	emitStorage := func() {
+		emitter.Emit("storage", storageSvc.Summary())
+	}
+	emitStorageError := func(err error) {
+		log.Printf("storage error: %v", err)
+		emitter.Emit("storage:error", map[string]any{"message": err.Error()})
+	}
+
+	wailsApp.Event.On("storage:get", func(event *application.CustomEvent) {
+		emitStorage()
+	})
+
+	storageKey := func(data any) string {
+		var payload struct {
+			Key string `json:"key"`
+		}
+		if data != nil {
+			if raw, err := json.Marshal(data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		return payload.Key
+	}
+
+	wailsApp.Event.On("storage:reveal", func(event *application.CustomEvent) {
+		if err := storageSvc.Reveal(storageKey(event.Data)); err != nil {
+			emitStorageError(err)
+		}
+	})
+
+	wailsApp.Event.On("storage:clear", func(event *application.CustomEvent) {
+		summary, err := storageSvc.Clear(storageKey(event.Data))
+		if err != nil {
+			emitStorageError(err)
+		}
+		// Emit the summary either way: after a refusal the UI has to go back to
+		// showing what is really on disk.
+		emitter.Emit("storage", summary)
+	})
 
 	// Testing Center report drafts persist only resumable form text. The path is
 	// selected here; frontend events can never provide filesystem locations.

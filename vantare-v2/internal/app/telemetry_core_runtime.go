@@ -113,6 +113,12 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				Retryable: lmu.IsRetryable,
 			},
 		},
+		// The budget is deliberately large: "the simulator is not running" is
+		// indistinguishable from a transient disconnect here, and it is the
+		// normal state whenever the Hub is open without a session. The budget
+		// is also restored by RetryPolicy.StableRun after any run that lasted,
+		// so an evening of sessions no longer spends it down towards a
+		// permanent death.
 		telemetrycore.ManagerConfig{Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000}},
 	)
 	if err != nil {

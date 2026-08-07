@@ -42,6 +42,16 @@ type RetryPolicy struct {
 	MaxBackoff     time.Duration
 	Jitter         func(time.Duration) time.Duration
 	Wait           func(context.Context, time.Duration) error
+	// StableRun is how long a run must last before it counts as the driver
+	// having recovered, which returns the reconnect budget to full. Without it
+	// the budget is spent across the whole process lifetime, so a driver that
+	// works for hours and drops once an hour eventually dies for good. A driver
+	// that crash-loops returns immediately and never earns the reset, so
+	// exhaustion still bounds a genuinely broken one.
+	StableRun time.Duration
+	// Now is injectable so tests can decide what counts as a long run without
+	// depending on wall-clock sleeps.
+	Now func() time.Time
 }
 
 type ManagerConfig struct {
@@ -265,6 +275,7 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 			return
 		}
 		manager.setActive(candidate.Descriptor.ID, instance)
+		runStartedAt := manager.config.Retry.Now()
 		runErr := instance.Run(ctx, sink)
 		if errors.Is(runErr, driver.ErrTeardown) {
 			cycleResult = fmt.Errorf("run driver %q: %w", candidate.Descriptor.ID, runErr)
@@ -287,6 +298,12 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 			return
 		}
 
+		// A run that lasted long enough proves the driver recovered, so the
+		// failure that ends it opens a fresh budget rather than drawing on the
+		// one the previous outage left behind.
+		if manager.config.Retry.Now().Sub(runStartedAt) >= manager.config.Retry.StableRun {
+			manager.resetAttempts()
+		}
 		attempt := manager.recordTransient(runErr)
 		if attempt > manager.config.Retry.MaxReconnects {
 			manager.setTerminal(errors.Join(ErrReconnectExhausted, runErr))
@@ -435,6 +452,12 @@ func (manager *DriverManager[T]) clearActive() {
 	manager.runtimeCapabilities = nil
 }
 
+func (manager *DriverManager[T]) resetAttempts() {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+	manager.attempt = 0
+}
+
 func (manager *DriverManager[T]) recordTransient(err error) int {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
@@ -499,6 +522,12 @@ func normalizedRetryPolicy(policy RetryPolicy) RetryPolicy {
 	}
 	if policy.Wait == nil {
 		policy.Wait = waitWithTimer
+	}
+	if policy.StableRun <= 0 {
+		policy.StableRun = 30 * time.Second
+	}
+	if policy.Now == nil {
+		policy.Now = time.Now
 	}
 	return policy
 }

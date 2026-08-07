@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
+import { HubSubnav } from '../components/HubSubnav';
 import { AccountSettings } from '../settings/AccountSettings';
 import { AboutSettings } from '../settings/AboutSettings';
 import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
@@ -66,6 +67,42 @@ function SettingsPageInner() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* The sections sit attached under the global nav instead of floating in
+          a pill bar below the page title, and they share its language -- an
+          underline on the active item -- because two rows of navigation that
+          look unrelated read as two unrelated things. The old bar painted the
+          selected tab with bg-accent/10 and border-accent/30; `accent` is not a
+          token this project defines, so it resolved to nothing and the
+          selection was barely visible. */}
+      <HubSubnav>
+        <div
+          className="flex flex-wrap items-center gap-x-6 gap-y-3 py-2.5 text-xs lg:text-sm font-medium text-vantare-textMuted"
+          role="tablist"
+          aria-label={t("settings.nav.label")}
+        >
+          {TABS.map((tab, index) => (
+            <button
+              key={tab.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => moveWithArrowKeys(event, index)}
+              className={`nav-item whitespace-nowrap ${
+                activeTab === tab.id ? 'active text-vantare-text' : 'hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </HubSubnav>
+
       <header className="flex items-start justify-between opacity-0 animate-fade-in-up">
         <div>
           <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
@@ -77,42 +114,6 @@ function SettingsPageInner() {
         </div>
         <LanguageSelector />
       </header>
-
-      {/* The selected tab used to be painted with bg-accent/10 and
-          border-accent/30. `accent` is not a token this project defines, so it
-          resolved to nothing and the selected tab read as a faint box. The
-          gradient below is the same one Roadmap uses for a selected tab.
-          Widths are content-sized rather than flex-1: with flex-1 every tab was
-          as wide as the longest label, and a fifth section would squeeze them
-          all. */}
-      <nav
-        className="glass-panel rounded-xl p-1.5 flex flex-wrap gap-1 opacity-0 animate-fade-in-up delay-100"
-        role="tablist"
-        aria-label={t("settings.nav.label")}
-      >
-        {TABS.map((tab, index) => (
-          <button
-            key={tab.id}
-            ref={(node) => {
-              tabRefs.current[index] = node;
-            }}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`panel-${tab.id}`}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            onClick={() => setActiveTab(tab.id)}
-            onKeyDown={(event) => moveWithArrowKeys(event, index)}
-            className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
-              activeTab === tab.id
-                ? 'bg-gradient-to-br from-vantare-red-500 to-[#9a0606] text-white border-white/10'
-                : 'bg-white/5 text-vantare-textMuted border-white/10 hover:text-white'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
 
       <div className="opacity-0 animate-fade-in-up delay-150 space-y-4">
         {activeTab === 'account' && (

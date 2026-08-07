@@ -40,6 +40,17 @@ export function AppsPanel({ className }: AppsPanelProps) {
   );
   const [showAdd, setShowAdd] = useState(false);
   const [detailsAppId, setDetailsAppId] = useState<string | null>(null);
+  // Dismissing the scan overlay hides it for the scan in flight only; a fresh
+  // scan is a new request from the user and shows it again. The reset happens
+  // during render rather than in an effect so no dismissed overlay is ever
+  // painted for one frame at the start of a new scan.
+  const [scanDismissed, setScanDismissed] = useState(false);
+  const scanning = progress?.scanning === true;
+  const [scanningWhenDismissChecked, setScanningWhenDismissChecked] = useState(scanning);
+  if (scanning !== scanningWhenDismissChecked) {
+    setScanningWhenDismissChecked(scanning);
+    if (scanning) setScanDismissed(false);
+  }
 
   const referencedAppIds = new Set(
     profiles.flatMap((p) => p.steps.map((s) => s.appId)),
@@ -68,8 +79,8 @@ export function AppsPanel({ className }: AppsPanelProps) {
           <button
             type="button"
             onClick={discoverApps}
-            disabled={progress?.scanning === true}
-            aria-busy={progress?.scanning === true}
+            disabled={scanning}
+            aria-busy={scanning}
             className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
             data-testid="apps-rescan"
           >
@@ -78,7 +89,12 @@ export function AppsPanel({ className }: AppsPanelProps) {
         </div>
       </div>
 
-      {progress?.scanning && <LauncherScanProgress progress={progress} />}
+      {scanning && !scanDismissed && progress && (
+        <LauncherScanProgress
+          progress={progress}
+          onDismiss={() => setScanDismissed(true)}
+        />
+      )}
 
       <AddNonSteamGameModal
         open={showAdd}
@@ -110,7 +126,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           return (
             <li
               key={app.id}
-              className="rounded-lg bg-black/20 px-3 py-2 cursor-pointer hover:bg-white/5 transition-colors"
+              className="group rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 cursor-pointer hover:border-white/15 hover:bg-white/5 transition-colors"
               onClick={() =>
                 setDetailsAppId(
                   detailsAppId === app.id ? null : app.id,
@@ -135,14 +151,18 @@ export function AppsPanel({ className }: AppsPanelProps) {
                       ? "Quitar de favoritas"
                       : "Marcar como favorita"
                   }
-                  className="ml-auto text-sm transition-colors hover:text-amber-400"
+                  className={`ml-auto grid h-6 w-6 place-items-center rounded-md text-sm transition-colors hover:bg-white/10 hover:text-amber-400 ${
+                    app.isFavorite ? "text-amber-400" : "text-white/30"
+                  }`}
                 >
                   {app.isFavorite ? "★" : "☆"}
                 </button>
                 {app.detected && (
-                  <span className="text-[10px] uppercase tracking-[.18em] text-emerald-400/80">
-                    {t("launcher.apps.detected")}
-                  </span>
+                  <span
+                    title={t("launcher.apps.detected")}
+                    aria-label={t("launcher.apps.detected")}
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400/80"
+                  />
                 )}
                 {!referenced && (
                   <button
@@ -151,10 +171,19 @@ export function AppsPanel({ className }: AppsPanelProps) {
                       e.stopPropagation();
                       handleRemove(app.id);
                     }}
-                    className="text-[10px] uppercase tracking-[.18em] text-vantare-red-400 hover:bg-vantare-red-400/10 px-2 py-0.5 rounded transition-colors"
+                    aria-label={t("launcher.profile.delete")}
+                    title={t("launcher.profile.delete")}
+                    className="grid h-6 w-6 place-items-center rounded-md text-white/25 opacity-0 transition-all hover:bg-vantare-red-400/10 hover:text-vantare-red-400 focus-visible:opacity-100 group-hover:opacity-100"
                     data-testid={`app-remove-${app.id}`}
                   >
-                    {t("launcher.profile.delete")}
+                    <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true">
+                      <path
+                        d="M4 4l8 8M12 4l-8 8"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
                   </button>
                 )}
               </div>

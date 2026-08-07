@@ -8,9 +8,17 @@ import { DEFAULT_APP_SETTINGS, type AppSettings } from "./settings-contract";
  * because it mutates the same object it saves: keeping it beside the state
  * avoids passing a setter down into the hotkeys section.
  */
+/**
+ * Saving is reported as a state, not as a sentence. The hook used to hold the
+ * Spanish copy itself, which left two strings outside the dictionaries after
+ * the page was translated; the component that shows the status is the one that
+ * knows the user's language.
+ */
+export type SettingsSaveStatus = "saving" | "saved" | null;
+
 export function useAppSettings() {
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
-  const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
+  const [settingsStatus, setSettingsStatus] = useState<SettingsSaveStatus>(null);
   const [capturingKey, setCapturingKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,7 +35,7 @@ export function useAppSettings() {
 
     handlers.push(
       Events.On("settings-saved", () => {
-        setSettingsStatus("Ajustes guardados.");
+        setSettingsStatus("saved");
         setTimeout(() => setSettingsStatus(null), 3000);
       }),
     );
@@ -41,7 +49,7 @@ export function useAppSettings() {
 
   function save(next: AppSettings) {
     setAppSettings(next);
-    setSettingsStatus("Guardando...");
+    setSettingsStatus("saving");
     Events.Emit("settings:save", next);
   }
 
@@ -80,7 +88,7 @@ export function useAppSettings() {
   }, [capturingKey, captureKeyDown]);
 
   function saveHotkeys() {
-    setSettingsStatus("Guardando...");
+    setSettingsStatus("saving");
     Events.Emit("settings:save", appSettings);
   }
 

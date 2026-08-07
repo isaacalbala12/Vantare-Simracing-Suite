@@ -18,7 +18,7 @@ export function AboutSettings({ info, updaterSettings }: Props) {
   const { t } = useI18n();
 
   return (
-    <div className="card-sleek rounded-xl p-5 border border-white/5">
+    <div className="card-sleek rounded-xl p-5">
       <h3 className="font-display font-semibold text-lg text-white mb-4">
         {t("settings.about.title")}
       </h3>

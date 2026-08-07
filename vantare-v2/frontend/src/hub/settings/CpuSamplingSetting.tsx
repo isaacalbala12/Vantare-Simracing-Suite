@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n/I18nProvider";
+import { SaveStatus } from "./SaveStatus";
 import type { useAppSettings } from "./useAppSettings";
 
 type Props = {
@@ -15,13 +16,16 @@ type Props = {
  */
 export function CpuSamplingSetting({ app }: Props) {
   const { t } = useI18n();
-  const { appSettings, toggleCpuSampling } = app;
+  const { appSettings, toggleCpuSampling, settingsStatus } = app;
 
   return (
-    <div className="card-sleek rounded-xl p-5 border border-white/5">
-      <h3 className="font-display font-semibold text-lg text-white mb-4">
-        {t("settings.cpu.title")}
-      </h3>
+    <div className="card-sleek rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display font-semibold text-lg text-white">
+          {t("settings.cpu.title")}
+        </h3>
+        <SaveStatus status={settingsStatus} />
+      </div>
       <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
         <input
           type="checkbox"

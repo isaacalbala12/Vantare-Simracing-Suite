@@ -288,6 +288,55 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Confirmar downgrade')).toBeDefined();
   });
 
+  // The confirmation used to be a bare `fixed inset-0` drawn inside the page,
+  // with the Cancel button as its only exit. It is a modal now: it lives in a
+  // portal on document.body and Escape closes it.
+  it('renders the downgrade confirmation as a dismissable modal in a portal', () => {
+    render(<SettingsPage />);
+    clickTab('Actualizaciones');
+    dispatch('updater:available', {
+      info: {
+        currentVersion: 'v0.1.5-prealpha',
+        releases: [{ ...release, tag_name: 'v0.1.4-prealpha' }],
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Downgrade' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Confirmar downgrade' });
+    expect(dialog.closest('[data-testid="settings-downgrade-overlay"]')).not.toBeNull();
+    expect(document.body.contains(dialog)).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Confirmar downgrade' })).toBeNull();
+  });
+
+  // The save status used to sit at the foot of the page, so a toggle in one tab
+  // reported itself somewhere the user was not looking. It now belongs to the
+  // section that triggered the write.
+  it('reports the save status inside the section that triggered it', () => {
+    render(<SettingsPage />);
+    clickTab('Hotkeys');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar atajos' }));
+
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('Guardando...');
+    expect(status.closest('[role="tabpanel"]')?.getAttribute('id')).toBe('panel-hotkeys');
+  });
+
+  it('walks the tab bar with the arrow keys and keeps one tab stop', () => {
+    render(<SettingsPage />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.filter((tab) => tab.getAttribute('tabindex') === '0')).toHaveLength(1);
+
+    fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Actualizaciones' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    fireEvent.keyDown(screen.getAllByRole('tab')[1], { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Cuenta' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
     clickTab('Diagnóstico');

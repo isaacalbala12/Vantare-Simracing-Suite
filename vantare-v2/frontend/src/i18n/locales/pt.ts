@@ -112,6 +112,8 @@ export const pt: Record<string, string> = {
   "settings.hotkeys.save": "Guardar atalhos",
   "settings.hotkeys.capturing": "Prima uma combinação...",
   "settings.hotkeys.cancel": "Cancelar",
+  "settings.status.saving": "A guardar...",
+  "settings.status.saved": "Definições guardadas.",
   "settings.hotkeys.change": "Alterar",
   "settings.hotkeys.toggleOverlay": "Alternar overlay",
   "settings.hotkeys.nextProfile": "Perfil seguinte",

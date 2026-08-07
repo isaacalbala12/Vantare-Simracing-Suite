@@ -112,6 +112,8 @@ export const en: Record<string, string> = {
   "settings.hotkeys.save": "Save shortcuts",
   "settings.hotkeys.capturing": "Press a combination...",
   "settings.hotkeys.cancel": "Cancel",
+  "settings.status.saving": "Saving...",
+  "settings.status.saved": "Settings saved.",
   "settings.hotkeys.change": "Change",
   "settings.hotkeys.toggleOverlay": "Toggle overlay",
   "settings.hotkeys.nextProfile": "Next profile",

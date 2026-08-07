@@ -88,7 +88,13 @@ describe("license module", () => {
       };
       act(() => emitChanged(next));
       expect(result.current.loading).toBe(false);
-      expect(result.current.result).toEqual(next);
+      // Normalised on the way in, so the optional list fields are always
+      // present as arrays rather than absent.
+      expect(result.current.result).toEqual({
+        ...next,
+        capabilities: [],
+        operationalRoles: [],
+      });
     });
 
     it("updates loading state to false when license:error is received", () => {
@@ -287,5 +293,66 @@ describe("license module", () => {
       expect(screen.getByTestId("a").textContent).toBe("shared@example.com");
       expect(screen.getByTestId("b").textContent).toBe("shared@example.com");
     });
+  });
+});
+// Go marshals a nil slice as `null`, so an account with no entitlements used to
+// arrive with entitlements: null while LicenseResult declares a plain array.
+// The settings page called .join on it and the whole page came down. The
+// backend now sends [], and this keeps the promise true on this side too, so a
+// cached payload written by an older build cannot bring the page down either.
+describe("license payload normalisation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    onListeners.clear();
+    eventsOn.mockClear();
+    eventsEmit.mockClear();
+    cleanup();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    cleanup();
+  });
+
+  function renderLicense() {
+    return renderHook(() => useLicense(), {
+      wrapper: ({ children }) => <LicenseProvider>{children}</LicenseProvider>,
+    });
+  }
+
+  it("turns null list fields into empty arrays", () => {
+    const { result } = renderLicense();
+
+    act(() => {
+      emitChanged({
+        state: "active",
+        email: "isa@example.com",
+        entitlements: null,
+        capabilities: null,
+        operationalRoles: null,
+        deviceOK: true,
+      } as unknown as LicenseResult);
+    });
+
+    expect(result.current.result?.entitlements).toEqual([]);
+    expect(result.current.result?.capabilities).toEqual([]);
+    expect(result.current.result?.operationalRoles).toEqual([]);
+    // The crash was a method call on the null.
+    expect(() => result.current.result?.entitlements.join(", ")).not.toThrow();
+  });
+
+  it("leaves a populated payload alone", () => {
+    const { result } = renderLicense();
+
+    act(() => {
+      emitChanged({
+        state: "active",
+        email: "isa@example.com",
+        entitlements: ["overlays", "engineer"],
+        deviceOK: true,
+      } as unknown as LicenseResult);
+    });
+
+    expect(result.current.result?.entitlements).toEqual(["overlays", "engineer"]);
   });
 });

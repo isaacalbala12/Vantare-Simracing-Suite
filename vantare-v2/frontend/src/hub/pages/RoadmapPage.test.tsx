@@ -15,6 +15,7 @@ vi.mock("../../lib/access", () => ({
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RoadmapPage } from "./RoadmapPage";
+import { ROADMAP_FALLBACK } from "../roadmap/roadmap-data";
 
 beforeEach(() => {
   mockUseAccess.mockReturnValue({
@@ -91,21 +92,22 @@ describe("RoadmapPage", () => {
     expect(screen.getAllByText(/Pulido beta/i).length).toBeGreaterThanOrEqual(1);
   });
 
+  // These read their expectations from the dataset rather than pinning the
+  // copy: the roadmap text is editorial and is meant to be rewritten whenever
+  // the product moves (docs/roadmap-maintenance.md). What must hold is that
+  // every phase and every area actually reaches the screen.
   it("renders all current phases", () => {
     render(<RoadmapPage />);
-    expect(screen.getByText("Beta pública")).toBeTruthy();
-    expect(screen.getByText("Ingeniero Vantare")).toBeTruthy();
-    expect(screen.getByText("Ecosistema")).toBeTruthy();
+    for (const phase of ROADMAP_FALLBACK.phases) {
+      expect(screen.getAllByText(phase.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders area progress bars", () => {
     render(<RoadmapPage />);
-    expect(screen.getByText("Overlays Studio")).toBeTruthy();
-    expect(screen.getByText("Launcher LMU")).toBeTruthy();
-    expect(screen.getByText("Calendario local")).toBeTruthy();
-    expect(screen.getByText("Ingeniero")).toBeTruthy();
-    expect(screen.getByText("Telemetría")).toBeTruthy();
-    expect(screen.getByText("UI v5.2")).toBeTruthy();
+    for (const area of ROADMAP_FALLBACK.areas) {
+      expect(screen.getAllByText(area.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders overall progress percentage on the scale", () => {
@@ -116,10 +118,9 @@ describe("RoadmapPage", () => {
 
   it("renders milestones", () => {
     render(<RoadmapPage />);
-    expect(screen.getAllByText("v0.1.0.2 publicado").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Hub v5.2 en migración").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Launcher LMU disponible").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Roadmap público planificado").length).toBeGreaterThanOrEqual(1);
+    for (const milestone of ROADMAP_FALLBACK.milestones) {
+      expect(screen.getAllByText(milestone.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders recent changelog section", () => {

@@ -1,4 +1,4 @@
-import { cleanup, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
@@ -29,13 +29,6 @@ function buildDocument(): ProfileDocumentV3 {
     },
   };
 }
-
-// Cada prueba empieza esperando el primer render del lienzo, que depende de una
-// carga de perfil asincrona. Con el 1000ms por defecto de waitFor, bajo la carga
-// de la bateria completa ese plazo se agotaba y fallaba un test distinto en cada
-// pasada -- aislado el fichero pasaba siempre. No es una condicion de carrera de
-// la logica, es un plazo demasiado justo.
-configure({ asyncUtilTimeout: 5000 });
 
 const client: StudioProfileClient = {
   load: async () => ({ document: buildDocument(), revision: "rev-1" }),

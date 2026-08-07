@@ -78,9 +78,27 @@ vuelvan a colarse literales, con el mismo patrón que ya protege overlay-studio.
 descarta los campos antiguos sin romper archivos existentes. "Avanzado"
 desaparece.
 
+> **Corregido (2026-08-08): `cpuSampling` sí funcionaba.** El diagnóstico del
+> punto 2 buscó consumidores en `internal/` y en `frontend/src`, y no en
+> `cmd/`, que es justo donde estaba el cable: `cmd/vantare/main.go:1669` llama
+> a `rtSampler.SetCPUEnabled`, que arranca y para el muestreador. Se retira
+> solo `deltaMode`; `cpuSampling` vuelve, con sección propia junto al panel de
+> diagnóstico, que es donde pinta un control sobre instrumentación.
+
 **D — Navegación y acabado.** Barra lateral, lenguaje visual del Hub, modal al
 patrón portal + `motion`, estado de guardado contextual en lugar del texto suelto
 al pie, y retirada del doble borde y de `bg-accent/10`.
+
+> **Hecho todo menos la barra lateral (2026-08-08).** El commit `e63c208`, de
+> julio, sacó esta página *de* una barra lateral y la pasó a pestañas a ancho
+> completo, con un test que lo fija (`renders horizontal tab bar (no internal
+> sidebar)`). Esa decisión es anterior al plan y volver atrás no es acabado
+> visual, es deshacerla: queda pendiente de que Isaac decida.
+>
+> Además de lo listado: las pestañas dejan de usar `flex-1` (las cuatro medían
+> lo que la etiqueta más larga) y el tablist se recorre con las flechas.
+> `settings.status.*` cierra las dos últimas cadenas en español que quedaban
+> fuera de los diccionarios tras el corte B — vivían dentro de `useAppSettings`.
 
 **E — Arranque y ventana.** Ojo: ya existe `internal/app/launcher/autostart_windows.go`
 con `RegisterAutostart`/`UnregisterAutostart`, pero **es por perfil de Launcher**

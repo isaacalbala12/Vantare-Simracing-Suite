@@ -30,11 +30,17 @@ describe("Strategy Planner presentation honesty", () => {
     }
   });
 
-  it("keeps named example strategies out of the presentation layer", () => {
-    const named = /"(?:Conservadora|Agresiva|Segura)"/;
-    for (const file of PRESENTATION_SOURCES) {
-      expect(named.test(readPresentation(file)), `${file} names an example strategy`).toBe(false);
-    }
+  it("labels only the variants the solver actually produces", () => {
+    const source = readPresentation("StrategyPlannerPage.tsx");
+    // The fabricated trio was Conservadora / Agresiva / Segura. Two of those are
+    // not solver variants at all, so their return would mean invented plans.
+    expect(/"Agresiva"/.test(source), "Agresiva is not a solver variant").toBe(false);
+    expect(/"Segura"/.test(source), "Segura is not a solver variant").toBe(false);
+    // The label map must cover the solver's kinds and nothing else.
+    const labels = source.match(/VARIANT_LABELS[^=]*=\s*\{([\s\S]*?)\n\};/);
+    expect(labels, "VARIANT_LABELS is missing").not.toBeNull();
+    const kinds = Array.from(labels![1].matchAll(/^\s{2}(\w+):/gm), (match) => match[1]).sort();
+    expect(kinds).toEqual(["conservative", "fast", "robust"]);
   });
 
   it("does not seed number inputs with a value the user did not enter", () => {

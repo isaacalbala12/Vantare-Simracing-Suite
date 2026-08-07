@@ -15,22 +15,34 @@ import { effectiveLapRows } from "../../strategy/strategy-manual-input";
 import type { StrategyManualClient, StrategyManualResult } from "../../strategy/strategy-manual-client";
 import type { StrategyPlanViolation, StrategyTyreClient } from "../../strategy/strategy-tyre-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
-import { StrategyPlannerPage, type StrategyCandidate } from "./StrategyPlannerPage";
+import type { StrategySolverClient, StrategyVariant } from "../../strategy/strategy-solver-client";
+import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
 configure({ asyncUtilTimeout: 3_000 });
 
-/** Stand-ins for solver output. Production renders whatever STR-12 produces. */
-const TEST_CANDIDATES: readonly StrategyCandidate[] = [
-  {
-    label: "A", title: "Plan A", deltaText: "−0.8s", totalTimeText: "6h 04m 12.0s",
-    risk: "Bajo", pitStops: 3, compounds: ["M", "H", "H", "S"],
-    fuelSaveText: "+1.0 v/stint", summary: "Fixture.", active: true,
-  },
-  {
-    label: "B", title: "Plan B", deltaText: "+2.4s", totalTimeText: "6h 04m 15.2s",
-    risk: "Medio", pitStops: 3, compounds: ["S", "M", "S", "S"],
-    fuelSaveText: "+3.0 v/stint", summary: "Fixture.", active: false,
-  },
+/** Stand-ins for solver output, shaped exactly as the bridge returns it. */
+function variant(overrides: Partial<StrategyVariant> & Pick<StrategyVariant, "kind">): StrategyVariant {
+  return {
+    stops: 3,
+    stints: [{ laps: 20, greenSeconds: 2000, degradationSeconds: 19, totalSeconds: 2019 }],
+    total: { optimisticSeconds: 21_800, expectedSeconds: 21_852, pessimisticSeconds: 21_904 },
+    deltaToFastestSeconds: 0,
+    marginLaps: 2,
+    survivesPessimistic: true,
+    risk: "low",
+    dominated: false,
+    reasons: [{ code: "time_optimal", message: "the quickest plan if every estimate holds" }],
+    ...overrides,
+  };
+}
+
+const TEST_VARIANTS: readonly StrategyVariant[] = [
+  variant({ kind: "fast", marginLaps: 0, risk: "high", survivesPessimistic: false }),
+  variant({ kind: "robust", stops: 4, deltaToFastestSeconds: 22.4, marginLaps: 3 }),
+  variant({
+    kind: "conservative", stops: 5, deltaToFastestSeconds: 44.8, marginLaps: 5,
+    dominated: true, dominatedBy: "robust",
+  }),
 ];
 
 afterEach(cleanup);
@@ -56,9 +68,12 @@ describe("Strategy Planner shell", () => {
   });
 
   it("traps comparison focus, isolates the background and restores the opener", async () => {
-    await renderPlanner({ demo: true, initialScreen: "workspace", candidates: TEST_CANDIDATES });
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
 
     const opener = await screen.findByRole("button", { name: "Comparar planes" });
+    // The opener stays disabled until the solver answers, so clicking earlier
+    // would silently do nothing.
+    await waitFor(() => expect(opener.hasAttribute("disabled")).toBe(false));
     opener.focus();
     fireEvent.click(opener);
     expect(screen.getByRole("dialog", { name: "Comparar estrategias" })).toBeTruthy();
@@ -90,30 +105,49 @@ describe("Strategy Planner shell", () => {
     expect(document.querySelector("[aria-labelledby^=strategy-tab]")).toBeNull();
   });
 
-  it("renders the plan from the document and never invents strategies", async () => {
+  it("renders the plan from the document and the solver's own variants", async () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
 
     const stints = await screen.findAllByTestId(/^strategy-stint-/);
     expect(stints).toHaveLength(4);
     expect(stints.reduce((total, stint) => total + Number(stint.getAttribute("data-laps")), 0)).toBe(78);
     expect(within(stints[3]).getByText("v.59–78 · 20v")).toBeTruthy();
-
-    // No solver yet, so the panel says so instead of showing invented plans.
-    expect(screen.getByTestId("strategy-candidates-empty")).toBeTruthy();
-    expect(screen.queryByTestId(/^strategy-option-/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(true);
     expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.95 L/v");
-  });
 
-  it("shows solver output verbatim once candidates exist", async () => {
-    await renderPlanner({ demo: true, initialScreen: "workspace", candidates: TEST_CANDIDATES });
-
-    const option = await screen.findByTestId("strategy-option-A");
-    expect(definitionValue(option, "Tiempo")).toBe("6h 04m 12.0s");
+    const option = await screen.findByTestId("strategy-option-fast");
     expect(definitionValue(option, "Pits")).toBe("3");
-    expect(within(option).getByTestId("strategy-option-usage").textContent).toBe("1M · 2H · 1S");
+    expect(definitionValue(option, "Riesgo")).toBe("Alto");
     expect(screen.queryByTestId("strategy-candidates-empty")).toBeNull();
     expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("shows a time range rather than a single figure", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    // A lone number would claim a precision the estimates do not have.
+    const total = await screen.findByTestId("strategy-total-fast");
+    expect(total.textContent).toMatch(/\d+h \d{2}m \d{2}s – \d+h \d{2}m \d{2}s/);
+  });
+
+  it("marks a plan another already beats on both time and margin", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    expect(await screen.findByTestId("strategy-dominated-conservative")).toBeTruthy();
+    expect(screen.queryByTestId("strategy-dominated-fast")).toBeNull();
+  });
+
+  it("says why the strategy panel is empty when the solver refuses", async () => {
+    await renderPlanner({
+      demo: true,
+      initialScreen: "workspace",
+      solverClient: {
+        async compare() { throw new Error("No strategy finishes this race within the stated limits."); },
+        dispose() {},
+      },
+    });
+
+    const message = await screen.findByTestId("strategy-candidates-error");
+    expect(message.textContent).toContain("No strategy finishes this race");
   });
 
   it("reports what the physical tyre domain rejected", async () => {
@@ -371,11 +405,20 @@ async function renderPlanner(props: PlannerTestProps) {
   return render(
     <StrategyPlannerPage
       tyreClient={createTestTyreClient()}
+      solverClient={createTestSolverClient()}
       {...props}
       strategyStore={store}
       manualClient={createTestManualClient()}
     />,
   );
+}
+
+/** Stands in for the Go solver so the shell tests stay deterministic. */
+function createTestSolverClient(variants: readonly StrategyVariant[] = TEST_VARIANTS): StrategySolverClient {
+  return {
+    async compare() { return { variants, maxStintLaps: 20, binding: "fuel", assumptions: [] }; },
+    dispose() {},
+  };
 }
 
 /** Stands in for the Go tyre domain so the shell tests stay deterministic. */

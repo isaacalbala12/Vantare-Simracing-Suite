@@ -15,6 +15,7 @@ export type StrategyQuickField =
   | "virtualEnergyFormationPercent"
   | "virtualEnergyReservePercent"
   | "tyreWearPerLapPercent"
+  | "degradationPerLapSeconds"
   | "pitLossPerStopSeconds"
   | "repairSeconds"
   | "penaltySeconds";
@@ -99,9 +100,19 @@ const FIELD_RULES: Readonly<Record<StrategyQuickField, FieldRule>> = {
   virtualEnergyFormationPercent: { min: 0, max: 100 },
   virtualEnergyReservePercent: { min: 0, max: 100 },
   tyreWearPerLapPercent: { min: 0, max: 100 },
+  degradationPerLapSeconds: { min: 0, max: 60 },
   pitLossPerStopSeconds: { min: 0, max: 86_400 },
   repairSeconds: { min: 0, max: 86_400 },
   penaltySeconds: { min: 0, max: 86_400 },
+};
+
+/**
+ * Fields introduced after documents were already being saved. A plan written
+ * before they existed loads with the default rather than failing, and the
+ * default asserts nothing: zero means the tyre fall-off was never stated.
+ */
+const FIELDS_ADDED_LATER: Partial<Record<StrategyQuickField, number>> = {
+  degradationPerLapSeconds: 0,
 };
 
 const LAP_FIELDS: readonly StrategyLapField[] = [
@@ -129,6 +140,10 @@ export function createDefaultStrategyManualInputs(): StrategyManualInputs {
       virtualEnergyFormationPercent: input(0),
       virtualEnergyReservePercent: input(0),
       tyreWearPerLapPercent: input(0.65),
+      // Zero until someone states it: a new plan has measured nothing, and a
+      // seeded figure here would silently shape every strategy the solver
+      // proposes.
+      degradationPerLapSeconds: input(0),
       pitLossPerStopSeconds: input(22.4),
       repairSeconds: input(0),
       penaltySeconds: input(0),
@@ -147,7 +162,10 @@ export function parseStrategyManualInputs(value: unknown, totalLaps: number): St
 
   const quick = {} as Record<StrategyQuickField, StrategyInputValue>;
   for (const field of Object.keys(FIELD_RULES) as StrategyQuickField[]) {
-    quick[field] = parseInputValue(value.quick[field], field, FIELD_RULES[field]);
+    const stored = value.quick[field];
+    const fallback = FIELDS_ADDED_LATER[field];
+    const raw = stored === undefined && fallback !== undefined ? input(fallback) : stored;
+    quick[field] = parseInputValue(raw, field, FIELD_RULES[field]);
   }
   if (effectiveValue(quick.fuelUsableLitres) > effectiveValue(quick.fuelCapacityLitres)) {
     throw invalid("fuelUsableLitres", "usable Fuel cannot exceed tank capacity");

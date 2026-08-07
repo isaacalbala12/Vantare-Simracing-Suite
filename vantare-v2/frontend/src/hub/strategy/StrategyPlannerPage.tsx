@@ -43,6 +43,11 @@ import {
   type StrategyManualResult,
 } from "../../strategy/strategy-manual-client";
 import {
+  createWailsStrategySolverClient,
+  type StrategySolverClient,
+  type StrategyVariant,
+} from "../../strategy/strategy-solver-client";
+import {
   createWailsStrategyTyreClient,
   type StrategyPlanViolation,
   type StrategyTyreClient,
@@ -63,8 +68,10 @@ type StrategyPlannerPageProps = {
   manualClient?: StrategyManualClient;
   /** Validates the planned tyre set against the physical domain in Go. */
   tyreClient?: StrategyTyreClient;
-  /** Strategies produced by the solver. Empty until STR-12 lands. */
-  candidates?: readonly StrategyCandidate[];
+  /** Compares race strategies. Injected in tests, real bridge in the app. */
+  solverClient?: StrategySolverClient;
+  /** Pre-supplied variants, for tests and previews. */
+  candidates?: readonly StrategyVariant[];
 };
 
 const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
@@ -72,24 +79,6 @@ const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
   { id: "stints", label: "Stints" },
   { id: "inventory", label: "Inventario" },
 ];
-
-/**
- * A strategy the solver has produced. Nothing in this module invents one: the
- * page renders whatever it is given and states the panel is empty otherwise,
- * so the workspace can never show a plan that was not computed.
- */
-export type StrategyCandidate = {
-  label: string;
-  title: string;
-  deltaText: string;
-  totalTimeText: string;
-  risk: string;
-  pitStops: number;
-  compounds: readonly string[];
-  fuelSaveText: string;
-  summary: string;
-  active: boolean;
-};
 
 /** Race context captured on the entry screen. */
 type RaceEntry = {
@@ -124,7 +113,8 @@ export function StrategyPlannerPage({
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
   tyreClient,
-  candidates = [],
+  solverClient,
+  candidates,
 }: StrategyPlannerPageProps) {
   const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
     strategyStore ? null : runtimeFactory()
@@ -142,6 +132,11 @@ export function StrategyPlannerPage({
   const inventoryClient = tyreClient ?? ownedTyreClient;
   if (!inventoryClient) throw new Error("Strategy tyre client is required");
   const ownedTyreClientMountedRef = useRef(false);
+  const [ownedSolverClient] = useState<StrategySolverClient | null>(() => (
+    solverClient || candidates ? null : createWailsStrategySolverClient()
+  ));
+  const comparisonClient = solverClient ?? ownedSolverClient;
+  const ownedSolverClientMountedRef = useRef(false);
   const loadRef = useRef<{ store: StrategyStore<StrategyEditorDocument>; promise: Promise<void> } | null>(null);
   const store = strategyStore ?? ownedRuntime?.store;
   if (!store) throw new Error("Strategy editor store is required");
@@ -163,6 +158,11 @@ export function StrategyPlannerPage({
     error?: string;
   } | null>(null);
   const [manualMode, setManualMode] = useState<"quick" | "laps">("quick");
+  const [solvedVariants, setSolvedVariants] = useState<{
+    draft: NonNullable<typeof storeSnapshot.draft>;
+    variants: readonly StrategyVariant[];
+    error?: string;
+  } | null>(null);
   const [planViolations, setPlanViolations] = useState<{
     draft: NonNullable<typeof storeSnapshot.draft>;
     violations: readonly StrategyPlanViolation[];
@@ -195,6 +195,17 @@ export function StrategyPlannerPage({
       });
     };
   }, [ownedManualClient]);
+
+  useEffect(() => {
+    ownedSolverClientMountedRef.current = true;
+    return () => {
+      ownedSolverClientMountedRef.current = false;
+      if (!ownedSolverClient) return;
+      queueMicrotask(() => {
+        if (!ownedSolverClientMountedRef.current) ownedSolverClient.dispose();
+      });
+    };
+  }, [ownedSolverClient]);
 
   useEffect(() => {
     ownedTyreClientMountedRef.current = true;
@@ -281,6 +292,33 @@ export function StrategyPlannerPage({
     );
     return () => { active = false; };
   }, [inventoryClient, screen, storeSnapshot.draft]);
+
+  const solvedCurrent = solvedVariants !== null && solvedVariants.draft === storeSnapshot.draft;
+  const variants = candidates ?? (solvedCurrent ? solvedVariants.variants : []);
+  const solverError = solvedCurrent ? solvedVariants.error ?? "" : "";
+  const solverLoading = !candidates && screen === "workspace" && Boolean(editorDocument) && !solvedCurrent;
+
+  useEffect(() => {
+    const draft = storeSnapshot.draft;
+    if (candidates || !comparisonClient || screen !== "workspace" || !draft) return;
+    const document = tryParseStrategyEditorDocument(draft.payload);
+    if (!document) return;
+    let active = true;
+    void comparisonClient.compare(document).then(
+      (comparison) => {
+        if (active) setSolvedVariants({ draft, variants: comparison.variants });
+      },
+      (error: unknown) => {
+        if (!active) return;
+        setSolvedVariants({
+          draft,
+          variants: [],
+          error: error instanceof Error ? error.message : "No se pudo comparar estrategias.",
+        });
+      },
+    );
+    return () => { active = false; };
+  }, [candidates, comparisonClient, screen, storeSnapshot.draft]);
 
   const editDocument = useCallback((change: (document: StrategyEditorDocument) => StrategyEditorDocument) => {
     setEditorError("");
@@ -413,7 +451,9 @@ export function StrategyPlannerPage({
         ) : <Workspace
           titleId={titleId}
           planName={planName}
-          candidates={candidates}
+          candidates={variants}
+          candidatesLoading={solverLoading}
+          candidatesError={solverError}
           violations={violations}
           document={editorDocument}
           dirty={storeSnapshot.dirty}
@@ -465,7 +505,7 @@ export function StrategyPlannerPage({
       </div>
 
       {comparisonOpen && (
-        <ComparisonDialog strategies={candidates} onClose={closeComparison} />
+        <ComparisonDialog strategies={variants} onClose={closeComparison} />
       )}
     </section>
   );
@@ -646,14 +686,16 @@ function ReviewScreen({ titleId, planName, entry, mode, onBack, onContinue }: { 
 }
 
 function Workspace({
-  titleId, planName, candidates, violations, document, dirty, canUndo, canRedo, busy, error,
+  titleId, planName, candidates, candidatesLoading, candidatesError, violations,
+  document, dirty, canUndo, canRedo, busy, error,
   manualResult, manualLoading, manualError, manualMode,
   activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
   onManualModeChange, onCorrectQuick, onClearQuick, onCorrectLap, onClearLap,
   onAppend, onInsert, onDuplicate, onDelete, onMove, onAssign, onClear,
   onUndo, onRedo, onSave,
 }: {
-  titleId: string; planName: string; candidates: readonly StrategyCandidate[];
+  titleId: string; planName: string; candidates: readonly StrategyVariant[];
+  candidatesLoading: boolean; candidatesError: string;
   violations: readonly StrategyPlanViolation[];
   document: StrategyEditorDocument;
   dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
@@ -750,16 +792,21 @@ function Workspace({
           <section className="strategy-panel">
             <PanelHeading
               title="Estrategias"
-              meta={candidates.length > 0 ? `${candidates.length} planes` : "Sin calcular"}
+              meta={candidatesLoading ? "Resolviendo" : candidates.length > 0 ? `${candidates.length} planes` : "Sin calcular"}
             />
-            {candidates.length > 0 ? (
-              candidates.map((candidate) => (
-                <StrategyOption key={candidate.label} strategy={candidate} />
-              ))
-            ) : (
+            {candidatesError && (
+              <p className="strategy-panel__empty" role="status" data-testid="strategy-candidates-error">
+                {candidatesError}
+              </p>
+            )}
+            {!candidatesError && candidates.length > 0 && candidates.map((variant) => (
+              <StrategyOption key={variant.kind} variant={variant} />
+            ))}
+            {!candidatesError && candidates.length === 0 && (
               <p className="strategy-panel__empty" data-testid="strategy-candidates-empty">
-                Todavía no hay estrategias calculadas. El motor que las genera llegará con STR-12;
-                hasta entonces el plan se construye a mano en la columna de stints.
+                {candidatesLoading
+                  ? "Resolviendo estrategias…"
+                  : "Sin estrategias: indica la caída de ritmo y el consumo en la entrada manual."}
               </p>
             )}
           </section>
@@ -914,48 +961,68 @@ function PanelHeading({ title, meta }: { title: string; meta: string }) {
   );
 }
 
-function StrategyOption({ strategy }: { strategy: StrategyCandidate }) {
-  const compoundUsage = summarizeCompoundUsage(strategy.compounds);
+const VARIANT_LABELS: Record<StrategyVariant["kind"], { letter: string; title: string }> = {
+  fast: { letter: "R", title: "Rápida" },
+  robust: { letter: "F", title: "Robusta" },
+  conservative: { letter: "C", title: "Conservadora" },
+};
+
+const RISK_LABELS: Record<StrategyVariant["risk"], string> = {
+  low: "Bajo",
+  medium: "Medio",
+  high: "Alto",
+};
+
+function StrategyOption({ variant }: { variant: StrategyVariant }) {
+  const label = VARIANT_LABELS[variant.kind];
+  const spread = variant.total.pessimisticSeconds - variant.total.optimisticSeconds;
 
   return (
     <article
-      className={`strategy-option ${strategy.active ? "is-active" : ""}`}
-      data-testid={`strategy-option-${strategy.label}`}
+      className={`strategy-option ${variant.dominated ? "is-dominated" : ""}`}
+      data-testid={`strategy-option-${variant.kind}`}
+      data-risk={variant.risk}
     >
       <header>
         <div>
-          <span>{strategy.label}</span>
-          <h3>{strategy.title}</h3>
-          {strategy.active && <b>ACTIVA</b>}
+          <span>{label.letter}</span>
+          <h3>{label.title}</h3>
+          {variant.dominated && <b data-testid={`strategy-dominated-${variant.kind}`}>DESCARTADA</b>}
         </div>
-        <strong>{strategy.deltaText}</strong>
+        <strong>
+          {variant.deltaToFastestSeconds === 0 ? "—" : `+${formatNumber(variant.deltaToFastestSeconds, 1)}s`}
+        </strong>
       </header>
-      <div className="strategy-compounds">
-        {strategy.compounds.map((compound, index) => (
-          <span
-            key={`${compound}-${index}`}
-            className={`is-${compound.toLowerCase()}`}
-            data-compound={compound}
-          >
-            ● {compound}
-          </span>
-        ))}
-      </div>
       <dl>
-        <div><dt>Tiempo</dt><dd>{strategy.totalTimeText}</dd></div>
-        <div><dt>Pits</dt><dd>{strategy.pitStops}</dd></div>
-        <div><dt>Stints</dt><dd data-testid="strategy-option-usage">{compoundUsage}</dd></div>
-        <div><dt>Ahorro</dt><dd>{strategy.fuelSaveText}</dd></div>
+        {/* A range, never a single figure: the inputs are estimates. */}
+        <div>
+          <dt>Tiempo</dt>
+          <dd data-testid={`strategy-total-${variant.kind}`}>
+            {formatDuration(variant.total.optimisticSeconds)} – {formatDuration(variant.total.pessimisticSeconds)}
+          </dd>
+        </div>
+        <div><dt>Pits</dt><dd>{variant.stops}</dd></div>
+        <div><dt>Riesgo</dt><dd>{RISK_LABELS[variant.risk]}</dd></div>
+        <div><dt>Margen</dt><dd>{variant.marginLaps} v</dd></div>
       </dl>
-      <p>{strategy.summary}</p>
+      <p>{variant.reasons[0]?.message ?? ""}</p>
+      {spread > 0 && (
+        <small className="strategy-option__spread">
+          Horquilla de {formatNumber(spread, 0)}s según cuánto caiga el ritmo
+        </small>
+      )}
     </article>
   );
 }
 
-function summarizeCompoundUsage(compounds: readonly string[]) {
-  const counts = new Map<string, number>();
-  for (const compound of compounds) counts.set(compound, (counts.get(compound) ?? 0) + 1);
-  return Array.from(counts, ([compound, count]) => `${count}${compound}`).join(" · ");
+/** Formats a race total in hours, minutes and seconds; not a lap time. */
+function formatDuration(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const rest = whole % 60;
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(rest).padStart(2, "0")}s`;
+  return `${minutes}m ${String(rest).padStart(2, "0")}s`;
 }
 
 function FuelSavePanel({ result, loading, error, document }: {
@@ -1101,7 +1168,7 @@ function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {
 }
 
 function ComparisonDialog({ strategies, onClose }: {
-  strategies: readonly StrategyCandidate[];
+  strategies: readonly StrategyVariant[];
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -1155,14 +1222,22 @@ function ComparisonDialog({ strategies, onClose }: {
           <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar comparación">×</button>
         </header>
         {strategies.length > 0 ? (
-          <div className="strategy-comparison-grid">
-            <span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span>
-            {strategies.map((strategy) => (
-              <Fragment key={strategy.label}>
-                <b>{strategy.title}</b>
-                <strong>{strategy.totalTimeText}</strong>
-                <em>{strategy.risk}</em>
-                <span>{strategy.pitStops}</span>
+          <div className="strategy-comparison-grid" data-columns="5">
+            <span>Plan</span><span>Tiempo</span><span>Diferencia</span><span>Riesgo</span><span>Paradas</span>
+            {strategies.map((variant) => (
+              <Fragment key={variant.kind}>
+                <b>
+                  {VARIANT_LABELS[variant.kind].title}
+                  {variant.dominated && <em className="strategy-comparison-grid__flag"> descartada</em>}
+                </b>
+                <strong>
+                  {formatDuration(variant.total.optimisticSeconds)} – {formatDuration(variant.total.pessimisticSeconds)}
+                </strong>
+                <span>
+                  {variant.deltaToFastestSeconds === 0 ? "—" : `+${formatNumber(variant.deltaToFastestSeconds, 1)}s`}
+                </span>
+                <em>{RISK_LABELS[variant.risk]}</em>
+                <span>{variant.stops}</span>
               </Fragment>
             ))}
           </div>
@@ -1172,7 +1247,8 @@ function ComparisonDialog({ strategies, onClose }: {
           </p>
         )}
         <p className="strategy-dialog__note">
-          El ranking, los rangos y la sensibilidad llegan con STR-13.
+          Los tiempos son horquillas, no cifras: dependen de cuánto caiga el ritmo y de que el consumo
+          se cumpla. Una estrategia descartada es la que otra iguala o mejora en tiempo y en margen.
         </p>
       </section>
     </div>

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-07T18:36:19Z",
+  "generatedAt": "2026-08-07T22:10:57Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,17 +28,11 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 13,
-            "total": 28,
-            "percent": 46
+            "done": 9,
+            "total": 21,
+            "percent": 43
           },
           "tasks": [
-            {
-              "id": "task_4e80bf0cc5d5f9cbf949",
-              "title": "Programa de paridad visual Overlay Studio V3",
-              "status": "in-progress",
-              "updatedAt": "2026-08-03T16:34:21.319Z"
-            },
             {
               "id": "task_f0c3e304758281802415",
               "title": "Programa Overlay Workshop code-first",
@@ -68,12 +62,6 @@
               "title": "Gate de release y paquete de aprobación final",
               "status": "planned",
               "updatedAt": "2026-08-04T17:39:45.983Z"
-            },
-            {
-              "id": "task_ec330243b0e724026d54",
-              "title": "Gate final visual, interacción y cross-surface",
-              "status": "planned",
-              "updatedAt": "2026-08-04T17:21:37.328Z"
             },
             {
               "id": "task_127db735a1bd8eba20fb",
@@ -106,12 +94,6 @@
               "updatedAt": "2026-08-05T17:46:22.144Z"
             },
             {
-              "id": "task_6a94ef6166f2466bd438",
-              "title": "Reparar harness E2E tras LauncherStoreProvider",
-              "status": "planned",
-              "updatedAt": "2026-08-01T15:05:04.780Z"
-            },
-            {
               "id": "task_ae5027b9e935ae76500d",
               "title": "Triage y correcciones del feedback Nightly",
               "status": "planned",
@@ -134,12 +116,6 @@
               "title": "Autoría directa sobre código productivo",
               "status": "done",
               "updatedAt": "2026-08-07T18:24:24.330Z"
-            },
-            {
-              "id": "task_fb6cb624693bac91dbf8",
-              "title": "Baseline post-preview y auditoría visual de las dos referencias",
-              "status": "done",
-              "updatedAt": "2026-07-14T21:38:09.417Z"
             },
             {
               "id": "task_6a631b0d9d71e80dbc19",
@@ -166,28 +142,10 @@
               "updatedAt": "2026-08-07T18:23:55.610Z"
             },
             {
-              "id": "task_25155cac20d0277fde0e",
-              "title": "Hotkey del overlay bloquea el perfil activo en carga",
-              "status": "done",
-              "updatedAt": "2026-08-03T17:49:25.893Z"
-            },
-            {
               "id": "task_367a1821d1d72d958291",
               "title": "N01: promover Overlay Workshop, restyle de Standings y baselines a Nightly",
               "status": "done",
               "updatedAt": "2026-08-05T21:48:07.650Z"
-            },
-            {
-              "id": "task_beebe898787a315d33d5",
-              "title": "Paridad 1:1 de los 21 diseños Vantare Crystal",
-              "status": "done",
-              "updatedAt": "2026-08-03T00:35:32.833Z"
-            },
-            {
-              "id": "task_2302a9f5b61cd8720fe1",
-              "title": "Paridad 1:1 del editor Overlay Studio",
-              "status": "done",
-              "updatedAt": "2026-08-03T00:35:28.969Z"
             },
             {
               "id": "task_7110c13b4b7c325111c7",

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type {
   SessionLayoutType,
   WidgetInstanceV3,
@@ -251,7 +258,15 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
   const guidesFrameRef = useRef<number | null>(null);
   const inputRef = useRef(input);
 
-  useEffect(() => {
+  // useLayoutEffect y no useEffect: beginMove/beginResize leen inputRef en el
+  // instante en que llega el pointerdown, y con un efecto pasivo ese ref podia
+  // llevar todavia los widgets del render anterior. Justo despues de que el
+  // perfil termina de cargar hay una ventana en la que el DOM ya muestra el
+  // widget pero inputRef.current.widgets sigue vacio: find() no lo encuentra,
+  // beginMove sale sin abrir interaccion y el arrastre siguiente no hace nada.
+  // El efecto de layout corre dentro del propio commit, antes de que nadie
+  // pueda observar el DOM nuevo, asi que esa ventana deja de existir.
+  useLayoutEffect(() => {
     inputRef.current = input;
   }, [input]);
 

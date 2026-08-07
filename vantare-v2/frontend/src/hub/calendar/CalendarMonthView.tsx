@@ -204,7 +204,12 @@ export function CalendarMonthView({
                       isToday ? "text-vantare-red-400 font-extrabold" : "text-vantare-textMuted",
                     ].join(" ")}
                   >
-                    {formatInZone(cell.date, timeZone, { day: "numeric" })}
+                    {/* The grid is built from local calendar days and every cell
+                        buckets its events by those same local components, so the
+                        label must read them too. Reformatting in `timeZone` shifted
+                        local midnight into the previous day for anyone ahead of it,
+                        printing 28 under "Lunes" where the cell holds June 29. */}
+                    {cell.date.getDate()}
                   </span>
                 </div>
 

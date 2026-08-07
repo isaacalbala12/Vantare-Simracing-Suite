@@ -35,6 +35,15 @@ export type RoadmapArea = {
   title: LocalizedText;
   progress: number;
   status: RoadmapStatus;
+  /**
+   * Ids of the projects in the public projects snapshot that make up this
+   * area. When present, the area's percentage is computed from their tasks and
+   * the `progress` field above is only a fallback for when that snapshot is
+   * unavailable. Hand-maintained numbers sitting next to live ones drift, and
+   * did: the editorial roadmap claimed 25% for telemetry while the projects
+   * tab, reading the same workspace, showed 94%.
+   */
+  projects?: ReadonlyArray<string>;
 };
 
 export type RoadmapMilestone = {
@@ -66,10 +75,68 @@ export function clampProgress(value: number): number {
   return value;
 }
 
-export function getOverallProgress(areas: ReadonlyArray<RoadmapArea>): number {
+/**
+ * Percentage for one area. Areas linked to projects are counted from those
+ * projects' tasks, so the figure moves on its own as work closes in Linear.
+ * The declared `progress` is the fallback for an unlinked area, or for when
+ * the projects snapshot could not be read.
+ */
+export function resolveAreaProgress(
+  area: RoadmapArea,
+  projects: ReadonlyMap<string, { done: number; total: number }> | null,
+): number {
+  if (!projects || !area.projects || area.projects.length === 0) {
+    return clampProgress(area.progress);
+  }
+  let done = 0;
+  let total = 0;
+  for (const id of area.projects) {
+    const project = projects.get(id);
+    if (!project) continue;
+    done += project.done;
+    total += project.total;
+  }
+  if (total === 0) return clampProgress(area.progress);
+  return clampProgress(Math.round((done / total) * 100));
+}
+
+/**
+ * Indexes a projects snapshot by id, keeping only the task counts the areas
+ * need. Projects with no tasks report a null percentage and are skipped, so an
+ * empty project cannot drag an area's figure towards zero.
+ */
+export function indexProjectProgress(
+  snapshot: {
+    tabs: ReadonlyArray<{
+      projects: ReadonlyArray<{ id: string; progress: { done: number; total: number } | null }>;
+    }>;
+  } | null,
+): ReadonlyMap<string, { done: number; total: number }> | null {
+  if (!snapshot) return null;
+  const index = new Map<string, { done: number; total: number }>();
+  for (const tab of snapshot.tabs) {
+    for (const project of tab.projects) {
+      if (!project.progress || project.progress.total === 0) continue;
+      index.set(project.id, { done: project.progress.done, total: project.progress.total });
+    }
+  }
+  return index;
+}
+
+/**
+ * Overall figure. Averaging the resolved percentages weights every area the
+ * same regardless of how many tasks it holds, which is what the areas list
+ * shows and therefore what a reader expects the headline to summarise.
+ * Reported as measured rather than snapped to the coarse scale: rounding 94%
+ * up to 100% would announce finished work that is not finished.
+ */
+export function getOverallProgress(
+  areas: ReadonlyArray<RoadmapArea>,
+  projects: ReadonlyMap<string, { done: number; total: number }> | null = null,
+): number {
   if (areas.length === 0) return 0;
-  const sum = areas.reduce((acc, a) => acc + a.progress, 0);
-  return nearestOnScale(Math.round(sum / areas.length));
+  const sum = areas.reduce((acc, area) => acc + resolveAreaProgress(area, projects), 0);
+  return Math.round(sum / areas.length);
 }
 
 export function getCurrentPhase(
@@ -160,14 +227,13 @@ export const ROADMAP_FALLBACK: RoadmapDataset = {
     },
   ],
   areas: [
-    { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", pt: "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress" },
-    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress" },
-    { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", pt: "Telemetria", it: "Telemetria" }, progress: 25, status: "in-progress" },
-    { id: "calendar-local", title: { es: "Calendario local", en: "Local calendar", pt: "Calendario local", it: "Calendario locale" }, progress: 50, status: "in-progress" },
-    { id: "engineer", title: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, progress: 25, status: "planned" },
-    { id: "strategy", title: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, progress: 25, status: "in-progress" },
-    { id: "licensing", title: { es: "Licencias y cuenta", en: "Licensing and account", pt: "Licenças e conta", it: "Licenze e account" }, progress: 50, status: "in-progress" },
-    { id: "ui-v52", title: { es: "UI v5.2", en: "UI v5.2", pt: "UI v5.2", it: "UI v5.2" }, progress: 75, status: "in-progress" },
+    { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", pt: "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress", projects: ["overlay-studio-v3"] },
+    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress", projects: ["launcher"] },
+    { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", pt: "Telemetria", it: "Telemetria" }, progress: 25, status: "in-progress", projects: ["telemetry-core", "telemetry-analysis"] },
+    { id: "calendar-local", title: { es: "Calendario", en: "Calendar", pt: "Calendário", it: "Calendario" }, progress: 50, status: "in-progress", projects: ["calendar"] },
+    { id: "engineer", title: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, progress: 25, status: "planned", projects: ["engineer-spotter"] },
+    { id: "strategy", title: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, progress: 25, status: "in-progress", projects: ["strategy-planner"] },
+    { id: "licensing", title: { es: "Licencias y cuenta", en: "Licensing and account", pt: "Licenças e conta", it: "Licenze e account" }, progress: 50, status: "in-progress", projects: ["billing"] },
   ],
   milestones: [
     {
@@ -257,6 +323,9 @@ function normalizeRoadmapSource(raw: unknown): RoadmapDataset | null {
       title: asText(a.title),
       progress: clampProgress(Number(a.progress) || 0),
       status: asStatus(a.status),
+      projects: Array.isArray(a.projects)
+        ? (a.projects as unknown[]).map((p) => String(p)).filter((p) => p.length > 0)
+        : undefined,
     }));
   const milestones = obj.milestones
     .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")

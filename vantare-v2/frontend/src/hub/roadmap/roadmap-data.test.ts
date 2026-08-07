@@ -3,6 +3,8 @@ import {
   clampProgress,
   getOverallProgress,
   getCurrentPhase,
+  indexProjectProgress,
+  resolveAreaProgress,
   nearestOnScale,
   PROGRESS_SCALE,
   ROADMAP_FALLBACK,
@@ -63,8 +65,12 @@ describe("ROADMAP_FALLBACK dataset", () => {
       expect(PROGRESS_SCALE).toContain(a.progress);
     }
   });
-  it("overall progress is on the scale", () => {
-    expect(PROGRESS_SCALE).toContain(getOverallProgress(ROADMAP_FALLBACK.areas));
+  it("reports an overall percentage in range", () => {
+    // Not asserted to be on the scale: once the projects snapshot loads, the
+    // figure is counted from Linear and lands wherever the real work is.
+    const overall = getOverallProgress(ROADMAP_FALLBACK.areas);
+    expect(overall).toBeGreaterThanOrEqual(0);
+    expect(overall).toBeLessThanOrEqual(100);
   });
   it("does not contain prohibited fake strings", () => {
     const allText = JSON.stringify(ROADMAP_FALLBACK);
@@ -119,20 +125,67 @@ describe("getOverallProgress", () => {
   it("returns 0 for empty array", () => {
     expect(getOverallProgress([])).toBe(0);
   });
-  it("snaps to the progress scale (40 -> 50)", () => {
+  // Percentages are counted from Linear now, so the coarse 0/10/25/50/75/100
+  // scale no longer applies to them. Snapping a measured 94% up to 100% would
+  // announce finished work that is not finished.
+  it("reports the measured mean rather than a scale value", () => {
     const areas: ReadonlyArray<RoadmapArea> = [
       { id: "a", title: lt("a"), progress: 50, status: "in-progress" },
       { id: "b", title: lt("b"), progress: 30, status: "in-progress" },
     ];
-    expect(getOverallProgress(areas)).toBe(50);
+    expect(getOverallProgress(areas)).toBe(40);
   });
-  it("snaps to the progress scale (33 -> 25)", () => {
+  it("rounds the mean to a whole percentage", () => {
     const areas: ReadonlyArray<RoadmapArea> = [
       { id: "a", title: lt("a"), progress: 33, status: "in-progress" },
       { id: "b", title: lt("b"), progress: 33, status: "in-progress" },
-      { id: "c", title: lt("c"), progress: 33, status: "in-progress" },
+      { id: "c", title: lt("c"), progress: 34, status: "in-progress" },
     ];
-    expect(getOverallProgress(areas)).toBe(25);
+    expect(getOverallProgress(areas)).toBe(33);
+  });
+  it("counts linked areas from the projects snapshot, not their declared figure", () => {
+    const areas: ReadonlyArray<RoadmapArea> = [
+      { id: "telemetry", title: lt("t"), progress: 25, status: "in-progress", projects: ["core", "analysis"] },
+      { id: "launcher", title: lt("l"), progress: 60, status: "in-progress" },
+    ];
+    const projects = new Map([
+      ["core", { done: 44, total: 47 }],
+      ["analysis", { done: 6, total: 9 }],
+    ]);
+    // 50 of 56 tasks across both projects, so the area reads 89, not 25.
+    expect(resolveAreaProgress(areas[0], projects)).toBe(89);
+    // An unlinked area keeps its declared figure.
+    expect(resolveAreaProgress(areas[1], projects)).toBe(60);
+    expect(getOverallProgress(areas, projects)).toBe(75);
+  });
+  it("falls back to the declared figure when the snapshot is missing a project", () => {
+    const area: RoadmapArea = {
+      id: "telemetry", title: lt("t"), progress: 25, status: "in-progress", projects: ["absent"],
+    };
+    expect(resolveAreaProgress(area, new Map())).toBe(25);
+    expect(resolveAreaProgress(area, null)).toBe(25);
+  });
+});
+
+describe("indexProjectProgress", () => {
+  it("skips projects with no tasks so they cannot drag an area down", () => {
+    const index = indexProjectProgress({
+      tabs: [
+        {
+          projects: [
+            { id: "counted", progress: { done: 2, total: 4 } },
+            { id: "empty", progress: null },
+            { id: "zero", progress: { done: 0, total: 0 } },
+          ],
+        },
+      ],
+    });
+    expect(index?.get("counted")).toEqual({ done: 2, total: 4 });
+    expect(index?.has("empty")).toBe(false);
+    expect(index?.has("zero")).toBe(false);
+  });
+  it("returns null without a snapshot", () => {
+    expect(indexProjectProgress(null)).toBeNull();
   });
 });
 

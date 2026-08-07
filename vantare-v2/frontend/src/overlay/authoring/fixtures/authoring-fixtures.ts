@@ -149,6 +149,8 @@ type ReplayOverride = {
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
+  /** Drops the car from the field entirely (retirement / rejoin frames). */
+  absent?: boolean;
 };
 
 export const STANDINGS_REPLAY_FRAME_COUNT = 10;
@@ -156,7 +158,8 @@ export const STANDINGS_REPLAY_FRAME_COUNT = 10;
 /**
  * Deterministic replay timeline for the Workshop motion preview: battle forms
  * and crystallizes (f1-f3), an overtake resolves it (f4-f5), pit stop with a
- * tire change (f6-f7) and a session-best takeover (f7), then back to baseline.
+ * tire change (f6-f7), a session-best takeover (f7), a retirement (f8-f9) and
+ * the re-entry back to baseline (f0).
  */
 function replayOverrides(frame: number): Record<string, ReplayOverride> {
   const bovyBase = 19.35;
@@ -195,17 +198,28 @@ function replayOverrides(frame: number): Record<string, ReplayOverride> {
       "Sarah Bovy": { place: 10, timeBehindLeader: bovyBase + 1.3 },
       "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 },
       "Ben Hanley": { bestLapTime: 85.902 },
+      ...(step === 8 ? { "Conrad Laursen": { absent: true } } : {}),
     };
+  }
+  if (step === 9) {
+    // Laursen stays out one more frame so frame 0 plays his re-entry slide.
+    return { "Conrad Laursen": { absent: true } };
   }
   return {};
 }
 
 export function buildStandingsReplayScoring(frame: number): Record<string, unknown>[] {
   const overrides = replayOverrides(frame);
-  return buildStandingsMulticlassScoring().map((row) => {
-    const patch = overrides[String(row.driverName)];
-    return patch ? { ...row, ...patch } : row;
-  });
+  return buildStandingsMulticlassScoring()
+    .filter((row) => !overrides[String(row.driverName)]?.absent)
+    .map((row) => {
+      const patch = overrides[String(row.driverName)];
+      if (!patch) {
+        return row;
+      }
+      const { absent: _absent, ...rest } = patch;
+      return { ...row, ...rest };
+    });
 }
 
 function buildStandingsMulticlassScoring(): Record<string, unknown>[] {
@@ -495,6 +509,8 @@ export function buildHarnessTelemetry(input: {
   if (input.widget === "standings" && variant === "standings-replay") {
     return {
       ...readyBase,
+      // Under five minutes so the session slot breathes during the replay.
+      session: { ...readyBase.session, remainingSeconds: 272 },
       scoring: buildStandingsReplayScoring(input.replayFrame ?? 0),
     };
   }

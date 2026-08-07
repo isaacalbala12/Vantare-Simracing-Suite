@@ -7,6 +7,7 @@ import {
   deriveBattlePairs,
   deriveFlipOffsets,
   derivePositionDeltas,
+  deriveRosterChange,
   deriveStandingsEvents,
   classPositionsById,
 } from "./standings-motion";
@@ -141,6 +142,26 @@ describe("standings-motion", () => {
     expect(offsets.get("c")).toBe(30);
     expect(offsets.get("b")).toBe(-30);
     expect(offsets.has("a")).toBe(false);
+  });
+
+  it("derives roster entries and retirements with the ghost's in-class index", () => {
+    const prev = gridA();
+    const next = model([
+      row({ id: "a", position: 1, gapText: "—" }),
+      row({ id: "c", position: 2, gapText: "+3.9s", isPlayer: true }),
+      row({ id: "d", position: 3, gapText: "+9.0s" }),
+    ]);
+    const change = deriveRosterChange(prev, next);
+    expect(change.entered).toEqual(["d"]);
+    expect(change.retired).toHaveLength(1);
+    expect(change.retired[0]!.row.id).toBe("b");
+    expect(change.retired[0]!.vehicleClass).toBe("GT3");
+    expect(change.retired[0]!.classIndex).toBe(1);
+  });
+
+  it("derives an empty roster change without a previous ready model", () => {
+    expect(deriveRosterChange(null, gridA())).toEqual({ entered: [], retired: [] });
+    expect(deriveRosterChange(model([], "stale"), gridA())).toEqual({ entered: [], retired: [] });
   });
 
   it("tracks net position deltas against the session baseline", () => {

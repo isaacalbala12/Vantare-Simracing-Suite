@@ -189,6 +189,39 @@ export function deriveFlipOffsets(
   return offsets;
 }
 
+export type RosterChange = {
+  /** Rows present now that were absent before. */
+  entered: string[];
+  /** Rows that vanished, with where they sat so the renderer can ghost them out in place. */
+  retired: { row: StandingsRowViewModel; vehicleClass: string; classIndex: number }[];
+};
+
+/**
+ * Roster diff between two ready models: who joined the field and who left it.
+ * Retirements carry the row's last ViewModel plus its in-class index so the
+ * template can render a fading ghost exactly where the car used to be.
+ */
+export function deriveRosterChange(
+  prev: StandingsViewModel | null,
+  next: StandingsViewModel,
+): RosterChange {
+  if (!prev || prev.status !== "ready" || next.status !== "ready") {
+    return { entered: [], retired: [] };
+  }
+  const prevIds = new Set(prev.rows.map((row) => row.id));
+  const nextIds = new Set(next.rows.map((row) => row.id));
+  const entered = next.rows.filter((row) => !prevIds.has(row.id)).map((row) => row.id);
+  const retired: RosterChange["retired"] = [];
+  for (const group of groupRowsByClass(prev.rows)) {
+    group.rows.forEach((row, index) => {
+      if (!nextIds.has(row.id)) {
+        retired.push({ row, vehicleClass: group.vehicleClass, classIndex: index });
+      }
+    });
+  }
+  return { entered, retired };
+}
+
 /** Net positions gained (+) or lost (−) versus the baseline the player joined with. */
 export function derivePositionDeltas(
   baseline: ReadonlyMap<string, number>,

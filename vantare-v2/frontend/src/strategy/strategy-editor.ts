@@ -3,25 +3,35 @@ import {
   parseStrategyManualInputs,
   type StrategyManualInputs,
 } from "./strategy-manual-input";
+import {
+  assertPlannable,
+  defaultTyreCondition,
+  parseStrategyTyre,
+  STRATEGY_CORNERS,
+  StrategyTyreError,
+  type StrategyCompound,
+  type StrategyCorner,
+  type StrategyTyre,
+  type StrategyTyreOrigin,
+} from "./strategy-tyre";
+
+export {
+  cornerLabel,
+  formatCondition,
+  conditionMidpoint,
+  isConditionExact,
+  STRATEGY_CORNERS,
+} from "./strategy-tyre";
+export type {
+  StrategyCompound,
+  StrategyCorner,
+  StrategyTyre,
+  StrategyTyreCondition,
+  StrategyTyreOrigin,
+  StrategyTyreState,
+} from "./strategy-tyre";
 
 export const STRATEGY_EDITOR_VERSION = "strategy.editor.v1" as const;
-
-export const STRATEGY_CORNERS = [
-  "front_left",
-  "front_right",
-  "rear_left",
-  "rear_right",
-] as const;
-
-export type StrategyCorner = (typeof STRATEGY_CORNERS)[number];
-export type StrategyCompound = "soft" | "medium" | "hard" | "wet";
-
-export type StrategyTyre = {
-  readonly id: string;
-  readonly compound: StrategyCompound;
-  readonly remainingPercent: number;
-  readonly lockedCorner?: StrategyCorner;
-};
 
 export type StrategyStint = {
   readonly id: string;
@@ -44,6 +54,7 @@ export type StrategyEditorErrorCode =
   | "stint_not_found"
   | "tyre_not_found"
   | "corner_locked"
+  | "tyre_discarded"
   | "tyre_already_assigned"
   | "last_stint";
 
@@ -59,14 +70,14 @@ export class StrategyEditorError extends Error {
 
 export function createDefaultStrategyEditorDocument(): StrategyEditorDocument {
   const tyres: StrategyTyre[] = [
-    tyre("M-01", "medium", 78, "front_left"),
-    tyre("M-02", "medium", 78, "front_right"),
-    tyre("H-03", "hard", 77, "rear_left"),
-    tyre("H-04", "hard", 77, "rear_right"),
-    tyre("S-05", "soft", 100),
-    tyre("S-06", "soft", 100),
-    tyre("H-07", "hard", 90),
-    tyre("M-08", "medium", 84),
+    usedTyre("M-01", "medium", "front_left"),
+    usedTyre("M-02", "medium", "front_right"),
+    usedTyre("H-03", "hard", "rear_left"),
+    usedTyre("H-04", "hard", "rear_right"),
+    freeTyre("S-05", "soft"),
+    freeTyre("S-06", "soft"),
+    freeTyre("H-07", "hard"),
+    freeTyre("M-08", "medium"),
   ];
   const baseAssignments = assignments("M-01", "M-02", "H-03", "H-04");
   return freezeDocument({
@@ -94,7 +105,7 @@ export function parseStrategyEditorDocument(value: unknown): StrategyEditorDocum
     throw invalidDocument("stints and tyres are required");
   }
 
-  const tyres = value.tyres.map(parseTyre);
+  const tyres = value.tyres.map(parseStrategyTyre);
   const tyreIds = new Set<string>();
   for (const item of tyres) {
     if (tyreIds.has(item.id)) throw invalidDocument(`duplicate tyre ${item.id}`);
@@ -229,6 +240,17 @@ export function assignTyre(
   if (!STRATEGY_CORNERS.includes(corner)) throw invalidDocument("unknown corner");
   const selected = current.tyres[tyreIndex];
   const target = current.stints[index];
+  // The domain decides legality. Planning is not mounting, so assigning a
+  // fresh tyre never locks its corner: only recorded use does that.
+  try {
+    assertPlannable(selected, corner);
+  } catch (error) {
+    if (error instanceof StrategyTyreError) {
+      const code = error.code === "tyre_discarded" ? "tyre_discarded" : "corner_locked";
+      throw new StrategyEditorError(code, error.message);
+    }
+    throw error;
+  }
   for (const candidate of STRATEGY_CORNERS) {
     if (candidate !== corner && target.assignments[candidate] === tyreId) {
       throw new StrategyEditorError(
@@ -237,12 +259,6 @@ export function assignTyre(
       );
     }
   }
-  if (selected.lockedCorner && selected.lockedCorner !== corner) {
-    throw new StrategyEditorError(
-      "corner_locked",
-      `${tyreId} está ligado a ${cornerLabel(selected.lockedCorner)}.`,
-    );
-  }
   if (target.assignments[corner] === tyreId) return current;
 
   const stints = [...current.stints];
@@ -250,9 +266,7 @@ export function assignTyre(
     ...target,
     assignments: { ...target.assignments, [corner]: tyreId },
   };
-  const tyres = [...current.tyres];
-  tyres[tyreIndex] = selected.lockedCorner ? selected : { ...selected, lockedCorner: corner };
-  return parseStrategyEditorDocument({ ...current, stints, tyres });
+  return parseStrategyEditorDocument({ ...current, stints });
 }
 
 export function clearTyreAssignment(
@@ -291,32 +305,6 @@ export function tyreUseCount(document: StrategyEditorDocument, tyreId: string): 
     (count, item) => count + STRATEGY_CORNERS.filter((corner) => item.assignments[corner] === tyreId).length,
     0,
   );
-}
-
-export function cornerLabel(corner: StrategyCorner): string {
-  return ({
-    front_left: "FL",
-    front_right: "FR",
-    rear_left: "RL",
-    rear_right: "RR",
-  } as const)[corner];
-}
-
-function parseTyre(value: unknown): StrategyTyre {
-  if (!isRecord(value) || !validID(value.id)) throw invalidDocument("invalid tyre id");
-  if (!isCompound(value.compound)) throw invalidDocument(`invalid compound for ${String(value.id)}`);
-  if (typeof value.remainingPercent !== "number" || !Number.isFinite(value.remainingPercent) || value.remainingPercent < 0 || value.remainingPercent > 100) {
-    throw invalidDocument(`invalid remaining percentage for ${String(value.id)}`);
-  }
-  if (value.lockedCorner !== undefined && !isCorner(value.lockedCorner)) {
-    throw invalidDocument(`invalid locked corner for ${String(value.id)}`);
-  }
-  return {
-    id: value.id,
-    compound: value.compound,
-    remainingPercent: value.remainingPercent,
-    ...(value.lockedCorner ? { lockedCorner: value.lockedCorner } : {}),
-  };
 }
 
 function parseStint(value: unknown, tyreIds: ReadonlySet<string>): StrategyStint {
@@ -372,8 +360,23 @@ function emptyAssignments(): Record<StrategyCorner, string | null> {
   return { front_left: null, front_right: null, rear_left: null, rear_right: null };
 }
 
-function tyre(id: string, compound: StrategyCompound, remainingPercent: number, lockedCorner?: StrategyCorner): StrategyTyre {
-  return { id, compound, remainingPercent, ...(lockedCorner ? { lockedCorner } : {}) };
+function freeTyre(id: string, compound: StrategyCompound): StrategyTyre {
+  return tyreFrom(id, compound, "event_allocation", "free", 0);
+}
+
+/** A tyre that has already run, so its corner is permanently fixed. */
+function usedTyre(id: string, compound: StrategyCompound, lockedCorner: StrategyCorner): StrategyTyre {
+  return { ...tyreFrom(id, compound, "qualifying", "used", 1), lockedCorner };
+}
+
+function tyreFrom(
+  id: string,
+  compound: StrategyCompound,
+  origin: StrategyTyreOrigin,
+  state: StrategyTyre["state"],
+  stints: number,
+): StrategyTyre {
+  return { id, compound, origin, condition: defaultTyreCondition(origin), state, stints };
 }
 
 function stint(
@@ -404,14 +407,6 @@ function invalidDocument(message: string) {
 
 function validID(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
-}
-
-function isCompound(value: unknown): value is StrategyCompound {
-  return value === "soft" || value === "medium" || value === "hard" || value === "wet";
-}
-
-function isCorner(value: unknown): value is StrategyCorner {
-  return typeof value === "string" && STRATEGY_CORNERS.includes(value as StrategyCorner);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

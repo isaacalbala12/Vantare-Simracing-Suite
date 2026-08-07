@@ -187,12 +187,18 @@ describe("Strategy Planner shell", () => {
     expect(screen.getByText("Asignación cancelada. El plan no ha cambiado.")).toBeTruthy();
     expect(screen.getByTestId("strategy-tyre-S-06").getAttribute("aria-pressed")).toBe("false");
 
+    // S-06 has never run, so it may be planned on a different corner later.
     fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
     fireEvent.click(screen.getByTestId("strategy-slot-stint-1-front_right"));
     expect(within(screen.getByTestId("strategy-slot-stint-1-front_right")).getByText("S-06")).toBeTruthy();
     fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
     fireEvent.click(screen.getByTestId("strategy-slot-stint-2-rear_right"));
-    expect(screen.getByRole("alert").textContent).toContain("S-06 está ligado a FR");
+    expect(within(screen.getByTestId("strategy-slot-stint-2-rear_right")).getByText("S-06")).toBeTruthy();
+
+    // M-01 already ran on front left, so the domain refuses any other corner.
+    fireEvent.click(screen.getByTestId("strategy-tyre-M-01"));
+    fireEvent.click(screen.getByTestId("strategy-slot-stint-2-rear_left"));
+    expect(screen.getByRole("alert").textContent).toContain("M-01 está ligado a FL");
   });
 
   it("survives React StrictMode without duplicate opening or a disposed runtime", async () => {

@@ -3,8 +3,11 @@ import {
   appendStint,
   assignTyre,
   clearTyreAssignment,
+  conditionMidpoint,
   cornerLabel,
   deleteStint,
+  formatCondition,
+  isConditionExact,
   duplicateStint,
   insertStint,
   moveStint,
@@ -968,8 +971,9 @@ function StintCard({
                 >
                   <span>{cornerLabel(corner)}</span>
                   <b>{tyreId ?? "—"}</b>
-                  <small>{tyre ? `${tyre.remainingPercent}% · ${tyre.compound}` : "Vacío"}</small>
-                  <i><em style={{ width: `${tyre?.remainingPercent ?? 0}%` }} /></i>
+                  <small>{tyre ? `${formatCondition(tyre.condition)} · ${tyre.compound}` : "Vacío"}</small>
+                  {/* The bar uses the midpoint; the text above carries the real range. */}
+                  <i><em style={{ width: `${tyre ? conditionMidpoint(tyre.condition) : 0}%` }} /></i>
                 </button>
                 {tyreId && <button type="button" className="strategy-slot-clear" onClick={() => onClear(corner)} aria-label={`Quitar ${tyreId} de ${cornerLabel(corner)} del stint ${index + 1}`}>×</button>}
               </div>
@@ -1017,7 +1021,10 @@ function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {
     >
       <span className={`strategy-compound is-${tyre.compound}`}>● {tyre.compound.toUpperCase()}</span>
       <div><b>{tyre.id}</b><small>{uses} stint{uses === 1 ? "" : "s"}{tyre.lockedCorner ? ` · ${cornerLabel(tyre.lockedCorner)}` : " · libre"}</small></div>
-      <strong>{tyre.remainingPercent}%</strong>
+      <strong
+        data-exact={isConditionExact(tyre.condition) ? "true" : undefined}
+        title={`${tyre.condition.confidence.level} · ${tyre.condition.provenance.kind}`}
+      >{formatCondition(tyre.condition)}</strong>
     </button>
   );
 }

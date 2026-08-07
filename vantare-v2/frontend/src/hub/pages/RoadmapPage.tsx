@@ -9,6 +9,8 @@ import {
   getOverallProgress,
   getCurrentPhase,
   fetchRoadmapDataset,
+  indexProjectProgress,
+  resolveAreaProgress,
   ROADMAP_FALLBACK,
   type RoadmapDataset,
   type RoadmapStatus,
@@ -17,6 +19,7 @@ import {
 } from "../roadmap/roadmap-data";
 import { pickText } from "../roadmap/roadmap-data";
 import { RoadmapProjectTabs } from "../roadmap/RoadmapProjectTabs";
+import { fetchRoadmapProjectsDataset } from "../roadmap/projects-data";
 
 const STATUS_COLORS = {
   active: "text-vantare-red-400 border-vantare-red-500/30 bg-vantare-red-500/10",
@@ -160,15 +163,25 @@ export function RoadmapPage() {
   const [activeKey, setActiveKey] = useState<"current" | "next">("current");
   const viewTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [dataset, setDataset] = useState<RoadmapDataset>(ROADMAP_FALLBACK);
+  // Area percentages are counted from the projects snapshot rather than kept
+  // by hand, so the two views of this page cannot disagree. Until it loads,
+  // areas fall back to their declared figure.
+  const [projectProgress, setProjectProgress] = useState<ReadonlyMap<
+    string,
+    { done: number; total: number }
+  > | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     fetchRoadmapDataset(controller.signal).then(setDataset).catch(() => {});
+    fetchRoadmapProjectsDataset(controller.signal)
+      .then((result) => setProjectProgress(indexProjectProgress(result.dataset)))
+      .catch(() => {});
     return () => controller.abort();
   }, []);
 
   const currentPhase = getCurrentPhase(dataset.phases);
-  const overallProgress = getOverallProgress(dataset.areas);
+  const overallProgress = getOverallProgress(dataset.areas, projectProgress);
   const allPhasesDoneOrActive = dataset.phases.filter(
     (p) => p.status === "done" || p.status === "in-progress",
   ).length;
@@ -368,17 +381,20 @@ export function RoadmapPage() {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-white/5 space-y-2.5">
-                {dataset.areas.map((area) => (
-                  <div key={area.id}>
-                    <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-vantare-textMuted">{pickText(area.title, locale)}</span>
-                      <span className="font-mono font-bold text-white">{area.progress}%</span>
+                {dataset.areas.map((area) => {
+                  const progress = resolveAreaProgress(area, projectProgress);
+                  return (
+                    <div key={area.id}>
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="text-vantare-textMuted">{pickText(area.title, locale)}</span>
+                        <span className="font-mono font-bold text-white">{progress}%</span>
+                      </div>
+                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, area.progress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
             <section className="glass-panel rounded-xl p-5 lg:col-span-2">

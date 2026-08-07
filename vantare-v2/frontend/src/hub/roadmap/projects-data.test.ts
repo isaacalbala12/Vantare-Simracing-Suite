@@ -25,14 +25,16 @@ describe("projects-data", () => {
   });
 
   it("validates the v1 nightly contract and fallback shape", () => {
-    // Tabs and projects come from the versioned catalog, so they are pinned.
-    // The task count is whatever Linear held when the exporter last ran, and
-    // pinning it made every snapshot refresh look like a regression.
-    expect(normalizeRoadmapProjectsSnapshot(ROADMAP_PROJECTS_FALLBACK)?.tabs).toHaveLength(3);
-    expect(ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects)).toHaveLength(6);
-    expect(
-      ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects).flatMap((project) => project.tasks).length,
-    ).toBeGreaterThan(0);
+    // Counts are not pinned: tabs and projects follow the catalog, which grows
+    // as areas gain a Linear project, and the task count is whatever Linear
+    // held when the exporter last ran. Pinning any of them turned an ordinary
+    // refresh into a failing test.
+    const normalized = normalizeRoadmapProjectsSnapshot(ROADMAP_PROJECTS_FALLBACK);
+    expect(normalized?.tabs.length).toBeGreaterThan(0);
+    const projects = ROADMAP_PROJECTS_FALLBACK.tabs.flatMap((tab) => tab.projects);
+    expect(projects.length).toBeGreaterThan(0);
+    expect(new Set(projects.map((project) => project.id)).size).toBe(projects.length);
+    expect(projects.flatMap((project) => project.tasks).length).toBeGreaterThan(0);
     expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, channel: "master" })).toBeNull();
     expect(normalizeRoadmapProjectsSnapshot({ ...ROADMAP_PROJECTS_FALLBACK, tabs: [] })).toBeNull();
   });

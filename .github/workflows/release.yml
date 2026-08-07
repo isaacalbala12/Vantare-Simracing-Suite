@@ -267,6 +267,23 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm lint
 
+      - name: Sync embedded version with the release tag
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          $tag = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { "${{ github.ref_name }}" }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+\.\d+(-[A-Za-z0-9.]+)?$') {
+            # Build-only dispatches run from a branch and publish nothing, so the
+            # committed VERSION is good enough for them.
+            Write-Host "::notice::Ref '$tag' is not a release tag; keeping the committed VERSION"
+            exit 0
+          }
+          go run ./build/sync_version.go -from-tag $tag
+          # Carries the pre-release suffix into -X main.version; without it the
+          # binary would report the numeric version only and re-offer its own update.
+          "VANTARE_VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Building as $tag"
+
       - name: Build release artifacts
         run: |
           wails3 task release:clean

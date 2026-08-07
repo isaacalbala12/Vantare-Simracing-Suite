@@ -236,57 +236,21 @@ jobs:
         env:
           INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if ($env:INTERNAL_BUILD -ne "true") {
-            go test ./...
-            exit $LASTEXITCODE
-          }
-
-          $appPackage = "github.com/vantare/overlays/v2/internal/app"
-          $otherPackages = @(go list ./... | Where-Object { $_ -ne $appPackage })
-          if ($LASTEXITCODE -ne 0) { throw "go list failed" }
-          go test @otherPackages
-          if ($LASTEXITCODE -ne 0) { throw "Go package tests failed" }
-          go test ./internal/app -skip '^TestConcurrentSavesDontCorruptFile$'
-          if ($LASTEXITCODE -ne 0) { throw "internal/app tests failed" }
-
-      - name: Gate - ISA-118 concurrent settings save (internal advisory)
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
+          # ISA-118 used to be carved out of internal builds and repeated as an
+          # advisory step. Its cause is fixed, so every build runs the same suite.
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw "Go tests failed" }
 
       - name: Gate - Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         env:
           INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if ($env:INTERNAL_BUILD -ne "true") {
-            pnpm test
-            exit $LASTEXITCODE
-          }
-
-          pnpm exec vitest run `
-            --exclude scripts/crystal-reference-manifest.test.mjs `
-            --exclude src/hub/calendar/CalendarMonthView.test.tsx `
-            --exclude src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
-          if ($LASTEXITCODE -ne 0) { throw "Blocking frontend tests failed" }
-
-      - name: Gate - ISA-173 Crystal manifest runner (internal advisory)
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
-
-      - name: Gate - ISA-174 Calendar month boundary (internal advisory)
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
-
-      - name: Gate - ISA-172 canvas interaction flake (internal advisory)
-        if: github.event_name == 'workflow_dispatch'
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+          # ISA-172, ISA-173 and ISA-174 used to be excluded here and repeated as
+          # advisory steps. Their causes are fixed, so internal builds now run the
+          # same suite as public ones.
+          pnpm test
+          if ($LASTEXITCODE -ne 0) { throw "Frontend tests failed" }
 
       - name: Gate - Frontend lint
         continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}

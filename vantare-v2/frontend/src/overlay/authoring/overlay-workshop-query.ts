@@ -90,6 +90,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (variant === "relative-fill" && widget !== "relative") {
     return { error: "relative-fill variant requires widget=relative" };
   }
+  if (variant === "relative-multiclass" && widget !== "relative") {
+    return { error: "relative-multiclass variant requires widget=relative" };
+  }
   if (variant === "standings-stress60" && widget !== "standings") {
     return { error: "standings-stress60 variant requires widget=standings" };
   }

@@ -2232,3 +2232,303 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- relative: Redline family (mirror / proximity / traffic) ---------- */
+
+[data-widget-system="vantare-endurance"][data-template^="relative-redline"].ven-relative,
+[data-widget-system="vantare-endurance"][data-template^="relative-redline"] .ven-relative {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 13px;
+  box-shadow: none;
+  overflow: visible;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-root {
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-block {
+  background: linear-gradient(180deg, #17171a 0%, #0f0f10 30%, #0d0d0e 100%);
+  border: 1px solid rgba(232, 232, 232, 0.08);
+  border-top-color: rgba(232, 232, 232, 0.16);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-slots {
+  display: flex;
+  gap: 22px;
+  padding: 4px 8px 10px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-slot {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-slot small {
+  color: #7a7a7a;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-slot[data-accent="true"] small {
+  color: #e63946;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-slot b {
+  color: #e8e8e8;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row {
+  display: grid;
+  grid-template-columns: 22px 1fr 46px 62px;
+  gap: 8px;
+  align-items: center;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-variant="traffic"] {
+  grid-template-columns: 4px 22px 1fr 46px 58px;
+  padding-left: 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-variant="proximity"]:nth-child(even):not([data-player="true"]),
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-variant="traffic"]:nth-child(even):not([data-player="true"]) {
+  background: rgba(232, 232, 232, 0.035);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-player="true"] {
+  background: radial-gradient(
+    70% 300% at 50% 50%,
+    rgba(193, 18, 31, 0.4) 0%,
+    rgba(193, 18, 31, 0.12) 60%,
+    transparent 90%
+  );
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-player="true"] .ven-rel-name {
+  color: #ffffff;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-pos {
+  color: #e63946;
+  font-size: 13.5px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-id {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-num {
+  color: #7a7a7a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-name {
+  color: #e8e8e8;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-chip {
+  justify-self: center;
+  border: 1.5px solid #e63946;
+  color: #e8e8e8;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 0.5px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* Lapping traffic keeps the shared blue signal, never the car's class colour:
+   the badge answers "is this car about to lap me", not "what does it race in". */
+[data-widget-system="vantare-endurance"] .ven-rel-chip[data-faster="true"] {
+  border-color: #4b9fff;
+  color: #cfe4ff;
+  background: rgba(75, 159, 255, 0.12);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gap {
+  justify-self: end;
+  color: #e8e8e8;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gap[data-side="ahead"] {
+  color: #35c77b;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gap[data-side="behind"],
+[data-widget-system="vantare-endurance"] .ven-rel-gap[data-closing="true"] {
+  color: #ff6b76;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gap[data-you="true"] {
+  color: #ff6b76;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+/* — A: espejo — eje etiquetado y barra de aproximación — */
+
+[data-widget-system="vantare-endurance"] .ven-rel-axis {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px 5px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-axis i {
+  flex: 1;
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 77, 92, 0.85) 30%,
+    rgba(255, 77, 92, 0.85) 70%,
+    transparent
+  );
+  box-shadow: 0 0 9px rgba(255, 77, 92, 0.55);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-axis span {
+  color: #7a7a7a;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-approach {
+  position: absolute;
+  left: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #c1121f, #ff4d5c);
+  box-shadow: 0 0 8px rgba(255, 77, 92, 0.5);
+  transition: right 600ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-approach[data-side="ahead"] {
+  bottom: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-approach[data-side="behind"] {
+  top: 0;
+}
+
+/* — B: cinta de proximidad — celda cargada y costuras del jugador — */
+
+[data-widget-system="vantare-endurance"] .ven-rel-gapcell {
+  justify-self: end;
+  position: relative;
+  min-width: 56px;
+  height: 21px;
+  line-height: 21px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(232, 232, 232, 0.07);
+  text-align: center;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gapcell b {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #c1121f, #ff4d5c);
+  box-shadow: 0 0 12px rgba(255, 77, 92, 0.55);
+  transition: width 600ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gapcell[data-side="ahead"] b {
+  background: linear-gradient(90deg, #1c8f57, #35c77b);
+  box-shadow: 0 0 12px rgba(53, 199, 123, 0.5);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-gapcell span {
+  position: relative;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-seam {
+  position: relative;
+  height: 6px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-seam::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 1.5px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 77, 92, 0.85) 28%,
+    rgba(255, 77, 92, 0.85) 72%,
+    transparent
+  );
+  box-shadow: 0 0 9px rgba(255, 77, 92, 0.55);
+}
+
+/* — C: torre de tráfico — raíl de clase y aviso de doblaje — */
+
+[data-widget-system="vantare-endurance"] .ven-rel-rail {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--rel-class, #7a7a7a);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-lapnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 6px;
+  color: #4b9fff;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-lapnote i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(75, 159, 255, 0.6), transparent);
+}

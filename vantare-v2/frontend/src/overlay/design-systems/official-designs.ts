@@ -2,6 +2,7 @@ import type { WidgetType } from "../core/profile-document";
 import { validateWidgetDesign, type WidgetDesignV1 } from "../core/widget-design";
 import { PEDALS_DEFAULT_APPEARANCE } from "../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../widget-types/relative/relative-renderer-helpers";
+import { RELATIVE_REDLINE_CLASS_COLORS } from "./vantare-endurance/relative/relative-redline-shared";
 
 export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
@@ -248,6 +249,9 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "relative-endurance-neo", name: "Endurance Neo", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-neo" }, includesContent: false, origin: "vantare" },
   { id: "delta-endurance-neo", name: "Endurance Neo", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-neo", showHeader: true }, includesContent: false, origin: "vantare" },
   { id: "pedals-endurance-neo", name: "Endurance Neo", widgetType: "pedals", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...PEDALS_DEFAULT_APPEARANCE, templateId: "pedals-neo" }, includesContent: false, origin: "vantare" },
+  { id: "relative-endurance-redline-mirror", name: "Endurance Redline Mirror", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-mirror" }, includesContent: false, origin: "vantare" },
+  { id: "relative-endurance-redline-proximity", name: "Endurance Redline Proximity", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-proximity" }, includesContent: false, origin: "vantare" },
+  { id: "relative-endurance-redline-traffic", name: "Endurance Redline Traffic", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-traffic" }, includesContent: false, origin: "vantare" },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

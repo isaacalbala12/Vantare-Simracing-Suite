@@ -4,6 +4,9 @@ export const RELATIVE_ENDURANCE_TEMPLATE_IDS = [
   "relative-classic",
   "relative-minimal",
   "relative-neo",
+  "relative-redline-mirror",
+  "relative-redline-proximity",
+  "relative-redline-traffic",
 ] as const;
 
 export type RelativeEnduranceTemplateId = (typeof RELATIVE_ENDURANCE_TEMPLATE_IDS)[number];

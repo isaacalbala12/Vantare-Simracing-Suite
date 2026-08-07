@@ -61,6 +61,7 @@ export function getCrystalHarnessDesign(designId: string): CrystalHarnessDesign 
 export type HarnessVariant =
   | "default"
   | "relative-fill"
+  | "relative-multiclass"
   | "standings-stress60"
   | "standings-multiclass"
   | "standings-replay"
@@ -78,6 +79,7 @@ export function isHarnessVariant(value: string): value is HarnessVariant {
   return (
     value === "default"
     || value === "relative-fill"
+    || value === "relative-multiclass"
     || value === "standings-stress60"
     || value === "standings-multiclass"
     || value === "standings-replay"
@@ -220,6 +222,39 @@ export function buildStandingsReplayScoring(frame: number): Record<string, unkno
       const { absent: _absent, ...rest } = patch;
       return { ...row, ...rest };
     });
+}
+
+/**
+ * Relative with genuine multiclass traffic: the player is a GT3 mid-pack, with a
+ * same-class fight either side and quicker prototypes closing to lap them.
+ */
+export function buildRelativeMulticlassScoring(): Record<string, unknown>[] {
+  const field: readonly [string, string, number, number][] = [
+    ["James Allen", "HYPERCAR", 22, 5.5],
+    ["Rik Koen", "LMP2", 31, 4.2],
+    ["Rui Andrade", "GT3", 55, 1.8],
+    ["Sarah Bovy", "GT3", 85, 0.4],
+    ["William Friedl", "GT3", 51, 0],
+    ["Gianmaria Bruni", "GT3", 91, -0.3],
+    ["Andrew Gilbert", "LMP2", 60, -2.6],
+    ["Michael Birch", "HYPERCAR", 88, -5.1],
+  ];
+  return field.map(([driverName, vehicleClass, driverNumber, gap], index) => ({
+    id: `relative-multiclass-${index + 1}`,
+    place: 9 + index,
+    driverNumber: String(driverNumber),
+    driverName,
+    teamName: driverName,
+    vehicleClass,
+    isPlayer: gap === 0,
+    inPits: false,
+    timeGapToPlayer: gap,
+    timeGapToLeader: 42.5 - gap,
+    timeBehindLeader: 42.5 - gap,
+    bestLapTime: 98.2 + index * 0.11,
+    lastLapTime: 98.7 + index * 0.14,
+    tireCompound: index % 3 === 0 ? "S" : "M",
+  }));
 }
 
 function buildStandingsMulticlassScoring(): Record<string, unknown>[] {
@@ -435,6 +470,9 @@ export function buildHarnessTelemetry(input: {
     if (input.widget === "standings" && variant === "standings-replay") {
       return { ...base, scoring: buildStandingsReplayScoring(input.replayFrame ?? 0) };
     }
+    if (input.widget === "relative" && variant === "relative-multiclass") {
+      return { ...base, scoring: buildRelativeMulticlassScoring() };
+    }
     if (input.widget === "pedals" && (variant === "pedals-zero" || variant === "pedals-full")) {
       const value = variant === "pedals-full" ? 1 : 0;
       return {
@@ -504,6 +542,10 @@ export function buildHarnessTelemetry(input: {
       ...readyBase,
       scoring: buildStandingsMulticlassScoring(),
     };
+  }
+
+  if (input.widget === "relative" && variant === "relative-multiclass") {
+    return { ...readyBase, scoring: buildRelativeMulticlassScoring() };
   }
 
   if (input.widget === "standings" && variant === "standings-replay") {

@@ -144,6 +144,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.design.systemSection.aria": "Sistema visivo",
   "studio.v3.design.system.original": "Vantare Original",
   "studio.v3.design.system.crystal": "Vantare Crystal",
+  "studio.v3.design.system.endurance": "Vantare Endurance",
   "studio.v3.inspector.empty": "Seleziona un widget per modificarne le proprietà.",
   "studio.v3.inspector.unsupportedRenderer":
     "Questo widget non ha un renderer compatibile con il sistema visivo selezionato.",

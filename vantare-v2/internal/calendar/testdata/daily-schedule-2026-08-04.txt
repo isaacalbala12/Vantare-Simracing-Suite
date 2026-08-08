@@ -1,0 +1,22 @@
+Daily Race Schedule from: 4th August 2026
+Beginner [Bronze SR]
+starts every 15min, 20m races, 20 car splits, high assists allowed, tyre warmers enabled, tyres: 8
+LMGT3 Fixed: Bahrain (Outer), LMGT3 Class, fixed setup
+GTE Fixed: Sebring (WEC), LMGTE Am Class, fixed setup
+LMP3 Fixed: Fuji (WEC), LMP3 Class, fixed setup
+Intermediate [Silver SR]
+starts every 20min, 30m races, 38 car splits, low assists allowed, no tyre warmers, tyres: 8
+LMGT3 Sprint Cup: Qatar (Short), LMGT3 Class, open setup
+Prototype Fixed: Daytona (RC), LMP2 (ELMS) & LMP3 Classes, fixed setup
+ELMS Sprint Trophy: Spa (WEC), LMP2 (ELMS) LMP3 & LMGT3 Classes, open setup
+Advanced [Gold SR]
+starts every 30min, 38 car splits, no assists allowed, no tyre warmers, tyres: 8
+One Stint Sprint: COTA (WEC), Hypercar & LMGT3 Classes, 40m races, open setup
+ELMS Super 60: Laguna Seca (RC), LMP2 (ELMS, full fuel tank) LMP3 (70L fuel tank) & LMGT3 Classes (75% VE), 60m races, open setup
+WEC-Xperience: Daytona (RC), Hypercar & LMGT3 classes, 70% VE Limit, 60m races, open setup
+Weekly Races (Solo)
+WEC Weekly [SR S2]: Barcelona (ELMS), Hypercar & LMGT3 classes, 44 car splits, 100m races, open setup, no tyre warmers, tyres: 10
+UTC Days & Times: Tue Wed Thu Mon @ 02:00 06:00 09:00 12:00 15:00 18:00 20:00 23:00
+2.4h Le Mans [SR S2]: Le Mans (WEC), Hypercar LMP2 (WEC) & LMGT3 classes, 50 car splits, 144m races, 10x time scale, open setup, no tyre warmers, tyres: 10
+UTC Days & Times: Fri Sat Sun @ every 3h from midnight UTC
+IMPORTANT: If you are running on a low/mid spec system, ensure you check you can run the larger grids smoothly (62 cars, the day to night to day transition, rain/wet track) in single player before registering to a race. You may need to significantly reduce your graphics settings (lowest), set FSR to ultra performance, increase your pagefile size in Windows to over 32GB. If you cannot run this event smoothly, do not register for it.

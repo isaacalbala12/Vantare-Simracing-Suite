@@ -47,6 +47,14 @@ export type Recurrence = {
   timesUTC?: string[];
 };
 
+// VehicleClass is one eligible class in a series, with the per-class
+// restriction the schedule prints beside it ("ELMS, full fuel tank",
+// "70L fuel tank", "75% VE"). Mirrors the Go type.
+export type VehicleClass = {
+  name: string;
+  qualifier?: string;
+};
+
 // RaceSeries models a single recurring race series. Mirrors the Go type in
 // internal/calendar/official_schedule.go.
 export type RaceSeries = {
@@ -55,7 +63,10 @@ export type RaceSeries = {
   tier: string;
   licenseLabel: string;
   track: string;
+  // vehicleClass is the schedule's own prose, kept verbatim; classes is the
+  // structured reading the UI renders as chips and filters on.
   vehicleClass: string;
+  classes?: VehicleClass[];
   setup: string;
   durationMin: number;
   raceDurationMin?: number;
@@ -66,6 +77,17 @@ export type RaceSeries = {
   assists: string;
   tyreWarmers: boolean;
   tyres: number;
+  // timeScale multiplies in-race time, as in the 2.4h Le Mans at 10x. Absent
+  // or zero means real time.
+  timeScale?: number;
+  // veLimit caps virtual energy as a percentage. Absent or zero means no cap.
+  veLimit?: number;
+  // safetyRating is the series' own requirement when it differs from the
+  // tier's, such as the "SR S2" the weekly races ask for.
+  safetyRating?: string;
+  // notes carries the advisories printed next to a series, like the hardware
+  // warning on the 2.4h Le Mans.
+  notes?: string[];
   recurrence: Recurrence;
 };
 

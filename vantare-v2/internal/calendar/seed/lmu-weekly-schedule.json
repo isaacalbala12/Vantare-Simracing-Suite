@@ -1,27 +1,42 @@
 {
   "version": 1,
   "timezone": "UTC",
-  "validFrom": "2026-06-30T00:00:00Z",
-  "validUntil": "2026-07-07T00:00:00Z",
-  "updated": "2026-07-02T00:00:00Z",
+  "validFrom": "2026-08-04T00:00:00Z",
+  "validUntil": "2026-08-11T00:00:00Z",
   "series": [
     {
       "id": "beginner-lmgt3-fixed",
       "name": "LMGT3 Fixed",
       "tier": "beginner",
       "licenseLabel": "Bronze SR",
-      "track": "Sebring (School)",
+      "track": "Bahrain (Outer)",
       "vehicleClass": "LMGT3 Class",
+      "classes": [
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "fixed",
       "durationMin": 20,
       "raceDurationMin": 20,
       "eventDurationMin": 31,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 20, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 20,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 15,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -32,22 +47,38 @@
       }
     },
     {
-      "id": "beginner-mclaren-challenge",
-      "name": "Logitech McLaren G Challenge Q5",
+      "id": "beginner-gte-fixed",
+      "name": "GTE Fixed",
       "tier": "beginner",
       "licenseLabel": "Bronze SR",
-      "track": "Monza (WEC)",
-      "vehicleClass": "McLaren 720S LMGT3",
+      "track": "Sebring (WEC)",
+      "vehicleClass": "LMGTE Am Class",
+      "classes": [
+        {
+          "name": "LMGTE Am"
+        }
+      ],
       "setup": "fixed",
       "durationMin": 20,
       "raceDurationMin": 20,
       "eventDurationMin": 31,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 20, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 20,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 30,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -62,18 +93,34 @@
       "name": "LMP3 Fixed",
       "tier": "beginner",
       "licenseLabel": "Bronze SR",
-      "track": "Fuji (Classic)",
+      "track": "Fuji (WEC)",
       "vehicleClass": "LMP3 Class",
+      "classes": [
+        {
+          "name": "LMP3"
+        }
+      ],
       "setup": "fixed",
       "durationMin": 20,
       "raceDurationMin": 20,
       "eventDurationMin": 31,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 20, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 20,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 45,
       "splits": 20,
       "assists": "High assists allowed",
       "tyreWarmers": true,
@@ -84,22 +131,38 @@
       }
     },
     {
-      "id": "intermediate-lmgt3-sprint",
+      "id": "intermediate-lmgt3-sprint-cup",
       "name": "LMGT3 Sprint Cup",
       "tier": "intermediate",
       "licenseLabel": "Silver SR",
-      "track": "COTA (National)",
+      "track": "Qatar (Short)",
       "vehicleClass": "LMGT3 Class",
+      "classes": [
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "open",
       "durationMin": 30,
       "raceDurationMin": 30,
       "eventDurationMin": 41,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 30, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 30,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 15,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -114,18 +177,38 @@
       "name": "Prototype Fixed",
       "tier": "intermediate",
       "licenseLabel": "Silver SR",
-      "track": "Barcelona (ELMS)",
-      "vehicleClass": "LMP2 (ELMS) & LMP3 Classes",
+      "track": "Daytona (RC)",
+      "vehicleClass": "LMP2 (ELMS) \u0026 LMP3 Classes",
+      "classes": [
+        {
+          "name": "LMP2",
+          "qualifier": "ELMS"
+        },
+        {
+          "name": "LMP3"
+        }
+      ],
       "setup": "fixed",
       "durationMin": 30,
       "raceDurationMin": 30,
       "eventDurationMin": 41,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 30, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 30,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 30,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -136,22 +219,45 @@
       }
     },
     {
-      "id": "intermediate-elms-sprint",
+      "id": "intermediate-elms-sprint-trophy",
       "name": "ELMS Sprint Trophy",
       "tier": "intermediate",
       "licenseLabel": "Silver SR",
-      "track": "Portimao (WEC)",
-      "vehicleClass": "LMP2 (ELMS), LMP3 & LMGT3 Classes",
+      "track": "Spa (WEC)",
+      "vehicleClass": "LMP2 (ELMS) LMP3 \u0026 LMGT3 Classes",
+      "classes": [
+        {
+          "name": "LMP2",
+          "qualifier": "ELMS"
+        },
+        {
+          "name": "LMP3"
+        },
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "open",
       "durationMin": 30,
       "raceDurationMin": 30,
       "eventDurationMin": 41,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 30, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 30,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 45,
       "splits": 38,
       "assists": "Low assists allowed",
       "tyreWarmers": false,
@@ -166,19 +272,38 @@
       "name": "One Stint Sprint",
       "tier": "advanced",
       "licenseLabel": "Gold SR",
-      "track": "Paul Ricard (Layout 1A)",
-      "vehicleClass": "Hypercar & LMGT3 Classes",
+      "track": "COTA (WEC)",
+      "vehicleClass": "Hypercar \u0026 LMGT3 Classes",
+      "classes": [
+        {
+          "name": "Hypercar"
+        },
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "open",
       "durationMin": 40,
       "raceDurationMin": 40,
       "eventDurationMin": 51,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 40, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 40,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 15,
-      "splits": 44,
+      "splits": 38,
       "assists": "No assists allowed",
       "tyreWarmers": false,
       "tyres": 8,
@@ -192,22 +317,48 @@
       "name": "ELMS Super 60",
       "tier": "advanced",
       "licenseLabel": "Gold SR",
-      "track": "Spa (ELMS)",
-      "vehicleClass": "LMP2 (ELMS, full fuel tank), LMP3 (70L fuel tank) & LMGT3 Classes (75% VE)",
+      "track": "Laguna Seca (RC)",
+      "vehicleClass": "LMP2 (ELMS, full fuel tank) LMP3 (70L fuel tank) \u0026 LMGT3 Classes (75% VE)",
+      "classes": [
+        {
+          "name": "LMP2",
+          "qualifier": "ELMS, full fuel tank"
+        },
+        {
+          "name": "LMP3",
+          "qualifier": "70L fuel tank"
+        },
+        {
+          "name": "LMGT3",
+          "qualifier": "75% VE"
+        }
+      ],
       "setup": "open",
       "durationMin": 60,
       "raceDurationMin": 60,
-      "eventDurationMin": 71,
+      "eventDurationMin": 75,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 60, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 5,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 10,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 60,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 30,
-      "splits": 44,
+      "splits": 38,
       "assists": "No assists allowed",
       "tyreWarmers": false,
       "tyres": 8,
+      "veLimit": 75,
       "recurrence": {
         "kind": "interval",
         "intervalMinutes": 30
@@ -218,22 +369,42 @@
       "name": "WEC-Xperience",
       "tier": "advanced",
       "licenseLabel": "Gold SR",
-      "track": "Silverstone (ELMS)",
-      "vehicleClass": "Hypercar & LMGT3 Classes, 75% VE Limit",
+      "track": "Daytona (RC)",
+      "vehicleClass": "Hypercar \u0026 LMGT3 classes",
+      "classes": [
+        {
+          "name": "Hypercar"
+        },
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "open",
       "durationMin": 60,
       "raceDurationMin": 60,
-      "eventDurationMin": 71,
+      "eventDurationMin": 75,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 60, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 5,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 10,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 60,
+          "estimated": false
+        }
       ],
-      "startOffsetMinute": 45,
-      "splits": 44,
+      "splits": 38,
       "assists": "No assists allowed",
       "tyreWarmers": false,
       "tyres": 8,
+      "veLimit": 70,
       "recurrence": {
         "kind": "interval",
         "intervalMinutes": 30
@@ -243,27 +414,131 @@
       "id": "weekly-wec-weekly",
       "name": "WEC Weekly",
       "tier": "weekly",
-      "licenseLabel": "SR S2",
-      "track": "Portimao (ELMS)",
-      "vehicleClass": "Hypercar & LMGT3 Classes",
+      "licenseLabel": "",
+      "track": "Barcelona (ELMS)",
+      "vehicleClass": "Hypercar \u0026 LMGT3 classes",
+      "classes": [
+        {
+          "name": "Hypercar"
+        },
+        {
+          "name": "LMGT3"
+        }
+      ],
       "setup": "open",
       "durationMin": 100,
       "raceDurationMin": 100,
-      "eventDurationMin": 111,
+      "eventDurationMin": 115,
       "sessions": [
-        { "name": "practice", "durationMin": 3, "estimated": true },
-        { "name": "qualifying", "durationMin": 8, "estimated": true },
-        { "name": "race", "durationMin": 100, "estimated": false }
+        {
+          "name": "practice",
+          "durationMin": 5,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 10,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 100,
+          "estimated": false
+        }
       ],
       "splits": 44,
-      "assists": "No assists allowed",
+      "assists": "",
       "tyreWarmers": false,
       "tyres": 10,
+      "safetyRating": "SR S2",
       "recurrence": {
         "kind": "weekly-slots",
-        "days": ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon"],
-        "timesUTC": ["02:00", "06:00", "09:00", "12:00", "15:00", "18:00", "20:00", "23:00"]
+        "days": [
+          "Tue",
+          "Wed",
+          "Thu",
+          "Mon"
+        ],
+        "timesUTC": [
+          "02:00",
+          "06:00",
+          "09:00",
+          "12:00",
+          "15:00",
+          "18:00",
+          "20:00",
+          "23:00"
+        ]
+      }
+    },
+    {
+      "id": "weekly-2-4h-le-mans",
+      "name": "2.4h Le Mans",
+      "tier": "weekly",
+      "licenseLabel": "",
+      "track": "Le Mans (WEC)",
+      "vehicleClass": "Hypercar LMP2 (WEC) \u0026 LMGT3 classes",
+      "classes": [
+        {
+          "name": "Hypercar"
+        },
+        {
+          "name": "LMP2",
+          "qualifier": "WEC"
+        },
+        {
+          "name": "LMGT3"
+        }
+      ],
+      "setup": "open",
+      "durationMin": 144,
+      "raceDurationMin": 144,
+      "eventDurationMin": 159,
+      "sessions": [
+        {
+          "name": "practice",
+          "durationMin": 5,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 10,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 144,
+          "estimated": false
+        }
+      ],
+      "splits": 50,
+      "assists": "",
+      "tyreWarmers": false,
+      "tyres": 10,
+      "timeScale": 10,
+      "safetyRating": "SR S2",
+      "notes": [
+        "If you are running on a low/mid spec system, ensure you check you can run the larger grids smoothly (62 cars, the day to night to day transition, rain/wet track) in single player before registering to a race. You may need to significantly reduce your graphics settings (lowest), set FSR to ultra performance, increase your pagefile size in Windows to over 32GB. If you cannot run this event smoothly, do not register for it."
+      ],
+      "recurrence": {
+        "kind": "weekly-slots",
+        "days": [
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "timesUTC": [
+          "00:00",
+          "03:00",
+          "06:00",
+          "09:00",
+          "12:00",
+          "15:00",
+          "18:00",
+          "21:00"
+        ]
       }
     }
-  ]
+  ],
+  "updated": "2026-08-04T00:00:00Z"
 }

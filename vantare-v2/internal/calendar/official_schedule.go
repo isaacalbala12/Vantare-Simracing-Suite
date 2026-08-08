@@ -31,6 +31,18 @@ type Session struct {
 	Estimated   bool   `json:"estimated"`
 }
 
+// VehicleClass is one eligible class in a series, with the per-class
+// restrictions LMU publishes alongside it: "LMP2 (ELMS, full fuel tank)",
+// "LMP3 (70L fuel tank)", "LMGT3 Classes (75% VE)". VehicleClass on RaceSeries
+// keeps the original prose so nothing is lost in translation; Classes is what
+// the UI renders as chips and filters on.
+type VehicleClass struct {
+	Name string `json:"name"`
+	// Qualifier is the parenthesised restriction, without the brackets:
+	// "ELMS, full fuel tank", "70L fuel tank", "75% VE". Empty when the class
+	// runs unrestricted.
+	Qualifier string `json:"qualifier,omitempty"`
+}
 
 // RaceSeries models a single recurring race series in the official LMU
 // schedule. Recurrence defines how often the series runs.
@@ -40,23 +52,37 @@ type Session struct {
 // Sessions lists the individual sessions (practice, qualifying, race).
 // StartOffsetMinute is the minute offset within the hour for interval series.
 type RaceSeries struct {
-	ID                string     `json:"id"`
-	Name              string     `json:"name"`
-	Tier              string     `json:"tier"`
-	LicenseLabel      string     `json:"licenseLabel"`
-	Track             string     `json:"track"`
-	VehicleClass      string     `json:"vehicleClass"`
-	Setup             string     `json:"setup"`
-	DurationMin       int        `json:"durationMin"`
-	RaceDurationMin   int        `json:"raceDurationMin,omitempty"`
-	EventDurationMin  int        `json:"eventDurationMin,omitempty"`
-	Sessions          []Session  `json:"sessions,omitempty"`
-	StartOffsetMinute int        `json:"startOffsetMinute,omitempty"`
-	Splits            int        `json:"splits"`
-	Assists           string     `json:"assists"`
-	TyreWarmers       bool       `json:"tyreWarmers"`
-	Tyres             int        `json:"tyres"`
-	Recurrence        Recurrence `json:"recurrence"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Tier         string `json:"tier"`
+	LicenseLabel string `json:"licenseLabel"`
+	Track        string `json:"track"`
+	// VehicleClass is the schedule's own prose, kept verbatim. Classes is the
+	// structured reading of it.
+	VehicleClass      string         `json:"vehicleClass"`
+	Classes           []VehicleClass `json:"classes,omitempty"`
+	Setup             string         `json:"setup"`
+	DurationMin       int            `json:"durationMin"`
+	RaceDurationMin   int            `json:"raceDurationMin,omitempty"`
+	EventDurationMin  int            `json:"eventDurationMin,omitempty"`
+	Sessions          []Session      `json:"sessions,omitempty"`
+	StartOffsetMinute int            `json:"startOffsetMinute,omitempty"`
+	Splits            int            `json:"splits"`
+	Assists           string         `json:"assists"`
+	TyreWarmers       bool           `json:"tyreWarmers"`
+	Tyres             int            `json:"tyres"`
+	// TimeScale multiplies in-race time, as in the 2.4h Le Mans running at 10x.
+	// Zero means real time.
+	TimeScale int `json:"timeScale,omitempty"`
+	// VELimit caps virtual energy as a percentage. Zero means no cap.
+	VELimit int `json:"veLimit,omitempty"`
+	// SafetyRating is the series' own requirement when it differs from the
+	// tier's, such as the "SR S2" the weekly races ask for.
+	SafetyRating string `json:"safetyRating,omitempty"`
+	// Notes carries the advisories the schedule prints next to a series, like
+	// the hardware warning on the 2.4h Le Mans.
+	Notes      []string   `json:"notes,omitempty"`
+	Recurrence Recurrence `json:"recurrence"`
 }
 
 // Recurrence defines how a series repeats. Two kinds are supported:
@@ -164,6 +190,17 @@ func validateSeries(s RaceSeries) error {
 	}
 	if s.Splits <= 0 {
 		return fmt.Errorf("splits must be > 0, got %d", s.Splits)
+	}
+	if s.TimeScale < 0 {
+		return fmt.Errorf("timeScale must be >= 0, got %d", s.TimeScale)
+	}
+	if s.VELimit < 0 || s.VELimit > 100 {
+		return fmt.Errorf("veLimit must be between 0 and 100, got %d", s.VELimit)
+	}
+	for i, c := range s.Classes {
+		if strings.TrimSpace(c.Name) == "" {
+			return fmt.Errorf("classes[%d]: name is required", i)
+		}
 	}
 	if !validRecurrenceKinds[s.Recurrence.Kind] {
 		return fmt.Errorf("invalid recurrence kind %q, must be one of: interval, weekly-slots", s.Recurrence.Kind)

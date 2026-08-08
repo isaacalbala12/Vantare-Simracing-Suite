@@ -22,7 +22,8 @@ export type StrategyApplicationOperation =
   | "activate"
   | "deactivate"
   | "restore"
-  | "close";
+  | "close"
+  | "list";
 
 type CommandHeader<T extends StrategyApplicationOperation> = {
   protocolVersion: typeof STRATEGY_APPLICATION_PROTOCOL_V1;
@@ -58,12 +59,30 @@ export type StrategyApplicationCommandV1<TPayload> =
       current?: ActivePlanV1;
       expectedActivationId: string;
     })
+  | CommandHeader<"list">
   | (CommandHeader<"restore"> & { draftId: string })
   | (CommandHeader<"close"> & {
       draft: PlanDraftV1<TPayload>;
       savedDraft: PlanDraftV1<TPayload>;
       discard: boolean;
     });
+
+/**
+ * One entry in "My plans". It carries no payload: the library identifies plans
+ * so one can be chosen, and only then is that plan opened.
+ */
+export type StrategyPlanSummaryV1 = {
+  readonly planId: string;
+  readonly variantId: string;
+  readonly draftId?: string;
+  readonly name: string;
+  readonly mode: string;
+  readonly updatedAt: string;
+  readonly hasDraft: boolean;
+  readonly revisionCount: number;
+  readonly latestRevision?: RevisionRefV1;
+  readonly latestRevisionAt?: string;
+};
 
 export type StrategyApplicationResultV1<TPayload> = {
   readonly protocolVersion: typeof STRATEGY_APPLICATION_PROTOCOL_V1;
@@ -73,6 +92,7 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly savedDraft?: PlanDraftV1<TPayload>;
   readonly revision?: PlanRevisionV1<TPayload>;
   readonly activePlan?: ActivePlanV1;
+  readonly plans?: readonly StrategyPlanSummaryV1[];
   readonly recoveredFromBackup: boolean;
   readonly closed: boolean;
 };
@@ -278,10 +298,66 @@ async function parseResult<TPayload>(
     ...(payload.activePlan === undefined
       ? {}
       : { activePlan: parseActivePlanV1(payload.activePlan) }),
+    ...(payload.plans === undefined ? {} : { plans: parsePlanSummaries(payload.plans) }),
     recoveredFromBackup: payload.recoveredFromBackup,
     closed: payload.closed,
   };
   return deepFreeze(result);
+}
+
+/** A reference is only usable if it is complete: an incomplete one is rejected. */
+function parseRevisionRef(value: unknown, field: string): RevisionRefV1 {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`Invalid Strategy revision reference: ${field}`);
+  }
+  const entry = value as Record<string, unknown>;
+  for (const key of ["planId", "variantId", "revisionId", "contentHash"]) {
+    if (typeof entry[key] !== "string" || entry[key] === "") {
+      throw new Error(`Invalid Strategy revision reference: ${field}.${key}`);
+    }
+  }
+  return {
+    planId: entry.planId as string,
+    variantId: entry.variantId as string,
+    revisionId: entry.revisionId as string,
+    contentHash: entry.contentHash as string,
+  };
+}
+
+function parsePlanSummaries(value: unknown): readonly StrategyPlanSummaryV1[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Invalid Strategy plan list");
+  }
+  return value.map((raw, index) => {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      throw new Error(`Invalid Strategy plan summary ${index}`);
+    }
+    const entry = raw as Record<string, unknown>;
+    for (const field of ["planId", "variantId", "name", "updatedAt"]) {
+      if (typeof entry[field] !== "string" || entry[field] === "") {
+        throw new Error(`Invalid Strategy plan summary ${index}: ${field}`);
+      }
+    }
+    if (typeof entry.revisionCount !== "number" || !Number.isSafeInteger(entry.revisionCount)) {
+      throw new Error(`Invalid Strategy plan summary ${index}: revisionCount`);
+    }
+    return {
+      planId: entry.planId as string,
+      variantId: entry.variantId as string,
+      name: entry.name as string,
+      mode: typeof entry.mode === "string" ? entry.mode : "",
+      updatedAt: entry.updatedAt as string,
+      hasDraft: entry.hasDraft === true,
+      revisionCount: entry.revisionCount,
+      ...(typeof entry.draftId === "string" ? { draftId: entry.draftId } : {}),
+      ...(entry.latestRevision === undefined
+        ? {}
+        : { latestRevision: parseRevisionRef(entry.latestRevision, `plans.${index}.latestRevision`) }),
+      ...(typeof entry.latestRevisionAt === "string"
+        ? { latestRevisionAt: entry.latestRevisionAt }
+        : {}),
+    } satisfies StrategyPlanSummaryV1;
+  });
 }
 
 function parseApplicationError(

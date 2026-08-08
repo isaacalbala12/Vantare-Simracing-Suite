@@ -26,7 +26,16 @@ import {
   openOrCreateStrategyEditor,
   type StrategyEditorRuntime,
 } from "../../strategy/strategy-editor-store";
+import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
 import type { StrategyStore } from "../../strategy/strategy-store";
+import {
+  describePlan,
+  filterPlans,
+  loadStrategyLibrary,
+  sortPlans,
+  type StrategyLibraryEntry,
+  type StrategyLibrarySort,
+} from "../../strategy/strategy-library";
 import { canonicalStrategyTimestamp } from "../../strategy/strategy-contract-v1";
 import {
   clearLapCorrection,
@@ -62,10 +71,13 @@ type WorkspacePanel = "plans" | "stints" | "inventory";
 type StrategyPlannerPageProps = {
   demo?: boolean;
   initialScreen?: PlannerScreen;
+  /** Forces a gallery state in tests; the real library drives it otherwise. */
   galleryState?: GalleryState;
   strategyStore?: StrategyStore<StrategyEditorDocument>;
   runtimeFactory?: () => StrategyEditorRuntime;
   manualClient?: StrategyManualClient;
+  /** Reads "My plans" through the application service. */
+  libraryClient?: StrategyApplicationClient<StrategyEditorDocument>;
   /** Validates the planned tyre set against the physical domain in Go. */
   tyreClient?: StrategyTyreClient;
   /** Compares race strategies. Injected in tests, real bridge in the app. */
@@ -108,10 +120,11 @@ const RACE_ENTRY_FIELDS: Array<{ key: keyof RaceEntry; label: string; unit: stri
 export function StrategyPlannerPage({
   demo = false,
   initialScreen = "gallery",
-  galleryState = demo ? "ready" : "empty",
+  galleryState,
   strategyStore,
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
+  libraryClient,
   tyreClient,
   solverClient,
   candidates,
@@ -158,6 +171,12 @@ export function StrategyPlannerPage({
     error?: string;
   } | null>(null);
   const [manualMode, setManualMode] = useState<"quick" | "laps">("quick");
+  const [library, setLibrary] = useState<{
+    state: GalleryState;
+    plans: readonly StrategyLibraryEntry[];
+    error: string;
+  }>({ state: "loading", plans: [], error: "" });
+  const [libraryAttempt, setLibraryAttempt] = useState(0);
   const [solvedVariants, setSolvedVariants] = useState<{
     draft: NonNullable<typeof storeSnapshot.draft>;
     variants: readonly StrategyVariant[];
@@ -195,6 +214,34 @@ export function StrategyPlannerPage({
       });
     };
   }, [ownedManualClient]);
+
+  useEffect(() => {
+    const client = libraryClient ?? ownedRuntime?.client;
+    if (screen !== "gallery" || !client) return;
+    let active = true;
+    setLibrary((current) => ({ ...current, state: "loading", error: "" }));
+    void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
+      (result) => {
+        if (!active) return;
+        setLibrary({
+          state: result.plans.length === 0 ? "empty" : "ready",
+          plans: result.plans,
+          error: "",
+        });
+      },
+      (error: unknown) => {
+        if (!active) return;
+        setLibrary({
+          state: "error",
+          plans: [],
+          error: error instanceof Error
+            ? error.message
+            : "No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.",
+        });
+      },
+    );
+    return () => { active = false; };
+  }, [libraryAttempt, libraryClient, ownedRuntime, screen]);
 
   useEffect(() => {
     ownedSolverClientMountedRef.current = true;
@@ -341,6 +388,17 @@ export function StrategyPlannerPage({
     setScreen("workspace");
   }, [store]);
 
+  const openPlan = useCallback((plan: StrategyLibraryEntry) => {
+    if (!plan.draftId) return;
+    setEditorError("");
+    setEditorLoading(true);
+    setScreen("workspace");
+    void store.open(plan.draftId).catch(() => {
+      setEditorError(`No se pudo abrir ${plan.name}. Reintenta o revisa Diagnóstico.`);
+      setEditorLoading(false);
+    });
+  }, [store]);
+
   const retryEditorLoad = useCallback(() => {
     setEditorError("");
     setEditorLoading(true);
@@ -407,11 +465,12 @@ export function StrategyPlannerPage({
       {screen === "gallery" && (
         <Gallery
           titleId={titleId}
-          state={galleryState}
-          demo={demo}
+          state={galleryState ?? library.state}
+          plans={library.plans}
+          error={library.error}
           onCreate={() => setScreen("entry")}
-          onOpen={enterWorkspace}
-          onReview={() => setScreen("review")}
+          onOpen={openPlan}
+          onReload={() => setLibraryAttempt((attempt) => attempt + 1)}
         />
       )}
 
@@ -522,67 +581,130 @@ function tryParseStrategyEditorDocument(value: unknown): StrategyEditorDocument 
 function Gallery({
   titleId,
   state,
-  demo,
+  plans,
+  error,
   onCreate,
   onOpen,
-  onReview,
+  onReload,
 }: {
   titleId: string;
   state: GalleryState;
-  demo: boolean;
+  plans: readonly StrategyLibraryEntry[];
+  error: string;
   onCreate: () => void;
-  onOpen: () => void;
-  onReview: () => void;
+  onOpen: (plan: StrategyLibraryEntry) => void;
+  onReload: () => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<StrategyLibrarySort>("recent");
+  const [scope, setScope] = useState<"all" | "unsaved" | "saved">("all");
+  const searchId = useId();
+
+  const visible = sortPlans(
+    filterPlans(plans, {
+      query,
+      onlyUnsaved: scope === "unsaved",
+      onlySaved: scope === "saved",
+    }),
+    sort,
+  );
+
   return (
     <div className="strategy-screen strategy-gallery">
       <header className="strategy-page-header">
         <div>
           <p className="strategy-eyebrow">Strategy Planner</p>
           <h1 id={titleId}>Mis planes</h1>
-          <p>Organiza planes privados por circuito y vuelve al último workspace.</p>
+          <p>Tus planes son privados y viven solo en este equipo.</p>
         </div>
         <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
           <span aria-hidden="true">＋</span> Crear plan
         </button>
       </header>
 
+      {state === "ready" && plans.length > 0 && (
+        <div className="strategy-gallery__tools">
+          <label className="strategy-field strategy-field--wide" htmlFor={searchId}>
+            Buscar
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              placeholder="Nombre o identificador"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <label className="strategy-field">
+            Mostrar
+            <select value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}>
+              <option value="all">Todos</option>
+              <option value="unsaved">Con cambios abiertos</option>
+              <option value="saved">Con revisiones guardadas</option>
+            </select>
+          </label>
+          <label className="strategy-field">
+            Ordenar
+            <select value={sort} onChange={(event) => setSort(event.target.value as StrategyLibrarySort)}>
+              <option value="recent">Más reciente</option>
+              <option value="name">Nombre</option>
+            </select>
+          </label>
+        </div>
+      )}
+
       {state === "loading" && <div className="strategy-state" role="status">Cargando planes…</div>}
-      {state === "error" && <div className="strategy-state strategy-state--error" role="alert">No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.</div>}
+      {state === "error" && (
+        <div className="strategy-state strategy-state--error" role="alert">
+          <p>{error || "No se pudo abrir la galería."}</p>
+          <button className="strategy-button strategy-button--secondary" type="button" onClick={onReload}>
+            Reintentar
+          </button>
+        </div>
+      )}
       {state === "empty" && (
         <div className="strategy-state strategy-state--empty">
           <span className="strategy-state__icon" aria-hidden="true">◇</span>
           <h2>Todavía no tienes planes guardados</h2>
-          <p>Crea un plan manual o revisa una sesión de telemetría cuando esa conexión esté disponible.</p>
+          <p>Crea un plan manual; nada sale de este equipo salvo que lo exportes tú.</p>
           <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>Crear el primero</button>
         </div>
       )}
-      {state === "ready" && demo && (
-        <div className="strategy-gallery__grid">
-          <article className="strategy-plan-tile strategy-plan-tile--active">
-            <div className="strategy-plan-tile__visual" aria-hidden="true">
-              <span /><span /><span />
-            </div>
-            <div className="strategy-plan-tile__body">
-              <div className="strategy-plan-tile__meta"><span>SPA-FRANCORCHAMPS</span><span>DEMO</span></div>
-              <h2>6h Spa · Hypercar</h2>
-              <p>4 stints · 3 paradas · seco</p>
-              <button className="strategy-button strategy-button--secondary" type="button" onClick={onOpen}>Abrir workspace</button>
-            </div>
-          </article>
-          <article className="strategy-plan-tile">
-            <div className="strategy-plan-tile__visual strategy-plan-tile__visual--muted" aria-hidden="true"><span /><span /></div>
-            <div className="strategy-plan-tile__body">
-              <div className="strategy-plan-tile__meta"><span>LE MANS</span><span>BORRADOR</span></div>
-              <h2>24h Le Mans · LMGT3</h2>
-              <p>Entrada incompleta · sin cálculo</p>
-              <button className="strategy-button strategy-button--secondary" type="button" onClick={onReview}>Revisar borrador</button>
-            </div>
-          </article>
+      {state === "ready" && visible.length === 0 && plans.length > 0 && (
+        <div className="strategy-state strategy-state--empty" data-testid="strategy-gallery-no-match">
+          <h2>Ningún plan coincide</h2>
+          <p>Prueba con otro texto o cambia el filtro.</p>
+        </div>
+      )}
+      {state === "ready" && visible.length > 0 && (
+        <div className="strategy-gallery__grid" data-testid="strategy-gallery-grid">
+          {visible.map((plan) => (
+            <article
+              className={`strategy-plan-tile ${plan.hasDraft ? "strategy-plan-tile--active" : ""}`}
+              key={`${plan.planId}:${plan.variantId}`}
+              data-testid={`strategy-plan-${plan.planId}-${plan.variantId}`}
+            >
+              <div className="strategy-plan-tile__visual" aria-hidden="true"><span /><span /><span /></div>
+              <div className="strategy-plan-tile__body">
+                <div className="strategy-plan-tile__meta">
+                  <span>{plan.planId}</span>
+                  {plan.hasDraft && <span>SIN GUARDAR</span>}
+                </div>
+                <h2>{plan.name}</h2>
+                <p>{describePlan(plan)}</p>
+                <button
+                  className="strategy-button strategy-button--secondary"
+                  type="button"
+                  onClick={() => onOpen(plan)}
+                  disabled={!plan.hasDraft}
+                  title={plan.hasDraft ? undefined : "Este plan no tiene un borrador abierto"}
+                >Abrir workspace</button>
+              </div>
+            </article>
+          ))}
           <button className="strategy-plan-tile strategy-plan-tile--new" type="button" onClick={onCreate}>
             <span aria-hidden="true">＋</span>
             <strong>Nuevo plan</strong>
-            <small>Entrada manual o telemetría</small>
+            <small>Entrada manual</small>
           </button>
         </div>
       )}

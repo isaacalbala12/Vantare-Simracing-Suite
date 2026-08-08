@@ -16,6 +16,7 @@ import type { StrategyManualClient, StrategyManualResult } from "../../strategy/
 import type { StrategyPlanViolation, StrategyTyreClient } from "../../strategy/strategy-tyre-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
 import type { StrategySolverClient, StrategyVariant } from "../../strategy/strategy-solver-client";
+import type { StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
 configure({ asyncUtilTimeout: 3_000 });
@@ -44,6 +45,38 @@ const TEST_VARIANTS: readonly StrategyVariant[] = [
     dominated: true, dominatedBy: "robust",
   }),
 ];
+
+/** Library entries as the application service reports them. */
+function summary(overrides: Partial<StrategyPlanSummaryV1> & Pick<StrategyPlanSummaryV1, "planId">): StrategyPlanSummaryV1 {
+  return {
+    variantId: "variant-1",
+    name: "Plan",
+    mode: "manual",
+    updatedAt: "2026-08-01T10:00:00Z",
+    hasDraft: true,
+    revisionCount: 2,
+    draftId: "draft-1",
+    ...overrides,
+  };
+}
+
+function createTestLibraryClient(plans: readonly StrategyPlanSummaryV1[] | Error) {
+  return {
+    async execute(command: { commandId: string }) {
+      if (plans instanceof Error) throw plans;
+      return {
+        protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+        commandId: command.commandId,
+        repositoryVersion: 3,
+        plans,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+    },
+    cancel: () => false,
+    dispose: () => {},
+  } as never;
+}
 
 afterEach(cleanup);
 
@@ -190,6 +223,55 @@ describe("Strategy Planner shell", () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
     fireEvent.click(await screen.findByRole("button", { name: "Editar datos" }));
     expect(screen.getByRole("heading", { name: "Entrada de carrera" })).toBeTruthy();
+  });
+
+  it("lists the plans the repository actually holds", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([
+        summary({ planId: "spa-2026", name: "6h Spa · Hypercar" }),
+        summary({ planId: "lemans-2026", name: "24h Le Mans · LMGT3", hasDraft: false, revisionCount: 1, draftId: undefined }),
+      ]),
+    });
+
+    expect(await screen.findByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
+    expect(screen.getByTestId("strategy-plan-lemans-2026-variant-1")).toBeTruthy();
+    expect(screen.getByText("6h Spa · Hypercar")).toBeTruthy();
+    // A plan with no open draft cannot be opened into the workspace.
+    const lemans = screen.getByTestId("strategy-plan-lemans-2026-variant-1");
+    expect(within(lemans).getByRole("button", { name: "Abrir workspace" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("searches the library and says when nothing matches", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([
+        summary({ planId: "spa-2026", name: "6h Spa · Hypercar" }),
+        summary({ planId: "lemans-2026", name: "24h Le Máns · LMGT3" }),
+      ]),
+    });
+
+    const search = await screen.findByLabelText("Buscar");
+    fireEvent.change(search, { target: { value: "le mans" } });
+    expect(screen.queryByTestId("strategy-plan-spa-2026-variant-1")).toBeNull();
+    expect(screen.getByTestId("strategy-plan-lemans-2026-variant-1")).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: "monza" } });
+    expect(screen.getByTestId("strategy-gallery-no-match")).toBeTruthy();
+  });
+
+  it("says the library is empty rather than inventing a plan", async () => {
+    await renderPlanner({ libraryClient: createTestLibraryClient([]) });
+    expect(await screen.findByText("Todavía no tienes planes guardados")).toBeTruthy();
+    expect(screen.queryByTestId("strategy-gallery-grid")).toBeNull();
+  });
+
+  it("explains a library that failed to open and offers a retry", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient(new Error("El repositorio local no está disponible.")),
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("El repositorio local no está disponible.");
+    expect(within(alert).getByRole("button", { name: "Reintentar" })).toBeTruthy();
   });
 
   it("renders explicit loading, empty and error gallery states", async () => {

@@ -66,6 +66,8 @@ describe("Overlay Workshop characterization", () => {
     expect(resolver).toMatch(/designSystemRegistry\.resolve/);
   });
 
+  // Walks every product source, so it needs a budget matched to a filesystem
+  // scan rather than the default single-component timeout.
   it("rejects renderer bypasses outside the host and system registrations", () => {
     const offenders = productSources(sourceRoot).flatMap((path) => {
       const normalizedPath = sourcePath(path);
@@ -81,5 +83,5 @@ describe("Overlay Workshop characterization", () => {
       return findings.map((finding) => `${normalizedPath}: ${finding}`);
     });
     expect(offenders, `WidgetVisualHost boundary bypasses:\n${offenders.join("\n")}`).toEqual([]);
-  });
+  }, 30_000);
 });

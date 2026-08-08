@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	"github.com/vantare/overlays/v2/internal/strategy/packaging"
 )
 
 const ProtocolVersionV1 = "strategy.application.v1"
@@ -23,6 +24,8 @@ const (
 	OperationRestore      Operation = "restore"
 	OperationClose        Operation = "close"
 	OperationList         Operation = "list"
+	OperationExport       Operation = "export"
+	OperationImport       Operation = "import"
 )
 
 var commandIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -117,15 +120,47 @@ type PlanSummary struct {
 	LatestRevisionAt *time.Time            `json:"latestRevisionAt,omitempty"`
 }
 
+// PlanSelector names one plan variant to export.
+type PlanSelector struct {
+	PlanID    contract.PlanID    `json:"planId"`
+	VariantID contract.VariantID `json:"variantId"`
+}
+
+// ExportCommand asks for a package containing the selected plans. Exporting is
+// explicit and local: the service returns the bytes, and writing them anywhere
+// is the caller's decision, not this service's.
+type ExportCommand struct {
+	CommandHeader
+	// Plans selects what to export. Empty is rejected rather than treated as
+	// "everything": exporting more than intended is not a safe default.
+	Plans      []PlanSelector       `json:"plans"`
+	Provenance packaging.Provenance `json:"provenance"`
+}
+
+// ImportCommand offers a package. With DryRun set, the service reports what
+// would happen and touches nothing; without it, the whole package is applied
+// as one repository transaction or not at all.
+type ImportCommand struct {
+	CommandHeader
+	Package []byte `json:"package"`
+	DryRun  bool   `json:"dryRun"`
+}
+
 type Result[T any] struct {
-	ProtocolVersion     string                    `json:"protocolVersion"`
-	CommandID           CommandID                 `json:"commandId"`
-	RepositoryVersion   uint64                    `json:"repositoryVersion"`
-	Draft               *contract.PlanDraft[T]    `json:"draft,omitempty"`
-	SavedDraft          *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
-	Revision            *contract.PlanRevision[T] `json:"revision,omitempty"`
-	ActivePlan          *contract.ActivePlan      `json:"activePlan,omitempty"`
-	Plans               []PlanSummary             `json:"plans,omitempty"`
-	RecoveredFromBackup bool                      `json:"recoveredFromBackup"`
-	Closed              bool                      `json:"closed"`
+	ProtocolVersion   string                    `json:"protocolVersion"`
+	CommandID         CommandID                 `json:"commandId"`
+	RepositoryVersion uint64                    `json:"repositoryVersion"`
+	Draft             *contract.PlanDraft[T]    `json:"draft,omitempty"`
+	SavedDraft        *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
+	Revision          *contract.PlanRevision[T] `json:"revision,omitempty"`
+	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
+	Plans             []PlanSummary             `json:"plans,omitempty"`
+	// Package carries exported bytes. Import returns no package.
+	Package []byte `json:"package,omitempty"`
+	// Preview is what an import would do. It is present on a dry run and on a
+	// completed import, so the caller can report what actually happened.
+	Preview             *packaging.Preview `json:"preview,omitempty"`
+	Imported            bool               `json:"imported"`
+	RecoveredFromBackup bool               `json:"recoveredFromBackup"`
+	Closed              bool               `json:"closed"`
 }

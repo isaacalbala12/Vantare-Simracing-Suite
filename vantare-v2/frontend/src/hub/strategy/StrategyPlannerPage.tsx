@@ -36,6 +36,14 @@ import {
   type StrategyLibraryEntry,
   type StrategyLibrarySort,
 } from "../../strategy/strategy-library";
+import {
+  commitStrategyImport,
+  describeImportEntry,
+  exportStrategyPackage,
+  previewStrategyImport,
+  summariseImport,
+} from "../../strategy/strategy-transfer";
+import type { StrategyImportPreviewV1 } from "../../strategy/strategy-application-client";
 import { canonicalStrategyTimestamp } from "../../strategy/strategy-contract-v1";
 import {
   clearLapCorrection,
@@ -68,6 +76,41 @@ type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
 type GalleryState = "ready" | "loading" | "empty" | "error";
 type WorkspacePanel = "plans" | "stints" | "inventory";
 
+/**
+ * Where an export or import currently is. Reading, previewing and importing
+ * are distinct states because they mean different things to the person
+ * watching: only the last one can have changed anything.
+ */
+type TransferState =
+  | { stage: "idle" }
+  | { stage: "exporting"; planId: string }
+  | { stage: "reading"; fileName: string }
+  | { stage: "previewed"; fileName: string; bytes: Uint8Array; preview: StrategyImportPreviewV1 }
+  | { stage: "importing"; fileName: string }
+  | { stage: "error"; error: string };
+
+/**
+ * The build stamps this; "dev" is what an unstamped build honestly is, and it
+ * travels in the package provenance rather than a version we invented.
+ */
+const DEFAULT_APP_VERSION =
+  (import.meta.env?.VITE_APP_VERSION as string | undefined) ?? "dev";
+
+/** Hands bytes to the user as a file. Replaced in tests, which have no DOM download. */
+function downloadPackage(fileName: string, bytes: Uint8Array): void {
+  const blob = new Blob([bytes as BlobPart], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function messageOf(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 type StrategyPlannerPageProps = {
   demo?: boolean;
   initialScreen?: PlannerScreen;
@@ -78,6 +121,14 @@ type StrategyPlannerPageProps = {
   manualClient?: StrategyManualClient;
   /** Reads "My plans" through the application service. */
   libraryClient?: StrategyApplicationClient<StrategyEditorDocument>;
+  /**
+   * Stamped into the provenance of every exported package. It defaults to the
+   * build-time value; "dev" means the build did not stamp one, which is the
+   * honest answer rather than a version we made up.
+   */
+  appVersion?: string;
+  /** Hands exported bytes to the user. Overridable so tests never touch the DOM download path. */
+  onSavePackage?: (fileName: string, bytes: Uint8Array) => void;
   /** Validates the planned tyre set against the physical domain in Go. */
   tyreClient?: StrategyTyreClient;
   /** Compares race strategies. Injected in tests, real bridge in the app. */
@@ -125,6 +176,8 @@ export function StrategyPlannerPage({
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
   libraryClient,
+  appVersion = DEFAULT_APP_VERSION,
+  onSavePackage = downloadPackage,
   tyreClient,
   solverClient,
   candidates,
@@ -177,6 +230,13 @@ export function StrategyPlannerPage({
     error: string;
   }>({ state: "loading", plans: [], error: "" });
   const [libraryAttempt, setLibraryAttempt] = useState(0);
+  /**
+   * The repository version the library was read at. An import must commit
+   * against the version it previewed, so a change underneath is refused rather
+   * than applied blind.
+   */
+  const [libraryVersion, setLibraryVersion] = useState(0);
+  const [transfer, setTransfer] = useState<TransferState>({ stage: "idle" });
   const [solvedVariants, setSolvedVariants] = useState<{
     draft: NonNullable<typeof storeSnapshot.draft>;
     variants: readonly StrategyVariant[];
@@ -223,6 +283,7 @@ export function StrategyPlannerPage({
     void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
       (result) => {
         if (!active) return;
+        setLibraryVersion(result.repositoryVersion);
         setLibrary({
           state: result.plans.length === 0 ? "empty" : "ready",
           plans: result.plans,
@@ -242,6 +303,76 @@ export function StrategyPlannerPage({
     );
     return () => { active = false; };
   }, [libraryAttempt, libraryClient, ownedRuntime, screen]);
+
+  const transferClient = libraryClient ?? ownedRuntime?.client ?? null;
+
+  /**
+   * Exports one plan. The package is handed to the user to save where they
+   * chose; nothing is uploaded or shared.
+   */
+  const exportPlan = useCallback((plan: StrategyLibraryEntry) => {
+    if (!transferClient) return;
+    setTransfer({ stage: "exporting", planId: plan.planId });
+    void exportStrategyPackage(
+      transferClient,
+      `export-${Date.now()}`,
+      {
+        plans: [{ planId: plan.planId, variantId: plan.variantId }],
+        provenance: {
+          application: "vantare",
+          applicationVersion: appVersion,
+          exportedAt: canonicalStrategyTimestamp(),
+        },
+      },
+    ).then(
+      (exported) => {
+        onSavePackage(exported.suggestedFileName, exported.bytes);
+        setTransfer({ stage: "idle" });
+        setSaveMessage(`Plan exportado como ${exported.suggestedFileName}.`);
+      },
+      (error: unknown) => setTransfer({ stage: "error", error: messageOf(error, "No se pudo exportar el plan.") }),
+    );
+  }, [appVersion, onSavePackage, transferClient]);
+
+  /**
+   * Reads a package the user chose and reports what importing it would do.
+   * Nothing is written until the preview is confirmed.
+   */
+  const previewImport = useCallback((file: File) => {
+    if (!transferClient) return;
+    setTransfer({ stage: "reading", fileName: file.name });
+    void file.arrayBuffer()
+      .then((buffer) => {
+        const bytes = new Uint8Array(buffer);
+        return previewStrategyImport(transferClient, `import-preview-${Date.now()}`, bytes)
+          .then((preview) => ({ bytes, preview }));
+      })
+      .then(
+        ({ bytes, preview }) => setTransfer({ stage: "previewed", fileName: file.name, bytes, preview }),
+        (error: unknown) => setTransfer({
+          stage: "error",
+          error: messageOf(error, "El paquete no se pudo leer o no es de confianza."),
+        }),
+      );
+  }, [transferClient]);
+
+  /** Applies a previewed package. It lands whole or not at all. */
+  const confirmImport = useCallback(() => {
+    if (!transferClient || transfer.stage !== "previewed") return;
+    const { bytes, fileName } = transfer;
+    setTransfer({ stage: "importing", fileName });
+    void commitStrategyImport(transferClient, `import-${Date.now()}`, bytes, libraryVersion).then(
+      (outcome) => {
+        setTransfer({ stage: "idle" });
+        setSaveMessage(`Importado desde ${fileName}: ${summariseImport(outcome.preview)}.`);
+        setLibraryAttempt((attempt) => attempt + 1);
+      },
+      (error: unknown) => setTransfer({
+        stage: "error",
+        error: messageOf(error, "No se importó nada; tu biblioteca no ha cambiado."),
+      }),
+    );
+  }, [libraryVersion, transfer, transferClient]);
 
   useEffect(() => {
     ownedSolverClientMountedRef.current = true;
@@ -471,6 +602,11 @@ export function StrategyPlannerPage({
           onCreate={() => setScreen("entry")}
           onOpen={openPlan}
           onReload={() => setLibraryAttempt((attempt) => attempt + 1)}
+          transfer={transfer}
+          onExport={exportPlan}
+          onPickPackage={previewImport}
+          onConfirmImport={confirmImport}
+          onCancelTransfer={() => setTransfer({ stage: "idle" })}
         />
       )}
 
@@ -586,6 +722,11 @@ function Gallery({
   onCreate,
   onOpen,
   onReload,
+  transfer,
+  onExport,
+  onPickPackage,
+  onConfirmImport,
+  onCancelTransfer,
 }: {
   titleId: string;
   state: GalleryState;
@@ -594,11 +735,17 @@ function Gallery({
   onCreate: () => void;
   onOpen: (plan: StrategyLibraryEntry) => void;
   onReload: () => void;
+  transfer: TransferState;
+  onExport: (plan: StrategyLibraryEntry) => void;
+  onPickPackage: (file: File) => void;
+  onConfirmImport: () => void;
+  onCancelTransfer: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<StrategyLibrarySort>("recent");
   const [scope, setScope] = useState<"all" | "unsaved" | "saved">("all");
   const searchId = useId();
+  const importId = useId();
 
   const visible = sortPlans(
     filterPlans(plans, {
@@ -617,10 +764,51 @@ function Gallery({
           <h1 id={titleId}>Mis planes</h1>
           <p>Tus planes son privados y viven solo en este equipo.</p>
         </div>
-        <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
-          <span aria-hidden="true">＋</span> Crear plan
-        </button>
+        <div className="strategy-page-header__actions">
+          <label className="strategy-button strategy-button--secondary" htmlFor={importId}>
+            Importar plan
+            <input
+              id={importId}
+              type="file"
+              accept=".json,application/json"
+              className="strategy-visually-hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                // Clearing the input lets the same file be chosen twice, which
+                // matters when the first attempt was cancelled.
+                event.target.value = "";
+                if (file) onPickPackage(file);
+              }}
+            />
+          </label>
+          <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
+            <span aria-hidden="true">＋</span> Crear plan
+          </button>
+        </div>
       </header>
+
+      {transfer.stage === "reading" && (
+        <div className="strategy-state" role="status">Leyendo {transfer.fileName}…</div>
+      )}
+      {transfer.stage === "importing" && (
+        <div className="strategy-state" role="status">Importando {transfer.fileName}…</div>
+      )}
+      {transfer.stage === "error" && (
+        <div className="strategy-state strategy-state--error" role="alert" data-testid="strategy-transfer-error">
+          <p>{transfer.error}</p>
+          <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancelTransfer}>
+            Entendido
+          </button>
+        </div>
+      )}
+      {transfer.stage === "previewed" && (
+        <ImportPreview
+          fileName={transfer.fileName}
+          preview={transfer.preview}
+          onConfirm={onConfirmImport}
+          onCancel={onCancelTransfer}
+        />
+      )}
 
       {state === "ready" && plans.length > 0 && (
         <div className="strategy-gallery__tools">
@@ -698,6 +886,17 @@ function Gallery({
                   disabled={!plan.hasDraft}
                   title={plan.hasDraft ? undefined : "Este plan no tiene un borrador abierto"}
                 >Abrir workspace</button>
+                <button
+                  className="strategy-button strategy-button--ghost"
+                  type="button"
+                  onClick={() => onExport(plan)}
+                  disabled={transfer.stage === "exporting"}
+                  data-testid={`strategy-export-${plan.planId}-${plan.variantId}`}
+                >
+                  {transfer.stage === "exporting" && transfer.planId === plan.planId
+                    ? "Exportando…"
+                    : "Exportar"}
+                </button>
               </div>
             </article>
           ))}
@@ -709,6 +908,66 @@ function Gallery({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * What an import would do, shown before it does it. Every entry states its own
+ * effect, and a package that would collide cannot be confirmed at all.
+ */
+function ImportPreview({
+  fileName,
+  preview,
+  onConfirm,
+  onCancel,
+}: {
+  fileName: string;
+  preview: StrategyImportPreviewV1;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const nothingToDo = preview.entries.every((entry) => entry.disposition === "unchanged");
+  return (
+    <section className="strategy-import-preview" aria-label="Vista previa de importación" data-testid="strategy-import-preview">
+      <header>
+        <h2>{fileName}</h2>
+        <p data-testid="strategy-import-summary">{summariseImport(preview)}</p>
+        <p className="strategy-import-preview__provenance">
+          Exportado por {preview.provenance.application} {preview.provenance.applicationVersion} el{" "}
+          {preview.provenance.exportedAt.slice(0, 10)}
+        </p>
+      </header>
+      <ul className="strategy-import-preview__entries">
+        {preview.entries.map((entry) => (
+          <li
+            key={`${entry.planId}:${entry.variantId}`}
+            data-testid={`strategy-import-entry-${entry.planId}-${entry.variantId}`}
+            data-disposition={entry.disposition}
+          >
+            <strong>{entry.name || entry.planId}</strong>
+            <span>{describeImportEntry(entry)}</span>
+          </li>
+        ))}
+      </ul>
+      <footer>
+        <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancel}>
+          Cancelar
+        </button>
+        <button
+          className="strategy-button strategy-button--primary"
+          type="button"
+          onClick={onConfirm}
+          disabled={!preview.importable || nothingToDo}
+          title={
+            preview.importable
+              ? (nothingToDo ? "Ya tienes todo lo que trae este paquete" : undefined)
+              : "Este paquete choca con revisiones que ya tienes guardadas"
+          }
+        >
+          Importar
+        </button>
+      </footer>
+    </section>
   );
 }
 

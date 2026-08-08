@@ -1,10 +1,5 @@
-import { useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { SaveStatus } from "./SaveStatus";
-import {
-  requestSystemNotifications,
-  systemNotificationPermission,
-} from "./notification-preferences";
 import type { useAppSettings } from "./useAppSettings";
 
 type Props = {
@@ -15,26 +10,17 @@ type Props = {
  * What Vantare tells you about, and where.
  *
  * Every switch here governs a surface that exists: the update banner in the
- * shell, the toast a launch chain shows when it finishes, and the desktop
- * notification raised while the window is hidden.
+ * shell and the toast a launch chain shows when it finishes.
+ *
+ * There is no desktop-notification switch. The web Notification API is not
+ * wired up in WebView2, so asking for permission did nothing at all; Wails
+ * ships a notifications service that uses Windows toasts, and that is what a
+ * real one would have to go through.
  */
 export function NotificationsSettings({ app }: Props) {
   const { t } = useI18n();
   const { appSettings, settingsStatus, setNotifications } = app;
   const notifications = appSettings.notifications ?? {};
-  const [permission, setPermission] = useState(systemNotificationPermission);
-
-  async function toggleSystem(wanted: boolean) {
-    if (!wanted) {
-      setNotifications({ systemEnabled: false });
-      return;
-    }
-    // Asking first, and storing only what the answer allows: a switch that
-    // says "on" while the system refuses to deliver is worse than no switch.
-    const granted = await requestSystemNotifications();
-    setPermission(systemNotificationPermission());
-    setNotifications({ systemEnabled: granted });
-  }
 
   return (
     <div className="card-sleek rounded-xl p-5">
@@ -67,30 +53,6 @@ export function NotificationsSettings({ app }: Props) {
           />
           <span>{t("settings.notifications.launcher")}</span>
         </label>
-
-        {permission === "unsupported" ? (
-          <p className="text-xs text-vantare-textMuted leading-relaxed">
-            {t("settings.notifications.systemUnsupported")}
-          </p>
-        ) : (
-          <>
-            <label className="flex items-center gap-3 text-sm text-vantare-textMuted cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(notifications.systemEnabled) && permission === "granted"}
-                disabled={permission === "denied"}
-                onChange={(event) => void toggleSystem(event.target.checked)}
-                className="accent-vantare-red-500 w-4 h-4"
-              />
-              <span>{t("settings.notifications.system")}</span>
-            </label>
-            {permission === "denied" && (
-              <p className="text-xs text-vantare-textMuted leading-relaxed">
-                {t("settings.notifications.systemDenied")}
-              </p>
-            )}
-          </>
-        )}
 
         <p className="text-xs text-vantare-textMuted leading-relaxed">
           {t("settings.notifications.help")}

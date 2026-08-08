@@ -1,14 +1,15 @@
 import { useI18n } from "../../i18n/I18nProvider";
-import type { useStartupSettings } from "./useStartupSettings";
+import { useStartupSettings } from "./useStartupSettings";
 
-type Props = {
-  startup: ReturnType<typeof useStartupSettings>;
-};
-
-/** Launching Vantare at sign-in, and how the window comes up when it does. */
-export function StartupSettings({ startup }: Props) {
+/**
+ * Launching Vantare at sign-in, and how the window comes up when it does.
+ *
+ * The hook lives here rather than on the page so it only reads the registry
+ * when this section is actually on screen.
+ */
+export function StartupSettings() {
   const { t } = useI18n();
-  const { startup: options, error, setEnabled, setMinimised } = startup;
+  const { startup: options, error, setEnabled, setMinimised } = useStartupSettings();
 
   return (
     <div className="card-sleek rounded-xl p-5">

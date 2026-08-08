@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { formatBytes, type useStorageSettings } from "./useStorageSettings";
-
-type Props = {
-  storage: ReturnType<typeof useStorageSettings>;
-};
+import { formatBytes, useStorageSettings } from "./useStorageSettings";
 
 /**
  * Where Vantare keeps things on this machine, how much room it takes and how
@@ -13,10 +9,14 @@ type Props = {
  *
  * The page tells the user their data stays local. This is what makes that
  * checkable instead of a claim.
+ *
+ * The hook lives here rather than on the page because measuring walks both
+ * directories on the Go side: it should not run every time Ajustes opens on
+ * some other tab.
  */
-export function StorageSettings({ storage }: Props) {
+export function StorageSettings() {
   const { t } = useI18n();
-  const { summary, error, loaded, reveal, clear } = storage;
+  const { summary, error, loaded, reveal, clear } = useStorageSettings();
   const [confirming, setConfirming] = useState<string | null>(null);
 
   return (

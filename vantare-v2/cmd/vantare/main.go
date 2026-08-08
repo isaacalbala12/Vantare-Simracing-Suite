@@ -1098,12 +1098,29 @@ func main() {
 	})
 
 	wailsApp.Event.On("notifications:authorize", func(_ *application.CustomEvent) {
+		// On Windows there is nothing to ask: the platform notifier answers yes
+		// unconditionally, because per-app permission is a browser concept and
+		// not a Windows one. Kept so a platform that does prompt can, and so
+		// the answer always comes back from the platform rather than from us.
 		if _, err := notifySvc.RequestAuthorization(); err != nil {
 			log.Printf("notification authorization request failed: %v", err)
 		}
-		// Report what the platform actually says afterwards, never what was
-		// asked for: the user may well have said no.
 		emitNotificationStatus()
+	})
+
+	// "Notifications do not work" is not something a user can diagnose, and the
+	// logs do not answer it either: Windows drops toasts silently for reasons
+	// of its own -- Focus Assist, an unregistered app id, notifications off in
+	// system settings. This turns that into either a toast they can see or an
+	// error they can read.
+	wailsApp.Event.On("notifications:test", func(_ *application.CustomEvent) {
+		err := notifySvc.SendTest()
+		payload := map[string]any{"ok": err == nil}
+		if err != nil {
+			log.Printf("test notification failed: %v", err)
+			payload["message"] = err.Error()
+		}
+		emitter.Emit("notifications:test:result", payload)
 	})
 
 	// Register profile service with Wails (frontend can call methods)

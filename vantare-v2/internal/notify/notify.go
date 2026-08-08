@@ -57,6 +57,21 @@ func (s *Service) RequestAuthorization() (bool, error) {
 	return s.backend.RequestAuthorization()
 }
 
+// SendTest raises a notification right now, ignoring both the preference and
+// the window check.
+//
+// It exists because "notifications do not work" is not something the user can
+// diagnose and not something the logs answer: Windows silently drops toasts
+// for all sorts of reasons -- Focus Assist, an unregistered app id, a
+// notifications-off system setting. This turns that into an error the user can
+// read, or a toast they can see.
+func (s *Service) SendTest() error {
+	if !s.Supported() {
+		return fmt.Errorf("notifications are not available on this platform")
+	}
+	return s.backend.Send("Vantare", "Las notificaciones de escritorio funcionan.")
+}
+
 // LaunchFinished raises the toast for a finished launch chain. It returns
 // whether one was sent, which is what lets a caller tell the difference between
 // "declined" and "failed".

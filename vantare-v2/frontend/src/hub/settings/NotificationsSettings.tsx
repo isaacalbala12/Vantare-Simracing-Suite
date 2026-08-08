@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { SaveStatus } from "./SaveStatus";
 import { useSystemNotifications } from "./useSystemNotifications";
@@ -24,18 +23,10 @@ export function NotificationsSettings({ app }: Props) {
   const { appSettings, settingsStatus, setNotifications } = app;
   const notifications = appSettings.notifications ?? {};
   const system = useSystemNotifications();
-  // The platform outranks the stored preference: permission revoked from
-  // Windows has to show as off, whatever the settings file remembers.
+  // The platform still outranks the stored preference, for a platform that can
+  // refuse. Windows cannot: it has no per-app permission, so this is the
+  // stored value there.
   const systemOn = Boolean(notifications.systemEnabled) && system.status.authorized;
-
-  // Asking is what may prompt the user, so it only happens when they turn the
-  // switch on. Once Windows has answered, the choice is stored -- but never
-  // stored as "on" when the answer was no.
-  useEffect(() => {
-    if (notifications.systemEnabled && system.status.supported && !system.status.authorized) {
-      setNotifications({ systemEnabled: false });
-    }
-  }, [notifications.systemEnabled, system.status, setNotifications]);
 
   return (
     <div className="card-sleek rounded-xl p-5">
@@ -80,10 +71,8 @@ export function NotificationsSettings({ app }: Props) {
                     setNotifications({ systemEnabled: false });
                     return;
                   }
-                  if (system.status.authorized) {
-                    setNotifications({ systemEnabled: true });
-                    return;
-                  }
+                  // Harmless where there is nothing to grant, and the one
+                  // chance to prompt where there is.
                   system.authorize();
                   setNotifications({ systemEnabled: true });
                 }}
@@ -91,11 +80,33 @@ export function NotificationsSettings({ app }: Props) {
               />
               <span>{t("settings.notifications.system")}</span>
             </label>
-            {system.refused && (
-              <p className="text-xs text-vantare-textMuted leading-relaxed">
-                {t("settings.notifications.systemDenied")}
-              </p>
-            )}
+
+            {/* Windows drops toasts silently for reasons of its own -- Focus
+                Assist, notifications off system-wide, an app id it does not
+                recognise. Without this the user has no way to tell a broken
+                setup from one that simply had nothing to announce. */}
+            <div className="flex flex-wrap items-center gap-3 pl-7">
+              <button
+                type="button"
+                data-testid="notifications-test"
+                onClick={system.sendTest}
+                disabled={system.test.state === "sending"}
+                className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-vantare-textMuted transition-colors hover:text-white hover:border-white/30 disabled:opacity-50"
+              >
+                {t("settings.notifications.test")}
+              </button>
+              {system.test.state === "sent" && (
+                <span className="text-xs text-vantare-success" role="status">
+                  {t("settings.notifications.testSent")}
+                </span>
+              )}
+              {system.test.state === "failed" && (
+                <span className="text-xs text-vantare-red-300" role="alert">
+                  {t("settings.notifications.testFailed")}
+                  {system.test.message ? ` ${system.test.message}` : ""}
+                </span>
+              )}
+            </div>
           </>
         ) : (
           <p className="text-xs text-vantare-textMuted leading-relaxed">

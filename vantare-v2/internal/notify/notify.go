@@ -7,7 +7,10 @@
 // the platform directly -- Windows toasts -- and that is what Backend is.
 package notify
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 // Backend is the platform notifier. The Wails notifications service satisfies
 // it through a small adapter in main; keeping it an interface is what lets the
@@ -23,15 +26,51 @@ type Backend interface {
 // window is out of sight -- a toast for something the user is already watching
 // is just noise.
 type Service struct {
-	backend Backend
-	enabled func() bool
-	hidden  func() bool
+	backend  Backend
+	enabled  func() bool
+	hidden   func() bool
+	requests chan func()
 }
 
 // New builds the service. A nil backend means the platform has no notifier, and
 // every call becomes a no-op rather than a crash.
+//
+// It also claims one OS thread for the lifetime of the process. Windows toasts
+// go through WinRT, whose apartment model is a property of the calling thread
+// and cannot be changed once set: calling from a plain goroutine meant landing
+// on whichever thread the scheduler happened to pick, and if something had
+// already put that thread in a single-threaded apartment the call failed with
+// "cannot change thread mode after it is set". A locked thread runs only its
+// own goroutine, so once this one is ours nothing else can change its
+// apartment underneath us.
 func New(backend Backend, enabled func() bool, hidden func() bool) *Service {
-	return &Service{backend: backend, enabled: enabled, hidden: hidden}
+	service := &Service{backend: backend, enabled: enabled, hidden: hidden}
+	if backend != nil {
+		service.requests = make(chan func())
+		go service.serve()
+	}
+	return service
+}
+
+func (s *Service) serve() {
+	// Never unlocked: releasing the thread would put it back in the pool with
+	// its apartment already set, which is the very state that broke this.
+	runtime.LockOSThread()
+	for request := range s.requests {
+		request()
+	}
+}
+
+// onOwnThread runs a platform call on the thread this service owns and waits
+// for it. Every call into the backend goes through here, so the platform only
+// ever sees one thread.
+func (s *Service) onOwnThread(call func() error) error {
+	if s.requests == nil {
+		return call()
+	}
+	done := make(chan error, 1)
+	s.requests <- func() { done <- call() }
+	return <-done
 }
 
 // Supported reports whether this build can raise notifications at all, so the
@@ -46,7 +85,13 @@ func (s *Service) Authorized() (bool, error) {
 	if !s.Supported() {
 		return false, nil
 	}
-	return s.backend.Authorized()
+	var authorized bool
+	err := s.onOwnThread(func() error {
+		var callErr error
+		authorized, callErr = s.backend.Authorized()
+		return callErr
+	})
+	return authorized, err
 }
 
 // RequestAuthorization asks the platform, which may prompt the user.
@@ -54,7 +99,13 @@ func (s *Service) RequestAuthorization() (bool, error) {
 	if !s.Supported() {
 		return false, nil
 	}
-	return s.backend.RequestAuthorization()
+	var granted bool
+	err := s.onOwnThread(func() error {
+		var callErr error
+		granted, callErr = s.backend.RequestAuthorization()
+		return callErr
+	})
+	return granted, err
 }
 
 // SendTest raises a notification right now, ignoring both the preference and
@@ -69,7 +120,9 @@ func (s *Service) SendTest() error {
 	if !s.Supported() {
 		return fmt.Errorf("notifications are not available on this platform")
 	}
-	return s.backend.Send("Vantare", "Las notificaciones de escritorio funcionan.")
+	return s.onOwnThread(func() error {
+		return s.backend.Send("Vantare", "Las notificaciones de escritorio funcionan.")
+	})
 }
 
 // LaunchFinished raises the toast for a finished launch chain. It returns
@@ -84,7 +137,7 @@ func (s *Service) LaunchFinished(profileName string, ok bool) (bool, error) {
 	}
 	// Checked before the window test so that a revoked permission is reported
 	// even when the user happens to be looking at the app.
-	authorized, err := s.backend.Authorized()
+	authorized, err := s.Authorized()
 	if err != nil {
 		return false, err
 	}
@@ -98,7 +151,7 @@ func (s *Service) LaunchFinished(profileName string, ok bool) (bool, error) {
 	if !ok {
 		body = fmt.Sprintf("El perfil %s no se pudo iniciar del todo.", profileName)
 	}
-	if err := s.backend.Send("Vantare", body); err != nil {
+	if err := s.onOwnThread(func() error { return s.backend.Send("Vantare", body) }); err != nil {
 		return false, err
 	}
 	return true, nil

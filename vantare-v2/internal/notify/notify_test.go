@@ -126,3 +126,35 @@ func TestRequestAuthorizationReachesThePlatform(t *testing.T) {
 		t.Fatalf("asked the platform %d times, want exactly 1", backend.requests)
 	}
 }
+
+// SendTest deliberately ignores the preference and the window check: it exists
+// to answer "is this reaching the desktop at all", which the user cannot
+// otherwise find out.
+func TestSendTestIgnoresThePreferenceAndTheWindow(t *testing.T) {
+	backend := &spyBackend{authorized: false}
+	service := New(backend, always(false), always(false))
+
+	if err := service.SendTest(); err != nil {
+		t.Fatalf("SendTest: %v", err)
+	}
+	if len(backend.sent) != 1 {
+		t.Fatalf("sent %v, want exactly one notification", backend.sent)
+	}
+}
+
+func TestSendTestReportsWhyItCouldNotSend(t *testing.T) {
+	backend := &spyBackend{sendErr: errors.New("toast rejected by the shell")}
+	service := New(backend, always(true), always(true))
+
+	err := service.SendTest()
+
+	if err == nil || !strings.Contains(err.Error(), "toast rejected") {
+		t.Fatalf("err = %v, want the platform's reason", err)
+	}
+}
+
+func TestSendTestSaysSoWithoutABackend(t *testing.T) {
+	if err := New(nil, always(true), always(true)).SendTest(); err == nil {
+		t.Fatal("an unsupported platform must report why, not pretend it sent")
+	}
+}

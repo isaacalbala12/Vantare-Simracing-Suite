@@ -16,35 +16,64 @@ export type SystemNotificationStatus = {
   authorized: boolean;
 };
 
+/** The outcome of the last test notification, if one has been sent. */
+export type SystemNotificationTest =
+  | { state: "idle" }
+  | { state: "sending" }
+  | { state: "sent" }
+  | { state: "failed"; message: string };
+
 const UNKNOWN: SystemNotificationStatus = { supported: false, authorized: false };
 
 export function useSystemNotifications() {
   const [status, setStatus] = useState<SystemNotificationStatus>(UNKNOWN);
-  const [asked, setAsked] = useState(false);
+  const [test, setTest] = useState<SystemNotificationTest>({ state: "idle" });
 
   useEffect(() => {
-    const off = Events.On("notifications:status", (event: { data: SystemNotificationStatus }) => {
-      if (event.data && typeof event.data === "object") {
-        setStatus({
-          supported: Boolean(event.data.supported),
-          authorized: Boolean(event.data.authorized),
-        });
-      }
-    });
+    const handlers: (() => void)[] = [];
+
+    handlers.push(
+      Events.On("notifications:status", (event: { data: SystemNotificationStatus }) => {
+        if (event.data && typeof event.data === "object") {
+          setStatus({
+            supported: Boolean(event.data.supported),
+            authorized: Boolean(event.data.authorized),
+          });
+        }
+      }),
+    );
+
+    handlers.push(
+      Events.On(
+        "notifications:test:result",
+        (event: { data: { ok?: boolean; message?: string } }) => {
+          setTest(
+            event.data?.ok
+              ? { state: "sent" }
+              : { state: "failed", message: event.data?.message ?? "" },
+          );
+        },
+      ),
+    );
+
     Events.Emit("notifications:status:get");
-    return () => off?.();
+
+    return () => handlers.forEach((handler) => handler?.());
   }, []);
 
   return {
     status,
-    /** True once we have asked and the platform still says no. */
-    refused: asked && status.supported && !status.authorized,
+    test,
     authorize: () => {
-      setAsked(true);
-      // The backend answers with notifications:status either way, so what
-      // lands in state is what the platform really allows, never what was
-      // requested.
+      // On Windows there is no permission to grant: the platform notifier
+      // answers yes unconditionally, because per-app permission is a browser
+      // concept. Kept so a platform that does prompt can, and so the answer
+      // always comes back from the backend rather than from us.
       Events.Emit("notifications:authorize");
+    },
+    sendTest: () => {
+      setTest({ state: "sending" });
+      Events.Emit("notifications:test");
     },
   };
 }

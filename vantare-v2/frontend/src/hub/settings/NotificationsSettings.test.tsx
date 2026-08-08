@@ -141,18 +141,20 @@ describe("NotificationsSettings", () => {
     expect((screen.getByRole("checkbox", { name: SYSTEM }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it("explains a refusal after asking", () => {
+  // Windows drops toasts silently for reasons of its own, so the user needs a
+  // way to tell a broken setup from one that had nothing to announce.
+  it("reports what happened to a test notification", () => {
     render(<Harness />);
     dispatch("settings", { cpuSampling: true, hotkeys: {} });
-    dispatch("notifications:status", { supported: true, authorized: false });
+    dispatch("notifications:status", { supported: true, authorized: true });
 
-    fireEvent.click(screen.getByRole("checkbox", { name: SYSTEM }));
-    dispatch("notifications:status", { supported: true, authorized: false });
+    fireEvent.click(screen.getByTestId("notifications-test"));
+    expect(runtimeMock.emit).toHaveBeenCalledWith("notifications:test");
 
-    expect(
-      screen.getByText(
-        "Windows no ha concedido el permiso. Puedes revisarlo en Configuración › Sistema › Notificaciones.",
-      ),
-    ).toBeDefined();
+    dispatch("notifications:test:result", { ok: false, message: "toast rejected" });
+    expect(screen.getByRole("alert").textContent).toContain("toast rejected");
+
+    dispatch("notifications:test:result", { ok: true });
+    expect(screen.getByRole("status").textContent).toContain("Enviada");
   });
 });

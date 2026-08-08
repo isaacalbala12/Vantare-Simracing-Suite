@@ -15,6 +15,7 @@ export const STRATEGY_EDITOR_DRAFT_ID = "strategy-default-draft";
 
 export type StrategyEditorRuntime = {
   readonly store: StrategyStore<StrategyEditorDocument>;
+  readonly client: StrategyApplicationClient<StrategyEditorDocument>;
   dispose(): void;
 };
 
@@ -48,6 +49,9 @@ export function createStrategyEditorRuntime(
 ): StrategyEditorRuntime {
   return {
     store: createStrategyStore(client),
+    // Exposed so the library read model can query through the same service the
+    // editor writes through, rather than opening a second door to the data.
+    client,
     dispose: () => client.dispose(),
   };
 }

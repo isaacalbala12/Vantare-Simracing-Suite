@@ -22,6 +22,7 @@ const (
 	OperationDeactivate   Operation = "deactivate"
 	OperationRestore      Operation = "restore"
 	OperationClose        Operation = "close"
+	OperationList         Operation = "list"
 )
 
 var commandIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -91,6 +92,31 @@ type CloseCommand[T any] struct {
 	Discard    bool                  `json:"discard"`
 }
 
+// ListCommand asks for the library. It reads and never writes, so it carries no
+// expected version to check against.
+type ListCommand struct {
+	CommandHeader
+}
+
+// PlanSummary is what "My plans" needs to find and choose a plan. It carries no
+// payload on purpose: a library view must not load the contents of every plan
+// to draw a list of them.
+type PlanSummary struct {
+	PlanID    contract.PlanID    `json:"planId"`
+	VariantID contract.VariantID `json:"variantId"`
+	// DraftID is present only while the plan has unsaved work open.
+	DraftID contract.DraftID  `json:"draftId,omitempty"`
+	Name    string            `json:"name"`
+	Mode    contract.PlanMode `json:"mode"`
+	// UpdatedAt is the most recent activity, draft or revision.
+	UpdatedAt     time.Time `json:"updatedAt"`
+	HasDraft      bool      `json:"hasDraft"`
+	RevisionCount int       `json:"revisionCount"`
+	// LatestRevision identifies what would be opened or activated.
+	LatestRevision   *contract.RevisionRef `json:"latestRevision,omitempty"`
+	LatestRevisionAt *time.Time            `json:"latestRevisionAt,omitempty"`
+}
+
 type Result[T any] struct {
 	ProtocolVersion     string                    `json:"protocolVersion"`
 	CommandID           CommandID                 `json:"commandId"`
@@ -99,6 +125,7 @@ type Result[T any] struct {
 	SavedDraft          *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
 	Revision            *contract.PlanRevision[T] `json:"revision,omitempty"`
 	ActivePlan          *contract.ActivePlan      `json:"activePlan,omitempty"`
+	Plans               []PlanSummary             `json:"plans,omitempty"`
 	RecoveredFromBackup bool                      `json:"recoveredFromBackup"`
 	Closed              bool                      `json:"closed"`
 }

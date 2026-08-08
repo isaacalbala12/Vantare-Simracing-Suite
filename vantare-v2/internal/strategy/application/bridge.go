@@ -19,6 +19,7 @@ var requiredOperationFields = map[Operation][]string{
 	OperationActivate:     {"revision", "activationId", "activatedAt"},
 	OperationDeactivate:   {"expectedActivationId"},
 	OperationRestore:      {"draftId"},
+	OperationList:         {},
 	OperationClose:        {"draft", "savedDraft", "discard"},
 }
 
@@ -74,6 +75,11 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command OpenCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.Open(ctx, command)
+		}
+	case OperationList:
+		var command ListCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.List(ctx, command)
 		}
 	case OperationEdit:
 		var command EditCommand[T]

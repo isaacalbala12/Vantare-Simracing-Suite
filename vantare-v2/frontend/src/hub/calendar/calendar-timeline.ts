@@ -34,13 +34,28 @@ export type TimelineWindow = {
 
 /**
  * The window the timeline shows: from the top of the current hour, forward.
- * Anchoring to the hour keeps the column grid aligned with the labels instead
- * of starting mid-column.
+ *
+ * The hour is the one in `timeZone`, because that is the zone the column labels
+ * are written in. Anchoring to the browser's local hour instead made the labels
+ * read :30 for anyone on a half-hour offset, since the grid and the labels
+ * disagreed about where an hour begins.
  */
-export function buildTimelineWindow(now: Date, hours: number): TimelineWindow {
-  const from = new Date(now.getTime());
-  from.setMinutes(0, 0, 0);
-  return { fromMs: from.getTime(), toMs: from.getTime() + hours * 3_600_000 };
+export function buildTimelineWindow(now: Date, hours: number, timeZone: string): TimelineWindow {
+  const minutesPastTheHour = minuteOfHourInZone(now, timeZone);
+  const fromMs =
+    Math.floor(now.getTime() / 60_000) * 60_000 - minutesPastTheHour * 60_000;
+  return { fromMs, toMs: fromMs + hours * 3_600_000 };
+}
+
+/** The minute component of an instant as read in the given zone. */
+function minuteOfHourInZone(date: Date, timeZone: string): number {
+  const minute = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  const parsed = Number.parseInt(minute, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 /** Hour boundaries inside the window, including the first one. */

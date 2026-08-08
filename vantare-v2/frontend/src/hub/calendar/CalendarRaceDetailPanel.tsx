@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { Events } from "@wailsio/runtime";
 import type { Calendar, RaceSeries, RaceEvent, Session } from "../../calendar/calendar-types";
+import { formatDateInZone, formatTimeInZone } from "./calendar-shared";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 import type { CalendarFilter } from "./CalendarToolbar";
 import { useAccess } from "../../lib/access";
@@ -26,14 +27,6 @@ export type CalendarRaceDetailPanelProps = {
 
 function getTierInfo(tier: CalendarFilter): { label: string; color: string; bg: string; border: string } {
   return TIER_INFO[tier as Exclude<CalendarFilter, "all">] ?? TIER_INFO.special;
-}
-
-function formatTime(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("es-ES", { timeZone, hour: "2-digit", minute: "2-digit" }).format(date);
-}
-
-function formatDate(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("es-ES", { timeZone, day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 function getSessionLabel(name: string): string {
@@ -203,7 +196,7 @@ export function CalendarRaceDetailPanel({
                 <div className="flex items-center gap-2 text-xs font-mono text-vantare-textMuted">
                   <span>Próxima salida:</span>
                   <span className="text-white font-semibold">
-                    {formatDate(nextStartDate, timeZone)} · {formatTime(nextStartDate, timeZone)}
+                    {formatDateInZone(nextStartDate, timeZone)} · {formatTimeInZone(nextStartDate, timeZone)}
                   </span>
                 </div>
               )}

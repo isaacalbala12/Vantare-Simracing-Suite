@@ -48,7 +48,7 @@ export function CalendarTimelineView({
 
   const now = fixedNow ?? tick;
 
-  const window = useMemo(() => buildTimelineWindow(now, hours), [now, hours]);
+  const window = useMemo(() => buildTimelineWindow(now, hours, timeZone), [now, hours, timeZone]);
   const ticks = useMemo(() => buildTimelineTicks(window), [window]);
   const rows = useMemo(() => buildTimelineRows(calendar, window), [calendar, window]);
   const markerPct = nowMarkerPct(window, now);

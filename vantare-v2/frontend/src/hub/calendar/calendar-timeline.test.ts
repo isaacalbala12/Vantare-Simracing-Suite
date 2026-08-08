@@ -60,15 +60,27 @@ function calendarWith(events: RaceEvent[], seriesList: RaceSeries[] = [series()]
 
 describe("buildTimelineWindow", () => {
   it("anchors to the top of the hour so columns line up with their labels", () => {
-    const window = buildTimelineWindow(new Date("2026-08-04T12:37:41Z"), 6);
+    const window = buildTimelineWindow(new Date("2026-08-04T12:37:41Z"), 6, "UTC");
     expect(new Date(window.fromMs).toISOString()).toBe("2026-08-04T12:00:00.000Z");
     expect(window.toMs - window.fromMs).toBe(6 * 3_600_000);
+  });
+
+  it("anchors on the display zone's hour, not the browser's", () => {
+    // Kolkata runs at +05:30, so its hour starts at :30 past the UTC hour. The
+    // labels are written in that zone, so the grid has to agree with them.
+    const window = buildTimelineWindow(new Date("2026-08-04T12:37:41Z"), 6, "Asia/Kolkata");
+    expect(new Date(window.fromMs).toISOString()).toBe("2026-08-04T12:30:00.000Z");
+  });
+
+  it("leaves whole-hour zones where they already were", () => {
+    const window = buildTimelineWindow(new Date("2026-08-04T12:37:41Z"), 6, "Europe/Madrid");
+    expect(new Date(window.fromMs).toISOString()).toBe("2026-08-04T12:00:00.000Z");
   });
 });
 
 describe("buildTimelineTicks", () => {
   it("emits one tick per hour, positioned across the window", () => {
-    const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4);
+    const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4, "UTC");
     const ticks = buildTimelineTicks(window);
     expect(ticks).toHaveLength(4);
     expect(ticks[0].leftPct).toBe(0);
@@ -78,7 +90,7 @@ describe("buildTimelineTicks", () => {
 });
 
 describe("nowMarkerPct", () => {
-  const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4);
+  const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4, "UTC");
 
   it("places the marker proportionally inside the window", () => {
     expect(nowMarkerPct(window, new Date("2026-08-04T13:00:00Z"))).toBe(25);
@@ -91,7 +103,7 @@ describe("nowMarkerPct", () => {
 });
 
 describe("buildTimelineRows", () => {
-  const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4);
+  const window = buildTimelineWindow(new Date("2026-08-04T12:00:00Z"), 4, "UTC");
 
   it("lays out one row per series with its blocks in time order", () => {
     const calendar = calendarWith([

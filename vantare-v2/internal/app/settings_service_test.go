@@ -845,7 +845,10 @@ func TestSettingsNotificationDefaultsSurviveAnOlderFile(t *testing.T) {
 
 	got := svc.Snapshot().Notifications
 	if got.UpdatesMuted || got.LauncherMuted {
-		t.Fatalf("an older file must keep notifications on, got %+v", got)
+		t.Fatalf("an older file must keep in-app alerts on, got %+v", got)
+	}
+	if got.SystemEnabled {
+		t.Fatal("desktop notifications must stay off until the platform grants permission")
 	}
 }
 
@@ -858,7 +861,7 @@ func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	next := *svc.Snapshot()
-	next.Notifications = app.NotificationSettings{UpdatesMuted: true}
+	next.Notifications = app.NotificationSettings{UpdatesMuted: true, SystemEnabled: true}
 	if err := svc.Save(&next); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -868,8 +871,8 @@ func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
 		t.Fatalf("reload: %v", err)
 	}
 	got := reloaded.Snapshot().Notifications
-	if !got.UpdatesMuted || got.LauncherMuted {
-		t.Fatalf("round trip = %+v, want updates muted and the launcher untouched", got)
+	if !got.UpdatesMuted || got.LauncherMuted || !got.SystemEnabled {
+		t.Fatalf("round trip = %+v, want updates muted and desktop enabled", got)
 	}
 }
 

@@ -14,7 +14,8 @@ import type { NotificationSettings } from "./settings-contract";
 function samePreferences(a: NotificationSettings, b: NotificationSettings): boolean {
   return (
     Boolean(a.updatesMuted) === Boolean(b.updatesMuted) &&
-    Boolean(a.launcherMuted) === Boolean(b.launcherMuted)
+    Boolean(a.launcherMuted) === Boolean(b.launcherMuted) &&
+    Boolean(a.systemEnabled) === Boolean(b.systemEnabled)
   );
 }
 

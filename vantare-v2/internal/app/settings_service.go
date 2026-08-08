@@ -27,14 +27,19 @@ var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millise
 // NotificationSettings records what the user has turned off, not what they have
 // turned on.
 //
-// Stated as opt-outs, the zero value is the shipping default: banner and toasts
-// on. A settings file written before this field existed therefore loads with
-// the right behaviour, and no migration is needed.
+// Stated as opt-outs, the zero value is the shipping default: in-app alerts on,
+// desktop notifications off because they need the platform's permission first.
+// A settings file written before this field existed therefore loads with the
+// right behaviour, and no migration is needed.
 type NotificationSettings struct {
 	// UpdatesMuted hides the banner shown when a new version is available.
 	UpdatesMuted bool `json:"updatesMuted,omitempty"`
 	// LauncherMuted hides the toast a launch chain shows when it finishes.
 	LauncherMuted bool `json:"launcherMuted,omitempty"`
+	// SystemEnabled raises a Windows toast when a launch finishes while the
+	// window is minimised. Off by default: it needs the platform's permission,
+	// which only the user can grant.
+	SystemEnabled bool `json:"systemEnabled,omitempty"`
 }
 
 // AppSettings holds user-configurable global settings.

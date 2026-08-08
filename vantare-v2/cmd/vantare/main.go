@@ -29,6 +29,7 @@ import (
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
+	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/startup"
@@ -44,6 +45,7 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 // version is the current application version.
@@ -318,6 +320,73 @@ func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
 	default:
 		return "The manual Strategy request could not be completed.", false
 	}
+}
+
+// wailsNotifier adapts the Wails notifications service to notify.Backend. The
+// browser Notification API is not wired up in WebView2, so this is the only
+// route that can actually reach the desktop.
+type wailsNotifier struct {
+	service *notifications.NotificationService
+}
+
+func (n wailsNotifier) RequestAuthorization() (bool, error) {
+	return n.service.RequestNotificationAuthorization()
+}
+
+func (n wailsNotifier) Authorized() (bool, error) {
+	return n.service.CheckNotificationAuthorization()
+}
+
+func (n wailsNotifier) Send(title, body string) error {
+	return n.service.SendNotification(notifications.NotificationOptions{
+		ID:    fmt.Sprintf("vantare-%d", time.Now().UnixNano()),
+		Title: title,
+		Body:  body,
+	})
+}
+
+// notifyingEmitter watches launch chains going past on their way to the
+// frontend and raises a desktop notification when one finishes. It sits here,
+// not in the launcher package, so that package keeps knowing nothing about
+// notifications.
+type notifyingEmitter struct {
+	downstream app.EventEmitter
+	notify     *notify.Service
+	settings   *app.SettingsService
+}
+
+func (e notifyingEmitter) Emit(name string, data any) {
+	e.downstream.Emit(name, data)
+	if name != "launcher:chain:done" {
+		return
+	}
+	progress, ok := data.(launcher.ChainProgress)
+	if !ok {
+		return
+	}
+	// Sent on its own goroutine: raising a toast is a platform call, and the
+	// launch chain must not wait on it.
+	go func() {
+		if _, err := e.notify.LaunchFinished(
+			launchProfileName(e.settings, progress.ProfileID),
+			progress.Success,
+		); err != nil {
+			log.Printf("notification for %s failed: %v", progress.ProfileID, err)
+		}
+	}()
+}
+
+// launchProfileName prefers the name the user gave a profile, falling back to
+// its id so a notification is never about "".
+func launchProfileName(settings *app.SettingsService, profileID string) string {
+	if settings != nil {
+		for _, profile := range settings.Settings().LauncherProfiles {
+			if profile.ID == profileID && strings.TrimSpace(profile.Name) != "" {
+				return profile.Name
+			}
+		}
+	}
+	return profileID
 }
 
 type wailsEmitter struct {
@@ -796,6 +865,7 @@ func main() {
 	var engSvc *engineerservice.EngineerService
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
+	var notifySvc *notify.Service
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
@@ -1001,6 +1071,40 @@ func main() {
 		go wailsApp.Quit()
 	}
 	hubW.RegisterHook(events.Common.WindowClosing, requestQuit)
+
+	// Desktop notifications. Wails talks to the platform -- Windows toasts --
+	// which is the only route that works: the browser Notification API is not
+	// wired up inside WebView2, so an earlier attempt through it could never
+	// deliver anything.
+	notificationService := notifications.New()
+	wailsApp.RegisterService(application.NewService(notificationService))
+	// notifySvc itself is built further down, once the settings service exists
+	// to answer whether the user wants these. Every method on it tolerates a
+	// nil receiver, so a status request that arrives first is answered with an
+	// honest "not supported yet" rather than a crash.
+	emitNotificationStatus := func() {
+		authorized, err := notifySvc.Authorized()
+		if err != nil {
+			log.Printf("notification authorization check failed: %v", err)
+		}
+		emitter.Emit("notifications:status", map[string]any{
+			"supported":  notifySvc.Supported(),
+			"authorized": authorized,
+		})
+	}
+
+	wailsApp.Event.On("notifications:status:get", func(_ *application.CustomEvent) {
+		emitNotificationStatus()
+	})
+
+	wailsApp.Event.On("notifications:authorize", func(_ *application.CustomEvent) {
+		if _, err := notifySvc.RequestAuthorization(); err != nil {
+			log.Printf("notification authorization request failed: %v", err)
+		}
+		// Report what the platform actually says afterwards, never what was
+		// asked for: the user may well have said no.
+		emitNotificationStatus()
+	})
 
 	// Register profile service with Wails (frontend can call methods)
 	wailsApp.RegisterService(application.NewService(profileSvc))
@@ -1379,6 +1483,13 @@ func main() {
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
 	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	notifySvc = notify.New(
+		wailsNotifier{service: notificationService},
+		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
+		// A toast is for what you are not watching. Minimised is the honest
+		// signal the window layer can give us.
+		func() bool { return hubW.IsMinimised() },
+	)
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
@@ -1431,7 +1542,13 @@ func main() {
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No
 	// process supervision, no multi-sim, no Linux/Proton yet.
-	launcherSvc = launcher.NewService(settingsSvc, emitter, exec.Command)
+	// The launcher emits through this, so a finished chain can raise a desktop
+	// toast without the launcher package knowing anything about notifications.
+	launcherSvc = launcher.NewService(
+		settingsSvc,
+		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
+		exec.Command,
+	)
 
 	// Wire settings service into hub service for active profile persistence.
 	hubSvc.SetSettingsService(settingsSvc)

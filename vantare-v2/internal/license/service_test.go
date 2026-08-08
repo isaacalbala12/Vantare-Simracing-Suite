@@ -418,3 +418,76 @@ func TestResetDeviceValidatesInputsAndPropagatesFailure(t *testing.T) {
 		t.Fatalf("reset error = %v", err)
 	}
 }
+
+// The frontend fires a tokenless validate on mount, before the stored session
+// has been restored, and the answer is "nobody asked me about a session" -- not
+// "your session is invalid". It used to overwrite the authenticated result, and
+// with it the capabilities AllowsUpdateChannel reads: an owner saw the UI offer
+// Nightly and the backend refuse it as "not authorized".
+func TestTokenlessAnonymousDoesNotDemoteAnAuthenticatedOwner(t *testing.T) {
+	svc := &Service{}
+	svc.EmitChanged(&Result{
+		State:            StateActive,
+		Capabilities:     []Capability{CapabilityOperationalOwner},
+		OperationalRoles: []OperationalRole{OperationalRoleOwner},
+	})
+	if !svc.AllowsUpdateChannel("nightly") {
+		t.Fatal("an owner must be allowed on nightly")
+	}
+
+	svc.EmitChanged(&Result{State: StateAnonymous, Error: ErrMissingSession})
+
+	if !svc.AllowsUpdateChannel("nightly") {
+		t.Fatal("a tokenless anonymous must not take nightly away from an owner")
+	}
+	if !svc.AllowsUpdateChannel("testers") {
+		t.Fatal("a tokenless anonymous must not take testers away from an owner")
+	}
+}
+
+// Only the missing-session case is inconclusive. Any other anonymous is an
+// answer about a session that was actually presented, and must be believed.
+func TestAnonymousWithAnotherCauseStillReplacesTheCurrentResult(t *testing.T) {
+	svc := &Service{}
+	svc.EmitChanged(&Result{
+		State:        StateActive,
+		Capabilities: []Capability{CapabilityOperationalOwner},
+	})
+
+	svc.EmitChanged(&Result{State: StateAnonymous, Error: errors.New("session rejected")})
+
+	if svc.AllowsUpdateChannel("nightly") {
+		t.Fatal("a conclusive anonymous must drop the previous capabilities")
+	}
+}
+
+func TestSigningOutDropsTheCapabilities(t *testing.T) {
+	svc := &Service{}
+	svc.EmitChanged(&Result{
+		State:        StateActive,
+		Capabilities: []Capability{CapabilityOperationalOwner},
+	})
+
+	svc.ClearCurrent()
+
+	if svc.AllowsUpdateChannel("nightly") {
+		t.Fatal("the capabilities of the account that just left must not outlive it")
+	}
+	// Stable is available to everyone, signed in or not.
+	if !svc.AllowsUpdateChannel("stable") {
+		t.Fatal("stable must stay available after signing out")
+	}
+}
+
+// Nothing to protect yet: the very first result of a launch has to land.
+func TestFirstResultIsStoredEvenWhenAnonymous(t *testing.T) {
+	svc := &Service{}
+
+	svc.EmitChanged(&Result{State: StateAnonymous, Error: ErrMissingSession})
+
+	svc.currentMu.RLock()
+	defer svc.currentMu.RUnlock()
+	if svc.current == nil || svc.current.State != StateAnonymous {
+		t.Fatalf("current = %+v, want the anonymous result", svc.current)
+	}
+}

@@ -42,6 +42,7 @@ export function ObsOverlayStudioPreview({ children }: ObsOverlayStudioPreviewPro
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
     zoom: "fit",
+    allowUpscale: true,
   });
   const displayWidth = Math.round(CANVAS_WIDTH * scale);
   const displayHeight = Math.round(CANVAS_HEIGHT * scale);

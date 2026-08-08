@@ -17,6 +17,17 @@ describe("resolveCanvasScale", () => {
     expect(resolveCanvasScale({ containerWidth: 800, containerHeight: 600, zoom: "fit" })).toBeCloseTo(800 / 1920, 5);
   });
 
+  it("allows the standalone preview to upscale to a larger 16:9 viewport", () => {
+    expect(
+      resolveCanvasScale({
+        containerWidth: 2560,
+        containerHeight: 1440,
+        zoom: "fit",
+        allowUpscale: true,
+      }),
+    ).toBeCloseTo(4 / 3, 5);
+  });
+
   it("uses explicit zoom percentages", () => {
     expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 50 })).toBe(0.5);
     expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 75 })).toBe(0.75);

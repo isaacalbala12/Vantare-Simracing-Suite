@@ -19,6 +19,7 @@ export function resolveCanvasScale(input: {
   containerWidth: number;
   containerHeight: number;
   zoom: StudioPreviewState["zoom"];
+  allowUpscale?: boolean;
 }): number {
   const containerWidth = finiteNumber(input.containerWidth);
   const containerHeight = finiteNumber(input.containerHeight);
@@ -28,7 +29,8 @@ export function resolveCanvasScale(input: {
   if (input.zoom === "fit") {
     const scaleX = containerWidth / CANVAS_WIDTH;
     const scaleY = containerHeight / CANVAS_HEIGHT;
-    return Math.min(scaleX, scaleY, 1);
+    const fitScale = Math.min(scaleX, scaleY);
+    return input.allowUpscale ? fitScale : Math.min(fitScale, 1);
   }
   return input.zoom / 100;
 }

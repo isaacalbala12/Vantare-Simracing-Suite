@@ -217,6 +217,8 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.canvas.zoom.decrease": "Diminuir zoom",
   "studio.v3.canvas.zoom.increase": "Aumentar zoom",
   "studio.v3.canvas.zoom.fitLabel": "Fit",
+  "studio.v3.preview.resolution": "Resolução da preview",
+  "studio.v3.preview.resolution.auto": "Auto (ecrã)",
   "studio.v3.canvas.safeArea": "Área segura",
   "studio.v3.canvas.background.grid": "Grelha",
   "studio.v3.canvas.background.gradient": "Gradiente",

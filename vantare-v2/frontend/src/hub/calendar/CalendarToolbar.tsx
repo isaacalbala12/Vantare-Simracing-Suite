@@ -1,16 +1,18 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { buildWeekRange, formatMonthTitle, SPANISH_MONTHS_SHORT } from "../../calendar/calendar-view-math";
-import { formatInZone } from "./calendar-shared";
+import { formatMonthTitle } from "../../calendar/calendar-view-math";
+
+// The month grid keeps the long view for special weekends; "upcoming" answers
+// the question a driver actually asks, which is what starts next.
+export type CalendarView = "month" | "upcoming";
 
 export type CalendarFilter = "all" | "beginner" | "intermediate" | "advanced" | "weekly" | "special";
 
 export type CalendarToolbarProps = {
-  view: "month" | "week" | "day";
+  view: CalendarView;
   anchorDate: Date;
   activeFilter: CalendarFilter;
-  timeZone: string;
-  onViewChange: (view: "month" | "week" | "day") => void;
+  onViewChange: (view: CalendarView) => void;
   onToday: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -21,7 +23,6 @@ export function CalendarToolbar({
   view,
   anchorDate,
   activeFilter,
-  timeZone,
   onViewChange,
   onToday,
   onPrevious,
@@ -29,27 +30,10 @@ export function CalendarToolbar({
   onFilterChange,
 }: CalendarToolbarProps) {
   const getTitle = () => {
-    if (view === "month") {
-      return formatMonthTitle(anchorDate);
+    if (view === "upcoming") {
+      return "Próximas salidas";
     }
-    if (view === "week") {
-      const weekDays = buildWeekRange(anchorDate);
-      const monday = weekDays[0];
-      const sunday = weekDays[6];
-      const monthMon = SPANISH_MONTHS_SHORT[monday.getMonth()];
-      const monthSun = SPANISH_MONTHS_SHORT[sunday.getMonth()];
-      const mondayDay = formatInZone(monday, timeZone, { day: "numeric" });
-      const sundayDay = formatInZone(sunday, timeZone, { day: "numeric" });
-      if (monday.getMonth() === sunday.getMonth()) {
-        return `Semana del ${mondayDay} - ${sundayDay} ${monthMon}`;
-      }
-      return `Semana del ${mondayDay} ${monthMon} - ${sundayDay} ${monthSun}`;
-    }
-    const weekday = formatInZone(anchorDate, timeZone, { weekday: "long" });
-    const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    const day = formatInZone(anchorDate, timeZone, { day: "numeric" });
-    const month = SPANISH_MONTHS_SHORT[anchorDate.getMonth()];
-    return `${weekdayCap} ${day} ${month}`;
+    return formatMonthTitle(anchorDate);
   };
 
   const title = getTitle();
@@ -85,10 +69,9 @@ export function CalendarToolbar({
     { id: "special", label: "Especial", dot: "bg-[#f59e0b]", cssColor: "#f59e0b" },
   ];
 
-  const views: { id: "month" | "week" | "day"; label: string }[] = [
+  const views: { id: CalendarView; label: string }[] = [
+    { id: "upcoming", label: "Próximas" },
     { id: "month", label: "Mes" },
-    { id: "week", label: "Semana" },
-    { id: "day", label: "Día" },
   ];
 
   return (

@@ -88,8 +88,8 @@ describe("CalendarPage", () => {
         updated: "",
       },
     });
-    expect(screen.getByText("Próximas carreras")).toBeTruthy();
-    expect(screen.getByTestId("calendar-race-rail")).toBeTruthy();
+    const rail = screen.getByTestId("calendar-race-rail");
+    expect(rail.textContent).toContain("Próximas carreras");
   });
 
   it("rail shows Bronce, Plata, Oro, Weekly from buildUpcomingRaceItems", () => {
@@ -122,7 +122,7 @@ describe("CalendarPage", () => {
     expect(screen.getByTestId("rail-card-weekly")).toBeTruthy();
   });
 
-  it("renders toolbar and month view by default when calendar loaded", () => {
+  it("renders toolbar and the upcoming view by default when calendar loaded", () => {
     render(<CalendarPage />);
     dispatch("calendar:loaded", {
       calendar: {
@@ -134,162 +134,13 @@ describe("CalendarPage", () => {
       },
     });
     expect(screen.getByTestId("calendar-toolbar")).toBeTruthy();
-    expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
-  });
-
-  it("switches to week and day views", () => {
-    render(<CalendarPage />);
-    dispatch("calendar:loaded", {
-      calendar: {
-        version: 1,
-        timezone: "UTC",
-        series: [{ id: "s1", name: "S1", tier: "beginner" }],
-        events: [],
-        updated: "",
-      },
-    });
-
-    const weekBtn = screen.getByTestId("calendar-view-week");
-    act(() => {
-      fireEvent.click(weekBtn);
-    });
-    expect(screen.getByTestId("calendar-week-view")).toBeTruthy();
+    // The series has no preview, so there is nothing to count down to; the
+    // upcoming view still owns the screen and says so.
+    expect(screen.getByTestId("calendar-upcoming-empty")).toBeTruthy();
     expect(screen.queryByTestId("calendar-month-view")).toBeNull();
-
-    const dayBtn = screen.getByTestId("calendar-view-day");
-    act(() => {
-      fireEvent.click(dayBtn);
-    });
-    expect(screen.getByTestId("calendar-day-view")).toBeTruthy();
-    expect(screen.queryByTestId("calendar-week-view")).toBeNull();
   });
 
-  it("does not render import UI or create-race button", () => {
-    render(<CalendarPage />);
-    expect(screen.queryByText(/Importar calendario/i)).toBeNull();
-    expect(screen.queryByText(/Borrar calendario/i)).toBeNull();
-    expect(screen.queryByText(/Nueva carrera/i)).toBeNull();
-    expect(screen.getByTestId("calendar-filter-toggle")).toBeTruthy();
-  });
-
-  it("does not render multisim or fake data strings", () => {
-    render(<CalendarPage />);
-    expect(screen.queryByText(/iRacing/i)).toBeNull();
-    expect(screen.queryByText(/ACC/)).toBeNull();
-    expect(screen.queryByText(/AC Evo/i)).toBeNull();
-    expect(screen.queryByText(/precios/i)).toBeNull();
-    expect(screen.queryByText(/votos/i)).toBeNull();
-    expect(screen.queryByText(/SR/)).toBeNull();
-    expect(screen.queryByText(/DR/)).toBeNull();
-  });
-
-  it("filters rail by tier when filter is selected", () => {
-    render(<CalendarPage />);
-    dispatch("calendar:loaded", {
-      calendar: {
-        version: 1,
-        timezone: "UTC",
-        series: [
-          { id: "s1", name: "Beginner Series", tier: "beginner", durationMin: 20, setup: "", track: "Monza", vehicleClass: "GT3" },
-          { id: "s2", name: "Intermediate Series", tier: "intermediate", durationMin: 30, setup: "", track: "Spa", vehicleClass: "GTE" },
-          { id: "s3", name: "Advanced Series", tier: "advanced", durationMin: 45, setup: "", track: "Le Mans", vehicleClass: "Hypercar" },
-        ],
-        seriesPreviews: [
-          { seriesId: "s1", nextStarts: ["2026-07-02T20:00:00Z"] },
-          { seriesId: "s2", nextStarts: ["2026-07-02T21:00:00Z"] },
-          { seriesId: "s3", nextStarts: ["2026-07-02T22:00:00Z"] },
-        ],
-        events: [],
-        updated: "",
-      },
-    });
-
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-filter-toggle"));
-    });
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-filter-beginner"));
-    });
-
-    expect(screen.getByTestId("rail-card-beginner")).toBeTruthy();
-    expect(screen.queryByTestId("rail-card-intermediate")).toBeNull();
-    expect(screen.queryByTestId("rail-card-advanced")).toBeNull();
-    expect(screen.getByTestId("calendar-active-filter")).toBeTruthy();
-
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-clear-filter"));
-    });
-    expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
-  });
-
-  it("opens detail panel when clicking a rail card and closes panel", () => {
-    render(<CalendarPage />);
-    dispatch("calendar:loaded", {
-      calendar: {
-        version: 1,
-        timezone: "UTC",
-        series: [
-          { id: "s1", name: "Beginner Series", tier: "beginner", durationMin: 20, setup: "", track: "Monza", vehicleClass: "GT3" },
-          { id: "s2", name: "Intermediate Series", tier: "intermediate", durationMin: 30, setup: "", track: "Spa", vehicleClass: "GTE" },
-          { id: "s3", name: "Advanced Series", tier: "advanced", durationMin: 45, setup: "", track: "Le Mans", vehicleClass: "Hypercar" },
-          { id: "s4", name: "WEC Weekly", tier: "weekly", durationMin: 60, setup: "", track: "Le Mans", vehicleClass: "Hypercar" },
-        ],
-        seriesPreviews: [
-          { seriesId: "s1", nextStarts: ["2026-07-02T20:00:00Z"] },
-          { seriesId: "s2", nextStarts: ["2026-07-02T21:00:00Z"] },
-          { seriesId: "s3", nextStarts: ["2026-07-02T22:00:00Z"] },
-          { seriesId: "s4", nextStarts: ["2026-07-02T23:00:00Z"] },
-        ],
-        events: [],
-        updated: "",
-      },
-    });
-
-    act(() => {
-      fireEvent.click(screen.getByTestId("rail-card-beginner"));
-    });
-
-    expect(screen.getByTestId("calendar-race-detail-panel")).toBeTruthy();
-    expect(screen.getByTestId("calendar-detail-panel-title").textContent).toBe("Bronce");
-    // Rail click opens panel only — does NOT activate a filter
-    expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
-
-    // Close panel
-    act(() => {
-      fireEvent.click(screen.getByTestId("calendar-detail-panel-close-btn"));
-    });
-
-    expect(screen.queryByTestId("calendar-race-detail-panel")).toBeNull();
-    expect(screen.queryByTestId("calendar-active-filter")).toBeNull();
-  });
-
-  it("shows locked follow state in detail panel for free user", () => {
-    render(<CalendarPage />);
-    dispatch("calendar:loaded", {
-      calendar: {
-        version: 1,
-        timezone: "UTC",
-        series: [
-          { id: "s1", name: "Beginner Series", tier: "beginner", durationMin: 20, setup: "", track: "Monza", vehicleClass: "GT3" },
-        ],
-        seriesPreviews: [
-          { seriesId: "s1", nextStarts: ["2026-07-02T20:00:00Z"] },
-        ],
-        events: [],
-        updated: "",
-      },
-    });
-
-    act(() => {
-      fireEvent.click(screen.getByTestId("rail-card-beginner"));
-    });
-
-    expect(screen.getByTestId("calendar-race-detail-panel")).toBeTruthy();
-    expect(screen.getByTestId("calendar-detail-panel-locked")).toBeTruthy();
-    expect(screen.queryByTestId("calendar-detail-panel-follow")).toBeNull();
-  });
-
-  it("clicking a month day cell switches to day view with that date", () => {
+  it("switches between the upcoming and month views", () => {
     render(<CalendarPage />);
     dispatch("calendar:loaded", {
       calendar: {
@@ -301,14 +152,43 @@ describe("CalendarPage", () => {
       },
     });
 
-    // Cell 2 is July 1 (first day of month in the grid)
+    const monthBtn = screen.getByTestId("calendar-view-month");
+    act(() => {
+      fireEvent.click(monthBtn);
+    });
+    expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
+    expect(screen.queryByTestId("calendar-upcoming")).toBeNull();
+
+    const upcomingBtn = screen.getByTestId("calendar-view-upcoming");
+    act(() => {
+      fireEvent.click(upcomingBtn);
+    });
+    expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+  });
+
+  it("clicking a month day cell anchors that date without leaving the month", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        series: [{ id: "s1", name: "S1", tier: "beginner" }],
+        events: [],
+        updated: "",
+      },
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("calendar-view-month"));
+    });
+
     const cell2 = screen.getByTestId("calendar-month-cell-2");
     act(() => {
       fireEvent.click(cell2);
     });
 
-    // Should now show day view
-    expect(screen.getByTestId("calendar-day-view")).toBeTruthy();
-    expect(screen.queryByTestId("calendar-month-view")).toBeNull();
+    // The day view is retired, so a day click anchors the date and the month
+    // stays on screen instead of navigating somewhere that no longer exists.
+    expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
   });
 });

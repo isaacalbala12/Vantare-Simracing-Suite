@@ -131,7 +131,7 @@
       }
     },
     {
-      "id": "intermediate-lmgt3-sprint-cup",
+      "id": "intermediate-lmgt3-sprint",
       "name": "LMGT3 Sprint Cup",
       "tier": "intermediate",
       "licenseLabel": "Silver SR",
@@ -219,7 +219,7 @@
       }
     },
     {
-      "id": "intermediate-elms-sprint-trophy",
+      "id": "intermediate-elms-sprint",
       "name": "ELMS Sprint Trophy",
       "tier": "intermediate",
       "licenseLabel": "Silver SR",
@@ -472,7 +472,7 @@
       }
     },
     {
-      "id": "weekly-2-4h-le-mans",
+      "id": "weekly-le-mans-24h-scaled",
       "name": "2.4h Le Mans",
       "tier": "weekly",
       "licenseLabel": "",

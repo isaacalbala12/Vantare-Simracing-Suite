@@ -211,10 +211,13 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 		return RaceSeries{}, fmt.Errorf("import schedule: series %q needs at least a track and a class", name)
 	}
 
+	// Resolved through the identity registry so a renamed series keeps the ID
+	// the calendar already stores against it. Tier-prefixed so two tiers can
+	// run a series of the same name.
+	id, _ := CanonicalSeriesID(tier, name)
+
 	s := RaceSeries{
-		// Tier-prefixed so two tiers can run a series of the same name, and so
-		// followed-series IDs keep the shape the calendar already stores.
-		ID:           tier + "-" + slugify(name),
+		ID:           id,
 		Name:         name,
 		Tier:         tier,
 		LicenseLabel: d.license,

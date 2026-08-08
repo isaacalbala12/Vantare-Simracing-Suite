@@ -159,7 +159,7 @@ func TestImportDailyScheduleReadsWeeklySlots(t *testing.T) {
 func TestImportDailyScheduleExpandsEveryNHoursShorthand(t *testing.T) {
 	sched := importFixture(t)
 
-	s := seriesByID(t, sched, "weekly-2-4h-le-mans")
+	s := seriesByID(t, sched, "weekly-le-mans-24h-scaled")
 	if s.TimeScale != 10 {
 		t.Fatalf("timeScale=%d, want 10", s.TimeScale)
 	}
@@ -240,7 +240,7 @@ func TestSplitKnownClassNames(t *testing.T) {
 func TestImportDailyScheduleSplitsSpaceSeparatedClasses(t *testing.T) {
 	sched := importFixture(t)
 
-	s := seriesByID(t, sched, "weekly-2-4h-le-mans")
+	s := seriesByID(t, sched, "weekly-le-mans-24h-scaled")
 	want := []VehicleClass{
 		{Name: "Hypercar"},
 		{Name: "LMP2", Qualifier: "WEC"},

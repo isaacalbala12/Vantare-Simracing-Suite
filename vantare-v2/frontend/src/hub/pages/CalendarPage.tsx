@@ -12,6 +12,7 @@ import {
 } from "../calendar/CalendarToolbar";
 import { CalendarMonthView } from "../calendar/CalendarMonthView";
 import { CalendarUpcomingView } from "../calendar/CalendarUpcomingView";
+import { CalendarTimelineView } from "../calendar/CalendarTimelineView";
 import { CalendarRaceDetailPanel } from "../calendar/CalendarRaceDetailPanel";
 import { CalendarRaceRail } from "../calendar/CalendarRaceRail";
 
@@ -161,6 +162,16 @@ export function CalendarPage() {
                 calendar={calendar}
                 timeZone={timeZone}
                 onRaceClick={(item) => handleOpenPanel(item.tier as CalendarFilter)}
+              />
+            )}
+            {calendarView === "timeline" && (
+              <CalendarTimelineView
+                calendar={calendar}
+                timeZone={timeZone}
+                onSeriesClick={(seriesId) => {
+                  const tier = calendar.series?.find((s) => s.id === seriesId)?.tier;
+                  if (tier) handleOpenPanel(tier as CalendarFilter);
+                }}
               />
             )}
             {calendarView === "month" && (

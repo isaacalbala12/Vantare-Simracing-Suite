@@ -148,7 +148,9 @@ export function eventEnd(event: RaceEvent): Date {
   return new Date(start.getTime() + eventDurationMs(event));
 }
 
-function eventDurationMs(event: RaceEvent): number {
+// Exported for the timeline, which lays out a block per event and needs the
+// same duration the rest of the calendar uses.
+export function eventDurationMs(event: RaceEvent): number {
   const dur = Number.isFinite(event.durationMin) ? event.durationMin : 0;
   if (dur <= 0) return 0;
   return dur * 60_000;

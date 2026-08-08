@@ -4,7 +4,7 @@ import { formatMonthTitle } from "../../calendar/calendar-view-math";
 
 // The month grid keeps the long view for special weekends; "upcoming" answers
 // the question a driver actually asks, which is what starts next.
-export type CalendarView = "month" | "upcoming";
+export type CalendarView = "month" | "upcoming" | "timeline";
 
 export type CalendarFilter = "all" | "beginner" | "intermediate" | "advanced" | "weekly" | "special";
 
@@ -32,6 +32,9 @@ export function CalendarToolbar({
   const getTitle = () => {
     if (view === "upcoming") {
       return "Próximas salidas";
+    }
+    if (view === "timeline") {
+      return "Parrilla del día";
     }
     return formatMonthTitle(anchorDate);
   };
@@ -71,6 +74,7 @@ export function CalendarToolbar({
 
   const views: { id: CalendarView; label: string }[] = [
     { id: "upcoming", label: "Próximas" },
+    { id: "timeline", label: "Timeline" },
     { id: "month", label: "Mes" },
   ];
 

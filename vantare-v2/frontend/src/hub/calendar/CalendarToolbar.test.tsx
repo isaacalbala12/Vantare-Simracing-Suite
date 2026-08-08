@@ -19,10 +19,16 @@ describe("CalendarToolbar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders buttons for Próximas and Mes", () => {
+  it("renders buttons for Próximas, Timeline and Mes", () => {
     render(<CalendarToolbar {...defaultProps} />);
     expect(screen.getByTestId("calendar-view-upcoming")).toBeTruthy();
+    expect(screen.getByTestId("calendar-view-timeline")).toBeTruthy();
     expect(screen.getByTestId("calendar-view-month")).toBeTruthy();
+  });
+
+  it("titles the timeline by what it shows", () => {
+    render(<CalendarToolbar {...defaultProps} view="timeline" />);
+    expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Parrilla del día");
   });
 
   it("no longer offers the retired week and day views", () => {

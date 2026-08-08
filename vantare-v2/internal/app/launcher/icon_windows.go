@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -352,6 +353,13 @@ func resolveLnkTarget(lnkPath string) string {
 	lnkMu.Lock()
 	defer lnkMu.Unlock()
 
+	// Locked because CoUninitialize has to run on the same thread that
+	// initialised: a goroutine can otherwise be rescheduled in between, leaving
+	// this thread in a single-threaded apartment forever. That is what broke
+	// desktop notifications, which need the thread in a multi-threaded one.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
 	if ret == 0 || ret == 1 {                    // S_OK or S_FALSE
 		defer procCoUninitialize.Call()
@@ -393,6 +401,10 @@ func resolveLnkTarget(lnkPath string) string {
 func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	lnkMu.Lock()
 	defer lnkMu.Unlock()
+
+	// See resolveLnkTarget: the uninit must land on the thread that initialised.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2)
 	if ret == 0 || ret == 1 {
@@ -578,7 +590,11 @@ func getIconHighRes(path string) ([]byte, error) {
 		return nil, err
 	}
 	// SHGetImageList creates an IImageList COM object, so the thread must be in
-	// a COM apartment.
+	// a COM apartment. Locked so the uninit lands on the same thread; see
+	// resolveLnkTarget.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
 	if ret == 0 || ret == 1 {
 		defer procCoUninitialize.Call()

@@ -44,11 +44,13 @@ export type UpdaterSettings = {
  * What the user has turned off, not what they have turned on.
  *
  * Stated as opt-outs so that an absent value means the shipping default:
- * banner and toasts on. Mirrors the Go struct.
+ * in-app alerts on, desktop notifications off because they need the platform's
+ * permission first. Mirrors the Go struct.
  */
 export type NotificationSettings = {
   updatesMuted?: boolean;
   launcherMuted?: boolean;
+  systemEnabled?: boolean;
 };
 
 export type AppSettings = {

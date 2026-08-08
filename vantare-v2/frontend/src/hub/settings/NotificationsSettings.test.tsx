@@ -44,6 +44,7 @@ function lastSave(): Record<string, unknown> {
 
 const UPDATES = "Avisarme cuando haya una versión nueva";
 const LAUNCHER = "Avisarme cuando termine de abrir un perfil del Launcher";
+const SYSTEM = "Avisarme con una notificación de Windows cuando la app esté minimizada";
 
 describe("NotificationsSettings", () => {
   beforeEach(() => {
@@ -92,4 +93,66 @@ describe("NotificationsSettings", () => {
     });
   });
 
+  // The desktop switch is answered by Go, which reaches Windows through the
+  // Wails notifications service. Nothing is offered when the platform cannot
+  // deliver.
+  it("says so instead of offering a switch the platform cannot honour", () => {
+    render(<Harness />);
+    dispatch("settings", { cpuSampling: true, hotkeys: {} });
+    dispatch("notifications:status", { supported: false, authorized: false });
+
+    expect(screen.queryByRole("checkbox", { name: SYSTEM })).toBeNull();
+    expect(screen.getByText("Esta plataforma no admite notificaciones de escritorio.")).toBeDefined();
+  });
+
+  it("asks the platform for permission when the switch is turned on", () => {
+    render(<Harness />);
+    dispatch("settings", { cpuSampling: true, hotkeys: {} });
+    dispatch("notifications:status", { supported: true, authorized: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: SYSTEM }));
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith("notifications:authorize");
+  });
+
+  // The platform outranks the stored preference: a permission revoked from
+  // Windows has to show as off, whatever the settings file remembers.
+  it("shows off when the platform does not allow it, however it was stored", () => {
+    render(<Harness />);
+    dispatch("settings", {
+      cpuSampling: true,
+      hotkeys: {},
+      notifications: { systemEnabled: true },
+    });
+    dispatch("notifications:status", { supported: true, authorized: false });
+
+    expect((screen.getByRole("checkbox", { name: SYSTEM }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("shows on once the platform has allowed it", () => {
+    render(<Harness />);
+    dispatch("settings", {
+      cpuSampling: true,
+      hotkeys: {},
+      notifications: { systemEnabled: true },
+    });
+    dispatch("notifications:status", { supported: true, authorized: true });
+
+    expect((screen.getByRole("checkbox", { name: SYSTEM }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("explains a refusal after asking", () => {
+    render(<Harness />);
+    dispatch("settings", { cpuSampling: true, hotkeys: {} });
+    dispatch("notifications:status", { supported: true, authorized: false });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: SYSTEM }));
+    dispatch("notifications:status", { supported: true, authorized: false });
+
+    expect(
+      screen.getByText(
+        "Windows no ha concedido el permiso. Puedes revisarlo en Configuración › Sistema › Notificaciones.",
+      ),
+    ).toBeDefined();
+  });
 });

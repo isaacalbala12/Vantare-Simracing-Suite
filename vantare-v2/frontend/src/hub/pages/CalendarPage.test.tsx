@@ -191,4 +191,23 @@ describe("CalendarPage", () => {
     // stays on screen instead of navigating somewhere that no longer exists.
     expect(screen.getByTestId("calendar-month-view")).toBeTruthy();
   });
+
+  it("asks the backend to re-fetch the published schedule", () => {
+    render(<CalendarPage />);
+    dispatch("calendar:loaded", {
+      calendar: {
+        version: 1,
+        timezone: "UTC",
+        series: [],
+        events: [],
+        updated: "",
+      },
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("calendar-refresh"));
+    });
+
+    expect(eventsEmit).toHaveBeenCalledWith("calendar:schedule:refresh");
+  });
 });

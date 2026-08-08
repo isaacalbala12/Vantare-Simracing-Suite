@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Events } from "@wailsio/runtime";
 import {
   requestCalendar,
   subscribeToCalendar,
@@ -41,6 +42,13 @@ export function CalendarPage() {
       unsubLoaded();
       unsubErr();
     };
+  }, []);
+
+  // The published schedule is fetched once at startup, so this is how a client
+  // picks up a mid-session publication without restarting. The backend answers
+  // with calendar:loaded, which the subscription above already handles.
+  const handleRefreshSchedule = useCallback(() => {
+    Events.Emit("calendar:schedule:refresh");
   }, []);
 
   const handleToday = useCallback(() => {
@@ -108,6 +116,7 @@ export function CalendarPage() {
             onToday={handleToday}
             onPrevious={() => handleNavigate(-1)}
             onNext={() => handleNavigate(1)}
+            onRefresh={handleRefreshSchedule}
             onFilterChange={setActiveFilter}
           />
         </div>

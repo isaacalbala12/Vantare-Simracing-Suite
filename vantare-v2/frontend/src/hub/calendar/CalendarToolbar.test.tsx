@@ -114,4 +114,12 @@ describe("CalendarToolbar", () => {
     fireEvent.click(screen.getByTestId("calendar-filter-all"));
     expect(onFilterChange).toHaveBeenCalledWith("all");
   });
+
+  it("calls onRefresh when the refresh button is clicked", () => {
+    const onRefresh = vi.fn();
+    render(<CalendarToolbar {...defaultProps} onRefresh={onRefresh} />);
+
+    fireEvent.click(screen.getByTestId("calendar-refresh"));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
 });

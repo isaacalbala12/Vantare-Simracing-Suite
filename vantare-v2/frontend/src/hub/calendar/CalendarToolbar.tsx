@@ -16,6 +16,8 @@ export type CalendarToolbarProps = {
   onToday: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  /** Re-fetches the centrally published schedule. */
+  onRefresh?: () => void;
   onFilterChange: (filter: CalendarFilter) => void;
 };
 
@@ -27,6 +29,7 @@ export function CalendarToolbar({
   onToday,
   onPrevious,
   onNext,
+  onRefresh,
   onFilterChange,
 }: CalendarToolbarProps) {
   const getTitle = () => {
@@ -113,6 +116,20 @@ export function CalendarToolbar({
         >
           <svg className="w-4 h-4 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        {/* The published schedule is fetched once when the app opens, so this is
+            how you pick up a mid-session publication without restarting. */}
+        <button
+          type="button"
+          onClick={onRefresh}
+          data-testid="calendar-refresh"
+          className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+          aria-label="Recargar horario"
+          title="Recargar horario publicado"
+        >
+          <svg className="w-4 h-4 text-vantare-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
         <h2 className="text-sm font-bold text-white tracking-tight ml-2 truncate min-w-0" data-testid="calendar-toolbar-title">

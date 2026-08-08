@@ -8,6 +8,7 @@ import { getStudioHotkey } from "../state/studio-hotkeys";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { CANVAS_HEIGHT, CANVAS_WIDTH, clientToLogical, resolveCanvasScale } from "./canvas-geometry";
 import { resolveCanvasBackground, safeAreaInsets } from "./canvas-backgrounds";
+import { resolveStudioPreviewSize } from "./preview-resolution";
 import { CanvasActionBar } from "./CanvasActionBar";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { PreviewSourceControls } from "./PreviewSourceControls";
@@ -107,10 +108,15 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   // no ha llegado" de "no tiene widgets": un perfil sin widgets es valido y
   // debe pintarse vacio.
   const ready = containerSize !== null && document !== null;
+  const previewSize = resolveStudioPreviewSize(preview.resolution, containerSize ?? {
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+  });
   const scale = resolveCanvasScale({
-    containerWidth: containerSize?.width ?? CANVAS_WIDTH,
-    containerHeight: containerSize?.height ?? CANVAS_HEIGHT,
+    containerWidth: previewSize.width,
+    containerHeight: previewSize.height,
     zoom: preview.zoom,
+    allowUpscale: true,
   });
   const displayWidth = Math.round(CANVAS_WIDTH * scale);
   const displayHeight = Math.round(CANVAS_HEIGHT * scale);
@@ -337,6 +343,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
             data-testid="studio-canvas-scene"
             className="osv3-canvas-scene"
             data-scale={String(scale)}
+            data-preview-resolution={preview.resolution ?? "auto"}
             style={{
               width: `${CANVAS_WIDTH}px`,
               height: `${CANVAS_HEIGHT}px`,

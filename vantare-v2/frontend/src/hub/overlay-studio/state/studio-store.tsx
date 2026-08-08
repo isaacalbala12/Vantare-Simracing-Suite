@@ -36,6 +36,7 @@ import { resolveSessionLayout } from "./session-layouts";
 import type { StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
 import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
+import type { StudioPreviewResolutionId } from "../canvas/preview-resolution";
 
 export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 
@@ -44,6 +45,7 @@ export type StudioPreviewState = {
   mockSession: MockSessionScenario;
   mockLocation: MockLocationScenario;
   zoom: "fit" | 50 | 75 | 100 | 125 | 150;
+  resolution?: StudioPreviewResolutionId;
   backgroundId: string;
   safeArea: boolean;
 };
@@ -56,6 +58,7 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   // El degradado se parece mas a lo que hay detras de un overlay en carrera que
   // una rejilla plana, asi que juzgar contraste y legibilidad sobre el es mas
   // fiel. La rejilla sigue disponible en el selector para alinear a ojo.
+  resolution: "auto",
   backgroundId: "gradient",
   safeArea: false,
 };

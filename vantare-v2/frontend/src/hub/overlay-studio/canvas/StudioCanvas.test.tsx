@@ -9,6 +9,7 @@ import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
+import type { StudioPreviewResolutionId } from "./preview-resolution";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 
@@ -69,16 +70,23 @@ const client: StudioProfileClient = {
   save: async () => ({ status: "saved", document: buildDocument(), revision: "rev-2" }),
 };
 
-function renderCanvas(zoom: "fit" | 50 | 75 | 100 | 125 = "fit") {
+function renderCanvas(
+  zoom: "fit" | 50 | 75 | 100 | 125 = "fit",
+  resolution?: StudioPreviewResolutionId,
+) {
   const coordinator = createTestTelemetryCoordinator();
 
   function ZoomSetter(): React.ReactElement | null {
     const { setPreview } = useStudioPreview();
-    if (zoom === "fit") {
+    if (zoom === "fit" && !resolution) {
       return null;
     }
     return (
-      <button type="button" data-testid="set-zoom" onClick={() => setPreview({ zoom })} />
+      <button
+        type="button"
+        data-testid="set-preview"
+        onClick={() => setPreview({ zoom, ...(resolution ? { resolution } : {}) })}
+      />
     );
   }
 
@@ -110,6 +118,17 @@ describe("StudioCanvas", () => {
     expect(scene.style.height).toBe("1080px");
     expect(scene.getAttribute("data-scale")).toBe("0.5");
     expect(scene.style.transform).toBe("scale(0.5)");
+  });
+
+  it("uses the selected target resolution for preview fit", async () => {
+    installViewportResizeObserver(960, 540);
+    renderCanvas("fit", "2560x1440");
+    fireEvent.click(screen.getByTestId("set-preview"));
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+
+    const scene = screen.getByTestId("studio-canvas-scene");
+    expect(scene.getAttribute("data-preview-resolution")).toBe("2560x1440");
+    expect(Number(scene.getAttribute("data-scale"))).toBeCloseTo(4 / 3, 5);
   });
 
   it("renders widgets in ascending z-index order", async () => {

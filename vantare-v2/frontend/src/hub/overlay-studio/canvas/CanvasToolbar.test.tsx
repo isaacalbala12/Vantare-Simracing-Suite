@@ -67,6 +67,11 @@ describe("CanvasToolbar", () => {
     fireEvent.click(screen.getByTestId("studio-zoom-plus"));
     expect(screen.getByTestId("studio-zoom-label").textContent).toBe("150%");
 
+    fireEvent.change(screen.getByTestId("studio-resolution-select"), {
+      target: { value: "3440x1440" },
+    });
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).value).toBe("3440x1440");
+
     fireEvent.change(screen.getByTestId("studio-background-select"), {
       target: { value: "solid-black" },
     });

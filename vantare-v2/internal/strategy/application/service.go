@@ -160,6 +160,13 @@ func (service *Service[T]) Duplicate(ctx context.Context, command DuplicateComma
 	return service.reconcileDraft(ctx, command.CommandHeader, target, nil, err)
 }
 
+// Activate makes a revision the plan a race is driven by, durably.
+//
+// The repository is the authority on what is active. The command may say what
+// the caller believes is running, but the previous revision written into the
+// audit trail comes from storage, so a stale caller cannot rewrite history.
+// Activating what is already active changes nothing, which makes a retry after
+// an uncertain commit safe.
 func (service *Service[T]) Activate(ctx context.Context, command ActivateCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationActivate); err != nil {
 		return Result[T]{}, err
@@ -173,50 +180,119 @@ func (service *Service[T]) Activate(ctx context.Context, command ActivateCommand
 			return Result[T]{}, err
 		}
 	}
-	if command.Current != nil && command.Current.ActivationID == command.ActivationID && command.Current.Revision == command.Revision && command.Current.ActivatedAt.Equal(command.ActivatedAt) {
-		active := *command.Current
-		return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: command.ExpectedRepositoryVersion, ActivePlan: &active}, nil
-	}
 	snapshot, err := service.repository.Snapshot(ctx)
 	if err != nil {
 		return Result[T]{}, err
 	}
-	if snapshot.Version != command.ExpectedRepositoryVersion {
-		return Result[T]{}, applicationError(ErrorStaleCommand, "expectedRepositoryVersion", ErrStaleCommand)
+	if snapshot.ActivePlan != nil && sameActivePlan(*snapshot.ActivePlan, active) {
+		stored := *snapshot.ActivePlan
+		return activationResult(command.CommandID, snapshot, &stored), nil
 	}
 	if !hasRevision(snapshot, command.Revision) {
 		return Result[T]{}, applicationError(ErrorRevisionNotFound, "revision", ErrRevisionNotFound)
 	}
-	if command.Current != nil {
-		if command.Current.Revision.PlanID != command.Revision.PlanID || command.Current.Revision.VariantID != command.Revision.VariantID {
+	if snapshot.ActivePlan != nil {
+		if snapshot.ActivePlan.Revision.PlanID != command.Revision.PlanID || snapshot.ActivePlan.Revision.VariantID != command.Revision.VariantID {
+			// Swapping to a different plan mid-race is not a revision change.
+			// It needs an explicit deactivation first, so it cannot happen by
+			// accident.
+			return Result[T]{}, applicationError(ErrorActiveConflict, "revision", ErrActiveConflict)
+		}
+		if command.Current != nil && command.Current.ActivationID != snapshot.ActivePlan.ActivationID {
 			return Result[T]{}, applicationError(ErrorActiveConflict, "current", ErrActiveConflict)
 		}
-		previous := command.Current.Revision
+		previous := snapshot.ActivePlan.Revision
 		active.PreviousRevision = &previous
 		if err := active.Validate(); err != nil {
 			return Result[T]{}, err
 		}
 	}
-	return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: snapshot.Version, ActivePlan: &active, RecoveredFromBackup: snapshot.RecoveredFromBackup}, nil
+	if snapshot.Version != command.ExpectedRepositoryVersion {
+		return Result[T]{}, applicationError(ErrorStaleCommand, "expectedRepositoryVersion", ErrStaleCommand)
+	}
+	commit, err := service.repository.Commit(ctx, command.ExpectedRepositoryVersion, repository.ChangeSet[T]{Activate: &active})
+	if err != nil {
+		return service.reconcileActivation(ctx, command.CommandHeader, &active, err)
+	}
+	return activationResult(command.CommandID, commit.Snapshot, commit.ActivePlan), nil
 }
 
-func (service *Service[T]) Deactivate(_ context.Context, command DeactivateCommand) (Result[T], error) {
+// Deactivate stops the active plan. Deactivating when nothing is active is not
+// an error: the caller asked for a state that already holds.
+func (service *Service[T]) Deactivate(ctx context.Context, command DeactivateCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationDeactivate); err != nil {
 		return Result[T]{}, err
 	}
 	if err := validateApplicationIdentifier("expectedActivationId", command.ExpectedActivationID); err != nil {
 		return Result[T]{}, err
 	}
-	if command.Current == nil {
-		return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: command.ExpectedRepositoryVersion}, nil
+	if command.Current != nil {
+		if err := command.Current.Validate(); err != nil {
+			return Result[T]{}, err
+		}
 	}
-	if err := command.Current.Validate(); err != nil {
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
 		return Result[T]{}, err
 	}
-	if command.Current.ActivationID != command.ExpectedActivationID {
+	if snapshot.ActivePlan == nil {
+		return activationResult(command.CommandID, snapshot, nil), nil
+	}
+	// The guard is against what is stored, not against what the caller sent.
+	// Stopping the wrong plan mid-race is exactly what this prevents.
+	if snapshot.ActivePlan.ActivationID != command.ExpectedActivationID {
 		return Result[T]{}, applicationError(ErrorActiveConflict, "expectedActivationId", ErrActiveConflict)
 	}
-	return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: command.ExpectedRepositoryVersion}, nil
+	if snapshot.Version != command.ExpectedRepositoryVersion {
+		return Result[T]{}, applicationError(ErrorStaleCommand, "expectedRepositoryVersion", ErrStaleCommand)
+	}
+	commit, err := service.repository.Commit(ctx, command.ExpectedRepositoryVersion, repository.ChangeSet[T]{Deactivate: true})
+	if err != nil {
+		return service.reconcileActivation(ctx, command.CommandHeader, nil, err)
+	}
+	return activationResult(command.CommandID, commit.Snapshot, commit.ActivePlan), nil
+}
+
+// reconcileActivation resolves a commit whose outcome is unknown by asking the
+// repository what is actually active now. It reports success only when storage
+// already holds what the command asked for.
+func (service *Service[T]) reconcileActivation(ctx context.Context, header CommandHeader, wanted *contract.ActivePlan, operationErr error) (Result[T], error) {
+	if !errors.Is(operationErr, repository.ErrStaleWrite) && !errors.Is(operationErr, repository.ErrCommitUncertain) {
+		return Result[T]{}, operationErr
+	}
+	snapshot, snapshotErr := service.repository.Snapshot(ctx)
+	if snapshotErr != nil {
+		return Result[T]{}, errors.Join(operationErr, snapshotErr)
+	}
+	settled := (wanted == nil && snapshot.ActivePlan == nil) ||
+		(wanted != nil && snapshot.ActivePlan != nil && sameActivePlan(*snapshot.ActivePlan, *wanted))
+	if settled {
+		return activationResult(header.CommandID, snapshot, snapshot.ActivePlan), nil
+	}
+	if errors.Is(operationErr, repository.ErrStaleWrite) {
+		return Result[T]{}, applicationError(ErrorStaleCommand, "expectedRepositoryVersion", errors.Join(ErrStaleCommand, operationErr))
+	}
+	return Result[T]{}, operationErr
+}
+
+func activationResult[T any](commandID CommandID, snapshot repository.Snapshot[T], active *contract.ActivePlan) Result[T] {
+	return Result[T]{
+		ProtocolVersion:     ProtocolVersionV1,
+		CommandID:           commandID,
+		RepositoryVersion:   snapshot.Version,
+		ActivePlan:          active,
+		Activations:         snapshot.Activations,
+		RecoveredFromBackup: snapshot.RecoveredFromBackup,
+	}
+}
+
+// sameActivePlan compares activations by identity and content, ignoring how
+// the timestamp happens to be represented.
+func sameActivePlan(left, right contract.ActivePlan) bool {
+	if left.ActivationID != right.ActivationID || left.Revision != right.Revision {
+		return false
+	}
+	return left.ActivatedAt.Equal(right.ActivatedAt)
 }
 
 func (service *Service[T]) Restore(ctx context.Context, command RestoreCommand) (Result[T], error) {

@@ -234,6 +234,9 @@ func TestRepositoryNewRootStartsAtGenerationZero(t *testing.T) {
 	}
 }
 
+// TestRepositoryFirstCommitCreatesRecoverableBackup verifies that a lost primary file
+// is reported by a reader (Snapshot) as recovered, and repaired by the next commit
+// (because repairing is a write operation that requires the exclusive lease).
 func TestRepositoryFirstCommitCreatesRecoverableBackup(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -270,12 +273,37 @@ func TestRepositoryFirstCommitCreatesRecoverableBackup(t *testing.T) {
 	if !recovered.RecoveredFromBackup || recovered.Version != committed.Version || len(recovered.Drafts) != 1 || recovered.Drafts[0].PlanID != "plan-1" {
 		t.Fatalf("snapshot after primary loss = %#v, want recovered first commit", recovered)
 	}
-	restored, err := os.ReadFile(repository.statePath())
+
+	// Assert the primary is STILL ABSENT after Snapshot. This is the new guarantee
+	// and it is what prevents the data-loss race: a reader must never write.
+	if _, err := os.Stat(repository.statePath()); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("reading repaired the repository: a read must never write, got %v", err)
+	}
+
+	// Then prove the repair still happens, on the write path, and does NOT reset to
+	// generation zero. Commit at the recovered version.
+	next, err := repository.Commit(ctx, recovered.Version, ChangeSet[testPayload]{
+		Drafts: []contract.PlanDraft[testPayload]{
+			validDraft("draft-2", "plan-2", testPayload{Laps: 2}),
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(restored, backup) {
-		t.Fatal("recovery did not restore the exact first committed generation")
+	if next.Version <= committed.Version {
+		t.Fatalf("commit after primary loss did not advance the generation: %d then %d", committed.Version, next.Version)
+	}
+
+	// Assert the primary file exists again and holds the new generation.
+	if _, err := os.ReadFile(repository.statePath()); err != nil {
+		t.Fatalf("commit did not restore the primary: %v", err)
+	}
+	after, err := repository.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Version != next.Version || len(after.Drafts) != 2 {
+		t.Fatalf("repaired repository = %#v, want both drafts at the new generation", after)
 	}
 }
 
@@ -651,10 +679,21 @@ func TestRepositoryLeaseIsCrossProcessAndReleasedAfterAbruptDeath(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repository.Snapshot(context.Background()); !errors.Is(err, ErrWriteInProgress) {
+	// A reader must not be blocked by a writer: the state file is replaced
+	// atomically, so reading during a commit is safe.
+	if _, err := repository.Snapshot(context.Background()); err != nil {
 		_ = command.Process.Kill()
 		_ = command.Wait()
-		t.Fatalf("Snapshot while helper holds lease = %v, want ErrWriteInProgress", err)
+		t.Fatalf("Snapshot while helper holds lease = %v, want success", err)
+	}
+	// But a writer must still be blocked by an exclusive lease.
+	_, err = repository.Commit(context.Background(), 0, ChangeSet[testPayload]{
+		Drafts: []contract.PlanDraft[testPayload]{validDraft("draft-1", "plan-1", testPayload{Laps: 1})},
+	})
+	if !errors.Is(err, ErrWriteInProgress) {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("Commit while helper holds lease = %v, want ErrWriteInProgress", err)
 	}
 	if err := command.Process.Kill(); err != nil {
 		t.Fatal(err)
@@ -667,7 +706,7 @@ func TestRepositoryLeaseIsCrossProcessAndReleasedAfterAbruptDeath(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := reopened.Snapshot(context.Background()); err != nil {
+	if _, err := reopened.Commit(context.Background(), 0, ChangeSet[testPayload]{Drafts: []contract.PlanDraft[testPayload]{validDraft("draft-2", "plan-1", testPayload{Laps: 2})}}); err != nil {
 		t.Fatalf("lease was not released after helper death: %v", err)
 	}
 }
@@ -701,7 +740,11 @@ func TestRepositoryCleansOnlySafeOrphanTemporaryFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repository.Snapshot(context.Background()); err != nil {
+	// Cleanup runs on the write path, so a commit is what triggers it. Reading
+	// no longer mutates the directory.
+	if _, err := repository.Commit(context.Background(), 0, ChangeSet[testPayload]{
+		Drafts: []contract.PlanDraft[testPayload]{validDraft("draft-1", "plan-1", testPayload{Laps: 1})},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(root)
@@ -943,5 +986,49 @@ func TestRepositoryJSONRoundTripIsStable(t *testing.T) {
 	}
 	if !json.Valid(data) {
 		t.Fatalf("repository file is not JSON: %q", data)
+	}
+}
+
+// Readers must never exclude each other. During a race an overlay and the UI
+// read the active plan at the same time, so a reader that fails because
+// another reader is busy would drop information mid-session.
+func TestConcurrentReadersAreNotBlocked(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, err := Open[testPayload](t.TempDir(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := repository.Commit(ctx, 0, ChangeSet[testPayload]{
+		Drafts: []contract.PlanDraft[testPayload]{validDraft("draft-1", "plan-1", testPayload{Laps: 10})},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var group sync.WaitGroup
+	failures := make(chan string, 16)
+	for reader := 0; reader < 16; reader++ {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			snapshot, err := repository.Snapshot(ctx)
+			if err != nil {
+				failures <- fmt.Sprintf("reader failed: %v", err)
+				return
+			}
+			if snapshot.Version != committed.Version {
+				failures <- fmt.Sprintf("reader saw version %d, want %d", snapshot.Version, committed.Version)
+				return
+			}
+			if len(snapshot.Drafts) != 1 {
+				failures <- fmt.Sprintf("reader saw %d drafts, want 1", len(snapshot.Drafts))
+			}
+		}()
+	}
+	group.Wait()
+	close(failures)
+	for failure := range failures {
+		t.Fatal(failure)
 	}
 }

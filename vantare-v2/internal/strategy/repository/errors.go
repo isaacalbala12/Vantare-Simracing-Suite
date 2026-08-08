@@ -13,6 +13,11 @@ var (
 	ErrCorruptRepository            = errors.New("strategy repository is corrupt")
 	ErrUnsupportedRepositoryVersion = errors.New("unsupported strategy repository version")
 	ErrCommitUncertain              = errors.New("strategy repository commit outcome is uncertain")
+	// ErrRevisionNotStored guards the active pointer: the repository refuses to
+	// name a revision it does not hold.
+	ErrRevisionNotStored = errors.New("strategy revision is not stored in this repository")
+	// ErrImmutableActivation protects the audit trail from being rewritten.
+	ErrImmutableActivation = errors.New("strategy activation is immutable")
 )
 
 // CommitUncertainError means the primary file was atomically replaced but the

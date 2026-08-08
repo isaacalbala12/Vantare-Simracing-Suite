@@ -154,7 +154,10 @@ type Result[T any] struct {
 	SavedDraft        *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
 	Revision          *contract.PlanRevision[T] `json:"revision,omitempty"`
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
-	Plans             []PlanSummary             `json:"plans,omitempty"`
+	// Activations is the audit trail, oldest first: what was activated, when,
+	// and what it replaced. It is append-only and never rewritten.
+	Activations []contract.ActivePlan `json:"activations,omitempty"`
+	Plans       []PlanSummary         `json:"plans,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`
 	// Preview is what an import would do. It is present on a dry run and on a

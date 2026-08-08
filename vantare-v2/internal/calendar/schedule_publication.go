@@ -178,3 +178,66 @@ func (p *SchedulePublisher) rpc(ctx context.Context, sessionToken, fn string, pa
 	}
 	return nil
 }
+
+// PreferSchedule chooses between the schedule bundled in the binary and the one
+// published centrally. The published schedule wins unless it is older, which
+// happens when a client updates to a build carrying a newer seed than whatever
+// was last published — then the seed is the better answer.
+func PreferSchedule(bundled, published OfficialSchedule) OfficialSchedule {
+	if published.ValidFrom.Before(bundled.ValidFrom) {
+		return bundled
+	}
+	return published
+}
+
+// ScheduleSource says where the calendar's current schedule came from, so the
+// UI can be honest about whether it is showing the published one.
+type ScheduleSource string
+
+const (
+	ScheduleSourceBundled   ScheduleSource = "bundled"
+	ScheduleSourcePublished ScheduleSource = "published"
+)
+
+// RefreshPublishedSchedule fetches the published schedule and applies it when
+// it is the better of the two. It is called when the app opens and when the
+// user asks for it, not on a timer: LMU publishes once a week, so anything more
+// frequent is noise.
+//
+// A failure here is never fatal. If the network is down, the project has
+// nothing published, or what comes back does not validate, the calendar keeps
+// the bundled schedule and the caller is told which one is in play.
+func (s *Service) RefreshPublishedSchedule(
+	ctx context.Context,
+	pub *SchedulePublisher,
+	sessionToken string,
+	now time.Time,
+) (ScheduleSource, error) {
+	bundled, err := LoadWeeklySchedule()
+	if err != nil {
+		return "", fmt.Errorf("official schedule: %w", err)
+	}
+	if pub == nil {
+		return ScheduleSourceBundled, s.applySchedule(bundled, now)
+	}
+
+	current, err := pub.Current(ctx, sessionToken)
+	if err != nil {
+		// Apply the bundled schedule anyway so the calendar is never empty just
+		// because the network was.
+		if applyErr := s.applySchedule(bundled, now); applyErr != nil {
+			return "", applyErr
+		}
+		if errors.Is(err, ErrNoPublishedSchedule) {
+			return ScheduleSourceBundled, nil
+		}
+		return ScheduleSourceBundled, err
+	}
+
+	chosen := PreferSchedule(bundled, current.Schedule)
+	source := ScheduleSourcePublished
+	if current.Schedule.ValidFrom.Before(bundled.ValidFrom) {
+		source = ScheduleSourceBundled
+	}
+	return source, s.applySchedule(chosen, now)
+}

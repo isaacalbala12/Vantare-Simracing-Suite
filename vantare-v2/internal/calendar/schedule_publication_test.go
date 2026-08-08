@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func fixtureText(t *testing.T) string {
@@ -177,4 +178,128 @@ func TestPublisherRequiresConfiguration(t *testing.T) {
 	if _, err := pub.Current(context.Background(), "token"); err == nil {
 		t.Fatal("an unconfigured publisher must say so")
 	}
+}
+
+func TestPreferSchedulePicksTheNewerOne(t *testing.T) {
+	bundled := OfficialSchedule{ValidFrom: mustTime(t, "2026-08-04T00:00:00Z")}
+	newer := OfficialSchedule{ValidFrom: mustTime(t, "2026-08-11T00:00:00Z")}
+	older := OfficialSchedule{ValidFrom: mustTime(t, "2026-07-28T00:00:00Z")}
+
+	if got := PreferSchedule(bundled, newer); !got.ValidFrom.Equal(newer.ValidFrom) {
+		t.Fatal("a newer published schedule must win")
+	}
+	// A client updated to a build with a newer seed than what is published
+	// should keep its seed rather than travel back a week.
+	if got := PreferSchedule(bundled, older); !got.ValidFrom.Equal(bundled.ValidFrom) {
+		t.Fatal("an older published schedule must not replace a newer seed")
+	}
+	if got := PreferSchedule(bundled, bundled); !got.ValidFrom.Equal(bundled.ValidFrom) {
+		t.Fatal("equal schedules should settle on the published one without changing the window")
+	}
+}
+
+func TestRefreshFallsBackToTheBundledScheduleWhenTheNetworkFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	bundled, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	now := bundled.ValidFrom.Add(2 * time.Hour)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	pub := NewSchedulePublisher(server.URL, "anon-key")
+	source, err := svc.RefreshPublishedSchedule(context.Background(), pub, "token", now)
+	if err == nil {
+		t.Fatal("the caller should hear that the fetch failed")
+	}
+	if source != ScheduleSourceBundled {
+		t.Fatalf("source=%q, want bundled", source)
+	}
+	// The calendar must not be left empty just because the network was.
+	if len(svc.Calendar().Series) == 0 {
+		t.Fatal("the bundled schedule should have been applied anyway")
+	}
+}
+
+func TestRefreshReportsAnEmptyProjectWithoutAnError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	bundled, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	now := bundled.ValidFrom.Add(2 * time.Hour)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	pub := NewSchedulePublisher(server.URL, "anon-key")
+	source, err := svc.RefreshPublishedSchedule(context.Background(), pub, "token", now)
+	if err != nil {
+		t.Fatalf("nothing published is not an error: %v", err)
+	}
+	if source != ScheduleSourceBundled {
+		t.Fatalf("source=%q, want bundled", source)
+	}
+	if len(svc.Calendar().Series) != len(bundled.Series) {
+		t.Fatal("the bundled schedule should be in play")
+	}
+}
+
+func TestRefreshAppliesThePublishedSchedule(t *testing.T) {
+	bundled, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	// A week newer than the seed, with one series dropped so the difference is
+	// observable in the calendar.
+	published := bundled
+	published.ValidFrom = bundled.ValidFrom.AddDate(0, 0, 7)
+	published.ValidUntil = bundled.ValidUntil.AddDate(0, 0, 7)
+	published.Series = append([]RaceSeries(nil), bundled.Series[:len(bundled.Series)-1]...)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]PublishedSchedule{{ID: "pub-1", Schedule: published}})
+	}))
+	defer server.Close()
+
+	now := published.ValidFrom.Add(2 * time.Hour)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	pub := NewSchedulePublisher(server.URL, "anon-key")
+	source, err := svc.RefreshPublishedSchedule(context.Background(), pub, "token", now)
+	if err != nil {
+		t.Fatalf("RefreshPublishedSchedule: %v", err)
+	}
+	if source != ScheduleSourcePublished {
+		t.Fatalf("source=%q, want published", source)
+	}
+	if len(svc.Calendar().Series) != len(published.Series) {
+		t.Fatalf("Series=%d, want the published %d", len(svc.Calendar().Series), len(published.Series))
+	}
+}
+
+func mustTime(t *testing.T, value string) time.Time {
+	t.Helper()
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		t.Fatalf("parse %q: %v", value, err)
+	}
+	return parsed
 }

@@ -1186,6 +1186,11 @@ func main() {
 			})
 			return
 		}
+		// Signing out is the one conclusive way to stop being someone. The
+		// license service now ignores tokenless anonymous results, precisely so
+		// a launch cannot demote an owner, so it has to be told explicitly here
+		// or the capabilities of the account that just left would outlive it.
+		licenseSvc.ClearCurrent()
 		emitter.Emit("auth:session:clear:result", map[string]any{
 			"requestId": payload.RequestID, "ok": true,
 		})

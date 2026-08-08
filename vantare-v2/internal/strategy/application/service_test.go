@@ -310,15 +310,20 @@ func TestServiceActivateDeactivateAndRestore(t *testing.T) {
 		t.Fatalf("retry active = %#v, err=%v", retry.ActivePlan, err)
 	}
 
+	// Activation is durable now, so it advances the repository like any other
+	// write, and deactivating has to name the version it left behind.
 	deactivated, err := service.Deactivate(context.Background(), DeactivateCommand{
-		CommandHeader:        commandHeader("deactivate", OperationDeactivate, 2),
+		CommandHeader:        commandHeader("deactivate", OperationDeactivate, activated.RepositoryVersion),
 		Current:              activated.ActivePlan,
 		ExpectedActivationID: "activation-1",
 	})
 	if err != nil || deactivated.ActivePlan != nil {
 		t.Fatalf("deactivate = %#v, err=%v", deactivated.ActivePlan, err)
 	}
-	if _, err := service.Deactivate(context.Background(), DeactivateCommand{CommandHeader: commandHeader("deactivate", OperationDeactivate, 2), ExpectedActivationID: "activation-1"}); err != nil {
+	if _, err := service.Deactivate(context.Background(), DeactivateCommand{
+		CommandHeader:        commandHeader("deactivate", OperationDeactivate, deactivated.RepositoryVersion),
+		ExpectedActivationID: "activation-1",
+	}); err != nil {
 		t.Fatalf("retry deactivate: %v", err)
 	}
 

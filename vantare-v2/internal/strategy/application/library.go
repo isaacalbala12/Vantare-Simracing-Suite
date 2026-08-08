@@ -22,10 +22,13 @@ func (service *Service[T]) List(ctx context.Context, command ListCommand) (Resul
 		return Result[T]{}, err
 	}
 	return Result[T]{
-		ProtocolVersion:     ProtocolVersionV1,
-		CommandID:           command.CommandID,
-		RepositoryVersion:   snapshot.Version,
-		Plans:               summarise(snapshot),
+		ProtocolVersion:   ProtocolVersionV1,
+		CommandID:         command.CommandID,
+		RepositoryVersion: snapshot.Version,
+		Plans:             summarise(snapshot),
+		// The library reports what is running so the interface can mark it,
+		// instead of asking separately and risking a different answer.
+		ActivePlan:          snapshot.ActivePlan,
 		RecoveredFromBackup: snapshot.RecoveredFromBackup,
 	}, nil
 }

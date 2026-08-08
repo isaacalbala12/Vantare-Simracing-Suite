@@ -29,6 +29,9 @@ type Limits struct {
 	MaxDrafts          int
 	MaxRevisions       int
 	MaxDocumentBytes   int
+	// MaxActivations bounds the audit trail. It is generous rather than tight:
+	// the trail is what explains, after a race, which plan was running when.
+	MaxActivations int
 }
 
 // DefaultLimits bounds private strategy data without imposing time-based
@@ -39,6 +42,7 @@ func DefaultLimits() Limits {
 		MaxDrafts:          512,
 		MaxRevisions:       8192,
 		MaxDocumentBytes:   4 << 20,
+		MaxActivations:     4096,
 	}
 }
 
@@ -66,9 +70,15 @@ type Repository[T any] struct {
 
 // Snapshot is a defensive, versioned view used for optimistic commits.
 type Snapshot[T any] struct {
-	Version             uint64
-	Drafts              []contract.PlanDraft[T]
-	Revisions           []contract.PlanRevision[T]
+	Version   uint64
+	Drafts    []contract.PlanDraft[T]
+	Revisions []contract.PlanRevision[T]
+	// ActivePlan is the revision currently driving the race, or nil. It is
+	// persisted, so it survives a restart mid-session.
+	ActivePlan *contract.ActivePlan
+	// Activations is the append-only audit trail, oldest first. Rolling back
+	// adds an entry; nothing is ever rewritten or removed.
+	Activations         []contract.ActivePlan
 	RecoveredFromBackup bool
 }
 
@@ -77,6 +87,12 @@ type ChangeSet[T any] struct {
 	Drafts      []contract.PlanDraft[T]
 	Revisions   []contract.PlanRevision[T]
 	DeletePlans []contract.PlanID
+	// Activate makes a revision the active plan. Activating what is already
+	// active changes nothing, so a retry is safe.
+	Activate *contract.ActivePlan
+	// Deactivate clears the active plan. It cannot be combined with Activate:
+	// a change set that both activates and deactivates has no meaning.
+	Deactivate bool
 }
 
 // CommitResult reports the new snapshot and effective plan deletions.
@@ -85,12 +101,17 @@ type CommitResult[T any] struct {
 	DeletedPlans int
 }
 
+// The activation fields are omitempty on purpose: a repository that has never
+// activated anything encodes and hashes exactly as it did before activation
+// existed, so upgrading cannot make an existing repository look corrupt.
 type diskEnvelope struct {
 	RepositoryVersion string            `json:"repositoryVersion"`
 	HashAlgorithm     string            `json:"hashAlgorithm"`
 	Generation        uint64            `json:"generation"`
 	Drafts            []json.RawMessage `json:"drafts"`
 	Revisions         []json.RawMessage `json:"revisions"`
+	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
+	Activations       []json.RawMessage `json:"activations,omitempty"`
 	ContentHash       string            `json:"contentHash"`
 }
 
@@ -100,12 +121,16 @@ type repositoryHashInput struct {
 	Generation        uint64            `json:"generation"`
 	Drafts            []json.RawMessage `json:"drafts"`
 	Revisions         []json.RawMessage `json:"revisions"`
+	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
+	Activations       []json.RawMessage `json:"activations,omitempty"`
 }
 
 type repositoryState[T any] struct {
-	generation uint64
-	drafts     []contract.PlanDraft[T]
-	revisions  []contract.PlanRevision[T]
+	generation  uint64
+	drafts      []contract.PlanDraft[T]
+	revisions   []contract.PlanRevision[T]
+	activePlan  *contract.ActivePlan
+	activations []contract.ActivePlan
 }
 
 // Open prepares a private repository root without creating an empty state.
@@ -120,6 +145,11 @@ func Open[T any](root string, options Options) (*Repository[T], error) {
 	limits := options.Limits
 	if limits == (Limits{}) {
 		limits = DefaultLimits()
+	}
+	// A caller who sized the document limits has no opinion about the audit
+	// trail, so an unset trail limit takes the default rather than failing.
+	if limits.MaxActivations <= 0 {
+		limits.MaxActivations = DefaultLimits().MaxActivations
 	}
 	if err := limits.validate(); err != nil {
 		return nil, err
@@ -145,15 +175,13 @@ func (repository *Repository[T]) Snapshot(ctx context.Context) (Snapshot[T], err
 	if err := contextError(ctx); err != nil {
 		return Snapshot[T]{}, err
 	}
-	lease, err := acquireRepositoryLease(filepath.Join(repository.root, leaseFileName))
-	if err != nil {
-		return Snapshot[T]{}, err
-	}
-	defer lease.Close()
-	if err := cleanupOrphanedTemps(repository.root); err != nil {
-		return Snapshot[T]{}, err
-	}
-	state, recovered, _, err := repository.loadLocked()
+	// Reading the repository state does not need an exclusive lease. The state
+	// file is replaced atomically (temp file + rename), so a reader always
+	// observes either the whole old file or the whole new file, never a torn one.
+	// Temporary file cleanup belongs on the write path only (Commit).
+	// Repairing a corrupt primary is also a write: a reader reports recovery but
+	// leaves the repair to the next Commit, which holds the exclusive lease.
+	state, recovered, _, err := repository.loadLocked(false)
 	if err != nil {
 		return Snapshot[T]{}, err
 	}
@@ -176,7 +204,7 @@ func (repository *Repository[T]) Commit(ctx context.Context, expectedVersion uin
 		return CommitResult[T]{}, err
 	}
 
-	current, _, currentBytes, err := repository.loadLocked()
+	current, _, currentBytes, err := repository.loadLocked(true)
 	if err != nil {
 		return CommitResult[T]{}, err
 	}
@@ -236,7 +264,7 @@ func (repository *Repository[T]) Commit(ctx context.Context, expectedVersion uin
 	return CommitResult[T]{Snapshot: snapshot, DeletedPlans: deleted}, nil
 }
 
-func (repository *Repository[T]) loadLocked() (repositoryState[T], bool, []byte, error) {
+func (repository *Repository[T]) loadLocked(allowRepair bool) (repositoryState[T], bool, []byte, error) {
 	primary, primaryErr := repository.readFile(repository.statePath())
 	if primaryErr == nil {
 		state, err := repository.decodeState(primary)
@@ -273,8 +301,10 @@ func (repository *Repository[T]) loadLocked() (repositoryState[T], bool, []byte,
 		}
 		return repositoryState[T]{}, false, nil, fmt.Errorf("%w: primary: %v; backup: %v", ErrCorruptRepository, primaryErr, decodeErr)
 	}
-	if _, err := repository.write(repository.statePath(), backup); err != nil {
-		return repositoryState[T]{}, false, nil, fmt.Errorf("restore strategy repository backup: %w", err)
+	if allowRepair {
+		if _, err := repository.write(repository.statePath(), backup); err != nil {
+			return repositoryState[T]{}, false, nil, fmt.Errorf("restore strategy repository backup: %w", err)
+		}
 	}
 	return state, true, backup, nil
 }
@@ -377,6 +407,23 @@ func (repository *Repository[T]) decodeState(data []byte) (repositoryState[T], e
 		}
 		state.revisions = append(state.revisions, revision)
 	}
+	if len(envelope.Activations) > repository.limits.MaxActivations {
+		return repositoryState[T]{}, fmt.Errorf("%w: persisted activation count exceeds configured limits", ErrLimitExceeded)
+	}
+	for _, raw := range envelope.Activations {
+		activation, err := decodeActivation(raw)
+		if err != nil {
+			return repositoryState[T]{}, err
+		}
+		state.activations = append(state.activations, activation)
+	}
+	if len(envelope.ActivePlan) > 0 {
+		activePlan, err := decodeActivation(envelope.ActivePlan)
+		if err != nil {
+			return repositoryState[T]{}, err
+		}
+		state.activePlan = &activePlan
+	}
 	if err := validateUniqueState(state); err != nil {
 		return repositoryState[T]{}, err
 	}
@@ -412,6 +459,26 @@ func (repository *Repository[T]) encodeState(state repositoryState[T]) ([]byte, 
 		}
 		envelope.Revisions = append(envelope.Revisions, raw)
 	}
+	if len(state.activations) > repository.limits.MaxActivations {
+		return nil, fmt.Errorf("%w: activation trail exceeds configured limit", ErrLimitExceeded)
+	}
+	if state.activePlan != nil {
+		if err := state.activePlan.Validate(); err != nil {
+			return nil, fmt.Errorf("validate active plan before persistence: %w", err)
+		}
+		raw, err := json.Marshal(state.activePlan)
+		if err != nil {
+			return nil, fmt.Errorf("encode strategy active plan: %w", err)
+		}
+		envelope.ActivePlan = raw
+	}
+	for _, activation := range state.activations {
+		raw, err := json.Marshal(activation)
+		if err != nil {
+			return nil, fmt.Errorf("encode strategy activation: %w", err)
+		}
+		envelope.Activations = append(envelope.Activations, raw)
+	}
 	var err error
 	envelope.ContentHash, err = hashEnvelope(envelope)
 	if err != nil {
@@ -428,6 +495,32 @@ func (repository *Repository[T]) encodeState(state repositoryState[T]) ([]byte, 
 	return encoded, nil
 }
 
+// decodeActivation reads one persisted ActivePlan strictly. An activation that
+// no longer validates is corruption, not something to interpret loosely: it
+// names the plan a race is being driven by.
+func decodeActivation(raw []byte) (contract.ActivePlan, error) {
+	migrated, _, err := contract.MigrateContractJSON(raw)
+	if err != nil {
+		if contract.HasErrorCode(err, contract.ErrorUnsupportedVersion) {
+			return contract.ActivePlan{}, err
+		}
+		return contract.ActivePlan{}, fmt.Errorf("%w: migrate activation: %v", ErrCorruptRepository, err)
+	}
+	var activation contract.ActivePlan
+	decoder := json.NewDecoder(bytes.NewReader(migrated))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&activation); err != nil {
+		return contract.ActivePlan{}, fmt.Errorf("%w: decode activation: %v", ErrCorruptRepository, err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return contract.ActivePlan{}, fmt.Errorf("%w: decode activation: %v", ErrCorruptRepository, err)
+	}
+	if err := activation.Validate(); err != nil {
+		return contract.ActivePlan{}, fmt.Errorf("%w: validate activation: %v", ErrCorruptRepository, err)
+	}
+	return activation, nil
+}
+
 func hashEnvelope(envelope diskEnvelope) (string, error) {
 	input := repositoryHashInput{
 		RepositoryVersion: envelope.RepositoryVersion,
@@ -435,6 +528,8 @@ func hashEnvelope(envelope diskEnvelope) (string, error) {
 		Generation:        envelope.Generation,
 		Drafts:            envelope.Drafts,
 		Revisions:         envelope.Revisions,
+		ActivePlan:        envelope.ActivePlan,
+		Activations:       envelope.Activations,
 	}
 	encoded, err := json.Marshal(input)
 	if err != nil {
@@ -445,6 +540,9 @@ func hashEnvelope(envelope diskEnvelope) (string, error) {
 }
 
 func (repository *Repository[T]) applyChanges(state *repositoryState[T], changes ChangeSet[T]) (int, bool, error) {
+	if changes.Activate != nil && changes.Deactivate {
+		return 0, false, fmt.Errorf("cannot activate and deactivate in one change set")
+	}
 	deleteSet := make(map[contract.PlanID]struct{}, len(changes.DeletePlans))
 	for _, planID := range changes.DeletePlans {
 		if planID == "" {
@@ -525,11 +623,96 @@ func (repository *Repository[T]) applyChanges(state *repositoryState[T], changes
 			changed = true
 		}
 	}
+	// A deleted plan cannot stay active: leaving the pointer would name a
+	// revision that no longer exists. The audit trail is not touched, because
+	// it records what was true at the time.
+	if state.activePlan != nil {
+		if _, deleted := deleteSet[state.activePlan.Revision.PlanID]; deleted {
+			state.activePlan = nil
+			changed = true
+		}
+	}
+
+	activationChanged, err := applyActivation(state, changes)
+	if err != nil {
+		return 0, false, err
+	}
+	changed = changed || activationChanged
+
 	if err := validateUniqueState(*state); err != nil {
 		return 0, false, err
 	}
 	sortState(state)
 	return deletedPlans, changed, nil
+}
+
+// applyActivation is where activation becomes durable. Activating what is
+// already active is a no-op, so a retry after an uncertain commit cannot
+// duplicate an entry in the audit trail.
+func applyActivation[T any](state *repositoryState[T], changes ChangeSet[T]) (bool, error) {
+	if changes.Deactivate {
+		if state.activePlan == nil {
+			return false, nil
+		}
+		state.activePlan = nil
+		return true, nil
+	}
+	if changes.Activate == nil {
+		return false, nil
+	}
+	activation := *changes.Activate
+	if err := activation.Validate(); err != nil {
+		return false, err
+	}
+	// The repository is the authority: it will not point at a revision it does
+	// not hold, whatever the caller believes.
+	if !holdsRevision(*state, activation.Revision) {
+		return false, fmt.Errorf("%w: %s/%s/%s",
+			ErrRevisionNotStored, activation.Revision.PlanID, activation.Revision.VariantID, activation.Revision.RevisionID)
+	}
+	if state.activePlan != nil && sameActivation(*state.activePlan, activation) {
+		return false, nil
+	}
+	// A repeated activation identity that changed its content is a bug in the
+	// caller, not a new activation; refusing keeps the trail trustworthy.
+	for _, previous := range state.activations {
+		if previous.ActivationID == activation.ActivationID && !sameActivation(previous, activation) {
+			return false, fmt.Errorf("%w: activation %q already recorded with different content",
+				ErrImmutableActivation, activation.ActivationID)
+		}
+	}
+	state.activePlan = &activation
+	for _, previous := range state.activations {
+		if sameActivation(previous, activation) {
+			// Re-activating something already in the trail restores it without
+			// recording it twice.
+			return true, nil
+		}
+	}
+	state.activations = append(state.activations, activation)
+	return true, nil
+}
+
+func holdsRevision[T any](state repositoryState[T], ref contract.RevisionRef) bool {
+	for _, revision := range state.revisions {
+		if revision.Ref() == ref {
+			return true
+		}
+	}
+	return false
+}
+
+func sameActivation(left, right contract.ActivePlan) bool {
+	if left.ActivationID != right.ActivationID || left.Revision != right.Revision {
+		return false
+	}
+	if !left.ActivatedAt.Equal(right.ActivatedAt) {
+		return false
+	}
+	if (left.PreviousRevision == nil) != (right.PreviousRevision == nil) {
+		return false
+	}
+	return left.PreviousRevision == nil || *left.PreviousRevision == *right.PreviousRevision
 }
 
 func snapshotFromState[T any](state repositoryState[T], recovered bool) (Snapshot[T], error) {
@@ -541,12 +724,28 @@ func snapshotFromState[T any](state repositoryState[T], recovered bool) (Snapsho
 		Version:             clone.generation,
 		Drafts:              clone.drafts,
 		Revisions:           clone.revisions,
+		ActivePlan:          clone.activePlan,
+		Activations:         clone.activations,
 		RecoveredFromBackup: recovered,
 	}, nil
 }
 
 func cloneState[T any](state repositoryState[T]) (repositoryState[T], error) {
 	clone := repositoryState[T]{generation: state.generation}
+	// The active plan is copied rather than aliased so a concurrent reader
+	// cannot reach into the repository's own state through the snapshot.
+	if state.activePlan != nil {
+		activePlan := *state.activePlan
+		activePlan.PreviousRevision = clonePreviousRevision(state.activePlan.PreviousRevision)
+		clone.activePlan = &activePlan
+	}
+	if len(state.activations) > 0 {
+		clone.activations = make([]contract.ActivePlan, 0, len(state.activations))
+		for _, activation := range state.activations {
+			activation.PreviousRevision = clonePreviousRevision(activation.PreviousRevision)
+			clone.activations = append(clone.activations, activation)
+		}
+	}
 	for _, draft := range state.drafts {
 		copied, err := cloneDraft(draft)
 		if err != nil {
@@ -566,6 +765,14 @@ func cloneState[T any](state repositoryState[T]) (repositoryState[T], error) {
 		clone.revisions = append(clone.revisions, copied)
 	}
 	return clone, nil
+}
+
+func clonePreviousRevision(ref *contract.RevisionRef) *contract.RevisionRef {
+	if ref == nil {
+		return nil
+	}
+	clone := *ref
+	return &clone
 }
 
 func cloneDraft[T any](draft contract.PlanDraft[T]) (contract.PlanDraft[T], error) {

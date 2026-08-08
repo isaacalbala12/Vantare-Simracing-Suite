@@ -47,6 +47,12 @@ vi.mock("../../lib/access", () => ({
   }),
 }));
 
+// The Topbar's account button reads the signed-in email; the shell tests never
+// mount a LicenseProvider.
+vi.mock("../../lib/license", () => ({
+  useLicense: () => ({ result: null }),
+}));
+
 afterEach(() => cleanup());
 
 describe("V52Shell", () => {

@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { StorageSettings } from "./StorageSettings";
-import { formatBytes, useStorageSettings } from "./useStorageSettings";
+import { formatBytes } from "./useStorageSettings";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -32,7 +32,7 @@ function dispatch(name: string, data: unknown) {
 function Harness() {
   return (
     <I18nProvider>
-      <StorageSettings storage={useStorageSettings()} />
+      <StorageSettings />
     </I18nProvider>
   );
 }

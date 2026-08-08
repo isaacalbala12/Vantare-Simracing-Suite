@@ -2,7 +2,6 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { StartupSettings } from "./StartupSettings";
-import { useStartupSettings } from "./useStartupSettings";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -32,7 +31,7 @@ function dispatch(name: string, data: unknown) {
 function Harness() {
   return (
     <I18nProvider>
-      <StartupSettings startup={useStartupSettings()} />
+      <StartupSettings />
     </I18nProvider>
   );
 }

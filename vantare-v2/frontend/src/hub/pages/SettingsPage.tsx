@@ -3,10 +3,8 @@ import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
 import { HubSubnav } from '../components/HubSubnav';
 import { StartupSettings } from '../settings/StartupSettings';
-import { useStartupSettings } from '../settings/useStartupSettings';
 import { NotificationsSettings } from '../settings/NotificationsSettings';
 import { StorageSettings } from '../settings/StorageSettings';
-import { useStorageSettings } from '../settings/useStorageSettings';
 import { AccountSettings } from '../settings/AccountSettings';
 import { AboutSettings } from '../settings/AboutSettings';
 import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
@@ -48,8 +46,6 @@ function SettingsPageInner() {
   const availableChannels = allowedUpdateChannels(access);
   const updater = useUpdaterSettings();
   const app = useAppSettings();
-  const startup = useStartupSettings();
-  const storage = useStorageSettings();
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
@@ -139,7 +135,7 @@ function SettingsPageInner() {
               </h2>
               <LanguageSelector />
             </div>
-            <StartupSettings startup={startup} />
+            <StartupSettings />
             <NotificationsSettings app={app} />
           </div>
         )}
@@ -158,7 +154,7 @@ function SettingsPageInner() {
 
         {activeTab === 'diagnostics' && (
           <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label={t('settings.tab.data')} className="space-y-4">
-            <StorageSettings storage={storage} />
+            <StorageSettings />
             <WailsDiagnosticsPanel />
             <CpuSamplingSetting app={app} />
             <AboutSettings info={updater.info} updaterSettings={updater.settings} />

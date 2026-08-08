@@ -20,7 +20,12 @@ var requiredOperationFields = map[Operation][]string{
 	OperationDeactivate:   {"expectedActivationId"},
 	OperationRestore:      {"draftId"},
 	OperationList:         {},
-	OperationClose:        {"draft", "savedDraft", "discard"},
+	OperationExport:       {"plans", "provenance"},
+	// dryRun is deliberately not required: omitting it means a real import,
+	// and a caller that forgets the flag gets the explicit behaviour, not a
+	// silently skipped one.
+	OperationImport: {"package"},
+	OperationClose:  {"draft", "savedDraft", "discard"},
 }
 
 // JSONBridge is transport-neutral. Wails or a future transport only forwards
@@ -80,6 +85,16 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command ListCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.List(ctx, command)
+		}
+	case OperationExport:
+		var command ExportCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.Export(ctx, command)
+		}
+	case OperationImport:
+		var command ImportCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.Import(ctx, command)
 		}
 	case OperationEdit:
 		var command EditCommand[T]

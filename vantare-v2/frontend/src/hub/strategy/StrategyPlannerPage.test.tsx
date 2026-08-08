@@ -479,6 +479,189 @@ describe("Strategy Planner shell", () => {
   });
 });
 
+/**
+ * Stands in for the application service across the whole transfer flow: it
+ * lists, exports and imports, and records every command so the tests can prove
+ * what was and was not sent.
+ */
+function createTestTransferClient(options: {
+  plans: readonly StrategyPlanSummaryV1[];
+  importable?: boolean;
+  failImportWith?: Error;
+  seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>>;
+}) {
+  const importable = options.importable ?? true;
+  const preview = {
+    packageVersion: "strategy.package.v1",
+    contractVersion: "strategy.v1",
+    provenance: { application: "vantare", applicationVersion: "0.1.0.7", exportedAt: "2026-08-08T09:00:00Z" },
+    checksum: "abc123",
+    importable,
+    entries: [{
+      planId: "monza-2026",
+      variantId: "variant-1",
+      name: "6h Monza",
+      mode: "manual",
+      disposition: importable ? "new" : "conflict",
+      hasDraft: true,
+      revisionCount: 2,
+      newRevisions: importable ? 2 : 0,
+      conflictingRevisions: importable ? [] : ["revision-1"],
+    }],
+  };
+  return {
+    async execute(command: StrategyApplicationCommandV1<StrategyEditorDocument>) {
+      options.seen.push(command);
+      const base = {
+        protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+        commandId: command.commandId,
+        repositoryVersion: 3,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "export") {
+        return { ...base, package: "eyJhIjoxfQ==" };
+      }
+      if (command.operation === "import") {
+        const dryRun = "dryRun" in command && command.dryRun === true;
+        if (!dryRun && options.failImportWith) throw options.failImportWith;
+        return { ...base, preview, imported: !dryRun };
+      }
+      return { ...base, plans: options.plans };
+    },
+    cancel: () => false,
+    dispose: () => {},
+  } as never;
+}
+
+function packageFile(): File {
+  return new File(['{"packageVersion":"strategy.package.v1"}'], "monza.vantareplan.json", {
+    type: "application/json",
+  });
+}
+
+/** Reads the import commands that actually asked to write. */
+function writeCommands(seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>>) {
+  return seen.filter(
+    (command) => command.operation === "import" && !("dryRun" in command && command.dryRun === true),
+  );
+}
+
+describe("Strategy Planner plan transfer", () => {
+  it("exports a plan and hands the bytes to the user without sending them anywhere", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    const saved: Array<{ fileName: string; bytes: Uint8Array }> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+      appVersion: "0.1.0.8",
+      onSavePackage: (fileName, bytes) => saved.push({ fileName, bytes }),
+    });
+
+    fireEvent.click(await screen.findByTestId("strategy-export-spa-2026-variant-1"));
+    await waitFor(() => expect(saved).toHaveLength(1));
+
+    expect(seen.find((command) => command.operation === "export")).toMatchObject({
+      operation: "export",
+      plans: [{ planId: "spa-2026", variantId: "variant-1" }],
+      provenance: { application: "vantare", applicationVersion: "0.1.0.8" },
+    });
+    expect(saved[0].fileName).toContain("spa-2026");
+    expect(saved[0].bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it("previews an imported package before writing anything", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+
+    expect(await screen.findByTestId("strategy-import-preview")).toBeTruthy();
+    expect(screen.getByTestId("strategy-import-summary").textContent).toBe("1 plan");
+    expect(screen.getByTestId("strategy-import-entry-monza-2026-variant-1").textContent)
+      .toContain("Nuevo · 2 revisiones");
+
+    const imports = seen.filter((command) => command.operation === "import");
+    expect(imports).toHaveLength(1);
+    expect(imports[0]).toMatchObject({ dryRun: true });
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+
+  it("only writes once the preview is confirmed, and against the version it showed", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Importar" }));
+
+    await waitFor(() => {
+      const writes = writeCommands(seen);
+      expect(writes).toHaveLength(1);
+      expect(writes[0].expectedRepositoryVersion).toBe(3);
+    });
+  });
+
+  it("refuses to offer an import that would collide with saved revisions", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({
+        plans: [summary({ planId: "spa-2026" })],
+        importable: false,
+        seen,
+      }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+
+    expect(screen.getByTestId("strategy-import-summary").textContent)
+      .toBe("1 plan choca con lo que ya tienes guardado");
+    const confirm = screen.getByRole("button", { name: "Importar" });
+    expect(confirm.hasAttribute("disabled")).toBe(true);
+
+    fireEvent.click(confirm);
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+
+  it("says the library is untouched when an import fails", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({
+        plans: [summary({ planId: "spa-2026" })],
+        failImportWith: new StrategyApplicationError("import_refused", "", "El paquete fue rechazado."),
+        seen,
+      }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Importar" }));
+
+    const failure = await screen.findByTestId("strategy-transfer-error");
+    expect(failure.textContent).toContain("El paquete fue rechazado.");
+    // The plan that was already there is still there.
+    expect(screen.getByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
+  });
+
+  it("cancels a preview without writing", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByTestId("strategy-import-preview")).toBeNull();
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+});
+
 type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "strategyStore">;
 
 async function renderPlanner(props: PlannerTestProps) {

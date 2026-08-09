@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-304",
+  "type": "feature",
+  "summary": "El calendario pasa a ser la puerta de entrada a las carreras de LMU: qué empieza ahora, cuánto queda y en qué puedes correr, de un vistazo.",
+  "technicalNotes": [
+    "Nueva vista Próximas: todo lo que no ha terminado, lo antes primero, agrupado por tier y con cuenta atrás viva. Cada fila lleva las clases admitidas con su restricción propia, duración, setup, splits, gomas, calentadores y asistencias.",
+    "Nueva vista Timeline: una fila por serie, horas arriba, un bloque por carrera y una línea de ahora, para ver de un golpe qué se solapa y dónde están los huecos.",
+    "Las vistas de semana y día se retiran; el mes se mantiene para fines de semana especiales.",
+    "El horario semanal se importa pegando el texto que publica LMU: se interpreta en el propio equipo, se revisa y se publica para todos, sin esperar a una versión nueva.",
+    "Las clases dejan de ser texto y pasan a ser datos, con su límite de energía virtual, escala de tiempo y requisito de licencia cuando la serie los impone.",
+    "Los identificadores de serie sobreviven a los renombrados, así que las series que sigues no se pierden cuando LMU cambia un nombre de una semana a otra."
+  ],
+  "testing": [
+    "Abrir Carreras y comprobar que la vista Próximas encabeza con lo que antes sale y que la cuenta atrás avanza sola.",
+    "Pasar a Timeline y verificar que la línea de ahora cae donde toca y que los bloques coinciden con las horas de la cabecera.",
+    "Pinchar una carrera y confirmar que las clases, la duración y las reglas coinciden con lo que publica LMU esa semana.",
+    "Con la zona horaria del sistema distinta de UTC, comprobar que la hora que muestra el panel del escritorio coincide con la del calendario."
+  ],
+  "knownLimitations": [
+    "La publicación del horario está reservada al propietario; el resto de usuarios lo reciben al abrir la app o pulsando recargar."
+  ]
+}

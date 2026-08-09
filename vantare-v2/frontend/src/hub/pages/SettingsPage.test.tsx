@@ -196,27 +196,38 @@ describe('SettingsPage', () => {
 
   it('shows diagnostics when clicking Diagnóstico tab', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
     expect(screen.getByTestId('diagnostics-panel')).toBeDefined();
   });
 
-  it('shows Condiciones and Información when clicking Avanzado tab', () => {
+  // The Avanzado tab is gone. deltaMode had no consumer anywhere -- not in
+  // internal/, not in cmd/, not in the frontend -- so it was a control that did
+  // nothing. Its Información card was worth keeping and now sits beside the
+  // diagnostics panel.
+  it('no longer offers an Avanzado tab or the inert delta mode', () => {
     render(<SettingsPage />);
-    clickTab('Avanzado');
-    expect(screen.getByRole('heading', { name: 'Condiciones' })).toBeDefined();
-    expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
-    expect(screen.getByText('Modo delta')).toBeDefined();
-    expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
-    expect(screen.getByText(/Versión actual:/)).toBeDefined();
-    expect(screen.getByText(/Canal:/)).toBeDefined();
+    expect(screen.queryByRole('tab', { name: 'Avanzado' })).toBeNull();
+    clickTab('Datos y diagnóstico');
+    expect(screen.queryByText('Modo delta')).toBeNull();
   });
 
-  it('avanzado does not show old headings (Rendimiento, Modo delta as heading)', () => {
+  // cpuSampling went out with it by mistake and came back: cmd/vantare wires it
+  // to RuntimeSampler.SetCPUEnabled, which starts and stops the sampler. It
+  // belongs beside diagnostics, because what it controls is instrumentation.
+  it('keeps the CPU sampling control, in the Diagnóstico tab', () => {
     render(<SettingsPage />);
-    clickTab('Avanzado');
-    expect(screen.queryByRole('heading', { name: 'Rendimiento' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Modo delta' })).toBeNull();
+    expect(screen.queryByText('Monitorizar uso de CPU')).toBeNull();
+    clickTab('Datos y diagnóstico');
+    expect(screen.getByText('Monitorizar uso de CPU')).toBeDefined();
+  });
+
+  it('shows the Información card inside the Diagnóstico tab', () => {
+    render(<SettingsPage />);
+    clickTab('Datos y diagnóstico');
+    expect(screen.getByRole('heading', { name: 'Información' })).toBeDefined();
+    expect(screen.getByText(/Versión actual:/)).toBeDefined();
+    expect(screen.getByText(/Canal:/)).toBeDefined();
   });
 
   it('emits settings save when channel changes', () => {
@@ -287,15 +298,64 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Confirmar downgrade')).toBeDefined();
   });
 
+  // The confirmation used to be a bare `fixed inset-0` drawn inside the page,
+  // with the Cancel button as its only exit. It is a modal now: it lives in a
+  // portal on document.body and Escape closes it.
+  it('renders the downgrade confirmation as a dismissable modal in a portal', () => {
+    render(<SettingsPage />);
+    clickTab('Actualizaciones');
+    dispatch('updater:available', {
+      info: {
+        currentVersion: 'v0.1.5-prealpha',
+        releases: [{ ...release, tag_name: 'v0.1.4-prealpha' }],
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Downgrade' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Confirmar downgrade' });
+    expect(dialog.closest('[data-testid="settings-downgrade-overlay"]')).not.toBeNull();
+    expect(document.body.contains(dialog)).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Confirmar downgrade' })).toBeNull();
+  });
+
+  // The save status used to sit at the foot of the page, so a toggle in one tab
+  // reported itself somewhere the user was not looking. It now belongs to the
+  // section that triggered the write.
+  it('reports the save status inside the section that triggered it', () => {
+    render(<SettingsPage />);
+    clickTab('Hotkeys');
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar atajos' }));
+
+    const status = screen.getByRole('status');
+    expect(status.textContent).toBe('Guardando...');
+    expect(status.closest('[role="tabpanel"]')?.getAttribute('id')).toBe('panel-hotkeys');
+  });
+
+  it('walks the tab bar with the arrow keys and keeps one tab stop', () => {
+    render(<SettingsPage />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.filter((tab) => tab.getAttribute('tabindex') === '0')).toHaveLength(1);
+
+    fireEvent.keyDown(tabs[0], { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Aplicación' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    fireEvent.keyDown(screen.getAllByRole('tab')[1], { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Cuenta' }).getAttribute('aria-selected')).toBe('true');
+  });
+
   it('renders technical support section and diagnostics button', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(screen.getByRole('heading', { name: 'Inspector y paquete de diagnóstico' })).toBeDefined();
   });
 
   it('does not retain the legacy immediate diagnostics copy flow', () => {
     render(<SettingsPage />);
-    clickTab('Diagnóstico');
+    clickTab('Datos y diagnóstico');
     expect(runtimeMock.emit).not.toHaveBeenCalledWith('diagnostics:get');
     expect(runtimeMock.handlers.has('diagnostics')).toBe(false);
   });
@@ -325,14 +385,19 @@ describe('SettingsPage', () => {
     const tablist = screen.getByRole('tablist');
     expect(tablist).toBeDefined();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBeGreaterThanOrEqual(5);
-    expect(tabs[0].textContent).toBe('Cuenta');
-    expect(tabs[1].textContent).toBe('Actualizaciones');
-    expect(tabs[2].textContent).toBe('Hotkeys');
-    expect(tabs[3].textContent).toBe('Diagnóstico');
-    expect(tabs[4].textContent).toBe('Avanzado');
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Cuenta',
+      'Aplicación',
+      'Actualizaciones',
+      'Hotkeys',
+      'Datos y diagnóstico',
+    ]);
   });
 
+  // TD-041: saving one setting must not wipe unrelated fields. The delta-mode
+  // and cpuSampling variants of this test went with the Avanzado tab; saving
+  // hotkeys is now the surviving path and carries the invariant alone -- it is
+  // also the strongest case, because it writes the whole settings object.
   it('preserves activeOverlayProfileId when saving hotkeys (anti TD-041)', () => {
     render(<SettingsPage />);
     dispatch('settings', {
@@ -351,41 +416,6 @@ describe('SettingsPage', () => {
     expect(payload.activeOverlayProfileId).toBe('must-survive-hotkeys');
   });
 
-  it('preserves activeOverlayProfileId when changing delta mode (anti TD-041)', () => {
-    render(<SettingsPage />);
-    dispatch('settings', {
-      deltaMode: 'self',
-      cpuSampling: true,
-      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
-      activeOverlayProfileId: 'must-survive-delta',
-    });
-    clickTab('Avanzado');
-    fireEvent.click(screen.getByLabelText('Sesion (mejor vuelta de la sesion)'));
-    const saveCalls = runtimeMock.emit.mock.calls.filter(
-      (call: unknown[]) => call[0] === 'settings:save',
-    );
-    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
-    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
-    expect(payload.activeOverlayProfileId).toBe('must-survive-delta');
-  });
-
-  it('preserves activeOverlayProfileId when toggling cpuSampling (anti TD-041)', () => {
-    render(<SettingsPage />);
-    dispatch('settings', {
-      deltaMode: 'self',
-      cpuSampling: true,
-      hotkeys: { toggleOverlay: 'ctrl+shift+v' },
-      activeOverlayProfileId: 'must-survive-cpu',
-    });
-    clickTab('Avanzado');
-    fireEvent.click(screen.getByText('Monitorizar uso de CPU'));
-    const saveCalls = runtimeMock.emit.mock.calls.filter(
-      (call: unknown[]) => call[0] === 'settings:save',
-    );
-    expect(saveCalls.length).toBeGreaterThanOrEqual(1);
-    const payload = saveCalls[saveCalls.length - 1][1] as Record<string, unknown>;
-    expect(payload.activeOverlayProfileId).toBe('must-survive-cpu');
-  });
 });
 describe('SettingsPage i18n', () => {
   beforeEach(() => {
@@ -403,8 +433,9 @@ describe('SettingsPage i18n', () => {
     localStorage.clear();
   });
 
-  it('shows language selector in settings', () => {
+  it('shows the language selector inside the Aplicación tab', () => {
     render(<SettingsPage />);
+    clickTab('Aplicación');
     expect(screen.getByTestId('language-selector')).toBeTruthy();
   });
 
@@ -416,6 +447,7 @@ describe('SettingsPage i18n', () => {
   it('changes visible text when language is switched to Portuguese', () => {
     render(<SettingsPage />);
     expect(screen.getByText('Ajustes')).toBeTruthy();
+    clickTab('Aplicación');
     const select = screen.getByTestId('language-selector') as HTMLSelectElement;
     select.value = 'pt';
     fireEvent.change(select);
@@ -424,6 +456,7 @@ describe('SettingsPage i18n', () => {
 
   it('persists language choice in localStorage', () => {
     render(<SettingsPage />);
+    clickTab('Aplicación');
     const select = screen.getByTestId('language-selector') as HTMLSelectElement;
     select.value = 'it';
     fireEvent.change(select);

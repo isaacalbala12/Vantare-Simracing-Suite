@@ -4,6 +4,7 @@ import vantareV5 from '../../themes/vantare-v5.json';
 import vantareLite from '../../themes/vantare-lite.json';
 import { NAV_ITEMS, type Section } from '../navigation';
 import { useAccess } from '../../lib/access';
+import { useLicense } from '../../lib/license';
 import { canSeeSection, type SectionId } from '../../lib/access-policy';
 import type { TelemetrySourceStatus } from '../../telemetry-transport/source-status';
 import type { TestingCenterChannel } from '../testing-center/contracts';
@@ -33,6 +34,11 @@ const SECTION_TO_FEATURE: Record<string, SectionId> = {
 
 export function Topbar({ activeSection, onNavigate, version, sourceStatus, testingCenterChannel }: TopbarProps) {
   const access = useAccess();
+  const { result: license } = useLicense();
+  // The avatar showed a hardcoded "U" for everyone. The signed-in email is
+  // right there, so it may as well say whose account this is.
+  const accountEmail = license?.email ?? '';
+  const accountInitial = accountEmail.trim().charAt(0).toUpperCase() || 'U';
 
   const navItems = useMemo(
     () =>
@@ -170,24 +176,20 @@ export function Topbar({ activeSection, onNavigate, version, sourceStatus, testi
           >
             {liteMode ? 'Lite ON' : 'Lite OFF'}
           </button>
-          <button
-            type="button"
-            className="lite-motion btn-secondary px-4 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:scale-105"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            <span className="hidden sm:inline">Notificaciones</span>
-          </button>
           <div className="flex items-center gap-2 pl-3 sm:pl-4 border-l border-white/5">
-            <div className="lite-motion w-8 h-8 rounded-full bg-gradient-to-br from-vantare-red-600 to-vantare-burgundy flex items-center justify-center text-xs font-bold">
-              U
-            </div>
+            {/* It looked like a button and behaved like a decoration: a plain
+                div with no handler. Account lives in Ajustes, so that is where
+                it goes. */}
+            <button
+              type="button"
+              data-testid="topbar-account"
+              onClick={() => onNavigate('setup')}
+              aria-label={accountEmail ? `Cuenta: ${accountEmail}` : 'Cuenta'}
+              title={accountEmail || 'Cuenta'}
+              className="lite-motion w-8 h-8 rounded-full bg-gradient-to-br from-vantare-red-600 to-vantare-burgundy flex items-center justify-center text-xs font-bold text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-vantare-red-500"
+            >
+              {accountInitial}
+            </button>
           </div>
         </div>
         <div className="order-3 hidden w-full md:flex md:flex-wrap md:justify-center md:gap-x-5 md:gap-y-2 md:border-t md:border-white/5 md:pt-2 text-xs lg:text-sm font-medium text-vantare-textMuted xl:order-2 xl:w-auto xl:flex-1 xl:flex-nowrap xl:justify-start xl:border-0 xl:pt-0">

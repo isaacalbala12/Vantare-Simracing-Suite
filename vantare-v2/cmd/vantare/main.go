@@ -29,8 +29,11 @@ import (
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
+	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	"github.com/vantare/overlays/v2/internal/startup"
+	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -42,6 +45,7 @@ import (
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 // version is the current application version.
@@ -316,6 +320,73 @@ func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
 	default:
 		return "The manual Strategy request could not be completed.", false
 	}
+}
+
+// wailsNotifier adapts the Wails notifications service to notify.Backend. The
+// browser Notification API is not wired up in WebView2, so this is the only
+// route that can actually reach the desktop.
+type wailsNotifier struct {
+	service *notifications.NotificationService
+}
+
+func (n wailsNotifier) RequestAuthorization() (bool, error) {
+	return n.service.RequestNotificationAuthorization()
+}
+
+func (n wailsNotifier) Authorized() (bool, error) {
+	return n.service.CheckNotificationAuthorization()
+}
+
+func (n wailsNotifier) Send(title, body string) error {
+	return n.service.SendNotification(notifications.NotificationOptions{
+		ID:    fmt.Sprintf("vantare-%d", time.Now().UnixNano()),
+		Title: title,
+		Body:  body,
+	})
+}
+
+// notifyingEmitter watches launch chains going past on their way to the
+// frontend and raises a desktop notification when one finishes. It sits here,
+// not in the launcher package, so that package keeps knowing nothing about
+// notifications.
+type notifyingEmitter struct {
+	downstream app.EventEmitter
+	notify     *notify.Service
+	settings   *app.SettingsService
+}
+
+func (e notifyingEmitter) Emit(name string, data any) {
+	e.downstream.Emit(name, data)
+	if name != "launcher:chain:done" {
+		return
+	}
+	progress, ok := data.(launcher.ChainProgress)
+	if !ok {
+		return
+	}
+	// Sent on its own goroutine: raising a toast is a platform call, and the
+	// launch chain must not wait on it.
+	go func() {
+		if _, err := e.notify.LaunchFinished(
+			launchProfileName(e.settings, progress.ProfileID),
+			progress.Success,
+		); err != nil {
+			log.Printf("notification for %s failed: %v", progress.ProfileID, err)
+		}
+	}()
+}
+
+// launchProfileName prefers the name the user gave a profile, falling back to
+// its id so a notification is never about "".
+func launchProfileName(settings *app.SettingsService, profileID string) string {
+	if settings != nil {
+		for _, profile := range settings.Settings().LauncherProfiles {
+			if profile.ID == profileID && strings.TrimSpace(profile.Name) != "" {
+				return profile.Name
+			}
+		}
+	}
+	return profileID
 }
 
 type wailsEmitter struct {
@@ -794,6 +865,7 @@ func main() {
 	var engSvc *engineerservice.EngineerService
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
+	var notifySvc *notify.Service
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
@@ -988,11 +1060,68 @@ func main() {
 		MinHeight:      600,
 	})
 	hubW.Show()
+	// Show first, then minimise: on Windows a window has to exist on screen
+	// before it can be minimised. Launched at sign-in with this flag, Vantare
+	// stays out of the way until the user asks for it.
+	if startup.WantsMinimised(os.Args) {
+		hubW.Minimise()
+	}
 
 	requestQuit := func(_ *application.WindowEvent) {
 		go wailsApp.Quit()
 	}
 	hubW.RegisterHook(events.Common.WindowClosing, requestQuit)
+
+	// Desktop notifications. Wails talks to the platform -- Windows toasts --
+	// which is the only route that works: the browser Notification API is not
+	// wired up inside WebView2, so an earlier attempt through it could never
+	// deliver anything.
+	notificationService := notifications.New()
+	wailsApp.RegisterService(application.NewService(notificationService))
+	// notifySvc itself is built further down, once the settings service exists
+	// to answer whether the user wants these. Every method on it tolerates a
+	// nil receiver, so a status request that arrives first is answered with an
+	// honest "not supported yet" rather than a crash.
+	emitNotificationStatus := func() {
+		authorized, err := notifySvc.Authorized()
+		if err != nil {
+			log.Printf("notification authorization check failed: %v", err)
+		}
+		emitter.Emit("notifications:status", map[string]any{
+			"supported":  notifySvc.Supported(),
+			"authorized": authorized,
+		})
+	}
+
+	wailsApp.Event.On("notifications:status:get", func(_ *application.CustomEvent) {
+		emitNotificationStatus()
+	})
+
+	wailsApp.Event.On("notifications:authorize", func(_ *application.CustomEvent) {
+		// On Windows there is nothing to ask: the platform notifier answers yes
+		// unconditionally, because per-app permission is a browser concept and
+		// not a Windows one. Kept so a platform that does prompt can, and so
+		// the answer always comes back from the platform rather than from us.
+		if _, err := notifySvc.RequestAuthorization(); err != nil {
+			log.Printf("notification authorization request failed: %v", err)
+		}
+		emitNotificationStatus()
+	})
+
+	// "Notifications do not work" is not something a user can diagnose, and the
+	// logs do not answer it either: Windows drops toasts silently for reasons
+	// of its own -- Focus Assist, an unregistered app id, notifications off in
+	// system settings. This turns that into either a toast they can see or an
+	// error they can read.
+	wailsApp.Event.On("notifications:test", func(_ *application.CustomEvent) {
+		err := notifySvc.SendTest()
+		payload := map[string]any{"ok": err == nil}
+		if err != nil {
+			log.Printf("test notification failed: %v", err)
+			payload["message"] = err.Error()
+		}
+		emitter.Emit("notifications:test:result", payload)
+	})
 
 	// Register profile service with Wails (frontend can call methods)
 	wailsApp.RegisterService(application.NewService(profileSvc))
@@ -1178,6 +1307,11 @@ func main() {
 			})
 			return
 		}
+		// Signing out is the one conclusive way to stop being someone. The
+		// license service now ignores tokenless anonymous results, precisely so
+		// a launch cannot demote an owner, so it has to be told explicitly here
+		// or the capabilities of the account that just left would outlive it.
+		licenseSvc.ClearCurrent()
 		emitter.Emit("auth:session:clear:result", map[string]any{
 			"requestId": payload.RequestID, "ok": true,
 		})
@@ -1366,6 +1500,13 @@ func main() {
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
 	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	notifySvc = notify.New(
+		wailsNotifier{service: notificationService},
+		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
+		// A toast is for what you are not watching. Minimised is the honest
+		// signal the window layer can give us.
+		func() bool { return hubW.IsMinimised() },
+	)
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
@@ -1441,7 +1582,13 @@ func main() {
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No
 	// process supervision, no multi-sim, no Linux/Proton yet.
-	launcherSvc = launcher.NewService(settingsSvc, emitter, exec.Command)
+	// The launcher emits through this, so a finished chain can raise a desktop
+	// toast without the launcher package knowing anything about notifications.
+	launcherSvc = launcher.NewService(
+		settingsSvc,
+		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
+		exec.Command,
+	)
 
 	// Wire settings service into hub service for active profile persistence.
 	hubSvc.SetSettingsService(settingsSvc)
@@ -1471,6 +1618,51 @@ func main() {
 	}
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
+
+	// Local data. The service is handed the two directories resolved here and
+	// answers only for those: the frontend sends a location key, never a path,
+	// so nothing else on the disk is reachable through these events.
+	storageSvc := storage.New(cfgDir, sessionsRoot)
+
+	emitStorage := func() {
+		emitter.Emit("storage", storageSvc.Summary())
+	}
+	emitStorageError := func(err error) {
+		log.Printf("storage error: %v", err)
+		emitter.Emit("storage:error", map[string]any{"message": err.Error()})
+	}
+
+	wailsApp.Event.On("storage:get", func(event *application.CustomEvent) {
+		emitStorage()
+	})
+
+	storageKey := func(data any) string {
+		var payload struct {
+			Key string `json:"key"`
+		}
+		if data != nil {
+			if raw, err := json.Marshal(data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		return payload.Key
+	}
+
+	wailsApp.Event.On("storage:reveal", func(event *application.CustomEvent) {
+		if err := storageSvc.Reveal(storageKey(event.Data)); err != nil {
+			emitStorageError(err)
+		}
+	})
+
+	wailsApp.Event.On("storage:clear", func(event *application.CustomEvent) {
+		summary, err := storageSvc.Clear(storageKey(event.Data))
+		if err != nil {
+			emitStorageError(err)
+		}
+		// Emit the summary either way: after a refusal the UI has to go back to
+		// showing what is really on disk.
+		emitter.Emit("storage", summary)
+	})
 
 	// Testing Center report drafts persist only resumable form text. The path is
 	// selected here; frontend events can never provide filesystem locations.
@@ -1694,6 +1886,39 @@ func main() {
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
+	})
+
+	// Autostart lives in the Windows Run key and nowhere else. Keeping a copy
+	// in app-settings would let the two disagree the moment the user turns it
+	// off from Task Manager, and the settings page would then report a lie.
+	emitStartup := func() {
+		options, err := startup.Read()
+		if err != nil {
+			log.Printf("startup:get error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("startup", options)
+	}
+
+	wailsApp.Event.On("startup:get", func(event *application.CustomEvent) {
+		emitStartup()
+	})
+
+	wailsApp.Event.On("startup:set", func(event *application.CustomEvent) {
+		var options startup.Options
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &options)
+			}
+		}
+		if err := startup.Apply(options); err != nil {
+			log.Printf("startup:set error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+		}
+		// Re-read either way: the registry, not the request, is the truth, and
+		// after a failure the UI has to go back to showing what is really set.
+		emitStartup()
 	})
 
 	emitHubError := func(message string) {

@@ -53,7 +53,6 @@ func TestDiagnosticsAllowlistRejectsIdentityAndSecrets(t *testing.T) {
 	settings := NewSettingsService("unused", nil, nil)
 	settings.settings = &AppSettings{
 		SchemaVersion:          1,
-		DeltaMode:              "session",
 		Hotkeys:                map[string]string{name: hotkey},
 		ActiveOverlayProfileID: steamID,
 		BetaUserRole:           email,
@@ -104,7 +103,6 @@ func TestDiagnosticsPreservesOnlyUsefulClosedFacts(t *testing.T) {
 	settings := NewSettingsService("unused", nil, nil)
 	settings.settings = &AppSettings{
 		SchemaVersion: 1,
-		DeltaMode:     "session",
 		CpuSampling:   true,
 		Hotkeys:       map[string]string{"one": "secret", "two": "secret"},
 		LauncherApps: map[string]LauncherAppEntry{
@@ -132,7 +130,7 @@ func TestDiagnosticsPreservesOnlyUsefulClosedFacts(t *testing.T) {
 	if report.GeneratedAtUTC.Location() != time.UTC {
 		t.Fatalf("GeneratedAtUTC location = %v", report.GeneratedAtUTC.Location())
 	}
-	if report.Settings == nil || report.Settings.HotkeyCount != 2 || report.Settings.DeltaMode != "session" {
+	if report.Settings == nil || report.Settings.HotkeyCount != 2 || !report.Settings.CPUSampling {
 		t.Fatalf("settings summary = %#v", report.Settings)
 	}
 	if report.ActiveProfile == nil || report.ActiveProfile.DisplayMode != "streaming" ||
@@ -279,7 +277,6 @@ func TestPreparedDiagnosticsIsolatedFromConcurrentSettingsSnapshotMutations(t *t
 	settings := NewSettingsService("unused", nil, nil)
 	settings.settings = &AppSettings{
 		SchemaVersion: 1,
-		DeltaMode:     "session",
 		Hotkeys:       map[string]string{"toggleOverlay": "ctrl+shift+v"},
 		LauncherApps: map[string]LauncherAppEntry{
 			"lmu": {ID: "lmu", Category: AppCategorySimulator, LaunchMethod: "steam-uri"},
@@ -348,7 +345,6 @@ func TestPreparedDiagnosticsRequestCorrelatesWithoutChangingPayload(t *testing.T
 func TestDiagnosticsUnknownValuesAreClosed(t *testing.T) {
 	settings := NewSettingsService("unused", nil, nil)
 	settings.settings = &AppSettings{
-		DeltaMode: "private-value",
 		LauncherApps: map[string]LauncherAppEntry{
 			"a": {Category: LauncherAppCategory("private-category"), LaunchMethod: "private-method"},
 		},
@@ -360,7 +356,7 @@ func TestDiagnosticsUnknownValuesAreClosed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDiagnostics() error = %v", err)
 	}
-	if report.Settings.DeltaMode != "unknown" || report.ActiveProfile.DisplayMode != "unknown" {
+	if report.ActiveProfile.DisplayMode != "unknown" {
 		t.Fatalf("unknown values leaked: %#v", report)
 	}
 	if len(report.Launcher.Categories) != 0 || len(report.Launcher.Methods) != 0 {

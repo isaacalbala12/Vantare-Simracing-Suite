@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import { isDowngrade } from "../../lib/version-compare";
 import {
   CHANNEL_LABELS,
@@ -20,6 +21,7 @@ type Props = {
  * this cut moves code, it does not restyle it.
  */
 export function UpdatesSettings({ updater, availableChannels }: Props) {
+  const { t } = useI18n();
   const {
     settings,
     info,
@@ -38,9 +40,9 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="card-sleek rounded-xl p-5 border border-white/5">
+      <div className="card-sleek rounded-xl p-5">
         <h2 className="font-display font-semibold text-lg text-white mb-4">
-          Canal de actualizaciones
+          {t("settings.updates.channel")}
         </h2>
         <div className="flex items-center gap-4">
           {availableChannels.map((channel) => (
@@ -62,10 +64,10 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
         </div>
       </div>
 
-      <div className="card-sleek rounded-xl p-5 border border-white/5">
+      <div className="card-sleek rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display font-semibold text-lg text-white">
-            Versiones disponibles
+          {t("settings.updates.available")}
           </h2>
           <button
             type="button"
@@ -73,7 +75,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
             disabled={loading}
             className="px-3 py-1.5 rounded-lg bg-vantare-surface border border-white/10 text-xs text-white hover:border-vantare-red-500/50 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Buscando...' : 'Buscar actualizaciones'}
+            {loading ? t("settings.updates.checking") : t("settings.updates.check")}
           </button>
         </div>
 
@@ -89,7 +91,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
 
         {info?.releases && info.releases.length === 0 && !loading && (
           <div className="text-sm text-vantare-textMuted">
-            No hay versiones disponibles para este canal.
+            {t("settings.updates.none")}
           </div>
         )}
 
@@ -117,17 +119,17 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
                       </span>
                       {release.prerelease && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] bg-vantare-red-950/50 text-vantare-red-300 border border-vantare-red-900/30">
-                          Pre-release
+                          {t("settings.updates.prerelease")}
                         </span>
                       )}
                       {isCurrent && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-900/30">
-                          Instalada
+                          {t("settings.updates.installed")}
                         </span>
                       )}
                       {isIgnored && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-300 border border-gray-700">
-                          Ignorada
+                          {t("settings.updates.ignored")}
                         </span>
                       )}
                     </div>
@@ -146,7 +148,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
                           disabled={isInstalling}
                           className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
                         >
-                          Saltar
+                          {t("settings.updates.skip")}
                         </button>
                         <button
                           type="button"
@@ -157,8 +159,8 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
                           {isInstalling
                             ? `${progress ?? 0}%`
                             : isDowngradeVersion
-                              ? 'Downgrade'
-                              : 'Instalar'}
+                              ? t("settings.updates.downgrade")
+                              : t("settings.updates.install")}
                         </button>
                       </>
                     )}
@@ -168,7 +170,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
                         target="_blank"
                         rel="noreferrer"
                         className="px-3 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white hover:bg-white/5 transition-colors"
-                        title="Descargar manualmente"
+                        title={t("settings.updates.download")}
                       >
                         ↓
                       </a>
@@ -183,7 +185,7 @@ export function UpdatesSettings({ updater, availableChannels }: Props) {
                       onClick={() => setExpandedTag(isExpanded ? null : release.tag_name)}
                       className="text-xs text-vantare-red-300 hover:text-vantare-red-200"
                     >
-                      {isExpanded ? 'Ocultar cambios' : 'Ver cambios'}
+                      {isExpanded ? t("settings.updates.hideChanges") : t("settings.updates.showChanges")}
                     </button>
                     {isExpanded && (
                       <div className="mt-2 p-3 rounded-lg bg-black/20 border border-white/5 text-xs text-vantare-textMuted whitespace-pre-wrap max-h-48 overflow-y-auto">

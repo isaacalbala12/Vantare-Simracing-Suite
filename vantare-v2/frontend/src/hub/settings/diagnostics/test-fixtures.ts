@@ -26,7 +26,6 @@ const fixtureReport: DiagnosticsReport = {
   },
   settings: {
     schemaVersion: 3,
-    deltaMode: "self",
     cpuSampling: true,
     hotkeyCount: 3,
     overlayProfileConfigured: true,
@@ -62,7 +61,10 @@ export const fixturePrepared: PreparedDiagnostics = {
   schemaVersion: 1,
   generatedAtUtc: fixtureGeneratedAtUtc,
   payload: fixturePayload,
-  sha256: "64d3f8a83cb0008ea2d8a15d1a43a966474cef69c03b51f1b776ebd90db28617",
+  // Pinned deliberately: this digest is what forces someone to notice when the
+  // diagnostics payload changes shape. Updated because settings.deltaMode left
+  // the report, nothing having ever read it to change behaviour.
+  sha256: "0da2a6b3ea15170f88e24cee7230e5d5e82ee91027779d4fa7cb40ce12993f0d",
   byteSize: new TextEncoder().encode(fixturePayload).byteLength,
   report: fixtureReport,
 };

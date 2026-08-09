@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { I18nProvider, useI18n } from '../../i18n/I18nProvider';
 import { LanguageSelector } from '../../i18n/LanguageSelector';
+import { HubSubnav } from '../components/HubSubnav';
+import { StartupSettings } from '../settings/StartupSettings';
+import { NotificationsSettings } from '../settings/NotificationsSettings';
+import { StorageSettings } from '../settings/StorageSettings';
 import { AccountSettings } from '../settings/AccountSettings';
 import { ScheduleImportSettings } from '../settings/ScheduleImportSettings';
-import { AdvancedSettings } from '../settings/AdvancedSettings';
+import { AboutSettings } from '../settings/AboutSettings';
+import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
+import { DowngradeModal } from '../settings/DowngradeModal';
 import { HotkeysSettings } from '../settings/HotkeysSettings';
 import { UpdatesSettings } from '../settings/UpdatesSettings';
 import { WailsDiagnosticsPanel } from '../settings/diagnostics/WailsDiagnosticsPanel';
@@ -31,10 +37,11 @@ export type {
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-type TabId = 'account' | 'updates' | 'schedule' | 'hotkeys' | 'diagnostics' | 'advanced';
+type TabId = 'account' | 'application' | 'updates' | 'schedule' | 'hotkeys' | 'diagnostics';
 
 function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { t } = useI18n();
   const access = useAccess();
   const availableChannels = allowedUpdateChannels(access);
@@ -48,62 +55,100 @@ function SettingsPageInner() {
 
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
+    { id: 'application' as const, label: t('settings.tab.application') },
     { id: 'updates' as const, label: t('settings.tab.updates') },
     ...(isOwner ? [{ id: 'schedule' as const, label: 'Horario' }] : []),
     { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
-    { id: 'diagnostics' as const, label: t('settings.tab.diagnostics') },
-    { id: 'advanced' as const, label: t('settings.tab.advanced') },
+    { id: 'diagnostics' as const, label: t('settings.tab.data') },
   ];
+
+  // A tablist is expected to be walkable with the arrow keys, with a single
+  // stop in the tab order. Without this the four tabs were four separate stops
+  // and the arrows did nothing.
+  function moveWithArrowKeys(event: React.KeyboardEvent, index: number) {
+    const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (offset === 0) {
+      return;
+    }
+    event.preventDefault();
+    const next = (index + offset + TABS.length) % TABS.length;
+    setActiveTab(TABS[next].id);
+    tabRefs.current[next]?.focus();
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-start justify-between opacity-0 animate-fade-in-up">
-        <div>
-          <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
-            {t('settings.title')}
-          </h1>
-          <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
-            {t('settings.subtitle')}
-          </p>
+      {/* The sections sit attached under the global nav instead of floating in
+          a pill bar below the page title, and they share its language -- an
+          underline on the active item -- because two rows of navigation that
+          look unrelated read as two unrelated things. The old bar painted the
+          selected tab with bg-accent/10 and border-accent/30; `accent` is not a
+          token this project defines, so it resolved to nothing and the
+          selection was barely visible. */}
+      <HubSubnav>
+        <div
+          className="flex flex-wrap items-center gap-x-6 gap-y-3 py-2.5 text-xs lg:text-sm font-medium text-vantare-textMuted"
+          role="tablist"
+          aria-label={t("settings.nav.label")}
+        >
+          {TABS.map((tab, index) => (
+            <button
+              key={tab.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => moveWithArrowKeys(event, index)}
+              className={`nav-item whitespace-nowrap ${
+                activeTab === tab.id ? 'active text-vantare-text' : 'hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <LanguageSelector />
-      </header>
+      </HubSubnav>
 
-      <nav
-        className="glass-panel rounded-xl p-1.5 flex gap-1 opacity-0 animate-fade-in-up delay-100"
-        role="tablist"
-        aria-label="Secciones de ajustes"
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`panel-${tab.id}`}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === tab.id
-                ? 'bg-accent/10 border border-accent/30 text-white'
-                : 'text-vantare-textMuted hover:text-white hover:bg-white/5'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <header className="opacity-0 animate-fade-in-up">
+        <h1 className="font-sans font-bold text-3xl text-white tracking-tight">
+          {t('settings.title')}
+        </h1>
+        <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed">
+          {t('settings.subtitle')}
+        </p>
+      </header>
 
       <div className="opacity-0 animate-fade-in-up delay-150 space-y-4">
         {activeTab === 'account' && (
-          <div key="panel-account" id="panel-account" role="tabpanel" aria-label="Cuenta">
-            <div className="card-sleek rounded-xl p-5 border border-white/5">
+          <div key="panel-account" id="panel-account" role="tabpanel" aria-label={t('settings.tab.account')}>
+            <div className="card-sleek rounded-xl p-5">
               <AccountSettings />
             </div>
           </div>
         )}
 
+        {activeTab === 'application' && (
+          <div key="panel-application" id="panel-application" role="tabpanel" aria-label={t('settings.tab.application')} className="space-y-4">
+            {/* The language selector used to sit loose in the page header,
+                which is not where anyone looks for a setting. */}
+            <div className="card-sleek rounded-xl p-5">
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                {t('settings.language.title')}
+              </h2>
+              <LanguageSelector />
+            </div>
+            <StartupSettings />
+            <NotificationsSettings app={app} />
+          </div>
+        )}
+
         {activeTab === 'updates' && (
-          <div key="panel-updates" id="panel-updates" role="tabpanel" aria-label="Actualizaciones" className="space-y-4">
+          <div key="panel-updates" id="panel-updates" role="tabpanel" aria-label={t('settings.tab.updates')} className="space-y-4">
             <UpdatesSettings updater={updater} availableChannels={availableChannels} />
           </div>
         )}
@@ -115,58 +160,28 @@ function SettingsPageInner() {
         )}
 
         {activeTab === 'hotkeys' && (
-          <div key="panel-hotkeys" id="panel-hotkeys" role="tabpanel" aria-label="Hotkeys">
+          <div key="panel-hotkeys" id="panel-hotkeys" role="tabpanel" aria-label={t('settings.tab.hotkeys')}>
             <HotkeysSettings app={app} />
           </div>
         )}
 
         {activeTab === 'diagnostics' && (
-          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label="Diagnóstico">
+          <div key="panel-diagnostics" id="panel-diagnostics" role="tabpanel" aria-label={t('settings.tab.data')} className="space-y-4">
+            <StorageSettings />
             <WailsDiagnosticsPanel />
-          </div>
-        )}
-
-        {activeTab === 'advanced' && (
-          <div key="panel-advanced" id="panel-advanced" role="tabpanel" aria-label="Avanzado" className="space-y-4">
-            <AdvancedSettings app={app} info={updater.info} updaterSettings={updater.settings} />
+            <CpuSamplingSetting app={app} />
+            <AboutSettings info={updater.info} updaterSettings={updater.settings} />
           </div>
         )}
       </div>
 
-      {app.settingsStatus && (
-        <div className="text-xs text-vantare-textMuted font-mono">{app.settingsStatus}</div>
-      )}
-
       {updater.confirmDowngrade && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="glass-panel rounded-xl p-6 border border-white/10 max-w-md w-full">
-            <h3 className="font-display font-semibold text-lg text-white mb-2">
-              Confirmar downgrade
-            </h3>
-            <p className="text-sm text-vantare-textMuted mb-4">
-              Vas a instalar <strong className="text-white">{updater.confirmDowngrade.tag_name}</strong>,
-              que es anterior a la versión actual{' '}
-              <strong className="text-white">{updater.info?.currentVersion}</strong>. Esto puede perder
-              datos o configuraciones nuevas. ¿Continuar?
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => updater.setConfirmDowngrade(null)}
-                className="px-4 py-2 rounded-lg text-xs text-vantare-textMuted hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => updater.startInstall(updater.confirmDowngrade!)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-vantare-red-700 to-vantare-burgundy hover:from-vantare-red-600 hover:to-vantare-burgundy transition-all"
-              >
-                Sí, instalar
-              </button>
-            </div>
-          </div>
-        </div>
+        <DowngradeModal
+          release={updater.confirmDowngrade}
+          currentVersion={updater.info?.currentVersion}
+          onCancel={() => updater.setConfirmDowngrade(null)}
+          onConfirm={() => updater.startInstall(updater.confirmDowngrade!)}
+        />
       )}
     </div>
   );

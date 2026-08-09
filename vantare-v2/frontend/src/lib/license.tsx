@@ -29,6 +29,26 @@ type LicenseContextValue = {
 
 const LicenseContext = createContext<LicenseContextValue | null>(null);
 
+/**
+ * LicenseResult declares entitlements as a plain array, so nothing downstream
+ * guards before calling a method on it. Go marshals a nil slice as `null`,
+ * which meant an account with no entitlements handed the UI a null where the
+ * type promised a list. The backend now sends `[]`; this keeps the promise
+ * true here as well, so a stale build or a cached payload written by an older
+ * one cannot bring the settings page down.
+ */
+function normaliseLicense(data: LicenseResult | null): LicenseResult | null {
+  if (!data) {
+    return null;
+  }
+  return {
+    ...data,
+    entitlements: data.entitlements ?? [],
+    capabilities: data.capabilities ?? [],
+    operationalRoles: data.operationalRoles ?? [],
+  };
+}
+
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<LicenseResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +88,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       "license:changed",
       (event: unknown) => {
         if (cancelled) return;
-        const data = (event as { data?: LicenseResult | null })?.data ?? null;
+        const data = normaliseLicense(
+          (event as { data?: LicenseResult | null })?.data ?? null,
+        );
         licenseDebug("LicenseProvider", "license:changed", {
           state: data?.state ?? "null",
           email: data?.email ?? "",

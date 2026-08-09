@@ -24,11 +24,29 @@ var ErrAppNotFound = errors.New("settings: app not found")
 // saveBackoffs defines the backoff durations for retries.
 var saveBackoffs = []time.Duration{0, 100 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second}
 
+// NotificationSettings records what the user has turned off, not what they have
+// turned on.
+//
+// Stated as opt-outs, the zero value is the shipping default: in-app alerts on,
+// desktop notifications off because they need the platform's permission first.
+// A settings file written before this field existed therefore loads with the
+// right behaviour, and no migration is needed.
+type NotificationSettings struct {
+	// UpdatesMuted hides the banner shown when a new version is available.
+	UpdatesMuted bool `json:"updatesMuted,omitempty"`
+	// LauncherMuted hides the toast a launch chain shows when it finishes.
+	LauncherMuted bool `json:"launcherMuted,omitempty"`
+	// SystemEnabled raises a Windows toast when a launch finishes while the
+	// window is minimised. Off by default: it needs the platform's permission,
+	// which only the user can grant.
+	SystemEnabled bool `json:"systemEnabled,omitempty"`
+}
+
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
-	DeltaMode                   string                      `json:"deltaMode"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
+	Notifications               NotificationSettings        `json:"notifications"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
 	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
@@ -180,8 +198,7 @@ type LaunchProfile struct {
 // DefaultAppSettings returns settings with sensible defaults.
 func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
-		SchemaVersion: 1,
-		DeltaMode:     "self",
+		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
 		Hotkeys: map[string]string{
 			"toggleOverlay":  "ctrl+shift+v",
@@ -253,8 +270,18 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 	return &copy
 }
 
-// migrateSettings applies additive schema migrations in place.
-// v0 (no SchemaVersion) -> v1: set version and ensure launcher collections exist.
+// appSettingsSchemaVersion is the current shape of the persisted settings.
+const appSettingsSchemaVersion = 2
+
+// migrateSettings applies schema migrations in place.
+//
+//	v0 (no SchemaVersion) -> v1: set version and ensure launcher collections exist.
+//	v1 -> v2: drop deltaMode. Nothing in Go, in cmd or in the frontend ever read
+//	          it to change behaviour, so there is nothing to carry forward: the
+//	          field leaves the struct and disappears on the next save. Unknown
+//	          keys in an older file are ignored by the decoder, so a v1 file
+//	          loads cleanly. cpuSampling stays -- it drives the runtime CPU
+//	          sampler through SetCPUEnabled.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -264,6 +291,9 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		if settings.LauncherProfiles == nil {
 			settings.LauncherProfiles = defaultLauncherProfiles()
 		}
+	}
+	if settings.SchemaVersion < appSettingsSchemaVersion {
+		settings.SchemaVersion = appSettingsSchemaVersion
 	}
 }
 
@@ -550,10 +580,13 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		s.migrateSettings(s.settings)
 		return
 	}
+	// Every scalar field has to be named here, so a field added to AppSettings
+	// and forgotten in this list is read from disk and then dropped on the
+	// floor. TestApplyLoadedKeepsEveryPersistedField exists to catch that.
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
-		DeltaMode:                   loaded.DeltaMode,
 		CpuSampling:                 loaded.CpuSampling,
+		Notifications:               loaded.Notifications,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,

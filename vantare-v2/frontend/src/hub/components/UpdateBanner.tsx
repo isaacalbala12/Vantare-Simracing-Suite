@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Events } from '@wailsio/runtime';
+import { useNotificationPreferences } from '../settings/notification-preferences';
 
 type UpdateNotify = {
   tag: string;
@@ -26,6 +27,7 @@ type UpdateInfo = {
 };
 
 export function UpdateBanner() {
+  const notifications = useNotificationPreferences();
   const [notify, setNotify] = useState<UpdateNotify | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -114,7 +116,10 @@ export function UpdateBanner() {
     Events.Emit('updater:check');
   }
 
-  if (!notify || dismissed) return null;
+  // Muting hides the banner and nothing else: the update is still fetched and
+  // still installable from Ajustes, so muting cannot leave anyone stranded on
+  // an old build without knowing why.
+  if (!notify || dismissed || notifications.updatesMuted) return null;
 
   return (
     <div className="fixed top-14 left-0 right-0 z-40 bg-gradient-to-r from-vantare-red-900/90 to-vantare-burgundy/90 border-b border-vantare-red-500/30 px-6 py-2">

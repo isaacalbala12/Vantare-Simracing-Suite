@@ -4,13 +4,14 @@ import {
   useContext,
   useEffect,
   useCallback,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { Events } from "@wailsio/runtime";
 import { HubToast, type HubToastVariant } from "./HubToast";
-import { notifyLaunchResult } from "./launch-notification";
+import { useNotificationPreferences } from "../settings/notification-preferences";
 
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
@@ -255,6 +256,15 @@ const ChainRunnerContext = createContext<ChainRunnerStore | null>(null);
 
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createChainStore);
+  const notifications = useNotificationPreferences();
+  // Read through a ref so the subscription below does not tear down and
+  // resubscribe every time a preference changes mid-launch. A passive effect is
+  // enough here: the reader runs when the backend reports a finished chain,
+  // never in the same commit as a settings change.
+  const notificationsRef = useRef(notifications);
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
 
   const [toastInfo, setToastInfo] = useState<{
     variant: HubToastVariant;
@@ -295,7 +305,7 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
           message = `Perfil ${data.profileId} · no se pudo iniciar`;
         }
 
-        if (!notifyLaunchResult(data.profileId, result)) {
+        if (!notificationsRef.current.launcherMuted) {
           setToastInfo({ variant: result, message, profileId: data.profileId });
         }
       }

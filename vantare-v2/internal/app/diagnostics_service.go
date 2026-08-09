@@ -52,7 +52,6 @@ type DiagnosticsTelemetry struct {
 
 type DiagnosticsSettings struct {
 	SchemaVersion              int    `json:"schemaVersion"`
-	DeltaMode                  string `json:"deltaMode"`
 	CPUSampling                bool   `json:"cpuSampling"`
 	HotkeyCount                int    `json:"hotkeyCount"`
 	OverlayProfileConfigured   bool   `json:"overlayProfileConfigured"`
@@ -199,7 +198,6 @@ func diagnosticsSettings(settings *AppSettings) *DiagnosticsSettings {
 	}
 	return &DiagnosticsSettings{
 		SchemaVersion:              settings.SchemaVersion,
-		DeltaMode:                  closedDeltaMode(settings.DeltaMode),
 		CPUSampling:                settings.CpuSampling,
 		HotkeyCount:                len(settings.Hotkeys),
 		OverlayProfileConfigured:   settings.ActiveOverlayProfileID != "",
@@ -280,15 +278,6 @@ func closedTelemetrySource(kind driver.ID) string {
 		return string(kind)
 	default:
 		return string(driver.UnknownSourceStatus().Kind)
-	}
-}
-
-func closedDeltaMode(value string) string {
-	switch value {
-	case "self", "session", "best", "leader":
-		return value
-	default:
-		return "unknown"
 	}
 }
 

@@ -78,9 +78,33 @@ vuelvan a colarse literales, con el mismo patrón que ya protege overlay-studio.
 descarta los campos antiguos sin romper archivos existentes. "Avanzado"
 desaparece.
 
+> **Corregido (2026-08-08): `cpuSampling` sí funcionaba.** El diagnóstico del
+> punto 2 buscó consumidores en `internal/` y en `frontend/src`, y no en
+> `cmd/`, que es justo donde estaba el cable: `cmd/vantare/main.go:1669` llama
+> a `rtSampler.SetCPUEnabled`, que arranca y para el muestreador. Se retira
+> solo `deltaMode`; `cpuSampling` vuelve, con sección propia junto al panel de
+> diagnóstico, que es donde pinta un control sobre instrumentación.
+
 **D — Navegación y acabado.** Barra lateral, lenguaje visual del Hub, modal al
 patrón portal + `motion`, estado de guardado contextual en lugar del texto suelto
 al pie, y retirada del doble borde y de `bg-accent/10`.
+
+> **Hecho todo menos la barra lateral (2026-08-08).** El commit `e63c208`, de
+> julio, sacó esta página *de* una barra lateral y la pasó a pestañas a ancho
+> completo, con un test que lo fija (`renders horizontal tab bar (no internal
+> sidebar)`). Esa decisión es anterior al plan y volver atrás no es acabado
+> visual, es deshacerla: queda pendiente de que Isaac decida.
+>
+> Además de lo listado: las pestañas dejan de usar `flex-1` (las cuatro medían
+> lo que la etiqueta más larga) y el tablist se recorre con las flechas.
+> `settings.status.*` cierra las dos últimas cadenas en español que quedaban
+> fuera de los diccionarios tras el corte B — vivían dentro de `useAppSettings`.
+
+> **Barra lateral descartada, sub-barra en su lugar (2026-08-08).** Isaac:
+> *"es o barra lateral o pestañas debajo de las pestañas actuales"*. Va la
+> segunda: el LauncherDock ya ocupa el borde izquierdo, así que una barra
+> lateral de página sería el tercer elemento vertical seguido. `V52Shell` deja
+> una ranura bajo el Topbar y `HubSubnav` la rellena por portal.
 
 **E — Arranque y ventana.** Ojo: ya existe `internal/app/launcher/autostart_windows.go`
 con `RegisterAutostart`/`UnregisterAutostart`, pero **es por perfil de Launcher**
@@ -102,3 +126,27 @@ componentes separados, y D sin C es repintar una pestaña que va a desaparecer.
   diagnóstico y cuenta.
 - No romper el contrato de `AppSettings` sin migración; existe `schemaVersion`.
 - Cada corte va por rama de issue → nightly con CI en verde.
+
+## Estado (2026-08-08)
+
+Cortes A-G cerrados en la PR #180. Lo que no está hecho y por qué:
+
+- **Recordar tamaño y posición de la ventana.** Entraba en el corte E por
+  nombre pero necesita escuchar eventos de redimensionado y moverse, y no he
+  podido verificarlo con la app corriendo. Merece su propio corte.
+- **Los cuatro módulos que importan `AppSettings` desde `SettingsPage`** siguen
+  apoyados en los re-exports puente.
+- **Las cadenas del toast del Launcher** (`chain-store.tsx`) siguen en español
+  fijo. Están fuera de la página de ajustes, así que el corte B no las tocó.
+
+Hallazgos que no eran del plan y sí importaban:
+
+- `cpuSampling` **no** era inerte; ver la nota del corte C.
+- `applyLoaded` reconstruye `AppSettings` campo a campo, así que un campo nuevo
+  se lee del disco y se descarta en silencio. Le pasó a `notifications`.
+  `TestApplyLoadedKeepsEveryPersistedField` lo recorre por reflexión y falla
+  con el siguiente campo que se olvide.
+- `notifyLaunchResult` era código muerto: comprobaba `Notification.permission`
+  y nadie había llamado nunca a `requestPermission`. El interruptor del corte G
+  es lo que ahora la pide.
+- El botón "Notificaciones" del Topbar no tenía `onClick`. Retirado.

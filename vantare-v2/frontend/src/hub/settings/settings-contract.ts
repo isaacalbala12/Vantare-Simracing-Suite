@@ -40,9 +40,22 @@ export type UpdaterSettings = {
   ignoreVersion?: string;
 };
 
+/**
+ * What the user has turned off, not what they have turned on.
+ *
+ * Stated as opt-outs so that an absent value means the shipping default:
+ * in-app alerts on, desktop notifications off because they need the platform's
+ * permission first. Mirrors the Go struct.
+ */
+export type NotificationSettings = {
+  updatesMuted?: boolean;
+  launcherMuted?: boolean;
+  systemEnabled?: boolean;
+};
+
 export type AppSettings = {
-  deltaMode: string;
   cpuSampling: boolean;
+  notifications?: NotificationSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;
@@ -52,8 +65,8 @@ export type AppSettings = {
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  deltaMode: "self",
   cpuSampling: true,
+  notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",
     nextProfile: "ctrl+shift+right",
@@ -61,17 +74,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   },
 };
 
-export const DELTA_MODES = [
-  { value: "self", label: "Personal (mejor vuelta propia)" },
-  { value: "session", label: "Sesion (mejor vuelta de la sesion)" },
-  { value: "global", label: "Global (mejor vuelta global)" },
-] as const;
-
-export const HOTKEY_NAMES: Record<string, string> = {
-  toggleOverlay: "Toggle overlay",
-  nextProfile: "Siguiente perfil",
-  prevProfile: "Perfil anterior",
-};
+/**
+ * The hotkeys the user can rebind, in display order. Their labels live in the
+ * i18n dictionaries under settings.hotkeys.<key>; this list only decides which
+ * ones exist and in what order.
+ */
+export const HOTKEY_KEYS = ["toggleOverlay", "nextProfile", "prevProfile"] as const;
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
   stable: "Stable",

@@ -7,6 +7,7 @@ import {
   resolveInspectorSectionTitle,
 } from "./inspector-section-labels";
 import type { ResolvedInspectorSection } from "./inspector-sections";
+import { InspectorSectionIcon } from "./InspectorSectionIcon";
 
 function widgetDisplayName(widget: WidgetInstanceV3): string {
   return widget.name?.trim() || widget.id;
@@ -72,7 +73,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
               onClick={() => onSelectSection(section.id)}
             >
               <span className="osv3-inspector-rail__preview" aria-hidden="true">
-                <span className="osv3-inspector-rail__preview-mark" data-section={section.id} />
+                <InspectorSectionIcon sectionId={section.id} />
                 {section.badge ? (
                   <span className="osv3-inspector-rail__badge">{section.badge}</span>
                 ) : null}

@@ -225,158 +225,147 @@ export function AccountSettings() {
     capabilities: result?.capabilities ?? [],
   });
 
+  // Every field used to be a full-width bordered box holding one short value,
+  // set in 10px monospace. Five of them stacked read as a log dump rather than
+  // as an account, and the typography matched nothing else in the Hub. Same
+  // data, same testids, laid out as a definition list in the page's own voice.
+  const label = "text-xs text-vantare-textDim";
+  const badge =
+    "inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide";
+  const note = "mt-2 text-xs leading-relaxed";
+  const action =
+    "px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-vantare-textMuted transition-colors hover:text-white hover:border-white/30 disabled:opacity-50 disabled:hover:text-vantare-textMuted disabled:hover:border-white/10";
+
   return (
-    <section className="space-y-4 text-white" aria-label="account-settings">
-      <h2 className="font-mono text-xs uppercase tracking-widest">{t("account.title")}</h2>
-      <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.email")}</p>
-        <p className="font-mono text-xs">{result?.email ?? "—"}</p>
-      </div>
+    <section className="space-y-5 text-white" aria-label="account-settings">
+      <h2 className="font-display font-semibold text-lg text-white">{t("account.title")}</h2>
+
+      <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <dt className={label}>{t("account.email")}</dt>
+          <dd className="mt-1 text-sm text-white break-all">{result?.email ?? "—"}</dd>
+        </div>
+
+        <div>
+          <dt className={label}>{t("account.plan")}</dt>
+          <dd data-testid="account-plan" className={`mt-1 ${badge}`}>
+            {PLAN_LABELS[summary.label]}
+          </dd>
+        </div>
+
+        <div>
+          <dt className={label}>{t("account.status")}</dt>
+          <dd data-testid="account-status" className={`mt-1 ${badge} ${statusTone}`}>
+            {statusLabel}
+          </dd>
+          {summary.status === "grace" && result?.graceEndsAt ? (
+            <p className={`${note} text-vantare-warning`}>
+              {t("account.graceUntil")} {new Date(result.graceEndsAt).toLocaleString()}
+            </p>
+          ) : null}
+          {summary.status === "blocked" ? (
+            <p className={`${note} text-vantare-red-400`}>{t("account.blockedHint")}</p>
+          ) : null}
+          {result?.error ? (
+            <p className={`${note} text-vantare-textDim`}>
+              {t("account.lastError")}: {result.error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="sm:col-span-2">
+          <dt className={label}>{t("account.entitlements")}</dt>
+          <dd className="mt-1">
+            {entitlements.length > 0 ? (
+              <ul className="flex flex-wrap gap-2">
+                {entitlements.map((e) => (
+                  <li key={e} className={badge} data-testid={`account-entitlement-${e}`}>
+                    {e}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-vantare-textDim">—</p>
+            )}
+          </dd>
+        </div>
+      </dl>
+
       {operationalRoles.length > 0 ? (
         <div
           data-testid="account-operational-access"
-          className="rounded border border-cyan-400/20 bg-cyan-400/[0.03] p-3"
+          className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-4"
         >
-          <p className="font-mono text-[10px] text-vantare-textDim">
-            {t("account.operationalAccess")}
+          <p className={label}>{t("account.operationalAccess")}</p>
+          <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-cyan-300">
+            {operationalRoles.map((role) => t(OPERATIONAL_ROLE_KEYS[role])).join(", ")}
           </p>
-          <p className="font-mono text-xs uppercase text-cyan-300">
-            {operationalRoles
-              .map((role) => t(OPERATIONAL_ROLE_KEYS[role]))
-              .join(", ")}
-          </p>
-          <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+          <p className="mt-2 text-xs text-vantare-textMuted">
             {t("account.allowedChannels")}: {updateChannels.join(" · ")}
           </p>
-          <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+          <p className="mt-1 text-xs leading-relaxed text-vantare-textDim">
             {t("account.operationalAccessHint")}
           </p>
         </div>
       ) : null}
-      <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.plan")}</p>
-        <p
-          data-testid="account-plan"
-          className="font-mono text-xs uppercase"
-        >
-          {PLAN_LABELS[summary.label]}
+
+      {portalError && <p className="text-xs text-vantare-red-400">{portalError}</p>}
+      {logoutError ? (
+        <p data-testid="account-logout-error" className="text-xs text-vantare-red-400">
+          La credencial local se eliminó, pero no se pudo cerrar la sesión remota: {logoutError}
         </p>
-      </div>
-      <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">{t("account.status")}</p>
-        <p
-          data-testid="account-status"
-          className={`font-mono text-xs uppercase ${statusTone}`}
-        >
-          {statusLabel}
-        </p>
-        {summary.status === "grace" && result?.graceEndsAt ? (
-          <p className="mt-1 font-mono text-[10px] text-vantare-warning">
-            {t("account.graceUntil")} {new Date(result.graceEndsAt).toLocaleString()}
-          </p>
-        ) : null}
-        {summary.status === "blocked" ? (
-          <p className="mt-1 font-mono text-[10px] text-vantare-red-400">
-            {t("account.blockedHint")}
-          </p>
-        ) : null}
-        {result?.error ? (
-          <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
-            {t("account.lastError")}: {result.error}
-          </p>
-        ) : null}
-      </div>
-      <div className="rounded border border-white/10 bg-[#111] p-3">
-        <p className="font-mono text-[10px] text-vantare-textDim">
-          {t("account.entitlements")}
-        </p>
-        {entitlements.length > 0 ? (
-          <ul className="space-y-1">
-            {entitlements.map((e) => (
-              <li
-                key={e}
-                className="font-mono text-xs uppercase"
-                data-testid={`account-entitlement-${e}`}
-              >
-                {e}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="font-mono text-xs text-vantare-textDim">—</p>
-        )}
-      </div>
-      {portalError && (
-        <p className="font-mono text-[10px] text-vantare-red-400">{portalError}</p>
-      )}
-		{logoutError ? (
-			<p data-testid="account-logout-error" className="font-mono text-[10px] text-vantare-red-400">
-				La credencial local se eliminó, pero no se pudo cerrar la sesión remota: {logoutError}
-			</p>
-		) : null}
+      ) : null}
       {licenseRefreshState === "active" && licenseRefreshNote ? (
-        <p
-          data-testid="account-license-refresh-active"
-          className="font-mono text-[10px] text-vantare-success"
-        >
+        <p data-testid="account-license-refresh-active" className="text-xs text-vantare-success">
           {licenseRefreshNote}
         </p>
       ) : null}
       {licenseRefreshState === "deviceLimit" ? (
         <p
           data-testid="account-license-refresh-device-limit"
-          className="font-mono text-[10px] text-vantare-warning"
+          className="text-xs text-vantare-warning"
         >
           {t("license.deviceLimitMsg")}
         </p>
       ) : null}
       {licenseRefreshState === "noPremium" ? (
-        <p
-          data-testid="account-license-refresh-none"
-          className="font-mono text-[10px] text-vantare-textDim"
-        >
+        <p data-testid="account-license-refresh-none" className="text-xs text-vantare-textDim">
           {t("account.noPremiumAccess")}
         </p>
       ) : null}
       {licenseRefreshState === "error" ? (
         <div data-testid="account-license-refresh-error">
-          <p className="font-mono text-[10px] text-vantare-red-400">
-            {t("account.refreshAccessError")}
-          </p>
+          <p className="text-xs text-vantare-red-400">{t("account.refreshAccessError")}</p>
           {refreshFailureReason ? (
-            <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+            <p className="mt-1 text-xs text-vantare-textDim">
               {refreshFailureDetail(refreshFailureReason)}
             </p>
           ) : null}
         </div>
       ) : null}
       {deviceResetState === "success" ? (
-        <p
-          data-testid="account-reset-success"
-          className="font-mono text-[10px] text-vantare-success"
-        >
+        <p data-testid="account-reset-success" className="text-xs text-vantare-success">
           {t("account.resetSuccess")}
         </p>
       ) : null}
       {deviceResetError ? (
         <div data-testid="account-reset-error">
-          <p className="font-mono text-[10px] text-vantare-red-400">
-            {deviceResetError}
-          </p>
+          <p className="text-xs text-vantare-red-400">{deviceResetError}</p>
           {resetFailureReason ? (
-            <p className="mt-1 font-mono text-[10px] text-vantare-textDim">
+            <p className="mt-1 text-xs text-vantare-textDim">
               {resetFailureDetail(resetFailureReason)}
             </p>
           ) : null}
         </div>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+
+      <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="button"
           data-testid="account-refresh-license"
           onClick={handleRefreshLicense}
           disabled={licenseRefreshState === "checking"}
-          className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5 disabled:opacity-50"
+          className={action}
         >
           {licenseRefreshState === "checking"
             ? t("paywall.checkingAccess")
@@ -387,7 +376,7 @@ export function AccountSettings() {
             type="button"
             onClick={handleManageBilling}
             disabled={portalLoading}
-            className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5 disabled:opacity-50"
+            className={action}
           >
             {t("account.manageBilling")}
           </button>
@@ -397,20 +386,17 @@ export function AccountSettings() {
           data-testid="account-reset-device"
           onClick={handleResetDevice}
           disabled={deviceResetState === "resetting"}
-          className="rounded border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 font-mono text-[10px] uppercase text-red-400 disabled:opacity-50"
+          className="px-3 py-1.5 rounded-lg border border-vantare-red-500/40 text-xs font-semibold text-vantare-red-200 transition-colors hover:bg-vantare-red-950/40 disabled:opacity-50"
         >
           {deviceResetState === "resetting"
             ? t("account.resettingDevice")
             : t("account.resetDevice")}
         </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-white/5"
-        >
+        <button type="button" onClick={handleLogout} className={action}>
           {t("account.logout")}
         </button>
       </div>
+
       <LicenseDiagnosticsPanel license={result} />
     </section>
   );

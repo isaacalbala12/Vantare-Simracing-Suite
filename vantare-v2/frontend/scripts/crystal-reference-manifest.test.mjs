@@ -114,7 +114,13 @@ if (process.env.VITEST) {
     it('targets the Delta Bar visual root instead of the harness frame', rendererRootIsolationTest);
   });
 } else {
-  const { test } = await import('node:test');
+  // This branch only runs under `node --test`, but Vite analyses the import
+  // either way and refuses to bundle a Node builtin, which failed the suite
+  // before any test ran even under Vitest, where the branch is dead. A
+  // @vite-ignore comment was not enough, so the specifier is assembled at
+  // runtime and there is nothing left for the bundler to resolve.
+  const nodeTestRunner = ['node', 'test'].join(':');
+  const { test } = await import(/* @vite-ignore */ nodeTestRunner);
   test('the canonical reference extractor freezes the 21-entry inventory', canonicalInventoryTest);
   test('the source boundary excludes the final V2 block', sourceBoundaryTest);
   test('the Pedals references exclude showcase labels and descriptions', pedalsIsolationTest);

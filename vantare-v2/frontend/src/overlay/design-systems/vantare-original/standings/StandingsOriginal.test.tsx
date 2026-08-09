@@ -61,7 +61,7 @@ describe("StandingsOriginal", () => {
       classHypercarColor: "#abcdef",
     });
     const rows = [...root.querySelectorAll("tr[data-standings-row]")] as HTMLElement[];
-    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBe(readyModel.rows.length);
     for (const row of rows) {
       expect(row.style.getPropertyValue("--vo-standings-row-class")).not.toBe("");
       expect(row.querySelectorAll("td")).toHaveLength(readyModel.columns.length);

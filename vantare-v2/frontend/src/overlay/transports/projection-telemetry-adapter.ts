@@ -24,11 +24,13 @@ type CommonOptions = Readonly<{
 
 export function createWailsProjectionTelemetryAdapter(options: CommonOptions & Readonly<{
   subscribe: (event: string, handler: (data: unknown) => void) => () => void;
+  requestStatus?: () => void;
 }>): TelemetryAdapter {
   return createProjectionTelemetryAdapter(options, (callbacks) =>
     createWailsProjectionObserver({
       runtime: options.runtime,
       subscribe: options.subscribe,
+      requestStatus: options.requestStatus,
       ...callbacks,
     }));
 }
@@ -67,7 +69,8 @@ function createProjectionTelemetryAdapter(
       return;
     }
     if (status === "error") {
-      options.coordinator.publish(snapshotFromError(now(), "overlay-projection-transport-error"));
+      // Sin mensaje: el codigo de transporte es diagnostico, no texto de UI.
+      options.coordinator.publish(snapshotFromError(now()));
       return;
     }
     options.coordinator.publish(snapshotFromDisconnected(now()));
@@ -86,9 +89,11 @@ function createProjectionTelemetryAdapter(
     onDiagnostics(diagnostics) {
       if (diagnostics.result === "error") {
         lastStatus = "error";
-        options.coordinator.publish(
-          snapshotFromError(now(), `overlay-projection-${diagnostics.errorCode ?? "error"}`),
-        );
+        // diagnostics.errorCode se queda en el canal de diagnostico, que es
+        // donde sirve. Interpolarlo aqui lo pintaba en el overlay: de ahi salia
+        // el "overlay-projection-projection-observer-error" visible en boxes,
+        // cuyo prefijo duplicado ya delataba que nadie esperaba leerlo.
+        options.coordinator.publish(snapshotFromError(now()));
       }
     },
   });

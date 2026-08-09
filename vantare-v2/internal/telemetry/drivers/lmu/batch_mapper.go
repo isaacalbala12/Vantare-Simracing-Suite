@@ -91,6 +91,26 @@ func (sink *ObservationBatchSink) WriteObservation(ctx context.Context, observat
 	return sink.mapper.WriteObservation(ctx, observation, sink.sink)
 }
 
+// IsUnmappableFrame distingue "este frame no describe una sesion mapeable" de
+// "el mapper esta mal construido". Los seis errores de validateMapperObservation
+// son estados intermedios normales: en menus, boxes, pantallas de carga y
+// cambios de sesion la memoria compartida publica buffers que aun no describen
+// una sesion coherente.
+//
+// El mapper los sigue devolviendo: clasificar es su trabajo. Quien decide que no
+// son fatales es el consumidor, que ademas los contabiliza como rechazados. Sin
+// esa distincion cualquiera de ellos llegaba hasta DriverManager, que no los
+// reconoce como reintentables y llamaba a setTerminal: un unico frame de garaje
+// apagaba la telemetria hasta reiniciar la aplicacion.
+func IsUnmappableFrame(err error) bool {
+	return errors.Is(err, ErrIncompatibleObservation) ||
+		errors.Is(err, ErrInvalidSessionIdentity) ||
+		errors.Is(err, ErrInvalidVehicleCount) ||
+		errors.Is(err, ErrInvalidSourceSlot) ||
+		errors.Is(err, ErrDuplicateSourceSlot) ||
+		errors.Is(err, ErrInvalidPlayerIdentity)
+}
+
 func emptyBatchMapperState() batchMapperState {
 	return batchMapperState{
 		active:      make(map[VehicleSourceID]mappedSlot),

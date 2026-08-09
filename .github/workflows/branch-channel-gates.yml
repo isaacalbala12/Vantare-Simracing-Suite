@@ -72,42 +72,28 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build
 
-      - name: Go tests (blocking except isolated ISA-118)
+      # ISA-118, ISA-172, ISA-173 and ISA-174 used to be carved out of these two
+      # runs and repeated as advisory steps, which painted the gate red on every
+      # pass. Their causes are fixed, so they are back inside the blocking runs.
+      - name: Go tests
         run: |
-          $appPackage = "github.com/vantare/overlays/v2/internal/app"
-          $otherPackages = @(go list ./... | Where-Object { $_ -ne $appPackage })
-          if ($LASTEXITCODE -ne 0) { throw "go list failed" }
-          go test @otherPackages
-          if ($LASTEXITCODE -ne 0) { throw "Go package tests failed" }
-          go test ./internal/app -skip '^TestConcurrentSavesDontCorruptFile$'
-          if ($LASTEXITCODE -ne 0) { throw "internal/app tests failed" }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw "Go tests failed" }
 
-      - name: ISA-118 concurrent settings save (advisory until deterministic)
-        continue-on-error: true
-        run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
-
-      - name: Frontend tests (blocking except exact registered debt)
+      - name: Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: >-
-          pnpm exec vitest run
-          --exclude scripts/crystal-reference-manifest.test.mjs
-          --exclude src/hub/calendar/CalendarMonthView.test.tsx
-          --exclude src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+        run: pnpm exec vitest run
 
-      - name: ISA-173 Crystal manifest runner (advisory)
+      # Advisory, no bloqueante: las baselines se capturan en Windows local y el
+      # antialiasing de fuentes puede diferir en el runner. Promover a bloqueante
+      # solo cuando varias ejecuciones seguidas pasen limpias en CI.
+      - name: Overlay Studio visual baselines (advisory until CI rendering is proven)
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
-
-      - name: ISA-174 Calendar month boundary (advisory)
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
-
-      - name: ISA-172 canvas interaction flake (advisory)
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+        run: |
+          pnpm exec playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }
+          pnpm visual:overlay-studio
 
       - name: Frontend lint (advisory while inherited debt is isolated)
         continue-on-error: true

@@ -239,7 +239,9 @@ describe("authoritative overlay projection adapter", () => {
     );
     expect(mapping.snapshot.status).toBe(expected);
     if (transportState === "error") {
-      expect(mapping.snapshot.errorMessage).toBe("overlay-projection-transport-error");
+      // El estado basta; un codigo interno en errorMessage acababa impreso en
+      // el overlay porque los view models lo propagan a statusMessage.
+      expect(mapping.snapshot.errorMessage).toBeUndefined();
     }
   });
 

@@ -173,9 +173,9 @@ export function adaptOverlayProjectionToSnapshot(
       deltaHistory,
     };
   }
-  if (options.transportState === "error") {
-    snapshot.errorMessage = "overlay-projection-transport-error";
-  }
+  // El estado "error" ya viaja en snapshot.status, que es lo que consumen los
+  // renderers para elegir su presentacion. Escribir aqui un codigo interno solo
+  // servia para acabar impreso en el overlay.
 
   return deepFreeze({
     kind: "mapped",

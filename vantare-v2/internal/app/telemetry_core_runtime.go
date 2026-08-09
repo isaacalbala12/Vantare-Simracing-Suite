@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -80,6 +81,9 @@ type TelemetryCoreRuntime struct {
 
 	statusState   driver.State
 	statusAttempt int
+	// Solo lo toca la goroutine monitor; sirve para no repetir la misma linea
+	// de error terminal en cada tick.
+	lastTerminalErr error
 	statusRev     uint64
 
 	cancel            context.CancelFunc
@@ -109,6 +113,12 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				Retryable: lmu.IsRetryable,
 			},
 		},
+		// The budget is deliberately large: "the simulator is not running" is
+		// indistinguishable from a transient disconnect here, and it is the
+		// normal state whenever the Hub is open without a session. The budget
+		// is also restored by RetryPolicy.StableRun after any run that lasted,
+		// so an evening of sessions no longer spends it down towards a
+		// permanent death.
 		telemetrycore.ManagerConfig{Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000}},
 	)
 	if err != nil {
@@ -180,7 +190,15 @@ func (runtime *TelemetryCoreRuntime) SourceStatus() driver.SourceStatus {
 		Kind:             "lmu",
 		Name:             "Le Mans Ultimate",
 		Live:             true,
-		Available:        runtime.statusState == driver.StateLive || runtime.statusState == driver.StateDegraded,
+		// Available responde a "hay conexion con el simulador", que es para lo
+		// que lo usan sus consumidores: el indicador del Topbar y si se puede
+		// elegir la fuente LIVE en el Studio. Stale no rompe esa conexion --
+		// significa que el simulador no ha movido su reloj de sesion, tipico de
+		// una pausa o un menu -- y excluirlo deshabilitaba LIVE por un bache de
+		// medio segundo. Quedaba ademas al reves que degraded, que significa "no
+		// reconozco esta version" y si contaba como disponible. La frescura
+		// sigue expuesta en State para quien la necesite.
+		Available:        runtime.statusState == driver.StateLive || runtime.statusState == driver.StateDegraded || runtime.statusState == driver.StateStale,
 		State:            runtime.statusState.String(),
 		ReconnectAttempt: runtime.statusAttempt,
 	}
@@ -288,6 +306,17 @@ func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 			return
 		case <-ticker.C:
 			status := runtime.manager.Status()
+			// status.Err se descartaba por completo: el manager guarda el
+			// error terminal y nadie lo leia nunca, asi que un driver muerto
+			// era indistinguible desde fuera de "el simulador no esta abierto".
+			// Solo en StateError y una vez por error, para no inundar el log
+			// en cada tick del monitor.
+			if status.State == driver.StateError && status.Err != nil {
+				if runtime.lastTerminalErr == nil || runtime.lastTerminalErr.Error() != status.Err.Error() {
+					runtime.lastTerminalErr = status.Err
+					log.Printf("telemetry driver terminal error (attempt=%d): %v", status.ReconnectAttempt, status.Err)
+				}
+			}
 			if err := runtime.setStatus(status.State, status.ReconnectAttempt); err != nil {
 				runtime.recordRunError(err)
 				return
@@ -302,13 +331,20 @@ type runtimeObservationSink struct{ runtime *TelemetryCoreRuntime }
 func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observation lmu.Observation) error {
 	sink.runtime.counters.observationsReceived.Add(1)
 	err := sink.runtime.mapper.WriteObservation(ctx, observation, runtimeBatchSink{runtime: sink.runtime})
-	if errors.Is(err, lmu.ErrInvalidSessionIdentity) {
-		// LMU menu has no session identity and therefore no product payload. It
-		// is a valid no-snapshot state, not a reason to terminate the driver.
-		return nil
-	}
 	if err != nil {
 		sink.runtime.counters.observationsRejected.Add(1)
+	}
+	// Antes solo se absorbia ErrInvalidSessionIdentity, el caso del menu. Los
+	// otros cinco errores de validacion describen exactamente lo mismo -- un
+	// frame que todavia no representa una sesion coherente: boxes, pantallas de
+	// carga, cambios de sesion -- pero subian hasta DriverManager, que los
+	// clasifica como no reintentables y llama a setTerminal. Un unico frame de
+	// garaje dejaba la telemetria apagada hasta reiniciar la aplicacion.
+	//
+	// Se cuentan como rechazados igualmente: rechazado no es fatal, y perder el
+	// contador dejaria estos descartes invisibles en las metricas.
+	if lmu.IsUnmappableFrame(err) {
+		return nil
 	}
 	return err
 }

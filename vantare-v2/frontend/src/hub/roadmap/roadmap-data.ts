@@ -35,6 +35,15 @@ export type RoadmapArea = {
   title: LocalizedText;
   progress: number;
   status: RoadmapStatus;
+  /**
+   * Ids of the projects in the public projects snapshot that make up this
+   * area. When present, the area's percentage is computed from their tasks and
+   * the `progress` field above is only a fallback for when that snapshot is
+   * unavailable. Hand-maintained numbers sitting next to live ones drift, and
+   * did: the editorial roadmap claimed 25% for telemetry while the projects
+   * tab, reading the same workspace, showed 94%.
+   */
+  projects?: ReadonlyArray<string>;
 };
 
 export type RoadmapMilestone = {
@@ -55,7 +64,7 @@ export type RoadmapDataset = {
 // sin tocar código: si más adelante usas un Google Doc exportado a JSON o
 // Supabase Storage, solo sustituyes esta constante.
 export const ROADMAP_SOURCE_URL =
-  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/main/docs/roadmap-source.json";
+  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-source.json";
 
 // Escala obligatoria de porcentajes (docs/roadmap-maintenance.md §3).
 export const PROGRESS_SCALE = [0, 10, 25, 50, 75, 100] as const;
@@ -66,10 +75,68 @@ export function clampProgress(value: number): number {
   return value;
 }
 
-export function getOverallProgress(areas: ReadonlyArray<RoadmapArea>): number {
+/**
+ * Percentage for one area. Areas linked to projects are counted from those
+ * projects' tasks, so the figure moves on its own as work closes in Linear.
+ * The declared `progress` is the fallback for an unlinked area, or for when
+ * the projects snapshot could not be read.
+ */
+export function resolveAreaProgress(
+  area: RoadmapArea,
+  projects: ReadonlyMap<string, { done: number; total: number }> | null,
+): number {
+  if (!projects || !area.projects || area.projects.length === 0) {
+    return clampProgress(area.progress);
+  }
+  let done = 0;
+  let total = 0;
+  for (const id of area.projects) {
+    const project = projects.get(id);
+    if (!project) continue;
+    done += project.done;
+    total += project.total;
+  }
+  if (total === 0) return clampProgress(area.progress);
+  return clampProgress(Math.round((done / total) * 100));
+}
+
+/**
+ * Indexes a projects snapshot by id, keeping only the task counts the areas
+ * need. Projects with no tasks report a null percentage and are skipped, so an
+ * empty project cannot drag an area's figure towards zero.
+ */
+export function indexProjectProgress(
+  snapshot: {
+    tabs: ReadonlyArray<{
+      projects: ReadonlyArray<{ id: string; progress: { done: number; total: number } | null }>;
+    }>;
+  } | null,
+): ReadonlyMap<string, { done: number; total: number }> | null {
+  if (!snapshot) return null;
+  const index = new Map<string, { done: number; total: number }>();
+  for (const tab of snapshot.tabs) {
+    for (const project of tab.projects) {
+      if (!project.progress || project.progress.total === 0) continue;
+      index.set(project.id, { done: project.progress.done, total: project.progress.total });
+    }
+  }
+  return index;
+}
+
+/**
+ * Overall figure. Averaging the resolved percentages weights every area the
+ * same regardless of how many tasks it holds, which is what the areas list
+ * shows and therefore what a reader expects the headline to summarise.
+ * Reported as measured rather than snapped to the coarse scale: rounding 94%
+ * up to 100% would announce finished work that is not finished.
+ */
+export function getOverallProgress(
+  areas: ReadonlyArray<RoadmapArea>,
+  projects: ReadonlyMap<string, { done: number; total: number }> | null = null,
+): number {
   if (areas.length === 0) return 0;
-  const sum = areas.reduce((acc, a) => acc + a.progress, 0);
-  return nearestOnScale(Math.round(sum / areas.length));
+  const sum = areas.reduce((acc, area) => acc + resolveAreaProgress(area, projects), 0);
+  return Math.round(sum / areas.length);
 }
 
 export function getCurrentPhase(
@@ -104,148 +171,105 @@ export const ROADMAP_FALLBACK: RoadmapDataset = {
     {
       id: "beta-foundation",
       phaseLabel: { es: "Fase 1", en: "Phase 1", pt: "Fase 1", it: "Fase 1" },
-      title: { es: "Beta pública", en: "Public beta", "pt": "Beta pública", it: "Beta pubblica" },
-      target: { es: "v0.1.0", en: "v0.1.0", "pt": "v0.1.0", it: "v0.1.0" },
+      title: { es: "Beta pública", en: "Public beta", pt: "Beta pública", it: "Beta pubblica" },
+      target: { es: "v0.1.0", en: "v0.1.0", pt: "v0.1.0", it: "v0.1.0" },
       status: "done",
       progress: 100,
-      summary: {
-        es: "Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.",
-        en: "Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.",
-        "pt": "Login Google, plan Free, overlays recomendados, launcher LMU e Hub v5.2.",
-        it: "Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2.",
-      },
+      summary: { es: "Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.", en: "Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.", pt: "Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.", it: "Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2." },
       highlights: [
-        { es: "Google OAuth externo y sesión persistente", en: "External Google OAuth and persistent session", "pt": "Google OAuth externo e sessão persistente", it: "Google OAuth esterno e sessione persistente" },
-        { es: "Perfiles recomendados y editor de overlays", en: "Recommended profiles and overlay editor", "pt": "Perfis recomendados e editor de overlays", it: "Profili consigliati e editor di overlay" },
-        { es: "Launcher LMU básico", en: "Basic LMU launcher", "pt": "Launcher LMU básico", it: "Launcher LMU di base" },
+        { es: "Google OAuth externo y sesión persistente", en: "External Google OAuth and persistent session", pt: "Google OAuth externo e sessão persistente", it: "Google OAuth esterno e sessione persistente" },
+        { es: "Perfiles recomendados y editor de overlays", en: "Recommended profiles and overlay editor", pt: "Perfis recomendados e editor de overlays", it: "Profili consigliati e editor di overlay" },
+        { es: "Launcher LMU básico", en: "Basic LMU launcher", pt: "Launcher LMU básico", it: "Launcher LMU di base" },
       ],
     },
     {
       id: "beta-iteration",
-      phaseLabel: { es: "Fase 2", en: "Phase 2", "pt": "Fase 2", it: "Fase 2" },
-      title: { es: "Pulido beta v0.1.x", en: "Beta polish v0.1.x", "pt": "Polimento beta v0.1.x", it: "Polish beta v0.1.x" },
-      target: { es: "v0.1.x", en: "v0.1.x", "pt": "v0.1.x", it: "v0.1.x" },
+      phaseLabel: { es: "Fase 2", en: "Phase 2", pt: "Fase 2", it: "Fase 2" },
+      title: { es: "Pulido beta v0.1.x", en: "Beta polish v0.1.x", pt: "Polimento beta v0.1.x", it: "Polish beta v0.1.x" },
+      target: { es: "v0.1.x", en: "v0.1.x", pt: "v0.1.x", it: "v0.1.x" },
       status: "in-progress",
       progress: 75,
-      summary: {
-        es: "Refactor del calendario LMU, iteración de la página de roadmap y Launcher LMU funcional.",
-        en: "LMU calendar refactor, roadmap page iteration and a working LMU Launcher.",
-        "pt": "Refactor do calendário LMU, iteração da página de roadmap e Launcher LMU funcional.",
-        it: "Refactor del calendario LMU, iterazione della pagina di roadmap e Launcher LMU funzionante.",
-      },
+      summary: { es: "Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.", en: "Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.", pt: "Overlay Studio V3, telemetria LMU ao vivo, licenças com credencial offline e Launcher com cadeias de lançamento.", it: "Overlay Studio V3, telemetria LMU dal vivo, licenze con credenziale offline e Launcher con catene di avvio." },
       highlights: [
-        { es: "Refactor del calendario LMU (cadencia, filtros, zona horaria)", en: "LMU calendar refactor (cadence, filters, timezone)", "pt": "Refactor do calendário LMU (cadência, filtros, fuso)", it: "Refactor calendario LMU (cadenza, filtri, fuso orario)" },
-        { es: "Iteración de la página Roadmap (i18n, doble vista, changelog, feedback)", en: "Roadmap page iteration (i18n, dual view, changelog, feedback)", "pt": "Iteração da página Roadmap (i18n, dupla visão, changelog, feedback)", it: "Iterazione pagina Roadmap (i18n, vista doppia, changelog, feedback)" },
-        { es: "Launcher LMU para abrir el simulador", en: "LMU Launcher to open the simulator", "pt": "Launcher LMU para abrir o simulador", it: "LMU Launcher per aprire il simulatore" },
+        { es: "Overlay Studio V3 con los catálogos Crystal, Neo y Endurance", en: "Overlay Studio V3 with the Crystal, Neo and Endurance catalogues", pt: "Overlay Studio V3 com os catálogos Crystal, Neo e Endurance", it: "Overlay Studio V3 con i cataloghi Crystal, Neo ed Endurance" },
+        { es: "Telemetría LMU en vivo con transporte compartido y proyecciones", en: "Live LMU telemetry with a shared transport and projections", pt: "Telemetria LMU ao vivo com transporte partilhado e projeções", it: "Telemetria LMU dal vivo con trasporto condiviso e proiezioni" },
+        { es: "Licencias con credencial offline y arranque desde caché", en: "Licensing with offline credentials and cache-first startup", pt: "Licenças com credencial offline e arranque a partir da cache", it: "Licenze con credenziale offline e avvio dalla cache" },
+        { es: "Launcher con detección de apps y cadenas de lanzamiento", en: "Launcher with app detection and launch chains", pt: "Launcher com deteção de apps e cadeias de lançamento", it: "Launcher con rilevamento app e catene di avvio" },
       ],
     },
     {
       id: "engineer",
-      phaseLabel: { es: "Fase 3", en: "Phase 3", "pt": "Fase 3", it: "Fase 3" },
-      title: { es: "Ingeniero Vantare", en: "Vantare Engineer", "pt": "Engenheiro Vantare", it: "Engineer Vantare" },
-      target: { es: "Por planear", en: "To plan", "pt": "Por planear", it: "Da pianificare" },
+      phaseLabel: { es: "Fase 3", en: "Phase 3", pt: "Fase 3", it: "Fase 3" },
+      title: { es: "Ingeniero y estrategia", en: "Engineer and strategy", pt: "Engenheiro e estratégia", it: "Engineer e strategia" },
+      target: { es: "Por planear", en: "To plan", pt: "Por planear", it: "Da pianificare" },
       status: "planned",
       progress: 25,
-      summary: {
-        es: "Spotter e ingeniero con avisos útiles, sin prometer voz IA completa hasta validar datos.",
-        en: "Spotter and engineer with useful alerts, no full AI voice until data is validated.",
-        "pt": "Spotter e engenheiro com avisos úteis, sem prometer voz IA completa até validar dados.",
-        it: "Spotter e engineer con avvisi utili, senza promettere voce IA completa finché i dati non sono validati.",
-      },
+      summary: { es: "Ingeniero y estrategia con avisos útiles sobre datos ya validados; la voz llega cuando los datos la sostengan.", en: "Engineer and strategy with useful alerts over validated data; voice arrives once the data supports it.", pt: "Engenheiro e estratégia com avisos úteis sobre dados validados; a voz chega quando os dados a sustentarem.", it: "Engineer e strategia con avvisi utili su dati validati; la voce arriva quando i dati la sostengono." },
       highlights: [
-        { es: "Notificaciones contextuales", en: "Contextual notifications", "pt": "Notificações contextuais", it: "Notifiche contestuali" },
-        { es: "Reglas locales primero", en: "Local rules first", "pt": "Regras locais primeiro", it: "Regole locali prima" },
-        { es: "Voz y perfiles avanzados después", en: "Voice and advanced profiles later", "pt": "Voz e perfis avançados depois", it: "Voce e profili avanzati dopo" },
+        { es: "Proyecciones de ingeniero y estrategia sobre telemetría real", en: "Engineer and strategy projections over real telemetry", pt: "Projeções de engenheiro e estratégia sobre telemetria real", it: "Proiezioni engineer e strategia su telemetria reale" },
+        { es: "Reglas locales primero", en: "Local rules first", pt: "Regras locais primeiro", it: "Regole locali prima" },
+        { es: "Voz y perfiles avanzados después", en: "Voice and advanced profiles later", pt: "Voz e perfis avançados depois", it: "Voce e profili avanzati dopo" },
       ],
     },
     {
       id: "ecosystem",
-      phaseLabel: { es: "Fase 4", en: "Phase 4", "pt": "Fase 4", it: "Fase 4" },
-      title: { es: "Ecosistema", en: "Ecosystem", "pt": "Ecossistema", it: "Ecosistema" },
-      target: { es: "Futuro", en: "Future", "pt": "Futuro", it: "Futuro" },
+      phaseLabel: { es: "Fase 4", en: "Phase 4", pt: "Fase 4", it: "Fase 4" },
+      title: { es: "Ecosistema", en: "Ecosystem", pt: "Ecossistema", it: "Ecosistema" },
+      target: { es: "Futuro", en: "Future", pt: "Futuro", it: "Futuro" },
       status: "future",
       progress: 10,
-      summary: {
-        es: "Comunidad, paid tiers, multisim y analíticas reales cuando la base esté estable.",
-        en: "Community, paid tiers, multisim and real analytics once the base is stable.",
-        "pt": "Comunidade, paid tiers, multisim e analíticas reais quando a base estiver estável.",
-        it: "Community, paid tier, multisim e analitiche reali quando la base è stabile.",
-      },
+      summary: { es: "Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.", en: "Community, paid plans, multisim and real analytics once the base is stable.", pt: "Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.", it: "Community, piani a pagamento, multisim e analitiche reali quando la base è stabile." },
       highlights: [
-        { es: "Comunidad de overlays", en: "Overlay community", "pt": "Comunidade de overlays", it: "Community di overlay" },
-        { es: "Licencias paid/suite reales", en: "Real paid/suite licenses", "pt": "Licenças paid/suite reais", it: "Licenze paid/suite reali" },
-        { es: "Datos reales de carrera y progresión", en: "Real race and progression data", "pt": "Dados reais de corrida e progressão", it: "Dati reali di gara e progressione" },
+        { es: "Comunidad de overlays", en: "Overlay community", pt: "Comunidade de overlays", it: "Community di overlay" },
+        { es: "Planes de pago y suite reales", en: "Real paid and suite plans", pt: "Planos pagos e suite reais", it: "Piani a pagamento e suite reali" },
+        { es: "Datos reales de carrera y progresión", en: "Real race and progression data", pt: "Dados reais de corrida e progressão", it: "Dati reali di gara e progressione" },
       ],
     },
   ],
   areas: [
-    { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", "pt": "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress" },
-    { id: "launcher-lmu", title: { es: "Launcher LMU", en: "LMU Launcher", "pt": "Launcher LMU", it: "LMU Launcher" }, progress: 75, status: "in-progress" },
-    { id: "calendar-local", title: { es: "Calendario local", en: "Local calendar", "pt": "Calendário local", it: "Calendario locale" }, progress: 50, status: "in-progress" },
-    { id: "engineer", title: { es: "Ingeniero", en: "Engineer", "pt": "Engenheiro", it: "Engineer" }, progress: 25, status: "planned" },
-    { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", "pt": "Telemetria", it: "Telemetria" }, progress: 10, status: "planned" },
-    { id: "ui-v52", title: { es: "UI v5.2", en: "UI v5.2", "pt": "UI v5.2", it: "UI v5.2" }, progress: 75, status: "in-progress" },
+    { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", pt: "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress", projects: ["overlay-studio-v3"] },
+    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress", projects: ["launcher"] },
+    { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", pt: "Telemetria", it: "Telemetria" }, progress: 25, status: "in-progress", projects: ["telemetry-core", "telemetry-analysis"] },
+    { id: "calendar-local", title: { es: "Calendario", en: "Calendar", pt: "Calendário", it: "Calendario" }, progress: 50, status: "in-progress", projects: ["calendar"] },
+    { id: "engineer", title: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, progress: 25, status: "planned", projects: ["engineer-spotter"] },
+    { id: "strategy", title: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, progress: 25, status: "in-progress", projects: ["strategy-planner"] },
+    { id: "licensing", title: { es: "Licencias y cuenta", en: "Licensing and account", pt: "Licenças e conta", it: "Licenze e account" }, progress: 50, status: "in-progress", projects: ["billing"] },
   ],
   milestones: [
     {
-      id: "v0102",
+      id: "v0105",
       type: "release",
-      title: { es: "v0.1.0.2 publicado", en: "v0.1.0.2 released", "pt": "v0.1.0.2 publicado", it: "v0.1.0.2 rilasciato" },
-      body: {
-        es: "Fix de login Google OAuth, Free plan funcional, Supabase configurado en build.",
-        en: "Google OAuth login fix, working Free plan, Supabase configured in build.",
-        "pt": "Fix de login Google OAuth, Free plan funcional, Supabase configurado no build.",
-        it: "Fix login Google OAuth, Free plan funzionante, Supabase configurato nel build.",
-      },
-      label: { es: "Release", en: "Release", "pt": "Release", it: "Release" },
+      title: { es: "v0.1.0.5 en nightly", en: "v0.1.0.5 on nightly", pt: "v0.1.0.5 em nightly", it: "v0.1.0.5 su nightly" },
+      body: { es: "Lote de launcher de Windows, paneles del hub, servicios internos y documentación de marca y diseño.", en: "Windows launcher batch, hub panels, internal services and brand and design documentation.", pt: "Lote de launcher do Windows, painéis do hub, serviços internos e documentação de marca e design.", it: "Lotto di launcher Windows, pannelli hub, servizi interni e documentazione di brand e design." },
+      label: { es: "Release", en: "Release", pt: "Release", it: "Release" },
     },
     {
-      id: "hub-v52",
+      id: "overlay-studio-v3",
       type: "feature",
-      title: { es: "Hub v5.2 en migración", en: "Hub v5.2 in progress", "pt": "Hub v5.2 em migração", it: "Hub v5.2 in corso" },
-      body: {
-        es: "Migración del Hub por cortes pequeños: shell, dashboard, launcher, ingeniero, telemetría, ajustes.",
-        en: "Hub migration in small cuts: shell, dashboard, launcher, engineer, telemetry, settings.",
-        "pt": "Migração do Hub em cortes pequenos: shell, dashboard, launcher, engenheiro, telemetria, ajustes.",
-        it: "Migrazione Hub a piccoli tagli: shell, dashboard, launcher, engineer, telemetria, impostazioni.",
-      },
-      label: { es: "Feature", en: "Feature", "pt": "Feature", it: "Feature" },
+      title: { es: "Overlay Studio V3 en marcha", en: "Overlay Studio V3 under way", pt: "Overlay Studio V3 em curso", it: "Overlay Studio V3 in corso" },
+      body: { es: "Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.", en: "A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.", pt: "Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.", it: "Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance." },
+      label: { es: "En desarrollo", en: "In progress", pt: "Em desenvolvimento", it: "In corso" },
     },
     {
-      id: "launcher-lmu",
+      id: "telemetry-live",
       type: "feature",
-      title: { es: "Launcher LMU disponible", en: "LMU Launcher available", "pt": "Launcher LMU disponível", it: "LMU Launcher disponibile" },
-      body: {
-        es: "Configuración de Steam o ejecutable local para lanzar Le Mans Ultimate desde Vantare.",
-        en: "Steam or local executable config to launch Le Mans Ultimate from Vantare.",
-        "pt": "Configuração de Steam ou executável local para abrir Le Mans Ultimate pelo Vantare.",
-        it: "Config di Steam o eseguibile locale per avviare Le Mans Ultimate da Vantare.",
-      },
-      label: { es: "Feature", en: "Feature", "pt": "Feature", it: "Feature" },
+      title: { es: "Telemetria LMU en vivo", en: "Live LMU telemetry", pt: "Telemetria LMU ao vivo", it: "Telemetria LMU dal vivo" },
+      body: { es: "Driver LMU con reconexión acotada, transporte compartido entre ventanas y proyecciones de overlay, ingeniero y estrategia.", en: "LMU driver with bounded reconnects, a transport shared across windows and overlay, engineer and strategy projections.", pt: "Driver LMU com reconexão limitada, transporte partilhado entre janelas e projeções de overlay, engenheiro e estratégia.", it: "Driver LMU con riconnessione limitata, trasporto condiviso tra finestre e proiezioni di overlay, engineer e strategia." },
+      label: { es: "En desarrollo", en: "In progress", pt: "Em desenvolvimento", it: "In corso" },
     },
     {
-      id: "calendar-refactor",
+      id: "licensing-offline",
       type: "feature",
-      title: { es: "Refactor del calendario LMU", en: "LMU calendar refactor", "pt": "Refactor do calendário LMU", it: "Refactor calendario LMU" },
-      body: {
-        es: "Calendario reescrito para mostrar cadencia de preparación LMU, con filtros y zona horaria correctas.",
-        en: "Calendar rewritten to show LMU prep cadence, with correct filters and timezone.",
-        "pt": "Calendário reescrito para mostrar cadência de preparação LMU, com filtros e fuso corretos.",
-        it: "Calendario riscritto per mostrare la cadenza di preparazione LMU, con filtri e fuso corretti.",
-      },
-      label: { es: "En desarrollo", en: "In progress", "pt": "Em desenvolvimento", it: "In corso" },
+      title: { es: "Licencias con credencial offline", en: "Licensing with offline credentials", pt: "Licencas com credencial offline", it: "Licenze con credenziale offline" },
+      body: { es: "La app arranca desde la credencial en caché y verifica sin red, de modo que una caída del servicio no cierra la sesión.", en: "The app starts from the cached credential and verifies offline, so a service outage does not sign you out.", pt: "A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.", it: "L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione." },
+      label: { es: "Feature", en: "Feature", pt: "Feature", it: "Feature" },
     },
     {
-      id: "roadmap-public",
+      id: "channels",
       type: "plan",
-      title: { es: "Roadmap público planificado", en: "Public roadmap planned", "pt": "Roadmap público planejado", it: "Roadmap pubblico pianificato" },
-      body: {
-        es: "Página de roadmap con fuente manual remota, fases, áreas de progreso e hitos que se actualizan solos.",
-        en: "Roadmap page with remote manual source, phases, progress areas and self-updating milestones.",
-        "pt": "Página de roadmap com fonte remota manual, fases, áreas de progresso e marcos que se atualizam sozinhos.",
-        it: "Pagina roadmap con fonte remota manuale, fasi, aree di progresso e traguardi auto-aggiornanti.",
-      },
-      label: { es: "Plan", en: "Plan", "pt": "Plano", it: "Piano" },
+      title: { es: "Canales nightly y testers", en: "Nightly and testers channels", pt: "Canais nightly e testers", it: "Canali nightly e tester" },
+      body: { es: "Tres canales de actualización (estable, testers y nightly) con acceso según el rol de la cuenta.", en: "Three update channels (stable, testers and nightly) with access driven by the account role.", pt: "Três canais de atualização (estável, testers e nightly) com acesso conforme o papel da conta.", it: "Tre canali di aggiornamento (stabile, tester e nightly) con accesso in base al ruolo dell'account." },
+      label: { es: "Plan", en: "Plan", pt: "Plano", it: "Piano" },
     },
   ],
 };
@@ -299,6 +323,9 @@ function normalizeRoadmapSource(raw: unknown): RoadmapDataset | null {
       title: asText(a.title),
       progress: clampProgress(Number(a.progress) || 0),
       status: asStatus(a.status),
+      projects: Array.isArray(a.projects)
+        ? (a.projects as unknown[]).map((p) => String(p)).filter((p) => p.length > 0)
+        : undefined,
     }));
   const milestones = obj.milestones
     .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")
@@ -343,33 +370,35 @@ function asMilestoneType(v: unknown): "release" | "feature" | "fix" | "plan" {
 
 // Últimas 5 entradas de docs/changelog.md (sincronizado a mano, ver docs/roadmap-maintenance.md §5).
 export const ROADMAP_CHANGELOG: ReadonlyArray<RoadmapChangelogEntry> = [
+  // Las fechas salen de los tags reales del repositorio, no del texto de
+  // changelog.md, que no las lleva.
+  {
+    id: "v0105",
+    version: "v0.1.0.5",
+    date: "2026-08-03",
+    titleKey: "roadmap.changelog.v0105.title",
+    bodyKey: "roadmap.changelog.v0105.body",
+  },
+  {
+    id: "v0104",
+    version: "v0.1.0.4",
+    date: "2026-07-08",
+    titleKey: "roadmap.changelog.v0104.title",
+    bodyKey: "roadmap.changelog.v0104.body",
+  },
+  {
+    id: "v0103",
+    version: "v0.1.0.3",
+    date: "2026-07-08",
+    titleKey: "roadmap.changelog.v0103.title",
+    bodyKey: "roadmap.changelog.v0103.body",
+  },
   {
     id: "v0102",
     version: "v0.1.0.2",
     date: "2026-06-29",
     titleKey: "roadmap.changelog.v0102.title",
     bodyKey: "roadmap.changelog.v0102.body",
-  },
-  {
-    id: "hub-v52",
-    version: "v0.1.x",
-    date: "2026-07-06",
-    titleKey: "roadmap.changelog.hub-v52.title",
-    bodyKey: "roadmap.changelog.hub-v52.body",
-  },
-  {
-    id: "launcher-lmu",
-    version: "v0.1.x",
-    date: "2026-07-06",
-    titleKey: "roadmap.changelog.launcher-lmu.title",
-    bodyKey: "roadmap.changelog.launcher-lmu.body",
-  },
-  {
-    id: "roadmap-public",
-    version: "v0.1.x",
-    date: "2026-07-06",
-    titleKey: "roadmap.changelog.roadmap-public.title",
-    bodyKey: "roadmap.changelog.roadmap-public.body",
   },
 ];
 
@@ -383,7 +412,7 @@ export type RoadmapChangelogEntry = {
 
 // URL pública del changelog completo.
 export const ROADMAP_CHANGELOG_URL =
-  "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/main/docs/changelog.md";
+  "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/master/vantare-v2/docs/changelog.md";
 
 // Enlaces de feedback (TODO: reemplazar form por URL real cuando se decida).
 export const ROADMAP_FEEDBACK_LINKS = {

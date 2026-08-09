@@ -38,6 +38,7 @@ export type StandingsViewModel = WidgetViewModelBase & {
   activeClass: string;
   sessionLabel: string;
   remainingText: string;
+  lapText?: string;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
 };
@@ -163,19 +164,46 @@ export function buildStandingsViewModel(
   const mode = resolveStandingsSessionMode(snapshot.session.type);
   const sorted = sortScoringRows(snapshot.scoring);
   const activeClass = resolveActiveClass(sorted).toUpperCase();
-  const classRows = sorted.filter((row) => {
-    const rowClass = String(row.vehicleClass ?? "").toUpperCase();
-    if (!rowClass) {
-      return true;
-    }
-    return rowClass === activeClass;
-  });
+  const classRows =
+    content.classScope === "all-classes"
+      ? sorted
+      : sorted.filter((row) => {
+          const rowClass = String(row.vehicleClass ?? "").toUpperCase();
+          if (!rowClass) {
+            return true;
+          }
+          return rowClass === activeClass;
+        });
   const maxRows = content.rowCount ?? 20;
   const limited = classRows.slice(0, maxRows);
   const leader = limited[0];
+  const classLeaders = new Map<string, StandingsScoringRow>();
+  if (content.classScope === "all-classes") {
+    for (const row of limited) {
+      const rowClass = String(row.vehicleClass ?? "").toUpperCase();
+      if (!classLeaders.has(rowClass)) {
+        classLeaders.set(rowClass, row);
+      }
+    }
+  }
   const rows = limited
-    .map((row, index) => buildRowViewModel(row, leader, mode, columns, index))
+    .map((row, index) => {
+      const rowLeader =
+        content.classScope === "all-classes"
+          ? classLeaders.get(String(row.vehicleClass ?? "").toUpperCase()) ?? leader
+          : leader;
+      return buildRowViewModel(row, rowLeader, mode, columns, index);
+    })
     .filter((row): row is StandingsRowViewModel => row !== null);
+
+  const lapNumber = snapshot.player.lapNumber;
+  const totalLaps = snapshot.player.totalLaps;
+  const lapText =
+    typeof lapNumber === "number" && lapNumber > 0
+      ? typeof totalLaps === "number" && totalLaps > 0
+        ? `${lapNumber}/${totalLaps}`
+        : String(lapNumber)
+      : undefined;
 
   return {
     type: "standings",
@@ -183,6 +211,7 @@ export function buildStandingsViewModel(
     activeClass,
     sessionLabel: sessionLabelFromSnapshot(snapshot),
     remainingText: formatRemainingTime(snapshot.session.remainingSeconds),
+    ...(lapText ? { lapText } : {}),
     columns,
     rows,
   };

@@ -41,7 +41,7 @@ class FragmentTests(unittest.TestCase):
         payload = communications.render_testers([fragment()], "abc1234")
         embed = payload["embeds"][0]
         fields = {field["name"]: field["value"] for field in embed["fields"]}
-        self.assertEqual(embed["title"], "Vantare — actualización para testers")
+        self.assertEqual(embed["title"], "Vantare — candidata para testers")
         self.assertIn("Resumen", fields)
         self.assertIn("Notas técnicas", fields)
         self.assertIn("Qué comprobar", fields)
@@ -55,7 +55,7 @@ class FragmentTests(unittest.TestCase):
         self.assertIn("ACTUALIZACIÓN PARA TESTERS", output)
         self.assertIn("Mensajes fiables", output)
         self.assertIn("QUÉ DEBES PROBAR", output)
-        self.assertIn("LIMITACIÓN CONOCIDA", output)
+        self.assertIn("LIMITACIONES", output)
         self.assertNotIn("briefing", output.casefold())
         self.assertNotIn("Sin información adicional", output)
 
@@ -150,6 +150,31 @@ class LinearDigestTests(unittest.TestCase):
 
 
 class ReleaseAndBuildTests(unittest.TestCase):
+    def test_nightly_and_testers_have_distinct_contracts(self):
+        nightly = communications.render_channel_update([fragment()], "abc1234", "nightly", include_image=True)
+        testers = communications.render_channel_update([fragment()], "abc1234", "testers", include_image=True)
+        self.assertIn("Nightly", nightly["embeds"][0]["title"])
+        self.assertIn("testers", testers["embeds"][0]["title"])
+        self.assertEqual(nightly["embeds"][0]["image"]["url"], "attachment://vantare-nightly.png")
+        self.assertEqual(testers["embeds"][0]["image"]["url"], "attachment://vantare-testers.png")
+
+    def test_visual_card_aggregates_every_fragment(self):
+        output = communications.render_channel_update_html(
+            [fragment("ISA-95", "Discord fiable"), fragment("ISA-257", "Perfil desbloqueado")],
+            "abc1234", "nightly"
+        )
+        self.assertIn("ISA-95", output)
+        self.assertIn("ISA-257", output)
+        self.assertIn("Discord fiable", output)
+        self.assertIn("Perfil desbloqueado", output)
+
+    def test_fragment_may_truthfully_have_no_known_limitations(self):
+        value = fragment()
+        value["knownLimitations"] = []
+        communications.validate_fragment(value)
+        payload = communications.render_channel_update([value], "abc1234", "nightly")
+        self.assertIn("No hay limitaciones conocidas", str(payload))
+
     def test_release_html_presents_public_version_and_changelog(self):
         output = communications.render_release_html(
             "v1.2.3",
@@ -192,11 +217,11 @@ class ReleaseAndBuildTests(unittest.TestCase):
         output = communications.render_build_html(
             "v1.2.3-beta.1", "Validar Launcher y Overlay Studio", "a" * 64
         )
-        self.assertIn("VERSIÓN BETA", output)
+        self.assertIn("CHANGELOG TÉCNICO", output)
         self.assertIn("v1.2.3-beta.1", output)
         self.assertIn("Validar Launcher", output)
         self.assertIn("SHA-256 VERIFICADO", output)
-        self.assertIn("VERSIÓN BETA", output)
+        self.assertIn("CHANGELOG TÉCNICO", output)
         self.assertNotIn("Public preview", output)
 
     def test_all_customer_facing_cards_avoid_internal_or_placeholder_copy(self):
@@ -223,14 +248,18 @@ class ReleaseAndBuildTests(unittest.TestCase):
             include_image=True,
         )
         embed = payload["embeds"][0]
-        self.assertEqual(embed["image"]["url"], "attachment://vantare-build.png")
+        self.assertEqual(embed["image"]["url"], "attachment://vantare-changelog.png")
         self.assertIn("[Descargar build]", str(payload))
 
 
 class SafetyTests(unittest.TestCase):
     def test_validate_channel_fails_closed(self):
-        with self.assertRaisesRegex(RuntimeError, "channel"):
+        with self.assertRaisesRegex(RuntimeError, "actual=wrong expected=expected"):
             communications.assert_channel({"channel_id": "wrong"}, "expected")
+
+    def test_validate_channel_requires_expected_destination(self):
+        with self.assertRaisesRegex(RuntimeError, "required"):
+            communications.assert_channel({"channel_id": "123"}, "")
 
     def test_send_dry_run_never_calls_network(self):
         called = False
@@ -334,21 +363,22 @@ class SafetyTests(unittest.TestCase):
 
     def test_workflow_routes_are_explicit_and_have_no_legacy_fallback(self):
         root = pathlib.Path(__file__).parents[3]
-        tester = (root / ".github/workflows/discord-beta-progress.yml").read_text(encoding="utf-8")
-        development = (root / ".github/workflows/discord-known-issues.yml").read_text(encoding="utf-8")
-        release = (root / ".github/workflows/discord-release.yml").read_text(encoding="utf-8")
-        build = (root / ".github/workflows/discord-build-available.yml").read_text(encoding="utf-8")
-        self.assertRegex(tester, r"branches:\s*\[testers\]")
+        tester = (root / ".github/workflows/discord-channel-update-v2.yml").read_text(encoding="utf-8")
+        development = (root / ".github/workflows/discord-development-v2.yml").read_text(encoding="utf-8")
+        release = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        self.assertIn("nightly", tester)
+        self.assertIn("testers", tester)
         self.assertNotIn("current-plan.md", tester)
         self.assertIn("LINEAR_API_KEY", development)
         self.assertIn("schedule:", development)
         self.assertIn("google-chrome", development)
         self.assertIn("--image", development)
         self.assertIn("render-discord-card", tester)
-        self.assertIn("render-discord-card", release)
-        self.assertIn("render-discord-card", build)
+        self.assertIn("Render Discord cards", release)
+        self.assertIn("--prerelease", release)
+        self.assertIn("(\\.[0-9]+)?-${PUBLISH_CHANNEL}", release)
         self.assertIn("origin/master", release)
-        self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release + build)
+        self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release)
 
 
 if __name__ == "__main__":

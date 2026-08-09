@@ -6,8 +6,19 @@ export type CanvasBackgroundDefinition = {
 };
 
 export const CANVAS_BACKGROUNDS = [
-  { id: "grid", labelKey: "studio.background.grid", kind: "css", className: "osv3-bg-grid" },
-  { id: "solid-black", labelKey: "studio.background.black", kind: "css", className: "osv3-bg-black" },
+  { id: "grid", labelKey: "studio.v3.canvas.background.grid", kind: "css", className: "osv3-bg-grid" },
+  {
+    id: "gradient",
+    labelKey: "studio.v3.canvas.background.gradient",
+    kind: "css",
+    className: "osv3-bg-gradient",
+  },
+  {
+    id: "solid-black",
+    labelKey: "studio.v3.canvas.background.black",
+    kind: "css",
+    className: "osv3-bg-black",
+  },
 ] as const satisfies readonly CanvasBackgroundDefinition[];
 
 export type CanvasBackgroundId = (typeof CANVAS_BACKGROUNDS)[number]["id"];

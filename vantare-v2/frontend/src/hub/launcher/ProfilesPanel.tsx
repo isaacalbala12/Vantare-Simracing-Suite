@@ -58,31 +58,34 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
 
   return (
     <section
-      className={`flex flex-col gap-3 ${className ?? ""}`}
+      className={`card-sleek rounded-xl p-5 ${className ?? ""}`}
       data-testid="profiles-panel"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="v52-eyebrow">{t("nav.launcher")}</span>
+        <span className="v52-eyebrow">{t("launcher.profiles.title")}</span>
         <button
           type="button"
           onClick={handleCreate}
-          className="px-3 py-1.5 rounded-lg border border-dashed border-white/20 text-[10px] font-bold uppercase tracking-[.22em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
           data-testid="profiles-create"
         >
           {t("launcher.profiles.create")}
         </button>
       </div>
 
-      <div className="flex flex-col gap-4" data-testid="profiles-list">
+      <div className="mt-4 flex flex-col gap-5" data-testid="profiles-list">
         {profiles.length === 0 && (
-          <article className="card-sleek rounded-xl p-5" data-testid="profiles-empty">
-            <p className="text-xs text-vantare-textMuted">{t("launcher.profiles.empty")}</p>
-          </article>
+          <p className="text-xs text-vantare-textMuted" data-testid="profiles-empty">
+            {t("launcher.profiles.empty")}
+          </p>
         )}
         {[
-          { id: "vantare", title: "Perfiles Vantare", items: vantareProfiles },
-          { id: "user", title: "Mis perfiles", items: userProfiles },
+          { id: "vantare", title: t("launcher.profiles.vantare"), items: vantareProfiles },
+          { id: "user", title: t("launcher.profiles.mine"), items: userProfiles },
         ].map((section) => {
+          // An empty group has nothing to label, and leaving the heading behind
+          // left two orphan captions floating over the page background.
+          if (section.items.length === 0) return null;
           const sectionProfiles = [...section.items].sort((a, b) => {
             if (a.isFavorite && !b.isFavorite) return -1;
             if (!a.isFavorite && b.isFavorite) return 1;
@@ -90,7 +93,7 @@ export function ProfilesPanel({ className }: ProfilesPanelProps) {
           });
           return (
             <section key={section.id} data-testid={`profiles-section-${section.id}`}>
-              <h2 className="mb-2 text-[10px] uppercase tracking-[.22em] text-vantare-textDim">
+              <h2 className="mb-2 text-[10px] uppercase tracking-[.22em] text-white/40">
                 {section.title}
               </h2>
               <div className="flex flex-col gap-3">

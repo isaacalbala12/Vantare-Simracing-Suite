@@ -7,20 +7,20 @@ Este documento define qué información puede publicar automáticamente Vantare 
 | Secreto | Canal | Uso |
 |---|---|---|
 | `DISCORD_RELEASE_WEBHOOK_URL` | Lanzamientos públicos | Solo una versión nueva publicada desde `master`. |
-| `DISCORD_PROGRESS_WEBHOOK_URL` | Testers (`1519752249977340168`) | Cambios verificables que llegan a `testers`. |
+| `DISCORD_PROGRESS_WEBHOOK_URL` | Nightly/Testers (`1519752249977340168`) | Cambios verificables de la pre-release, identificados por canal. |
 | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) | Resumen diario de proyectos grandes activos en Linear. El nombre histórico del secreto se conserva para no rotar el webhook. |
-| `DISCORD_BUILD_WEBHOOK_URL` | Changelog | Changelog y descarga de una build beta validada; publicación manual. |
+| `DISCORD_BUILD_WEBHOOK_URL` | Changelog (`1519747444315914512`) | Changelog técnico y descarga de una build ya publicada y verificada. |
 
 No se usa `DISCORD_WEBHOOK_URL` como fallback. Una configuración incompleta debe fallar cerrada para evitar publicar en el canal equivocado.
 
 ## Cambios para testers
 
-Cada issue con comportamiento visible añade un JSON en `docs/changelog/fragments/`. El workflow solo procesa fragmentos incluidos en el push a `testers`; una rama de issue y `nightly` nunca publican en el canal amplio de testers. El fragmento contiene:
+Cada issue con comportamiento visible añade un JSON en `docs/changelog/fragments/`. Una pre-release contiene un manifiesto en `docs/releases/<tag>.json` que selecciona exactamente los fragmentos del corte. Una rama de issue nunca publica. Nightly y Testers comparten destino, pero la tarjeta declara inequívocamente el canal. El fragmento contiene:
 
 - resumen en lenguaje normal;
 - notas técnicas;
 - comprobaciones solicitadas;
-- limitaciones conocidas.
+- limitaciones conocidas, que puede ser una lista vacía cuando honestamente no existe ninguna.
 
 El enlace al commit no se inserta en el mensaje para impedir que el unfurl de Discord parezca una segunda publicación. El SHA corto sigue identificando el corte.
 
@@ -37,7 +37,7 @@ Todo texto anterior a la marca se considera interno. Los proyectos publicables s
 
 ## Sistema visual compartido
 
-Los cuatro canales usan una presentación híbrida y determinista:
+Los cinco mensajes usan una presentación híbrida y determinista:
 
 - un embed nativo conserva texto seleccionable, enlaces y accesibilidad;
 - una tarjeta 1200×630 se genera desde HTML con el lenguaje visual de Vantare y contenido específico para cada audiencia;
@@ -50,20 +50,22 @@ La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, 
 | Canal | Tarjeta | Contenido visual |
 |---|---|---|
 | Release | `vantare-release.png` | Versión estable y tres novedades principales del changelog canónico. |
+| Nightly | `vantare-nightly.png` | Primera validación privada, cambios incluidos y comprobaciones. |
 | Testers | `vantare-testers.png` | Build candidata, cambios visibles y comprobación principal. |
 | Desarrollo | `vantare-development.png` | Tres proyectos autorizados de Linear con progreso. |
-| Build beta | `vantare-build.png` | Versión beta, validación solicitada e integridad SHA-256. |
+| Changelog | `vantare-changelog.png` | Versión, validación solicitada e integridad SHA-256. |
 
-El embed siempre conserva el contenido completo, enlaces, checksum y contexto técnico. La imagen resume; nunca es la única fuente de información. Los cuatro workflows fallan antes del POST si Chrome no genera un PNG no vacío.
+El embed siempre conserva el contenido completo, enlaces, checksum y contexto técnico. La imagen resume; nunca es la única fuente de información. La publicación falla antes del POST si Chrome no genera un PNG no vacío.
 
 ## Contrato editorial
 
 Cada tarjeta responde una pregunta concreta de su audiencia:
 
 - Release: qué versión salió y cuáles son sus cambios más importantes.
-- Testers: qué cambió, qué deben comprobar y qué limitación deben conocer.
+- Nightly: qué entra en la primera validación privada y qué debe comprobarse.
+- Testers: qué cambió tras el feedback y qué debe comprobar el grupo amplio.
 - Desarrollo: qué proyectos avanzan y cuál es su estado público.
-- Build beta: qué versión descargar, qué validar y cómo comprobar su integridad.
+- Changelog: qué versión descargar, qué validar y cómo comprobar su integridad.
 
 Reglas obligatorias:
 
@@ -79,8 +81,9 @@ Reglas obligatorias:
 
 - Los tests y dry-runs nunca hacen POST.
 - Antes de publicar, el workflow consulta los metadatos del webhook y comprueba el ID del canal conocido.
-- Release comprueba que el tag pertenece al historial de `master`.
-- Build beta y release son acciones explícitas; no se deducen de cambios documentales.
+- Release estable comprueba que el tag pertenece al historial de `master`.
+- Las pre-releases validan rama, canal y patrón del tag, construyen los seis artefactos y solo después publican Discord.
+- El ID esperado del canal es obligatorio: no existe publicación con destino desconocido.
 - Nada llega a `nightly` sin la aprobación inicial explícita de Isaac.
 - Nada llega a `master` sin la validación final explícita de Isaac.
 
@@ -88,4 +91,4 @@ Reglas obligatorias:
 
 El 2026-07-14 se verificaron en GitHub Actions los cuatro destinos con la versión pública vigente `v0.1.0.2`: release `29368648069`, testers `29368768778`, changelog beta `29368891135` y desarrollo activo final `29369095141`.
 
-La extensión visual del 2026-07-15 se validó localmente con tests, dry-run y captura real de Chrome para las cuatro tarjetas. Los POST reales de las nuevas imágenes permanecen pendientes de validación manual antes de integrar.
+La revisión v2 sustituye los cuatro workflows antiguos para evitar que ramas obsoletas publiquen mensajes, elimina la carrera entre build y anuncio y añade tarjetas independientes para Nightly y Testers.

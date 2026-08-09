@@ -9,7 +9,6 @@ const TELEMETRY_SOURCES = [
   "assetto-corsa",
   "mock",
 ] as const;
-const DELTA_MODES = ["unknown", "self", "session", "best", "leader"] as const;
 const DISPLAY_MODES = ["unknown", "racing", "edit", "streaming"] as const;
 const WIDGET_TYPES = [
   "delta",
@@ -100,7 +99,6 @@ export type DiagnosticsReport = {
   telemetry: DiagnosticsTelemetry;
   settings?: {
     schemaVersion: number;
-    deltaMode: (typeof DELTA_MODES)[number];
     cpuSampling: boolean;
     hotkeyCount: number;
     overlayProfileConfigured: boolean;
@@ -342,7 +340,6 @@ function decodeReport(value: unknown): DiagnosticsReport {
       "diagnostics settings",
       [
         "schemaVersion",
-        "deltaMode",
         "cpuSampling",
         "hotkeyCount",
         "overlayProfileConfigured",
@@ -353,7 +350,6 @@ function decodeReport(value: unknown): DiagnosticsReport {
     );
     report.settings = {
       schemaVersion: integer(settings.schemaVersion, "settings.schemaVersion", 65535),
-      deltaMode: enumValue(settings.deltaMode, "settings.deltaMode", DELTA_MODES),
       cpuSampling: boolean(settings.cpuSampling, "settings.cpuSampling"),
       hotkeyCount: integer(settings.hotkeyCount, "settings.hotkeyCount", 1024),
       overlayProfileConfigured: boolean(

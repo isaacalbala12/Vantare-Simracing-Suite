@@ -37,6 +37,29 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 	}
 }
 
+func TestProtectedStoreTargetsIsolateInternalChannelsByBackend(t *testing.T) {
+	legacyClock, legacyAuth := protectedStoreTargets("master", "https://production.invalid")
+	if legacyClock != "Vantare/LicenseClock" || legacyAuth != "Vantare/SupabaseAuth" {
+		t.Fatalf("master targets = %q, %q", legacyClock, legacyAuth)
+	}
+
+	clock, auth := protectedStoreTargets("nightly", "https://testing.invalid")
+	if clock == legacyClock || auth == legacyAuth {
+		t.Fatal("nightly reused production credential targets")
+	}
+	if !strings.HasPrefix(clock, "Vantare/nightly/") || !strings.HasSuffix(clock, "/LicenseClock") {
+		t.Fatalf("nightly clock target = %q", clock)
+	}
+	if !strings.HasPrefix(auth, "Vantare/nightly/") || !strings.HasSuffix(auth, "/SupabaseAuth") {
+		t.Fatalf("nightly auth target = %q", auth)
+	}
+
+	otherClock, otherAuth := protectedStoreTargets("nightly", "https://other.invalid")
+	if otherClock == clock || otherAuth == auth {
+		t.Fatal("different backends shared internal credential targets")
+	}
+}
+
 type fakeStrategyCommandExecutor struct {
 	result []byte
 	err    error
@@ -469,6 +492,21 @@ func TestStopOverlayClosureClearsOverlayRunningAndResetsMode(t *testing.T) {
 	}
 }
 
+func TestHandleOverlayProfileSnapshotRequestEmitsLoadedDocument(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+
+	handleOverlayProfileSnapshotRequest(studioSvc)
+
+	if len(emitter.events) != 1 || emitter.events[0] != "overlay:profile-v3-loaded" {
+		t.Fatalf("events=%v", emitter.events)
+	}
+}
+
+func TestHandleOverlayProfileSnapshotRequestAllowsMissingService(t *testing.T) {
+	handleOverlayProfileSnapshotRequest(nil)
+}
+
 func TestStopOverlayClosureSkipsResetWhenAlreadyStopped(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)
@@ -632,8 +670,20 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	handleDiscoverApps(svc, emitter)
-	if len(emitter.events) != 6 || emitter.events[5] != "launcher:snapshot" {
-		t.Fatalf("expected canonical discovery snapshot, got %v", emitter.events)
+	// The icon phase reports once per app, so the number of progress events
+	// tracks how many apps were found rather than being fixed. What this
+	// handler owes its caller is that the canonical snapshot lands last,
+	// after the progress stream and nothing else.
+	if len(emitter.events) < 2 {
+		t.Fatalf("expected progress events followed by a snapshot, got %v", emitter.events)
+	}
+	if last := emitter.events[len(emitter.events)-1]; last != "launcher:snapshot" {
+		t.Fatalf("discovery must end with the canonical snapshot, got %v", emitter.events)
+	}
+	for _, name := range emitter.events[:len(emitter.events)-1] {
+		if name != "launcher:discovery:progress" {
+			t.Fatalf("only progress may precede the snapshot, got %v", emitter.events)
+		}
 	}
 }
 

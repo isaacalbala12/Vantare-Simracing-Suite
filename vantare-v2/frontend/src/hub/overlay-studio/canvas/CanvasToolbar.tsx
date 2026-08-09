@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { StudioPreviewState } from "../state/studio-store";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
+import { STUDIO_PREVIEW_RESOLUTION_OPTIONS } from "./preview-resolution";
 
 const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125, 150];
 
@@ -74,6 +75,38 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
               {t("studio.v3.canvas.zoom.fit")}
             </button>
             <select
+              data-testid="studio-resolution-select"
+              className="osv3-canvas-toolbar__select"
+              aria-label={t("studio.v3.preview.resolution")}
+              value={preview.resolution ?? "auto"}
+              onChange={(event) =>
+                onPreviewChange({ resolution: event.target.value as NonNullable<StudioPreviewState["resolution"]> })
+              }
+            >
+              <option value="auto">{t("studio.v3.preview.resolution.auto")}</option>
+              <optgroup label="16:9">
+                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(0, 4).map((resolution) => (
+                  <option key={resolution.id} value={resolution.id}>
+                    {resolution.label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="21:9">
+                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(4, 7).map((resolution) => (
+                  <option key={resolution.id} value={resolution.id}>
+                    {resolution.label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="32:9">
+                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(7).map((resolution) => (
+                  <option key={resolution.id} value={resolution.id}>
+                    {resolution.label}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <select
               data-testid="studio-background-select"
               className="osv3-canvas-toolbar__select"
               value={preview.backgroundId}
@@ -81,7 +114,9 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
             >
               {CANVAS_BACKGROUNDS.map((background) => (
                 <option key={background.id} value={background.id}>
-                  {background.id}
+                  {/* labelKey estaba declarado desde el principio pero nadie lo
+                      usaba, asi que el selector mostraba el id en crudo. */}
+                  {t(background.labelKey)}
                 </option>
               ))}
             </select>

@@ -1,8 +1,17 @@
-const allowedFunctions = new Set([
+const productionFunctions = new Set([
   "billing-checkout",
   "billing-portal",
   "billing-webhook",
   "license-credential",
+]);
+const testingPilotFunctions = new Set([
+  "testing-center-feedback",
+  "testing-center-linear-webhook",
+  "testing-center-linear-worker",
+]);
+const recognizedFunctions = new Set([
+  ...productionFunctions,
+  ...testingPilotFunctions,
 ]);
 const infrastructure = new Set(["_deprecated", "_shared", "scripts"]);
 
@@ -12,7 +21,9 @@ export function invalidDeployableDirectories(
   return entries
     .filter((entry) => entry.isDirectory)
     .map((entry) => entry.name)
-    .filter((name) => !infrastructure.has(name) && !allowedFunctions.has(name))
+    .filter((name) =>
+      !infrastructure.has(name) && !recognizedFunctions.has(name)
+    )
     .sort();
 }
 
@@ -28,6 +39,8 @@ if (import.meta.main) {
     Deno.exit(1);
   }
   console.log(
-    `Deploy surface verified: ${[...allowedFunctions].sort().join(", ")}`,
+    `Known deploy surfaces verified: production=[${
+      [...productionFunctions].sort().join(", ")
+    }] testing-pilot=[${[...testingPilotFunctions].sort().join(", ")}]`,
   );
 }

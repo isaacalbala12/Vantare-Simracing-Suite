@@ -12,6 +12,12 @@ import { TelemetryPage } from './pages/TelemetryPage';
 import { StrategyPlannerPage } from './strategy/StrategyPlannerPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { TestingCenterPage } from './testing-center/TestingCenterPage';
+import { resolveTestingCenterChannel } from './testing-center/channel-access';
+import { submitTestingCenterReport } from './testing-center/report-submission-client';
+import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
+import { testingCenterFeedbackClient } from './testing-center/candidate-feedback-client';
+import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
 import { LoginScreen } from './auth/LoginScreen';
@@ -35,65 +41,97 @@ import {
 // recomendado y está promovido a botón principal en LoginScreen.
 function LicenseGate({ children }: { children: ReactNode }) {
   const { result, loading } = useLicense();
-  if (loading) {
-    return (
-      <div
-        data-testid="license-loading"
-        className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
-      >
-        <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
-          Cargando licencia...
-        </p>
-      </div>
-    );
+  // Una vez que el Hub se ha renderizado, no se desmonta jamas por un cambio de
+  // estado de licencia. Antes cada transicion cambiaba de rama, y cambiar de
+  // rama destruye todo el subarbol: el Hub entero -- Studio, lienzo, widgets --
+  // se reconstruia desde cero en cada revalidacion. Los bloqueos posteriores se
+  // pintan como capa superpuesta, que impide interactuar igual que antes pero
+  // conserva el estado de React.
+  const hasRenderedHub = useRef(false);
+
+  // Pantalla bloqueante que corresponde al estado actual, o null si se puede
+  // usar la aplicacion.
+  const blocking = loading
+    ? null
+    : !result || result.state === 'anonymous'
+      ? (
+        <LoginScreen
+          onLoggedIn={(tokens) => {
+            if (!tokens?.accessToken) return;
+            Events.Emit('license:validate', {
+              sessionToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken ?? '',
+            });
+          }}
+        />
+      )
+      // Unconfigured is a backend configuration error (missing Supabase env
+      // vars in the release build). It must never block the user behind a
+      // paywall. Show an actionable message instead.
+      : result.state === 'unconfigured'
+        ? <UnconfiguredScreen />
+        : result.state === 'expired' || result.state === 'device-limit'
+          ? <PaywallScreen email={result.email} result={result} />
+          : null;
+
+  if (!hasRenderedHub.current) {
+    if (loading) {
+      return (
+        <div
+          data-testid="license-loading"
+          className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
+        >
+          <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
+            Cargando licencia...
+          </p>
+        </div>
+      );
+    }
+    if (blocking) {
+      return blocking;
+    }
+    hasRenderedHub.current = true;
   }
-  if (!result || result.state === 'anonymous') {
-    return (
-      <LoginScreen
-        onLoggedIn={(tokens) => {
-          if (!tokens?.accessToken) return;
-          Events.Emit('license:validate', {
-            sessionToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken ?? '',
-          });
-        }}
-      />
-    );
-  }
-  // Unconfigured is a backend configuration error (missing Supabase env
-  // vars in the release build). It must never block the user behind a
-  // paywall. Show an actionable message instead.
-  if (result.state === 'unconfigured') {
-    return <UnconfiguredScreen />;
-  }
-  if (
-    result.state === 'expired' ||
-    result.state === 'device-limit'
-  ) {
-    return <PaywallScreen email={result.email} result={result} />;
-  }
+
   return (
     <>
       <LicenseBanner />
       {children}
+      {blocking ? (
+        <div
+          data-testid="license-blocked-overlay"
+          className="fixed inset-0 z-[9999] overflow-auto bg-[#0a0a0a]"
+        >
+          {blocking}
+        </div>
+      ) : null}
     </>
   );
 }
 
 function HubShell() {
+  const { result: licenseResult } = useLicense();
   const [section, setSection] = useState<Section>('dashboard');
   const [version, setVersion] = useState<string | null>(null);
+  const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
+  const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
+
+  const visibleSection: Section = section === "testing-center" && !testingCenterChannel
+    ? "dashboard"
+    : section;
 
   useEffect(() => {
     document.body.classList.add('hub');
-    const unsub = Events.On('app:version', (event: { data: { version?: string } }) => {
+    const unsub = Events.On('app:version', (event: { data: { version?: string; buildChannel?: string } }) => {
       setVersion(event.data.version ?? null);
+      const channel = event.data.buildChannel;
+      setBuildChannel(channel === 'nightly' || channel === 'testers' || channel === 'master' ? channel : null);
     });
     const unsubSource = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
       setSourceStatus(event.data);
@@ -124,10 +162,10 @@ function HubShell() {
   }, []);
 
   const handleNavigate = useCallback((id: string) => {
-    if (isSection(id)) {
+    if (isSection(id) && (id !== "testing-center" || testingCenterChannel)) {
       setSection(id);
     }
-  }, []);
+  }, [testingCenterChannel]);
 
   const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
     setShowBetaWelcome(false);
@@ -151,10 +189,11 @@ function HubShell() {
 
   return (
     <V52Shell
-      activeSection={section}
+      activeSection={visibleSection}
       onNavigate={handleNavigate}
       version={version}
       sourceStatus={sourceStatus}
+      testingCenterChannel={testingCenterChannel}
     >
       {settingsLoaded && showBetaWelcome && (
         <BetaWelcome onComplete={handleBetaWelcomeClose} />
@@ -162,24 +201,33 @@ function HubShell() {
       {reminder && (
         <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
       )}
-      {section === "dashboard" && (
+      {visibleSection === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
         />
       )}
-      {section === "profiles" && (
+      {visibleSection === "profiles" && (
         <OverlaysStudioPage
           pendingRecommendedAutoStart={pendingRecommendedAutoStart}
           onAutoStartHandled={handleAutoStartHandled}
         />
       )}
-      {section === "launcher" && <LauncherPage />}
-      {section === "calendar" && <CalendarPage />}
-      {section === "setup" && <SettingsPage />}
-      {section === "engineer" && <EngineerPage />}
-      {section === "strategy" && <StrategyPlannerPage />}
-      {section === "telemetry" && <TelemetryPage />}
-      {section === "roadmap" && <RoadmapPage />}
+      {visibleSection === "launcher" && <LauncherPage />}
+      {visibleSection === "calendar" && <CalendarPage />}
+      {visibleSection === "setup" && <SettingsPage />}
+      {visibleSection === "engineer" && <EngineerPage />}
+      {visibleSection === "strategy" && <StrategyPlannerPage />}
+      {visibleSection === "telemetry" && <TelemetryPage />}
+      {visibleSection === "testing-center" && testingCenterChannel && (
+        <TestingCenterPage
+          channel={testingCenterChannel}
+          version={version}
+          client={wailsTestingCenterClient}
+          submitReport={submitTestingCenterReport}
+          feedbackClient={testingCenterFeedbackClient}
+        />
+      )}
+      {visibleSection === "roadmap" && <RoadmapPage />}
     </V52Shell>
   );
 }

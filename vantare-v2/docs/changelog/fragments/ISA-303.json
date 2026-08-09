@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-303",
+  "type": "fix",
+  "summary": "El calendario mensual mostraba los días desplazados una casilla para quien no estuviera en UTC: la columna \"Lunes\" enseñaba el domingo.",
+  "technicalNotes": [
+    "El grid del mes se construye con días naturales locales, pero el número de cada celda se reformateaba en la zona de visualización, así que la medianoche local caía en el día anterior de esa zona.",
+    "La etiqueta lee ahora las componentes locales de la propia celda, la misma base con la que se reparten los eventos entre casillas; las horas de los eventos se siguen formateando en la zona elegida."
+  ],
+  "testing": [
+    "Abrir el calendario mensual con la zona horaria del sistema por delante de UTC (por ejemplo Europe/Madrid) y comprobar que el primer número bajo la columna Lunes es el lunes real de esa semana.",
+    "Pinchar una celda y confirmar que el día que abre coincide con el número que se veía en la rejilla.",
+    "Cambiar la zona de visualización en ajustes y verificar que los números de la rejilla no se mueven, sólo las horas de las carreras."
+  ],
+  "knownLimitations": [
+    "Las vistas de semana y día, y el título de la barra de herramientas, formatean el número de día con el mismo patrón y están pendientes de revisar."
+  ]
+}

@@ -46,6 +46,16 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 	// non-steam-uri apps). LMU is steam-uri so it is covered without an exe.
 	for _, lib := range readSteamLibraryFolders() {
 		common := filepath.Join(lib, "steamapps", "common")
+		wanted := map[string]struct{}{}
+		for _, known := range KnownApps {
+			if existing, ok := found[known.ID]; ok && existing.ExecutablePath != "" {
+				continue
+			}
+			for _, name := range known.ExecutableNames {
+				wanted[strings.ToLower(name)] = struct{}{}
+			}
+		}
+		executables := indexExecutables(common, wanted, 3)
 		for _, known := range KnownApps {
 			if existing, ok := found[known.ID]; ok && existing.ExecutablePath != "" {
 				continue
@@ -53,7 +63,13 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 			if len(known.ExecutableNames) == 0 {
 				continue
 			}
-			exe := findExecutableRecursive(common, known.ExecutableNames, 3)
+			exe := ""
+			for _, name := range known.ExecutableNames {
+				if path, ok := executables[strings.ToLower(name)]; ok {
+					exe = path
+					break
+				}
+			}
 			if exe != "" {
 				evidence := DetectionEvidence{Found: true, ExecutableExists: true}
 				if known.LaunchMethod == "steam-uri" {

@@ -94,9 +94,16 @@ describe("LauncherPage", () => {
 
   it("requests one shared snapshot and lists apps from it", () => {
     renderPage();
-    expect(Events.Emit).toHaveBeenCalledTimes(2);
-    expect(Events.Emit).toHaveBeenNthCalledWith(1, "launcher:apps:discover");
-    expect(Events.Emit).toHaveBeenCalledWith("launcher:snapshot:get");
+    // Counted per event rather than in total: this pins that the page asks for
+    // the snapshot once, which is the point, without also pinning how many
+    // unrelated events the rest of the tree happens to emit on mount.
+    const launcherEmits = (Events.Emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (call: unknown[]) => String(call[0]).startsWith("launcher:"),
+    );
+    expect(launcherEmits.map((call: unknown[]) => call[0])).toEqual([
+      "launcher:apps:discover",
+      "launcher:snapshot:get",
+    ]);
     dispatchSnapshot();
     expect(screen.getByTestId("app-row-lmu")).toBeTruthy();
   });

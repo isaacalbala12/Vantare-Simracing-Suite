@@ -44,6 +44,10 @@ type ObserverOptions = Readonly<{
   source: TransportEventSource;
   onDiagnostics?: (diagnostics: OverlayProjectionDiagnostics) => void;
   onObservation?: (observation: OverlayProjectionObservation) => void;
+  // Pide el reenvio del ultimo estado al arrancar. Opcional: el transporte SSE
+  // entrega estado al conectar, pero el puente Wails comparte una unica
+  // suscripcion y no repite lo ya emitido.
+  requestStatus?: () => void;
 }>;
 
 export function createWailsProjectionObserver(options: Readonly<{
@@ -51,12 +55,14 @@ export function createWailsProjectionObserver(options: Readonly<{
   subscribe: TransportEventSource["subscribe"];
   onDiagnostics?: (diagnostics: OverlayProjectionDiagnostics) => void;
   onObservation?: (observation: OverlayProjectionObservation) => void;
+  requestStatus?: () => void;
 }>): ProjectionObserver {
   return createProjectionObserver({
     runtime: options.runtime,
     source: { subscribe: options.subscribe },
     onDiagnostics: options.onDiagnostics,
     onObservation: options.onObservation,
+    requestStatus: options.requestStatus,
   });
 }
 
@@ -132,6 +138,8 @@ export function createProjectionObserver(
             errorCode: stableErrorCode(error),
           });
         });
+        // Despues de suscribirse, para no perder la respuesta.
+        options.requestStatus?.();
         observe();
       } catch (error) {
         unsubscribeStore?.();

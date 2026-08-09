@@ -38,10 +38,9 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   // the live cleanup (telemetryAdapter.stop()) now runs before the mock publish
   // happens in the same effect body, eliminating the double-stop issue.
   // Uses useLayoutEffect so mock publish happens before paint, ensuring widgets
-  // render with correct telemetry data on first paint.
+  // render with correct telemetry data on first paint. Mock data is generated
+  // synchronously, so publishing before paint ensures the first frame has data.
   useLayoutEffect(() => {
-    // Cleanup from previous render runs first (if live adapter was active)
-    // Then body runs below
     if (preview.source === "mock") {
       // Publish mock snapshot when in mock mode
       coordinator.publish(

@@ -11,6 +11,7 @@ describe("hub navigation contract", () => {
       "engineer",
       "strategy",
       "telemetry",
+      "testing-center",
       "roadmap",
       "setup",
     ]);
@@ -22,6 +23,7 @@ describe("hub navigation contract", () => {
     expect(isSection("roadmap")).toBe(true);
     expect(isSection("calendar")).toBe(true);
     expect(isSection("strategy")).toBe(true);
+    expect(isSection("testing-center")).toBe(true);
     expect(isSection("plans")).toBe(false);
     expect(isSection("")).toBe(false);
   });
@@ -35,6 +37,7 @@ describe("hub navigation contract", () => {
       "Ingeniero",
       "Strategy",
       "Telemetría",
+      "Testing Center",
       "Roadmap",
       "Ajustes",
     ]);

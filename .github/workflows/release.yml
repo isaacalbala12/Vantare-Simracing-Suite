@@ -6,11 +6,20 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      create_release:
-        description: "Create GitHub Release (only allowed when running on a tag)"
+      publish_channel:
+        description: "Build only, or publish a verified pre-release"
+        required: true
+        default: none
+        type: choice
+        options: [none, nightly, testers]
+      release_tag:
+        description: "Required for pre-release, e.g. v0.1.0.5-nightly.1"
         required: false
-        default: false
-        type: boolean
+        type: string
+      release_notes:
+        description: "Short, customer-facing summary"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -35,13 +44,21 @@ jobs:
 
       - name: Verify source ref
         env:
-          CREATE_RELEASE: ${{ inputs.create_release }}
+          PUBLISH_CHANNEL: ${{ inputs.publish_channel }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$CREATE_RELEASE" != "true" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             case "$GITHUB_REF" in
               refs/heads/nightly|refs/heads/testers) ;;
               *) echo "::error::Internal builds can only run from nightly or testers"; exit 1 ;;
             esac
+            if [ "$PUBLISH_CHANNEL" != "none" ]; then
+              test "$GITHUB_REF" = "refs/heads/$PUBLISH_CHANNEL" || { echo "::error::Channel and branch must match"; exit 1; }
+              test -n "$RELEASE_TAG" || { echo "::error::release_tag is required"; exit 1; }
+              echo "$RELEASE_TAG" | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?-${PUBLISH_CHANNEL}\.[0-9]+$" || {
+                echo "::error::Invalid pre-release tag for $PUBLISH_CHANNEL"; exit 1;
+              }
+            fi
             exit 0
           fi
 
@@ -56,6 +73,79 @@ jobs:
             echo "::error::$GITHUB_REF_NAME is not contained in origin/master"
             exit 1
           }
+
+      - name: Verify release manifest and changelog fragments
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel != 'none'
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          # The Discord step reads these after the Windows build, so a missing
+          # manifest used to surface as a red run ~10 minutes in, with the
+          # release already published. Fail here instead, before anything builds.
+          manifest="vantare-v2/docs/releases/${RELEASE_TAG}.json"
+          test -f "$manifest" || { echo "::error::Missing canonical release manifest: $manifest"; exit 1; }
+          python - "$manifest" <<'PY'
+          import json, pathlib, sys
+
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          issues = manifest.get("issues")
+          if not issues:
+              sys.exit(f"::error::{sys.argv[1]} lists no issues")
+          missing = [
+              issue
+              for issue in issues
+              if not pathlib.Path(f"vantare-v2/docs/changelog/fragments/{issue}.json").is_file()
+          ]
+          if missing:
+              sys.exit(f"::error::Missing changelog fragments for: {', '.join(missing)}")
+          PY
+
+      - name: Verify pre-release Discord destinations
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_channel != 'none'
+        env:
+          DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
+          DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+
+          secret_names = (
+              "DISCORD_PROGRESS_WEBHOOK_URL",
+              "DISCORD_BUILD_WEBHOOK_URL",
+              "DISCORD_RELEASE_WEBHOOK_URL",
+              "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+          )
+          # Only the Nightly/Testers route is required: it is the one testers
+          # actually receive. The changelog channel has no webhook configured,
+          # and requiring it blocked every pre-release. It stays optional here
+          # and in the resolve step, so creating that webhook later restores
+          # the announcement without touching this workflow.
+          required = {
+              "Nightly/Testers": "1519752249977340168",
+          }
+          failed = False
+          channels = {}
+          for secret_name in secret_names:
+              webhook = os.environ.get(secret_name, "")
+              if not webhook:
+                  print(f"::error::{secret_name} is not configured")
+                  failed = True
+                  continue
+              request = urllib.request.Request(webhook, headers={"User-Agent": "Vantare-GitHub-Actions/1.0"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  actual = str(json.load(response).get("channel_id", "missing"))
+              channels.setdefault(actual, []).append(secret_name)
+              print(f"{secret_name}: channel {actual}")
+          for label, expected in required.items():
+              matches = channels.get(expected, [])
+              if len(matches) != 1:
+                  print(f"::error::{label} requires exactly one webhook for channel {expected}; found {matches}")
+                  failed = True
+          if failed:
+              raise SystemExit(1)
+          PY
 
   build:
     name: Build Windows release artifacts
@@ -74,6 +164,10 @@ jobs:
       # Versioned Ed25519 public keys only (key-id:base64url-public-key). The
       # private signing key exists exclusively in the Supabase function env.
       VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
+      # Branch builds identify their actual channel inside the binary. Tagged
+      # public builds are always master; the source job already proves the tag
+      # belongs to master.
+      VANTARE_BUILD_CHANNEL: ${{ github.ref_type == 'branch' && github.ref_name || 'master' }}
     defaults:
       run:
         shell: powershell
@@ -140,64 +234,45 @@ jobs:
 
       - name: Gate - Go tests
         env:
-          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if ($env:INTERNAL_BUILD -ne "true") {
-            go test ./...
-            exit $LASTEXITCODE
-          }
-
-          $appPackage = "github.com/vantare/overlays/v2/internal/app"
-          $otherPackages = @(go list ./... | Where-Object { $_ -ne $appPackage })
-          if ($LASTEXITCODE -ne 0) { throw "go list failed" }
-          go test @otherPackages
-          if ($LASTEXITCODE -ne 0) { throw "Go package tests failed" }
-          go test ./internal/app -skip '^TestConcurrentSavesDontCorruptFile$'
-          if ($LASTEXITCODE -ne 0) { throw "internal/app tests failed" }
-
-      - name: Gate - ISA-118 concurrent settings save (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
-        continue-on-error: true
-        run: go test ./internal/app -run '^TestConcurrentSavesDontCorruptFile$' -count=1
+          # ISA-118 used to be carved out of internal builds and repeated as an
+          # advisory step. Its cause is fixed, so every build runs the same suite.
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw "Go tests failed" }
 
       - name: Gate - Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         env:
-          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
+          INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if ($env:INTERNAL_BUILD -ne "true") {
-            pnpm test
-            exit $LASTEXITCODE
-          }
-
-          pnpm exec vitest run `
-            --exclude scripts/crystal-reference-manifest.test.mjs `
-            --exclude src/hub/calendar/CalendarMonthView.test.tsx `
-            --exclude src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
-          if ($LASTEXITCODE -ne 0) { throw "Blocking frontend tests failed" }
-
-      - name: Gate - ISA-173 Crystal manifest runner (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run scripts/crystal-reference-manifest.test.mjs
-
-      - name: Gate - ISA-174 Calendar month boundary (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/calendar/CalendarMonthView.test.tsx
-
-      - name: Gate - ISA-172 canvas interaction flake (internal advisory)
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release != true
-        continue-on-error: true
-        working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx
+          # ISA-172, ISA-173 and ISA-174 used to be excluded here and repeated as
+          # advisory steps. Their causes are fixed, so internal builds now run the
+          # same suite as public ones.
+          pnpm test
+          if ($LASTEXITCODE -ne 0) { throw "Frontend tests failed" }
 
       - name: Gate - Frontend lint
-        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release != true }}
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm lint
+
+      - name: Sync embedded version with the release tag
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          $tag = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { "${{ github.ref_name }}" }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+\.\d+(-[A-Za-z0-9.]+)?$') {
+            # Build-only dispatches run from a branch and publish nothing, so the
+            # committed VERSION is good enough for them.
+            Write-Host "::notice::Ref '$tag' is not a release tag; keeping the committed VERSION"
+            exit 0
+          }
+          go run ./build/sync_version.go -from-tag $tag
+          # Carries the pre-release suffix into -X main.version; without it the
+          # binary would report the numeric version only and re-offer its own update.
+          "VANTARE_VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Building as $tag"
 
       - name: Build release artifacts
         run: |
@@ -223,7 +298,7 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts-${{ github.ref_name }}
+          name: release-artifacts-${{ github.run_id }}
           path: |
             ${{ env.VANTARE_DIR }}/bin/vantare.exe
             ${{ env.VANTARE_DIR }}/bin/vantare.exe.sha256
@@ -239,7 +314,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v') && inputs.create_release)
+      (github.event_name == 'workflow_dispatch' && inputs.publish_channel != 'none')
     permissions:
       contents: write
     steps:
@@ -249,27 +324,40 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify release tag belongs to master
+      - name: Resolve and verify release contract
+        id: contract
         shell: bash
+        env:
+          PUBLISH_CHANNEL: ${{ inputs.publish_channel }}
+          INPUT_TAG: ${{ inputs.release_tag }}
         run: |
-          git fetch origin master --no-tags
-          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
-          test -n "$tag_commit" || { echo "::error::Unable to resolve $GITHUB_REF_NAME"; exit 1; }
-          git merge-base --is-ancestor "$tag_commit" origin/master || {
-            echo "::error::$GITHUB_REF_NAME is not contained in origin/master"
-            exit 1
-          }
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+            prerelease=true
+          else
+            tag="$GITHUB_REF_NAME"
+            prerelease=false
+            git fetch origin master --no-tags
+            tag_commit="$(git rev-list -n 1 "$tag")"
+            test -n "$tag_commit" || { echo "::error::Unable to resolve $tag"; exit 1; }
+            git merge-base --is-ancestor "$tag_commit" origin/master || { echo "::error::$tag is not contained in origin/master"; exit 1; }
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-artifacts-${{ github.ref_name }}
+          name: release-artifacts-${{ github.run_id }}
           path: ${{ env.VANTARE_DIR }}/bin
 
       - name: Extract changelog section
         id: changelog
+        env:
+          NOTES: ${{ inputs.release_notes }}
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.contract.outputs.tag }}"
+          export TAG NOTES
           python3 - <<PY
           import os
           import re
@@ -277,7 +365,7 @@ jobs:
 
           tag = os.environ.get("TAG", "")
           changelog_path = "vantare-v2/docs/changelog.md"
-          fallback = f"Release {tag}"
+          fallback = os.environ.get("NOTES", "").strip() or f"Release {tag}"
           body = fallback
 
           if os.path.exists(changelog_path):
@@ -314,7 +402,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.contract.outputs.tag }}"
+          PRERELEASE="${{ steps.contract.outputs.prerelease }}"
           BIN_DIR="${{ env.VANTARE_DIR }}/bin"
           ASSETS=(
             "$BIN_DIR/vantare.exe"
@@ -336,7 +425,8 @@ jobs:
             echo "Release $TAG already exists; refreshing notes and re-uploading the 6 official assets with --clobber."
             gh release edit "$TAG" \
               --title "Vantare $TAG" \
-              --notes-file changelog_body.md
+              --notes-file changelog_body.md \
+              $([ "$PRERELEASE" = "true" ] && echo --prerelease || echo --latest)
             for asset in "${ASSETS[@]}"; do
               echo "Uploading (clobber) $asset"
               gh release upload "$TAG" "$asset" --clobber
@@ -346,8 +436,154 @@ jobs:
             gh release create "$TAG" \
               --title "Vantare $TAG" \
               --notes-file changelog_body.md \
+              --target "$GITHUB_SHA" \
+              $([ "$PRERELEASE" = "true" ] && echo --prerelease || echo --latest) \
               "${ASSETS[@]}"
           fi
 
           echo "Final release state for $TAG:"
           gh release view "$TAG" --json tagName,name,assets --jq '.tagName + " assets=" + (.assets | length | tostring)'
+
+      - name: Resolve verified announcement metadata
+        if: steps.contract.outputs.prerelease == 'true'
+        id: announce
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.contract.outputs.tag }}
+        run: |
+          release_url="${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG"
+          download_url="${{ github.server_url }}/${{ github.repository }}/releases/download/$TAG/vantare-amd64-installer.exe"
+          sha256="$(awk '{print $1}' '${{ env.VANTARE_DIR }}/bin/vantare-amd64-installer.exe.sha256')"
+          echo "release_url=$release_url" >> "$GITHUB_OUTPUT"
+          echo "download_url=$download_url" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Build accessible Discord payloads and HTML
+        if: steps.contract.outputs.prerelease == 'true'
+        env:
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          manifest="vantare-v2/docs/releases/${{ steps.contract.outputs.tag }}.json"
+          test -f "$manifest" || { echo "::error::Missing canonical release manifest: $manifest"; exit 1; }
+          mapfile -t files < <(python - "$manifest" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          for issue in manifest["issues"]:
+              print(f"vantare-v2/docs/changelog/fragments/{issue}.json")
+          PY
+          )
+          args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
+          python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --dry-run --revision "$GITHUB_SHA" \
+            --html-output "$RUNNER_TEMP/vantare-channel.html" "${args[@]}" > "$RUNNER_TEMP/channel.json"
+          python .github/scripts/discord_communications.py build --dry-run --channel "${{ inputs.publish_channel }}" \
+            --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
+            --download-url "${{ steps.announce.outputs.download_url }}" --sha256 "${{ steps.announce.outputs.sha256 }}" \
+            --release-url "${{ steps.announce.outputs.release_url }}" \
+            --known-issues-url "${{ github.server_url }}/${{ github.repository }}/blob/master/vantare-v2/docs/tester-known-issues.md" \
+            --html-output "$RUNNER_TEMP/vantare-changelog.html" > "$RUNNER_TEMP/changelog.json"
+
+      - name: Render Discord cards
+        if: steps.contract.outputs.prerelease == 'true'
+        run: |
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png" "file://$RUNNER_TEMP/vantare-channel.html"
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-changelog.png" "file://$RUNNER_TEMP/vantare-changelog.html"
+          test -s "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png"
+          test -s "$RUNNER_TEMP/vantare-changelog.png"
+
+      - name: Resolve pre-release Discord routes by channel ID
+        if: steps.contract.outputs.prerelease == 'true'
+        env:
+          DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
+          DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          names = (
+              "DISCORD_PROGRESS_WEBHOOK_URL", "DISCORD_BUILD_WEBHOOK_URL",
+              "DISCORD_RELEASE_WEBHOOK_URL", "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+          )
+          # The tester route must resolve; the changelog one is written only if
+          # a webhook uniquely matches its channel, and its absence leaves the
+          # variable unset for the publish step to skip.
+          targets = {"VANTARE_TESTER_WEBHOOK": "1519752249977340168"}
+          optional = {"VANTARE_CHANGELOG_WEBHOOK": "1519747444315914512"}
+          by_channel = {}
+          for name in names:
+              value = os.environ.get(name, "")
+              if not value:
+                  continue
+              request = urllib.request.Request(value, headers={"User-Agent": "Vantare-GitHub-Actions/1.0"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  channel = str(json.load(response).get("channel_id", ""))
+              by_channel.setdefault(channel, []).append(value)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output_file:
+              for output, channel in targets.items():
+                  matches = by_channel.get(channel, [])
+                  if len(matches) != 1:
+                      raise SystemExit(f"Unable to resolve unique webhook for {channel}")
+                  output_file.write(f"{output}={matches[0]}\n")
+              for output, channel in optional.items():
+                  matches = by_channel.get(channel, [])
+                  if len(matches) == 1:
+                      output_file.write(f"{output}={matches[0]}\n")
+                  else:
+                      print(f"::notice::No unique webhook for channel {channel}; skipping {output}")
+          PY
+
+      - name: Publish Nightly/Testers and changelog after verified release
+        if: steps.contract.outputs.prerelease == 'true'
+        env:
+          NOTES: ${{ inputs.release_notes }}
+        run: |
+          manifest="vantare-v2/docs/releases/${{ steps.contract.outputs.tag }}.json"
+          mapfile -t files < <(python - "$manifest" <<'PY'
+          import json, pathlib, sys
+          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          for issue in manifest["issues"]:
+              print(f"vantare-v2/docs/changelog/fragments/{issue}.json")
+          PY
+          )
+          args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
+          DISCORD_PROGRESS_WEBHOOK_URL="$VANTARE_TESTER_WEBHOOK" \
+          python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --revision "$GITHUB_SHA" \
+            --image "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png" "${args[@]}"
+          # The changelog channel is optional. Posting it to whatever webhook
+          # happened to be configured would put the card in the wrong channel,
+          # so with no route resolved the card is simply not published.
+          if [ -n "${VANTARE_CHANGELOG_WEBHOOK:-}" ]; then
+            DISCORD_BUILD_WEBHOOK_URL="$VANTARE_CHANGELOG_WEBHOOK" \
+            python .github/scripts/discord_communications.py build --channel "${{ inputs.publish_channel }}" \
+              --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
+              --download-url "${{ steps.announce.outputs.download_url }}" --sha256 "${{ steps.announce.outputs.sha256 }}" \
+              --release-url "${{ steps.announce.outputs.release_url }}" \
+              --known-issues-url "${{ github.server_url }}/${{ github.repository }}/blob/master/vantare-v2/docs/tester-known-issues.md" \
+              --image "$RUNNER_TEMP/vantare-changelog.png"
+          else
+            echo "::notice::No changelog webhook resolved; skipping the changelog card"
+          fi
+
+      - name: Build stable release card
+        if: steps.contract.outputs.prerelease != 'true'
+        run: |
+          python .github/scripts/discord_communications.py release --dry-run \
+            --tag "${{ steps.contract.outputs.tag }}" --section-file changelog_body.md \
+            --release-url "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.contract.outputs.tag }}" \
+            --revision "$GITHUB_SHA" --html-output "$RUNNER_TEMP/vantare-release.html"
+          google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
+            --screenshot="$RUNNER_TEMP/vantare-release.png" "file://$RUNNER_TEMP/vantare-release.html"
+          test -s "$RUNNER_TEMP/vantare-release.png"
+
+      - name: Publish stable release after verified assets
+        if: steps.contract.outputs.prerelease != 'true'
+        env:
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_RELEASE_CHANNEL_ID: ${{ vars.DISCORD_RELEASE_CHANNEL_ID }}
+        run: |
+          python .github/scripts/discord_communications.py release \
+            --tag "${{ steps.contract.outputs.tag }}" --section-file changelog_body.md \
+            --release-url "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.contract.outputs.tag }}" \
+            --revision "$GITHUB_SHA" --image "$RUNNER_TEMP/vantare-release.png"

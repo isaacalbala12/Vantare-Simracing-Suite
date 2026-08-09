@@ -12,7 +12,6 @@ describe("CalendarToolbar", () => {
     onPrevious: vi.fn(),
     onNext: vi.fn(),
     onFilterChange: vi.fn(),
-    timeZone: "UTC",
   };
 
   afterEach(() => {
@@ -20,17 +19,28 @@ describe("CalendarToolbar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders buttons for Mes, Semana, Día", () => {
+  it("renders buttons for Próximas, Timeline and Mes", () => {
     render(<CalendarToolbar {...defaultProps} />);
+    expect(screen.getByTestId("calendar-view-upcoming")).toBeTruthy();
+    expect(screen.getByTestId("calendar-view-timeline")).toBeTruthy();
     expect(screen.getByTestId("calendar-view-month")).toBeTruthy();
-    expect(screen.getByTestId("calendar-view-week")).toBeTruthy();
-    expect(screen.getByTestId("calendar-view-day")).toBeTruthy();
+  });
+
+  it("titles the timeline by what it shows", () => {
+    render(<CalendarToolbar {...defaultProps} view="timeline" />);
+    expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Parrilla del día");
+  });
+
+  it("no longer offers the retired week and day views", () => {
+    render(<CalendarToolbar {...defaultProps} />);
+    expect(screen.queryByTestId("calendar-view-week")).toBeNull();
+    expect(screen.queryByTestId("calendar-view-day")).toBeNull();
   });
 
   it("sets aria-pressed='true' on the active view button", () => {
-    render(<CalendarToolbar {...defaultProps} view="week" />);
-    const weekBtn = screen.getByTestId("calendar-view-week");
-    expect(weekBtn.getAttribute("aria-pressed")).toBe("true");
+    render(<CalendarToolbar {...defaultProps} view="upcoming" />);
+    const upcomingBtn = screen.getByTestId("calendar-view-upcoming");
+    expect(upcomingBtn.getAttribute("aria-pressed")).toBe("true");
     const monthBtn = screen.getByTestId("calendar-view-month");
     expect(monthBtn.getAttribute("aria-pressed")).toBe("false");
   });
@@ -39,11 +49,11 @@ describe("CalendarToolbar", () => {
     const onViewChange = vi.fn();
     render(<CalendarToolbar {...defaultProps} onViewChange={onViewChange} />);
 
-    fireEvent.click(screen.getByTestId("calendar-view-week"));
-    expect(onViewChange).toHaveBeenCalledWith("week");
+    fireEvent.click(screen.getByTestId("calendar-view-upcoming"));
+    expect(onViewChange).toHaveBeenCalledWith("upcoming");
 
-    fireEvent.click(screen.getByTestId("calendar-view-day"));
-    expect(onViewChange).toHaveBeenCalledWith("day");
+    fireEvent.click(screen.getByTestId("calendar-view-month"));
+    expect(onViewChange).toHaveBeenCalledWith("month");
   });
 
   it("calls navigation callbacks when nav buttons are clicked", () => {
@@ -74,19 +84,9 @@ describe("CalendarToolbar", () => {
     expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Julio 2026");
   });
 
-  it("formats week view title correctly", () => {
-    render(<CalendarToolbar {...defaultProps} view="week" />);
-    // July 1 2026 is Wednesday; week range is Monday June 29 - Sunday July 5.
-    // The exact format depends on timezone; just verify it starts with "Semana del".
-    const title = screen.getByTestId("calendar-toolbar-title").textContent!;
-    expect(title).toMatch(/^Semana del \d+.*\d+/);
-  });
-
-  it("formats day view title correctly", () => {
-    render(<CalendarToolbar {...defaultProps} view="day" />);
-    const title = screen.getByTestId("calendar-toolbar-title").textContent!;
-    // July 1 2026 is Wednesday. Capitalized weekday + "1 Jul".
-    expect(title).toMatch(/^.+ 1 Jul$/);
+  it("titles the upcoming view by what it shows, not by a date range", () => {
+    render(<CalendarToolbar {...defaultProps} view="upcoming" />);
+    expect(screen.getByTestId("calendar-toolbar-title").textContent).toBe("Próximas salidas");
   });
 
   it("renders the view switcher as role='group' with name 'Vista de calendario'", () => {
@@ -113,5 +113,13 @@ describe("CalendarToolbar", () => {
     fireEvent.click(screen.getByTestId("calendar-filter-toggle"));
     fireEvent.click(screen.getByTestId("calendar-filter-all"));
     expect(onFilterChange).toHaveBeenCalledWith("all");
+  });
+
+  it("calls onRefresh when the refresh button is clicked", () => {
+    const onRefresh = vi.fn();
+    render(<CalendarToolbar {...defaultProps} onRefresh={onRefresh} />);
+
+    fireEvent.click(screen.getByTestId("calendar-refresh"));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

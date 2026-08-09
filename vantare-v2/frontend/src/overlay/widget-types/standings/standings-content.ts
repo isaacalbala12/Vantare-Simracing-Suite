@@ -19,9 +19,12 @@ export type StandingsMetricId =
   | "pit"
   | "tireCompound";
 
+export type StandingsClassScope = "player-class" | "all-classes";
+
 export type StandingsContent = {
   columns: WidgetColumnV3[];
   rowCount?: number;
+  classScope: StandingsClassScope;
 };
 
 export const STANDINGS_METRIC_IDS: readonly StandingsMetricId[] = [
@@ -137,6 +140,7 @@ export function createDefaultStandingsContent(): StandingsContent {
       ...(template.style ? { style: structuredClone(template.style) } : {}),
     })),
     rowCount: 20,
+    classScope: "player-class",
   };
 }
 
@@ -183,16 +187,21 @@ export function parseStandingsContent(input: unknown): StandingsContent {
   const defaults = createDefaultStandingsContent();
   const inputRecord = input as Record<string, unknown>;
 
-  // Parse rowCount first, before columns validation
+  // Parse rowCount
   const rowCount = inputRecord.rowCount;
   const parsedRowCount =
     typeof rowCount === "number" && STANDINGS_ROW_COUNT_OPTIONS.includes(rowCount as typeof STANDINGS_ROW_COUNT_OPTIONS[number])
       ? rowCount
       : defaults.rowCount;
 
+  // Parse classScope
+  const rawScope = inputRecord.classScope;
+  const classScope: StandingsClassScope =
+    rawScope === "all-classes" ? "all-classes" : "player-class";
+
   const rawColumns = inputRecord.columns;
   if (!Array.isArray(rawColumns)) {
-    return { ...defaults, rowCount: parsedRowCount };
+    return { ...defaults, rowCount: parsedRowCount, classScope };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -210,7 +219,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns, rowCount: parsedRowCount };
+  return { columns, rowCount: parsedRowCount, classScope };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {
@@ -219,6 +228,7 @@ export function getEnabledStandingsColumns(content: StandingsContent): WidgetCol
 
 export function toggleStandingsColumn(content: StandingsContent, columnId: string): StandingsContent {
   return {
+    ...content,
     columns: content.columns.map((column) =>
       column.id === columnId ? { ...column, enabled: !column.enabled } : column,
     ),
@@ -244,7 +254,7 @@ export function moveStandingsColumn(
     return content;
   }
   columns.splice(targetIndex, 0, entry);
-  return { columns };
+  return { ...content, columns };
 }
 
 export function updateStandingsColumn(
@@ -253,6 +263,7 @@ export function updateStandingsColumn(
   patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
 ): StandingsContent {
   return {
+    ...content,
     columns: content.columns.map((column) =>
       column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
     ),

@@ -51,6 +51,10 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     visual: { templateId: "delta-simple", showHeader: true },
     includesContent: false,
     origin: "vantare",
+    // Sustituido por delta-crystal-bar. Se conserva la entrada para que los
+    // perfiles guardados sigan resolviendo su diseno; migrateRetiredDesignId
+    // los reescribe al cargarlos.
+    retired: true,
   },
   {
     id: "standings-original-base",
@@ -227,6 +231,23 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "car-damage-numbers-original", name: "Original Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "car-damage-numbers-crystal", name: "Crystal Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "engineer-radio-crystal", name: "Crystal Engineer Radio", widgetType: "engineer-radio", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "delta-endurance-strip", name: "Endurance Strip", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-strip", showHeader: true }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "delta-endurance-block", name: "Endurance Block", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-block", showHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-tower", name: "Endurance Tower", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-tower", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-strip", name: "Endurance Strip", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-strip", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-f1", name: "Endurance F1", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-f1", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-wec", name: "Endurance WEC", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-wec", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-lmu", name: "Endurance LMU", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-lmu", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-racelabs", name: "Endurance Racelabs", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-racelabs", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-apex", name: "Endurance Apex", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-apex", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-neo", name: "Endurance Neo", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-neo", showSessionHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "standings-endurance-redline", name: "Endurance Redline", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-redline", showSessionHeader: true }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "relative-endurance-classic", name: "Endurance Classic", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-classic" }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "relative-endurance-minimal", name: "Endurance Minimal", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-minimal" }, includesContent: false, origin: "vantare" },
+  { id: "pedals-endurance", name: "Endurance Pedals", widgetType: "pedals", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...PEDALS_DEFAULT_APPEARANCE }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "relative-endurance-neo", name: "Endurance Neo", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-neo" }, includesContent: false, origin: "vantare" },
+  { id: "delta-endurance-neo", name: "Endurance Neo", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-neo", showHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "pedals-endurance-neo", name: "Endurance Neo", widgetType: "pedals", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...PEDALS_DEFAULT_APPEARANCE, templateId: "pedals-neo" }, includesContent: false, origin: "vantare" },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>
@@ -235,11 +256,34 @@ const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((desi
 
 const OFFICIAL_BY_ID = new Map(OFFICIAL_DESIGNS.map((design) => [design.id, design]));
 
+// El catalogo es lo que se ofrece: los retirados no aparecen. getOfficialDesign
+// si los resuelve, para que un perfil que aun los referencie no se quede sin
+// diseno mientras la migracion no lo haya reescrito.
 export function listOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
+  const offered = OFFICIAL_DESIGNS.filter((design) => design.retired !== true);
+  if (!widgetType) {
+    return offered;
+  }
+  return offered.filter((design) => design.widgetType === widgetType);
+}
+
+// Catalogo completo, retirados incluidos. Para comprobaciones de cobertura
+// -- que todo diseno de referencia siga teniendo entrada -- no para ofrecer.
+export function listAllOfficialDesigns(widgetType?: WidgetType): WidgetDesignV1[] {
   if (!widgetType) {
     return [...OFFICIAL_DESIGNS];
   }
   return OFFICIAL_DESIGNS.filter((design) => design.widgetType === widgetType);
+}
+
+// Diseno retirado -> sustituto vigente. Al cargar un perfil, un id retirado se
+// reescribe aqui para que el usuario no vea una variante que ya no ofrecemos.
+const RETIRED_DESIGN_REPLACEMENTS: Readonly<Record<string, string>> = {
+  "delta-crystal-simple": "delta-crystal-bar",
+};
+
+export function migrateRetiredDesignId(designId: string): string {
+  return RETIRED_DESIGN_REPLACEMENTS[designId] ?? designId;
 }
 
 export function getOfficialDesign(id: string): WidgetDesignV1 | undefined {

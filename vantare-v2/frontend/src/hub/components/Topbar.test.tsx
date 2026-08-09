@@ -24,6 +24,12 @@ vi.mock("../../lib/access", () => ({
   useAccess: () => mockUseAccess(),
 }));
 
+const mockLicense = vi.fn(() => ({ result: null as { email?: string } | null }));
+
+vi.mock("../../lib/license", () => ({
+  useLicense: () => mockLicense(),
+}));
+
 describe("Topbar source status", () => {
   it("shows 'Fuente pendiente' when no source status is provided", () => {
     render(
@@ -128,6 +134,16 @@ describe("Topbar user display", () => {
 });
 
 describe("Topbar v5.2 navigation", () => {
+  it("hides Testing Center without a signed build channel", () => {
+    render(<Topbar activeSection="dashboard" onNavigate={vi.fn()} />);
+    expect(screen.queryByTestId("topbar-nav-testing-center")).toBeNull();
+  });
+
+  it("shows Testing Center only for an authorized nightly/testers channel", () => {
+    render(<Topbar activeSection="dashboard" onNavigate={vi.fn()} testingCenterChannel="nightly" />);
+    expect(screen.getByTestId("topbar-nav-testing-center")).toBeTruthy();
+  });
+
   it("renders Launcher in the top navigation", () => {
     render(
       <Topbar
@@ -339,4 +355,41 @@ describe("Topbar gated navigation", () => {
     expect(onNavigate).toHaveBeenCalledWith("dashboard");
   });
 
+});
+
+
+// The avatar looked like a button and behaved like a decoration: a plain div
+// with no handler and a hardcoded initial for everyone.
+describe("Topbar account button", () => {
+  it("goes to Ajustes when clicked", () => {
+    const onNavigate = vi.fn();
+    render(
+      <Topbar activeSection="dashboard" onNavigate={onNavigate} version="v0.1.0.2" />,
+    );
+
+    fireEvent.click(screen.getByTestId("topbar-account"));
+
+    expect(onNavigate).toHaveBeenCalledWith("setup");
+  });
+
+  it("shows the initial of the signed-in account", () => {
+    mockLicense.mockReturnValueOnce({ result: { email: "isaac@example.com" } });
+    render(
+      <Topbar activeSection="dashboard" onNavigate={vi.fn()} version="v0.1.0.2" />,
+    );
+
+    const account = screen.getByTestId("topbar-account");
+    expect(account.textContent).toBe("I");
+    expect(account.getAttribute("aria-label")).toBe("Cuenta: isaac@example.com");
+  });
+
+  it("falls back to a neutral initial when nobody is signed in", () => {
+    render(
+      <Topbar activeSection="dashboard" onNavigate={vi.fn()} version="v0.1.0.2" />,
+    );
+
+    const account = screen.getByTestId("topbar-account");
+    expect(account.textContent).toBe("U");
+    expect(account.getAttribute("aria-label")).toBe("Cuenta");
+  });
 });

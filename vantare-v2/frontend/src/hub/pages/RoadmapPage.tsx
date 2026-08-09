@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccess } from "../../lib/access";
 import { canUseFeature } from "../../lib/access-policy";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -9,26 +9,23 @@ import {
   getOverallProgress,
   getCurrentPhase,
   fetchRoadmapDataset,
+  indexProjectProgress,
+  resolveAreaProgress,
   ROADMAP_FALLBACK,
   type RoadmapDataset,
   type RoadmapStatus,
   type RoadmapFeedbackType,
   type RoadmapFeedbackDestination,
 } from "../roadmap/roadmap-data";
-import {
-  getActiveSections,
-  featurePercent,
-  STATUS_META,
-  TIPO_META,
-  type ActiveSections,
-  type RoadmapCategory,
-} from "../roadmap/roadmap-features";
 import { pickText } from "../roadmap/roadmap-data";
-import type { RoadmapFeature } from "../roadmap/features-data";
+import { RoadmapProjectTabs } from "../roadmap/RoadmapProjectTabs";
+import { fetchRoadmapProjectsDataset } from "../roadmap/projects-data";
 
 const STATUS_COLORS = {
   active: "text-vantare-red-400 border-vantare-red-500/30 bg-vantare-red-500/10",
 };
+
+const ROADMAP_VIEW_KEYS = ["current", "next"] as const;
 
 const MILESTONE_TYPE_COLORS: Record<string, string> = {
   release: "text-green-400 border-green-500/30 bg-green-500/10",
@@ -159,274 +156,62 @@ function RoadmapFeedback({ t }: { t: (key: string) => string }) {
   );
 }
 
-type FeaturesSectionProps = {
-  t: (key: string) => string;
-  locale: string;
-  sections: ActiveSections;
-  overallProgress: number;
-};
-
-function FeatureCard({
-  locale,
-  feat,
-}: {
-  locale: string;
-  feat: RoadmapFeature;
-}) {
-  const tipo = TIPO_META[feat.tipo] ?? TIPO_META.feature;
-  const status = STATUS_META[feat.status] ?? STATUS_META.future;
-  const pct = featurePercent(feat);
-  return (
-    <article
-      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-300 border ${
-        feat.status === "future"
-          ? "bg-[rgba(20,20,20,.35)] border-white/5 opacity-70"
-          : "border-vantare-red-500/50 bg-gradient-to-b from-vantare-red-500/10 to-vantare-red-500/5"
-      }`}
-      data-testid={`feature-card-${feat.id}`}
-      data-status={feat.status}
-    >
-      <div className="flex items-center gap-2">
-        <span className={`text-[10px] ${tipo.color}`}>
-          {tipo.icon} {tipo.label}
-        </span>
-        <span
-          className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-[.22em] ${
-            feat.status === "future"
-              ? "text-vantare-textDim border border-white/10 bg-white/5"
-              : "text-vantare-red-400 border border-vantare-red-500/30 bg-vantare-red-500/10"
-          }`}
-        >
-          {status.label}
-        </span>
-      </div>
-      <h3 className="font-bold text-sm text-white tracking-tight leading-tight">
-        {pickText(feat.label, locale)}
-      </h3>
-      {pickText(feat.description, locale) && (
-        <p className="text-[11px] text-vantare-textMuted leading-relaxed">
-          {pickText(feat.description, locale)}
-        </p>
-      )}
-      {/* Subtasks */}
-      <div className="flex flex-col gap-1 mt-auto pt-2 border-t border-white/5">
-        {feat.subtasks.map((st, i) => (
-          <label
-            key={i}
-            className="flex items-center gap-2 text-[11px] text-vantare-textMuted select-none"
-          >
-            <span
-              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                st.done
-                  ? "bg-vantare-red-500 border-vantare-red-500"
-                  : "border-white/20 bg-white/5"
-              }`}
-            >
-              {st.done && (
-                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </span>
-            <span className={st.done ? "line-through opacity-50" : ""}>
-              {pickText(st.label, locale)}
-            </span>
-          </label>
-        ))}
-      </div>
-      {/* Progress bar + percentage */}
-      <div className="flex items-center gap-3 mt-1">
-        <div className="flex-1">
-          <ProgressBar value={pct} />
-        </div>
-        <span className="text-[10px] font-mono font-bold text-vantare-red-400 shrink-0">
-          {pct}%
-        </span>
-      </div>
-    </article>
-  );
-}
-
-function SectionBlock({
-  locale,
-  title,
-  categories,
-}: {
-  locale: string;
-  title: string;
-  categories: ReadonlyArray<RoadmapCategory>;
-}) {
-  if (categories.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3">
-        <span className="v52-eyebrow">{title}</span>
-      </div>
-      {categories.map((cat) => (
-        <section key={cat.id}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <span className="v52-eyebrow text-vantare-textMuted">
-                {pickText(cat.label, locale)}
-              </span>
-              <span className="text-[10px] font-mono font-bold text-vantare-textDim px-2 py-0.5 rounded bg-white/5">
-                {cat.features.length}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-24">
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, cat.percent))}%`,
-                      background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
-                    }}
-                  />
-                </div>
-              </div>
-              <span className="text-sm font-bold text-vantare-red-400">
-                {cat.percent}%
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {cat.features.map((feat) => (
-              <FeatureCard
-                key={feat.id}
-                locale={locale}
-                feat={feat}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function FeaturesSection({ t, locale, sections, overallProgress }: FeaturesSectionProps) {
-  const inDevCount = sections.inDevelopment.reduce(
-    (s, c) => s + c.features.length,
-    0,
-  );
-  const researchCount = sections.research.reduce(
-    (s, c) => s + c.features.length,
-    0,
-  );
-  const futureCount = sections.future.reduce(
-    (s, c) => s + c.features.length,
-    0,
-  );
-  const totalCats =
-    sections.inDevelopment.length +
-    sections.research.length +
-    sections.future.length;
-
-  return (
-    <div className="flex flex-col gap-5 opacity-0 animate-fade-in-up delay-100">
-      <section className="glass-panel rounded-xl p-6">
-        <div className="flex items-end justify-between mb-2">
-          <span className="v52-eyebrow">{t("roadmap.features.eyebrow")}</span>
-          <span
-            className="text-3xl font-bold text-vantare-red-400"
-            style={{ textShadow: "0 0 20px rgba(255,59,59,.3)" }}
-          >
-            {overallProgress}%
-          </span>
-        </div>
-        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${Math.min(100, Math.max(0, overallProgress))}%`,
-              background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)",
-              boxShadow: "0 0 12px rgba(255,59,59,.4)",
-            }}
-          />
-        </div>
-        <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-vantare-textDim">
-          <span>
-            {inDevCount} en desarrollo · {researchCount} en investigación ·{" "}
-            {futureCount} próximas
-          </span>
-          <span>{totalCats} áreas</span>
-        </div>
-      </section>
-
-      <SectionBlock
-        locale={locale}
-        title={STATUS_META["in-development"].label}
-        categories={sections.inDevelopment}
-      />
-
-      <SectionBlock
-        locale={locale}
-        title={STATUS_META.research.label}
-        categories={sections.research}
-      />
-
-      <SectionBlock
-        locale={locale}
-        title={STATUS_META.future.label}
-        categories={sections.future}
-      />
-    </div>
-  );
-}
-
 export function RoadmapPage() {
   const { t, locale } = useI18n();
   const access = useAccess();
   const canGiveFeedback = canUseFeature(access, "roadmap.feedback");
   const [activeKey, setActiveKey] = useState<"current" | "next">("current");
+  const viewTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [dataset, setDataset] = useState<RoadmapDataset>(ROADMAP_FALLBACK);
+  // Area percentages are counted from the projects snapshot rather than kept
+  // by hand, so the two views of this page cannot disagree. Until it loads,
+  // areas fall back to their declared figure.
+  const [projectProgress, setProjectProgress] = useState<ReadonlyMap<
+    string,
+    { done: number; total: number }
+  > | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     fetchRoadmapDataset(controller.signal).then(setDataset).catch(() => {});
+    fetchRoadmapProjectsDataset(controller.signal)
+      .then((result) => setProjectProgress(indexProjectProgress(result.dataset)))
+      .catch(() => {});
     return () => controller.abort();
   }, []);
 
   const currentPhase = getCurrentPhase(dataset.phases);
-  const overallProgress = getOverallProgress(dataset.areas);
+  const overallProgress = getOverallProgress(dataset.areas, projectProgress);
   const allPhasesDoneOrActive = dataset.phases.filter(
     (p) => p.status === "done" || p.status === "in-progress",
   ).length;
   const trackWidth = (allPhasesDoneOrActive / dataset.phases.length) * 100;
-  // Estado inicial síncrono con FEATURES_FALLBACK (consistente con roadmap-data.ts).
-  const [sections, setSections] = useState<ActiveSections>(() => ({
-    inDevelopment: [],
-    research: [],
-    future: [],
-  }));
-  const [featureOverallProgress, setFeatureOverallProgress] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    getActiveSections()
-      .then((result) => {
-        if (cancelled) return;
-        setSections(result.sections);
-        setFeatureOverallProgress(result.overallProgress);
-      })
-      .catch(() => {
-        if (cancelled) return;
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  const selectView = (index: number, moveFocus = false) => {
+    const wrapped = (index + ROADMAP_VIEW_KEYS.length) % ROADMAP_VIEW_KEYS.length;
+    setActiveKey(ROADMAP_VIEW_KEYS[wrapped]);
+    if (moveFocus) viewTabRefs.current[wrapped]?.focus();
+  };
   return (
     <div className="flex flex-col gap-5">
       {/* Dataset toggle */}
-      <div className="flex items-center gap-2">
-        {(["current", "next"] as const).map((key) => (
+      <div role="tablist" aria-label={t("roadmap.tabs.label")} className="flex items-center gap-2">
+        {ROADMAP_VIEW_KEYS.map((key, index) => (
           <button
+            ref={(node) => { viewTabRefs.current[index] = node; }}
             key={key}
+            id={`roadmap-tab-${key}`}
             type="button"
-            onClick={() => setActiveKey(key)}
+            role="tab"
+            aria-selected={activeKey === key}
+            aria-controls={`roadmap-panel-${key}`}
+            tabIndex={activeKey === key ? 0 : -1}
+            onClick={() => selectView(index)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight") { event.preventDefault(); selectView(index + 1, true); }
+              if (event.key === "ArrowLeft") { event.preventDefault(); selectView(index - 1, true); }
+              if (event.key === "Home") { event.preventDefault(); selectView(0, true); }
+              if (event.key === "End") { event.preventDefault(); selectView(ROADMAP_VIEW_KEYS.length - 1, true); }
+            }}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-[.18em] transition-colors ${
               activeKey === key
                 ? "bg-gradient-to-br from-vantare-red-500 to-[#9a0606] text-white border border-white/10"
@@ -481,7 +266,7 @@ export function RoadmapPage() {
       </div>
 
       {activeKey === "current" && (
-        <>
+        <div id="roadmap-panel-current" role="tabpanel" aria-labelledby="roadmap-tab-current" className="flex flex-col gap-5">
           {/* Current phase highlight */}
           {currentPhase && (
             <section className="relative rounded-xl overflow-hidden border border-vantare-red-500/30 opacity-0 animate-fade-in-up delay-75">
@@ -596,17 +381,20 @@ export function RoadmapPage() {
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-white/5 space-y-2.5">
-                {dataset.areas.map((area) => (
-                  <div key={area.id}>
-                    <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-vantare-textMuted">{pickText(area.title, locale)}</span>
-                      <span className="font-mono font-bold text-white">{area.progress}%</span>
+                {dataset.areas.map((area) => {
+                  const progress = resolveAreaProgress(area, projectProgress);
+                  return (
+                    <div key={area.id}>
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="text-vantare-textMuted">{pickText(area.title, locale)}</span>
+                        <span className="font-mono font-bold text-white">{progress}%</span>
+                      </div>
+                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, area.progress))}%`, background: "linear-gradient(90deg,#ff3b3b,#ff4d4d)" }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
             <section className="glass-panel rounded-xl p-5 lg:col-span-2">
@@ -646,17 +434,14 @@ export function RoadmapPage() {
               </div>
             </section>
           </div>
-        </>
+        </div>
       )}
 
-      {/* Features by area (next tab) */}
+      {/* Public projects by tab (next tab) */}
       {activeKey === "next" && (
-        <FeaturesSection
-          t={t}
-          locale={locale}
-          sections={sections}
-          overallProgress={featureOverallProgress}
-        />
+        <div id="roadmap-panel-next" role="tabpanel" aria-labelledby="roadmap-tab-next">
+          <RoadmapProjectTabs t={t} locale={locale} />
+        </div>
       )}
 
       {/* Feedback / Voting */}

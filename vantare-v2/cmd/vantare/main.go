@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,40 +29,55 @@ import (
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/license"
+	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
+	"github.com/vantare/overlays/v2/internal/startup"
+	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 // version is the current application version.
-var version = "v0.1.0.5"
+var version = "v0.1.0.7"
+
+// buildChannel is injected by release builds. Local and public builds fail
+// closed as master so the internal Testing Center cannot appear accidentally.
+var buildChannel = "master"
 
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
 
-// supabaseURL and supabaseAnonKey are injected at build time via ldflags
-// (-X main.supabaseURL=... -X main.supabaseAnonKey=...) so the release build
-// can validate OAuth tokens without requiring end users to set environment
-// variables. They are public values (the Supabase anon key is designed to be
-// shipped in client apps). Runtime env vars VANTARE_SUPABASE_URL /
-// VANTARE_SUPABASE_ANON_KEY still take precedence for development and
-// overrides.
+// Public Supabase configuration and license verification keys are injected by
+// the generated supabase_build.go source so values never become Task cache file
+// names. They are public client configuration, not server-side secrets. Runtime
+// VANTARE_* environment variables still take precedence for development.
 var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
 )
+
+func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
+	if channel != "nightly" && channel != "testers" {
+		return "Vantare/LicenseClock", "Vantare/SupabaseAuth"
+	}
+	digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(backendURL))))
+	scope := fmt.Sprintf("Vantare/%s/%x", channel, digest[:8])
+	return scope + "/LicenseClock", scope + "/SupabaseAuth"
+}
 
 // reorderArgs moves flag arguments to the front of os.Args so flag.Parse() can
 // see them even when the user types `vantare serve -live -profile foo.json`.
@@ -304,6 +320,73 @@ func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
 	default:
 		return "The manual Strategy request could not be completed.", false
 	}
+}
+
+// wailsNotifier adapts the Wails notifications service to notify.Backend. The
+// browser Notification API is not wired up in WebView2, so this is the only
+// route that can actually reach the desktop.
+type wailsNotifier struct {
+	service *notifications.NotificationService
+}
+
+func (n wailsNotifier) RequestAuthorization() (bool, error) {
+	return n.service.RequestNotificationAuthorization()
+}
+
+func (n wailsNotifier) Authorized() (bool, error) {
+	return n.service.CheckNotificationAuthorization()
+}
+
+func (n wailsNotifier) Send(title, body string) error {
+	return n.service.SendNotification(notifications.NotificationOptions{
+		ID:    fmt.Sprintf("vantare-%d", time.Now().UnixNano()),
+		Title: title,
+		Body:  body,
+	})
+}
+
+// notifyingEmitter watches launch chains going past on their way to the
+// frontend and raises a desktop notification when one finishes. It sits here,
+// not in the launcher package, so that package keeps knowing nothing about
+// notifications.
+type notifyingEmitter struct {
+	downstream app.EventEmitter
+	notify     *notify.Service
+	settings   *app.SettingsService
+}
+
+func (e notifyingEmitter) Emit(name string, data any) {
+	e.downstream.Emit(name, data)
+	if name != "launcher:chain:done" {
+		return
+	}
+	progress, ok := data.(launcher.ChainProgress)
+	if !ok {
+		return
+	}
+	// Sent on its own goroutine: raising a toast is a platform call, and the
+	// launch chain must not wait on it.
+	go func() {
+		if _, err := e.notify.LaunchFinished(
+			launchProfileName(e.settings, progress.ProfileID),
+			progress.Success,
+		); err != nil {
+			log.Printf("notification for %s failed: %v", progress.ProfileID, err)
+		}
+	}()
+}
+
+// launchProfileName prefers the name the user gave a profile, falling back to
+// its id so a notification is never about "".
+func launchProfileName(settings *app.SettingsService, profileID string) string {
+	if settings != nil {
+		for _, profile := range settings.Settings().LauncherProfiles {
+			if profile.ID == profileID && strings.TrimSpace(profile.Name) != "" {
+				return profile.Name
+			}
+		}
+	}
+	return profileID
 }
 
 type wailsEmitter struct {
@@ -782,7 +865,10 @@ func main() {
 	var engSvc *engineerservice.EngineerService
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
+	var notifySvc *notify.Service
 	var diagnosticsBridge *app.DiagnosticsBridge
+	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
+	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -844,6 +930,12 @@ func main() {
 				{name: "diagnostics", stop: func(context.Context) error {
 					if diagnosticsBridge != nil {
 						diagnosticsBridge.Close()
+					}
+					return nil
+				}},
+				{name: "testing-center-report-draft", stop: func(context.Context) error {
+					if testingCenterReportDraftBridge != nil {
+						testingCenterReportDraftBridge.Close()
 					}
 					return nil
 				}},
@@ -968,11 +1060,68 @@ func main() {
 		MinHeight:      600,
 	})
 	hubW.Show()
+	// Show first, then minimise: on Windows a window has to exist on screen
+	// before it can be minimised. Launched at sign-in with this flag, Vantare
+	// stays out of the way until the user asks for it.
+	if startup.WantsMinimised(os.Args) {
+		hubW.Minimise()
+	}
 
 	requestQuit := func(_ *application.WindowEvent) {
 		go wailsApp.Quit()
 	}
 	hubW.RegisterHook(events.Common.WindowClosing, requestQuit)
+
+	// Desktop notifications. Wails talks to the platform -- Windows toasts --
+	// which is the only route that works: the browser Notification API is not
+	// wired up inside WebView2, so an earlier attempt through it could never
+	// deliver anything.
+	notificationService := notifications.New()
+	wailsApp.RegisterService(application.NewService(notificationService))
+	// notifySvc itself is built further down, once the settings service exists
+	// to answer whether the user wants these. Every method on it tolerates a
+	// nil receiver, so a status request that arrives first is answered with an
+	// honest "not supported yet" rather than a crash.
+	emitNotificationStatus := func() {
+		authorized, err := notifySvc.Authorized()
+		if err != nil {
+			log.Printf("notification authorization check failed: %v", err)
+		}
+		emitter.Emit("notifications:status", map[string]any{
+			"supported":  notifySvc.Supported(),
+			"authorized": authorized,
+		})
+	}
+
+	wailsApp.Event.On("notifications:status:get", func(_ *application.CustomEvent) {
+		emitNotificationStatus()
+	})
+
+	wailsApp.Event.On("notifications:authorize", func(_ *application.CustomEvent) {
+		// On Windows there is nothing to ask: the platform notifier answers yes
+		// unconditionally, because per-app permission is a browser concept and
+		// not a Windows one. Kept so a platform that does prompt can, and so
+		// the answer always comes back from the platform rather than from us.
+		if _, err := notifySvc.RequestAuthorization(); err != nil {
+			log.Printf("notification authorization request failed: %v", err)
+		}
+		emitNotificationStatus()
+	})
+
+	// "Notifications do not work" is not something a user can diagnose, and the
+	// logs do not answer it either: Windows drops toasts silently for reasons
+	// of its own -- Focus Assist, an unregistered app id, notifications off in
+	// system settings. This turns that into either a toast they can see or an
+	// error they can read.
+	wailsApp.Event.On("notifications:test", func(_ *application.CustomEvent) {
+		err := notifySvc.SendTest()
+		payload := map[string]any{"ok": err == nil}
+		if err != nil {
+			log.Printf("test notification failed: %v", err)
+			payload["message"] = err.Error()
+		}
+		emitter.Emit("notifications:test:result", payload)
+	})
 
 	// Register profile service with Wails (frontend can call methods)
 	wailsApp.RegisterService(application.NewService(profileSvc))
@@ -1005,6 +1154,10 @@ func main() {
 		licensePublicKeys,
 		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
 	)
+	licenseClockTarget, authSessionTarget := protectedStoreTargets(
+		buildChannel,
+		supabaseURLResolved,
+	)
 	licenseSvc := license.NewService(license.Config{
 		SupabaseURL:     supabaseURLResolved,
 		SupabaseAnonKey: supabaseAnonKeyResolved,
@@ -1019,7 +1172,7 @@ func main() {
 	} else {
 		licenseSvc.WithVerifier(license.NewCredentialVerifier(
 			publicKeys,
-			license.NewProtectedClockStore("Vantare/LicenseClock"),
+			license.NewProtectedClockStore(licenseClockTarget),
 		))
 	}
 	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
@@ -1030,12 +1183,28 @@ func main() {
 	if err := licenseSvc.LoadCache(); err != nil {
 		log.Printf("warning: could not load license cache: %v", err)
 	}
+	// Publica el estado cacheado en cuanto haya un suscriptor, para que el Hub
+	// pinte sin esperar a la validacion de red. Sin esto, LoadCache cargaba la
+	// cache y nadie la usaba: el frontend se quedaba en "Cargando licencia..."
+	// uno a tres segundos en cada arranque.
+	wailsApp.Event.On("license:cached:get", func(_ *application.CustomEvent) {
+		licenseSvc.EmitCachedState()
+	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
-	authManager := authsession.NewManager(authsession.NewStore("Vantare/SupabaseAuth"))
+	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
 	// by running Validate and re-emitting license:changed.
+	// Deduplica validaciones concurrentes con el mismo token. El frontend las
+	// emite en rafaga desde varios sitios -- se han observado cuatro seguidas en
+	// un solo arranque -- y cada una era una llamada de red a Supabase
+	// redundante. Quien llega tarde no se queda sin respuesta: EmitChanged es un
+	// broadcast, asi que recibe el resultado de la validacion en curso.
+	var (
+		licenseValidateMu       sync.Mutex
+		licenseValidateInFlight = map[string]bool{}
+	)
 	wailsApp.Event.On("license:validate", func(event *application.CustomEvent) {
 		var payload struct {
 			SessionToken string `json:"sessionToken"`
@@ -1051,6 +1220,19 @@ func main() {
 		// race with the frontend state machine.
 		log.Printf("license:validate request tokenLen=%d refreshLen=%d",
 			len(payload.SessionToken), len(payload.RefreshToken))
+		licenseValidateMu.Lock()
+		if licenseValidateInFlight[payload.SessionToken] {
+			licenseValidateMu.Unlock()
+			log.Printf("license:validate coalesced into the in-flight request")
+			return
+		}
+		licenseValidateInFlight[payload.SessionToken] = true
+		licenseValidateMu.Unlock()
+		defer func() {
+			licenseValidateMu.Lock()
+			delete(licenseValidateInFlight, payload.SessionToken)
+			licenseValidateMu.Unlock()
+		}()
 		trustedSessionToken := ""
 		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
 			trustedSessionToken = protectedSession.AccessToken
@@ -1125,6 +1307,11 @@ func main() {
 			})
 			return
 		}
+		// Signing out is the one conclusive way to stop being someone. The
+		// license service now ignores tokenless anonymous results, precisely so
+		// a launch cannot demote an owner, so it has to be told explicitly here
+		// or the capabilities of the account that just left would outlive it.
+		licenseSvc.ClearCurrent()
 		emitter.Emit("auth:session:clear:result", map[string]any{
 			"requestId": payload.RequestID, "ok": true,
 		})
@@ -1247,6 +1434,31 @@ func main() {
 		return telemetryCoreRuntime.SourceStatus()
 	}
 
+	// DriverManager no registra ninguna transicion, asi que un fallo de conexion
+	// solo era observable desde fuera como "no llega telemetria": el unico
+	// rastro en el log era la foto que se toma justo despues de Start, tomada
+	// antes de que la deteccion termine. Este decorador escribe una linea por
+	// cada cambio de estado o de intento, que es lo minimo para distinguir un
+	// reintento en curso de un error terminal. El sampler ya lo invoca de forma
+	// periodica; se llama desde varias goroutines, de ahi el mutex.
+	telemetrySourceStatus = func(next func() driver.SourceStatus) func() driver.SourceStatus {
+		var mu sync.Mutex
+		var lastState string
+		var lastAttempt int
+		var seen bool
+		return func() driver.SourceStatus {
+			status := next()
+			mu.Lock()
+			if !seen || status.State != lastState || status.ReconnectAttempt != lastAttempt {
+				seen, lastState, lastAttempt = true, status.State, status.ReconnectAttempt
+				log.Printf("telemetry source: state=%s available=%v reconnectAttempt=%d",
+					status.State, status.Available, status.ReconnectAttempt)
+			}
+			mu.Unlock()
+			return status
+		}
+	}(telemetrySourceStatus)
+
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
 		Addr:        *httpAddr,
@@ -1288,6 +1500,13 @@ func main() {
 	// App settings service (delta mode, hotkeys, cpu sampling toggle)
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
 	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	notifySvc = notify.New(
+		wailsNotifier{service: notificationService},
+		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
+		// A toast is for what you are not watching. Minimised is the honest
+		// signal the window layer can give us.
+		func() bool { return hubW.IsMinimised() },
+	)
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
@@ -1318,6 +1537,29 @@ func main() {
 		log.Printf("warning: could not apply official schedule: %v (using existing calendar)", err)
 	}
 
+	// The owner publishes the weekly schedule centrally, so ask for it once at
+	// startup. It happens in the background: a slow or unreachable Supabase must
+	// not hold up the window, and the bundled schedule applied just above is
+	// already good enough to open with.
+	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
+	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
+	refreshPublishedSchedule := func() {
+		session, err := authManager.Restore()
+		if err != nil {
+			// Signed out: the bundled schedule is the only one available.
+			return
+		}
+		source, err := calendarSvc.RefreshPublishedSchedule(
+			context.Background(), schedulePublisher, session.AccessToken, time.Now(),
+		)
+		if err != nil {
+			log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
+			return
+		}
+		app.HandleCalendarGet(calendarSvc, emitter)
+	}
+	go refreshPublishedSchedule()
+
 	// Reminder loop (CALENDAR-02-C2-B): polls DueReminders every 30s and
 	// emits calendar:reminder for each new (eventId, minutesLeft) pair.
 	const calendarReminderInterval = 30 * time.Second
@@ -1340,7 +1582,13 @@ func main() {
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No
 	// process supervision, no multi-sim, no Linux/Proton yet.
-	launcherSvc = launcher.NewService(settingsSvc, emitter, exec.Command)
+	// The launcher emits through this, so a finished chain can raise a desktop
+	// toast without the launcher package knowing anything about notifications.
+	launcherSvc = launcher.NewService(
+		settingsSvc,
+		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
+		exec.Command,
+	)
 
 	// Wire settings service into hub service for active profile persistence.
 	hubSvc.SetSettingsService(settingsSvc)
@@ -1370,6 +1618,67 @@ func main() {
 	}
 	diagnosticsBridge = app.NewDiagnosticsBridge(ctx, sessionsRoot, diagSvc, emitter)
 	diagnosticsBridge.RegisterHandlers(wailsApp)
+
+	// Local data. The service is handed the two directories resolved here and
+	// answers only for those: the frontend sends a location key, never a path,
+	// so nothing else on the disk is reachable through these events.
+	storageSvc := storage.New(cfgDir, sessionsRoot)
+
+	emitStorage := func() {
+		emitter.Emit("storage", storageSvc.Summary())
+	}
+	emitStorageError := func(err error) {
+		log.Printf("storage error: %v", err)
+		emitter.Emit("storage:error", map[string]any{"message": err.Error()})
+	}
+
+	wailsApp.Event.On("storage:get", func(event *application.CustomEvent) {
+		emitStorage()
+	})
+
+	storageKey := func(data any) string {
+		var payload struct {
+			Key string `json:"key"`
+		}
+		if data != nil {
+			if raw, err := json.Marshal(data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		return payload.Key
+	}
+
+	wailsApp.Event.On("storage:reveal", func(event *application.CustomEvent) {
+		if err := storageSvc.Reveal(storageKey(event.Data)); err != nil {
+			emitStorageError(err)
+		}
+	})
+
+	wailsApp.Event.On("storage:clear", func(event *application.CustomEvent) {
+		summary, err := storageSvc.Clear(storageKey(event.Data))
+		if err != nil {
+			emitStorageError(err)
+		}
+		// Emit the summary either way: after a refusal the UI has to go back to
+		// showing what is really on disk.
+		emitter.Emit("storage", summary)
+	})
+
+	// Testing Center report drafts persist only resumable form text. The path is
+	// selected here; frontend events can never provide filesystem locations.
+	var reportDraftStore *reportdraft.Store
+	if cfgDir != "" {
+		reportDraftPath := filepath.Clean(filepath.Join(cfgDir, reportdraft.DirectoryName, reportdraft.FileName))
+		if store, storeErr := reportdraft.NewStore(reportDraftPath); storeErr == nil {
+			reportDraftStore = store
+		} else {
+			log.Printf("warning: Testing Center report draft storage is unavailable")
+		}
+	}
+	testingCenterReportDraftBridge = app.NewTestingCenterReportDraftBridge(ctx, reportDraftStore, emitter)
+	testingCenterReportDraftBridge.RegisterHandlers(wailsApp)
+	testingCenterDiagnosticBridge = app.NewTestingCenterDiagnosticBridge(version, buildChannel, emitter)
+	testingCenterDiagnosticBridge.RegisterHandlers(wailsApp)
 
 	// Set profiles directory for legacy hub listing and V3 runtime cycling.
 	profileSvc.SetProfilesDir(cfgDir)
@@ -1410,15 +1719,39 @@ func main() {
 	}
 
 	// Version info broadcast for UI.
-	emitter.Emit("app:version", map[string]any{"version": version})
+	emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 
 	wailsApp.Event.On("app:version:get", func(event *application.CustomEvent) {
-		emitter.Emit("app:version", map[string]any{"version": version})
+		emitter.Emit("app:version", map[string]any{"version": version, "buildChannel": app.TestingCenterBuildChannel(buildChannel)})
 	})
 
 	wailsApp.Event.On(telemetrySourceStatusRequestEvent, func(event *application.CustomEvent) {
 		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
+
+	// Mismo patron para el transporte de overlays. Sin esto, una ventana abierta
+	// a mitad de sesion no recibe estado -- solo se publica cuando cambia -- y el
+	// observador se queda esperando indefinidamente con el widget en blanco.
+	wailsApp.Event.On(
+		telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay),
+		func(event *application.CustomEvent) {
+			if telemetryCoreRuntime == nil {
+				return
+			}
+			hub := telemetryCoreRuntime.Hub()
+			if hub == nil {
+				return
+			}
+			replay, ok, err := hub.ReplayStatus()
+			if err != nil {
+				log.Printf("overlay status replay error: %v", err)
+				return
+			}
+			if !ok {
+				return
+			}
+			emitter.Emit(telemetrytransport.EventName(replay.Product, replay.Kind), replay.Data)
+		})
 
 	if updaterSvc != nil {
 		emitUpdaterError := func(message string) {
@@ -1553,6 +1886,39 @@ func main() {
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
+	})
+
+	// Autostart lives in the Windows Run key and nowhere else. Keeping a copy
+	// in app-settings would let the two disagree the moment the user turns it
+	// off from Task Manager, and the settings page would then report a lie.
+	emitStartup := func() {
+		options, err := startup.Read()
+		if err != nil {
+			log.Printf("startup:get error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("startup", options)
+	}
+
+	wailsApp.Event.On("startup:get", func(event *application.CustomEvent) {
+		emitStartup()
+	})
+
+	wailsApp.Event.On("startup:set", func(event *application.CustomEvent) {
+		var options startup.Options
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &options)
+			}
+		}
+		if err := startup.Apply(options); err != nil {
+			log.Printf("startup:set error: %v", err)
+			emitter.Emit("startup:error", map[string]any{"message": err.Error()})
+		}
+		// Re-read either way: the registry, not the request, is the truth, and
+		// after a failure the UI has to go back to showing what is really set.
+		emitStartup()
 	})
 
 	emitHubError := func(message string) {
@@ -1710,6 +2076,10 @@ func main() {
 		}
 		overlayRunning.Store(status.Running)
 		resetOverlayDisplayMode(overlayController, studioProfileSvc)
+	})
+
+	wailsApp.Event.On("overlay:profile-v3:get", func(_ *application.CustomEvent) {
+		handleOverlayProfileSnapshotRequest(studioProfileSvc)
 	})
 
 	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {
@@ -2085,6 +2455,58 @@ func main() {
 		app.HandleCalendarGet(calendarSvc, emitter)
 	})
 
+	// Owner-only schedule publishing. The parse runs locally so the owner sees
+	// what was understood before anything is stored; the database enforces who
+	// may store it.
+	wailsApp.Event.On("calendar:schedule:refresh", func(_ *application.CustomEvent) {
+		go refreshPublishedSchedule()
+	})
+
+	wailsApp.Event.On("schedule:parse", func(event *application.CustomEvent) {
+		var payload struct {
+			Text string `json:"text"`
+		}
+		decodeEventPayload(event, &payload)
+		scheduleImportSvc.Parse(payload.Text)
+	})
+
+	wailsApp.Event.On("schedule:draft:save", func(event *application.CustomEvent) {
+		var payload struct {
+			Text string `json:"text"`
+		}
+		decodeEventPayload(event, &payload)
+		session, err := authManager.Restore()
+		if err != nil {
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario"})
+			return
+		}
+		go scheduleImportSvc.SaveDraft(context.Background(), session.AccessToken, payload.Text)
+	})
+
+	wailsApp.Event.On("schedule:publish", func(event *application.CustomEvent) {
+		var payload struct {
+			DraftID string `json:"draftId"`
+		}
+		decodeEventPayload(event, &payload)
+		session, err := authManager.Restore()
+		if err != nil {
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario"})
+			return
+		}
+		go func() {
+			scheduleImportSvc.Publish(context.Background(), session.AccessToken, payload.DraftID)
+			refreshPublishedSchedule()
+		}()
+	})
+
+	wailsApp.Event.On("schedule:draft:get", func(_ *application.CustomEvent) {
+		session, err := authManager.Restore()
+		if err != nil {
+			return
+		}
+		go scheduleImportSvc.LoadDraft(context.Background(), session.AccessToken)
+	})
+
 	wailsApp.Event.On("calendar:import", func(event *application.CustomEvent) {
 		var payload struct {
 			Text     string `json:"text"`
@@ -2382,6 +2804,16 @@ func handleOpenOverlayStudio(studioProfileSvc *app.StudioProfileService, emitter
 	emitter.Emit("hub:open-overlay-studio", payload)
 }
 
+// handleOverlayProfileSnapshotRequest responds to the desktop WebView only
+// after its profile listener is ready. The startup broadcast can otherwise
+// race a newly-created window and leave it loading indefinitely.
+func handleOverlayProfileSnapshotRequest(studioProfileSvc *app.StudioProfileService) {
+	if studioProfileSvc == nil {
+		return
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
+}
+
 // resetOverlayDisplayMode forces the active V3 document back to racing mode and
 // applies it to the running window when one exists.
 func resetOverlayDisplayMode(overlayController *app.OverlayController, studioProfileSvc *app.StudioProfileService) {
@@ -2494,4 +2926,19 @@ func configuredHotkeyManager(settings *app.AppSettings, actions map[string]func(
 		}
 	}
 	return manager
+}
+
+// decodeEventPayload reads a Wails custom event's data into a typed payload.
+// Wails hands it over as a generic value, so the round trip through JSON is the
+// shortest path to a struct. A malformed payload leaves the zero value, which
+// every caller already treats as "nothing supplied".
+func decodeEventPayload(event *application.CustomEvent, out any) {
+	if event == nil || event.Data == nil {
+		return
+	}
+	raw, err := json.Marshal(event.Data)
+	if err != nil {
+		return
+	}
+	_ = json.Unmarshal(raw, out)
 }

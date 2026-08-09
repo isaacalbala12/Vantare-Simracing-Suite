@@ -13,6 +13,10 @@ export type WidgetDesignV1 = {
   includesContent: boolean;
   origin: "vantare" | "user";
   isDefault?: boolean;
+  // Retirado: sigue resolviendose por id -- un perfil antiguo nunca se queda
+  // sin diseno -- pero no se ofrece ya en el catalogo. Es el paso previo a
+  // eliminarlo, no una forma de ocultar diseños de forma indefinida.
+  retired?: boolean;
   requiredFeature?: "overlays.basic" | "overlays.advanced";
   createdAt?: string;
   updatedAt?: string;
@@ -32,7 +36,7 @@ export class WidgetDesignValidationError extends Error {
   }
 }
 
-const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal"]);
+const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -112,6 +116,9 @@ export function validateWidgetDesign(input: unknown): WidgetDesignV1 {
   };
   if (raw.isDefault !== undefined) {
     design.isDefault = readBoolean(raw.isDefault, "isDefault");
+  }
+  if (raw.retired !== undefined) {
+    design.retired = readBoolean(raw.retired, "retired");
   }
   if (raw.content !== undefined) {
     design.content = readRecord(raw.content, "content");

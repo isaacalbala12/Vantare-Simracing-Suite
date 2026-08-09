@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-298",
+  "type": "feature",
+  "summary": "Nuevo sistema de diseño Vantare Endurance con la dirección Redline: standings multiclase con motor de movimiento (adelantamientos, batallas, presión y vuelta rápida animados).",
+  "technicalNotes": [
+    "Tercer sistema de diseño (vantare-endurance) con delta, standings, relative y pedals; Redline es el diseño por defecto y nueve composiciones siguen disponibles por diseño.",
+    "Motor de movimiento en los standings Redline: los adelantamientos deslizan las filas físicamente con flash direccional y chips de posiciones ganadas/perdidas.",
+    "Las batallas por posición se marcan con una costura de luz que cristaliza en una caja con el intervalo cuando el duelo se sostiene, y la celda del gap del perseguidor se carga de carmín según se acerca.",
+    "Vuelta rápida de la sesión con cronómetro morado que cambia de dueño animado; los pit stops muestran el compuesto nuevo al salir.",
+    "Los standings pueden mostrar todas las clases como paneles separados (la clase del jugador siempre abajo) y llevan slots de información (sesión, tiempo, vuelta)."
+  ],
+  "testing": [
+    "Abrir el Overlay Workshop con widget=standings, system=vantare-endurance, design=standings-endurance-redline y variant=standings-replay para ver el ciclo completo de animaciones en bucle.",
+    "Con variant=standings-multiclass, verificar los tres paneles de clase con la clase del jugador abajo y estados ready, stale, disconnected y error.",
+    "Confirmar que ninguna animación parpadea en bucle y que las filas se leen con claridad durante los adelantamientos."
+  ],
+  "knownLimitations": [
+    "El motor de movimiento cubre por ahora el widget de standings; relative, delta y pedals lo recibirán en una entrega posterior."
+  ]
+}

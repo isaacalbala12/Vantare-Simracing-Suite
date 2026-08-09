@@ -3,6 +3,7 @@ import { designSystemRegistry } from "../core/design-system-registry";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import {
   getOfficialDesign,
+  listAllOfficialDesigns,
   listOfficialDesigns,
   OFFICIAL_DESIGNS_SECTION_LABEL,
 } from "./official-designs";
@@ -54,7 +55,10 @@ describe("official-designs", () => {
       .filter((entry) => registeredTypes.has(entry.widgetType as WidgetType))
       .map((entry) => entry.designId)
       .sort();
-    const actualIds = listOfficialDesigns()
+    // Cobertura del manifiesto de referencia: cuenta el catalogo completo, no
+    // solo lo que se oferta. Un diseno retirado deja de aparecer en el panel
+    // pero debe seguir teniendo entrada para que los perfiles lo resuelvan.
+    const actualIds = listAllOfficialDesigns()
       .filter((design) => design.systemId === "vantare-crystal")
       .filter((design) => design.id !== "engineer-radio-crystal")
       .map((design) => design.id)
@@ -86,25 +90,41 @@ describe("official-designs", () => {
   it("covers every implemented widget/system registration with a base official design", () => {
     const pairs = new Set<string>();
     for (const design of listOfficialDesigns()) {
-      if (design.isDefault || design.id === "delta-crystal-bar") {
+      if (design.isDefault) {
         pairs.add(`${design.widgetType}:${design.systemId}`);
       }
     }
-    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) =>
-      definition.type === "engineer-radio"
-        ? [`${definition.type}:vantare-crystal`]
-        : [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`],
-    );
+    const enduranceTypes = new Set(["delta", "standings", "relative", "pedals"]);
+    const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
+      if (definition.type === "engineer-radio") {
+        return [`${definition.type}:vantare-crystal`];
+      }
+      const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
+      if (enduranceTypes.has(definition.type)) {
+        pairs.push(`${definition.type}:vantare-endurance`);
+      }
+      return pairs;
+    });
     expect([...pairs].sort()).toEqual(expectedPairs.sort());
   });
 
-  it("marks exactly one default design for every widget/system pair", () => {
-    for (const type of ["delta", "standings", "relative", "pedals"] as const) {
-      for (const systemId of ["vantare-original", "vantare-crystal"] as const) {
-        expect(
-          listOfficialDesigns(type).filter((design) => design.systemId === systemId && design.isDefault),
-        ).toHaveLength(1);
-      }
+  it("uses a unique stable ID for every official design", () => {
+    const ids = listOfficialDesigns().map((design) => design.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("marks exactly one default design for every registered widget/system pair", () => {
+    const expectedPairs = designSystemRegistry.list().flatMap((system) =>
+      system.widgets.map((widget) => [widget.widgetType, system.id] as const),
+    );
+
+    for (const [widgetType, systemId] of expectedPairs) {
+      expect(
+        listOfficialDesigns(widgetType).filter(
+          (design) => design.systemId === systemId && design.isDefault,
+        ),
+        `${widgetType}:${systemId} must have exactly one default design`,
+      ).toHaveLength(1);
     }
   });
 

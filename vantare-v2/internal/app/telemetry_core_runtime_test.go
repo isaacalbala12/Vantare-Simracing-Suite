@@ -38,7 +38,11 @@ func TestTelemetryCoreRuntimeSourceStatusIsCanonicalAndFailClosed(t *testing.T) 
 	if err := live.setStatus(driver.StateStale, 3); err != nil {
 		t.Fatal(err)
 	}
-	if got := live.SourceStatus(); got.Available || got.State != "stale" || got.ReconnectAttempt != 3 {
+	// Stale sigue siendo disponible: el simulador esta conectado, solo que no ha
+	// movido su reloj de sesion -- una pausa o un menu. Excluirlo deshabilitaba
+	// la fuente LIVE del Studio por un bache de medio segundo, y dejaba el campo
+	// al reves que degraded, que si contaba. La frescura se lee en State.
+	if got := live.SourceStatus(); !got.Available || got.State != "stale" || got.ReconnectAttempt != 3 {
 		t.Fatalf("stale status = %#v", got)
 	}
 }

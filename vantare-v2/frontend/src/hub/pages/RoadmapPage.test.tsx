@@ -15,6 +15,7 @@ vi.mock("../../lib/access", () => ({
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RoadmapPage } from "./RoadmapPage";
+import { ROADMAP_FALLBACK } from "../roadmap/roadmap-data";
 
 beforeEach(() => {
   mockUseAccess.mockReturnValue({
@@ -34,6 +35,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -46,13 +48,33 @@ describe("RoadmapPage", () => {
   it("renders dataset toggle", () => {
     render(<RoadmapPage />);
     expect(screen.getByText("Roadmap actual")).toBeTruthy();
-    expect(screen.getByText("Desarrollo por features")).toBeTruthy();
+    expect(screen.getByText("Proyectos")).toBeTruthy();
+  });
+
+  it("exposes the current/projects selector as linked tabs and panels", () => {
+    render(<RoadmapPage />);
+    expect(screen.getByRole("tablist", { name: "Vistas del roadmap" })).toBeTruthy();
+    const current = screen.getByRole("tab", { name: "Roadmap actual" });
+    const projects = screen.getByRole("tab", { name: "Proyectos" });
+    expect(current.getAttribute("aria-selected")).toBe("true");
+    expect(current.getAttribute("aria-controls")).toBe("roadmap-panel-current");
+    expect(screen.getByRole("tabpanel", { name: "Roadmap actual" }).id).toBe("roadmap-panel-current");
+
+    current.focus();
+    fireEvent.keyDown(current, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(projects);
+    expect(projects.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Proyectos" }).id).toBe("roadmap-panel-next");
+
+    fireEvent.keyDown(projects, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(current);
+    expect(current.getAttribute("aria-selected")).toBe("true");
   });
 
   it("switches dataset when toggle clicked (async)", async () => {
     render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    expect(await screen.findByText("Features por área")).toBeTruthy();
+    fireEvent.click(screen.getByText("Proyectos"));
+    expect(await screen.findByTestId("roadmap-project-tabs")).toBeTruthy();
   });
 
   it("hero buttons are external links (not disabled)", () => {
@@ -70,21 +92,22 @@ describe("RoadmapPage", () => {
     expect(screen.getAllByText(/Pulido beta/i).length).toBeGreaterThanOrEqual(1);
   });
 
+  // These read their expectations from the dataset rather than pinning the
+  // copy: the roadmap text is editorial and is meant to be rewritten whenever
+  // the product moves (docs/roadmap-maintenance.md). What must hold is that
+  // every phase and every area actually reaches the screen.
   it("renders all current phases", () => {
     render(<RoadmapPage />);
-    expect(screen.getByText("Beta pública")).toBeTruthy();
-    expect(screen.getByText("Ingeniero Vantare")).toBeTruthy();
-    expect(screen.getByText("Ecosistema")).toBeTruthy();
+    for (const phase of ROADMAP_FALLBACK.phases) {
+      expect(screen.getAllByText(phase.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders area progress bars", () => {
     render(<RoadmapPage />);
-    expect(screen.getByText("Overlays Studio")).toBeTruthy();
-    expect(screen.getByText("Launcher LMU")).toBeTruthy();
-    expect(screen.getByText("Calendario local")).toBeTruthy();
-    expect(screen.getByText("Ingeniero")).toBeTruthy();
-    expect(screen.getByText("Telemetría")).toBeTruthy();
-    expect(screen.getByText("UI v5.2")).toBeTruthy();
+    for (const area of ROADMAP_FALLBACK.areas) {
+      expect(screen.getAllByText(area.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders overall progress percentage on the scale", () => {
@@ -95,10 +118,9 @@ describe("RoadmapPage", () => {
 
   it("renders milestones", () => {
     render(<RoadmapPage />);
-    expect(screen.getAllByText("v0.1.0.2 publicado").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Hub v5.2 en migración").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Launcher LMU disponible").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Roadmap público planificado").length).toBeGreaterThanOrEqual(1);
+    for (const milestone of ROADMAP_FALLBACK.milestones) {
+      expect(screen.getAllByText(milestone.title.es).length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("renders recent changelog section", () => {
@@ -133,22 +155,11 @@ describe("RoadmapPage", () => {
     expect(screen.getByText("El roadmap vive con feedback")).toBeTruthy();
   });
 
-  it("renders 2 feature sections after switching to 'Desarrollo por features' tab", async () => {
+  it("renders public projects after switching to the projects tab", async () => {
     render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    const cards = await screen.findAllByTestId(/^feature-card-/);
-    expect(cards.length).toBe(8);
-    const devLabels = screen.getAllByText("En desarrollo");
-    expect(devLabels.length).toBeGreaterThanOrEqual(1);
-    const futureLabels = screen.getAllByText("Próximamente");
-    expect(futureLabels.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("does NOT show checkProgress (X/Y) on any feature card", async () => {
-    render(<RoadmapPage />);
-    fireEvent.click(screen.getByText("Desarrollo por features"));
-    await screen.findAllByTestId(/^feature-card-/);
-    expect(screen.queryByText(/\d+\/\d+/)).toBeNull();
+    fireEvent.click(screen.getByText("Proyectos"));
+    expect(await screen.findByTestId("roadmap-project-overlay-studio-v3")).toBeTruthy();
+    expect(screen.getByText("Telemetry Core")).toBeTruthy();
   });
 });
 

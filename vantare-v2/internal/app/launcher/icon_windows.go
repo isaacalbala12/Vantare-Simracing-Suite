@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -307,10 +308,14 @@ var (
 // so a single global lock is acceptable and avoids per-thread apartment issues.
 var lnkMu sync.Mutex
 
-var shortcutCache = struct {
-	sync.RWMutex
+// shortcutIndexCache holds the shortcut index: target executable base name
+// (lower-cased) to the .lnk that points at it. It is built by a single walk of
+// shortcutSearchDirs and shared by every lookup, because resolving a .lnk is a
+// COM call serialised by lnkMu and the search folders hold hundreds of them.
+var shortcutIndexCache = struct {
+	sync.Mutex
 	items map[string]string
-}{items: make(map[string]string)}
+}{}
 
 // vfunc returns the i-th slot of an object's vtable.
 func vfunc(p uintptr, index int) uintptr {
@@ -347,6 +352,13 @@ func queryInterface(p uintptr, iid *syscall.GUID) (uintptr, bool) {
 func resolveLnkTarget(lnkPath string) string {
 	lnkMu.Lock()
 	defer lnkMu.Unlock()
+
+	// Locked because CoUninitialize has to run on the same thread that
+	// initialised: a goroutine can otherwise be rescheduled in between, leaving
+	// this thread in a single-threaded apartment forever. That is what broke
+	// desktop notifications, which need the thread in a multi-threaded one.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
 	if ret == 0 || ret == 1 {                    // S_OK or S_FALSE
@@ -390,6 +402,10 @@ func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	lnkMu.Lock()
 	defer lnkMu.Unlock()
 
+	// See resolveLnkTarget: the uninit must land on the thread that initialised.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2)
 	if ret == 0 || ret == 1 {
 		defer procCoUninitialize.Call()
@@ -432,22 +448,121 @@ func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	return syscall.UTF16ToString(buf), index
 }
 
-// shortcutSearchDirs returns folders where an app shortcut is likely to live.
-func shortcutSearchDirs() []string {
-	var dirs []string
+// shortcutSearchDir is a folder to scan for .lnk files together with how deep
+// the scan may go below it.
+type shortcutSearchDir struct {
+	path     string
+	maxDepth int
+}
+
+// shortcutSearchDirs returns folders where an app shortcut is likely to live,
+// each with its own depth budget. Desktop shortcuts sit at the root, and a
+// Desktop can be the root of an enormous synced tree, so it is not descended;
+// Start Menu shortcuts nest one folder deep per vendor, which two levels cover.
+func shortcutSearchDirs() []shortcutSearchDir {
+	var dirs []shortcutSearchDir
 	if v := os.Getenv("USERPROFILE"); v != "" {
-		dirs = append(dirs, filepath.Join(v, "Desktop"))
+		dirs = append(dirs, shortcutSearchDir{filepath.Join(v, "Desktop"), 0})
 	}
 	if v := os.Getenv("PUBLIC"); v != "" {
-		dirs = append(dirs, filepath.Join(v, "Desktop"))
+		dirs = append(dirs, shortcutSearchDir{filepath.Join(v, "Desktop"), 0})
 	}
 	if v := os.Getenv("APPDATA"); v != "" {
-		dirs = append(dirs, filepath.Join(v, "Microsoft", "Windows", "Start Menu", "Programs"))
+		dirs = append(dirs, shortcutSearchDir{filepath.Join(v, "Microsoft", "Windows", "Start Menu", "Programs"), 2})
 	}
 	if v := os.Getenv("PROGRAMDATA"); v != "" {
-		dirs = append(dirs, filepath.Join(v, "Microsoft", "Windows", "Start Menu", "Programs"))
+		dirs = append(dirs, shortcutSearchDir{filepath.Join(v, "Microsoft", "Windows", "Start Menu", "Programs"), 2})
 	}
 	return dirs
+}
+
+// resetShortcutIndex discards the shortcut index so the next lookup rebuilds
+// it. Discovery calls this on every scan, which is what lets a rescan pick up
+// apps installed since the process started.
+func resetShortcutIndex() {
+	shortcutIndexCache.Lock()
+	shortcutIndexCache.items = nil
+	shortcutIndexCache.Unlock()
+}
+
+// shortcutNameHints returns the lower-cased fragments a catalogued app's
+// shortcut file name is expected to contain: its display-name matchers plus its
+// executable base names. Resolving a .lnk is a COM round-trip, and the search
+// folders hold hundreds of them while the catalog only has a handful of apps,
+// so the index resolves only the .lnk files whose own name matches a hint.
+func shortcutNameHints() []string {
+	var hints []string
+	for _, known := range KnownApps {
+		for _, matcher := range known.DisplayNameMatchers {
+			hints = append(hints, strings.ToLower(matcher))
+		}
+		for _, name := range known.ExecutableNames {
+			base := strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name)))
+			if base != "" {
+				hints = append(hints, base)
+			}
+		}
+	}
+	return hints
+}
+
+// shortcutIndex returns the target-executable to .lnk index, walking the search
+// folders once and resolving each .lnk exactly once. Earlier folders win, so
+// the Desktop keeps priority over the Start Menu as it did when each caller ran
+// its own walk.
+func shortcutIndex() map[string]string {
+	shortcutIndexCache.Lock()
+	defer shortcutIndexCache.Unlock()
+	if shortcutIndexCache.items != nil {
+		return shortcutIndexCache.items
+	}
+	index := map[string]string{}
+	hints := shortcutNameHints()
+	for _, dir := range shortcutSearchDirs() {
+		_ = filepath.WalkDir(dir.path, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			relative, relErr := filepath.Rel(dir.path, path)
+			if relErr != nil {
+				return nil
+			}
+			depth := strings.Count(relative, string(os.PathSeparator))
+			if entry.IsDir() {
+				// The root is depth 0 like its direct children, so it has to be
+				// excluded explicitly or a zero budget would skip everything.
+				if path != dir.path && depth >= dir.maxDepth {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if depth > dir.maxDepth || !strings.EqualFold(filepath.Ext(entry.Name()), ".lnk") {
+				return nil
+			}
+			stem := strings.ToLower(strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())))
+			matched := false
+			for _, hint := range hints {
+				if strings.Contains(stem, hint) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return nil
+			}
+			target := resolveLnkTarget(path)
+			if target == "" {
+				return nil
+			}
+			base := strings.ToLower(filepath.Base(target))
+			if _, seen := index[base]; !seen {
+				index[base] = path
+			}
+			return nil
+		})
+	}
+	shortcutIndexCache.items = index
+	return index
 }
 
 // findDesktopShortcut locates a .lnk whose target executable matches one of the
@@ -456,64 +571,13 @@ func findDesktopShortcut(candidateExes []string) string {
 	if len(candidateExes) == 0 {
 		return ""
 	}
-	lower := make([]string, len(candidateExes))
-	for i, c := range candidateExes {
-		lower[i] = strings.ToLower(c)
-	}
-	cacheKey := strings.Join(lower, "\x00")
-	shortcutCache.RLock()
-	cached, ok := shortcutCache.items[cacheKey]
-	shortcutCache.RUnlock()
-	if ok {
-		return cached
-	}
-
-	var result string
-	for _, dir := range shortcutSearchDirs() {
-		var match string
-		walkErr := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-			if err != nil || match != "" {
-				return nil
-			}
-			relative, relErr := filepath.Rel(dir, path)
-			if relErr != nil {
-				return nil
-			}
-			depth := strings.Count(relative, string(os.PathSeparator))
-			if entry.IsDir() {
-				if depth >= 4 {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if depth > 4 || !strings.EqualFold(filepath.Ext(entry.Name()), ".lnk") {
-				return nil
-			}
-			target := resolveLnkTarget(path)
-			if target == "" {
-				return nil
-			}
-			base := strings.ToLower(filepath.Base(target))
-			for _, c := range lower {
-				if base == c {
-					match = path
-					return nil
-				}
-			}
-			return nil
-		})
-		if walkErr != nil {
-			continue
-		}
-		if match != "" {
-			result = match
-			break
+	index := shortcutIndex()
+	for _, candidate := range candidateExes {
+		if path, ok := index[strings.ToLower(candidate)]; ok {
+			return path
 		}
 	}
-	shortcutCache.Lock()
-	shortcutCache.items[cacheKey] = result
-	shortcutCache.Unlock()
-	return result
+	return ""
 }
 
 // getIconHighRes returns a high-resolution (up to 256x256) icon for a file,
@@ -526,7 +590,11 @@ func getIconHighRes(path string) ([]byte, error) {
 		return nil, err
 	}
 	// SHGetImageList creates an IImageList COM object, so the thread must be in
-	// a COM apartment.
+	// a COM apartment. Locked so the uninit lands on the same thread; see
+	// resolveLnkTarget.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	ret, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
 	if ret == 0 || ret == 1 {
 		defer procCoUninitialize.Call()

@@ -772,6 +772,119 @@ func TestDriverManagerReconnectIsBoundedAndCancelable(t *testing.T) {
 		}
 	})
 
+	t.Run("a run that lasted long enough returns the reconnect budget", func(t *testing.T) {
+		// The simulator drops the connection between sessions all evening. Each
+		// run works for a long stretch, so the budget must be restored every
+		// time instead of being spent down across the whole process lifetime.
+		transient := errors.New("transient disconnect")
+		var mu sync.Mutex
+		constructed := 0
+		var clock time.Time
+		manager, err := NewDriverManager([]DriverCandidate[int]{
+			{
+				Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+				Detect:     func(context.Context) (bool, error) { return true, nil },
+				New: func() (Driver[int], error) {
+					mu.Lock()
+					constructed++
+					mu.Unlock()
+					return &managerTestDriver{state: driver.StateLive, run: func(context.Context) error {
+						// Every run lasts well past the stability threshold.
+						mu.Lock()
+						clock = clock.Add(time.Hour)
+						mu.Unlock()
+						return transient
+					}}, nil
+				},
+				Retryable: func(err error) bool { return errors.Is(err, transient) },
+			},
+		}, ManagerConfig{Retry: RetryPolicy{
+			MaxReconnects: 2,
+			StableRun:     time.Minute,
+			Now: func() time.Time {
+				mu.Lock()
+				defer mu.Unlock()
+				return clock
+			},
+			Wait: func(_ context.Context, _ time.Duration) error { return nil },
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+			t.Fatal(err)
+		}
+
+		// Far more reconnects than MaxReconnects would allow, with no terminal
+		// state: the budget resets on each recovery, so it is never exhausted.
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			mu.Lock()
+			seen := constructed
+			mu.Unlock()
+			if seen >= 10 || !time.Now().Before(deadline) {
+				break
+			}
+			if status := manager.Status(); status.State == driver.StateError {
+				t.Fatalf("driver died after %d reconnects: %v", seen, status.Err)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		if status := manager.Status(); errors.Is(status.Err, ErrReconnectExhausted) {
+			t.Fatalf("a recovering driver must not exhaust its budget: %v", status.Err)
+		}
+		if err := manager.Stop(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("a crash-looping driver never earns the reset and still exhausts", func(t *testing.T) {
+		// The counterpart to the test above: runs that end immediately never
+		// clear the stability bar, so exhaustion still bounds a broken driver.
+		transient := errors.New("transient disconnect")
+		var mu sync.Mutex
+		constructed := 0
+		manager, err := NewDriverManager([]DriverCandidate[int]{
+			{
+				Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+				Detect:     func(context.Context) (bool, error) { return true, nil },
+				New: func() (Driver[int], error) {
+					mu.Lock()
+					constructed++
+					mu.Unlock()
+					return &managerTestDriver{state: driver.StateLive, run: func(context.Context) error {
+						return transient
+					}}, nil
+				},
+				Retryable: func(err error) bool { return errors.Is(err, transient) },
+			},
+		}, ManagerConfig{Retry: RetryPolicy{
+			MaxReconnects: 2,
+			StableRun:     time.Minute,
+			Now:           func() time.Time { return time.Time{} },
+			Wait:          func(_ context.Context, _ time.Duration) error { return nil },
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+			t.Fatal(err)
+		}
+		waitManagerState(t, manager, driver.StateError)
+		if status := manager.Status(); !errors.Is(status.Err, ErrReconnectExhausted) {
+			t.Fatalf("status error = %v, want reconnect exhaustion", status.Err)
+		}
+		mu.Lock()
+		seen := constructed
+		mu.Unlock()
+		if seen != 3 {
+			t.Fatalf("constructed=%d, want 3", seen)
+		}
+		if err := manager.Stop(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("stop cancels backoff and waits for teardown", func(t *testing.T) {
 		transient := errors.New("lost")
 		backoff := make(chan struct{})

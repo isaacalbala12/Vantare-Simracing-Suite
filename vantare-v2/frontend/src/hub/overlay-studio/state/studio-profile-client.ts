@@ -4,6 +4,8 @@ import {
   type LoadedProfileDocumentV3,
   type ProfileDocumentV3,
 } from "../../../overlay/core/profile-document";
+import { migrateRetiredDesigns } from "../designs/design-utils";
+import { conformAspectLockedLayouts } from "../../../overlay/core/profile-layout-conform";
 
 export type StudioSaveResult =
   | { status: "saved"; document: ProfileDocumentV3; revision: string }
@@ -119,7 +121,11 @@ export function createStudioProfileClient(transport: StudioEventTransport): Stud
           onMatch: (data, { resolve, cleanup }) => {
             cleanup();
             resolve({
-              document: parseProfileDocumentV3(data.document),
+              // Un diseno retirado solo puede entrar al cargar: aqui se
+              // reescribe al sustituto vigente antes de que el Studio lo vea.
+              document: conformAspectLockedLayouts(
+                migrateRetiredDesigns(parseProfileDocumentV3(data.document)),
+              ),
               revision: String(data.revision ?? ""),
               migratedFrom: readMigratedFrom(data.migratedFrom),
             } satisfies LoadedProfileDocumentV3);

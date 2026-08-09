@@ -39,6 +39,7 @@ function designLockMessage(design: WidgetDesignV1): string {
 const VISUAL_SYSTEM_OPTIONS: readonly { id: DesignSystemId; labelKey: string }[] = [
   { id: "vantare-original", labelKey: "studio.v3.design.system.original" },
   { id: "vantare-crystal", labelKey: "studio.v3.design.system.crystal" },
+  { id: "vantare-endurance", labelKey: "studio.v3.design.system.endurance" },
 ];
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {

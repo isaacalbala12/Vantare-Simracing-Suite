@@ -69,27 +69,41 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported promotion target"):
             validate("pull_request", "refs/pull/7/merge", "develop", "feature/x")
 
-    def test_frontend_test_debt_is_an_exact_allowlist(self) -> None:
+    def test_no_test_is_carved_out_of_the_blocking_runs(self) -> None:
+        """The frontend debt allowlist is empty and must stay that way.
+
+        ISA-118, ISA-172, ISA-173 and ISA-174 were excluded from the blocking
+        runs and repeated as advisory steps, which painted every gate red. Their
+        causes are fixed and the suites run whole again. This used to pin the
+        allowlist to those exact entries; it now pins it to nothing, so carving
+        a test out again is a deliberate edit here rather than a quiet one.
+        """
         workflows = Path(__file__).resolve().parents[1] / "workflows"
         channel_gate = (workflows / "branch-channel-gates.yml").read_text(encoding="utf-8")
         release_gate = (workflows / "release.yml").read_text(encoding="utf-8")
-        excluded_tests = (
-            "scripts/crystal-reference-manifest.test.mjs",
-            "src/hub/calendar/CalendarMonthView.test.tsx",
-            "src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx",
-        )
+
+        for workflow, gate in (("channel", channel_gate), ("release", release_gate)):
+            with self.subTest(workflow=workflow):
+                self.assertNotIn("--exclude", gate)
+                self.assertNotIn("-skip '^TestConcurrentSavesDontCorruptFile$'", gate)
 
         self.assertNotIn(
             "- name: Frontend tests\n        continue-on-error: true",
             channel_gate,
         )
-        for test_file in excluded_tests:
-            with self.subTest(workflow="channel", test_file=test_file):
-                self.assertEqual(channel_gate.count(f"--exclude {test_file}"), 1)
-                self.assertIn(f"vitest run {test_file}", channel_gate)
-            with self.subTest(workflow="release", test_file=test_file):
-                self.assertEqual(release_gate.count(f"--exclude {test_file}"), 1)
-                self.assertIn(f"vitest run {test_file}", release_gate)
+
+    def test_release_build_embeds_the_real_testing_channel(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        release_gate = (
+            repo_root / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+        taskfile = (
+            repo_root / "vantare-v2" / "build" / "windows" / "Taskfile.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("VANTARE_BUILD_CHANNEL:", release_gate)
+        self.assertIn("github.ref_type == 'branch'", release_gate)
+        self.assertIn("-X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}", taskfile)
 
     def test_runbook_never_reuses_tags_or_commits_to_master(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]

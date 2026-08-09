@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
-import { tierStyle, tierBadgeStyle } from "./calendar-shared";
+import {
+  formatInZone,
+  formatTimeInZone,
+  isSameDayInZone,
+  tierBadgeStyle,
+  tierStyle,
+} from "./calendar-shared";
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 
 type CalendarHeroUpcomingPanelProps = {
@@ -27,17 +33,17 @@ function formatUpcomingTime(dateStr: string | null, now: Date): string {
   return `en ${diffDays} d`;
 }
 
-function formatWeeklyTime(dateStr: string | null, now: Date): string {
+// Rendered in the calendar's own zone, not the browser's. The app ships UTC
+// official data, so falling back to the browser would show this panel a
+// different time from every other calendar view on the same screen.
+function formatWeeklyTime(dateStr: string | null, now: Date, timeZone: string): string {
   if (!dateStr) return "N/A";
   const d = new Date(dateStr);
-  const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (isToday) return `Hoy ${time}`;
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const isTomorrow = d.getDate() === tomorrow.getDate() && d.getMonth() === tomorrow.getMonth() && d.getFullYear() === tomorrow.getFullYear();
-  if (isTomorrow) return `Mañana ${time}`;
-  return `${d.toLocaleDateString([], { day: "2-digit", month: "short" })} ${time}`;
+  const time = formatTimeInZone(d, timeZone);
+  if (isSameDayInZone(d, now, timeZone)) return `Hoy ${time}`;
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  if (isSameDayInZone(d, tomorrow, timeZone)) return `Mañana ${time}`;
+  return `${formatInZone(d, timeZone, { day: "2-digit", month: "short" })} ${time}`;
 }
 
 type TierCardStyle = { label: string; color: string; topBar: string; bgGrad: string };
@@ -174,6 +180,7 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate, onTierClick }: Cale
     );
   }
 
+  const timeZone = calendar.timezone || "UTC";
   const items = buildUpcomingRaceItems(calendar, nowDate);
   const findItem = (tier: string) => items.find((i) => i.tier === tier) ?? null;
   const weeklyItem = items.find((i) => i.tier === "weekly") ?? null;
@@ -218,7 +225,7 @@ export function CalendarHeroUpcomingPanel({ now, onNavigate, onTierClick }: Cale
             <div className="text-right">
               <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#f5f5f5]/40">Próxima</p>
               <p className="font-mono font-bold text-sm text-white" style={{ fontFeatureSettings: "'tnum'" }}>
-                {formatWeeklyTime(weeklyItem.nextStart, nowDate)}
+                {formatWeeklyTime(weeklyItem.nextStart, nowDate, timeZone)}
               </p>
             </div>
           </div>

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.1",
+  "channel": "nightly",
+  "title": "Vantare Endurance — la dirección Redline con motor de movimiento",
+  "summary": "Nuevo sistema de diseño para carreras de resistencia: standings multiclase que animan los adelantamientos, las batallas por posición y la vuelta rápida.",
+  "issues": ["ISA-298"]
+}

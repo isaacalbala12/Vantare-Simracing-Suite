@@ -13,9 +13,10 @@ import (
 
 // spyEmitter records emitted events for assertions.
 type spyEmitter struct {
-	mu      sync.Mutex
-	events  []string
-	payload map[string]ChainProgress
+	mu        sync.Mutex
+	events    []string
+	payload   map[string]ChainProgress
+	discovery []LauncherDiscoveryProgress
 }
 
 func (s *spyEmitter) Emit(name string, data any) {
@@ -27,6 +28,9 @@ func (s *spyEmitter) Emit(name string, data any) {
 			s.payload = map[string]ChainProgress{}
 		}
 		s.payload[name] = p
+	}
+	if p, ok := data.(LauncherDiscoveryProgress); ok {
+		s.discovery = append(s.discovery, p)
 	}
 }
 

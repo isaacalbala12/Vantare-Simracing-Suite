@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
+import { Events } from "@wailsio/runtime";
 import {
   requestCalendar,
   subscribeToCalendar,
   subscribeToCalendarErrors,
 } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
-import { CalendarToolbar, type CalendarFilter } from "../calendar/CalendarToolbar";
+import {
+  CalendarToolbar,
+  type CalendarFilter,
+  type CalendarView,
+} from "../calendar/CalendarToolbar";
 import { CalendarMonthView } from "../calendar/CalendarMonthView";
-import { CalendarWeekView } from "../calendar/CalendarWeekView";
-import { CalendarDayView } from "../calendar/CalendarDayView";
+import { CalendarUpcomingView } from "../calendar/CalendarUpcomingView";
+import { CalendarTimelineView } from "../calendar/CalendarTimelineView";
 import { CalendarRaceDetailPanel } from "../calendar/CalendarRaceDetailPanel";
 import { CalendarRaceRail } from "../calendar/CalendarRaceRail";
 
 export function CalendarPage() {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [calendarView, setCalendarView] = useState<"month" | "week" | "day">("month");
+  // Upcoming leads: the first question is what starts next, not what the month
+  // looks like.
+  const [calendarView, setCalendarView] = useState<CalendarView>("upcoming");
   const [calendarAnchorDate, setCalendarAnchorDate] = useState<Date>(new Date());
   const [activeFilter, setActiveFilter] = useState<CalendarFilter>("all");
   const [panelTier, setPanelTier] = useState<CalendarFilter | null>(null);
@@ -37,6 +44,13 @@ export function CalendarPage() {
     };
   }, []);
 
+  // The published schedule is fetched once at startup, so this is how a client
+  // picks up a mid-session publication without restarting. The backend answers
+  // with calendar:loaded, which the subscription above already handles.
+  const handleRefreshSchedule = useCallback(() => {
+    Events.Emit("calendar:schedule:refresh");
+  }, []);
+
   const handleToday = useCallback(() => {
     setCalendarAnchorDate(new Date());
   }, []);
@@ -44,17 +58,11 @@ export function CalendarPage() {
   const handleNavigate = useCallback((delta: number) => {
     setCalendarAnchorDate((prev) => {
       const newDate = new Date(prev.getTime());
-      if (calendarView === "month") {
-        newDate.setDate(1);
-        newDate.setMonth(newDate.getMonth() + delta);
-      } else if (calendarView === "week") {
-        newDate.setDate(newDate.getDate() + 7 * delta);
-      } else {
-        newDate.setDate(newDate.getDate() + delta);
-      }
+      newDate.setDate(1);
+      newDate.setMonth(newDate.getMonth() + delta);
       return newDate;
     });
-  }, [calendarView]);
+  }, []);
 
   // Filtering never opens the detail panel — only an explicit tier click does.
   const handleFilterSelect = useCallback((filter: CalendarFilter) => {
@@ -72,7 +80,6 @@ export function CalendarPage() {
 
   const handleDayClick = useCallback((date: Date) => {
     setCalendarAnchorDate(date);
-    setCalendarView("day");
   }, []);
 
   const handleClosePanel = useCallback(() => {
@@ -105,11 +112,11 @@ export function CalendarPage() {
             view={calendarView}
             anchorDate={calendarAnchorDate}
             activeFilter={activeFilter}
-            timeZone={timeZone}
             onViewChange={setCalendarView}
             onToday={handleToday}
             onPrevious={() => handleNavigate(-1)}
             onNext={() => handleNavigate(1)}
+            onRefresh={handleRefreshSchedule}
             onFilterChange={setActiveFilter}
           />
         </div>
@@ -159,6 +166,23 @@ export function CalendarPage() {
 
         {calendar && (
           <div className="flex-1 min-h-0 flex flex-col overflow-y-auto opacity-0 animate-fade-in-up delay-75" style={{ scrollbarWidth: "thin" }}>
+            {calendarView === "upcoming" && (
+              <CalendarUpcomingView
+                calendar={calendar}
+                timeZone={timeZone}
+                onRaceClick={(item) => handleOpenPanel(item.tier as CalendarFilter)}
+              />
+            )}
+            {calendarView === "timeline" && (
+              <CalendarTimelineView
+                calendar={calendar}
+                timeZone={timeZone}
+                onSeriesClick={(seriesId) => {
+                  const tier = calendar.series?.find((s) => s.id === seriesId)?.tier;
+                  if (tier) handleOpenPanel(tier as CalendarFilter);
+                }}
+              />
+            )}
             {calendarView === "month" && (
               <CalendarMonthView
                 anchorDate={calendarAnchorDate}
@@ -168,26 +192,6 @@ export function CalendarPage() {
                 onFilterSelect={handleFilterSelect}
                 onTierClick={handleOpenPanel}
                 onDayClick={handleDayClick}
-              />
-            )}
-            {calendarView === "week" && (
-              <CalendarWeekView
-                anchorDate={calendarAnchorDate}
-                calendar={calendar}
-                timeZone={timeZone}
-                activeFilter={activeFilter}
-                onFilterSelect={handleFilterSelect}
-                onTierClick={handleOpenPanel}
-              />
-            )}
-            {calendarView === "day" && (
-              <CalendarDayView
-                anchorDate={calendarAnchorDate}
-                calendar={calendar}
-                timeZone={timeZone}
-                activeFilter={activeFilter}
-                onFilterSelect={handleFilterSelect}
-                onTierClick={handleOpenPanel}
               />
             )}
           </div>

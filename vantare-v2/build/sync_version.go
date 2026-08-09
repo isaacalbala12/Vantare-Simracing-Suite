@@ -11,9 +11,31 @@ import (
 	"strings"
 )
 
+// releaseTagRE matches a full release tag, optionally carrying a pre-release
+// suffix: v0.1.0.7, v0.1.0.7-nightly.3, v0.1.0.7-testers.12.
+var releaseTagRE = regexp.MustCompile(`^v?(\d+\.\d+\.\d+\.\d+)(-[A-Za-z0-9.]+)?$`)
+
 func main() {
 	printFlag := flag.Bool("print", false, "only print the version and exit")
+	fromTag := flag.String("from-tag", "", "derive the version from a release tag (e.g. v0.1.0.7-nightly.3) and rewrite VERSION")
 	flag.Parse()
+
+	// When a release tag is supplied, it is the source of truth: the numeric
+	// part lands in VERSION (Windows resources need X.X.X.X) and the full tag,
+	// suffix included, becomes the version the updater compares against.
+	tagSuffix := ""
+	if *fromTag != "" {
+		m := releaseTagRE.FindStringSubmatch(strings.TrimSpace(*fromTag))
+		if m == nil {
+			fmt.Fprintf(os.Stderr, "Error: tag %q does not match vX.X.X.X[-suffix]\n", *fromTag)
+			os.Exit(1)
+		}
+		tagSuffix = m[2]
+		if err := os.WriteFile("VERSION", []byte(m[1]+"\n"), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing VERSION: %v\n", err)
+			os.Exit(1)
+		}
+	}
 
 	// Read VERSION file
 	versionBytes, err := os.ReadFile("VERSION")
@@ -35,15 +57,15 @@ func main() {
 	}
 
 	if *printFlag {
-		fmt.Println(version)
+		fmt.Println(version + tagSuffix)
 		return
 	}
 
-	fmt.Printf("Synchronizing version %s across files...\n", version)
+	fmt.Printf("Synchronizing version %s across files...\n", version+tagSuffix)
 
 	// 1. Synchronize cmd/vantare/main.go
 	mainGoPath := filepath.Join("cmd", "vantare", "main.go")
-	if err := updateMainGo(mainGoPath, version); err != nil {
+	if err := updateMainGo(mainGoPath, version+tagSuffix); err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating main.go: %v\n", err)
 		os.Exit(1)
 	}

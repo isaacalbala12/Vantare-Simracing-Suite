@@ -59,25 +59,24 @@ func TestLoadWeeklySchedule_Valid(t *testing.T) {
 	if len(sched.Series) == 0 {
 		t.Fatal("Series is empty")
 	}
-	// Verify all 10 series from the real schedule.
-	expectedIDs := []string{
-		"beginner-lmgt3-fixed",
-		"beginner-mclaren-challenge",
-		"beginner-lmp3-fixed",
-		"intermediate-lmgt3-sprint",
-		"intermediate-prototype-fixed",
-		"intermediate-elms-sprint",
-		"advanced-one-stint-sprint",
-		"advanced-elms-super-60",
-		"advanced-wec-xperience",
-		"weekly-wec-weekly",
-	}
-	if len(sched.Series) != len(expectedIDs) {
-		t.Fatalf("Series count = %d, want %d", len(sched.Series), len(expectedIDs))
-	}
+	// The bundled seed is generated from the published schedule by
+	// ImportDailySchedule, so it changes every week. Pin its shape, not the
+	// week's line-up: one series per tier at minimum, all IDs unique.
+	byTier := map[string]int{}
+	seen := map[string]bool{}
 	for i, s := range sched.Series {
-		if s.ID != expectedIDs[i] {
-			t.Errorf("Series[%d].ID = %q, want %q", i, s.ID, expectedIDs[i])
+		if s.ID == "" {
+			t.Errorf("Series[%d] has no ID", i)
+		}
+		if seen[s.ID] {
+			t.Errorf("Series[%d].ID = %q is duplicated", i, s.ID)
+		}
+		seen[s.ID] = true
+		byTier[s.Tier]++
+	}
+	for _, tier := range []string{"beginner", "intermediate", "advanced", "weekly"} {
+		if byTier[tier] == 0 {
+			t.Errorf("no series in tier %q", tier)
 		}
 	}
 }
@@ -445,8 +444,8 @@ func TestExpandSeries_WeeklySlots(t *testing.T) {
 	}
 
 	// Window: June 30 (Tue) to July 7 (Tue) — covers Wed through Mon.
-	from := time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2026, time.July, 7, 0, 0, 0, 0, time.UTC)
+	from := sched.ValidFrom
+	to := sched.ValidUntil
 
 	events, err := ExpandSeries(series, sched, from, to)
 	if err != nil {
@@ -723,7 +722,10 @@ func TestExpandRealSchedule_OneHour(t *testing.T) {
 		t.Fatalf("LoadWeeklySchedule: %v", err)
 	}
 
-	from := time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC)
+	// The seed is regenerated from the published schedule every week, so the
+	// window follows it and the expectation is derived from the series' own
+	// cadences rather than pinned to one week's line-up.
+	from := sched.ValidFrom
 	to := from.Add(1 * time.Hour)
 
 	events, err := ExpandSchedule(sched, from, to)
@@ -731,14 +733,19 @@ func TestExpandRealSchedule_OneHour(t *testing.T) {
 		t.Fatalf("ExpandSchedule: %v", err)
 	}
 
-	// 9 interval series × events in 1h:
-	//   beginner (3 series × 15min = 4 each = 12)
-	//   intermediate (3 series × 20min = 3 each = 9)
-	//   advanced (3 series × 30min = 2 each = 6)
-	//   weekly (no events on Tue) = 0
-	// Total = 27
-	if len(events) != 27 {
-		t.Fatalf("events = %d, want 27", len(events))
+	want := 0
+	for _, s := range sched.Series {
+		switch s.Recurrence.Kind {
+		case "interval":
+			want += 60 / s.Recurrence.IntervalMinutes
+		case "weekly-slots":
+			if slotsOnDay(s.Recurrence, from) > 0 {
+				want += slotsInHour(s.Recurrence, from)
+			}
+		}
+	}
+	if len(events) != want {
+		t.Fatalf("events = %d, want %d", len(events), want)
 	}
 
 	// Verify all have BundledSource.
@@ -755,22 +762,29 @@ func TestExpandRealSchedule_OneWeek(t *testing.T) {
 		t.Fatalf("LoadWeeklySchedule: %v", err)
 	}
 
-	from := time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2026, time.July, 7, 0, 0, 0, 0, time.UTC)
+	from := sched.ValidFrom
+	to := sched.ValidUntil
 
 	events, err := ExpandSchedule(sched, from, to)
 	if err != nil {
 		t.Fatalf("ExpandSchedule: %v", err)
 	}
 
-	// 7 days of interval series + weekly slots.
-	// beginner: 3 series × 672 events each = 2016
-	// intermediate: 3 series × 504 events each = 1512
-	// advanced: 3 series × 336 events each = 1008
-	// weekly: 48 events
-	// Total = 4584
-	if len(events) != 4584 {
-		t.Fatalf("events = %d, want 4584", len(events))
+	// Derived from the seed rather than pinned: interval series fire on their
+	// cadence for the whole window, weekly series once per listed slot per
+	// listed day.
+	days := int(to.Sub(from).Hours() / 24)
+	want := 0
+	for _, s := range sched.Series {
+		switch s.Recurrence.Kind {
+		case "interval":
+			want += days * 24 * 60 / s.Recurrence.IntervalMinutes
+		case "weekly-slots":
+			want += len(s.Recurrence.Days) * len(s.Recurrence.TimesUTC)
+		}
+	}
+	if len(events) != want {
+		t.Fatalf("events = %d, want %d", len(events), want)
 	}
 
 	// Verify sorted.
@@ -832,4 +846,32 @@ func TestSortRaceEventsByStart(t *testing.T) {
 	if events[0].ID != "b" || events[1].ID != "a" || events[2].ID != "c" {
 		t.Errorf("order = %q %q %q, want b a c", events[0].ID, events[1].ID, events[2].ID)
 	}
+}
+
+// slotsOnDay reports how many weekly slots fall on the given day.
+func slotsOnDay(rec Recurrence, day time.Time) int {
+	for _, d := range rec.Days {
+		if validWeekdayNames[d] == day.Weekday() {
+			return len(rec.TimesUTC)
+		}
+	}
+	return 0
+}
+
+// slotsInHour reports how many weekly slots fall inside the hour starting at t.
+func slotsInHour(rec Recurrence, t time.Time) int {
+	if slotsOnDay(rec, t) == 0 {
+		return 0
+	}
+	n := 0
+	for _, hhmm := range rec.TimesUTC {
+		parsed, err := time.Parse("15:04", hhmm)
+		if err != nil {
+			continue
+		}
+		if parsed.Hour() == t.Hour() {
+			n++
+		}
+	}
+	return n
 }

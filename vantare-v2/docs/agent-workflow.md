@@ -1,7 +1,7 @@
 # Workflow de agentes
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
-> `docs/vantare-program/README.md`, `execution-policy.md`,
+> `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,
 > `docs/branch-channels.md` y el handoff vivo del proyecto.
 
 ## Fuente operativa y aislamiento
@@ -17,6 +17,10 @@
 - Commits pequeños y staging limitado a rutas; no `git add .`.
 - El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
   autorización.
+- El checkout principal sigue `nightly` para ejecutar y validar el conjunto
+  integrado. No se implementan issues directamente en ese checkout.
+- `refactor` y `develop` se conservan como historia mientras tengan
+  consumidores; no son bases nuevas ni se limpian para reutilizarlas.
 
 ## Promoción
 
@@ -35,15 +39,30 @@ referencia histórica y no recibe trabajo nuevo. La promoción usa una issue de
 integración propia; terminar una feature no la promociona automáticamente.
 Tests y review no sustituyen las aprobaciones.
 
+Terminado en rama, integrado en un canal, promocionado y publicado son estados
+distintos. Cada reporte debe identificar el ultimo estado demostrado con rama,
+SHA, PR, CI y release cuando corresponda.
+
+## Delegacion
+
+- La profundidad predeterminada es uno: orquestador -> worker.
+- Un worker no crea subagentes ni delega su trabajo salvo autorizacion expresa,
+  acotada y documentada del orquestador.
+- No se ejecutan agentes en paralelo sobre el mismo worktree o rama.
+- No se delega trabajo trivial cuando hacerlo directamente reduce coste y
+  riesgo.
+- El orquestador revisa por si mismo el diff, los checks y el handoff. El
+  resumen de un worker es evidencia a comprobar, no una aprobacion.
+
 ## Roles
 
 ## Orquestador
 
 Define objetivo, alcance, riesgos, prompt para worker, prompt para reviewer y checklist para el usuario.
 
-No implementa codigo salvo peticion explicita o necesidad estricta para desbloquear el trabajo.
-
-En este proyecto, el orquestador principal debe evitar editar codigo por defecto para ahorrar contexto y mantener el hilo centrado en decisiones, prompts, reviews y verificacion. La implementacion normal se delega a workers.
+Puede implementar directamente cuando el usuario lo pida, la tarea sea pequena
+o delegarla cueste mas que resolverla con seguridad. En trabajos amplios debe
+preservar contexto para decisiones, prompts, reviews y verificacion.
 
 Puede editar directamente:
 
@@ -71,6 +90,7 @@ Debe:
 - leer docs relevantes,
 - revisar git status,
 - tocar solo archivos esperados,
+- no crear subagentes por defecto,
 - no redisenar,
 - no anadir dependencias,
 - crear/actualizar tests si cambia comportamiento,
@@ -103,7 +123,9 @@ Debe buscar:
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
 10. Se hace commit pequeño cuando el contrato de la issue lo permite.
-11. El worker deja la issue en `In Review`; no promociona por su cuenta.
+11. El orquestador actualiza el handoff vivo y Linear despues de cada worker o
+    cambio material. El worker deja la issue en `In Review`; no promociona por
+    su cuenta.
 12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
     entrega a `nightly`.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
@@ -166,6 +188,10 @@ Una tarea esta terminada solo si:
 - verificacion manual clara,
 - reviewer no encuentra criticos,
 - `current-plan.md` actualizado si cambia el estado.
+
+Esta definicion cierra el trabajo tecnico de la rama. No demuestra que el
+cambio este en `nightly`, `testers`, `master` ni en una release. Esos estados
+requieren sus promociones y evidencias propias.
 
 ## Riesgo por tarea
 

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.2",
+  "channel": "nightly",
+  "title": "Endurance Redline, un Launcher mucho más rápido y telemetría que aguanta la tarde",
+  "summary": "Los standings de resistencia animan adelantamientos y batallas, el Launcher detecta las apps siete veces más rápido y la telemetría deja de agotar sus reconexiones tras varias sesiones.",
+  "issues": ["ISA-298", "ISA-299"]
+}

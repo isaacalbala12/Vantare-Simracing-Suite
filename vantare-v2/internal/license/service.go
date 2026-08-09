@@ -46,19 +46,50 @@ func (s *Service) WithClient(c supabaseClient) *Service        { s.client = c; r
 func (s *Service) WithCache(c *LicenseCache) *Service          { s.cache = c; return s }
 func (s *Service) WithVerifier(v *CredentialVerifier) *Service { s.verifier = v; return s }
 
+// inconclusiveAnonymous reports a result that came back anonymous only because
+// nobody presented a session, which is not the same claim as "this session is
+// no longer valid". The frontend fires a tokenless validate on mount, before
+// the stored session has been restored, so one of these arrives on every
+// launch.
+func inconclusiveAnonymous(res *Result) bool {
+	return res != nil &&
+		res.State == StateAnonymous &&
+		errors.Is(res.Error, ErrMissingSession)
+}
+
+// ClearCurrent drops the authority this service holds. Signing out is the only
+// conclusive way to stop being someone, so it is the only caller.
+func (s *Service) ClearCurrent() {
+	if s == nil {
+		return
+	}
+	s.currentMu.Lock()
+	s.current = nil
+	s.currentMu.Unlock()
+}
+
 func (s *Service) EmitChanged(res *Result) {
 	if s == nil || res == nil {
 		return
 	}
 	s.currentMu.Lock()
-	copyResult := *res
-	copyResult.Capabilities = append([]Capability(nil), res.Capabilities...)
-	copyResult.OperationalRoles = append([]OperationalRole(nil), res.OperationalRoles...)
-	s.current = &copyResult
+	// That tokenless anonymous used to overwrite an authenticated result, and
+	// with it the capabilities AllowsUpdateChannel reads. An owner then got a
+	// UI offering nightly -- the frontend ignores the very same event, on
+	// purpose -- while the backend refused it as "not authorized". The two have
+	// to agree, and the authenticated answer is the true one.
+	if !inconclusiveAnonymous(res) || s.current == nil || s.current.State == StateAnonymous {
+		copyResult := *res
+		copyResult.Capabilities = append([]Capability(nil), res.Capabilities...)
+		copyResult.OperationalRoles = append([]OperationalRole(nil), res.OperationalRoles...)
+		s.current = &copyResult
+	}
 	s.currentMu.Unlock()
 	if s.emitter == nil {
 		return
 	}
+	// The event goes out either way: the frontend has its own guard, and in
+	// standalone mode this response is what resolves the loading state.
 	wire := res.ToWire()
 	if wire.LastValidated == "" {
 		wire.LastValidated = time.Now().UTC().Format(time.RFC3339Nano)
@@ -272,6 +303,36 @@ func (s *Service) LoadCache() error {
 		return err
 	}
 	return nil
+}
+
+// EmitCachedState publica el estado guardado en cache nada mas arrancar, sin
+// esperar a la red.
+//
+// La arquitectura ya lo especifica -- "User opens app -> LoadCache() -> gate by
+// cached state" -- y LoadCache se llamaba en el arranque, pero nadie emitia el
+// resultado. El frontend se quedaba bloqueado en "Cargando licencia..." durante
+// la validacion contra Supabase, que tarda entre uno y tres segundos.
+//
+// No relaja ninguna comprobacion: usa la misma verificacion offline que la ruta
+// de gracia, sobre una credencial firmada Ed25519 y atada a la huella de este
+// dispositivo. La validacion online sigue su curso y corrige el estado despues.
+func (s *Service) EmitCachedState() {
+	if s == nil || s.cache == nil || s.verifier == nil {
+		return
+	}
+	credential, err := s.cache.Read()
+	if err != nil {
+		return
+	}
+	fingerprint, err := s.fingerprint()
+	if err != nil {
+		return
+	}
+	result, err := s.verifier.verifyCached(credential, credential.Claims.Subject, fingerprint)
+	if err != nil || result == nil {
+		return
+	}
+	s.EmitChanged(result)
 }
 
 func subjectFromJWT(token string) (string, error) {

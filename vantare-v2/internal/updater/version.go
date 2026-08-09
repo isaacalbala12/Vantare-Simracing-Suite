@@ -77,7 +77,43 @@ func (v Version) Compare(other Version) int {
 	if other.Suffix == "" {
 		return -1
 	}
-	return strings.Compare(v.Suffix, other.Suffix)
+	return compareSuffix(v.Suffix, other.Suffix)
+}
+
+// suffixPartRE splits a suffix into runs of digits and runs of non-digits so
+// that "nightly.10" sorts after "nightly.9" instead of before it.
+var suffixPartRE = regexp.MustCompile(`\d+|\D+`)
+
+// compareSuffix compares two pre-release suffixes segment by segment. Numeric
+// segments compare as numbers; everything else compares as text. A suffix that
+// is a prefix of the other sorts first ("nightly" < "nightly.1").
+func compareSuffix(a, b string) int {
+	as := suffixPartRE.FindAllString(a, -1)
+	bs := suffixPartRE.FindAllString(b, -1)
+	for i := 0; i < len(as) && i < len(bs); i++ {
+		an, aNum := strconv.Atoi(as[i])
+		bn, bNum := strconv.Atoi(bs[i])
+		if aNum == nil && bNum == nil {
+			if an != bn {
+				if an < bn {
+					return -1
+				}
+				return 1
+			}
+			continue
+		}
+		if c := strings.Compare(as[i], bs[i]); c != 0 {
+			return c
+		}
+	}
+	switch {
+	case len(as) < len(bs):
+		return -1
+	case len(as) > len(bs):
+		return 1
+	default:
+		return 0
+	}
 }
 
 // IsNewerThan returns true if v is strictly newer than other.

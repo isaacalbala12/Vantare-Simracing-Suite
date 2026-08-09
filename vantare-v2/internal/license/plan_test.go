@@ -160,3 +160,49 @@ func TestSortedEntitlements(t *testing.T) {
 		t.Fatalf("input mutated: %v", src)
 	}
 }
+
+// TestClassifyPlanSuiteGrantingEntitlements verifies that Go correctly
+// identifies suite-granting entitlements. It tests the logic in ClassifyPlan
+// for both standalone suite-granting entitlements and the overlays+engineer
+// combination.
+//
+// For cross-language parity checking (TS vs Go), see:
+// frontend/src/lib/entitlements-parity.test.ts (reads this file as text)
+func TestClassifyPlanSuiteGrantingEntitlements(t *testing.T) {
+	// Suite-granting standalone entitlements (from Go plan.go line 39)
+	suiteGranting := []Entitlement{
+		EntitlementBundle,
+		EntitlementBetaAccess,
+		EntitlementFounder,
+		EntitlementProFounder,
+		EntitlementVisionaryBacker,
+	}
+
+	// Each standalone suite-granting entitlement must return PlanSuite
+	for _, ent := range suiteGranting {
+		got := ClassifyPlan([]Entitlement{ent})
+		if got != PlanSuite {
+			t.Fatalf("suite-granting entitlement %q should return PlanSuite, got %q", ent, got)
+		}
+	}
+
+	// overlays + engineer together must return PlanSuite (line 70)
+	got := ClassifyPlan([]Entitlement{EntitlementOverlays, EntitlementEngineer})
+	if got != PlanSuite {
+		t.Fatalf("overlays + engineer should return PlanSuite, got %q", got)
+	}
+
+	// Non-suite entitlements must NOT return PlanSuite
+	nonSuite := []Entitlement{
+		EntitlementOverlays,  // alone
+		EntitlementEngineer,  // alone
+		EntitlementSupporter,
+		EntitlementACLuaPack,
+	}
+	for _, ent := range nonSuite {
+		got := ClassifyPlan([]Entitlement{ent})
+		if got == PlanSuite {
+			t.Fatalf("non-suite entitlement %q should not return PlanSuite, but got %q", ent, got)
+		}
+	}
+}

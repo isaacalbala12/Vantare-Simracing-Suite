@@ -12,7 +12,7 @@ export type EntitlementRefreshResult =
   | {
       ok: true;
       license: LicenseResult;
-      hasBundle: boolean;
+      hasSuite: boolean;
       unlocked: boolean;
     }
   | { ok: false; reason: EntitlementRefreshReason };
@@ -38,14 +38,34 @@ export function parseLastValidatedMs(value: unknown): number | null {
   return null;
 }
 
-export function entitlementsIncludeBundle(
+/**
+ * Checks if entitlements grant Suite access.
+ * Mirrors internal/license/plan.go:ClassifyPlan logic for suite-granting entitlements.
+ *
+ * Suite is granted by:
+ * - bundle, beta_access, founder, pro_founder, visionary_backer (any one), OR
+ * - overlays AND engineer together
+ */
+export function entitlementsSuiteGranting(
   entitlements: Entitlement[] | null | undefined,
 ): boolean {
-  return Array.isArray(entitlements) && entitlements.includes("bundle");
+  if (!Array.isArray(entitlements) || entitlements.length === 0) {
+    return false;
+  }
+  const has = new Set(entitlements.filter((e) => e));
+
+  return (
+    has.has("bundle") ||
+    has.has("beta_access") ||
+    has.has("founder") ||
+    has.has("pro_founder") ||
+    has.has("visionary_backer") ||
+    (has.has("overlays") && has.has("engineer"))
+  );
 }
 
 export function isPremiumUnlocked(license: LicenseResult): boolean {
-  if (!entitlementsIncludeBundle(license.entitlements)) {
+  if (!entitlementsSuiteGranting(license.entitlements)) {
     return false;
   }
   if (license.state === "device-limit") {
@@ -109,7 +129,7 @@ export async function refreshCurrentUserEntitlements(options?: {
           state: value.license.state,
           email: value.license.email,
           entitlements: value.license.entitlements,
-          hasBundle: value.hasBundle,
+          hasSuite: value.hasSuite,
           unlocked: value.unlocked,
         });
       } else {
@@ -139,7 +159,7 @@ export async function refreshCurrentUserEntitlements(options?: {
       finish({
         ok: true,
         license: data,
-        hasBundle: entitlementsIncludeBundle(data.entitlements),
+        hasSuite: entitlementsSuiteGranting(data.entitlements),
         unlocked: isPremiumUnlocked(data),
       });
     });

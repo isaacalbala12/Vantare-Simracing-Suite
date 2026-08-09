@@ -39,7 +39,7 @@ describe("PaywallScreen", () => {
         email: "u@example.com",
         deviceOK: true,
       },
-      hasBundle: false,
+      hasSuite: false,
       unlocked: false,
     });
   });

@@ -37,8 +37,17 @@ vi.mock("../../lib/entitlements-refresh", () => ({
     billingMocks.refreshCurrentUserEntitlements(...args),
   resetActiveDevice: (...args: unknown[]) =>
     billingMocks.resetActiveDevice(...args),
-  isPremiumUnlocked: (license: { state: string; entitlements: string[] }) =>
-    license.state === "active" && license.entitlements.includes("bundle"),
+  isPremiumUnlocked: (license: { state: string; entitlements: string[] }) => {
+    const has = new Set(license.entitlements.filter((e) => e));
+    const isSuite =
+      has.has("bundle") ||
+      has.has("beta_access") ||
+      has.has("founder") ||
+      has.has("pro_founder") ||
+      has.has("visionary_backer") ||
+      (has.has("overlays") && has.has("engineer"));
+    return license.state !== "device-limit" && (license.state === "active" || license.state === "grace") && isSuite;
+  },
 }));
 
 vi.mock("@wailsio/runtime", () => ({
@@ -79,7 +88,7 @@ describe("AccountSettings", () => {
         email: "u@example.com",
         deviceOK: true,
       },
-      hasBundle: false,
+      hasSuite: false,
       unlocked: false,
     });
     signOutMock.mockReset();
@@ -241,7 +250,7 @@ describe("AccountSettings", () => {
         email: "u@example.com",
         deviceOK: true,
       },
-      hasBundle: true,
+      hasSuite: true,
       unlocked: true,
     });
     mockUseLicense({
@@ -304,7 +313,7 @@ describe("AccountSettings", () => {
         email: "u@example.com",
         deviceOK: false,
       },
-      hasBundle: true,
+      hasSuite: true,
       unlocked: false,
     });
     mockUseLicense({
@@ -331,7 +340,7 @@ describe("AccountSettings", () => {
         email: "u@example.com",
         deviceOK: true,
       },
-      hasBundle: true,
+      hasSuite: true,
       unlocked: true,
     });
     mockUseLicense({

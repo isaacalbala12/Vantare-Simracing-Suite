@@ -33,31 +33,36 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   const { preview } = useStudioPreview();
 
   useEffect(() => {
-    if (preview.source !== "mock") {
-      return;
-    }
-    coordinator.publish(
-      buildMockTelemetry({
-        session: preview.mockSession,
-        location: preview.mockLocation,
-        state: "ready",
-      }),
-    );
-  }, [coordinator, preview.mockLocation, preview.mockSession, preview.source]);
-
-  useEffect(() => {
-    if (!telemetryAdapter) {
-      return;
-    }
-    if (preview.source === "live" && liveAvailable) {
+    // Single effect handles both mock publishing and live adapter lifecycle.
+    // Merged into one effect to eliminate race conditions between two independent
+    // effect cleanup/re-run sequences. When source changes from "live" to "mock",
+    // the live cleanup (telemetryAdapter.stop()) now runs before the mock publish
+    // happens in the same effect body, eliminating the double-stop issue.
+    if (preview.source === "mock") {
+      // Publish mock snapshot when in mock mode
+      coordinator.publish(
+        buildMockTelemetry({
+          session: preview.mockSession,
+          location: preview.mockLocation,
+          state: "ready",
+        }),
+      );
+    } else if (preview.source === "live" && liveAvailable && telemetryAdapter) {
+      // Start live adapter when in live mode
       telemetryAdapter.start();
+      // Cleanup stops adapter when source changes or component unmounts
       return () => {
         telemetryAdapter.stop();
       };
     }
-    telemetryAdapter.stop();
-    return undefined;
-  }, [liveAvailable, preview.source, telemetryAdapter]);
+  }, [
+    coordinator,
+    liveAvailable,
+    preview.mockLocation,
+    preview.mockSession,
+    preview.source,
+    telemetryAdapter,
+  ]);
 
   const value = useMemo<StudioTelemetryContextValue>(
     () => ({ coordinator, liveAvailable }),

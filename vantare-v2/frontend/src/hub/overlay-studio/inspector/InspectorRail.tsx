@@ -57,6 +57,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
         {sections.map((section) => {
           const accent = INSPECTOR_SECTION_ACCENTS[section.id];
           const label = sectionLabel(resolveInspectorSectionTitle(section.id, section.labelKey));
+          const tooltipLabel = sectionLabel(INSPECTOR_SECTION_DISPLAY_LABELS[section.id] ?? label);
           const active = section.id === activeSectionId;
           return (
             <button
@@ -67,7 +68,7 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
               className={active ? "osv3-inspector-rail__item osv3-inspector-rail__item--active" : "osv3-inspector-rail__item"}
               aria-current={active ? "true" : undefined}
               aria-label={label}
-              title={label}
+              title={tooltipLabel}
               onClick={() => onSelectSection(section.id)}
             >
               <span className="osv3-inspector-rail__preview" aria-hidden="true">
@@ -76,7 +77,6 @@ export function InspectorRail(props: InspectorRailProps): React.ReactElement {
                   <span className="osv3-inspector-rail__badge">{section.badge}</span>
                 ) : null}
               </span>
-              <span className="osv3-inspector-rail__tip">{sectionLabel(INSPECTOR_SECTION_DISPLAY_LABELS[section.id] ?? label)}</span>
             </button>
           );
         })}

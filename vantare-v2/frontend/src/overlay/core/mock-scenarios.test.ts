@@ -31,4 +31,17 @@ describe("buildMockTelemetry", () => {
     expect(error.status).toBe("error");
     expect(error.errorMessage).toMatch(/error/i);
   });
+
+  it("provides multiclass field with 20 HYPERCAR + LMP2 + LMGT3", () => {
+    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
+    expect(snapshot.scoring.length).toBe(30);
+    expect(snapshot.scoring[0]?.place).toBe(1);
+    expect(snapshot.scoring[4]?.isPlayer).toBe(true);
+    const hypercarCount = snapshot.scoring.filter((row) => row.vehicleClass === "HYPERCAR").length;
+    const lmp2Count = snapshot.scoring.filter((row) => row.vehicleClass === "LMP2").length;
+    const lmgt3Count = snapshot.scoring.filter((row) => row.vehicleClass === "LMGT3").length;
+    expect(hypercarCount).toBe(20);
+    expect(lmp2Count).toBe(5);
+    expect(lmgt3Count).toBe(5);
+  });
 });

@@ -185,8 +185,8 @@ export const studioV3Es: Record<string, string> = {
   "studio.v3.design.userSection.saveCurrent": "Guardar actual",
   "studio.v3.design.userSection.loading": "Cargando diseños guardados…",
   "studio.v3.design.userSection.empty": "Aún no tienes diseños guardados para este widget.",
-  "studio.v3.behavior.frequency": "Frecuencia",
-  "studio.v3.behavior.advancedHz": "Hz avanzado",
+  "studio.v3.behavior.frequency": "FPS",
+  "studio.v3.behavior.advancedHz": "FPS avanzado",
   "studio.v3.behavior.visibleInPit": "Visible en boxes",
   "studio.v3.behavior.pit.any": "Siempre",
   "studio.v3.behavior.pit.inPit": "Solo en boxes",
@@ -245,6 +245,7 @@ export const studioV3Es: Record<string, string> = {
   "studio.v3.access.widgetMutationDenied": "No tienes acceso para modificar este widget.",
   "studio.v3.access.premiumSaveDenied":
     "No puedes guardar cambios en widgets premium sin la licencia adecuada.",
+  "studio.v3.standings.rowCount": "Filas",
 };
 
 export const STUDIO_V3_I18N_KEYS = Object.keys(studioV3Es).sort();

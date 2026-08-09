@@ -1,9 +1,11 @@
+import { useI18n } from "../../../i18n/I18nProvider";
 import type { CustomInspectorProps } from "../../core/inspector-control";
 import type { WidgetColumnWidthPreset } from "../shared/widget-column";
 import {
   moveStandingsColumn,
   parseStandingsContent,
   STANDINGS_COLUMN_TEMPLATES,
+  STANDINGS_ROW_COUNT_OPTIONS,
   toggleStandingsColumn,
   updateStandingsColumn,
 } from "./standings-content";
@@ -15,8 +17,16 @@ function templateLabel(columnId: string): string {
   return STANDINGS_COLUMN_TEMPLATES.find((template) => template.id === columnId)?.label ?? columnId;
 }
 
+function updateRowCount(
+  content: ReturnType<typeof parseStandingsContent>,
+  rowCount: number,
+): ReturnType<typeof parseStandingsContent> {
+  return { ...content, rowCount };
+}
+
 export function StandingsContentInspector(props: CustomInspectorProps): React.ReactElement {
   const { widget, disabled, onContentChange } = props;
+  const { t } = useI18n();
   const content = parseStandingsContent(widget.content);
 
   const publish = (nextContent: ReturnType<typeof parseStandingsContent>) => {
@@ -25,6 +35,24 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
 
   return (
     <div data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
+      <div className="osv3-inspector-field-group" data-testid="studio-standings-row-count">
+        <span className="osv3-inspector-field__label">{t("studio.v3.standings.rowCount")}</span>
+        <div className="osv3-inspector-preset-row">
+          {STANDINGS_ROW_COUNT_OPTIONS.map((count) => (
+            <button
+              key={count}
+              type="button"
+              data-testid={`studio-standings-row-count-${count}`}
+              className={content.rowCount === count ? "is-active" : undefined}
+              onClick={() => publish(updateRowCount(content, count))}
+              disabled={disabled}
+            >
+              {count}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ul className="osv3-standings-columns" data-testid="studio-standings-columns">
         {content.columns.map((column, index) => (
           <li key={column.id} className="osv3-standings-columns__item" data-testid={`studio-standings-column-${column.id}`}>

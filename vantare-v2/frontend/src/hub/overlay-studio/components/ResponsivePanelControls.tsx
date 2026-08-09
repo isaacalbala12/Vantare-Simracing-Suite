@@ -51,6 +51,7 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const listDrawerRef = useRef<HTMLDivElement | null>(null);
   const inspectorDrawerRef = useRef<HTMLDivElement | null>(null);
+  const prevSelectedWidgetIdRef = useRef<string | null>(null);
 
   const setDrawer = useCallback(
     (drawer: StudioDrawerId) => {
@@ -66,9 +67,11 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
       setInspectorOpen(false);
       return;
     }
-    if (selectedWidgetId) {
+    // Only auto-open inspector when selection changes to a NEW widget, not on every render
+    if (selectedWidgetId && selectedWidgetId !== prevSelectedWidgetIdRef.current) {
       setDrawer("inspector");
     }
+    prevSelectedWidgetIdRef.current = selectedWidgetId;
   }, [layoutMode, selectedWidgetId, setDrawer]);
 
   const rememberFocus = () => {
@@ -105,13 +108,15 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
       return;
     }
     rememberFocus();
-    setDrawer("list");
+    // Toggle: close if already open, open if closed
+    setDrawer(openDrawer === "list" ? null : "list");
   };
 
   const openInspectorDrawer = () => {
     if (layoutMode === "compact") {
       rememberFocus();
-      setDrawer("inspector");
+      // Toggle: close if already open, open if closed
+      setDrawer(openDrawer === "inspector" ? null : "inspector");
       return;
     }
     if (layoutMode === "medium") {
@@ -129,12 +134,20 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
     >
       {layoutMode === "compact" ? (
         <div className="osv3-compact-toolbar" data-testid="studio-panel-drawer-toggle">
-          <button type="button" data-testid="studio-list-drawer-toggle" onClick={openListDrawer}>
+          <button
+            type="button"
+            data-testid="studio-list-drawer-toggle"
+            aria-pressed={openDrawer === "list"}
+            className={openDrawer === "list" ? "is-active" : undefined}
+            onClick={openListDrawer}
+          >
             {t("studio.v3.layout.widgetsPanel")}
           </button>
           <button
             type="button"
             data-testid="studio-inspector-drawer-toggle"
+            aria-pressed={openDrawer === "inspector"}
+            className={openDrawer === "inspector" ? "is-active" : undefined}
             onClick={openInspectorDrawer}
           >
             {t("studio.v3.layout.inspectorPanel")}
@@ -145,7 +158,8 @@ export function ResponsivePanelControls(props: ResponsivePanelControlsProps): Re
         <button
           type="button"
           data-testid="studio-inspector-toggle"
-          className="osv3-medium-inspector-toggle"
+          aria-expanded={inspectorOpen}
+          className={`osv3-medium-inspector-toggle ${inspectorOpen ? "is-active" : ""}`}
           onClick={openInspectorDrawer}
         >
           {t("studio.v3.layout.inspectorPanel")}

@@ -21,6 +21,7 @@ export type StandingsMetricId =
 
 export type StandingsContent = {
   columns: WidgetColumnV3[];
+  rowCount?: number;
 };
 
 export const STANDINGS_METRIC_IDS: readonly StandingsMetricId[] = [
@@ -108,6 +109,8 @@ export const STANDINGS_COLUMN_TEMPLATES: readonly StandingsColumnTemplate[] = [
 
 const PRESET_ENTRIES = Object.entries(WIDTH_PRESET_PIXELS) as [Exclude<WidgetColumnWidthPreset, "auto">, number][];
 
+export const STANDINGS_ROW_COUNT_OPTIONS = [5, 10, 15, 20] as const;
+
 export function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
   let best: WidgetColumnWidthPreset = "md";
   let bestDistance = Number.POSITIVE_INFINITY;
@@ -133,6 +136,7 @@ export function createDefaultStandingsContent(): StandingsContent {
       ...(template.format ? { format: structuredClone(template.format) } : {}),
       ...(template.style ? { style: structuredClone(template.style) } : {}),
     })),
+    rowCount: 20,
   };
 }
 
@@ -177,9 +181,18 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     throw new Error("standings content must be an object");
   }
   const defaults = createDefaultStandingsContent();
-  const rawColumns = (input as Record<string, unknown>).columns;
+  const inputRecord = input as Record<string, unknown>;
+
+  // Parse rowCount first, before columns validation
+  const rowCount = inputRecord.rowCount;
+  const parsedRowCount =
+    typeof rowCount === "number" && STANDINGS_ROW_COUNT_OPTIONS.includes(rowCount as typeof STANDINGS_ROW_COUNT_OPTIONS[number])
+      ? rowCount
+      : defaults.rowCount;
+
+  const rawColumns = inputRecord.columns;
   if (!Array.isArray(rawColumns)) {
-    return defaults;
+    return { ...defaults, rowCount: parsedRowCount };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -197,7 +210,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns };
+  return { columns, rowCount: parsedRowCount };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {

@@ -39,7 +39,7 @@ describe("BehaviorSection", () => {
     });
   });
 
-  it("rejects advanced Hz values outside 1..240", () => {
+  it("clamps advanced Hz values to 1..240 range on blur", () => {
     const widget = deltaDefinition.createDefault("delta-main");
     const dispatch = vi.fn<(command: StudioCommand) => void>();
 
@@ -53,17 +53,64 @@ describe("BehaviorSection", () => {
     );
 
     const input = screen.getByTestId("studio-behavior-hz-advanced") as HTMLInputElement;
+
+    // Typing intermediate values should NOT dispatch
     fireEvent.change(input, { target: { value: "0" } });
     fireEvent.change(input, { target: { value: "999" } });
     expect(dispatch).not.toHaveBeenCalled();
 
+    // Blurring with in-range value should dispatch
     fireEvent.change(input, { target: { value: "24" } });
-    expect(dispatch).toHaveBeenCalledWith({
+    fireEvent.blur(input);
+    expect(dispatch).toHaveBeenLastCalledWith({
       type: "widget/behavior",
       session: "general",
       widgetIds: ["delta-main"],
       patch: { updateHz: 24 },
     });
+    expect(input.value).toBe("24"); // Input value is clamped but stays as typed
+
+    dispatch.mockClear();
+
+    // Blurring with value below minimum (0) should clamp to 1 and dispatch
+    fireEvent.change(input, { target: { value: "0" } });
+    fireEvent.blur(input);
+    expect(dispatch).toHaveBeenLastCalledWith({
+      type: "widget/behavior",
+      session: "general",
+      widgetIds: ["delta-main"],
+      patch: { updateHz: 1 },
+    });
+    expect(input.value).toBe("1"); // Clamped and shows the clamped value
+
+    dispatch.mockClear();
+
+    // Blurring with value above maximum (500) should clamp to 240 and dispatch
+    fireEvent.change(input, { target: { value: "500" } });
+    fireEvent.blur(input);
+    expect(dispatch).toHaveBeenLastCalledWith({
+      type: "widget/behavior",
+      session: "general",
+      widgetIds: ["delta-main"],
+      patch: { updateHz: 240 },
+    });
+    expect(input.value).toBe("240"); // Clamped to max
+
+    dispatch.mockClear();
+
+    // Blurring with non-numeric input should revert to current widget.updateHz and not dispatch
+    fireEvent.change(input, { target: { value: "abc" } });
+    fireEvent.blur(input);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(input.value).toBe("30"); // Reverted to original widget updateHz (not dispatched yet)
+
+    dispatch.mockClear();
+
+    // Blurring with empty input should revert and not dispatch
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(input.value).toBe("30");
   });
 
   it("dispatches conditional visibility rules", () => {

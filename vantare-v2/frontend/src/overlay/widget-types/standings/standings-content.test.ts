@@ -61,4 +61,32 @@ describe("standings-content", () => {
     expect(moved.columns[1]?.id).toBe("driverName");
     expect(moved.columns[0]?.id).toBe("position");
   });
+
+  it("defaults rowCount to 20", () => {
+    const content = createDefaultStandingsContent();
+    expect(content.rowCount).toBe(20);
+  });
+
+  it("accepts valid rowCount values (5, 10, 15, 20)", () => {
+    const validCounts = [5, 10, 15, 20];
+    for (const count of validCounts) {
+      const parsed = parseStandingsContent({ rowCount: count });
+      expect(parsed.rowCount).toBe(count);
+    }
+  });
+
+  it("rejects invalid rowCount and falls back to default", () => {
+    expect(parseStandingsContent({ rowCount: 7 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: 30 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: -1 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: "25" }).rowCount).toBe(20);
+  });
+
+  it("preserves rowCount when parsing existing content", () => {
+    const parsed = parseStandingsContent({
+      columns: [{ id: "position", metricId: "position", enabled: true, widthPreset: "sm" }],
+      rowCount: 10,
+    });
+    expect(parsed.rowCount).toBe(10);
+  });
 });

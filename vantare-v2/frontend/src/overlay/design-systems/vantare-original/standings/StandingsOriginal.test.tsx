@@ -55,6 +55,26 @@ describe("StandingsOriginal", () => {
     expect(cells).toEqual(readyModel.columns.map((column) => column.metricId));
   });
 
+  it("exposes each row class colour without adding a column", () => {
+    const { root } = renderOriginal(readyModel, {
+      showSessionHeader: true,
+      classHypercarColor: "#abcdef",
+    });
+    const rows = [...root.querySelectorAll("tr[data-standings-row]")] as HTMLElement[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.style.getPropertyValue("--vo-standings-row-class")).not.toBe("");
+      expect(row.querySelectorAll("td")).toHaveLength(readyModel.columns.length);
+    }
+    const hypercar = rows.find((row) => row.getAttribute("data-class") === "HYPERCAR");
+    expect(hypercar?.style.getPropertyValue("--vo-standings-row-class")).toBe("#abcdef");
+  });
+
+  it("applies the accent colour as a CSS custom property on the root", () => {
+    const { root } = renderOriginal(readyModel, { accentColor: "#123456" });
+    expect(root.style.getPropertyValue("--vo-standings-accent")).toBe("#123456");
+  });
+
   it("omits disabled columns from the table", () => {
     const content = createDefaultStandingsContent();
     const disabledBestLap = {

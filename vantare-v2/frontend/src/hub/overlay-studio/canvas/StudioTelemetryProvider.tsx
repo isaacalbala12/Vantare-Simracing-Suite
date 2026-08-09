@@ -1,7 +1,7 @@
 import {
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   type ReactNode,
 } from "react";
@@ -32,12 +32,16 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   const { coordinator, liveAvailable, telemetryAdapter = null, children } = props;
   const { preview } = useStudioPreview();
 
-  useEffect(() => {
-    // Single effect handles both mock publishing and live adapter lifecycle.
-    // Merged into one effect to eliminate race conditions between two independent
-    // effect cleanup/re-run sequences. When source changes from "live" to "mock",
-    // the live cleanup (telemetryAdapter.stop()) now runs before the mock publish
-    // happens in the same effect body, eliminating the double-stop issue.
+  // Single layout effect handles both mock publishing and live adapter lifecycle.
+  // Merged into one effect to eliminate race conditions between two independent
+  // effect cleanup/re-run sequences. When source changes from "live" to "mock",
+  // the live cleanup (telemetryAdapter.stop()) now runs before the mock publish
+  // happens in the same effect body, eliminating the double-stop issue.
+  // Uses useLayoutEffect so mock publish happens before paint, ensuring widgets
+  // render with correct telemetry data on first paint.
+  useLayoutEffect(() => {
+    // Cleanup from previous render runs first (if live adapter was active)
+    // Then body runs below
     if (preview.source === "mock") {
       // Publish mock snapshot when in mock mode
       coordinator.publish(

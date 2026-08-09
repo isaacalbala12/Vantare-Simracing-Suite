@@ -1,15 +1,61 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { render, waitFor, fireEvent, screen, cleanup } from "@testing-library/react";
 import React from "react";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import type { TelemetryAdapter } from "../../../overlay/transports/wails-telemetry-adapter";
-import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { useStudioPreview } from "../state/studio-store";
+import { StudioTelemetryProvider, ConnectedStudioTelemetryProvider, useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
+import { useStudioPreview, StudioProvider } from "../state/studio-store";
+import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
+import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
+import type { StudioProfileClient } from "../state/studio-profile-client";
+import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 
-vi.mock("../state/studio-store", () => ({
-  useStudioPreview: vi.fn(),
-}));
+vi.mock("../state/studio-store", async () => {
+  const actual = await vi.importActual("../state/studio-store");
+  return {
+    ...actual,
+    useStudioPreview: vi.fn(),
+  };
+});
+
+function buildDocument(): ProfileDocumentV3 {
+  return {
+    schemaVersion: 3,
+    id: "profile-1",
+    name: "Test",
+    displayMode: "edit",
+    monitorIndex: 0,
+    layouts: {
+      general: {
+        type: "general",
+        widgets: [deltaDefinition.createDefault("delta-main")],
+      },
+    },
+  };
+}
+
+const client: StudioProfileClient = {
+  load: async () => ({ document: buildDocument(), revision: "rev-1" }),
+  save: async () => ({ status: "saved", document: buildDocument(), revision: "rev-2" }),
+};
+
+function SnapshotProbe(): React.ReactElement {
+  const snapshot = useStudioTelemetrySnapshot();
+  return <div data-testid="telemetry-probe">{snapshot.session.type}</div>;
+}
+
+function SourceSwitcher(): React.ReactElement {
+  const { setPreview } = useStudioPreview();
+  return (
+    <button
+      type="button"
+      data-testid="use-live-source"
+      onClick={() => setPreview({ source: "live" })}
+    />
+  );
+}
 
 describe("StudioTelemetryProvider - single merged effect", () => {
   let mockCoordinator: TelemetryRateCoordinator;
@@ -316,5 +362,134 @@ describe("StudioTelemetryProvider - single merged effect", () => {
 
     const allSnapshots = publishHistory.map((s) => s.status);
     expect(allSnapshots).not.toContain("ready");
+  });
+});
+
+describe("StudioTelemetryProvider - integration with StudioProvider", () => {
+  beforeEach(async () => {
+    // Import the real useStudioPreview and mock it to use the real implementation
+    const actual = await vi.importActual<typeof import("../state/studio-store")>("../state/studio-store");
+    vi.mocked(useStudioPreview).mockImplementation(actual.useStudioPreview);
+  });
+  afterEach(() => cleanup());
+
+  it("serves mock telemetry for the active preview before the first paint", () => {
+    // Se siembra otra sesion a proposito: el proveedor debe imponer la de la
+    // vista previa activa -- "practice" por defecto -- y hacerlo antes de que
+    // se pinte. Con useEffect publicaba despues del primer fotograma, asi que
+    // los widgets aparecian un instante sin datos al entrar en el Studio.
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
+      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
+    );
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable>
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+  });
+
+  it("republishes mock telemetry when mock session changes", async () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
+      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
+    );
+
+    function SessionChanger(): React.ReactElement {
+      const { setPreview } = useStudioPreview();
+      return (
+        <button
+          type="button"
+          data-testid="set-race"
+          onClick={() => setPreview({ mockSession: "race" })}
+        />
+      );
+    }
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <SessionChanger />
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+    fireEvent.click(screen.getByTestId("set-race"));
+    await waitFor(() => {
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+    });
+  });
+
+  it("starts the live adapter only when preview source is live", async () => {
+    const coordinator = createTelemetryRateCoordinator();
+    let started = 0;
+    let stopped = 0;
+    const telemetryAdapter = {
+      coordinator,
+      start() {
+        started += 1;
+        coordinator.publish(
+          buildMockTelemetry({ session: "race", location: "pits", state: "ready" }),
+        );
+      },
+      stop() {
+        stopped += 1;
+      },
+    };
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider
+          coordinator={coordinator}
+          liveAvailable
+          telemetryAdapter={telemetryAdapter}
+        >
+          <SourceSwitcher />
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    expect(started).toBe(0);
+    fireEvent.click(screen.getByTestId("use-live-source"));
+    await waitFor(() => {
+      expect(started).toBe(1);
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+    });
+    expect(stopped).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("ConnectedStudioTelemetryProvider", () => {
+  beforeEach(async () => {
+    // Import the real useStudioPreview and mock it to use the real implementation
+    const actual = await vi.importActual<typeof import("../state/studio-store")>("../state/studio-store");
+    vi.mocked(useStudioPreview).mockImplementation(actual.useStudioPreview);
+  });
+  afterEach(() => cleanup());
+
+  it("wires coordinator and live availability through the connected provider", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(
+      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
+    );
+
+    render(
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <ConnectedStudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <SnapshotProbe />
+        </ConnectedStudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    // Igual que arriba: la vista previa activa manda sobre lo sembrado.
+    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
   });
 });

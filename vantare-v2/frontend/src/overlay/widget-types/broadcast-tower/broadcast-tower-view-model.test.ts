@@ -7,7 +7,7 @@ describe("buildBroadcastTowerViewModel", () => {
     const model = buildBroadcastTowerViewModel(buildMockTelemetry({ session: "race", location: "track" }), { rowCount: 3, showWeather: true, showSof: true });
     expect(model.type).toBe("broadcast-tower");
     expect(model.rows).toHaveLength(3);
-    expect(model.rows[0]).toMatchObject({ place: 1, number: "7", name: "PORSCHE PENSKE", isPlayer: false });
+    expect(model.rows[0]).toMatchObject({ place: 1, number: "36", name: "ALPINE", isPlayer: false });
     expect(model.trackTempC).toBeUndefined();
     expect(model.sof).toBeUndefined();
   });

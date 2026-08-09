@@ -12,7 +12,6 @@ import {
   type StandingsScoringRow,
 } from "./standings-formatting";
 
-const MAX_ROWS = 60;
 const PLACEHOLDER = "—";
 
 export type StandingsRowViewModel = {
@@ -175,7 +174,8 @@ export function buildStandingsViewModel(
           }
           return rowClass === activeClass;
         });
-  const limited = classRows.slice(0, MAX_ROWS);
+  const maxRows = content.rowCount ?? 20;
+  const limited = classRows.slice(0, maxRows);
   const leader = limited[0];
   const classLeaders = new Map<string, StandingsScoringRow>();
   if (content.classScope === "all-classes") {

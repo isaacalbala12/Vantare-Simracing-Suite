@@ -186,8 +186,8 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.design.userSection.saveCurrent": "Guardar atual",
   "studio.v3.design.userSection.loading": "A carregar designs guardados…",
   "studio.v3.design.userSection.empty": "Ainda não tens designs guardados para este widget.",
-  "studio.v3.behavior.frequency": "Frequência",
-  "studio.v3.behavior.advancedHz": "Hz avançado",
+  "studio.v3.behavior.frequency": "FPS",
+  "studio.v3.behavior.advancedHz": "FPS avançado",
   "studio.v3.behavior.visibleInPit": "Visível nas boxes",
   "studio.v3.behavior.pit.any": "Sempre",
   "studio.v3.behavior.pit.inPit": "Só nas boxes",
@@ -251,4 +251,5 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.access.widgetMutationDenied": "Não tens acesso para modificar este widget.",
   "studio.v3.access.premiumSaveDenied":
     "Não podes guardar alterações em widgets premium sem a licença adequada.",
+  "studio.v3.standings.rowCount": "Linhas",
 };

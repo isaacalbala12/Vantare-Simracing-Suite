@@ -114,7 +114,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
       return;
     }
     if (
-      refreshed.hasBundle &&
+      refreshed.hasSuite &&
       refreshed.license.state === "device-limit"
     ) {
       setAccessCheckState("deviceLimit");

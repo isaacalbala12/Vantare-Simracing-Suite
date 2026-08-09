@@ -40,4 +40,19 @@ describe("StandingsContentInspector", () => {
     expect(updated.columns.find((column) => column.id === "gap")?.widthPreset).toBe("lg");
     expect(screen.queryByRole("combobox", { name: /metric/i })).toBeNull();
   });
+
+  it("changes row count through preset buttons", () => {
+    const widget = standingsDefinition.createDefault("standings-main");
+    const onContentChange = vi.fn();
+    render(<StandingsContentInspector widget={widget} onContentChange={onContentChange} />);
+
+    expect(screen.getByTestId("studio-standings-row-count")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("studio-standings-row-count-10"));
+    const updated = onContentChange.mock.calls.at(-1)?.[0] as { rowCount: number };
+    expect(updated.rowCount).toBe(10);
+
+    fireEvent.click(screen.getByTestId("studio-standings-row-count-5"));
+    const updated2 = onContentChange.mock.calls.at(-1)?.[0] as { rowCount: number };
+    expect(updated2.rowCount).toBe(5);
+  });
 });

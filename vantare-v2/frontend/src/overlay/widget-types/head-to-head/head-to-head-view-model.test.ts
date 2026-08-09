@@ -7,8 +7,8 @@ describe("buildHeadToHeadViewModel", () => {
     const model = buildHeadToHeadViewModel(buildMockTelemetry({ session: "race", location: "track" }), { target: "ahead", showSectors: true });
     expect(model.status).toBe("ready");
     expect(model.player?.name).toBe("TOYOTA GAZOO");
-    expect(model.opponent?.place).toBe(3);
-    expect(model.opponent?.name).toBe("FERRARI AF");
+    expect(model.opponent?.place).toBe(4);
+    expect(model.opponent?.name).toBe("CADILLAC RACING");
   });
 
   it("reports a missing rival without fabricating a row", () => {

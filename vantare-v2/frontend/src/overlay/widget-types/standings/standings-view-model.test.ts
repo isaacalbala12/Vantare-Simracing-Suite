@@ -50,6 +50,24 @@ describe("buildStandingsViewModel", () => {
       { ...snapshot, scoring: [...manyRows, { invalid: true }] },
       content,
     );
-    expect(model.rows).toHaveLength(60);
+    expect(model.rows).toHaveLength(20);
+  });
+
+  it("respects configurable rowCount", () => {
+    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+    const manyRows = Array.from({ length: 60 }, (_, index) => ({
+      id: index + 1,
+      place: index + 1,
+      driverName: `Driver ${index + 1}`,
+      vehicleClass: "HYPERCAR",
+      isPlayer: index === 4,
+    }));
+
+    const testCases = [5, 10, 15, 20];
+    for (const rowCount of testCases) {
+      const contentWithCount = { ...content, rowCount };
+      const model = buildStandingsViewModel({ ...snapshot, scoring: manyRows }, contentWithCount);
+      expect(model.rows).toHaveLength(rowCount);
+    }
   });
 });

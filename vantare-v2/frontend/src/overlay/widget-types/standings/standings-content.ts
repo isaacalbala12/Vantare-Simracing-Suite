@@ -23,6 +23,7 @@ export type StandingsClassScope = "player-class" | "all-classes";
 
 export type StandingsContent = {
   columns: WidgetColumnV3[];
+  rowCount?: number;
   classScope: StandingsClassScope;
 };
 
@@ -111,6 +112,8 @@ export const STANDINGS_COLUMN_TEMPLATES: readonly StandingsColumnTemplate[] = [
 
 const PRESET_ENTRIES = Object.entries(WIDTH_PRESET_PIXELS) as [Exclude<WidgetColumnWidthPreset, "auto">, number][];
 
+export const STANDINGS_ROW_COUNT_OPTIONS = [5, 10, 15, 20] as const;
+
 export function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
   let best: WidgetColumnWidthPreset = "md";
   let bestDistance = Number.POSITIVE_INFINITY;
@@ -128,7 +131,6 @@ export function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
 
 export function createDefaultStandingsContent(): StandingsContent {
   return {
-    classScope: "player-class",
     columns: STANDINGS_COLUMN_TEMPLATES.map((template) => ({
       id: template.id,
       metricId: template.metricId,
@@ -137,6 +139,8 @@ export function createDefaultStandingsContent(): StandingsContent {
       ...(template.format ? { format: structuredClone(template.format) } : {}),
       ...(template.style ? { style: structuredClone(template.style) } : {}),
     })),
+    rowCount: 20,
+    classScope: "player-class",
   };
 }
 
@@ -181,12 +185,23 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     throw new Error("standings content must be an object");
   }
   const defaults = createDefaultStandingsContent();
-  const rawScope = (input as Record<string, unknown>).classScope;
+  const inputRecord = input as Record<string, unknown>;
+
+  // Parse rowCount
+  const rowCount = inputRecord.rowCount;
+  const parsedRowCount =
+    typeof rowCount === "number" && STANDINGS_ROW_COUNT_OPTIONS.includes(rowCount as typeof STANDINGS_ROW_COUNT_OPTIONS[number])
+      ? rowCount
+      : defaults.rowCount;
+
+  // Parse classScope
+  const rawScope = inputRecord.classScope;
   const classScope: StandingsClassScope =
     rawScope === "all-classes" ? "all-classes" : "player-class";
-  const rawColumns = (input as Record<string, unknown>).columns;
+
+  const rawColumns = inputRecord.columns;
   if (!Array.isArray(rawColumns)) {
-    return { ...defaults, classScope };
+    return { ...defaults, rowCount: parsedRowCount, classScope };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -204,7 +219,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns, classScope };
+  return { columns, rowCount: parsedRowCount, classScope };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {

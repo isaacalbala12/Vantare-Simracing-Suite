@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
-  entitlementsIncludeBundle,
+  entitlementsSuiteGranting,
   isFreshLicenseEvent,
   isPremiumUnlocked,
   parseLastValidatedMs,
@@ -71,20 +71,60 @@ describe("entitlements-refresh", () => {
     vi.useRealTimers();
   });
 
-  it("entitlementsIncludeBundle detects bundle", () => {
-    expect(entitlementsIncludeBundle(["overlays"])).toBe(false);
-    expect(entitlementsIncludeBundle(["bundle"])).toBe(true);
+  it("entitlementsSuiteGranting detects suite-granting entitlements", () => {
+    // Suite-granting standalone entitlements
+    expect(entitlementsSuiteGranting(["bundle"])).toBe(true);
+    expect(entitlementsSuiteGranting(["beta_access"])).toBe(true);
+    expect(entitlementsSuiteGranting(["founder"])).toBe(true);
+    expect(entitlementsSuiteGranting(["pro_founder"])).toBe(true);
+    expect(entitlementsSuiteGranting(["visionary_backer"])).toBe(true);
+    // Non-suite entitlements
+    expect(entitlementsSuiteGranting(["overlays"])).toBe(false);
+    expect(entitlementsSuiteGranting(["engineer"])).toBe(false);
+    expect(entitlementsSuiteGranting(["supporter"])).toBe(false);
+    // Suite from combination
+    expect(entitlementsSuiteGranting(["overlays", "engineer"])).toBe(true);
+    // Edge cases
+    expect(entitlementsSuiteGranting([])).toBe(false);
+    expect(entitlementsSuiteGranting(null)).toBe(false);
+    expect(entitlementsSuiteGranting(undefined)).toBe(false);
   });
 
-  it("isPremiumUnlocked requires bundle and active/grace state", () => {
-    const activeBundle = freshLicense();
-    expect(isPremiumUnlocked(activeBundle)).toBe(true);
+  it("isPremiumUnlocked requires suite entitlement and active/grace state", () => {
+    const activeSuite = freshLicense();
+    expect(isPremiumUnlocked(activeSuite)).toBe(true);
 
-    expect(isPremiumUnlocked({ ...activeBundle, state: "expired" })).toBe(false);
-    expect(isPremiumUnlocked({ ...activeBundle, entitlements: [] })).toBe(false);
-    expect(isPremiumUnlocked({ ...activeBundle, state: "device-limit" })).toBe(
+    // Suite entitlements work
+    expect(
+      isPremiumUnlocked({ ...activeSuite, entitlements: ["beta_access"] }),
+    ).toBe(true);
+    expect(
+      isPremiumUnlocked({ ...activeSuite, entitlements: ["founder"] }),
+    ).toBe(true);
+    expect(
+      isPremiumUnlocked({ ...activeSuite, entitlements: ["pro_founder"] }),
+    ).toBe(true);
+    expect(
+      isPremiumUnlocked({
+        ...activeSuite,
+        entitlements: ["visionary_backer"],
+      }),
+    ).toBe(true);
+    expect(
+      isPremiumUnlocked({
+        ...activeSuite,
+        entitlements: ["overlays", "engineer"],
+      }),
+    ).toBe(true);
+
+    // Blocked states
+    expect(isPremiumUnlocked({ ...activeSuite, state: "expired" })).toBe(false);
+    expect(isPremiumUnlocked({ ...activeSuite, entitlements: [] })).toBe(false);
+    expect(isPremiumUnlocked({ ...activeSuite, state: "device-limit" })).toBe(
       false,
     );
+    // Grace state is allowed
+    expect(isPremiumUnlocked({ ...activeSuite, state: "grace" })).toBe(true);
   });
 
   it("parseLastValidatedMs handles ISO strings and rejects Wails object payloads", () => {
@@ -161,7 +201,7 @@ describe("entitlements-refresh", () => {
     await expect(promise).resolves.toEqual({
       ok: true,
       license: expect.objectContaining({ state: "active", entitlements: ["bundle"] }),
-      hasBundle: true,
+      hasSuite: true,
       unlocked: true,
     });
   });
@@ -182,12 +222,12 @@ describe("entitlements-refresh", () => {
     await expect(promise).resolves.toEqual({
       ok: true,
       license: expect.objectContaining({ state: "active", entitlements: ["bundle"] }),
-      hasBundle: true,
+      hasSuite: true,
       unlocked: true,
     });
   });
 
-  it("refreshCurrentUserEntitlements returns pending when bundle missing", async () => {
+  it("refreshCurrentUserEntitlements returns pending when suite entitlement missing", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = refreshCurrentUserEntitlements();
     await Promise.resolve();
@@ -200,7 +240,7 @@ describe("entitlements-refresh", () => {
     await expect(promise).resolves.toEqual({
       ok: true,
       license: expect.objectContaining({ entitlements: [] }),
-      hasBundle: false,
+      hasSuite: false,
       unlocked: false,
     });
   });
@@ -240,5 +280,129 @@ describe("entitlements-refresh", () => {
       ok: false,
       reason: "rate_limit",
     });
+  });
+});
+
+// Regression tests: verify each suite-granting entitlement individually unlocks premium
+// These tests ensure the bug "user with beta_access shown paywall" doesn't resurface
+describe("suite-granting entitlements regression tests", () => {
+  it("beta_access alone unlocks premium", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["beta_access"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("founder alone unlocks premium", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["founder"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("pro_founder alone unlocks premium", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["pro_founder"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("visionary_backer alone unlocks premium", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["visionary_backer"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("overlays + engineer together unlock premium", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["overlays", "engineer"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("unrelated entitlement alone does not unlock", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["ac_lua_pack"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("device-limit blocks even with valid suite entitlement", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "device-limit",
+        entitlements: ["beta_access"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("grace state still unlocks with suite entitlement", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "grace",
+        entitlements: ["founder"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("overlays alone does not unlock", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["overlays"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("engineer alone does not unlock", () => {
+    expect(
+      isPremiumUnlocked({
+        state: "active",
+        entitlements: ["engineer"],
+        userId: "u",
+        email: "u@example.com",
+        deviceOK: true,
+      }),
+    ).toBe(false);
   });
 });

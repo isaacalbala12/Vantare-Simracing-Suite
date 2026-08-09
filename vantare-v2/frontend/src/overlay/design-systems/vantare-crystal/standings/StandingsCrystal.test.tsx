@@ -113,7 +113,8 @@ describe("StandingsCrystal", () => {
       vehicleClass: "HYPERCAR",
       isPlayer: index === 4,
     }));
-    const model = buildStandingsViewModel({ ...snapshot, scoring: manyRows }, createDefaultStandingsContent());
+    const content = { ...createDefaultStandingsContent(), rowCount: 60 };
+    const model = buildStandingsViewModel({ ...snapshot, scoring: manyRows }, content);
     const { root } = renderCrystal(model);
     const rowIds = [...root.querySelectorAll("[data-standings-row]")].map((row) =>
       row.getAttribute("data-standings-row"),

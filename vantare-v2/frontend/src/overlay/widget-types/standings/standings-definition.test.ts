@@ -27,4 +27,9 @@ describe("standingsDefinition", () => {
     expect(parsed.columns).toHaveLength(1);
     expect(parsed.columns[0]?.widthPreset).toBe("md");
   });
+
+  it("includes rowCount in default content", () => {
+    const widget = standingsDefinition.createDefault("standings-main");
+    expect(widget.content.rowCount).toBe(20);
+  });
 });

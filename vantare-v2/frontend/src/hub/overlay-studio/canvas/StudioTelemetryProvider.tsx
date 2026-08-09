@@ -1,7 +1,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   type ReactNode,
@@ -33,38 +32,40 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   const { coordinator, liveAvailable, telemetryAdapter = null, children } = props;
   const { preview } = useStudioPreview();
 
-  // useLayoutEffect y no useEffect: los datos mock se generan aqui mismo, sin
-  // esperar a nadie, asi que no hay motivo para que el primer fotograma salga
-  // vacio. Con useEffect se publicaban despues de pintar y los widgets
-  // aparecian un instante sin datos al entrar en el Studio. publish actualiza
-  // el snapshot de forma sincrona y useSyncExternalStore lo lee en el mismo
-  // ciclo, de modo que el primer pintado ya lleva datos.
+  // Single layout effect handles both mock publishing and live adapter lifecycle.
+  // Merged into one effect to eliminate race conditions between two independent
+  // effect cleanup/re-run sequences. When source changes from "live" to "mock",
+  // the live cleanup (telemetryAdapter.stop()) now runs before the mock publish
+  // happens in the same effect body, eliminating the double-stop issue.
+  // Uses useLayoutEffect so mock publish happens before paint, ensuring widgets
+  // render with correct telemetry data on first paint. Mock data is generated
+  // synchronously, so publishing before paint ensures the first frame has data.
   useLayoutEffect(() => {
-    if (preview.source !== "mock") {
-      return;
-    }
-    coordinator.publish(
-      buildMockTelemetry({
-        session: preview.mockSession,
-        location: preview.mockLocation,
-        state: "ready",
-      }),
-    );
-  }, [coordinator, preview.mockLocation, preview.mockSession, preview.source]);
-
-  useEffect(() => {
-    if (!telemetryAdapter) {
-      return;
-    }
-    if (preview.source === "live" && liveAvailable) {
+    if (preview.source === "mock") {
+      // Publish mock snapshot when in mock mode
+      coordinator.publish(
+        buildMockTelemetry({
+          session: preview.mockSession,
+          location: preview.mockLocation,
+          state: "ready",
+        }),
+      );
+    } else if (preview.source === "live" && liveAvailable && telemetryAdapter) {
+      // Start live adapter when in live mode
       telemetryAdapter.start();
+      // Cleanup stops adapter when source changes or component unmounts
       return () => {
         telemetryAdapter.stop();
       };
     }
-    telemetryAdapter.stop();
-    return undefined;
-  }, [liveAvailable, preview.source, telemetryAdapter]);
+  }, [
+    coordinator,
+    liveAvailable,
+    preview.mockLocation,
+    preview.mockSession,
+    preview.source,
+    telemetryAdapter,
+  ]);
 
   const value = useMemo<StudioTelemetryContextValue>(
     () => ({ coordinator, liveAvailable }),

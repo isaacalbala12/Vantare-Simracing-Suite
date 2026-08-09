@@ -151,7 +151,7 @@ export function AccountSettings() {
       return;
     }
     if (
-      refreshed.hasBundle &&
+      refreshed.hasSuite &&
       refreshed.license.state === "device-limit"
     ) {
       setLicenseRefreshState("deviceLimit");
@@ -176,7 +176,7 @@ export function AccountSettings() {
       return;
     }
     if (
-      refreshed.hasBundle &&
+      refreshed.hasSuite &&
       refreshed.license.state === "device-limit"
     ) {
       setLicenseRefreshState("deviceLimit");

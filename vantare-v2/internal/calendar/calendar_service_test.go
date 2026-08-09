@@ -1323,7 +1323,12 @@ func TestService_CloneLocked_DeepCopiesNewSlices(t *testing.T) {
 }
 
 func TestService_ApplyOfficialSchedule_Applies10Series(t *testing.T) {
-	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	// Anchored inside the seed's own validity window, which moves every week.
+	now := sched.ValidFrom.Add(36 * time.Hour)
 	svc := newTempService(t, now)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1334,32 +1339,29 @@ func TestService_ApplyOfficialSchedule_Applies10Series(t *testing.T) {
 	}
 
 	cal := svc.Calendar()
-	if len(cal.Series) != 10 {
-		t.Fatalf("Series = %d, want 10", len(cal.Series))
+	if len(cal.Series) != len(sched.Series) {
+		t.Fatalf("Series = %d, want %d", len(cal.Series), len(sched.Series))
 	}
 
-	// Verify all expected series IDs.
-	expectedIDs := []string{
-		"beginner-lmgt3-fixed",
-		"beginner-mclaren-challenge",
-		"beginner-lmp3-fixed",
-		"intermediate-lmgt3-sprint",
-		"intermediate-prototype-fixed",
-		"intermediate-elms-sprint",
-		"advanced-one-stint-sprint",
-		"advanced-elms-super-60",
-		"advanced-wec-xperience",
-		"weekly-wec-weekly",
-	}
+	// The line-up changes with every published schedule, so the calendar is
+	// checked against the seed it was applied from rather than a frozen list.
 	for i, s := range cal.Series {
-		if s.ID != expectedIDs[i] {
-			t.Errorf("Series[%d].ID = %q, want %q", i, s.ID, expectedIDs[i])
+		if s.ID != sched.Series[i].ID {
+			t.Errorf("Series[%d].ID = %q, want %q", i, s.ID, sched.Series[i].ID)
+		}
+		if s.Tier != sched.Series[i].Tier {
+			t.Errorf("Series[%d].Tier = %q, want %q", i, s.Tier, sched.Series[i].Tier)
 		}
 	}
 }
 
 func TestService_ApplyOfficialSchedule_PreviewsCapped(t *testing.T) {
-	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	// Anchored inside the seed's own validity window, which moves every week.
+	now := sched.ValidFrom.Add(36 * time.Hour)
 	svc := newTempService(t, now)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1370,8 +1372,8 @@ func TestService_ApplyOfficialSchedule_PreviewsCapped(t *testing.T) {
 	}
 
 	cal := svc.Calendar()
-	if len(cal.SeriesPreviews) != 10 {
-		t.Fatalf("SeriesPreviews = %d, want 10", len(cal.SeriesPreviews))
+	if len(cal.SeriesPreviews) != len(sched.Series) {
+		t.Fatalf("SeriesPreviews = %d, want %d", len(cal.SeriesPreviews), len(sched.Series))
 	}
 
 	for _, p := range cal.SeriesPreviews {
@@ -1490,7 +1492,12 @@ func TestService_ApplyOfficialSchedule_WeeklyLabel(t *testing.T) {
 }
 
 func TestService_ApplyOfficialSchedule_NoThousandsOfEvents(t *testing.T) {
-	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	// Anchored inside the seed's own validity window, which moves every week.
+	now := sched.ValidFrom.Add(36 * time.Hour)
 	svc := newTempService(t, now)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1573,10 +1580,15 @@ func TestService_ApplyOfficialSchedule_PrunesInvalidFollowedSeries(t *testing.T)
 }
 
 func TestService_ApplyOfficialSchedule_InvalidScheduleDoesNotMutate(t *testing.T) {
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
 	// Temporarily break the embedded schedule by making it unparseable.
 	// We can't easily do that, so instead verify that a second call is
 	// idempotent and that the calendar is in a valid state.
-	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	// Anchored inside the seed's own validity window, which moves every week.
+	now := sched.ValidFrom.Add(36 * time.Hour)
 	svc := newTempService(t, now)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1588,8 +1600,8 @@ func TestService_ApplyOfficialSchedule_InvalidScheduleDoesNotMutate(t *testing.T
 	}
 
 	cal1 := svc.Calendar()
-	if len(cal1.Series) != 10 {
-		t.Fatalf("first call: Series = %d, want 10", len(cal1.Series))
+	if len(cal1.Series) != len(sched.Series) {
+		t.Fatalf("first call: Series = %d, want %d", len(cal1.Series), len(sched.Series))
 	}
 
 	// Second call should also succeed and be idempotent.
@@ -1598,8 +1610,8 @@ func TestService_ApplyOfficialSchedule_InvalidScheduleDoesNotMutate(t *testing.T
 	}
 
 	cal2 := svc.Calendar()
-	if len(cal2.Series) != 10 {
-		t.Fatalf("second call: Series = %d, want 10", len(cal2.Series))
+	if len(cal2.Series) != len(sched.Series) {
+		t.Fatalf("second call: Series = %d, want %d", len(cal2.Series), len(sched.Series))
 	}
 	if len(cal2.Events) != len(cal1.Events) {
 		t.Errorf("second call Events = %d, first = %d (should be similar)", len(cal2.Events), len(cal1.Events))
@@ -1607,7 +1619,12 @@ func TestService_ApplyOfficialSchedule_InvalidScheduleDoesNotMutate(t *testing.T
 }
 
 func TestService_ApplyOfficialSchedule_PersistsAndSurvivesReload(t *testing.T) {
-	now := time.Date(2026, time.July, 2, 12, 0, 0, 0, time.UTC)
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	// Anchored inside the seed's own validity window, which moves every week.
+	now := sched.ValidFrom.Add(36 * time.Hour)
 	svc := newTempService(t, now)
 	if err := svc.Load(); err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1624,11 +1641,11 @@ func TestService_ApplyOfficialSchedule_PersistsAndSurvivesReload(t *testing.T) {
 	}
 
 	cal := svc2.Calendar()
-	if len(cal.Series) != 10 {
-		t.Errorf("after reload: Series = %d, want 10", len(cal.Series))
+	if len(cal.Series) != len(sched.Series) {
+		t.Errorf("after reload: Series = %d, want %d", len(cal.Series), len(sched.Series))
 	}
-	if len(cal.SeriesPreviews) != 10 {
-		t.Errorf("after reload: SeriesPreviews = %d, want 10", len(cal.SeriesPreviews))
+	if len(cal.SeriesPreviews) != len(sched.Series) {
+		t.Errorf("after reload: SeriesPreviews = %d, want %d", len(cal.SeriesPreviews), len(sched.Series))
 	}
 	if cal.SeriesPreviews[0].ScheduleLabel == "" {
 		t.Error("after reload: SeriesPreviews[0].ScheduleLabel is empty")

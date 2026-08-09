@@ -6,6 +6,7 @@ import { StartupSettings } from '../settings/StartupSettings';
 import { NotificationsSettings } from '../settings/NotificationsSettings';
 import { StorageSettings } from '../settings/StorageSettings';
 import { AccountSettings } from '../settings/AccountSettings';
+import { ScheduleImportSettings } from '../settings/ScheduleImportSettings';
 import { AboutSettings } from '../settings/AboutSettings';
 import { CpuSamplingSetting } from '../settings/CpuSamplingSetting';
 import { DowngradeModal } from '../settings/DowngradeModal';
@@ -36,7 +37,7 @@ export type {
   LaunchProfile,
 } from "../launcher/launcher-state";
 
-type TabId = 'account' | 'application' | 'updates' | 'hotkeys' | 'diagnostics';
+type TabId = 'account' | 'application' | 'updates' | 'schedule' | 'hotkeys' | 'diagnostics';
 
 function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
@@ -47,10 +48,16 @@ function SettingsPageInner() {
   const updater = useUpdaterSettings();
   const app = useAppSettings();
 
+  // Publishing the weekly schedule is an owner action, so the tab is not
+  // offered to anyone else. The database enforces it too — this only keeps the
+  // screen honest about who it is for.
+  const isOwner = access.roles.includes('owner');
+
   const TABS = [
     { id: 'account' as const, label: t('settings.tab.account') },
     { id: 'application' as const, label: t('settings.tab.application') },
     { id: 'updates' as const, label: t('settings.tab.updates') },
+    ...(isOwner ? [{ id: 'schedule' as const, label: 'Horario' }] : []),
     { id: 'hotkeys' as const, label: t('settings.tab.hotkeys') },
     { id: 'diagnostics' as const, label: t('settings.tab.data') },
   ];
@@ -143,6 +150,12 @@ function SettingsPageInner() {
         {activeTab === 'updates' && (
           <div key="panel-updates" id="panel-updates" role="tabpanel" aria-label={t('settings.tab.updates')} className="space-y-4">
             <UpdatesSettings updater={updater} availableChannels={availableChannels} />
+          </div>
+        )}
+
+        {activeTab === 'schedule' && isOwner && (
+          <div key="panel-schedule" id="panel-schedule" role="tabpanel" aria-label="Horario" className="space-y-4">
+            <ScheduleImportSettings />
           </div>
         )}
 

@@ -2,7 +2,11 @@
   "schemaVersion": 1,
   "tag": "v0.1.0.7-nightly.5",
   "channel": "nightly",
-  "title": "Vantare — el actualizador vuelve a actualizar y el calendario deja de bailar un día",
-  "summary": "La app ya reporta la versión que realmente lleva, así que actualizar deja de ofrecer la misma versión en bucle, y el calendario mensual muestra cada día en su columna para quien no esté en UTC.",
-  "issues": ["ISA-302", "ISA-303"]
+  "title": "Vantare — el calendario como puerta de entrada a las carreras de LMU",
+  "summary": "El calendario responde ya a lo que de verdad se pregunta un piloto: qué empieza ahora y cuánto queda. Además el actualizador vuelve a actualizar y el calendario mensual deja de mostrar los días desplazados fuera de UTC.",
+  "issues": [
+    "ISA-302",
+    "ISA-303",
+    "ISA-304"
+  ]
 }

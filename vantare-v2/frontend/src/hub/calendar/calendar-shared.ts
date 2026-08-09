@@ -92,3 +92,22 @@ export function cadenceLabel(intervalMinutes?: number): string {
   }
   return "Horario pendiente";
 }
+
+/**
+ * Reports whether two instants fall on the same calendar day *in the given
+ * zone*. Comparing local getDate() answers a different question and gets it
+ * wrong for anyone whose zone differs from the one the calendar renders in:
+ * a race at 23:30 UTC is "today" in London and "tomorrow" in Madrid.
+ */
+export function isSameDayInZone(a: Date, b: Date, timeZone: string): boolean {
+  return dayKeyInZone(a, timeZone) === dayKeyInZone(b, timeZone);
+}
+
+/** The y-m-d of an instant in the given zone, as a comparable string. */
+export function dayKeyInZone(date: Date, timeZone: string): string {
+  return formatInZone(date, timeZone, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}

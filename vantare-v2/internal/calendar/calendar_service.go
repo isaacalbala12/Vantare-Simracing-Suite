@@ -252,7 +252,12 @@ func (s *Service) ApplyOfficialSchedule(now time.Time) error {
 	if err != nil {
 		return fmt.Errorf("official schedule: %w", err)
 	}
+	return s.applySchedule(sched, now)
+}
 
+// applySchedule materialises a schedule into the calendar. The caller decides
+// where the schedule came from — the bundled seed or the published one.
+func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 	// Generate a bounded window of events for compatibility.
 	from, to := DefaultScheduleWindow(now)
 	events, err := ExpandSchedule(sched, from, to)

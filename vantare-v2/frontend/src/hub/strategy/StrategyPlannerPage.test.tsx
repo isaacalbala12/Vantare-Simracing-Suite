@@ -1,4 +1,4 @@
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -17,6 +17,10 @@ import type { StrategyPlanViolation, StrategyTyreClient } from "../../strategy/s
 import { createStrategyStore } from "../../strategy/strategy-store";
 import type { StrategySolverClient, StrategyVariant } from "../../strategy/strategy-solver-client";
 import type { StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
+import type {
+  StrategyCatalogClient,
+  StrategyCatalogResultV1,
+} from "../../strategy/strategy-catalog-client";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
 configure({ asyncUtilTimeout: 3_000 });
@@ -691,6 +695,225 @@ describe("Strategy Planner plan transfer", () => {
 
     expect(screen.queryByTestId("strategy-import-preview")).toBeNull();
     expect(writeCommands(seen)).toHaveLength(0);
+  });
+});
+
+function catalogResult(
+  status: StrategyCatalogResultV1["status"] = "ready",
+  entries = [{
+    id: "official-spa",
+    title: "6h Spa oficial",
+    summary: "Plan verificado para Hypercar.",
+    compatibility: {
+      simulator: "Le Mans Ultimate",
+      circuit: "Spa-Francorchamps",
+      car: "Hypercar",
+      event: "6 horas",
+    },
+    packageBytes: new Uint8Array([1, 2, 3]),
+  }],
+): StrategyCatalogResultV1 {
+  return {
+    status,
+    ...(status === "stale" || status === "offline"
+      ? { warning: "Se muestra el último catálogo verificado." }
+      : {}),
+    catalog: {
+      sequence: 7,
+      publishedAt: "2026-08-10T09:00:00Z",
+      keyId: "vantare-2026-01",
+      trustVersion: 3,
+      entries,
+    },
+  };
+}
+
+function createTestCatalogClient(
+  initial: StrategyCatalogResultV1,
+  refreshed: StrategyCatalogResultV1 | Error = initial,
+): StrategyCatalogClient {
+  return {
+    async load() { return initial; },
+    async refresh() {
+      if (refreshed instanceof Error) throw refreshed;
+      return refreshed;
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+}
+
+describe("Strategy Planner official catalog", () => {
+  it("keeps verified Vantare plans separate from My plans and supports tab keys", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([summary({ planId: "private-plan", name: "Mi plan privado" })]),
+      catalogClient: createTestCatalogClient(catalogResult()),
+    });
+
+    expect(await screen.findByText("Mi plan privado")).toBeTruthy();
+    expect(screen.queryByText("6h Spa oficial")).toBeNull();
+    const mine = screen.getByRole("tab", { name: "Mis planes" });
+    mine.focus();
+    fireEvent.keyDown(mine, { key: "ArrowLeft" });
+    expect(await screen.findByText("6h Spa oficial")).toBeTruthy();
+    expect(screen.queryByText("Mi plan privado")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    const proof = screen.getByRole("region", { name: "Verificación del catálogo" });
+    expect(proof.textContent).toContain("Firma verificada");
+    expect(proof.textContent).toContain("vantare-2026-01");
+    expect(proof.textContent).toContain("2026-08-10T09:00:00Z");
+  });
+
+  it("keeps loading and unavailable catalog states independent from My plans", async () => {
+    let rejectLoad: ((error: Error) => void) | undefined;
+    const catalogClient: StrategyCatalogClient = {
+      load: () => new Promise((_resolve, reject) => { rejectLoad = reject; }),
+      refresh: () => Promise.reject(new Error("No disponible")),
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([summary({ planId: "private-plan", name: "Mi plan privado" })]),
+      catalogClient,
+    });
+    expect(await screen.findByText("Mi plan privado")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    expect(screen.getByRole("status").textContent).toContain("Cargando catálogo oficial");
+    expect(screen.getByRole("button", { name: "Actualizar catálogo" }).hasAttribute("disabled")).toBe(true);
+    rejectLoad?.(new Error("No hay un catálogo oficial verificado disponible."));
+    expect((await screen.findByRole("alert")).textContent).toContain("No hay un catálogo oficial verificado");
+    expect(screen.queryByTestId("strategy-official-grid")).toBeNull();
+  });
+
+  it("shows a verified empty catalog without placeholders", async () => {
+    await renderPlanner({ catalogClient: createTestCatalogClient(catalogResult("ready", [])) });
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    expect(await screen.findByText("El catálogo verificado no contiene planes")).toBeTruthy();
+    expect(screen.queryByTestId(/^strategy-official-plan-/)).toBeNull();
+  });
+
+  it.each(["recovered", "stale", "offline"] as const)(
+    "labels %s data as the last verified catalog without removing cards",
+    async (status) => {
+      await renderPlanner({ catalogClient: createTestCatalogClient(catalogResult(status)) });
+      fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+      expect(await screen.findByText("6h Spa oficial")).toBeTruthy();
+      expect(screen.getAllByText(/último catálogo verificado/i).length).toBeGreaterThan(0);
+    },
+  );
+
+  it("keeps visible verified cards when an explicit refresh fails", async () => {
+    await renderPlanner({
+      catalogClient: createTestCatalogClient(catalogResult(), new Error("Servicio no disponible")),
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    expect(await screen.findByText("6h Spa oficial")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar catálogo" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("No se pudo actualizar");
+    expect(screen.getByText("6h Spa oficial")).toBeTruthy();
+  });
+
+  it("keeps the newer refresh when an older load resolves afterwards", async () => {
+    let loadCalls = 0;
+    let resolveOlderLoad: ((value: StrategyCatalogResultV1) => void) | undefined;
+    let resolveRefresh: ((value: StrategyCatalogResultV1) => void) | undefined;
+    const sequence = (value: number): StrategyCatalogResultV1 => ({
+      ...catalogResult(),
+      catalog: { ...catalogResult().catalog, sequence: value },
+    });
+    const catalogClient: StrategyCatalogClient = {
+      load() {
+        loadCalls += 1;
+        if (loadCalls === 1) return Promise.resolve(sequence(6));
+        return new Promise((resolve) => { resolveOlderLoad = resolve; });
+      },
+      refresh: () => new Promise((resolve) => { resolveRefresh = resolve; }),
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+
+    await renderPlanner({ catalogClient });
+    await screen.findByRole("heading", { name: "Mis planes" });
+    fireEvent.click(screen.getByRole("button", { name: "Crear plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Atrás" }));
+    await waitFor(() => expect(loadCalls).toBe(2));
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar catálogo" }));
+    resolveRefresh?.(sequence(8));
+    const proof = await screen.findByRole("region", { name: "Verificación del catálogo" });
+    await waitFor(() => expect(definitionValue(proof, "Sequence")).toBe("8"));
+    await act(async () => {
+      resolveOlderLoad?.(sequence(7));
+      await Promise.resolve();
+    });
+    expect(definitionValue(proof, "Sequence")).toBe("8");
+  });
+
+  it("previews official bytes before writing and commits against the shown library version", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    const baseClient = createTestTransferClient({ plans: [], seen }) as StrategyApplicationClient<StrategyEditorDocument>;
+    let listCalls = 0;
+    const client: StrategyApplicationClient<StrategyEditorDocument> = {
+      ...baseClient,
+      execute(command) {
+        if (command.operation === "list") {
+          listCalls += 1;
+          if (listCalls > 1) return new Promise(() => undefined);
+        }
+        return baseClient.execute(command);
+      },
+    };
+    await renderPlanner({
+      libraryClient: client,
+      catalogClient: createTestCatalogClient(catalogResult()),
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Guardar 6h Spa oficial en Mis planes" }));
+    expect(await screen.findByTestId("strategy-import-preview")).toBeTruthy();
+    expect(writeCommands(seen)).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar en Mis planes" }));
+    await waitFor(() => expect(writeCommands(seen)).toHaveLength(1));
+    expect(writeCommands(seen)[0].expectedRepositoryVersion).toBe(3);
+    expect(seen.some((command) => command.operation === "open" || command.operation === "activate")).toBe(false);
+    expect(screen.getByRole("tab", { name: "Planes de Vantare" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText(/Importado desde 6h Spa oficial/)).toBeTruthy();
+    await waitFor(() => expect(
+      screen.getByRole("button", { name: "Guardar 6h Spa oficial en Mis planes" }).hasAttribute("disabled"),
+    ).toBe(true));
+  });
+
+  it("does not write when the official preview fails", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    const client = createTestTransferClient({ plans: [], seen }) as StrategyApplicationClient<StrategyEditorDocument>;
+    const failing: StrategyApplicationClient<StrategyEditorDocument> = {
+      ...client,
+      async execute(command) {
+        if (command.operation === "import") {
+          seen.push(command);
+          throw new Error("Vista previa rechazada");
+        }
+        return client.execute(command);
+      },
+    };
+    await renderPlanner({ libraryClient: failing, catalogClient: createTestCatalogClient(catalogResult()) });
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Guardar 6h Spa oficial en Mis planes" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Vista previa rechazada");
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+
+  it("reports a failed official commit without any additional write", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [], seen, failImportWith: new Error("Importación rechazada") }),
+      catalogClient: createTestCatalogClient(catalogResult()),
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Planes de Vantare" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Guardar 6h Spa oficial en Mis planes" }));
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar en Mis planes" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Importación rechazada");
+    expect(writeCommands(seen)).toHaveLength(1);
   });
 });
 

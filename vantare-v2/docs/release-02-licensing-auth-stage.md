@@ -105,7 +105,7 @@ flowchart LR
 | `docs/stripe-webhook-deployment.md` | Deploy de la EF | Vigente como manual |
 | `docs/technical-debt.md` (`TD-043`) | RPC sin migración SQL | Bloqueador padre de pagos reales |
 | `docs/adversarial-review.md` (caso C) | Gap de registro marcado P1 | Origen conocido de `AUTH-04` |
-| `docs/current-plan.md` | Plan vivo del repo | Tiene la nota de auditoría + puntero a este stage |
+| `docs/archive/current-plan-through-2026-08-10.md` | Archivo histórico | Conserva la nota de auditoría y el puntero original a este stage |
 | `docs/release-beta-operations-runbook.md` | Runbook de operaciones | Destino de `RUNBOOK-01` |
 
 > **Acción pendiente de documentación:** añadir a los 4 docs de arquitectura una nota "Estado real 2026-07-06: implementado; el único bloqueador de pagos reales es la migración SQL + checkout + deploy" para no confundir a otros workers (p. ej. el de Launcher). Se hace como tarea de limpieza al iniciar F1.

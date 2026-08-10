@@ -1,8 +1,12 @@
 # Overlay Workshop Direct Code Authoring Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Plan cerrado e histórico.** Las tareas se ejecutaron en ISA-291. Las ramas,
+> bases, worktrees, commits y órdenes inferiores son snapshots y no deben
+> reutilizarse. Solo una issue activa de Linear puede enlazar y autorizar un
+> plan nuevo.
 
-> **Delegation for this issue:** only the root orchestrator may assign one microcorte to a fresh worker. Every assigned worker must use `executing-plans` inline and is forbidden from spawning, delegating or coordinating other agents.
+Las listas de tareas y comandos inferiores se conservan únicamente como
+evidencia del método aplicado. No son instrucciones para un agente actual.
 
 **Goal:** Convertir el Overlay Workshop existente en un bucle de autoría directa sobre el TSX/CSS productivo, con HMR real, catálogo explícito, restauración byte a byte y una guía que permita crear o modificar widgets sin traducción intermedia.
 
@@ -12,14 +16,15 @@
 
 ---
 
-## Reglas operativas para todos los workers
+## Snapshot de restricciones aplicadas en ISA-291
 
-- Rama única de ejecución: `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`.
-- Base aprobada: ISA-265 en `54088b2e5ad25d9a897cb89187ee9684b75c645f`.
-- Worktree: `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
-- Cada worker ejecuta solo la tarea que recibe y **no puede delegar, lanzar subagentes ni ampliar el alcance**.
-- Antes de editar: ejecutar `git status --short` y detenerse si hay cambios ajenos al corte asignado.
-- Staging siempre por rutas explícitas; queda prohibido `git add .`.
+- La rama, base y worktree usados se verificaron durante ISA-291 y no se
+  reutilizan desde este documento histórico.
+- Cada worker ejecutó solo la tarea recibida, sin delegar, lanzar subagentes ni
+  ampliar el alcance.
+- Antes de editar se verificó `git status --short`; los cambios ajenos eran una
+  condición de parada.
+- El staging se realizó por rutas explícitas, sin `git add .`.
 - No añadir dependencias, no cambiar píxeles permanentes, no migrar los 41 diseños y no tocar Billing, canvas, LMU, Wails/SSE, perfiles o baselines.
 - El smoke HMR es una herramienta reversible. Si un archivo objetivo ya está modificado, debe fallar antes de escribir.
 - Esta issue puede quedar técnicamente lista, pero no entra en `nightly` sin aprobación expresa de Isaac.
@@ -35,8 +40,8 @@
 | `frontend/src/overlay/design-systems/official-designs.test.ts` | Proteger unicidad/defaults del catálogo completo | Modificar |
 | `docs/overlays-studio/overlay-workshop-authoring-guide.md` | Recetas ejecutables de restyle, composición, tipo y sistema | Crear |
 | `docs/overlays-studio/os-09-overlay-workshop-contract.md` | Sustituir el enfoque declarativo descartado por autoría directa | Modificar |
-| `docs/current-plan.md` | Registrar resultado, evidencia y siguiente corte | Modificar al cierre |
-| `docs/vantare-program/handoffs/overlays-launcher-hub.md` | Permitir continuidad desde otro chat sin historial | Modificar al cierre |
+| Linear ISA-291 | Registrar estado esperado, resultado y siguiente transición | Actualizar al cierre |
+| `docs/vantare-program/handoffs/overlays-launcher-hub.md` | Conservar continuidad técnica, evidencia y riesgos | Modificar al cierre |
 
 Los archivos productivos `DeltaOriginal.tsx` y `vantare-original/tokens.css` solo se modifican temporalmente durante el smoke. Sus hashes y su estado Git deben terminar exactamente como empezaron.
 
@@ -1120,12 +1125,11 @@ Expected: ninguna excepción y worktree limpio. Los PNG y JSON de `.tmp` permane
 ### Task 7: handoff, Linear y cierre técnico
 
 **Files:**
-- Modify: `docs/current-plan.md`
 - Modify: `docs/vantare-program/handoffs/overlays-launcher-hub.md`
 
-- [ ] **Step 1: registrar una nota factual en `current-plan.md`**
+- [ ] **Step 1: registrar el cierre factual en Linear ISA-291**
 
-Añadir al final una sección `Nota ISA-291 / OS-09G2` que incluya:
+Registrar una actualización que incluya:
 
 ```md
 - Autoría directa: TSX/CSS productivo es la única fuente de verdad; Workshop no convierte ni copia.
@@ -1134,8 +1138,9 @@ Añadir al final una sección `Nota ISA-291 / OS-09G2` que incluya:
 - Contratos: Workshop añadido a consumidores del host; IDs únicos y un default por pareja registrada.
 - Exclusiones: sin DSL, scaffolder, catálogo paralelo, migración masiva, dependencia o cambio visual.
 - Evidencia: comandos, número de tests, build, compile-out y reporte visual con SHA/dirty.
-- Estado Git/Linear: rama, commits, push/PR si existen y ausencia de promoción a nightly.
-- Próxima acción: revisión adversarial y aprobación explícita de Isaac antes de cualquier promoción.
+- Linear: issue, estado y siguiente acción autorizada.
+- Git/GitHub: evidencia observada de commit, push, PR, CI y ausencia de promoción.
+- Recomendación técnica para continuidad, sin autorizar otro corte.
 ```
 
 Sustituir cada descripción genérica por los resultados exactos obtenidos en Task 6.
@@ -1146,12 +1151,14 @@ Añadir una sección `ISA-291 — autoría directa` con:
 
 ```md
 1. Decisión aprobada y enlace a spec/plan/guía.
-2. Rama, base exacta, worktree y commits.
+2. Enlaces a la issue y a la evidencia Git/GitHub, sin copiar rama, base,
+   worktree, commits o estado volátil.
 3. Arquitectura conservada: Host → registry/manifest → renderer productivo.
 4. Cómo abrir Workshop y ejecutar el smoke HMR.
 5. Qué demostró cada test y protocolo.
 6. Riesgos restantes y qué queda fuera del corte.
-7. Próxima acción exacta para un chat nuevo.
+7. Recomendación técnica para un chat nuevo; Linear conserva la siguiente
+   acción autorizada y el plan ejecutable.
 ```
 
 No copiar secretos, rutas de `.env.local` ni datos personales.
@@ -1161,8 +1168,8 @@ No copiar secretos, rutas de `.env.local` ni datos personales.
 Run:
 
 ```powershell
-git diff --check -- docs/current-plan.md docs/vantare-program/handoffs/overlays-launcher-hub.md
-git add docs/current-plan.md docs/vantare-program/handoffs/overlays-launcher-hub.md
+git diff --check -- docs/vantare-program/handoffs/overlays-launcher-hub.md
+git add docs/vantare-program/handoffs/overlays-launcher-hub.md
 git commit -m "docs(overlay): close ISA-291 handoff"
 git status --short
 ```

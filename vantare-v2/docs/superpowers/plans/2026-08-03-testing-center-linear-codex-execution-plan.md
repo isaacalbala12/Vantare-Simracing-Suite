@@ -1,8 +1,14 @@
 # Testing Center, Linear y Codex — plan de ejecución por microcortes
 
+> **Plan técnico histórico.** Solo es ejecutable si una issue vigente de
+> Linear lo enlaza y confirma alcance, rama y base esperadas.
+
 Fecha: 2026-08-03
 
-Estado: TAU-07B/C completados; TAU-07D implementado localmente en ISA-238 y pendiente de review/PR draft. Sin autorización de deploy, secretos, integración remota, delegación automática, merge o promoción.
+Estado en el snapshot del 2026-08-03: TAU-07B/C constaban completados; TAU-07D
+constaba implementado localmente en ISA-238 y pendiente de review/PR draft. Sin
+autorización de deploy, secretos, integración remota, delegación automática,
+merge o promoción.
 Arquitectura: `Vantare -> Supabase -> Linear -> delegación humana a Codex Cloud -> PR revisada -> nightly -> testers -> master`.
 
 ## Objetivo

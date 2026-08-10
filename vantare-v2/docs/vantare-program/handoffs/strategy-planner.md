@@ -1,15 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
 ## Resultado
 
 Un único producto que crea, compara, guarda, ejecuta y adapta planes para
 minimizar tiempo total esperado y mostrar riesgos/alternativas. Product A/B/C
 son fases históricas.
 
-## Autoridad y lectura
+## Referencias y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Este handoff y `Strategy Planner — Race Strategy Suite` en Linear.
+- Este handoff aporta continuidad técnica; `Strategy Planner — Race Strategy
+  Suite` en Linear conserva el estado operativo.
 - `docs/superpowers/specs/2026-07-13-strategy-planner-product-b-design.md` y
   `strategy-base.html` son referencias históricas que deben reauditarse.
 - El próximo informe de rescate y plan unificado sustituirán los planes PB.
@@ -31,9 +38,9 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
 - PR draft #192 está abierto hacia `nightly`, mergeable y con todos los gates
   verdes tras un rerun único de un presupuesto temporal heredado de Telemetry
   Core. Strategy no fue la causa del primer fallo.
-- Siguiente acción exacta: revisión de Isaac del PR #192. Solo su autorización
-  posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
-  hasta que esa base esté realmente integrada.
+- Recomendación registrada entonces: revisión de Isaac del PR #192. Solo su
+  autorización posterior permitía promoverlo a `nightly`; STR-15B (ISA-162) no
+  comenzaba hasta que esa base estuviera realmente integrada.
 
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
@@ -54,7 +61,7 @@ Actualización ISA-134 / STR-00:
 - Proyecto activo: `Strategy Planner — Race Strategy Suite`.
 - Product A/B/C quedan como fases históricas de un único producto.
 - Product A auditado: `codex/strategy-product-a@b9f1937`.
-- Base aprobada: `ISA-117@170eaeb`.
+- Base observada en ese snapshot: `ISA-117@170eaeb`.
 - Divergencia: 371 commits de la base y 44 de Product A.
 - Simulación: 94 paths = 87 auto-merged + 7 conflictos; 6.751 inserciones y 5
   eliminaciones.
@@ -244,10 +251,10 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-144 / STR-09, implementación lista para review independiente
-  sobre el commit aceptado de STR-08.
+- En ese snapshot, ISA-144 / STR-09 se consideraba activa y lista para review
+  independiente sobre el commit aceptado de STR-08.
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 Revisar ISA-144 / STR-09. Si queda `ACCEPT`, continuar por ISA-168 / TA-03C.
 No iniciar STR-10 hasta que ISA-159 publique `StrategyInputProjection v1`; no

@@ -28,11 +28,15 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 - Una issue ejecutable equivale a rama, worktree y contexto propios.
 - Se usa el nombre generado por Linear.
 - Base exacta y destino constan en la issue.
+- El agente completa el sobre de tarea definido en `source-ownership.md` y
+  contrasta el estado esperado de Linear con el observado en Git.
 - Commits pequeños y staging limitado.
 - PR draft y `In Review` con evidencia; nunca merge implícito.
 - La promoción utiliza issues de integración separadas.
-- Cada proyecto tiene un unico handoff vivo y se actualiza tras cada worker,
-  decision o cambio material junto con Linear.
+- Cada proyecto tiene un unico handoff vivo para continuidad tecnica. Linear se
+  actualiza tras cada cambio material; el handoff cambia solo si hay nueva
+  arquitectura, decision, evidencia, riesgo o recomendacion tecnica. Linear
+  posee la siguiente accion autorizada y el plan ejecutable.
 
 ## Delegacion y responsabilidad
 

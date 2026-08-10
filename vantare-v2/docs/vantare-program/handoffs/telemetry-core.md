@@ -1,5 +1,11 @@
 # Handoff vivo — Telemetry Core
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -11,7 +17,7 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
-- Microplan activo y Linear.
+- Issue de Linear y microplan que esa issue enlace explícitamente.
 
 ## Estado real
 
@@ -165,9 +171,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 Existe wiring productivo canónico para Overlay y Engineer. Gaps, delta, pit y
 reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados.
-No queda otro corte de implementación de Telemetry Core. La siguiente acción
-es la validación integrada Nightly/Pro Plus y la recogida de feedback antes de
-considerar cualquier paso a `testers`; `master` permanece fuera de alcance.
+No quedaba otro corte de implementación de Telemetry Core. La recomendación
+registrada era la validación integrada Nightly/Pro Plus y la recogida de
+feedback antes de considerar cualquier paso a `testers`; `master` permanecía
+fuera de alcance.
 `go vet` conserva tres avisos heredados de `unsafe.Pointer` Win32; ISA-118 e
 ISA-131/ISA-94 poseen la deuda externa.
 
@@ -248,7 +255,8 @@ ISA-131/ISA-94 poseen la deuda externa.
   build, Wails Windows, invariantes de 48 filas/16 digests y `diff --check`
   PASS. Race no está disponible en este host CGO=0 sin `gcc`; frontend test no
   se repitió porque el corte no cambia frontend.
-- ADR 0005 y `docs/telemetry-core/historical-storage-schema.md` fijan manifest
+- `docs/adr/0005-historical-storage-sqlite-mcap.md` y
+  `docs/telemetry-core/historical-storage-schema.md` fijan manifest
   atómico, observed/facts autoritativos, derived reconstruible, raw opt-in
   separado, chunks versionados/CRC, accepted volátil/watermark/committed,
   `RecordingPayloadV1`/`RecordingFactV1` allowlisted con golden y errores
@@ -333,7 +341,7 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
 | Backlog follow-up | ISA-160 / TC-10A e ISA-161 / TC-10B, readiness live Strategy |
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 ISA-160 / TC-10A puede auditar Fuel/VE/tyres/weather sobre el runtime ya
 promovido. TC-10B solo implementa señales demostradas y bloquea ISA-152 /
@@ -458,8 +466,8 @@ rechaza campos conocidos inválidos; el adapter conserva calidad y no inventa
 datos. La matriz 18/18 queda en 2 exactos, 10 parciales, 5 no comparables y 1
 externo. El cambio legítimo del payload actualizó el hash del replay canónico y
 la expectativa del harness; las suites amplias pasan. Review final `APPROVE`,
-P0/P1/P2/P3 = 0. Siguiente acción exacta: D8, sin wiring productivo, PR, merge
-ni promoción en este punto.
+P0/P1/P2/P3 = 0. Recomendación registrada entonces: D8, sin wiring productivo,
+PR, merge ni promoción en ese punto.
 
 2026-07-31, ISA-129 D6 aceptado: remaining, gaps relativos y self-delta se
 derivan exclusivamente de observaciones canónicas demostradas. La sesión LMU

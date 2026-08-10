@@ -1,6 +1,12 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## Decisión comercial vigente — ISA-315
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
+## Snapshot de decisión comercial — ISA-315
 
 - Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.
   No equivale a promoción a `master` ni release Stable de toda Vantare.
@@ -13,7 +19,7 @@
 - La venta sigue **NO-GO** hasta cerrar raíz, compra/licencia end-to-end,
   artefactos, updater/rollback, soporte y la decisión pendiente sobre firma.
   El plan no autoriza dinero real, producción, publicación ni comunicación.
-- Plan canónico y gates:
+- Plan técnico enlazado en ese snapshot:
   `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
 
 ## Autoridad y lectura
@@ -24,7 +30,8 @@
   Polar/Supabase vigente.
 - Roadmap/Discord: `docs/discord-communications.md` y workflows actuales.
 - Root: informe ISA-14 y su matriz de worktrees/rutas.
-- La issue activa y su plan prevalecen sobre releases históricas.
+- La issue que Linear señale y el plan que enlace prevalecen sobre releases
+  históricas.
 
 ## Estado
 
@@ -348,7 +355,7 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - **P1:** Discord publica commits no relacionados desde `develop`.
 - **P1:** ramas, updater y licencias de canal describen modelos distintos.
 
-## Issues y siguiente acción
+## Recomendaciones técnicas históricas
 
 1. Completar gates locales y review de BIL-10C / ISA-247.
 2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.

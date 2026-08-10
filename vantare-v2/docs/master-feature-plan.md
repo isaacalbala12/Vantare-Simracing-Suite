@@ -2,24 +2,27 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-> Actualizacion 2026-06-29: este documento queda como mapa de producto y contexto historico. La linea publica se reinicio en `v0.1.x`; el estado operativo inmediato vive en `docs/current-plan.md` y la fuente de ejecucion hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
+> Actualizacion 2026-08-10: este documento queda como mapa de producto y
+> contexto historico. Linear posee el estado operativo y la issue asignada
+> enlaza el plan ejecutable vigente.
 >
-> Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
+> Si hay conflicto, aplica `docs/vantare-program/source-ownership.md`; este
+> documento no puede contradecir ni sustituir a la fuente propietaria.
 
-Este documento ayuda a entender el producto completo, pero no debe usarse para saltarse el indice de release.
+Este documento ayuda a entender el producto completo. No se usa para elegir
+trabajo, release, rama o plan.
 
 ## Fuentes
 
 - `docs/alpha-beta-roadmap.md`
 - `docs/beta-widget-system-spec.md`
 - `docs/product-widget-customization.md`
-- `docs/current-plan.md`
+- Linear y `docs/README.md` para estado y routing actuales
 - `docs/vantare-suite-architecture.md`
 - `docs/superpowers/plans/2026-06-25-vantare-suite-ingeniero-integration.md`
-- `docs/engineer-live-lmu-adapter-analysis.md`
-- `C:\Users\isaac\Desktop\trabajo\Proyectos\Overlays\Desarollo\Roadmap - Vantare Overlays.md`
-- `C:\Users\isaac\Desktop\trabajo\Proyectos\Overlays\Desarollo\Roadmap Dia a Dia - Vantare Overlays.md`
-- `C:\Users\isaac\Desktop\trabajo\Proyectos\Overlays\Desarollo\Features por desarrollar.md`
+- `docs/engineer/engineer-beta-roadmap.md`
+- Tres roadmaps locales no versionados se usaron como fuentes históricas. Sus
+  rutas absolutas no son reproducibles ni tienen autoridad actual.
 
 ## Versionado
 
@@ -38,12 +41,14 @@ Historico:
 
 La politica completa vive en `docs/versioning-and-release-gates.md`.
 
-## Reglas de ejecucion
+## Reglas históricas de producto
 
-- Antes de crear un miniplan tecnico, leer este documento.
-- Consultar primero `docs/release-roadmap-execution-index.md` para saber el orden oficial de release.
-- Consultar `docs/roadmap-execution-board.md` solo como tablero historico/operativo auxiliar.
-- Trabajar la primera release planificada salvo decision explicita.
+- No uses este documento para crear un miniplan o seleccionar trabajo.
+- La issue de Linear autoriza el siguiente corte y enlaza el plan ejecutable.
+- `docs/release-roadmap-execution-index.md` y
+  `docs/roadmap-execution-board.md` son stubs retirados; sus archivos conservan
+  únicamente historia.
+- La secuencia de releases y sus decisiones viven en Linear.
 - No iniciar multisimulador sin inventario, matriz de datos y adapter contract; Assetto Corsa e iRacing son scope de release, no futuribles.
 - No ampliar configuracion profunda de otros widgets antes de cerrar producto usable.
 - No ejecutar mas reworks visuales completos hasta cerrar la mayoria de features core; los proximos cambios visuales deben ser polish acotado o fixes.
@@ -217,7 +222,8 @@ Post-release:
 
 ## Roadmap versionado
 
-Las fases versionadas siguientes son historial operativo previo al reset publico. Para la linea publica actual, usar primero el bloque `Roadmap publico 0.1.x` de este documento y `docs/current-plan.md`. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`.
+Las fases versionadas siguientes son historial operativo previo al reset
+publico. Para trabajo nuevo, usa la issue de Linear y el plan que esta enlace.
 
 ### Roadmap publico 0.1.x
 
@@ -297,7 +303,8 @@ Features:
 
 1. Rework visual/UX acotado de `WidgetStudio`.
    - Fuente visual: HTML de referencia del usuario.
-   - Ruta de referencia actual: `C:\Users\isaac\Desktop\Vantare-Overlays\overlays_mockup.html`.
+   - La referencia original fue un HTML local no versionado; no es una fuente
+     reproducible ni vigente.
    - Alcance cerrado en `v0.3.9.0`: editor de widgets, densidad, jerarquia, panel derecho y controles de `Relative`/`Standings`.
    - No cambiar responsabilidades ni arquitectura sin plan separado.
 2. `Relative` cierre final.
@@ -502,9 +509,9 @@ Incluye:
 - soporte;
 - performance validada.
 
-## Feature order actual
+## Snapshot histórico de feature order
 
-Orden operativo desde hoy:
+Este orden se propuso en su momento. No es ejecutable y no selecciona trabajo:
 
 1. `A2`: inventario `LayoutStudio` drag/resize/save.
 2. `A3`: implementar/fijar `LayoutStudio` si A2 detecta huecos.
@@ -519,7 +526,8 @@ Orden operativo desde hoy:
 11. `B4`: delta best live.
 12. `B5`: `Pedals` beta v1.
 
-El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
+El tablero que acompañó este snapshot está retirado en
+`docs/roadmap-execution-board.md`. El estado vigente se consulta en Linear.
 
 ## Antipatrones
 
@@ -542,4 +550,7 @@ El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
 - Sync cloud completo.
 - Plugin system.
 
-Ya no son futuribles: Stripe/Supabase/licencias, autoupdater, iRacing, Assetto Corsa como simulador, Assetto Corsa Lua/CSP pack, Track Map, Input Telemetry/Trace, calendario LMU por Discord, My Account minimo y OBS LAN/doble PC. Esos puntos estan dentro del release scope y viven en `docs/release-roadmap-execution-index.md`.
+Este snapshot consideraba dentro del release scope Stripe/Supabase/licencias,
+autoupdater, iRacing, Assetto Corsa, Lua/CSP, Track Map, Input Telemetry/Trace,
+calendario LMU, My Account y OBS LAN/doble PC. No implica alcance vigente; la
+issue y el proyecto de Linear poseen esa decisión.

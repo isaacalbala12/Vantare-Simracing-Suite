@@ -221,7 +221,7 @@ Score no mejora en 3 iteraciones, o `pointerLagMs_p95 < 8 ms` en traza `move-fas
 - Anti-regresión: [canvas-drag-imperative-preview.md](./canvas-drag-imperative-preview.md)
 - Tests: `frontend/src/hub/overlay-studio/canvas/useCanvasInteraction.test.tsx`
 - Preview legacy (patrón): `frontend/src/hub/preview/PreviewCanvas.tsx`
-- Plan maestro: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md`
+- Decisión técnica: `docs/adr/0003-overlay-studio-v3-rebuild.md`
 
 ---
 

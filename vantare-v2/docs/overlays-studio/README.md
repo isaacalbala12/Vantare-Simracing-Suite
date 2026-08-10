@@ -62,5 +62,4 @@ Config y trazas: `benchmarks/arrastre-y-resize.benchmark.json`, `benchmarks/trac
 ## Contexto más amplio
 
 - ADR rebuild: `docs/adr/0003-overlay-studio-v3-rebuild.md`
-- Plan maestro: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md`
 - Separación WidgetStudio / LayoutStudio: `AGENTS.md`

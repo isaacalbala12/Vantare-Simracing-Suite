@@ -1,10 +1,14 @@
 # Overlay Workshop: autoría directa sobre código productivo
 
-- Estado: especificación canónica para revisión de Isaac
+> **Especificación técnica histórica.** Conserva la decisión aplicada durante
+> ISA-291, pero no autoriza trabajo ni fija estado, rama o base actuales. Linear
+> posee el alcance y los valores esperados; Git demuestra el checkout real.
+
+- Estado en el snapshot: especificación canónica para revisión de Isaac
 - Fecha: 2026-08-05
-- Issue ejecutable: ISA-291 / OS-09G2
+- Issue del snapshot: ISA-291 / OS-09G2
 - Programa padre: ISA-259 / OS-09
-- Base exacta: ISA-265 en `54088b2e5ad25d9a897cb89187ee9684b75c645f`
+- Base observada entonces: ISA-265 en `54088b2e5ad25d9a897cb89187ee9684b75c645f`
 - Riesgo: medio; tooling y documentación de autoría sobre renderizadores productivos
 
 ## 1. Decisión
@@ -389,17 +393,17 @@ sobre estas rutas, condicionadas por TDD:
   nuevo contrato.
 - `frontend/src/overlay/design-systems/official-designs.test.ts`
   — reglas mínimas del catálogo, sin `catalogPosition` ni registry genérico.
-- `docs/current-plan.md` y el handoff de Overlay Studio
-  — estado y siguiente acción.
+- Linear y el handoff de Overlay Studio
+  — estado esperado y continuidad técnica, respectivamente.
 
 No se modificarán renderers visuales ni `official-designs.ts` para fabricar una
 demostración. El smoke puede tocar temporalmente un archivo bajo control del
 script, pero debe restaurarlo byte a byte y dejar el worktree limpio.
 
-## 13. Estrategia Git y Linear
+## 13. Estrategia Git y Linear aplicada durante ISA-291
 
-- Rama exacta: `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`.
-- Worktree aislado desde ISA-265 exacto.
+- La rama y el worktree se verificaron contra Linear y Git durante ISA-291; no
+  se reutilizan desde esta especificación histórica.
 - Commits pequeños por documentación, test y tooling.
 - Staging por rutas; nunca `git add .`.
 - ISA-266–278 permanecen canceladas y enlazadas a ISA-291.

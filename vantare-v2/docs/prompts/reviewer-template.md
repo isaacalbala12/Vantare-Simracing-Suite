@@ -9,8 +9,8 @@ No edites archivos.
 
 Contexto:
 - Lee `AGENTS.md`.
-- Lee `docs/current-plan.md`.
-- Lee los docs relevantes de la tarea.
+- Lee la issue de Linear y contrasta su sobre de tarea con Git.
+- Usa `docs/README.md` y lee solo los contratos relevantes.
 - Revisa el diff del worker.
 
 Objetivo de la tarea revisada:

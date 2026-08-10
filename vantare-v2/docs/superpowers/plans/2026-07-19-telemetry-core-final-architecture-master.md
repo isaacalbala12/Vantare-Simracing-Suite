@@ -1,12 +1,18 @@
 # Telemetry Core Final Architecture — Plan maestro
 
-> **Estado:** aprobado para planificación por Isaac el 2026-07-19. La ejecución comienza en ISA-26, una issue por rama, worktree y chat. Nada entra en `develop` sin validación manual completa.
+> **Plan técnico histórico, no ejecutable por sí mismo.** Fue aprobado para
+> planificación el 2026-07-19 y conserva la secuencia prevista entonces desde
+> ISA-26. `develop` era el canal histórico citado en ese corte. Solo Linear
+> puede enlazar un plan ejecutable y fijar la siguiente acción, rama y base
+> esperadas.
 
 **Objetivo:** sustituir los pipelines actuales por un core modular, neutral al simulador, observable, reproducible y capaz de alimentar Overlay, Engineer, Strategy y Analysis sin acoplarlos.
 
 **Modelo recomendado:** GPT-5.6 Sol, razonamiento medium.
 
-**Autoridad:** `AGENTS.md`, `docs/agent-workflow.md`, ADR 0004, este plan, el microplan activo y Linear. `vantare-core` no se usa.
+**Referencias técnicas del snapshot:** `AGENTS.md`, `docs/agent-workflow.md`,
+`docs/adr/0004-telemetry-core-modular-observation-architecture.md` y este plan.
+Linear y Git/GitHub conservan el estado operativo y observado, respectivamente.
 
 ## 1. Resultado final
 

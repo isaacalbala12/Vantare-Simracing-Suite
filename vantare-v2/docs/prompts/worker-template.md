@@ -13,12 +13,16 @@ Tipo de tarea:
 
 Antes de editar:
 1. Lee `AGENTS.md`.
-2. Lee `docs/current-plan.md`.
-3. Lee los docs especificos de esta tarea:
+2. Abre la issue de Linear y completa:
+   - Issue / proyecto
+   - Rama Linear / base esperada
+   - Worktree / destino PR
+3. Usa `docs/README.md` para elegir el handoff y contratos aplicables.
+4. Lee los docs especificos de esta tarea:
    - [LISTA]
-4. Ejecuta o informa:
+5. Ejecuta o informa:
    - `git status --short`
-   - rama actual
+   - raiz Git, worktree, rama, HEAD y base observados
 
 Alcance:
 - Puedes tocar:
@@ -38,7 +42,8 @@ Reglas:
 - No limpies codigo no relacionado.
 - Si necesitas tocar mas archivos de los previstos, para y explica.
 - Si cambias comportamiento, anade o actualiza tests.
-- Si algo no esta claro, deja `Open questions` en `docs/current-plan.md` o pregunta.
+- Si algo no esta claro, pregunta o registra la duda en la issue de Linear; no
+  inventes rama, base o alcance desde documentos historicos.
 
 Checks esperados:
 - [COMANDOS CONCRETOS]

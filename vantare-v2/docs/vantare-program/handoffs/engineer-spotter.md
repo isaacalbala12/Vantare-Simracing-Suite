@@ -1,5 +1,11 @@
 # Handoff vivo — Engineer/Spotter
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
 ## Resultado
 
 Engineer Beta acompaña al piloto en directo; Spotter se limita a seguridad,
@@ -12,7 +18,8 @@ CrewChief, Pit Manager y wake word.
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
 - Este handoff y el proyecto Linear del módulo.
-- ADR 0004 y el handoff de Telemetry Core.
+- `docs/adr/0004-telemetry-core-modular-observation-architecture.md` y el
+  handoff de Telemetry Core.
 - `docs/telemetry-core/engineer-rescue-matrix.md` y
   `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.
 - La investigación clean-room y su interfaz de referencia permanecen en la
@@ -120,7 +127,9 @@ productivo sin crear un segundo reader.
   Server, Telemetry y Go global serial PASS. Vet focal PASS; vet global conserva
   tres warnings Win32 heredados. Race no disponible con `CGO_ENABLED=0`.
   Contrato: `docs/engineer/presentation-contract.md`.
-- Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
+- Evidencia: paquete ENG-01,
+  `docs/adr/0005-engineer-projection-capability-contract.md`, contrato x20,
+  Telemetry/Engineer/global
   Go PASS, race x10, vet, frontend build para embed e inventario de 34
   consumidores productivos legacy. La auditoría G3 y matriz de rescate
   permanecen como historial, no como prueba de runtime. Una primera ejecución
@@ -325,7 +334,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 Abrir el PR de la composición acumulativa ENG-01..ENG-15 hacia `nightly` y
 promoverla únicamente si pasa el CI protegido; los gates locales de Go,

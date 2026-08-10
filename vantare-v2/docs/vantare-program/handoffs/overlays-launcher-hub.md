@@ -1,14 +1,21 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-## Autoridad y lectura
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
+## Referencias y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Overlay: ADR 0003, `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
+- Overlay: `docs/adr/0003-overlay-studio-v3-rebuild.md`,
+  `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
 - Crystal: `docs/overlay-glassmorphism-pro.html`, solo secciones 01–16.
-- Launcher: `docs/launcher-v3-architecture.md`, su plan vigente y Linear.
+- Launcher: `docs/launcher-v3-architecture.md` y el plan que Linear enlace.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
-## Estado
+## Snapshot técnico documentado el 2026-08-10
 
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
@@ -19,16 +26,17 @@
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
-  día. Plan canónico:
+  día. Plan técnico enlazado en ese snapshot:
   `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
 - Venta controlada objetivo 2026-09-22..30: Overlay Studio V1 como producto
   principal y módulos no terminados etiquetados Beta/Preview. Depende de gates
   separados de raíz, Billing, artefactos y aprobación; no está autorizada por
   este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
-- Hub: sin issue activa.
-- Base documental ISA-315 rebasada: `nightly@54f267b`.
-- PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
+- En ese snapshot, Hub no tenía issue activa.
+- Base observada entonces para ISA-315: `nightly@54f267b`.
+- En ese snapshot, PR #198 estaba autorizado para promoción a `nightly`;
+  `testers`, `master`,
   venta y release permanecen fuera del alcance. Las integraciones en `develop`
   son históricas.
 
@@ -196,7 +204,7 @@ Conservar estructura. Solo consistencia visual, estados reales, responsive,
 accesibilidad y rendimiento. El selector superior abre módulos, apps, perfiles
 y recientes.
 
-## Issues y siguiente acción
+## Recomendaciones técnicas históricas
 
 - Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
   agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción
@@ -279,16 +287,15 @@ superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
 - El decode PNG canónico por CDP tiene un coste total aproximado de 5–8 min para la suite 4×4; no se alteran timeouts, helper Crystal, baselines ni umbrales para acortarlo.
 - Crystal report-only es un gate independiente: la ejecución limitada a 90s llegó a 7 diseños PASS sin terminar el manifiesto. Nunca tratarla como aprobación total ni tocar baselines; resolver duración en otra issue.
 
-### ISA-291 — autoría directa planificada y aprobada
+### ISA-291 — snapshot previo a la ejecución, superado por el cierre inferior
 
-- Rama: `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`.
-  Worktree: `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
-  Base exacta: ISA-265 `54088b2e5ad25d9a897cb89187ee9684b75c645f`.
+- La rama, base y worktree de aquel corte se conservan en Git y Linear, no en
+  este handoff.
 - Decisión: editar el TSX/CSS productivo y observarlo por HMR en el mismo
   `WidgetVisualHost`. HTML es referencia visual, no fuente ni compilador. Se
   descartan DSL, scaffolder obligatorio, catálogo paralelo, generated barrel,
   `catalogPosition`, `import.meta.glob` y migración de los 41 diseños.
-- Autoridades: spec
+- Referencias técnicas históricas: spec
   `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
   y plan `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`.
 - Commits documentales: `41a3f02` (spec), `426f7c6` (plan), `2864846`,
@@ -296,25 +303,26 @@ superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
 - Revisión adversarial final: GO. El plan protege drift concurrente, cancelación,
   recovery, HMR sin reload, arranque parcial y cierre de procesos/puerto. El
   revisor no editó archivos ni Linear y no delegó.
-- Estado real: planificación cerrada; implementación no iniciada; ningún cambio
-  productivo, push, PR o promoción de canal derivado de ISA-291.
-- Para continuar en otro chat: leer AGENTS, `docs/agent-workflow.md`, la spec y
-  el plan; verificar rama/worktree limpios; comenzar por Task 0. El root
-  orquestador asigna cortes, pero cada worker ejecuta inline sin subagentes.
+- Estado en aquel momento: planificación cerrada e implementación aún no
+  iniciada. La sección de cierre técnico inferior registra su ejecución
+  posterior y prevalece sobre este snapshot.
 
-#### Paquete activo de delegación entre chats
+#### Snapshot histórico de delegación ISA-291
 
-Este bloque es la autoridad operativa mientras ISA-291 esté en ejecución. Un
-chat nuevo no necesita el historial de Codex si sigue este orden:
+Este bloque documenta cómo se ejecutó ISA-291; no es autoridad para iniciar o
+continuar trabajo nuevo. La ruta, rama, HEAD y ledger inferiores son snapshots
+históricos. Para retomar o corregir ese trabajo:
 
-1. Abrir `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
-2. Leer `AGENTS.md`, `docs/agent-workflow.md`, la spec ISA-291 y el plan ISA-291.
-3. Verificar rama `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`,
-   `git status --short` vacío y que `HEAD` contiene `366308e`.
-4. Consultar el ledger inferior y ejecutar únicamente la primera Task pendiente.
-5. Actualizar este ledger después de cada worker/review/commit, antes de lanzar
-   el siguiente corte.
-6. Reflejar el mismo estado en Linear ISA-291. No promover a `nightly`.
+1. Consultar Linear ISA-291 y cualquier issue sucesora para obtener alcance,
+   rama, base y destino esperados.
+2. Localizar el worktree real con `git worktree list --porcelain`; no abrir una
+   ruta histórica por su nombre.
+3. Contrastar rama, HEAD, dirty state y ancestry observados con Linear.
+4. Usar el ledger inferior solo como evidencia del orden anterior, no para
+   seleccionar una Task vigente.
+5. Actualizar Linear y este handoff según
+   `docs/vantare-program/source-ownership.md`.
+6. No promover a `nightly` sin la autorización correspondiente.
 
 Reglas de delegación:
 
@@ -338,7 +346,7 @@ Entrega: rama/HEAD, archivos, tests/checks, omisiones, riesgos, commit y status.
 No push, PR, Linear ni promoción de canal salvo instrucción del orquestador.
 ```
 
-Ledger de ejecución vivo:
+Ledger histórico de ejecución:
 
 | Task | Contenido | Estado | Commit/evidencia | Próxima condición |
 |---|---|---|---|---|
@@ -353,7 +361,8 @@ Ledger de ejecución vivo:
 | 7 | Handoff y cierre | Completada | docs cerrados | Revisión manual de Isaac |
 | 8 | Promoción a nightly | En revisión | Isaac validó al 100 % el 2026-08-05; rama de integración `os-09-n01` con merge `10be06d`; gates combinados 2217/2217, build y compile-out PASS | Merge del PR por Isaac |
 
-Estado actual: implementación autorizada por Isaac el 2026-08-05. Task 0 pasó:
+Estado al comenzar la ejecución: implementación autorizada por Isaac el
+2026-08-05. Task 0 pasó:
 se instalaron dependencias ignoradas con `--frozen-lockfile`, el lockfile real de
 la raíz Git conservó el blob `8ecdce49a78adc664e4796f388889fbd41a67c08` y
 Vitest 4.1.9, Vite 8.0.16 y Playwright 1.60.0 están disponibles. Task 1 añadió
@@ -365,14 +374,14 @@ default por pareja, sin tocar `official-designs.ts`. El test de catálogo pasó
 11/11 y ambos contratos juntos 14/14. Task 3 añadió helpers reversibles con
 restauración byte a byte, preservación de drift externo, evidencia de recovery,
 guard de worktree y cleanup bajo cancelación; la revisión raíz repitió 8/8
-tests y confirmó un commit de exactamente dos scripts. Próxima acción exacta:
-Task 4.
+tests y confirmó un commit de exactamente dos scripts. La recomendación
+histórica de aquel momento era continuar con Task 4.
 
 ## ISA-291 — autoría directa (cierre técnico)
 
 1. **Decisión aprobada.** Overlay Workshop es un bucle de autoría sobre el TSX/CSS
    productivo. No hay conversión Workshop→app, catálogo paralelo, DSL ni
-   scaffolder obligatorio. Autoridades:
+   scaffolder obligatorio. Referencias técnicas del corte:
    `docs/superpowers/specs/2026-08-05-overlay-workshop-direct-code-authoring-design.md`
    (spec), `docs/superpowers/plans/2026-08-05-overlay-workshop-direct-code-authoring.md`
    (plan) y `docs/overlays-studio/overlay-workshop-authoring-guide.md` (guía operativa).
@@ -420,21 +429,22 @@ Task 4.
    `assertNoReload` del smoke, que muta ese mismo archivo y afirma verificar la
    ausencia de recarga. El smoke **no se ejecutó** en esta verificación y sus
    condiciones difieren (Chromium propio de Playwright, y el TSX mutado en vuelo
-   durante la fase CSS). Acción pendiente para quien retome ISA-280: ejecutar
-   `smoke:overlay-workshop-hmr` y resolver la discrepancia. Si el assert resulta
+   durante la fase CSS). La recomendación técnica histórica para ISA-280 era
+   ejecutar `smoke:overlay-workshop-hmr` y resolver la discrepancia. Si el assert resulta
    ser demasiado estricto para este grafo CSS, relajarlo a "el cambio se aplica sin
    reiniciar el servidor" en lugar de debilitar la evidencia.
 7. **Fuera de alcance de ISA-291.** Migración de los 41 diseños, canvas
    drag/resize, perfiles, persistencia, lectores LMU, Billing, Wails/SSE y
    baselines visuales. No se cambió ningún píxel ni ningún archivo de producto.
-8. **Próxima acción exacta para un chat nuevo.** Isaac completó la verificación
+8. **Recomendación histórica registrada al cierre.** Isaac completó la verificación
    manual el 2026-08-05, validó ISA-291 al 100 % y autorizó la promoción. El
-   trabajo vive ahora en la rama de integración
+   trabajo vivía entonces en la rama de integración
    `vantareapp/os-09-n01-promocion-overlay-workshop-a-nightly` (creada desde
    `origin/nightly` `fb2c355`, merge `--no-ff` en `10be06d`, sin conflictos), con
-   PR abierto hacia `nightly` y **pendiente de que Isaac dé el merge**. Esa
+   PR abierto hacia `nightly` y pendiente de decisión de Isaac. Esa
    promoción mueve el Overlay Workshop completo: ISA-260–265 (la herramienta) más
    ISA-291 (sus barandillas y manual); los commits están apilados y no se pueden
    separar. Impacto para usuarios y testers: ninguno, el Workshop está excluido de
-   Stable y el compile-out lo confirma. Tras el merge: ISA-280 (OS-09L, gate
-   técnico final) y resolver la cuestión abierta del punto 6b.
+   Stable y el compile-out lo confirma. En ese snapshot se recomendaba continuar
+   con ISA-280 (OS-09L) y resolver la cuestión abierta del punto 6b. Linear y Git
+   determinan hoy si ese trabajo sigue pendiente y dónde ejecutarlo.

@@ -9,8 +9,8 @@ Necesito un miniplan pequeno y verificable para:
 Contexto:
 - Repo: `vantare-v2`
 - Lee `AGENTS.md`.
-- Lee `docs/current-plan.md`.
-- Lee docs relevantes.
+- Abre la issue de Linear y verifica proyecto, rama, base y destino.
+- Usa `docs/README.md` y lee solo los documentos aplicables.
 
 El miniplan debe incluir:
 

@@ -1,31 +1,34 @@
 # Vantare — expediente canónico del programa
 
-Estado: vigente desde ISA-120; revisado el 2026-08-05.
+Estado: expediente estable del programa.
 
-Este directorio concentra las decisiones confirmadas por Isaac y el contexto
-mínimo para continuar Vantare sin depender de conversaciones anteriores. No
-reemplaza las especificaciones técnicas detalladas: las enlaza, indica cuál
-sigue vigente y registra el estado operativo.
+Este directorio concentra decisiones estables y el contexto mínimo para
+continuar Vantare sin depender de conversaciones anteriores. No sustituye a
+Linear como tracker ni a Git/GitHub como evidencia de entrega.
 
 ## Orden de lectura obligatorio
 
 1. `AGENTS.md`.
-2. Este documento.
-3. `product-contract.md`.
-4. `project-map.md`.
-5. `execution-policy.md`.
-6. `../branch-channels.md` cuando haya ramas, promociones o releases.
-7. El handoff del proyecto asignado en `handoffs/`.
-8. La issue de Linear, el ADR y el plan o microplan activo.
+2. La issue de Linear asignada, incluidas dependencias, rama, base y destino.
+3. `docs/README.md`, que enruta al proyecto correcto.
+4. El handoff y los contratos enlazados para esa issue.
+5. `execution-policy.md` y `../branch-channels.md` cuando haya ramas,
+   promociones o releases.
+6. El código y los tests aplicables.
 
-Si dos documentos se contradicen:
+La propiedad no se resuelve por fecha o posición del texto:
 
-1. prevalecen las decisiones más recientes de este directorio;
-2. después, la evidencia comprobable del código y del runtime;
-3. después, ADR y planes vigentes;
-4. Linear decide estado, dependencias, rama y entrega;
-5. los documentos históricos se conservan como contexto, no como orden de
-   ejecución.
+1. Linear posee issue, alcance, dependencias, rama, base esperada y destino;
+2. Git/GitHub y el runtime demuestran el estado observado;
+3. ADR y contratos poseen decisiones técnicas estables;
+4. el handoff conserva continuidad técnica, riesgos, evidencia y una
+   recomendación técnica no autorizante;
+5. Linear posee la siguiente acción autorizada y el plan ejecutable;
+6. los documentos históricos son contexto, nunca orden de ejecución.
+
+Consulta `source-ownership.md`. Una contradicción entre propietario esperado y
+estado observado es una condición de parada, no una invitación a escoger el
+documento más reciente.
 
 No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad.
 
@@ -34,23 +37,27 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras, dependencias y estado.
 - `execution-policy.md`: flujo Linear/Git, autonomía, reviews y promoción.
+- `source-ownership.md`: propietario único de cada campo operativo.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
-- `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
+- `handoffs/telemetry-core.md`: continuidad técnica y evidencia del núcleo live.
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,
-  releases, roadmap y migración.
+  releases, roadmap y migración; su sección `Testing Center` es la entrada
+  temporal explícita para ese proyecto independiente.
 
 ## Reglas de continuidad
 
 - Cada proyecto mantiene un único handoff vivo.
-- Todo worker lo actualiza si cambia estado, arquitectura, decisiones, tests,
-  riesgos o siguiente acción.
-- El orquestador lo actualiza inmediatamente despues de revisar cada worker o
-  tomar una decision material; no se espera al final de una fase larga.
+- El handoff se actualiza si cambia arquitectura, decisiones, evidencia,
+  riesgos o recomendación técnica. Linear posee la siguiente acción autorizada
+  y el plan ejecutable; estado, rama, base y destino tampoco se mantienen como
+  tracker paralelo.
+- El orquestador actualiza Linear después de cada cambio material y el handoff
+  solo cuando cambia la continuidad técnica.
 - Los workers no crean subagentes por defecto. La delegacion anidada requiere
   autorizacion expresa y acotada del orquestador.
 - El comentario final de Linear enlaza el handoff y enumera evidencia real.
@@ -66,7 +73,9 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   issue conserva rama y worktree propios.
 - `develop` y `refactor` son historia y no reciben trabajo nuevo. Los checkouts
   historicos sucios se preservan hasta una limpieza trazada.
-- Los handoffs de este directorio, Linear y `docs/current-plan.md` contienen el
-  estado por proyecto; este indice no duplica listas de issues que caducan.
+- Linear contiene el estado esperado por proyecto. Los handoffs resumen
+  continuidad técnica y este índice no duplica listas de issues que caducan.
+- `docs/current-plan.md` está retirado; el archivo acumulado solo conserva
+  contexto histórico.
 - Testing Center es un proyecto independiente y no se mezcla con la
   orquestacion de los modulos de producto salvo que una issue lo indique.

@@ -97,11 +97,14 @@ type telemetryAnalysisCandidateRecord struct {
 }
 
 type telemetryAnalysisSession struct {
-	mu     sync.Mutex
-	parser *telemetryanalysis.LMUDuckDBParser
-	reader telemetryAnalysisReader
-	staged telemetryanalysis.StagedHistoricalArtifact
-	closed bool
+	mu           sync.Mutex
+	parser       *telemetryanalysis.LMUDuckDBParser
+	reader       telemetryAnalysisReader
+	staged       telemetryanalysis.StagedHistoricalArtifact
+	retired      bool
+	readerClosed bool
+	stagingClean bool
+	closed       bool
 }
 
 // TelemetryAnalysisService is the non-visual application boundary for the
@@ -115,12 +118,15 @@ type TelemetryAnalysisService struct {
 	now        func() time.Time
 
 	discoveryMu     sync.Mutex
+	closeMu         sync.Mutex
 	mu              sync.Mutex
 	candidates      map[string]*telemetryAnalysisCandidateRecord
 	sessions        map[string]*telemetryAnalysisSession
+	pendingCleanup  map[*telemetryAnalysisSession]struct{}
 	openingSessions int
 	runtimeReady    bool
 	readerFactory   telemetryAnalysisReaderFactory
+	cleanupStaged   func(*telemetryanalysis.StagedHistoricalArtifact) error
 	closed          bool
 	closeCtx        context.Context
 	cancelClose     context.CancelFunc
@@ -144,7 +150,9 @@ func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemet
 		cfg: cfg, authorizer: authorizer,
 		metadata: telemetryanalysis.OSMetadataSource{}, content: telemetryanalysis.OSContentSource{},
 		now: time.Now, candidates: make(map[string]*telemetryAnalysisCandidateRecord),
-		sessions: make(map[string]*telemetryAnalysisSession), closeCtx: closeCtx, cancelClose: cancelClose,
+		sessions:       make(map[string]*telemetryAnalysisSession),
+		pendingCleanup: make(map[*telemetryAnalysisSession]struct{}), closeCtx: closeCtx, cancelClose: cancelClose,
+		cleanupStaged: func(staged *telemetryanalysis.StagedHistoricalArtifact) error { return staged.Cleanup() },
 	}
 	runtimeFiles, runtimeErr := duckdbadapter.LoadRuntime(duckdbadapter.ProductionTrust(cfg.ApplicationDirectory))
 	if runtimeErr == nil {
@@ -281,7 +289,7 @@ func (service *TelemetryAnalysisService) currentCandidate(id string) *telemetryA
 	return service.candidates[id]
 }
 
-func (service *TelemetryAnalysisService) Open(ctx context.Context, request TelemetryAnalysisOpenRequest) (TelemetryAnalysisOpenedSession, error) {
+func (service *TelemetryAnalysisService) Open(ctx context.Context, request TelemetryAnalysisOpenRequest) (opened TelemetryAnalysisOpenedSession, returnErr error) {
 	operationCtx, finish, err := service.begin(ctx)
 	if err != nil {
 		return TelemetryAnalysisOpenedSession{}, err
@@ -332,29 +340,25 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if stageErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(stageErr)
 	}
-	cleanupStaged := true
+	ownedSession := &telemetryAnalysisSession{staged: staged}
+	cleanupOwnedSession := true
 	defer func() {
-		if cleanupStaged {
-			_ = staged.Cleanup()
+		if cleanupOwnedSession {
+			if cleanupErr := service.cleanupOwnedSession(ownedSession); cleanupErr != nil {
+				opened = TelemetryAnalysisOpenedSession{}
+				returnErr = ErrTelemetryAnalysisCleanup
+			}
 		}
 	}()
 
 	reader, readerErr := service.readerFactory(artifact, staged)
+	ownedSession.reader = reader
 	if readerErr != nil {
-		if reader != nil {
-			_ = reader.Close()
-		}
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisRuntimeUnavailable
 	}
 	if reader == nil {
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisRuntimeUnavailable
 	}
-	cleanupReader := true
-	defer func() {
-		if cleanupReader {
-			_ = reader.Close()
-		}
-	}()
 	if handshakeErr := reader.Handshake(operationCtx); handshakeErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(handshakeErr)
 	}
@@ -373,7 +377,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if idErr != nil {
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisIncompatible
 	}
-	ownedSession := &telemetryAnalysisSession{parser: parser, reader: reader, staged: staged}
+	ownedSession.parser = parser
 	service.mu.Lock()
 	if service.closed {
 		service.mu.Unlock()
@@ -381,8 +385,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	}
 	service.sessions[sessionID] = ownedSession
 	service.mu.Unlock()
-	cleanupReader = false
-	cleanupStaged = false
+	cleanupOwnedSession = false
 	return TelemetryAnalysisOpenedSession{SessionID: sessionID, Session: session}, nil
 }
 
@@ -426,17 +429,22 @@ func (service *TelemetryAnalysisService) ReadPage(ctx context.Context, request T
 		return telemetryanalysis.HistoricalPage{}, ErrTelemetryAnalysisSessionUnknown
 	}
 	ownedSession.mu.Lock()
-	if ownedSession.closed {
+	if ownedSession.retired || ownedSession.closed {
 		ownedSession.mu.Unlock()
 		return telemetryanalysis.HistoricalPage{}, ErrTelemetryAnalysisSessionUnknown
 	}
 	page, readErr := ownedSession.parser.ReadPage(operationCtx, request.ChannelID, request.Start, request.Limit)
+	if readErr != nil {
+		ownedSession.retired = true
+	}
 	ownedSession.mu.Unlock()
 	if readErr == nil {
 		return page, nil
 	}
+	if cleanupErr := service.cleanupOwnedSession(ownedSession); cleanupErr != nil {
+		return telemetryanalysis.HistoricalPage{}, ErrTelemetryAnalysisCleanup
+	}
 	service.removeSession(request.SessionID, ownedSession)
-	_ = ownedSession.close()
 	return telemetryanalysis.HistoricalPage{}, publicTelemetryAnalysisError(readErr)
 }
 
@@ -451,16 +459,14 @@ func (service *TelemetryAnalysisService) CloseSession(sessionID string) error {
 	}
 	service.mu.Lock()
 	ownedSession := service.sessions[sessionID]
-	if ownedSession != nil {
-		delete(service.sessions, sessionID)
-	}
 	service.mu.Unlock()
 	if ownedSession == nil {
 		return ErrTelemetryAnalysisSessionUnknown
 	}
-	if err := ownedSession.close(); err != nil {
+	if err := service.cleanupOwnedSession(ownedSession); err != nil {
 		return ErrTelemetryAnalysisCleanup
 	}
+	service.removeSession(sessionID, ownedSession)
 	return nil
 }
 
@@ -472,16 +478,51 @@ func (service *TelemetryAnalysisService) removeSession(id string, expected *tele
 	service.mu.Unlock()
 }
 
-func (session *telemetryAnalysisSession) close() error {
+func (service *TelemetryAnalysisService) removeSessionReferences(expected *telemetryAnalysisSession) {
+	service.mu.Lock()
+	for id, session := range service.sessions {
+		if session == expected {
+			delete(service.sessions, id)
+		}
+	}
+	service.mu.Unlock()
+}
+
+func (service *TelemetryAnalysisService) cleanupOwnedSession(session *telemetryAnalysisSession) error {
+	err := session.close(service.cleanupStaged)
+	service.mu.Lock()
+	if err != nil {
+		service.pendingCleanup[session] = struct{}{}
+	} else {
+		delete(service.pendingCleanup, session)
+	}
+	service.mu.Unlock()
+	return err
+}
+
+func (session *telemetryAnalysisSession) close(cleanupStaged func(*telemetryanalysis.StagedHistoricalArtifact) error) error {
 	session.mu.Lock()
 	defer session.mu.Unlock()
+	session.retired = true
 	if session.closed {
 		return nil
 	}
-	session.closed = true
-	readerErr := session.reader.Close()
-	stagingErr := session.staged.Cleanup()
-	if readerErr != nil || stagingErr != nil {
+	if !session.readerClosed {
+		if session.reader == nil {
+			session.readerClosed = true
+		} else if err := session.reader.Close(); err == nil {
+			session.readerClosed = true
+		}
+	}
+	if session.readerClosed && !session.stagingClean {
+		if session.staged.Directory() == "" {
+			session.stagingClean = true
+		} else if err := cleanupStaged(&session.staged); err == nil {
+			session.stagingClean = true
+		}
+	}
+	session.closed = session.readerClosed && session.stagingClean
+	if !session.closed {
 		return ErrTelemetryAnalysisCleanup
 	}
 	return nil
@@ -515,29 +556,35 @@ func (service *TelemetryAnalysisService) Close() error {
 	if service == nil {
 		return nil
 	}
+	service.closeMu.Lock()
+	defer service.closeMu.Unlock()
+
 	service.mu.Lock()
-	if service.closed {
-		service.mu.Unlock()
-		return nil
+	if !service.closed {
+		service.closed = true
+		service.cancelClose()
 	}
-	service.closed = true
-	service.cancelClose()
 	service.mu.Unlock()
 	service.operations.Wait()
 
 	service.mu.Lock()
-	sessions := make([]*telemetryAnalysisSession, 0, len(service.sessions))
+	sessionSet := make(map[*telemetryAnalysisSession]struct{}, len(service.sessions)+len(service.pendingCleanup))
 	for _, session := range service.sessions {
-		sessions = append(sessions, session)
+		sessionSet[session] = struct{}{}
 	}
-	service.sessions = make(map[string]*telemetryAnalysisSession)
+	for session := range service.pendingCleanup {
+		sessionSet[session] = struct{}{}
+	}
 	service.candidates = make(map[string]*telemetryAnalysisCandidateRecord)
 	service.mu.Unlock()
+
 	cleanupFailed := false
-	for _, session := range sessions {
-		if err := session.close(); err != nil {
+	for session := range sessionSet {
+		if err := service.cleanupOwnedSession(session); err != nil {
 			cleanupFailed = true
+			continue
 		}
+		service.removeSessionReferences(session)
 	}
 	if cleanupFailed {
 		return ErrTelemetryAnalysisCleanup

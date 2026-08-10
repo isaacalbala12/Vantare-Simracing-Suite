@@ -507,3 +507,165 @@ func TestTelemetryAnalysisBoundsConcurrentOpenSessions(t *testing.T) {
 		}
 	}
 }
+
+func failTelemetryAnalysisStagingCleanupOnce(service *TelemetryAnalysisService) *atomic.Int32 {
+	var attempts atomic.Int32
+	service.cleanupStaged = func(staged *telemetryanalysis.StagedHistoricalArtifact) error {
+		if attempts.Add(1) == 1 {
+			return errors.New("transient cleanup failure at secret-source-path")
+		}
+		return staged.Cleanup()
+	}
+	return &attempts
+}
+
+func TestTelemetryAnalysisFailedOpenRetainsStagingForShutdownRetry(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	attempts := failTelemetryAnalysisStagingCleanupOnce(svc)
+	var stagedDirectory string
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, staged telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		stagedDirectory = staged.Directory()
+		reader := telemetryAnalysisSuccessfulReader(artifact)
+		reader.handshakeErr = errors.New("runtime failure at secret-source-path")
+		return reader, nil
+	}
+
+	_, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if !errors.Is(err, ErrTelemetryAnalysisCleanup) || strings.Contains(err.Error(), "secret-source-path") {
+		t.Fatalf("Open() error = %v, want sanitized cleanup error", err)
+	}
+	if _, err := os.Stat(stagedDirectory); err != nil {
+		t.Fatalf("failed staging was not retained for retry: %v", err)
+	}
+	if err := svc.Close(); err != nil {
+		t.Fatalf("Close() retry error = %v", err)
+	}
+	if attempts.Load() != 2 {
+		t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
+	}
+	if _, err := os.Stat(stagedDirectory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("staging remained after shutdown retry: %v", err)
+	}
+}
+
+func TestTelemetryAnalysisCancelledOpenRetainsStagingForShutdownRetry(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	attempts := failTelemetryAnalysisStagingCleanupOnce(svc)
+	catalogStarted := make(chan struct{})
+	var stagedDirectory string
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, staged telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		stagedDirectory = staged.Directory()
+		reader := telemetryAnalysisSuccessfulReader(artifact)
+		reader.waitForContext = true
+		reader.catalogStarted = catalogStarted
+		return reader, nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		_, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+		result <- err
+	}()
+	<-catalogStarted
+	cancel()
+	if err := <-result; !errors.Is(err, ErrTelemetryAnalysisCleanup) || strings.Contains(err.Error(), "secret-source-path") {
+		t.Fatalf("cancelled Open() error = %v, want sanitized cleanup error", err)
+	}
+	if _, err := os.Stat(stagedDirectory); err != nil {
+		t.Fatalf("cancelled staging was not retained for retry: %v", err)
+	}
+	if err := svc.Close(); err != nil {
+		t.Fatalf("Close() retry error = %v", err)
+	}
+	if attempts.Load() != 2 {
+		t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
+	}
+	if _, err := os.Stat(stagedDirectory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("cancelled staging remained after shutdown retry: %v", err)
+	}
+}
+
+func TestTelemetryAnalysisReadFailureKeepsSessionForCloseSessionRetry(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	defer svc.Close()
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	var reader *telemetryAnalysisReaderStub
+	var stagedDirectory string
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, staged telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		reader = telemetryAnalysisSuccessfulReader(artifact)
+		stagedDirectory = staged.Directory()
+		return reader, nil
+	}
+	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempts := failTelemetryAnalysisStagingCleanupOnce(svc)
+	reader.readErr = errors.New("read failed at secret-source-path")
+	_, err = svc.ReadPage(context.Background(), TelemetryAnalysisPageRequest{
+		SessionID: opened.SessionID, ChannelID: opened.Session.Channels[0].ID, Start: 0, Limit: 1,
+	})
+	if !errors.Is(err, ErrTelemetryAnalysisCleanup) || strings.Contains(err.Error(), "secret-source-path") {
+		t.Fatalf("ReadPage() error = %v, want sanitized cleanup error", err)
+	}
+	if _, err := os.Stat(stagedDirectory); err != nil {
+		t.Fatalf("failed page staging was not retained: %v", err)
+	}
+	if err := svc.CloseSession(opened.SessionID); err != nil {
+		t.Fatalf("CloseSession() retry error = %v", err)
+	}
+	if attempts.Load() != 2 {
+		t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
+	}
+	if _, err := os.Stat(stagedDirectory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("staging remained after CloseSession retry: %v", err)
+	}
+}
+
+func TestTelemetryAnalysisCloseAndCloseSessionRetryTransientCleanup(t *testing.T) {
+	tests := []struct {
+		name  string
+		close func(*TelemetryAnalysisService, string) error
+	}{
+		{name: "CloseSession", close: func(service *TelemetryAnalysisService, id string) error { return service.CloseSession(id) }},
+		{name: "Close", close: func(service *TelemetryAnalysisService, _ string) error { return service.Close() }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			svc, _, now := telemetryAnalysisTestService(t, true)
+			candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+			var stagedDirectory string
+			svc.runtimeReady = true
+			svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, staged telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+				stagedDirectory = staged.Directory()
+				return telemetryAnalysisSuccessfulReader(artifact), nil
+			}
+			opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			attempts := failTelemetryAnalysisStagingCleanupOnce(svc)
+			if err := test.close(svc, opened.SessionID); !errors.Is(err, ErrTelemetryAnalysisCleanup) {
+				t.Fatalf("first close error = %v, want cleanup", err)
+			}
+			if _, err := os.Stat(stagedDirectory); err != nil {
+				t.Fatalf("staging was not retained: %v", err)
+			}
+			if err := test.close(svc, opened.SessionID); err != nil {
+				t.Fatalf("second close error = %v", err)
+			}
+			if attempts.Load() != 2 {
+				t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
+			}
+			if _, err := os.Stat(stagedDirectory); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("staging remained after second close: %v", err)
+			}
+			_ = svc.Close()
+		})
+	}
+}

@@ -4,6 +4,9 @@ export const RELATIVE_ENDURANCE_TEMPLATE_IDS = [
   "relative-classic",
   "relative-minimal",
   "relative-neo",
+  "relative-redline-mirror",
+  "relative-redline-proximity",
+  "relative-redline-traffic",
 ] as const;
 
 export type RelativeEnduranceTemplateId = (typeof RELATIVE_ENDURANCE_TEMPLATE_IDS)[number];
@@ -29,17 +32,21 @@ export function parseRelativeEnduranceSettings(input: unknown): RelativeEnduranc
       : {};
   const showHeader = source.showHeader !== false;
   if (source.templateId === undefined) {
-    return { templateId: "relative-classic", showHeader };
+    return { templateId: "relative-redline-mirror", showHeader };
   }
   if (isTemplateId(source.templateId)) {
     return { templateId: source.templateId, showHeader };
   }
-  return { templateId: "relative-classic", showHeader, templateDiagnostic: "unknown-template" };
+  return {
+    templateId: "relative-redline-mirror",
+    showHeader,
+    templateDiagnostic: "unknown-template",
+  };
 }
 
 export const RELATIVE_ENDURANCE_DEFAULT_SETTINGS = {
   ...RELATIVE_DEFAULT_APPEARANCE,
-  templateId: "relative-classic" as RelativeEnduranceTemplateId,
+  templateId: "relative-redline-mirror" as RelativeEnduranceTemplateId,
   showHeader: true,
 };
 

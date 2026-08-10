@@ -67,9 +67,9 @@ describe("vantare-endurance contract", () => {
 
   it("falls back to the declared template with an observable diagnostic", () => {
     for (const [parse, fallback] of [
-      [parseDeltaEnduranceSettings, "delta-strip"],
-      [parseStandingsEnduranceSettings, "standings-tower"],
-      [parseRelativeEnduranceSettings, "relative-classic"],
+      [parseDeltaEnduranceSettings, "delta-redline"],
+      [parseStandingsEnduranceSettings, "standings-redline"],
+      [parseRelativeEnduranceSettings, "relative-redline-mirror"],
     ] as const) {
       const parsed = parse({ templateId: "nope" });
       expect(parsed.templateId).toBe(fallback);
@@ -277,7 +277,11 @@ describe("vantare-endurance contract", () => {
 
   it("renders relative rows with tone-marked gaps and hides the titlebar in minimal", () => {
     const classic = render(
-      <RelativeEndurance model={relativeModel} settings={{}} renderMode="harness" />,
+      <RelativeEndurance
+        model={relativeModel}
+        settings={{ templateId: "relative-classic" }}
+        renderMode="harness"
+      />,
     );
     expect(rootOf(classic.container).querySelector(".ven-titlebar")).toBeTruthy();
     cleanup();
@@ -336,7 +340,11 @@ describe("vantare-endurance contract", () => {
 
   it("dispatches delta between strip and block compositions", () => {
     const strip = render(
-      <DeltaEndurance model={deltaModel} settings={{}} renderMode="harness" />,
+      <DeltaEndurance
+        model={deltaModel}
+        settings={{ templateId: "delta-strip" }}
+        renderMode="harness"
+      />,
     );
     expect(rootOf(strip.container).querySelector(".ven-delta-track")).toBeTruthy();
     cleanup();

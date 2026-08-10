@@ -2,6 +2,7 @@ import type { WidgetType } from "../core/profile-document";
 import { validateWidgetDesign, type WidgetDesignV1 } from "../core/widget-design";
 import { PEDALS_DEFAULT_APPEARANCE } from "../widget-types/pedals/pedals-renderer-helpers";
 import { RELATIVE_DEFAULT_APPEARANCE } from "../widget-types/relative/relative-renderer-helpers";
+import { RELATIVE_REDLINE_CLASS_COLORS } from "./vantare-endurance/relative/relative-redline-shared";
 
 export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
@@ -231,7 +232,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "car-damage-numbers-original", name: "Original Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-original", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "car-damage-numbers-crystal", name: "Crystal Car Damage Numbers", widgetType: "car-damage-numbers", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
   { id: "engineer-radio-crystal", name: "Crystal Engineer Radio", widgetType: "engineer-radio", systemId: "vantare-crystal", systemVersion: 1, configVersion: 1, visual: {}, includesContent: false, origin: "vantare", isDefault: true },
-  { id: "delta-endurance-strip", name: "Endurance Strip", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-strip", showHeader: true }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "delta-endurance-strip", name: "Endurance Strip", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-strip", showHeader: true }, includesContent: false, origin: "vantare" },
   { id: "delta-endurance-block", name: "Endurance Block", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-block", showHeader: true }, includesContent: false, origin: "vantare" },
   { id: "standings-endurance-tower", name: "Endurance Tower", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-tower", showSessionHeader: true }, includesContent: false, origin: "vantare" },
   { id: "standings-endurance-strip", name: "Endurance Strip", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-strip", showSessionHeader: true }, includesContent: false, origin: "vantare" },
@@ -242,12 +243,16 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   { id: "standings-endurance-apex", name: "Endurance Apex", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-apex", showSessionHeader: true }, includesContent: false, origin: "vantare" },
   { id: "standings-endurance-neo", name: "Endurance Neo", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-neo", showSessionHeader: true }, includesContent: false, origin: "vantare" },
   { id: "standings-endurance-redline", name: "Endurance Redline", widgetType: "standings", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "standings-redline", showSessionHeader: true }, includesContent: false, origin: "vantare", isDefault: true },
-  { id: "relative-endurance-classic", name: "Endurance Classic", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-classic" }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "relative-endurance-classic", name: "Endurance Classic", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-classic" }, includesContent: false, origin: "vantare" },
   { id: "relative-endurance-minimal", name: "Endurance Minimal", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-minimal" }, includesContent: false, origin: "vantare" },
   { id: "pedals-endurance", name: "Endurance Pedals", widgetType: "pedals", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...PEDALS_DEFAULT_APPEARANCE }, includesContent: false, origin: "vantare", isDefault: true },
   { id: "relative-endurance-neo", name: "Endurance Neo", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, templateId: "relative-neo" }, includesContent: false, origin: "vantare" },
   { id: "delta-endurance-neo", name: "Endurance Neo", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-neo", showHeader: true }, includesContent: false, origin: "vantare" },
+  { id: "delta-endurance-redline", name: "Endurance Redline", widgetType: "delta", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { templateId: "delta-redline", showHeader: true }, includesContent: false, origin: "vantare", isDefault: true },
   { id: "pedals-endurance-neo", name: "Endurance Neo", widgetType: "pedals", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...PEDALS_DEFAULT_APPEARANCE, templateId: "pedals-neo" }, includesContent: false, origin: "vantare" },
+  { id: "relative-endurance-redline-mirror", name: "Endurance Redline Mirror", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-mirror" }, includesContent: false, origin: "vantare", isDefault: true },
+  { id: "relative-endurance-redline-proximity", name: "Endurance Redline Proximity", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-proximity" }, includesContent: false, origin: "vantare" },
+  { id: "relative-endurance-redline-traffic", name: "Endurance Redline Traffic", widgetType: "relative", systemId: "vantare-endurance", systemVersion: 1, configVersion: 1, visual: { ...RELATIVE_DEFAULT_APPEARANCE, ...RELATIVE_REDLINE_CLASS_COLORS, templateId: "relative-redline-traffic" }, includesContent: false, origin: "vantare" },
 ];
 
 const OFFICIAL_DESIGNS: WidgetDesignV1[] = OFFICIAL_DESIGN_DEFINITIONS.map((design) =>

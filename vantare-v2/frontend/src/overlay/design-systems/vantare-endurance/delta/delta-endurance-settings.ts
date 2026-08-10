@@ -1,4 +1,9 @@
-export const DELTA_ENDURANCE_TEMPLATE_IDS = ["delta-strip", "delta-block", "delta-neo"] as const;
+export const DELTA_ENDURANCE_TEMPLATE_IDS = [
+  "delta-strip",
+  "delta-block",
+  "delta-neo",
+  "delta-redline",
+] as const;
 
 export type DeltaEnduranceTemplateId = (typeof DELTA_ENDURANCE_TEMPLATE_IDS)[number];
 export type DeltaEnduranceTemplateDiagnostic = "unknown-template";
@@ -22,16 +27,16 @@ export function parseDeltaEnduranceSettings(input: unknown): DeltaEnduranceSetti
       : {};
   const showHeader = source.showHeader !== false;
   if (source.templateId === undefined) {
-    return { templateId: "delta-strip", showHeader };
+    return { templateId: "delta-redline", showHeader };
   }
   if (isTemplateId(source.templateId)) {
     return { templateId: source.templateId, showHeader };
   }
-  return { templateId: "delta-strip", showHeader, templateDiagnostic: "unknown-template" };
+  return { templateId: "delta-redline", showHeader, templateDiagnostic: "unknown-template" };
 }
 
 export const DELTA_ENDURANCE_DEFAULT_SETTINGS = {
-  templateId: "delta-strip" as DeltaEnduranceTemplateId,
+  templateId: "delta-redline" as DeltaEnduranceTemplateId,
   showHeader: true,
 };
 

@@ -2,9 +2,26 @@ import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-model";
 import { parseDeltaEnduranceSettings } from "./delta-endurance-settings";
+import { DeltaRedlineTemplate } from "./DeltaRedlineTemplate";
 
 export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
   const parsed = parseDeltaEnduranceSettings(settings);
+
+  if (parsed.templateId === "delta-redline") {
+    return (
+      <section
+        data-widget-system="vantare-endurance"
+        data-widget-renderer="delta"
+        data-status={model.status}
+        data-tone={model.tone}
+        data-template="delta-redline"
+        className="ven-root ven-delta ven-dred"
+      >
+        {/* showHeader drives the reference row: the expanded state of the design. */}
+        <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} />
+      </section>
+    );
+  }
 
   if (parsed.templateId === "delta-neo") {
     return (

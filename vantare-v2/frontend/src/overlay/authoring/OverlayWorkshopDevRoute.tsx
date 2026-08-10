@@ -29,6 +29,7 @@ const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
 const VARIANTS: readonly HarnessVariant[] = [
   "default",
   "relative-fill",
+  "relative-multiclass",
   "standings-stress60",
   "standings-multiclass",
   "standings-replay",

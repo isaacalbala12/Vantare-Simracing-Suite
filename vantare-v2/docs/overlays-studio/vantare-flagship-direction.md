@@ -84,6 +84,30 @@ anteriores (tower, strip, f1, wec, lmu, racelabs, apex, neo) fueron pruebas de
 exploración y se purgarán en un commit de limpieza cuando redline cubra los
 4 widgets y con aprobación explícita de Isaac.
 
+### Estado de ejecución (2026-08-10, ISA-306)
+
+| Widget | Redline | Titular |
+|---|---|---|
+| standings | `standings-redline` | ✅ |
+| delta | `delta-redline` | ✅ |
+| relative | `relative-redline-mirror` (+ `proximity`, `traffic`) | ✅ mirror |
+| pedals | — | ❌ pendiente |
+
+"Titular" significa las dos mitades a la vez: el diseño oficial marcado
+`isDefault` y el default/fallback de `parseXEnduranceSettings`. Antes de
+ISA-306 discrepaban en standings (diseño redline, settings tower).
+
+Relative titular es **mirror**: el jugador como eje es para lo que sirve un
+relative. Proximity y traffic siguen disponibles como lecturas alternativas.
+
+Los perfiles guardados no se migran: un `templateId` explícito sigue
+resolviéndose a sí mismo. Cuando se purguen los exploratorios, el fallback de
+`unknown-template` llevará esos perfiles a redline por sí solo — la purga es
+su propia migración y no hace falta código de migración.
+
+**Precondición de la purga aún no cumplida:** pedals no tiene Redline.
+Retirar los exploratorios hoy dejaría ese widget sin ningún template.
+
 ## Backlog de animaciones aprobado (2026-08-06)
 
 Aprobadas por Isaac (todas derivables del diff de ViewModels):

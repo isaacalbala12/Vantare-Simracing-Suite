@@ -1,0 +1,130 @@
+name: Sign official Strategy catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest:
+        description: "Repository-relative manifest under vantare-v2/strategy-catalog"
+        required: true
+        type: string
+      trusted_keys:
+        description: "Repository-relative trusted keyset under vantare-v2/strategy-catalog"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    name: Test and sign catalog
+    if: github.ref == 'refs/heads/master'
+    environment: strategy-catalog-signing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate manifest and trusted key paths
+        id: inputs
+        env:
+          MANIFEST_INPUT: ${{ inputs.manifest }}
+          TRUSTED_KEYS_INPUT: ${{ inputs.trusted_keys }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path, PurePosixPath
+
+          workspace = Path.cwd().resolve()
+          allowed = (workspace / "vantare-v2" / "strategy-catalog").resolve()
+          resolved_paths = {}
+          for name, environment_name in (("manifest_path", "MANIFEST_INPUT"), ("trusted_keys_path", "TRUSTED_KEYS_INPUT")):
+              raw = os.environ.get(environment_name, "")
+              lexical = PurePosixPath(raw)
+              if not raw or lexical.is_absolute() or "\\" in raw or ".." in lexical.parts:
+                  raise SystemExit(f"::error::{name} must be a relative path without '..'")
+              candidate = (workspace / Path(*lexical.parts)).resolve(strict=True)
+              try:
+                  candidate.relative_to(allowed)
+              except ValueError:
+                  raise SystemExit(f"::error::{name} must stay inside vantare-v2/strategy-catalog")
+              if not candidate.is_file():
+                  raise SystemExit(f"::error::{name} must identify a file")
+              resolved_paths[name] = candidate
+          try:
+              resolved_paths["trusted_keys_path"].relative_to(resolved_paths["manifest_path"].parent)
+          except ValueError:
+              raise SystemExit("::error::trusted_keys_path must stay inside the real manifest directory")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              for name, candidate in resolved_paths.items():
+                  output.write(f"{name}={candidate.relative_to(workspace).as_posix()}\n")
+          PY
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: vantare-v2/go.mod
+          cache-dependency-path: vantare-v2/go.sum
+
+      - name: Test catalog verifier and signer
+        working-directory: vantare-v2
+        run: go test -count=1 ./internal/strategy/catalog/... ./cmd/strategy-catalog
+
+      - name: Sign twice and prove reproducibility
+        id: sign
+        env:
+          MANIFEST_PATH: ${{ steps.inputs.outputs.manifest_path }}
+          TRUSTED_KEYS_PATH: ${{ steps.inputs.outputs.trusted_keys_path }}
+          VANTARE_STRATEGY_CATALOG_SIGNING_KEY: ${{ secrets.VANTARE_STRATEGY_CATALOG_SIGNING_KEY }}
+        shell: bash
+        run: |
+          if [ -z "${VANTARE_STRATEGY_CATALOG_SIGNING_KEY:-}" ]; then
+            echo "::error::VANTARE_STRATEGY_CATALOG_SIGNING_KEY is not configured"
+            exit 1
+          fi
+
+          work_dir="$(mktemp -d "$RUNNER_TEMP/strategy-catalog.XXXXXX")"
+          artifact_dir="$work_dir/artifact"
+          mkdir "$artifact_dir"
+
+          (
+            cd vantare-v2
+            go run ./cmd/strategy-catalog \
+              -manifest "$GITHUB_WORKSPACE/$MANIFEST_PATH" \
+              -trusted-keys "$GITHUB_WORKSPACE/$TRUSTED_KEYS_PATH" \
+              -output "$work_dir/first.json" \
+              -private-key-env VANTARE_STRATEGY_CATALOG_SIGNING_KEY
+            go run ./cmd/strategy-catalog \
+              -manifest "$GITHUB_WORKSPACE/$MANIFEST_PATH" \
+              -trusted-keys "$GITHUB_WORKSPACE/$TRUSTED_KEYS_PATH" \
+              -output "$work_dir/second.json" \
+              -private-key-env VANTARE_STRATEGY_CATALOG_SIGNING_KEY
+          )
+
+          first_sha="$(sha256sum "$work_dir/first.json" | awk '{print $1}')"
+          second_sha="$(sha256sum "$work_dir/second.json" | awk '{print $1}')"
+          if [ "$first_sha" != "$second_sha" ] || ! cmp -s "$work_dir/first.json" "$work_dir/second.json"; then
+            echo "::error::catalog generation is not byte-for-byte reproducible"
+            exit 1
+          fi
+
+          cp "$work_dir/first.json" "$artifact_dir/strategy-catalog.json"
+          (
+            cd "$artifact_dir"
+            sha256sum strategy-catalog.json > strategy-catalog.json.sha256
+          )
+          echo "artifact_dir=$artifact_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed catalog only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: official-strategy-catalog
+          path: |
+            ${{ steps.sign.outputs.artifact_dir }}/strategy-catalog.json
+            ${{ steps.sign.outputs.artifact_dir }}/strategy-catalog.json.sha256
+          if-no-files-found: error
+          retention-days: 14

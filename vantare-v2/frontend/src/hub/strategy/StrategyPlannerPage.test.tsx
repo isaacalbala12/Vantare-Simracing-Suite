@@ -274,6 +274,38 @@ describe("Strategy Planner shell", () => {
     expect(within(alert).getByRole("button", { name: "Reintentar" })).toBeTruthy();
   });
 
+  it("returns to loading while a library retry is pending", async () => {
+    let attempts = 0;
+    let resolveRetry: ((value: StrategyApplicationResultV1<StrategyEditorDocument>) => void) | undefined;
+    const client = {
+      execute() {
+        attempts += 1;
+        if (attempts === 1) return Promise.reject(new Error("El repositorio local no está disponible."));
+        return new Promise<StrategyApplicationResultV1<StrategyEditorDocument>>((resolve) => {
+          resolveRetry = resolve;
+        });
+      },
+      cancel: () => false,
+      dispose: () => {},
+    } as StrategyApplicationClient<StrategyEditorDocument>;
+    await renderPlanner({ libraryClient: client });
+
+    const alert = await screen.findByRole("alert");
+    fireEvent.click(within(alert).getByRole("button", { name: "Reintentar" }));
+
+    expect((await screen.findByRole("status")).textContent).toContain("Cargando planes");
+    if (!resolveRetry) throw new Error("library retry did not start");
+    resolveRetry({
+      protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+      commandId: "retry-result",
+      repositoryVersion: 4,
+      plans: [summary({ planId: "spa-2026", name: "6h Spa · Hypercar" })],
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    expect(await screen.findByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
+  });
+
   it("renders explicit loading, empty and error gallery states", async () => {
     const store = createTestStrategyStore();
     const { rerender } = render(<StrategyPlannerPage strategyStore={store} demo galleryState="loading" />);

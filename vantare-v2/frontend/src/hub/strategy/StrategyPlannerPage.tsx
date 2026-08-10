@@ -279,28 +279,31 @@ export function StrategyPlannerPage({
     const client = libraryClient ?? ownedRuntime?.client;
     if (screen !== "gallery" || !client) return;
     let active = true;
-    setLibrary((current) => ({ ...current, state: "loading", error: "" }));
-    void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
-      (result) => {
-        if (!active) return;
-        setLibraryVersion(result.repositoryVersion);
-        setLibrary({
-          state: result.plans.length === 0 ? "empty" : "ready",
-          plans: result.plans,
-          error: "",
-        });
-      },
-      (error: unknown) => {
-        if (!active) return;
-        setLibrary({
-          state: "error",
-          plans: [],
-          error: error instanceof Error
-            ? error.message
-            : "No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.",
-        });
-      },
-    );
+    queueMicrotask(() => {
+      if (!active) return;
+      setLibrary((current) => ({ ...current, state: "loading", error: "" }));
+      void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
+        (result) => {
+          if (!active) return;
+          setLibraryVersion(result.repositoryVersion);
+          setLibrary({
+            state: result.plans.length === 0 ? "empty" : "ready",
+            plans: result.plans,
+            error: "",
+          });
+        },
+        (error: unknown) => {
+          if (!active) return;
+          setLibrary({
+            state: "error",
+            plans: [],
+            error: error instanceof Error
+              ? error.message
+              : "No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.",
+          });
+        },
+      );
+    });
     return () => { active = false; };
   }, [libraryAttempt, libraryClient, ownedRuntime, screen]);
 

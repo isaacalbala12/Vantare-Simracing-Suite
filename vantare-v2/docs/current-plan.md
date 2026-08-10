@@ -1,21 +1,40 @@
-Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
-- Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila
-  ya implementada de Strategy Planner sin arrastrar commits ajenos.
-- La rama canónica es
-  `vantareapp/isa-309-str-n02-promocion-acumulativa-de-strategy-planner-a-nightly`.
-  Contiene los 11 commits de producto reconstruidos; este registro de estado
-  se mantiene como commit documental separado.
-- Evidencia local revisada: Strategy Go (`gofmt`, `go vet`, tests), typecheck
-  real, suite frontend completa, build y ESLint focal pasan. `go test ./...`
-  también pasa en ejecución serial después del build; dos fallos bajo carga
-  paralela pasaron aislados y no pertenecen al cambio.
-- PR draft #192 abierto hacia `nightly`, mergeable y con todos los gates en
-  verde. El primer run agotó el presupuesto temporal heredado de
-  `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`; el rerun único
-  pasó Go, frontend, visual advisory y lint advisory completos.
-- Pendiente: revisión y autorización explícita de Isaac antes de cualquier
-  merge a `nightly`. No hay promoción a `testers`/`master`, release ni inicio
-  de STR-15B.
+Nota ISA-313 / ENG-R01 (2026-08-10, reconciliación y replanificación):
+- La base real es `origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`.
+  PR #96 ya integró ENG-01..ENG-12, ENG-14 y ENG-15; las notas que aún
+  presentan ISA-201 o ENG-12 como siguiente paso son historia, no órdenes de
+  ejecución.
+- Primer objetivo de producto: Spotter LMU + salida visual existente
+  (Engineer Hub, subtítulos y `engineer-radio` para Desktop/OBS), acompañado
+  por audio productivo. Cada corte debe validar conjuntamente decisión,
+  presentación y overlay; Strategy/Overlays avanzados quedan después.
+- Secuencia acordada: ENG-16 + ENG-18 -> ENG-19 -> ENG-24/25, mientras ENG-22
+  reabre Kokoro de forma condicionada; ENG-17 y ENG-23 se incorporan donde sus
+  dependencias lo permitan. ENG-20/21 siguen bloqueados por ENG-13. ENG-26
+  comienza después de cerrar esas bases; ENG-27..29 conservan el ledger, soak
+  LMU y gate integral.
+- Primera etapa lingüística: español e inglés. Italiano y portugués brasileño
+  permanecen en el contrato final y llegan en una etapa posterior; ninguna
+  función se declara lista en un idioma sin evidencia propia.
+- Kokoro es la dirección TTS elegida, no un GO técnico. ENG-22 debe resolver
+  G2P y licencias comercialmente permisivas, latencia, recursos, packaging y
+  escucha humana antes de ENG-23 o de habilitarlo en producto.
+- La primera Beta persigue todas las familias planificadas salvo cambio de
+  piloto. Engineer sustituye CrewChief; no se diseña una convivencia ni una
+  copia exacta. Se autorizan hardware real, escenarios LMU y pruebas
+  controladas de Pit Manager con confirmación, readback y fallo cerrado.
+- ISA-314 separa el bug de honestidad de la UI: hoy los ajustes son en memoria
+  y no puede afirmarse “guardado automático”. ISA-195 conserva la persistencia
+  real y el roundtrip. Sin merge, promoción o release en ISA-313.
+
+Nota ISA-309 / STR-N02 (2026-08-10, integrada en Nightly):
+- `7e39104a7e876b4c396a41403023ba6030b88a08` integra mediante squash la pila
+  reconstruida de Strategy Planner sobre `nightly@431201d`, sin commits ajenos.
+- La validación registrada pasó política de ramas, GitGuardian, build, Go
+  global, frontend completo, visual advisory y lint advisory. El detector de
+  carreras sigue sin ejecutarse por falta de CGO/gcc y falta el smoke manual de
+  los bridges contra Wails viva.
+- No incluye STR-15B, ejecución live, productores Telemetry, release ni
+  promoción a `testers`/`master`.
 
 Nota ALINEACION-REFACTOR (2026-08-10):
 - Objetivo: reconciliar el worktree principal (rama `refactor`, worktree

@@ -21,6 +21,28 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+Actualización autoritativa ISA-313 / ENG-R01 (2026-08-10): PR #96 ya está
+integrado en `nightly` y deja ENG-01..ENG-12, ENG-14 y ENG-15 disponibles. La
+base auditada más reciente es
+`origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`. Las referencias más
+abajo a ISA-201 “en validación” se conservan como evidencia histórica y no
+describen el estado actual.
+
+El siguiente objetivo es una vertical Spotter + audio + visual: ISA-187 / ENG-16
+y ISA-189 / ENG-18 deben demostrar el mismo evento en audio y en las superficies
+ENG-08 ya existentes (`EngineerPage`, subtítulos y `engineer-radio` para
+Desktop/OBS). ISA-190 amplía después los monitores, con todas las familias Beta
+planificadas salvo cambio de piloto. ISA-195/196 cierran persistencia/control y
+Pit transaccional. ISA-197 Strategy/Overlays avanzado espera a esas bases.
+
+Kokoro es la dirección TTS elegida, pero permanece técnicamente condicionado:
+ISA-193 / ENG-22 debe aportar un G2P y una cadena de licencias comercialmente
+permisivos, rendimiento, packaging y escucha humana nuevos. Español e inglés
+son la primera etapa; italiano y portugués brasileño siguen siendo parte del
+gate final. ENG-13 continúa bloqueando STT/wake productivos, no el fallback
+visual. Hardware y LMU real están disponibles; Pit admite pruebas controladas
+con confirmación, readback y fallo cerrado.
+
 ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 `ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
@@ -80,12 +102,12 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa:
-  `vantareapp/isa-201-eng-n01-promocion-acumulativa-eng-01eng-15-a-nightly`.
-- Base: `nightly@4e549bb59fd0b76398985cd28e5aa30aaaa85c32`.
-- Composición: ENG-01..ENG-12, ENG-14 y ENG-15 se integran sobre la base
-  canónica de `nightly`; ENG-13 continúa como gate humano de voz real.
-- Promoción: en validación técnica para `nightly`; `testers` y `master` no se
+- Rama documental activa:
+  `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`.
+- Base: `origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`.
+- Estado de producto: ENG-01..ENG-12, ENG-14 y ENG-15 están en Nightly; ENG-13
+  continúa como gate humano de voz real.
+- ISA-313 no implementa producto ni promociona; `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
   polling de 8 ms cancelable, hotplug y errores explícitos. Win32 keyboard y
@@ -231,10 +253,12 @@ productivo sin crear un segundo reader.
 - Código fija intención/dato/prioridad/acción; plantillas propias generan
   críticos; ningún LLM decide el camino crítico.
 - Personalidades Profesional, Cercano y Exigente son perfiles declarativos.
-- TTS/STT offline, multi-motor si Kokoro no cubre cuatro idiomas.
-- ENG-09 demuestra que Kokoro CPU no cubre la latencia dinámica y que su pila
-  Python medida incluye G2P GPL. No se distribuye ni se cablea hasta resolver
-  licencia, rendimiento y escucha humana.
+- TTS/STT offline. Kokoro es la dirección seleccionada; no se introduce un
+  segundo motor por conveniencia sin una decisión posterior.
+- ENG-09 demuestra que el Kokoro medido no cubre la latencia dinámica y que su
+  pila Python incluye G2P GPL. ENG-22 debe producir evidencia nueva con cadena
+  comercialmente permisiva, rendimiento, packaging y escucha antes de
+  distribuir o cablear Kokoro.
 - `whisper.cpp`/Whisper multilingual es el candidato STT primario condicionado;
   debe superar corpus humano de cuatro idiomas antes de release.
 - ENG-10 selecciona `base` solo para el siguiente corpus de comandos por su
@@ -265,8 +289,11 @@ productivo sin crear un segundo reader.
 
 Spotter carretera/multiclase; sesiones; banderas; rivales; fuel/Virtual Energy;
 neumáticos/daños demostrables; pit/estrategia; motivación; PTT; wake word;
-consultas; Pit Manager; cuatro idiomas; subtítulos, overlay, diagnóstico y
-personalidades. Capabilities ausentes se documentan y no se simulan.
+consultas; Pit Manager; subtítulos, overlay, diagnóstico y personalidades. La
+primera etapa lingüística es ES/EN y el gate final añade IT/PT-BR. La primera
+Beta excluye cambio de piloto. Capabilities ausentes se documentan y no se
+simulan. Engineer sustituye CrewChief; no se crea integración de coexistencia
+ni se busca una copia exacta.
 
 ## Primera entrega
 
@@ -318,23 +345,34 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
 | En revisión | ISA-186 / ENG-15, router determinista y diálogo confirmable; review `APPROVE`, cero efectos reales |
 | En revisión | ISA-185 / ENG-14, PTT y readers Windows; hardware físico pendiente de ENG-29 |
-| Backlog/en curso | ISA-187..190 / ENG-16..19, audio, personalidades, Spotter y monitores |
+| Siguiente vertical | ISA-187 / ENG-16 audio + ISA-189 / ENG-18 Spotter, con salida visual ENG-08 |
+| Después | ISA-188/190 / ENG-17/19, personalidades y monitores; cambio de piloto excluido |
 | Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
-| Backlog | ISA-195..198 / ENG-24..27, UI, Pit, Strategy/Overlays y diagnóstico |
+| Backlog ordenado | ISA-195/196 / ENG-24/25, UI/persistencia y Pit; después ISA-197/198 Strategy/Overlays y diagnóstico |
+| Bug separado | ISA-314, retirar la promesa falsa de guardado automático; persistencia real en ISA-195 |
 | Gate final | ISA-199..200 / ENG-28..29, soak LMU y Engineer Beta |
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
 ## Siguiente acción exacta
 
-Abrir el PR de la composición acumulativa ENG-01..ENG-15 hacia `nightly` y
-promoverla únicamente si pasa el CI protegido; los gates locales de Go,
-frontend, visuales, PTT, tooling de voz y carrera focal ya están verdes.
-Después continuar ENG-16..19 según el DAG. ISA-184 / ENG-13
-sigue siendo un gate humano: ENG-20/21 no empiezan productivamente hasta disponer
-de corpus consentido y métricas reales de intent, slots, FAR/FRR y wake word.
+Revisar y aceptar ISA-313 sin promocionarla automáticamente. Ejecutar después
+ISA-314 como bugfix pequeño y, desde la `nightly` remota más reciente, iniciar
+ISA-187 / ENG-16 coordinando sus criterios con ISA-189 / ENG-18 y ENG-08. El
+primer gate manual debe observar un aviso Spotter real/replay válido tanto en
+audio como en radio/subtítulos/overlay y comprobar preempción/fallback. ISA-184
+/ ENG-13 sigue siendo gate humano: ENG-20/21 no se habilitan sin corpus y
+métricas reales.
 
 ## Última actualización
+
+2026-08-10, ISA-313 / ENG-R01 reconcilia el proyecto con Nightly y registra las
+decisiones de producto: paridad relevante no exacta, sustitución de CrewChief,
+vertical Spotter + visual/overlays primero, Kokoro condicionado, ES/EN antes de
+IT/PT-BR, hardware y LMU real disponibles, Pit controlado autorizado, todas las
+familias Beta salvo cambio de piloto y Strategy/Overlays avanzado después de
+cerrar las bases. ISA-314 separa el copy engañoso de persistencia. Rama
+documental sobre `nightly@7e39104`; sin código, merge, promoción ni release.
 
 2026-08-02, ISA-201 compone ENG-01..ENG-12 con los dos cortes
 hermanos ENG-14 y ENG-15 sobre `nightly`. ENG-14 aporta PTT físico Windows

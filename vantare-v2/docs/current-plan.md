@@ -1,3 +1,23 @@
+Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
+- Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;
+  no implica `master`, release Stable pública ni completitud de toda la suite.
+- La migración de Vantare V2 a la raíz bloquea el lanzamiento completo, pero
+  no este hito de agosto. Se planifica después de la declaración en Testers.
+- La cohorte disponible es de unas 10 personas, Windows 10/11, formatos
+  declarados 21:9–32:9 y respuesta el mismo día. Debe confirmarse la resolución
+  reportada `3840×1920` y asegurar cobertura 16:9 y DPI 100/125/150 %.
+- Ventana objetivo para una venta por invitación y cohortes: 22–30 de
+  septiembre. Overlay Studio V1 es el producto principal; Engineer, Strategy y
+  Analysis se etiquetan honestamente como Beta/Preview. No es beta pública ni
+  lanzamiento Stable completo.
+- Autoridad ejecutable:
+  `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`. Billing y
+  venta siguen NO-GO hasta cumplir sus gates y recibir aprobación explícita.
+- ISA-315 solo documenta y coordina. No autoriza promoción, migración, dinero,
+  publicación, merge ni release.
+- Isaac autorizó por separado el merge de PR #198 a `nightly` una vez resuelto
+  ISA-311. Esta autorización no alcanza `testers`, `master`, venta ni release.
+
 Nota ISA-311 (2026-08-10, corrección local verificada):
 - El soak lógico `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`
   conservaba coordinator y SQLite reales, pero heredaba el reloj de pared del
@@ -12,16 +32,9 @@ Nota ISA-311 (2026-08-10, corrección local verificada):
   pero una repetición posterior encontró 1/20 cierres por el timeout que aún
   llegaba al writer. La solución completa pasa soak 20/20, regresiones de
   timeout del coordinator 20/20, build frontend y `go test ./... -count=1`.
-- Rama exacta rebasada sin conflictos sobre `origin/nightly@ff286f4`:
-  `vantareapp/isa-311-test-flaky-en-ci-testtelemetrycoretwohourlogicalsoak-falla`.
-  Implementación `e093d53`; PR draft #200 abierto hacia `nightly`. El CI del
-  HEAD anterior pasó sin rerun, pero la base avanzó durante su ejecución y no
-  se reutiliza como evidencia. Tras el rebase, el HEAD `6ac6f9e` pasó también
-  sin rerun ruta, build, Go, frontend, visual, lint y GitGuardian en el run
-  `31416018600`; el HEAD documental `756315d` repitió todos los checks en verde
-  en `31416779711`. Isaac autorizó explícitamente el merge de PR #200 a
-  `nightly`; el SHA remoto resultante se registra en Linear. No se autoriza
-  promoción a `testers`/`master` ni release.
+- PR #200 se promovió por rebase a `nightly@54f267b` tras los runs verdes
+  `31416018600`, `31416779711` y `31435630710`, todos sin rerun. Linear refleja
+  ISA-311 en `Nightly`. No hubo promoción a `testers`/`master` ni release.
 
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila

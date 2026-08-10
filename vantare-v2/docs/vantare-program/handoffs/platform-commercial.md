@@ -1,5 +1,21 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## Decisión comercial vigente — ISA-315
+
+- Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.
+  No equivale a promoción a `master` ni release Stable de toda Vantare.
+- La migración de Vantare V2 a la raíz bloquea el lanzamiento completo, no la
+  estabilización de Overlay en Testers. Se ejecuta y reverifica después del
+  hito de agosto.
+- Ventana comercial objetivo: 2026-09-22 a 2026-09-30, por invitación y
+  cohortes. Overlay Studio V1 es la propuesta principal; Engineer, Strategy y
+  Analysis deben mostrarse claramente como Beta/Preview mientras continúan.
+- La venta sigue **NO-GO** hasta cerrar raíz, compra/licencia end-to-end,
+  artefactos, updater/rollback, soporte y la decisión pendiente sobre firma.
+  El plan no autoriza dinero real, producción, publicación ni comunicación.
+- Plan canónico y gates:
+  `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
+
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md`, `product-contract.md` y

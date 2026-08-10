@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T17:33:56Z",
+  "generatedAt": "2026-08-10T21:58:49Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 11,
+            "done": 12,
             "total": 26,
-            "percent": 42
+            "percent": 46
           },
           "tasks": [
             {
@@ -50,12 +50,6 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
-            },
-            {
-              "id": "task_b22567b960d2c25f9552",
-              "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
-              "status": "in-progress",
-              "updatedAt": "2026-08-10T17:30:48.875Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -184,6 +178,12 @@
               "updatedAt": "2026-08-10T15:57:36.362Z"
             },
             {
+              "id": "task_b22567b960d2c25f9552",
+              "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
+              "status": "done",
+              "updatedAt": "2026-08-10T21:58:38.624Z"
+            },
+            {
               "id": "task_5be48115a72f57ffcd93",
               "title": "Workshop local MVP con HMR y renderer real",
               "status": "done",
@@ -214,8 +214,8 @@
             {
               "id": "task_29bb95734264dbf20964",
               "title": "Auditoría de señales live para Strategy",
-              "status": "planned",
-              "updatedAt": "2026-08-01T18:48:19.242Z"
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T21:52:06.492Z"
             },
             {
               "id": "task_b7b74ee6776e50f75c0b",
@@ -612,7 +612,7 @@
               "id": "task_ce3c58c3bd12864b4906",
               "title": "Reconciliar Nightly y replanificar Spotter + visual/overlays",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T16:49:45.430Z"
+              "updatedAt": "2026-08-10T18:03:24.822Z"
             },
             {
               "id": "task_70b307b95c679819258e",
@@ -624,13 +624,13 @@
               "id": "task_e250e212ceccd1f036a6",
               "title": "Audio offline, dispositivos, hot-plug y ducking",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:49:45.308Z"
+              "updatedAt": "2026-08-10T17:44:38.997Z"
             },
             {
               "id": "task_f76ec6372934a663e91c",
               "title": "Centro de control Engineer, permisos y ajustes",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:32:17.100Z"
+              "updatedAt": "2026-08-10T17:44:40.202Z"
             },
             {
               "id": "task_47b19844369d0b92f879",
@@ -642,7 +642,7 @@
               "id": "task_8fd1ff4ccaf9f1ea4b10",
               "title": "Engineer Beta: monitores de carrera y consultas reales",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:32:15.533Z"
+              "updatedAt": "2026-08-10T17:44:39.426Z"
             },
             {
               "id": "task_dcb9060d2ca892fc8267",
@@ -672,7 +672,7 @@
               "id": "task_46015965585a66a90bea",
               "title": "Integración versionada con Strategy Planner y Overlays",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:32:19.113Z"
+              "updatedAt": "2026-08-10T17:44:41.179Z"
             },
             {
               "id": "task_c8b82f43667ad5a0550d",
@@ -684,7 +684,7 @@
               "id": "task_739ee8601d0e9551f887",
               "title": "Pit Manager LMU transaccional con confirmación y readback",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:32:18.043Z"
+              "updatedAt": "2026-08-10T17:44:40.718Z"
             },
             {
               "id": "task_ed81448a9c5dd1c44931",
@@ -826,7 +826,7 @@
               "id": "task_28ad2725a706bd5ccf64",
               "title": "Catálogo oficial firmado de Vantare",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T17:28:32.472Z"
+              "updatedAt": "2026-08-10T19:32:10.504Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",
@@ -1021,7 +1021,7 @@
               "id": "task_d7a9445eccd63ccff77b",
               "title": "Accesos operativos revocables y saneamiento de grants legacy",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T17:24:39.008Z"
+              "updatedAt": "2026-08-10T17:50:28.620Z"
             },
             {
               "id": "task_eeb7695d14abe0e5a53f",

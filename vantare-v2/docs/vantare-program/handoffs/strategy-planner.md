@@ -84,7 +84,11 @@ Actualización ISA-162 / STR-15B (2026-08-10):
   YAML, fragmento y diff-check PASS. ESLint focal PASS; el lint global conserva
   39 errores y 2 warnings preexistentes fuera de ISA-162, por lo que no se
   declara verde ni se amplía esta issue para arreglarlos.
-- Quedan push y PR draft. Antes de ejecutar el
+- La rama quedó publicada y el PR draft #201 apunta a `nightly`; Linear sigue
+  en `In Progress` porque el equipo no ofrece un estado de review intermedio.
+  HEAD de la entrega antes de este registro de estado: `b02674a`. No hubo
+  merge, promoción ni release.
+- Antes de ejecutar el
   workflow real, GitHub debe tener `strategy-catalog-signing` con required
   reviewer, deployment branch `master` y la privada exclusivamente como secret
   del environment. No hay contenido oficial aprobado todavía.

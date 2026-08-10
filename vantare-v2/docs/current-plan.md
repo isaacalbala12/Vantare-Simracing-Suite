@@ -253,7 +253,11 @@ Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
   focal ISA-162 pasa; `pnpm lint` global sigue rojo por 39 errores y 2 warnings
   preexistentes en archivos ajenos (Hub/Overlay Studio/harness), sin errores en
   este diff. No se mezclan esas correcciones fuera de alcance.
-- Quedan pendientes push y entrega en PR draft. El
+- La rama quedó publicada y el PR draft #201 apunta a `nightly`; ISA-162 sigue
+  `In Progress` porque el workflow del equipo no ofrece un estado de review
+  intermedio y todavía no hay integración. HEAD de la entrega antes de este
+  registro de estado: `b02674a`.
+- El
   environment `strategy-catalog-signing` debe configurarse externamente con
   required reviewer, deployment branch `master` y la privada solo como secret
   de ese environment; el workflow real no se ejecuta en este corte.

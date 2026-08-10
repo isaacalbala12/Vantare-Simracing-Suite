@@ -271,6 +271,12 @@
   fuera de los archivos ISA-162); el ESLint focal de los cuatro archivos TS/TSX
   modificados pasa. No se amplía esta issue para limpiar esa deuda ajena.
 
-- [ ] **Step 5: Estado externo exacto**
+- [x] **Step 5: Estado externo exacto**
 
   Actualizar handoff/current-plan y Linear tras cada worker y al cierre. Preparar commits pequeños, push normal y PR draft hacia `nightly` solo después de checks/reviews. No merge, promoción, release ni ejecución del workflow firmado sin nueva autorización de Isaac.
+
+  Estado alcanzado: cuatro commits de producto/documentación rebasados sobre
+  `origin/nightly@ff286f4`, rama publicada y PR draft #201 abierto hacia
+  `nightly`. ISA-162 permanece `In Progress`, porque este equipo no tiene un
+  estado intermedio de review y el PR aún no está integrado. Sin merge,
+  promoción, release ni workflow firmado.

@@ -39,9 +39,14 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   commit exceeded budget`; el test pasó 10/10 aislado y la segunda suite global
   pasó completa. El flake queda registrado, pero no se atribuye a ISA-160,
   cuyo delta no toca recording/coordinator. `gofmt` y diff-check pasan; vet
-  reproduce exactamente los dos avisos heredados de `unsafe.Pointer`. Estado
-  exclusivamente local en la rama ISA-160, sin commit, push, PR, CI ni
-  promoción.
+  reproduce exactamente los dos avisos heredados de `unsafe.Pointer`. Tras el
+  rebase sobre `origin/nightly@b1db9f8`, la implementación es `87b451b`. La
+  instalación frontend congelada, build, focal x20, Telemetry Core y suite Go
+  global pasan post-rebase. El draft PR #202 permanece abierto hacia `nightly`;
+  Linear ISA-160 está actualizado con
+  comentario, evidencia y enlace, y sigue `In Progress` porque el equipo no
+  dispone de estado `In Review`. CI sigue pendiente y no se declara verde. Sin
+  merge, promoción ni release.
 - ISA-311 corrige el flake del soak lógico sin modificar el runtime: el test
   sigue recorriendo Overlay, Engineer, recording coordinator y SQLite reales,
   pero usa un reloj lógico fijo y un adapter de writer test-only con deadline
@@ -358,17 +363,17 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
 | Aprobada | ISA-117 / TC-09F, gate final completo en `170eaeb` |
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
-| En revisión / evidencia local | ISA-160 / TC-10A, auditoría Strategy live ejecutable; sin commit/PR todavía |
+| Draft PR / Linear In Progress | ISA-160 / TC-10A, implementación reescrita `87b451b` sobre `nightly@b1db9f8`, draft PR #202; CI y aceptación pendientes |
 | Backlog follow-up | ISA-161 / TC-10B, productor Strategy live bloqueado por aceptación de ISA-160 |
 
 ## Siguiente acción exacta
 
-Completar la actualización final de Linear, commit, push, draft PR y CI de
-ISA-160; CI todavía no está ejecutada ni verde. Tras revisión y aceptación,
-ISA-161 / TC-10B puede ampliar aditivamente `StrategyLiveProjection v1` con
-los campos canónicos existentes de Fuel, sesión, progreso y pit, sus contract
-tests old/new y gates de transporte/resync/replay/soak. VE, tyres y weather
-siguen ausentes hasta una issue de evidencia propia. ISA-152 / STR-17 permanece
+Verificar CI del draft PR #202 y completar la revisión/aceptación humana de
+ISA-160. CI todavía no está declarada verde. Solo después, ISA-161 /
+TC-10B puede ampliar aditivamente `StrategyLiveProjection v1` con los campos
+canónicos existentes de Fuel, sesión, progreso y pit, sus contract tests
+old/new y gates de transporte/resync/replay/soak. VE, tyres y weather siguen
+ausentes hasta una issue de evidencia propia. ISA-152 / STR-17 permanece
 bloqueada por ISA-161. No hay autorización de merge o promoción.
 
 ## Gate final
@@ -393,8 +398,12 @@ exceeded budget`; pasó 10/10 aislado y una segunda suite global pasó completa.
 El flake queda visible y no se atribuye al delta ISA-160. El smoke LMU fresco
 pasó con build `1.4.0.0` supported/live y `PlayerPresent=false`; `gofmt` y
 diff-check pasan, y vet conserva exactamente los dos avisos Win32 heredados.
-Estado: evidencia local en revisión, sin Linear final, commit, push, draft PR,
-CI ni promoción; no se declara CI verde.
+El rebase sobre `origin/nightly@b1db9f8` reescribió la implementación como
+`87b451b`. La instalación frontend congelada, build, focal x20, Telemetry Core
+y suite Go global pasan post-rebase. El draft PR #202 sigue abierto hacia
+`nightly`. Linear ISA-160 se actualizó con comentario, evidencia y enlace al
+PR; permanece `In Progress` porque el equipo no tiene estado `In Review`. CI
+sigue pendiente y no se declara verde. Sin merge, promoción ni release.
 
 2026-08-01, ISA-117: gate técnico final completado sobre ISA-87 `4233c9f`.
 La auditoría demuestra un solo owner LMU y cero rutas legacy productivas. Go

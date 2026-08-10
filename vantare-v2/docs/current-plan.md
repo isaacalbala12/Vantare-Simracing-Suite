@@ -29,11 +29,14 @@ Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
   no toca recording/coordinator. `gofmt` y diff-check pasan;
   `go vet ./internal/telemetry/...` conserva exactamente los dos avisos
   heredados `unsafe.Pointer`.
-- Estado local sobre rama
-  `vantareapp/isa-160-tc-10a-auditoria-de-senales-live-para-strategy`, base/HEAD
-  inicial `54f267b`; sin commit, push, PR, CI, merge, promoción ni release.
-  Siguiente acción externa: actualización final de Linear, commit, push, draft
-  PR y CI; no se declara CI verde. Tras revisión y aceptación, ISA-161 puede
+- Tras rebase sobre `origin/nightly@b1db9f8`, la implementación quedó reescrita
+  como `87b451b`. Los gates post-rebase pasan: instalación frontend congelada,
+  build, focal x20, Telemetry Core completo y suite Go global. El draft PR #202
+  permanece abierto hacia `nightly`. Linear ISA-160 contiene el comentario, la
+  evidencia y el enlace al PR, y sigue `In Progress` porque el equipo no ofrece
+  estado `In Review`. CI permanece pendiente y no se declara verde. No hubo
+  merge, promoción ni release. Siguiente gate: verificar CI y completar la
+  revisión/aceptación humana. Tras la aceptación, ISA-161 puede
   publicar solo Fuel + sesión/progreso/pit de forma aditiva/optional con tests
   old/new, transporte, resync, replay y soak. VE/tyres/weather siguen fuera.
 

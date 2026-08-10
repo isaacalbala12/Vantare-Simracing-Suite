@@ -244,6 +244,8 @@ Execution state:
 - [x] Global `go test -count=1 ./...` passes on the second run. The first run
   exposed only the SQLite coordinator budget flake; its isolated repeat passed
   10/10 before the complete global rerun passed.
+- [x] Post-rebase gates pass on `origin/nightly@b1db9f8`: frozen frontend
+  install, frontend build, focal x20, full Telemetry Core and global Go suite.
 
 - [ ] **Step 3: Review and external handoff**
 
@@ -251,8 +253,12 @@ Review the full diff, request independent specification/security and code-qualit
 
 - [x] Local self-review plus specification and quality reviews completed; all
   findings addressed.
-- [ ] Final Linear update, commit, push, draft PR and CI remain external work;
-  CI has not been run or declared green.
+- [x] Linear ISA-160 updated with the final evidence, comment and PR link. It
+  remains `In Progress` because the team has no `In Review` state.
+- [x] Implementation rebased as `87b451b` on `origin/nightly@b1db9f8`, pushed
+  and published through draft PR #202 against `nightly`.
+- [ ] Verify PR CI and complete human review/acceptance. CI has not been
+  declared green. No merge, promotion or release has occurred.
 
 ## Self-review
 

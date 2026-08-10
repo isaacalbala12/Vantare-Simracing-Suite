@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T22:52:53Z",
+  "generatedAt": "2026-08-10T23:30:49Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -145,7 +145,7 @@
               "id": "task_871b1ab68a2ba77204b2",
               "title": "Pedals Redline: el cuarto widget de la direccion insignia",
               "status": "done",
-              "updatedAt": "2026-08-10T22:52:45.584Z"
+              "updatedAt": "2026-08-10T23:06:05.862Z"
             },
             {
               "id": "task_e9740a55c063a90d9efc",
@@ -197,7 +197,7 @@
               "id": "task_29bb95734264dbf20964",
               "title": "Auditoría de señales live para Strategy",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T21:52:06.492Z"
+              "updatedAt": "2026-08-10T23:01:57.935Z"
             },
             {
               "id": "task_b7b74ee6776e50f75c0b",

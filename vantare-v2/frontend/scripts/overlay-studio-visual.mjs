@@ -582,6 +582,12 @@ async function assertStudioKeyboardNavigation(page, baseUrl) {
   const canvasFrame = page.locator("[data-testid='studio-widget-frame-delta-main']");
   const inspectorRail = page.locator("[data-testid='studio-inspector-rail']");
 
+  // The profile and session selects moved into the header menu, which is
+  // display:none until opened. Reaching them by keyboard means opening the
+  // menu first, exactly as a keyboard user would.
+  await page.locator("[data-testid='studio-menu-button']").click();
+  await page.waitForSelector("[data-testid='studio-menu-panel'].osv3-header__menu-panel--open");
+
   await profileSelect.focus();
   if (!(await profileSelect.evaluate((node) => document.activeElement === node))) {
     throw new Error("keyboard-wide: profile select did not receive focus");
@@ -683,6 +689,23 @@ async function main() {
   mkdirSync(BASELINE_DIR, { recursive: true });
   const { chromium } = await import("playwright");
 
+  // Every check is recorded rather than thrown, so one stale baseline cannot
+  // hide the state of the other 58. The run still fails, just at the end and
+  // with the whole picture.
+  const failures = [];
+  async function record(name, check) {
+    try {
+      // The studio keeps unsaved drafts in sessionStorage and offers to recover
+      // them on the next visit. Without this, the drag/resize check leaves a
+      // draft behind and every later check opens behind a recovery dialog that
+      // swallows its clicks. Each check starts from a clean slate.
+      await page.evaluate(() => window.sessionStorage.clear()).catch(() => undefined);
+      await check();
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   const { server, baseUrl } = await startHarnessServer();
 
   let browser;
@@ -695,41 +718,67 @@ async function main() {
       const baselinePath = path.join(BASELINE_DIR, `${fixture.name}.png`);
       const currentPath = path.join(BASELINE_DIR, `${fixture.name}.current.png`);
       const url = `${baseUrl}/overlay-studio-harness.html?${fixture.query}`;
-      await page.goto(url, { waitUntil: "networkidle" });
-      await page.waitForSelector(
-        `[data-overlay-parity-widget-frame] [data-widget-renderer="${fixture.widget}"]`,
-      );
-      await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
-        await capturePage.locator("[data-overlay-parity-widget-frame]").screenshot({ path: outputPath });
+      await record(fixture.name, async () => {
+        await page.goto(url, { waitUntil: "networkidle" });
+        await page.waitForSelector(
+          `[data-overlay-parity-widget-frame] [data-widget-renderer="${fixture.widget}"]`,
+        );
+        await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
+          await capturePage.locator("[data-overlay-parity-widget-frame]").screenshot({ path: outputPath });
+        });
       });
     }
 
     for (const fixture of STUDIO_SHELL_FIXTURES) {
-      await page.setViewportSize(fixture.browser);
       const baselinePath = path.join(BASELINE_DIR, `${fixture.name}.png`);
       const currentPath = path.join(BASELINE_DIR, `${fixture.name}.current.png`);
       const url = `${baseUrl}/overlay-studio-v3-harness.html?viewport=${fixture.viewportWidth}`;
-      await page.goto(url, { waitUntil: "networkidle" });
-      await assertStudioShellGeometry(page, fixture);
-      await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
-        await capturePage.locator("[data-testid='overlay-studio-v3']").screenshot({ path: outputPath });
+      await record(fixture.name, async () => {
+        await page.setViewportSize(fixture.browser);
+        await page.goto(url, { waitUntil: "networkidle" });
+        await assertStudioShellGeometry(page, fixture);
+        await captureBaseline(page, fixture, currentPath, baselinePath, async (capturePage, outputPath) => {
+          await capturePage.locator("[data-testid='overlay-studio-v3']").screenshot({ path: outputPath });
+        });
       });
     }
 
     if (!updateMode) {
       await page.setViewportSize({ width: 1920, height: 1080 });
       for (const widget of WIDGETS) {
-        await assertRendererParityAcrossSurfaces(page, baseUrl, widget);
-        console.log(`ok parity-${widget}`);
+        await record(`parity-${widget}`, async () => {
+          await assertRendererParityAcrossSurfaces(page, baseUrl, widget);
+          console.log(`ok parity-${widget}`);
+        });
       }
-      await assertRelativeStudioChrome(page, baseUrl);
-      console.log("ok studio-relative-chrome");
-      await assertStudioDragAndResize(page, baseUrl);
-      console.log("ok studio-wide interactions");
-      await assertStudioZoomViewport(page, baseUrl);
-      console.log("ok studio zoom 150 viewport");
-      await assertStudioKeyboardNavigation(page, baseUrl);
+      await record("studio-relative-chrome", async () => {
+        await assertRelativeStudioChrome(page, baseUrl);
+        console.log("ok studio-relative-chrome");
+      });
+      await record("studio-wide interactions", async () => {
+        await assertStudioDragAndResize(page, baseUrl);
+        console.log("ok studio-wide interactions");
+      });
+      await record("studio zoom 150 viewport", async () => {
+        await assertStudioZoomViewport(page, baseUrl);
+        console.log("ok studio zoom 150 viewport");
+      });
+      await record("studio keyboard navigation", async () => {
+        await assertStudioKeyboardNavigation(page, baseUrl);
+      });
     }
+
+    if (failures.length > 0) {
+      console.error(`\n${failures.length} visual check(s) failed:`);
+      for (const failure of failures) {
+        console.error(`  - ${failure}`);
+      }
+      console.error(
+        `\nCaptures of the failing checks are kept next to their baselines in ${BASELINE_DIR} as *.current.png.`,
+      );
+      process.exit(1);
+    }
+
     console.log("visual review complete");
     process.exit(0);
   } finally {

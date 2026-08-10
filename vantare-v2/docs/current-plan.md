@@ -1,3 +1,20 @@
+Nota ISA-311 (2026-08-10, corrección local verificada):
+- El soak lógico `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`
+  conservaba coordinator y SQLite reales, pero heredaba el reloj de pared del
+  presupuesto de commit de producción. Una pausa de E/S superior a 500 ms en
+  el runner compartido podía convertir un soak funcional en un fallo flaky.
+- La corrección inyecta exclusivamente en ese test un reloj lógico fijo. No
+  cambia `DefaultCommitBudget`, su validación máxima, los contextos acotados ni
+  la clasificación de fallos de producción.
+- Evidencia local: baseline previo 10/10; soak corregido 20/20; regresiones de
+  timeout del coordinator 20/20; build frontend y `go test ./...` pasan. El
+  primer gate global solo necesitó generar `frontend/dist` en el worktree
+  nuevo y pasó completo tras el build.
+- Rama exacta desde `origin/nightly@7e39104`:
+  `vantareapp/isa-311-test-flaky-en-ci-testtelemetrycoretwohourlogicalsoak-falla`.
+  Pendiente: commit, push, PR draft, CI remoto y autorización de Isaac antes de
+  cualquier merge a `nightly`; sin promoción a `testers`/`master` ni release.
+
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila
   ya implementada de Strategy Planner sin arrastrar commits ajenos.

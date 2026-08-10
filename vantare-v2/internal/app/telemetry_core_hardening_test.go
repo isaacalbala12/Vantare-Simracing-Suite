@@ -45,19 +45,27 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	}
 
 	root := t.TempDir()
+	soakContext, cancelSoak := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelSoak()
 	const sessionID = "session-local-hardening"
 	ref := recording.SessionRef{Root: root, SessionID: sessionID}
 	manifest := recording.NewSessionManifest(sessionID, "lmu", "hardening-test", hardeningSoakStart)
 	recorder, err := recording.NewCoordinator(
-		recordingsqlite.New(recordingsqlite.Options{}),
+		logicalSoakStore{HistoricalStore: recordingsqlite.New(recordingsqlite.Options{})},
 		ref,
 		manifest,
-		recording.CoordinatorConfig{QueueCapacity: 1024},
+		recording.CoordinatorConfig{
+			QueueCapacity: 1024,
+			// This is a logical soak, not a wall-clock disk benchmark. Keep the
+			// production commit budget while making elapsed-time checks immune to
+			// pauses on shared CI runners.
+			Clock: fixedRecordingClock{now: hardeningSoakStart},
+		},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := recorder.Start(context.Background()); err != nil {
+	if err := recorder.Start(soakContext); err != nil {
 		t.Fatal(err)
 	}
 	mapper := recording.NewMapper()
@@ -90,7 +98,7 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 		}
 	}
 
-	stopContext, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	stopContext, cancel := context.WithTimeout(soakContext, 15*time.Second)
 	defer cancel()
 	if err := recorder.Stop(stopContext); err != nil {
 		t.Fatal(err)
@@ -170,6 +178,55 @@ func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
 }
 
 var hardeningSoakStart = time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+
+type fixedRecordingClock struct{ now time.Time }
+
+func (c fixedRecordingClock) Now() time.Time { return c.now }
+
+// logicalSoakStore keeps the real storage implementation but makes its writer
+// use the scenario-wide deadline received by Begin. The coordinator's 500 ms
+// operation deadline belongs to production hardening and has focused tests of
+// its own; this soak verifies two logical hours under one explicit 30 s bound.
+type logicalSoakStore struct {
+	recording.HistoricalStore
+}
+
+func (s logicalSoakStore) Begin(
+	ctx context.Context,
+	ref recording.SessionRef,
+	manifest recording.SessionManifest,
+) (recording.SessionWriter, error) {
+	writer, err := s.HistoricalStore.Begin(ctx, ref, manifest)
+	if err != nil {
+		return nil, err
+	}
+	return logicalSoakWriter{SessionWriter: writer, ctx: ctx}, nil
+}
+
+type logicalSoakWriter struct {
+	recording.SessionWriter
+	ctx context.Context
+}
+
+func (w logicalSoakWriter) Append(_ context.Context, batch recording.RecordingBatch) (recording.Cursor, error) {
+	return w.SessionWriter.Append(w.ctx, batch)
+}
+
+func (w logicalSoakWriter) Checkpoint(context.Context) (recording.PersistedWatermark, error) {
+	return w.SessionWriter.Checkpoint(w.ctx)
+}
+
+func (w logicalSoakWriter) Complete(context.Context) (recording.PersistedWatermark, error) {
+	return w.SessionWriter.Complete(w.ctx)
+}
+
+func (w logicalSoakWriter) Abort(
+	_ context.Context,
+	reason recording.IncompleteReason,
+	accepted recording.Cursor,
+) error {
+	return w.SessionWriter.Abort(w.ctx, reason, accepted)
+}
 
 func hardeningBatch(sequence uint64, vehicles int) telemetrycore.Batch {
 	base := engineerRuntimeBatch()

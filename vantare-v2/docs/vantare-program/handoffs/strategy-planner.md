@@ -28,9 +28,12 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
 - Go Strategy, typecheck real, suite frontend completa, build y ESLint focal
   están verdes. `-race` sigue sin verificarse en este entorno Windows sin CGO;
   los bridges continúan sin prueba manual contra una aplicación Wails viva.
-- Siguiente acción exacta: revisar el PR draft de ISA-309 y su CI. Solo una
-  autorización posterior de Isaac permite promoverlo a `nightly`; STR-15B
-  (ISA-162) no comienza hasta que esa base esté realmente integrada.
+- PR draft #192 está abierto hacia `nightly`, mergeable y con todos los gates
+  verdes tras un rerun único de un presupuesto temporal heredado de Telemetry
+  Core. Strategy no fue la causa del primer fallo.
+- Siguiente acción exacta: revisión de Isaac del PR #192. Solo su autorización
+  posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
+  hasta que esa base esté realmente integrada.
 
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el

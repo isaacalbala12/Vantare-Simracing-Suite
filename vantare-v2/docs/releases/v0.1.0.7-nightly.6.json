@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.6",
+  "channel": "nightly",
+  "title": "Vantare — los cuatro overlays de Endurance estrenan la dirección Redline",
+  "summary": "Clasificación, delta, relativo y pedales comparten ya el mismo lenguaje visual: carcasa grafito, carmín para el jugador y sus eventos, y nada que se mueva sin querer decir algo. Además, Strategy Planner entra en Nightly con planes reales y comparación de alternativas, y Overlays Studio recibe seis correcciones.",
+  "issues": [
+    "ISA-305",
+    "ISA-306",
+    "ISA-307",
+    "ISA-308",
+    "ISA-309"
+  ]
+}

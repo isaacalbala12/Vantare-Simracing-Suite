@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T23:30:49Z",
+  "generatedAt": "2026-08-10T23:41:36Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -197,7 +197,7 @@
               "id": "task_29bb95734264dbf20964",
               "title": "Auditoría de señales live para Strategy",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T23:01:57.935Z"
+              "updatedAt": "2026-08-10T23:32:38.658Z"
             },
             {
               "id": "task_b7b74ee6776e50f75c0b",

@@ -15,6 +15,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-311 corrige el flake del soak lógico sin modificar el runtime: el test
+  sigue recorriendo Overlay, Engineer, recording coordinator y SQLite reales,
+  pero usa un reloj lógico fijo y un adapter de writer test-only con deadline
+  global de 30 s para que la latencia del disco compartido no se confunda con
+  el presupuesto temporal por operación. El límite real de 500 ms y sus
+  regresiones permanecen intactos. El reloj aislado reveló todavía 1/20 cierres
+  por contexto; la solución completa pasa soak 20/20, regresiones temporales
+  20/20, build frontend y `go test ./... -count=1` sobre
+  `origin/nightly@ff286f4`. Los HEAD `6ac6f9e`, `756315d` y `0a1e750` pasaron
+  sin rerun los runs `31416018600`, `31416779711` y `31435630710`. PR #200 se
+  promovió por rebase a `nightly@54f267b`; Linear refleja ISA-311 en `Nightly`.
+  `testers`, `master` y release permanecen fuera del alcance.
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
 - Stack técnico final aprobado: `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
 - Promoción ISA-171 / TC-09G completada en

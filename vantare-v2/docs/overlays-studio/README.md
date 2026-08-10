@@ -8,6 +8,7 @@ Objetivo: evitar regresiones conocidas (especialmente en el canvas) y dejar deci
 
 | Documento | Para qué sirve |
 |-----------|----------------|
+| [overlay-studio-v1-commercial-launch-plan.md](./overlay-studio-v1-commercial-launch-plan.md) | Plan aprobado para estabilizar Overlay Studio V1 en Testers antes del 31 de agosto de 2026 y preparar una venta comercial controlada en septiembre. |
 | [canvas-drag-imperative-preview.md](./canvas-drag-imperative-preview.md) | **Leer primero** si tocas drag/resize. Síntoma, causa, solución obligatoria y anti-patrones. |
 | [arrastre-y-resize.md](./arrastre-y-resize.md) | Exploración de fluidez, alternativas (A/B/C), benchmark y verificación manual. |
 | [benchmarks/](./benchmarks/) | Trazas JSON, config, baseline B1 y resultados del harness Playwright. |

@@ -34,6 +34,44 @@ Nota ISA-313 / ENG-R01 (2026-08-10, reconciliación y replanificación):
   y no puede afirmarse “guardado automático”. ISA-195 conserva la persistencia
   real y el roundtrip. Sin merge, promoción o release en ISA-313.
 
+Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
+- Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;
+  no implica `master`, release Stable pública ni completitud de toda la suite.
+- La migración de Vantare V2 a la raíz bloquea el lanzamiento completo, pero
+  no este hito de agosto. Se planifica después de la declaración en Testers.
+- La cohorte disponible es de unas 10 personas, Windows 10/11, formatos
+  declarados 21:9–32:9 y respuesta el mismo día. Debe confirmarse la resolución
+  reportada `3840×1920` y asegurar cobertura 16:9 y DPI 100/125/150 %.
+- Ventana objetivo para una venta por invitación y cohortes: 22–30 de
+  septiembre. Overlay Studio V1 es el producto principal; Engineer, Strategy y
+  Analysis se etiquetan honestamente como Beta/Preview. No es beta pública ni
+  lanzamiento Stable completo.
+- Autoridad ejecutable:
+  `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`. Billing y
+  venta siguen NO-GO hasta cumplir sus gates y recibir aprobación explícita.
+- ISA-315 solo documenta y coordina. No autoriza promoción, migración, dinero,
+  publicación, merge ni release.
+- Isaac autorizó por separado el merge de PR #198 a `nightly` una vez resuelto
+  ISA-311. Esta autorización no alcanza `testers`, `master`, venta ni release.
+
+Nota ISA-311 (2026-08-10, corrección local verificada):
+- El soak lógico `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`
+  conservaba coordinator y SQLite reales, pero heredaba el reloj de pared del
+  presupuesto de commit de producción. Una pausa de E/S superior a 500 ms en
+  el runner compartido podía convertir un soak funcional en un fallo flaky.
+- La corrección inyecta exclusivamente en ese test un reloj lógico fijo y un
+  adapter del writer que conserva SQLite real, pero usa un deadline global de
+  30 s para todo el escenario en lugar del timeout productivo por operación.
+  No cambia `DefaultCommitBudget`, su validación máxima, los contextos del
+  runtime ni la clasificación de fallos de producción.
+- Evidencia local: baseline previo 10/10; el primer ajuste de reloj pasó 20/20,
+  pero una repetición posterior encontró 1/20 cierres por el timeout que aún
+  llegaba al writer. La solución completa pasa soak 20/20, regresiones de
+  timeout del coordinator 20/20, build frontend y `go test ./... -count=1`.
+- PR #200 se promovió por rebase a `nightly@54f267b` tras los runs verdes
+  `31416018600`, `31416779711` y `31435630710`, todos sin rerun. Linear refleja
+  ISA-311 en `Nightly`. No hubo promoción a `testers`/`master` ni release.
+
 Nota ISA-309 / STR-N02 (2026-08-10, integrada en Nightly):
 - `7e39104a7e876b4c396a41403023ba6030b88a08` integra mediante squash la pila
   reconstruida de Strategy Planner sobre `nightly@431201d`, sin commits ajenos.

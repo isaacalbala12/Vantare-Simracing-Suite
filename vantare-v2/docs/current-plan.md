@@ -1,3 +1,42 @@
+Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
+- La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E
+  real sanitizado LMU 1.4 recorre Driver/Fusion/BatchMapper/Reducer/Derive con
+  una sola apertura y conserva Fuel exacto `83.80992715710434/115 L`, observed
+  y fresh, en el vehículo activo.
+- El ledger test-only v1 fija 18 keys ordenadas y byte-exactas. Fuel, pit y
+  progreso son supported. Virtual Energy, identidad/compound/wear/corner de
+  tyres y weather son unsupported y continúan missing. Los guards fijan
+  allowlists exactas de Observation/core/Strategy v1, catálogo y capabilities,
+  y contrastan supported contra layout, AuthorityMatrix v4, catálogo, TTLs y
+  Derive sin usar el golden como único oráculo.
+- Toda fila player-only/per-vehicle declara identidad
+  `lmu-slot-N-generation-G`: G empieza en 1, incrementa tras
+  desaparición/reaparición en la sesión y vuelve a 1 con el reset de sesión;
+  REST no crea identidad. Un test conductual recorre esas tres transiciones.
+- El smoke LMU fresco pasa con build `1.4.0.0` supported, runtime live,
+  `PlayerPresent=false` y fingerprint
+  `active-grid-bijective;telemetry=not-required-no-player`; no persistió raw ni
+  PII. Ese smoke solo demuestra Fuel/lap number player-only correctamente
+  missing; pit/progreso se sostienen en fixtures y tests, no en el menú.
+- TDD: RED por golden ausente y RED posterior por identidad/generación
+  incompleta observados; GREEN focal x20 y Telemetry Core completo.
+  `pnpm --dir frontend install --frozen-lockfile` terminó con exit 0 sin
+  cambios tracked y `pnpm --dir frontend build` pasó. La primera ejecución de
+  `go test -count=1 ./...` falló solo en
+  `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` por `recording commit
+  exceeded budget`; el test pasó 10/10 aislado y una segunda ejecución global
+  pasó completa. El flake queda visible y no se atribuye a ISA-160, cuyo delta
+  no toca recording/coordinator. `gofmt` y diff-check pasan;
+  `go vet ./internal/telemetry/...` conserva exactamente los dos avisos
+  heredados `unsafe.Pointer`.
+- Estado local sobre rama
+  `vantareapp/isa-160-tc-10a-auditoria-de-senales-live-para-strategy`, base/HEAD
+  inicial `54f267b`; sin commit, push, PR, CI, merge, promoción ni release.
+  Siguiente acción externa: actualización final de Linear, commit, push, draft
+  PR y CI; no se declara CI verde. Tras revisión y aceptación, ISA-161 puede
+  publicar solo Fuel + sesión/progreso/pit de forma aditiva/optional con tests
+  old/new, transporte, resync, replay y soak. VE/tyres/weather siguen fuera.
+
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;
   no implica `master`, release Stable pública ni completitud de toda la suite.

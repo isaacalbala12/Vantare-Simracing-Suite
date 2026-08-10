@@ -26,6 +26,17 @@ promover el conjunto aceptado a `nightly`.
 TA-03 / ISA-126 caracterizó DuckDB LMU mediante copia temporal read-only y
 añadió el modelo/parser histórico v1. TA-03C cierra su antiguo hueco operativo
 con un reader ligado al artefacto autorizado y un adaptador reproducible.
+TA-03E tiene una candidata local pendiente de review sobre
+`work/ta03e-backend-reader-wiring`: añade la frontera backend no visual que
+conecta discovery, autorización, estabilidad/revalidación, staging privado,
+reader/parser, catálogo, paginación y teardown. Solo abre IDs opacos emitidos
+por el propio servicio; no acepta paths de consumidor. La raíz LMU procede de
+la detección nativa Steam, el runtime de `ProductionTrust(applicationDirectory)`
+y el staging de la caché backend. Runtime ausente degrada solo el módulo. La
+matriz comercial/operativa y la copia defensiva del estado están cubiertas por
+tests. Evidencia local: test/vet focal, build frontend, suite Go global con
+`CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y diff-check PASS. Sin review,
+push, PR, promoción, packaging TA-03F ni release.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,

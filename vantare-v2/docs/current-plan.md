@@ -1,3 +1,19 @@
+Nota TA-03E (2026-08-11, candidata local pendiente de review):
+- La rama temporal `work/ta03e-backend-reader-wiring` expone el reader TA-03C
+  mediante un servicio backend no visual: discovery LMU metadata-only, IDs
+  opacos, aprobación explícita, estabilidad/WAL/revalidación TA-02, staging
+  privado, catálogo y páginas acotadas.
+- La autorización dedicada acepta solo `active`/`grace` con Pro/Launch V1 o
+  los roles operativos tester/nightly tester/owner; los roles no se convierten
+  en evidencia comercial. El estado actual se copia defensivamente bajo lock.
+- El composition root ancla runtime al directorio de la aplicación, staging a
+  la caché local y LMU solo a una instalación detectada por Steam. Runtime
+  ausente o alterado degrada el módulo sin abortar Vantare; shutdown cierra
+  readers y elimina staging.
+- Evidencia local: focales test/vet, build frontend, suite Go global con
+  `CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y `git diff --check` pasan. Falta
+  review independiente; no hay push, PR, promoción, packaging TA-03F ni release.
+
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;
   no implica `master`, release Stable pública ni completitud de toda la suite.

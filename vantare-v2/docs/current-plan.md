@@ -29,14 +29,21 @@ Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
   no toca recording/coordinator. `gofmt` y diff-check pasan;
   `go vet ./internal/telemetry/...` conserva exactamente los dos avisos
   heredados `unsafe.Pointer`.
-- Tras rebase sobre `origin/nightly@b1db9f8`, la implementación quedó reescrita
-  como `87b451b`. Los gates post-rebase pasan: instalación frontend congelada,
-  build, focal x20, Telemetry Core completo y suite Go global. El draft PR #202
-  permanece abierto hacia `nightly`. Linear ISA-160 contiene el comentario, la
-  evidencia y el enlace al PR, y sigue `In Progress` porque el equipo no ofrece
-  estado `In Review`. CI permanece pendiente y no se declara verde. No hubo
-  merge, promoción ni release. Siguiente gate: verificar CI y completar la
-  revisión/aceptación humana. Tras la aceptación, ISA-161 puede
+- El rebase limpio sobre `origin/nightly@d195653` reescribió la implementación
+  como `f26d8e3`. Los cambios nuevos de `nightly` fueron Discord/changelog y el
+  manifest de release; no solaparon ISA-160. El PR #202 está OPEN y ready for
+  review hacia `nightly`. Linear ISA-160 contiene el comentario, la evidencia y el
+  enlace al PR, y sigue `In Progress` porque el equipo no ofrece estado
+  `In Review`. El último Branch channel del HEAD publicado anterior, run
+  `31442025096`, pasó completo (policy 9 s, bloqueantes 8 min 53 s) y
+  GitGuardian también pasó. Se conservan como evidencia histórica; no acreditan
+  por sí mismos el HEAD rebasado. El check requerido del PR debe
+  corresponder siempre al HEAD exacto publicado, y `f26d8e3` no se declara con
+  CI hasta ejecutarlo. El warning no bloqueante de Node 20 deprecado/checkout
+  forzado a Node 24 sigue fuera de ISA-160. Isaac autorizó la aceptación y la
+  promoción, pero el merge todavía no ocurrió; tampoco hubo release. Siguiente
+  gate: CI del HEAD publicado exacto y ejecución controlada de la autorización.
+  Después, ISA-161 puede
   publicar solo Fuel + sesión/progreso/pit de forma aditiva/optional con tests
   old/new, transporte, resync, replay y soak. VE/tyres/weather siguen fuera.
 

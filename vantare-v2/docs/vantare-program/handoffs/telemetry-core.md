@@ -39,14 +39,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   commit exceeded budget`; el test pasó 10/10 aislado y la segunda suite global
   pasó completa. El flake queda registrado, pero no se atribuye a ISA-160,
   cuyo delta no toca recording/coordinator. `gofmt` y diff-check pasan; vet
-  reproduce exactamente los dos avisos heredados de `unsafe.Pointer`. Tras el
-  rebase sobre `origin/nightly@b1db9f8`, la implementación es `87b451b`. La
-  instalación frontend congelada, build, focal x20, Telemetry Core y suite Go
-  global pasan post-rebase. El draft PR #202 permanece abierto hacia `nightly`;
-  Linear ISA-160 está actualizado con
-  comentario, evidencia y enlace, y sigue `In Progress` porque el equipo no
-  dispone de estado `In Review`. CI sigue pendiente y no se declara verde. Sin
-  merge, promoción ni release.
+  reproduce exactamente los dos avisos heredados de `unsafe.Pointer`. El rebase
+  limpio sobre `origin/nightly@d195653` reescribió la implementación como
+  `f26d8e3`; Discord/changelog y el manifest de release fueron los únicos
+  cambios nuevos de `nightly` y no solaparon ISA-160. El PR #202 está OPEN y
+  ready for review hacia `nightly`; Linear ISA-160 está actualizado con comentario,
+  evidencia y enlace, y sigue `In Progress` porque el equipo no dispone de
+  estado `In Review`. El último Branch channel del HEAD publicado anterior,
+  run `31442025096`, pasó completo (policy 9 s, bloqueantes 8 min 53 s), y
+  GitGuardian también pasó. Son evidencia histórica, no CI reutilizable para
+  `f26d8e3`. El check requerido debe pertenecer siempre al HEAD exacto
+  publicado; no se declara CI del rebase hasta ejecutarlo. El warning no
+  bloqueante de Node 20 deprecado/checkout forzado a Node 24 permanece fuera de
+  ISA-160. Isaac autorizó aceptación y promoción, pero no ocurrió merge,
+  promoción efectiva ni release.
 - ISA-311 corrige el flake del soak lógico sin modificar el runtime: el test
   sigue recorriendo Overlay, Engineer, recording coordinator y SQLite reales,
   pero usa un reloj lógico fijo y un adapter de writer test-only con deadline
@@ -363,18 +369,19 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
 | Aprobada | ISA-117 / TC-09F, gate final completo en `170eaeb` |
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
-| Draft PR / Linear In Progress | ISA-160 / TC-10A, implementación reescrita `87b451b` sobre `nightly@b1db9f8`, draft PR #202; CI y aceptación pendientes |
+| Autorizada / PR ready | ISA-160 / TC-10A, implementación `f26d8e3` sobre `nightly@d195653`, PR #202 OPEN/ready for review; CI previo histórico, check del HEAD publicado y merge pendientes |
 | Backlog follow-up | ISA-161 / TC-10B, productor Strategy live bloqueado por aceptación de ISA-160 |
 
 ## Siguiente acción exacta
 
-Verificar CI del draft PR #202 y completar la revisión/aceptación humana de
-ISA-160. CI todavía no está declarada verde. Solo después, ISA-161 /
-TC-10B puede ampliar aditivamente `StrategyLiveProjection v1` con los campos
-canónicos existentes de Fuel, sesión, progreso y pit, sus contract tests
-old/new y gates de transporte/resync/replay/soak. VE, tyres y weather siguen
-ausentes hasta una issue de evidencia propia. ISA-152 / STR-17 permanece
-bloqueada por ISA-161. No hay autorización de merge o promoción.
+Publicar el HEAD rebasado en el PR #202 OPEN/ready for review, ejecutar y
+verificar el check requerido correspondiente a ese HEAD exacto y, solo entonces, materializar la
+aceptación/promoción ya autorizada por Isaac. El merge todavía no ocurrió.
+Después, ISA-161 / TC-10B puede ampliar aditivamente
+`StrategyLiveProjection v1` con los campos canónicos existentes de Fuel,
+sesión, progreso y pit, sus contract tests old/new y gates de
+transporte/resync/replay/soak. VE, tyres y weather siguen ausentes hasta una
+issue de evidencia propia. ISA-152 / STR-17 permanece bloqueada por ISA-161.
 
 ## Gate final
 
@@ -398,12 +405,18 @@ exceeded budget`; pasó 10/10 aislado y una segunda suite global pasó completa.
 El flake queda visible y no se atribuye al delta ISA-160. El smoke LMU fresco
 pasó con build `1.4.0.0` supported/live y `PlayerPresent=false`; `gofmt` y
 diff-check pasan, y vet conserva exactamente los dos avisos Win32 heredados.
-El rebase sobre `origin/nightly@b1db9f8` reescribió la implementación como
-`87b451b`. La instalación frontend congelada, build, focal x20, Telemetry Core
-y suite Go global pasan post-rebase. El draft PR #202 sigue abierto hacia
-`nightly`. Linear ISA-160 se actualizó con comentario, evidencia y enlace al
-PR; permanece `In Progress` porque el equipo no tiene estado `In Review`. CI
-sigue pendiente y no se declara verde. Sin merge, promoción ni release.
+El rebase limpio sobre `origin/nightly@d195653` reescribió la implementación
+como `f26d8e3`; Discord/changelog y el manifest de release incorporados desde
+`nightly` no solaparon ISA-160. El PR #202 está OPEN/ready for review hacia `nightly`.
+Linear ISA-160 conserva comentario, evidencia y enlace al PR; permanece
+`In Progress` porque el equipo no tiene estado `In Review`. El último Branch
+channel del HEAD publicado anterior, run `31442025096`, pasó completo (policy
+9 s, bloqueantes 8 min 53 s), y GitGuardian también pasó. Quedan como evidencia
+histórica. El required check debe corresponder al HEAD exacto
+publicado: `f26d8e3` no se declara con CI hasta ejecutarlo. El warning no
+bloqueante de Node 20 deprecado/checkout forzado a Node 24 queda fuera de
+ISA-160. Isaac autorizó aceptación y promoción; el merge, la promoción efectiva
+y el release no ocurrieron.
 
 2026-08-01, ISA-117: gate técnico final completado sobre ISA-87 `4233c9f`.
 La auditoría demuestra un solo owner LMU y cero rutas legacy productivas. Go

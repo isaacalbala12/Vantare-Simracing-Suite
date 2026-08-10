@@ -244,21 +244,31 @@ Execution state:
 - [x] Global `go test -count=1 ./...` passes on the second run. The first run
   exposed only the SQLite coordinator budget flake; its isolated repeat passed
   10/10 before the complete global rerun passed.
-- [x] Post-rebase gates pass on `origin/nightly@b1db9f8`: frozen frontend
-  install, frontend build, focal x20, full Telemetry Core and global Go suite.
+- [x] The previously recorded local gate set passed: frozen frontend install,
+  frontend build, focal x20, full Telemetry Core and global Go suite.
 
 - [ ] **Step 3: Review and external handoff**
 
-Review the full diff, request independent specification/security and code-quality reviews, update Linear ISA-160 with the matrix and gate evidence, commit/push, and open a draft PR to `nightly`. Do not merge, promote, release, capture new raw telemetry or start ISA-161.
+Review the full diff, request independent specification/security and code-quality reviews, update Linear ISA-160 with the matrix and gate evidence, commit/push, open the PR to `nightly`, and mark it ready for review. Do not merge, promote, release, capture new raw telemetry or start ISA-161.
 
 - [x] Local self-review plus specification and quality reviews completed; all
   findings addressed.
 - [x] Linear ISA-160 updated with the final evidence, comment and PR link. It
   remains `In Progress` because the team has no `In Review` state.
-- [x] Implementation rebased as `87b451b` on `origin/nightly@b1db9f8`, pushed
-  and published through draft PR #202 against `nightly`.
-- [ ] Verify PR CI and complete human review/acceptance. CI has not been
-  declared green. No merge, promotion or release has occurred.
+- [x] Implementation rebased cleanly as `f26d8e3` on
+  `origin/nightly@d195653`; PR #202 is OPEN and ready for review against `nightly`. The
+  incoming Discord/changelog and release-manifest changes do not overlap
+  ISA-160.
+- [x] Historical Branch channel run `31442025096` passed completely for the
+  previous published HEAD: policy in 9 s and
+  blocking gates in 8m53s; frozen install, build, Go, frontend tests, visual
+  advisory and lint advisory all passed. Historical GitGuardian passed too.
+  These checks are not reusable for the rebased HEAD. The non-blocking Node 20
+  deprecation/checkout-forced-Node-24 warning is outside ISA-160.
+- [x] Isaac authorized acceptance and promotion.
+- [ ] Publish the rebased HEAD and require CI for that exact published HEAD
+  before materializing the authorized merge/promotion. No merge, promotion or
+  release has occurred.
 
 ## Self-review
 

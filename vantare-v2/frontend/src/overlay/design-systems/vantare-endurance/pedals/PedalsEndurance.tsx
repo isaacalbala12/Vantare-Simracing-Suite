@@ -3,6 +3,7 @@ import type { WidgetRendererProps } from "../../../core/design-system-definition
 import { PEDALS_DEFAULT_APPEARANCE } from "../../../widget-types/pedals/pedals-renderer-helpers";
 import type { PedalsViewModel } from "../../../widget-types/pedals/pedals-view-model";
 import { parsePedalsEnduranceSettings } from "./pedals-endurance-settings";
+import { PedalsRedlineTemplate } from "./PedalsRedlineTemplate";
 
 function readColor(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() !== "" ? value : fallback;
@@ -17,6 +18,36 @@ const PEDALS = [
 export function PedalsEndurance({ model, settings }: WidgetRendererProps<PedalsViewModel>) {
   const parsed = parsePedalsEnduranceSettings(settings);
   const isNeo = parsed.templateId === "pedals-neo";
+
+  if (parsed.templateId === "pedals-redline") {
+    return (
+      <section
+        data-widget-system="vantare-endurance"
+        data-widget-renderer="pedals"
+        data-status={model.status}
+        data-template="pedals-redline"
+        className="ven-root ven-pedals ven-predw"
+        style={
+          {
+            "--ven-pred-throttle": readColor(
+              settings.pedalThrottleColor,
+              PEDALS_DEFAULT_APPEARANCE.pedalThrottleColor,
+            ),
+            "--ven-pred-brake": readColor(
+              settings.pedalBrakeColor,
+              PEDALS_DEFAULT_APPEARANCE.pedalBrakeColor,
+            ),
+            "--ven-pred-clutch": readColor(
+              settings.pedalClutchColor,
+              PEDALS_DEFAULT_APPEARANCE.pedalClutchColor,
+            ),
+          } as CSSProperties
+        }
+      >
+        <PedalsRedlineTemplate model={model} />
+      </section>
+    );
+  }
 
   const bars = PEDALS.map((pedal) => {
     const value = model[pedal.key];

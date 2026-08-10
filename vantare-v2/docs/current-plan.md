@@ -257,6 +257,10 @@ Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
   `In Progress` porque el workflow del equipo no ofrece un estado de review
   intermedio y todavía no hay integración. HEAD de la entrega antes de este
   registro de estado: `b02674a`.
+- CI remoto del PR: run `31423020048` completamente verde en topología y gates
+  bloqueantes (build, Go, frontend 2493/2493 y visual advisory). El lint
+  advisory concluyó verde pero conserva anotaciones de deuda heredada fuera de
+  ISA-162; también hay avisos deprecados de Node 20 en actions, no bloqueantes.
 - El
   environment `strategy-catalog-signing` debe configurarse externamente con
   required reviewer, deployment branch `master` y la privada solo como secret

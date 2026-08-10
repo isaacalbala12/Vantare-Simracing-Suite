@@ -280,3 +280,8 @@
   `nightly`. ISA-162 permanece `In Progress`, porque este equipo no tiene un
   estado intermedio de review y el PR aún no está integrado. Sin merge,
   promoción, release ni workflow firmado.
+
+  CI del PR: run `31423020048` PASS en topología y gates bloqueantes. Las
+  anotaciones restantes pertenecen al lint advisory heredado y a la deprecación
+  Node 20 de actions; no afectan archivos ISA-162 ni convierten el lint local
+  global en verde.

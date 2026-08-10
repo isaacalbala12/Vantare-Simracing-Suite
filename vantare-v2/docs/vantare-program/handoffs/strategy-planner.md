@@ -88,6 +88,10 @@ Actualización ISA-162 / STR-15B (2026-08-10):
   en `In Progress` porque el equipo no ofrece un estado de review intermedio.
   HEAD de la entrega antes de este registro de estado: `b02674a`. No hubo
   merge, promoción ni release.
+- El run remoto `31423020048` del PR pasó topología y todos los gates
+  bloqueantes: build frontend, Go, 2493 tests frontend y visual advisory. El
+  lint advisory quedó verde con anotaciones heredadas fuera de ISA-162; los
+  avisos de actions/Node 20 tampoco bloquean esta entrega.
 - Antes de ejecutar el
   workflow real, GitHub debe tener `strategy-catalog-signing` con required
   reviewer, deployment branch `master` y la privada exclusivamente como secret

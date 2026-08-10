@@ -1,10 +1,17 @@
-# Telemetry Core — autoridad y fronteras
+# Telemetry Core — contrato técnico y fronteras
 
-Estado de esta guía: vigente desde ISA-100 sobre `develop@f492007`.
+> **Entrada técnica, no tracker.** Las decisiones y fronteras estables de este
+> documento siguen siendo referencia. Los estados, canales y secuencias
+> inferiores son snapshots históricos. Linear posee alcance, dependencias,
+> rama/base esperadas, siguiente acción y plan; Git/GitHub demuestran el estado
+> observado.
 
 ## Propósito
 
-Este directorio reúne la evidencia y las decisiones operativas de Telemetry Core. LMU Shared Memory y LMU REST local son fuentes principales complementarias de un único núcleo live. Overlay Studio, Desktop, OBS y Engineer/Spotter consumen proyecciones del núcleo; ninguno posee un segundo pipeline de telemetría.
+Este directorio reúne la evidencia y las decisiones técnicas de Telemetry Core.
+LMU Shared Memory y LMU REST local son fuentes principales complementarias de
+un único núcleo live. Overlay Studio, Desktop, OBS y Engineer/Spotter consumen
+proyecciones del núcleo; ninguno posee un segundo pipeline de telemetría.
 
 ISA-39 define los payloads v1 en
 [`runtime-projections.md`](runtime-projections.md): contratos pequeños por
@@ -18,8 +25,8 @@ candidato condicionado para intercambio/replay; DuckDB solo posible cache
 reconstruible futura y framing propio descartado.
 [`storage-benchmark-isa-101.md`](storage-benchmark-isa-101.md),
 [`historical-storage-schema.md`](historical-storage-schema.md),
-[`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md) y ADR
-0005.
+[`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md) y
+`docs/adr/0005-historical-storage-sqlite-mcap.md`.
 
 TC-06C / ISA-103 añade replay raw, canónico e histórico y migraciones COW.
 TC-06D / ISA-104 añade catálogo metadata-only, inspector local, paquete
@@ -28,19 +35,22 @@ sin wiring. Guías:
 [`replay-migrations-isa-103.md`](replay-migrations-isa-103.md) e
 [`inspector-privacy-diagnostic-export-isa-104.md`](inspector-privacy-diagnostic-export-isa-104.md).
 
-## Jerarquía de autoridad
+## Jerarquía de fuentes
 
-1. `AGENTS.md` y `docs/agent-workflow.md` gobiernan el proceso.
-2. Los documentos de evidencia de `docs/telemetry-core/` describen lo ya observado e integrado.
-3. El plan maestro describe el resultado y el orden global.
-4. Un microplan solo es ejecutable cuando su cabecera lo indica.
-5. Linear refleja el estado operativo y la rama de cada issue.
+1. Linear posee el estado esperado, alcance, dependencias, siguiente acción,
+   rama/base esperadas y el enlace al plan ejecutable.
+2. Git/GitHub demuestran checkout, HEAD, PR, CI e integración observados.
+3. `AGENTS.md` y `docs/agent-workflow.md` gobiernan el proceso.
+4. ADR y contratos conservan decisiones técnicas estables.
+5. Los documentos de `docs/telemetry-core/` conservan evidencia y contexto.
 
-Si dos documentos contradicen evidencia más reciente, prevalece la evidencia actual y se detiene la ejecución hasta reconciliar el plan.
+Si las fuentes discrepan, se detiene la ejecución y se reconcilia cada campo con
+su propietario según `docs/vantare-program/source-ownership.md`.
 
-## Estado real reconciliado
+## Snapshot histórico reconciliado
 
-- TC-01 está completado e integrado en `develop` mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
+- En aquel snapshot, TC-01 constaba integrado en el canal histórico `develop`
+  mediante ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97.
 - La base global de Go quedó verde en ISA-97.
 - TC-02 y TC-03 están cerrados en la cadena apilada. TC-04A–C implementaron
   reducer, coordinación/hechos y derivaciones; TC-04D / ISA-38 implementa
@@ -51,9 +61,10 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
   cerrados técnicamente en la cadena apilada culminada por ISA-117: cutover
   productivo de Overlay y Engineer, retirada legacy, hardening, lifecycle y
   gate final.
-- La cadena permanece en ramas de issue sin promoción. El handoff vivo de
-  `docs/vantare-program/` contiene los SHAs, deuda residual y siguiente gate
-  humano.
+- La cadena permanecía entonces en ramas de issue sin promoción. El handoff
+  conserva continuidad técnica y evidencia; Linear determina estado esperado,
+  rama/base esperadas y siguiente acción, mientras Git/GitHub demuestran rama,
+  SHA, PR, CI e integración observados.
 
 ## Fronteras
 
@@ -78,9 +89,13 @@ Strategy Product B no forma parte de este paquete documental. Puede ser consumid
 - Ninguna rama de issue se promueve a `nightly` sin aprobación inicial de Isaac;
   `master` requiere siempre su validación final.
 
-## Plan vigente desde 2026-07-19
+## Secuencia técnica aprobada en el snapshot del 2026-07-19
 
-Isaac aprobó la arquitectura modular y sus guardarraíles. ADR 0004 y `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md` sustituyen los microplanes TC-02–TC-05 del 2026-07-13. La ejecución comienza en ISA-26 y continúa por TC-02–TC-09; una issue, rama, worktree, chat, review y pausa cada vez.
+Isaac aprobó entonces la arquitectura modular y sus guardarraíles. ADR 0004 y
+`docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`
+sustituyeron los microplanes TC-02–TC-05 del 2026-07-13. La secuencia prevista
+era ISA-26 y después TC-02–TC-09. Solo Linear puede indicar hoy qué corte y plan
+son ejecutables.
 
 Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No deben usarse para lanzar trabajo pendiente.
 

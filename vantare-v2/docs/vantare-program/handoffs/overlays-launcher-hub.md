@@ -6,16 +6,16 @@
 > recomendación técnica no autorizante. Linear posee la siguiente acción y el
 > plan ejecutable.
 
-## Autoridad y lectura
+## Referencias y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
 - Overlay: `docs/adr/0003-overlay-studio-v3-rebuild.md`,
   `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
 - Crystal: `docs/overlay-glassmorphism-pro.html`, solo secciones 01–16.
-- Launcher: `docs/launcher-v3-architecture.md`, su plan vigente y Linear.
+- Launcher: `docs/launcher-v3-architecture.md` y el plan que Linear enlace.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
-## Estado
+## Snapshot técnico documentado el 2026-08-10
 
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
@@ -26,16 +26,17 @@
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
-  día. Plan canónico:
+  día. Plan técnico enlazado en ese snapshot:
   `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
 - Venta controlada objetivo 2026-09-22..30: Overlay Studio V1 como producto
   principal y módulos no terminados etiquetados Beta/Preview. Depende de gates
   separados de raíz, Billing, artefactos y aprobación; no está autorizada por
   este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
-- Hub: sin issue activa.
-- Base documental ISA-315 rebasada: `nightly@54f267b`.
-- PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
+- En ese snapshot, Hub no tenía issue activa.
+- Base observada entonces para ISA-315: `nightly@54f267b`.
+- En ese snapshot, PR #198 estaba autorizado para promoción a `nightly`;
+  `testers`, `master`,
   venta y release permanecen fuera del alcance. Las integraciones en `develop`
   son históricas.
 
@@ -437,10 +438,10 @@ histórica de aquel momento era continuar con Task 4.
    baselines visuales. No se cambió ningún píxel ni ningún archivo de producto.
 8. **Recomendación histórica registrada al cierre.** Isaac completó la verificación
    manual el 2026-08-05, validó ISA-291 al 100 % y autorizó la promoción. El
-   trabajo vive ahora en la rama de integración
+   trabajo vivía entonces en la rama de integración
    `vantareapp/os-09-n01-promocion-overlay-workshop-a-nightly` (creada desde
    `origin/nightly` `fb2c355`, merge `--no-ff` en `10be06d`, sin conflictos), con
-   PR abierto hacia `nightly` y **pendiente de que Isaac dé el merge**. Esa
+   PR abierto hacia `nightly` y pendiente de decisión de Isaac. Esa
    promoción mueve el Overlay Workshop completo: ISA-260–265 (la herramienta) más
    ISA-291 (sus barandillas y manual); los commits están apilados y no se pueden
    separar. Impacto para usuarios y testers: ninguno, el Workshop está excluido de

@@ -2,8 +2,8 @@
 
 > **Contrato técnico histórico, no ejecutable por sí mismo.** Conserva la
 > descomposición diseñada para Strategy Planner. Solo Linear puede seleccionar
-> la siguiente acción y enlazar un microplan vigente; Git determina rama, base
-> y SHA.
+> la siguiente acción, enlazar un microplan y fijar rama/base esperadas. Git
+> demuestra raíz, worktree, rama real, HEAD, dirty state y ancestry.
 
 **Fecha:** 2026-08-01
 **Decisión técnica de referencia:** ISA-134 / STR-00,

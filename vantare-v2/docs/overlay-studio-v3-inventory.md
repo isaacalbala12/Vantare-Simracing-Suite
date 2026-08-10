@@ -1,7 +1,7 @@
 # Overlay Studio V3 — inventario de consumidores (2026-07-10)
 
-Worktree: `refactor` @ inventario generado tras Fase 0 Task 0.5.  
-Autoridad: ADR 0003 + plan maestro `2026-07-10-overlay-studio-rebuild-master.md`.
+Snapshot histórico: inventario generado en `refactor` tras Fase 0 Task 0.5.
+Referencia técnica: `docs/adr/0003-overlay-studio-v3-rebuild.md`.
 
 ## Estado post-Fase 8.7 (2026-07-11)
 

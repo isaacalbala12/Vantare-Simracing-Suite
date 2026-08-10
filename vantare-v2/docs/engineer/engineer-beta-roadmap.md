@@ -4,7 +4,8 @@
 
 > **Documento histórico no ejecutable.** Conserva el diseño técnico y la
 > descomposición concebidos el 2026-08-02. Linear posee alcance, dependencias,
-> plan y siguiente acción; Git posee rama, base y SHA. Una issue vigente debe
+> plan, siguiente acción, rama esperada y base esperada. Git demuestra raíz,
+> worktree, rama real, HEAD, dirty state y ancestry. Una issue vigente debe
 > enlazar cualquier plan que se vaya a ejecutar.
 
 - Fecha: 2026-08-02.

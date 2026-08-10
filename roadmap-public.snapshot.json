@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T15:57:55Z",
+  "generatedAt": "2026-08-10T16:20:37Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -513,7 +513,7 @@
               "id": "task_e6b932448079b1366a64",
               "title": "Reconciliar estado documental de tras promoción a Nightly",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T15:37:20.708Z"
+              "updatedAt": "2026-08-10T16:15:47.019Z"
             },
             {
               "id": "task_62bf4878e08849125f60",
@@ -799,9 +799,9 @@
             "it": "Pianificazione manuale della gara."
           },
           "progress": {
-            "done": 11,
+            "done": 12,
             "total": 27,
-            "percent": 41
+            "percent": 44
           },
           "tasks": [
             {
@@ -857,12 +857,6 @@
               "title": "Motor de ejecución live sobre Telemetry Core",
               "status": "planned",
               "updatedAt": "2026-08-01T18:57:49.786Z"
-            },
-            {
-              "id": "task_abfc7b6ff159f09de8ab",
-              "title": "Promoción acumulativa de Strategy Planner a Nightly",
-              "status": "planned",
-              "updatedAt": "2026-08-10T15:48:25.064Z"
             },
             {
               "id": "task_dac0abeea76564a7d842",
@@ -935,6 +929,12 @@
               "title": "Inventario físico de neumáticos",
               "status": "done",
               "updatedAt": "2026-08-03T00:34:23.820Z"
+            },
+            {
+              "id": "task_abfc7b6ff159f09de8ab",
+              "title": "Promoción acumulativa de Strategy Planner a Nightly",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:20:18.184Z"
             },
             {
               "id": "task_58fbf16c0e6d19d83172",

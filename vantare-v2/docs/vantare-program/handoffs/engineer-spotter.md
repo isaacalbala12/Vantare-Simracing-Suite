@@ -25,6 +25,14 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+Actualización autoritativa ISA-313 / ENG-R01 (2026-08-11): el roadmap ya no
+ordena el trabajo como una lista cerrada de microcortes. Define fases generales
+con subfases probables. Cada fase se replanifica en detalle justo antes de
+comenzar y solo se cierra con validación manual reproducible más una prueba
+acumulativa que otra IA pueda ejecutar y evaluar. El inventario de issues de
+Linear sigue siendo útil para ownership y dependencias, pero no congela por
+adelantado la implementación de las fases futuras.
+
 Actualización autoritativa ISA-313 / ENG-R01 (2026-08-10): PR #96 ya está
 integrado en `nightly` y deja ENG-01..ENG-12, ENG-14 y ENG-15 disponibles. La
 base auditada más reciente es
@@ -95,10 +103,12 @@ hotplug-safe y no abre micrófono. Raw HID genérico permanece `unsupported` y
 el host STT sigue bloqueado; backend/binding Raw HID, UI y persistencia
 pertenecen a ENG-24 / ISA-195.
 El roadmap restante queda fijado en
-`docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
-microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
-STT productivo y wake word permanecen bloqueados por corpus humano real, y la
-percepción TTS se agrupa en el gate Beta final.
+`docs/engineer/engineer-beta-roadmap.md`: organiza el producto por resultados
+generales, no por una implementación anticipada. Spotter observable precede al
+Engineer de carrera, control, acciones LMU, integración Strategy/Overlays y
+Beta integrada. La voz offline mantiene una línea condicionada en paralelo y
+solo converge si supera sus gates. STT productivo y wake word permanecen
+bloqueados por corpus humano real.
 TC-05A conserva la autoridad transversal sobre envelope, versionado,
 ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
 caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
@@ -117,7 +127,7 @@ productivo sin crear un segundo reader.
 
 - Rama documental activa:
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`.
-- Base: `origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`.
+- Base sincronizada: `origin/nightly@0fecff216e19ef0c9cccf68a4d04dda6a269f021`.
 - Estado de producto: ENG-01..ENG-12, ENG-14 y ENG-15 están en Nightly; ENG-13
   continúa como gate humano de voz real.
 - ISA-313 no implementa producto ni promociona; `testers` y `master` no se
@@ -342,6 +352,10 @@ ni se busca una copia exacta.
 
 ## Issues
 
+La tabla siguiente es un inventario de ownership y estado. No constituye el
+orden concreto de implementación: las issues aplicables se seleccionan,
+reconcilian o dividen durante el replanning de entrada de cada fase.
+
 | Estado | Issue |
 |---|---|
 | Integrada en Nightly | ISA-123 / ENG-01, investigación aprobada técnicamente |
@@ -368,17 +382,24 @@ ni se busca una copia exacta.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Siguiente transición
 
-Revisar y aceptar ISA-313 sin promocionarla automáticamente. Ejecutar después
-ISA-314 como bugfix pequeño y, desde la `nightly` remota más reciente, iniciar
-ISA-187 / ENG-16 coordinando sus criterios con ISA-189 / ENG-18 y ENG-08. El
-primer gate manual debe observar un aviso Spotter real/replay válido tanto en
-audio como en radio/subtítulos/overlay y comprobar preempción/fallback. ISA-184
-/ ENG-13 sigue siendo gate humano: ENG-20/21 no se habilitan sin corpus y
-métricas reales.
+Revisar y aceptar ISA-313 sin promocionarla automáticamente. Cuando Isaac
+autorice entrar en la Fase 1, se elaborará entonces su microplan concreto desde
+la `nightly` remota vigente. El resultado general ya está fijado: un Spotter
+observable y coherente en audio, radio, subtítulos y overlay. El cierre exigirá
+un guion manual reproducible y el primer incremento de la prueba acumulativa
+ejecutable por IA. Las fases posteriores no se microplanifican todavía.
 
 ## Última actualización
+
+2026-08-11, ISA-313 / ENG-R01 convierte el roadmap detallado en un plan general
+por fases. Las subfases pasan a ser probables y revisables; cada fase crea su
+microplan al entrar y combina validación manual con una prueba acumulativa
+ejecutable por IA al salir. Se conserva el alcance anterior —Spotter y visual
+primero, todas las familias Beta salvo cambio de piloto, Kokoro condicionado,
+ES/EN primero y Pit fail-closed— sin congelar ahora la implementación futura.
+Rama documental sincronizada con `nightly@0fecff2`; sin promoción ni release.
 
 2026-08-10, ISA-313 / ENG-R01 reconcilia el proyecto con Nightly y registra las
 decisiones de producto: paridad relevante no exacta, sustitución de CrewChief,

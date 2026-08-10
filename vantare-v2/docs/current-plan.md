@@ -1,3 +1,24 @@
+Nota ISA-313 / ENG-R01 (2026-08-11, roadmap general replanificable):
+- Isaac establece que el plan maestro de Engineer debe describir fases
+  generales, dependencias, resultados observables y gates, sin congelar
+  archivos, algoritmos, herramientas ni tareas técnicas futuras.
+- Las subfases son probables. Cada fase crea su microplan concreto justo antes
+  de comenzar, a partir de la `nightly`, Linear, handoff y evidencia vigentes.
+- Una fase solo se considera probada con dos evidencias inseparables:
+  validación manual reproducible y creación o ampliación de una aceptación
+  acumulativa que otra IA pueda descubrir, ejecutar y evaluar.
+- La secuencia general es Spotter observable -> Engineer de carrera -> control
+  e interacción -> acciones LMU seguras -> Strategy/Overlays avanzados ->
+  Beta ES/EN integrada.
+  La voz offline avanza como línea condicionada paralela y solo converge si
+  pasa sus gates. Idiomas restantes, cambio de piloto, always-on y otros
+  simuladores quedan en expansión posterior.
+- `docs/engineer/engineer-beta-roadmap.md` es la autoridad general. El
+  inventario de issues de Linear conserva ownership y dependencias, pero no
+  actúa como microplan anticipado.
+- Rama ISA-313 sincronizada con `origin/nightly@0fecff2`. Alcance documental:
+  sin implementación, promoción, release ni cambio de gates.
+
 Nota ISA-313 / ENG-R01 (2026-08-10, reconciliación y replanificación):
 - La auditoría competitiva más reciente queda separada en un dossier de
   evidencia documental/estática y un brief clean-room para implementadores en

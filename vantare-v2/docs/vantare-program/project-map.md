@@ -1,6 +1,6 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-08-10. Linear es la fuente del estado operativo.
+Estado: 2026-08-11. Linear es la fuente del estado operativo.
 
 ## Grafo principal
 
@@ -30,7 +30,7 @@ almacenamiento privado de otro.
 |---|---|---|---|
 | Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
 | Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
-| Engineer/Spotter | Sustituto clean-room de CrewChief: acompañamiento live, seguridad, voz y Pit Manager | ENG-01..12, 14 y 15 integrados en Nightly; ISA-313 fija brief clean-room y replanifica el resto | ENG-16 audio + ENG-18 Spotter y salida visual |
+| Engineer/Spotter | Sustituto clean-room de CrewChief: acompañamiento live, seguridad, voz y Pit Manager | Base ENG-01..12, 14 y 15 en Nightly; ISA-313 fija el brief clean-room y el roadmap general replanificable | Replanning de entrada de la Fase 1: Spotter observable |
 | Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | Pila acumulativa integrada en Nightly por ISA-309@7e39104; sin STR-15B ni ejecución live | Productores Telemetry ISA-159/160/161 y siguientes cortes del handoff Strategy |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |
@@ -61,15 +61,17 @@ Contenido y marketing no se implementan autónomamente.
 
 1. Cerrar review ISA-117 sin promover; Core canónico permanece como base.
 2. Analysis: ISA-126/135 -> ISA-132 -> ISA-159 productor histórico Strategy.
-3. Engineer: ENG-16 audio y ENG-18 Spotter deben cerrar una vertical conjunta
-   con radio/subtítulos/overlay; después ENG-19 monitores y ENG-24/25
-   control, persistencia y Pit. La primera Beta excluye cambio de piloto.
-4. Engineer voz: ENG-22 valida Kokoro con G2P/licencia permisivos, rendimiento,
-   packaging y escucha; ENG-13 mantiene STT/wake bloqueados por evidencia
-   humana. Español e inglés se validan primero; italiano y portugués brasileño
-   permanecen en el gate final.
-5. Engineer Strategy/Overlays avanzados: ENG-26 comienza después de cerrar las
-   bases anteriores; no duplica el `engineer-radio` visual ya existente.
+3. Engineer: avanzar por fases generales — Spotter observable, Engineer de
+   carrera, control, acciones LMU, Strategy/Overlays y Beta integrada—. Cada
+   fase se microplanifica al entrar y se prueba manualmente más una aceptación
+   acumulativa ejecutable por IA. La primera Beta excluye cambio de piloto.
+4. Engineer voz: mantener una línea condicionada en paralelo. Kokoro, STT y
+   wake solo convergen si pasan licencias, rendimiento, privacidad, corpus y
+   pruebas humanas. Español e inglés se validan primero; italiano y portugués
+   brasileño llegan en la expansión posterior.
+5. Engineer Strategy/Overlays avanzados: integrarlos dentro de la fase de
+   acciones seguras, después de cerrar las bases anteriores y sin duplicar el
+   `engineer-radio` visual existente.
 6. Strategy: revisar la pila integrada y continuar sus cortes propios; Core y
    Analysis siguen siendo productores de sus proyecciones versionadas.
 7. Cerrar Overlay con LMU real y gates visuales pendientes.

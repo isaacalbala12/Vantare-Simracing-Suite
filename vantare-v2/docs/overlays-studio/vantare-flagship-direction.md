@@ -84,14 +84,14 @@ anteriores (tower, strip, f1, wec, lmu, racelabs, apex, neo) fueron pruebas de
 exploración y se purgarán en un commit de limpieza cuando redline cubra los
 4 widgets y con aprobación explícita de Isaac.
 
-### Estado de ejecución (2026-08-10, ISA-306)
+### Estado de ejecución (2026-08-10, ISA-306 + ISA-308)
 
 | Widget | Redline | Titular |
 |---|---|---|
 | standings | `standings-redline` | ✅ |
 | delta | `delta-redline` | ✅ |
 | relative | `relative-redline-mirror` (+ `proximity`, `traffic`) | ✅ mirror |
-| pedals | — | ❌ pendiente |
+| pedals | `pedals-redline` | ✅ |
 
 "Titular" significa las dos mitades a la vez: el diseño oficial marcado
 `isDefault` y el default/fallback de `parseXEnduranceSettings`. Antes de
@@ -105,8 +105,26 @@ resolviéndose a sí mismo. Cuando se purguen los exploratorios, el fallback de
 `unknown-template` llevará esos perfiles a redline por sí solo — la purga es
 su propia migración y no hace falta código de migración.
 
-**Precondición de la purga aún no cumplida:** pedals no tiene Redline.
-Retirar los exploratorios hoy dejaría ese widget sin ningún template.
+**Precondición de la purga cumplida (ISA-308):** los cuatro widgets tienen
+Redline y lo tienen por titular. La purga de los exploratorios (tower, strip,
+f1, wec, lmu, racelabs, apex, neo y equivalentes por widget) queda pendiente
+solo de la aprobación explícita de Isaac.
+
+Cuando se ejecute, no hace falta código de migración: al desaparecer esos
+identificadores de la lista, el fallback de `unknown-template` lleva los
+perfiles guardados a redline por sí solo.
+
+### Movimiento pendiente en pedals
+
+El ViewModel de pedals expone `throttle`/`brake`/`clutch` y sus textos, nada
+más. Por eso el template solo declara lo derivable de un fotograma: pedal
+pisado, pedal a fondo y trail braking (freno y gas solapando, con la costura
+de luz del lenguaje de batalla).
+
+Pico de presión de freno, ABS y bloqueo de rueda necesitan estado entre
+fotogramas, y el gate visual captura un único fotograma determinista.
+Corresponden al motor de movimiento (`standings-motion.ts`), que ya tiene esa
+infraestructura, no al renderer.
 
 ## Backlog de animaciones aprobado (2026-08-06)
 

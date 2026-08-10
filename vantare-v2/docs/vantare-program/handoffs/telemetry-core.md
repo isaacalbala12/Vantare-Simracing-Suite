@@ -17,7 +17,7 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
-- Microplan activo y Linear.
+- Issue de Linear y microplan que esa issue enlace explícitamente.
 
 ## Estado real
 

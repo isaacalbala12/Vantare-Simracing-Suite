@@ -1,12 +1,16 @@
 # Strategy Planner unificado — plan maestro por microcortes
 
+> **Contrato técnico histórico, no ejecutable por sí mismo.** Conserva la
+> descomposición diseñada para Strategy Planner. Solo Linear puede seleccionar
+> la siguiente acción y enlazar un microplan vigente; Git determina rama, base
+> y SHA.
+
 **Fecha:** 2026-08-01
-**Autoridad:** ISA-134 / STR-00,
+**Decisión técnica de referencia:** ISA-134 / STR-00,
 `docs/adr/0006-strategy-planner-unified-domain-and-ownership.md` y contrato
 global de producto
-**Base inicial:** `ISA-117@170eaebbaa6744019ead96a2c78201b4da2fb9bb`
 **Referencia histórica:** `codex/strategy-product-a@b9f1937`
-**Estado:** listo para ejecución después de review de STR-00
+**Estado:** histórico; consultar Linear antes de ejecutar cualquier corte
 
 ## Objetivo
 

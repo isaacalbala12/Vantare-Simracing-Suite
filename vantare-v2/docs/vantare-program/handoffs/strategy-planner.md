@@ -12,10 +12,11 @@ Un único producto que crea, compara, guarda, ejecuta y adapta planes para
 minimizar tiempo total esperado y mostrar riesgos/alternativas. Product A/B/C
 son fases históricas.
 
-## Autoridad y lectura
+## Referencias y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Este handoff y `Strategy Planner — Race Strategy Suite` en Linear.
+- Este handoff aporta continuidad técnica; `Strategy Planner — Race Strategy
+  Suite` en Linear conserva el estado operativo.
 - `docs/superpowers/specs/2026-07-13-strategy-planner-product-b-design.md` y
   `strategy-base.html` son referencias históricas que deben reauditarse.
 - El próximo informe de rescate y plan unificado sustituirán los planes PB.
@@ -60,7 +61,7 @@ Actualización ISA-134 / STR-00:
 - Proyecto activo: `Strategy Planner — Race Strategy Suite`.
 - Product A/B/C quedan como fases históricas de un único producto.
 - Product A auditado: `codex/strategy-product-a@b9f1937`.
-- Base aprobada: `ISA-117@170eaeb`.
+- Base observada en ese snapshot: `ISA-117@170eaeb`.
 - Divergencia: 371 commits de la base y 44 de Product A.
 - Simulación: 94 paths = 87 auto-merged + 7 conflictos; 6.751 inserciones y 5
   eliminaciones.
@@ -250,8 +251,8 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-144 / STR-09, implementación lista para review independiente
-  sobre el commit aceptado de STR-08.
+- En ese snapshot, ISA-144 / STR-09 se consideraba activa y lista para review
+  independiente sobre el commit aceptado de STR-08.
 
 ## Recomendación técnica histórica
 

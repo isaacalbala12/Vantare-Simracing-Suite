@@ -20,7 +20,7 @@ trabajo, release, rama o plan.
 - Linear y `docs/README.md` para estado y routing actuales
 - `docs/vantare-suite-architecture.md`
 - `docs/superpowers/plans/2026-06-25-vantare-suite-ingeniero-integration.md`
-- `docs/engineer-live-lmu-adapter-analysis.md`
+- `docs/engineer/engineer-beta-roadmap.md`
 - Tres roadmaps locales no versionados se usaron como fuentes históricas. Sus
   rutas absolutas no son reproducibles ni tienen autoridad actual.
 

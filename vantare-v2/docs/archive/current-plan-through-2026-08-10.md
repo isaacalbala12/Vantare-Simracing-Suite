@@ -3,6 +3,10 @@
 > Este contenido conserva snapshots acumulados hasta el 2026-08-10. No
 > autoriza trabajo, ramas, bases, promociones ni releases. Para estado vigente
 > consulta la issue de Linear y verifica Git/GitHub.
+>
+> La copia fue normalizada a UTF-8 válido: se retiraron bytes NUL y fragmentos
+> corruptos y se ajustó el tiempo verbal de algunas notas para dejar claro su
+> carácter histórico. No es una transcripción byte a byte del archivo anterior.
 
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;

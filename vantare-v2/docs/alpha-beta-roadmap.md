@@ -1,6 +1,8 @@
 # Alpha/Beta Roadmap
 
-Este documento resume la estrategia alpha/beta. La fuente operativa principal es `docs/master-feature-plan.md`.
+> **Roadmap histórico de producto.** Resume la estrategia alpha/beta, pero no
+> selecciona trabajo ni estado vigente. Empieza por `docs/README.md`; Linear
+> posee el alcance, dependencias, plan y siguiente acción.
 
 ## Versiones
 

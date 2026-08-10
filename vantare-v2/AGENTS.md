@@ -75,7 +75,7 @@ la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta `docs/adr/0003-overlay-studio-v3-rebuild.md` y el plan maestro V3.
+- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta `docs/adr/0003-overlay-studio-v3-rebuild.md` y `docs/overlays-studio/README.md`.
 - `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
   Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
   TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,

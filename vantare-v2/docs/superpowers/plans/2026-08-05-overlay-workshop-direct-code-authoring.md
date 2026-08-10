@@ -5,9 +5,8 @@
 > reutilizarse. Solo una issue activa de Linear puede enlazar y autorizar un
 > plan nuevo.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-> **Delegation for this issue:** only the root orchestrator may assign one microcorte to a fresh worker. Every assigned worker must use `executing-plans` inline and is forbidden from spawning, delegating or coordinating other agents.
+Las listas de tareas y comandos inferiores se conservan únicamente como
+evidencia del método aplicado. No son instrucciones para un agente actual.
 
 **Goal:** Convertir el Overlay Workshop existente en un bucle de autoría directa sobre el TSX/CSS productivo, con HMR real, catálogo explícito, restauración byte a byte y una guía que permita crear o modificar widgets sin traducción intermedia.
 
@@ -17,14 +16,15 @@
 
 ---
 
-## Reglas operativas para todos los workers
+## Snapshot de restricciones aplicadas en ISA-291
 
-- Rama única de ejecución: `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`.
-- Base aprobada: ISA-265 en `54088b2e5ad25d9a897cb89187ee9684b75c645f`.
-- Worktree: `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
-- Cada worker ejecuta solo la tarea que recibe y **no puede delegar, lanzar subagentes ni ampliar el alcance**.
-- Antes de editar: ejecutar `git status --short` y detenerse si hay cambios ajenos al corte asignado.
-- Staging siempre por rutas explícitas; queda prohibido `git add .`.
+- La rama, base y worktree usados se verificaron durante ISA-291 y no se
+  reutilizan desde este documento histórico.
+- Cada worker ejecutó solo la tarea recibida, sin delegar, lanzar subagentes ni
+  ampliar el alcance.
+- Antes de editar se verificó `git status --short`; los cambios ajenos eran una
+  condición de parada.
+- El staging se realizó por rutas explícitas, sin `git add .`.
 - No añadir dependencias, no cambiar píxeles permanentes, no migrar los 41 diseños y no tocar Billing, canvas, LMU, Wails/SSE, perfiles o baselines.
 - El smoke HMR es una herramienta reversible. Si un archivo objetivo ya está modificado, debe fallar antes de escribir.
 - Esta issue puede quedar técnicamente lista, pero no entra en `nightly` sin aprobación expresa de Isaac.

@@ -40,7 +40,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `source-ownership.md`: propietario único de cada campo operativo.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
-- `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
+- `handoffs/telemetry-core.md`: continuidad técnica y evidencia del núcleo live.
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.

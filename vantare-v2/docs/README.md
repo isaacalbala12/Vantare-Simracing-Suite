@@ -68,7 +68,8 @@ una decision pasada concreta.
 
 El antiguo plan acumulativo se conserva en
 [`archive/current-plan-through-2026-08-10.md`](archive/current-plan-through-2026-08-10.md).
-Es contexto sin autoridad operativa y no recibe nuevas notas.
+Es contexto sin autoridad operativa. Incluye como última entrada el cierre de
+su archivado y no recibe futuras notas de estado operativo.
 
 Los documentos marcados como historicos, superados o archivados tampoco
 autorizan trabajo, aunque sigan versionados para preservar razonamiento y

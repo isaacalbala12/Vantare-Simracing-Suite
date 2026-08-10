@@ -1,16 +1,18 @@
-# Engineer Beta — roadmap canónico ENG-12 a ENG-29
+# Engineer Beta — mapa técnico histórico ENG-12 a ENG-29
 
-## Estado y autoridad
+## Estado y uso
+
+> **Documento histórico no ejecutable.** Conserva el diseño técnico y la
+> descomposición concebidos el 2026-08-02. Linear posee alcance, dependencias,
+> plan y siguiente acción; Git posee rama, base y SHA. Una issue vigente debe
+> enlazar cualquier plan que se vaya a ejecutar.
 
 - Fecha: 2026-08-02.
-- Base documental: `5b4e0d315d54f99e8d404e617ad8873cedbd3277`
-  (ISA-182 / ENG-11 aceptada).
+- Snapshot documental observado: ISA-182 / ENG-11 aceptada.
 - Proyecto Linear: `Engineer & Spotter — LMU Race Companion`.
 - Parent: ISA-123 / ENG-01.
 - Este documento y `docs/vantare-program/handoffs/engineer-spotter.md`
-  gobiernan el trabajo restante.
-- Esta rama solo planifica. No implementa producto, no promociona y no cambia
-  ningún gate técnico o humano a GO.
+  aportan contexto técnico; no gobiernan trabajo restante.
 
 ## Resultado de producto
 
@@ -134,7 +136,7 @@ ENG-11
 ENG-18..26 + voice gates -> ENG-27 -> ENG-28 -> ENG-29
 ```
 
-### Ruta autónoma inmediata
+### Ruta prevista en el snapshot
 
 1. ENG-12.
 2. Sin esperar corpus humano: ENG-14, ENG-15, ENG-16, ENG-17, ENG-18,
@@ -158,7 +160,10 @@ ENG-18..26 + voice gates -> ENG-27 -> ENG-28 -> ENG-29
 Si falta un gate, el corte termina `NO-GO`, `INCONCLUSIVE` o disabled. Nunca se
 bajan umbrales, se regenera evidencia o se sustituye humano por sintético.
 
-## Contrato de ejecución por issue
+## Contrato histórico de ejecución por issue
+
+Estas reglas describen el proceso previsto en el snapshot. No seleccionan una
+issue, rama, base ni plan actuales.
 
 1. Verificar base exacta y worktree limpio.
 2. Leer AGENTS, la issue completa, `docs/README.md`, el handoff y este roadmap.
@@ -168,7 +173,7 @@ bajan umbrales, se regenera evidencia o se sustituye humano por sintético.
 6. Ejecutar focal, integración, global, race/bench/visual cuando aplique.
 7. Review independiente P0/P1/P2/P3 y corregir todos los razonables.
 8. Actualizar Linear y, si cambia la continuidad técnica, el handoff con
-   evidencia y próxima acción exacta.
+   evidencia y una recomendación técnica no autorizante.
 9. Commit, push, PR draft apilada y Linear `In Review`.
 10. No promoción. Isaac aprueba una implementación inicial antes de `nightly`.
 
@@ -190,10 +195,9 @@ bajan umbrales, se regenera evidencia o se sustituye humano por sintético.
 - Review técnica sin findings razonables y checklist humano explícito.
 - No existe promoción automática a `nightly`, `testers` o `master`.
 
-## Próxima acción exacta
+## Recomendación técnica registrada en el snapshot
 
-Iniciar ISA-183 / ENG-12 desde el HEAD documental aceptado de
-`vantareapp/engineer-beta-roadmap-eng12-plus`, descendiente directo de
-`5b4e0d315d54f99e8d404e617ad8873cedbd3277`, en rama/worktree aislados. Es un
-corte de contratos, catálogo, protocolo y harness: no requiere voces humanas y
-no implementa STT/PTT/audio productivo.
+El snapshot proponía ISA-183 / ENG-12 como corte de contratos, catálogo,
+protocolo y harness, sin voces humanas ni STT/PTT/audio productivo. Antes de
+retomarlo hay que consultar Linear y verificar en Git la rama, base y SHA
+vigentes.

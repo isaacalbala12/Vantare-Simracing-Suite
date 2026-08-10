@@ -6,7 +6,7 @@
 > recomendación técnica no autorizante. Linear posee la siguiente acción y el
 > plan ejecutable.
 
-## Decisión comercial vigente — ISA-315
+## Snapshot de decisión comercial — ISA-315
 
 - Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.
   No equivale a promoción a `master` ni release Stable de toda Vantare.
@@ -19,7 +19,7 @@
 - La venta sigue **NO-GO** hasta cerrar raíz, compra/licencia end-to-end,
   artefactos, updater/rollback, soporte y la decisión pendiente sobre firma.
   El plan no autoriza dinero real, producción, publicación ni comunicación.
-- Plan canónico y gates:
+- Plan técnico enlazado en ese snapshot:
   `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
 
 ## Autoridad y lectura
@@ -30,7 +30,8 @@
   Polar/Supabase vigente.
 - Roadmap/Discord: `docs/discord-communications.md` y workflows actuales.
 - Root: informe ISA-14 y su matriz de worktrees/rutas.
-- La issue activa y su plan prevalecen sobre releases históricas.
+- La issue que Linear señale y el plan que enlace prevalecen sobre releases
+  históricas.
 
 ## Estado
 

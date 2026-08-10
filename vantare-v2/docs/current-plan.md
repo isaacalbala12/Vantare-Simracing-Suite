@@ -18,8 +18,10 @@ Nota ISA-311 (2026-08-10, corrección local verificada):
   HEAD anterior pasó sin rerun, pero la base avanzó durante su ejecución y no
   se reutiliza como evidencia. Tras el rebase, el HEAD `6ac6f9e` pasó también
   sin rerun ruta, build, Go, frontend, visual, lint y GitGuardian en el run
-  `31416018600`. Pendiente: autorización de Isaac antes de cualquier merge,
-  sin promoción a `testers`/`master` ni release.
+  `31416018600`; el HEAD documental `756315d` repitió todos los checks en verde
+  en `31416779711`. Isaac autorizó explícitamente el merge de PR #200 a
+  `nightly`; el SHA remoto resultante se registra en Linear. No se autoriza
+  promoción a `testers`/`master` ni release.
 
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila

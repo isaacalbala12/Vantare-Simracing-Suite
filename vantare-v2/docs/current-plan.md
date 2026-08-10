@@ -1,3 +1,25 @@
+Nota ALINEACION-REFACTOR (2026-08-10):
+- Objetivo: reconciliar el worktree principal (rama `refactor`, worktree
+  `C:\Users\isaac\Desktop\Vantare-Overlays`) contra `origin/nightly`.
+- Hallazgo: `refactor` estaba 281 commits atras de `nightly`; su unico commit
+  unico (`b70a950`) duplicaba el PR #184 (`8cf28a6`, ya en `nightly`). Los 75
+  archivos modificados sin commitear eran identicos a `nightly` (verificado por
+  hash). Nada unico se perdio en el reset.
+- Accion: backup `refactor-b70a950-backup` (punta `b70a950`); rama de
+  conservacion `chore/conservacion-untracked-2026-08-10` (commit `ac53ab4` con
+  9 untracked con valor: ADR 0004/0005 de analisis de telemetria, docs de
+  telemetry, changelog 2026-08-08, VISUAL_DESIGN_RESEARCH y funciones supabase
+  del testing-center); reset --hard a `origin/nightly`.
+- Descartado por superado/duplicado: `internal/strategy/{scenario,solver}` y
+  `contract/contract.go` locales (nightly tiene `internal/strategy/` maduro);
+  2 tests ya en nightly; `supabase/.temp/` (gitignored).
+- Estado actual: `refactor` == `origin/nightly@9c11d7f`, working tree limpio.
+- Pendiente humano: decidir destino de `chore/conservacion-untracked-2026-08-10`
+  (merge de docs a nightly, renumero de ADR 0004/0005 para no colisionar con
+  los ADR 0004/0005 existentes, o archivo).
+- Evidencia: `git rev-parse HEAD` == `git rev-parse origin/nightly` == `9c11d7f`;
+  `git status --short` sin archivos modificados; `git diff HEAD` vacio.
+
 Nota ISA-294 / GOV-02 (2026-08-05, entrega documental):
 - La fuente de integracion activa es `nightly`; el checkout principal sirve
   para ejecutar ese conjunto, mientras cada cambio se desarrolla en una rama

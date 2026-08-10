@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T16:20:37Z",
+  "generatedAt": "2026-08-10T17:33:56Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -29,15 +29,33 @@
           },
           "progress": {
             "done": 11,
-            "total": 25,
-            "percent": 44
+            "total": 26,
+            "percent": 42
           },
           "tasks": [
+            {
+              "id": "task_871b1ab68a2ba77204b2",
+              "title": "Pedals Redline: el cuarto widget de la direccion insignia",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T16:22:47.507Z"
+            },
+            {
+              "id": "task_e9740a55c063a90d9efc",
+              "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T17:13:48.845Z"
+            },
             {
               "id": "task_f0c3e304758281802415",
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_b22567b960d2c25f9552",
+              "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T17:30:48.875Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -76,12 +94,6 @@
               "updatedAt": "2026-07-14T23:05:21.904Z"
             },
             {
-              "id": "task_871b1ab68a2ba77204b2",
-              "title": "Pedals Redline: el cuarto widget de la direccion insignia",
-              "status": "planned",
-              "updatedAt": "2026-08-10T01:26:21.916Z"
-            },
-            {
               "id": "task_3dae88596a0aa6e65ce1",
               "title": "Portabilidad CI del test de manifiesto Crystal",
               "status": "planned",
@@ -98,12 +110,6 @@
               "title": "Renombrar y reubicar el CSS isa93-* de vantare-crystal",
               "status": "planned",
               "updatedAt": "2026-08-05T17:46:22.144Z"
-            },
-            {
-              "id": "task_b22567b960d2c25f9552",
-              "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
-              "status": "planned",
-              "updatedAt": "2026-08-10T15:57:25.764Z"
             },
             {
               "id": "task_ae5027b9e935ae76500d",
@@ -525,7 +531,7 @@
               "id": "task_1b9ae73be18bdf3e6147",
               "title": "Progreso, distancia y mapa con evidencia LMU",
               "status": "planned",
-              "updatedAt": "2026-08-10T15:37:20.708Z"
+              "updatedAt": "2026-08-10T16:38:30.547Z"
             },
             {
               "id": "task_a918958013a28322f560",
@@ -598,39 +604,51 @@
           },
           "progress": {
             "done": 15,
-            "total": 30,
-            "percent": 50
+            "total": 32,
+            "percent": 47
           },
           "tasks": [
+            {
+              "id": "task_ce3c58c3bd12864b4906",
+              "title": "Reconciliar Nightly y replanificar Spotter + visual/overlays",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T16:49:45.430Z"
+            },
+            {
+              "id": "task_70b307b95c679819258e",
+              "title": "01 — Engineer Hub afirma guardado automático sin persistencia",
+              "status": "planned",
+              "updatedAt": "2026-08-10T16:26:37.284Z"
+            },
             {
               "id": "task_e250e212ceccd1f036a6",
               "title": "Audio offline, dispositivos, hot-plug y ducking",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:23:46.751Z"
+              "updatedAt": "2026-08-10T16:49:45.308Z"
             },
             {
               "id": "task_f76ec6372934a663e91c",
               "title": "Centro de control Engineer, permisos y ajustes",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:10.953Z"
+              "updatedAt": "2026-08-10T16:32:17.100Z"
             },
             {
               "id": "task_47b19844369d0b92f879",
               "title": "Diagnóstico, replays y ledger de paridad funcional",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:18.562Z"
+              "updatedAt": "2026-08-10T16:32:19.633Z"
             },
             {
               "id": "task_8fd1ff4ccaf9f1ea4b10",
               "title": "Engineer Beta: monitores de carrera y consultas reales",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:23:57.835Z"
+              "updatedAt": "2026-08-10T16:32:15.533Z"
             },
             {
               "id": "task_dcb9060d2ca892fc8267",
               "title": "Gate final Engineer Beta, cuatro idiomas y packaging",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:23.204Z"
+              "updatedAt": "2026-08-10T16:32:20.945Z"
             },
             {
               "id": "task_f8e321662efb8db50e1a",
@@ -640,9 +658,9 @@
             },
             {
               "id": "task_0b79aaf90cefee2cacd9",
-              "title": "Gate técnico TTS offline y voces en cuatro idiomas",
+              "title": "Gate técnico Kokoro offline, G2P, licencia y rendimiento",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:06.105Z"
+              "updatedAt": "2026-08-10T16:32:16.248Z"
             },
             {
               "id": "task_5ba17515d22ff172dd3e",
@@ -654,7 +672,7 @@
               "id": "task_46015965585a66a90bea",
               "title": "Integración versionada con Strategy Planner y Overlays",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:15.880Z"
+              "updatedAt": "2026-08-10T16:32:19.113Z"
             },
             {
               "id": "task_c8b82f43667ad5a0550d",
@@ -666,19 +684,19 @@
               "id": "task_739ee8601d0e9551f887",
               "title": "Pit Manager LMU transaccional con confirmación y readback",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:13.514Z"
+              "updatedAt": "2026-08-10T16:32:18.043Z"
             },
             {
               "id": "task_ed81448a9c5dd1c44931",
               "title": "Soak LMU real, rendimiento y recuperación conjunta",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:24:20.828Z"
+              "updatedAt": "2026-08-10T16:32:20.374Z"
             },
             {
               "id": "task_c1025294794644a443a6",
               "title": "Spotter LMU Beta: seguridad, multiclase y latencia",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:23:51.346Z"
+              "updatedAt": "2026-08-10T16:49:45.309Z"
             },
             {
               "id": "task_028800b74002039a44cf",
@@ -702,7 +720,7 @@
               "id": "task_b6eecc59450dff41fb85",
               "title": "Auditoría clean-room CrewChief/DRE y código Vantare",
               "status": "done",
-              "updatedAt": "2026-08-03T00:27:16.224Z"
+              "updatedAt": "2026-08-10T16:26:26.589Z"
             },
             {
               "id": "task_cffbaafc791564e5f78b",
@@ -750,7 +768,7 @@
               "id": "task_1af6312f000b88be5ae1",
               "title": "Promoción acumulativa … a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-02T15:30:54.672Z"
+              "updatedAt": "2026-08-10T16:26:26.896Z"
             },
             {
               "id": "task_177507e5bd80fa78461b",
@@ -799,28 +817,22 @@
             "it": "Pianificazione manuale della gara."
           },
           "progress": {
-            "done": 12,
+            "done": 17,
             "total": 27,
-            "percent": 44
+            "percent": 63
           },
           "tasks": [
             {
-              "id": "task_b40051fa6a37306acaac",
-              "title": "Activación y lifecycle del plan",
-              "status": "planned",
-              "updatedAt": "2026-08-10T01:34:16.363Z"
+              "id": "task_28ad2725a706bd5ccf64",
+              "title": "Catálogo oficial firmado de Vantare",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T17:28:32.472Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",
               "title": "Adapter de StrategyInputProjection de Telemetry Analysis",
               "status": "planned",
               "updatedAt": "2026-08-01T18:57:49.786Z"
-            },
-            {
-              "id": "task_28ad2725a706bd5ccf64",
-              "title": "Catálogo oficial firmado de Vantare",
-              "status": "planned",
-              "updatedAt": "2026-08-10T01:34:16.372Z"
             },
             {
               "id": "task_3350529eba76e7f8f172",
@@ -865,34 +877,16 @@
               "updatedAt": "2026-08-01T18:12:03.858Z"
             },
             {
-              "id": "task_0fe3a0c0fb86e42dbd4f",
-              "title": "Reglas de evento y escenarios dinámicos",
-              "status": "planned",
-              "updatedAt": "2026-08-01T18:11:50.561Z"
-            },
-            {
               "id": "task_b1eb4b6ccbb3136c1744",
               "title": "Replanificación live y aceptación",
               "status": "planned",
               "updatedAt": "2026-08-01T18:11:59.392Z"
             },
             {
-              "id": "task_93f8a3679026b1bd6d2a",
-              "title": "Solver determinista v2 y auditoría de escenarios",
-              "status": "planned",
-              "updatedAt": "2026-08-01T18:14:15.234Z"
-            },
-            {
-              "id": "task_3b94344ae85a4edf9fb5",
-              "title": "UI de Mis planes y paquetes import/export",
-              "status": "planned",
-              "updatedAt": "2026-08-10T01:34:16.845Z"
-            },
-            {
-              "id": "task_c6c4e42fe0926cb43de0",
-              "title": "Variantes, robustez y comparación",
-              "status": "planned",
-              "updatedAt": "2026-08-01T18:14:22.117Z"
+              "id": "task_b40051fa6a37306acaac",
+              "title": "Activación y lifecycle del plan",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:31:09.700Z"
             },
             {
               "id": "task_95e8dfeafd3b87445fcd",
@@ -934,13 +928,19 @@
               "id": "task_abfc7b6ff159f09de8ab",
               "title": "Promoción acumulativa de Strategy Planner a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-10T16:20:18.184Z"
+              "updatedAt": "2026-08-10T16:31:10.414Z"
             },
             {
               "id": "task_58fbf16c0e6d19d83172",
               "title": "Promoción acumulativa … a Nightly",
               "status": "done",
               "updatedAt": "2026-08-02T14:26:11.967Z"
+            },
+            {
+              "id": "task_0fe3a0c0fb86e42dbd4f",
+              "title": "Reglas de evento y escenarios dinámicos",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:31:07.450Z"
             },
             {
               "id": "task_d1887ce040959ff772e0",
@@ -965,6 +965,24 @@
               "title": "Shell visual y navegación del workspace",
               "status": "done",
               "updatedAt": "2026-08-03T00:34:25.429Z"
+            },
+            {
+              "id": "task_93f8a3679026b1bd6d2a",
+              "title": "Solver determinista v2 y auditoría de escenarios",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:31:03.333Z"
+            },
+            {
+              "id": "task_3b94344ae85a4edf9fb5",
+              "title": "UI de Mis planes y paquetes import/export",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:31:08.565Z"
+            },
+            {
+              "id": "task_c6c4e42fe0926cb43de0",
+              "title": "Variantes, robustez y comparación",
+              "status": "done",
+              "updatedAt": "2026-08-10T16:31:05.002Z"
             }
           ]
         }
@@ -994,11 +1012,17 @@
             "it": "Accesso e licenze Vantare."
           },
           "progress": {
-            "done": 18,
+            "done": 17,
             "total": 23,
-            "percent": 78
+            "percent": 74
           },
           "tasks": [
+            {
+              "id": "task_d7a9445eccd63ccff77b",
+              "title": "Accesos operativos revocables y saneamiento de grants legacy",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T17:24:39.008Z"
+            },
             {
               "id": "task_eeb7695d14abe0e5a53f",
               "title": "Hardening y recuperación Supabase",
@@ -1028,12 +1052,6 @@
               "title": "Smoke monetario controlado",
               "status": "planned",
               "updatedAt": "2026-08-02T18:22:41.618Z"
-            },
-            {
-              "id": "task_d7a9445eccd63ccff77b",
-              "title": "Accesos operativos revocables y saneamiento de grants legacy",
-              "status": "done",
-              "updatedAt": "2026-08-03T17:49:25.893Z"
             },
             {
               "id": "task_4d8dd77269c3c988c021",

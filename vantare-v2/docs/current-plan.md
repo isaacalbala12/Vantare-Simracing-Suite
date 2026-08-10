@@ -3,17 +3,22 @@ Nota ISA-311 (2026-08-10, corrección local verificada):
   conservaba coordinator y SQLite reales, pero heredaba el reloj de pared del
   presupuesto de commit de producción. Una pausa de E/S superior a 500 ms en
   el runner compartido podía convertir un soak funcional en un fallo flaky.
-- La corrección inyecta exclusivamente en ese test un reloj lógico fijo. No
-  cambia `DefaultCommitBudget`, su validación máxima, los contextos acotados ni
-  la clasificación de fallos de producción.
-- Evidencia local: baseline previo 10/10; soak corregido 20/20; regresiones de
-  timeout del coordinator 20/20; build frontend y `go test ./...` pasan. El
-  primer gate global solo necesitó generar `frontend/dist` en el worktree
-  nuevo y pasó completo tras el build.
-- Rama exacta desde `origin/nightly@7e39104`:
+- La corrección inyecta exclusivamente en ese test un reloj lógico fijo y un
+  adapter del writer que conserva SQLite real, pero usa un deadline global de
+  30 s para todo el escenario en lugar del timeout productivo por operación.
+  No cambia `DefaultCommitBudget`, su validación máxima, los contextos del
+  runtime ni la clasificación de fallos de producción.
+- Evidencia local: baseline previo 10/10; el primer ajuste de reloj pasó 20/20,
+  pero una repetición posterior encontró 1/20 cierres por el timeout que aún
+  llegaba al writer. La solución completa pasa soak 20/20, regresiones de
+  timeout del coordinator 20/20, build frontend y `go test ./... -count=1`.
+- Rama exacta rebasada sin conflictos sobre `origin/nightly@ff286f4`:
   `vantareapp/isa-311-test-flaky-en-ci-testtelemetrycoretwohourlogicalsoak-falla`.
-  Pendiente: commit, push, PR draft, CI remoto y autorización de Isaac antes de
-  cualquier merge a `nightly`; sin promoción a `testers`/`master` ni release.
+  Implementación `e093d53`; PR draft #200 abierto hacia `nightly`. El CI del
+  HEAD anterior pasó sin rerun, pero la base avanzó durante su ejecución y no
+  se reutiliza como evidencia. La rama queda rebasada; pendiente CI del nuevo
+  HEAD y autorización de Isaac antes de cualquier merge, sin promoción a
+  `testers`/`master` ni release.
 
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila

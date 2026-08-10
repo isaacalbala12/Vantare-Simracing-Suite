@@ -1,6 +1,13 @@
 # TA-03C — microplan del adapter DuckDB fuera de proceso
 
-- Estado: ejecutado y aprobado técnicamente en ISA-168; entrega en review
+- Estado técnico histórico: ejecutado y aprobado en ISA-168; ese cierre quedó
+  en review, sin promoción dentro del alcance de la issue
+- Integración posterior: ISA-204 / TA-N01 promovió el corte a `nightly` mediante
+  PR #94, squash `4e549bb59fd0b76398985cd28e5aa30aaaa85c32`; el contenido está
+  verificado en el snapshot de `origin/nightly`
+  `08fcfc15dceb88b6a6b5c679d581d9de7b8ab698`
+- Pendiente: validación Nightly/Pro Plus y smoke físico Windows 10; no está en
+  `testers` ni `master`
 - Base requerida: ISA-135 / TA-03B corregida y TA-03 / ISA-126
 - Método: TDD, microcortes acumulativos y review independiente
 
@@ -25,6 +32,10 @@ no un sandbox.
 - [x] Se acepta VC++ Redistributable como prerrequisito del runtime.
 
 ## Alcance
+
+Las cláusulas de alcance siguientes describen el corte histórico ISA-168. En
+particular, su exclusión de promociones no impedía una integración posterior
+mediante una issue de promoción separada; esa integración ocurrió en ISA-204.
 
 ### Incluye
 
@@ -225,7 +236,7 @@ Gate:
 - suite Go global y build frontend si el embed lo exige;
 - `git diff --check`;
 - handoff/current-plan/ADR actualizados;
-- PR draft apilada, Linear `In Review`, sin promoción.
+- PR draft apilada, Linear `In Review`, sin promoción dentro de ISA-168.
 
 ## Archivos/módulos previstos
 

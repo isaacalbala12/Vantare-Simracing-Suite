@@ -16,6 +16,22 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-309 / STR-N02 (2026-08-10):
+
+- La pila acumulativa de Strategy posterior a STR-09 se reconstruyó sobre
+  `origin/nightly@08fcfc1` en la rama oficial de ISA-309, sin los seis commits
+  ajenos que contaminaban la rama histórica.
+- Los 11 commits de producto incluyen saneamiento presentacional, dominio Go
+  unificado de neumáticos, solver determinista, variantes, wiring del
+  workspace, listado real de planes, paquetes import/export, plan activo
+  auditable, reglas de evento versionadas y la regresión de loading/retry.
+- Go Strategy, typecheck real, suite frontend completa, build y ESLint focal
+  están verdes. `-race` sigue sin verificarse en este entorno Windows sin CGO;
+  los bridges continúan sin prueba manual contra una aplicación Wails viva.
+- Siguiente acción exacta: revisar el PR draft de ISA-309 y su CI. Solo una
+  autorización posterior de Isaac permite promoverlo a `nightly`; STR-15B
+  (ISA-162) no comienza hasta que esa base esté realmente integrada.
+
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local

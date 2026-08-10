@@ -11,6 +11,7 @@ import { createDefaultRelativeContent } from "../../widget-types/relative/relati
 import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { DeltaEndurance } from "./delta/DeltaEndurance";
 import { parseDeltaEnduranceSettings } from "./delta/delta-endurance-settings";
+import { parsePedalsEnduranceSettings } from "./pedals/pedals-endurance-settings";
 import { PedalsEndurance } from "./pedals/PedalsEndurance";
 import { RelativeEndurance } from "./relative/RelativeEndurance";
 import { parseRelativeEnduranceSettings } from "./relative/relative-endurance-settings";
@@ -70,6 +71,7 @@ describe("vantare-endurance contract", () => {
       [parseDeltaEnduranceSettings, "delta-redline"],
       [parseStandingsEnduranceSettings, "standings-redline"],
       [parseRelativeEnduranceSettings, "relative-redline-mirror"],
+      [parsePedalsEnduranceSettings, "pedals-redline"],
     ] as const) {
       const parsed = parse({ templateId: "nope" });
       expect(parsed.templateId).toBe(fallback);
@@ -364,7 +366,11 @@ describe("vantare-endurance contract", () => {
 
   it("renders the three pedal bars with their values", () => {
     const view = render(
-      <PedalsEndurance model={pedalsModel} settings={{}} renderMode="harness" />,
+      <PedalsEndurance
+        model={pedalsModel}
+        settings={{ templateId: "pedals-classic" }}
+        renderMode="harness"
+      />,
     );
     const root = rootOf(view.container);
     const pedals = [...root.querySelectorAll("[data-pedal]")].map((el) =>

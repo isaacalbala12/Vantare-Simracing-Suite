@@ -84,14 +84,14 @@ anteriores (tower, strip, f1, wec, lmu, racelabs, apex, neo) fueron pruebas de
 exploración y se purgarán en un commit de limpieza cuando redline cubra los
 4 widgets y con aprobación explícita de Isaac.
 
-### Estado de ejecución (2026-08-10, ISA-306)
+### Estado de ejecución (2026-08-10, ISA-306 + ISA-308)
 
 | Widget | Redline | Titular |
 |---|---|---|
 | standings | `standings-redline` | ✅ |
 | delta | `delta-redline` | ✅ |
 | relative | `relative-redline-mirror` (+ `proximity`, `traffic`) | ✅ mirror |
-| pedals | — | ❌ pendiente |
+| pedals | `pedals-redline` | ✅ |
 
 "Titular" significa las dos mitades a la vez: el diseño oficial marcado
 `isDefault` y el default/fallback de `parseXEnduranceSettings`. Antes de
@@ -105,8 +105,32 @@ resolviéndose a sí mismo. Cuando se purguen los exploratorios, el fallback de
 `unknown-template` llevará esos perfiles a redline por sí solo — la purga es
 su propia migración y no hace falta código de migración.
 
-**Precondición de la purga aún no cumplida:** pedals no tiene Redline.
-Retirar los exploratorios hoy dejaría ese widget sin ningún template.
+**Precondición de la purga cumplida (ISA-308):** los cuatro widgets tienen
+Redline y lo tienen por titular. La purga de los exploratorios (tower, strip,
+f1, wec, lmu, racelabs, apex, neo y equivalentes por widget) queda pendiente
+solo de la aprobación explícita de Isaac.
+
+Cuando se ejecute, no hace falta código de migración: al desaparecer esos
+identificadores de la lista, el fallback de `unknown-template` lleva los
+perfiles guardados a redline por sí solo.
+
+### Movimiento pendiente en pedals
+
+El ViewModel de pedals expone `throttle`/`brake`/`clutch` y sus textos, nada
+más. El template declara solo tres cosas: cuánto está pisado cada pedal, cuáles
+han dejado el reposo y cuáles van a fondo.
+
+**Sin costura de trail braking (decisión de Isaac, 2026-08-10).** Se probó una
+costura vertical carmín en la frontera freno/gas, eco del lenguaje de batalla
+del standings. Rechazada: en un widget tan pequeño y de carriles ya coloreados,
+una línea fina vertical se lee como un artefacto, no como información. La
+regla del manifiesto sigue en pie — el movimiento es semántico — pero aquí el
+lenguaje correcto para ese evento aún no está encontrado.
+
+Pico de presión de freno, ABS y bloqueo de rueda necesitan estado entre
+fotogramas, y el gate visual captura un único fotograma determinista.
+Corresponden al motor de movimiento (`standings-motion.ts`), que ya tiene esa
+infraestructura, no al renderer.
 
 ## Backlog de animaciones aprobado (2026-08-06)
 

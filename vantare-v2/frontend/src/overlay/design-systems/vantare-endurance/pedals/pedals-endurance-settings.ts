@@ -1,6 +1,10 @@
 import { PEDALS_DEFAULT_APPEARANCE } from "../../../widget-types/pedals/pedals-renderer-helpers";
 
-export const PEDALS_ENDURANCE_TEMPLATE_IDS = ["pedals-classic", "pedals-neo"] as const;
+export const PEDALS_ENDURANCE_TEMPLATE_IDS = [
+  "pedals-classic",
+  "pedals-neo",
+  "pedals-redline",
+] as const;
 
 export type PedalsEnduranceTemplateId = (typeof PEDALS_ENDURANCE_TEMPLATE_IDS)[number];
 export type PedalsEnduranceTemplateDiagnostic = "unknown-template";
@@ -22,17 +26,17 @@ export function parsePedalsEnduranceSettings(input: unknown): PedalsEnduranceSet
       ? (input as Record<string, unknown>)
       : {};
   if (source.templateId === undefined) {
-    return { templateId: "pedals-classic" };
+    return { templateId: "pedals-redline" };
   }
   if (isTemplateId(source.templateId)) {
     return { templateId: source.templateId };
   }
-  return { templateId: "pedals-classic", templateDiagnostic: "unknown-template" };
+  return { templateId: "pedals-redline", templateDiagnostic: "unknown-template" };
 }
 
 export const PEDALS_ENDURANCE_DEFAULT_SETTINGS = {
   ...PEDALS_DEFAULT_APPEARANCE,
-  templateId: "pedals-classic" as PedalsEnduranceTemplateId,
+  templateId: "pedals-redline" as PedalsEnduranceTemplateId,
 };
 
 export function normalizePedalsEnduranceSettings(input: unknown): Record<string, unknown> {

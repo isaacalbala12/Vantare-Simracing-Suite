@@ -603,3 +603,29 @@ Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow
 - Motivo para diferir: la suite pasa (`590/590`) y el proceso termina con exit code 0, pero los logs muestran varios `AggregateError ECONNREFUSED ::1/127.0.0.1:3000` despues del resumen.
 - Fix esperado: localizar el test/componente que intenta conectar con `localhost:3000` sin mock adecuado y sustituirlo por mock del transporte/runtime.
 - Riesgo si se ignora: ruido en CI y posibilidad de ocultar errores reales de red en futuras regresiones.
+
+### TD-043 - `keyboard-small` del gate visual es flaky al comprobar el foco tras Escape
+
+- Severidad: P3
+- Area: frontend/testing
+- Origen: ISA-308, al revalidar tras rebase (2026-08-10)
+- Estado: abierto
+- Release objetivo: cleanup beta / R04
+- Motivo para diferir: no bloquea; el check pasa en repeticion inmediata. Queda
+  aqui y no en Linear porque el workspace alcanzo el limite de issues del plan
+  gratuito — conviene abrir la issue cuando se resuelva esa limitacion.
+- Sintoma: `keyboard-small: Escape did not restore focus to inspector drawer toggle`,
+  una vez de tres corridas consecutivas, en una rama cuyo cambio (template de
+  pedals: TSX + CSS) no toca el shell, ni el drawer, ni el foco. `origin/nightly`
+  limpio pasa en ese mismo momento.
+- Causa probable: en `scripts/overlay-studio-visual.mjs`,
+  `assertStudioKeyboardNavigation` lee `document.activeElement` inmediatamente
+  despues del `Escape`. Devolver el foco al cerrar un drawer pasa por un efecto
+  de React, asi que existe una ventana en la que el foco aun no ha vuelto.
+- Fix esperado: esperar la condicion (`page.waitForFunction` con timeout corto)
+  en vez de muestrearla. Sigue fallando si el foco no vuelve nunca, que es lo que
+  el check quiere demostrar. Revisar de paso el resto de comprobaciones de foco
+  del mismo fichero por si comparten la forma.
+- Riesgo si se ignora: es un flaky *en el gate que acaba de recuperarse* (ISA-307).
+  Un gate visual que falla de vez en cuando sin motivo reeduca al equipo a
+  reejecutarlo, que es justo la costumbre que ISA-307 queria cortar.

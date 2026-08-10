@@ -1,5 +1,11 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
+
 ## Decisión comercial vigente — ISA-315
 
 - Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.

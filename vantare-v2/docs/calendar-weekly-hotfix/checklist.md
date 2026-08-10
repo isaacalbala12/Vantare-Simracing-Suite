@@ -9,7 +9,8 @@ Checklist operativo para actualizar el calendario LMU semanal sin tocar producto
 - [ ] Revisar `git status --short` y no mezclar cambios ajenos.
 - [ ] Leer:
   - `AGENTS.md`
-  - `docs/current-plan.md`
+  - issue de Linear asignada
+  - `docs/README.md`
   - `docs/calendar-weekly-hotfix/README.md`
   - `docs/calendar-weekly-hotfix/weekly-update-prompt.md`
   - `internal/calendar/seed/lmu-weekly-schedule.json`
@@ -81,7 +82,7 @@ Si `TestParse_AcceptsValidLines` falla por fixture preexistente, documentarlo y 
 - [ ] Si hay multiples fuentes ambiguas, parar y reportar.
 - [ ] Si el origen es claro, preparar bump `x.x.x.1`.
 - [ ] Actualizar `docs/changelog.md` con la plantilla de `changelog-template.md`.
-- [ ] Actualizar `docs/current-plan.md` con una nota breve.
+- [ ] Actualizar Linear y el handoff solo si cambia la continuidad tecnica.
 
 ## 7. Review final
 

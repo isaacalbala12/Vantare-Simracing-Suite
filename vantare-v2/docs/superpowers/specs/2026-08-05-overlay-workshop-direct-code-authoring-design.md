@@ -389,8 +389,8 @@ sobre estas rutas, condicionadas por TDD:
   nuevo contrato.
 - `frontend/src/overlay/design-systems/official-designs.test.ts`
   — reglas mínimas del catálogo, sin `catalogPosition` ni registry genérico.
-- `docs/current-plan.md` y el handoff de Overlay Studio
-  — estado y siguiente acción.
+- Linear y el handoff de Overlay Studio
+  — estado esperado y continuidad técnica, respectivamente.
 
 No se modificarán renderers visuales ni `official-designs.ts` para fabricar una
 demostración. El smoke puede tocar temporalmente un archivo bajo control del

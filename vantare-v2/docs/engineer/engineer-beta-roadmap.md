@@ -161,13 +161,14 @@ bajan umbrales, se regenera evidencia o se sustituye humano por sintético.
 ## Contrato de ejecución por issue
 
 1. Verificar base exacta y worktree limpio.
-2. Leer AGENTS, current-plan, handoff, este roadmap y la issue completa.
+2. Leer AGENTS, la issue completa, `docs/README.md`, el handoff y este roadmap.
 3. Declarar preflight: alcance, archivos, contratos, tests y stop conditions.
 4. Crear regresiones/caracterización antes de cambiar comportamiento.
 5. Implementar el cambio correcto más sencillo; sin capas especulativas.
 6. Ejecutar focal, integración, global, race/bench/visual cuando aplique.
 7. Review independiente P0/P1/P2/P3 y corregir todos los razonables.
-8. Actualizar handoff/current-plan con evidencia y próxima acción exacta.
+8. Actualizar Linear y, si cambia la continuidad técnica, el handoff con
+   evidencia y próxima acción exacta.
 9. Commit, push, PR draft apilada y Linear `In Review`.
 10. No promoción. Isaac aprueba una implementación inicial antes de `nightly`.
 

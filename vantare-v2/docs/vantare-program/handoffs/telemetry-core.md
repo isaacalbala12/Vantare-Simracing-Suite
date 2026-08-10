@@ -1,5 +1,10 @@
 # Handoff vivo — Telemetry Core
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
+> acción.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -248,7 +253,8 @@ ISA-131/ISA-94 poseen la deuda externa.
   build, Wails Windows, invariantes de 48 filas/16 digests y `diff --check`
   PASS. Race no está disponible en este host CGO=0 sin `gcc`; frontend test no
   se repitió porque el corte no cambia frontend.
-- ADR 0005 y `docs/telemetry-core/historical-storage-schema.md` fijan manifest
+- `docs/adr/0005-historical-storage-sqlite-mcap.md` y
+  `docs/telemetry-core/historical-storage-schema.md` fijan manifest
   atómico, observed/facts autoritativos, derived reconstruible, raw opt-in
   separado, chunks versionados/CRC, accepted volátil/watermark/committed,
   `RecordingPayloadV1`/`RecordingFactV1` allowlisted con golden y errores

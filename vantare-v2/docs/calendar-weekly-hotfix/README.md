@@ -109,8 +109,10 @@ Archivos que normalmente participan en un hotfix semanal:
 - `internal/calendar/seed/lmu-weekly-schedule.json`
 - `internal/calendar/official_schedule.go`
 - `internal/calendar/official_schedule_test.go`
-- `docs/current-plan.md`
 - `docs/changelog.md`
+
+La issue de Linear contiene estado, rama y base. El handoff de plataforma se
+actualiza solo si cambia la continuidad tecnica del calendario.
 
 Si un hotfix semanal necesita tocar frontend, revisar primero si es un bug existente. El cambio semanal normal deberia ser solo seed/tests/docs.
 

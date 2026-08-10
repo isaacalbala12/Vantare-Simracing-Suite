@@ -19,18 +19,32 @@ y simplifica antes de ampliarla.
 Antes de interpretar o ejecutar una tarea:
 
 1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
-2. Lee este archivo y `docs/current-plan.md`.
-3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
+2. Lee este archivo.
+3. Identifica y lee la issue de Linear asignada, sus dependencias, rama, base
+   esperada y destino. Sin issue verificada puedes investigar en solo lectura,
+   pero no editar.
+4. Usa `docs/README.md` como router y lee solo el handoff, contratos, ADR o
+   plan aplicables.
+5. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
    Git, Linear, CI, releases o estados.
-4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
-   handoff vivo del proyecto.
-5. Lee la issue de Linear, sus dependencias y el plan, ADR o microplan vigente.
 6. Lee el codigo y los tests que demuestran el comportamiento actual.
 
-Las decisiones recientes del expediente canonico y la evidencia del runtime
-prevalecen sobre planes historicos. Linear es la autoridad para alcance,
-dependencias, rama y estado; no sustituye los contratos de producto o
-arquitectura. No uses la skill `vantare-core`: esta desactualizada.
+Antes de editar, completa y contrasta este sobre:
+
+```text
+Issue:
+Proyecto:
+Rama Linear:
+Base esperada:
+Worktree:
+Destino PR:
+```
+
+Linear posee el estado esperado; Git/GitHub y el runtime demuestran el estado
+observado. El contrato completo vive en
+`docs/vantare-program/source-ownership.md`. Si no coinciden, para antes de
+editar. Los documentos historicos nunca autorizan una rama o una base. No uses
+la skill `vantare-core`: esta desactualizada.
 
 ## Reglas generales
 
@@ -47,8 +61,9 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - Terminado, integrado, promocionado y publicado son estados distintos. Nunca
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
-  worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion; refleja el mismo estado real en Linear.
+  worker, decision o cambio material de arquitectura, evidencia, riesgos o
+  siguiente accion. El estado de issue, rama, base y destino se actualiza en
+  Linear; no se mantiene un tracker paralelo en el handoff.
 - Todo trabajo nuevo debe estar cubierto por una issue de Linear antes de
   editar. Los hallazgos fuera de alcance se documentan como issues y no se
   incorporan silenciosamente.
@@ -59,7 +74,7 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
+- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta `docs/adr/0003-overlay-studio-v3-rebuild.md` y el plan maestro V3.
 - `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
   Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
   TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,
@@ -105,7 +120,8 @@ Requieren autorizacion explicita de Isaac:
 6. Ejecuta los checks aplicables.
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza el handoff, Linear y `docs/current-plan.md` si cambia el estado.
+9. Actualiza Linear y, solo si cambia la continuidad tecnica del proyecto, su
+   handoff vivo. No dupliques el estado en un plan global.
 
 ## Stop conditions
 

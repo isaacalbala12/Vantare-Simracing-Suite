@@ -2,9 +2,12 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-> Actualizacion 2026-06-29: este documento queda como mapa de producto y contexto historico. La linea publica se reinicio en `v0.1.x`; el estado operativo inmediato vive en `docs/current-plan.md` y la fuente de ejecucion hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
+> Actualizacion 2026-08-10: este documento queda como mapa de producto y
+> contexto historico. Linear posee el estado operativo y la issue asignada
+> enlaza el plan ejecutable vigente.
 >
-> Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
+> Si hay conflicto, aplica `docs/vantare-program/source-ownership.md`; este
+> documento no puede contradecir ni sustituir a la fuente propietaria.
 
 Este documento ayuda a entender el producto completo, pero no debe usarse para saltarse el indice de release.
 
@@ -13,7 +16,7 @@ Este documento ayuda a entender el producto completo, pero no debe usarse para s
 - `docs/alpha-beta-roadmap.md`
 - `docs/beta-widget-system-spec.md`
 - `docs/product-widget-customization.md`
-- `docs/current-plan.md`
+- Linear y `docs/README.md` para estado y routing actuales
 - `docs/vantare-suite-architecture.md`
 - `docs/superpowers/plans/2026-06-25-vantare-suite-ingeniero-integration.md`
 - `docs/engineer-live-lmu-adapter-analysis.md`
@@ -217,7 +220,8 @@ Post-release:
 
 ## Roadmap versionado
 
-Las fases versionadas siguientes son historial operativo previo al reset publico. Para la linea publica actual, usar primero el bloque `Roadmap publico 0.1.x` de este documento y `docs/current-plan.md`. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`.
+Las fases versionadas siguientes son historial operativo previo al reset
+publico. Para trabajo nuevo, usa la issue de Linear y el plan que esta enlace.
 
 ### Roadmap publico 0.1.x
 

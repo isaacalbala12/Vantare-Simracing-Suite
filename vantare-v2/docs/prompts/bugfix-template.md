@@ -14,7 +14,8 @@ Reproduccion:
 
 Antes de editar:
 - Lee `AGENTS.md`.
-- Lee `docs/current-plan.md`.
+- Abre la issue de Linear y verifica proyecto, rama, base, worktree y destino.
+- Usa `docs/README.md` para elegir el handoff y contratos aplicables.
 - Revisa `git status --short`.
 - Localiza el test mas cercano.
 

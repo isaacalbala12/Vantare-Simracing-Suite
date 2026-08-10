@@ -174,4 +174,7 @@ Las versiones `v0.3.*` son **internas y no anunciadas al publico**. Se mantienen
 
 No se daran a conocer builds concretas (`v0.3.10.0`, `v0.3.9.2`, `v0.3.9.1`, etc.) en canales publicos. Si encuentras una referencia a una `v0.3.*` en una URL, changelog o captura, considera que es contenido interno antiguo y no la uses como referencia de estado actual.
 
-Si necesitas consultar el detalle funcional de las builds internas previas, mira `docs/release-beta-operations-runbook.md` y `docs/current-plan.md`, que conservan el rastro operativo completo.
+Si necesitas consultar el detalle funcional de las builds internas previas,
+mira `docs/release-beta-operations-runbook.md` y
+`docs/archive/current-plan-through-2026-08-10.md`, que conservan el rastro
+historico sin autoridad operativa.

@@ -5,7 +5,8 @@ Actualiza el calendario oficial LMU semanal para un hotfix.
 
 Lee primero:
 - AGENTS.md
-- docs/current-plan.md
+- issue de Linear asignada
+- docs/README.md
 - docs/calendar-weekly-hotfix/README.md
 - docs/calendar-weekly-hotfix/checklist.md
 - docs/calendar-weekly-hotfix/changelog-template.md
@@ -68,7 +69,6 @@ UI esperada:
 Archivos permitidos normalmente:
 - internal/calendar/seed/lmu-weekly-schedule.json
 - internal/calendar/official_schedule_test.go
-- docs/current-plan.md
 - changelog existente, si aplica
 
 Si necesitas tocar estos archivos, reporta por que antes de hacerlo salvo bug claro:

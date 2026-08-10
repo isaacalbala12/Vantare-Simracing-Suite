@@ -17,8 +17,9 @@ Una rama de issue nunca se integra directamente en `testers` o `master`.
 
 ## Checkouts de trabajo
 
-- El checkout principal para abrir la aplicacion y validar el conjunto debe
-  seguir `nightly` y estar limpio.
+- El checkout canónico para abrir la aplicación y validar el conjunto debe
+  seguir `nightly` y estar limpio. Esta es la topología objetivo, no una
+  afirmación sobre el checkout local abierto: verifícala con Git.
 - Las features, bugs, investigaciones con docs y refactors se ejecutan en
   ramas/worktrees de issue; no se desarrollan directamente sobre `nightly`.
 - Un checkout historico sucio en `refactor` o `develop` se preserva. No se
@@ -103,11 +104,11 @@ la interfaz. Ese contrato se implementará en ISA-169.
 
 ## Estado transitorio de `develop`
 
-`develop` queda congelada en `f492007ced82766873890990ddebf73e87486dec`
-como referencia histórica mientras existan PRs, worktrees o documentación que
-la utilicen. No recibe nuevas promociones y no forma parte del flujo canónico.
-Se eliminará únicamente mediante otra issue, después de demostrar cero
-consumidores y conservar una etiqueta o rama de archivo.
+`develop` queda congelada como referencia histórica mientras existan PRs,
+worktrees o documentación que la utilicen. Su SHA se observa en Git y no se
+mantiene en esta política. No recibe nuevas promociones y no forma parte del
+flujo canónico. Se eliminará únicamente mediante otra issue, después de
+demostrar cero consumidores y conservar una etiqueta o rama de archivo.
 
 ## Rollback
 

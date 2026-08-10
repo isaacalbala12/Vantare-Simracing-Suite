@@ -1,71 +1,73 @@
 # Documentacion de Vantare v2
 
-Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
+Este es el unico router documental operativo. No contiene estado de issues,
+ramas o releases. Esos campos pertenecen a Linear y Git/GitHub según
+[`vantare-program/source-ownership.md`](vantare-program/source-ownership.md).
 
-## Lectura rapida
+## Entrada para cualquier tarea
 
-- `../AGENTS.md`: reglas obligatorias para cualquier agente.
-- `current-plan.md`: estado actual, alcance vivo y proximas tareas.
-- `master-feature-plan.md`: plan maestro de features y orden de desarrollo.
-- `roadmap-execution-board.md`: tablero ejecutable/orquestable de minifases y workers.
-- `versioning-and-release-gates.md`: versionado `X.X.X.X` y gates de salida por fase.
-- `feature-architecture-map.md`: limites de arquitectura por feature.
-- `product-decisions.md`: decisiones cerradas y pendientes.
-- `release-checklists.md`: checklists de alpha, beta, pago y release.
-- `superpowers/plans/`: planes detallados ya aprobados para Overlays Studio.
-- `architecture.md`: separacion entre Go, TypeScript, dominio, adaptadores y UI.
-- `domain-model.md`: nombres canonicos del producto.
-- `testing-strategy.md`: comandos y reglas de testing.
-- `manual-verification.md`: pasos manuales para validar sin leer codigo.
-- `widget-preview-bug-log.md`: bugs, causas raiz y reglas para no romper la preview aislada de WidgetStudio.
-- `resolved-bugs.md`: indice de bugs importantes ya solucionados y reglas para no reabrirlos.
-- `alpha-beta-roadmap.md`: resumen de estrategia alpha/beta; la fuente operativa es `master-feature-plan.md`.
-- `agent-workflow.md`: flujo orquestador -> worker -> reviewer.
-- `operations.md`: comandos basicos del repo.
-- `go-review-checklist.md`: checklist para revisar Go.
+1. Lee [`../AGENTS.md`](../AGENTS.md).
+2. Abre la issue de Linear asignada y verifica proyecto, alcance, dependencias,
+   rama, base esperada y destino.
+3. Contrasta esos datos con la raiz Git, worktree, rama, HEAD y dirty state
+   observados.
+4. Elige en la tabla inferior el handoff y los contratos aplicables.
+5. Lee el codigo y los tests que demuestran el comportamiento actual.
 
-## Para workers
+La raiz Git puede estar por encima del directorio `vantare-v2`; usa
+`git rev-parse --show-toplevel` y no la deduzcas desde el directorio abierto.
+Sin issue verificada se permite investigar en solo lectura, pero no editar.
 
-Antes de programar, leer siempre:
+## Router por proyecto
 
-1. `../AGENTS.md`
-2. `current-plan.md`
-3. Documento especifico de la tarea
-4. Tests relacionados
+| Proyecto o alcance | Handoff vivo | Contratos de entrada |
+|---|---|---|
+| Telemetry Core | [`handoffs/telemetry-core.md`](vantare-program/handoffs/telemetry-core.md) | [`telemetry-core/`](telemetry-core/), [`adr/0004-telemetry-core-modular-observation-architecture.md`](adr/0004-telemetry-core-modular-observation-architecture.md) |
+| Telemetry Analysis | [`handoffs/telemetry-analysis.md`](vantare-program/handoffs/telemetry-analysis.md) | [`vantare-program/research/telemetry-analysis/README.md`](vantare-program/research/telemetry-analysis/README.md) |
+| Engineer y Spotter | [`handoffs/engineer-spotter.md`](vantare-program/handoffs/engineer-spotter.md) | [`engineer/engineer-beta-roadmap.md`](engineer/engineer-beta-roadmap.md) |
+| Strategy Planner | [`handoffs/strategy-planner.md`](vantare-program/handoffs/strategy-planner.md) | [`strategy-planner/`](strategy-planner/), [`adr/0006-strategy-planner-unified-domain-and-ownership.md`](adr/0006-strategy-planner-unified-domain-and-ownership.md) |
+| Overlay Studio, widgets, Launcher y Hub | [`handoffs/overlays-launcher-hub.md`](vantare-program/handoffs/overlays-launcher-hub.md) | [`adr/0003-overlay-studio-v3-rebuild.md`](adr/0003-overlay-studio-v3-rebuild.md), [`overlays-studio/`](overlays-studio/) |
+| Plataforma, cuenta, Billing, calendario y releases | [`handoffs/platform-commercial.md`](vantare-program/handoffs/platform-commercial.md) | [`vantare-program/product-contract.md`](vantare-program/product-contract.md), [`branch-channels.md`](branch-channels.md) |
+| Gobernanza transversal | La issue de Linear y este router | [`vantare-program/README.md`](vantare-program/README.md), [`vantare-program/execution-policy.md`](vantare-program/execution-policy.md), [`agent-workflow.md`](agent-workflow.md) |
 
-Si la tarea afecta arquitectura, leer tambien `architecture.md`.
-Si cambia comportamiento, leer `testing-strategy.md` y `manual-verification.md`.
+Si una issue cruza proyectos, Linear debe indicar el owner principal y enlazar
+los contratos adicionales. No se elige un handoff por similitud del titulo.
 
-## Para reviewers
+## Documentos estables
 
-Leer:
+- [`vantare-program/product-contract.md`](vantare-program/product-contract.md):
+  producto, licencias, privacidad e idiomas.
+- [`vantare-program/project-map.md`](vantare-program/project-map.md): modulos,
+  fronteras y dependencias.
+- [`vantare-program/execution-policy.md`](vantare-program/execution-policy.md):
+  autonomia, review y promociones.
+- [`agent-workflow.md`](agent-workflow.md): flujo orquestador, worker y reviewer.
+- [`branch-channels.md`](branch-channels.md): canales, gates y rollback.
+- [`testing-strategy.md`](testing-strategy.md): estrategia y comandos de tests.
+- [`manual-verification.md`](manual-verification.md): verificacion manual.
+- [`adr/`](adr/): decisiones tecnicas. Usa siempre el path completo porque
+  existen IDs historicos repetidos.
 
-1. `../AGENTS.md`
-2. `current-plan.md`
-3. `agent-workflow.md`
-4. Diff del worker
-5. Tests y comandos ejecutados por el worker
+Los planes detallados viven en `superpowers/plans/`, pero solo son ejecutables
+cuando la issue o el handoff vigente los enlazan. Encontrar un plan por busqueda
+no lo convierte en autoridad.
 
-## Decisiones
+## Workers y reviewers
 
-Las decisiones tecnicas estables viven en `adr/`.
+Los prompts reutilizables viven en [`prompts/`](prompts/). Todos deben recibir
+el sobre de tarea de `AGENTS.md`; `docs/current-plan.md` esta retirado y no se
+usa para elegir trabajo.
 
-- `adr/0001-close-lmu-pilot-ratings.md`: cierre de ratings LMU.
-- `adr/0002-llm-first-stack.md`: decision de stack optimizado para desarrollo asistido por agentes.
+Un reviewer lee la issue, el router, los contratos aplicables, el diff y la
+evidencia fresca. No necesita cargar el archivo historico salvo que investigue
+una decision pasada concreta.
 
-## Prompts reutilizables
+## Historial
 
-Plantillas en `prompts/`:
+El antiguo plan acumulativo se conserva en
+[`archive/current-plan-through-2026-08-10.md`](archive/current-plan-through-2026-08-10.md).
+Es contexto sin autoridad operativa y no recibe nuevas notas.
 
-- `worker-template.md`
-- `reviewer-template.md`
-- `bugfix-template.md`
-- `miniplan-template.md`
-
-## Documentacion externa relacionada
-
-El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, en la carpeta superior `C:\Users\isaac\Desktop\Vantare-Overlays\docs`. Esta capa de control trabaja dentro de `vantare-v2` y no mueve esos archivos automaticamente.
-
-## Estado de roadmap
-
-La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B de preview/widgets, la restauracion de controles live, `Standings` configurable y el rework visual acotado de `WidgetStudio` estan implementados. La estabilizacion de la preview aislada queda documentada en `widget-preview-bug-log.md` y los bugs cerrados en `resolved-bugs.md`. El plan maestro operativo vive en `master-feature-plan.md`; `alpha-beta-roadmap.md` queda como resumen de estrategia.
+Los documentos marcados como historicos, superados o archivados tampoco
+autorizan trabajo, aunque sigan versionados para preservar razonamiento y
+evidencia.

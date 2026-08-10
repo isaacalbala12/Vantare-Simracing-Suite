@@ -1,7 +1,9 @@
 # Strategy Planner unificado — plan maestro por microcortes
 
 **Fecha:** 2026-08-01
-**Autoridad:** ISA-134 / STR-00, ADR 0006 y contrato global de producto
+**Autoridad:** ISA-134 / STR-00,
+`docs/adr/0006-strategy-planner-unified-domain-and-ownership.md` y contrato
+global de producto
 **Base inicial:** `ISA-117@170eaebbaa6744019ead96a2c78201b4da2fb9bb`
 **Referencia histórica:** `codex/strategy-product-a@b9f1937`
 **Estado:** listo para ejecución después de review de STR-00
@@ -19,8 +21,9 @@ más tres producer issues transversales (ISA-159..161).
 
 ## Reglas para cada worker
 
-1. Leer `AGENTS.md`, `docs/current-plan.md`, `docs/agent-workflow.md`, el
-   handoff Strategy, ADR 0006 y esta sección del plan.
+1. Leer `AGENTS.md`, la issue de Linear, `docs/README.md`, el handoff Strategy,
+   `docs/adr/0006-strategy-planner-unified-domain-and-ownership.md` y esta
+   sección del plan.
 2. Verificar rama, base y worktree limpio antes de editar.
 3. Una issue, una rama, un worktree y un PR draft.
 4. TDD: escribir o identificar primero la prueba observable que protege el
@@ -29,7 +32,7 @@ más tres producer issues transversales (ISA-159..161).
 6. No leer Shared Memory, REST, DuckDB ni archivos LMU desde Strategy.
 7. No presentar estimaciones como mediciones ni estrategias como óptimas sin
    prueba.
-8. Actualizar handoff/current-plan y dejar evidencia en Linear.
+8. Actualizar Linear y, si cambia la continuidad técnica, el handoff.
 9. Ejecutar review propio; el orquestador asigna revisión independiente.
 10. No promover a `nightly`, `testers` ni `master` dentro de estos cortes.
 

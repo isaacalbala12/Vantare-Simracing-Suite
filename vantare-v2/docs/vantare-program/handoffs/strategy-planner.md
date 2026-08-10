@@ -1,5 +1,10 @@
 # Handoff vivo — Strategy Planner
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
+> acción.
+
 ## Resultado
 
 Un único producto que crea, compara, guarda, ejecuta y adapta planes para

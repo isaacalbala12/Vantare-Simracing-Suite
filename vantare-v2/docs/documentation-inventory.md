@@ -1,6 +1,6 @@
 # Inventario de documentacion
 
-Ultima actualizacion: 2026-06-21.
+Ultima actualizacion operativa: 2026-08-10.
 
 Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 
@@ -11,7 +11,8 @@ Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 | `README.md` | Util, pero parcialmente desactualizado respecto a Overlays Studio | Actualizar en una tarea separada despues de validacion manual completa |
 | `AGENTS.md` | Nuevo documento de control | Mantener como lectura obligatoria para agentes |
 | `docs/README.md` | Nuevo indice de documentacion | Mantener actualizado cuando se anadan docs |
-| `docs/current-plan.md` | Plan vivo actualizado tras Overlays Studio | Actualizar despues de cada tarea relevante |
+| `docs/current-plan.md` | Stub retirado | No actualizar; consultar Linear y el handoff aplicable |
+| `docs/archive/current-plan-through-2026-08-10.md` | Archivo historico | Solo lectura; no usar como orden de ejecucion |
 | `docs/architecture.md` | Nueva arquitectura resumida | Mantener simple; ampliar solo con decisiones reales |
 | `docs/domain-model.md` | Nuevo glosario de dominio | Actualizar si cambian nombres o conceptos |
 | `docs/testing-strategy.md` | Nueva estrategia de testing | Actualizar si cambian comandos |

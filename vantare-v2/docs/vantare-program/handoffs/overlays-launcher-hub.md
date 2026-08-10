@@ -1,9 +1,15 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
+> acción.
+
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Overlay: ADR 0003, `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
+- Overlay: `docs/adr/0003-overlay-studio-v3-rebuild.md`,
+  `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
 - Crystal: `docs/overlay-glassmorphism-pro.html`, solo secciones 01–16.
 - Launcher: `docs/launcher-v3-architecture.md`, su plan vigente y Linear.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
@@ -302,19 +308,22 @@ superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
   el plan; verificar rama/worktree limpios; comenzar por Task 0. El root
   orquestador asigna cortes, pero cada worker ejecuta inline sin subagentes.
 
-#### Paquete activo de delegación entre chats
+#### Snapshot histórico de delegación ISA-291
 
-Este bloque es la autoridad operativa mientras ISA-291 esté en ejecución. Un
-chat nuevo no necesita el historial de Codex si sigue este orden:
+Este bloque documenta cómo se ejecutó ISA-291; no es autoridad para iniciar o
+continuar trabajo nuevo. La ruta, rama, HEAD y ledger inferiores son snapshots
+históricos. Para retomar o corregir ese trabajo:
 
-1. Abrir `C:\Users\isaac\.codex\worktrees\isa291-direct-authoring\vantare-v2`.
-2. Leer `AGENTS.md`, `docs/agent-workflow.md`, la spec ISA-291 y el plan ISA-291.
-3. Verificar rama `vantareapp/isa-291-os-09g2-autoria-directa-sobre-codigo-productivo`,
-   `git status --short` vacío y que `HEAD` contiene `366308e`.
-4. Consultar el ledger inferior y ejecutar únicamente la primera Task pendiente.
-5. Actualizar este ledger después de cada worker/review/commit, antes de lanzar
-   el siguiente corte.
-6. Reflejar el mismo estado en Linear ISA-291. No promover a `nightly`.
+1. Consultar Linear ISA-291 y cualquier issue sucesora para obtener alcance,
+   rama, base y destino esperados.
+2. Localizar el worktree real con `git worktree list --porcelain`; no abrir una
+   ruta histórica por su nombre.
+3. Contrastar rama, HEAD, dirty state y ancestry observados con Linear.
+4. Usar el ledger inferior solo como evidencia del orden anterior, no para
+   seleccionar una Task vigente.
+5. Actualizar Linear y este handoff según
+   `docs/vantare-program/source-ownership.md`.
+6. No promover a `nightly` sin la autorización correspondiente.
 
 Reglas de delegación:
 

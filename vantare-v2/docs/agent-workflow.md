@@ -1,20 +1,15 @@
 # Workflow de agentes
 
-> Estado del checkout principal (2026-08-10): el worktree principal
-> `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`
-> (rama `refactor` == `nightly@9c11d7f`). `refactor-b70a950-backup` y
-> `chore/conservacion-untracked-2026-08-10` conservan la punta anterior y
-> trabajo untracked con valor; su destino queda pendiente de decision humana.
-> Trabajo nuevo: rama/worktree por issue de Linear sobre `nightly`, no sobre
-> `refactor`.
-
-> Flujo vigente desde ISA-120/121. Antes de actuar, lee
-> `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,
-> `docs/branch-channels.md` y el handoff vivo del proyecto.
+Este documento describe el proceso estable. No registra el estado de un
+checkout concreto. Antes de actuar, identifica la issue de Linear y usa
+`docs/README.md` para seleccionar solo las fuentes aplicables. La propiedad de
+cada campo esta definida en `docs/vantare-program/source-ownership.md`.
 
 ## Fuente operativa y aislamiento
 
 - Linear contiene proyectos, milestones, issues, dependencias, estado y rama.
+- La issue tambien declara base esperada y destino de PR. Si esos campos no se
+  pueden verificar, se investiga en solo lectura y no se edita.
 - Una issue ejecutable con cambios equivale a una rama Linear, un worktree y un
   contexto propios.
 - Una investigación que solo modifica Linear no necesita rama; si genera docs
@@ -22,6 +17,8 @@
 - Los hallazgos fuera de alcance crean issues; no se incorporan silenciosamente.
 - Se confirma base, worktree y estado limpio antes de editar.
 - Se usa exactamente el nombre de rama generado por Linear.
+- Git demuestra raiz, worktree, rama real, HEAD, dirty state y ancestry. No se
+  deducen desde nombres de carpetas ni documentos historicos.
 - Commits pequeños y staging limitado a rutas; no `git add .`.
 - El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
   autorización.
@@ -122,25 +119,26 @@ Debe buscar:
 ## Flujo normal
 
 1. Usuario debate con orquestador cuando hacen falta decisiones.
-2. Orquestador consulta Linear, `docs/vantare-program/` y el handoff vivo.
-3. El tablero histórico solo se consulta como contexto; no elige trabajo.
-4. Orquestador crea o identifica el miniplan vigente.
-5. Orquestador crea prompt worker.
-6. Worker implementa.
-7. Worker reporta evidencia.
-8. Reviewer audita sin editar.
-9. Orquestador recomienda aceptar, corregir, dividir o revertir.
-10. Se hace commit pequeño cuando el contrato de la issue lo permite.
-11. El orquestador actualiza el handoff vivo y Linear despues de cada worker o
-    cambio material. El worker deja la issue en `In Review`; no promociona por
-    su cuenta.
-12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
+2. Orquestador consulta la issue de Linear y completa el sobre de tarea.
+3. `docs/README.md` enruta al handoff, contratos y plan aplicables.
+4. El archivo historico solo se consulta como contexto; no elige trabajo.
+5. Orquestador crea o identifica el miniplan vigente.
+6. Orquestador crea prompt worker.
+7. Worker implementa.
+8. Worker reporta evidencia.
+9. Reviewer audita sin editar.
+10. Orquestador recomienda aceptar, corregir, dividir o revertir.
+11. Se hace commit pequeño cuando el contrato de la issue lo permite.
+12. El orquestador actualiza Linear y, si cambia la continuidad tecnica,
+    tambien el handoff vivo. El worker deja la issue en `In Review`; no
+    promociona por su cuenta.
+13. Tras la aprobación inicial de Isaac, una issue de integración promueve la
     entrega a `nightly`.
-13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
+14. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
-14. Solo una aprobación final de Isaac permite `testers` a `master`.
-15. Se actualizan el handoff, Linear, `docs/current-plan.md` y, cuando siga
-    siendo relevante, `docs/roadmap-execution-board.md`.
+15. Solo una aprobación final de Isaac permite `testers` a `master`.
+16. El cierre informa por separado lo esperado en Linear y lo observado en
+    Git/GitHub. No se actualiza un plan global manual.
 
 ## Comunicación de cambios visibles
 
@@ -195,7 +193,8 @@ Una tarea esta terminada solo si:
 - tests actualizados si cambia comportamiento,
 - verificacion manual clara,
 - reviewer no encuentra criticos,
-- `current-plan.md` actualizado si cambia el estado.
+- Linear actualizado con el estado esperado y el handoff actualizado solo si
+  cambio la continuidad tecnica del proyecto.
 
 Esta definicion cierra el trabajo tecnico de la rama. No demuestra que el
 cambio este en `nightly`, `testers`, `master` ni en una release. Esos estados

@@ -1,5 +1,10 @@
 # Handoff vivo — Telemetry Analysis
 
+> **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
+> son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
+> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
+> acción.
+
 ## Resultado
 
 Herramienta post-sesión que responde «¿cómo puedo ser más rápido?» con
@@ -11,7 +16,8 @@ visible es `Telemetría`.
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
 - Este handoff y el proyecto Linear del módulo.
-- ADR 0004 y el handoff de Telemetry Core para contratos/recording.
+- `docs/adr/0004-telemetry-core-modular-observation-architecture.md` y el
+  handoff de Telemetry Core para contratos/recording.
 - La futura investigación, spec, HTML y plan aprobados reemplazarán el resumen
   de experiencia cuando aporten más detalle.
 
@@ -79,7 +85,8 @@ externos o comunitarios quedan bloqueados por ISA-164 / TA-03D.
   `vantareapp/isa-135-ta-03b-decision-y-packaging-del-adaptador-duckdb-en-windows`
   sobre TA-03 `dc215665a0060147e1e8f36d23b128339beab241`.
 - Contratos TA-03B:
-  `research/telemetry-analysis/duckdb-adapter-decision.md`, ADR 0005 propuesta,
+  `research/telemetry-analysis/duckdb-adapter-decision.md`,
+  `docs/adr/0005-duckdb-helper-for-historical-telemetry.md` propuesta,
   `research/telemetry-analysis/ta03c-duckdb-adapter-plan.md` y
   `research/telemetry-analysis/spikes/ta03b/`.
 - Evidencia TA-03B corregida: helper + DLL 44.317.091 bytes; build reproducible
@@ -223,4 +230,5 @@ en PowerShell 7 y Windows PowerShell 5.1; el SBOM real conserva 37 componentes y
 el SHA aprobado. Pendiente review independiente de este último delta; ISA-135
 no se considera aprobada.
 Sin dependencias o código de producto, LMU, datos personales, integración ni
-promoción. Pendiente re-review; el gate humano de ADR 0005 viene después.
+promoción. Pendiente re-review; el gate humano de
+`docs/adr/0005-duckdb-helper-for-historical-telemetry.md` viene después.

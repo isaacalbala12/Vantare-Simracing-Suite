@@ -224,7 +224,7 @@ Gate:
 - focal x20, race donde aplique, fuzz de frames/identificadores/tipos;
 - suite Go global y build frontend si el embed lo exige;
 - `git diff --check`;
-- handoff/current-plan/ADR actualizados;
+- Linear/handoff/ADR actualizados según su propiedad;
 - PR draft apilada, Linear `In Review`, sin promoción.
 
 ## Archivos/módulos previstos

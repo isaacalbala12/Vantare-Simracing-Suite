@@ -244,9 +244,10 @@ Checklist obligatorio de archivos a tocar:
 - Tests de `WidgetRenderer` que confirmen que el tipo se resuelve.
 - Tests de integracion en `WidgetStudio` y `LayoutStudio`.
 
-### 4.11 docs/current-plan
+### 4.11 Estado operativo
 
-- Si el widget cambia el estado del roadmap, actualizar `docs/current-plan.md`.
+- Si el widget cambia el estado esperado, actualizar Linear. Si cambia la
+  continuidad tecnica de Overlay Studio, actualizar su handoff vivo.
 
 ---
 
@@ -471,7 +472,8 @@ Checklist manual minimo:
 - Bug log historico: `docs/widget-preview-bug-log.md`
 - Bugs resueltos: `docs/resolved-bugs.md`
 - Arquitectura: `docs/feature-architecture-map.md`
-- Plan actual: `docs/current-plan.md`
+- Estado operativo: issue de Linear asignada
+- Router documental: `docs/README.md`
 - Plan sandbox preview: `docs/superpowers/plans/2026-06-22-widget-sandbox-preview-architecture.md`
 - Plan intrinsic width: `docs/superpowers/plans/2026-06-23-preview2-widgetstudio-intrinsic-width.md`
 # Contrato canónico Overlay Studio V3 (2026-07-11)

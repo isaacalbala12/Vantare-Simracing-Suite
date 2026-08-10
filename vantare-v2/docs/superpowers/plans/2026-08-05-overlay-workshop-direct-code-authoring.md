@@ -35,8 +35,8 @@
 | `frontend/src/overlay/design-systems/official-designs.test.ts` | Proteger unicidad/defaults del catálogo completo | Modificar |
 | `docs/overlays-studio/overlay-workshop-authoring-guide.md` | Recetas ejecutables de restyle, composición, tipo y sistema | Crear |
 | `docs/overlays-studio/os-09-overlay-workshop-contract.md` | Sustituir el enfoque declarativo descartado por autoría directa | Modificar |
-| `docs/current-plan.md` | Registrar resultado, evidencia y siguiente corte | Modificar al cierre |
-| `docs/vantare-program/handoffs/overlays-launcher-hub.md` | Permitir continuidad desde otro chat sin historial | Modificar al cierre |
+| Linear ISA-291 | Registrar estado esperado, resultado y siguiente transición | Actualizar al cierre |
+| `docs/vantare-program/handoffs/overlays-launcher-hub.md` | Conservar continuidad técnica, evidencia y riesgos | Modificar al cierre |
 
 Los archivos productivos `DeltaOriginal.tsx` y `vantare-original/tokens.css` solo se modifican temporalmente durante el smoke. Sus hashes y su estado Git deben terminar exactamente como empezaron.
 
@@ -1120,12 +1120,11 @@ Expected: ninguna excepción y worktree limpio. Los PNG y JSON de `.tmp` permane
 ### Task 7: handoff, Linear y cierre técnico
 
 **Files:**
-- Modify: `docs/current-plan.md`
 - Modify: `docs/vantare-program/handoffs/overlays-launcher-hub.md`
 
-- [ ] **Step 1: registrar una nota factual en `current-plan.md`**
+- [ ] **Step 1: registrar el cierre factual en Linear ISA-291**
 
-Añadir al final una sección `Nota ISA-291 / OS-09G2` que incluya:
+Registrar una actualización que incluya:
 
 ```md
 - Autoría directa: TSX/CSS productivo es la única fuente de verdad; Workshop no convierte ni copia.
@@ -1161,8 +1160,8 @@ No copiar secretos, rutas de `.env.local` ni datos personales.
 Run:
 
 ```powershell
-git diff --check -- docs/current-plan.md docs/vantare-program/handoffs/overlays-launcher-hub.md
-git add docs/current-plan.md docs/vantare-program/handoffs/overlays-launcher-hub.md
+git diff --check -- docs/vantare-program/handoffs/overlays-launcher-hub.md
+git add docs/vantare-program/handoffs/overlays-launcher-hub.md
 git commit -m "docs(overlay): close ISA-291 handoff"
 git status --short
 ```

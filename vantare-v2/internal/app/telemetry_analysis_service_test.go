@@ -669,3 +669,77 @@ func TestTelemetryAnalysisCloseAndCloseSessionRetryTransientCleanup(t *testing.T
 		})
 	}
 }
+
+func TestTelemetryAnalysisPendingCleanupConsumesAndReleasesOpenBudget(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	var cleanupAllowed atomic.Bool
+	var openSucceeds atomic.Bool
+	var factoryCalls atomic.Int32
+	svc.runtimeReady = true
+	svc.cleanupStaged = func(staged *telemetryanalysis.StagedHistoricalArtifact) error {
+		if !cleanupAllowed.Load() {
+			return errors.New("cleanup blocked at secret-source-path")
+		}
+		return staged.Cleanup()
+	}
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, _ telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		factoryCalls.Add(1)
+		reader := telemetryAnalysisSuccessfulReader(artifact)
+		if !openSucceeds.Load() {
+			reader.handshakeErr = errors.New("reader failed at secret-source-path")
+		}
+		return reader, nil
+	}
+
+	for range maxTelemetryAnalysisOpenSessions {
+		_, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+		if !errors.Is(err, ErrTelemetryAnalysisCleanup) || strings.Contains(err.Error(), "secret-source-path") {
+			t.Fatalf("Open() error = %v, want sanitized cleanup error", err)
+		}
+	}
+	_, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if !errors.Is(err, ErrTelemetryAnalysisBusy) {
+		t.Fatalf("Open() beyond pending cleanup budget error = %v, want busy", err)
+	}
+	if factoryCalls.Load() != maxTelemetryAnalysisOpenSessions {
+		t.Fatalf("reader factory calls = %d, want %d", factoryCalls.Load(), maxTelemetryAnalysisOpenSessions)
+	}
+
+	svc.mu.Lock()
+	var pending *telemetryAnalysisSession
+	for owned := range svc.pendingCleanup {
+		pending = owned
+		break
+	}
+	svc.mu.Unlock()
+	if pending == nil {
+		t.Fatal("pending cleanup resource was not retained")
+	}
+	cleanupAllowed.Store(true)
+	if err := svc.cleanupOwnedSession(pending); err != nil {
+		t.Fatalf("retry pending cleanup: %v", err)
+	}
+	openSucceeds.Store(true)
+	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if err != nil {
+		t.Fatalf("Open() after releasing cleanup budget: %v", err)
+	}
+	if err := svc.CloseSession(opened.SessionID); err != nil {
+		t.Fatalf("CloseSession() error = %v", err)
+	}
+	if err := svc.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+}
+
+func TestTelemetryAnalysisOwnedResourceCountDeduplicatesPendingSession(t *testing.T) {
+	owned := &telemetryAnalysisSession{}
+	svc := &TelemetryAnalysisService{
+		sessions:       map[string]*telemetryAnalysisSession{"session": owned},
+		pendingCleanup: map[*telemetryAnalysisSession]struct{}{owned: {}},
+	}
+	if got := svc.ownedResourceCountLocked(); got != 1 {
+		t.Fatalf("owned resource count = %d, want 1", got)
+	}
+}

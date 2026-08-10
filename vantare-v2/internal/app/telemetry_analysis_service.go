@@ -306,7 +306,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisCandidateUnknown
 	}
 	service.mu.Lock()
-	tooManySessions := len(service.sessions)+service.openingSessions >= maxTelemetryAnalysisOpenSessions
+	tooManySessions := service.ownedResourceCountLocked()+service.openingSessions >= maxTelemetryAnalysisOpenSessions
 	if !tooManySessions {
 		service.openingSessions++
 	}
@@ -387,6 +387,17 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	service.mu.Unlock()
 	cleanupOwnedSession = false
 	return TelemetryAnalysisOpenedSession{SessionID: sessionID, Session: session}, nil
+}
+
+func (service *TelemetryAnalysisService) ownedResourceCountLocked() int {
+	owned := make(map[*telemetryAnalysisSession]struct{}, len(service.sessions)+len(service.pendingCleanup))
+	for _, session := range service.sessions {
+		owned[session] = struct{}{}
+	}
+	for session := range service.pendingCleanup {
+		owned[session] = struct{}{}
+	}
+	return len(owned)
 }
 
 func (service *TelemetryAnalysisService) revalidateCandidate(ctx context.Context, record *telemetryAnalysisCandidateRecord) (telemetryanalysis.Candidate, error) {

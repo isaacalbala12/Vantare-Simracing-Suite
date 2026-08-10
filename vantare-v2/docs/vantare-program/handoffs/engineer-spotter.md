@@ -15,9 +15,13 @@ CrewChief, Pit Manager y wake word.
 - ADR 0004 y el handoff de Telemetry Core.
 - `docs/telemetry-core/engineer-rescue-matrix.md` y
   `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.
-- La investigación clean-room y su interfaz de referencia permanecen en la
+- La investigación original y la interfaz experimental de ISA-123 permanecen en la
   rama/PR de ISA-123; TC-08 incorpora solo los contratos necesarios, no sus
   assets ni su UI experimental.
+- Auditoría vigente de 2026-08-10: el brief para implementadores es
+  `docs/vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md`;
+  el dossier de
+  evidencia hermano no se usa como especificación ni para trasladar constantes.
 
 ## Estado
 
@@ -28,12 +32,20 @@ base auditada más reciente es
 abajo a ISA-201 “en validación” se conservan como evidencia histórica y no
 describen el estado actual.
 
-El siguiente objetivo es una vertical Spotter + audio + visual: ISA-187 / ENG-16
+El siguiente objetivo es una vertical Spotter + ruta audio cache-only + visual: ISA-187 / ENG-16
 y ISA-189 / ENG-18 deben demostrar el mismo evento en audio y en las superficies
 ENG-08 ya existentes (`EngineerPage`, subtítulos y `engineer-radio` para
 Desktop/OBS). ISA-190 amplía después los monitores, con todas las familias Beta
 planificadas salvo cambio de piloto. ISA-195/196 cierran persistencia/control y
 Pit transaccional. ISA-197 Strategy/Overlays avanzado espera a esas bases.
+
+La auditoría de 2026-08-10 mantiene ese orden y añade criterios: Virtual Energy
+es monitor Vantare propio; stint entra en ISA-190 y solo cambio de piloto queda
+fuera; wake word sigue dentro de Beta condicionado por ENG-13/ISA-192, mientras
+always-on es post-Beta. ISA-196 implementa request/abort, fuel y neumáticos;
+aceptar/rechazar Strategy pertenece a ISA-197. VE o presiones por voz requieren
+un cambio de catálogo/issue separado. En ningún caso “enviado” equivale a
+“aplicado” sin readback.
 
 Kokoro es la dirección TTS elegida, pero permanece técnicamente condicionado:
 ISA-193 / ENG-22 debe aportar un G2P y una cadena de licencias comercialmente
@@ -52,8 +64,8 @@ runner y oráculo determinista test-only sobre la base final de Telemetry Core.
 ISA-158 / ENG-05 introduce la policy y el scheduler determinista. ISA-167 /
 ENG-06 cablea entrega productiva y preempción. ISA-177 / ENG-07 fija la
 presentación multilingüe. ISA-178 / ENG-08 añade salida visual productiva,
-routing por categoría y el widget funcional Vantare Crystal, actualmente en
-revisión sin promoción. ENG-06 mantiene una única policy y un transporte
+routing por categoría y el widget funcional Vantare Crystal, integrado en
+Nightly mediante PR #96. ENG-06 mantiene una única policy y un transporte
 cancelable con ACK; ENG-07 aporta una única presentación para visual y futura
 voz; ENG-08 no duplica ninguna de estas autoridades.
 ISA-180 / ENG-09 cierra el primer gate técnico de voz: no autoriza TTS
@@ -80,7 +92,8 @@ no conecta voz, LMU, Pit Manager, Strategy ni efectos productivos.
 ISA-185 / ENG-14 añade `engineer.ptt.v1`, máquina de estados y readers Windows
 reales para teclado, XInput y joystick-compatible. El polling es cancelable,
 hotplug-safe y no abre micrófono. Raw HID genérico permanece `unsupported` y
-el host STT sigue bloqueado; UI y persistencia pertenecen a ENG-24.
+el host STT sigue bloqueado; backend/binding Raw HID, UI y persistencia
+pertenecen a ENG-24 / ISA-195.
 El roadmap restante queda fijado en
 `docs/engineer/engineer-beta-roadmap.md`: ENG-12 a ENG-29 forman un DAG de 18
 microcortes. Los contratos y runtimes objetivos pueden avanzar en paralelo;
@@ -312,13 +325,14 @@ ni se busca una copia exacta.
   simulator/replay como fuente productiva.
 - **Cerrado en ENG-06:** la policy impide mensajes
   caducados y Spotter P0 cancela el audio Engineer no crítico ya iniciado.
-- **P0:** Pit Manager carece de transacción y readback demostrados.
+- **P0 para el gate Beta; no expuesto productivamente:** Pit Manager carece de
+  transacción y readback demostrados.
 - **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
   las familias parciales siguen correctamente deshabilitadas.
 - **Cerrado en ENG-05:** pits solo admite entry/exit y el contador genérico de
   sanción se expresa como `penalties.count_increased`, nunca drive-through.
 - **P1:** licencias distintas entre código, modelos, voces y sound packs.
-- **P1:** TTS/STT bloquea el hot path.
+- **P1 si se integra sin aislamiento:** TTS/STT podría bloquear el hot path.
 - **Reducido en ENG-09:** existe inventario por capa y el aislamiento de proceso
   conserva heartbeat/cancelación. Sigue abierto el G2P GPL de Kokoro y falta
   corpus humano; por ello no hay wiring de voz.
@@ -330,21 +344,21 @@ ni se busca una copia exacta.
 
 | Estado | Issue |
 |---|---|
-| En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
-| Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
-| Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
-| Cerrada técnicamente | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
-| Cerrada técnicamente | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
-| Cerrada técnicamente | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
-| En revisión | ISA-177 / ENG-07, presentación canónica multilingüe |
-| En revisión | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal; reconexión autoritativa y carrera disabled corregidas en re-review |
-| En revisión | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO, Whisper condicionado y review `ACCEPT` |
-| En revisión | ISA-181 / ENG-10, corpus humano genérico; `base` condicionado, commands/FAR/FRR/wake word NO-GO; review independiente sin findings abiertos |
-| En revisión | ISA-182 / ENG-11, package manager y voice-host test-only; lifecycle demostrado, command readiness NO-GO |
-| En revisión | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
+| Integrada en Nightly | ISA-123 / ENG-01, investigación aprobada técnicamente |
+| Integrada en Nightly | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
+| Integrada en Nightly | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
+| Integrada en Nightly | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
+| Integrada en Nightly | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
+| Integrada en Nightly | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
+| Integrada en Nightly | ISA-177 / ENG-07, presentación canónica multilingüe |
+| Integrada en Nightly | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal |
+| Integrada en Nightly | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO y Whisper condicionado |
+| Integrada en Nightly | ISA-181 / ENG-10, corpus humano genérico; gates humanos continúan NO-GO |
+| Integrada en Nightly | ISA-182 / ENG-11, package manager y voice-host test-only |
+| Integrada en Nightly | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
 | Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
-| En revisión | ISA-186 / ENG-15, router determinista y diálogo confirmable; review `APPROVE`, cero efectos reales |
-| En revisión | ISA-185 / ENG-14, PTT y readers Windows; hardware físico pendiente de ENG-29 |
+| Integrada en Nightly | ISA-186 / ENG-15, router determinista y diálogo confirmable; cero efectos reales |
+| Integrada en Nightly | ISA-185 / ENG-14, PTT y readers Windows; hardware físico pendiente de ENG-29 |
 | Siguiente vertical | ISA-187 / ENG-16 audio + ISA-189 / ENG-18 Spotter, con salida visual ENG-08 |
 | Después | ISA-188/190 / ENG-17/19, personalidades y monitores; cambio de piloto excluido |
 | Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |

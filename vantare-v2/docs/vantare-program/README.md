@@ -39,6 +39,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
+- `research/engineer/crewchief-clean-room-brief-2026-08-10.md`: única salida
+  de la auditoría competitiva destinada a implementadores de Engineer.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,

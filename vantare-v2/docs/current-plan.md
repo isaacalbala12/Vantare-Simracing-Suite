@@ -1,11 +1,19 @@
 Nota ISA-313 / ENG-R01 (2026-08-10, reconciliación y replanificación):
+- La auditoría competitiva más reciente queda separada en un dossier de
+  evidencia documental/estática y un brief clean-room para implementadores en
+  `docs/vantare-program/research/engineer/`. El brief prevalece únicamente
+  sobre el dossier competitivo como entrada técnica; Linear, contratos,
+  roadmap y handoff conservan autoridad de alcance, dependencia y estado:
+  monitor propio de Virtual Energy, stint dentro de Beta, wake condicionado,
+  Pit transaccional y ningún umbral/activo de CrewChief reutilizado.
 - La base real es `origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`.
   PR #96 ya integró ENG-01..ENG-12, ENG-14 y ENG-15; las notas que aún
   presentan ISA-201 o ENG-12 como siguiente paso son historia, no órdenes de
   ejecución.
 - Primer objetivo de producto: Spotter LMU + salida visual existente
   (Engineer Hub, subtítulos y `engineer-radio` para Desktop/OBS), acompañado
-  por audio productivo. Cada corte debe validar conjuntamente decisión,
+  por una ruta productiva cache-only; la salida audible y el contenido
+  distribuible aún no están demostrados. Cada corte debe validar decisión,
   presentación y overlay; Strategy/Overlays avanzados quedan después.
 - Secuencia acordada: ENG-16 + ENG-18 -> ENG-19 -> ENG-24/25, mientras ENG-22
   reabre Kokoro de forma condicionada; ENG-17 y ENG-23 se incorporan donde sus

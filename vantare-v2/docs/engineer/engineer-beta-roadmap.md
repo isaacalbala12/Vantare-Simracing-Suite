@@ -10,6 +10,9 @@
 - Parent: ISA-123 / ENG-01.
 - Este documento y `docs/vantare-program/handoffs/engineer-spotter.md`
   gobiernan el trabajo restante.
+- El brief de implementación derivado de la auditoría pública de CrewChief es
+  `docs/vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md`.
+  El dossier hermano es evidencia analítica, no una especificación.
 - ISA-313 solo planifica. No implementa producto, no promociona y no cambia
   ningún gate técnico o humano a GO.
 
@@ -24,6 +27,7 @@ La Beta objetivo incluye:
 - Spotter LMU real de baja latencia y multiclase.
 - Engineer de carrera real: sesión, control, rivales, fuel, Virtual Energy,
   neumáticos, daños, pits, penalizaciones demostrables, ritmo y motivación.
+- Monitor de stint propio; cambio de piloto permanece fuera de esta Beta.
 - Español e inglés en la primera etapa; italiano y portugués brasileño en la
   etapa multilingüe final.
 - PTT mediante teclado, volante, gamepad, button box e HID.
@@ -55,7 +59,9 @@ La Beta objetivo incluye:
    licencias permisivos, rendimiento, packaging y escucha humana nuevos.
 10. Fixtures sintéticas prueban contratos/lifecycle, nunca percepción humana.
 11. Toda función sin capability fiable permanece unavailable/disabled.
-12. El flujo es rama de issue -> review -> aprobación inicial de Isaac ->
+12. Los implementadores no usan el dossier competitivo ni constantes del
+    upstream; solo el brief clean-room, contratos Vantare y evidencia LMU propia.
+13. El flujo es rama de issue -> review -> aprobación inicial de Isaac ->
     `nightly` -> feedback/correcciones -> `testers` -> aprobación -> `master`.
 
 ## Arquitectura objetivo
@@ -149,7 +155,8 @@ Nightly: ENG-01..12 + ENG-14/15 + visual ENG-08
    ramas/issues separadas, ambos prueban audio y salida visual del mismo evento.
 3. Completar ENG-19 con todas las familias Beta salvo cambio de piloto; toda
    señal no demostrable queda unavailable, no simulada.
-4. Integrar ENG-24 y ENG-25: ajustes persistentes y roundtrip, hardware real y
+4. Integrar ENG-24 y ENG-25: ajustes persistentes, cierre de Raw HID genérico
+   con hardware real y roundtrip, y
    escrituras LMU controladas con confirmación/readback/fail-closed.
 5. En paralelo, ENG-22 intenta hacer viable Kokoro. ENG-23 solo lo cablea si el
    gate pasa; de lo contrario el fallback visual continúa siendo producto.

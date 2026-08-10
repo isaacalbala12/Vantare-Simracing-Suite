@@ -30,7 +30,7 @@ almacenamiento privado de otro.
 |---|---|---|---|
 | Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
 | Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
-| Engineer/Spotter | Sustituto clean-room de CrewChief: acompañamiento live, seguridad, voz y Pit Manager | ENG-01..12, 14 y 15 integrados en Nightly; ISA-313 replanifica el resto | ENG-16 audio + ENG-18 Spotter y salida visual |
+| Engineer/Spotter | Sustituto clean-room de CrewChief: acompañamiento live, seguridad, voz y Pit Manager | ENG-01..12, 14 y 15 integrados en Nightly; ISA-313 fija brief clean-room y replanifica el resto | ENG-16 audio + ENG-18 Spotter y salida visual |
 | Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | Pila acumulativa integrada en Nightly por ISA-309@7e39104; sin STR-15B ni ejecución live | Productores Telemetry ISA-159/160/161 y siguientes cortes del handoff Strategy |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |

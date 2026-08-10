@@ -354,7 +354,7 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - **P1:** Discord publica commits no relacionados desde `develop`.
 - **P1:** ramas, updater y licencias de canal describen modelos distintos.
 
-## Issues y siguiente acción
+## Recomendaciones técnicas históricas
 
 1. Completar gates locales y review de BIL-10C / ISA-247.
 2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.

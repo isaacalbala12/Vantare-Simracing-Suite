@@ -1,5 +1,10 @@
 # Overlay Workshop Direct Code Authoring Implementation Plan
 
+> **Plan cerrado e histórico.** Las tareas se ejecutaron en ISA-291. Las ramas,
+> bases, worktrees, commits y órdenes inferiores son snapshots y no deben
+> reutilizarse. Solo una issue activa de Linear puede enlazar y autorizar un
+> plan nuevo.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **Delegation for this issue:** only the root orchestrator may assign one microcorte to a fresh worker. Every assigned worker must use `executing-plans` inline and is forbidden from spawning, delegating or coordinating other agents.
@@ -1133,8 +1138,9 @@ Registrar una actualización que incluya:
 - Contratos: Workshop añadido a consumidores del host; IDs únicos y un default por pareja registrada.
 - Exclusiones: sin DSL, scaffolder, catálogo paralelo, migración masiva, dependencia o cambio visual.
 - Evidencia: comandos, número de tests, build, compile-out y reporte visual con SHA/dirty.
-- Estado Git/Linear: rama, commits, push/PR si existen y ausencia de promoción a nightly.
-- Próxima acción: revisión adversarial y aprobación explícita de Isaac antes de cualquier promoción.
+- Linear: issue, estado y siguiente acción autorizada.
+- Git/GitHub: evidencia observada de commit, push, PR, CI y ausencia de promoción.
+- Recomendación técnica para continuidad, sin autorizar otro corte.
 ```
 
 Sustituir cada descripción genérica por los resultados exactos obtenidos en Task 6.
@@ -1145,12 +1151,14 @@ Añadir una sección `ISA-291 — autoría directa` con:
 
 ```md
 1. Decisión aprobada y enlace a spec/plan/guía.
-2. Rama, base exacta, worktree y commits.
+2. Enlaces a la issue y a la evidencia Git/GitHub, sin copiar rama, base,
+   worktree, commits o estado volátil.
 3. Arquitectura conservada: Host → registry/manifest → renderer productivo.
 4. Cómo abrir Workshop y ejecutar el smoke HMR.
 5. Qué demostró cada test y protocolo.
 6. Riesgos restantes y qué queda fuera del corte.
-7. Próxima acción exacta para un chat nuevo.
+7. Recomendación técnica para un chat nuevo; Linear conserva la siguiente
+   acción autorizada y el plan ejecutable.
 ```
 
 No copiar secretos, rutas de `.env.local` ni datos personales.

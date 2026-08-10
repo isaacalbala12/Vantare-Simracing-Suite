@@ -14,7 +14,9 @@ Reproduccion:
 
 Antes de editar:
 - Lee `AGENTS.md`.
-- Abre la issue de Linear y verifica proyecto, rama, base, worktree y destino.
+- Abre la issue de Linear y verifica issue, proyecto, rama esperada, base
+  esperada y destino.
+- Verifica con Git la raíz, worktree, rama real, HEAD y dirty state.
 - Usa `docs/README.md` para elegir el handoff y contratos aplicables.
 - Revisa `git status --short`.
 - Localiza el test mas cercano.

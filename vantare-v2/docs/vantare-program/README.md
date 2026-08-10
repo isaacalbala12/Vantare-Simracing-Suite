@@ -21,9 +21,10 @@ La propiedad no se resuelve por fecha o posición del texto:
 1. Linear posee issue, alcance, dependencias, rama, base esperada y destino;
 2. Git/GitHub y el runtime demuestran el estado observado;
 3. ADR y contratos poseen decisiones técnicas estables;
-4. el handoff conserva continuidad técnica, riesgos, evidencia y siguiente
-   acción;
-5. los documentos históricos son contexto, nunca orden de ejecución.
+4. el handoff conserva continuidad técnica, riesgos, evidencia y una
+   recomendación técnica no autorizante;
+5. Linear posee la siguiente acción autorizada y el plan ejecutable;
+6. los documentos históricos son contexto, nunca orden de ejecución.
 
 Consulta `source-ownership.md`. Una contradicción entre propietario esperado y
 estado observado es una condición de parada, no una invitación a escoger el
@@ -45,14 +46,16 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,
-  releases, roadmap y migración.
+  releases, roadmap y migración; su sección `Testing Center` es la entrada
+  temporal explícita para ese proyecto independiente.
 
 ## Reglas de continuidad
 
 - Cada proyecto mantiene un único handoff vivo.
 - El handoff se actualiza si cambia arquitectura, decisiones, evidencia,
-  riesgos o siguiente acción técnica. Estado, rama, base y destino pertenecen
-  a Linear/Git y no se mantienen como tracker paralelo.
+  riesgos o recomendación técnica. Linear posee la siguiente acción autorizada
+  y el plan ejecutable; estado, rama, base y destino tampoco se mantienen como
+  tracker paralelo.
 - El orquestador actualiza Linear después de cada cambio material y el handoff
   solo cuando cambia la continuidad técnica.
 - Los workers no crean subagentes por defecto. La delegacion anidada requiere

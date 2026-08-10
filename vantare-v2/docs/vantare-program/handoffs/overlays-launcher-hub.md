@@ -2,8 +2,9 @@
 
 > **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
 > son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
-> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
-> acción.
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
 
 ## Autoridad y lectura
 
@@ -202,7 +203,7 @@ Conservar estructura. Solo consistencia visual, estados reales, responsive,
 accesibilidad y rendimiento. El selector superior abre módulos, apps, perfiles
 y recientes.
 
-## Issues y siguiente acción
+## Recomendaciones técnicas históricas
 
 - Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
   agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción

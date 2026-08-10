@@ -36,10 +36,11 @@ snapshot Git, marcar `observed_at` y no presentarlo como autoridad futura.]
 
 - [P0–P3, owner y condición de salida]
 
-## Siguiente acción exacta
+## Recomendación técnica
 
-[Un solo corte, archivos/fronteras y checks esperados. La rama/base se consulta
-en Linear.]
+[Una recomendación concreta para continuidad, con fronteras y checks. No
+autoriza ejecución: la issue de Linear posee la siguiente acción y enlaza el
+plan ejecutable.]
 
 ## Evidencia
 
@@ -51,5 +52,5 @@ en Linear.]
 ```
 
 El handoff se actualiza solo cuando cambia arquitectura, decisiones, evidencia,
-riesgos o siguiente acción técnica. Un simple cambio de estado en Linear no
-requiere duplicarlo aquí.
+riesgos o recomendación técnica. Un cambio de estado o siguiente acción en
+Linear no requiere duplicarlo aquí.

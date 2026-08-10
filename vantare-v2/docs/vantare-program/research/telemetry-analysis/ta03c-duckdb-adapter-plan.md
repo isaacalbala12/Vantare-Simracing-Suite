@@ -16,7 +16,9 @@ no un sandbox.
 
 - [x] ISA-135 supera una nueva review independiente sin P0/P1/P2 ni P3
   razonables pendientes.
-- [x] Isaac acepta ADR 0005 después de esa review.
+- [x] Isaac acepta
+  `docs/adr/0005-duckdb-helper-for-historical-telemetry.md` después de esa
+  review.
 - [x] Se autoriza `duckdb-go/v2@v2.10505.0` en un módulo Go separado.
 - [x] Se autoriza redistribuir `duckdb.dll` 1.5.5 y los notices exactos del
   inventario/SBOM de 37 componentes.

@@ -5185,8 +5185,11 @@ Nota CIERRE-ALINEACION-REFACTOR (2026-08-10, documentado en local):
 - Ramas de respaldo conservadas: `refactor-b70a950-backup` (punta vieja),
   `merge/conservacion-docs-nightly` (integracion previa al rename), y
   `chore/conservacion-untracked-2026-08-10`.
-- El gate de `nightly` exigia PR desde rama `vantareapp/isa-<n>-...`; se uso
-  `vantareapp/isa-306-docs-conservacion-telemetry` como identificador.
+- Desviación de gobernanza: PR #189 no tuvo una issue Linear verificada. Su
+  rama usó anticipadamente el texto
+  `vantareapp/isa-306-docs-conservacion-telemetry`, pero la ISA-306 real se creó
+  después para otro trabajo. PR #189 no pertenece a ISA-306; el nombre solo
+  satisfizo entonces el patrón técnico del gate.
 - Evidencia historica: `origin/nightly@08fcfc1`; PR #189 state MERGED.
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila

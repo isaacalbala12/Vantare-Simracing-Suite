@@ -25,8 +25,9 @@ Sin issue verificada se permite investigar en solo lectura, pero no editar.
 | Telemetry Core | [`handoffs/telemetry-core.md`](vantare-program/handoffs/telemetry-core.md) | [`telemetry-core/`](telemetry-core/), [`adr/0004-telemetry-core-modular-observation-architecture.md`](adr/0004-telemetry-core-modular-observation-architecture.md) |
 | Telemetry Analysis | [`handoffs/telemetry-analysis.md`](vantare-program/handoffs/telemetry-analysis.md) | [`vantare-program/research/telemetry-analysis/README.md`](vantare-program/research/telemetry-analysis/README.md) |
 | Engineer y Spotter | [`handoffs/engineer-spotter.md`](vantare-program/handoffs/engineer-spotter.md) | [`engineer/engineer-beta-roadmap.md`](engineer/engineer-beta-roadmap.md) |
-| Strategy Planner | [`handoffs/strategy-planner.md`](vantare-program/handoffs/strategy-planner.md) | [`strategy-planner/`](strategy-planner/), [`adr/0006-strategy-planner-unified-domain-and-ownership.md`](adr/0006-strategy-planner-unified-domain-and-ownership.md) |
+| Strategy Planner | [`handoffs/strategy-planner.md`](vantare-program/handoffs/strategy-planner.md) | [`strategy-planner/README.md`](strategy-planner/README.md), [`adr/0006-strategy-planner-unified-domain-and-ownership.md`](adr/0006-strategy-planner-unified-domain-and-ownership.md) |
 | Overlay Studio, widgets, Launcher y Hub | [`handoffs/overlays-launcher-hub.md`](vantare-program/handoffs/overlays-launcher-hub.md) | [`adr/0003-overlay-studio-v3-rebuild.md`](adr/0003-overlay-studio-v3-rebuild.md), [`overlays-studio/`](overlays-studio/) |
+| Testing Center | [`platform-commercial.md`, sección Testing Center](vantare-program/handoffs/platform-commercial.md#testing-center) | [`adr/0007-testing-center-linear-operational-authority.md`](adr/0007-testing-center-linear-operational-authority.md), [`runbooks/testing-center-ui.md`](runbooks/testing-center-ui.md) |
 | Plataforma, cuenta, Billing, calendario y releases | [`handoffs/platform-commercial.md`](vantare-program/handoffs/platform-commercial.md) | [`vantare-program/product-contract.md`](vantare-program/product-contract.md), [`branch-channels.md`](branch-channels.md) |
 | Gobernanza transversal | La issue de Linear y este router | [`vantare-program/README.md`](vantare-program/README.md), [`vantare-program/execution-policy.md`](vantare-program/execution-policy.md), [`agent-workflow.md`](agent-workflow.md) |
 
@@ -49,7 +50,8 @@ los contratos adicionales. No se elige un handoff por similitud del titulo.
   existen IDs historicos repetidos.
 
 Los planes detallados viven en `superpowers/plans/`, pero solo son ejecutables
-cuando la issue o el handoff vigente los enlazan. Encontrar un plan por busqueda
+cuando la issue de Linear los enlaza. Un handoff puede recomendarlos como
+contexto técnico, pero no autoriza su ejecución. Encontrar un plan por búsqueda
 no lo convierte en autoridad.
 
 ## Workers y reviewers

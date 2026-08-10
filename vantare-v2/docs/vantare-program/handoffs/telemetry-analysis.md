@@ -2,8 +2,9 @@
 
 > **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
 > son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
-> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
-> acción.
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
 
 ## Resultado
 
@@ -185,7 +186,7 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Siguiente | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 Validar TA-03C en Nightly/Pro Plus y continuar TA-04 para caracterizar
 progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la

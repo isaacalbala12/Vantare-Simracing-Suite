@@ -14,7 +14,8 @@ ayudar a continuar, pero nunca sustituyen a su propietario.
 | Push, PR, CI, merge, promocion, tag y release | GitHub y el remoto Git | Solo se afirman tras verificarlos; ausencia de evidencia significa `UNKNOWN`. |
 | Comportamiento real, datos, capturas y rendimiento | Codigo y runtime | Tests, mocks o documentos no sustituyen evidencia de runtime cuando esta sea necesaria. |
 | Decisiones tecnicas estables y alternativas rechazadas | ADR y contratos | Se enlazan por path completo. Linear puede enlazarlos, pero no reescribe su contenido. |
-| Continuidad tecnica, riesgos, evidencia y siguiente accion | Handoff vivo del proyecto | Resume y enlaza; no replica el tracker ni mantiene una cronologia cerrada. |
+| Continuidad tecnica, riesgos, evidencia y recomendacion tecnica no autorizante | Handoff vivo del proyecto | Resume y enlaza; no replica el tracker ni elige la siguiente accion. |
+| Siguiente accion autorizada y plan ejecutable | Linear | Solo la issue activa puede autorizar el siguiente corte y enlazar su plan. |
 | Historial y contexto superado | `docs/archive/`, Git y Linear cerrado | Es consultable, pero nunca orden de ejecucion. |
 
 ## Estado esperado y estado observado
@@ -42,9 +43,10 @@ Worktree:
 Destino PR:
 ```
 
-La issue proporciona los cuatro campos de autoridad. Git demuestra que rama,
-base y worktree observados son compatibles. Un prompt o handoff puede repetir
-el sobre para comodidad, pero los valores siguen perteneciendo a Linear/Git.
+Linear proporciona la issue, el proyecto, la rama esperada, la base esperada y
+el destino del PR. Git demuestra el worktree, la rama real, el HEAD, el dirty
+state y la compatibilidad de ancestry. Un prompt puede repetir el sobre para
+comodidad, pero no cambia el propietario de cada campo.
 
 ## Reglas para documentos vivos
 
@@ -53,8 +55,9 @@ el sobre para comodidad, pero los valores siguen perteneciendo a Linear/Git.
 - Cada proyecto mantiene un unico handoff breve. El handoff enlaza la issue
   activa y la evidencia; no copia listas completas de issues ni entregas
   cerradas.
-- Los planes activos se enlazan desde Linear y el handoff. Los planes cerrados
-  permanecen como contexto, no como autoridad operativa.
+- Los planes activos se enlazan desde la issue de Linear. El handoff puede
+  recomendar un plan como contexto tecnico, pero no lo vuelve ejecutable. Los
+  planes cerrados permanecen como contexto, no como autoridad operativa.
 - `docs/current-plan.md` esta retirado. Su archivo historico no se actualiza.
 - Las referencias ADR usan el path completo mientras existan IDs numericos
   historicos repetidos.
@@ -63,7 +66,7 @@ el sobre para comodidad, pero los valores siguen perteneciendo a Linear/Git.
 
 1. Linear recibe el estado esperado, dependencias y siguiente transicion.
 2. El handoff cambia solo si hay nueva continuidad tecnica, riesgo, decision,
-   evidencia o siguiente accion del proyecto.
+   evidencia o recomendacion tecnica. Linear conserva la siguiente accion.
 3. Git/GitHub conservan commit, push, PR y CI observados.
 4. El informe final enumera lo verificado y marca lo no comprobado como
    `UNKNOWN` o no ejecutado.

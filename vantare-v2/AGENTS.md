@@ -62,8 +62,9 @@ la skill `vantare-core`: esta desactualizada.
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
   worker, decision o cambio material de arquitectura, evidencia, riesgos o
-  siguiente accion. El estado de issue, rama, base y destino se actualiza en
-  Linear; no se mantiene un tracker paralelo en el handoff.
+  recomendacion tecnica. Linear posee el estado, la siguiente accion
+  autorizada y el plan ejecutable; no se mantiene un tracker paralelo en el
+  handoff.
 - Todo trabajo nuevo debe estar cubierto por una issue de Linear antes de
   editar. Los hallazgos fuera de alcance se documentan como issues y no se
   incorporan silenciosamente.

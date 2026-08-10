@@ -2,8 +2,9 @@
 
 > **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
 > son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
-> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
-> acción.
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
 
 ## Resultado
 
@@ -36,9 +37,9 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
 - PR draft #192 está abierto hacia `nightly`, mergeable y con todos los gates
   verdes tras un rerun único de un presupuesto temporal heredado de Telemetry
   Core. Strategy no fue la causa del primer fallo.
-- Siguiente acción exacta: revisión de Isaac del PR #192. Solo su autorización
-  posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
-  hasta que esa base esté realmente integrada.
+- Recomendación registrada entonces: revisión de Isaac del PR #192. Solo su
+  autorización posterior permitía promoverlo a `nightly`; STR-15B (ISA-162) no
+  comenzaba hasta que esa base estuviera realmente integrada.
 
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
@@ -252,7 +253,7 @@ Actualización ISA-134 / STR-00:
 - Issue activa: ISA-144 / STR-09, implementación lista para review independiente
   sobre el commit aceptado de STR-08.
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 Revisar ISA-144 / STR-09. Si queda `ACCEPT`, continuar por ISA-168 / TA-03C.
 No iniciar STR-10 hasta que ISA-159 publique `StrategyInputProjection v1`; no

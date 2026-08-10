@@ -35,7 +35,8 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 - La promoción utiliza issues de integración separadas.
 - Cada proyecto tiene un unico handoff vivo para continuidad tecnica. Linear se
   actualiza tras cada cambio material; el handoff cambia solo si hay nueva
-  arquitectura, decision, evidencia, riesgo o siguiente accion tecnica.
+  arquitectura, decision, evidencia, riesgo o recomendacion tecnica. Linear
+  posee la siguiente accion autorizada y el plan ejecutable.
 
 ## Delegacion y responsabilidad
 

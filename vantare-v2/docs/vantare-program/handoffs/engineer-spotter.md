@@ -2,8 +2,9 @@
 
 > **Autoridad operativa:** los estados, ramas, bases y SHAs incluidos más abajo
 > son snapshots históricos. Consulta Linear y Git para el estado vigente. Este
-> handoff posee únicamente continuidad técnica, riesgos, evidencia y siguiente
-> acción.
+> handoff conserva únicamente continuidad técnica, riesgos, evidencia y una
+> recomendación técnica no autorizante. Linear posee la siguiente acción y el
+> plan ejecutable.
 
 ## Resultado
 
@@ -333,7 +334,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Recomendación técnica histórica
 
 Abrir el PR de la composición acumulativa ENG-01..ENG-15 hacia `nightly` y
 promoverla únicamente si pasa el CI protegido; los gates locales de Go,

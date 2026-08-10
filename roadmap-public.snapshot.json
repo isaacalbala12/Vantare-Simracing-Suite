@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T22:11:22Z",
+  "generatedAt": "2026-08-10T22:52:53Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,17 +28,11 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 13,
-            "total": 26,
-            "percent": 50
+            "done": 11,
+            "total": 23,
+            "percent": 48
           },
           "tasks": [
-            {
-              "id": "task_871b1ab68a2ba77204b2",
-              "title": "Pedals Redline: el cuarto widget de la direccion insignia",
-              "status": "in-progress",
-              "updatedAt": "2026-08-10T16:22:47.507Z"
-            },
             {
               "id": "task_f0c3e304758281802415",
               "title": "Programa Overlay Workshop code-first",
@@ -136,12 +130,6 @@
               "updatedAt": "2026-08-07T18:24:01.988Z"
             },
             {
-              "id": "task_dc7911188c6a359d5018",
-              "title": "El gate visual esta roto en nightly: standings-original-ready-studio 71.308%",
-              "status": "done",
-              "updatedAt": "2026-08-10T15:38:04.400Z"
-            },
-            {
               "id": "task_7a01dcafb5e466f56f0b",
               "title": "Estabilizar navegación del inspector Studio en suite completa",
               "status": "done",
@@ -154,16 +142,16 @@
               "updatedAt": "2026-08-07T18:23:55.610Z"
             },
             {
-              "id": "task_367a1821d1d72d958291",
-              "title": "N01: promover Overlay Workshop, restyle de Standings y baselines a Nightly",
+              "id": "task_871b1ab68a2ba77204b2",
+              "title": "Pedals Redline: el cuarto widget de la direccion insignia",
               "status": "done",
-              "updatedAt": "2026-08-05T21:48:07.650Z"
+              "updatedAt": "2026-08-10T22:52:45.584Z"
             },
             {
               "id": "task_e9740a55c063a90d9efc",
               "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
               "status": "done",
-              "updatedAt": "2026-08-10T22:11:10.996Z"
+              "updatedAt": "2026-08-10T22:20:26.409Z"
             },
             {
               "id": "task_7110c13b4b7c325111c7",
@@ -172,16 +160,10 @@
               "updatedAt": "2026-08-07T18:24:20.603Z"
             },
             {
-              "id": "task_3addfe3d5eca49331fcd",
-              "title": "Redline titular: standings por defecto y rescate de relative y delta",
-              "status": "done",
-              "updatedAt": "2026-08-10T15:57:36.362Z"
-            },
-            {
               "id": "task_b22567b960d2c25f9552",
               "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
               "status": "done",
-              "updatedAt": "2026-08-10T21:59:17.890Z"
+              "updatedAt": "2026-08-10T22:12:08.581Z"
             },
             {
               "id": "task_5be48115a72f57ffcd93",
@@ -612,7 +594,7 @@
               "id": "task_ce3c58c3bd12864b4906",
               "title": "Reconciliar Nightly y replanificar Spotter + visual/overlays",
               "status": "in-progress",
-              "updatedAt": "2026-08-10T18:03:24.822Z"
+              "updatedAt": "2026-08-10T22:36:53.512Z"
             },
             {
               "id": "task_70b307b95c679819258e",

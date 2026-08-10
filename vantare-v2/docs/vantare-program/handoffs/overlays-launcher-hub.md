@@ -10,14 +10,27 @@
 
 ## Estado
 
-- Overlay: ISA-260 fija el contrato Workshop sobre `nightly@4981e6f`; ISA-261
-  extrae sus fixtures neutrales en rama aislada, sin promoción. El catálogo actual es 19 tipos/41 diseños/22 Crystal;
-  el gate HTML Crystal histórico 21/18 permanece separado. `engineer-radio-crystal`
-  es oficial/productivo bajo contrato Engineer, no derivado del HTML clásico.
+- Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
+  PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
+  PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR
+  #191 están también en Nightly. Pedals Redline se entrega en PR draft #195 y
+  completa la cobertura visual de los cuatro widgets insignia. El flaky de CI
+  ISA-311 quedó corregido y promovido mediante PR #200 a `nightly@54f267b`.
+- Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
+  `testers`. No equivale a `master`, release pública ni suite completa. Existe
+  una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
+  día. Plan canónico:
+  `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
+- Venta controlada objetivo 2026-09-22..30: Overlay Studio V1 como producto
+  principal y módulos no terminados etiquetados Beta/Preview. Depende de gates
+  separados de raíz, Billing, artefactos y aprobación; no está autorizada por
+  este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
 - Hub: sin issue activa.
-- Base/rama/SHA de próximo trabajo: no fijados.
-- Promoción nueva: ninguna; las integraciones en `develop` son históricas.
+- Base documental ISA-315 rebasada: `nightly@54f267b`.
+- PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
+  venta y release permanecen fuera del alcance. Las integraciones en `develop`
+  son históricas.
 
 ## Overlay Studio
 
@@ -185,7 +198,9 @@ y recientes.
 
 ## Issues y siguiente acción
 
-- Overlay: seguir su proyecto y TC-07; no abrir otro reader.
+- Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
+  agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción
+  a Testers requiere issue y aprobación propias; no abrir otro reader LMU.
 - Launcher: crear LAU-AUDIT antes de nuevas features.
 - Hub: crear HUB-POLISH después de characterization visual.
 - Checks: harness real, Playwright, transparencias, responsive, capturas,
@@ -193,7 +208,9 @@ y recientes.
 
 ## Última actualización
 
-2026-08-04, ISA-263, controles efímeros y comparación de superficies del Workshop; no promocionado.
+2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
+y la ventana comercial controlada de septiembre. Esta decisión y el estado
+superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
 
 ### ISA-262 — usar el Workshop local
 

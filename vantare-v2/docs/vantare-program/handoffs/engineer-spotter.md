@@ -22,8 +22,27 @@ CrewChief, Pit Manager y wake word.
   `docs/vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md`;
   el dossier de
   evidencia hermano no se usa como especificación ni para trasladar constantes.
+- Replanning focalizado de Spotter (2026-08-11):
+  `docs/vantare-program/research/engineer/spotter-crewchief-evidence-dossier-2026-08-11.md`
+  conserva la evidencia externa;
+  `docs/engineer/spotter-vantare-current-state-2026-08-11.md` audita el runtime;
+  y `docs/engineer/spotter-phase-1-microplan.md` es la única entrada de
+  implementación para la Fase 1 después de su aceptación.
 
 ## Estado
+
+Actualización autoritativa ISA-313 / ENG-R01 (2026-08-11, replanning de Fase
+1): varias tandas DeepSeek y contraste directo del upstream confirman que la
+vertical canónica ya existe, pero no está lista para Beta. El análisis encuentra
+P1 en aislamiento enable/disable, autoridad de sensibilidad, defaults ES/audio,
+calidad por fila, secuencias regresivas, éxito silencioso de `audio-only`,
+medición audible, plausibilidad/ghost, three-wide direccional y deuda clean-room
+en comentarios/tests actuales. Audio real,
+multiclase, game phase/FCY y aceptación LMU extremo a extremo siguen sin
+demostrarse. Se redacta el microplan de Spotter observable; no se modifica
+runtime, no se mueven ISA-187/189 y no se inicia una subfase productiva.
+Fable provocó correcciones documentales sobre lifecycle, clean-room, audio y
+gates; la revisión final de Opus quedó en `GO`, sin P0/P1 nuevos.
 
 Actualización autoritativa ISA-313 / ENG-R01 (2026-08-11): el roadmap ya no
 ordena el trabajo como una lista cerrada de microcortes. Define fases generales
@@ -58,8 +77,9 @@ un cambio de catálogo/issue separado. En ningún caso “enviado” equivale a
 Kokoro es la dirección TTS elegida, pero permanece técnicamente condicionado:
 ISA-193 / ENG-22 debe aportar un G2P y una cadena de licencias comercialmente
 permisivos, rendimiento, packaging y escucha humana nuevos. Español e inglés
-son la primera etapa; italiano y portugués brasileño siguen siendo parte del
-gate final. ENG-13 continúa bloqueando STT/wake productivos, no el fallback
+son el alcance lingüístico de la primera Beta; italiano y portugués brasileño
+quedan para expansión posterior. ENG-13 continúa bloqueando STT/wake
+productivos, no el fallback
 visual. Hardware y LMU real están disponibles; Pit admite pruebas controladas
 con confirmación, readback y fallo cerrado.
 
@@ -296,7 +316,9 @@ productivo sin crear un segundo reader.
 - Pit Manager prepara, explica, confirma, envía, verifica y falla cerrado.
 - Strategy solo cambia tras aceptación.
 - Subtítulos y widget de radio Crystal forman parte del proyecto.
-- Spotter p95 <150 ms desde decisión estable a inicio del audio.
+- Spotter objetivo <150 ms en el camino inmediato; el microplan exige definir
+  y medir por separado decisión, transporte, comienzo del player y evidencia
+  humana de audibilidad para no confundir ACK con sonido real.
 - TC-05A define el envelope transversal; ENG-02 no duplica su versionado,
   clocks, ownership, fan-out ni puertos.
 - La API visible por Engineer usa tipos de producto y no exige importar
@@ -311,12 +333,13 @@ productivo sin crear un segundo reader.
 ## Alcance Beta
 
 Spotter carretera/multiclase; sesiones; banderas; rivales; fuel/Virtual Energy;
-neumáticos/daños demostrables; pit/estrategia; motivación; PTT; wake word;
+neumáticos/daños demostrables; pit/estrategia; motivación; PTT; wake word solo
+si supera sus gates;
 consultas; Pit Manager; subtítulos, overlay, diagnóstico y personalidades. La
-primera etapa lingüística es ES/EN y el gate final añade IT/PT-BR. La primera
-Beta excluye cambio de piloto. Capabilities ausentes se documentan y no se
-simulan. Engineer sustituye CrewChief; no se crea integración de coexistencia
-ni se busca una copia exacta.
+primera Beta es ES/EN. IT/PT-BR queda en expansión posterior. La primera Beta
+excluye cambio de piloto. Capabilities ausentes se documentan y no se simulan.
+Engineer sustituye CrewChief; no se crea integración de coexistencia ni se
+busca una copia exacta.
 
 ## Primera entrega
 
@@ -330,6 +353,23 @@ ni se busca una copia exacta.
 8. Implementación incremental con replays y review.
 
 ## Riesgos
+
+- **P1 detectado en el replanning Spotter:** `spotterEnabled` comparte hoy el
+  booleano global del runtime: apagarlo aborta determinísticamente la
+  observación, marca Engineer desconectado con un error engañoso y cancela la
+  entrega/cola de las demás familias. La policy revalida sensibilidad Normal
+  aunque el detector use otro preset; defaults español/inglés dejan el audio
+  visual-only;
+  filas rivales parciales pueden perder presencia al bridge; secuencias
+  regresivas se aceptan; `audio-only` puede completar sin salida y su P95 no
+  mide comienzo audible; same-side three-wide, ghost/active y plausibilidad de
+  movimiento están incompletos; comentarios/tests actuales todavía atribuyen
+  parámetros al competidor. Deben cerrarse y rederivarse con evidencia propia
+  antes de aceptar el núcleo.
+- **No demostrado:** no existe replay real LMU que recorra Telemetry Core ->
+  decisión -> ACK/cache/player -> Wails/SSE -> Desktop/OBS. Los replays y
+  goldens actuales son principalmente sintéticos y no cierran audibilidad ni
+  falsos positivos reales.
 
 - **Cerrado en ISA-111/112:** servicio/UI ya no arrancan conectados ni ofrecen
   simulator/replay como fuente productiva.
@@ -384,12 +424,14 @@ reconcilian o dividen durante el replanning de entrada de cada fase.
 
 ## Siguiente transición
 
-Revisar y aceptar ISA-313 sin promocionarla automáticamente. Cuando Isaac
-autorice entrar en la Fase 1, se elaborará entonces su microplan concreto desde
-la `nightly` remota vigente. El resultado general ya está fijado: un Spotter
-observable y coherente en audio, radio, subtítulos y overlay. El cierre exigirá
-un guion manual reproducible y el primer incremento de la prueba acumulativa
-ejecutable por IA. Las fases posteriores no se microplanifican todavía.
+Revisar y aceptar el replanning ISA-313 sin promocionarlo automáticamente. El
+microplan de entrada de Fase 1 ya está propuesto desde la `nightly` remota
+vigente; tras su aceptación, la primera subfase se replantea contra esa nueva
+base y recibe issue/rama propias antes de editar runtime. El resultado general
+es un Spotter observable y coherente en audio, radio, subtítulos y overlay. Cada
+subfase y el cierre completo exigen validación manual más ampliación de la misma
+prueba acumulativa ejecutable por IA. Las fases posteriores no se
+microplanifican todavía.
 
 ## Última actualización
 

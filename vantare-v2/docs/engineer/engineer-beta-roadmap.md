@@ -11,6 +11,9 @@
   relaciones, rama y estado operativo.
 - El brief clean-room de 2026-08-10 define las capacidades autorizadas. El
   dossier competitivo es evidencia analítica y no se entrega a implementadores.
+- La Fase 1 ya tiene replanning de entrada en
+  `docs/engineer/spotter-phase-1-microplan.md`. Solo esa fase queda concretada;
+  las posteriores conservan el nivel general de este roadmap.
 
 ## Regla de planificación
 
@@ -177,6 +180,16 @@ geometría.
   preempción, pérdida de fuente y recuperación;
 - IA: ampliación de la aceptación acumulativa con escenarios deterministas,
   estados de lifecycle y paridad observable entre decisión y salidas.
+
+**Replanning vigente:**
+
+- microplan: `docs/engineer/spotter-phase-1-microplan.md`;
+- auditoría Vantare: `docs/engineer/spotter-vantare-current-state-2026-08-11.md`;
+- evidencia competitiva separada:
+  `docs/vantare-program/research/engineer/spotter-crewchief-evidence-dossier-2026-08-11.md`.
+
+Estos documentos preparan la implementación, pero no mueven las issues
+bloqueadas ni declaran iniciada una subfase de producto.
 
 ## Fase 2 — Engineer de carrera
 
@@ -372,7 +385,8 @@ se presenta una simulación como evidencia real para cerrar calendario.
 
 ## Siguiente transición
 
-Revisar y aceptar este roadmap general. Después, al autorizar el inicio de la
-Fase 1, crear su microplan concreto desde la nightly remota vigente. Ese
-microplan deberá definir conjuntamente Spotter, audio y superficies visuales,
-además del primer incremento de la prueba acumulativa ejecutable por IA.
+Revisar y aceptar este roadmap general junto con la propuesta de microplan de
+Fase 1 ya enlazada. Después de su aceptación, replanificar S1 contra la nightly
+remota vigente y asignarle issue/rama propias antes de editar runtime. El
+microplan conjunto cubre Spotter, audio, superficies visuales y el primer
+incremento de la prueba acumulativa ejecutable por IA.

@@ -19,6 +19,26 @@ Nota ISA-313 / ENG-R01 (2026-08-11, roadmap general replanificable):
 - Rama ISA-313 sincronizada con `origin/nightly@0fecff2`. Alcance documental:
   sin implementación, promoción, release ni cambio de gates.
 
+Nota ISA-313 / ENG-R01 (2026-08-11, replanning focal de Spotter):
+- Se ejecutan varias tandas DeepSeek separadas para CrewChief Spotter, casos
+  límite y código Vantare, seguidas por contraste de fuente primaria y revisión
+  adversarial Fable y Opus al cierre. Fable originó correcciones y Opus cerró
+  el expediente con `GO`, sin P0/P1 nuevos. Una pasada no se considera suficiente.
+- El dossier focal de CrewChief fija `main@3e0afdc6` y tag `V4.19.4.0`, separa
+  seguridad lateral, tráfico multiclase y peligros, y mantiene frontera
+  clean-room: no se trasladan código, constantes, frases, audio, assets ni UI.
+- La auditoría Vantare confirma una vertical productiva hasta Desktop/OBS, pero
+  encuentra P1 en enable/disable, sensibilidad, locale/audio, filtrado por fila,
+  secuencias regresivas, éxito silencioso de `audio-only`, medición audible,
+  plausibilidad/ghost, same-side three-wide y deuda clean-room ya presente en
+  comentarios/tests de geometría. Audio audible y replay LMU extremo a extremo
+  no están demostrados.
+- `docs/engineer/spotter-phase-1-microplan.md` concreta únicamente la fase ya
+  iniciada en replanning: siete subfases probables y cierre inseparable mediante
+  validación manual LMU más aceptación acumulativa ejecutable por IA.
+- ISA-187/189 conservan estado y dependencias; esta entrega sigue siendo solo
+  investigación/plan. Sin cambio de runtime, merge, promoción o release.
+
 Nota ISA-313 / ENG-R01 (2026-08-10, reconciliación y replanificación):
 - La auditoría competitiva más reciente queda separada en un dossier de
   evidencia documental/estática y un brief clean-room para implementadores en

@@ -25,17 +25,13 @@ const RAILS = [
  * the floor, with the slot primitive underneath — microcaps label in grey, the
  * reading in tabular white.
  *
- * The one event this widget can state from the ViewModel alone is trail
- * braking: brake and throttle overlapping. It gets the same light seam the
- * standings uses for a battle, drawn on the boundary between the two rails it
- * concerns. Everything else here is still at rest, which is the point.
+ * The widget states three things and no more: how far each pedal is down, which
+ * ones are off their rest position, and which are pinned. It is meant to be
+ * quiet — a pedal trace that flickers is a pedal trace nobody reads.
  *
  * Only transform and opacity animate, so OBS composites every frame.
  */
 export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
-  const trailBraking =
-    model.brake > ENGAGED_THRESHOLD && model.throttle > ENGAGED_THRESHOLD;
-
   return (
     <div className="ven-pred-root">
       {model.statusMessage ? (
@@ -43,7 +39,7 @@ export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
           {model.statusMessage}
         </p>
       ) : null}
-      <div className="ven-pred-block" data-trail-braking={trailBraking ? "true" : undefined}>
+      <div className="ven-pred-block">
         <div className="ven-pred-rails">
           {RAILS.map((rail) => {
             const value = model[rail.key];
@@ -52,7 +48,6 @@ export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
                 key={rail.key}
                 className="ven-pred-rail"
                 data-pedal={rail.key}
-                data-seam={trailBraking && rail.key === "brake" ? "true" : undefined}
                 data-engaged={value > ENGAGED_THRESHOLD ? "true" : undefined}
                 data-saturated={value >= SATURATED_THRESHOLD ? "true" : undefined}
               >
@@ -72,9 +67,6 @@ export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
                   <small>{rail.label}</small>
                   <b>{model[rail.textKey]}</b>
                 </div>
-                {trailBraking && rail.key === "brake" ? (
-                  <span aria-hidden="true" className="ven-pred-seam" />
-                ) : null}
               </div>
             );
           })}

@@ -2635,8 +2635,8 @@
 }
 
 /* Redline pedals. The pedal colours stay user-configurable — they are an
-   explicit setting with a strong convention behind them — so the semantic
-   carmine of the system is spent only on the trail-braking seam. */
+   explicit setting with a strong convention behind them — so this widget spends
+   no carmine of its own; the rails and the slots carry everything it says. */
 [data-widget-system="vantare-endurance"] .ven-pred-root {
   position: relative;
   height: 100%;
@@ -2728,32 +2728,6 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.1;
-}
-
-/* Trail braking: brake and throttle overlapping. The seam sits on the boundary
-   between exactly those two rails — same language the standings uses when it
-   captures two cars in a battle. */
-[data-widget-system="vantare-endurance"] .ven-pred-rail {
-  position: relative;
-}
-
-/* Anchored to the brake rail's trailing edge and pushed half a gap out, so it
-   lands on the brake/throttle boundary without depending on column arithmetic. */
-[data-widget-system="vantare-endurance"] .ven-pred-seam {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: -3.75px;
-  width: 1.5px;
-  border-radius: 1px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(230, 57, 70, 0.9) 30%,
-    rgba(230, 57, 70, 0.9) 70%,
-    transparent
-  );
-  box-shadow: 0 0 8px rgba(230, 57, 70, 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {

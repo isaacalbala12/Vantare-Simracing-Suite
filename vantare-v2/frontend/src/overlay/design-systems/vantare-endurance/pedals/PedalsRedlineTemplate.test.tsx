@@ -73,15 +73,11 @@ describe("PedalsRedlineTemplate", () => {
     expect(rail(container, "brake").getAttribute("data-saturated")).toBeNull();
   });
 
-  it("draws the seam only while brake and throttle overlap", () => {
+  it("stays quiet when brake and throttle overlap", () => {
     const overlapping = renderRedline(model({ brake: 0.3, throttle: 0.25 }));
-    expect(overlapping.querySelector(".ven-pred-seam")).toBeTruthy();
-    expect(overlapping.querySelector(".ven-pred-block")?.getAttribute("data-trail-braking")).toBe(
-      "true",
-    );
-
-    const brakingOnly = renderRedline(model({ brake: 0.3, throttle: 0 }));
-    expect(brakingOnly.querySelector(".ven-pred-seam")).toBeNull();
+    expect(overlapping.querySelector(".ven-pred-seam")).toBeNull();
+    expect(rail(overlapping, "brake").getAttribute("data-engaged")).toBe("true");
+    expect(rail(overlapping, "throttle").getAttribute("data-engaged")).toBe("true");
   });
 
   it("carries the configured pedal colours into the rails", () => {

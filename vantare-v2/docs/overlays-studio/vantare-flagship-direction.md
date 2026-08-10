@@ -117,9 +117,15 @@ perfiles guardados a redline por sí solo.
 ### Movimiento pendiente en pedals
 
 El ViewModel de pedals expone `throttle`/`brake`/`clutch` y sus textos, nada
-más. Por eso el template solo declara lo derivable de un fotograma: pedal
-pisado, pedal a fondo y trail braking (freno y gas solapando, con la costura
-de luz del lenguaje de batalla).
+más. El template declara solo tres cosas: cuánto está pisado cada pedal, cuáles
+han dejado el reposo y cuáles van a fondo.
+
+**Sin costura de trail braking (decisión de Isaac, 2026-08-10).** Se probó una
+costura vertical carmín en la frontera freno/gas, eco del lenguaje de batalla
+del standings. Rechazada: en un widget tan pequeño y de carriles ya coloreados,
+una línea fina vertical se lee como un artefacto, no como información. La
+regla del manifiesto sigue en pie — el movimiento es semántico — pero aquí el
+lenguaje correcto para ese evento aún no está encontrado.
 
 Pico de presión de freno, ABS y bloqueo de rueda necesitan estado entre
 fotogramas, y el gate visual captura un único fotograma determinista.

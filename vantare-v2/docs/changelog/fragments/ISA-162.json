@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-162",
+  "type": "security",
+  "summary": "Strategy Planner separa los planes oficiales de Vantare y solo muestra catálogos cuya firma y contenido han sido verificados.",
+  "technicalNotes": [
+    "El catálogo verifica firma Ed25519, checksum, secuencia, versión y ventana de claves antes de conservar un bundle como last-known-good.",
+    "Un catálogo alterado, incompatible o degradado nunca sustituye el último catálogo verificado.",
+    "Guardar un plan oficial reutiliza la vista previa y la importación transaccional de Mis planes; no lo abre ni lo activa automáticamente."
+  ],
+  "testing": [
+    "Abrir Strategy Planner y comprobar que Planes de Vantare y Mis planes mantienen listas separadas.",
+    "Actualizar el catálogo sin conexión y confirmar que el último catálogo verificado permanece visible con su aviso.",
+    "Previsualizar un plan oficial, guardarlo en Mis planes y confirmar que no se abre ni se activa por sí solo."
+  ],
+  "knownLimitations": [
+    "Este corte no publica todavía planes oficiales reales: requiere contenido aprobado, endpoint público y claves de producción configuradas.",
+    "Los eventos del catálogo aún no se han probado manualmente contra una aplicación Wails viva."
+  ]
+}

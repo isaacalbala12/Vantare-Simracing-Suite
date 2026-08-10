@@ -182,7 +182,86 @@ Nota ISA-311 (2026-08-10, corrección local verificada):
   `31416018600`, `31416779711` y `31435630710`, todos sin rerun. Linear refleja
   ISA-311 en `Nightly`. No hubo promoción a `testers`/`master` ni release.
 
-Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
+Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
+- ISA-309 / PR #192 se integró por squash en `nightly@7e39104` con el run
+  post-merge `31408412459` completamente verde; ISA-147..151 quedaron en
+  Nightly y STR-15B está desbloqueada.
+- ISA-162 se ejecuta en la rama canónica
+  `vantareapp/isa-162-str-15b-catalogo-oficial-firmado-de-vantare`, worktree
+  aislado `C:\tmp\vantare-isa-162`, rebasado sin conflictos sobre
+  `origin/nightly@ff286f4`.
+- El microplan vigente es
+  `docs/superpowers/plans/2026-08-10-isa-162-signed-strategy-catalog.md`.
+  Cierra firma Ed25519 sobre bytes exactos, trusted keys versionadas, rechazo
+  integral, anti-downgrade, caché current/previous last-known-good, generador
+  sin secretos en repo/runtime y UI oficial separada de `Mis planes`.
+- Baseline: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50 tests
+  frontend focales pasan. El frontend del worktree se instaló con el lockfile
+  congelado, sin cambiar dependencias.
+- El núcleo firmado se implementó mediante TDD en un worker
+  `ocx-deepseek-v4-flash`; el orquestador revisó el diff y la evidencia antes
+  de aceptar el corte. No hay commit, push, PR, merge, promoción, firma real ni
+  release de ISA-162.
+- Primer worker revisado: creó `internal/strategy/catalog`, su subpaquete
+  `signing` y `cmd/strategy-catalog`. El RED inicial demostró los tres targets
+  ausentes; el GREEN independiente pasa 20x focal, vet y toda Strategy.
+- La lectura del orquestador detectó y corrigió antes de aceptar el corte:
+  replace atómico Windows, anti-downgrade cuando falta current pero existe
+  previous, redirects/timeout HTTP, duplicados/profundidad JSON, escapes por
+  symlink del generador y pérdida de LKG ante fallo de escritura. Todas esas
+  correcciones quedaron cubiertas por regresiones antes del cableado Wails.
+- Re-review independiente del núcleo: reconciliación post-replace, lecturas de
+  caché acotadas y límites JSON quedaron `PASS`; el manifest firma
+  `minimumTrustVersion` y el verificador conserva la versión aplicada. El
+  único Important restante pertenece al cableado: una build con keyset
+  embebido no debe aceptar una raíz de confianza de menor versión por entorno.
+- Segundo worker revisado: configuración pública monotónica, bridge Wails y
+  workflow manual reproducible están implementados. La configuración embebida
+  de release es indivisible y gana al entorno; una configuración parcial o
+  inválida falla cerrada. El guard prueba que el generador solo incrusta URL y
+  keyset públicos y que el workflow no publica releases ni filtra la privada.
+- Evidencia independiente del cableado: tests Go focales, vet, gofmt, guard
+  PowerShell y `git diff --check` pasan. El workflow real no se ejecutó porque
+  todavía no existen manifest oficial aprobado ni secret de producción.
+- Tercer worker revisado: cliente TS estricto y pestaña `Planes de Vantare`
+  quedan separados de `Mis planes`. La UI conserva LKG ante refresh fallido,
+  muestra solo evidencia disponible y reutiliza preview/commit transaccional
+  sin abrir ni activar. Tras un commit invalida inmediatamente la versión del
+  repositorio antes de recargar.
+- Evidencia frontend fresca tras las correcciones: focal de cliente 38/38,
+  ESLint focal y typecheck real PASS; suite completa 358 archivos/2490 tests y
+  build de 877 módulos PASS. Persisten
+  dos `AbortError` de teardown happy-dom con exit 0 y el warning heredado del
+  chunk >500 kB.
+- Los hallazgos de los reviews quedaron corregidos con TDD: workflow limitado
+  a `master` y environment protegido, mayor secuencia verificable entre slots,
+  conflicto same-sequence fail-closed, JSON estricto también dentro de
+  packages, enteros JS-safe, signer ligado al keyset real, presupuestos
+  agregados en CLI y TS, build empaquetada sin override de entorno,
+  correlación exacta y generación monotónica load/refresh. El preflight exige
+  además que el keyset quede bajo el directorio real del manifest.
+- Las dos re-reviews finales quedaron `ACCEPT`: seguridad y calidad reportan
+  P0/P1/P2 = 0. La última corrección separa por build tag el override local
+  (`!production`) del comportamiento empaquetado (`production`); `package`,
+  `package:all` y release usan el segundo y fallan cerrados aunque no exista
+  source generado. Tests locales y production 20x, compilación production y
+  guards pasan.
+- Gates globales frescos repetidos tras la rebase: `gofmt`, vet, Go
+  focal/global, variante `production`, typecheck real, 358 archivos / 2493
+  tests frontend,
+  build, guard normal/dot-sourced, YAML, fragmento y diff-check pasan. El lint
+  focal ISA-162 pasa; `pnpm lint` global sigue rojo por 39 errores y 2 warnings
+  preexistentes en archivos ajenos (Hub/Overlay Studio/harness), sin errores en
+  este diff. No se mezclan esas correcciones fuera de alcance.
+- Quedan pendientes push y entrega en PR draft. El
+  environment `strategy-catalog-signing` debe configurarse externamente con
+  required reviewer, deployment branch `master` y la privada solo como secret
+  de ese environment; el workflow real no se ejecuta en este corte.
+- `origin/nightly` avanzó a `ff286f4` con un cambio de Testing Center que no
+  solapa ISA-162. La rama quedó rebasada sin conflictos sobre ese SHA y los
+  gates se repitieron antes de entregar.
+
+Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa cerrada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila
   ya implementada de Strategy Planner sin arrastrar commits ajenos.
 - La rama canónica es
@@ -193,13 +272,12 @@ Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
   real, suite frontend completa, build y ESLint focal pasan. `go test ./...`
   también pasa en ejecución serial después del build; dos fallos bajo carga
   paralela pasaron aislados y no pertenecen al cambio.
-- PR draft #192 abierto hacia `nightly`, mergeable y con todos los gates en
-  verde. El primer run agotó el presupuesto temporal heredado de
+- PR #192 se integró por squash en `nightly@7e39104` tras autorización de
+  Isaac. El primer run agotó el presupuesto temporal heredado de
   `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`; el rerun único
   pasó Go, frontend, visual advisory y lint advisory completos.
-- Pendiente: revisión y autorización explícita de Isaac antes de cualquier
-  merge a `nightly`. No hay promoción a `testers`/`master`, release ni inicio
-  de STR-15B.
+- El run post-merge `31408412459` quedó completamente verde. No hubo promoción
+  a `testers`/`master` ni release; esa integración sí desbloqueó STR-15B.
 
 Nota ALINEACION-REFACTOR (2026-08-10):
 - Objetivo: reconciliar el worktree principal (rama `refactor`, worktree

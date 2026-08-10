@@ -16,6 +16,82 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-162 / STR-15B (2026-08-10):
+
+- PR #192 quedó integrado por squash en `nightly@7e39104`; el CI post-merge
+  `31408412459` pasó todos los gates. ISA-147..151 están en Nightly y la
+  dependencia ISA-150 de STR-15B está satisfecha.
+- ISA-162 está `In Progress` en su rama/worktree aislados, rebasados sin
+  conflictos sobre `origin/nightly@ff286f4`. El
+  contrato ejecutable vive en
+  `docs/superpowers/plans/2026-08-10-isa-162-signed-strategy-catalog.md`.
+- Threat model cerrado: firma Ed25519 domain-separated sobre manifest/payload
+  exactos, checksum, keyset público versionado, validación total de paquetes,
+  anti-downgrade y caché current/previous verificada. Un candidato inválido no
+  puede sustituir last-known-good; ausencia/corrupción no se vuelve catálogo
+  vacío exitoso.
+- La aplicación solo verificará y consumirá; la firma pertenece a un CLI y
+  workflow separados que reciben la privada externamente. No hay claves
+  privadas, contenido oficial inventado ni dependencias nuevas en el repo.
+- Baseline verde: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50
+  tests frontend focales. El núcleo firmado se implementó mediante TDD y fue
+  revisado por el orquestador; quedan cableado Wails, workflow, UI, reviews
+  finales, suites completas y entrega en rama. Sin commit, push, PR, promoción
+  o release de ISA-162.
+- Primer corte entregado y revisado localmente: dominio/verificador, keyset,
+  source HTTPS, caché current/previous, servicio/bridge JSON, signer separado y
+  CLI. El orquestador encontró y cerró incompatibilidad Windows, bypass de
+  rollback sin current, redirects, parser no acotado, escape por symlink y un
+  fixture que podía permitir firmar basura. Evidencia independiente: 20x
+  focal, vet y toda `internal/strategy/...` PASS.
+- La re-review independiente confirma `PASS` para reconciliación post-replace,
+  lecturas acotadas, límites JSON y versión mínima firmada. El único Important
+  restante es la selección monotónica del keyset configurado y se cierra en el
+  cableado de la aplicación: una raíz embebida no puede ser sustituida por el
+  entorno. Firma exacta, tamper/LKG, ventanas, rollback del catálogo, HTTPS y
+  CLI determinista/secret-safe pasan.
+- Cableado de aplicación revisado: endpoint/keyset embebidos forman una unidad
+  de confianza que no admite override de entorno; solo builds de desarrollo
+  sin configuración embebida pueden optar a variables públicas. Wails expone
+  `strategy:catalog:command|result|error`, la caché queda bajo la raíz Strategy
+  y los errores públicos preservan correlación sin filtrar rutas ni causas.
+- El workflow manual valida que el manifest permanezca dentro del árbol
+  permitido, prueba, firma dos veces, compara bytes/SHA-256 y sube solo bundle
+  y checksum. No se ejecutó de verdad: faltan contenido oficial aprobado y el
+  secret de producción. Tests/vet/gofmt/guard focales están verdes.
+- Cliente/UI oficial terminados: parser TS estricto, timeout/cancelación,
+  tabpanels accesibles y listas no mezcladas. Empty verificado no crea
+  placeholders; refresh fallido conserva cards; recovered/stale/offline se
+  identifican como LKG. Guardar exige preview y commit contra repositoryVersion,
+  invalida esa versión al escribir y nunca abre ni activa.
+- Verificación frontend tras las correcciones: cliente 38/38, ESLint y
+  typecheck PASS; suite completa 358/358 archivos y 2490/2490 tests, build 877
+  módulos PASS.
+- Los `REQUEST_CHANGES` se cerraron con regresiones: firma solo desde `master`
+  y environment protegido, máximo verificable entre slots LKG, conflictos de
+  igual secuencia fail-closed, duplicados internos de package, rango JS-safe,
+  signer ligado al keyset productivo, límites agregados de CLI/TS, build
+  empaquetada sin override de confianza, correlación exacta y orden
+  load/refresh por generación. El preflight del workflow y el CLI comparten la
+  misma regla de containment del keyset bajo el manifest.
+- Las dos re-reviews finales quedaron `ACCEPT`, con P0/P1/P2 = 0 en seguridad
+  y calidad. El último borde de packaging se cerró con sources build-tagged:
+  solo `!production` admite opt-in local y toda ruta `production` falla cerrada
+  aunque no se genere configuración. Tests locales/production 20x, compilación
+  production y guards pasan.
+- Gates globales frescos repetidos tras rebase: `gofmt`, vet, Go focal/global y
+  `production`, typecheck, 358 archivos / 2493 tests frontend, build, guard,
+  YAML, fragmento y diff-check PASS. ESLint focal PASS; el lint global conserva
+  39 errores y 2 warnings preexistentes fuera de ISA-162, por lo que no se
+  declara verde ni se amplía esta issue para arreglarlos.
+- Quedan push y PR draft. Antes de ejecutar el
+  workflow real, GitHub debe tener `strategy-catalog-signing` con required
+  reviewer, deployment branch `master` y la privada exclusivamente como secret
+  del environment. No hay contenido oficial aprobado todavía.
+- La base remota avanzó a `nightly@ff286f4` por Testing Center, sin solape. El
+  worktree ISA-162 quedó rebasado sin conflictos y volvió a pasar los gates
+  finales sobre esa base.
+
 Actualización ISA-309 / STR-N02 (2026-08-10):
 
 - La pila acumulativa de Strategy posterior a STR-09 se reconstruyó sobre
@@ -28,12 +104,11 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
 - Go Strategy, typecheck real, suite frontend completa, build y ESLint focal
   están verdes. `-race` sigue sin verificarse en este entorno Windows sin CGO;
   los bridges continúan sin prueba manual contra una aplicación Wails viva.
-- PR draft #192 está abierto hacia `nightly`, mergeable y con todos los gates
-  verdes tras un rerun único de un presupuesto temporal heredado de Telemetry
-  Core. Strategy no fue la causa del primer fallo.
-- Siguiente acción exacta: revisión de Isaac del PR #192. Solo su autorización
-  posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
-  hasta que esa base esté realmente integrada.
+- Cierre posterior: PR #192 se integró por squash en `nightly@7e39104` tras la
+  autorización de Isaac; el CI post-merge `31408412459` quedó verde. Strategy
+  no fue la causa del primer fallo temporal.
+- Esa promoción satisfizo la dependencia de STR-15B y permitió iniciar
+  ISA-162 en la rama aislada descrita al principio de este handoff.
 
 Actualización ISA-152 / STR-17 (2026-08-14):
 

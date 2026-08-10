@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T15:38:20Z",
+  "generatedAt": "2026-08-10T15:57:55Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 10,
-            "total": 24,
-            "percent": 42
+            "done": 11,
+            "total": 25,
+            "percent": 44
           },
           "tasks": [
             {
@@ -38,12 +38,6 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
-            },
-            {
-              "id": "task_3addfe3d5eca49331fcd",
-              "title": "Redline titular: standings por defecto y rescate de relative y delta",
-              "status": "in-progress",
-              "updatedAt": "2026-08-10T01:26:59.479Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -104,6 +98,12 @@
               "title": "Renombrar y reubicar el CSS isa93-* de vantare-crystal",
               "status": "planned",
               "updatedAt": "2026-08-05T17:46:22.144Z"
+            },
+            {
+              "id": "task_b22567b960d2c25f9552",
+              "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
+              "status": "planned",
+              "updatedAt": "2026-08-10T15:57:25.764Z"
             },
             {
               "id": "task_ae5027b9e935ae76500d",
@@ -170,6 +170,12 @@
               "title": "Protocolo root, alpha, bounds y overflow",
               "status": "done",
               "updatedAt": "2026-08-07T18:24:20.603Z"
+            },
+            {
+              "id": "task_3addfe3d5eca49331fcd",
+              "title": "Redline titular: standings por defecto y rescate de relative y delta",
+              "status": "done",
+              "updatedAt": "2026-08-10T15:57:36.362Z"
             },
             {
               "id": "task_5be48115a72f57ffcd93",
@@ -856,7 +862,7 @@
               "id": "task_abfc7b6ff159f09de8ab",
               "title": "Promoción acumulativa de Strategy Planner a Nightly",
               "status": "planned",
-              "updatedAt": "2026-08-10T01:37:26.563Z"
+              "updatedAt": "2026-08-10T15:48:25.064Z"
             },
             {
               "id": "task_dac0abeea76564a7d842",

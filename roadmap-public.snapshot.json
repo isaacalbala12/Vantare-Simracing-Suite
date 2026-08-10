@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T21:58:49Z",
+  "generatedAt": "2026-08-10T22:11:22Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 12,
+            "done": 13,
             "total": 26,
-            "percent": 46
+            "percent": 50
           },
           "tasks": [
             {
@@ -38,12 +38,6 @@
               "title": "Pedals Redline: el cuarto widget de la direccion insignia",
               "status": "in-progress",
               "updatedAt": "2026-08-10T16:22:47.507Z"
-            },
-            {
-              "id": "task_e9740a55c063a90d9efc",
-              "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
-              "status": "in-progress",
-              "updatedAt": "2026-08-10T17:13:48.845Z"
             },
             {
               "id": "task_f0c3e304758281802415",
@@ -166,6 +160,12 @@
               "updatedAt": "2026-08-05T21:48:07.650Z"
             },
             {
+              "id": "task_e9740a55c063a90d9efc",
+              "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
+              "status": "done",
+              "updatedAt": "2026-08-10T22:11:10.996Z"
+            },
+            {
               "id": "task_7110c13b4b7c325111c7",
               "title": "Protocolo root, alpha, bounds y overflow",
               "status": "done",
@@ -181,7 +181,7 @@
               "id": "task_b22567b960d2c25f9552",
               "title": "Test flaky en CI: TestTelemetryCoreTwoHourLogicalSoak falla por presupuesto de commit",
               "status": "done",
-              "updatedAt": "2026-08-10T21:58:38.624Z"
+              "updatedAt": "2026-08-10T21:59:17.890Z"
             },
             {
               "id": "task_5be48115a72f57ffcd93",

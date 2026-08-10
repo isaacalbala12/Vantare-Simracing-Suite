@@ -35,13 +35,13 @@ export function parseStandingsEnduranceSettings(input: unknown): StandingsEndura
       : {};
   const showSessionHeader = source.showSessionHeader !== false;
   if (source.templateId === undefined) {
-    return { templateId: "standings-tower", showSessionHeader };
+    return { templateId: "standings-redline", showSessionHeader };
   }
   if (isTemplateId(source.templateId)) {
     return { templateId: source.templateId, showSessionHeader };
   }
   return {
-    templateId: "standings-tower",
+    templateId: "standings-redline",
     showSessionHeader,
     templateDiagnostic: "unknown-template",
   };
@@ -49,7 +49,7 @@ export function parseStandingsEnduranceSettings(input: unknown): StandingsEndura
 
 export const STANDINGS_ENDURANCE_DEFAULT_SETTINGS = {
   ...STANDINGS_DEFAULT_APPEARANCE,
-  templateId: "standings-tower" as StandingsEnduranceTemplateId,
+  templateId: "standings-redline" as StandingsEnduranceTemplateId,
   showSessionHeader: true,
 };
 

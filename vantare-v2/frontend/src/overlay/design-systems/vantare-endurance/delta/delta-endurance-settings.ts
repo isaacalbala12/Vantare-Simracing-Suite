@@ -27,16 +27,16 @@ export function parseDeltaEnduranceSettings(input: unknown): DeltaEnduranceSetti
       : {};
   const showHeader = source.showHeader !== false;
   if (source.templateId === undefined) {
-    return { templateId: "delta-strip", showHeader };
+    return { templateId: "delta-redline", showHeader };
   }
   if (isTemplateId(source.templateId)) {
     return { templateId: source.templateId, showHeader };
   }
-  return { templateId: "delta-strip", showHeader, templateDiagnostic: "unknown-template" };
+  return { templateId: "delta-redline", showHeader, templateDiagnostic: "unknown-template" };
 }
 
 export const DELTA_ENDURANCE_DEFAULT_SETTINGS = {
-  templateId: "delta-strip" as DeltaEnduranceTemplateId,
+  templateId: "delta-redline" as DeltaEnduranceTemplateId,
   showHeader: true,
 };
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-07T22:10:57Z",
+  "generatedAt": "2026-08-10T15:38:20Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 9,
-            "total": 21,
-            "percent": 43
+            "done": 10,
+            "total": 24,
+            "percent": 42
           },
           "tasks": [
             {
@@ -38,6 +38,12 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_3addfe3d5eca49331fcd",
+              "title": "Redline titular: standings por defecto y rescate de relative y delta",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T01:26:59.479Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -74,6 +80,12 @@
               "title": "Investigar overlays diferenciados para pantalla y OBS",
               "status": "planned",
               "updatedAt": "2026-07-14T23:05:21.904Z"
+            },
+            {
+              "id": "task_871b1ab68a2ba77204b2",
+              "title": "Pedals Redline: el cuarto widget de la direccion insignia",
+              "status": "planned",
+              "updatedAt": "2026-08-10T01:26:21.916Z"
             },
             {
               "id": "task_3dae88596a0aa6e65ce1",
@@ -128,6 +140,12 @@
               "title": "Controles de autoría y comparación de superficies",
               "status": "done",
               "updatedAt": "2026-08-07T18:24:01.988Z"
+            },
+            {
+              "id": "task_dc7911188c6a359d5018",
+              "title": "El gate visual esta roto en nightly: standings-original-ready-studio 71.308%",
+              "status": "done",
+              "updatedAt": "2026-08-10T15:38:04.400Z"
             },
             {
               "id": "task_7a01dcafb5e466f56f0b",
@@ -481,10 +499,16 @@
           },
           "progress": {
             "done": 6,
-            "total": 9,
-            "percent": 67
+            "total": 10,
+            "percent": 60
           },
           "tasks": [
+            {
+              "id": "task_e6b932448079b1366a64",
+              "title": "Reconciliar estado documental de tras promoción a Nightly",
+              "status": "in-progress",
+              "updatedAt": "2026-08-10T15:37:20.708Z"
+            },
             {
               "id": "task_62bf4878e08849125f60",
               "title": "Productor StrategyInputProjection v1",
@@ -495,19 +519,19 @@
               "id": "task_1b9ae73be18bdf3e6147",
               "title": "Progreso, distancia y mapa con evidencia LMU",
               "status": "planned",
-              "updatedAt": "2026-08-01T22:24:52.578Z"
+              "updatedAt": "2026-08-10T15:37:20.708Z"
             },
             {
               "id": "task_a918958013a28322f560",
               "title": "Sandbox real para importaciones externas y comunitarias",
               "status": "planned",
-              "updatedAt": "2026-08-01T22:24:52.625Z"
+              "updatedAt": "2026-08-10T15:37:20.708Z"
             },
             {
               "id": "task_7176d410d0ef064a24b1",
               "title": "Adaptador DuckDB productivo y packaging Windows",
               "status": "done",
-              "updatedAt": "2026-08-03T00:34:34.646Z"
+              "updatedAt": "2026-08-10T15:37:20.708Z"
             },
             {
               "id": "task_a054d22f28012668b44e",
@@ -537,7 +561,7 @@
               "id": "task_d7793152f75beb4aadb3",
               "title": "Promoción a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-02T15:04:44.923Z"
+              "updatedAt": "2026-08-10T15:37:20.708Z"
             }
           ]
         }
@@ -770,15 +794,15 @@
           },
           "progress": {
             "done": 11,
-            "total": 26,
-            "percent": 42
+            "total": 27,
+            "percent": 41
           },
           "tasks": [
             {
               "id": "task_b40051fa6a37306acaac",
               "title": "Activación y lifecycle del plan",
               "status": "planned",
-              "updatedAt": "2026-08-01T18:51:15.827Z"
+              "updatedAt": "2026-08-10T01:34:16.363Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",
@@ -790,7 +814,7 @@
               "id": "task_28ad2725a706bd5ccf64",
               "title": "Catálogo oficial firmado de Vantare",
               "status": "planned",
-              "updatedAt": "2026-08-01T18:51:19.538Z"
+              "updatedAt": "2026-08-10T01:34:16.372Z"
             },
             {
               "id": "task_3350529eba76e7f8f172",
@@ -829,6 +853,12 @@
               "updatedAt": "2026-08-01T18:57:49.786Z"
             },
             {
+              "id": "task_abfc7b6ff159f09de8ab",
+              "title": "Promoción acumulativa de Strategy Planner a Nightly",
+              "status": "planned",
+              "updatedAt": "2026-08-10T01:37:26.563Z"
+            },
+            {
               "id": "task_dac0abeea76564a7d842",
               "title": "Read model y widgets live de Strategy",
               "status": "planned",
@@ -856,7 +886,7 @@
               "id": "task_3b94344ae85a4edf9fb5",
               "title": "UI de Mis planes y paquetes import/export",
               "status": "planned",
-              "updatedAt": "2026-08-01T19:07:28.426Z"
+              "updatedAt": "2026-08-10T01:34:16.845Z"
             },
             {
               "id": "task_c6c4e42fe0926cb43de0",

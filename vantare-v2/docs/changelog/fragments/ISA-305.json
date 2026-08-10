@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-305",
+  "type": "fix",
+  "summary": "Seis correcciones en Overlays Studio y el acceso a la Suite alineado con lo que tu plan concede de verdad.",
+  "technicalNotes": [
+    "El rail del inspector deja de mostrar una barra de desplazamiento horizontal que no hacía falta.",
+    "La clasificación multiclase permite elegir cuántas filas mostrar: 5, 10, 15 o 20.",
+    "El panel de comportamiento expresa el ritmo en FPS, limitado al rango 1 a 240.",
+    "Los widgets se recortan al lienzo, así que ya no se salen del área de la composición.",
+    "Pasar de simulación a directo y volver a simulación restaura la simulación en lugar de quedarse a medias.",
+    "Volver a pulsar sobre un widget ya seleccionado cierra el Inspector.",
+    "El acceso a la Suite en la interfaz vuelve a coincidir con el del servidor: beta_access, founder, pro_founder, visionary_backer y la combinación de overlays con engineer conceden Suite, no solo el paquete literal."
+  ],
+  "testing": [
+    "Abrir el Inspector y comprobar que no aparece barra horizontal en el rail.",
+    "En una sesión multiclase, cambiar el número de filas de la clasificación entre 5, 10, 15 y 20.",
+    "Mover un widget hasta el borde del lienzo y confirmar que queda recortado y no se desborda.",
+    "Cambiar de simulación a directo y volver a simulación, comprobando que los datos simulados reaparecen.",
+    "Con una licencia de tipo founder o beta_access, confirmar que la Suite aparece desbloqueada."
+  ],
+  "knownLimitations": []
+}

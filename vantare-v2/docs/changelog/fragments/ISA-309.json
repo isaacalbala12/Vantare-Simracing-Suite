@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-309",
+  "type": "feature",
+  "summary": "Strategy Planner entra en Nightly con su repositorio de planes, el comparador de alternativas y el solver determinista.",
+  "technicalNotes": [
+    "Mis planes deja de ser una lista de ejemplo y pasa a mostrar los planes guardados de verdad, con su historial.",
+    "El plan activo es duradero y auditable: sobrevive al cierre de la aplicación y queda registro de lo que cambió.",
+    "El comparador enfrenta las variantes rápida, robusta y conservadora del mismo plan para ver qué se gana y qué se arriesga con cada una.",
+    "El modelo de neumáticos pasa a calcularse en un único sitio, de modo que la interfaz y el motor no puedan discrepar.",
+    "El planificador deja de mostrar cifras que no había calculado.",
+    "Los paquetes de plan se pueden importar con vista previa antes de aplicarlos, y las reglas de evento quedan versionadas con sus supuestos declarados."
+  ],
+  "testing": [
+    "Abrir la pestaña Strategy y recorrer Mis planes, Entrada, Revisión y Workspace.",
+    "Crear un plan, cerrar la aplicación y volver a abrirla para comprobar que el plan activo sigue ahí.",
+    "Abrir la comparación de variantes y verificar que rápida, robusta y conservadora muestran cifras distintas y coherentes.",
+    "Importar un paquete de plan y confirmar que la vista previa describe lo que va a aplicarse antes de confirmarlo."
+  ],
+  "knownLimitations": [
+    "La ejecución en directo y los productores de Telemetry no entran en este corte.",
+    "El detector de carreras queda sin verificar por falta de herramientas de compilación en el entorno de validación, y el contraste manual de los puentes contra la aplicación viva sigue pendiente."
+  ]
+}

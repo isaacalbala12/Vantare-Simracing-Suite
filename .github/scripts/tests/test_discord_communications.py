@@ -381,5 +381,56 @@ class SafetyTests(unittest.TestCase):
         self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release)
 
 
+class ChannelUpdateOverflowTests(unittest.TestCase):
+    """Fragments accumulate forever, so the message always outgrows Discord."""
+
+    @staticmethod
+    def _many(count):
+        return [
+            fragment(issue=f"ISA-{index}", summary=f"Cambio numero {index} " + "detalle " * 12)
+            for index in range(1, count + 1)
+        ]
+
+    def _fields(self, payload, name):
+        return [f for f in payload["embeds"][0]["fields"] if f["name"].startswith(name)]
+
+    def test_newest_issues_lead_the_summary(self):
+        payload = communications.render_channel_update(self._many(40), "abc1234", "nightly")
+        summary = "\n".join(f["value"] for f in self._fields(payload, "Resumen"))
+        self.assertIn("ISA-40", summary)
+        self.assertLess(summary.index("ISA-40"), summary.index("ISA-39"))
+
+    def test_overflow_is_declared_rather_than_dropped(self):
+        payload = communications.render_channel_update(self._many(40), "abc1234", "nightly")
+        summary = "\n".join(f["value"] for f in self._fields(payload, "Resumen"))
+        self.assertRegex(summary, r"…y \d+ más")
+
+    def test_every_field_respects_the_discord_limit(self):
+        payload = communications.render_channel_update(self._many(40), "abc1234", "nightly")
+        for field in payload["embeds"][0]["fields"]:
+            self.assertLessEqual(len(field["value"]), communications.EMBED_FIELD_LIMIT)
+
+    def test_message_stays_within_the_six_thousand_character_budget(self):
+        payload = communications.render_channel_update(self._many(80), "abc1234", "nightly")
+        embed = payload["embeds"][0]
+        total = len(embed["title"]) + len(embed["description"]) + len(embed["footer"]["text"])
+        total += sum(len(f["name"]) + len(f["value"]) for f in embed["fields"])
+        self.assertLess(total, 6000)
+
+    def test_bullets_are_never_cut_mid_sentence(self):
+        payload = communications.render_channel_update(self._many(40), "abc1234", "nightly")
+        for field in payload["embeds"][0]["fields"]:
+            for line in field["value"].split("\n"):
+                if line.endswith("…"):
+                    self.assertTrue(line.startswith("- …y "), line)
+
+    def test_a_short_cut_keeps_every_entry(self):
+        payload = communications.render_channel_update(self._many(3), "abc1234", "nightly")
+        summary = "\n".join(f["value"] for f in self._fields(payload, "Resumen"))
+        for issue in ("ISA-1", "ISA-2", "ISA-3"):
+            self.assertIn(issue, summary)
+        self.assertNotIn("más, en el changelog", summary)
+
+
 if __name__ == "__main__":
     unittest.main()

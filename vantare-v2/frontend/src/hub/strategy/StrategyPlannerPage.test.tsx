@@ -13,10 +13,70 @@ import type { StrategyEditorDocument } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft, createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import { effectiveLapRows } from "../../strategy/strategy-manual-input";
 import type { StrategyManualClient, StrategyManualResult } from "../../strategy/strategy-manual-client";
+import type { StrategyPlanViolation, StrategyTyreClient } from "../../strategy/strategy-tyre-client";
 import { createStrategyStore } from "../../strategy/strategy-store";
+import type { StrategySolverClient, StrategyVariant } from "../../strategy/strategy-solver-client";
+import type { StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import { StrategyPlannerPage } from "./StrategyPlannerPage";
 
 configure({ asyncUtilTimeout: 3_000 });
+
+/** Stand-ins for solver output, shaped exactly as the bridge returns it. */
+function variant(overrides: Partial<StrategyVariant> & Pick<StrategyVariant, "kind">): StrategyVariant {
+  return {
+    stops: 3,
+    stints: [{ laps: 20, greenSeconds: 2000, degradationSeconds: 19, totalSeconds: 2019 }],
+    total: { optimisticSeconds: 21_800, expectedSeconds: 21_852, pessimisticSeconds: 21_904 },
+    deltaToFastestSeconds: 0,
+    marginLaps: 2,
+    survivesPessimistic: true,
+    risk: "low",
+    dominated: false,
+    reasons: [{ code: "time_optimal", message: "the quickest plan if every estimate holds" }],
+    ...overrides,
+  };
+}
+
+const TEST_VARIANTS: readonly StrategyVariant[] = [
+  variant({ kind: "fast", marginLaps: 0, risk: "high", survivesPessimistic: false }),
+  variant({ kind: "robust", stops: 4, deltaToFastestSeconds: 22.4, marginLaps: 3 }),
+  variant({
+    kind: "conservative", stops: 5, deltaToFastestSeconds: 44.8, marginLaps: 5,
+    dominated: true, dominatedBy: "robust",
+  }),
+];
+
+/** Library entries as the application service reports them. */
+function summary(overrides: Partial<StrategyPlanSummaryV1> & Pick<StrategyPlanSummaryV1, "planId">): StrategyPlanSummaryV1 {
+  return {
+    variantId: "variant-1",
+    name: "Plan",
+    mode: "manual",
+    updatedAt: "2026-08-01T10:00:00Z",
+    hasDraft: true,
+    revisionCount: 2,
+    draftId: "draft-1",
+    ...overrides,
+  };
+}
+
+function createTestLibraryClient(plans: readonly StrategyPlanSummaryV1[] | Error) {
+  return {
+    async execute(command: { commandId: string }) {
+      if (plans instanceof Error) throw plans;
+      return {
+        protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+        commandId: command.commandId,
+        repositoryVersion: 3,
+        plans,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+    },
+    cancel: () => false,
+    dispose: () => {},
+  } as never;
+}
 
 afterEach(cleanup);
 
@@ -44,6 +104,9 @@ describe("Strategy Planner shell", () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
 
     const opener = await screen.findByRole("button", { name: "Comparar planes" });
+    // The opener stays disabled until the solver answers, so clicking earlier
+    // would silently do nothing.
+    await waitFor(() => expect(opener.hasAttribute("disabled")).toBe(false));
     opener.focus();
     fireEvent.click(opener);
     expect(screen.getByRole("dialog", { name: "Comparar estrategias" })).toBeTruthy();
@@ -75,30 +138,74 @@ describe("Strategy Planner shell", () => {
     expect(document.querySelector("[aria-labelledby^=strategy-tab]")).toBeNull();
   });
 
-  it("renders a complete 78-lap plan and coherent metrics for every strategy", async () => {
+  it("renders the plan from the document and the solver's own variants", async () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
 
     const stints = await screen.findAllByTestId(/^strategy-stint-/);
     expect(stints).toHaveLength(4);
     expect(stints.reduce((total, stint) => total + Number(stint.getAttribute("data-laps")), 0)).toBe(78);
     expect(within(stints[3]).getByText("v.59–78 · 20v")).toBeTruthy();
-
-    const expectations = [
-      { label: "A", compounds: ["M", "H", "H", "S"], usage: "1M · 2H · 1S", time: "6h 04m 12.0s", fuelSave: "+1.0 v/stint" },
-      { label: "B", compounds: ["S", "M", "S", "S"], usage: "3S · 1M", time: "6h 04m 15.2s", fuelSave: "+3.0 v/stint" },
-      { label: "C", compounds: ["H", "H", "H", "M"], usage: "3H · 1M", time: "6h 04m 17.9s", fuelSave: "0 v/stint" },
-    ];
-
-    for (const expected of expectations) {
-      const option = screen.getByTestId(`strategy-option-${expected.label}`);
-      const compounds = Array.from(option.querySelectorAll<HTMLElement>("[data-compound]"), (chip) => chip.dataset.compound);
-      expect(compounds).toEqual(expected.compounds);
-      expect(within(option).getByTestId("strategy-option-usage").textContent).toBe(expected.usage);
-      expect(definitionValue(option, "Tiempo")).toBe(expected.time);
-      expect(definitionValue(option, "Pits")).toBe("3");
-      expect(definitionValue(option, "Ahorro")).toBe(expected.fuelSave);
-    }
     expect(screen.getByTestId("strategy-fuel-save-per-lap").textContent).toBe("0.95 L/v");
+
+    const option = await screen.findByTestId("strategy-option-fast");
+    expect(definitionValue(option, "Pits")).toBe("3");
+    expect(definitionValue(option, "Riesgo")).toBe("Alto");
+    expect(screen.queryByTestId("strategy-candidates-empty")).toBeNull();
+    expect(screen.getByRole("button", { name: "Comparar planes" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("shows a time range rather than a single figure", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    // A lone number would claim a precision the estimates do not have.
+    const total = await screen.findByTestId("strategy-total-fast");
+    expect(total.textContent).toMatch(/\d+h \d{2}m \d{2}s – \d+h \d{2}m \d{2}s/);
+  });
+
+  it("marks a plan another already beats on both time and margin", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+
+    expect(await screen.findByTestId("strategy-dominated-conservative")).toBeTruthy();
+    expect(screen.queryByTestId("strategy-dominated-fast")).toBeNull();
+  });
+
+  it("says why the strategy panel is empty when the solver refuses", async () => {
+    await renderPlanner({
+      demo: true,
+      initialScreen: "workspace",
+      solverClient: {
+        async compare() { throw new Error("No strategy finishes this race within the stated limits."); },
+        dispose() {},
+      },
+    });
+
+    const message = await screen.findByTestId("strategy-candidates-error");
+    expect(message.textContent).toContain("No strategy finishes this race");
+  });
+
+  it("reports what the physical tyre domain rejected", async () => {
+    await renderPlanner({
+      demo: true,
+      initialScreen: "workspace",
+      tyreClient: createTestTyreClient([{
+        code: "corner_locked",
+        message: "tyre is permanently assigned to front_left",
+        stintId: "stint-2",
+        tyreId: "M-01",
+        corner: "rear_right",
+      }]),
+    });
+
+    const report = await screen.findByTestId("strategy-plan-violations");
+    expect(report.textContent).toContain("M-01");
+    expect(report.textContent).toContain("RR");
+    expect(report.textContent).toContain("permanently assigned to front_left");
+  });
+
+  it("says nothing when the domain accepts the plan", async () => {
+    await renderPlanner({ demo: true, initialScreen: "workspace" });
+    await screen.findAllByTestId(/^strategy-stint-/);
+    expect(screen.queryByTestId("strategy-plan-violations")).toBeNull();
   });
 
   it("supports keyboard navigation between compact workspace panels", async () => {
@@ -116,6 +223,87 @@ describe("Strategy Planner shell", () => {
     await renderPlanner({ demo: true, initialScreen: "workspace" });
     fireEvent.click(await screen.findByRole("button", { name: "Editar datos" }));
     expect(screen.getByRole("heading", { name: "Entrada de carrera" })).toBeTruthy();
+  });
+
+  it("lists the plans the repository actually holds", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([
+        summary({ planId: "spa-2026", name: "6h Spa · Hypercar" }),
+        summary({ planId: "lemans-2026", name: "24h Le Mans · LMGT3", hasDraft: false, revisionCount: 1, draftId: undefined }),
+      ]),
+    });
+
+    expect(await screen.findByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
+    expect(screen.getByTestId("strategy-plan-lemans-2026-variant-1")).toBeTruthy();
+    expect(screen.getByText("6h Spa · Hypercar")).toBeTruthy();
+    // A plan with no open draft cannot be opened into the workspace.
+    const lemans = screen.getByTestId("strategy-plan-lemans-2026-variant-1");
+    expect(within(lemans).getByRole("button", { name: "Abrir workspace" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("searches the library and says when nothing matches", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient([
+        summary({ planId: "spa-2026", name: "6h Spa · Hypercar" }),
+        summary({ planId: "lemans-2026", name: "24h Le Máns · LMGT3" }),
+      ]),
+    });
+
+    const search = await screen.findByLabelText("Buscar");
+    fireEvent.change(search, { target: { value: "le mans" } });
+    expect(screen.queryByTestId("strategy-plan-spa-2026-variant-1")).toBeNull();
+    expect(screen.getByTestId("strategy-plan-lemans-2026-variant-1")).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: "monza" } });
+    expect(screen.getByTestId("strategy-gallery-no-match")).toBeTruthy();
+  });
+
+  it("says the library is empty rather than inventing a plan", async () => {
+    await renderPlanner({ libraryClient: createTestLibraryClient([]) });
+    expect(await screen.findByText("Todavía no tienes planes guardados")).toBeTruthy();
+    expect(screen.queryByTestId("strategy-gallery-grid")).toBeNull();
+  });
+
+  it("explains a library that failed to open and offers a retry", async () => {
+    await renderPlanner({
+      libraryClient: createTestLibraryClient(new Error("El repositorio local no está disponible.")),
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("El repositorio local no está disponible.");
+    expect(within(alert).getByRole("button", { name: "Reintentar" })).toBeTruthy();
+  });
+
+  it("returns to loading while a library retry is pending", async () => {
+    let attempts = 0;
+    let resolveRetry: ((value: StrategyApplicationResultV1<StrategyEditorDocument>) => void) | undefined;
+    const client = {
+      execute() {
+        attempts += 1;
+        if (attempts === 1) return Promise.reject(new Error("El repositorio local no está disponible."));
+        return new Promise<StrategyApplicationResultV1<StrategyEditorDocument>>((resolve) => {
+          resolveRetry = resolve;
+        });
+      },
+      cancel: () => false,
+      dispose: () => {},
+    } as StrategyApplicationClient<StrategyEditorDocument>;
+    await renderPlanner({ libraryClient: client });
+
+    const alert = await screen.findByRole("alert");
+    fireEvent.click(within(alert).getByRole("button", { name: "Reintentar" }));
+
+    expect((await screen.findByRole("status")).textContent).toContain("Cargando planes");
+    if (!resolveRetry) throw new Error("library retry did not start");
+    resolveRetry({
+      protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+      commandId: "retry-result",
+      repositoryVersion: 4,
+      plans: [summary({ planId: "spa-2026", name: "6h Spa · Hypercar" })],
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    expect(await screen.findByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
   });
 
   it("renders explicit loading, empty and error gallery states", async () => {
@@ -173,12 +361,18 @@ describe("Strategy Planner shell", () => {
     expect(screen.getByText("Asignación cancelada. El plan no ha cambiado.")).toBeTruthy();
     expect(screen.getByTestId("strategy-tyre-S-06").getAttribute("aria-pressed")).toBe("false");
 
+    // S-06 has never run, so it may be planned on a different corner later.
     fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
     fireEvent.click(screen.getByTestId("strategy-slot-stint-1-front_right"));
     expect(within(screen.getByTestId("strategy-slot-stint-1-front_right")).getByText("S-06")).toBeTruthy();
     fireEvent.click(screen.getByTestId("strategy-tyre-S-06"));
     fireEvent.click(screen.getByTestId("strategy-slot-stint-2-rear_right"));
-    expect(screen.getByRole("alert").textContent).toContain("S-06 está ligado a FR");
+    expect(within(screen.getByTestId("strategy-slot-stint-2-rear_right")).getByText("S-06")).toBeTruthy();
+
+    // M-01 already ran on front left, so the domain refuses any other corner.
+    fireEvent.click(screen.getByTestId("strategy-tyre-M-01"));
+    fireEvent.click(screen.getByTestId("strategy-slot-stint-2-rear_left"));
+    expect(screen.getByRole("alert").textContent).toContain("M-01 está ligado a FL");
   });
 
   it("survives React StrictMode without duplicate opening or a disposed runtime", async () => {
@@ -317,12 +511,219 @@ describe("Strategy Planner shell", () => {
   });
 });
 
+/**
+ * Stands in for the application service across the whole transfer flow: it
+ * lists, exports and imports, and records every command so the tests can prove
+ * what was and was not sent.
+ */
+function createTestTransferClient(options: {
+  plans: readonly StrategyPlanSummaryV1[];
+  importable?: boolean;
+  failImportWith?: Error;
+  seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>>;
+}) {
+  const importable = options.importable ?? true;
+  const preview = {
+    packageVersion: "strategy.package.v1",
+    contractVersion: "strategy.v1",
+    provenance: { application: "vantare", applicationVersion: "0.1.0.7", exportedAt: "2026-08-08T09:00:00Z" },
+    checksum: "abc123",
+    importable,
+    entries: [{
+      planId: "monza-2026",
+      variantId: "variant-1",
+      name: "6h Monza",
+      mode: "manual",
+      disposition: importable ? "new" : "conflict",
+      hasDraft: true,
+      revisionCount: 2,
+      newRevisions: importable ? 2 : 0,
+      conflictingRevisions: importable ? [] : ["revision-1"],
+    }],
+  };
+  return {
+    async execute(command: StrategyApplicationCommandV1<StrategyEditorDocument>) {
+      options.seen.push(command);
+      const base = {
+        protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+        commandId: command.commandId,
+        repositoryVersion: 3,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "export") {
+        return { ...base, package: "eyJhIjoxfQ==" };
+      }
+      if (command.operation === "import") {
+        const dryRun = "dryRun" in command && command.dryRun === true;
+        if (!dryRun && options.failImportWith) throw options.failImportWith;
+        return { ...base, preview, imported: !dryRun };
+      }
+      return { ...base, plans: options.plans };
+    },
+    cancel: () => false,
+    dispose: () => {},
+  } as never;
+}
+
+function packageFile(): File {
+  return new File(['{"packageVersion":"strategy.package.v1"}'], "monza.vantareplan.json", {
+    type: "application/json",
+  });
+}
+
+/** Reads the import commands that actually asked to write. */
+function writeCommands(seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>>) {
+  return seen.filter(
+    (command) => command.operation === "import" && !("dryRun" in command && command.dryRun === true),
+  );
+}
+
+describe("Strategy Planner plan transfer", () => {
+  it("exports a plan and hands the bytes to the user without sending them anywhere", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    const saved: Array<{ fileName: string; bytes: Uint8Array }> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+      appVersion: "0.1.0.8",
+      onSavePackage: (fileName, bytes) => saved.push({ fileName, bytes }),
+    });
+
+    fireEvent.click(await screen.findByTestId("strategy-export-spa-2026-variant-1"));
+    await waitFor(() => expect(saved).toHaveLength(1));
+
+    expect(seen.find((command) => command.operation === "export")).toMatchObject({
+      operation: "export",
+      plans: [{ planId: "spa-2026", variantId: "variant-1" }],
+      provenance: { application: "vantare", applicationVersion: "0.1.0.8" },
+    });
+    expect(saved[0].fileName).toContain("spa-2026");
+    expect(saved[0].bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it("previews an imported package before writing anything", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+
+    expect(await screen.findByTestId("strategy-import-preview")).toBeTruthy();
+    expect(screen.getByTestId("strategy-import-summary").textContent).toBe("1 plan");
+    expect(screen.getByTestId("strategy-import-entry-monza-2026-variant-1").textContent)
+      .toContain("Nuevo · 2 revisiones");
+
+    const imports = seen.filter((command) => command.operation === "import");
+    expect(imports).toHaveLength(1);
+    expect(imports[0]).toMatchObject({ dryRun: true });
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+
+  it("only writes once the preview is confirmed, and against the version it showed", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Importar" }));
+
+    await waitFor(() => {
+      const writes = writeCommands(seen);
+      expect(writes).toHaveLength(1);
+      expect(writes[0].expectedRepositoryVersion).toBe(3);
+    });
+  });
+
+  it("refuses to offer an import that would collide with saved revisions", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({
+        plans: [summary({ planId: "spa-2026" })],
+        importable: false,
+        seen,
+      }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+
+    expect(screen.getByTestId("strategy-import-summary").textContent)
+      .toBe("1 plan choca con lo que ya tienes guardado");
+    const confirm = screen.getByRole("button", { name: "Importar" });
+    expect(confirm.hasAttribute("disabled")).toBe(true);
+
+    fireEvent.click(confirm);
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+
+  it("says the library is untouched when an import fails", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({
+        plans: [summary({ planId: "spa-2026" })],
+        failImportWith: new StrategyApplicationError("import_refused", "", "El paquete fue rechazado."),
+        seen,
+      }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Importar" }));
+
+    const failure = await screen.findByTestId("strategy-transfer-error");
+    expect(failure.textContent).toContain("El paquete fue rechazado.");
+    // The plan that was already there is still there.
+    expect(screen.getByTestId("strategy-plan-spa-2026-variant-1")).toBeTruthy();
+  });
+
+  it("cancels a preview without writing", async () => {
+    const seen: Array<StrategyApplicationCommandV1<StrategyEditorDocument>> = [];
+    await renderPlanner({
+      libraryClient: createTestTransferClient({ plans: [summary({ planId: "spa-2026" })], seen }),
+    });
+
+    fireEvent.change(await screen.findByLabelText("Importar plan"), { target: { files: [packageFile()] } });
+    await screen.findByTestId("strategy-import-preview");
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByTestId("strategy-import-preview")).toBeNull();
+    expect(writeCommands(seen)).toHaveLength(0);
+  });
+});
+
 type PlannerTestProps = Omit<React.ComponentProps<typeof StrategyPlannerPage>, "strategyStore">;
 
 async function renderPlanner(props: PlannerTestProps) {
   const store = createTestStrategyStore();
   await store.create(createStrategyEditorDraft("2026-08-02T00:00:00Z"));
-  return render(<StrategyPlannerPage {...props} strategyStore={store} manualClient={createTestManualClient()} />);
+  return render(
+    <StrategyPlannerPage
+      tyreClient={createTestTyreClient()}
+      solverClient={createTestSolverClient()}
+      {...props}
+      strategyStore={store}
+      manualClient={createTestManualClient()}
+    />,
+  );
+}
+
+/** Stands in for the Go solver so the shell tests stay deterministic. */
+function createTestSolverClient(variants: readonly StrategyVariant[] = TEST_VARIANTS): StrategySolverClient {
+  return {
+    async compare() { return { variants, maxStintLaps: 20, binding: "fuel", assumptions: [] }; },
+    dispose() {},
+  };
+}
+
+/** Stands in for the Go tyre domain so the shell tests stay deterministic. */
+function createTestTyreClient(violations: readonly StrategyPlanViolation[] = []): StrategyTyreClient {
+  return {
+    async validate() { return { valid: violations.length === 0, violations }; },
+    dispose() {},
+  };
 }
 
 function createTestManualClient(): StrategyManualClient {

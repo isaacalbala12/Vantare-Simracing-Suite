@@ -37,6 +37,8 @@ import (
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
+	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
+	strategytyres "github.com/vantare/overlays/v2/internal/strategy/tyres"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
@@ -307,6 +309,110 @@ func executeStrategyManualCommand(ctx context.Context, executor strategyCommandE
 		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategymanual.ErrorInvalidInput), "field": "", "message": "The manual Strategy result was invalid."}
 	}
 	return result, nil
+}
+
+// executeStrategySolverCommand compares race strategies. Every assumption the
+// solver applies travels back with the answer, so nothing is decided silently.
+func executeStrategySolverCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	invalid := func(commandID, message string) map[string]any {
+		return map[string]any{"commandId": commandID, "code": string(strategysolver.ErrorInvalidInput), "field": "", "message": message}
+	}
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, invalid("invalid-command", "The strategy comparison could not be completed.")
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if err := json.Unmarshal(document, &header); err != nil {
+		return nil, invalid("invalid-command", "The strategy comparison could not be completed.")
+	}
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategysolver.ErrorInvalidInput
+		field := ""
+		var solveErr *strategysolver.SolveError
+		if errors.As(err, &solveErr) {
+			if _, known := publicStrategySolverMessage(solveErr.Code); known {
+				code = solveErr.Code
+				field = solveErr.Field
+			}
+		}
+		message, _ := publicStrategySolverMessage(code)
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(code), "field": field, "message": message}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, invalid(header.CommandID, "The strategy comparison result was invalid.")
+	}
+	return result, nil
+}
+
+func publicStrategySolverMessage(code strategysolver.ErrorCode) (string, bool) {
+	switch code {
+	case strategysolver.ErrorInvalidInput:
+		return "Review the highlighted race input.", true
+	case strategysolver.ErrorInfeasible:
+		return "No strategy finishes this race within the stated limits.", true
+	case strategysolver.ErrorOverflow:
+		return "The strategy comparison exceeds supported limits.", true
+	default:
+		return "The strategy comparison could not be completed.", false
+	}
+}
+
+// executeStrategyTyresCommand validates a planned tyre set against the physical
+// domain, which is the authority for which placements are legal.
+func executeStrategyTyresCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
+	invalid := func(commandID, message string) map[string]any {
+		return map[string]any{"commandId": commandID, "code": string(strategytyres.ErrorInvalidTyre), "message": message}
+	}
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, invalid("invalid-command", "The tyre validation request could not be completed.")
+	}
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if err := json.Unmarshal(document, &header); err != nil {
+		return nil, invalid("invalid-command", "The tyre validation request could not be completed.")
+	}
+	if header.CommandID == "" {
+		header.CommandID = "invalid-command"
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		code := strategytyres.ErrorInvalidTyre
+		var inventoryErr *strategytyres.InventoryError
+		if errors.As(err, &inventoryErr) {
+			if _, known := publicStrategyTyresMessage(inventoryErr.Code); known {
+				code = inventoryErr.Code
+			}
+		}
+		message, _ := publicStrategyTyresMessage(code)
+		return nil, map[string]any{"commandId": header.CommandID, "code": string(code), "message": message}
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, invalid(header.CommandID, "The tyre validation result was invalid.")
+	}
+	return result, nil
+}
+
+func publicStrategyTyresMessage(code strategytyres.ErrorCode) (string, bool) {
+	switch code {
+	case strategytyres.ErrorCapacityExceeded:
+		return "The plan uses more physical tyres than the event allows.", true
+	case strategytyres.ErrorDuplicateTyre:
+		return "Two physical tyres share the same identity.", true
+	case strategytyres.ErrorInvalidCondition:
+		return "A tyre condition is outside the supported range.", true
+	default:
+		return "The tyre inventory could not be validated.", false
+	}
 }
 
 func publicStrategyManualMessage(code strategymanual.ErrorCode) (string, bool) {
@@ -995,6 +1101,24 @@ func main() {
 			return
 		}
 		emitter.Emit("strategy:application:result", result)
+	})
+	strategySolverBridge := strategysolver.JSONBridge{}
+	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {
+		result, failure := executeStrategySolverCommand(ctx, strategySolverBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:solver:error", failure)
+			return
+		}
+		emitter.Emit("strategy:solver:result", result)
+	})
+	strategyTyresBridge := strategytyres.JSONBridge{}
+	wailsApp.Event.On("strategy:tyres:validate", func(event *application.CustomEvent) {
+		result, failure := executeStrategyTyresCommand(ctx, strategyTyresBridge, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:tyres:error", failure)
+			return
+		}
+		emitter.Emit("strategy:tyres:result", result)
 	})
 	strategyManualBridge := strategymanual.JSONBridge{}
 	wailsApp.Event.On("strategy:manual:calculate", func(event *application.CustomEvent) {

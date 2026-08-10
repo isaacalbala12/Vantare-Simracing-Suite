@@ -34,23 +34,38 @@ describe("Strategy editor document", () => {
     expect(Object.isFrozen(removed)).toBe(true);
   });
 
-  it("assigns one physical tyre and permanently preserves its first corner", () => {
+  it("plans a fresh tyre on any corner because planning is not running", () => {
     const original = createDefaultStrategyEditorDocument();
     const assigned = assignTyre(original, "stint-1", "front_left", "S-05");
     expect(assigned.stints[0].assignments.front_left).toBe("S-05");
-    expect(assigned.tyres.find((item) => item.id === "S-05")?.lockedCorner).toBe("front_left");
-    const cleared = clearTyreAssignment(assigned, "stint-1", "front_left");
+    // A tyre that has never run stays unlocked: only recorded use fixes a corner.
+    expect(assigned.tyres.find((item) => item.id === "S-05")?.lockedCorner).toBeUndefined();
+
+    const moved = assignTyre(assigned, "stint-2", "front_right", "S-05");
+    expect(moved.stints[1].assignments.front_right).toBe("S-05");
+
+    const cleared = clearTyreAssignment(moved, "stint-1", "front_left");
     expect(cleared.stints[0].assignments.front_left).toBeNull();
-    expect(cleared.tyres.find((item) => item.id === "S-05")?.lockedCorner).toBe("front_left");
-    expect(() => assignTyre(cleared, "stint-2", "front_right", "S-05"))
+  });
+
+  it("keeps a tyre that has already run on its locked corner", () => {
+    const original = createDefaultStrategyEditorDocument();
+    const used = original.tyres.find((item) => item.id === "M-01");
+    expect(used?.state).toBe("used");
+    expect(used?.lockedCorner).toBe("front_left");
+
+    expect(() => assignTyre(original, "stint-2", "rear_right", "M-01"))
       .toThrowError(expect.objectContaining({ code: "corner_locked" }));
-    expect(original.tyres.find((item) => item.id === "S-05")?.lockedCorner).toBeUndefined();
+    expect(assignTyre(original, "stint-2", "front_left", "M-01").stints[1].assignments.front_left)
+      .toBe("M-01");
   });
 
   it("rejects one tyre in two corners of the same stint", () => {
     const original = createDefaultStrategyEditorDocument();
+    // M-01 is locked to front left, so the corner rule answers first — that is
+    // the physical reason, not a planning clash.
     expect(() => assignTyre(original, "stint-1", "front_right", "M-01"))
-      .toThrowError(expect.objectContaining({ code: "tyre_already_assigned" }));
+      .toThrowError(expect.objectContaining({ code: "corner_locked" }));
 
     const assigned = assignTyre(original, "stint-1", "front_left", "S-05");
     expect(() => assignTyre(assigned, "stint-1", "rear_left", "S-05"))

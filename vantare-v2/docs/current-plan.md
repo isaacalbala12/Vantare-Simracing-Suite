@@ -1,3 +1,22 @@
+Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa preparada):
+- Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila
+  ya implementada de Strategy Planner sin arrastrar commits ajenos.
+- La rama canónica es
+  `vantareapp/isa-309-str-n02-promocion-acumulativa-de-strategy-planner-a-nightly`.
+  Contiene los 11 commits de producto reconstruidos; este registro de estado
+  se mantiene como commit documental separado.
+- Evidencia local revisada: Strategy Go (`gofmt`, `go vet`, tests), typecheck
+  real, suite frontend completa, build y ESLint focal pasan. `go test ./...`
+  también pasa en ejecución serial después del build; dos fallos bajo carga
+  paralela pasaron aislados y no pertenecen al cambio.
+- PR draft #192 abierto hacia `nightly`, mergeable y con todos los gates en
+  verde. El primer run agotó el presupuesto temporal heredado de
+  `TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree`; el rerun único
+  pasó Go, frontend, visual advisory y lint advisory completos.
+- Pendiente: revisión y autorización explícita de Isaac antes de cualquier
+  merge a `nightly`. No hay promoción a `testers`/`master`, release ni inicio
+  de STR-15B.
+
 Nota ALINEACION-REFACTOR (2026-08-10):
 - Objetivo: reconciliar el worktree principal (rama `refactor`, worktree
   `C:\Users\isaac\Desktop\Vantare-Overlays`) contra `origin/nightly`.

@@ -516,6 +516,8 @@ const (
 	ErrorTyreNotFound          ErrorCode = "tyre_not_found"
 	ErrorInvalidTransition     ErrorCode = "invalid_transition"
 	ErrorCornerLocked          ErrorCode = "corner_locked"
+	ErrorTyreDiscarded         ErrorCode = "tyre_discarded"
+	ErrorTyreReused            ErrorCode = "tyre_reused"
 	ErrorCornerOccupied        ErrorCode = "corner_occupied"
 	ErrorInsufficientInventory ErrorCode = "insufficient_inventory"
 )

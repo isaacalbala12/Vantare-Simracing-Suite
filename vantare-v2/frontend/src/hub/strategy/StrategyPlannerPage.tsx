@@ -3,8 +3,11 @@ import {
   appendStint,
   assignTyre,
   clearTyreAssignment,
+  conditionMidpoint,
   cornerLabel,
   deleteStint,
+  formatCondition,
+  isConditionExact,
   duplicateStint,
   insertStint,
   moveStint,
@@ -23,7 +26,24 @@ import {
   openOrCreateStrategyEditor,
   type StrategyEditorRuntime,
 } from "../../strategy/strategy-editor-store";
+import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
 import type { StrategyStore } from "../../strategy/strategy-store";
+import {
+  describePlan,
+  filterPlans,
+  loadStrategyLibrary,
+  sortPlans,
+  type StrategyLibraryEntry,
+  type StrategyLibrarySort,
+} from "../../strategy/strategy-library";
+import {
+  commitStrategyImport,
+  describeImportEntry,
+  exportStrategyPackage,
+  previewStrategyImport,
+  summariseImport,
+} from "../../strategy/strategy-transfer";
+import type { StrategyImportPreviewV1 } from "../../strategy/strategy-application-client";
 import { canonicalStrategyTimestamp } from "../../strategy/strategy-contract-v1";
 import {
   clearLapCorrection,
@@ -39,6 +59,16 @@ import {
   type StrategyManualClient,
   type StrategyManualResult,
 } from "../../strategy/strategy-manual-client";
+import {
+  createWailsStrategySolverClient,
+  type StrategySolverClient,
+  type StrategyVariant,
+} from "../../strategy/strategy-solver-client";
+import {
+  createWailsStrategyTyreClient,
+  type StrategyPlanViolation,
+  type StrategyTyreClient,
+} from "../../strategy/strategy-tyre-client";
 import { StrategyManualInputPanel } from "./StrategyManualInputPanel";
 import "./strategy-planner.css";
 
@@ -46,13 +76,65 @@ type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
 type GalleryState = "ready" | "loading" | "empty" | "error";
 type WorkspacePanel = "plans" | "stints" | "inventory";
 
+/**
+ * Where an export or import currently is. Reading, previewing and importing
+ * are distinct states because they mean different things to the person
+ * watching: only the last one can have changed anything.
+ */
+type TransferState =
+  | { stage: "idle" }
+  | { stage: "exporting"; planId: string }
+  | { stage: "reading"; fileName: string }
+  | { stage: "previewed"; fileName: string; bytes: Uint8Array; preview: StrategyImportPreviewV1 }
+  | { stage: "importing"; fileName: string }
+  | { stage: "error"; error: string };
+
+/**
+ * The build stamps this; "dev" is what an unstamped build honestly is, and it
+ * travels in the package provenance rather than a version we invented.
+ */
+const DEFAULT_APP_VERSION =
+  (import.meta.env?.VITE_APP_VERSION as string | undefined) ?? "dev";
+
+/** Hands bytes to the user as a file. Replaced in tests, which have no DOM download. */
+function downloadPackage(fileName: string, bytes: Uint8Array): void {
+  const blob = new Blob([bytes as BlobPart], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function messageOf(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 type StrategyPlannerPageProps = {
   demo?: boolean;
   initialScreen?: PlannerScreen;
+  /** Forces a gallery state in tests; the real library drives it otherwise. */
   galleryState?: GalleryState;
   strategyStore?: StrategyStore<StrategyEditorDocument>;
   runtimeFactory?: () => StrategyEditorRuntime;
   manualClient?: StrategyManualClient;
+  /** Reads "My plans" through the application service. */
+  libraryClient?: StrategyApplicationClient<StrategyEditorDocument>;
+  /**
+   * Stamped into the provenance of every exported package. It defaults to the
+   * build-time value; "dev" means the build did not stamp one, which is the
+   * honest answer rather than a version we made up.
+   */
+  appVersion?: string;
+  /** Hands exported bytes to the user. Overridable so tests never touch the DOM download path. */
+  onSavePackage?: (fileName: string, bytes: Uint8Array) => void;
+  /** Validates the planned tyre set against the physical domain in Go. */
+  tyreClient?: StrategyTyreClient;
+  /** Compares race strategies. Injected in tests, real bridge in the app. */
+  solverClient?: StrategySolverClient;
+  /** Pre-supplied variants, for tests and previews. */
+  candidates?: readonly StrategyVariant[];
 };
 
 const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
@@ -61,52 +143,44 @@ const PANELS: Array<{ id: WorkspacePanel; label: string }> = [
   { id: "inventory", label: "Inventario" },
 ];
 
-const STRATEGIES = [
-  {
-    label: "A",
-    title: "Conservadora",
-    delta: "−0.8s",
-    time: "6h 04m 12.0s",
-    risk: "Bajo",
-    pits: 3,
-    compounds: ["M", "H", "H", "S"],
-    fuelSave: "+1.0 v/stint",
-    summary: "Fuel-save ligero. Un stint Medium, dos Hard y uno Soft con carga controlada.",
-    active: true,
-  },
-  {
-    label: "B",
-    title: "Agresiva",
-    delta: "+2.4s",
-    time: "6h 04m 15.2s",
-    risk: "Medio",
-    pits: 3,
-    compounds: ["S", "M", "S", "S"],
-    fuelSave: "+3.0 v/stint",
-    summary: "Tres stints Soft, uno Medium y ahorro intensivo en los stints centrales.",
-    active: false,
-  },
-  {
-    label: "C",
-    title: "Segura",
-    delta: "+5.1s",
-    time: "6h 04m 17.9s",
-    risk: "Bajo",
-    pits: 3,
-    compounds: ["H", "H", "H", "M"],
-    fuelSave: "0 v/stint",
-    summary: "Tres stints Hard y uno Medium, sin fuel-save y con margen de combustible.",
-    active: false,
-  },
-] as const;
+/** Race context captured on the entry screen. */
+type RaceEntry = {
+  durationHours: string;
+  plannedLaps: string;
+  tankLiters: string;
+  consumptionPerLap: string;
+  tyreCount: string;
+};
+
+const DEFAULT_RACE_ENTRY: RaceEntry = {
+  durationHours: "",
+  plannedLaps: "",
+  tankLiters: "",
+  consumptionPerLap: "",
+  tyreCount: "",
+};
+
+const RACE_ENTRY_FIELDS: Array<{ key: keyof RaceEntry; label: string; unit: string; step?: string }> = [
+  { key: "durationHours", label: "Duración", unit: "horas" },
+  { key: "plannedLaps", label: "Vueltas previstas", unit: "vueltas" },
+  { key: "tankLiters", label: "Capacidad de tanque", unit: "litros" },
+  { key: "consumptionPerLap", label: "Consumo medio", unit: "L/vuelta", step: "0.1" },
+  { key: "tyreCount", label: "Neumáticos máximos", unit: "individuales" },
+];
 
 export function StrategyPlannerPage({
   demo = false,
   initialScreen = "gallery",
-  galleryState = demo ? "ready" : "empty",
+  galleryState,
   strategyStore,
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
+  libraryClient,
+  appVersion = DEFAULT_APP_VERSION,
+  onSavePackage = downloadPackage,
+  tyreClient,
+  solverClient,
+  candidates,
 }: StrategyPlannerPageProps) {
   const [ownedRuntime] = useState<StrategyEditorRuntime | null>(() => (
     strategyStore ? null : runtimeFactory()
@@ -118,6 +192,17 @@ export function StrategyPlannerPage({
   const calculationClient = manualClient ?? ownedManualClient;
   if (!calculationClient) throw new Error("Strategy manual calculation client is required");
   const ownedManualClientMountedRef = useRef(false);
+  const [ownedTyreClient] = useState<StrategyTyreClient | null>(() => (
+    tyreClient ? null : createWailsStrategyTyreClient()
+  ));
+  const inventoryClient = tyreClient ?? ownedTyreClient;
+  if (!inventoryClient) throw new Error("Strategy tyre client is required");
+  const ownedTyreClientMountedRef = useRef(false);
+  const [ownedSolverClient] = useState<StrategySolverClient | null>(() => (
+    solverClient || candidates ? null : createWailsStrategySolverClient()
+  ));
+  const comparisonClient = solverClient ?? ownedSolverClient;
+  const ownedSolverClientMountedRef = useRef(false);
   const loadRef = useRef<{ store: StrategyStore<StrategyEditorDocument>; promise: Promise<void> } | null>(null);
   const store = strategyStore ?? ownedRuntime?.store;
   if (!store) throw new Error("Strategy editor store is required");
@@ -127,7 +212,8 @@ export function StrategyPlannerPage({
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [entryMode, setEntryMode] = useState<"manual" | "telemetry">("manual");
-  const [planName, setPlanName] = useState("6h Spa · Hypercar");
+  const [planName, setPlanName] = useState("");
+  const [raceEntry, setRaceEntry] = useState<RaceEntry>(DEFAULT_RACE_ENTRY);
   const [editorLoading, setEditorLoading] = useState(
     initialScreen === "workspace" && !storeSnapshot.draft,
   );
@@ -138,6 +224,28 @@ export function StrategyPlannerPage({
     error?: string;
   } | null>(null);
   const [manualMode, setManualMode] = useState<"quick" | "laps">("quick");
+  const [library, setLibrary] = useState<{
+    state: GalleryState;
+    plans: readonly StrategyLibraryEntry[];
+    error: string;
+  }>({ state: "loading", plans: [], error: "" });
+  const [libraryAttempt, setLibraryAttempt] = useState(0);
+  /**
+   * The repository version the library was read at. An import must commit
+   * against the version it previewed, so a change underneath is refused rather
+   * than applied blind.
+   */
+  const [libraryVersion, setLibraryVersion] = useState(0);
+  const [transfer, setTransfer] = useState<TransferState>({ stage: "idle" });
+  const [solvedVariants, setSolvedVariants] = useState<{
+    draft: NonNullable<typeof storeSnapshot.draft>;
+    variants: readonly StrategyVariant[];
+    error?: string;
+  } | null>(null);
+  const [planViolations, setPlanViolations] = useState<{
+    draft: NonNullable<typeof storeSnapshot.draft>;
+    violations: readonly StrategyPlanViolation[];
+  } | null>(null);
   const [editorLoadAttempt, setEditorLoadAttempt] = useState(0);
   const backgroundRef = useRef<HTMLDivElement>(null);
   const comparisonOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -166,6 +274,130 @@ export function StrategyPlannerPage({
       });
     };
   }, [ownedManualClient]);
+
+  useEffect(() => {
+    const client = libraryClient ?? ownedRuntime?.client;
+    if (screen !== "gallery" || !client) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setLibrary((current) => ({ ...current, state: "loading", error: "" }));
+      void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
+        (result) => {
+          if (!active) return;
+          setLibraryVersion(result.repositoryVersion);
+          setLibrary({
+            state: result.plans.length === 0 ? "empty" : "ready",
+            plans: result.plans,
+            error: "",
+          });
+        },
+        (error: unknown) => {
+          if (!active) return;
+          setLibrary({
+            state: "error",
+            plans: [],
+            error: error instanceof Error
+              ? error.message
+              : "No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.",
+          });
+        },
+      );
+    });
+    return () => { active = false; };
+  }, [libraryAttempt, libraryClient, ownedRuntime, screen]);
+
+  const transferClient = libraryClient ?? ownedRuntime?.client ?? null;
+
+  /**
+   * Exports one plan. The package is handed to the user to save where they
+   * chose; nothing is uploaded or shared.
+   */
+  const exportPlan = useCallback((plan: StrategyLibraryEntry) => {
+    if (!transferClient) return;
+    setTransfer({ stage: "exporting", planId: plan.planId });
+    void exportStrategyPackage(
+      transferClient,
+      `export-${Date.now()}`,
+      {
+        plans: [{ planId: plan.planId, variantId: plan.variantId }],
+        provenance: {
+          application: "vantare",
+          applicationVersion: appVersion,
+          exportedAt: canonicalStrategyTimestamp(),
+        },
+      },
+    ).then(
+      (exported) => {
+        onSavePackage(exported.suggestedFileName, exported.bytes);
+        setTransfer({ stage: "idle" });
+        setSaveMessage(`Plan exportado como ${exported.suggestedFileName}.`);
+      },
+      (error: unknown) => setTransfer({ stage: "error", error: messageOf(error, "No se pudo exportar el plan.") }),
+    );
+  }, [appVersion, onSavePackage, transferClient]);
+
+  /**
+   * Reads a package the user chose and reports what importing it would do.
+   * Nothing is written until the preview is confirmed.
+   */
+  const previewImport = useCallback((file: File) => {
+    if (!transferClient) return;
+    setTransfer({ stage: "reading", fileName: file.name });
+    void file.arrayBuffer()
+      .then((buffer) => {
+        const bytes = new Uint8Array(buffer);
+        return previewStrategyImport(transferClient, `import-preview-${Date.now()}`, bytes)
+          .then((preview) => ({ bytes, preview }));
+      })
+      .then(
+        ({ bytes, preview }) => setTransfer({ stage: "previewed", fileName: file.name, bytes, preview }),
+        (error: unknown) => setTransfer({
+          stage: "error",
+          error: messageOf(error, "El paquete no se pudo leer o no es de confianza."),
+        }),
+      );
+  }, [transferClient]);
+
+  /** Applies a previewed package. It lands whole or not at all. */
+  const confirmImport = useCallback(() => {
+    if (!transferClient || transfer.stage !== "previewed") return;
+    const { bytes, fileName } = transfer;
+    setTransfer({ stage: "importing", fileName });
+    void commitStrategyImport(transferClient, `import-${Date.now()}`, bytes, libraryVersion).then(
+      (outcome) => {
+        setTransfer({ stage: "idle" });
+        setSaveMessage(`Importado desde ${fileName}: ${summariseImport(outcome.preview)}.`);
+        setLibraryAttempt((attempt) => attempt + 1);
+      },
+      (error: unknown) => setTransfer({
+        stage: "error",
+        error: messageOf(error, "No se importó nada; tu biblioteca no ha cambiado."),
+      }),
+    );
+  }, [libraryVersion, transfer, transferClient]);
+
+  useEffect(() => {
+    ownedSolverClientMountedRef.current = true;
+    return () => {
+      ownedSolverClientMountedRef.current = false;
+      if (!ownedSolverClient) return;
+      queueMicrotask(() => {
+        if (!ownedSolverClientMountedRef.current) ownedSolverClient.dispose();
+      });
+    };
+  }, [ownedSolverClient]);
+
+  useEffect(() => {
+    ownedTyreClientMountedRef.current = true;
+    return () => {
+      ownedTyreClientMountedRef.current = false;
+      if (!ownedTyreClient) return;
+      queueMicrotask(() => {
+        if (!ownedTyreClientMountedRef.current) ownedTyreClient.dispose();
+      });
+    };
+  }, [ownedTyreClient]);
 
   useEffect(() => {
     if (screen !== "workspace") return;
@@ -217,6 +449,58 @@ export function StrategyPlannerPage({
     return () => { active = false; };
   }, [calculationClient, screen, storeSnapshot.draft]);
 
+  // The Go domain is the authority: the editor blocks illegal moves as they
+  // happen, and this confirms the whole plan against the real inventory.
+  const violations = planViolations && planViolations.draft === storeSnapshot.draft
+    ? planViolations.violations
+    : [];
+
+  useEffect(() => {
+    const draft = storeSnapshot.draft;
+    if (screen !== "workspace" || !draft) return;
+    const document = tryParseStrategyEditorDocument(draft.payload);
+    if (!document) return;
+    let active = true;
+    void inventoryClient.validate(document).then(
+      (validation) => {
+        if (active) setPlanViolations({ draft, violations: validation.violations });
+      },
+      () => {
+        // A transport failure is not a plan problem: say nothing rather than
+        // accusing a plan that may well be legal.
+        if (active) setPlanViolations({ draft, violations: [] });
+      },
+    );
+    return () => { active = false; };
+  }, [inventoryClient, screen, storeSnapshot.draft]);
+
+  const solvedCurrent = solvedVariants !== null && solvedVariants.draft === storeSnapshot.draft;
+  const variants = candidates ?? (solvedCurrent ? solvedVariants.variants : []);
+  const solverError = solvedCurrent ? solvedVariants.error ?? "" : "";
+  const solverLoading = !candidates && screen === "workspace" && Boolean(editorDocument) && !solvedCurrent;
+
+  useEffect(() => {
+    const draft = storeSnapshot.draft;
+    if (candidates || !comparisonClient || screen !== "workspace" || !draft) return;
+    const document = tryParseStrategyEditorDocument(draft.payload);
+    if (!document) return;
+    let active = true;
+    void comparisonClient.compare(document).then(
+      (comparison) => {
+        if (active) setSolvedVariants({ draft, variants: comparison.variants });
+      },
+      (error: unknown) => {
+        if (!active) return;
+        setSolvedVariants({
+          draft,
+          variants: [],
+          error: error instanceof Error ? error.message : "No se pudo comparar estrategias.",
+        });
+      },
+    );
+    return () => { active = false; };
+  }, [candidates, comparisonClient, screen, storeSnapshot.draft]);
+
   const editDocument = useCallback((change: (document: StrategyEditorDocument) => StrategyEditorDocument) => {
     setEditorError("");
     try {
@@ -236,6 +520,17 @@ export function StrategyPlannerPage({
     setEditorError("");
     if (!store.getSnapshot().draft) setEditorLoading(true);
     setScreen("workspace");
+  }, [store]);
+
+  const openPlan = useCallback((plan: StrategyLibraryEntry) => {
+    if (!plan.draftId) return;
+    setEditorError("");
+    setEditorLoading(true);
+    setScreen("workspace");
+    void store.open(plan.draftId).catch(() => {
+      setEditorError(`No se pudo abrir ${plan.name}. Reintenta o revisa Diagnóstico.`);
+      setEditorLoading(false);
+    });
   }, [store]);
 
   const retryEditorLoad = useCallback(() => {
@@ -304,11 +599,17 @@ export function StrategyPlannerPage({
       {screen === "gallery" && (
         <Gallery
           titleId={titleId}
-          state={galleryState}
-          demo={demo}
+          state={galleryState ?? library.state}
+          plans={library.plans}
+          error={library.error}
           onCreate={() => setScreen("entry")}
-          onOpen={enterWorkspace}
-          onReview={() => setScreen("review")}
+          onOpen={openPlan}
+          onReload={() => setLibraryAttempt((attempt) => attempt + 1)}
+          transfer={transfer}
+          onExport={exportPlan}
+          onPickPackage={previewImport}
+          onConfirmImport={confirmImport}
+          onCancelTransfer={() => setTransfer({ stage: "idle" })}
         />
       )}
 
@@ -317,6 +618,8 @@ export function StrategyPlannerPage({
           titleId={titleId}
           mode={entryMode}
           planName={planName}
+          entry={raceEntry}
+          onEntryChange={(key, value) => setRaceEntry((current) => ({ ...current, [key]: value }))}
           onModeChange={setEntryMode}
           onNameChange={setPlanName}
           onBack={() => setScreen("gallery")}
@@ -328,6 +631,7 @@ export function StrategyPlannerPage({
         <ReviewScreen
           titleId={titleId}
           planName={planName}
+          entry={raceEntry}
           mode={entryMode}
           onBack={() => setScreen("entry")}
           onContinue={enterWorkspace}
@@ -345,6 +649,10 @@ export function StrategyPlannerPage({
         ) : <Workspace
           titleId={titleId}
           planName={planName}
+          candidates={variants}
+          candidatesLoading={solverLoading}
+          candidatesError={solverError}
+          violations={violations}
           document={editorDocument}
           dirty={storeSnapshot.dirty}
           canUndo={storeSnapshot.canUndo}
@@ -395,7 +703,7 @@ export function StrategyPlannerPage({
       </div>
 
       {comparisonOpen && (
-        <ComparisonDialog onClose={closeComparison} />
+        <ComparisonDialog strategies={variants} onClose={closeComparison} />
       )}
     </section>
   );
@@ -412,67 +720,193 @@ function tryParseStrategyEditorDocument(value: unknown): StrategyEditorDocument 
 function Gallery({
   titleId,
   state,
-  demo,
+  plans,
+  error,
   onCreate,
   onOpen,
-  onReview,
+  onReload,
+  transfer,
+  onExport,
+  onPickPackage,
+  onConfirmImport,
+  onCancelTransfer,
 }: {
   titleId: string;
   state: GalleryState;
-  demo: boolean;
+  plans: readonly StrategyLibraryEntry[];
+  error: string;
   onCreate: () => void;
-  onOpen: () => void;
-  onReview: () => void;
+  onOpen: (plan: StrategyLibraryEntry) => void;
+  onReload: () => void;
+  transfer: TransferState;
+  onExport: (plan: StrategyLibraryEntry) => void;
+  onPickPackage: (file: File) => void;
+  onConfirmImport: () => void;
+  onCancelTransfer: () => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<StrategyLibrarySort>("recent");
+  const [scope, setScope] = useState<"all" | "unsaved" | "saved">("all");
+  const searchId = useId();
+  const importId = useId();
+
+  const visible = sortPlans(
+    filterPlans(plans, {
+      query,
+      onlyUnsaved: scope === "unsaved",
+      onlySaved: scope === "saved",
+    }),
+    sort,
+  );
+
   return (
     <div className="strategy-screen strategy-gallery">
       <header className="strategy-page-header">
         <div>
           <p className="strategy-eyebrow">Strategy Planner</p>
           <h1 id={titleId}>Mis planes</h1>
-          <p>Organiza planes privados por circuito y vuelve al último workspace.</p>
+          <p>Tus planes son privados y viven solo en este equipo.</p>
         </div>
-        <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
-          <span aria-hidden="true">＋</span> Crear plan
-        </button>
+        <div className="strategy-page-header__actions">
+          <label className="strategy-button strategy-button--secondary" htmlFor={importId}>
+            Importar plan
+            <input
+              id={importId}
+              type="file"
+              accept=".json,application/json"
+              className="strategy-visually-hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                // Clearing the input lets the same file be chosen twice, which
+                // matters when the first attempt was cancelled.
+                event.target.value = "";
+                if (file) onPickPackage(file);
+              }}
+            />
+          </label>
+          <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
+            <span aria-hidden="true">＋</span> Crear plan
+          </button>
+        </div>
       </header>
 
+      {transfer.stage === "reading" && (
+        <div className="strategy-state" role="status">Leyendo {transfer.fileName}…</div>
+      )}
+      {transfer.stage === "importing" && (
+        <div className="strategy-state" role="status">Importando {transfer.fileName}…</div>
+      )}
+      {transfer.stage === "error" && (
+        <div className="strategy-state strategy-state--error" role="alert" data-testid="strategy-transfer-error">
+          <p>{transfer.error}</p>
+          <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancelTransfer}>
+            Entendido
+          </button>
+        </div>
+      )}
+      {transfer.stage === "previewed" && (
+        <ImportPreview
+          fileName={transfer.fileName}
+          preview={transfer.preview}
+          onConfirm={onConfirmImport}
+          onCancel={onCancelTransfer}
+        />
+      )}
+
+      {state === "ready" && plans.length > 0 && (
+        <div className="strategy-gallery__tools">
+          <label className="strategy-field strategy-field--wide" htmlFor={searchId}>
+            Buscar
+            <input
+              id={searchId}
+              type="search"
+              value={query}
+              placeholder="Nombre o identificador"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <label className="strategy-field">
+            Mostrar
+            <select value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}>
+              <option value="all">Todos</option>
+              <option value="unsaved">Con cambios abiertos</option>
+              <option value="saved">Con revisiones guardadas</option>
+            </select>
+          </label>
+          <label className="strategy-field">
+            Ordenar
+            <select value={sort} onChange={(event) => setSort(event.target.value as StrategyLibrarySort)}>
+              <option value="recent">Más reciente</option>
+              <option value="name">Nombre</option>
+            </select>
+          </label>
+        </div>
+      )}
+
       {state === "loading" && <div className="strategy-state" role="status">Cargando planes…</div>}
-      {state === "error" && <div className="strategy-state strategy-state--error" role="alert">No se pudo abrir la galería. Reintenta cuando el repositorio local esté disponible.</div>}
+      {state === "error" && (
+        <div className="strategy-state strategy-state--error" role="alert">
+          <p>{error || "No se pudo abrir la galería."}</p>
+          <button className="strategy-button strategy-button--secondary" type="button" onClick={onReload}>
+            Reintentar
+          </button>
+        </div>
+      )}
       {state === "empty" && (
         <div className="strategy-state strategy-state--empty">
           <span className="strategy-state__icon" aria-hidden="true">◇</span>
           <h2>Todavía no tienes planes guardados</h2>
-          <p>Crea un plan manual o revisa una sesión de telemetría cuando esa conexión esté disponible.</p>
+          <p>Crea un plan manual; nada sale de este equipo salvo que lo exportes tú.</p>
           <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>Crear el primero</button>
         </div>
       )}
-      {state === "ready" && demo && (
-        <div className="strategy-gallery__grid">
-          <article className="strategy-plan-tile strategy-plan-tile--active">
-            <div className="strategy-plan-tile__visual" aria-hidden="true">
-              <span /><span /><span />
-            </div>
-            <div className="strategy-plan-tile__body">
-              <div className="strategy-plan-tile__meta"><span>SPA-FRANCORCHAMPS</span><span>DEMO</span></div>
-              <h2>6h Spa · Hypercar</h2>
-              <p>4 stints · 3 paradas · seco</p>
-              <button className="strategy-button strategy-button--secondary" type="button" onClick={onOpen}>Abrir workspace</button>
-            </div>
-          </article>
-          <article className="strategy-plan-tile">
-            <div className="strategy-plan-tile__visual strategy-plan-tile__visual--muted" aria-hidden="true"><span /><span /></div>
-            <div className="strategy-plan-tile__body">
-              <div className="strategy-plan-tile__meta"><span>LE MANS</span><span>BORRADOR</span></div>
-              <h2>24h Le Mans · LMGT3</h2>
-              <p>Entrada incompleta · sin cálculo</p>
-              <button className="strategy-button strategy-button--secondary" type="button" onClick={onReview}>Revisar borrador</button>
-            </div>
-          </article>
+      {state === "ready" && visible.length === 0 && plans.length > 0 && (
+        <div className="strategy-state strategy-state--empty" data-testid="strategy-gallery-no-match">
+          <h2>Ningún plan coincide</h2>
+          <p>Prueba con otro texto o cambia el filtro.</p>
+        </div>
+      )}
+      {state === "ready" && visible.length > 0 && (
+        <div className="strategy-gallery__grid" data-testid="strategy-gallery-grid">
+          {visible.map((plan) => (
+            <article
+              className={`strategy-plan-tile ${plan.hasDraft ? "strategy-plan-tile--active" : ""}`}
+              key={`${plan.planId}:${plan.variantId}`}
+              data-testid={`strategy-plan-${plan.planId}-${plan.variantId}`}
+            >
+              <div className="strategy-plan-tile__visual" aria-hidden="true"><span /><span /><span /></div>
+              <div className="strategy-plan-tile__body">
+                <div className="strategy-plan-tile__meta">
+                  <span>{plan.planId}</span>
+                  {plan.hasDraft && <span>SIN GUARDAR</span>}
+                </div>
+                <h2>{plan.name}</h2>
+                <p>{describePlan(plan)}</p>
+                <button
+                  className="strategy-button strategy-button--secondary"
+                  type="button"
+                  onClick={() => onOpen(plan)}
+                  disabled={!plan.hasDraft}
+                  title={plan.hasDraft ? undefined : "Este plan no tiene un borrador abierto"}
+                >Abrir workspace</button>
+                <button
+                  className="strategy-button strategy-button--ghost"
+                  type="button"
+                  onClick={() => onExport(plan)}
+                  disabled={transfer.stage === "exporting"}
+                  data-testid={`strategy-export-${plan.planId}-${plan.variantId}`}
+                >
+                  {transfer.stage === "exporting" && transfer.planId === plan.planId
+                    ? "Exportando…"
+                    : "Exportar"}
+                </button>
+              </div>
+            </article>
+          ))}
           <button className="strategy-plan-tile strategy-plan-tile--new" type="button" onClick={onCreate}>
             <span aria-hidden="true">＋</span>
             <strong>Nuevo plan</strong>
-            <small>Entrada manual o telemetría</small>
+            <small>Entrada manual</small>
           </button>
         </div>
       )}
@@ -480,20 +914,84 @@ function Gallery({
   );
 }
 
+/**
+ * What an import would do, shown before it does it. Every entry states its own
+ * effect, and a package that would collide cannot be confirmed at all.
+ */
+function ImportPreview({
+  fileName,
+  preview,
+  onConfirm,
+  onCancel,
+}: {
+  fileName: string;
+  preview: StrategyImportPreviewV1;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const nothingToDo = preview.entries.every((entry) => entry.disposition === "unchanged");
+  return (
+    <section className="strategy-import-preview" aria-label="Vista previa de importación" data-testid="strategy-import-preview">
+      <header>
+        <h2>{fileName}</h2>
+        <p data-testid="strategy-import-summary">{summariseImport(preview)}</p>
+        <p className="strategy-import-preview__provenance">
+          Exportado por {preview.provenance.application} {preview.provenance.applicationVersion} el{" "}
+          {preview.provenance.exportedAt.slice(0, 10)}
+        </p>
+      </header>
+      <ul className="strategy-import-preview__entries">
+        {preview.entries.map((entry) => (
+          <li
+            key={`${entry.planId}:${entry.variantId}`}
+            data-testid={`strategy-import-entry-${entry.planId}-${entry.variantId}`}
+            data-disposition={entry.disposition}
+          >
+            <strong>{entry.name || entry.planId}</strong>
+            <span>{describeImportEntry(entry)}</span>
+          </li>
+        ))}
+      </ul>
+      <footer>
+        <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancel}>
+          Cancelar
+        </button>
+        <button
+          className="strategy-button strategy-button--primary"
+          type="button"
+          onClick={onConfirm}
+          disabled={!preview.importable || nothingToDo}
+          title={
+            preview.importable
+              ? (nothingToDo ? "Ya tienes todo lo que trae este paquete" : undefined)
+              : "Este paquete choca con revisiones que ya tienes guardadas"
+          }
+        >
+          Importar
+        </button>
+      </footer>
+    </section>
+  );
+}
+
 function EntryScreen({
   titleId,
   mode,
   planName,
+  entry,
   onModeChange,
   onNameChange,
+  onEntryChange,
   onBack,
   onContinue,
 }: {
   titleId: string;
   mode: "manual" | "telemetry";
   planName: string;
+  entry: RaceEntry;
   onModeChange: (mode: "manual" | "telemetry") => void;
   onNameChange: (name: string) => void;
+  onEntryChange: (key: keyof RaceEntry, value: string) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -515,11 +1013,19 @@ function EntryScreen({
         ) : (
           <form className="strategy-form" onSubmit={(event) => { event.preventDefault(); onContinue(); }}>
             <label className="strategy-field strategy-field--wide">Nombre del plan<input value={planName} onChange={(event) => onNameChange(event.target.value)} required /></label>
-            <label className="strategy-field">Duración<input type="number" defaultValue="6" min="1" /><span>horas</span></label>
-            <label className="strategy-field">Vueltas previstas<input type="number" defaultValue="78" min="1" /><span>vueltas</span></label>
-            <label className="strategy-field">Capacidad de tanque<input type="number" defaultValue="100" min="1" /><span>litros</span></label>
-            <label className="strategy-field">Consumo medio<input type="number" defaultValue="4.8" min="0" step="0.1" /><span>L/vuelta</span></label>
-            <label className="strategy-field">Neumáticos máximos<input type="number" defaultValue="8" min="1" /><span>individuales</span></label>
+            {RACE_ENTRY_FIELDS.map((field) => (
+              <label className="strategy-field" key={field.key}>
+                {field.label}
+                <input
+                  type="number"
+                  min={field.step ? "0" : "1"}
+                  step={field.step}
+                  value={entry[field.key]}
+                  onChange={(event) => onEntryChange(field.key, event.target.value)}
+                />
+                <span>{field.unit}</span>
+              </label>
+            ))}
           </form>
         )}
       </div>
@@ -528,16 +1034,34 @@ function EntryScreen({
   );
 }
 
-function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId: string; planName: string; mode: string; onBack: () => void; onContinue: () => void }) {
-  const rows = [
-    ["Plan", planName], ["Fuente", mode === "manual" ? "Entrada manual" : "Telemetría pendiente"],
-    ["Carrera", "6 horas · 78 vueltas previstas"], ["Recursos", "100 L · 4,8 L/vuelta · 8 neumáticos individuales"],
+/** Describes only what the user actually entered; blanks stay blank. */
+function describeRace(entry: RaceEntry): string {
+  const parts: string[] = [];
+  if (entry.durationHours.trim()) parts.push(`${entry.durationHours} horas`);
+  if (entry.plannedLaps.trim()) parts.push(`${entry.plannedLaps} vueltas previstas`);
+  return parts.length > 0 ? parts.join(" · ") : "Sin definir";
+}
+
+function describeResources(entry: RaceEntry): string {
+  const parts: string[] = [];
+  if (entry.tankLiters.trim()) parts.push(`${entry.tankLiters} L`);
+  if (entry.consumptionPerLap.trim()) parts.push(`${entry.consumptionPerLap} L/vuelta`);
+  if (entry.tyreCount.trim()) parts.push(`${entry.tyreCount} neumáticos individuales`);
+  return parts.length > 0 ? parts.join(" · ") : "Sin definir";
+}
+
+function ReviewScreen({ titleId, planName, entry, mode, onBack, onContinue }: { titleId: string; planName: string; entry: RaceEntry; mode: string; onBack: () => void; onContinue: () => void }) {
+  const rows: Array<[string, string]> = [
+    ["Plan", planName || "Sin nombre"],
+    ["Fuente", mode === "manual" ? "Entrada manual" : "Telemetría pendiente"],
+    ["Carrera", describeRace(entry)],
+    ["Recursos", describeResources(entry)],
   ];
   return (
     <div className="strategy-screen strategy-flow-screen">
       <FlowHeader step={2} titleId={titleId} title="Revisar datos" description="Confirma los valores que formarán el workspace." />
       <div className="strategy-flow-card strategy-review">
-        <div className="strategy-review__notice"><span aria-hidden="true">i</span><p>Estos valores son de demostración. No proceden de una sesión live ni constituyen una estrategia calculada.</p></div>
+        <div className="strategy-review__notice"><span aria-hidden="true">i</span><p>Estos valores son los que has introducido. No proceden de una sesión live ni constituyen una estrategia calculada.</p></div>
         <dl>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       </div>
       <FlowActions onBack={onBack} nextLabel="Crear workspace" onNext={onContinue} />
@@ -546,14 +1070,18 @@ function ReviewScreen({ titleId, planName, mode, onBack, onContinue }: { titleId
 }
 
 function Workspace({
-  titleId, planName, document, dirty, canUndo, canRedo, busy, error,
+  titleId, planName, candidates, candidatesLoading, candidatesError, violations,
+  document, dirty, canUndo, canRedo, busy, error,
   manualResult, manualLoading, manualError, manualMode,
   activePanel, onSelectPanel, onPanelKey, onBack, onCompare, onEdit,
   onManualModeChange, onCorrectQuick, onClearQuick, onCorrectLap, onClearLap,
   onAppend, onInsert, onDuplicate, onDelete, onMove, onAssign, onClear,
   onUndo, onRedo, onSave,
 }: {
-  titleId: string; planName: string; document: StrategyEditorDocument;
+  titleId: string; planName: string; candidates: readonly StrategyVariant[];
+  candidatesLoading: boolean; candidatesError: string;
+  violations: readonly StrategyPlanViolation[];
+  document: StrategyEditorDocument;
   dirty: boolean; canUndo: boolean; canRedo: boolean; busy: boolean; error: string;
   manualResult: StrategyManualResult | null; manualLoading: boolean; manualError: string;
   manualMode: "quick" | "laps";
@@ -577,6 +1105,7 @@ function Workspace({
   const [pickedTyre, setPickedTyre] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const totalLaps = document.stints.reduce((total, stint) => total + stint.lapCount, 0);
+  const canCompare = candidates.length > 0;
 
   useEffect(() => {
     function cancelTransfer(event: globalThis.KeyboardEvent) {
@@ -613,7 +1142,15 @@ function Workspace({
           </div>
           <h1 id={titleId}>Plan offline</h1>
         </div>
-        <div className="strategy-workspace__context"><span>● DRY</span><b>{planName}</b><i /><small>PRÓX. <b>en 2h 14m</b></small><i /><small>PLANES <b>3</b></small><em>DEMO</em></div>
+        {/* Only figures derived from the open document: no session clock, no
+            plan count and no weather until something actually reports them. */}
+        <div className="strategy-workspace__context">
+          <b>{planName}</b>
+          <i />
+          <small>STINTS <b>{document.stints.length}</b></small>
+          <i />
+          <small>VUELTAS <b>{totalLaps}</b></small>
+        </div>
       </header>
 
       <ol className="strategy-stepper" aria-label="Progreso del plan">
@@ -637,19 +1174,63 @@ function Workspace({
       <div className="strategy-workspace__grid">
         <aside aria-label="Estrategias" data-compact-active={activePanel === "plans"} data-testid="strategy-column-plans" className="strategy-column strategy-column--plans">
           <section className="strategy-panel">
-            <PanelHeading title="Estrategias" meta="3 planes · 1 activo" />
-            {STRATEGIES.map((strategy) => (
-              <StrategyOption key={strategy.label} strategy={strategy} />
+            <PanelHeading
+              title="Estrategias"
+              meta={candidatesLoading ? "Resolviendo" : candidates.length > 0 ? `${candidates.length} planes` : "Sin calcular"}
+            />
+            {candidatesError && (
+              <p className="strategy-panel__empty" role="status" data-testid="strategy-candidates-error">
+                {candidatesError}
+              </p>
+            )}
+            {!candidatesError && candidates.length > 0 && candidates.map((variant) => (
+              <StrategyOption key={variant.kind} variant={variant} />
             ))}
+            {!candidatesError && candidates.length === 0 && (
+              <p className="strategy-panel__empty" data-testid="strategy-candidates-empty">
+                {candidatesLoading
+                  ? "Resolviendo estrategias…"
+                  : "Sin estrategias: indica la caída de ritmo y el consumo en la entrada manual."}
+              </p>
+            )}
           </section>
           <FuelSavePanel result={manualResult} loading={manualLoading} error={manualError} document={document} />
         </aside>
 
         <main aria-label="Stints" data-compact-active={activePanel === "stints"} data-testid="strategy-column-stints" className="strategy-column strategy-column--stints strategy-panel">
-          <div className="strategy-plan-heading"><PanelHeading title="Plan de carrera" meta={`${document.stints.length} stints · ${totalLaps} vueltas · ${Math.max(0, document.stints.length - 1)} paradas · 6h 04m`} /><div><button type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar</button><button type="button" onClick={onAppend}>＋ Stint</button></div></div>
+          <div className="strategy-plan-heading">
+            <PanelHeading
+              title="Plan de carrera"
+              meta={`${document.stints.length} stints · ${totalLaps} vueltas · ${Math.max(0, document.stints.length - 1)} paradas`}
+            />
+            <div>
+              <button
+                type="button"
+                onClick={(event) => onCompare(event.currentTarget)}
+                disabled={!canCompare}
+                title={canCompare ? undefined : "Sin estrategias calculadas que comparar"}
+              >Comparar</button>
+              <button type="button" onClick={onAppend}>＋ Stint</button>
+            </div>
+          </div>
           <div className="strategy-legend"><span><i className="is-green" /> Desgaste cae</span><span><i /> Ritmo previsto</span></div>
           <div className="strategy-stint-columns" aria-hidden="true"><span>STINT</span><span>FRONT LEFT</span><span>FRONT RIGHT</span><span>REAR LEFT</span><span>REAR RIGHT</span></div>
           {error && <div className="strategy-editor-error" role="alert">{error}</div>}
+          {violations.length > 0 && (
+            <div className="strategy-plan-violations" role="alert" data-testid="strategy-plan-violations">
+              <b>El inventario físico rechaza {violations.length === 1 ? "una asignación" : `${violations.length} asignaciones`}</b>
+              <ul>
+                {violations.map((violation) => (
+                  <li key={`${violation.stintId ?? ""}-${violation.corner ?? ""}-${violation.tyreId ?? ""}`}>
+                    {violation.tyreId ? <b>{violation.tyreId}</b> : null}
+                    {violation.corner ? ` · ${cornerLabel(violation.corner)}` : ""}
+                    {violation.stintId ? ` · ${violation.stintId}` : ""}
+                    {` — ${violation.message}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {document.stints.map((stint, index) => (
             <StintCard
               key={stint.id}
@@ -715,7 +1296,13 @@ function Workspace({
         <div>
           <button type="button" disabled={!canUndo || busy} onClick={onUndo}>Deshacer</button>
           <button type="button" disabled={!canRedo || busy} onClick={onRedo}>Rehacer</button>
-          <button className="strategy-button strategy-button--secondary" type="button" onClick={(event) => onCompare(event.currentTarget)}>Comparar planes</button>
+          <button
+            className="strategy-button strategy-button--secondary"
+            type="button"
+            onClick={(event) => onCompare(event.currentTarget)}
+            disabled={!canCompare}
+            title={canCompare ? undefined : "Sin estrategias calculadas que comparar"}
+          >Comparar planes</button>
           <button className="strategy-button strategy-button--primary" type="button" onClick={onSave} disabled={!dirty || busy}>Guardar plan</button>
         </div>
       </footer>
@@ -758,48 +1345,68 @@ function PanelHeading({ title, meta }: { title: string; meta: string }) {
   );
 }
 
-function StrategyOption({ strategy }: { strategy: (typeof STRATEGIES)[number] }) {
-  const compoundUsage = summarizeCompoundUsage(strategy.compounds);
+const VARIANT_LABELS: Record<StrategyVariant["kind"], { letter: string; title: string }> = {
+  fast: { letter: "R", title: "Rápida" },
+  robust: { letter: "F", title: "Robusta" },
+  conservative: { letter: "C", title: "Conservadora" },
+};
+
+const RISK_LABELS: Record<StrategyVariant["risk"], string> = {
+  low: "Bajo",
+  medium: "Medio",
+  high: "Alto",
+};
+
+function StrategyOption({ variant }: { variant: StrategyVariant }) {
+  const label = VARIANT_LABELS[variant.kind];
+  const spread = variant.total.pessimisticSeconds - variant.total.optimisticSeconds;
 
   return (
     <article
-      className={`strategy-option ${strategy.active ? "is-active" : ""}`}
-      data-testid={`strategy-option-${strategy.label}`}
+      className={`strategy-option ${variant.dominated ? "is-dominated" : ""}`}
+      data-testid={`strategy-option-${variant.kind}`}
+      data-risk={variant.risk}
     >
       <header>
         <div>
-          <span>{strategy.label}</span>
-          <h3>{strategy.title}</h3>
-          {strategy.active && <b>ACTIVA</b>}
+          <span>{label.letter}</span>
+          <h3>{label.title}</h3>
+          {variant.dominated && <b data-testid={`strategy-dominated-${variant.kind}`}>DESCARTADA</b>}
         </div>
-        <strong>{strategy.delta}</strong>
+        <strong>
+          {variant.deltaToFastestSeconds === 0 ? "—" : `+${formatNumber(variant.deltaToFastestSeconds, 1)}s`}
+        </strong>
       </header>
-      <div className="strategy-compounds">
-        {strategy.compounds.map((compound, index) => (
-          <span
-            key={`${compound}-${index}`}
-            className={`is-${compound.toLowerCase()}`}
-            data-compound={compound}
-          >
-            ● {compound}
-          </span>
-        ))}
-      </div>
       <dl>
-        <div><dt>Tiempo</dt><dd>{strategy.time}</dd></div>
-        <div><dt>Pits</dt><dd>{strategy.pits}</dd></div>
-        <div><dt>Stints</dt><dd data-testid="strategy-option-usage">{compoundUsage}</dd></div>
-        <div><dt>Ahorro</dt><dd>{strategy.fuelSave}</dd></div>
+        {/* A range, never a single figure: the inputs are estimates. */}
+        <div>
+          <dt>Tiempo</dt>
+          <dd data-testid={`strategy-total-${variant.kind}`}>
+            {formatDuration(variant.total.optimisticSeconds)} – {formatDuration(variant.total.pessimisticSeconds)}
+          </dd>
+        </div>
+        <div><dt>Pits</dt><dd>{variant.stops}</dd></div>
+        <div><dt>Riesgo</dt><dd>{RISK_LABELS[variant.risk]}</dd></div>
+        <div><dt>Margen</dt><dd>{variant.marginLaps} v</dd></div>
       </dl>
-      <p>{strategy.summary}</p>
+      <p>{variant.reasons[0]?.message ?? ""}</p>
+      {spread > 0 && (
+        <small className="strategy-option__spread">
+          Horquilla de {formatNumber(spread, 0)}s según cuánto caiga el ritmo
+        </small>
+      )}
     </article>
   );
 }
 
-function summarizeCompoundUsage(compounds: readonly string[]) {
-  const counts = new Map<string, number>();
-  for (const compound of compounds) counts.set(compound, (counts.get(compound) ?? 0) + 1);
-  return Array.from(counts, ([compound, count]) => `${count}${compound}`).join(" · ");
+/** Formats a race total in hours, minutes and seconds; not a lap time. */
+function formatDuration(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const rest = whole % 60;
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(rest).padStart(2, "0")}s`;
+  return `${minutes}m ${String(rest).padStart(2, "0")}s`;
 }
 
 function FuelSavePanel({ result, loading, error, document }: {
@@ -886,8 +1493,9 @@ function StintCard({
                 >
                   <span>{cornerLabel(corner)}</span>
                   <b>{tyreId ?? "—"}</b>
-                  <small>{tyre ? `${tyre.remainingPercent}% · ${tyre.compound}` : "Vacío"}</small>
-                  <i><em style={{ width: `${tyre?.remainingPercent ?? 0}%` }} /></i>
+                  <small>{tyre ? `${formatCondition(tyre.condition)} · ${tyre.compound}` : "Vacío"}</small>
+                  {/* The bar uses the midpoint; the text above carries the real range. */}
+                  <i><em style={{ width: `${tyre ? conditionMidpoint(tyre.condition) : 0}%` }} /></i>
                 </button>
                 {tyreId && <button type="button" className="strategy-slot-clear" onClick={() => onClear(corner)} aria-label={`Quitar ${tyreId} de ${cornerLabel(corner)} del stint ${index + 1}`}>×</button>}
               </div>
@@ -935,12 +1543,18 @@ function TyreRow({ tyre, uses, selected, onPick, onDragStart, onDragEnd }: {
     >
       <span className={`strategy-compound is-${tyre.compound}`}>● {tyre.compound.toUpperCase()}</span>
       <div><b>{tyre.id}</b><small>{uses} stint{uses === 1 ? "" : "s"}{tyre.lockedCorner ? ` · ${cornerLabel(tyre.lockedCorner)}` : " · libre"}</small></div>
-      <strong>{tyre.remainingPercent}%</strong>
+      <strong
+        data-exact={isConditionExact(tyre.condition) ? "true" : undefined}
+        title={`${tyre.condition.confidence.level} · ${tyre.condition.provenance.kind}`}
+      >{formatCondition(tyre.condition)}</strong>
     </button>
   );
 }
 
-function ComparisonDialog({ onClose }: { onClose: () => void }) {
+function ComparisonDialog({ strategies, onClose }: {
+  strategies: readonly StrategyVariant[];
+  onClose: () => void;
+}) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -991,19 +1605,34 @@ function ComparisonDialog({ onClose }: { onClose: () => void }) {
           <div><p className="strategy-eyebrow">Comparación</p><h2>Comparar estrategias</h2></div>
           <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar comparación">×</button>
         </header>
-        <div className="strategy-comparison-grid">
-          <span>Plan</span><span>Tiempo</span><span>Riesgo</span><span>Paradas</span>
-          {STRATEGIES.map((strategy) => (
-            <Fragment key={strategy.label}>
-              <b>{strategy.title}</b>
-              <strong>{strategy.time}</strong>
-              <em>{strategy.risk}</em>
-              <span>{strategy.pits}</span>
-            </Fragment>
-          ))}
-        </div>
+        {strategies.length > 0 ? (
+          <div className="strategy-comparison-grid" data-columns="5">
+            <span>Plan</span><span>Tiempo</span><span>Diferencia</span><span>Riesgo</span><span>Paradas</span>
+            {strategies.map((variant) => (
+              <Fragment key={variant.kind}>
+                <b>
+                  {VARIANT_LABELS[variant.kind].title}
+                  {variant.dominated && <em className="strategy-comparison-grid__flag"> descartada</em>}
+                </b>
+                <strong>
+                  {formatDuration(variant.total.optimisticSeconds)} – {formatDuration(variant.total.pessimisticSeconds)}
+                </strong>
+                <span>
+                  {variant.deltaToFastestSeconds === 0 ? "—" : `+${formatNumber(variant.deltaToFastestSeconds, 1)}s`}
+                </span>
+                <em>{RISK_LABELS[variant.risk]}</em>
+                <span>{variant.stops}</span>
+              </Fragment>
+            ))}
+          </div>
+        ) : (
+          <p className="strategy-dialog__note" data-testid="strategy-comparison-empty">
+            No hay estrategias calculadas que comparar.
+          </p>
+        )}
         <p className="strategy-dialog__note">
-          Comparación visual con datos de ejemplo; el optimizador avanzado no forma parte de STR-07.
+          Los tiempos son horquillas, no cifras: dependen de cuánto caiga el ritmo y de que el consumo
+          se cumpla. Una estrategia descartada es la que otra iguala o mejora en tiempo y en margen.
         </p>
       </section>
     </div>

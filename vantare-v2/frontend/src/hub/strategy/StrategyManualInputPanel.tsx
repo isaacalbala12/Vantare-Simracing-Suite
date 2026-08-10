@@ -33,6 +33,7 @@ const QUICK_GROUPS: readonly { title: string; fields: readonly QuickFieldDefinit
     fields: [
       { field: "averageLapSeconds", label: "Ritmo medio", unit: "s/v", min: 0.001, max: 3600, step: 0.1 },
       { field: "tyreWearPerLapPercent", label: "Desgaste por vuelta", unit: "%/v", min: 0, max: 100, step: 0.01 },
+      { field: "degradationPerLapSeconds", label: "Caída de ritmo", unit: "s/v", min: 0, max: 60, step: 0.01 },
     ],
   },
   {

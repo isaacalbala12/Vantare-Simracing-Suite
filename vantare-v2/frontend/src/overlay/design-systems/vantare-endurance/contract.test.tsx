@@ -385,6 +385,7 @@ describe("vantare-endurance contract", () => {
     expect(root.querySelector("input")).toBeNull();
   });
 
+  // Also a whole-tree scan; see the note in the Workshop characterization test.
   it("does not import forbidden runtime dependencies anywhere in the system", () => {
     const files = readdirSync(testDir, { recursive: true })
       .filter((file): file is string => typeof file === "string")
@@ -395,5 +396,5 @@ describe("vantare-endurance contract", () => {
       expect(source).not.toMatch(/telemetry-store/);
       expect(source).not.toMatch(/getTelemetryRef/);
     }
-  });
+  }, 30_000);
 });

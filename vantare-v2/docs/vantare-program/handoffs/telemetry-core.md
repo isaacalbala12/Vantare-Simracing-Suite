@@ -24,8 +24,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   por contexto; la solución completa pasa soak 20/20, regresiones temporales
   20/20, build frontend y `go test ./... -count=1` sobre
   `origin/nightly@ff286f4`. Implementación `e093d53`; PR draft #200 abierto y
-  rama rebasada. CI del nuevo HEAD y merge siguen pendientes. `testers`,
-  `master` y release quedan fuera del alcance.
+  rama rebasada. El HEAD `6ac6f9e` pasó sin rerun todos los checks del run
+  `31416018600`; merge pendiente de autorización explícita. `testers`, `master`
+  y release quedan fuera del alcance.
 - Proyecto Linear: `Telemetry Core — Modular Runtime & LMU`.
 - Stack técnico final aprobado: `170eaebbaa6744019ead96a2c78201b4da2fb9bb`.
 - Promoción ISA-171 / TC-09G completada en

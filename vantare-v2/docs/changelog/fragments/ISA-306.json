@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-306",
+  "type": "feature",
+  "summary": "Los overlays de Endurance estrenan la dirección visual Redline: carcasa grafito, posiciones en carmín y el jugador marcado por una luz que respira desde el centro de su fila.",
+  "technicalNotes": [
+    "Redline pasa a ser el diseño por defecto de Endurance en clasificación, delta y relativo. Los diseños anteriores siguen disponibles en el panel de Diseño.",
+    "El relativo estrena tres lecturas del mismo campo: Mirror sitúa al jugador como eje con costuras de luz que parten el bloque, Proximity convierte cada hueco en una celda que se carga conforme el rival se acerca, y Traffic avisa por su nombre del coche más rápido que llega por detrás.",
+    "El delta es ahora una barra anclada al cero que crece hacia fuera, verde si ganas y rojo si pierdes, con la vuelta de referencia declarada debajo.",
+    "Los colores de clase en las lecturas del relativo se apagan a propósito para que el carmín siga significando jugador y el azul siga significando tráfico que te dobla.",
+    "Los perfiles ya guardados no se tocan: si elegiste un diseño concreto, ese sigue aplicándose."
+  ],
+  "testing": [
+    "Abrir Overlays Studio, añadir clasificación, delta y relativo, y comprobar que los tres entran ya en Redline.",
+    "En el panel Diseño, cambiar el sistema visual a Vantare Endurance y confirmar que aparecen las tres lecturas del relativo (Mirror, Proximity y Traffic).",
+    "En una carrera multiclase, comprobar que Traffic nombra al coche más rápido que se acerca por detrás y que el aviso desaparece cuando pasa.",
+    "Con un perfil anterior que usara un diseño concreto de Endurance, abrirlo y verificar que conserva el que tenía."
+  ],
+  "knownLimitations": [
+    "El motor de movimiento (adelantamientos, batallas y vuelta rápida) sigue limitado a la clasificación; el relativo y el delta aún no lo usan."
+  ]
+}

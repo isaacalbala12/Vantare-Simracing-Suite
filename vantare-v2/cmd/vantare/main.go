@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -35,6 +36,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
@@ -62,14 +64,16 @@ const (
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
 
-// Public Supabase configuration and license verification keys are injected by
-// the generated supabase_build.go source so values never become Task cache file
-// names. They are public client configuration, not server-side secrets. Runtime
-// VANTARE_* environment variables still take precedence for development.
+// Public Supabase configuration, license verification keys, and Strategy
+// catalog trust configuration are injected by the generated supabase_build.go
+// source so values never become Task cache file names. They are public client
+// configuration, not server-side secrets.
 var (
-	supabaseURL       = ""
-	supabaseAnonKey   = ""
-	licensePublicKeys = ""
+	supabaseURL                = ""
+	supabaseAnonKey            = ""
+	licensePublicKeys          = ""
+	strategyCatalogURL         = ""
+	strategyCatalogTrustedKeys = ""
 )
 
 func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
@@ -213,8 +217,107 @@ func strategyRepositoryRoot(cfgDir string) (string, error) {
 	return filepath.Join(filepath.Dir(filepath.Clean(cfgDir)), "data", "strategy"), nil
 }
 
+func strategyCatalogRoot(strategyRoot string) (string, error) {
+	if strategyRoot == "" || !filepath.IsAbs(strategyRoot) || filepath.Clean(strategyRoot) != strategyRoot {
+		return "", fmt.Errorf("strategy repository root must be an absolute clean path")
+	}
+	return filepath.Join(strategyRoot, "official-catalog"), nil
+}
+
+type strategyCatalogConfiguration struct {
+	endpoint    string
+	trustedKeys strategycatalog.TrustedKeySet
+}
+
+func resolveStrategyCatalogConfiguration(
+	developmentOverrideAllowed bool,
+	embeddedEndpoint string,
+	embeddedTrustedKeys string,
+	developmentEndpoint string,
+	developmentTrustedKeys string,
+) (strategyCatalogConfiguration, error) {
+	endpoint := embeddedEndpoint
+	trustedKeysDocument := embeddedTrustedKeys
+	if embeddedEndpoint != "" || embeddedTrustedKeys != "" {
+		// Packaged builds must use one indivisible embedded configuration. A
+		// partial or invalid embedded value cannot borrow from process env.
+		if embeddedEndpoint == "" || embeddedTrustedKeys == "" {
+			return strategyCatalogConfiguration{}, fmt.Errorf("official catalog embedded configuration is incomplete")
+		}
+	} else {
+		if !developmentOverrideAllowed {
+			return strategyCatalogConfiguration{}, fmt.Errorf("official catalog is not configured for this build")
+		}
+		endpoint = developmentEndpoint
+		trustedKeysDocument = developmentTrustedKeys
+	}
+	if endpoint == "" || trustedKeysDocument == "" {
+		return strategyCatalogConfiguration{}, fmt.Errorf("official catalog configuration is incomplete")
+	}
+	trustedKeys, err := strategycatalog.ParseTrustedKeySet([]byte(trustedKeysDocument))
+	if err != nil {
+		return strategyCatalogConfiguration{}, fmt.Errorf("official catalog trust configuration is invalid")
+	}
+	// Reuse the production source validator here so resolution and runtime
+	// agree that only an absolute HTTPS endpoint is acceptable.
+	if _, err := strategycatalog.NewHTTPSource(&http.Client{Timeout: 15 * time.Second}, endpoint); err != nil {
+		return strategyCatalogConfiguration{}, fmt.Errorf("official catalog endpoint is invalid")
+	}
+	return strategyCatalogConfiguration{endpoint: endpoint, trustedKeys: trustedKeys}, nil
+}
+
+func newStrategyCatalogService(strategyRoot string, configuration strategyCatalogConfiguration) (*strategycatalog.Service, error) {
+	verifier, err := strategycatalog.NewVerifier(configuration.trustedKeys)
+	if err != nil {
+		return nil, fmt.Errorf("create official catalog verifier: %w", err)
+	}
+	root, err := strategyCatalogRoot(strategyRoot)
+	if err != nil {
+		return nil, err
+	}
+	cache, err := strategycatalog.OpenCache(root, verifier)
+	if err != nil {
+		return nil, fmt.Errorf("open official catalog cache: %w", err)
+	}
+	source, err := strategycatalog.NewHTTPSource(&http.Client{Timeout: 15 * time.Second}, configuration.endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("create official catalog source: %w", err)
+	}
+	return strategycatalog.NewService(source, cache), nil
+}
+
 type strategyCommandExecutor interface {
 	Execute(context.Context, []byte) ([]byte, error)
+}
+
+func executeStrategyCatalogCommand(ctx context.Context, service *strategycatalog.Service, data any) (any, map[string]any) {
+	return executeStrategyCatalogJSONCommand(ctx, data, func(ctx context.Context, document []byte) []byte {
+		return strategycatalog.ExecuteJSON(ctx, service, document)
+	})
+}
+
+func executeStrategyCatalogJSONCommand(ctx context.Context, data any, execute func(context.Context, []byte) []byte) (any, map[string]any) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		document = []byte(`{}`)
+	}
+	var header struct {
+		RequestID string `json:"requestId"`
+	}
+	_ = json.Unmarshal(document, &header)
+	encoded := execute(ctx, document)
+	var response map[string]any
+	if err := json.Unmarshal(encoded, &response); err != nil {
+		return nil, map[string]any{
+			"version": strategycatalog.ResultVersionV1, "requestId": header.RequestID, "ok": false,
+			"errorCode": string(strategycatalog.ErrorUnavailable),
+			"message":   "No hay un catálogo oficial verificado disponible.",
+		}
+	}
+	if ok, _ := response["ok"].(bool); !ok {
+		return nil, response
+	}
+	return response, nil
 }
 
 func executeStrategyApplicationCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
@@ -1128,10 +1231,11 @@ func main() {
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
+	strategyRoot, strategyRootErr := strategyRepositoryRoot(cfgDir)
 	var strategyBridge strategyCommandExecutor
-	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
+	if strategyRootErr != nil {
 		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
 		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
@@ -1159,6 +1263,31 @@ func main() {
 			return
 		}
 		emitter.Emit("strategy:application:result", result)
+	})
+	var strategyCatalogService *strategycatalog.Service
+	if strategyRootErr == nil {
+		configuration, configurationErr := resolveStrategyCatalogConfiguration(
+			strategyCatalogDevelopmentOverrideAllowed,
+			strategyCatalogURL,
+			strategyCatalogTrustedKeys,
+			os.Getenv("VANTARE_STRATEGY_CATALOG_URL"),
+			os.Getenv("VANTARE_STRATEGY_CATALOG_TRUSTED_KEYS"),
+		)
+		if configurationErr != nil {
+			log.Printf("warning: official Strategy catalog is unavailable")
+		} else if service, serviceErr := newStrategyCatalogService(strategyRoot, configuration); serviceErr != nil {
+			log.Printf("warning: official Strategy catalog could not be initialized")
+		} else {
+			strategyCatalogService = service
+		}
+	}
+	wailsApp.Event.On("strategy:catalog:command", func(event *application.CustomEvent) {
+		result, failure := executeStrategyCatalogCommand(ctx, strategyCatalogService, event.Data)
+		if failure != nil {
+			emitter.Emit("strategy:catalog:error", failure)
+			return
+		}
+		emitter.Emit("strategy:catalog:result", result)
 	})
 	strategySolverBridge := strategysolver.JSONBridge{}
 	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {

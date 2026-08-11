@@ -185,13 +185,13 @@ tasks:
       The NSIS call is delegated to a script so that the real NSIS binary at
       C:\Program Files (x86)\NSIS\Bin\makensis.exe can be used when the
       Wails3 makensis shim is unavailable or misconfigured on the host.
-    preconditions:
-      - sh: '[ -f "{{.BIN_DIR}}/vantare.exe" ]'
-        msg: "Run 'task build' first (or 'task package:all' which builds)."
-    deps:
+    cmds:
+      # Keep the release config gate as the first serial command. Task's -f
+      # flag may bypass preconditions, while release rebuilds need -f after
+      # changing environment variables.
+      - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_build_preflight.ps1"
       - task: build
       - task: telemetry:runtime
-    cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\build_nsis.ps1" -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}" -AppName "{{.APP_NAME}}" -InstallScope "{{.INSTALL_SCOPE}}" -RuntimeDirectory "{{.ROOT_DIR}}\{{.BIN_DIR}}\runtime\telemetry\duckdb-v1"
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation all -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
     vars:
@@ -205,10 +205,10 @@ tasks:
       Produces bin/vantare-portable-amd64.zip with vantare.exe, the embedded
       configs/*.json profiles and docs/tester-build-instructions.md as docs/README.txt.
       Intended for testers who do not want a Windows installer.
-    deps:
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_build_preflight.ps1"
       - task: build
       - task: telemetry:runtime
-    cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation portable-zip -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
 
   release:checksums:

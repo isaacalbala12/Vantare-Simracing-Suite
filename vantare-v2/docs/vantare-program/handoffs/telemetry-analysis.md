@@ -58,6 +58,16 @@ version/layout verify. Pendientes los smokes reales de install/upgrade/rollback/
 Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
 merge, promoción ni release.
 
+La correccion local posterior de packaging añade un preflight de configuracion
+publica como primer comando serial de `release:artifacts`,
+`windows:package:all` y `release:portable`. Si falta URL o anon key de Supabase,
+falla antes de runtime, pnpm o Go; no imprime valores y no bloquea
+`windows:build`/dev/offline. `docs/release-artifacts.md` es la receta unica para
+cargar una ruta `.env.local` autorizada sin copiarla, reconstruir con `-f` y
+completar el smoke obligatorio de Google OAuth. El harness nuevo pasa 15 casos
+en Windows PowerShell 5.1 y PowerShell 7; el harness completo TA-03F tambien
+permanece verde en ambos hosts.
+
 El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
 runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo
 en `.vantare-install-stage` y un rename atómico publica el exe justo antes del

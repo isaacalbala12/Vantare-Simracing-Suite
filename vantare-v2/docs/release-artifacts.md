@@ -1,8 +1,11 @@
 # Release artifacts reproducibles (R03.B)
 
-Fuente operativa del flujo de empaquetado oficial de Vantare Simracing Suite para Windows. Documenta que artefactos se publican, que comandos los generan, donde se guardan y como se verifica que la version correcta esta embebida.
-
-Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa general de release) y a `docs/versioning-and-release-gates.md` (versionado). El detalle tecnico vive en los scripts `tools/build_nsis.ps1` y `tools/release_artifacts.ps1`.
+Esta es la **receta unica y autosuficiente** para construir artefactos
+distribuibles de Vantare en Windows. El runbook general y la guia de testers
+deben enlazar aqui, no duplicar la carga de entorno ni los comandos de build.
+El versionado se rige por `docs/versioning-and-release-gates.md`; el detalle
+tecnico vive en `tools/release_build_preflight.ps1`, `tools/build_nsis.ps1` y
+`tools/release_artifacts.ps1`.
 
 ---
 
@@ -22,7 +25,74 @@ Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa gen
 
 ## 2. Comandos oficiales
 
-Desde la raiz de `vantare-v2/`:
+### 2.1 Preparar una consola autorizada sin copiar ni imprimir `.env.local`
+
+Abre PowerShell desde la raiz de `vantare-v2/`. El archivo autorizado puede
+estar en este checkout o en otro worktree: indica su ruta original y leelo en
+memoria; no lo copies al worktree de release, no uses `Get-Content` a solas y
+no imprimas las variables. Este bloque solo admite los dos nombres publicos de
+Supabase y exporta los nombres `VANTARE_*` que consume Task:
+
+```powershell
+$releaseEnvPath = 'C:\ruta-autorizada\vantare-v2\frontend\.env.local'
+if (-not (Test-Path -LiteralPath $releaseEnvPath -PathType Leaf)) {
+  throw 'No existe la ruta .env.local autorizada.'
+}
+
+$releaseConfig = @{}
+foreach ($line in [System.IO.File]::ReadLines($releaseEnvPath)) {
+  if ($line -match '^\s*(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY)\s*=\s*(.*)\s*$') {
+    $value = $Matches[2].Trim()
+    if ($value.Length -ge 2 -and
+        (($value[0] -eq '"' -and $value[$value.Length - 1] -eq '"') -or
+         ($value[0] -eq "'" -and $value[$value.Length - 1] -eq "'"))) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+    $releaseConfig[$Matches[1]] = $value
+  }
+}
+
+$env:VANTARE_SUPABASE_URL = $releaseConfig['VITE_SUPABASE_URL']
+$env:VANTARE_SUPABASE_ANON_KEY = $releaseConfig['VITE_SUPABASE_ANON_KEY']
+Remove-Variable releaseConfig, value -ErrorAction SilentlyContinue
+& .\tools\release_build_preflight.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Configuracion publica de release incompleta.' }
+```
+
+El preflight solo muestra `SET`, `UNSET` y los nombres ausentes; nunca muestra
+valores. `release:artifacts`, `windows:package:all` y `release:portable` lo
+ejecutan como primera orden y fallan antes de dependencias, frontend, Go o
+runtime si falta cualquiera de los dos nombres. `windows:build`, desarrollo y
+los flujos offline no se bloquean.
+
+Task necesita `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY`; durante su
+build frontend deriva de ellas `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY`. Si se invoca `pnpm --dir frontend build` directamente,
+hay que proporcionar los nombres `VITE_*`. Si se invoca el generador y
+`go build` directamente, hay que proporcionar los nombres `VANTARE_*`.
+
+Una pareja Supabase local o de desarrollo basta para comprobar que el build
+queda configurado contra ese proyecto, pero **no demuestra paridad real de
+licencia**. La validacion real requiere ademas el registro autorizado
+`VANTARE_LICENSE_PUBLIC_KEYS` y la configuracion del canal/CI correspondiente.
+No inventes ni copies ese registro entre worktrees.
+
+### 2.2 Construir y verificar
+
+Tras cargar el entorno en la misma consola:
+
+```powershell
+wails3 task release:clean
+wails3 task -f release:artifacts
+wails3 task release:verify
+```
+
+Usa `-f` cuando corriges un build o cambias variables de entorno: obliga a Task
+a reconstruir pasos que de otro modo podria considerar actualizados. El
+preflight es un comando serial, no una precondition de Task, por lo que `-f` no
+puede omitirlo. No uses un artefacto previo para validar un entorno nuevo.
+
+Comandos disponibles desde la raiz:
 
 | Tarea | Comando | Equivalente Windows |
 |---|---|---|
@@ -35,6 +105,11 @@ Desde la raiz de `vantare-v2/`:
 | Limpieza de stale artifacts | `wails3 task release:clean` | `windows:release:clean` |
 
 `release:artifacts` es el alias canonico de R03.B y es lo que un orquestador o un humano debe correr para producir un set de release.
+
+Los scripts de bajo nivel pueden empaquetar un `vantare.exe` preconstruido y no
+repiten el preflight. Esa via solo sirve para diagnostico controlado de un exe
+ya validado; no convierte el resultado en publicable. Todo artefacto
+distribuible debe salir de `release:artifacts` o `release:portable` con el gate.
 
 **Pre-condicion Windows:** `makensis` accesible (real NSIS 3.x). Acepta cualquiera de estas fuentes:
 - en `PATH` (`where makensis` debe resolver),
@@ -55,6 +130,9 @@ SHA-256 antes de usarlo.
 ## 3. Pipeline detallado (`wails3 task release:artifacts`)
 
 ```text
+0. release_build_preflight.ps1
+   Exige VANTARE_SUPABASE_URL y VANTARE_SUPABASE_ANON_KEY antes de build/deps.
+
 1. version:sync   (root)
    Lee VERSION (0.3.10.0) y sincroniza:
      - cmd/vantare/main.go              -> var version = "v0.3.10.0"
@@ -220,7 +298,14 @@ Despues de correr `wails3 task release:artifacts`, en este orden:
    artefacto publicable separado.
 2. `Get-Content bin\vantare-amd64-installer.exe.sha256` debe mostrar el mismo hash que `certutil.exe -hashfile bin\vantare-amd64-installer.exe SHA256`.
 3. `Expand-Archive bin\vantare-portable-amd64.zip -DestinationPath $env:TEMP\vantare-test` y confirmar que dentro hay `vantare.exe`, `configs\*.json` y `docs\README.txt`. Borrar `$env:TEMP\vantare-test` despues.
-4. (Opcional) Instalar el NSIS en una maquina limpia o VM y arrancar la app. Verificar que aparece la pantalla principal y que la version en Ajustes -> Acerca de coincide con `VERSION`.
+4. Instalar el NSIS en una maquina limpia o VM y arrancar la app. Verificar que
+   la version en Ajustes -> Acerca de coincide con `VERSION`.
+5. **Smoke obligatorio de autenticacion:** pulsar el login Google OAuth,
+   completar el retorno del navegador y comprobar que la app llega al Hub sin
+   `Configuracion incompleta`. Para paridad real de licencia, confirmar tambien
+   el entitlement esperado en una build de CI con
+   `VANTARE_LICENSE_PUBLIC_KEYS`; una pareja Supabase local por si sola no
+   demuestra ese gate.
 
 ---
 

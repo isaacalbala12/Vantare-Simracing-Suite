@@ -154,6 +154,15 @@ funcional y de packaging, no visual.
 - El updater no cambia: descarga y ejecuta este mismo installer. Checksums
   oficiales siguen cubriendo installer, ZIP y exe; el manifest cubre la unidad
   interna.
+- La correccion acotada de build exige `VANTARE_SUPABASE_URL` y
+  `VANTARE_SUPABASE_ANON_KEY` antes de cualquier dependencia de
+  `release:artifacts`, `windows:package:all` o `release:portable`. El preflight
+  solo informa `SET`/`UNSET` y nombres ausentes, no valores; `windows:build`,
+  desarrollo y offline permanecen fuera del gate. La receta operativa unica es
+  `docs/release-artifacts.md`.
+- El harness del preflight pasa 15 casos con Windows PowerShell 5.1 y
+  PowerShell 7; el harness completo de packaging TA-03F sigue pasando en ambos
+  hosts despues del wiring serial.
 - Pendiente antes de publicar: instalar/actualizar/desinstalar de verdad y
   forzar rollback en Windows 11 x64; repetir smoke en Windows 10 x64 si sigue
   en soporte. Esta rama no instala ni publica artefactos.

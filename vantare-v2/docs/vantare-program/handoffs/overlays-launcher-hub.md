@@ -472,7 +472,7 @@ Ledger vivo:
 |---|---|---|---|---|
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
-| 2 | Superficie editable en Studio | Pendiente | — | Task 1 y reviews PASS |
+| 2 | Superficie editable en Studio | En ejecución; 2A PASS | `b873a82` + `7b24f09`; state/access 66/66, build y doble review PASS | Microcorte 2B |
 | 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
 | 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
@@ -493,3 +493,21 @@ Evidencia Task 1:
   falta test del máximo exacto 16384; la comparación inclusiva fue inspeccionada.
 - Ruido heredado: dos `AbortError` de teardown de happy-dom tras la suite, con
   exit 0 y todos los tests PASS.
+
+Evidencia microcorte 2A:
+
+- `document/layout-viewport` persiste el tamaño explícito sin mutar documento,
+  comando ni metadata. El parser canónico valida siempre esta edición, también
+  en producción.
+- Una superficie inválida o que deje widgets irrecuperables falla de forma
+  atómica con `StudioCommandError`; Store conserva el historial y publica el
+  mensaje. Errores inesperados de permisos o commit se relanzan.
+- Dirty, undo, redo y save están cubiertos; acceso lo trata como mutación layout
+  documental sobre layouts persistidos.
+- Commits: `b873a82` y corrección de spec `7b24f09`. Root repitió focal 66/66.
+  Build PASS. Spec review PASS y quality review Ready, cero Critical/Important.
+- Minors aceptados: los tests no hacen observable la deduplicación interna de
+  permisos (layout hoy es incondicional) ni fuerzan un error inesperado desde
+  `commitStudioCommand`; la implementación de ambos caminos fue inspeccionada.
+- Task 2 se divide en 2A estado, 2B geometría pura y 2C canvas/controles para
+  mantener write sets acotados y review entre cortes.

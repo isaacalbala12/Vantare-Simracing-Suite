@@ -133,6 +133,20 @@ corepack pnpm --dir frontend test -- src/hub/overlay-studio/state/studio-command
 
 Commit: `feat(studio): edit arbitrary profile surfaces`
 
+### Microcortes de ejecución aprobados
+
+Para mantener propiedad exclusiva y review entre cambios, Task 2 se ejecuta en
+tres microcortes secuenciales:
+
+- **2A — estado documental:** comando `document/layout-viewport`, permisos,
+  dirty/undo/redo/save y errores atómicos.
+- **2B — geometría:** fit, clamp, snap, safe area e interacción parametrizados
+  por un viewport recibido, sin UI nueva.
+- **2C — canvas y controles:** inputs/presets, escena delimitada y responsive,
+  usando exclusivamente las autoridades de 2A/2B.
+
+Cada microcorte exige spec review y quality review antes del siguiente.
+
 ## Task 3 — Desktop and OBS consume the same transform
 
 **Files:**

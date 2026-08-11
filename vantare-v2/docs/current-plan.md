@@ -5235,8 +5235,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-11)
 
-- **Estado:** In Progress en Linear; Tasks 0 y 1 completadas. Contrato puro
-  compartido en `5a98553` y corrección de límites en `a9c2fc8`.
+- **Estado:** In Progress en Linear; Tasks 0, 1 y microcorte 2A completados.
+  Contrato puro compartido en `5a98553`/`a9c2fc8`; edición documental de Studio
+  en `b873a82`/`7b24f09`.
 - **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
 - **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
@@ -5257,5 +5258,8 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   Critical/Important. Riesgo menor no bloqueante: falta un test explícito de
   aceptación del máximo exacto 16384, aunque el límite inclusivo está
   implementado e inspeccionado.
-- **Próxima acción:** ejecutar Task 2 con worker TDD para que Studio edite y
-  represente la superficie arbitraria del documento.
+- **Evidencia 2A:** focal state/access 66/66 PASS y build PASS. Spec review PASS;
+  quality review Ready sin Critical/Important. El viewport ya participa en
+  dirty/undo/redo/save y los rechazos son atómicos y visibles.
+- **Próxima acción:** microcorte 2B, parametrizar toda la geometría espacial de
+  Studio antes de conectar controles y canvas en 2C.

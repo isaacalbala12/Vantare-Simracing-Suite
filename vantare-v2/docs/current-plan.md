@@ -5232,3 +5232,24 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 - **Próxima acción:** merge del PR a `nightly` por parte de Isaac. Después,
   ISA-280 / OS-09L (gate técnico final) y la resolución de la cuestión abierta
   sobre `assertNoReload` del smoke descrita en el handoff.
+
+## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-11)
+
+- **Estado:** In Progress en Linear; Task 0 contractual completada en el commit
+  documental de esta rama.
+- **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
+- **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
+- **Decisión:** cada perfil podrá persistir un `layoutViewport` arbitrario en
+  píxeles CSS/DIP. Los V3 antiguos se resuelven como 1920×1080. Studio, Desktop
+  y OBS compartirán una transformación uniforme `contain`; no habrá stretch,
+  crop ni doble aplicación de DPI.
+- **Autoridades:** ADR
+  `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y microplan
+  `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
+- **Límite conocido:** `monitorIndex` está reservado pero no implementado como
+  selección nativa. Se comprobará la capacidad existente en Task 4; si falta,
+  se abrirá una issue dependiente sin fingir el monitor mediante el viewport del
+  Hub.
+- **Próxima acción:** ejecutar Task 1 con worker TDD, seguida de revisión de
+  especificación y revisión de calidad independientes.

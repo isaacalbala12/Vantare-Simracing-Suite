@@ -438,3 +438,41 @@ Task 4.
    separar. Impacto para usuarios y testers: ninguno, el Workshop está excluido de
    Stable y el compile-out lo confirma. Tras el merge: ISA-280 (OS-09L, gate
    técnico final) y resolver la cuestión abierta del punto 6b.
+
+## ISA-326 / OS-11 — superficie arbitraria y paridad Studio/Desktop/OBS
+
+- **Estado al 2026-08-11:** issue creada e In Progress. Task 0 contractual
+  completada en el commit documental de la rama; código de producto aún no
+  modificado.
+- **Rama/worktree:**
+  `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion` en
+  `C:\tmp\vantare-isa326\vantare-v2`, desde
+  `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- **Hallazgo raíz:** el selector actual solo altera el zoom calculado. Documento,
+  validación, drag/resize, Desktop y OBS siguen ligados a 1920×1080 y mantienen
+  fórmulas/orígenes distintos.
+- **Decisión vigente:** `layoutViewport {width,height}` opcional y
+  retrocompatible en V3; ausencia = 1920×1080. Unidades CSS/DIP. Transformación
+  pura `contain` compartida, centrada y sin deformación. Cualquier resolución es
+  válida; los presets solo son atajos.
+- **Política entre proporciones:** sin reflow implícito. Si documento y salida no
+  coinciden, se preserva la proporción con bandas transparentes. Un contrato de
+  anclajes/reflow requerirá alcance separado.
+- **Frontera preservada:** `WidgetVisualHost` y los renderizadores visuales no se
+  modifican. El canvas conserva preview imperativa durante drag/resize.
+- **Monitor:** `monitorIndex` está reservado en la base. Task 4 verificará si hay
+  una API Wails nativa ya disponible; si no, se abrirá dependencia y el perfil
+  seguirá aceptando dimensiones manuales arbitrarias.
+- **Autoridades:** `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y
+  `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
+
+Ledger vivo:
+
+| Task | Contenido | Estado | Evidencia | Próxima condición |
+|---|---|---|---|---|
+| 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
+| 1 | Contrato TS/Go + transformación pura | Pendiente | — | Task 0 cerrada |
+| 2 | Superficie editable en Studio | Pendiente | — | Task 1 y reviews PASS |
+| 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
+| 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
+| 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |

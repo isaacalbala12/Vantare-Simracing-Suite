@@ -1,8 +1,14 @@
+import {
+  DEFAULT_LAYOUT_VIEWPORT,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import type { StudioPreviewState } from "../state/studio-store";
 
-export const CANVAS_WIDTH = 1920;
-export const CANVAS_HEIGHT = 1080;
+/** @deprecated Prefer the document's resolved layoutViewport. */
+export const CANVAS_WIDTH = DEFAULT_LAYOUT_VIEWPORT.width;
+/** @deprecated Prefer the document's resolved layoutViewport. */
+export const CANVAS_HEIGHT = DEFAULT_LAYOUT_VIEWPORT.height;
 export const GRID_SIZE = 8;
 export const SNAP_TOLERANCE = 6;
 export const MINIMUM_VISIBLE = 32;
@@ -19,6 +25,7 @@ export function resolveCanvasScale(input: {
   containerWidth: number;
   containerHeight: number;
   zoom: StudioPreviewState["zoom"];
+  layoutViewport?: LayoutViewport;
   allowUpscale?: boolean;
 }): number {
   const containerWidth = finiteNumber(input.containerWidth);
@@ -27,8 +34,9 @@ export function resolveCanvasScale(input: {
     return 0;
   }
   if (input.zoom === "fit") {
-    const scaleX = containerWidth / CANVAS_WIDTH;
-    const scaleY = containerHeight / CANVAS_HEIGHT;
+    const layoutViewport = input.layoutViewport ?? DEFAULT_LAYOUT_VIEWPORT;
+    const scaleX = containerWidth / layoutViewport.width;
+    const scaleY = containerHeight / layoutViewport.height;
     const fitScale = Math.min(scaleX, scaleY);
     return input.allowUpscale ? fitScale : Math.min(fitScale, 1);
   }
@@ -48,23 +56,26 @@ export function snapToGrid(value: number, grid = GRID_SIZE): number {
   return Math.round(safeValue / grid) * grid;
 }
 
-export function clampRecoverableLayout(layout: WidgetLayoutV3): WidgetLayoutV3 {
+export function clampRecoverableLayout(
+  layout: WidgetLayoutV3,
+  layoutViewport: LayoutViewport,
+): WidgetLayoutV3 {
   let x = finiteNumber(layout.x);
   let y = finiteNumber(layout.y);
-  let w = Math.max(1, finiteNumber(layout.w, 1));
-  let h = Math.max(1, finiteNumber(layout.h, 1));
+  const w = Math.max(1, finiteNumber(layout.w, 1));
+  const h = Math.max(1, finiteNumber(layout.h, 1));
 
   if (x + w < MINIMUM_VISIBLE) {
     x = MINIMUM_VISIBLE - w;
   }
-  if (x > CANVAS_WIDTH - MINIMUM_VISIBLE) {
-    x = CANVAS_WIDTH - MINIMUM_VISIBLE;
+  if (x > layoutViewport.width - MINIMUM_VISIBLE) {
+    x = layoutViewport.width - MINIMUM_VISIBLE;
   }
   if (y + h < MINIMUM_VISIBLE) {
     y = MINIMUM_VISIBLE - h;
   }
-  if (y > CANVAS_HEIGHT - MINIMUM_VISIBLE) {
-    y = CANVAS_HEIGHT - MINIMUM_VISIBLE;
+  if (y > layoutViewport.height - MINIMUM_VISIBLE) {
+    y = layoutViewport.height - MINIMUM_VISIBLE;
   }
 
   return {

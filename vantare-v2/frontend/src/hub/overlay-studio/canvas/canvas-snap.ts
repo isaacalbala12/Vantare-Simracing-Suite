@@ -1,7 +1,6 @@
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   SNAP_TOLERANCE,
   snapToGrid,
   type Point,
@@ -16,6 +15,7 @@ export type SnapGuide = {
 export type SnapInput = {
   layout: WidgetLayoutV3;
   siblings: readonly WidgetLayoutV3[];
+  layoutViewport: LayoutViewport;
   disableSnap?: boolean;
 };
 
@@ -74,12 +74,24 @@ function bestAxisSnap(
   return best;
 }
 
-function buildXTargets(layout: WidgetLayoutV3, siblings: readonly WidgetLayoutV3[]): SnapTarget[] {
+function buildXTargets(
+  layout: WidgetLayoutV3,
+  siblings: readonly WidgetLayoutV3[],
+  layoutViewport: LayoutViewport,
+): SnapTarget[] {
   const targets: SnapTarget[] = [
     { position: snapToGrid(layout.x), kind: "grid" },
     { position: 0, kind: "edge" },
-    { position: CANVAS_WIDTH - layout.w, kind: "edge", guidePosition: CANVAS_WIDTH },
-    { position: (CANVAS_WIDTH - layout.w) / 2, kind: "center", guidePosition: CANVAS_WIDTH / 2 },
+    {
+      position: layoutViewport.width - layout.w,
+      kind: "edge",
+      guidePosition: layoutViewport.width,
+    },
+    {
+      position: (layoutViewport.width - layout.w) / 2,
+      kind: "center",
+      guidePosition: layoutViewport.width / 2,
+    },
   ];
   for (const sibling of siblings) {
     targets.push({ position: sibling.x, kind: "edge" });
@@ -97,12 +109,24 @@ function buildXTargets(layout: WidgetLayoutV3, siblings: readonly WidgetLayoutV3
   return targets;
 }
 
-function buildYTargets(layout: WidgetLayoutV3, siblings: readonly WidgetLayoutV3[]): SnapTarget[] {
+function buildYTargets(
+  layout: WidgetLayoutV3,
+  siblings: readonly WidgetLayoutV3[],
+  layoutViewport: LayoutViewport,
+): SnapTarget[] {
   const targets: SnapTarget[] = [
     { position: snapToGrid(layout.y), kind: "grid" },
     { position: 0, kind: "edge" },
-    { position: CANVAS_HEIGHT - layout.h, kind: "edge", guidePosition: CANVAS_HEIGHT },
-    { position: (CANVAS_HEIGHT - layout.h) / 2, kind: "center", guidePosition: CANVAS_HEIGHT / 2 },
+    {
+      position: layoutViewport.height - layout.h,
+      kind: "edge",
+      guidePosition: layoutViewport.height,
+    },
+    {
+      position: (layoutViewport.height - layout.h) / 2,
+      kind: "center",
+      guidePosition: layoutViewport.height / 2,
+    },
   ];
   for (const sibling of siblings) {
     targets.push({ position: sibling.y, kind: "edge" });
@@ -133,8 +157,16 @@ export function snapWidgetLayout(input: SnapInput): SnapResult {
     return { layout, guides: [] };
   }
 
-  const xSnap = bestAxisSnap(layout.x, buildXTargets(layout, input.siblings), "vertical");
-  const ySnap = bestAxisSnap(layout.y, buildYTargets(layout, input.siblings), "horizontal");
+  const xSnap = bestAxisSnap(
+    layout.x,
+    buildXTargets(layout, input.siblings, input.layoutViewport),
+    "vertical",
+  );
+  const ySnap = bestAxisSnap(
+    layout.y,
+    buildYTargets(layout, input.siblings, input.layoutViewport),
+    "horizontal",
+  );
 
   const guides = [xSnap.guide, ySnap.guide].filter((guide): guide is SnapGuide => guide !== null);
 

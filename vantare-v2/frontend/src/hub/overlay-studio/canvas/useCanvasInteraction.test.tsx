@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
+import { DEFAULT_LAYOUT_VIEWPORT } from "../../../overlay/core/layout-viewport";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import { createTestTelemetryCoordinator } from "../test-helpers";
@@ -10,7 +12,13 @@ import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { applyMovePreview, applyResizePreview } from "./useCanvasInteraction";
+import {
+  applyMovePreview,
+  applyResizePreview,
+  useCanvasInteraction,
+} from "./useCanvasInteraction";
+
+const DEFAULT_VIEWPORT = DEFAULT_LAYOUT_VIEWPORT;
 
 function buildDocument(): ProfileDocumentV3 {
   const delta = deltaDefinition.createDefault("delta-main");
@@ -105,6 +113,40 @@ function readFrameVisualLeft(frame: HTMLElement): number {
   return base + Number.parseFloat(match[1]);
 }
 
+const arbitraryViewportWidget = deltaDefinition.createDefault("arbitrary-viewport");
+arbitraryViewportWidget.layout = {
+  x: 950,
+  y: 100,
+  w: 100,
+  h: 80,
+  zIndex: 0,
+  aspectLocked: true,
+};
+
+function ArbitraryViewportInteractionHarness(): React.ReactElement {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const interaction = useCanvasInteraction({
+    widgets: [arbitraryViewportWidget],
+    session: "general",
+    scale: 1,
+    layoutViewport: { width: 1000, height: 1000 },
+    sceneRef,
+    selectedWidgetId: "arbitrary-viewport",
+    dispatch: () => undefined,
+    selectWidget: () => undefined,
+  });
+
+  return (
+    <div ref={sceneRef} data-testid="arbitrary-viewport-scene">
+      <div
+        data-testid="studio-widget-frame-arbitrary-viewport"
+        style={{ left: "950px", top: "100px", width: "100px", height: "80px" }}
+        onPointerDown={(event) => interaction.onFramePointerDown("arbitrary-viewport", event)}
+      />
+    </div>
+  );
+}
+
 describe("applyMovePreview", () => {
   it("snaps unless Alt disables snapping", () => {
     const start = { x: 100, y: 100, w: 280, h: 96, zIndex: 0, aspectLocked: true };
@@ -114,6 +156,7 @@ describe("applyMovePreview", () => {
       pointerCurrent: { x: 103, y: 107 },
       siblings: [],
       disableSnap: false,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
     expect(snapped.layout.x).toBe(104);
     expect(snapped.layout.y).toBe(104);
@@ -125,10 +168,24 @@ describe("applyMovePreview", () => {
       pointerCurrent: { x: 103, y: 107 },
       siblings: [],
       disableSnap: true,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
     expect(raw.layout.x).toBe(103);
     expect(raw.layout.y).toBe(107);
     expect(raw.guides).toEqual([]);
+  });
+
+  it("clamps movement against an arbitrary ultrawide viewport", () => {
+    const preview = applyMovePreview({
+      start: { x: 5000, y: 1300, w: 200, h: 100, zIndex: 0, aspectLocked: true },
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 300, y: 300 },
+      siblings: [],
+      disableSnap: true,
+      layoutViewport: { width: 5120, height: 1440 },
+    });
+    expect(preview.layout.x).toBe(5088);
+    expect(preview.layout.y).toBe(1408);
   });
 });
 
@@ -144,6 +201,7 @@ describe("applyResizePreview", () => {
       pointerCurrent: { x: 100, y: 40 },
       siblings: [],
       disableSnap: true,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
     expect(preview.layout.w / preview.layout.h).toBeCloseTo(start.w / start.h, 2);
     expect(preview.layout.w).toBeGreaterThanOrEqual(120);
@@ -165,6 +223,7 @@ describe("applyResizePreview", () => {
       pointerCurrent: { x: 101, y: 39 },
       siblings: [],
       disableSnap: false,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
 
     expect(preview.layout.x).toBe(start.x);
@@ -189,6 +248,7 @@ describe("applyResizePreview", () => {
       pointerCurrent: { x: 3, y: 0 },
       siblings: [],
       disableSnap: false,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
     const unsnapped = applyResizePreview({
       widget,
@@ -198,6 +258,7 @@ describe("applyResizePreview", () => {
       pointerCurrent: { x: 3, y: 0 },
       siblings: [],
       disableSnap: true,
+      layoutViewport: DEFAULT_VIEWPORT,
     });
 
     expect(snapped.layout.x).toBe(start.x);
@@ -227,6 +288,7 @@ describe("applyResizePreview", () => {
         pointerCurrent: { x: 13, y: 11 },
         siblings: [],
         disableSnap: false,
+        layoutViewport: DEFAULT_VIEWPORT,
       });
 
       if (!handle.includes("w")) {
@@ -243,6 +305,30 @@ describe("applyResizePreview", () => {
       expect(Number.isFinite(preview.layout.h)).toBe(true);
     },
   );
+
+  it("snaps resize edges to a custom square viewport", () => {
+    const widget = relativeDefinition.createDefault("relative-main");
+    const start = {
+      ...widget.layout,
+      x: 700,
+      y: 100,
+      w: 294,
+      h: 300,
+      aspectLocked: false,
+    };
+    const preview = applyResizePreview({
+      widget,
+      start,
+      handle: "e",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 3, y: 0 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport: { width: 1000, height: 1000 },
+    });
+    expect(preview.layout.x + preview.layout.w).toBe(1000);
+    expect(preview.guides).toContainEqual({ orientation: "vertical", position: 1000, kind: "edge" });
+  });
 });
 
 describe("useCanvasInteraction", () => {
@@ -254,6 +340,41 @@ describe("useCanvasInteraction", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it("propagates an arbitrary viewport to the imperative move preview", async () => {
+    render(<ArbitraryViewportInteractionHarness />);
+    const scene = screen.getByTestId("arbitrary-viewport-scene");
+    scene.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 1000,
+      width: 1000,
+      height: 1000,
+      toJSON: () => ({}),
+    });
+    const frame = screen.getByTestId("studio-widget-frame-arbitrary-viewport");
+
+    fireEvent.pointerDown(frame, {
+      pointerId: 9,
+      button: 0,
+      clientX: 950,
+      clientY: 100,
+      bubbles: true,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 9,
+      clientX: 1300,
+      clientY: 100,
+      altKey: true,
+      bubbles: true,
+    });
+
+    await waitFor(() => expect(readFrameVisualLeft(frame)).toBe(968));
+    fireEvent.pointerUp(window, { pointerId: 9, bubbles: true });
   });
 
   it("enters move mode synchronously on pointer-down", async () => {

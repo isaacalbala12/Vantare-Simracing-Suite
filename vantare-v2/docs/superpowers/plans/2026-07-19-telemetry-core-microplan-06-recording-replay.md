@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-06 — Grabación, replay e histórico
 
 **Objetivo:** convertir Telemetry Core en una base reutilizable para Strategy y análisis futuro sin acoplar el directo a DuckDB.

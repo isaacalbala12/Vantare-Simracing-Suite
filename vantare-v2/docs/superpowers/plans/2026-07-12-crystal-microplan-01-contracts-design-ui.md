@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Crystal Microplan 01 Contracts and Design UI Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans and test-driven-development. Implement task-by-task; stop at every gate.

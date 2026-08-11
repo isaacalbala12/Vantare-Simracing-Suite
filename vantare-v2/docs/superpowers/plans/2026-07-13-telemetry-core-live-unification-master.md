@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Live Unification Implementation Plan — SUPERSEDED
 
 > **Sustituido el 2026-07-19** por `2026-07-19-telemetry-core-final-architecture-master.md` y ADR 0004. Se conserva únicamente como historia de la planificación previa. No ejecutar TC-02–TC-05 desde este documento.

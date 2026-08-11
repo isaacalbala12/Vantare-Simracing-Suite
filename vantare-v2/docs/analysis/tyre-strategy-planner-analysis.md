@@ -1,3 +1,7 @@
+> **Document status: historical**
+> El análisis conserva procedencia; sus precondiciones Git y pasos desde
+> `develop` no son ejecutables. Usa Linear y el handoff vivo de Strategy.
+
 # Tyre Strategy Planner — Análisis y Decisión Arquitectónica v3
 
 **Fecha:** 2026-07-10

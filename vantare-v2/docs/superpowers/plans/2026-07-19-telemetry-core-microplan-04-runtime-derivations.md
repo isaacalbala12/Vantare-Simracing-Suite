@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-04 — Runtime canónico y derivaciones
 
 **Objetivo:** transformar observaciones del driver en estado coherente, hechos ordenados y datos derivados sin mezclar I/O o decisiones de producto.

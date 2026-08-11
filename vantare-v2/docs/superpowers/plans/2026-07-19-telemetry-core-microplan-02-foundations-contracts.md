@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-02 — Fundamentos y contratos
 
 **Objetivo:** fijar un lenguaje canónico modular antes de conectar ninguna fuente o consumidor. Esta fase no cambia el runtime productivo.

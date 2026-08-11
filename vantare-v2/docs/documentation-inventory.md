@@ -1,3 +1,7 @@
+> **Document status: historical**
+> Inventario conservado como evidencia. `docs/README.md` es el único router
+> operativo y prevalece sobre cualquier clasificación de este archivo.
+
 # Inventario de documentacion
 
 Ultima actualizacion operativa: 2026-08-10.

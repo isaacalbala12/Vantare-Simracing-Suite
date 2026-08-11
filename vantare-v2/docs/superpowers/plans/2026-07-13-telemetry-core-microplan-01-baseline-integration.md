@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Microplan 01 Baseline and Integration Implementation Plan
 
 > **Estado: COMPLETADO.** ISA-23, ISA-24, ISA-25, ISA-96 e ISA-97 están integradas en `develop@f492007`. Este archivo se conserva como trazabilidad histórica y no debe volver a ejecutarse. La evidencia actual vive en `docs/telemetry-core/`.

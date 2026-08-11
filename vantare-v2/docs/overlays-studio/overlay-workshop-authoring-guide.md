@@ -18,7 +18,9 @@ aplicación. No hay un segundo paso de traducción.
 2. Ejecuta `corepack pnpm --dir frontend dev`.
 3. Abre una URL reproducible de `/workshop` (ver ejemplos abajo).
 4. Edita el renderer o el CSS de producto.
-5. Vite aplica HMR sobre el root sin reiniciar el servidor.
+5. Vite aplica el cambio sin reiniciar el servidor. TSX usa HMR; el CSS que
+   atraviesa Tailwind puede recargar el documento completo. No uses la
+   persistencia de `window` como contrato del bucle CSS.
 6. Antes de entregar cambios de *tooling*, ejecuta
    `corepack pnpm --dir frontend smoke:overlay-workshop-hmr`.
 

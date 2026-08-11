@@ -1,3 +1,8 @@
+> **Plan status: conditional**
+> Solo es ejecutable cuando una issue de Linear enlaza este path exacto.
+> Linear y Git poseen alcance, rama, base y destino; cualquier instrucción
+> embebida que los contradiga queda sustituida.
+
 # ISA-258 — Roadmap conectado a Linear
 
 ## Resultado buscado

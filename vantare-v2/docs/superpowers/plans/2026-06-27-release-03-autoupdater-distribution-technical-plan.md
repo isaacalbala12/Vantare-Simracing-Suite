@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Release 03 - Autoupdater y Distribucion - Plan Tecnico
 
 > **Origen:** orquestacion senior del 2026-06-27. Documento ejecutable por workers. No implementa codigo: prepara Release 03.

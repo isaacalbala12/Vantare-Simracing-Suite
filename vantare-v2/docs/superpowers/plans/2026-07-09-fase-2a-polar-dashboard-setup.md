@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Fase 2A — Polar dashboard, productos y mapping (completada en repo)
 
 > **Estado:** Artefactos y docs listos. **Productos Polar:** requieren acción humana (sin `POLAR_ACCESS_TOKEN` local).

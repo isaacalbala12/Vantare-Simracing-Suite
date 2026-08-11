@@ -1,3 +1,8 @@
+> **Plan status: conditional**
+> Solo es ejecutable cuando una issue de Linear enlaza este path exacto.
+> Linear y Git poseen alcance, rama, base y destino; cualquier instrucción
+> embebida que los contradiga queda sustituida.
+
 # Strategy Planner unificado — plan maestro por microcortes
 
 > **Contrato técnico histórico, no ejecutable por sí mismo.** Conserva la

@@ -1,4 +1,4 @@
-# ADR-0003: Polar como autoridad comercial y grants locales por fuente
+# ADR-0008: Polar como autoridad comercial y grants locales por fuente
 
 - Status: Accepted (contrato; implementación y venta siguen NO-GO)
 - Date: 2026-07-14; reconciliada el 2026-08-01

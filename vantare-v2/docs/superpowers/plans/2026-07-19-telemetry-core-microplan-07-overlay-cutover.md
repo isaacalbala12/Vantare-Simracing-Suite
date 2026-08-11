@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-07 — Migración de Overlay Studio/Desktop/OBS
 
 **Objetivo:** cambiar únicamente la entrada de telemetría de Overlay, preservando interacción, diseño, frecuencia y paridad de los 21 diseños Crystal y Original.

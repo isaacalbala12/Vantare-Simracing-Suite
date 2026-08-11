@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # ISA-105 / TC-07A — Proyección Overlay y shadow comparator
 
 > **Ejecución:** seguir este documento corte a corte con TDD. No iniciar el

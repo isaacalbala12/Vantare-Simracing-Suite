@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-03 — Driver Platform y LMU
 
 **Objetivo:** adquirir LMU mediante un único driver que encapsule Shared Memory y REST local y emita observaciones canónicas verificables.

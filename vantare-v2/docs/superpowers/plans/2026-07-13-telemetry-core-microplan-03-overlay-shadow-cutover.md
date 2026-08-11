@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Microplan 03 Overlay Shadow and Cutover Implementation Plan
 
 > **Estado: SUPERSEDED.** Sustituido por los microplanes TC-03 Driver LMU y TC-07 Overlay del 2026-07-19. Se conserva como historia; no ejecutar sus issues o instrucciones.

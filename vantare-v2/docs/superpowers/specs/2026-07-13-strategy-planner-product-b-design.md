@@ -1,3 +1,7 @@
+> **Document status: historical**
+> Product B es una fase superada por el dominio unificado. Conserva contexto,
+> pero no autoriza ramas, ejecución ni integración.
+
 # Strategy Planner Product B — Diseño canónico
 
 **Fecha:** 2026-07-13

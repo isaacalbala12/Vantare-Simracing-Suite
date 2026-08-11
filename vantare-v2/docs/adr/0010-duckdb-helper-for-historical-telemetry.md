@@ -1,4 +1,4 @@
-# ADR 0005: helper DuckDB fuera de proceso para telemetría histórica
+# ADR 0010: helper DuckDB fuera de proceso para telemetría histórica
 
 ## Estado
 

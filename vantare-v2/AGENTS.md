@@ -56,14 +56,17 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   workers, pero un worker no puede crear subagentes ni delegar su tarea salvo
   autorizacion expresa y acotada del orquestador. No ejecutes dos agentes en
   paralelo sobre el mismo worktree o rama.
-- Excepcion acotada a Engineer/Spotter: todo cambio productivo lo implementa
-  un worker subagente, incluso si es trivial. El orquestador planifica, prepara
-  el contexto, coordina, revisa el diff y la evidencia y mantiene el estado
-  vivo, pero no implementa producto de Engineer/Spotter. Esta excepcion no
-  cambia la regla general de delegacion para los demas modulos.
+- Regla acotada a Engineer/Spotter: cualquier cambio de codigo productivo,
+  tests, fixtures, tooling/build, assets o contrato tecnico lo implementa un
+  worker subagente. El orquestador solo planifica, prepara contexto, coordina y
+  revisa diff/evidencia; despues de verificar puede actualizar el estado
+  operativo vivo en Linear, PR, `docs/current-plan.md` y el handoff. No
+  implementa comportamiento ni cambios tecnicos de Engineer/Spotter, aunque
+  sean triviales. Esta regla no cambia la delegacion de los demas modulos.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
-  barata. El orquestador sigue siendo responsable de revisar el diff, la
-  evidencia y el handoff; el reporte del worker no basta por si solo.
+  barata, salvo que una regla acotada obligatoria de este archivo exija worker;
+  esa regla prevalece. El orquestador sigue siendo responsable de revisar el
+  diff, la evidencia y el handoff; el reporte del worker no basta por si solo.
 - Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
 - `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
   Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el

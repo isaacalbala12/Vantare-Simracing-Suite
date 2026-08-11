@@ -41,7 +41,8 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 - Un worker no crea subagentes salvo autorizacion expresa y acotada.
 - No se comparten worktrees o ramas entre agentes concurrentes.
 - La ejecucion directa es preferible para trabajo trivial cuando evita coste y
-  coordinacion innecesarios.
+  coordinacion innecesarios, salvo que una regla acotada obligatoria de
+  `AGENTS.md` exija worker; esa regla prevalece.
 
 ## Autonomía
 

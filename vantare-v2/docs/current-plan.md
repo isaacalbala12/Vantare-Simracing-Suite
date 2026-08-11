@@ -28,6 +28,9 @@
    en orden de ejecucion.
 6. Si cambia estado, evidencia, riesgo o siguiente accion, actualiza el handoff,
    Linear y este indice sin anadir cronologia.
+7. Cuando este indice marque un handoff bloqueado por estado heredado, la
+   sintesis procede de Git/Linear y el handoff no se usa para ejecutar hasta su
+   reconciliacion trazada.
 
 ## Telemetry Core
 
@@ -39,11 +42,14 @@
   2026-08-11T12:30:35Z. La consulta viva no devuelve `blockedBy`, PR ni CI.
 - **Bloqueo:** una issue archivada no es autoridad ejecutable aunque conserve el
   estado `In Progress`; tampoco hay entrega remota demostrada para TC-10B.
+- **Handoff bloqueado:** su bloque vivo aun presenta PR #202 y el merge de
+  ISA-160 como pendientes, en conflicto con Git/Linear. No es entrada ejecutable
+  hasta reconciliarlo y registrar la evidencia vigente.
 - **Siguiente accion:** no ejecutar TC-10B. Restaurar o reconciliar primero en
-  Linear la autoridad de ISA-161 y su rama canonica; despues verificar base y
-  worktree contra Nightly y retomar el alcance del
-  [handoff de Core](vantare-program/handoffs/telemetry-core.md). VE, neumaticos
-  y weather siguen `unsupported/missing` hasta evidencia propia.
+  Linear la autoridad de ISA-161 y su rama canonica, y reconciliar el bloque
+  vivo del [handoff de Core](vantare-program/handoffs/telemetry-core.md).
+  Despues se verifican base/worktree contra Nightly. VE, neumaticos y weather
+  siguen `unsupported/missing` hasta evidencia propia.
 
 ## Telemetry Analysis
 
@@ -71,15 +77,15 @@
   draft #196. El HEAD publicado `61a5c99` tiene checks verdes; el merge local de
   `nightly@8880a88` y este corte ya tienen commit local, pero no push ni CI propio.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` y bloqueadas
-  por ISA-313. ISA-314 conserva por separado la promesa falsa de guardado.
+  por ISA-313. El handoff se reconciliara en el Corte B; S1 no comienza antes
+  de cerrar ese corte y aceptar la Fase 5. ISA-314 conserva el bug de guardado.
 - **Siguiente accion:** cerrar reviews del Corte A; despues ejecutar el Corte B
-  de arquitectura documental Engineer. Solo tras aceptar la Fase 5 se prepara
-  una issue/rama de producto para la primera subfase del
+  de arquitectura documental Engineer. Solo entonces se prepara una issue/rama
+  de producto para la primera subfase del
   [microplan Spotter](engineer/spotter-phase-1-microplan.md).
-- **Entrada permitida:** [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
+- **Entrada de planificacion:** [handoff pendiente de Corte B](vantare-program/handoffs/engineer-spotter.md),
   [roadmap general](engineer/engineer-beta-roadmap.md) y microplan activo. Todo
-  cambio productivo Engineer/Spotter lo implementa un worker subagente; el
-  orquestador no implementa producto, ni siquiera cambios triviales.
+  cambio tecnico Engineer/Spotter lo implementa un worker subagente.
 
 ## Strategy Planner
 
@@ -89,9 +95,12 @@
   tiene checks verdes sobre su HEAD publicado.
 - **Bloqueo:** la ejecucion live espera ISA-161; la entrada historica espera
   ISA-132 e ISA-159. No se crea un reader ni fallback local en Strategy.
-- **Siguiente accion:** revisar ISA-162/PR #201 y seguir el
-  [handoff de Strategy](vantare-program/handoffs/strategy-planner.md); mantener
-  separados catalogo firmado, comunidad y ejecucion live.
+- **Handoff bloqueado:** aun describe PR #192 como abierto y una siguiente issue
+  ya superada. El estado superior procede de Git/Linear; el
+  [handoff de Strategy](vantare-program/handoffs/strategy-planner.md) no es
+  entrada ejecutable hasta reconciliar su bloque vivo.
+- **Siguiente accion:** reconciliar ese handoff con ISA-309, ISA-162 y sus PR;
+  solo despues confirmar el siguiente corte de ejecucion.
 
 ## Overlay Studio, Launcher y Hub
 
@@ -103,10 +112,13 @@
   Esto no equivale a `master`, Stable publico, venta ni suite completa.
 - **Bloqueo:** la promocion a Testers necesita issue, gates y autorizacion
   propios. Billing y migracion de raiz bloquean la venta, no el hito Testers.
-- **Siguiente accion:** congelar alcance el 2026-08-14 y preparar RC0 Nightly
-  para el 2026-08-19. Launcher requiere una auditoria de integracion antes de
-  features; Hub requiere characterization antes de `HUB-POLISH`.
-- **Detalle:** [handoff Overlay/Launcher/Hub](vantare-program/handoffs/overlays-launcher-hub.md).
+- **Handoff bloqueado:** conserva PR #195 y acciones ISA-311 ya superadas. El
+  estado superior procede de Git/Linear; el
+  [handoff Overlay/Launcher/Hub](vantare-program/handoffs/overlays-launcher-hub.md)
+  no es entrada ejecutable hasta reconciliar su bloque vivo.
+- **Siguiente accion:** reconciliar ese handoff con ISA-308, ISA-315 y Nightly;
+  solo despues confirmar fechas, gates y el siguiente corte. Launcher y Hub
+  conservan sus auditorias previas a nuevas features.
 
 ## Plataforma comercial y Testing Center
 
@@ -125,7 +137,9 @@
 
 ## HISTORY — NO USAR PARA EJECUCION
 
-La bitacora monolitica retirada se conserva en los dos padres de esta
-reconciliacion: `61a5c99` (Engineer/Spotter) y `8880a88` (Nightly). Para una
-auditoria historica puede leerse `vantare-v2/docs/current-plan.md` en esos SHAs;
-este indice y las fuentes vivas superiores son la unica entrada de ejecucion.
+La bitacora monolitica retirada se conserva en los padres completos
+`61a5c99cb8fe9231368f263a3c73b1d1322db488` (Engineer/Spotter) y
+`8880a8800e07e2af21fe5ff37a714578bf8fcd00` (Nightly), reconciliados por el merge
+`1fcbbb91f511e3dda73f48376453ab1d9afbb28e`. Para auditoria historica puede
+leerse `vantare-v2/docs/current-plan.md` en esos SHAs; este indice y las fuentes
+vivas superiores son la unica entrada de ejecucion.

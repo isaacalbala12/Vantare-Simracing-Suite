@@ -22,6 +22,7 @@ HANDOFF_HEADINGS = {
     "## Resultado y fronteras",
     "## Autoridad técnica",
     "## Estado técnico actual",
+    "## Decisiones cerradas",
     "## Riesgos y bloqueos",
     "## Recomendación técnica",
     "## Evidencia",
@@ -34,7 +35,7 @@ PLAN_STATUS_RE = re.compile(
 ADR_FILE_RE = re.compile(r"^(\d{4})-[a-z0-9][a-z0-9-]*\.md$")
 ADR_TITLE_RE = re.compile(r"^#\s+ADR[- ](\d{4})(?:\b|\s|:|—)", re.MULTILINE)
 MARKDOWN_LINK_RE = re.compile(
-    r"!?\[[^\]]+\]\((<[^>]+>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\)"
+    r"!?\[[^\]]*\]\((<[^>]+>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\)"
 )
 
 
@@ -97,13 +98,16 @@ def validate_plans(product_root: Path) -> list[str]:
     for path in sorted(plans_dir.rglob("*.md")):
         if path.name == "README.md":
             continue
-        first_screen = "\n".join(read_text(path).splitlines()[:12])
+        text = read_text(path)
+        first_screen = "\n".join(text.splitlines()[:12])
         matches = PLAN_STATUS_RE.findall(first_screen)
         if len(matches) != 1:
             errors.append(
                 f"plan needs one historical/conditional marker in first 12 lines: {path}"
             )
-        if "Plan status: active" in first_screen:
+        if len(PLAN_STATUS_RE.findall(text)) != 1:
+            errors.append(f"plan must contain exactly one status marker: {path}")
+        if "Plan status: active" in text:
             errors.append(f"repo plans cannot claim active status: {path}")
 
     return errors
@@ -160,8 +164,39 @@ def without_fenced_code(text: str) -> str:
             in_fence = not in_fence
             continue
         if not in_fence:
-            output.append(line)
+            output.append(re.sub(r"`+[^`]*`+", "", line))
     return "\n".join(output)
+
+
+def local_target(source: Path, raw_target: str) -> Path | None:
+    if raw_target.startswith("#"):
+        return source
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_target):
+        return None
+    if raw_target.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", raw_target):
+        return None
+    relative = unquote(raw_target.split("#", 1)[0].split("?", 1)[0])
+    if not relative:
+        return source
+    target = (source.parent / relative).resolve()
+    if target.is_dir() and (target / "README.md").exists():
+        return target / "README.md"
+    return target
+
+
+def excluded_link_source(path: Path, docs_root: Path) -> bool:
+    try:
+        parts = path.relative_to(docs_root).parts
+    except ValueError:
+        return True
+    if not parts:
+        return False
+    if parts[0] in {"analysis", "archive"}:
+        return True
+    return len(parts) >= 2 and parts[0] == "superpowers" and parts[1] in {
+        "plans",
+        "specs",
+    }
 
 
 def live_link_sources(product_root: Path) -> list[Path]:
@@ -176,7 +211,42 @@ def live_link_sources(product_root: Path) -> list[Path]:
     for relative in ("adr", "runbooks", "vantare-program"):
         paths.extend((docs / relative).glob("*.md"))
     paths.extend((docs / "vantare-program" / "handoffs").glob("*.md"))
-    return sorted(set(path for path in paths if path.exists()))
+
+    queue = list(path for path in paths if path.exists())
+    sources: set[Path] = set()
+    while queue:
+        source = queue.pop()
+        if source in sources:
+            continue
+        sources.add(source)
+        text = without_fenced_code(read_text(source))
+        for match in MARKDOWN_LINK_RE.finditer(text):
+            target = local_target(source, match.group(1).strip("<>"))
+            if (
+                target
+                and target.exists()
+                and target.suffix.lower() == ".md"
+                and not excluded_link_source(target, docs)
+                and target not in sources
+            ):
+                queue.append(target)
+    return sorted(sources)
+
+
+def heading_anchors(text: str) -> set[str]:
+    anchors: set[str] = set()
+    counts: dict[str, int] = {}
+    for line in without_fenced_code(text).splitlines():
+        match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
+        if not match:
+            continue
+        heading = re.sub(r"[\[\]()*_~`]", "", match.group(1)).lower()
+        base = re.sub(r"[^\w\s-]", "", heading, flags=re.UNICODE)
+        base = re.sub(r"\s+", "-", base.strip())
+        count = counts.get(base, 0)
+        counts[base] = count + 1
+        anchors.add(base if count == 0 else f"{base}-{count}")
+    return anchors
 
 
 def validate_links(product_root: Path) -> list[str]:
@@ -186,8 +256,6 @@ def validate_links(product_root: Path) -> list[str]:
         text = without_fenced_code(read_text(source))
         for match in MARKDOWN_LINK_RE.finditer(text):
             raw_target = match.group(1).strip("<>")
-            if raw_target.startswith("#"):
-                continue
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_target):
                 if raw_target.lower().startswith("file:"):
                     errors.append(f"file URI is forbidden in live docs: {source} -> {raw_target}")
@@ -196,12 +264,17 @@ def validate_links(product_root: Path) -> list[str]:
                 errors.append(f"absolute local path is forbidden in live docs: {source} -> {raw_target}")
                 continue
 
-            relative = unquote(raw_target.split("#", 1)[0].split("?", 1)[0])
-            if not relative:
+            target = local_target(source, raw_target)
+            if target is None:
                 continue
-            target = (source.parent / relative).resolve()
             if not target.exists():
                 errors.append(f"broken local link: {source} -> {raw_target}")
+                continue
+
+            if "#" in raw_target and target.suffix.lower() == ".md":
+                fragment = unquote(raw_target.split("#", 1)[1].split("?", 1)[0])
+                if fragment and fragment not in heading_anchors(read_text(target)):
+                    errors.append(f"broken local anchor: {source} -> {raw_target}")
 
     return errors
 

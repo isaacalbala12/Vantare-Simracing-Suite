@@ -2,20 +2,8 @@ name: Documentation quality
 
 on:
   pull_request:
-    paths:
-      - ".github/scripts/validate_docs.py"
-      - ".github/scripts/test_validate_docs.py"
-      - ".github/workflows/docs-quality.yml"
-      - "vantare-v2/AGENTS.md"
-      - "vantare-v2/docs/**"
   push:
     branches: [nightly, testers]
-    paths:
-      - ".github/scripts/validate_docs.py"
-      - ".github/scripts/test_validate_docs.py"
-      - ".github/workflows/docs-quality.yml"
-      - "vantare-v2/AGENTS.md"
-      - "vantare-v2/docs/**"
 
 permissions:
   contents: read

@@ -20,6 +20,10 @@ Nota TA-03F (2026-08-11, candidata local verificada tras spec review):
 - El tercer review corrigió el lifecycle NSIS de ese staging: las cinco rutas
   de cleanup cambian primero el `OutDir` a `$INSTDIR`, porque NSIS no elimina su
   directorio de salida actual. El modelo y guard estático exigen ese orden.
+- El quality review cerró dos bordes adicionales: `prepare-runtime.ps1` acepta
+  sólo el `bin` canónico nominal y rechaza reparse points en toda la cadena de
+  destino antes de build/borrado; una junction real preservó su sentinel
+  externo. Ambos checks NSIS del exe rechazan ahora tamaños `<=1024`.
 - Evidencia local: harness PowerShell, parser PS5, build reproducible con
   PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0 y rutas temporales con espacios,
   modelo transaccional de cuatro estados previos, smoke Windows x64, build

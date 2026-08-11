@@ -424,7 +424,7 @@ Section
 	staged_file_opened:
 		FileSeek $0 0 END $1
 		FileClose $0
-		IntCmp $1 1024 transaction_failed 0
+		IntCmp $1 1024 transaction_failed transaction_failed 0
 
 	# Publish the verified exe atomically only after the runtime is complete.
 	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" transaction_failed 0
@@ -443,7 +443,7 @@ Section
 	published_file_opened:
 		FileSeek $0 0 END $1
 		FileClose $0
-		IntCmp $1 1024 transaction_failed 0
+		IntCmp $1 1024 transaction_failed transaction_failed 0
 
 	Call WriteCommittedMarker
 	StrCmp $TransactionResult "ok" transaction_committed transaction_failed

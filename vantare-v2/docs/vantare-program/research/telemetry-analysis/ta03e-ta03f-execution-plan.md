@@ -143,6 +143,11 @@ funcional y de packaging, no visual.
 - Todas las rutas que eliminan `.vantare-install-stage` establecen antes un
   `OutDir` seguro en `$INSTDIR`; una regresión enumera las cinco eliminaciones y
   falla si el último `SetOutPath` todavía apunta al staging.
+- La preparación sólo permite que `BinDir` resuelva nominalmente al `bin` exacto
+  del repo y rechaza atributos `ReparsePoint` en `bin`, `runtime`, `telemetry` y
+  `duckdb-v1` antes de borrar. El test crea una junction real a un sentinel
+  externo y demuestra fail-closed. La validación NSIS del exe exige además
+  tamaño estrictamente mayor que 1024 bytes en staging y tras publicación.
 - Los flags `CGO_CFLAGS`, `CGO_CXXFLAGS` y `CGO_LDFLAGS` citan el argumento
   completo para el parser de Go/GCC. Una regresion compila C/C++ real y el build
   reproducible completo pasa con directorios temporales que contienen espacios.

@@ -202,6 +202,14 @@ try {
         & (Join-Path $PSScriptRoot "cgo-flags.tests.ps1")
     }
 
+    Invoke-Case "runtime preparation refuses junctions and non-canonical bin paths" {
+        & (Join-Path $PSScriptRoot "prepare-runtime-safety.tests.ps1")
+    }
+
+    Invoke-Case "NSIS rejects empty, short, and exactly 1024-byte executables" {
+        & (Join-Path $PSScriptRoot "nsis-executable-size.tests.ps1")
+    }
+
     Invoke-Case "packaging surfaces accept an explicit DuckDB archive and runtime path" {
         $buildNsis = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools\build_nsis.ps1")
         $prepareRuntime = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "build\windows\telemetry-reader\prepare-runtime.ps1")

@@ -68,6 +68,10 @@ acepta pareja anterior/nueva o exe ausente.
 El tercer fix garantiza además que cleanup normal, rollback y reentrada cambian
 `OutDir` a `$INSTDIR` antes de cada una de las cinco eliminaciones del staging;
 NSIS no intenta ya borrar su directorio de salida actual.
+El quality fix posterior restringe `prepare-runtime` al `bin` canónico y bloquea
+junctions/reparse points en cada ancestro del destino antes de cualquier
+reemplazo; el sentinel externo del test real queda intacto. Los dos checks NSIS
+del exe rechazan 0, menos de 1024 y exactamente 1024 bytes.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,

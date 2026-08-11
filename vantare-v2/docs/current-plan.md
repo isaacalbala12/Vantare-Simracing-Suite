@@ -5273,3 +5273,5 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
 - **Próxima acción:** Task 3, aplicar una sola transformación `contain` compartida
   en Desktop y OBS y hacer que la preview OBS consuma la superficie documental.
+  Se ejecuta secuencialmente como 3A (superficie runtime compartida) y 3B
+  (preview/app OBS), con doble review entre microcortes.

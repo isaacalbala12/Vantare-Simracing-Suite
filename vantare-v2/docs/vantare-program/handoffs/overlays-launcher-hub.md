@@ -547,3 +547,13 @@ Evidencia microcorte 2C:
 - Observación aceptada: elegir explícitamente 1920×1080 en un perfil legacy puede
   materializar `layoutViewport` y marcar dirty; es coherente con persistir la
   superficie seleccionada según ADR 0092.
+
+Ejecución Task 3:
+
+- **3A — superficie runtime compartida:** medir la salida CSS, aplicar una sola
+  transformación `contain` a la escena lógica y demostrar paridad Desktop/OBS,
+  offsets centrados, legacy y `layoutOrigin` lógico.
+- **3B — preview y app OBS:** hacer que la preview reciba la superficie
+  documental y eliminar sus imports de constantes Studio, sin doble escala.
+- Los microcortes son secuenciales y cada uno exige spec review y quality review
+  antes de avanzar; sus write sets no se solapan.

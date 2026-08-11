@@ -2,8 +2,9 @@
 
 ## Estado
 
-Aceptado por Isaac e implementado en ISA-168 / TA-03C. Review independiente
-`APPROVE`; la entrega permanece en rama aislada y no existe promoción.
+Aceptado. Telemetry Analysis usa un helper DuckDB fuera de proceso para fuentes
+históricas autorizadas; el estado de implementación y promoción pertenece a
+Linear, Git/GitHub y el handoff vivo.
 
 ## Fecha
 

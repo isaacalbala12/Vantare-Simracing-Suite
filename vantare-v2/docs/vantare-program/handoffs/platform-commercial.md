@@ -33,6 +33,8 @@ continúa bloqueada por worktrees activos: debe preservar historia y secretos,
 simularse y tener rollback. El flujo de ramas es issue → Nightly → Testers →
 Master; terminar una entrega no la promociona.
 
+## Testing Center
+
 Testing Center conserva diagnóstico allowlisted, preview byte-exacto,
 deduplicación, triage y feedback estructurado. Supabase es autoridad interna y
 Linear la proyección operativa; GitHub queda para código, PR y CI. Codex,

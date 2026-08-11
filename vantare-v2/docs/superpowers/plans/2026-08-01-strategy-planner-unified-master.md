@@ -1,7 +1,6 @@
-> **Plan status: conditional**
-> Solo es ejecutable cuando una issue de Linear enlaza este path exacto.
-> Linear y Git poseen alcance, rama, base y destino; cualquier instrucción
-> embebida que los contradiga queda sustituida.
+> **Plan status: historical**
+> Conserva la descomposición maestra, pero no autoriza ejecutar ningún corte.
+> Linear debe enlazar un microplan condicional exacto sobre la base verificada.
 
 # Strategy Planner unificado — plan maestro por microcortes
 

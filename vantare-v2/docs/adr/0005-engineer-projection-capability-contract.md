@@ -2,8 +2,8 @@
 
 ## Estado
 
-Aceptado para implementación en ENG-02. No autoriza wiring productivo ni
-promoción a `nightly`.
+Aceptado. Este ADR posee el contrato de capabilities y límites; el wiring y la
+promoción se verifican en Linear, Git/GitHub y el handoff vivo.
 
 ## Fecha
 

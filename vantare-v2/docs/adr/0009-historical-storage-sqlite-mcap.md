@@ -2,12 +2,10 @@
 
 ## Estado
 
-Propuesto — `GO` condicionado para SQLite, candidato condicionado para MCAP
-como intercambio/replay y `NO-GO` para DuckDB y framing propio autoritativos.
-
-ISA-101 solo documenta y mide la decisión. No incorpora un backend productivo
-ni añade dependencias al módulo principal. TC-06B no puede empezar hasta que
-una revisión independiente acepte este ADR y sus condiciones.
+Aceptado para SQLite como almacenamiento local autoritativo. MCAP permanece
+candidato condicionado para intercambio/replay; DuckDB y un framing propio
+siguen `NO-GO` como store autoritativo de Telemetry Core. Implementación y
+promoción pertenecen a Linear, Git/GitHub y el handoff vivo.
 
 ## Fecha
 

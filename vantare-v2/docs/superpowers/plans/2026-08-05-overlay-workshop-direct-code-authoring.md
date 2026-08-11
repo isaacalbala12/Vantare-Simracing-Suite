@@ -1,7 +1,6 @@
-> **Plan status: conditional**
-> Solo es ejecutable cuando una issue de Linear enlaza este path exacto.
-> Linear y Git poseen alcance, rama, base y destino; cualquier instrucción
-> embebida que los contradiga queda sustituida.
+> **Plan status: historical**
+> Snapshot cerrado de ISA-291. No autoriza ejecución ni puede reactivarse desde
+> Linear; una continuación necesita issue y plan nuevos sobre la base verificada.
 
 # Overlay Workshop Direct Code Authoring Implementation Plan
 

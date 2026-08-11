@@ -11,7 +11,7 @@ export const PROFILE_SCHEMA_VERSION_V3 = 3 as const;
 
 export const STUDIO_CANVAS_WIDTH = DEFAULT_LAYOUT_VIEWPORT.width;
 export const STUDIO_CANVAS_HEIGHT = DEFAULT_LAYOUT_VIEWPORT.height;
-export const STUDIO_MINIMUM_VISIBLE = 32;
+export const STUDIO_MINIMUM_VISIBLE = MIN_LAYOUT_VIEWPORT_DIMENSION;
 
 export type WidgetType =
   | "delta"

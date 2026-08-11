@@ -127,6 +127,12 @@ func TestMigrateProfileJSONToV3RejectsInvalidJSONLayoutViewportNumbers(t *testin
 	}
 }
 
+func TestMigrateProfileJSONToV3RejectsNullLayoutViewport(t *testing.T) {
+	data := []byte(`{"schemaVersion":3,"id":"custom","name":"Custom","displayMode":"edit","monitorIndex":0,"layoutViewport":null,"layouts":{"general":{"type":"general","widgets":[]}}}`)
+	_, _, err := MigrateProfileJSONToV3(data)
+	assertValidationPath(t, err, "layoutViewport")
+}
+
 func TestMigrateProfileJSONToV3PreservesArbitraryLayoutViewport(t *testing.T) {
 	data := []byte(`{"schemaVersion":3,"id":"custom","name":"Custom","displayMode":"edit","monitorIndex":0,"layoutViewport":{"width":5120,"height":1440},"layouts":{"general":{"type":"general","widgets":[]}}}`)
 	doc, from, err := MigrateProfileJSONToV3(data)

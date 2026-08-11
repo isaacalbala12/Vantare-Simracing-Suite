@@ -69,6 +69,16 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		}
 	})
 
+	t.Run("valid exact minimum viewport with recoverable content", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Layout = WidgetLayoutV3{X: 0, Y: 0, W: 32, H: 32, ZIndex: 0, AspectLocked: true}
+		doc := validProfileV3(w)
+		doc.LayoutViewport = &LayoutViewportV3{Width: 32, Height: 32}
+		if err := ValidateProfileDocumentV3(doc); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	for _, tc := range []struct {
 		name     string
 		viewport LayoutViewportV3
@@ -76,6 +86,7 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 	}{
 		{name: "zero width", viewport: LayoutViewportV3{Width: 0, Height: 1080}, path: "layoutViewport.width"},
 		{name: "negative height", viewport: LayoutViewportV3{Width: 1920, Height: -1}, path: "layoutViewport.height"},
+		{name: "width below safe minimum", viewport: LayoutViewportV3{Width: 31, Height: 1080}, path: "layoutViewport.width"},
 		{name: "width above safe limit", viewport: LayoutViewportV3{Width: MaxLayoutViewportDimension + 1, Height: 1080}, path: "layoutViewport.width"},
 		{name: "height above safe limit", viewport: LayoutViewportV3{Width: 1920, Height: MaxLayoutViewportDimension + 1}, path: "layoutViewport.height"},
 	} {

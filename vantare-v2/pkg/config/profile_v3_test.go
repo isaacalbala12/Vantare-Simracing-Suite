@@ -67,3 +67,20 @@ func TestResolveLayoutViewportV3DefaultsMissingField(t *testing.T) {
 		t.Fatalf("missing viewport should remain omitted, got %s", data)
 	}
 }
+
+func TestProfileDocumentV3JSONRejectsNullLayoutViewport(t *testing.T) {
+	data := []byte(`{"schemaVersion":3,"id":"minimal-v3","name":"Minimal V3","displayMode":"edit","monitorIndex":0,"layoutViewport":null,"layouts":{"general":{"type":"general","widgets":[]}}}`)
+	var doc ProfileDocumentV3
+	assertValidationPath(t, json.Unmarshal(data, &doc), "layoutViewport")
+}
+
+func TestProfileDocumentV3JSONAcceptsMissingLayoutViewport(t *testing.T) {
+	data := []byte(`{"schemaVersion":3,"id":"minimal-v3","name":"Minimal V3","displayMode":"edit","monitorIndex":0,"layouts":{"general":{"type":"general","widgets":[]}}}`)
+	var doc ProfileDocumentV3
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if got := ResolveLayoutViewportV3(&doc); got != (LayoutViewportV3{Width: 1920, Height: 1080}) {
+		t.Fatalf("resolved viewport=%#v want 1920x1080", got)
+	}
+}

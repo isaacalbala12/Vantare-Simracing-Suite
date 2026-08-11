@@ -1,10 +1,12 @@
-export const MIN_LAYOUT_VIEWPORT_DIMENSION = 1;
+export const MIN_LAYOUT_VIEWPORT_DIMENSION = 32;
 export const MAX_LAYOUT_VIEWPORT_DIMENSION = 16_384;
 
-export type LayoutViewport = {
+export type ViewportSize = {
   width: number;
   height: number;
 };
+
+export type LayoutViewport = ViewportSize;
 
 export type LayoutViewportTransform = {
   scale: number;
@@ -39,8 +41,10 @@ export function resolveLayoutViewport(document: { layoutViewport?: LayoutViewpor
 
 export function resolveLayoutViewportTransform(
   layoutViewport: LayoutViewport,
-  outputViewport: LayoutViewport,
+  outputViewport: ViewportSize,
 ): LayoutViewportTransform {
+  assertValidLayoutViewport(layoutViewport);
+  assertValidOutputViewport(outputViewport);
   const scale = Math.min(
     outputViewport.width / layoutViewport.width,
     outputViewport.height / layoutViewport.height,
@@ -50,6 +54,24 @@ export function resolveLayoutViewportTransform(
     offsetX: (outputViewport.width - layoutViewport.width * scale) / 2,
     offsetY: (outputViewport.height - layoutViewport.height * scale) / 2,
   };
+}
+
+function assertValidLayoutViewport(viewport: LayoutViewport): void {
+  if (!isValidLayoutViewportDimension(viewport.width) || !isValidLayoutViewportDimension(viewport.height)) {
+    throw new RangeError(
+      `layoutViewport dimensions must be integers between ${MIN_LAYOUT_VIEWPORT_DIMENSION} and ${MAX_LAYOUT_VIEWPORT_DIMENSION}`,
+    );
+  }
+}
+
+function assertValidOutputViewport(viewport: ViewportSize): void {
+  const validDimension = (value: number) =>
+    Number.isFinite(value) && value > 0 && value <= MAX_LAYOUT_VIEWPORT_DIMENSION;
+  if (!validDimension(viewport.width) || !validDimension(viewport.height)) {
+    throw new RangeError(
+      `outputViewport dimensions must be finite, greater than 0 and at most ${MAX_LAYOUT_VIEWPORT_DIMENSION}`,
+    );
+  }
 }
 
 export function mapLayoutPointToOutput(
@@ -66,6 +88,9 @@ export function mapOutputPointToLayout(
   point: LayoutPoint,
   transform: LayoutViewportTransform,
 ): LayoutPoint {
+  if (!Number.isFinite(transform.scale) || transform.scale <= 0) {
+    throw new RangeError("transform.scale must be finite and greater than 0");
+  }
   return {
     x: (point.x - transform.offsetX) / transform.scale,
     y: (point.y - transform.offsetY) / transform.scale,

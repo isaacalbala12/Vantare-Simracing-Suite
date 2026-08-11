@@ -2837,6 +2837,10 @@
   border-radius: 1px;
   background: rgba(232, 232, 232, 0.55);
   box-shadow: 0 0 5px rgba(232, 232, 232, 0.28);
+  /* Centres the line on the peak height. Without this, a 100% peak sits
+     entirely above the well and the clip hides it — exactly the peak worth
+     seeing. */
+  transform: translateY(50%);
   transition: bottom 120ms linear, opacity 160ms ease-out;
 }
 

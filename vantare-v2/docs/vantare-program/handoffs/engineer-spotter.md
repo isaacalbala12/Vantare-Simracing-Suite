@@ -34,8 +34,8 @@ El brief clean-room es la única salida competitiva para implementers.
   `90a0905e0f7198623c80c2b6f8f3c63945abae82`.
 - PR draft #196. Último HEAD publicado conocido: `61a5c99`; sus checks estaban
   verdes. Los commits locales posteriores no tienen push ni CI propios.
-- Corte B: cambio documental local. El SHA final se fija en el reporte tras
-  crear el commit; hasta entonces esta rama no se ha vuelto a publicar.
+- Commit documental de Corte B: `f5b4881` local, sin push ni CI propios. El
+  reporte de cierre identifica además el HEAD local que contiene este estado.
 - Nivel real: rama de issue. No está integrada en Nightly, Testers o Master y
   no existe release de este corte.
 

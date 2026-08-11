@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useRelativeMotion } from "./useRelativeMotion";
 import { resolveRelativeClassColor } from "../../../widget-types/relative/relative-renderer-helpers";
 import type {
   RelativeRowViewModel,
@@ -291,8 +292,11 @@ export function RelativeRedlineTemplate({
   variant: RelativeRedlineVariant;
   showHeader: boolean;
 }) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useRelativeMotion(model, model.status === "ready", rootRef);
+
   return (
-    <div className="ven-rel-root">
+    <div className="ven-rel-root" ref={rootRef}>
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}

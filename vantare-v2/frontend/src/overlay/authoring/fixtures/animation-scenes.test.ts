@@ -11,6 +11,25 @@ import { buildAuthoringFixtureTelemetry, buildAuthoringFixtureWidget } from "./a
 import { buildStandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { parseStandingsContent } from "../../widget-types/standings/standings-content";
 import { deriveStandingsEvents, deriveBattlePairs } from "../../design-systems/vantare-endurance/standings/standings-motion";
+import { deriveRelativeEvents } from "../../design-systems/vantare-endurance/relative/relative-motion";
+import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import { parseRelativeContent } from "../../widget-types/relative/relative-content";
+
+function relativeModelAt(sceneId: string, frame: number) {
+  const scenario = {
+    session: "race",
+    location: "track",
+    state: "ready",
+    widget: "relative",
+    system: "vantare-endurance",
+    surface: "obs",
+    sceneId,
+    sceneFrame: frame,
+  } as const;
+  const widget = buildAuthoringFixtureWidget(scenario);
+  const snapshot = buildAuthoringFixtureTelemetry(scenario);
+  return buildRelativeViewModel(snapshot, parseRelativeContent(widget.content));
+}
 
 function modelAt(sceneId: string, frame: number) {
   const scenario = {
@@ -126,6 +145,23 @@ describe("scenes drive the motion engine", () => {
   it("final minutes drops the session clock under five minutes", () => {
     expect(modelAt("standings-final-minutes", 0).remainingText).toBe("12:00");
     expect(modelAt("standings-final-minutes", 2).remainingText).toBe("04:40");
+  });
+
+  it("relative cross scene moves a rival from one side of the player to the other", () => {
+    const before = relativeModelAt("relative-cross", 0);
+    const after = relativeModelAt("relative-cross", 1);
+    const events = deriveRelativeEvents(before, after);
+    expect(events).toContainEqual({
+      kind: "cross",
+      rowId: events.find((event) => event.kind === "cross")!.rowId,
+      to: "ahead",
+    });
+  });
+
+  it("relative enter scene brings a car into the visible window", () => {
+    const before = relativeModelAt("relative-enter", 0);
+    const after = relativeModelAt("relative-enter", 1);
+    expect(deriveRelativeEvents(before, after).some((event) => event.kind === "enter")).toBe(true);
   });
 
   it("delta chip scene moves a car several places at once", () => {

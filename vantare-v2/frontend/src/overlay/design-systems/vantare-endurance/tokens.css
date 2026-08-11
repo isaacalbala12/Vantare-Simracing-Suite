@@ -2735,3 +2735,44 @@
     transition: none;
   }
 }
+
+/* Redline relative motion. A crossing is the one thing this widget exists to
+   tell you about, so it gets the same ambient light the standings uses for an
+   overtake: colour washing through the row, no borders, no bars. */
+@keyframes ven-rel-cross-wash {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row {
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: ven-rel-cross-wash 900ms ease-out both;
+  animation-delay: var(--cross-delay, 0ms);
+}
+
+/* Lost a place to this car: red. Took one back: green. Same semantics the
+   rest of the system uses, so no new colour vocabulary to learn. */
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross="lost"]::after {
+  background: radial-gradient(70% 300% at 50% 50%, rgba(255, 107, 118, 0.38), transparent 90%);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross="gained"]::after {
+  background: radial-gradient(70% 300% at 50% 50%, rgba(53, 199, 123, 0.38), transparent 90%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-rel-row[data-cross]::after {
+    animation: none;
+    opacity: 0;
+  }
+}

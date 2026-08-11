@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
@@ -85,7 +85,9 @@ function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
     variant: query.variant,
     ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
   });
-  return { key: serializeOverlayWorkshopQuery(query), widget, snapshot };
+  // Keyed without the frame, matching fixtureKey: stepping a scene must not
+  // count as a different fixture.
+  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, snapshot };
 }
 
 const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
@@ -151,7 +153,12 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   };
 
   const designs = listOfficialDesigns(parsed.widget).filter((design) => design.systemId === parsed.system);
-  const fixtureKey = serializeOverlayWorkshopQuery(parsed);
+  // The frame is deliberately excluded: it changes the snapshot, not the
+  // fixture. Including it remounted the widget on every step, which threw away
+  // the previous ViewModel the motion engines diff against — so discrete
+  // animations (overtake flash, crown flight, relative crossing) could never
+  // fire in the Workshop, which is the one place they need to be visible.
+  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined });
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -204,8 +211,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
   };
 
+  // Reads the latest query without making the effect depend on the object
+  // identity, so only a real fixture change rebuilds and remounts.
+  const parsedRef = useRef(parsed);
+  parsedRef.current = parsed;
+
   useLayoutEffect(() => {
-    const next = prepareFixture(parsed);
+    const next = prepareFixture(parsedRef.current);
     resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
     let active = true;
     queueMicrotask(() => {
@@ -215,7 +227,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       active = false;
       clearInputTelemetryHistory(next.widget.id);
     };
-  }, [parsed]);
+  }, [fixtureKey]);
 
   const liveFixtureInput = {
     session: parsed.session,

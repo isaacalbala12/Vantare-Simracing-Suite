@@ -214,8 +214,11 @@ function replayOverrides(frame: number): Record<string, ReplayOverride> {
   return {};
 }
 
-function applyCarOverrides(overrides: Record<string, ReplayOverride>): Record<string, unknown>[] {
-  return buildStandingsMulticlassScoring()
+function applyCarOverrides(
+  overrides: Record<string, ReplayOverride>,
+  field: Record<string, unknown>[] = buildStandingsMulticlassScoring(),
+): Record<string, unknown>[] {
+  return field
     .filter((row) => !overrides[String(row.driverName)]?.absent)
     .map((row) => {
       const patch = overrides[String(row.driverName)];
@@ -231,13 +234,19 @@ export function buildStandingsReplayScoring(frame: number): Record<string, unkno
   return applyCarOverrides(replayOverrides(frame));
 }
 
-/** Field for one frame of a named animation scene. */
+/**
+ * Field for one frame of a named animation scene. Each widget's scenes run on
+ * the fixture built for it: standings on the multiclass grid, relative on the
+ * traffic fixture where the player has a fight either side.
+ */
 export function buildSceneScoring(sceneId: string, frame: number): Record<string, unknown>[] {
   const scene = getAnimationScene(sceneId);
   if (!scene) {
     return buildStandingsMulticlassScoring();
   }
-  return applyCarOverrides(sceneFrameAt(scene, frame).cars ?? {});
+  const field =
+    scene.widget === "relative" ? buildRelativeMulticlassScoring() : buildStandingsMulticlassScoring();
+  return applyCarOverrides(sceneFrameAt(scene, frame).cars ?? {}, field);
 }
 
 /**

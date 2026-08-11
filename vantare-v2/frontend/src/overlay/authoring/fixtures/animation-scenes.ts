@@ -7,6 +7,8 @@ import type { AuthoringFixtureWidget } from "./authoring-fixtures";
 export type SceneOverride = {
   place?: number;
   timeBehindLeader?: number;
+  /** Signed gap to the player, which is what the relative is built around. */
+  timeGapToPlayer?: number;
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
@@ -264,6 +266,39 @@ const FULL_SEQUENCE_SCENE: AnimationScene = {
   ],
 };
 
+/**
+ * Relative scenes run on the multiclass traffic fixture, where the player is a
+ * GT3 mid-pack with a same-class fight either side and quicker prototypes
+ * closing to lap them.
+ */
+const RELATIVE_CROSS_SCENE: AnimationScene = {
+  id: "relative-cross",
+  widget: "relative",
+  label: "Te adelantan / adelantas",
+  watchFor:
+    "La fila que cruza al jugador se desliza al otro lado y se lava de color: rojo si te ha pasado, verde si le has pasado tú.",
+  frameMs: 1400,
+  frames: [
+    { caption: "Bruni te sigue a 0,3 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.3 } } },
+    { caption: "Te pasa: cruza al otro lado y se lava en rojo", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.5 } } },
+    { caption: "Se va: 1,4 s por delante", cars: { "Gianmaria Bruni": { timeGapToPlayer: 1.4 } } },
+    { caption: "Lo recuperas: cruza de vuelta en verde", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.4 } } },
+  ],
+};
+
+const RELATIVE_ENTER_SCENE: AnimationScene = {
+  id: "relative-enter",
+  widget: "relative",
+  label: "Entrada de coche",
+  watchFor: "La fila del coche que aparece se despliega desde altura cero en vez de parpadear dentro de la lista.",
+  frameMs: 1500,
+  frames: [
+    { caption: "Birch fuera de la ventana", cars: { "Michael Birch": { absent: true } } },
+    { caption: "Aparece por detrás: la fila se despliega" },
+    { caption: "Ya asentado" },
+  ],
+};
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
   OVERTAKE_SCENE,
   BATTLE_SCENE,
@@ -274,6 +309,8 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   RETIREMENT_SCENE,
   FINAL_MINUTES_SCENE,
   FULL_SEQUENCE_SCENE,
+  RELATIVE_CROSS_SCENE,
+  RELATIVE_ENTER_SCENE,
 ];
 
 export const ANIMATION_SCENE_IDS: readonly string[] = ANIMATION_SCENES.map((scene) => scene.id);

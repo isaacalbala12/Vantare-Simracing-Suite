@@ -1,4 +1,4 @@
-Nota TA-03E (2026-08-11, candidata local pendiente de review):
+Nota TA-03E (2026-08-11, candidata local revisada):
 - La rama temporal `work/ta03e-backend-reader-wiring` expone el reader TA-03C
   mediante un servicio backend no visual: discovery LMU metadata-only, IDs
   opacos, aprobación explícita, estabilidad/WAL/revalidación TA-02, staging
@@ -11,8 +11,14 @@ Nota TA-03E (2026-08-11, candidata local pendiente de review):
   ausente o alterado degrada el módulo sin abortar Vantare; shutdown cierra
   readers y elimina staging.
 - Evidencia local: focales test/vet, build frontend, suite Go global con
-  `CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y `git diff --check` pasan. Falta
-  review independiente; no hay push, PR, promoción, packaging TA-03F ni release.
+  `CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y `git diff --check` pasan. Las
+  reviews independientes de especificación y calidad terminaron `APPROVE` tras
+  corregir cleanup reintentable/acotado y retirar dos bindings Wails
+  accidentales. Race focal TA-03E x5 pasa con MSYS2 UCRT64. El race del paquete
+  completo `cmd/vantare` detecta una deuda heredada en `spyMainEmitter`/
+  `TestHandleProfileRetryFailed`, fuera de este corte y pendiente de issue al
+  recuperar capacidad de Linear. No hay push, PR, promoción, packaging TA-03F
+  ni release.
 
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;

@@ -1,0 +1,115 @@
+# TA-03E / TA-03F — activación backend y distribución del reader histórico
+
+- Estado: TA-03E implementada y revisada localmente; TA-03F pendiente; identificadores Linear pendientes
+- Fecha de autorización excepcional: 2026-08-11
+- Base inicial: `origin/nightly@b1db9f87b66f76df12d856484049616ea011e69f`
+- Rama temporal local: `work/ta03e-backend-reader-wiring`
+
+## Excepción de trazabilidad
+
+Linear rechaza nuevas issues por el límite del plan gratuito. Isaac autorizó
+explícitamente ejecutar estos dos cortes sin issue previa y crearlas al final.
+Hasta entonces no se hará push, PR, merge ni promoción. Al recuperar capacidad,
+se crearán TA-03E y TA-03F, se renombrarán o reconstruirán sus ramas según el
+identificador asignado y se copiará esta evidencia a Linear.
+
+## TA-03E — cableado backend productivo
+
+### Objetivo
+
+Exponer el reader DuckDB de TA-03C mediante una frontera backend no visual que
+conserve discovery metadata-only, autorización explícita, staging privado,
+límites de lectura y teardown determinista.
+
+### Alcance cerrado
+
+- Servicio de aplicación propio de Telemetry Analysis.
+- Runtime resuelto únicamente desde la instalación mediante
+  `duckdbadapter.ProductionTrust`; nunca desde `PATH`, el directorio actual o
+  una ruta aportada por el consumidor.
+- Discovery limitado a raíces LMU que posea el backend. La frontera pública
+  solo devuelve identificadores opacos y datos sanitizados.
+- Apertura únicamente de candidatos emitidos por ese discovery, tras gate de
+  estabilidad, ausencia de WAL y aprobación explícita.
+- Reutilización directa de los contratos TA-02/TA-03 y el reader TA-03C; sin
+  reader, parser o formato alternativo.
+- Estado y errores sanitizados para falta de runtime, VC++ ausente, falta de
+  permiso, archivo activo/cambiado e incompatibilidad.
+- Cierre de parser, reader, staging y procesos en éxito, error, cancelación y
+  shutdown.
+- Registro en el composition root nativo, sin UI ni cambios frontend.
+
+### Política de acceso
+
+La política es específica de Telemetry Analysis y no reutiliza la autorización
+del canal de actualización:
+
+- la licencia debe estar `active` o `grace`;
+- `CapabilityPro` o `CapabilityLaunchV1` conceden acceso comercial;
+- los roles operativos `tester`, `nightly_tester` y `owner` conceden acceso
+  interno revocable para pruebas;
+- un rol operativo nunca se presenta ni se persiste como evidencia de compra;
+- cualquier otro estado, capability o rol falla cerrado.
+
+### Criterios de aceptación
+
+- El backend inspecciona y pagina una base sintética real sin exponer la ruta
+  original.
+- No existe API pública que acepte una ruta arbitraria para abrirla.
+- El runtime ausente o alterado degrada solo Telemetry Analysis.
+- La matriz de licencia/roles queda cubierta por tests de tabla.
+- El proceso principal conserva `CGO_ENABLED=0` y su grafo raíz sin DuckDB.
+- Cancelación y shutdown no dejan helper, handles, staging ni goroutines
+  propias.
+- `gofmt`, tests focales, `go vet`, `go test ./...` y build principal pasan o
+  documentan con evidencia una deuda heredada.
+
+### Archivos esperados
+
+- `internal/app/telemetry_analysis_service.go`
+- `internal/app/telemetry_analysis_service_test.go`
+- `internal/license/` para una consulta de autorización dedicada y testeada
+- `cmd/vantare/main.go` y tests focales de composición
+- este plan, handoff y `docs/current-plan.md`
+
+### Evidencia local de cierre técnico
+
+- Commits: `1d8c107`, `e90d7c8`, `76a1212` y `d0de350`.
+- Tests focales repetidos, `go vet`, build frontend requerido por el embed,
+  suite `CGO_ENABLED=0 go test ./...`, grafo raíz sin DuckDB/CGO y diff-check:
+  PASS.
+- Review de especificación: `APPROVE`, cero P0/P1/P2/P3.
+- Review de calidad: `APPROVE`, cero P0/P1/P2/P3.
+- Race focal TA-03E x5: PASS usando MSYS2 UCRT64. El race del paquete completo
+  `cmd/vantare` detecta una carrera heredada en `spyMainEmitter` durante
+  `TestHandleProfileRetryFailed`; queda fuera de TA-03E y pendiente de issue.
+- Sin Linear, push, PR, CI remoto, merge, promoción, packaging o release.
+
+## TA-03F — empaquetado Windows del runtime DuckDB
+
+### Dependencia
+
+TA-03F comienza después de cerrar la frontera y la ruta productiva de TA-03E.
+
+### Alcance cerrado
+
+- Incluir como unidad atómica helper, DLL, manifest, SBOM y notices en los
+  artefactos Windows aplicables: installer, portable y updater.
+- Mantener la ruta versionada esperada por `ProductionTrust`.
+- Actualización y rollback atómicos sin mezclar bundles ni confiar en restos de
+  instalaciones anteriores.
+- Repetir build reproducible, verificación de hashes y smoke Windows x64.
+- No incluye interfaz, gráficos, mapa, coaching, imports externos ni release.
+
+### Gate manual
+
+TA-03F requerirá smoke manual sobre el artefacto empaquetado en Windows 11 x64
+y, si sigue disponible como requisito de soporte, Windows 10 x64. Esa prueba es
+funcional y de packaging, no visual.
+
+## Límite visual
+
+Estos dos cortes son exclusivamente backend/build. El trabajo se detendrá antes
+de cualquier UI, captura de paridad o decisión visual. Ese corte se entregará a
+un agente Claude Opus 5 con razonamiento `low` mediante el MCP de T3 Code, según
+la instrucción de Isaac.

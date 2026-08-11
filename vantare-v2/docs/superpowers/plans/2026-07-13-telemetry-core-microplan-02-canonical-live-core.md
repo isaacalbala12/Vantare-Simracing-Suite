@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Microplan 02 Canonical Live Core Implementation Plan
 
 > **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-02-foundations-contracts.md` tras la aprobación arquitectónica de Isaac. Se conserva como historia; no ejecutar sus issues o instrucciones.

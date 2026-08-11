@@ -1,3 +1,7 @@
+> **Plan status: historical**
+> Snapshot cerrado de ISA-291. No autoriza ejecución ni puede reactivarse desde
+> Linear; una continuación necesita issue y plan nuevos sobre la base verificada.
+
 # Overlay Workshop Direct Code Authoring Implementation Plan
 
 > **Plan cerrado e histórico.** Las tareas se ejecutaron en ISA-291. Las ramas,

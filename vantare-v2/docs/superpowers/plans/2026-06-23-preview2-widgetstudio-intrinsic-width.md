@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # PREVIEW2 WidgetStudio Intrinsic Width Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -684,4 +689,3 @@ Stop and report if:
 - Fix requires touching `LayoutStudio`.
 - Runtime overlay visually changes in a way that cannot be scoped to `WidgetStudio`.
 - Tests need to be weakened to pass.
-

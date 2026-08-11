@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Microplan 05 Retirement and Hardening Implementation Plan
 
 > **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-09-retirement-hardening.md`. ISA-87 es ahora TC-09E e ISA-117 el gate final; no ejecutar este microplan histórico.

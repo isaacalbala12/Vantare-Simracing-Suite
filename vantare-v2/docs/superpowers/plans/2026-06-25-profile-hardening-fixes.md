@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Plan de Endurecimiento de Perfiles y Persistencia (PROF1-Plan)
 
 Este miniplan detalla el diseño técnico para corregir las debilidades menores (P2/P3) detectadas en la auditoría de perfiles de **Vantare Suite**, asegurando la integridad física de los archivos JSON en disco y mejorando la transparencia ante errores de corrupción de datos.

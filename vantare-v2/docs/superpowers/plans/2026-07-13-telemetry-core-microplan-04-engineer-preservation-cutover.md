@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Microplan 04 Engineer Preservation and Cutover Implementation Plan
 
 > **Estado: SUPERSEDED.** Sustituido por `2026-07-19-telemetry-core-microplan-08-engineer-cutover.md`. La matriz de rescate sigue siendo evidencia vigente; no ejecutar este microplan histórico.

@@ -4,8 +4,9 @@ Cada proyecto mantiene un único handoff breve para continuidad técnica. Linear
 posee issue, estado, dependencias, rama, base esperada y destino. Git/GitHub
 demuestran el estado observado. Consulta `source-ownership.md`.
 
-Objetivo orientativo: máximo 100–120 líneas. La cronología cerrada se enlaza o
-archiva; no se antepone indefinidamente.
+Objetivo: 100–120 líneas; límite bloqueante: 150. La cronología cerrada se
+archiva y el handoff vivo deja un único enlace al snapshot. No se copian
+matrices de issues, ramas activas, bases, SHAs ni ledgers de ejecución.
 
 ```markdown
 # Handoff vivo — [Proyecto]
@@ -48,7 +49,7 @@ plan ejecutable.]
 
 ## Historial
 
-- [Enlaces al archivo, issues cerradas o PRs; no copiar la cronología aquí.]
+- [Un enlace al snapshot archivado; no copiar la cronología aquí.]
 ```
 
 El handoff se actualiza solo cuando cambia arquitectura, decisiones, evidencia,

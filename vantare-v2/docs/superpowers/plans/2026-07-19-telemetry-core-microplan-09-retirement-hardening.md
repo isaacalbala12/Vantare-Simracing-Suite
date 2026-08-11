@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-09 — Retirada, hardening y gate final
 
 **Objetivo:** eliminar deuda temporal, demostrar consumidores cero y entregar una única arquitectura observable y segura.

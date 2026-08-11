@@ -26,7 +26,7 @@ reconstruible futura y framing propio descartado.
 [`storage-benchmark-isa-101.md`](storage-benchmark-isa-101.md),
 [`historical-storage-schema.md`](historical-storage-schema.md),
 [`recording-sink-sqlite-isa-102.md`](recording-sink-sqlite-isa-102.md) y
-`docs/adr/0005-historical-storage-sqlite-mcap.md`.
+`docs/adr/0009-historical-storage-sqlite-mcap.md`.
 
 TC-06C / ISA-103 añade replay raw, canónico e histórico y migraciones COW.
 TC-06D / ISA-104 añade catálogo metadata-only, inspector local, paquete

@@ -1,3 +1,7 @@
+> **Document status: historical**
+> Diseño conservado como contexto. Su rama, estado y destino embebidos no
+> autorizan ejecución; Linear y Git poseen esos campos.
+
 # Launcher — reescaneo al entrar y progreso híbrido
 
 **Fecha:** 2026-07-13

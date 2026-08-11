@@ -76,7 +76,7 @@ real y no se informa falsamente como cancelado.
 ## Esquema y lectura
 
 `history-v1.sqlite` conserva chunks, observed, facts, algoritmos, derived y la
-reserva raw definida por ADR 0005. Cada payload y chunk tiene CRC32. Las
+reserva raw definida por ADR 0009. Cada payload y chunk tiene CRC32. Las
 consultas de observed/facts son read-only, por rango inclusivo y orden total
 determinista. El reader valida CRC y permite filtrar tipos de hecho.
 

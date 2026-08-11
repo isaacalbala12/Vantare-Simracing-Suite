@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Fase 2 — Integración Polar (checkout, webhooks, licensing)
 
 > **Estado:** PLAN ACEPTADO — solo documentación. **No implementar** hasta orden explícita.

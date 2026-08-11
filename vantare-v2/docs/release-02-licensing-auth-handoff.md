@@ -1,3 +1,7 @@
+> **Document status: historical**
+> Snapshot de 2026-07-06. No es un handoff vivo ni autoriza pagos, ramas o
+> ejecución. Continúa desde `docs/vantare-program/handoffs/platform-commercial.md`.
+
 # Handoff: Stage de Licencias, Auth y Pagos Reales (Beta Pública)
 
 > **Propósito:** Continuar esta sesión en otro chat con la máxima información posible.

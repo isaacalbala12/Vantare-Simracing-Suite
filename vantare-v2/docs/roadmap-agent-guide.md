@@ -1,3 +1,8 @@
+> **Document status: historical**
+> Flujo retirado. No edites `features-source.json` siguiendo esta guía. Usa
+> `docs/README.md`, Linear y `docs/roadmap-maintenance.md` para el contrato
+> vigente.
+
 # Guía para agentes de IA: cómo editar el Roadmap de Vantare
 
 Este documento es para **agentes worker** que reciben una tarea de edición del

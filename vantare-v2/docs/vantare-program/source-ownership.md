@@ -52,15 +52,16 @@ comodidad, pero no cambia el propietario de cada campo.
 
 - `AGENTS.md` contiene reglas invariantes, no SHAs o estado temporal.
 - `docs/README.md` enruta a las fuentes aplicables y no actua como tracker.
-- Cada proyecto mantiene un unico handoff breve. El handoff enlaza la issue
+- Cada proyecto mantiene un unico handoff vivo de 150 líneas como máximo. El
+  handoff enlaza la issue
   activa y la evidencia; no copia listas completas de issues ni entregas
   cerradas.
 - Los planes activos se enlazan desde la issue de Linear. El handoff puede
   recomendar un plan como contexto tecnico, pero no lo vuelve ejecutable. Los
   planes cerrados permanecen como contexto, no como autoridad operativa.
 - `docs/current-plan.md` esta retirado. Su archivo historico no se actualiza.
-- Las referencias ADR usan el path completo mientras existan IDs numericos
-  historicos repetidos.
+- Las referencias ADR usan el path completo. Sus IDs canónicos son globalmente
+  únicos; un número anterior solo puede aparecer como procedencia histórica.
 
 ## Actualizaciones al cerrar un corte
 

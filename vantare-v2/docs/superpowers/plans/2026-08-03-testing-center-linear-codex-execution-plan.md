@@ -1,3 +1,8 @@
+> **Plan status: conditional**
+> Solo es ejecutable cuando una issue de Linear enlaza este path exacto.
+> Linear y Git poseen alcance, rama, base y destino; cualquier instrucción
+> embebida que los contradiga queda sustituida.
+
 # Testing Center, Linear y Codex — plan de ejecución por microcortes
 
 > **Plan técnico histórico.** Solo es ejecutable si una issue vigente de

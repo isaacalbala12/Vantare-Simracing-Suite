@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Plan de Optimización de Rendimiento en Overlays (PERF1-Plan)
 
 Este miniplan describe la estrategia y los cambios arquitectónicos recomendados para solucionar las ineficiencias de rendimiento (P2/P3) detectadas en la auditoría de overlays de **Vantare Suite**, con especial enfoque en reducir el coste de CPU de React a 0 durante la inyección de telemetría rápida a 30Hz.

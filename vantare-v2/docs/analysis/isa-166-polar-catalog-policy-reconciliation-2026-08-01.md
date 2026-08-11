@@ -210,7 +210,7 @@ es el gate vigente que bloquea BIL-02..BIL-13 hasta cerrar su revisión.
 - Snapshot histórico: `docs/analysis/isa-89-polar-catalog-commercial-policies-2026-07-14.md`.
 - Arquitectura: `docs/analysis/isa-7-polar-target-billing-architecture-2026-07-14.md`.
 - Supabase: `docs/analysis/isa-7-supabase-architecture-audit-2026-07-14.md`.
-- ADR reconciliada: `docs/adr/0003-proposed-polar-commercial-authority.md`.
+- ADR reconciliada: `docs/adr/0008-polar-commercial-authority.md`.
 - [Polar — List Organizations](https://polar.sh/docs/api-reference/organizations/list).
 - [Polar — List Products](https://polar.sh/docs/api-reference/products/list).
 - [Polar — List Benefits](https://polar.sh/docs/api-reference/benefits/list).

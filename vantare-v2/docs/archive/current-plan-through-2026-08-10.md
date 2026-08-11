@@ -1860,7 +1860,7 @@ Nota ISA-101 / TC-06A (2026-07-30):
 - DuckDB falla exactamente con bindings Windows excluidos bajo CGO=0 y sin
   `gcc` bajo CGO=1. El build base Wails CGO=0 pasa; la integración real de
   SQLite debe volver a medir binario, licencias y packaging en TC-06B.
-- ADR: `docs/adr/0005-historical-storage-sqlite-mcap.md`. Metodología y CSV:
+- ADR: `docs/adr/0009-historical-storage-sqlite-mcap.md`. Metodología y CSV:
   `docs/telemetry-core/storage-benchmark-isa-101.md` y
   `docs/telemetry-core/evidence/isa-101-storage/`. Esquema/contrato TC-06B:
   `docs/telemetry-core/historical-storage-schema.md`.
@@ -2116,7 +2116,7 @@ Nota ISA-135 / TA-03B (2026-08-01):
   todas las opciones elegidas son permisivas y compatibles con uso comercial.
 - No se añadió DuckDB/CGO al `go.mod` principal, no se abrió LMU ni archivos
   personales, no se tocó Telemetry Core, UI, packaging de release o producto.
-- Documentos: `duckdb-adapter-decision.md`, ADR 0005 propuesta,
+- Documentos: `duckdb-adapter-decision.md`, ADR 0010 propuesta,
   `ta03c-duckdb-adapter-plan.md` y spike reproducible `spikes/ta03b/`.
 - El primer review independiente dio `REQUEST CHANGES`; las cuatro objeciones
   están corregidas en rama, pero ISA-135 permanece `In Progress` hasta una nueva

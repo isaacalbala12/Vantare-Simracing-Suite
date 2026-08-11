@@ -46,13 +46,14 @@ los contratos adicionales. No se elige un handoff por similitud del titulo.
 - [`branch-channels.md`](branch-channels.md): canales, gates y rollback.
 - [`testing-strategy.md`](testing-strategy.md): estrategia y comandos de tests.
 - [`manual-verification.md`](manual-verification.md): verificacion manual.
-- [`adr/`](adr/): decisiones tecnicas. Usa siempre el path completo porque
-  existen IDs historicos repetidos.
+- [`adr/README.md`](adr/README.md): índice de decisiones técnicas. Cada ADR
+  tiene un ID globalmente único y se enlaza por su path completo.
 
-Los planes detallados viven en `superpowers/plans/`, pero solo son ejecutables
-cuando la issue de Linear los enlaza. Un handoff puede recomendarlos como
-contexto técnico, pero no autoriza su ejecución. Encontrar un plan por búsqueda
-no lo convierte en autoridad.
+Los planes detallados viven en
+[`superpowers/plans/`](superpowers/plans/README.md) con un estado `historical` o
+`conditional`. Solo son ejecutables cuando la issue de Linear enlaza el path
+exacto. Un handoff puede recomendarlos como contexto técnico, pero no autoriza
+su ejecución. Encontrar un plan por búsqueda no lo convierte en autoridad.
 
 ## Workers y reviewers
 
@@ -63,6 +64,19 @@ usa para elegir trabajo.
 Un reviewer lee la issue, el router, los contratos aplicables, el diff y la
 evidencia fresca. No necesita cargar el archivo historico salvo que investigue
 una decision pasada concreta.
+
+## Comprobación documental
+
+Ejecuta desde la raíz Git:
+
+```powershell
+python .github/scripts/validate_docs.py
+python .github/scripts/test_validate_docs.py
+```
+
+El gate comprueba enlaces locales en superficies vivas, IDs y metadatos ADR,
+estado de planes, router único y límites de longitud. No intenta inferir desde
+el repositorio qué plan está activo: ese dato pertenece a Linear.
 
 ## Historial
 

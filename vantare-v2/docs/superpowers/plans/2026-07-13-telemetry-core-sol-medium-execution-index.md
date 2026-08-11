@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Telemetry Core Sol Medium Execution Index Implementation Plan — SUPERSEDED
 
 > **Sustituido el 2026-07-19** por `2026-07-19-telemetry-core-sol-medium-execution-index.md`. No lanzar issues pendientes desde este índice histórico.

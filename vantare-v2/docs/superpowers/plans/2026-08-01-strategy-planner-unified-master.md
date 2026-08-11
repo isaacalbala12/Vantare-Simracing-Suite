@@ -1,3 +1,7 @@
+> **Plan status: historical**
+> Conserva la descomposición maestra, pero no autoriza ejecutar ningún corte.
+> Linear debe enlazar un microplan condicional exacto sobre la base verificada.
+
 # Strategy Planner unificado — plan maestro por microcortes
 
 > **Contrato técnico histórico, no ejecutable por sí mismo.** Conserva la

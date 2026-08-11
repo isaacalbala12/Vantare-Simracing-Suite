@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # ISA-129 / TC-07A.1 — Canonical Overlay Signals and Honest Runtime Plan
 
 > **Execution contract:** implement each microcut with TDD, commit it

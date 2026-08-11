@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # ISA-95 Discord and Linear Communications Implementation Plan
 
 > **For Codex:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task by task.

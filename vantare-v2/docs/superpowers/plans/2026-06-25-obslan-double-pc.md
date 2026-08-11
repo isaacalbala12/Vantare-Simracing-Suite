@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Plan de Implementación: OBS Doble PC / Streaming LAN
 
 Este documento define el plan de implementación técnica para soportar de manera oficial la integración de OBS en doble PC (LAN), permitiendo a los streamers visualizar y copiar sus URLs de red local directamente desde la interfaz del Hub, y habilitando la compatibilidad de red necesaria en el backend.

@@ -299,7 +299,7 @@ Para la implementacion futura, cada microcorte debe mantener billing deshabilita
 - `docs/analysis/isa-7-billing-relaunch-2026-07-14.md`
 - `docs/analysis/isa-7-polar-target-billing-architecture-2026-07-14.md`
 - `docs/analysis/isa-7-supabase-architecture-audit-2026-07-14.md`
-- `docs/adr/0003-proposed-polar-commercial-authority.md`
+- `docs/adr/0008-polar-commercial-authority.md`
 - `supabase/functions/_shared/mapping.ts`
 - `supabase/functions/_shared/polar.ts`
 - `supabase/functions/billing-portal/index.ts`

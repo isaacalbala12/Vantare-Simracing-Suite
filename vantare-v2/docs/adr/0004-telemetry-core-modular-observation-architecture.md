@@ -2,7 +2,8 @@
 
 ## Estado
 
-Aceptado para planificación. La implementación comienza en ISA-26 y requiere validación manual de Isaac antes de cualquier integración en `develop`.
+Aceptado. Este ADR posee la arquitectura; el estado de implementación,
+integración y promoción pertenece a Linear y Git/GitHub.
 
 ## Fecha
 

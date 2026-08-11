@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Vantare Crystal Luna Execution Index
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Execute one microplan at a time, one checkbox at a time. Never start the next document until the current gate is green and `docs/current-plan.md` contains its evidence.

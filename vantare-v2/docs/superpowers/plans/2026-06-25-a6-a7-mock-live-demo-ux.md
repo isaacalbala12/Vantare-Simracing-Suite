@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # A6 A7 Mock Live Demo UX Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -412,4 +417,3 @@ After implementation:
 9. Switch `Práctica` / `Qualy` / `Carrera`.
 10. Confirm preview changes and `Guardar` does not activate from scenario switching alone.
 11. Modify a real widget setting and confirm `Guardar` activates.
-

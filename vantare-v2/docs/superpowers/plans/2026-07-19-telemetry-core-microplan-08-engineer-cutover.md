@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-08 — Migración y preservación de Engineer/Spotter
 
 **Objetivo:** conservar toda la funcionalidad real de Engineer Release y sustituir únicamente su adquisición/modelo de telemetría por una proyección del core.

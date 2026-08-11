@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # TC-05 — Proyecciones y transporte
 
 **Objetivo:** ofrecer contratos estables por producto sin serializar ni filtrar el snapshot canónico directamente.

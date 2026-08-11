@@ -1,3 +1,8 @@
+> **Plan status: historical**
+> Snapshot conservado como evidencia. No autoriza ejecución. Las referencias a
+> `docs/current-plan.md`, `develop`, `refactor`, ramas, bases o siguientes
+> acciones son históricas y quedan sustituidas por Linear y Git.
+
 # Vantare Suite Ingeniero Integration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -817,4 +822,3 @@ git diff --check
 Ejecutar EN0-EN5 como primer bloque de integracion de suite. Eso permite probar `Ingeniero` dentro de la UI y mostrar sus mensajes en overlays sin arriesgar el pipeline LMU live. Despues ejecutar EN6 como fase tecnica especifica para spotter live real.
 
 No ejecutar EN7 audio/TTS hasta que las notificaciones visuales funcionen en Hub, desktop overlay y OBS.
-

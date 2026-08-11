@@ -344,6 +344,44 @@ const DELTA_NEW_BEST_SCENE: AnimationScene = {
   ],
 };
 
+/**
+ * Pedals has no discrete events: the widget states three values and the two
+ * marks it can derive from a single frame. These scenes exercise a lap's worth
+ * of inputs so the rails, the engaged labels and the saturation halo can be
+ * judged in motion rather than from a still.
+ */
+const PEDALS_LAP_SCENE: AnimationScene = {
+  id: "pedals-lap",
+  widget: "pedals",
+  label: "Frenada y aceleración",
+  watchFor:
+    "Los carriles siguen a cada pedal, la etiqueta pasa de gris a blanco al dejar el reposo, y el carril se ilumina al llegar al 100%.",
+  frameMs: 700,
+  frames: [
+    { caption: "Recta: gas a fondo", player: { throttle: 1, brake: 0, clutch: 0 } },
+    { caption: "Levanta", player: { throttle: 0.35, brake: 0, clutch: 0 } },
+    { caption: "Frenada fuerte", player: { throttle: 0, brake: 1, clutch: 0 } },
+    { caption: "Suelta el freno progresivamente", player: { throttle: 0, brake: 0.55, clutch: 0 } },
+    { caption: "Trail braking: solapan freno y gas", player: { throttle: 0.3, brake: 0.2, clutch: 0 } },
+    { caption: "Sale acelerando", player: { throttle: 0.85, brake: 0, clutch: 0 } },
+    { caption: "Otra vez a fondo", player: { throttle: 1, brake: 0, clutch: 0 } },
+  ],
+};
+
+const PEDALS_CLUTCH_SCENE: AnimationScene = {
+  id: "pedals-clutch",
+  widget: "pedals",
+  label: "Salida con embrague",
+  watchFor: "El carril del embrague se llena y se suelta; los tres carriles pueden estar activos a la vez sin pisarse.",
+  frameMs: 800,
+  frames: [
+    { caption: "Parado: embrague a fondo", player: { throttle: 0, brake: 1, clutch: 1 } },
+    { caption: "Gas y embrague", player: { throttle: 0.6, brake: 0, clutch: 1 } },
+    { caption: "Suelta embrague", player: { throttle: 0.8, brake: 0, clutch: 0.4 } },
+    { caption: "Embragado del todo", player: { throttle: 1, brake: 0, clutch: 0 } },
+  ],
+};
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
   OVERTAKE_SCENE,
   BATTLE_SCENE,
@@ -358,6 +396,8 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   RELATIVE_ENTER_SCENE,
   DELTA_CROSS_SCENE,
   DELTA_NEW_BEST_SCENE,
+  PEDALS_LAP_SCENE,
+  PEDALS_CLUTCH_SCENE,
 ];
 
 export const ANIMATION_SCENE_IDS: readonly string[] = ANIMATION_SCENES.map((scene) => scene.id);

@@ -1,5 +1,10 @@
 # ENG-06 — Runtime productivo y transporte preemptivo
 
+> **SNAPSHOT / ISSUE EVIDENCE.** El WIP inferior describe el corte aislado de
+> ISA-167, no el estado actual de Nightly. Consulta el
+> [router Engineer](README.md) y el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md);
+> usa este archivo solo para contratos/evidencia focales del corte.
+
 Estado: implementación WIP en la rama aislada de ISA-167. Los P1/P2 de la
 primera review independiente están corregidos; pendiente de re-review. Sin
 promoción, TTS/STT, UI nueva, Pit Manager ni Strategy.

@@ -70,22 +70,24 @@
   vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
   aceptacion LMU extremo a extremo no estan demostrados.
 - **Issue/fase activa:** ISA-313 / ENG-R01 esta `In Progress`, **Fase 5 —
-  arquitectura documental Engineer para subagentes**. Este trabajo es el
-  **Corte A: gobernanza y entrada global**; no modifica producto.
+  arquitectura documental Engineer para subagentes**. Corte A y Corte B estan
+  completos localmente y no modifican producto.
 - **Rama/PR/CI:** rama
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`, PR
   draft #196. El HEAD publicado `61a5c99` tiene checks verdes; el merge local de
-  `nightly@8880a88` y este corte ya tienen commit local, pero no push ni CI propio.
+  `nightly@8880a88` y los cortes documentales tienen commits locales, pero no
+  push ni CI propios.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` y bloqueadas
-  por ISA-313. El handoff se reconciliara en el Corte B; S1 no comienza antes
-  de cerrar ese corte y aceptar la Fase 5. ISA-314 conserva el bug de guardado.
-- **Siguiente accion:** cerrar reviews del Corte A; despues ejecutar el Corte B
-  de arquitectura documental Engineer. Solo entonces se prepara una issue/rama
-  de producto para la primera subfase del
-  [microplan Spotter](engineer/spotter-phase-1-microplan.md).
-- **Entrada de planificacion:** [handoff pendiente de Corte B](vantare-program/handoffs/engineer-spotter.md),
-  [roadmap general](engineer/engineer-beta-roadmap.md) y microplan activo. Todo
-  cambio tecnico Engineer/Spotter lo implementa un worker subagente.
+  por ISA-313. S1 no comienza antes de aceptar la Fase 5 y asignar issue/rama
+  propias. ISA-314 conserva el bug de guardado separado.
+- **Siguiente accion:** revisar y aceptar la Fase 5; despues preparar la issue y
+  rama de S1 y replanificarla desde el
+  [plan Spotter](engineer/phases/spotter/plan.md).
+- **Entrada de planificacion:** [router Engineer](engineer/README.md),
+  [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
+  [roadmap general](engineer/engineer-beta-roadmap.md) y
+  [aceptacion](engineer/phases/spotter/acceptance.md). Todo cambio tecnico
+  Engineer/Spotter lo implementa un worker subagente.
 
 ## Strategy Planner
 

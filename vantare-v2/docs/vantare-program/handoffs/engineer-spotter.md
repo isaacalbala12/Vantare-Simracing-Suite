@@ -1,594 +1,103 @@
 # Handoff vivo — Engineer/Spotter
 
+Estado verificado: 2026-08-11. Este documento conserva solo el presente; Git y
+Linear preservan la historia.
+
 ## Resultado
 
-Engineer Beta acompaña al piloto en directo; Spotter se limita a seguridad,
-proximidad y tráfico. Consumen Telemetry Core, funcionan offline y nunca
-inventan datos. La beta incluye paridad funcional avanzada aplicable de
-CrewChief, Pit Manager y wake word.
+Engineer acompaña al piloto en directo y Spotter cubre seguridad, proximidad y
+tráfico. Ambos consumen Telemetry Core, funcionan offline y fallan cerrados
+ante datos no demostrables. La primera Beta es ES/EN y excluye cambio de piloto.
 
-## Autoridad y lectura
+Vantare replica o mejora capacidades observables de CrewChief con contratos,
+contenido y evidencia propios; no copia su arquitectura, código, constantes,
+frases, sonidos, assets ni estructura.
 
-- `docs/vantare-program/README.md`, `product-contract.md` y
-  `research-policy.md`.
-- Este handoff y el proyecto Linear del módulo.
-- ADR 0004 y el handoff de Telemetry Core.
-- `docs/telemetry-core/engineer-rescue-matrix.md` y
-  `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.
-- La investigación original y la interfaz experimental de ISA-123 permanecen en la
-  rama/PR de ISA-123; TC-08 incorpora solo los contratos necesarios, no sus
-  assets ni su UI experimental.
-- Auditoría vigente de 2026-08-10: el brief para implementadores es
-  `docs/vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md`;
-  el dossier de
-  evidencia hermano no se usa como especificación ni para trasladar constantes.
-- Replanning focalizado de Spotter (2026-08-11):
-  `docs/vantare-program/research/engineer/spotter-crewchief-evidence-dossier-2026-08-11.md`
-  conserva la evidencia externa;
-  `docs/engineer/spotter-vantare-current-state-2026-08-11.md` audita el runtime;
-  y `docs/engineer/spotter-phase-1-microplan.md` es la única entrada de
-  implementación para la Fase 1 después de su aceptación.
+## Autoridad
 
-## Estado
+1. `AGENTS.md`, `docs/current-plan.md` y el expediente canónico.
+2. Linear para alcance, dependencias, rama y estado.
+3. Este handoff y el [router Engineer](../../engineer/README.md).
+4. [Plan Spotter](../../engineer/phases/spotter/plan.md),
+   [aceptación](../../engineer/phases/spotter/acceptance.md), contratos, código,
+   tests y evidencia aplicables.
 
-Actualización autoritativa ISA-313 / ENG-R01 (2026-08-11, replanning de Fase
-1): varias tandas DeepSeek y contraste directo del upstream confirman que la
-vertical canónica ya existe, pero no está lista para Beta. El análisis encuentra
-P1 en aislamiento enable/disable, autoridad de sensibilidad, defaults ES/audio,
-calidad por fila, secuencias regresivas, éxito silencioso de `audio-only`,
-medición audible, plausibilidad/ghost, three-wide direccional y deuda clean-room
-en comentarios/tests actuales. Audio real,
-multiclase, game phase/FCY y aceptación LMU extremo a extremo siguen sin
-demostrarse. Se redacta el microplan de Spotter observable; no se modifica
-runtime, no se mueven ISA-187/189 y no se inicia una subfase productiva.
-Fable provocó correcciones documentales sobre lifecycle, clean-room, audio y
-gates; la revisión final de Opus quedó en `GO`, sin P0/P1 nuevos.
+El [índice de research](../research/engineer/README.md) limita el acceso por rol.
+El brief clean-room es la única salida competitiva para implementers.
 
-Actualización autoritativa ISA-313 / ENG-R01 (2026-08-11): el roadmap ya no
-ordena el trabajo como una lista cerrada de microcortes. Define fases generales
-con subfases probables. Cada fase se replanifica en detalle justo antes de
-comenzar y solo se cierra con validación manual reproducible más una prueba
-acumulativa que otra IA pueda ejecutar y evaluar. El inventario de issues de
-Linear sigue siendo útil para ownership y dependencias, pero no congela por
-adelantado la implementación de las fases futuras.
+## Estado Git, PR y CI
 
-Actualización autoritativa ISA-313 / ENG-R01 (2026-08-10): PR #96 ya está
-integrado en `nightly` y deja ENG-01..ENG-12, ENG-14 y ENG-15 disponibles. La
-base auditada más reciente es
-`origin/nightly@7e39104a7e876b4c396a41403023ba6030b88a08`. Las referencias más
-abajo a ISA-201 “en validación” se conservan como evidencia histórica y no
-describen el estado actual.
+- Issue activa: ISA-313 / ENG-R01, Fase 5 — arquitectura documental Engineer.
+- Rama: `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`.
+- Nightly integrada y verificada: `8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- Base/HEAD local al entrar en Corte B:
+  `90a0905e0f7198623c80c2b6f8f3c63945abae82`.
+- PR draft #196. Último HEAD publicado conocido: `61a5c99`; sus checks estaban
+  verdes. Los commits locales posteriores no tienen push ni CI propios.
+- Corte B: cambio documental local. El SHA final se fija en el reporte tras
+  crear el commit; hasta entonces esta rama no se ha vuelto a publicar.
+- Nivel real: rama de issue. No está integrada en Nightly, Testers o Master y
+  no existe release de este corte.
 
-El siguiente objetivo es una vertical Spotter + ruta audio cache-only + visual: ISA-187 / ENG-16
-y ISA-189 / ENG-18 deben demostrar el mismo evento en audio y en las superficies
-ENG-08 ya existentes (`EngineerPage`, subtítulos y `engineer-radio` para
-Desktop/OBS). ISA-190 amplía después los monitores, con todas las familias Beta
-planificadas salvo cambio de piloto. ISA-195/196 cierran persistencia/control y
-Pit transaccional. ISA-197 Strategy/Overlays avanzado espera a esas bases.
+## Capacidades demostradas
 
-La auditoría de 2026-08-10 mantiene ese orden y añade criterios: Virtual Energy
-es monitor Vantare propio; stint entra en ISA-190 y solo cambio de piloto queda
-fuera; wake word sigue dentro de Beta condicionado por ENG-13/ISA-192, mientras
-always-on es post-Beta. ISA-196 implementa request/abort, fuel y neumáticos;
-aceptar/rechazar Strategy pertenece a ISA-197. VE o presiones por voz requieren
-un cambio de catálogo/issue separado. En ningún caso “enviado” equivale a
-“aplicado” sin readback.
+- ENG-01..ENG-12, ENG-14 y ENG-15 están integradas en Nightly.
+- Existe la vertical Telemetry Core -> decisión/policy -> presentación ->
+  transporte visual, con radio y subtítulos compartidos.
+- Existen policy/scheduler deterministas, preempción Spotter, presentación
+  multilingüe, PTT y diálogo confirmable sin efectos reales.
+- La ruta de audio actual es cache-only y cancelable; el tooling de host de voz
+  sigue test-only.
 
-Kokoro es la dirección TTS elegida, pero permanece técnicamente condicionado:
-ISA-193 / ENG-22 debe aportar un G2P y una cadena de licencias comercialmente
-permisivos, rendimiento, packaging y escucha humana nuevos. Español e inglés
-son el alcance lingüístico de la primera Beta; italiano y portugués brasileño
-quedan para expansión posterior. ENG-13 continúa bloqueando STT/wake
-productivos, no el fallback
-visual. Hardware y LMU real están disponibles; Pit admite pruebas controladas
-con confirmación, readback y fallo cerrado.
+## Pendiente o condicionado
 
-ISA-123 completó la investigación primaria y una auditoría read-only del
-runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
-`ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
-añadió el adaptador puro hacia `ObservationV1`; quedó técnicamente cerrada tras
-re-review independiente `ACCEPT` sin P0/P1/P2/P3. ISA-133 / ENG-04 añade el
-runner y oráculo determinista test-only sobre la base final de Telemetry Core.
-ISA-158 / ENG-05 introduce la policy y el scheduler determinista. ISA-167 /
-ENG-06 cablea entrega productiva y preempción. ISA-177 / ENG-07 fija la
-presentación multilingüe. ISA-178 / ENG-08 añade salida visual productiva,
-routing por categoría y el widget funcional Vantare Crystal, integrado en
-Nightly mediante PR #96. ENG-06 mantiene una única policy y un transporte
-cancelable con ACK; ENG-07 aporta una única presentación para visual y futura
-voz; ENG-08 no duplica ninguna de estas autoridades.
-ISA-180 / ENG-09 cierra el primer gate técnico de voz: no autoriza TTS
-productivo, deja `whisper.cpp` como STT condicionado y conserva la salida
-visual como fallback. No cambia runtime ni dependencias de producto.
-ISA-181 / ENG-10 añade corpus humano genérico y compara Whisper `tiny/base`.
-`base` queda candidato condicionado, pero commands/FAR/FRR/wake word continúan
-NO-GO hasta capturar un corpus humano consentido del catálogo real. No cambia
-runtime, dependencias ni producto.
-ISA-182 / ENG-11 añade un package manager y un voice-host estrictamente
-test-only. El manifest, descarga, almacenamiento, ownership del hijo y teardown
-quedan demostrados; no existe inferencia, micrófono, wiring o nueva autoridad
-de voz. Commands, FAR/FRR, wake word y TTS dinámico siguen NO-GO.
-ISA-183 / ENG-12 define `engineer.commands.v1`: un catálogo propio, cerrado y
-simétrico de 20 intents en cuatro locales, con slots tipados, precondiciones,
-respuestas y confirmación obligatoria para cada acción. Su harness es solo texto,
-no ejecuta acciones ni conecta voz. El protocolo humano conserva command
-readiness, FAR/FRR y wake word en NO-GO hasta evidencia consentida real.
-ISA-186 / ENG-15 añade el router textual `engineer.dialogue.v1`: consultas
-fail-closed y acciones con propuesta, readback, confirmación, evidencia fresca y
-resultado. Lifecycle, locale, reloj, timeout y contexto cancelan estado inseguro;
-el double-submit aplica como máximo una vez. Solo usa puertos falsos en tests y
-no conecta voz, LMU, Pit Manager, Strategy ni efectos productivos.
-ISA-185 / ENG-14 añade `engineer.ptt.v1`, máquina de estados y readers Windows
-reales para teclado, XInput y joystick-compatible. El polling es cancelable,
-hotplug-safe y no abre micrófono. Raw HID genérico permanece `unsupported` y
-el host STT sigue bloqueado; backend/binding Raw HID, UI y persistencia
-pertenecen a ENG-24 / ISA-195.
-El roadmap restante queda fijado en
-`docs/engineer/engineer-beta-roadmap.md`: organiza el producto por resultados
-generales, no por una implementación anticipada. Spotter observable precede al
-Engineer de carrera, control, acciones LMU, integración Strategy/Overlays y
-Beta integrada. La voz offline mantiene una línea condicionada en paralelo y
-solo converge si supera sus gates. STT productivo y wake word permanecen
-bloqueados por corpus humano real.
-TC-05A conserva la autoridad transversal sobre envelope, versionado,
-ownership, fan-out y puertos. El código legacy contiene lógica y fixtures
-caracterizables. ISA-111 retiró su adquisición de telemetría e ISA-112 conectó
-la ruta productiva al único Telemetry Core. ENG-06 demuestra la preempción del
-transporte existente; Pit transaccional todavía no está demostrado, por lo que
-Engineer sigue sin ser confiable como beta completa. TC-08 migra la entrada;
-el producto vive aparte.
+- Audio audible ES/EN distribuible, dispositivo/hot-plug y evidencia humana.
+- Núcleo lateral completo, multiclase, lifecycle/FCY/peligros y plausibilidad.
+- Paridad LMU extremo a extremo entre decisión, audio y visuales.
+- Kokoro legal, empaquetable y perceptualmente aceptado; no hay síntesis en hot
+  path ni segundo motor TTS.
+- STT/wake word condicionados por corpus y gates humanos.
+- Pit Manager con confirmación, ejecución, readback y fallo cerrado.
 
-ISA-109 / TC-08B compone esos contratos aprobados sobre la base canónica más
-reciente y amplía la observación a sesión, parrilla, fuel, gaps y geometría.
-No convierte a `telemetry.Frame`, porque perdería missing e identidades
-generacionales. ISA-110 ha añadido un bridge exclusivamente de replay y
-fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
-conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
-productivo sin crear un segundo reader.
+## Decisiones vigentes
 
-- Rama documental activa:
-  `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`.
-- Base sincronizada: `origin/nightly@0fecff216e19ef0c9cccf68a4d04dda6a269f021`.
-- Estado de producto: ENG-01..ENG-12, ENG-14 y ENG-15 están en Nightly; ENG-13
-  continúa como gate humano de voz real.
-- ISA-313 no implementa producto ni promociona; `testers` y `master` no se
-  modifican.
-- Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
-  polling de 8 ms cancelable, hotplug y errores explícitos. Win32 keyboard y
-  WinMM `joy-0` respondieron realmente; XInput 0..3 y `joy-1` reportaron ausencia
-  sin fingir conexión. Raw HID genérico está disabled. Contrato:
-  `docs/engineer/ptt-input-isa-185.md`.
-- Evidencia ENG-11: manifest cerrado bajo Git; descargas con hash/tamaño,
-  límites, cancelación y promoción segura; rutas y delete reparse-safe;
-  controller con PID/protocolo/nonce/loopback, timeouts acotados y teardown
-  total. Harness sintético 200 probes, 349,598 ms start, p95 20,445 ms, cero
-  leases. 31/31 focal y 48/48 histórico x3 PASS. No inference, micrófono,
-  modelo/binario/raw en Git, dependencia o wiring. Contrato:
-  `docs/engineer/voice-package-host-isa-182.md`.
-- Evidencia ENG-10: FLEURS original CC BY 4.0 fijado, cinco grabaciones por
-  idioma en clean/ruido determinista, comparación `tiny/base`, WER/CER,
-  latencia/CPU/RAM/cancelación y capture/import consentido. `base` es candidato
-  lingüístico condicionado; commands, FAR/FRR y wake word permanecen NO-GO.
-  No hay speaker IDs estables ni diversidad demostrable; `pt_br` solo tiene
-  categoría `MALE`. Contrato: `docs/engineer/human-corpus-voice-host-isa-181.md`.
-- Evidencia ENG-09: matriz por capa de runtime/modelo/voz/G2P, hashes,
-  benchmark Windows CPU/DirectML, STT residente, WER sintético transparente y
-  cancelación aislada. Kokoro medido es NO-GO; Whisper queda condicionado.
-  `docs/engineer/tts-stt-selection-isa-180.md` conserva la decisión y
-  `docs/evidence/isa-180/` los resultados sanitizados.
-- Evidencia ENG-07: catálogo cerrado 20 × 4, presentación v1, roles/canales,
-  penalty neutral, límites y fail-closed antes de `started`. Wails/SSE comparten
-  bytes observables; el audio cache-only busca por texto de voz con fallback
-  legacy solo de lectura. Tras review, el request de audio transporta el locale
-  tipado de Presentation: caché y fallback se limitan a él, y cualquier
-  mismatch queda visual-only. `all_clear` español no afirma pista global.
-  Focal x20, fuzz 10 s / 2,24 M ejecuciones, benchmarks x5, Engineer,
-  Server, Telemetry y Go global serial PASS. Vet focal PASS; vet global conserva
-  tres warnings Win32 heredados. Race no disponible con `CGO_ENABLED=0`.
-  Contrato: `docs/engineer/presentation-contract.md`.
-- Evidencia: paquete ENG-01, ADR 0005, contrato x20, Telemetry/Engineer/global
-  Go PASS, race x10, vet, frontend build para embed e inventario de 34
-  consumidores productivos legacy. La auditoría G3 y matriz de rescate
-  permanecen como historial, no como prueba de runtime. Una primera ejecución
-  global expuso una intermitencia heredada del test de cancelación REST del
-  driver LMU; focal x20 y repetición global pasaron.
-- Evidencia ENG-03: golden TC-05A + golden específico Engineer, contrato de
-  consumidor, capabilities, calidad, contradicciones e identidad. Focal x20,
-  projection, 31 paquetes Engineer, vet, race x10 y frontend build PASS.
-  Global conserva la contención Windows conocida de settings. Telemetry hizo
-  aflorar una ejecución load-sensitive heredada del teardown REST LMU; su test
-  aislado x20 pasa y el driver no forma parte del cambio. El único P1 de
-  review, capability standings ausente cuando solo `LapNumber` era usable,
-  quedó corregido con una regresión de flujo completo. Re-review `ACCEPT`.
-- Evidencia ENG-04: reloj virtual, informe versionado, golden deliberado y
-  fixtures sintéticas; determinismo x50, cinco estados observables, matriz
-  21/21, boundaries de lifecycle y fail-closed por calidad/capability/versión.
-  El reloj hace suma checked con headroom de deadlines, `session.started`
-  cancela pendientes y el límite canónico de 104 vehículos se valida antes
-  del bridge.
-  Engineer, Telemetry, Go global serial, race focal x10, build de embed y
-  aislamiento productivo PASS. El vet focal pasa; el vet amplio conserva dos
-  avisos Win32 heredados fuera del diff. `docs/engineer/replay-oracle.md`
-  conserva el contrato, comandos y hallazgos. Re-review independiente final:
-  `ACCEPT`, P0/P1/P2/P3 = 0.
-- Evidencia ENG-05: contratos v1, orden total estable, preempción P0,
-  revalidación de TTL/evidencia/claim semántico, dedupe/coalescing/cooldowns,
-  límites de memoria y diagnósticos, lifecycle sin evidencia reutilizable,
-  protección contra starvation, soak y benchmark saturado. El golden ENG-04
-  atraviesa la policy; sanciones son neutrales y pits sigue limitado a
-  entry/exit. Focal, Engineer completo, race focal, vet focal y gate Go global
-  PASS. Review independiente aceptada en la base de ENG-06. El test heredado
-  `cmd/vantare.TestHandleDiscoverAppsEmitsDetected` usa discovery real de
-  Windows y es lento, pero pasa sin cambios; es deuda ajena, no bloqueo de
-  ENG-05. Esta rama no toca Launcher ni `cmd/vantare`. El vet global conserva
-  tres avisos Win32 heredados por `unsafe.Pointer`; vet focal pasa.
-- Corrección de re-review: la cola poda hechos semánticamente invalidados antes
-  de coalescing/presión. Con `MaxPending=1`, `car_left -> all_clear` conserva y
-  emite el estado vigente; las transiciones P0 equivalentes y penalty neutral
-  1 -> 2 tienen regresión y diagnóstico/orden reproducibles.
-- Segunda corrección de re-review: `left/right -> three_wide` ya no pierde el
-  aviso más específico aunque el lateral anterior siga siendo cierto. Una tabla
-  tipada de cuatro estados Spotter define supersession, conserva el mejor aviso
-  vigente con capacidades uno y mayores y rechaza degradaciones posteriores sin
-  cambio de evidencia. No afecta fairness ni otras familias.
-- Tercera corrección de re-review: los clears parciales son delivery-aware.
-  ENG-05 los ligaba provisionalmente a `Next`; ENG-06 sustituye ese límite por
-  `AcknowledgeStarted`. Un pendiente o una decisión solo seleccionada nunca
-  cuentan como comunicación. Sin contexto se sustituyen por `car_left`, `car_right`,
-  `three_wide` o `all_clear` según la Evidence actual. La matriz 1/4/64 cubre
-  `both -> left/right`, cambios laterales, antecedente pending/selected,
-  expiración, cancelación, transiciones intermedias y cambio de evidencia con
-  el clear ya pendiente. Admisión y `Next` revalidan el mismo permiso. El
-  estado histórico `dispatched` no era confirmación de audio; ENG-06 cierra esa
-  frontera con un ACK contractual previo a la salida. Focal x50, fuzz 10 s, benchmarks
-  x5, Engineer, Telemetry Core, Go global y vet focal pasan. El race no pudo
-  repetirse tras esta corrección porque el entorno no dispone de toolchain C
-  con headers Win32; el vet global conserva solo tres avisos heredados fuera
-  del diff.
-- Cuarta corrección de re-review: epoch/identidad válidos resetean la entrega
-  Spotter antes de observar el estado del nuevo lifecycle; una transición de
-  identidad inválida queda fail-closed. El contexto despachado conserva el
-  `ExpiresAtMS` de su antecedente y se revalida justo antes de `Next`: válido
-  antes del límite, inválido en y después del límite. `still_there` no renueva
-  estado completo y las decisiones expiradas/canceladas no crean contexto. La
-  matriz vuelve a cubrir capacidades 1/4/64.
-- WIP ENG-06: `EngineerService` posee una única instancia de policy y convierte
-  la salida aprobada del runtime desde la misma observación canónica. El puerto
-  versionado confirma queued/started/terminal, revalida antes de start, cancela
-  por source/lifecycle y une toda goroutine. Spotter P0 interrumpe audio
-  Engineer ya iniciado; Engineer nunca interrumpe Spotter. Notificación visual
-  y audio opcional comparten el transporte productivo. Métricas sanitizadas y
-  replay v2 separan decisión, dispatch y start. Health añade contadores de
-  policy y delivery sin IDs ni payloads. Engineer, Telemetry, Go global serial,
-  race focal, vet focal, frontend build y benchmarks pasan; pendiente de review.
-- Corrección de review ENG-06: el transporte productivo ya no llama al
-  `AudioRouter.Resolve` capaz de sintetizar. Usa únicamente `ResolveCached`
-  context-aware con timeout de 100 ms. El composition root instala el player
-  cancelable existente y un router sin engine TTS, por lo que la preempción
-  existe en el grafo real y un miss conserva la notificación visual. Tests
-  adversariales cubren resolver bloqueado ante preempción, source loss y Stop.
-  Replay v2 cubre disconnect/reconnect y exige snapshot fresco. Un benchmark
-  end-to-end atraviesa Scheduler, queueLoop, transporte y ACK started con ocho
-  submissions concurrentes y preempción Spotter. Pendiente de re-review.
-- Corrección final WIP ENG-06: el borde de desconexión conserva
-  `epoch`/identidad/`sequence` de la última observación aceptada. Producto y
-  replay rechazan el snapshot igual y cualquier cursor anterior tras recovery;
-  un cursor posterior del mismo epoch o un epoch nuevo legítimo es el único que
-  puede reconectar. El incremento de `ReconnectAttempt` también crea el borde
-  aunque el estado siga en `live`. Replay no marca connected ni limpia el borde
-  hasta aceptar cursor e identidad/lifecycle; un `>S` inválido deja `S`
-  rechazado. Las regresiones focales service/replay x10 y las rutas exactas x20
-  pasan. El benchmark
-  ya no usa un transporte auxiliar: atraviesa
-  `productDeliveryPort -> ResolveCached -> AudioPlayer.PlayContext`, con ocho
-  submissions concurrentes y preempción; 20x pasa a 65.310 ns/op y detiene el
-  reloj al entrar en `PlayContext`. Race no disponible con `CGO_ENABLED=0`;
-  vet focal pasa. Go global no concluyó en 124 s; vet global solo repite tres
-  avisos Win32 heredados fuera del diff. Sin commit, push, PR, Linear ni
-  promoción; listo para re-review independiente.
-
-## Decisiones
-
-- Clean-room: comportamiento/documentación como referencia; contratos, textos,
-  audio, UI y código propios.
-- Spotter/peligro interrumpe; lo demás espera o reemplaza pendientes.
-- Prioridad: Spotter, banderas, daño, fuel/energía, pit/estrategia,
-  penalizaciones, carrera, rendimiento/motivación.
-- Código fija intención/dato/prioridad/acción; plantillas propias generan
-  críticos; ningún LLM decide el camino crítico.
-- Personalidades Profesional, Cercano y Exigente son perfiles declarativos.
-- TTS/STT offline. Kokoro es la dirección seleccionada; no se introduce un
-  segundo motor por conveniencia sin una decisión posterior.
-- ENG-09 demuestra que el Kokoro medido no cubre la latencia dinámica y que su
-  pila Python incluye G2P GPL. ENG-22 debe producir evidencia nueva con cadena
-  comercialmente permisiva, rendimiento, packaging y escucha antes de
-  distribuir o cablear Kokoro.
-- `whisper.cpp`/Whisper multilingual es el candidato STT primario condicionado;
-  debe superar corpus humano de cuatro idiomas antes de release.
-- ENG-10 selecciona `base` solo para el siguiente corpus de comandos por su
-  mejor WER/CER humano genérico. No autoriza release, PTT ni wake word.
-- La inferencia futura vive en un único host local hijo y cancelable. Spotter,
-  ingesta, scheduler y visual nunca esperan al host.
-- Micrófono y transcripciones son memoria-only por defecto; cero recording.
-- PTT por teclado, volante, gamepad, button box e HID.
-- Wake words traducidos: Ingeniero, Engineer, Ingegnere, Engenheiro.
-- Confirmación de voz para acciones; dos fallos pasan a PTT/UI.
-- Audio separado, hot-plug/fallback y cero grabación de micrófono por defecto.
-- Pit Manager prepara, explica, confirma, envía, verifica y falla cerrado.
-- Strategy solo cambia tras aceptación.
-- Subtítulos y widget de radio Crystal forman parte del proyecto.
-- Spotter objetivo <150 ms en el camino inmediato; el microplan exige definir
-  y medir por separado decisión, transporte, comienzo del player y evidencia
-  humana de audibilidad para no confundir ACK con sonido real.
-- TC-05A define el envelope transversal; ENG-02 no duplica su versionado,
-  clocks, ownership, fan-out ni puertos.
-- La API visible por Engineer usa tipos de producto y no exige importar
-  schema/envelope.
-- Los snapshots son latest-wins: un salto entre versiones observadas no es un
-  gap de hechos ni exige resync.
-- Capability unknown, unsupported y degraded son diferentes. Solo un campo
-  fresh con capability supported es utilizable sin decisión adicional.
-- Reset de epoch y cambios de equipo, piloto, coche, sesión o evento cancelan
-  decisiones pendientes de Engineer.
-
-## Alcance Beta
-
-Spotter carretera/multiclase; sesiones; banderas; rivales; fuel/Virtual Energy;
-neumáticos/daños demostrables; pit/estrategia; motivación; PTT; wake word solo
-si supera sus gates;
-consultas; Pit Manager; subtítulos, overlay, diagnóstico y personalidades. La
-primera Beta es ES/EN. IT/PT-BR queda en expansión posterior. La primera Beta
-excluye cambio de piloto. Capabilities ausentes se documentan y no se simulan.
-Engineer sustituye CrewChief; no se crea integración de coexistencia ni se
-busca una copia exacta.
-
-## Primera entrega
-
-1. Auditoría CrewChief/DRE y licencias.
-2. Auditoría read-only de Vantare.
-3. Matriz conservar/endurecer/rehacer/eliminar.
-4. Capabilities reales de Telemetry Core.
-5. Bench TTS/STT y licencias comerciales.
-6. HTML interactivo.
-7. Arquitectura y microplan.
-8. Implementación incremental con replays y review.
+- Arquitectura simple: Telemetría -> estado Spotter -> mensaje -> audio Kokoro
+  preparado/cacheado + visual compartido.
+- Timings, tempo, cadencia, debounce, clears, cooldowns, audio, dispositivo y
+  sincronía visual forman parte de la feature y de su aceptación.
+- `WidgetVisualHost` es la única frontera visual compartida.
+- Cada subfase se replantea al entrar y amplía la misma aceptación manual + IA.
+- Engineer/Spotter se implementa mediante workers subagentes; sus reportes son
+  respuestas estructuradas, no documentación nueva.
 
 ## Riesgos
 
-- **P1 detectado en el replanning Spotter:** `spotterEnabled` comparte hoy el
-  booleano global del runtime: apagarlo aborta determinísticamente la
-  observación, marca Engineer desconectado con un error engañoso y cancela la
-  entrega/cola de las demás familias. La policy revalida sensibilidad Normal
-  aunque el detector use otro preset; defaults español/inglés dejan el audio
-  visual-only;
-  filas rivales parciales pueden perder presencia al bridge; secuencias
-  regresivas se aceptan; `audio-only` puede completar sin salida y su P95 no
-  mide comienzo audible; same-side three-wide, ghost/active y plausibilidad de
-  movimiento están incompletos; comentarios/tests actuales todavía atribuyen
-  parámetros al competidor. Deben cerrarse y rederivarse con evidencia propia
-  antes de aceptar el núcleo.
-- **No demostrado:** no existe replay real LMU que recorra Telemetry Core ->
-  decisión -> ACK/cache/player -> Wails/SSE -> Desktop/OBS. Los replays y
-  goldens actuales son principalmente sintéticos y no cierran audibilidad ni
-  falsos positivos reales.
+- **P0:** Pit Manager no tiene transacción/readback demostrados; permanece sin
+  efectos productivos.
+- **P1:** enable de Spotter comparte autoridad con runtime; sensibilidad,
+  calidad por rival, secuencias, salida `audio-only`, same-side, ghost y
+  plausibilidad conservan deudas del baseline.
+- **P1:** no existe aceptación LMU real completa ni audio distribuible; ACK o
+  replay sintético no demuestran audibilidad.
+- **P1:** licencias y cadena G2P/voz/pack pueden impedir distribución Kokoro.
+- **P2:** documentación snapshot conserva estados antiguos; los banners y el
+  router evitan usarla como estado operativo.
+- **P3:** parámetros y tests heredados necesitan rederivación clean-room al
+  tocar su subfase.
 
-- **Cerrado en ISA-111/112:** servicio/UI ya no arrancan conectados ni ofrecen
-  simulator/replay como fuente productiva.
-- **Cerrado en ENG-06:** la policy impide mensajes
-  caducados y Spotter P0 cancela el audio Engineer no crítico ya iniciado.
-- **P0 para el gate Beta; no expuesto productivamente:** Pit Manager carece de
-  transacción y readback demostrados.
-- **P1 reducido:** la proyección pura está cableada a seis familias aprobadas;
-  las familias parciales siguen correctamente deshabilitadas.
-- **Cerrado en ENG-05:** pits solo admite entry/exit y el contador genérico de
-  sanción se expresa como `penalties.count_increased`, nunca drive-through.
-- **P1:** licencias distintas entre código, modelos, voces y sound packs.
-- **P1 si se integra sin aislamiento:** TTS/STT podría bloquear el hot path.
-- **Reducido en ENG-09:** existe inventario por capa y el aislamiento de proceso
-  conserva heartbeat/cancelación. Sigue abierto el G2P GPL de Kokoro y falta
-  corpus humano; por ello no hay wiring de voz.
-- **Reducido en ENG-07:** los 20 intents admitidos tienen cobertura simétrica
-  en cuatro idiomas. La validación lingüística perceptual y el catálogo futuro
-  de TTS permanecen en cortes posteriores.
+## Issues y bloqueos
 
-## Issues
+- ISA-313 está activa y cierra la entrada documental; Fase 5 no cambia producto.
+- ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
+  ISA-313; no equivalen todavía a la issue ejecutable de S1.
+- ISA-314 conserva separado el bug de promesa falsa de guardado.
+- Las issues de voz, Pit, Strategy y gate Beta mantienen sus dependencias; este
+  corte no las mueve ni declara GO.
 
-La tabla siguiente es un inventario de ownership y estado. No constituye el
-orden concreto de implementación: las issues aplicables se seleccionan,
-reconcilian o dividen durante el replanning de entrada de cada fase.
+## Siguiente acción
 
-| Estado | Issue |
-|---|---|
-| Integrada en Nightly | ISA-123 / ENG-01, investigación aprobada técnicamente |
-| Integrada en Nightly | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
-| Integrada en Nightly | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
-| Integrada en Nightly | ISA-133 / ENG-04, runner/oráculo determinista; review `ACCEPT` |
-| Integrada en Nightly | ISA-158 / ENG-05, policy/scheduler; base aceptada de ENG-06 |
-| Integrada en Nightly | ISA-167 / ENG-06, wiring productivo y transporte preemptivo |
-| Integrada en Nightly | ISA-177 / ENG-07, presentación canónica multilingüe |
-| Integrada en Nightly | ISA-178 / ENG-08, subtítulos y widget de radio Vantare Crystal |
-| Integrada en Nightly | ISA-180 / ENG-09, gate TTS/STT offline; TTS NO-GO y Whisper condicionado |
-| Integrada en Nightly | ISA-181 / ENG-10, corpus humano genérico; gates humanos continúan NO-GO |
-| Integrada en Nightly | ISA-182 / ENG-11, package manager y voice-host test-only |
-| Integrada en Nightly | ISA-183 / ENG-12, catálogo/intents y protocolo corpus; voz real continúa NO-GO |
-| Bloqueo humano | ISA-184 / ENG-13, command intent + FAR/FRR + wake word |
-| Integrada en Nightly | ISA-186 / ENG-15, router determinista y diálogo confirmable; cero efectos reales |
-| Integrada en Nightly | ISA-185 / ENG-14, PTT y readers Windows; hardware físico pendiente de ENG-29 |
-| Siguiente vertical | ISA-187 / ENG-16 audio + ISA-189 / ENG-18 Spotter, con salida visual ENG-08 |
-| Después | ISA-188/190 / ENG-17/19, personalidades y monitores; cambio de piloto excluido |
-| Condicionadas | ISA-191..194 / ENG-20..23, STT/wake/TTS/voice packs |
-| Backlog ordenado | ISA-195/196 / ENG-24/25, UI/persistencia y Pit; después ISA-197/198 Strategy/Overlays y diagnóstico |
-| Bug separado | ISA-314, retirar la promesa falsa de guardado automático; persistencia real en ISA-195 |
-| Gate final | ISA-199..200 / ENG-28..29, soak LMU y Engineer Beta |
-| Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
-| Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
-
-## Siguiente transición
-
-Revisar y aceptar el replanning ISA-313 sin promocionarlo automáticamente. El
-microplan de entrada de Fase 1 ya está propuesto desde la `nightly` remota
-vigente; tras su aceptación, la primera subfase se replantea contra esa nueva
-base y recibe issue/rama propias antes de editar runtime. El resultado general
-es un Spotter observable y coherente en audio, radio, subtítulos y overlay. Cada
-subfase y el cierre completo exigen validación manual más ampliación de la misma
-prueba acumulativa ejecutable por IA. Las fases posteriores no se
-microplanifican todavía.
-
-## Última actualización
-
-2026-08-11, ISA-313 / ENG-R01 convierte el roadmap detallado en un plan general
-por fases. Las subfases pasan a ser probables y revisables; cada fase crea su
-microplan al entrar y combina validación manual con una prueba acumulativa
-ejecutable por IA al salir. Se conserva el alcance anterior —Spotter y visual
-primero, todas las familias Beta salvo cambio de piloto, Kokoro condicionado,
-ES/EN primero y Pit fail-closed— sin congelar ahora la implementación futura.
-Rama documental sincronizada con `nightly@0fecff2`; sin promoción ni release.
-
-2026-08-10, ISA-313 / ENG-R01 reconcilia el proyecto con Nightly y registra las
-decisiones de producto: paridad relevante no exacta, sustitución de CrewChief,
-vertical Spotter + visual/overlays primero, Kokoro condicionado, ES/EN antes de
-IT/PT-BR, hardware y LMU real disponibles, Pit controlado autorizado, todas las
-familias Beta salvo cambio de piloto y Strategy/Overlays avanzado después de
-cerrar las bases. ISA-314 separa el copy engañoso de persistencia. Rama
-documental sobre `nightly@7e39104`; sin código, merge, promoción ni release.
-
-2026-08-02, ISA-201 compone ENG-01..ENG-12 con los dos cortes
-hermanos ENG-14 y ENG-15 sobre `nightly`. ENG-14 aporta PTT físico Windows
-cancelable y fail-closed; ENG-15 aporta diálogo determinista con consultas
-frescas y acciones confirmables. La composición no convierte el tooling de voz
-en runtime productivo ni declara superado ENG-13. Engineer, PTT x20, benchmark,
-race focal, tooling de voz 48/48, frontend 2.117/2.117, build, lint focal, 12
-baselines visuales y Go global pasan. El probe demuestra APIs y dispositivos
-presentes, no pulsaciones físicas. La promoción queda supeditada al CI y no toca
-`testers` ni `master`.
-
-2026-08-02, ISA-183 / ENG-12 implementa `engineer.commands.v1` con 14 consultas,
-6 acciones y paridad `es/en/it/pt-BR`. Cada acción requiere confirmación y el
-harness textual falla cerrado ante frases ambiguas, números, unidades, slots o
-locales inválidos; nunca ejecuta acciones. La salida sanitizada elimina texto,
-nombres y valores. El protocolo humano exige consentimiento, corpus fuera de Git,
-separación por hablante y medición por locale/micrófono/ruido. Focal x20, fuzz,
-Engineer, vet, build frontend y suite Go global pasan. `-race` no es ejecutable
-con `CGO_ENABLED=0`. Sin voz productiva, audio, micrófono o promoción; command
-readiness, FAR/FRR y wake word permanecen NO-GO.
-Re-review independiente final `APPROVED`: P0/P1/P2/P3 = 0.
-
-2026-08-02, se planifica el resto completo de Engineer Beta. Linear contiene
-ISA-183..200, cuatro milestones y dependencias DAG. ENG-12 es el primer corte;
-PTT, diálogo, audio, personalidades, Spotter, monitores y gate técnico TTS
-pueden continuar sin esperar el corpus humano. STT productivo y wake word
-permanecen bloqueados por command intent/FAR/FRR real. Pit Manager exige
-confirmación/readback; Strategy/Overlays comparten contratos versionados; el
-gate ENG-29 agrupa percepción humana, packaging e idiomas. Sin código de
-producto, promoción o GO nuevo.
-
-2026-08-02, ISA-182 / ENG-11 crea un manifest v1 cerrado, package manager
-test-only y un único voice-host hijo cancelable. Descarga, SHA-256/tamaño,
-redirects, storage, reparse points, promoción, PID/protocolo/nonce, timeout,
-shutdown y carreras concurrentes quedan cubiertos. La evidencia de lifecycle
-usa un artefacto sintético externo y no hace inferencia. ENG-11 suma 31 tests;
-la suite histórica completa pasa 48/48 tres veces seguidas. Sin modelos,
-binarios, audio, raw, micrófono, dependencia, wiring o promoción. PTT, comandos,
-wake word y TTS continúan NO-GO.
-
-2026-08-02, ISA-181 / ENG-10 mide FLEURS humano en cuatro locales con clean y
-ruido blanco determinista. Whisper `base` mejora la precisión general frente a
-`tiny`, pero tarda aproximadamente el doble y usa más memoria. Se selecciona
-solo como candidato del siguiente gate. El corpus no contiene comandos ni
-speaker IDs estables: intent accuracy, FAR/FRR y wake word siguen NO-GO. El
-tooling exige consentimiento explícito, preview/delete/cleanup y mantiene
-audio/modelos/raw fuera de Git. Sin wiring, dependencia o promoción. Review
-independiente cerrada sin findings P0-P3 razonables abiertos.
-
-2026-08-02, ISA-180 / ENG-09 ejecuta un gate reproducible de licencias,
-rendimiento y aislamiento. Kokoro ONNX CPU queda NO-GO para voz dinámica y su
-stack Python NO-GO para bundle propietario por G2P GPL; DirectML falla en int8
-y fp16. Whisper.cpp residente queda condicionado tras ~0,60 s por frase y
-cancelación aislada, pero solo inglés supera el smoke literal. `es/it/pt-BR`
-requieren corpus humano. No hay micrófono, modelos en Git, dependencia ni
-wiring productivo; radio/subtítulos siguen siendo fallback.
-El review independiente final cierra el guard de contaminación de puerto y el
-lifecycle del worker con `ACCEPT`, sin P0/P1/P2/P3 razonables abiertos. La PR
-permanece draft y ENG-10 no se ha iniciado.
-
-2026-08-02, corrección completa de review ISA-178 / ENG-08: `engineer-radio`
-forma parte del contrato persistente Go y pasa roundtrip. `disabled` se filtra
-antes de policy/delivery y no preempta trabajo de otra familia. Wails y SSE usan
-un envelope único `generation+sequence` con snapshot de reconexión exacto.
-Subtítulos y radio son superficies independientes sobre el mismo ViewModel;
-Studio muestra fixture marcada y Desktop/OBS solo runtime real. El historial
-respeta rol, los renderers aplican `lang` y 12 capturas root-only se comparan
-contra baselines fijos sin máscaras. Gates focales Go/TS y build pasan; pendiente
-de gates globales finales y re-review, sin promoción.
-
-2026-08-02, corrección de review ISA-177 / ENG-07: el locale tipado de la
-presentación gobierna ambos lookups de audio. La voz configurada solo puede
-usarse si coincide exactamente; `es`, `it` y `pt-BR` no leen assets ingleses
-ni de otro locale, y los cuatro idiomas sí leen sus assets coincidentes. Un
-mismatch queda visual-only. El resolver inyectable recibe locale, texto de voz,
-canal e intent legacy; nunca recibe el intent como voz. `all_clear` español es
-«Todo libre». Focal x20, Engineer/Server/Telemetry/global, fuzz, benchmarks y
-vet focal pasan; race sigue indisponible con `CGO_ENABLED=0`.
-
-2026-08-02, ISA-177 / ENG-07 añade un resolver puro y versionado con los 20
-intents aprobados en español, inglés, italiano y portugués brasileño. La misma
-presentación alimenta texto y futuro audio; rol, canal, severidad, prioridad y
-TTL son canónicos. Un catálogo, locale o parámetro inválido falla antes del ACK
-`started`. Wails/SSE conservan paridad exacta y el audio sigue cache-only,
-ahora indexado por texto de voz con fallback legacy de solo lectura. Gates
-focales, repetidos, fuzz, benchmarks y global serial PASS; pendiente de review
-independiente y sin promoción.
-
-2026-08-02, ISA-167 / ENG-06 conecta una sola policy al `EngineerService`
-productivo y añade un puerto cancelable con lifecycle ACK. La revalidación
-ocurre justo antes de `started`; contexto Spotter y cooldown no avanzan antes.
-La notificación existente y el audio opcional usan el mismo transporte.
-Spotter P0 preempta audio Engineer no crítico, lifecycle/source cancelan y el
-servicio une sus goroutines. La ruta real usa player cancelable y resolución
-cache-only acotada, nunca síntesis. Replay v2 añade reconnect con snapshot
-fresco; el benchmark end-to-end cubre presión/preempción. Gates técnicos PASS;
-WIP pendiente de re-review y sin promoción.
-
-2026-08-01, ISA-158 / ENG-05 añade una policy/scheduler síncrona, versionada y
-acotada. Revalida evidencia y claims semánticos antes de encolar y emitir,
-prioriza Spotter, evita starvation no crítico, coalesce duplicados, aplica
-cooldowns, invalida evidencia en lifecycle y evita mensajes caducados. El
-oráculo ENG-04 la prueba con Runtime real; pits solo admite entry/exit y la
-sanción genérica ya no afirma drive-through. No hay wiring, audio, UI, fuente,
-I/O, goroutine o dependencia nueva. Pendiente de review.
-
-2026-08-01, ISA-133 / ENG-04 crea un runner test-only con reloj virtual,
-fixtures sanitizadas y un oráculo v1 de emitted/suppressed/expired/cancelled/
-unavailable. Recorre las seis familias aprobadas y bloquea toda familia o
-decisión sin evidencia. El golden deja visibles dos deudas para ENG-05: pits
-solo aprueba entry/exit y el contador de sanción no demuestra drive-through.
-No existe wiring productivo, fuente, audio, I/O o goroutine nueva.
-
-2026-08-01, ISA-114 retira el selector y adapters de fuente muertos, el parser
-LMU paralelo y los readers experimentales sin instancia productiva. Se
-conservan monitores, Spotter, audio/TTS, commands, Pit Manager, store, SSE y
-replay explícito. Los monitores Extended mantienen únicamente un decoder puro
-de buffer para tests: no puede abrir memoria compartida ni REST. La aplicación
-solo los alimenta mediante la proyección canónica de ISA-112.
-
-2026-08-01, ISA-112 / TC-08E conecta `EngineerService` al mismo lote canónico
-que alimenta Overlay. El estado de fuente no se confunde con datos; un snapshot
-usable completa la conexión y stale/error/stop resetean pendientes. La captura
-real LMU 1.4 de 38 coches atraviesa driver, reducer, proyección y servicio con
-una apertura dentro de ese runtime y silencio Spotter ante tráfico lejano.
-ISA-113 detectó una segunda adquisición del shell legacy, que no alimenta
-Engineer y se retira en ISA-114. El solape audible real se valida en el gate
-manual final.
-
-2026-08-01, ISA-111 / TC-08D elimina la adquisición propia de
-`EngineerService`. El servicio consume observaciones/hechos, falla cerrado por
-familia y mantiene simulator/replay únicamente como harness explícito. Health
-ya no anuncia una conexión sintética. La raíz productiva se cablea en ISA-112.
-
-2026-08-01, ISA-109 / TC-08B amplía y endurece ENG-03 sobre ISA-130. La entrada
-de producto conserva full grid, fuel, gaps, geometría y calidad; sigue sin
-wiring, sin retirada legacy y sin promoción.
-
-2026-08-01, ISA-110 / TC-08C caracteriza Spotter + 20 monitores. Se aprueban
-Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
-las familias parciales o sin capability quedan explícitamente bloqueadas. El
-bridge temporal solo existe en replay y no puede alimentar el runtime entero.
+Revisar y aceptar ISA-313 Fase 5. Después, reconciliar o crear la issue y rama
+propias de S1, verificar la Nightly vigente y replanificar S1 desde
+[plan.md](../../engineer/phases/spotter/plan.md) y
+[acceptance.md](../../engineer/phases/spotter/acceptance.md) antes de editar
+runtime. No iniciar S2 ni fases posteriores por anticipado.

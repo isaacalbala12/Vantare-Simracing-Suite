@@ -1,5 +1,9 @@
 # G3 Parity Audit: Vantare Engineer vs CrewChief (CC)
 
+> **HISTORICAL / REVIEW-ONLY.** No es estado operativo ni especificación para
+> implementers. Usa el [router Engineer](../README.md), el plan de fase activo
+> y, para clean-room, únicamente el brief autorizado que enlaza el router.
+
 **Date**: 2026-06-29
 **Auditor**: Explorer (automated)
 **Scope**: DamageReporting, ConditionsMonitor, PitManager REST, Commands Catalog

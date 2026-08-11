@@ -471,8 +471,25 @@ Ledger vivo:
 | Task | Contenido | Estado | Evidencia | Próxima condición |
 |---|---|---|---|---|
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
-| 1 | Contrato TS/Go + transformación pura | Pendiente | — | Task 0 cerrada |
+| 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
 | 2 | Superficie editable en Studio | Pendiente | — | Task 1 y reviews PASS |
 | 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
 | 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
+
+Evidencia Task 1:
+
+- `layoutViewport` es opcional en storage V3; ausencia conserva 1920×1080 y
+  `null` se rechaza igual en TS y Go.
+- Límites compartidos: 32..16384 CSS/DIP. Recoverability usa la superficie
+  resuelta; no modifica coordenadas legacy.
+- Transformación pura `contain` con offsets centrados y mapeo forward/inverse;
+  inputs inválidos fallan explícitamente en vez de producir `NaN`/infinito.
+- Checks del worker: frontend focal 67/67, frontend completo 2480/2480,
+  `go test ./pkg/config`, `go test ./...`, build, lint focal y diff-check PASS.
+  El root repitió focal 67/67, Go pkg y diff-check con PASS.
+- Review de especificación: PASS. Review de calidad tras correcciones: Ready to
+  proceed, cero Critical/Important. Minor aceptado para evidencia acumulada:
+  falta test del máximo exacto 16384; la comparación inclusiva fue inspeccionada.
+- Ruido heredado: dos `AbortError` de teardown de happy-dom tras la suite, con
+  exit 0 y todos los tests PASS.

@@ -59,6 +59,15 @@ class ValidateDocsTest(unittest.TestCase):
 
             self.assertEqual([], VALIDATE_DOCS.validate_links(root))
 
+    def test_broken_image_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write(root, "docs/README.md", "![missing](missing.png)\n")
+
+            errors = VALIDATE_DOCS.validate_links(root)
+
+            self.assertTrue(any("broken local link" in error for error in errors))
+
     def test_live_handoff_line_limit_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

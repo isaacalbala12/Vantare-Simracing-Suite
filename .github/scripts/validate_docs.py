@@ -34,7 +34,7 @@ PLAN_STATUS_RE = re.compile(
 ADR_FILE_RE = re.compile(r"^(\d{4})-[a-z0-9][a-z0-9-]*\.md$")
 ADR_TITLE_RE = re.compile(r"^#\s+ADR[- ](\d{4})(?:\b|\s|:|—)", re.MULTILINE)
 MARKDOWN_LINK_RE = re.compile(
-    r"(?<!!)\[[^\]]+\]\((<[^>]+>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\)"
+    r"!?\[[^\]]+\]\((<[^>]+>|[^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\)"
 )
 
 
@@ -51,7 +51,8 @@ def validate_adrs(product_root: Path) -> list[str]:
     seen: dict[str, Path] = {}
     adr_dir = product_root / "docs" / "adr"
 
-    for path in sorted(adr_dir.glob("*.md")):
+    adr_paths = sorted(adr_dir.glob("*.md"))
+    for path in adr_paths:
         if path.name == "README.md":
             continue
         match = ADR_FILE_RE.fullmatch(path.name)
@@ -77,6 +78,15 @@ def validate_adrs(product_root: Path) -> list[str]:
         if not re.search(r"\b(Date|Fecha)\b", header, re.IGNORECASE):
             errors.append(f"ADR date missing from first 20 lines: {path}")
 
+    index_path = adr_dir / "README.md"
+    if not index_path.exists():
+        errors.append(f"ADR index missing: {index_path}")
+    else:
+        index = read_text(index_path)
+        for path in adr_paths:
+            if path.name != "README.md" and path.name not in index:
+                errors.append(f"ADR missing from docs/adr/README.md: {path}")
+
     return errors
 
 
@@ -84,7 +94,7 @@ def validate_plans(product_root: Path) -> list[str]:
     errors: list[str] = []
     plans_dir = product_root / "docs" / "superpowers" / "plans"
 
-    for path in sorted(plans_dir.glob("*.md")):
+    for path in sorted(plans_dir.rglob("*.md")):
         if path.name == "README.md":
             continue
         first_screen = "\n".join(read_text(path).splitlines()[:12])
@@ -132,6 +142,12 @@ def validate_live_docs(product_root: Path) -> list[str]:
         errors.append("docs/current-plan.md exceeds 30 lines")
     if "retirado" not in current_plan.lower():
         errors.append("docs/current-plan.md must remain explicitly retired")
+
+    archive_root = docs / "archive"
+    for path in sorted(archive_root.glob("*/handoffs/*-through-*.md")):
+        first_screen = "\n".join(read_text(path).splitlines()[:12]).lower()
+        if "archivado y sin autoridad operativa" not in first_screen:
+            errors.append(f"archived handoff lacks authority banner: {path}")
 
     return errors
 

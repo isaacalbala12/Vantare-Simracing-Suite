@@ -5233,11 +5233,12 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   ISA-280 / OS-09L (gate técnico final) y la resolución de la cuestión abierta
   sobre `assertNoReload` del smoke descrita en el handoff.
 
-## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-11)
+## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
 
-- **Estado:** In Progress en Linear; Tasks 0, 1 y microcortes 2A/2B completados.
+- **Estado:** In Progress en Linear; Tasks 0, 1 y 2 completadas con doble review.
   Contrato puro compartido en `5a98553`/`a9c2fc8`; edición documental de Studio
-  en `b873a82`/`7b24f09`.
+  en 2A `b873a82`/`7b24f09`, 2B `8249585`/`50e9b9e`/`5fc3809` y 2C
+  `edf3359`/`13fe677`/`1aa1ec7`.
 - **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
 - **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
@@ -5265,5 +5266,10 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   build/lint/diff-check PASS. Spec review PASS y quality review Ready, sin
   hallazgos. Fit, clamp, snap, move, resize, safe area y center aceptan viewport;
   recoverability y guías permanecen coherentes tras snap/clamp.
-- **Próxima acción:** microcorte 2C, conectar el viewport documental al canvas,
-  controles/presets arbitrarios y escena responsive delimitada.
+- **Evidencia 2C:** `edf3359`, `13fe677` y `1aa1ec7`; Studio elimina la resolución
+  ficticia de preview y usa `layoutViewport` para escena, fit, área segura,
+  interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
+  sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
+  diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
+- **Próxima acción:** Task 3, aplicar una sola transformación `contain` compartida
+  en Desktop y OBS y hacer que la preview OBS consuma la superficie documental.

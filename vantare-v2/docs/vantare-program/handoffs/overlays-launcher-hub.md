@@ -441,9 +441,9 @@ Task 4.
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad Studio/Desktop/OBS
 
-- **Estado al 2026-08-11:** issue creada e In Progress. Task 0 contractual
-  completada en el commit documental de la rama; código de producto aún no
-  modificado.
+- **Estado al 2026-08-12:** issue In Progress. Tasks 0, 1 y 2 completadas con
+  doble review; Studio ya edita y renderiza la superficie documental arbitraria.
+  Task 3 (paridad Desktop/OBS) es la siguiente acción.
 - **Rama/worktree:**
   `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion` en
   `C:\tmp\vantare-isa326\vantare-v2`, desde
@@ -472,7 +472,7 @@ Ledger vivo:
 |---|---|---|---|---|
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
-| 2 | Superficie editable en Studio | En ejecución; 2A/2B PASS | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; dobles reviews PASS | Microcorte 2C |
+| 2 | Superficie editable en Studio | Completada | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; 2C `edf3359`/`13fe677`/`1aa1ec7`; dobles reviews PASS | Task 3 |
 | 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
 | 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
@@ -527,3 +527,23 @@ Evidencia microcorte 2B:
   imperativa y solo hace commit al terminar.
 - Evidencia final: focal 73/73, build, lint focal y diff-check PASS. Spec review
   PASS y quality review Ready, sin Critical/Important/Minor nuevos.
+
+Evidencia microcorte 2C:
+
+- `StudioPreviewState` ya no contiene una resolución ficticia. El documento
+  gobierna dimensiones, fit, área segura, interacción y todas las rutas visibles
+  de centrado; los perfiles legacy conservan el fallback 1920×1080.
+- Presets planos y dimensiones custom 32..16384 persisten mediante
+  `document/layout-viewport`. La escena muestra límites propios sobre un stage
+  neutral; el fondo seleccionado pertenece a la escena y el panel es responsive.
+- Dos reviews detectaron estados engañosos del selector ante un preset rechazado
+  y ante volver al preset vigente desde un draft custom. Se corrigieron en
+  `13fe677` y `1aa1ec7`; selector, drafts, cabecera, escena y documento quedan
+  sincronizados sin hacer optimista un cambio que recoverability pueda rechazar.
+- Evidencia final independiente: focal 9 archivos 55/55, regresiones de geometría
+  y preview imperativa 67/67, build y diff-check PASS. Spec review PASS y quality
+  review Ready, cero Critical/Important. Lint conserva únicamente 4 errores y 1
+  warning heredados en líneas anteriores a ISA-326.
+- Observación aceptada: elegir explícitamente 1920×1080 en un perfil legacy puede
+  materializar `layoutViewport` y marcar dirty; es coherente con persistir la
+  superficie seleccionada según ADR 0092.

@@ -1,3 +1,52 @@
+Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
+- La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E
+  real sanitizado LMU 1.4 recorre Driver/Fusion/BatchMapper/Reducer/Derive con
+  una sola apertura y conserva Fuel exacto `83.80992715710434/115 L`, observed
+  y fresh, en el vehículo activo.
+- El ledger test-only v1 fija 18 keys ordenadas y byte-exactas. Fuel, pit y
+  progreso son supported. Virtual Energy, identidad/compound/wear/corner de
+  tyres y weather son unsupported y continúan missing. Los guards fijan
+  allowlists exactas de Observation/core/Strategy v1, catálogo y capabilities,
+  y contrastan supported contra layout, AuthorityMatrix v4, catálogo, TTLs y
+  Derive sin usar el golden como único oráculo.
+- Toda fila player-only/per-vehicle declara identidad
+  `lmu-slot-N-generation-G`: G empieza en 1, incrementa tras
+  desaparición/reaparición en la sesión y vuelve a 1 con el reset de sesión;
+  REST no crea identidad. Un test conductual recorre esas tres transiciones.
+- El smoke LMU fresco pasa con build `1.4.0.0` supported, runtime live,
+  `PlayerPresent=false` y fingerprint
+  `active-grid-bijective;telemetry=not-required-no-player`; no persistió raw ni
+  PII. Ese smoke solo demuestra Fuel/lap number player-only correctamente
+  missing; pit/progreso se sostienen en fixtures y tests, no en el menú.
+- TDD: RED por golden ausente y RED posterior por identidad/generación
+  incompleta observados; GREEN focal x20 y Telemetry Core completo.
+  `pnpm --dir frontend install --frozen-lockfile` terminó con exit 0 sin
+  cambios tracked y `pnpm --dir frontend build` pasó. La primera ejecución de
+  `go test -count=1 ./...` falló solo en
+  `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` por `recording commit
+  exceeded budget`; el test pasó 10/10 aislado y una segunda ejecución global
+  pasó completa. El flake queda visible y no se atribuye a ISA-160, cuyo delta
+  no toca recording/coordinator. `gofmt` y diff-check pasan;
+  `go vet ./internal/telemetry/...` conserva exactamente los dos avisos
+  heredados `unsafe.Pointer`.
+- El rebase limpio sobre `origin/nightly@d195653` reescribió la implementación
+  como `f26d8e3`. Los cambios nuevos de `nightly` fueron Discord/changelog y el
+  manifest de release; no solaparon ISA-160. El PR #202 está OPEN y ready for
+  review hacia `nightly`. Linear ISA-160 contiene el comentario, la evidencia y el
+  enlace al PR, y sigue `In Progress` porque el equipo no ofrece estado
+  `In Review`. El último Branch channel del HEAD publicado anterior, run
+  `31442025096`, pasó completo (policy 9 s, bloqueantes 8 min 53 s) y
+  GitGuardian también pasó. Se conservan como evidencia histórica; no acreditan
+  por sí mismos el HEAD rebasado. El check requerido del PR debe
+  corresponder siempre al HEAD exacto publicado, y `f26d8e3` no se declara con
+  CI hasta ejecutarlo. El warning no bloqueante de Node 20 deprecado/checkout
+  forzado a Node 24 sigue fuera de ISA-160. Isaac autorizó la aceptación y la
+  promoción, pero el merge todavía no ocurrió; tampoco hubo release. Siguiente
+  gate: CI del HEAD publicado exacto y ejecución controlada de la autorización.
+  Después, ISA-161 puede
+  publicar solo Fuel + sesión/progreso/pit de forma aditiva/optional con tests
+  old/new, transporte, resync, replay y soak. VE/tyres/weather siguen fuera.
+
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;
   no implica `master`, release Stable pública ni completitud de toda la suite.

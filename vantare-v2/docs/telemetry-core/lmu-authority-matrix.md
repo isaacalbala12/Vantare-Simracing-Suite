@@ -1,7 +1,17 @@
 # LMU — matriz de autoridad y fusión por campo
 
-Estado: ISA-129 / TC-07A.1, microcorte D4A implementado y pendiente de
-revisión independiente. Matriz ejecutable `v3`.
+Estado histórico: ISA-129 / TC-07A.1, microcorte D4A. Este documento conserva
+la matriz ejecutable `v3` auditada en ese corte.
+
+Nota vigente ISA-160 / TC-10A (2026-08-11): el runtime productivo actual es
+`MatrixVersion=4`, definido por `authorityMatrixV4` y expuesto mediante
+`AuthorityMatrix()` en `internal/telemetry/drivers/lmu/fusion.go`. V4 conserva
+las 33 reglas v3 siguientes y añade al final las tres señales SHM-only
+`spatial.position`, `spatial.orientation` y `spatial.local_velocity`, todas con
+TTL de 500 ms. La fuente de verdad ejecutable es `fusion.go`, protegida por
+`fusion_test.go` y por los contrastes no circulares de
+`strategy_signal_audit_test.go`. Esta nota no reinterpreta la evidencia
+histórica D4A ni amplía las señales Strategy admitidas.
 
 ## Contrato
 

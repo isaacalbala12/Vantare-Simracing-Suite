@@ -1,0 +1,185 @@
+{
+  "schema": "vantare.strategy-live-signal-audit.v1",
+  "signals": [
+    {
+      "key": "energy.fuel_amount",
+      "capability": "supported",
+      "source": "LMU_Data telemetry row +524",
+      "unit": "liters",
+      "authority": "Shared Memory only",
+      "freshness": "500ms; observed fresh/stale/invalid/missing",
+      "identity": "player vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset",
+      "evidence": "lmu-1.4-track-fixture.bin through Driver/Fusion/BatchMapper/Reducer/Derive"
+    },
+    {
+      "key": "energy.fuel_capacity",
+      "capability": "supported",
+      "source": "LMU_Data telemetry row +608",
+      "unit": "liters",
+      "authority": "Shared Memory only",
+      "freshness": "500ms; observed fresh/stale/invalid/missing",
+      "identity": "player vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset",
+      "evidence": "lmu-1.4-track-fixture.bin through Driver/Fusion/BatchMapper/Reducer/Derive"
+    },
+    {
+      "key": "energy.virtual_energy",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "FuelMult is a session fuel multiplier, not Virtual Energy"
+    },
+    {
+      "key": "tyres.identity",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "legacy Engineer tyre fields do not identify physical tyres"
+    },
+    {
+      "key": "tyres.compound",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "no canonical LMU compound source is admitted"
+    },
+    {
+      "key": "tyres.wear",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "legacy Engineer wheel placeholders have unverified offsets and scale"
+    },
+    {
+      "key": "tyres.corner",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "wheels.Corner locates brake-temperature measurements; it is not tyre identity"
+    },
+    {
+      "key": "weather.ambient_temperature",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "catalog signal remains LedgerExistingUnproduced"
+    },
+    {
+      "key": "weather.track_temperature",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "historical sidecar bytes have no admitted source and unit contract"
+    },
+    {
+      "key": "weather.rain_intensity",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "historical Pit Manager weather is not canonical evidence"
+    },
+    {
+      "key": "weather.track_wetness",
+      "capability": "unsupported",
+      "source": "none-admitted",
+      "unit": "none-admitted",
+      "authority": "none",
+      "freshness": "missing",
+      "identity": "none",
+      "evidence": "no canonical LMU track-wetness source is admitted"
+    },
+    {
+      "key": "pit.in_pit",
+      "capability": "supported",
+      "source": "LMU_Data scoring row +198",
+      "unit": "boolean",
+      "authority": "Shared Memory only",
+      "freshness": "500ms grid TTL; observed fresh/stale/invalid/missing",
+      "identity": "vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset",
+      "evidence": "menu_track_pit_disconnect_v1.golden.json real false/true/false sequence"
+    },
+    {
+      "key": "pit.stop_count",
+      "capability": "supported",
+      "source": "LMU_Data scoring row +192; REST standings player overlap",
+      "unit": "count",
+      "authority": "Shared Memory preferred; REST fallback only for SHM-identified player",
+      "freshness": "Shared Memory 500ms; REST 2s; observed fresh/stale/invalid/missing",
+      "identity": "vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset; REST cannot create identity",
+      "evidence": "layout_test.go and fusion_test.go authority cases"
+    },
+    {
+      "key": "session.lap_number",
+      "capability": "supported",
+      "source": "LMU_Data telemetry row +20",
+      "unit": "count",
+      "authority": "Shared Memory only",
+      "freshness": "500ms; observed fresh/stale/invalid/missing",
+      "identity": "player vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset",
+      "evidence": "lmu-1.4-self-delta-trace-v1.jsonl and layout_test.go"
+    },
+    {
+      "key": "standings.completed_laps",
+      "capability": "supported",
+      "source": "LMU_Data scoring row +100; REST standings player overlap",
+      "unit": "count",
+      "authority": "Shared Memory preferred; REST fallback only for SHM-identified player",
+      "freshness": "Shared Memory 500ms; REST 2s; observed fresh/stale/invalid/missing",
+      "identity": "vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset; REST cannot create identity",
+      "evidence": "layout_test.go and fusion_test.go authority cases"
+    },
+    {
+      "key": "standings.lap_distance",
+      "capability": "supported",
+      "source": "LMU_Data scoring row +104",
+      "unit": "meters",
+      "authority": "Shared Memory only",
+      "freshness": "500ms grid TTL; observed fresh/stale/invalid/missing",
+      "identity": "vehicle lmu-slot-N-generation-G; G increments after disappearance/reappearance and resets to 1 on session reset",
+      "evidence": "lmu-1.4-self-delta-trace-v1.jsonl and layout_test.go"
+    },
+    {
+      "key": "session.maximum_laps",
+      "capability": "supported",
+      "source": "LMU_Data session +1716",
+      "unit": "count",
+      "authority": "Shared Memory only",
+      "freshness": "500ms; observed fresh/stale/invalid/missing",
+      "identity": "canonical event and session identity",
+      "evidence": "layout_test.go and derive lap-limited session regression"
+    },
+    {
+      "key": "session.remaining_time",
+      "capability": "supported",
+      "source": "derived from session.source_time (+1700) and session.end_time (+1708)",
+      "unit": "seconds",
+      "authority": "canonical Derive pipeline only; no raw remaining-time field",
+      "freshness": "fresh/stale from exact input quality; otherwise missing or invalid",
+      "identity": "canonical event and session identity",
+      "evidence": "derive/gaps_test.go and pipeline_advanced_test.go"
+    }
+  ]
+}

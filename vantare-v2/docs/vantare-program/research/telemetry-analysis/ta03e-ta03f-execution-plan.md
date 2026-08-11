@@ -124,11 +124,18 @@ funcional y de packaging, no visual.
   verificacion y handshake smoke PASS en el host Windows x64 actual.
 - Harness PowerShell cubre path/inventario portable, runtime ausente,
   manipulado o con extra, ZIP ya creado manipulado, parametros reproducibles,
-  scopes NSIS y contrato estatico de rollback/uninstall. NSIS 3.x real compila
-  los scopes `user` y `machine` con los cinco `File` exactos.
-- Upgrade renombra el runtime anterior completo a `duckdb-v1.bak`, extrae una
-  unidad nueva vacia y restaura tanto runtime como exe ante error de backup,
-  extraccion o verificacion. No existe mezcla de miembros entre versiones.
+  scopes NSIS, rollback/uninstall y un modelo conductual con estados previos
+  ambos/solo exe/solo runtime/ninguno, interrupciones antes/despues del commit,
+  fallos de cleanup y reentrada. NSIS 3.x real compila los scopes `user` y
+  `machine` con los cinco `File` exactos.
+- Upgrade persiste `pending` con el inventario anterior antes de mutar y
+  `committed` tras verificar el par nuevo. Antes del commit restaura exactamente
+  presencia/ausencia anterior; despues del commit conserva el par nuevo y una
+  reentrada solo reintenta limpieza. Los fallos de Rename/Delete/RMDir conservan
+  estado recuperable. No existe mezcla de miembros entre versiones.
+- Los flags `CGO_CFLAGS`, `CGO_CXXFLAGS` y `CGO_LDFLAGS` citan el argumento
+  completo para el parser de Go/GCC. Una regresion compila C/C++ real y el build
+  reproducible completo pasa con directorios temporales que contienen espacios.
 - El updater no cambia: descarga y ejecuta este mismo installer. Checksums
   oficiales siguen cubriendo installer, ZIP y exe; el manifest cubre la unidad
   interna.

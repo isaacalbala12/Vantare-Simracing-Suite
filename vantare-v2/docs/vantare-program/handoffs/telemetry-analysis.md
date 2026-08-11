@@ -47,10 +47,14 @@ TA-03F tiene una candidata local verificada sobre
 como unidad atómica el runtime TA-03C en
 `runtime/telemetry/duckdb-v1`; el updater hereda el cambio porque consume el
 installer. El pipeline falla antes del artefacto si falta un miembro, cambia
-un hash/manifest o aparece un extra. NSIS respalda y restaura exe + runtime
-completo y compila en scopes user/machine. El runtime se reconstruyó con los
-hashes confiados, smoke x64 pasó y los artefactos locales pasaron version/layout
-verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
+un hash/manifest o aparece un extra. Tras el spec review, NSIS usa marcadores
+`pending`/`committed`: rollback reproduce la presencia o ausencia previa de exe
+y runtime, mientras una reentrada post-commit solo limpia backups y conserva el
+par nuevo. El modelo conductual cubre cuatro estados previos, interrupciones y
+fallos de cleanup; NSIS compila en scopes user/machine. Los flags CGO se validan
+con compilacion C/C++ real en paths con espacios. El runtime se reconstruyó con
+los hashes confiados, smoke x64 pasó y los artefactos locales pasaron
+version/layout verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
 Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
 merge, promoción ni release.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
@@ -217,11 +221,14 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
 
-2026-08-11, TA-03F candidata local: runtime TA-03C confiado integrado sin UI en
+2026-08-11, TA-03F candidata local tras spec review: runtime TA-03C confiado integrado sin UI en
 portable e installer bajo `runtime/telemetry/duckdb-v1`. Build reproducible,
 manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
-scope user/machine y verify local PASS. Upgrade/rollback mueve exe y runtime
-como una transacción; updater conserva su protocolo y consume el installer.
+scope user/machine y verify local PASS. Upgrade/rollback persiste estados
+pending/committed, cubre estados previos parciales y no restaura backups tras
+commit; un harness conductual prueba interrupciones, cleanup fallido y reentrada.
+El build CGO real pasa con paths temporales con espacios. Updater conserva su
+protocolo y consume el installer.
 Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el
 gate Windows 10 si aplica. Sin push, PR, CI remoto, merge, promoción o release.
 

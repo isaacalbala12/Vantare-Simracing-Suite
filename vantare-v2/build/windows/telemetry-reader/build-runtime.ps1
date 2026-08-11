@@ -15,6 +15,7 @@ $helperModule = Join-Path $repoRoot "tools\vantare-telemetry-reader"
 $componentsPath = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\spikes\ta03b\sbom-components.json"
 $approvedSBOM = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\evidence\duckdb-1.5.5-windows-amd64.spdx.json"
 $sbomTools = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\spikes\ta03b\sbom-tools.ps1"
+$cgoFlags = Join-Path $PSScriptRoot "cgo-flags.ps1"
 $trustSource = Join-Path $repoRoot "internal\telemetryanalysis\duckdbadapter\runtime_trust_generated.go"
 $components = Get-Content -Raw -LiteralPath $componentsPath | ConvertFrom-Json
 $output = [System.IO.Path]::GetFullPath($OutputDirectory)
@@ -22,7 +23,8 @@ if ((Test-Path -LiteralPath $output) -and @(Get-ChildItem -Force -LiteralPath $o
     throw "OutputDirectory must be absent or empty so the runtime cannot retain unmanifested files: $output"
 }
 . $sbomTools
-$work = Join-Path $env:TEMP ("vantare-telemetry-reader-build-" + [guid]::NewGuid().ToString("N"))
+. $cgoFlags
+$work = Join-Path $env:TEMP ("vantare telemetry reader build " + [guid]::NewGuid().ToString("N"))
 $extract = Join-Path $work "duckdb"
 $buildA = Join-Path $work "build-a\vantare-telemetry-reader.exe"
 $buildB = Join-Path $work "build-b\vantare-telemetry-reader.exe"
@@ -69,12 +71,14 @@ if (-not (Test-Path (Join-Path $GccBin "gcc.exe"))) {
 $oldPath = $env:PATH
 $oldCGO = $env:CGO_ENABLED
 $oldFlags = $env:CGO_CFLAGS
+$oldCXXFlags = $env:CGO_CXXFLAGS
 $oldLinkerFlags = $env:CGO_LDFLAGS
 try {
     $env:PATH = "$GccBin;$extract;$oldPath"
     $env:CGO_ENABLED = "1"
-    $env:CGO_CFLAGS = "-I$extract"
-    $env:CGO_LDFLAGS = "-L$extract -lduckdb"
+    $env:CGO_CFLAGS = New-CgoIncludeFlags -Directory $extract
+    $env:CGO_CXXFLAGS = New-CgoIncludeFlags -Directory $extract
+    $env:CGO_LDFLAGS = New-CgoLinkerFlags -Directory $extract -LibraryName "duckdb"
     Push-Location $helperModule
     try {
         go build -trimpath -buildvcs=false -tags duckdb_use_lib -ldflags "-s -w -buildid=" -o $buildA .
@@ -88,6 +92,7 @@ try {
     $env:PATH = $oldPath
     $env:CGO_ENABLED = $oldCGO
     $env:CGO_CFLAGS = $oldFlags
+    $env:CGO_CXXFLAGS = $oldCXXFlags
     $env:CGO_LDFLAGS = $oldLinkerFlags
 }
 if ((Get-Sha256 $buildA) -ne (Get-Sha256 $buildB)) {

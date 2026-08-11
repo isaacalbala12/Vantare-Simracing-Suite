@@ -1,4 +1,4 @@
-Nota TA-03F (2026-08-11, candidata local verificada):
+Nota TA-03F (2026-08-11, candidata local verificada tras spec review):
 - La rama `work/ta03f-windows-runtime-packaging`, apilada exactamente sobre
   TA-03E `559c3753a82071398ef1af3fbcc2d30c4dd3fe52`, integra la unidad confiada
   DuckDB de TA-03C en installer y portable bajo la ruta productiva exacta
@@ -6,13 +6,17 @@ Nota TA-03F (2026-08-11, candidata local verificada):
   installer y no cambia de protocolo.
 - Portable y `release:verify` exigen manifest trust, hashes y el inventario
   exacto de cinco miembros; ausencia, tamper o extras fallan antes de un
-  artefacto oficial. NSIS respalda/recupera exe y runtime completo, elimina la
-  unidad al desinstalar y compila en scopes user/machine.
+  artefacto oficial. NSIS registra `pending` con el inventario anterior y
+  `committed` antes de limpiar backups: una reentrada restaura siempre el par
+  anterior o conserva siempre el par nuevo, incluso con estado previo parcial
+  o fallo de cleanup. Elimina la unidad al desinstalar y compila en scopes
+  user/machine.
 - Evidencia local: harness PowerShell, parser PS5, build reproducible con
-  PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0, smoke Windows x64, build principal,
-  portable real, NSIS real en ambos scopes, checksums/version/layout verify y
-  `git diff --check` pasan. El ZIP DuckDB oficial se descargó porque no había
-  caché; el pipeline acepta `DUCKDB_ARCHIVE_PATH` para reutilizarlo.
+  PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0 y rutas temporales con espacios,
+  modelo transaccional de cuatro estados previos, smoke Windows x64, build
+  principal, portable real, NSIS real en ambos scopes y verify pasan. El ZIP
+  DuckDB oficial se descargó porque no había caché; el pipeline acepta
+  `DUCKDB_ARCHIVE_PATH` para reutilizarlo.
 - Pendiente: smoke manual de install/upgrade/rollback/uninstall en Windows 11
   x64 y Windows 10 x64 si continúa soportado, y revisión humana. No hay
   Linear, push, PR, CI remoto, merge, promoción, release ni publicación.

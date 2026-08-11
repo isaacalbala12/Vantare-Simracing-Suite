@@ -56,10 +56,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $nsiPath 'project.nsi'))) {
 }
 
 # Match the call signature used by create:nsis:installer, but invoke the real
-# binary directly. The WAILS_INSTALL_SCOPE flag is intentionally NOT passed
-# from the CLI because project.nsi already !define's it (line 33) and the real
-# NSIS 3.x rejects duplicate !define. project.nsi also defines the execution
-# level, which is fine with !ifndef guards in wails_tools.nsh.
+# binary directly. Scope and execution level are explicit CLI defines;
+# project.nsi only supplies guarded defaults for manual builds.
 $argFlag = $Arch.ToUpperInvariant()
 $exePath = Join-Path (Join-Path $RepoRoot $BinDir) "$AppName.exe"
 if (-not (Test-Path -LiteralPath $exePath)) {

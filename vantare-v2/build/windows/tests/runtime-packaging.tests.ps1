@@ -185,13 +185,21 @@ try {
             "NSIS runtime destination is not the exact ProductionTrust path."
         Assert-True ($nsi -match 'Rename\s+"\$\{TELEMETRY_RUNTIME_DIR\}"\s+"\$\{TELEMETRY_RUNTIME_BACKUP\}"') `
             "NSIS does not back up the installed runtime as one directory."
-        Assert-True ($nsi -match 'IfFileExists\s+"\$\{TELEMETRY_RUNTIME_DIR\}\\\*\.\*"\s+0\s+extract_files') `
-            "NSIS only backs up a runtime with a valid manifest and could mix an incomplete old unit."
-        Assert-True ($nsi -match 'IfFileExists\s+"\$\{TELEMETRY_RUNTIME_BACKUP\}\\\*\.\*"') `
+        Assert-True ($nsi -match 'IfFileExists\s+"\$\{TELEMETRY_RUNTIME_DIR\}"\s+0\s+inventory_done') `
+            "NSIS does not inventory an incomplete old runtime directory."
+        Assert-True ($nsi -match 'IfFileExists\s+"\$\{TELEMETRY_RUNTIME_BACKUP\}"\s+rollback_restore_runtime') `
             "NSIS cannot restore an incomplete previous runtime as the same unit."
-        Assert-True ($nsi -match 'Function\s+RestoreRuntimeBackup') "NSIS has no runtime rollback function."
+        Assert-True ($nsi -match 'Function\s+RollbackPendingTransaction') "NSIS has no pending transaction rollback function."
         Assert-True ($nsi -match 'RMDir\s+/r\s+"\$\{TELEMETRY_RUNTIME_DIR\}"') `
             "NSIS rollback/uninstall does not remove the new runtime as one directory."
+    }
+
+    Invoke-Case "NSIS transaction model preserves an old or new atomic pair" {
+        & (Join-Path $PSScriptRoot "nsis-transaction-model.tests.ps1")
+    }
+
+    Invoke-Case "Go and GCC parse CGO paths containing spaces" {
+        & (Join-Path $PSScriptRoot "cgo-flags.tests.ps1")
     }
 
     Invoke-Case "packaging surfaces accept an explicit DuckDB archive and runtime path" {

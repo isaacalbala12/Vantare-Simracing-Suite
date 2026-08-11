@@ -124,32 +124,31 @@ export function ObsOverlayApp() {
     />
   );
 
-  const widgetLayer = (
-    <>
-      {runtime}
-      {reminder && (
-        <OverlayCalendarReminderBanner
-          reminder={reminder}
-          onClose={() => setReminder(null)}
-          className="absolute top-4 right-4 z-50"
-        />
-      )}
-    </>
-  );
+  const reminderBanner = reminder ? (
+    <OverlayCalendarReminderBanner
+      reminder={reminder}
+      onClose={() => setReminder(null)}
+      className="absolute top-4 right-4 z-50"
+    />
+  ) : null;
 
   if (studioPreview) {
     return (
-      <ObsOverlayStudioPreview layoutViewport={resolveLayoutViewport(document)}>
-        <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
-          {widgetLayer}
-        </div>
-      </ObsOverlayStudioPreview>
+      <div className="relative w-full h-full overflow-hidden">
+        <ObsOverlayStudioPreview layoutViewport={resolveLayoutViewport(document)}>
+          <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
+            {runtime}
+          </div>
+        </ObsOverlayStudioPreview>
+        {reminderBanner}
+      </div>
     );
   }
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
-      {widgetLayer}
+      {runtime}
+      {reminderBanner}
     </div>
   );
 }

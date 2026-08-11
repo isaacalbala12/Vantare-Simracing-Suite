@@ -282,6 +282,58 @@ describe("ObsOverlayApp", () => {
     expect(frame.style.top).toBe("87px");
   });
 
+  it("keeps calendar reminders in output space outside the transformed document preview", async () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?profile=obs-preview-reminder.json&studioPreview=1",
+    });
+    previewOutput = { width: 1600, height: 900 };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(buildApiResponse({
+          schemaVersion: 3,
+          id: "obs-preview-reminder",
+          name: "OBS Preview Reminder",
+          displayMode: "streaming",
+          monitorIndex: 0,
+          layoutViewport: { width: 1000, height: 1000 },
+          layouts: { general: { type: "general", widgets: [] } },
+        })),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+    dispatch("calendar:reminder", {
+      eventId: "evt-preview",
+      title: "Preview reminder",
+      track: "Spa-Francorchamps",
+      minutesLeft: 15,
+      startTime: "2026-07-02T20:00:00+02:00",
+      registrationUrl: "",
+    });
+    await flush();
+
+    const preview = screen.getByTestId("obs-studio-preview") as HTMLElement;
+    const previewScene = screen.getByTestId("obs-studio-preview-scene") as HTMLElement;
+    const runtime = screen.getByTestId("runtime-overlay-surface") as HTMLElement;
+    const banner = screen.getByTestId("overlay-calendar-reminder-banner") as HTMLElement;
+    expect(previewScene.dataset.scale).toBe("0.9");
+    expect(previewScene.dataset.offsetX).toBe("350");
+    expect(previewScene.contains(runtime)).toBe(true);
+    expect(previewScene.contains(banner)).toBe(false);
+    expect(preview.parentElement).toBe(banner.parentElement);
+    expect(banner.className).toContain("top-4");
+    expect(banner.className).toContain("right-4");
+    expect(banner.style.transform).toBe("");
+
+    fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
+    await flush();
+    expect(screen.queryByTestId("overlay-calendar-reminder-banner")).toBeNull();
+  });
+
   it("uses the real output in streaming mode and ignores a shrink-wrap API origin", async () => {
     vi.stubGlobal("location", {
       ...window.location,

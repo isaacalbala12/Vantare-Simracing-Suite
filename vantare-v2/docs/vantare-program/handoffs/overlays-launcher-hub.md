@@ -473,7 +473,7 @@ Ledger vivo:
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
 | 2 | Superficie editable en Studio | Completada | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; 2C `edf3359`/`13fe677`/`1aa1ec7`; dobles reviews PASS | Task 3 |
-| 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
+| 3 | Paridad Desktop/OBS | En ejecución; 3A PASS | 3A `ecda9ee`/`c8f00e5`; doble review PASS | Microcorte 3B |
 | 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
 
@@ -557,3 +557,22 @@ Ejecución Task 3:
   documental y eliminar sus imports de constantes Studio, sin doble escala.
 - Los microcortes son secuenciales y cada uno exige spec review y quality review
   antes de avanzar; sus write sets no se solapan.
+
+Evidencia microcorte 3A:
+
+- `RuntimeOverlaySurface` mide la caja CSS no transformada y aplica una única
+  transformación `contain` a una escena lógica. Desktop y OBS comparten la misma
+  implementación; frames y `layoutOrigin` permanecen en espacio lógico.
+- La escena espera una medida positiva, soporta resize fraccional, legacy
+  1920×1080, offsets X/Y y limpia observer/listener. Los subtítulos viven dentro
+  de la misma escena; ningún renderer ni `RuntimeWidgetFrame` fue modificado.
+- Spec review detectó dos Important antes de 3B: `getBoundingClientRect` podía
+  medir un ancestro ya escalado y causar doble escala, y `overflow: visible`
+  permitía que widgets parciales contaminaran bandas transparentes. Corregidos
+  en `c8f00e5` usando `contentBoxSize/contentRect` o fallback `clientWidth/Height`,
+  y clipping en el límite documental.
+- Evidencia final: focal raíz 5 archivos 39/39, build, ESLint focal y diff-check
+  PASS. Spec review PASS y quality review Ready, cero Critical/Important.
+- Gate 3B: la API OBS todavía entrega `layoutOrigin` shrink-wrap mientras Desktop
+  usa cero. 3B debe normalizar esa diferencia y demostrar paridad end-to-end;
+  no basta con la paridad del componente bajo inputs iguales.

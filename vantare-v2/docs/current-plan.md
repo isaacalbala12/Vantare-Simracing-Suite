@@ -5275,3 +5275,8 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   en Desktop y OBS y hacer que la preview OBS consuma la superficie documental.
   Se ejecuta secuencialmente como 3A (superficie runtime compartida) y 3B
   (preview/app OBS), con doble review entre microcortes.
+- **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
+  transformación, medida CSS no transformada, clipping documental, legacy,
+  offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
+  diff-check PASS; spec PASS y quality Ready. 3B debe normalizar el origin
+  shrink-wrap que aún entrega la API OBS y probar la integración real.

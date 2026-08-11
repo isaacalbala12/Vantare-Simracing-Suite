@@ -35,8 +35,13 @@ research quedan fuera de su context pack.
   `90a0905e0f7198623c80c2b6f8f3c63945abae82`.
 - PR draft #196. Último HEAD publicado conocido: `61a5c99`; sus checks estaban
   verdes. Los commits locales posteriores no tienen push ni CI propios.
-- Commit documental de Corte B: `f5b4881` local, sin push ni CI propios. El
-  reporte de cierre identifica además el HEAD local que contiene este estado.
+- Cierre funcional documental de Corte B: rango local
+  `90a0905e0f7198623c80c2b6f8f3c63945abae82..ae9a96ee7695e9ba1877e6c20d7aa1c75061506e`.
+- Corte A superó spec y quality. En Corte B se ejecutaron reviews técnicas y
+  adversariales; sus findings están corregidos hasta `ae9a96e`, pero la
+  re-review final sigue pendiente.
+- El commit B que contiene esta actualización solo registra evidencia y estado;
+  su SHA se reporta al cierre y no forma parte del rango funcional anterior.
 - Nivel real: rama de issue. No está integrada en Nightly, Testers o Master y
   no existe release de este corte.
 
@@ -89,7 +94,7 @@ research quedan fuera de su context pack.
 ## Issues y bloqueos
 
 - ISA-313 está activa y prepara la entrada documental; Fase 5 sigue pendiente
-  de revisión y aceptación humana y no cambia producto.
+  de re-review y aceptación humana, no cambia producto y S1 no ha comenzado.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; no equivalen todavía a la issue ejecutable de S1.
 - ISA-314 conserva separado el bug de promesa falsa de guardado.

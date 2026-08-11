@@ -70,13 +70,14 @@
   vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
   aceptacion LMU extremo a extremo no estan demostrados.
 - **Issue/fase activa:** ISA-313 / ENG-R01 esta `In Progress`, **Fase 5 —
-  arquitectura documental Engineer para subagentes**. Corte A y Corte B estan
-  completos localmente y no modifican producto.
+  arquitectura documental Engineer para subagentes**. Corte A supero spec y
+  quality; findings tecnicos/adversariales de Corte B estan corregidos hasta
+  `ae9a96e`, con re-review final y aceptacion humana aun pendientes.
 - **Rama/PR/CI:** rama
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`, PR
-  draft #196. El HEAD publicado `61a5c99` tiene checks verdes; el merge local de
-  `nightly@8880a88` y los cortes documentales tienen commits locales, pero no
-  push ni CI propios.
+  draft #196. El HEAD publicado `61a5c99` tiene checks verdes. El cierre
+  funcional local de Corte B es `90a0905..ae9a96e`; el commit B solo registra
+  evidencia. No hay push ni CI propios para estos commits locales.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` y bloqueadas
   por ISA-313. S1 no comienza antes de aceptar la Fase 5 y asignar issue/rama
   propias. ISA-314 conserva el bug de guardado separado.

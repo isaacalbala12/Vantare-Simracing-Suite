@@ -49,7 +49,7 @@ permiso de uso; y confirmación de ausencia de datos personales o secretos. La
 aceptación de IA valida el manifiesto antes de incorporar el artefacto al corpus
 acumulativo; un manifiesto ausente o inválido impide promoverlo.
 
-Los resultados y gates de S1-S5 son obligatorios y no renunciables para Beta:
+Los resultados y gates de S1-S5 y S7 son obligatorios y no renunciables para Beta:
 `no disponible` no permite cerrarlos. Solo un peligro individual de S6 puede
 quedar `no disponible` cuando telemetría y capability demuestren su ausencia;
 requiere evidencia propia, degradación visible y condición de reapertura. El

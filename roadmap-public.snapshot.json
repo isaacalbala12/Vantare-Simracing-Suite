@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-10T23:41:36Z",
+  "generatedAt": "2026-08-11T12:13:23Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -188,17 +188,11 @@
             "it": "Fonte canonica della telemetria."
           },
           "progress": {
-            "done": 44,
+            "done": 45,
             "total": 47,
-            "percent": 94
+            "percent": 96
           },
           "tasks": [
-            {
-              "id": "task_29bb95734264dbf20964",
-              "title": "Auditoría de señales live para Strategy",
-              "status": "in-progress",
-              "updatedAt": "2026-08-10T23:32:38.658Z"
-            },
             {
               "id": "task_b7b74ee6776e50f75c0b",
               "title": "Bug — TestServiceEmitRateCapped es inestable bajo carga global",
@@ -252,6 +246,12 @@
               "title": "Auditoría de capabilities por monitor Engineer",
               "status": "done",
               "updatedAt": "2026-08-03T00:27:09.056Z"
+            },
+            {
+              "id": "task_29bb95734264dbf20964",
+              "title": "Auditoría de señales live para Strategy",
+              "status": "done",
+              "updatedAt": "2026-08-11T12:13:12.663Z"
             },
             {
               "id": "task_7fe102567d27818d2f62",

@@ -1,3 +1,4 @@
+import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import { buildMockTelemetry } from "../../core/mock-scenarios";
 import type {
   MockDataState,
@@ -98,6 +99,9 @@ export type AuthoringFixtureScenario = {
   variant?: HarnessVariant;
   designId?: CrystalHarnessDesignId;
   replayFrame?: number;
+  /** Named animation scene from the catalog; takes precedence over variant. */
+  sceneId?: string;
+  sceneFrame?: number;
 };
 
 function buildStandingsStressScoring(): Record<string, unknown>[] {
@@ -210,8 +214,7 @@ function replayOverrides(frame: number): Record<string, ReplayOverride> {
   return {};
 }
 
-export function buildStandingsReplayScoring(frame: number): Record<string, unknown>[] {
-  const overrides = replayOverrides(frame);
+function applyCarOverrides(overrides: Record<string, ReplayOverride>): Record<string, unknown>[] {
   return buildStandingsMulticlassScoring()
     .filter((row) => !overrides[String(row.driverName)]?.absent)
     .map((row) => {
@@ -222,6 +225,19 @@ export function buildStandingsReplayScoring(frame: number): Record<string, unkno
       const { absent: _absent, ...rest } = patch;
       return { ...row, ...rest };
     });
+}
+
+export function buildStandingsReplayScoring(frame: number): Record<string, unknown>[] {
+  return applyCarOverrides(replayOverrides(frame));
+}
+
+/** Field for one frame of a named animation scene. */
+export function buildSceneScoring(sceneId: string, frame: number): Record<string, unknown>[] {
+  const scene = getAnimationScene(sceneId);
+  if (!scene) {
+    return buildStandingsMulticlassScoring();
+  }
+  return applyCarOverrides(sceneFrameAt(scene, frame).cars ?? {});
 }
 
 /**
@@ -388,6 +404,7 @@ export function buildHarnessWidget(
   systemId: DesignSystemId,
   variant: HarnessVariant = "default",
   designId?: CrystalHarnessDesignId,
+  sceneId?: string,
 ): WidgetInstanceV3 {
   const definition = widgetTypeRegistry.get(widgetType);
   let widget = definition.createDefault(`${widgetType}-harness`);
@@ -409,7 +426,13 @@ export function buildHarnessWidget(
   if (widgetType === "multiclass-relative") {
     widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
   }
-  if (widgetType === "standings" && (variant === "standings-multiclass" || variant === "standings-replay")) {
+  // Scenes run on the multiclass field, so they need the same widget shape the
+  // multiclass variant gets: every class visible and the best-lap column on.
+  const sceneNeedsMulticlass = sceneId !== undefined && getAnimationScene(sceneId)?.widget === "standings";
+  if (
+    widgetType === "standings" &&
+    (sceneNeedsMulticlass || variant === "standings-multiclass" || variant === "standings-replay")
+  ) {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) =>
@@ -448,6 +471,8 @@ export function buildHarnessTelemetry(input: {
   variant?: HarnessVariant;
   designId?: CrystalHarnessDesignId;
   replayFrame?: number;
+  sceneId?: string;
+  sceneFrame?: number;
 }): TelemetrySnapshot {
   const variant = input.variant ?? "default";
   const base = buildMockTelemetry({
@@ -548,6 +573,21 @@ export function buildHarnessTelemetry(input: {
     return { ...readyBase, scoring: buildRelativeMulticlassScoring() };
   }
 
+  // A named scene owns the whole frame: its field, and its session clock when
+  // the animation is about the clock rather than the field.
+  const scene = input.sceneId ? getAnimationScene(input.sceneId) : undefined;
+  if (scene && scene.widget === input.widget) {
+    const frame = sceneFrameAt(scene, input.sceneFrame ?? 0);
+    return {
+      ...readyBase,
+      session: {
+        ...readyBase.session,
+        remainingSeconds: frame.remainingSeconds ?? readyBase.session.remainingSeconds,
+      },
+      scoring: buildSceneScoring(scene.id, input.sceneFrame ?? 0),
+    };
+  }
+
   if (input.widget === "standings" && variant === "standings-replay") {
     return {
       ...readyBase,
@@ -630,7 +670,13 @@ export function seedHarnessInputHistory(widget: WidgetInstanceV3, snapshot: Tele
  * consumed by fixture generation because renderers only receive widget+snapshot.
  */
 export function buildAuthoringFixtureWidget(scenario: AuthoringFixtureScenario): WidgetInstanceV3 {
-  return buildHarnessWidget(scenario.widget, scenario.system, scenario.variant, scenario.designId);
+  return buildHarnessWidget(
+    scenario.widget,
+    scenario.system,
+    scenario.variant,
+    scenario.designId,
+    scenario.sceneId,
+  );
 }
 
 export function buildAuthoringFixtureTelemetry(scenario: AuthoringFixtureScenario): TelemetrySnapshot {
@@ -643,6 +689,8 @@ export function buildAuthoringFixtureTelemetry(scenario: AuthoringFixtureScenari
     variant: scenario.variant,
     designId: scenario.designId,
     replayFrame: scenario.replayFrame,
+    sceneId: scenario.sceneId,
+    sceneFrame: scenario.sceneFrame,
   });
 }
 

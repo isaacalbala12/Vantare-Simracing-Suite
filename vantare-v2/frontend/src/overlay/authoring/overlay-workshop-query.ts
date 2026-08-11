@@ -2,6 +2,7 @@ import type { DesignSystemId, WidgetType } from "../core/profile-document";
 import type { MockDataState, MockLocationScenario, MockSessionScenario } from "../core/mock-scenarios";
 import type { HarnessVariant } from "./fixtures/authoring-fixtures";
 import { isHarnessVariant } from "./fixtures/authoring-fixtures";
+import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { WIDGET_TYPES } from "../core/profile-document";
 
@@ -20,6 +21,9 @@ export type OverlayWorkshopQuery = {
   height?: number;
   preset: "720p" | "1080p" | "1440p";
   compare?: "studio" | "desktop" | "obs" | "harness";
+  /** Named animation scene being previewed, and where its transport is parked. */
+  sceneId?: string;
+  sceneFrame?: number;
 };
 
 export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
@@ -109,8 +113,21 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: "engineer-radio requires system=vantare-crystal" };
   }
 
+  const sceneId = params.get("scene") ?? undefined;
+  if (sceneId !== undefined) {
+    const scene = getAnimationScene(sceneId);
+    if (!scene) return { error: `invalid scene parameter: ${sceneId}` };
+    if (scene.widget !== widget) return { error: `scene ${sceneId} requires widget=${scene.widget}` };
+  }
+  const sceneFrameRaw = params.get("frame");
+  const sceneFrame = sceneFrameRaw === null ? undefined : Number(sceneFrameRaw);
+  if (sceneFrame !== undefined && (!Number.isInteger(sceneFrame) || sceneFrame < 0)) {
+    return { error: `invalid frame parameter: ${sceneFrameRaw}` };
+  }
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
-    ...(designId ? { designId } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}) };
+    ...(designId ? { designId } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}) };
 }
 
 export function isOverlayWorkshopPath(pathname: string, isDevelopment = import.meta.env.DEV): boolean {
@@ -134,5 +151,7 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.width) params.set("width", String(query.width));
   if (query.height) params.set("height", String(query.height));
   if (query.compare) params.set("compare", query.compare);
+  if (query.sceneId) params.set("scene", query.sceneId);
+  if (query.sceneFrame !== undefined) params.set("frame", String(query.sceneFrame));
   return params.toString();
 }

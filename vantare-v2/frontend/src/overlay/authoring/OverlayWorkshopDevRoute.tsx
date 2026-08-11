@@ -12,7 +12,8 @@ import {
   resetAndSeedAuthoringInputTelemetry,
   type HarnessVariant,
 } from "./fixtures/authoring-fixtures";
-import { getCrystalHarnessDesign } from "./fixtures/authoring-fixtures";
+import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
+import { getAnimationScene, listAnimationScenes, sceneFrameAt } from "./fixtures/animation-scenes";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
@@ -164,6 +165,45 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     return () => clearInterval(timer);
   }, [parsed.variant, fixtureKey]);
 
+  // Scene transport. The frame lives in local state while playing so the URL is
+  // not rewritten sixty times a minute; pausing or stepping parks it in the
+  // query, which is what makes a single frame linkable.
+  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
+  const [sceneFrame, setSceneFrame] = useState(parsed.sceneFrame ?? 0);
+  const [playing, setPlaying] = useState(true);
+  const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
+
+  useEffect(() => {
+    setSceneFrame(parsed.sceneFrame ?? 0);
+  }, [parsed.sceneId, parsed.sceneFrame]);
+
+  useEffect(() => {
+    if (!scene || !playing) {
+      return;
+    }
+    const timer = setInterval(
+      () => setSceneFrame((frame) => (frame + 1) % scene.frames.length),
+      scene.frameMs,
+    );
+    return () => clearInterval(timer);
+  }, [scene, playing]);
+
+  const parkFrame = (frame: number) => {
+    setPlaying(false);
+    setSceneFrame(frame);
+    update({ ...parsed, sceneFrame: frame });
+  };
+  const stepFrame = (delta: number) => {
+    if (!scene) return;
+    const count = scene.frames.length;
+    parkFrame((((sceneFrame + delta) % count) + count) % count);
+  };
+  const chooseScene = (value: string) => {
+    setPlaying(true);
+    setSceneFrame(0);
+    update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
+  };
+
   useLayoutEffect(() => {
     const next = prepareFixture(parsed);
     resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
@@ -177,22 +217,33 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     };
   }, [parsed]);
 
-  const preparedForRender =
-    prepared && parsed.variant === "standings-replay"
+  const liveFixtureInput = {
+    session: parsed.session,
+    location: parsed.location,
+    state: parsed.state,
+    widget: parsed.widget,
+    system: parsed.system,
+    surface: parsed.surface,
+    variant: parsed.variant,
+  } as const;
+
+  const preparedForRender = !prepared
+    ? prepared
+    : scene
       ? {
           ...prepared,
           snapshot: buildAuthoringFixtureTelemetry({
-            session: parsed.session,
-            location: parsed.location,
-            state: parsed.state,
-            widget: parsed.widget,
-            system: parsed.system,
-            surface: parsed.surface,
-            variant: parsed.variant,
-            replayFrame,
+            ...liveFixtureInput,
+            sceneId: scene.id,
+            sceneFrame,
           }),
         }
-      : prepared;
+      : parsed.variant === "standings-replay"
+        ? {
+            ...prepared,
+            snapshot: buildAuthoringFixtureTelemetry({ ...liveFixtureInput, replayFrame }),
+          }
+        : prepared;
 
   const chooseWidget = (value: string) => {
     const widgetType = value as WidgetType;
@@ -280,6 +331,49 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
         </SelectField>
         <button type="button" onClick={reset}>Reset controls</button>
+      </section>
+      <section className="overlay-workshop-scenes" aria-label="Animaciones" data-overlay-workshop-scenes>
+        <SelectField label="Animación" value={parsed.sceneId ?? ""} onChange={chooseScene}>
+          <option value="">Sin animación (estático)</option>
+          {scenesForWidget.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+        </SelectField>
+        {scene ? (
+          <div className="overlay-workshop-transport" data-overlay-workshop-transport>
+            <div className="overlay-workshop-transport__buttons">
+              <button type="button" onClick={() => stepFrame(-1)} data-testid="workshop-scene-prev" aria-label="Fotograma anterior">◀</button>
+              <button
+                type="button"
+                onClick={() => setPlaying((value) => !value)}
+                data-testid="workshop-scene-play"
+                aria-pressed={playing}
+              >
+                {playing ? "❙❙ Pausa" : "▶ Reproducir"}
+              </button>
+              <button type="button" onClick={() => stepFrame(1)} data-testid="workshop-scene-next" aria-label="Fotograma siguiente">▶</button>
+              <button type="button" onClick={() => { setPlaying(true); parkFrame(0); setPlaying(true); }} data-testid="workshop-scene-restart">↺ Repetir</button>
+            </div>
+            <label className="overlay-workshop-transport__scrub">
+              <span>
+                Fotograma {(sceneFrame % scene.frames.length) + 1} de {scene.frames.length}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={scene.frames.length - 1}
+                step={1}
+                value={sceneFrame % scene.frames.length}
+                onChange={(event) => parkFrame(Number(event.target.value))}
+                data-testid="workshop-scene-scrub"
+              />
+            </label>
+            <p className="overlay-workshop-transport__caption" data-testid="workshop-scene-caption">
+              {sceneFrameAt(scene, sceneFrame).caption}
+            </p>
+            <p className="overlay-workshop-transport__watch" data-testid="workshop-scene-watch">
+              <strong>Qué mirar:</strong> {scene.watchFor}
+            </p>
+          </div>
+        ) : null}
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (

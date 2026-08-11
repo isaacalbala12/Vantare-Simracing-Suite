@@ -107,7 +107,7 @@ def validate_plans(product_root: Path) -> list[str]:
             )
         if len(PLAN_STATUS_RE.findall(text)) != 1:
             errors.append(f"plan must contain exactly one status marker: {path}")
-        if "Plan status: active" in text:
+        if re.search(r"Plan status:\s*active", text, re.IGNORECASE):
             errors.append(f"repo plans cannot claim active status: {path}")
 
     return errors
@@ -168,12 +168,32 @@ def without_fenced_code(text: str) -> str:
     return "\n".join(output)
 
 
+def normalized_reference_label(label: str) -> str:
+    return " ".join(label.lower().split())
+
+
+def markdown_targets(text: str) -> list[str]:
+    clean = without_fenced_code(text)
+    targets = [match.group(1).strip("<>") for match in MARKDOWN_LINK_RE.finditer(clean)]
+    definitions: dict[str, str] = {}
+    for match in re.finditer(
+        r"^\s{0,3}\[([^\]]+)\]:\s*(<[^>]+>|\S+)", clean, re.MULTILINE
+    ):
+        definitions[normalized_reference_label(match.group(1))] = match.group(2).strip("<>")
+    for match in re.finditer(r"!?\[([^\]]*)\]\[([^\]]*)\]", clean):
+        label = match.group(2) or match.group(1)
+        target = definitions.get(normalized_reference_label(label))
+        if target:
+            targets.append(target)
+    return targets
+
+
 def local_target(source: Path, raw_target: str) -> Path | None:
     if raw_target.startswith("#"):
         return source
-    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_target):
-        return None
     if raw_target.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", raw_target):
+        return None
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_target):
         return None
     relative = unquote(raw_target.split("#", 1)[0].split("?", 1)[0])
     if not relative:
@@ -219,9 +239,8 @@ def live_link_sources(product_root: Path) -> list[Path]:
         if source in sources:
             continue
         sources.add(source)
-        text = without_fenced_code(read_text(source))
-        for match in MARKDOWN_LINK_RE.finditer(text):
-            target = local_target(source, match.group(1).strip("<>"))
+        for raw_target in markdown_targets(read_text(source)):
+            target = local_target(source, raw_target)
             if (
                 target
                 and target.exists()
@@ -253,15 +272,13 @@ def validate_links(product_root: Path) -> list[str]:
     errors: list[str] = []
 
     for source in live_link_sources(product_root):
-        text = without_fenced_code(read_text(source))
-        for match in MARKDOWN_LINK_RE.finditer(text):
-            raw_target = match.group(1).strip("<>")
+        for raw_target in markdown_targets(read_text(source)):
+            if raw_target.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", raw_target):
+                errors.append(f"absolute local path is forbidden in live docs: {source} -> {raw_target}")
+                continue
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_target):
                 if raw_target.lower().startswith("file:"):
                     errors.append(f"file URI is forbidden in live docs: {source} -> {raw_target}")
-                continue
-            if raw_target.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", raw_target):
-                errors.append(f"absolute local path is forbidden in live docs: {source} -> {raw_target}")
                 continue
 
             target = local_target(source, raw_target)

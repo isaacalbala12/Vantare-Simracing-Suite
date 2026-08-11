@@ -81,7 +81,7 @@ class ValidateDocsTest(unittest.TestCase):
             lines = [
                 "> **Plan status: conditional**",
                 *["context" for _ in range(12)],
-                "> **Plan status: active**",
+                "> **Plan status: Active**",
             ]
             self.write(root, "docs/superpowers/plans/example.md", "\n".join(lines))
 
@@ -130,11 +130,33 @@ class ValidateDocsTest(unittest.TestCase):
 
             self.assertEqual([], VALIDATE_DOCS.validate_links(root))
 
+    def test_windows_absolute_link_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write(root, "docs/README.md", "[local](C:\\private\\file.md)\n")
+
+            errors = VALIDATE_DOCS.validate_links(root)
+
+            self.assertTrue(any("absolute local path" in error for error in errors))
+
     def test_nested_routed_contract_is_validated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.write(root, "docs/README.md", "[core](telemetry-core/)\n")
             self.write(root, "docs/telemetry-core/README.md", "[bad](missing.md)\n")
+
+            errors = VALIDATE_DOCS.validate_links(root)
+
+            self.assertTrue(any("missing.md" in error for error in errors))
+
+    def test_reference_style_link_is_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write(
+                root,
+                "docs/README.md",
+                "[missing][contract]\n\n[contract]: missing.md\n",
+            )
 
             errors = VALIDATE_DOCS.validate_links(root)
 

@@ -104,3 +104,56 @@
 
 .overlay-workshop-transport__unsupported strong { color: #f0a53a; }
 .overlay-workshop-transport__unsupported code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }
+
+/* One button per animation. A dropdown hides the catalog behind a click and
+   makes you read a list to find out what exists; buttons show the whole
+   vocabulary of the widget at once, and playing one is a single click. */
+.overlay-workshop-scenes__head h2 {
+  margin: 0;
+  color: #f4f5f8;
+  font: 700 13px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: .01em;
+}
+
+.overlay-workshop-scenes__head p {
+  margin: 3px 0 0;
+  color: #8d94a5;
+  font: 12px/1.4 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-scenes__list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.overlay-workshop-scenes__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid #2d3240;
+  border-radius: 999px;
+  background: #171b28;
+  color: #f4f5f8;
+  font: 600 12px/1.2 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.overlay-workshop-scenes__item:hover { border-color: #ff3b3b; background: #1d2231; }
+
+.overlay-workshop-scenes__item[data-active="true"] {
+  border-color: #ff3b3b;
+  background: #241419;
+  color: #ffb5bd;
+}
+
+.overlay-workshop-scenes__play { color: #ff3b3b; font-size: 10px; }
+.overlay-workshop-scenes__item--clear { color: #8d94a5; border-style: dashed; }
+.overlay-workshop-scenes__empty { margin: 0; color: #8d94a5; font: 12px/1.5 Inter, system-ui, sans-serif; }
+
+.overlay-workshop-transport__loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #aeb5c5;
+  font: 600 11px/1 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__loop input { accent-color: #ff3b3b; }

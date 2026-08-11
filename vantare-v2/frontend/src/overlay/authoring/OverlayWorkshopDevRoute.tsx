@@ -177,7 +177,10 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   // query, which is what makes a single frame linkable.
   const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
   const [sceneFrame, setSceneFrame] = useState(parsed.sceneFrame ?? 0);
-  const [playing, setPlaying] = useState(true);
+  // Nothing plays until asked. Selecting an animation arms it at rest; a run
+  // plays that animation once, start to finish, and stops on its last frame.
+  const [playing, setPlaying] = useState(false);
+  const [loop, setLoop] = useState(false);
   const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
 
   useEffect(() => {
@@ -188,12 +191,21 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     if (!scene || !playing) {
       return;
     }
-    const timer = setInterval(
-      () => setSceneFrame((frame) => (frame + 1) % scene.frames.length),
-      scene.frameMs,
-    );
+    const timer = setInterval(() => {
+      setSceneFrame((frame) => {
+        const last = scene.frames.length - 1;
+        if (frame >= last) {
+          if (loop) {
+            return 0;
+          }
+          setPlaying(false);
+          return last;
+        }
+        return frame + 1;
+      });
+    }, scene.frameMs);
     return () => clearInterval(timer);
-  }, [scene, playing]);
+  }, [scene, playing, loop]);
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
@@ -205,10 +217,17 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     const count = scene.frames.length;
     parkFrame((((sceneFrame + delta) % count) + count) % count);
   };
+  /** Selects an animation and leaves it at rest, without playing anything. */
   const chooseScene = (value: string) => {
-    setPlaying(true);
+    setPlaying(false);
     setSceneFrame(0);
     update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
+  };
+  /** One click: this animation, from the top, once. */
+  const runScene = (sceneId: string) => {
+    setSceneFrame(0);
+    update({ ...parsed, sceneId, sceneFrame: 0 });
+    setPlaying(true);
   };
 
   // Reads the latest query without making the effect depend on the object
@@ -345,24 +364,61 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
         <button type="button" onClick={reset}>Reset controls</button>
       </section>
       <section className="overlay-workshop-scenes" aria-label="Animaciones" data-overlay-workshop-scenes>
-        <SelectField label="Animación" value={parsed.sceneId ?? ""} onChange={chooseScene}>
-          <option value="">Sin animación (estático)</option>
-          {scenesForWidget.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-        </SelectField>
+        <div className="overlay-workshop-scenes__head">
+          <h2>Animaciones de {parsed.widget}</h2>
+          <p>Pulsa una para reproducirla una vez.</p>
+        </div>
+        <div className="overlay-workshop-scenes__list" data-testid="workshop-scene-list">
+          {scenesForWidget.length === 0 ? (
+            <p className="overlay-workshop-scenes__empty">Este widget todavía no tiene animaciones declaradas.</p>
+          ) : (
+            scenesForWidget.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="overlay-workshop-scenes__item"
+                data-active={item.id === parsed.sceneId ? "true" : undefined}
+                data-testid={`workshop-scene-run-${item.id}`}
+                onClick={() => runScene(item.id)}
+              >
+                <span className="overlay-workshop-scenes__play" aria-hidden="true">▶</span>
+                {item.label}
+              </button>
+            ))
+          )}
+          {scene ? (
+            <button
+              type="button"
+              className="overlay-workshop-scenes__item overlay-workshop-scenes__item--clear"
+              onClick={() => chooseScene("")}
+              data-testid="workshop-scene-clear"
+            >
+              Salir de la animación
+            </button>
+          ) : null}
+        </div>
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>
             <div className="overlay-workshop-transport__buttons">
               <button type="button" onClick={() => stepFrame(-1)} data-testid="workshop-scene-prev" aria-label="Fotograma anterior">◀</button>
               <button
                 type="button"
-                onClick={() => setPlaying((value) => !value)}
+                onClick={() => (playing ? setPlaying(false) : runScene(scene.id))}
                 data-testid="workshop-scene-play"
                 aria-pressed={playing}
               >
-                {playing ? "❙❙ Pausa" : "▶ Reproducir"}
+                {playing ? "❙❙ Pausa" : "▶ Reproducir de nuevo"}
               </button>
               <button type="button" onClick={() => stepFrame(1)} data-testid="workshop-scene-next" aria-label="Fotograma siguiente">▶</button>
-              <button type="button" onClick={() => { setPlaying(true); parkFrame(0); setPlaying(true); }} data-testid="workshop-scene-restart">↺ Repetir</button>
+              <label className="overlay-workshop-transport__loop">
+                <input
+                  type="checkbox"
+                  checked={loop}
+                  onChange={(event) => setLoop(event.target.checked)}
+                  data-testid="workshop-scene-loop"
+                />
+                En bucle
+              </label>
             </div>
             <label className="overlay-workshop-transport__scrub">
               <span>

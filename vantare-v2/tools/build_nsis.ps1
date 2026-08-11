@@ -19,10 +19,13 @@ param(
     [string]$BinDir = 'bin',
     [string]$AppName = 'vantare',
     [string]$NsiSubdir = 'build\windows\nsis',
-    [string]$Arch = 'amd64'
+    [string]$Arch = 'amd64',
+    [ValidateSet('user', 'machine')][string]$InstallScope = 'user',
+    [string]$RuntimeDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
+$RepoRoot = [System.IO.Path]::GetFullPath($RepoRoot)
 
 function Write-Step {
     param([string]$Message)
@@ -47,13 +50,6 @@ function Resolve-MakeNsis {
     throw "Could not locate makensis.exe. Install NSIS 3.x from https://nsis.sourceforge.io/ or ensure 'makensis' is on PATH."
 }
 
-# Generate the WebView2 bootstrapper if missing.
-Write-Step "generating webview2bootstrapper"
-& wails3 generate webview2bootstrapper -dir (Join-Path $RepoRoot 'build\windows\nsis') | Out-Null
-
-$nsisExe = Resolve-MakeNsis
-Write-Step "using NSIS binary: $nsisExe"
-
 $nsiPath = Join-Path $RepoRoot $NsiSubdir
 if (-not (Test-Path -LiteralPath (Join-Path $nsiPath 'project.nsi'))) {
     throw "project.nsi not found at $nsiPath"
@@ -69,9 +65,27 @@ $exePath = Join-Path (Join-Path $RepoRoot $BinDir) "$AppName.exe"
 if (-not (Test-Path -LiteralPath $exePath)) {
     throw "Portable exe not found: $exePath (run 'task build' first)"
 }
+$runtimePath = if ($RuntimeDirectory) {
+    [System.IO.Path]::GetFullPath($RuntimeDirectory)
+} else {
+    [System.IO.Path]::GetFullPath((Join-Path (Join-Path $RepoRoot $BinDir) 'runtime\telemetry\duckdb-v1'))
+}
+& (Join-Path $RepoRoot 'build\windows\telemetry-reader\verify-runtime.ps1') -RuntimeDirectory $runtimePath -RepoRoot $RepoRoot | Out-Null
+
+# Generate the WebView2 bootstrapper only after every packaged input passed validation.
+Write-Step "generating webview2bootstrapper"
+& wails3 generate webview2bootstrapper -dir (Join-Path $RepoRoot 'build\windows\nsis') | Out-Null
+
+$nsisExe = Resolve-MakeNsis
+Write-Step "using NSIS binary: $nsisExe"
+
 $defineName = "ARG_WAILS_${argFlag}_BINARY"
+$requestLevel = if ($InstallScope -eq 'user') { 'user' } else { 'admin' }
 $makensisArgs = @(
     "-D${defineName}=`"$exePath`""
+    "-DVANTARE_TELEMETRY_RUNTIME=`"$runtimePath`""
+    "-DWAILS_INSTALL_SCOPE=$InstallScope"
+    "-DREQUEST_EXECUTION_LEVEL=$requestLevel"
     "project.nsi"
 )
 Write-Step "makensis $($makensisArgs -join ' ') (cwd=$nsiPath)"

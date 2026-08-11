@@ -40,7 +40,19 @@ especificación y calidad terminaron `APPROVE` después de cerrar cleanup
 reintentable/acotado y bindings Wails accidentales. Race focal TA-03E x5 pasa
 con MSYS2 UCRT64; el paquete completo `cmd/vantare` conserva una carrera
 heredada en `spyMainEmitter`/`TestHandleProfileRetryFailed`, fuera del corte y
-pendiente de issue. Sin Linear, push, PR, promoción, packaging TA-03F ni release.
+pendiente de issue. Esa rama no hizo Linear, push, PR, promoción ni release.
+TA-03F tiene una candidata local verificada sobre
+`work/ta03f-windows-runtime-packaging`, base apilada exacta
+`559c3753a82071398ef1af3fbcc2d30c4dd3fe52`. Installer y portable empaquetan
+como unidad atómica el runtime TA-03C en
+`runtime/telemetry/duckdb-v1`; el updater hereda el cambio porque consume el
+installer. El pipeline falla antes del artefacto si falta un miembro, cambia
+un hash/manifest o aparece un extra. NSIS respalda y restaura exe + runtime
+completo y compila en scopes user/machine. El runtime se reconstruyó con los
+hashes confiados, smoke x64 pasó y los artefactos locales pasaron version/layout
+verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
+Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
+merge, promoción ni release.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
@@ -190,17 +202,28 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
 | Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
-| Siguiente | TA-04, progreso/distancia y mapa con evidencia |
+| Candidata local | TA-03E, cableado backend no visual; identificador Linear pendiente |
+| Candidata local | TA-03F, packaging atómico Windows; identificador Linear pendiente |
+| Siguiente tras validación | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Validar TA-03C en Nightly/Pro Plus y continuar TA-04 para caracterizar
+Revisar TA-03E/TA-03F y ejecutar los gates manuales de packaging antes de una
+promoción autorizada a Nightly/Pro Plus. Después continuar TA-04 para caracterizar
 progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la
 lectura LMU local, pero sí cualquier import externo o comunitario. TA-05 publica
 la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
+
+2026-08-11, TA-03F candidata local: runtime TA-03C confiado integrado sin UI en
+portable e installer bajo `runtime/telemetry/duckdb-v1`. Build reproducible,
+manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
+scope user/machine y verify local PASS. Upgrade/rollback mueve exe y runtime
+como una transacción; updater conserva su protocolo y consume el installer.
+Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el
+gate Windows 10 si aplica. Sin push, PR, CI remoto, merge, promoción o release.
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

@@ -125,6 +125,19 @@ tasks:
       FORMAT: '{{.FORMAT | default "nsis"}}'
       INSTALL_SCOPE: '{{.INSTALL_SCOPE | default "machine"}}'
 
+  telemetry:runtime:
+    summary: Builds and verifies the trusted DuckDB reader runtime.
+    desc: |
+      Produces bin/runtime/telemetry/duckdb-v1 with the exact TA-03C unit.
+      Set DUCKDB_ARCHIVE_PATH to an already downloaded official DuckDB ZIP to
+      avoid downloading that archive during the build. GCC_BIN defaults to the
+      MSYS2 UCRT64 toolchain.
+    cmds:
+      - pwsh -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\build\windows\telemetry-reader\prepare-runtime.ps1" -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}" -DuckDBArchivePath "{{.DUCKDB_ARCHIVE_PATH}}" -GccBin "{{.GCC_BIN}}"
+    vars:
+      DUCKDB_ARCHIVE_PATH: '{{.DUCKDB_ARCHIVE_PATH | default ""}}'
+      GCC_BIN: '{{.GCC_BIN | default "C:/msys64/ucrt64/bin"}}'
+
   generate:syso:
     summary: Generates Windows `.syso` file
     dir: build
@@ -138,6 +151,7 @@ tasks:
     dir: build/windows/nsis
     deps:
       - task: build
+      - task: telemetry:runtime
     preconditions:
       - sh: '[ "{{.INSTALL_SCOPE}}" = "user" ] || [ "{{.INSTALL_SCOPE}}" = "machine" ]'
         msg: "INSTALL_SCOPE must be 'user' or 'machine', got '{{.INSTALL_SCOPE}}'"
@@ -146,9 +160,9 @@ tasks:
       - wails3 generate webview2bootstrapper -dir "{{.ROOT_DIR}}/build/windows/nsis"
       - |
         {{if eq OS "windows"}}
-        makensis {{if eq .INSTALL_SCOPE "user"}}-DWAILS_INSTALL_SCOPE=user -DREQUEST_EXECUTION_LEVEL=user {{end}}-DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
+        makensis -DWAILS_INSTALL_SCOPE={{.INSTALL_SCOPE}} -DREQUEST_EXECUTION_LEVEL={{if eq .INSTALL_SCOPE "user"}}user{{else}}admin{{end}} -DVANTARE_TELEMETRY_RUNTIME="{{.ROOT_DIR}}\{{.BIN_DIR}}\runtime\telemetry\duckdb-v1" -DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
         {{else}}
-        makensis {{if eq .INSTALL_SCOPE "user"}}-DWAILS_INSTALL_SCOPE=user -DREQUEST_EXECUTION_LEVEL=user {{end}}-DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" project.nsi
+        makensis -DWAILS_INSTALL_SCOPE={{.INSTALL_SCOPE}} -DREQUEST_EXECUTION_LEVEL={{if eq .INSTALL_SCOPE "user"}}user{{else}}admin{{end}} -DVANTARE_TELEMETRY_RUNTIME="{{.ROOT_DIR}}/{{.BIN_DIR}}/runtime/telemetry/duckdb-v1" -DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" project.nsi
         {{end}}
     vars:
       ARCH: '{{.ARCH | default ARCH}}'
@@ -167,7 +181,7 @@ tasks:
         4. release_artifacts.ps1 sha256
               -> <artifact>.sha256 for installer, portable zip and portable exe
         5. release_artifacts.ps1 verify
-              -> checks that every artifact embeds the expected VERSION
+              -> checks versions plus the exact trusted runtime in the ZIP
       The NSIS call is delegated to a script so that the real NSIS binary at
       C:\Program Files (x86)\NSIS\Bin\makensis.exe can be used when the
       Wails3 makensis shim is unavailable or misconfigured on the host.
@@ -176,11 +190,14 @@ tasks:
         msg: "Run 'task build' first (or 'task package:all' which builds)."
     deps:
       - task: build
+      - task: telemetry:runtime
     cmds:
-      - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\build_nsis.ps1" -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}" -AppName "{{.APP_NAME}}"
+      - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\build_nsis.ps1" -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}" -AppName "{{.APP_NAME}}" -InstallScope "{{.INSTALL_SCOPE}}" -RuntimeDirectory "{{.ROOT_DIR}}\{{.BIN_DIR}}\runtime\telemetry\duckdb-v1"
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation all -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
     vars:
       INSTALL_SCOPE: '{{.INSTALL_SCOPE | default "user"}}'
+      DUCKDB_ARCHIVE_PATH: '{{.DUCKDB_ARCHIVE_PATH | default ""}}'
+      GCC_BIN: '{{.GCC_BIN | default "C:/msys64/ucrt64/bin"}}'
 
   release:portable:
     summary: Builds the portable zip artifact (no installer, no checksum).
@@ -190,6 +207,7 @@ tasks:
       Intended for testers who do not want a Windows installer.
     deps:
       - task: build
+      - task: telemetry:runtime
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation portable-zip -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
 
@@ -208,11 +226,10 @@ tasks:
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation sha256 -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
 
   release:verify:
-    summary: Verifies that every official artifact embeds the expected VERSION.
+    summary: Verifies artifact versions and the portable trusted runtime.
     desc: |
-      Scans the official release artifacts and confirms the version token
-      'v<VERSION>' is present in the embedded strings. Catches the common bug
-      of publishing a stale installer built before version:sync was run.
+      Scans installer/exe version tokens and verifies that the portable ZIP
+      contains exactly the trusted runtime/telemetry/duckdb-v1 unit.
     cmds:
       - powershell -NoProfile -ExecutionPolicy Bypass -File "{{.ROOT_DIR}}\tools\release_artifacts.ps1" -Operation verify -RepoRoot "{{.ROOT_DIR}}" -BinDir "{{.BIN_DIR}}"
 

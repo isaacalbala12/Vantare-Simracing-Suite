@@ -29,8 +29,17 @@ Unicode true
 ## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
 ## !define UNINST_KEY_NAME     "UninstKeyInRegistry"  # Default "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 ####
-!define REQUEST_EXECUTION_LEVEL "user"
-!define WAILS_INSTALL_SCOPE     "user"
+!ifndef WAILS_INSTALL_SCOPE
+    !define WAILS_INSTALL_SCOPE "user"
+!endif
+!ifndef REQUEST_EXECUTION_LEVEL
+    !define REQUEST_EXECUTION_LEVEL "user"
+!endif
+!ifndef VANTARE_TELEMETRY_RUNTIME
+    !error "VANTARE_TELEMETRY_RUNTIME must point to the verified duckdb-v1 runtime."
+!endif
+!define TELEMETRY_RUNTIME_DIR "$INSTDIR\runtime\telemetry\duckdb-v1"
+!define TELEMETRY_RUNTIME_BACKUP "$INSTDIR\runtime\telemetry\duckdb-v1.bak"
 ####
 ## Include the wails tools
 ####
@@ -123,6 +132,14 @@ Function RestoreBackupIfNeeded
 	restore_done:
 FunctionEnd
 
+Function RestoreRuntimeBackup
+	DetailPrint "Restaurando runtime de telemetria anterior..."
+	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
+	IfFileExists "${TELEMETRY_RUNTIME_BACKUP}\*.*" 0 runtime_restore_done
+	Rename "${TELEMETRY_RUNTIME_BACKUP}" "${TELEMETRY_RUNTIME_DIR}"
+	runtime_restore_done:
+FunctionEnd
+
 Function WaitWhileFileLocked
 	# Wait up to 10 seconds for vantare.exe to become writable.
 	StrCpy $0 0
@@ -147,29 +164,68 @@ Section
 	!insertmacro wails.setShellContext
 
 	Call CloseVantareGracefully
+	# Finish recovery from an interrupted previous transaction before starting a new one.
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" 0 runtime_recovery
+	Call RestoreBackupIfNeeded
+	runtime_recovery:
+	IfFileExists "${TELEMETRY_RUNTIME_BACKUP}\*.*" 0 recovery_done
+	Call RestoreRuntimeBackup
+	recovery_done:
 
 	!insertmacro wails.webview2runtime
 
 	SetOutPath $INSTDIR
 
-	# If a previous executable exists, wait until it is not locked, then back it up.
+	# Back up the executable and the complete versioned runtime before replacing either.
 	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 install_files
 	Call WaitWhileFileLocked
 	DetailPrint "Creando copia de seguridad del ejecutable actual..."
 	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+	ClearErrors
 	Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+	IfErrors executable_backup_failed 0
 
 	install_files:
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\*.*" 0 extract_files
+	ClearErrors
+	Rename "${TELEMETRY_RUNTIME_DIR}" "${TELEMETRY_RUNTIME_BACKUP}"
+	IfErrors runtime_backup_failed 0
+
+	extract_files:
+	# Always start from an empty destination, including after an incomplete old install.
+	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
+	ClearErrors
 	!insertmacro wails.files
+	SetOutPath "${TELEMETRY_RUNTIME_DIR}"
+	File /oname=manifest.json "${VANTARE_TELEMETRY_RUNTIME}\manifest.json"
+	File /oname=duckdb.dll "${VANTARE_TELEMETRY_RUNTIME}\duckdb.dll"
+	File /oname=vantare-telemetry-reader.exe "${VANTARE_TELEMETRY_RUNTIME}\vantare-telemetry-reader.exe"
+	File /oname=sbom.spdx.json "${VANTARE_TELEMETRY_RUNTIME}\sbom.spdx.json"
+	File /oname=THIRD_PARTY_NOTICES.md "${VANTARE_TELEMETRY_RUNTIME}\THIRD_PARTY_NOTICES.md"
 
 	IfErrors 0 install_verify
 	DetailPrint "Error al extraer los archivos del instalador."
+	Call RestoreRuntimeBackup
 	Call RestoreBackupIfNeeded
-	Abort "La instalacion fallo al extraer archivos. Se ha restaurado la version anterior."
+	Abort "La instalacion fallo al extraer archivos. Se restauraron el ejecutable y runtime anteriores."
+
+	runtime_backup_failed:
+	DetailPrint "No se pudo respaldar el runtime de telemetria actual."
+	Call RestoreBackupIfNeeded
+	Abort "La instalacion fallo antes de reemplazar el runtime. Se restauro el ejecutable anterior."
+
+	executable_backup_failed:
+	DetailPrint "No se pudo respaldar el ejecutable actual."
+	Abort "La instalacion fallo antes de reemplazar archivos."
 
 	install_verify:
 	# Verify that the new executable was actually extracted and is not empty.
 	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 restore_and_abort
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\manifest.json" 0 restore_and_abort
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb.dll" 0 restore_and_abort
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\vantare-telemetry-reader.exe" 0 restore_and_abort
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\sbom.spdx.json" 0 restore_and_abort
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\THIRD_PARTY_NOTICES.md" 0 restore_and_abort
 	ClearErrors
 	FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" r
 	IfErrors 0 file_opened
@@ -181,12 +237,14 @@ Section
 		Goto install_success
 
 	restore_and_abort:
-		DetailPrint "vantare.exe no se extrajo correctamente."
+		DetailPrint "El ejecutable o runtime de telemetria no se extrajo correctamente."
+		Call RestoreRuntimeBackup
 		Call RestoreBackupIfNeeded
-		Abort "La instalacion fallo porque no se pudo copiar el nuevo ejecutable. Se ha restaurado la version anterior."
+		Abort "La instalacion fallo al verificar los archivos. Se restauraron el ejecutable y runtime anteriores."
 
 	install_success:
 	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+	RMDir /r "${TELEMETRY_RUNTIME_BACKUP}"
 
 	CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 	CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -200,6 +258,7 @@ Section "uninstall"
 	!insertmacro wails.setShellContext
 
 	RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
 
 	RMDir /r $INSTDIR
 

@@ -1,9 +1,11 @@
 # TA-03E / TA-03F — activación backend y distribución del reader histórico
 
-- Estado: TA-03E implementada y revisada localmente; TA-03F pendiente; identificadores Linear pendientes
+- Estado: TA-03E revisada localmente; TA-03F implementada y verificada localmente; identificadores Linear pendientes
 - Fecha de autorización excepcional: 2026-08-11
 - Base inicial: `origin/nightly@b1db9f87b66f76df12d856484049616ea011e69f`
 - Rama temporal local: `work/ta03e-backend-reader-wiring`
+- Rama TA-03F: `work/ta03f-windows-runtime-packaging`
+- Base apilada TA-03F: `559c3753a82071398ef1af3fbcc2d30c4dd3fe52`
 
 ## Excepción de trazabilidad
 
@@ -106,6 +108,33 @@ TA-03F comienza después de cerrar la frontera y la ruta productiva de TA-03E.
 TA-03F requerirá smoke manual sobre el artefacto empaquetado en Windows 11 x64
 y, si sigue disponible como requisito de soporte, Windows 10 x64. Esa prueba es
 funcional y de packaging, no visual.
+
+### Evidencia local TA-03F
+
+- La unidad exacta `manifest.json`, `duckdb.dll`,
+  `vantare-telemetry-reader.exe`, `sbom.spdx.json` y
+  `THIRD_PARTY_NOTICES.md` se verifica antes de crear installer/portable y se
+  instala en `runtime/telemetry/duckdb-v1`, la misma ruta de
+  `duckdbadapter.ProductionTrust`.
+- El build reproducible requiere PowerShell 7 por la serializacion estable del
+  SBOM/manifest confiado. Acepta `DUCKDB_ARCHIVE_PATH` o
+  `-DuckDBArchivePath`; si se aporta, no descarga de nuevo el ZIP DuckDB.
+- Runtime reconstruido dos veces con Go 1.26.4 y GCC UCRT64 16.1.0: helper
+  `065b6a9a...`, DLL `2b7468a4...`, manifest `132fd8b6...`, 37 paquetes,
+  verificacion y handshake smoke PASS en el host Windows x64 actual.
+- Harness PowerShell cubre path/inventario portable, runtime ausente,
+  manipulado o con extra, ZIP ya creado manipulado, parametros reproducibles,
+  scopes NSIS y contrato estatico de rollback/uninstall. NSIS 3.x real compila
+  los scopes `user` y `machine` con los cinco `File` exactos.
+- Upgrade renombra el runtime anterior completo a `duckdb-v1.bak`, extrae una
+  unidad nueva vacia y restaura tanto runtime como exe ante error de backup,
+  extraccion o verificacion. No existe mezcla de miembros entre versiones.
+- El updater no cambia: descarga y ejecuta este mismo installer. Checksums
+  oficiales siguen cubriendo installer, ZIP y exe; el manifest cubre la unidad
+  interna.
+- Pendiente antes de publicar: instalar/actualizar/desinstalar de verdad y
+  forzar rollback en Windows 11 x64; repetir smoke en Windows 10 x64 si sigue
+  en soporte. Esta rama no instala ni publica artefactos.
 
 ## Límite visual
 

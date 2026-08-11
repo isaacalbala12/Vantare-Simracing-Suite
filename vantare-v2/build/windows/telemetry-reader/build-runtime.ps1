@@ -6,6 +6,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    throw "PowerShell 7 (pwsh) is required so generated JSON reproduces the trusted TA-03C runtime."
+}
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $helperModule = Join-Path $repoRoot "tools\vantare-telemetry-reader"
@@ -41,7 +44,7 @@ function Write-Utf8([string]$Path, [string]$Content) {
 
 function Add-License([System.Text.StringBuilder]$Builder, [string]$Name, [string]$License, [string]$Path, [string]$ExpectedHash) {
     Assert-Sha256 $Path $ExpectedHash
-    [void]$Builder.AppendLine("## $Name — $License")
+    [void]$Builder.AppendLine("## $Name $([char]0x2014) $License")
     [void]$Builder.AppendLine()
     [void]$Builder.AppendLine(([System.IO.File]::ReadAllText($Path)).TrimEnd())
     [void]$Builder.AppendLine()
@@ -118,7 +121,7 @@ $sbom.creationInfo.creators = @("Tool: Vantare build/windows/telemetry-reader/bu
 $licenseDir = Join-Path $work "licenses"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 $notices = [System.Text.StringBuilder]::new()
-[void]$notices.AppendLine("# Vantare Telemetry Reader — third-party notices")
+[void]$notices.AppendLine("# Vantare Telemetry Reader $([char]0x2014) third-party notices")
 [void]$notices.AppendLine()
 [void]$notices.AppendLine("Runtime: DuckDB 1.5.5 Windows amd64; helper protocol 1.")
 [void]$notices.AppendLine("Mbed TLS is redistributed under Apache-2.0. Zstandard is redistributed under BSD-3-Clause.")

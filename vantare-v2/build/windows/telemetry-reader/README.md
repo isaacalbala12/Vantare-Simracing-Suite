@@ -1,13 +1,13 @@
 # Runtime DuckDB de Telemetry Analysis
 
 Este directorio construye el helper aislado de TA-03C como una unidad
-versionada. No modifica el `go.mod` principal ni integra aún el runtime en el
-instalador público.
+versionada. No modifica el `go.mod` principal; TA-03F integra esta misma unidad
+en el installer y portable Windows sin duplicar su generación ni sus hashes.
 
 ## Construcción verificada
 
 ```powershell
-./build/windows/telemetry-reader/build-runtime.ps1 `
+pwsh ./build/windows/telemetry-reader/build-runtime.ps1 `
   -OutputDirectory ./bin/runtime/telemetry/duckdb-v1
 ```
 
@@ -26,9 +26,24 @@ El pipeline:
 - descarga y valida cada texto de licencia antes de generar notices;
 - genera y verifica un manifest de la unidad completa.
 
-Requiere Go, GCC UCRT64 de MSYS2 y Microsoft Visual C++ Redistributable. El
+Requiere PowerShell 7 (`pwsh`), Go, GCC UCRT64 de MSYS2 y Microsoft Visual C++
+Redistributable. PowerShell 7 forma parte del toolchain reproducible porque el
+SBOM y manifest confiados se serializaron con esa version; Windows PowerShell
+5.1 falla cerrado antes de producir un runtime no confiado. El
 Job Object y los límites DuckDB son defensa de ciclo de vida y recursos; no son
 un sandbox.
+
+Para reutilizar el ZIP oficial ya descargado sin volver a descargarlo:
+
+```powershell
+pwsh ./build/windows/telemetry-reader/prepare-runtime.ps1 `
+  -RepoRoot . `
+  -BinDir bin `
+  -DuckDBArchivePath C:\ruta\libduckdb-windows-amd64.zip
+```
+
+El mismo valor se puede pasar al task como
+`DUCKDB_ARCHIVE_PATH=C:\ruta\libduckdb-windows-amd64.zip`.
 
 ## Smoke del runtime empaquetado
 

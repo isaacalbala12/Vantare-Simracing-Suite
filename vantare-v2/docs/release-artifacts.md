@@ -10,9 +10,9 @@ Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa gen
 
 | Artefacto | Ruta | Tamanio tipico | Notas |
 |---|---|---|---|
-| Instalador NSIS | `bin/vantare-amd64-installer.exe` | ~6.7 MB | Ejecutable unico self-extracting. Genera atajo de escritorio, menu inicio, atajo de desinstalacion. |
-| Portable zip | `bin/vantare-portable-amd64.zip` | ~5.0 MB | Contiene `vantare.exe`, `configs/*.json` (perfiles embebidos) y `docs/README.txt` (copia de `tester-build-instructions.md`). Pensado para testers que no quieren un instalador. |
-| Binario base | `bin/vantare.exe` | ~13 MB | Empaquetado dentro del instalador. Tambien se publica como portable para que el updater pueda distribuirlo (futuro). |
+| Instalador NSIS | `bin/vantare-amd64-installer.exe` | ~25 MB | Ejecutable self-extracting con `vantare.exe` y la unidad DuckDB confiada. Genera atajos y desinstalador. |
+| Portable zip | `bin/vantare-portable-amd64.zip` | ~25 MB | Contiene `vantare.exe`, `configs/*.json`, `docs/README.txt` y la unidad exacta `runtime/telemetry/duckdb-v1`. |
+| Binario base | `bin/vantare.exe` | ~13 MB | Empaquetado dentro del instalador. El updater productivo descarga y ejecuta el installer, por lo que hereda la unidad DuckDB. |
 | Checksums SHA-256 | `bin/<artifact>.sha256` | ~90 B | Un archivo `<artifact>.sha256` por cada artefacto oficial. Formato `<hash>  <nombre>`. |
 | Suma global de checksums | `bin/SHA256SUMS.txt` | (futuro) | Se anade en R03.C si la publicacion a GitHub Releases lo necesita. |
 
@@ -43,6 +43,13 @@ Desde la raiz de `vantare-v2/`:
 
 El script `tools/build_nsis.ps1` resuelve el NSIS real automaticamente en ese orden y cae al binario real aunque exista el shim de wails3 (que falla con 0x2 en algunos entornos).
 
+El runtime DuckDB requiere ademas PowerShell 7 (`pwsh`), Go 1.26.4 y GCC
+UCRT64. `windows:package:all` y `windows:release:portable` lo preparan antes de
+empaquetar. Para una ejecucion reproducible sin volver a descargar el ZIP
+DuckDB oficial, pasar
+`DUCKDB_ARCHIVE_PATH=C:\ruta\libduckdb-windows-amd64.zip`; el script valida su
+SHA-256 antes de usarlo.
+
 ---
 
 ## 3. Pipeline detallado (`wails3 task release:artifacts`)
@@ -61,21 +68,27 @@ El script `tools/build_nsis.ps1` resuelve el NSIS real automaticamente en ese or
      -ldflags="-w -s -H windowsgui -X main.version=v0.3.10.0"
    -> bin/vantare.exe
 
-3. windows:package:all
-   3.1 tools/build_nsis.ps1
+3. windows:telemetry:runtime
+   build-runtime.ps1 + verify-runtime.ps1 + smoke-runtime.ps1
+   -> bin/runtime/telemetry/duckdb-v1 (5 miembros exactos)
+
+4. windows:package:all
+   4.1 tools/build_nsis.ps1
        wails3 generate webview2bootstrapper + makensis project.nsi
        -> bin/vantare-amd64-installer.exe
-   3.2 tools/release_artifacts.ps1 portable-zip
-       Comprime bin/vantare.exe + configs/*.json + tester README
+   4.2 tools/release_artifacts.ps1 portable-zip
+       Comprime exe, configs, tester README y el runtime confiado
        -> bin/vantare-portable-amd64.zip
-   3.3 tools/release_artifacts.ps1 sha256
+   4.3 tools/release_artifacts.ps1 sha256
        Escribe <artifact>.sha256 para installer, zip y exe
        usando certutil.exe (siempre disponible en Windows)
-   3.4 tools/release_artifacts.ps1 verify
+   4.4 tools/release_artifacts.ps1 verify
        Escanea el binario y el installer confirmando que la
        cadena 'v<VERSION>' (UTF-8) o '<VERSION>' (UTF-16 LE en
        el recurso de version PE del NSIS) esta presente.
-       Falla con exit code !=0 si la version no aparece.
+       Ademas abre el ZIP, extrae de forma acotada solo los cinco miembros del
+       runtime y revalida inventario, manifest trust, tamanos y hashes. Falla
+       con exit code !=0 ante ausencia, tamper o miembros extra.
 ```
 
 ---
@@ -214,3 +227,7 @@ Despues de correr `wails3 task release:artifacts`, en este orden:
 - **Reproducibilidad del binario Go.** Go embebe timestamps y paths en el binario. `-trimpath -buildvcs=false` ya esta aplicado, pero dos builds consecutivos del mismo commit daran SHA256 distintos para `vantare.exe`. Esto es esperado; lo importante es que `version:sync` se ejecuto antes. El checksum por si solo no es unico-identificador.
 - **NSIS comprime el exe.** El instalador no contiene el string `v0.3.10.0` en UTF-8 (NSIS comprime con zlib). Por eso `verify` busca `0.3.10.0` en UTF-16 LE dentro del recurso de version PE (que NSIS pone sin comprimir). Si NSIS cambia su representacion de version resources, este check se rompe. Mitigacion: test regresivo si se actualiza NSIS.
 - **Shim de wails3 `makensis.exe` local.** En algunos entornos (este host incluido) el shim de wails3 falla con error 0x2 porque no encuentra el NSIS real. `tools/build_nsis.ps1` lo evita llamando al binario real directamente. El task `windows:package` original sigue dependiendo del shim; se deja como esta porque arreglarlo es responsabilidad del entorno, no del codigo de Vantare.
+- **Toolchain del workflow remoto.** El runtime confiado de TA-03C se produjo
+  con Go 1.26.4, GCC UCRT64 16.1.0 y PowerShell 7. Un workflow que conserve Go
+  1.25 falla cerrado al preparar el manifest y no publica artefactos. Actualizar
+  ese workflow forma parte del futuro corte de release, fuera de TA-03F.

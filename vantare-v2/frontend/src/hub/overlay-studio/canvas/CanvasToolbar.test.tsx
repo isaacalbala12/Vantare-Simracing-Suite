@@ -187,6 +187,33 @@ describe("CanvasToolbar", () => {
     );
   });
 
+  it("restores drafts when selecting the preset already used by the document", async () => {
+    renderToolbar();
+    await waitFor(() => expect(screen.getByTestId("studio-layout-width-input")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("studio-layout-width-input"), {
+      target: { value: "1000" },
+    });
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).value).toBe(
+      "custom",
+    );
+
+    fireEvent.change(screen.getByTestId("studio-resolution-select"), {
+      target: { value: "1920x1080" },
+    });
+
+    expect(screen.getByTestId("layout-viewport").textContent).toBe("1920x1080");
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).value).toBe(
+      "1920x1080",
+    );
+    expect((screen.getByTestId("studio-layout-width-input") as HTMLInputElement).value).toBe(
+      "1920",
+    );
+    expect((screen.getByTestId("studio-layout-height-input") as HTMLInputElement).value).toBe(
+      "1080",
+    );
+  });
+
   it("leaves the previous surface intact when recoverability rejects a valid custom size", async () => {
     renderToolbar();
     await waitFor(() => expect(screen.getByTestId("studio-layout-width-input")).toBeTruthy());

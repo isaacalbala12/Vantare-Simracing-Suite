@@ -74,6 +74,14 @@ function LayoutViewportControls(props: {
             if (!preset) {
               return;
             }
+            if (
+              preset.width === layoutViewport.width &&
+              preset.height === layoutViewport.height
+            ) {
+              setSelectedPresetId(preset.id);
+              setWidthDraft(String(preset.width));
+              setHeightDraft(String(preset.height));
+            }
             onChange({ width: preset.width, height: preset.height });
           }}
         >

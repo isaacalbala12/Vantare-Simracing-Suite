@@ -34,13 +34,14 @@
 - **Estado demostrado:** ISA-160 / TC-10A esta integrada en Nightly mediante
   PR #202; `origin/nightly@8880a88` contiene la auditoria ejecutable de senales
   live para Strategy. CI del PR integrado: verde.
-- **Issue/fase:** ISA-161 / TC-10B permanece `Backlog` en Linear.
-- **Bloqueo:** Linear aun declara ISA-160 como `blockedBy` de ISA-161, aunque el
-  commit ya esta en Nightly; hay que reconciliar esa relacion antes de ejecutar.
-- **Siguiente accion:** alinear Linear y el
-  [handoff de Core](vantare-program/handoffs/telemetry-core.md); despues
-  microplanificar el productor aditivo `StrategyLiveProjection v1`. VE,
-  neumaticos y weather siguen `unsupported/missing` hasta evidencia propia.
+- **Issue/fase activa:** ISA-161 / TC-10B esta `In Progress` en Linear desde
+  2026-08-11T12:23:02Z. La consulta viva no devuelve `blockedBy`, PR ni CI para
+  esta issue; por tanto, todavia no se demuestra una entrega remota de TC-10B.
+- **Siguiente accion:** continuar ISA-161 en su rama/worktree de issue y seguir
+  el [handoff de Core](vantare-program/handoffs/telemetry-core.md): implementar
+  el productor aditivo `StrategyLiveProjection v1`, transporte, resync, replay
+  y soak sobre los campos aprobados. VE, neumaticos y weather siguen
+  `unsupported/missing` hasta evidencia propia.
 
 ## Telemetry Analysis
 

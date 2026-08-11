@@ -61,6 +61,31 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		}
 	})
 
+	t.Run("valid arbitrary layout viewport", func(t *testing.T) {
+		doc := validProfileV3()
+		doc.LayoutViewport = &LayoutViewportV3{Width: 5120, Height: 1440}
+		if err := ValidateProfileDocumentV3(doc); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	for _, tc := range []struct {
+		name     string
+		viewport LayoutViewportV3
+		path     string
+	}{
+		{name: "zero width", viewport: LayoutViewportV3{Width: 0, Height: 1080}, path: "layoutViewport.width"},
+		{name: "negative height", viewport: LayoutViewportV3{Width: 1920, Height: -1}, path: "layoutViewport.height"},
+		{name: "width above safe limit", viewport: LayoutViewportV3{Width: MaxLayoutViewportDimension + 1, Height: 1080}, path: "layoutViewport.width"},
+		{name: "height above safe limit", viewport: LayoutViewportV3{Width: 1920, Height: MaxLayoutViewportDimension + 1}, path: "layoutViewport.height"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := validProfileV3()
+			doc.LayoutViewport = &tc.viewport
+			assertValidationPath(t, ValidateProfileDocumentV3(doc), tc.path)
+		})
+	}
+
 	t.Run("schema not 3", func(t *testing.T) {
 		doc := validProfileV3()
 		doc.SchemaVersion = 2
@@ -150,6 +175,18 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		w.Layout.W = 10
 		w.Layout.H = 10
 		doc := validProfileV3(w)
+		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets[0].layout")
+	})
+
+	t.Run("recoverability uses resolved layout viewport", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Layout.X = 3300
+		doc := validProfileV3(w)
+		doc.LayoutViewport = &LayoutViewportV3{Width: 3440, Height: 1440}
+		if err := ValidateProfileDocumentV3(doc); err != nil {
+			t.Fatal(err)
+		}
+		doc.LayoutViewport = nil
 		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets[0].layout")
 	})
 
@@ -323,10 +360,15 @@ func TestNormalizeProfileDocumentV3(t *testing.T) {
 
 	t.Run("returns deep copy", func(t *testing.T) {
 		doc := validProfileV3(validWidget("delta-1", WidgetTypeDelta))
+		doc.LayoutViewport = &LayoutViewportV3{Width: 3440, Height: 1440}
 		normalized := NormalizeProfileDocumentV3(doc)
 		normalized.Name = "mutated"
+		normalized.LayoutViewport.Width = 5120
 		if doc.Name == "mutated" {
 			t.Fatal("original document mutated")
+		}
+		if doc.LayoutViewport.Width != 3440 {
+			t.Fatal("original layout viewport mutated")
 		}
 	})
 }

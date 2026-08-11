@@ -1,7 +1,16 @@
+import {
+  DEFAULT_LAYOUT_VIEWPORT,
+  MAX_LAYOUT_VIEWPORT_DIMENSION,
+  MIN_LAYOUT_VIEWPORT_DIMENSION,
+  isValidLayoutViewportDimension,
+  resolveLayoutViewport,
+  type LayoutViewport,
+} from "./layout-viewport";
+
 export const PROFILE_SCHEMA_VERSION_V3 = 3 as const;
 
-export const STUDIO_CANVAS_WIDTH = 1920;
-export const STUDIO_CANVAS_HEIGHT = 1080;
+export const STUDIO_CANVAS_WIDTH = DEFAULT_LAYOUT_VIEWPORT.width;
+export const STUDIO_CANVAS_HEIGHT = DEFAULT_LAYOUT_VIEWPORT.height;
 export const STUDIO_MINIMUM_VISIBLE = 32;
 
 export type WidgetType =
@@ -142,6 +151,7 @@ export type ProfileDocumentV3 = {
   name: string;
   displayMode: DisplayMode;
   monitorIndex: number;
+  layoutViewport?: LayoutViewport;
   layouts: Partial<Record<SessionLayoutType, SessionLayoutV3>> & { general: SessionLayoutV3 };
   defaultVisualSystemId?: DesignSystemId;
   source?: ProfileSourceMeta;
@@ -209,7 +219,7 @@ function validatePayloadSize(path: string, payload: Record<string, unknown>): vo
   }
 }
 
-function validateLayout(path: string, layout: WidgetLayoutV3): void {
+function validateLayout(path: string, layout: WidgetLayoutV3, viewport: LayoutViewport): void {
   if (layout.w < 1) {
     validationError(`${path}.w`, "must be at least 1");
   }
@@ -217,13 +227,32 @@ function validateLayout(path: string, layout: WidgetLayoutV3): void {
     validationError(`${path}.h`, "must be at least 1");
   }
   const recoverable =
-    layout.x <= STUDIO_CANVAS_WIDTH - STUDIO_MINIMUM_VISIBLE &&
+    layout.x <= viewport.width - STUDIO_MINIMUM_VISIBLE &&
     layout.x + layout.w >= STUDIO_MINIMUM_VISIBLE &&
-    layout.y <= STUDIO_CANVAS_HEIGHT - STUDIO_MINIMUM_VISIBLE &&
+    layout.y <= viewport.height - STUDIO_MINIMUM_VISIBLE &&
     layout.y + layout.h >= STUDIO_MINIMUM_VISIBLE;
   if (!recoverable) {
     validationError(path, "must keep at least 32x32 recoverable pixels on canvas");
   }
+}
+
+function parseLayoutViewport(input: unknown, path: string): LayoutViewport {
+  const raw = readRecord(input, path);
+  const width = readNumber(raw.width, `${path}.width`);
+  const height = readNumber(raw.height, `${path}.height`);
+  if (!isValidLayoutViewportDimension(width)) {
+    validationError(
+      `${path}.width`,
+      `must be an integer between ${MIN_LAYOUT_VIEWPORT_DIMENSION} and ${MAX_LAYOUT_VIEWPORT_DIMENSION}`,
+    );
+  }
+  if (!isValidLayoutViewportDimension(height)) {
+    validationError(
+      `${path}.height`,
+      `must be an integer between ${MIN_LAYOUT_VIEWPORT_DIMENSION} and ${MAX_LAYOUT_VIEWPORT_DIMENSION}`,
+    );
+  }
+  return { width, height };
 }
 
 function validateBehavior(path: string, behavior: WidgetBehaviorV3): void {
@@ -370,7 +399,7 @@ function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
   return visual;
 }
 
-function parseWidgetInstance(input: unknown, path: string): WidgetInstanceV3 {
+function parseWidgetInstance(input: unknown, path: string, viewport: LayoutViewport): WidgetInstanceV3 {
   const raw = readRecord(input, path);
   const type = readString(raw.type, `${path}.type`) as WidgetType;
   if (!WIDGET_TYPES.has(type)) {
@@ -393,7 +422,7 @@ function parseWidgetInstance(input: unknown, path: string): WidgetInstanceV3 {
   if (widget.name !== undefined && widget.name.length > MAX_PROFILE_NAME_LENGTH) {
     validationError(`${path}.name`, "exceeds maximum length");
   }
-  validateLayout(`${path}.layout`, widget.layout);
+  validateLayout(`${path}.layout`, widget.layout, viewport);
   validateBehavior(`${path}.behavior`, widget.behavior);
   validatePayloadSize(`${path}.content`, widget.content);
   validateVisual(`${path}.visual`, widget.visual);
@@ -420,7 +449,12 @@ function parsePreservedWidget(input: unknown, path: string): PreservedWidgetV3 {
   return preserved;
 }
 
-function parseSessionLayout(input: unknown, path: string, expectedType: SessionLayoutType): SessionLayoutV3 {
+function parseSessionLayout(
+  input: unknown,
+  path: string,
+  expectedType: SessionLayoutType,
+  viewport: LayoutViewport,
+): SessionLayoutV3 {
   const raw = readRecord(input, path);
   const type = readString(raw.type, `${path}.type`) as SessionLayoutType;
   if (type !== expectedType) {
@@ -429,7 +463,9 @@ function parseSessionLayout(input: unknown, path: string, expectedType: SessionL
   if (!Array.isArray(raw.widgets)) {
     validationError(`${path}.widgets`, "must be an array");
   }
-  const widgets = raw.widgets.map((widget, index) => parseWidgetInstance(widget, `${path}.widgets[${index}]`));
+  const widgets = raw.widgets.map((widget, index) =>
+    parseWidgetInstance(widget, `${path}.widgets[${index}]`, viewport),
+  );
   let preservedWidgets: PreservedWidgetV3[] | undefined;
   if (raw.preservedWidgets !== undefined) {
     if (!Array.isArray(raw.preservedWidgets)) {
@@ -491,6 +527,9 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     validationError("displayMode", "unsupported display mode");
   }
   const monitorIndex = readNumber(raw.monitorIndex, "monitorIndex");
+  const layoutViewport =
+    raw.layoutViewport === undefined ? undefined : parseLayoutViewport(raw.layoutViewport, "layoutViewport");
+  const resolvedLayoutViewport = resolveLayoutViewport({ layoutViewport });
   let defaultVisualSystemId: DesignSystemId | undefined;
   if (raw.defaultVisualSystemId !== undefined) {
     defaultVisualSystemId = readString(raw.defaultVisualSystemId, "defaultVisualSystemId") as DesignSystemId;
@@ -507,7 +546,12 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
     if (!SESSION_LAYOUT_TYPES.has(key as SessionLayoutType)) {
       validationError(`layouts.${key}`, "unsupported layout type");
     }
-    layouts[key as SessionLayoutType] = parseSessionLayout(value, `layouts.${key}`, key as SessionLayoutType);
+    layouts[key as SessionLayoutType] = parseSessionLayout(
+      value,
+      `layouts.${key}`,
+      key as SessionLayoutType,
+      resolvedLayoutViewport,
+    );
   }
   if (layouts.general === undefined) {
     validationError("layouts.general", "missing required general layout");
@@ -522,6 +566,9 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
   };
   if (defaultVisualSystemId !== undefined) {
     document.defaultVisualSystemId = defaultVisualSystemId;
+  }
+  if (layoutViewport !== undefined) {
+    document.layoutViewport = layoutViewport;
   }
   if (raw.source !== undefined) {
     const sourceRaw = readRecord(raw.source, "source");

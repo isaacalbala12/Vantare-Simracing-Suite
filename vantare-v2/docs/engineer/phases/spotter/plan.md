@@ -1,9 +1,10 @@
 # Spotter observable — plan de fase
 
 Estado: entrada documental aceptada humanamente por Isaac el 2026-08-12 dentro
-de ISA-313 / ENG-R01 Fase 5. S1 aún no ha comenzado; la siguiente acción es
-asignar o crear su issue y rama propias y replanificarla concretamente desde la
-Nightly vigente.
+de ISA-313 / ENG-R01 Fase 5. S1 está en replanning técnico con ISA-327 y rama
+propia; la implementación no comienza hasta aprobar el microplan de S1. S2-S7
+siguen como subfases probables. ISA-189 (S2), ISA-187 (S4) e ISA-314 quedan
+diferidos expresamente hasta cerrar S1.
 
 ## Resultado
 
@@ -72,11 +73,53 @@ requiere arquitectura, dependencia o alcance nuevos.
 
 ### S1 — Autoridades y baseline confiable
 
-- **Entrada:** vertical Nightly existente y riesgos del
-  [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
-- **Resultado:** enable/reset, sensibilidad, locale, calidad por rival,
-  secuencia y estado de salida tienen una autoridad honesta.
-- **Salida:** ninguna deuda P1 de integración conocida impide ampliar Spotter.
+**Replanning activo ISA-327** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`).
+La implementación no ha comenzado: este microplan debe aprobarse primero.
+Entrada: vertical Nightly existente y riesgos del
+[baseline Vantare](audits/2026-08-11-vantare-baseline.md).
+Resultado: enable/reset, sensibilidad, locale, calidad por rival, secuencia y
+estado de salida tienen una autoridad honesta y ninguna deuda P1 conocida
+impide ampliar Spotter.
+
+Autoridad/coupling ya verificados y no renegociables:
+
+- El toggle de Spotter nunca usa `Runtime.Reset()` global; el reset es solo de la máquina Spotter.
+- La cancelación del toggle es por familia (`CancelFamily`), nunca de la cola o scheduler completos.
+- Sensibilidad única en evidence y rearme sin versionado nuevo.
+- Service y replayoracle no divergen en secuencia: misma regla de snapshot estrictamente posterior dentro del mismo epoch.
+- El filtro espacial por rival se aplica solo a `FamilySpotter`.
+- `audio-only` necesita reason contractual válida y no-success; no toca device, player ni audibilidad.
+- El test acumulativo se crea en S1 sobre `EngineerService` productivo; no es replayoracle ni un framework nuevo.
+
+#### Corte A — autoridad de máquina (enable/reset/cancelación/sensibilidad)
+
+- **Rutas exactas:** `service/engineer_service.go` (`SetEnabled`, `SetSpotterEnabled`, `SetSensitivity`, `ConsumeObservation`, `Status`); `core/runtime.go` (`SetEnabled`, `SetSensitivity`, `Reset`, `ProcessSpotterFrame`, `ProcessMonitorFrame`, `frameUsableLocked`, `processSpotterLocked`); `messagepolicy/scheduler.go` (`Cancel`, `CancelFamily`); `spotter/state.go` y `types.go` (rearme).
+- **Tests a ampliar/crear:** `service/engineer_service_test.go` (`TestEngineerService_InitialStateAndValidation`), `service/output_policy_test.go` (`TestDisabledSpotterNeverEntersSchedulerOrPreemptsEngineer`, `TestDisablingFamilyCancelsOnlyMatchingActiveOutputs`) — "Spotter off no altera conexión, error ni Fuel pendiente/en reproducción"; `core/runtime_test.go` (`TestRuntime_Disabled`) — reset solo de la máquina Spotter; `messagepolicy/scheduler_test.go` y `spotter_policy_test.go` — cancelación por familia y sensibilidad compartida en revalidación.
+- **Orden TDD red-verde:** (1) rojo: Spotter off no cancela cola/scheduler completos ni Fuel pendiente/en reproducción; (2) rojo: toggling no invoca `Reset()` global, reset solo de la máquina; (3) rojo: revalidación usa la misma sensibilidad que el detector; (4) verde mínimo.
+- **Criterios observables:** `SpotterEnabled=false` no altera `Connected`, no deja `lastError` engañoso ni cancela otras familias; re-enable limpia; cambio de sensibilidad rearma sin estado obsoleto ni versionado nuevo.
+- **Validación manual al final del corte:** apagar Spotter con Fuel pendiente/en reproducción y comprobar que Fuel sigue saliendo sin desconexión ni error; re-encender y rearmar; cambiar sensibilidad y confirmar rearme.
+- **Comandos (desde `vantare-v2/`):** `go test ./internal/engineer/service`, `./internal/engineer/core`, `./internal/engineer/messagepolicy`, `./internal/engineer/spotter`, `./internal/engineer/...`.
+- **Stop conditions:** `Reset()` global para un toggle, cancelación de cola completa por familia, versionado nuevo de sensibilidad/evidence, o test que aísle Spotter sin regresión.
+
+#### Corte B — autoridad de entrada (secuencia y filtro por rival)
+
+- **Rutas exactas:** `service/engineer_service.go` (`ConsumeObservation`, `observationCursor.strictlyAfter`, `reconnectBoundary`/`lastObservation`); `replayoracle/runner.go` (`consume`, `observationCursor.strictlyAfter`, `replayAwaitingFreshSnapshot`); `projectioninput/adapter.go` (`FrameFor`, `Evaluate`, `requireBaseSignals`, `adaptVehicle`); `projectioninput/policy.go` (`SemanticEvidence`); `spotter/geometry.go` (`ClassifyWithActiveSides`).
+- **Tests a ampliar/crear:** `service/canonical_input_test.go` (`TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation`) — secuencia regresiva en mismo epoch y regresión→disconnect→reconnect; `replayoracle/runner_test.go` (`TestRunnerDisconnectReconnectRequiresFreshSnapshotBeforePlaybackResumes`) — misma regla para no divergir; `projectioninput/adapter_test.go` y `spotter/geometry_test.go` — fila incompleta no produce rival de coordenadas cero; filtro solo `FamilySpotter`.
+- **Orden TDD red-verde:** (1) rojo: snapshot no estrictamente posterior en mismo epoch se rechaza (service y oracle igual); (2) rojo: regresión→disconnect→reconnect no rebaja el cursor; (3) rojo: rival con posición/pit no usable queda excluido; (4) verde mínimo.
+- **Criterios observables:** toda observación del mismo epoch avanza la secuencia; una regresión falla cerrado con `ErrCanonicalObservationNotFresh`; replayoracle reporta `ReasonStaleContext`; Spotter nunca recibe coordenada cero como rival válido; otras familias no cambian.
+- **Validación manual al final del corte:** reproducir snapshots regresivos y verificar que no hay mensajes/clears fantasma y que un reconnect solo admite snapshots posteriores al borde.
+- **Comandos (desde `vantare-v2/`):** `go test ./internal/engineer/service`, `./internal/engineer/replayoracle`, `./internal/engineer/projectioninput`, `./internal/engineer/spotter`, `./internal/engineer/...`.
+- **Stop conditions:** divergencia de secuencia entre service y replayoracle, filtro que afecte a otra familia, o cambio del contrato de observación/proyección.
+
+#### Corte C — autoridad de salida/aceptación (locale, audio-only, ruta S1)
+
+- **Rutas exactas:** `audio/config.go` (`DefaultAudioConfig`); `service/engineer_service.go` (`NewEngineerService`, `SetLocale`, `SetAudioConfig`); `service/delivery_runtime.go` (`productDeliveryPort.Deliver`); `delivery/contract.go` (reason diagnóstica de audio); `service/output_policy.go` (`OutputAudio`); nuevo `service/s1_cumulative_test.go` (u nombre análogo) sobre `EngineerService` productivo, no en replayoracle.
+- **Tests a ampliar/crear:** `audio/config_test.go` y `service/presentation_delivery_test.go` (`TestProductDeliveryKeepsSpanishVisualOnlyWhenSpotterAudioIsEnglish`) — default de locale coherente y mismatch; `service/output_policy_test.go` (`TestProductDeliveryHonoursCategoryOutputMode`) — `audio-only` miss/mismatch no-success con reason; `delivery/contract_test.go` — validar reason nueva y transiciones; `service/s1_cumulative_test.go` — primera ruta acumulativa S1.
+- **Orden TDD red-verde:** (1) rojo: locale default de presentación y audio coinciden; (2) rojo: `audio-only` sin clip/player/mismatch no termina `completed` y expone reason; (3) rojo: ruta S1 reporta esperado/observado/prohibidos sobre EngineerService; (4) verde mínimo.
+- **Criterios observables:** una única elección ES/EN compartida y diagnosticable; `audio-only` falla cerrado con no-success y reason contractual ante clip, player o mismatch ausentes; la ruta S1 es ejecutable y evaluable por IA con fallo visible ante precondiciones ausentes.
+- **Validación manual al final del corte:** sin cache, un modo `audio-only` no afirma salida y expone la causa; con cache del locale correcto, la ruta S1 entrega audio o degradación honesta.
+- **Comandos (desde `vantare-v2/`):** `go test ./internal/engineer/service`, `./internal/engineer/audio`, `./internal/engineer/delivery`, `./internal/engineer/...`.
+- **Stop conditions:** cambio en device/player/audibilidad, reason no válida en el contrato de delivery, o replayoracle como base del test acumulativo.
 
 ### S2 — Núcleo lateral completo
 

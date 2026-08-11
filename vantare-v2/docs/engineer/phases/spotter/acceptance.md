@@ -1,6 +1,8 @@
 # Spotter observable — aceptación acumulativa
 
-Estado: contrato de aceptación de la fase. S1 aún no ha comenzado.
+Estado: contrato de aceptación de la fase. S1 está en replanning técnico con
+ISA-327 (cortes A/B/C); la implementación no ha comenzado hasta aprobar su
+microplan.
 
 ## Propósito
 
@@ -113,7 +115,7 @@ y la subfase permanece abierta; el fallback visual no sustituye este gate.
 
 | Subfase | Ampliación mínima |
 |---|---|
-| S1 | autoridades, secuencia, locale, salida honesta y aislamiento |
+| S1 | autoridades, secuencia, locale, salida honesta y aislamiento; se crea la primera ruta acumulativa sobre `EngineerService` productivo (no replayoracle) con esperado/observado/prohibidos |
 | S2 | topologías laterales, identidad, clears y negativos espaciales |
 | S3 | inhibición, rearme, generación, disconnect y reconnect |
 | S4 | cache, audio, player, dispositivo real, prueba humana ES/EN, timing/audibilidad, preempción y paridad visual; un bloqueo explícito impide cerrar |

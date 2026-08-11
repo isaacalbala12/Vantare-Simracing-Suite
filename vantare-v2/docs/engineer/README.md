@@ -25,9 +25,10 @@ no modifica por sí sola un contrato de producto o arquitectura.
 
 Isaac aceptó humanamente ISA-313 / ENG-R01 Fase 5 el 2026-08-12 y dejó vigente
 la arquitectura documental y el [plan de Spotter](phases/spotter/plan.md). S1
-todavía no ha comenzado: la siguiente acción es asignar o crear su issue y rama
-propias y replanificarla concretamente desde la Nightly vigente. La única
-aceptación acumulativa de la fase Spotter es
+está en **replanning técnico con ISA-327** y rama propia
+`vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; la
+implementación no ha comenzado hasta aprobar su microplan (cortes A/B/C). La
+única aceptación acumulativa de la fase Spotter es
 [acceptance.md](phases/spotter/acceptance.md).
 
 ## Lectura por rol

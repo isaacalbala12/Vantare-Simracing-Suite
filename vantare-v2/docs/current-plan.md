@@ -69,19 +69,20 @@
 - **Estado demostrado:** ENG-01..12, ENG-14 y ENG-15 estan en Nightly. La
   vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
   aceptacion LMU extremo a extremo no estan demostrados.
-- **Issue/fase activa:** ISA-313 / ENG-R01 esta `In Progress`, **Fase 5 —
-  arquitectura documental Engineer para subagentes**. Isaac acepto humanamente
-  la Fase 5 el 2026-08-12; S1 no ha comenzado.
+- **Issue/fase activa:** ISA-313 / ENG-R01 aceptada humanamente el 2026-08-12
+  (Fase 5). S1 esta en **replanning tecnico con ISA-327** (In Progress) y rama
+  propia `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`;
+  la implementacion no ha comenzado hasta aprobar su microplan.
 - **Evidencia/publicacion:** el
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica
   autoridad para detalle mutable de rama, SHA, PR, CI y reviews; este indice no
   lo duplica.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
-  S1 no tiene todavia issue/rama ejecutables propias. ISA-314 conserva el bug de
-  guardado separado.
-- **Siguiente accion:** asignar o crear la issue y rama propias de S1 y
-  replanificarla concretamente desde la Nightly vigente y el
-  [plan Spotter](engineer/phases/spotter/plan.md).
+  ISA-314 conserva el bug de guardado separado. S2/ISA-189, S4/ISA-187 e
+  ISA-314 quedan diferidos expresamente hasta cerrar S1.
+- **Siguiente accion:** aprobar el
+  [microplan de S1](engineer/phases/spotter/plan.md) (cortes A/B/C) antes de
+  editar runtime; solo entonces un worker subagente implementa el corte A.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
   [roadmap general](engineer/engineer-beta-roadmap.md) y

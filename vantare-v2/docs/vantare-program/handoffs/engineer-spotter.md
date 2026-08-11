@@ -28,26 +28,28 @@ research quedan fuera de su context pack.
 
 ## Estado Git, PR y CI
 
-- Issue activa: ISA-313 / ENG-R01, Fase 5 — arquitectura documental Engineer.
-- Rama: `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter`.
-- Nightly integrada y verificada: `8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
-- Base/HEAD local al entrar en Corte B:
-  `90a0905e0f7198623c80c2b6f8f3c63945abae82`.
-- Cierre remoto auditado en `b2519a25`: PR #196 `OPEN` + `DRAFT`, base
-  `nightly`, merge state `CLEAN`; sin merge ni promoción.
-- Checks de ese cierre: `Validate promotion path` `SUCCESS`,
-  `Validate Vantare blocking gates` `SUCCESS` y GitGuardian `SUCCESS`.
-- Cierre funcional documental de Corte B: rango local
+- Issue activa: ISA-327 / ENG-S1 — replanning técnico de S1 Spotter
+  (autoridades y baseline confiable). In Progress en Linear.
+- Rama de ISA-327:
+  `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`.
+- Base apilada de este corte: productiva `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`
+  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`.
+- Nivel real: rama de issue. No hay push, PR, CI ni integración en Nightly,
+  Testers o Master; no existe release de este corte. El corte documental se
+  apila sobre el cierre ISA-313 sin fingir promoción.
+- Cierre remoto previo auditado en `b2519a25`: PR #196 `OPEN` + `DRAFT`, base
+  `nightly`, merge state `CLEAN`; sin merge ni promoción. Checks de ese cierre:
+  `Validate promotion path` `SUCCESS`, `Validate Vantare blocking gates`
+  `SUCCESS` y GitGuardian `SUCCESS`.
+- Cierre funcional documental de Corte B ISA-313: rango local
   `90a0905e0f7198623c80c2b6f8f3c63945abae82..ebc0dfb533ffcb41b680ad51d1ef79ecac478695`.
-- Reviews del cierre funcional: spec `ACCEPT`, quality `READY`, navegación
+  Reviews del cierre funcional: spec `ACCEPT`, quality `READY`, navegación
   fresh `PASS` y Opus `READY`. El finding normativo de S7 y la duplicación de
   evidencia quedaron corregidos en `ebc0dfb`.
 - P3 aceptado conscientemente: no se renombra el paquete legacy porque sus
   banners y el router mitigan la colisión; moverlo exige issue y alcance aparte.
 - Este commit B solo registra evidencia y estado; su SHA se reporta al cierre y
   no forma parte del rango funcional anterior.
-- Nivel real: rama de issue. No está integrada en Nightly, Testers o Master y
-  no existe release de este corte.
 
 ## Capacidades demostradas
 
@@ -79,6 +81,11 @@ research quedan fuera de su context pack.
 - Cada subfase se replantea al entrar y amplía la misma aceptación manual + IA.
 - Engineer/Spotter se implementa mediante workers subagentes; sus reportes son
   respuestas estructuradas, no documentación nueva.
+- ISA-327 replanifica S1 en tres cortes secuenciales A/B/C (máquina, entrada,
+  salida/aceptación) dentro del [plan Spotter](../../engineer/phases/spotter/plan.md).
+  No se negocia el coupling ya verificado (reset solo Spotter, cancelación por
+  familia, sensibilidad única, service/oracle coherentes, filtro solo Spotter,
+  audio-only no-success con reason, test acumulativo sobre EngineerService).
 
 ## Riesgos
 
@@ -98,17 +105,18 @@ research quedan fuera de su context pack.
 ## Issues y bloqueos
 
 - Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. La aceptación no cambia
-  producto ni inicia S1; S1 no ha comenzado.
+  producto ni inicia S1.
+- ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). La implementación
+  no ha comenzado hasta aprobar su microplan.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
-  ISA-313; no equivalen todavía a la issue ejecutable de S1.
+  ISA-313; S4/ISA-187, S2/ISA-189 e ISA-314 quedan diferidos expresamente hasta
+  cerrar S1.
 - ISA-314 conserva separado el bug de promesa falsa de guardado.
 - Las issues de voz, Pit, Strategy y gate Beta mantienen sus dependencias; este
   corte no las mueve ni declara GO.
 
 ## Siguiente acción
 
-Asignar o crear la issue y rama propias de S1, verificar la Nightly vigente y
-replanificar S1 concretamente desde
-[plan.md](../../engineer/phases/spotter/plan.md) y
-[acceptance.md](../../engineer/phases/spotter/acceptance.md) antes de editar
-runtime. No iniciar S2 ni fases posteriores por anticipado.
+Aprobar el [microplan de S1](../../engineer/phases/spotter/plan.md) (cortes
+A/B/C). Solo entonces un worker subagente inicia el corte A sobre la Nightly
+vigente verificada. No iniciar S2 ni fases posteriores por anticipado.

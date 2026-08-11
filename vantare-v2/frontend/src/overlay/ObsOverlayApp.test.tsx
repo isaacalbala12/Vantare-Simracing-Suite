@@ -36,6 +36,47 @@ class MockEventSource {
   }
 }
 
+const originalResizeObserver = globalThis.ResizeObserver;
+let runtimeOutput = { width: 1600, height: 900 };
+let previewOutput = { width: 1600, height: 900 };
+
+function installResizeObserver(): void {
+  globalThis.ResizeObserver = class {
+    private readonly callback: ResizeObserverCallback;
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+    }
+
+    observe(target: Element): void {
+      const element = target as HTMLElement;
+      let size = runtimeOutput;
+      if (element.dataset.testid === "obs-studio-preview-stage") {
+        size = previewOutput;
+      } else {
+        const previewScene = element.closest<HTMLElement>('[data-testid="obs-studio-preview-scene"]');
+        if (previewScene) {
+          size = {
+            width: Number.parseFloat(previewScene.style.width),
+            height: Number.parseFloat(previewScene.style.height),
+          };
+        }
+      }
+      this.callback(
+        [{
+          target,
+          contentBoxSize: [{ inlineSize: size.width, blockSize: size.height }],
+          contentRect: { width: size.width, height: size.height },
+        } as unknown as ResizeObserverEntry],
+        this as unknown as ResizeObserver,
+      );
+    }
+
+    disconnect(): void {}
+    unobserve(): void {}
+  } as unknown as typeof ResizeObserver;
+}
+
 function dispatch(name: string, data: unknown) {
   act(() => {
     for (const handler of runtimeMock.handlers.get(name) ?? []) {
@@ -65,12 +106,16 @@ describe("ObsOverlayApp", () => {
     MockEventSource.instances = [];
     vi.useFakeTimers();
     vi.stubGlobal("EventSource", MockEventSource);
+    runtimeOutput = { width: 1600, height: 900 };
+    previewOutput = { width: 1600, height: 900 };
+    installResizeObserver();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    globalThis.ResizeObserver = originalResizeObserver;
   });
 
   it("loads profile-v3 and starts the canonical SSE adapter", async () => {
@@ -196,6 +241,7 @@ describe("ObsOverlayApp", () => {
       search: "?profile=obs-preview.json&studioPreview=1",
     });
     const delta = deltaDefinition.createDefault("delta-preview");
+    delta.layout = { ...delta.layout, x: 123, y: 87 };
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -209,6 +255,7 @@ describe("ObsOverlayApp", () => {
                 name: "OBS Preview",
                 displayMode: "streaming",
                 monitorIndex: 0,
+                layoutViewport: { width: 1000, height: 1000 },
                 layouts: { general: { type: "general", widgets: [delta] } },
               },
               { x: 120, y: 96 },
@@ -221,8 +268,52 @@ describe("ObsOverlayApp", () => {
     await flush();
 
     expect(screen.getByTestId("obs-studio-preview")).toBeTruthy();
-    expect(screen.getByTestId("obs-studio-preview-scene")).toBeTruthy();
-    expect(screen.getByTestId("runtime-widget-frame")).toBeTruthy();
+    const previewScene = screen.getByTestId("obs-studio-preview-scene") as HTMLElement;
+    const runtimeScene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
+    const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
+    expect(previewScene.style.width).toBe("1000px");
+    expect(previewScene.style.height).toBe("1000px");
+    expect(previewScene.dataset.scale).toBe("0.9");
+    expect(previewScene.dataset.offsetX).toBe("350");
+    expect(runtimeScene.dataset.scale).toBe("1");
+    expect(runtimeScene.dataset.offsetX).toBe("0");
+    expect(runtimeScene.dataset.offsetY).toBe("0");
+    expect(frame.style.left).toBe("123px");
+    expect(frame.style.top).toBe("87px");
+  });
+
+  it("uses the real output in streaming mode and ignores a shrink-wrap API origin", async () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?profile=obs-stream.json",
+    });
+    const delta = deltaDefinition.createDefault("delta-stream");
+    delta.layout = { ...delta.layout, x: 123, y: 87 };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(buildApiResponse({
+          schemaVersion: 3,
+          id: "obs-stream",
+          name: "OBS Stream",
+          displayMode: "streaming",
+          monitorIndex: 0,
+          layoutViewport: { width: 1000, height: 1000 },
+          layouts: { general: { type: "general", widgets: [delta] } },
+        }, { x: 120, y: 96 })),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    expect(screen.queryByTestId("obs-studio-preview")).toBeNull();
+    const runtimeScene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
+    const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
+    expect(runtimeScene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    expect(frame.style.left).toBe("123px");
+    expect(frame.style.top).toBe("87px");
   });
 
   it("skips preserved legacy widgets at runtime", async () => {

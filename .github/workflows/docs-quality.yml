@@ -1,0 +1,38 @@
+name: Documentation quality
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/validate_docs.py"
+      - ".github/scripts/test_validate_docs.py"
+      - ".github/workflows/docs-quality.yml"
+      - "vantare-v2/AGENTS.md"
+      - "vantare-v2/docs/**"
+  push:
+    branches: [nightly, testers]
+    paths:
+      - ".github/scripts/validate_docs.py"
+      - ".github/scripts/test_validate_docs.py"
+      - ".github/workflows/docs-quality.yml"
+      - "vantare-v2/AGENTS.md"
+      - "vantare-v2/docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate live documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate documentation governance
+        run: python .github/scripts/validate_docs.py
+
+      - name: Test documentation validator
+        run: python .github/scripts/test_validate_docs.py

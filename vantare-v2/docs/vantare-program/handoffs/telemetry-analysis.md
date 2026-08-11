@@ -64,9 +64,11 @@ publica como primer comando serial de `release:artifacts`,
 falla antes de runtime, pnpm o Go; no imprime valores y no bloquea
 `windows:build`/dev/offline. `docs/release-artifacts.md` es la receta unica para
 cargar una ruta `.env.local` autorizada sin copiarla, reconstruir con `-f` y
-completar el smoke obligatorio de Google OAuth. El harness nuevo pasa 15 casos
-en Windows PowerShell 5.1 y PowerShell 7; el harness completo TA-03F tambien
-permanece verde en ambos hosts.
+completar el smoke obligatorio de Google OAuth. El harness nuevo pasa 17 casos
+en Windows PowerShell 5.1 y PowerShell 7, con `-f` cubierto en los tres targets;
+el harness completo TA-03F tambien permanece verde en ambos hosts. La receta
+CI esta contrastada directamente con el workflow, `go.mod` y el
+`packageManager` actuales.
 
 El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
 runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo

@@ -128,16 +128,25 @@ Invoke-Case "preflight passes with synthetic values without printing them" {
     Assert-True ($result.Output -notmatch [regex]::Escape($syntheticKey)) "Preflight printed the anon key value."
 }
 
+$dependencyStartPattern = '(?i)go\s+run|go\s+mod\s+tidy|go\s+build|\bpnpm(?:\.cmd)?\b|prepare-runtime\.ps1|telemetry:runtime'
+
 foreach ($taskName in @("release:artifacts", "windows:package:all", "release:portable")) {
     Invoke-Case "$taskName fails before build dependencies with env unset" {
         $result = Invoke-TaskProcess -TaskName $taskName -Configured $false -DryRun $false
         Assert-True ($result.ExitCode -ne 0) "$taskName accepted missing release configuration."
         Assert-True ($result.Output -match 'VANTARE_SUPABASE_URL=UNSET') "$taskName did not report the URL as UNSET."
         Assert-True ($result.Output -match 'VANTARE_SUPABASE_ANON_KEY=UNSET') "$taskName did not report the anon key as UNSET."
-        Assert-True ($result.Output -notmatch '\[(?:windows:)?telemetry:runtime\]') `
-            "$taskName started the runtime dependency before failing."
-        Assert-True ($result.Output -notmatch 'pnpm (?:install|run build)|go build') `
-            "$taskName started a build dependency before failing."
+        Assert-True ($result.Output -notmatch $dependencyStartPattern) `
+            "$taskName started a build/runtime dependency before failing."
+    }
+
+    Invoke-Case "$taskName force rebuild cannot bypass the release preflight" {
+        $result = Invoke-TaskProcess -TaskName $taskName -Configured $false -DryRun $false -Force $true
+        Assert-True ($result.ExitCode -ne 0) "$taskName -f bypassed missing release configuration."
+        Assert-True ($result.Output -match 'MISSING=.*VANTARE_SUPABASE_URL.*VANTARE_SUPABASE_ANON_KEY') `
+            "$taskName -f did not report both missing names."
+        Assert-True ($result.Output -notmatch $dependencyStartPattern) `
+            "$taskName -f started a build/runtime dependency before failing."
     }
 
     Invoke-Case "$taskName schedules preflight before build dependencies with env unset" {
@@ -170,15 +179,6 @@ Invoke-Case "windows:build remains available without release preflight" {
     Assert-True ($result.ExitCode -eq 0) "windows:build dry-run did not render without release configuration."
     Assert-True ($result.Output -notmatch 'release_build_preflight\.ps1') `
         "windows:build was incorrectly wired to the release preflight."
-}
-
-Invoke-Case "force rebuild cannot bypass the release preflight" {
-    $result = Invoke-TaskProcess -TaskName "release:artifacts" -Configured $false -DryRun $false -Force $true
-    Assert-True ($result.ExitCode -ne 0) "release:artifacts -f bypassed missing release configuration."
-    Assert-True ($result.Output -match 'MISSING=.*VANTARE_SUPABASE_URL.*VANTARE_SUPABASE_ANON_KEY') `
-        "release:artifacts -f did not report both missing names."
-    Assert-True ($result.Output -notmatch '\[(?:windows:)?telemetry:runtime\]|pnpm (?:install|run build)|go build') `
-        "release:artifacts -f started build dependencies before failing."
 }
 
 if ($failures.Count -ne 0) {

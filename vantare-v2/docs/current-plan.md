@@ -36,9 +36,12 @@ Nota TA-03F (2026-08-11, candidata local verificada tras reviews de especificaci
   con `-f` y deja `windows:build`/dev/offline intactos. La receta unica de
   entorno, build y smoke OAuth vive en `docs/release-artifacts.md`.
 - Evidencia del preflight: RED reprodujo los tres entrypoints avanzando sin
-  gate; GREEN pasa 15 casos en Windows PowerShell 5.1 y PowerShell 7, incluido
-  unset/set sintetico, no exposicion, orden, `-f` y build de desarrollo. El
-  harness completo de packaging TA-03F tambien pasa en ambos hosts.
+  gate y una mutacion controlada demostro que la regresion detecta trabajo
+  previo al gate; GREEN pasa 17 casos en Windows PowerShell 5.1 y PowerShell 7,
+  incluido unset/set sintetico, no exposicion, orden, `-f` en los tres targets
+  y build de desarrollo. El harness completo de packaging TA-03F tambien pasa
+  en ambos hosts. La seccion CI de la receta refleja el workflow, `go.mod` y
+  `packageManager` actuales sin modificar la automatizacion.
 - Pendiente: smoke manual de install/upgrade/rollback/uninstall en Windows 11
   x64 y Windows 10 x64 si continúa soportado, y revisión humana. No hay
   Linear, push, PR, CI remoto, merge, promoción, release ni publicación.

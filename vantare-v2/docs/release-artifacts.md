@@ -184,28 +184,58 @@ El workflow `Release build` (R03.C) automatiza el pipeline de artefactos en GitH
 
 | Trigger | Comportamiento |
 |---|---|
-| Push de tag `v*` | Build + upload de artifacts + creacion automatica de GitHub Release con los 6 archivos oficiales. |
-| `workflow_dispatch` sobre un tag con `create_release: true` | Build + upload + creacion manual de GitHub Release. |
-| `workflow_dispatch` sobre una rama o tag sin `create_release` | Build + upload de artifacts; **no** crea release. |
+| Push de tag `v*` | Exige que el commit del tag pertenezca a `master`; construye, sube los seis assets y crea o actualiza una release estable. |
+| `workflow_dispatch` desde `nightly` o `testers`, `publish_channel: none` | Construye y sube el artifact interno de Actions; no crea GitHub Release. |
+| `workflow_dispatch` desde `nightly` o `testers`, canal homonimo | Exige `release_tag`, manifest y fragmentos; construye, crea o actualiza la pre-release y solo despues publica las comunicaciones configuradas. |
+
+Los inputs actuales del dispatch son `publish_channel` (`none`, `nightly` o
+`testers`), `release_tag` y `release_notes`. No existe un input
+`create_release`. El canal publicable debe coincidir con la rama y el tag debe
+seguir el sufijo de ese canal.
+
+El job Windows recibe estas variables sin imprimir sus valores:
+
+- `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` desde secrets para Vite;
+- `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY` desde los mismos
+  valores publicos para Task/Go y el preflight;
+- `VANTARE_LICENSE_PUBLIC_KEYS` para paridad de licencia;
+- `VANTARE_BUILD_CHANNEL` derivado de la rama o `master` para tags.
+
+El gate inicial comprueba los nombres `VITE_*` y
+`VANTARE_LICENSE_PUBLIC_KEYS`; el preflight de packaging comprueba despues la
+pareja `VANTARE_*`. La ausencia de cualquiera de esos contratos detiene el job.
 
 Pasos principales del job `build`:
 
 1. Checkout del repo en la raiz (`Vantare-Overlays/`).
-2. Setup de Go `1.25.0`, pnpm `10`, Node `22`.
-3. Instalacion de NSIS `3.12.0` via Chocolatey (pinned).
-4. Instalacion de Wails v3 CLI `v3.0.0-alpha.98-tui` via `go install` (pinned).
-5. Gate de tests/lint (antes de generar artefactos):
-   - `go test ./...` desde `vantare-v2/`.
-   - `pnpm install` + `pnpm test` + `pnpm lint` desde `vantare-v2/frontend/`.
-   - Si cualquier gate falla, el job se aborta y no se generan artefactos ni se publica release.
-6. En el directorio `vantare-v2/`:
+2. Verificacion de entorno Supabase/licencia y del deploy surface de Supabase.
+3. Setup de Go desde `vantare-v2/go.mod` (`1.25.0`), Node `22`, pnpm `9.1.0`
+   (tambien declarado en el `packageManager` raiz), NSIS `3.12.0` y Wails
+   `v3.0.0-alpha.98-tui`.
+4. Gates antes de generar artefactos:
+   - `pnpm install --frozen-lockfile` y `pnpm build` en
+     `vantare-v2/frontend/`;
+   - `go test ./...` en `vantare-v2/`;
+   - `pnpm test` y `pnpm lint` en `vantare-v2/frontend/`.
+   - Go, build y tests son bloqueantes. El lint solo es advisory en
+     `workflow_dispatch`; en un tag publico sigue siendo bloqueante.
+5. Sincronizacion de version desde `release_tag`/tag valido y export de
+   `VANTARE_VERSION`; un dispatch `none` sin tag conserva `VERSION`. La
+   sincronizacion puede modificar archivos generados dentro del runner, nunca
+   el repositorio remoto.
+6. En `vantare-v2/`, exactamente como esta escrito hoy en el workflow:
    - `wails3 task release:clean`
    - `wails3 task release:artifacts`
    - `wails3 task release:verify`
+   CI no usa `-f`: parte de un checkout limpio y ejecuta esos pasos una vez en
+   el mismo job. La receta local si usa `-f` al corregir un build o cambiar el
+   entorno para invalidar resultados que Task pudiera considerar actuales.
 7. Verificacion estricta de que existen los 6 archivos oficiales.
 8. Upload a GitHub Actions artifacts.
 
-El job `release` (solo en tags `v*`) corre en Ubuntu, descarga los artifacts y ejecuta `gh release create` subiendo:
+El job `release` corre para tags `v*` y para dispatch publicable. En Ubuntu,
+descarga los artifacts y crea o actualiza de forma idempotente la GitHub
+Release, resubiendo con `--clobber` cuando ya existe:
 
 - `vantare.exe` + `.sha256`
 - `vantare-amd64-installer.exe` + `.sha256`
@@ -216,8 +246,11 @@ El body del release se extrae de la seccion `## vX.X.X.X` de `docs/changelog.md`
 Seguridad:
 
 - Permisos minimos: el workflow usa `permissions: contents: read` por defecto; solo el job `release` solicita `permissions: contents: write`.
-- No se imprimen secretos; el unico token usado es `secrets.GITHUB_TOKEN` en el job de release.
-- No se modifican archivos de version en CI: `VERSION` se lee via `version:sync` pero nunca se escribe.
+- Supabase, claves publicas de licencia, webhooks y `GITHUB_TOKEN` se inyectan
+  mediante secrets en los jobs que los consumen; los gates muestran nombres o
+  destinos verificados, no valores.
+- La sincronizacion de version solo cambia el workspace efimero del runner; el
+  workflow no commitea ni empuja esos cambios.
 - Si falta algun artefacto o checksum, el job `build` falla antes de llegar al release.
 
 ---

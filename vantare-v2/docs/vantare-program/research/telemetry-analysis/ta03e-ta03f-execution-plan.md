@@ -160,9 +160,11 @@ funcional y de packaging, no visual.
   solo informa `SET`/`UNSET` y nombres ausentes, no valores; `windows:build`,
   desarrollo y offline permanecen fuera del gate. La receta operativa unica es
   `docs/release-artifacts.md`.
-- El harness del preflight pasa 15 casos con Windows PowerShell 5.1 y
-  PowerShell 7; el harness completo de packaging TA-03F sigue pasando en ambos
-  hosts despues del wiring serial.
+- El harness del preflight pasa 17 casos con Windows PowerShell 5.1 y
+  PowerShell 7, incluido `-f` sobre los tres entrypoints; una mutacion
+  controlada confirma que detecta cualquier trabajo previo al gate. El harness
+  completo de packaging TA-03F sigue pasando en ambos hosts despues del wiring
+  serial.
 - Pendiente antes de publicar: instalar/actualizar/desinstalar de verdad y
   forzar rollback en Windows 11 x64; repetir smoke en Windows 10 x64 si sigue
   en soporte. Esta rama no instala ni publica artefactos.

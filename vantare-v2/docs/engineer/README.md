@@ -3,6 +3,11 @@
 Estado: vigente desde ISA-313 / ENG-R01 Fase 5. Este archivo decide qué leer;
 no sustituye Linear, los contratos ni la evidencia del runtime.
 
+Todas las rutas de este router y del context pack se resuelven desde
+`vantare-v2/`, directorio de aplicación del worktree. El
+[README homónimo de la raíz Git](../../../docs/engineer/README.md) es histórico
+y no forma parte del context pack.
+
 ## Autoridad y precedencia
 
 1. [AGENTS.md](../../AGENTS.md) y [plan global](../current-plan.md).

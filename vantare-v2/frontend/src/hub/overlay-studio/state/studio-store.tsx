@@ -224,10 +224,7 @@ export function StudioProvider(props: {
             setAccessNotice(error.message);
             return current;
           }
-          const message =
-            error instanceof Error ? error.message : "studio access denied";
-          setAccessNotice(message);
-          return current;
+          throw error;
         }
         try {
           const next = commitStudioCommand(current, command);

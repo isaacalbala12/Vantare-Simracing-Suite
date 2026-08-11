@@ -13,10 +13,10 @@ acciones sin contrato transaccional y confirmación.
 
 ## Autoridad técnica
 
-- `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
-- `docs/adr/0005-engineer-projection-capability-contract.md`.
-- `docs/engineer/engineer-beta-roadmap.md`.
-- Handoff vivo de `Telemetry Core` y plan exacto enlazado por Linear.
+- [ADR 0004](../../adr/0004-telemetry-core-modular-observation-architecture.md).
+- [ADR 0005](../../adr/0005-engineer-projection-capability-contract.md).
+- [Roadmap Engineer Beta](../../engineer/engineer-beta-roadmap.md).
+- [Handoff de Telemetry Core](telemetry-core.md) y plan exacto enlazado por Linear.
 
 ## Estado técnico actual
 
@@ -61,12 +61,12 @@ con puertos falsos, idempotencia, confirmación y cancelación antes de wiring.
 
 ## Evidencia
 
-- `docs/engineer/projection-contract-and-legacy-consumers.md`.
-- `docs/engineer/ptt-input-isa-185.md`.
-- `docs/engineer/voice-package-host-isa-182.md`.
-- `docs/engineer/human-corpus-voice-host-isa-181.md`.
-- `docs/engineer/tts-stt-selection-isa-180.md`.
-- `docs/telemetry-core/engineer-cutover-isa-112.md`.
+- [Contrato de proyección](../../engineer/projection-contract-and-legacy-consumers.md).
+- [PTT ISA-185](../../engineer/ptt-input-isa-185.md).
+- [Voice package host ISA-182](../../engineer/voice-package-host-isa-182.md).
+- [Corpus humano ISA-181](../../engineer/human-corpus-voice-host-isa-181.md).
+- [Selección TTS/STT ISA-180](../../engineer/tts-stt-selection-isa-180.md).
+- [Cutover Engineer ISA-112](../../telemetry-core/engineer-cutover-isa-112.md).
 
 ## Historial
 

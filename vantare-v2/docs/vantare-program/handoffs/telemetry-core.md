@@ -13,9 +13,9 @@ abren readers propios.
 
 ## Autoridad técnica
 
-- `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
-- `docs/adr/0009-historical-storage-sqlite-mcap.md`.
-- `docs/telemetry-core/README.md`.
+- [ADR 0004](../../adr/0004-telemetry-core-modular-observation-architecture.md).
+- [ADR 0009](../../adr/0009-historical-storage-sqlite-mcap.md).
+- [Contrato Telemetry Core](../../telemetry-core/README.md).
 - El microplan exacto enlazado por Linear.
 
 ## Estado técnico actual
@@ -57,11 +57,11 @@ probar compatibilidad old/new antes de publicarla en una proyección.
 
 ## Evidencia
 
-- `docs/telemetry-core/final-verification.md`.
-- `docs/telemetry-core/overlay-shadow-matrix.md`.
-- `docs/telemetry-core/engineer-cutover-isa-112.md`.
-- `docs/telemetry-core/recording-sink-sqlite-isa-102.md`.
-- `docs/telemetry-core/baseline-refs.md` como snapshot histórico.
+- [Gate final ISA-117](../../telemetry-core/final-gate-isa-117.md).
+- [Matriz shadow Overlay](../../telemetry-core/overlay-shadow-matrix.md).
+- [Cutover Engineer ISA-112](../../telemetry-core/engineer-cutover-isa-112.md).
+- [Recording sink ISA-102](../../telemetry-core/recording-sink-sqlite-isa-102.md).
+- [Baseline de refs](../../telemetry-core/baseline-refs.md) como snapshot histórico.
 
 ## Historial
 

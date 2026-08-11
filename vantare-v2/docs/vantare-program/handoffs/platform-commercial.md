@@ -13,11 +13,12 @@ una entrada temporal hasta disponer de handoff propio.
 
 ## Autoridad técnica
 
-- `docs/vantare-program/product-contract.md` y `execution-policy.md`.
-- `docs/adr/0008-polar-commercial-authority.md`.
-- `docs/licensing-auth-architecture.md` y `docs/billing/`.
-- `docs/branch-channels.md` y `docs/release-beta-operations-runbook.md`.
-- `docs/adr/0007-testing-center-linear-operational-authority.md`.
+- [Contrato de producto](../product-contract.md) y [política](../execution-policy.md).
+- [ADR 0008](../../adr/0008-polar-commercial-authority.md).
+- [Arquitectura de licencia](../../licensing-auth-architecture.md) y
+  [Billing](../../billing/).
+- [Canales](../../branch-channels.md) y [runbook beta](../../release-beta-operations-runbook.md).
+- [ADR 0007](../../adr/0007-testing-center-linear-operational-authority.md).
 
 ## Estado técnico actual
 
@@ -65,12 +66,12 @@ en una copia recuperable.
 
 ## Evidencia
 
-- `docs/billing/bil-09-lifecycle-matrix.md`.
-- `docs/billing/bil-10-observability-runbook.md`.
-- `docs/billing/bil-10c-operational-access-runbook.md`.
-- `docs/runbooks/testing-center-ui.md`.
-- `docs/runbooks/testing-center-linear-outbox.md`.
-- `docs/runbooks/testing-center-candidate-feedback.md`.
+- [Matriz BIL-09](../../billing/bil-09-lifecycle-matrix.md).
+- [Runbook BIL-10](../../billing/bil-10-observability-runbook.md).
+- [Acceso operativo BIL-10C](../../billing/bil-10c-operational-access-runbook.md).
+- [Testing Center UI](../../runbooks/testing-center-ui.md).
+- [Outbox Linear](../../runbooks/testing-center-linear-outbox.md).
+- [Feedback de candidatas](../../runbooks/testing-center-candidate-feedback.md).
 
 ## Historial
 

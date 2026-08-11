@@ -13,9 +13,9 @@ abre readers live y no borra originales.
 
 ## Autoridad técnica
 
-- `docs/adr/0010-duckdb-helper-for-historical-telemetry.md`.
-- `docs/vantare-program/research/telemetry-analysis/README.md`.
-- `docs/vantare-program/research/telemetry-analysis/historical-model.md`.
+- [ADR 0010](../../adr/0010-duckdb-helper-for-historical-telemetry.md).
+- [Expediente de Analysis](../research/telemetry-analysis/README.md).
+- [Modelo histórico](../research/telemetry-analysis/historical-model.md).
 - El plan exacto enlazado por Linear.
 
 ## Estado técnico actual
@@ -57,10 +57,10 @@ comunitarios hasta que exista el sandbox de su issue específica.
 
 ## Evidencia
 
-- `docs/vantare-program/research/telemetry-analysis/lmu-duckdb-characterization.md`.
-- `docs/vantare-program/research/telemetry-analysis/duckdb-adapter-decision.md`.
-- `docs/vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`.
-- `internal/telemetryanalysis/testdata/lmu-duckdb-schema-v1.json`.
+- [Caracterización LMU](../research/telemetry-analysis/lmu-duckdb-characterization.md).
+- [Decisión del adapter](../research/telemetry-analysis/duckdb-adapter-decision.md).
+- [Evidencia TA-03C](../research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md).
+- [Schema sanitizado](../../../internal/telemetryanalysis/testdata/lmu-duckdb-schema-v1.json).
 
 ## Historial
 

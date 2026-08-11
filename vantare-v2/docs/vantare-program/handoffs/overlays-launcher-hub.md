@@ -14,11 +14,11 @@ reales sin inventar estados.
 
 ## Autoridad técnica
 
-- `docs/adr/0003-overlay-studio-v3-rebuild.md`.
-- `docs/overlays-studio/README.md` y
-  `docs/overlays-studio/os-09-overlay-workshop-contract.md`.
-- `docs/overlays-studio/overlay-workshop-authoring-guide.md`.
-- `docs/launcher-v3-architecture.md`.
+- [ADR 0003](../../adr/0003-overlay-studio-v3-rebuild.md).
+- [Overlay Studio](../../overlays-studio/README.md) y
+  [contrato Workshop](../../overlays-studio/os-09-overlay-workshop-contract.md).
+- [Guía de autoría Workshop](../../overlays-studio/overlay-workshop-authoring-guide.md).
+- [Arquitectura Launcher](../../launcher-v3-architecture.md).
 - El plan exacto enlazado por Linear.
 
 ## Estado técnico actual
@@ -61,10 +61,10 @@ bytes modificados por smokes y revisar capturas sin fondo de escenario.
 
 ## Evidencia
 
-- `docs/overlays-studio/overlay-studio-v1-commercial-launch-plan.md`.
-- `docs/overlays-studio/canvas-drag-imperative-preview.md`.
-- `docs/release-beta-operations-runbook.md`.
-- `docs/tester-build-instructions.md`.
+- [Plan de lanzamiento de Studio V1](../../overlays-studio/overlay-studio-v1-commercial-launch-plan.md).
+- [Preview imperativa de drag](../../overlays-studio/canvas-drag-imperative-preview.md).
+- [Runbook de beta](../../release-beta-operations-runbook.md).
+- [Instrucciones para testers](../../tester-build-instructions.md).
 
 ## Historial
 

@@ -13,9 +13,10 @@ live; Strategy consume sus proyecciones sin abrir readers ni stores ajenos.
 
 ## Autoridad técnica
 
-- `docs/adr/0006-strategy-planner-unified-domain-and-ownership.md`.
-- `docs/strategy-planner/README.md`.
-- `docs/strategy-planner/str-00-audit.md` y `rescue-matrix.md` como evidencia.
+- [ADR 0006](../../adr/0006-strategy-planner-unified-domain-and-ownership.md).
+- [Contrato Strategy](../../strategy-planner/README.md).
+- [Auditoría STR-00](../../strategy-planner/str-00-audit.md) y
+  [matriz de rescate](../../strategy-planner/rescue-matrix.md) como evidencia.
 - El plan exacto enlazado por Linear.
 
 ## Estado técnico actual
@@ -58,10 +59,10 @@ versionada de Telemetry Core.
 
 ## Evidencia
 
-- `docs/strategy-planner/str-02-canonicalization-memory-benchmark.md`.
-- `docs/strategy-planner/str-03-repository.md`.
-- `docs/strategy-planner/str-09-advanced-input.md`.
-- `docs/vantare-program/research/strategy-planner/`.
+- [Benchmark STR-02](../../strategy-planner/str-02-canonicalization-memory-benchmark.md).
+- [Repositorio STR-03](../../strategy-planner/str-03-repository.md).
+- [Entrada manual STR-09](../../strategy-planner/str-09-manual-inputs.md).
+- [Evidencia visual STR-09](../../strategy-planner/evidence/str-09/).
 
 ## Historial
 

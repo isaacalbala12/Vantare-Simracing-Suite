@@ -472,7 +472,7 @@ Ledger vivo:
 |---|---|---|---|---|
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
-| 2 | Superficie editable en Studio | En ejecución; 2A PASS | `b873a82` + `7b24f09`; state/access 66/66, build y doble review PASS | Microcorte 2B |
+| 2 | Superficie editable en Studio | En ejecución; 2A/2B PASS | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; dobles reviews PASS | Microcorte 2C |
 | 3 | Paridad Desktop/OBS | Pendiente | — | Task 2 y reviews PASS |
 | 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
@@ -511,3 +511,19 @@ Evidencia microcorte 2A:
   `commitStudioCommand`; la implementación de ambos caminos fue inspeccionada.
 - Task 2 se divide en 2A estado, 2B geometría pura y 2C canvas/controles para
   mantener write sets acotados y review entre cortes.
+
+Evidencia microcorte 2B:
+
+- Fit, clamp, snap, safe area, center, move y resize consumen `LayoutViewport`.
+  Los aliases 1920×1080 quedan deprecados y solo como fallback transitorio de
+  callers que 2C debe eliminar.
+- Matriz TDD: 1280×720, 3440×1440, 5120×1440, 1000×1000 y bordes custom 1006px
+  no alineados a la rejilla.
+- Review detectó dos regresiones de borde antes de 2C: snap posterior al clamp
+  podía perder recoverability en move y las guides de resize podían quedar en
+  la posición previa al clamp. Corregidas en `50e9b9e` y `5fc3809` con cobertura
+  X/Y y guías perpendiculares.
+- `MINIMUM_VISIBLE` deriva ahora de la autoridad core. Preview drag/resize sigue
+  imperativa y solo hace commit al terminar.
+- Evidencia final: focal 73/73, build, lint focal y diff-check PASS. Spec review
+  PASS y quality review Ready, sin Critical/Important/Minor nuevos.

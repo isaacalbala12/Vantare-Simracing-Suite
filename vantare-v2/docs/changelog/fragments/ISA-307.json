@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-307",
+  "type": "fix",
+  "summary": "La comprobación visual automática de los overlays vuelve a proteger de verdad: se paraba en el primer fallo y dejaba sin revisar los otros cincuenta y dos.",
+  "technicalNotes": [
+    "El arnés visual abortaba en el primer fallo, así que una sola captura desactualizada bastaba para dejar el resto sin comprobar. Ahora recorre todas las comprobaciones y falla al final, con la lista completa.",
+    "Al recorrerlas todas aparecieron dos fallos ocultos: un diálogo de recuperación de borrador que se comía los clics de las comprobaciones siguientes, y una comprobación de teclado que buscaba los selectores de perfil y sesión donde ya no están.",
+    "Diez capturas de referencia estaban obsoletas por dos cambios anteriores que no las actualizaron: el escenario de prueba pasó de cinco coches a una parrilla completa de LMU, y el fondo del lienzo dejó de ser una rejilla fija.",
+    "Ninguna de las diez era un fallo del producto: se revisaron una a una antes de darlas por buenas."
+  ],
+  "testing": [
+    "No requiere comprobación por parte del tester: es un cambio de la validación interna, sin efecto en la aplicación."
+  ],
+  "knownLimitations": [
+    "Una comprobación de foco por teclado (keyboard-small) falla de forma esporádica por medir antes de tiempo; queda registrada como deuda técnica TD-043."
+  ]
+}

@@ -56,6 +56,11 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   workers, pero un worker no puede crear subagentes ni delegar su tarea salvo
   autorizacion expresa y acotada del orquestador. No ejecutes dos agentes en
   paralelo sobre el mismo worktree o rama.
+- Excepcion acotada a Engineer/Spotter: todo cambio productivo lo implementa
+  un worker subagente, incluso si es trivial. El orquestador planifica, prepara
+  el contexto, coordina, revisa el diff y la evidencia y mantiene el estado
+  vivo, pero no implementa producto de Engineer/Spotter. Esta excepcion no
+  cambia la regla general de delegacion para los demas modulos.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.

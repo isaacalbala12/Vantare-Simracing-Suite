@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Sequence
 
 
 REQUIRED_FRAGMENT_FIELDS = {
@@ -111,6 +111,56 @@ def _bullets(items: Iterable[str]) -> str:
 def _embed_field(items: Iterable[str]) -> str:
     value = _bullets(items)
     return value if len(value) <= 1024 else value[:1023].rstrip() + "…"
+
+
+# Discord caps a field at 1024 characters and a whole message at 6000. Cutting
+# at 1024 mid-sentence used to drop entries silently, and since fragments are
+# ordered by issue number, what fell off the end was always the newest work —
+# the very thing the announcement exists to report.
+EMBED_FIELD_LIMIT = 1024
+
+
+def _embed_fields(name: str, items: Sequence[str], *, max_fields: int = 1) -> list[dict[str, Any]]:
+    """Spread bullets across up to max_fields, never splitting one in half.
+
+    Whatever does not fit is stated as a count instead of vanishing, so a
+    reader can tell the message is partial and go looking for the rest.
+    """
+    bullets = [f"- {item.strip()}" for item in items if item and item.strip()]
+    if not bullets:
+        return []
+
+    fields: list[dict[str, Any]] = []
+    index = 0
+    while index < len(bullets) and len(fields) < max_fields:
+        chunk: list[str] = []
+        length = 0
+        last = len(fields) == max_fields - 1
+        while index < len(bullets):
+            addition = len(bullets[index]) + (1 if chunk else 0)
+            # Keep room on the final chunk for the "and N more" line.
+            reserve = 40 if last and index < len(bullets) - 1 else 0
+            if chunk and length + addition + reserve > EMBED_FIELD_LIMIT:
+                break
+            if not chunk and length + addition > EMBED_FIELD_LIMIT:
+                # A single bullet longer than a whole field: this one has to be
+                # cut, but it is cut visibly and it is the only one affected.
+                chunk.append(bullets[index][: EMBED_FIELD_LIMIT - 1].rstrip() + "…")
+                index += 1
+                length = EMBED_FIELD_LIMIT
+                break
+            chunk.append(bullets[index])
+            length += addition
+            index += 1
+        remaining = len(bullets) - index
+        if last and remaining > 0:
+            chunk.append(f"- …y {remaining} más, en el changelog completo.")
+        fields.append({
+            "name": name if not fields else f"{name} (cont.)",
+            "value": "\n".join(chunk),
+            "inline": False,
+        })
+    return fields
 
 
 def _plain_lines(markdown: str, limit: int = 5) -> list[str]:
@@ -231,15 +281,24 @@ def _channel_image_name(channel: str) -> str:
     return NIGHTLY_IMAGE_NAME if channel == "nightly" else TESTERS_IMAGE_NAME
 
 
+def _fragment_order(fragment: dict[str, Any]) -> int:
+    """Issue number, so ISA-95 sorts before ISA-304 rather than after it."""
+    match = re.search(r"(\d+)", str(fragment.get("issue", "")))
+    return int(match.group(1)) if match else 0
+
+
 def render_channel_update(fragments: list[dict[str, Any]], revision: str, channel: str,
                           *, include_image: bool = False) -> dict[str, Any]:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     copy = _channel_copy(channel)
-    summary = [f"**{item['issue']}** — {item['summary']}" for item in fragments]
-    technical = [note for item in fragments for note in item["technicalNotes"]]
-    testing = [step for item in fragments for step in item["testing"]]
-    limitations = [note for item in fragments for note in item["knownLimitations"]]
+    # Newest first. Fragments accumulate and the message cannot hold them all,
+    # so the half that survives has to be the half being announced.
+    ordered = sorted(fragments, key=_fragment_order, reverse=True)
+    summary = [f"**{item['issue']}** — {item['summary']}" for item in ordered]
+    technical = [note for item in ordered for note in item["technicalNotes"]]
+    testing = [step for item in ordered for step in item["testing"]]
+    limitations = [note for item in ordered for note in item["knownLimitations"]]
     limitation_copy = limitations or ["No hay limitaciones conocidas declaradas para este corte."]
     payload = {
         "allowed_mentions": {"parse": []},
@@ -248,10 +307,10 @@ def render_channel_update(fragments: list[dict[str, Any]], revision: str, channe
             "description": f"{copy['description']} Revisión `{revision[:12]}`.",
             "color": VANTARE_RED,
             "fields": [
-                {"name": "Resumen", "value": _embed_field(summary), "inline": False},
-                {"name": "Notas técnicas", "value": _embed_field(technical), "inline": False},
-                {"name": "Qué comprobar", "value": _embed_field(testing), "inline": False},
-                {"name": "Limitaciones conocidas", "value": _embed_field(limitation_copy), "inline": False},
+                *_embed_fields("Resumen", summary, max_fields=2),
+                *_embed_fields("Notas técnicas", technical),
+                *_embed_fields("Qué comprobar", testing),
+                *_embed_fields("Limitaciones conocidas", limitation_copy),
             ],
             "footer": {"text": copy["footer"]},
         }],

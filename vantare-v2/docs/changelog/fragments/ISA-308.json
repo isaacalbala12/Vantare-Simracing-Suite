@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-308",
+  "type": "feature",
+  "summary": "El widget de pedales se suma a la dirección Redline: tres carriles verticales que se llenan desde el suelo, con la etiqueta y el porcentaje bajo cada uno.",
+  "technicalNotes": [
+    "Redline es el diseño por defecto de pedales en Endurance; Classic y Neo siguen disponibles en el panel de Diseño.",
+    "La etiqueta de cada pedal pasa de gris a blanco en cuanto ese pedal deja el reposo, así que se ve cuál está en uso sin llegar a leer la barra.",
+    "Un pedal a fondo ilumina su carril en lugar de seguir creciendo, que es lo único que una barra ya llena no puede indicar por sí sola.",
+    "Los colores de embrague, freno y acelerador siguen siendo los que tengas configurados.",
+    "Con esto, los cuatro overlays de Endurance quedan en la misma dirección visual."
+  ],
+  "testing": [
+    "Añadir el widget de pedales y comprobar que entra en Redline, con los tres carriles y sus porcentajes.",
+    "En pista, verificar que cada carril sigue a su pedal y que la etiqueta se enciende en blanco al pisarlo.",
+    "Pisar a fondo el acelerador y comprobar que el carril se ilumina al llegar al 100%.",
+    "Cambiar los colores de pedal en los ajustes del widget y confirmar que los carriles los adoptan."
+  ],
+  "knownLimitations": [
+    "El widget no señala todavía el trail braking, el ABS ni el bloqueo de rueda: necesitan comparar fotogramas consecutivos y llegarán con el motor de movimiento."
+  ]
+}

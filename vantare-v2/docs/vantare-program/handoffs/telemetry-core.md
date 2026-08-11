@@ -15,6 +15,44 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-160 / TC-10A convierte la auditoría Strategy live en evidencia
+  ejecutable sin modificar producción. Un test E2E recorre la fixture real
+  sanitizada LMU 1.4 por Driver/Fusion/BatchMapper/Reducer/Derive con una sola
+  apertura de `LMU_Data` y demuestra Fuel `83.80992715710434/115 L`, observed
+  y fresh, para el vehículo activo. El ledger test-only v1 cierra 18 keys:
+  Fuel, pit y progreso supported; VE, identidad/compound/wear/corner de tyres y
+  weather unsupported y ausentes de Observation/estado canónico. Allowlists
+  exactas cubren Observation/core/Strategy v1, catálogo y capabilities; las
+  filas supported se contrastan además con layout, AuthorityMatrix v4,
+  catálogo, TTLs y Derive. La identidad player/per-vehicle es
+  `lmu-slot-N-generation-G`: G incrementa tras desaparición/reaparición y
+  vuelve a 1 al resetear sesión; REST no crea identidad. El smoke LMU fresco
+  pasa con build `1.4.0.0` supported, runtime live,
+  `PlayerPresent=false` y fingerprint
+  `active-grid-bijective;telemetry=not-required-no-player`, sin raw ni PII.
+  Solo Fuel/lap number player-only se acreditan missing mediante ese smoke;
+  pit/progreso se sostienen en fixtures y tests. RED por golden ausente y RED
+  posterior por identidad incompleta quedaron observados antes de GREEN; focal
+  x20 y Telemetry Core pasan. La instalación frontend congelada terminó con
+  exit 0 sin cambios tracked y el build pasó. La primera suite Go global falló
+  solo en `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` por `recording
+  commit exceeded budget`; el test pasó 10/10 aislado y la segunda suite global
+  pasó completa. El flake queda registrado, pero no se atribuye a ISA-160,
+  cuyo delta no toca recording/coordinator. `gofmt` y diff-check pasan; vet
+  reproduce exactamente los dos avisos heredados de `unsafe.Pointer`. El rebase
+  limpio sobre `origin/nightly@d195653` reescribió la implementación como
+  `f26d8e3`; Discord/changelog y el manifest de release fueron los únicos
+  cambios nuevos de `nightly` y no solaparon ISA-160. El PR #202 está OPEN y
+  ready for review hacia `nightly`; Linear ISA-160 está actualizado con comentario,
+  evidencia y enlace, y sigue `In Progress` porque el equipo no dispone de
+  estado `In Review`. El último Branch channel del HEAD publicado anterior,
+  run `31442025096`, pasó completo (policy 9 s, bloqueantes 8 min 53 s), y
+  GitGuardian también pasó. Son evidencia histórica, no CI reutilizable para
+  `f26d8e3`. El check requerido debe pertenecer siempre al HEAD exacto
+  publicado; no se declara CI del rebase hasta ejecutarlo. El warning no
+  bloqueante de Node 20 deprecado/checkout forzado a Node 24 permanece fuera de
+  ISA-160. Isaac autorizó aceptación y promoción, pero no ocurrió merge,
+  promoción efectiva ni release.
 - ISA-311 corrige el flake del soak lógico sin modificar el runtime: el test
   sigue recorriendo Overlay, Engineer, recording coordinator y SQLite reales,
   pero usa un reloj lógico fijo y un adapter de writer test-only con deadline
@@ -331,14 +369,19 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Cerrada técnicamente | ISA-87 / TC-09E, Wails/SSE y teardown integrado |
 | Aprobada | ISA-117 / TC-09F, gate final completo en `170eaeb` |
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
-| Backlog follow-up | ISA-160 / TC-10A e ISA-161 / TC-10B, readiness live Strategy |
+| Autorizada / PR ready | ISA-160 / TC-10A, implementación `f26d8e3` sobre `nightly@d195653`, PR #202 OPEN/ready for review; CI previo histórico, check del HEAD publicado y merge pendientes |
+| Backlog follow-up | ISA-161 / TC-10B, productor Strategy live bloqueado por aceptación de ISA-160 |
 
 ## Siguiente acción exacta
 
-ISA-160 / TC-10A puede auditar Fuel/VE/tyres/weather sobre el runtime ya
-promovido. TC-10B solo implementa señales demostradas y bloquea ISA-152 /
-STR-17. El contrato Strategy presente en Telemetry Core sigue siendo
-compile-only para el producto live.
+Publicar el HEAD rebasado en el PR #202 OPEN/ready for review, ejecutar y
+verificar el check requerido correspondiente a ese HEAD exacto y, solo entonces, materializar la
+aceptación/promoción ya autorizada por Isaac. El merge todavía no ocurrió.
+Después, ISA-161 / TC-10B puede ampliar aditivamente
+`StrategyLiveProjection v1` con los campos canónicos existentes de Fuel,
+sesión, progreso y pit, sus contract tests old/new y gates de
+transporte/resync/replay/soak. VE, tyres y weather siguen ausentes hasta una
+issue de evidencia propia. ISA-152 / STR-17 permanece bloqueada por ISA-161.
 
 ## Gate final
 
@@ -347,6 +390,33 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-11, ISA-160: auditoría Strategy live implementada localmente sin
+cambios productivos. Fuel real LMU 1.4 atraviesa el pipeline canónico con
+calidad observed/fresh; el ledger y sus contrastes ejecutables cierran Fuel,
+pit y progreso como supported y VE/tyres/weather como unsupported. La review
+de especificación y calidad añadió identidad/generación exacta, allowlists de
+v1, oráculos no circulares y la distinción correcta del smoke de menú. RED por
+golden ausente y RED por identidad incompleta quedaron seguidos de focal x20 y
+Telemetry Core verdes. La instalación frontend congelada terminó con exit 0 y
+sin cambios tracked; el build pasó. La primera suite global falló solo en
+`TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` por `recording commit
+exceeded budget`; pasó 10/10 aislado y una segunda suite global pasó completa.
+El flake queda visible y no se atribuye al delta ISA-160. El smoke LMU fresco
+pasó con build `1.4.0.0` supported/live y `PlayerPresent=false`; `gofmt` y
+diff-check pasan, y vet conserva exactamente los dos avisos Win32 heredados.
+El rebase limpio sobre `origin/nightly@d195653` reescribió la implementación
+como `f26d8e3`; Discord/changelog y el manifest de release incorporados desde
+`nightly` no solaparon ISA-160. El PR #202 está OPEN/ready for review hacia `nightly`.
+Linear ISA-160 conserva comentario, evidencia y enlace al PR; permanece
+`In Progress` porque el equipo no tiene estado `In Review`. El último Branch
+channel del HEAD publicado anterior, run `31442025096`, pasó completo (policy
+9 s, bloqueantes 8 min 53 s), y GitGuardian también pasó. Quedan como evidencia
+histórica. El required check debe corresponder al HEAD exacto
+publicado: `f26d8e3` no se declara con CI hasta ejecutarlo. El warning no
+bloqueante de Node 20 deprecado/checkout forzado a Node 24 queda fuera de
+ISA-160. Isaac autorizó aceptación y promoción; el merge, la promoción efectiva
+y el release no ocurrieron.
 
 2026-08-01, ISA-117: gate técnico final completado sobre ISA-87 `4233c9f`.
 La auditoría demuestra un solo owner LMU y cero rutas legacy productivas. Go

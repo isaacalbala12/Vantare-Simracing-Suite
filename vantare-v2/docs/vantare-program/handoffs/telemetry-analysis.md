@@ -65,6 +65,9 @@ commit. Rollback retira producto/staging antes de tocar runtime y restaura el ex
 viejo al final desde staging; un fallo de runtime conserva exe ausente,
 marker/backups y reentrada segura. El modelo corta tras cada operación y sólo
 acepta pareja anterior/nueva o exe ausente.
+El tercer fix garantiza además que cleanup normal, rollback y reentrada cambian
+`OutDir` a `$INSTDIR` antes de cada una de las cinco eliminaciones del staging;
+NSIS no intenta ya borrar su directorio de salida actual.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,

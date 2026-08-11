@@ -17,6 +17,9 @@ Nota TA-03F (2026-08-11, candidata local verificada tras spec review):
   de `committed`. Rollback retira primero cualquier exe nuevo, restaura runtime
   y publica el exe viejo al final también desde staging. Si falla runtime, el
   producto queda sin exe y conserva marker/backups reintentables.
+- El tercer review corrigió el lifecycle NSIS de ese staging: las cinco rutas
+  de cleanup cambian primero el `OutDir` a `$INSTDIR`, porque NSIS no elimina su
+  directorio de salida actual. El modelo y guard estático exigen ese orden.
 - Evidencia local: harness PowerShell, parser PS5, build reproducible con
   PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0 y rutas temporales con espacios,
   modelo transaccional de cuatro estados previos, smoke Windows x64, build

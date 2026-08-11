@@ -140,6 +140,9 @@ funcional y de packaging, no visual.
   completa runtime y restaura el exe viejo al final mediante el mismo patrón
   staging+rename. El harness corta después de cada operación y exige par viejo,
   par nuevo o exe ausente; toda reentrada converge.
+- Todas las rutas que eliminan `.vantare-install-stage` establecen antes un
+  `OutDir` seguro en `$INSTDIR`; una regresión enumera las cinco eliminaciones y
+  falla si el último `SetOutPath` todavía apunta al staging.
 - Los flags `CGO_CFLAGS`, `CGO_CXXFLAGS` y `CGO_LDFLAGS` citan el argumento
   completo para el parser de Go/GCC. Una regresion compila C/C++ real y el build
   reproducible completo pasa con directorios temporales que contienen espacios.

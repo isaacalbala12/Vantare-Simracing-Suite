@@ -194,6 +194,7 @@ FunctionEnd
 Function CleanupCommittedTransaction
 	# The committed marker is the last item removed. Any cleanup failure therefore
 	# remains retryable and can never restore only one member of the old pair.
+	SetOutPath "$INSTDIR"
 	StrCpy $TransactionResult "error"
 	RMDir /r "${INSTALL_TX_STAGE}"
 	IfFileExists "${INSTALL_TX_STAGE}" committed_cleanup_done 0
@@ -213,6 +214,7 @@ Function RollbackPendingTransaction
 	# Retire a published/staged new exe first. Restore the runtime next, then copy
 	# the old exe last while retaining its backup until the restored pair is
 	# committed. A runtime failure therefore leaves no new product exe exposed.
+	SetOutPath "$INSTDIR"
 	StrCpy $TransactionResult "error"
 	Call ReadPendingMarker
 	StrCmp $TransactionResult "ok" 0 rollback_done
@@ -274,6 +276,7 @@ Function RollbackPendingTransaction
 		IfErrors rollback_done
 		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 rollback_done
 		IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" rollback_done 0
+		SetOutPath "$INSTDIR"
 		RMDir "${INSTALL_TX_STAGE}"
 		IfFileExists "${INSTALL_TX_STAGE}" rollback_done rollback_finalize
 	rollback_require_restored_exe:
@@ -406,6 +409,7 @@ Section
 
 	# wails.files contains only the architecture-selected executable. Extract it
 	# away from the product path so a crash can expose no exe, never a partial one.
+	SetOutPath "$INSTDIR"
 	RMDir /r "${INSTALL_TX_STAGE}"
 	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
 	SetOutPath "${INSTALL_TX_STAGE}"
@@ -429,6 +433,7 @@ Section
 	IfErrors transaction_failed
 	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 transaction_failed
 	IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" transaction_failed 0
+	SetOutPath "$INSTDIR"
 	RMDir "${INSTALL_TX_STAGE}"
 	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
 	ClearErrors

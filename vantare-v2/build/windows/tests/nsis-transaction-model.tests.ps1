@@ -17,11 +17,18 @@ function New-TransactionModel {
         exe = if ($PriorExe) { "old" } else { $null }
         runtime = if ($PriorRuntime) { "old" } else { $null }
         stagedExe = $null
+        outDir = "product"
         exeBackup = $null
         runtimeBackup = $null
         pending = $null
         committed = $false
     }
+}
+
+function Remove-ModelStage {
+    param([System.Collections.IDictionary]$State, [string]$Scenario)
+    Assert-Model ($State.outDir -ne "stage") "$Scenario tries to remove the current OutDir"
+    $State.stagedExe = $null
 }
 
 function Get-PriorInventory {
@@ -38,7 +45,8 @@ function Invoke-ModelCommittedCleanup {
     $State.exeBackup = $null
     if ($FailCleanup -eq "runtime" -and $State.runtimeBackup) { return $false }
     $State.runtimeBackup = $null
-    $State.stagedExe = $null
+    $State.outDir = "product"
+    Remove-ModelStage -State $State -Scenario "committed cleanup"
     $State.pending = $null
     $State.committed = $false
     return $true
@@ -52,6 +60,7 @@ function Invoke-ModelRollback {
         [switch]$FailRuntimeRemoval
     )
     if (-not $State.pending) { return }
+    $State.outDir = "product"
     $priorExe = $State.pending -eq "both" -or $State.pending -eq "exe"
     $priorRuntime = $State.pending -eq "both" -or $State.pending -eq "runtime"
 
@@ -66,7 +75,7 @@ function Invoke-ModelRollback {
     }
     if ($StopAt -eq "after_exe_retire") { return }
 
-    $State.stagedExe = $null
+    Remove-ModelStage -State $State -Scenario "pending rollback"
     if ($StopAt -eq "after_stage_cleanup") { return }
 
     if ($priorRuntime) {
@@ -91,12 +100,14 @@ function Invoke-ModelRollback {
     # committed. A crash can therefore delete/re-copy it on the next recovery.
     if ($priorExe) {
         if ($State.exeBackup) {
+            $State.outDir = "stage"
             $State.stagedExe = "partial-old"
             if ($StopAt -eq "during_exe_restore") { return }
             $State.stagedExe = $State.exeBackup
             if ($StopAt -eq "after_staged_restore") { return }
             $State.exe = $State.stagedExe
-            $State.stagedExe = $null
+            $State.outDir = "product"
+            Remove-ModelStage -State $State -Scenario "rollback restored exe"
         }
         elseif ($State.exe -ne "old") { throw "pending rollback lost the previous exe" }
     } else {
@@ -151,13 +162,17 @@ function Invoke-ModelInstall {
     $State.runtime = "new"
     if ($StopAt -eq "after_runtime") { return }
 
+    $State.outDir = "product"
+    Remove-ModelStage -State $State -Scenario "install before staging"
+    $State.outDir = "stage"
     $State.stagedExe = "partial"
     if ($StopAt -eq "during_staged_exe") { return }
     $State.stagedExe = "new"
     if ($StopAt -eq "after_staged_exe") { return }
 
     $State.exe = $State.stagedExe
-    $State.stagedExe = $null
+    $State.outDir = "product"
+    Remove-ModelStage -State $State -Scenario "install after publish"
     if ($StopAt -eq "after_exe_publish") { return }
 
     $State.committed = $true
@@ -289,5 +304,22 @@ $removeRuntime = $nsi.IndexOf('RMDir /r "${TELEMETRY_RUNTIME_DIR}"', $retireExe)
 $restoreExe = $nsi.IndexOf('CopyFiles /SILENT "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}"', $removeRuntime)
 Assert-Model ($retireExe -gt $rollbackStart -and $removeRuntime -gt $retireExe -and $restoreExe -gt $removeRuntime -and $restoreExe -lt $rollbackEnd) `
     "rollback does not retire new exe, restore runtime, then copy old exe last"
+
+$nsiLines = @($nsi -split "`r?`n")
+$stageRemovals = @($nsiLines | ForEach-Object -Begin { $lineNumber = -1 } -Process {
+    $lineNumber++
+    if ($_ -match '^\s*RMDir(?:\s+/r)?\s+"\$\{INSTALL_TX_STAGE\}"') { $lineNumber }
+})
+Assert-Model ($stageRemovals.Count -eq 5) "expected exactly five stage cleanup paths, got $($stageRemovals.Count)"
+foreach ($removal in $stageRemovals) {
+    $previousOutDir = $null
+    for ($line = $removal - 1; $line -ge 0; $line--) {
+        if ($nsiLines[$line] -match '^\s*SetOutPath\s+') {
+            $previousOutDir = $nsiLines[$line].Trim()
+            break
+        }
+    }
+    Assert-Model ($previousOutDir -eq 'SetOutPath "$INSTDIR"') "stage cleanup on line $($removal + 1) is unsafe after: $previousOutDir"
+}
 
 Write-Host "PASS NSIS transaction model: safe install/rollback cuts, retryable runtime failure and convergent reentry."

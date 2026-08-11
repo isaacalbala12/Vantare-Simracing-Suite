@@ -561,9 +561,10 @@ func (service *TelemetryAnalysisService) begin(parent context.Context) (context.
 	return operationCtx, finish, nil
 }
 
-// Close cancels in-flight work, waits for it to release its transient state,
-// then closes every reader and removes every private staged copy.
-func (service *TelemetryAnalysisService) Close() error {
+// ServiceShutdown cancels in-flight work, waits for it to release its transient
+// state, then closes every reader and removes every private staged copy. Wails
+// reserves this lifecycle hook and excludes it from WebView bindings.
+func (service *TelemetryAnalysisService) ServiceShutdown() error {
 	if service == nil {
 		return nil
 	}

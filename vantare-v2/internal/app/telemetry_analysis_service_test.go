@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -31,6 +32,28 @@ type telemetryAnalysisReaderStub struct {
 	catalogStarted chan struct{}
 	readStarted    chan struct{}
 	closed         bool
+}
+
+func TestTelemetryAnalysisUsesReservedShutdownBindingSurface(t *testing.T) {
+	serviceType := reflect.TypeOf(&TelemetryAnalysisService{})
+	if _, exposed := serviceType.MethodByName("Close"); exposed {
+		t.Fatal("TelemetryAnalysisService.Close must not be exported to Wails bindings")
+	}
+	if _, reserved := serviceType.MethodByName("ServiceShutdown"); !reserved {
+		t.Fatal("TelemetryAnalysisService must implement the reserved Wails ServiceShutdown hook")
+	}
+
+	svc, _, _ := telemetryAnalysisTestService(t, true)
+	shutdown, ok := any(svc).(interface{ ServiceShutdown() error })
+	if !ok {
+		t.Fatal("TelemetryAnalysisService does not implement ServiceShutdown")
+	}
+	if err := shutdown.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown() error = %v", err)
+	}
+	if _, err := svc.Discover(context.Background()); !errors.Is(err, ErrTelemetryAnalysisClosed) {
+		t.Fatalf("Discover() after ServiceShutdown error = %v, want closed", err)
+	}
 }
 
 func (stub *telemetryAnalysisReaderStub) Handshake(context.Context) error { return stub.handshakeErr }
@@ -140,7 +163,7 @@ func telemetryAnalysisSuccessfulReader(artifact telemetryanalysis.AuthorizedHist
 
 func TestTelemetryAnalysisInspectsAndPagesOnlyAnOpaqueDiscoveredCandidate(t *testing.T) {
 	svc, privatePath, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	var reader *telemetryAnalysisReaderStub
 	var stagedDirectory string
@@ -204,7 +227,7 @@ func TestTelemetryAnalysisRejectsMissingAuthorityApprovalAndArbitraryPathsBefore
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			svc, privatePath, now := telemetryAnalysisTestService(t, test.allowed)
-			defer svc.Close()
+			defer svc.ServiceShutdown()
 			if !test.allowed {
 				if _, err := svc.Discover(context.Background()); !errors.Is(err, test.wantErr) {
 					t.Fatalf("Discover() error = %v, want %v", err, test.wantErr)
@@ -232,7 +255,7 @@ func TestTelemetryAnalysisRejectsMissingAuthorityApprovalAndArbitraryPathsBefore
 func TestTelemetryAnalysisRevalidatesStabilityWALAndSourceChanges(t *testing.T) {
 	t.Run("WAL blocks opening", func(t *testing.T) {
 		svc, privatePath, _ := telemetryAnalysisTestService(t, true)
-		defer svc.Close()
+		defer svc.ServiceShutdown()
 		if err := os.WriteFile(privatePath+".wal", []byte("active"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -248,7 +271,7 @@ func TestTelemetryAnalysisRevalidatesStabilityWALAndSourceChanges(t *testing.T) 
 
 	t.Run("changed file restarts the gate", func(t *testing.T) {
 		svc, privatePath, now := telemetryAnalysisTestService(t, true)
-		defer svc.Close()
+		defer svc.ServiceShutdown()
 		candidates, err := svc.Discover(context.Background())
 		if err != nil || len(candidates) != 1 {
 			t.Fatal(err)
@@ -266,7 +289,7 @@ func TestTelemetryAnalysisRevalidatesStabilityWALAndSourceChanges(t *testing.T) 
 
 func TestTelemetryAnalysisRuntimeAbsenceDegradesOnlyTheModule(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	status := svc.Status()
 	if status.Available || status.Code != "runtime_unavailable" {
 		t.Fatalf("Status() = %#v", status)
@@ -293,7 +316,7 @@ func TestTelemetryAnalysisCleansStagingAndReaderOnOpenErrorCancellationAndShutdo
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			svc, _, now := telemetryAnalysisTestService(t, true)
-			defer svc.Close()
+			defer svc.ServiceShutdown()
 			candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 			var reader *telemetryAnalysisReaderStub
 			var stagedDirectory string
@@ -342,8 +365,8 @@ func TestTelemetryAnalysisCleansStagingAndReaderOnOpenErrorCancellationAndShutdo
 		if _, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true}); err != nil {
 			t.Fatal(err)
 		}
-		if err := svc.Close(); err != nil {
-			t.Fatalf("Close() error = %v", err)
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Fatalf("ServiceShutdown() error = %v", err)
 		}
 		if !reader.isClosed() {
 			t.Fatal("reader remained open after shutdown")
@@ -359,7 +382,7 @@ func TestTelemetryAnalysisCleansStagingAndReaderOnOpenErrorCancellationAndShutdo
 
 func TestTelemetryAnalysisCancellationDuringInspectCleansTransientResources(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	started := make(chan struct{})
 	readerReady := make(chan *telemetryAnalysisReaderStub, 1)
@@ -396,7 +419,7 @@ func TestTelemetryAnalysisCancellationDuringInspectCleansTransientResources(t *t
 
 func TestTelemetryAnalysisCancellationDuringPageClosesTheSession(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	var reader *telemetryAnalysisReaderStub
 	var stagedDirectory string
@@ -438,7 +461,7 @@ func TestTelemetryAnalysisCancellationDuringPageClosesTheSession(t *testing.T) {
 
 func TestTelemetryAnalysisEnforcesBackendOwnedPageLimit(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	svc.runtimeReady = true
 	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, _ telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
@@ -458,7 +481,7 @@ func TestTelemetryAnalysisEnforcesBackendOwnedPageLimit(t *testing.T) {
 
 func TestTelemetryAnalysisBoundsConcurrentOpenSessions(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	started := make(chan struct{}, maxTelemetryAnalysisOpenSessions)
 	release := make(chan struct{})
@@ -539,8 +562,8 @@ func TestTelemetryAnalysisFailedOpenRetainsStagingForShutdownRetry(t *testing.T)
 	if _, err := os.Stat(stagedDirectory); err != nil {
 		t.Fatalf("failed staging was not retained for retry: %v", err)
 	}
-	if err := svc.Close(); err != nil {
-		t.Fatalf("Close() retry error = %v", err)
+	if err := svc.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown() retry error = %v", err)
 	}
 	if attempts.Load() != 2 {
 		t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
@@ -578,8 +601,8 @@ func TestTelemetryAnalysisCancelledOpenRetainsStagingForShutdownRetry(t *testing
 	if _, err := os.Stat(stagedDirectory); err != nil {
 		t.Fatalf("cancelled staging was not retained for retry: %v", err)
 	}
-	if err := svc.Close(); err != nil {
-		t.Fatalf("Close() retry error = %v", err)
+	if err := svc.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown() retry error = %v", err)
 	}
 	if attempts.Load() != 2 {
 		t.Fatalf("staging cleanup attempts = %d, want 2", attempts.Load())
@@ -591,7 +614,7 @@ func TestTelemetryAnalysisCancelledOpenRetainsStagingForShutdownRetry(t *testing
 
 func TestTelemetryAnalysisReadFailureKeepsSessionForCloseSessionRetry(t *testing.T) {
 	svc, _, now := telemetryAnalysisTestService(t, true)
-	defer svc.Close()
+	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	var reader *telemetryAnalysisReaderStub
 	var stagedDirectory string
@@ -633,7 +656,7 @@ func TestTelemetryAnalysisCloseAndCloseSessionRetryTransientCleanup(t *testing.T
 		close func(*TelemetryAnalysisService, string) error
 	}{
 		{name: "CloseSession", close: func(service *TelemetryAnalysisService, id string) error { return service.CloseSession(id) }},
-		{name: "Close", close: func(service *TelemetryAnalysisService, _ string) error { return service.Close() }},
+		{name: "ServiceShutdown", close: func(service *TelemetryAnalysisService, _ string) error { return service.ServiceShutdown() }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -665,7 +688,7 @@ func TestTelemetryAnalysisCloseAndCloseSessionRetryTransientCleanup(t *testing.T
 			if _, err := os.Stat(stagedDirectory); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("staging remained after second close: %v", err)
 			}
-			_ = svc.Close()
+			_ = svc.ServiceShutdown()
 		})
 	}
 }
@@ -728,8 +751,8 @@ func TestTelemetryAnalysisPendingCleanupConsumesAndReleasesOpenBudget(t *testing
 	if err := svc.CloseSession(opened.SessionID); err != nil {
 		t.Fatalf("CloseSession() error = %v", err)
 	}
-	if err := svc.Close(); err != nil {
-		t.Fatalf("Close() error = %v", err)
+	if err := svc.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown() error = %v", err)
 	}
 }
 

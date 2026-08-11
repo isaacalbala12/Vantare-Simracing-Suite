@@ -1066,7 +1066,7 @@ func main() {
 					if telemetryAnalysisSvc == nil {
 						return nil
 					}
-					return telemetryAnalysisSvc.Close()
+					return telemetryAnalysisSvc.ServiceShutdown()
 				}},
 				{name: "http", stop: func(context.Context) error {
 					if httpSrv == nil {

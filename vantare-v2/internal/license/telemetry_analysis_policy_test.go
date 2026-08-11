@@ -2,9 +2,16 @@ package license
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 )
+
+func TestTelemetryAnalysisPolicyDoesNotExportCurrentResult(t *testing.T) {
+	if _, exposed := reflect.TypeOf(&Service{}).MethodByName("CurrentResult"); exposed {
+		t.Fatal("Service.CurrentResult must not be exported through Wails bindings")
+	}
+}
 
 func TestAllowsTelemetryAnalysisUsesTheDedicatedFailClosedMatrix(t *testing.T) {
 	tests := []struct {
@@ -45,7 +52,7 @@ func TestAllowsTelemetryAnalysisUsesTheDedicatedFailClosedMatrix(t *testing.T) {
 	}
 }
 
-func TestCurrentResultIsCopiedOnWriteAndReadUnderTheServiceLock(t *testing.T) {
+func TestTelemetryAnalysisSnapshotIsCopiedOnWriteAndReadUnderTheServiceLock(t *testing.T) {
 	graceEnd := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 	original := &Result{
 		State:            StateGrace,
@@ -64,7 +71,7 @@ func TestCurrentResultIsCopiedOnWriteAndReadUnderTheServiceLock(t *testing.T) {
 	mutatedGraceEnd := graceEnd.Add(24 * time.Hour)
 	original.GraceEndsAt = &mutatedGraceEnd
 
-	first := svc.CurrentResult()
+	first := svc.currentResult()
 	if first == nil || first.Entitlements[0] != EntitlementBundle || first.Capabilities[0] != CapabilityPro ||
 		first.OperationalRoles[0] != OperationalRoleTester || first.GraceEndsAt == nil || !first.GraceEndsAt.Equal(graceEnd) {
 		t.Fatalf("stored result was mutated through the input: %#v", first)
@@ -74,7 +81,7 @@ func TestCurrentResultIsCopiedOnWriteAndReadUnderTheServiceLock(t *testing.T) {
 	first.OperationalRoles[0] = OperationalRoleOwner
 	*first.GraceEndsAt = first.GraceEndsAt.Add(48 * time.Hour)
 
-	second := svc.CurrentResult()
+	second := svc.currentResult()
 	if second == nil || second.Entitlements[0] != EntitlementBundle || second.Capabilities[0] != CapabilityPro ||
 		second.OperationalRoles[0] != OperationalRoleTester || second.GraceEndsAt == nil || !second.GraceEndsAt.Equal(graceEnd) {
 		t.Fatalf("stored result was mutated through the returned snapshot: %#v", second)

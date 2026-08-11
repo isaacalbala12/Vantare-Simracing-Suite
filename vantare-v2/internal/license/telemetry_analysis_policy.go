@@ -1,9 +1,9 @@
 package license
 
-// CurrentResult returns a defensive snapshot of the authority currently held
+// currentResult returns a defensive snapshot of the authority currently held
 // by the native license service. Callers cannot mutate the stored slices or
 // grace timestamp, and the copy is taken while the service read lock is held.
-func (s *Service) CurrentResult() *Result {
+func (s *Service) currentResult() *Result {
 	if s == nil {
 		return nil
 	}
@@ -16,7 +16,7 @@ func (s *Service) CurrentResult() *Result {
 // telemetry. Operational roles grant revocable internal access only; they are
 // checked separately and are never converted into commercial capabilities.
 func (s *Service) AllowsTelemetryAnalysis() bool {
-	current := s.CurrentResult()
+	current := s.currentResult()
 	if current == nil || current.State != StateActive && current.State != StateGrace {
 		return false
 	}

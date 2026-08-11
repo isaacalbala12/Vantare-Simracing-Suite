@@ -214,7 +214,10 @@ Mientras tanto, el runbook `docs/release-beta-operations-runbook.md` ya document
 
 Despues de correr `wails3 task release:artifacts`, en este orden:
 
-1. `Get-ChildItem bin` debe listar exactamente los 6 archivos oficiales (3 artefactos + 3 checksums) y nada mas.
+1. `Get-ChildItem bin -File` debe listar exactamente los 6 archivos oficiales
+   (3 artefactos + 3 checksums). El directorio de trabajo verificado
+   `bin/runtime/telemetry/duckdb-v1` también existe localmente, pero no es un
+   artefacto publicable separado.
 2. `Get-Content bin\vantare-amd64-installer.exe.sha256` debe mostrar el mismo hash que `certutil.exe -hashfile bin\vantare-amd64-installer.exe SHA256`.
 3. `Expand-Archive bin\vantare-portable-amd64.zip -DestinationPath $env:TEMP\vantare-test` y confirmar que dentro hay `vantare.exe`, `configs\*.json` y `docs\README.txt`. Borrar `$env:TEMP\vantare-test` despues.
 4. (Opcional) Instalar el NSIS en una maquina limpia o VM y arrancar la app. Verificar que aparece la pantalla principal y que la version en Ajustes -> Acerca de coincide con `VERSION`.

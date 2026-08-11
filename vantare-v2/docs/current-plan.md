@@ -1,4 +1,4 @@
-Nota TA-03F (2026-08-11, candidata local verificada tras spec review):
+Nota TA-03F (2026-08-11, candidata local verificada tras reviews de especificación y calidad):
 - La rama `work/ta03f-windows-runtime-packaging`, apilada exactamente sobre
   TA-03E `559c3753a82071398ef1af3fbcc2d30c4dd3fe52`, integra la unidad confiada
   DuckDB de TA-03C en installer y portable bajo la ruta productiva exacta

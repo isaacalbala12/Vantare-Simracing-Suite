@@ -9,9 +9,8 @@
 #   - The Taskfile task create:nsis:installer calls `makensis` bare, which on
 #     some hosts resolves to a wails3 shim that errors with 0x2 because it
 #     cannot locate the real NSIS install.
-#   - Touching project.nsi or the existing create:nsis:installer task is out of
-#     scope for R03.B (see "Archivos prohibidos" in the release plan).
-#   - This wrapper is a minimal, documented bypass that does not change NSIS.
+#   - This wrapper keeps real-NSIS discovery, runtime verification and the
+#     installer defines in one explicit, reproducible entry point.
 
 [CmdletBinding()]
 param(

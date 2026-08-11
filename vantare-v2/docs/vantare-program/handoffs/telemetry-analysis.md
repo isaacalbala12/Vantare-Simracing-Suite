@@ -236,7 +236,7 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
 
-2026-08-11, TA-03F candidata local tras spec review: runtime TA-03C confiado integrado sin UI en
+2026-08-11, TA-03F candidata local tras reviews de especificación y calidad: runtime TA-03C confiado integrado sin UI en
 portable e installer bajo `runtime/telemetry/duckdb-v1`. Build reproducible,
 manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
 scope user/machine y verify local PASS. Upgrade/rollback persiste estados

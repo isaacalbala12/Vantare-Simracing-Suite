@@ -89,6 +89,51 @@ describe("PedalsRedlineTemplate", () => {
     ).toBe("var(--ven-pred-throttle)");
   });
 
+  it("shows no brake peak on a first render, which keeps stills deterministic", () => {
+    const container = renderRedline(model({ brake: 0.9 }));
+    expect(container.querySelector("[data-testid='pedals-brake-peak']")).toBeNull();
+  });
+
+  it("marks the peak once the driver eases off the brake", () => {
+    const { container, rerender } = render(
+      <PedalsEndurance
+        model={model({ brake: 0.9 })}
+        settings={{ templateId: "pedals-redline" }}
+        renderMode="harness"
+      />,
+    );
+    rerender(
+      <PedalsEndurance
+        model={model({ brake: 0.5 })}
+        settings={{ templateId: "pedals-redline" }}
+        renderMode="harness"
+      />,
+    );
+    const peak = container.querySelector<HTMLElement>("[data-testid='pedals-brake-peak']");
+    expect(peak).toBeTruthy();
+    expect(peak?.style.bottom).toBe("90%");
+  });
+
+  it("clears the peak when the brake is released, so the next corner starts clean", () => {
+    const { container, rerender } = render(
+      <PedalsEndurance
+        model={model({ brake: 0.9 })}
+        settings={{ templateId: "pedals-redline" }}
+        renderMode="harness"
+      />,
+    );
+    for (const brake of [0.5, 0, 0.3]) {
+      rerender(
+        <PedalsEndurance
+          model={model({ brake })}
+          settings={{ templateId: "pedals-redline" }}
+          renderMode="harness"
+        />,
+      );
+    }
+    expect(container.querySelector("[data-testid='pedals-brake-peak']")).toBeNull();
+  });
+
   it("surfaces a status message without dropping the rails", () => {
     const container = renderRedline(model({ status: "stale", statusMessage: "Sin telemetría" }));
     expect(container.querySelector(".ven-status-message")?.textContent).toBe("Sin telemetría");

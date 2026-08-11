@@ -2824,3 +2824,22 @@
     animation: none;
   }
 }
+
+/* Peak brake pressure for the braking event in progress. A thin line where the
+   pedal reached, revealed only once the driver eases off it, so it answers
+   "did I get back to the same pressure this lap?" without adding anything to
+   look at while the foot is still going down. */
+[data-widget-system="vantare-endurance"] .ven-pred-peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  border-radius: 1px;
+  background: rgba(232, 232, 232, 0.55);
+  box-shadow: 0 0 5px rgba(232, 232, 232, 0.28);
+  transition: bottom 120ms linear, opacity 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-pred-peak { transition: none; }
+}

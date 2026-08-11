@@ -179,8 +179,20 @@ describe("RuntimeOverlaySurface", () => {
     coordinator.dispose();
   });
 
-  it("updates from ResizeObserver and disconnects every measurement hook on unmount", () => {
+  it("updates from ResizeObserver and disconnects it without installing a transformed-window fallback", () => {
     const coordinator = createTelemetryRateCoordinator();
+    const transformedRect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 960,
+      bottom: 540,
+      left: 0,
+      width: 960,
+      height: 540,
+      toJSON: () => ({}),
+    });
+    const addEventListener = vi.spyOn(window, "addEventListener");
     const removeEventListener = vi.spyOn(window, "removeEventListener");
     const view = render(
       <RuntimeOverlaySurface document={buildDocument()} telemetry={coordinator} renderMode="desktop" />,
@@ -188,13 +200,89 @@ describe("RuntimeOverlaySurface", () => {
     const observer = resizeObservers[0];
 
     expect((view.getByTestId("runtime-overlay-scene") as HTMLElement).dataset.scale).toBe("1");
+    expect(transformedRect).not.toHaveBeenCalled();
     act(() => observer.trigger(960, 540));
     expect((view.getByTestId("runtime-overlay-scene") as HTMLElement).dataset.scale).toBe("0.5");
 
     view.unmount();
     expect(observer.disconnect).toHaveBeenCalledTimes(1);
-    expect(removeEventListener).toHaveBeenCalledWith("resize", expect.any(Function));
+    expect(addEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(0);
+    expect(removeEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(0);
+    transformedRect.mockRestore();
+    addEventListener.mockRestore();
     removeEventListener.mockRestore();
+    coordinator.dispose();
+  });
+
+  it("falls back to the untransformed client box and cleans up its resize listener when ResizeObserver is unavailable", () => {
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+    const clientWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1600);
+    const clientHeight = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(900);
+    const transformedRect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 800,
+      bottom: 450,
+      left: 0,
+      width: 800,
+      height: 450,
+      toJSON: () => ({}),
+    });
+    const addEventListener = vi.spyOn(window, "addEventListener");
+    const removeEventListener = vi.spyOn(window, "removeEventListener");
+    const coordinator = createTelemetryRateCoordinator();
+    const document = buildDocument();
+    document.layoutViewport = { width: 1000, height: 1000 };
+
+    const view = render(
+      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="obs" />,
+    );
+
+    const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
+    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    expect(transformedRect).not.toHaveBeenCalled();
+    expect(addEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(1);
+
+    view.unmount();
+    expect(removeEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(1);
+    clientWidth.mockRestore();
+    clientHeight.mockRestore();
+    transformedRect.mockRestore();
+    addEventListener.mockRestore();
+    removeEventListener.mockRestore();
+    coordinator.dispose();
+  });
+
+  it("clips partially out-of-layout widgets at the logical scene without filling transparent bands", () => {
+    measuredWidth = 1600;
+    measuredHeight = 900;
+    const coordinator = createTelemetryRateCoordinator();
+    const document = buildDocument();
+    document.layoutViewport = { width: 1000, height: 1000 };
+    const widget = document.layouts.general.widgets[0];
+    widget.layout = { ...widget.layout, x: -100, y: 80, w: 200 };
+    document.layouts.general.widgets = [widget];
+
+    const view = render(
+      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="desktop" />,
+    );
+
+    const surface = view.getByTestId("runtime-overlay-surface") as HTMLElement;
+    const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
+    const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+    expect(surface.style.overflow).toBe("hidden");
+    expect(surface.style.background).toBe("transparent");
+    expect(scene.style.overflow).toBe("hidden");
+    expect(scene.dataset.offsetX).toBe("350");
+    expect(frame.style.left).toBe("-100px");
+    expect(frame.style.width).toBe("200px");
     coordinator.dispose();
   });
 

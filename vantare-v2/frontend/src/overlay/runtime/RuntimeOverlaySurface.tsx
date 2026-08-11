@@ -95,29 +95,26 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
         return next;
       });
     };
-    const measure = () => {
-      const bounds = surface.getBoundingClientRect();
-      updateViewport(bounds.width, bounds.height);
-    };
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries.find((candidate) => candidate.target === surface) ?? entries[0];
+        if (!entry) return;
+        const contentBoxSize = Array.isArray(entry.contentBoxSize)
+          ? entry.contentBoxSize[0]
+          : entry.contentBoxSize as unknown as ResizeObserverSize | undefined;
+        updateViewport(
+          contentBoxSize?.inlineSize ?? entry.contentRect.width,
+          contentBoxSize?.blockSize ?? entry.contentRect.height,
+        );
+      });
+      observer.observe(surface);
+      return () => observer.disconnect();
+    }
 
-    measure();
-    const observer = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver((entries) => {
-          const entry = entries.find((candidate) => candidate.target === surface) ?? entries[0];
-          if (entry) {
-            updateViewport(entry.contentRect.width, entry.contentRect.height);
-          } else {
-            measure();
-          }
-        });
-    observer?.observe(surface);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
+    const measureClientBox = () => updateViewport(surface.clientWidth, surface.clientHeight);
+    measureClientBox();
+    window.addEventListener("resize", measureClientBox);
+    return () => window.removeEventListener("resize", measureClientBox);
   }, []);
 
   const transform = outputViewport
@@ -139,7 +136,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
         top: 0,
         width: layoutViewport.width,
         height: layoutViewport.height,
-        overflow: "visible",
+        overflow: "hidden",
         background: "transparent",
         transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
         transformOrigin: "top left",

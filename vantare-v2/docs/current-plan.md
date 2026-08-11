@@ -5235,7 +5235,7 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
 
-- **Estado:** In Progress en Linear; Tasks 0, 1 y 2 completadas con doble review.
+- **Estado:** In Progress en Linear; Tasks 0, 1, 2 y 3 completadas con doble review.
   Contrato puro compartido en `5a98553`/`a9c2fc8`; edición documental de Studio
   en 2A `b873a82`/`7b24f09`, 2B `8249585`/`50e9b9e`/`5fc3809` y 2C
   `edf3359`/`13fe677`/`1aa1ec7`.
@@ -5271,12 +5271,18 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
   sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
   diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
-- **Próxima acción:** Task 3, aplicar una sola transformación `contain` compartida
-  en Desktop y OBS y hacer que la preview OBS consuma la superficie documental.
-  Se ejecuta secuencialmente como 3A (superficie runtime compartida) y 3B
-  (preview/app OBS), con doble review entre microcortes.
+- **Próxima acción:** Task 4, hacer fluido el workspace de perfiles/Studio sin
+  alterar el máximo de las demás secciones y cerrar con evidencia la frontera
+  de selección nativa de monitor.
 - **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
   transformación, medida CSS no transformada, clipping documental, legacy,
   offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
   diff-check PASS; spec PASS y quality Ready. 3B debe normalizar el origin
   shrink-wrap que aún entrega la API OBS y probar la integración real.
+- **Evidencia 3B:** `b4a5c94` y corrección `fb5b5ae`; preview OBS gobernada por
+  `layoutViewport`, sin constantes Studio, con `contain` exterior y runtime
+  interior a escala 1. Streaming mide la salida real e ignora el origin
+  shrink-wrap de la API, conservando coordenadas documentales. El recordatorio
+  queda en espacio de salida y no se escala con la escena. Focal 64/64, suite
+  frontend 2543/2543, build/lint/diff-check PASS; spec PASS y quality Ready,
+  cero Critical/Important. Smoke visual real pendiente para Task 5.

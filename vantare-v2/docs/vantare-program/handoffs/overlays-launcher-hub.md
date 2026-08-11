@@ -441,9 +441,10 @@ Task 4.
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad Studio/Desktop/OBS
 
-- **Estado al 2026-08-12:** issue In Progress. Tasks 0, 1 y 2 completadas con
-  doble review; Studio ya edita y renderiza la superficie documental arbitraria.
-  Task 3 (paridad Desktop/OBS) es la siguiente acción.
+- **Estado al 2026-08-12:** issue In Progress. Tasks 0, 1, 2 y 3 completadas con
+  doble review; Studio, Desktop, OBS y su preview ya comparten la superficie
+  documental arbitraria. Task 4 (Hub fluido y frontera monitor) es la siguiente
+  acción.
 - **Rama/worktree:**
   `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion` en
   `C:\tmp\vantare-isa326\vantare-v2`, desde
@@ -473,8 +474,8 @@ Ledger vivo:
 | 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
 | 2 | Superficie editable en Studio | Completada | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; 2C `edf3359`/`13fe677`/`1aa1ec7`; dobles reviews PASS | Task 3 |
-| 3 | Paridad Desktop/OBS | En ejecución; 3A PASS | 3A `ecda9ee`/`c8f00e5`; doble review PASS | Microcorte 3B |
-| 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Task 3 y reviews PASS |
+| 3 | Paridad Desktop/OBS | Completada | 3A `ecda9ee`/`c8f00e5`; 3B `b4a5c94`/`fb5b5ae`; dobles reviews PASS | Task 4 |
+| 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Iniciar implementación TDD y auditoría nativa |
 | 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
 
 Evidencia Task 1:
@@ -576,3 +577,25 @@ Evidencia microcorte 3A:
 - Gate 3B: la API OBS todavía entrega `layoutOrigin` shrink-wrap mientras Desktop
   usa cero. 3B debe normalizar esa diferencia y demostrar paridad end-to-end;
   no basta con la paridad del componente bajo inputs iguales.
+
+Evidencia microcorte 3B:
+
+- La preview OBS recibe el `layoutViewport` documental, elimina toda dependencia
+  de constantes Studio y usa el transform `contain` core sobre una caja CSS no
+  transformada. Espera la primera medida válida, soporta dimensiones
+  fraccionales y limpia `ResizeObserver` o el fallback de `window.resize`.
+- En preview, la escena exterior aplica una sola escala y el runtime interior
+  mide la superficie lógica con `scale=1`. En streaming, el runtime mide la
+  salida real. Un documento 1000x1000 sobre 1600x900 conserva escala 0,9,
+  offset X 350 y coordenadas documentales `x=123`, `y=87`.
+- `ObsOverlayApp` ignora el `layoutOrigin` shrink-wrap legado del endpoint; OBS
+  deja de desplazar widgets respecto a Desktop. El fondo y la cuadrícula quedan
+  dentro de la escena y las bandas exteriores permanecen neutrales.
+- Spec review detectó que el recordatorio de calendario también se escalaba en
+  preview. Se corrigió en `fb5b5ae`: solo el runtime entra en la escena
+  documental y el banner permanece como capa de salida, con cierre intacto.
+- Evidencia final independiente: focal 8 archivos 64/64, suite frontend
+  2543/2543, build, ESLint focal y diff-check PASS. Spec review PASS y quality
+  review Ready, cero Critical/Important. Ruido heredado: dos `AbortError` de
+  teardown con exit 0 y warnings de `.eslintignore`/chunk. Smoke visual real
+  pendiente para Task 5.

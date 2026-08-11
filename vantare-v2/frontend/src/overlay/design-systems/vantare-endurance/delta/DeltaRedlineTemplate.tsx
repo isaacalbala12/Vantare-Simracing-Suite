@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-model";
+import { useDeltaMotion } from "./useDeltaMotion";
 
 /**
  * Fill opacity floor and span. A delta barely off zero still needs to register,
@@ -22,9 +23,11 @@ export function DeltaRedlineTemplate({
 }) {
   const magnitude = Math.min(1, Math.abs(model.progress));
   const direction = model.progress < 0 ? "gain" : model.progress > 0 ? "loss" : undefined;
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useDeltaMotion(model, model.status === "ready", rootRef);
 
   return (
-    <div className="ven-dred-root">
+    <div className="ven-dred-root" ref={rootRef}>
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}

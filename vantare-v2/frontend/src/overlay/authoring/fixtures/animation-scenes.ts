@@ -16,9 +16,20 @@ export type SceneOverride = {
   absent?: boolean;
 };
 
+/** Player-owned values, for widgets that read the driver rather than the field. */
+export type ScenePlayerOverride = {
+  deltaSeconds?: number;
+  bestLapSeconds?: number;
+  throttle?: number;
+  brake?: number;
+  clutch?: number;
+};
+
 export type SceneFrame = {
   /** Per-driver state for this frame, keyed by driver name. */
   cars?: Record<string, SceneOverride>;
+  /** The player's own telemetry for this frame. */
+  player?: ScenePlayerOverride;
   /** Session clock for this frame, when the animation depends on it. */
   remainingSeconds?: number;
   /** Shown under the transport so it is clear what this frame is doing. */
@@ -299,6 +310,40 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   ],
 };
 
+/**
+ * The delta reads the player, not the field, so its scenes drive the player's
+ * own delta and best lap rather than anyone's position.
+ */
+const DELTA_CROSS_SCENE: AnimationScene = {
+  id: "delta-cross-zero",
+  widget: "delta",
+  label: "Cruce del cero",
+  watchFor:
+    "El ancla del centro late en el sentido tomado —verde al pasar a ganar, rojo al pasar a perder— y el relleno crece hacia el lado nuevo.",
+  frameMs: 1300,
+  frames: [
+    { caption: "Perdiendo 0,45 s", player: { deltaSeconds: 0.45 } },
+    { caption: "Perdiendo 0,12 s", player: { deltaSeconds: 0.12 } },
+    { caption: "Cruza a ganar: el ancla late en verde", player: { deltaSeconds: -0.28 } },
+    { caption: "Ganando 0,7 s", player: { deltaSeconds: -0.7 } },
+    { caption: "Vuelve a perder: el ancla late en rojo", player: { deltaSeconds: 0.3 } },
+  ],
+};
+
+const DELTA_NEW_BEST_SCENE: AnimationScene = {
+  id: "delta-new-best",
+  widget: "delta",
+  label: "Nueva vuelta de referencia",
+  watchFor:
+    "Al bajar la mejor vuelta, un barrido morado recorre la fila de referencia: el delta pasa a medirse contra otra vuelta.",
+  frameMs: 1500,
+  frames: [
+    { caption: "Referencia: 1:38.031", player: { bestLapSeconds: 98.031 } },
+    { caption: "Nueva mejor: 1:37.402 — barrido morado", player: { bestLapSeconds: 97.402 } },
+    { caption: "Asentada", player: { bestLapSeconds: 97.402 } },
+  ],
+};
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
   OVERTAKE_SCENE,
   BATTLE_SCENE,
@@ -311,6 +356,8 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   FULL_SEQUENCE_SCENE,
   RELATIVE_CROSS_SCENE,
   RELATIVE_ENTER_SCENE,
+  DELTA_CROSS_SCENE,
+  DELTA_NEW_BEST_SCENE,
 ];
 
 export const ANIMATION_SCENE_IDS: readonly string[] = ANIMATION_SCENES.map((scene) => scene.id);

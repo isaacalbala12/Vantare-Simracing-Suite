@@ -2776,3 +2776,51 @@
     opacity: 0;
   }
 }
+
+/* Redline delta motion. The bar already animates its own width, so these mark
+   the two things a width change cannot say: the moment the lap flips sides,
+   and the moment the reference lap under it is replaced. */
+@keyframes ven-dred-cross-pulse {
+  0% { transform: translateX(-50%) scaleY(1); opacity: 0.85; }
+  35% { transform: translateX(-50%) scaleY(1.9); opacity: 1; }
+  100% { transform: translateX(-50%) scaleY(1); opacity: 0.85; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross] .ven-dred-zero {
+  animation: ven-dred-cross-pulse 700ms ease-out both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross="gaining"] .ven-dred-zero {
+  box-shadow: 0 0 12px rgba(53, 199, 123, 0.75);
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross="losing"] .ven-dred-zero {
+  box-shadow: 0 0 12px rgba(255, 107, 118, 0.75);
+}
+
+/* Fastest-lap purple, the same colour the standings gives a session best. */
+@keyframes ven-dred-best-sweep {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-new-best] .ven-dred-ref::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(177, 140, 255, 0.35), transparent);
+  animation: ven-dred-best-sweep 1100ms ease-out both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-ref {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-dred-root[data-cross] .ven-dred-zero,
+  [data-widget-system="vantare-endurance"] .ven-dred-root[data-new-best] .ven-dred-ref::after {
+    animation: none;
+  }
+}

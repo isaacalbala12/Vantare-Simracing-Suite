@@ -593,6 +593,7 @@ export function buildHarnessTelemetry(input: {
         ...readyBase.session,
         remainingSeconds: frame.remainingSeconds ?? readyBase.session.remainingSeconds,
       },
+      player: { ...readyBase.player, ...(frame.player ?? {}) },
       scoring: buildSceneScoring(scene.id, input.sceneFrame ?? 0),
     };
   }

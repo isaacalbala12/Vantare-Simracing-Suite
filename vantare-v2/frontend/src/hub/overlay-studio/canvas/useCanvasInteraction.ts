@@ -192,7 +192,13 @@ export function applyMovePreview(input: {
     disableSnap: input.disableSnap,
     layoutViewport: input.layoutViewport,
   });
-  return { layout: snapped.layout, guides: snapped.guides };
+  const layout = clampRecoverableLayout(snapped.layout, input.layoutViewport);
+  const guides = snapped.guides.filter((guide) => (
+    guide.orientation === "vertical"
+      ? layout.x === snapped.layout.x
+      : layout.y === snapped.layout.y
+  ));
+  return { layout, guides };
 }
 
 export function applyResizePreview(input: {

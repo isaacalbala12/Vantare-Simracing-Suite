@@ -187,6 +187,56 @@ describe("applyMovePreview", () => {
     expect(preview.layout.x).toBe(5088);
     expect(preview.layout.y).toBe(1408);
   });
+
+  it("preserves recoverability after grid snapping at a non-aligned viewport edge", () => {
+    const layoutViewport = { width: 1006, height: 1000 };
+    const preview = applyMovePreview({
+      start: { x: 900, y: 103, w: 100, h: 80, zIndex: 0, aspectLocked: true },
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 100, y: 0 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport,
+    });
+
+    expect(preview.layout.x).toBe(974);
+    expect(layoutViewport.width - preview.layout.x).toBe(32);
+    expect(preview.guides).not.toContainEqual({
+      orientation: "vertical",
+      position: 976,
+      kind: "grid",
+    });
+    expect(preview.guides).toContainEqual({
+      orientation: "horizontal",
+      position: 104,
+      kind: "grid",
+    });
+  });
+
+  it("preserves vertical recoverability and removes only the corrected horizontal guide", () => {
+    const layoutViewport = { width: 1000, height: 1006 };
+    const preview = applyMovePreview({
+      start: { x: 103, y: 900, w: 100, h: 100, zIndex: 0, aspectLocked: true },
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 0, y: 100 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport,
+    });
+
+    expect(preview.layout.y).toBe(974);
+    expect(layoutViewport.height - preview.layout.y).toBe(32);
+    expect(preview.guides).not.toContainEqual({
+      orientation: "horizontal",
+      position: 976,
+      kind: "grid",
+    });
+    expect(preview.guides).toContainEqual({
+      orientation: "vertical",
+      position: 104,
+      kind: "grid",
+    });
+  });
 });
 
 describe("applyResizePreview", () => {

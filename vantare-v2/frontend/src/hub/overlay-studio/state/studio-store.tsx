@@ -33,7 +33,7 @@ import {
   type StudioHistory,
 } from "./studio-history";
 import { resolveSessionLayout } from "./session-layouts";
-import type { StudioCommand } from "./studio-command";
+import { StudioCommandError, type StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
 import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
 import type { StudioPreviewResolutionId } from "../canvas/preview-resolution";
@@ -229,8 +229,17 @@ export function StudioProvider(props: {
           setAccessNotice(message);
           return current;
         }
-        setAccessNotice(null);
-        return commitStudioCommand(current, command);
+        try {
+          const next = commitStudioCommand(current, command);
+          setAccessNotice(null);
+          return next;
+        } catch (error) {
+          if (error instanceof StudioCommandError) {
+            setAccessNotice(error.message);
+            return current;
+          }
+          throw error;
+        }
       });
       setSaveState("idle");
     },

@@ -209,6 +209,21 @@ describe("validateDraftAccess", () => {
 });
 
 describe("assertCommandAccess", () => {
+  it("treats a document viewport edit as layout access across persisted sessions", () => {
+    const document = buildDocument([deltaDefinition.createDefault("delta-main")]);
+    document.layouts.race = {
+      type: "race",
+      widgets: [buildRelativeWidget("relative-race")],
+    };
+    const command: StudioCommand = {
+      type: "document/layout-viewport",
+      viewport: { width: 3440, height: 1440 },
+    };
+
+    expect(resolveCommandMutations(command)).toEqual(["layout"]);
+    expect(() => assertCommandAccess(freeAccess, command, document)).not.toThrow();
+  });
+
   it("allows free users to dispatch relative layout commands", () => {
     const document = buildDocument([buildRelativeWidget()]);
     const command: StudioCommand = {

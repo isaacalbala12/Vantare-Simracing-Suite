@@ -143,6 +143,61 @@ describe("StudioProvider", () => {
     expect(result.current.dirty).toBe(true);
   });
 
+  it("dispatches, undoes, redoes and saves an explicit layout viewport", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "document/layout-viewport",
+        viewport: { width: 3440, height: 1440 },
+      });
+    });
+    expect(result.current.document?.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.document?.layoutViewport).toBeUndefined();
+    expect(result.current.dirty).toBe(false);
+
+    act(() => result.current.redo());
+    expect(result.current.document?.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(result.current.dirty).toBe(true);
+
+    await act(async () => {
+      const saveResult = await result.current.save();
+      expect(saveResult.status).toBe("saved");
+    });
+    expect(client.save).toHaveBeenCalledWith({
+      document: expect.objectContaining({ layoutViewport: { width: 3440, height: 1440 } }),
+      expectedRevision: "rev-1",
+    });
+    expect(result.current.document?.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("keeps document history intact and exposes a failed viewport command", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+    const before = structuredClone(result.current.document);
+
+    act(() => {
+      result.current.dispatch({
+        type: "document/layout-viewport",
+        viewport: { width: 32, height: 32 },
+      });
+    });
+
+    expect(result.current.document).toEqual(before);
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.accessNotice).toContain("recoverable");
+    expect(result.current.lastError).toBeNull();
+  });
+
   it("switches sessions and selection without mutating unrelated layouts", async () => {
     const client = createMockClient(buildDocument());
     const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });

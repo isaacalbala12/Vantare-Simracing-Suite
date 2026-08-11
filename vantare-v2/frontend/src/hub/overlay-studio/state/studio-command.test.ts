@@ -41,6 +41,69 @@ function widget(id: string, overrides: Partial<WidgetInstanceV3> = {}): WidgetIn
 }
 
 describe("applyStudioCommand", () => {
+  it("persists an explicit layout viewport without mutating the command or document", () => {
+    const document = buildDocument();
+    document.source = { kind: "local" };
+    const before = structuredClone(document);
+    const viewport = { width: 3440, height: 1440 };
+
+    const next = applyStudioCommand(document, {
+      type: "document/layout-viewport",
+      viewport,
+    });
+
+    expect(next).toStrictEqual({
+      ...before,
+      layoutViewport: { width: 3440, height: 1440 },
+    });
+    expect(document).toEqual(before);
+    expect(viewport).toEqual({ width: 3440, height: 1440 });
+    expect(next.layoutViewport).not.toBe(viewport);
+  });
+
+  it.each([
+    ["below the safe minimum", { width: 31, height: 1080 }],
+    ["non-integer", { width: 1920, height: 1079.5 }],
+  ])("throws a typed error for a layout viewport dimension that is %s", (_label, viewport) => {
+    try {
+      applyStudioCommand(buildDocument(), {
+        type: "document/layout-viewport",
+        viewport,
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/layout-viewport");
+    }
+  });
+
+  it("rejects a smaller viewport that would leave a persisted widget unrecoverable", () => {
+    const document = buildDocument();
+    document.layoutViewport = { width: 3440, height: 1440 };
+    document.layouts.race = {
+      type: "race",
+      widgets: [
+        widget("delta-race", {
+          layout: { x: 3200, y: 100, w: 200, h: 96, zIndex: 0, aspectLocked: true },
+        }),
+      ],
+    };
+    const before = structuredClone(document);
+
+    try {
+      applyStudioCommand(document, {
+        type: "document/layout-viewport",
+        viewport: { width: 1920, height: 1080 },
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/layout-viewport");
+      expect((error as Error).message).toContain("recoverable");
+    }
+    expect(document).toEqual(before);
+  });
+
   it("materializes a missing session before the first mutation", () => {
     const document = buildDocument();
     const added = widget("delta-race");

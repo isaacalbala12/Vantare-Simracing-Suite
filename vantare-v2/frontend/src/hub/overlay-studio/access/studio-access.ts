@@ -179,6 +179,8 @@ function resolveResetSectionMutation(
 
 export function resolveCommandMutations(command: StudioCommand): StudioMutation[] {
   switch (command.type) {
+    case "document/layout-viewport":
+      return ["layout"];
     case "widget/add":
       return ["add"];
     case "widget/duplicate":
@@ -210,6 +212,12 @@ function findWidgetsForCommand(
   command: StudioCommand,
 ): WidgetInstanceV3[] {
   switch (command.type) {
+    case "document/layout-viewport": {
+      const widgets = Object.values(document.layouts).flatMap((layout) => layout?.widgets ?? []);
+      return [
+        ...new Map(widgets.map((widget) => [`${widget.type}:${widget.id}`, widget])).values(),
+      ];
+    }
     case "widget/add":
       return [command.widget];
     case "session/copy": {
@@ -232,7 +240,7 @@ export function assertCommandAccess(
   design?: WidgetDesignV1,
 ): void {
   const widgets = findWidgetsForCommand(document, command);
-  const widgetIds = widgets.map((widget) => widget.id);
+  const widgetIds = [...new Set(widgets.map((widget) => widget.id))];
   const mutations = resolveCommandMutations(command);
 
   for (const mutation of mutations) {

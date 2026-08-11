@@ -66,16 +66,14 @@ function LayoutViewportControls(props: {
           value={selectedPresetId}
           onChange={(event) => {
             const presetId = event.target.value;
-            setSelectedPresetId(presetId);
             if (presetId === "custom") {
+              setSelectedPresetId(presetId);
               return;
             }
             const preset = getLayoutViewportPreset(presetId);
             if (!preset) {
               return;
             }
-            setWidthDraft(String(preset.width));
-            setHeightDraft(String(preset.height));
             onChange({ width: preset.width, height: preset.height });
           }}
         >

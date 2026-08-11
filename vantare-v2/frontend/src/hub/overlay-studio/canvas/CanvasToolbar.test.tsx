@@ -1,32 +1,51 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
+import {
+  resolveLayoutViewport,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import { createTestTelemetryCoordinator } from "../test-helpers";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { StudioCanvas } from "./StudioCanvas";
+import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
 
-function buildDocument(): ProfileDocumentV3 {
+function buildDocument(layoutViewport?: LayoutViewport, widgetX?: number): ProfileDocumentV3 {
+  const widget = deltaDefinition.createDefault("delta-main");
+  if (widgetX !== undefined) {
+    widget.layout = { ...widget.layout, x: widgetX };
+  }
   return {
     schemaVersion: 3,
     id: "profile-1",
     name: "Test",
     displayMode: "edit",
     monitorIndex: 0,
+    ...(layoutViewport ? { layoutViewport } : {}),
     layouts: {
       general: {
         type: "general",
-        widgets: [deltaDefinition.createDefault("delta-main")],
+        widgets: [widget],
       },
     },
   };
 }
 
-const client: StudioProfileClient = {
-  load: async () => ({ document: buildDocument(), revision: "rev-1" }),
-  save: async () => ({ status: "saved", document: buildDocument(), revision: "rev-2" }),
-};
+function createClient(document = buildDocument()): StudioProfileClient {
+  return {
+    load: async () => ({ document: structuredClone(document), revision: "rev-1" }),
+    save: async ({ document: saved }) => ({
+      status: "saved",
+      document: structuredClone(saved),
+      revision: "rev-2",
+    }),
+  };
+}
+
+const client = createClient();
 
 function ToolbarHarness(): React.ReactElement | null {
   const { document, dirty, accessNotice, dispatch, undo, redo } = useStudioDocument();
@@ -59,6 +78,21 @@ function renderToolbar(): void {
     <StudioProvider client={client} initialFile="profiles/a.json">
       <ToolbarHarness />
     </StudioProvider>,
+  );
+}
+
+function DocumentStateProbe(): React.ReactElement | null {
+  const { document, dirty, accessNotice } = useStudioDocument();
+  if (!document) {
+    return null;
+  }
+  const layoutViewport = resolveLayoutViewport(document);
+  return (
+    <>
+      <div data-testid="dirty-flag">{dirty ? "dirty" : "clean"}</div>
+      <div data-testid="layout-viewport">{layoutViewport.width}x{layoutViewport.height}</div>
+      <div data-testid="access-notice">{accessNotice ?? ""}</div>
+    </>
   );
 }
 
@@ -167,6 +201,45 @@ describe("CanvasToolbar", () => {
 
     expect(screen.getByTestId("layout-viewport").textContent).toBe("1920x1080");
     expect(screen.getByTestId("access-notice").textContent).toContain("recoverable");
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
+  it("resynchronizes preset controls when recoverability rejects a smaller preset", async () => {
+    const document = buildDocument({ width: 5120, height: 1440 }, 4800);
+    render(
+      <StudioProvider client={createClient(document)} initialFile="profiles/a.json">
+        <StudioTelemetryProvider
+          coordinator={createTestTelemetryCoordinator()}
+          liveAvailable={false}
+        >
+          <DocumentStateProbe />
+          <StudioCanvas />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("studio-resolution-select"), {
+      target: { value: "1920x1080" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("access-notice").textContent).toContain("recoverable"),
+    );
+    expect(screen.getByTestId("layout-viewport").textContent).toBe("5120x1440");
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "5120x1440",
+    );
+    expect(screen.getByTestId("studio-canvas-dimensions").textContent).toBe("5120×1440");
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).value).toBe(
+      "5120x1440",
+    );
+    expect((screen.getByTestId("studio-layout-width-input") as HTMLInputElement).value).toBe(
+      "5120",
+    );
+    expect((screen.getByTestId("studio-layout-height-input") as HTMLInputElement).value).toBe(
+      "1440",
+    );
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 });

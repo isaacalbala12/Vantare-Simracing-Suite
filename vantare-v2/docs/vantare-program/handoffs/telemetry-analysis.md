@@ -70,6 +70,17 @@ el harness completo TA-03F tambien permanece verde en ambos hosts. La receta
 CI esta contrastada directamente con el workflow, `go.mod` y el
 `packageManager` actuales.
 
+El 2026-08-12 se reconstruyo un set local con la pareja Supabase autorizada y
+sin afirmar validacion de una licencia concreta. La configuracion quedo
+presente en frontend y exe segun checks booleanos que no expusieron valores;
+installer, portable y exe pasaron hashes, version e inventario DuckDB. El run
+descubrio que el hijo PowerShell 5 de `wails3 task` no resolvia el cmdlet
+autoloaded `Get-FileHash`, aunque el script directo si. `69a72a3` reemplaza esa
+dependencia en el verifier por SHA-256 puro .NET y añade una regresion que
+inutiliza deliberadamente el cmdlet. Harness PS5/PS7 y el alias oficial
+`release:verify` pasan. OAuth, instalacion, upgrade y uninstall siguen siendo
+gates manuales; este build no demuestra paridad de licencia.
+
 El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
 runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo
 en `.vantare-install-stage` y un rename atómico publica el exe justo antes del

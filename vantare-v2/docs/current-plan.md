@@ -42,6 +42,16 @@ Nota TA-03F (2026-08-11, candidata local verificada tras reviews de especificaci
   y build de desarrollo. El harness completo de packaging TA-03F tambien pasa
   en ambos hosts. La seccion CI de la receta refleja el workflow, `go.mod` y
   `packageManager` actuales sin modificar la automatizacion.
+- Smoke de build local del 2026-08-12: con la pareja Supabase autorizada y sin
+  afirmar paridad de licencia, frontend, exe, runtime, installer y portable se
+  reconstruyeron; comprobaciones booleanas confirmaron la configuracion en
+  `frontend/dist` y `vantare.exe` sin mostrar valores. Installer, portable y exe
+  pasaron version, hashes e inventario runtime. El runner `wails3 task` revelo
+  que su hijo PowerShell 5 no resolvia el cmdlet autoloaded `Get-FileHash`; el
+  verifier usa ahora SHA-256 puro .NET con recursos liberados en `finally`.
+  La regresion que inutiliza deliberadamente ese cmdlet, los harness PS5/PS7 y
+  el alias oficial `release:verify` pasan en `69a72a3`. Queda pendiente el
+  smoke manual OAuth/instalacion sobre estos artefactos.
 - Pendiente: smoke manual de install/upgrade/rollback/uninstall en Windows 11
   x64 y Windows 10 x64 si continúa soportado, y revisión humana. No hay
   Linear, push, PR, CI remoto, merge, promoción, release ni publicación.

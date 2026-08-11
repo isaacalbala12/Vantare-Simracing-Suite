@@ -165,6 +165,13 @@ funcional y de packaging, no visual.
   controlada confirma que detecta cualquier trabajo previo al gate. El harness
   completo de packaging TA-03F sigue pasando en ambos hosts despues del wiring
   serial.
+- Build local configurada del 2026-08-12: se usó la pareja Supabase autorizada
+  sin registro de licencia; checks booleanos confirmaron su presencia en el
+  frontend y exe sin exponer valores. Los tres artefactos pasaron hashes,
+  version e inventario runtime. El fallo reproducible de `Get-FileHash` dentro
+  del hijo PowerShell de `wails3 task` queda cerrado en `69a72a3` con hashing
+  SHA-256 puro .NET y regresion sin el cmdlet; harness PS5/PS7 y
+  `wails3 task release:verify` pasan.
 - Pendiente antes de publicar: instalar/actualizar/desinstalar de verdad y
   forzar rollback en Windows 11 x64; repetir smoke en Windows 10 x64 si sigue
   en soporte. Esta rama no instala ni publica artefactos.

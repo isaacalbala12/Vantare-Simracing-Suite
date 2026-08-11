@@ -83,9 +83,11 @@ research quedan fuera de su context pack.
   respuestas estructuradas, no documentación nueva.
 - ISA-327 replanifica S1 en tres cortes secuenciales A/B/C (máquina, entrada,
   salida/aceptación) dentro del [plan Spotter](../../engineer/phases/spotter/plan.md).
-  No se negocia el coupling ya verificado (reset solo Spotter, cancelación por
-  familia, sensibilidad única, service/oracle coherentes, filtro solo Spotter,
-  audio-only no-success con reason, test acumulativo sobre EngineerService).
+  No se negocian los invariantes objetivo que S1 debe cumplir (reset solo
+  Spotter, cancelación por familia, sensibilidad única, service/oracle
+  coherentes, filtro solo Spotter, audio-only no-success con reason, test
+  acumulativo sobre EngineerService); hoy no se cumplen (cancelación global y
+  sensibilidad Normal hardcodeada) y S1 los hace cumplir.
 
 ## Riesgos
 

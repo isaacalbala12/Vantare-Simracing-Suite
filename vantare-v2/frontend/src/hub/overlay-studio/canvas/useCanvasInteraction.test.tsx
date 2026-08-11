@@ -379,6 +379,96 @@ describe("applyResizePreview", () => {
     expect(preview.layout.x + preview.layout.w).toBe(1000);
     expect(preview.guides).toContainEqual({ orientation: "vertical", position: 1000, kind: "edge" });
   });
+
+  it("removes a west resize guide displaced by final recoverability clamp", () => {
+    const widget = relativeDefinition.createDefault("relative-main");
+    const preview = applyResizePreview({
+      widget,
+      start: {
+        ...widget.layout,
+        x: 974,
+        y: 100,
+        w: 226,
+        h: 300,
+        aspectLocked: false,
+      },
+      handle: "w",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 26, y: 0 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport: { width: 1006, height: 1000 },
+    });
+
+    expect(preview.layout.x).toBe(974);
+    expect(preview.guides).not.toContainEqual({
+      orientation: "vertical",
+      position: 1000,
+      kind: "grid",
+    });
+  });
+
+  it("removes a north resize guide displaced by final recoverability clamp", () => {
+    const widget = relativeDefinition.createDefault("relative-main");
+    const preview = applyResizePreview({
+      widget,
+      start: {
+        ...widget.layout,
+        x: 100,
+        y: 974,
+        w: 300,
+        h: 226,
+        aspectLocked: false,
+      },
+      handle: "n",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 0, y: 26 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport: { width: 1000, height: 1006 },
+    });
+
+    expect(preview.layout.y).toBe(974);
+    expect(preview.guides).not.toContainEqual({
+      orientation: "horizontal",
+      position: 1000,
+      kind: "grid",
+    });
+  });
+
+  it("keeps a perpendicular resize guide that still matches the final dragged edge", () => {
+    const widget = relativeDefinition.createDefault("relative-main");
+    const preview = applyResizePreview({
+      widget,
+      start: {
+        ...widget.layout,
+        x: 974,
+        y: 103,
+        w: 226,
+        h: 300,
+        aspectLocked: false,
+      },
+      handle: "nw",
+      pointerOrigin: { x: 0, y: 0 },
+      pointerCurrent: { x: 26, y: 1 },
+      siblings: [],
+      disableSnap: false,
+      layoutViewport: { width: 1006, height: 1000 },
+    });
+
+    expect(preview.layout.x).toBe(974);
+    expect(preview.layout.y).toBe(104);
+    expect(preview.guides).not.toContainEqual({
+      orientation: "vertical",
+      position: 1000,
+      kind: "grid",
+    });
+    expect(preview.guides).toContainEqual({
+      orientation: "horizontal",
+      position: 104,
+      kind: "grid",
+    });
+  });
 });
 
 describe("useCanvasInteraction", () => {

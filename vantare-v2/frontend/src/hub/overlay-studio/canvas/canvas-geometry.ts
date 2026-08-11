@@ -1,5 +1,6 @@
 import {
   DEFAULT_LAYOUT_VIEWPORT,
+  MIN_LAYOUT_VIEWPORT_DIMENSION,
   type LayoutViewport,
 } from "../../../overlay/core/layout-viewport";
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
@@ -11,7 +12,7 @@ export const CANVAS_WIDTH = DEFAULT_LAYOUT_VIEWPORT.width;
 export const CANVAS_HEIGHT = DEFAULT_LAYOUT_VIEWPORT.height;
 export const GRID_SIZE = 8;
 export const SNAP_TOLERANCE = 6;
-export const MINIMUM_VISIBLE = 32;
+export const MINIMUM_VISIBLE = MIN_LAYOUT_VIEWPORT_DIMENSION;
 
 export type Point = { x: number; y: number };
 

@@ -263,17 +263,28 @@ export function applyResizePreview(input: {
     }
   }
 
+  const layout = clampRecoverableLayout(resize(snappedDelta), input.layoutViewport);
+  const canSnapYEdge = !locksAspect || (!movesWest && !movesEast);
   const guides = snappedEdge.guides.filter((guide) => {
     if (guide.orientation === "vertical") {
-      return movesWest || movesEast;
+      if (movesWest) {
+        return layout.x === guide.position;
+      }
+      if (movesEast) {
+        return layout.x + layout.w === guide.position;
+      }
+      return false;
     }
-    return (movesNorth || movesSouth) && (!locksAspect || (!movesWest && !movesEast));
+    if (canSnapYEdge && movesNorth) {
+      return layout.y === guide.position;
+    }
+    if (canSnapYEdge && movesSouth) {
+      return layout.y + layout.h === guide.position;
+    }
+    return false;
   });
 
-  return {
-    layout: clampRecoverableLayout(resize(snappedDelta), input.layoutViewport),
-    guides,
-  };
+  return { layout, guides };
 }
 
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {

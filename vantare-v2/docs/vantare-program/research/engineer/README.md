@@ -2,16 +2,21 @@
 
 Estado: vigente desde ISA-313 / ENG-R01 Fase 5.
 
+> **STOP — SOLO RESEARCH Y ADVERSARIAL REVIEW.** Un implementer no abre este
+> índice ni sigue sus enlaces. Su context pack enlaza directamente al brief
+> sanitizado; si ha llegado aquí, debe detenerse y pedir contexto corregido.
+
 La investigación competitiva sirve para identificar capacidades observables
 que Vantare pueda replicar o mejorar con diseño y evidencia propios. No autoriza
 copiar arquitectura, código, constantes, frases, sonidos, audio, assets ni
 estructura de CrewChief.
 
-## IMPLEMENTER-SAFE
+## Salida sanitizada que research puede entregar
 
 - [crewchief-clean-room-brief-2026-08-10.md](crewchief-clean-room-brief-2026-08-10.md)
-  es la única salida competitiva apta para implementers. Resume capacidades y
-  restricciones sanitizadas; no reemplaza el plan, los contratos ni los tests.
+  es la única salida competitiva que el orquestador puede enlazar directamente
+  a un implementer. Resume capacidades y restricciones sanitizadas; no
+  reemplaza el plan, los contratos ni los tests.
 
 ## RESEARCH / REVIEW-ONLY
 

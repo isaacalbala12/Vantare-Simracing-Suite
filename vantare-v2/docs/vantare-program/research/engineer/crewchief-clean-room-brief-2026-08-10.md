@@ -1,7 +1,8 @@
 # Engineer LMU — brief clean-room de producto e ingeniería
 
-Fecha: 2026-08-10. Autoridad: contrato Vantare, roadmap ENG-12..29, handoff
-vivo y Linear ISA-187..200. Baseline técnico:
+Fecha: 2026-08-10. Esta es la salida competitiva sanitizada para implementers.
+La autoridad operativa vive en `docs/current-plan.md`, el router y handoff
+Engineer y Linear. Baseline técnico:
 `nightly@7e39104a7e876b4c396a41403023ba6030b88a08`.
 
 Este documento es la única salida de la investigación competitiva destinada a
@@ -101,7 +102,7 @@ Evidencia interna: [entrada productiva](https://github.com/isaacalbala12/Vantare
 | Always-on | **DEFER** | PB | No necesario para sustitución Beta y amplía riesgo de privacidad. |
 | Kokoro dinámico ES/EN | **BUILD solo con GO** | BC / ISA-193,194 | G2P/licencias, packaging, deadline, carga conjunta y escucha; si NO-GO, cache+visual. |
 | Packs/modelos offline | **BUILD** | BC / ISA-194 | Contenido first-party; runtime/modelos de terceros solo con licencia y procedencia aprobadas. Manifest firmado, hashes, staging, activación atómica y rollback. |
-| Configuración/persistencia | **BUILD** | BC / ISA-195; ISA-314 primero | Esquema migrable y roundtrip; locale, unidades, volumen, devices, PTT, voz, frecuencia, salidas y permisos. |
+| Configuración/persistencia | **BUILD** | BC / ownership en Linear | Esquema migrable y roundtrip; locale, unidades, volumen, devices, PTT, voz, frecuencia, salidas y permisos. |
 | Pit request/abort | **KEEP contrato / BUILD puerto** | BT / ISA-196 | Propuesta, readback de intención, confirmación/cancelación, envío, lectura final y resultado. |
 | Pit set fuel/change tyres | **KEEP contrato / BUILD puerto** | BT / ISA-196 | Unidades/límites de coche, idempotencia, TTL y fallo cerrado. |
 | Strategy accept/reject | **KEEP contrato / BUILD integración** | BT / ISA-197 | Plan ID/version y estado final; ninguna acción desde texto/STT directamente. |
@@ -151,9 +152,11 @@ LLM decide hechos, números, intents, slots o acciones críticas.
 
 ## Gates medibles mínimos
 
-Los umbrales y autoridades de aprobación viven en los contratos de cada issue y
-en la tabla de gates de `docs/engineer/engineer-beta-roadmap.md`; este brief no
-los redefine.
+Los umbrales y autoridades de aprobación viven en la issue de Linear y los
+contratos aplicables. Para Spotter, la entrada vigente es el
+[plan activo](../../../engineer/phases/spotter/plan.md) y su
+[aceptación acumulativa](../../../engineer/phases/spotter/acceptance.md); este
+brief no redefine esos criterios.
 
 - Spotter: replay/oráculo LMU, falsos positivos/negativos, p95 decisión→audio,
   multiclase Hypercar–LMGT3 y ninguna alerta stale después de lifecycle.
@@ -171,12 +174,17 @@ los redefine.
 Si falta evidencia, el estado es `unavailable`, `NO-GO` o `INCONCLUSIVE`; nunca
 se simula éxito ni se rellena con datos sintéticos en producto.
 
-## Orden de ejecución
+## Flujo de entrada vigente
 
-1. ISA-314 corrige la promesa falsa de persistencia.
-2. ISA-187 + ISA-189 + ENG-08 entregan la primera vertical audio/Spotter/visual.
-3. ISA-190 habilita monitores uno por uno, todo salvo cambio de piloto.
-4. ISA-193 y los gates humanos de voz avanzan en paralelo sin bypass.
-5. ISA-195 y ISA-196 cierran control persistente y Pit transaccional.
-6. ISA-197/198 completan integraciones/diagnóstico.
-7. ISA-199/200 ejecutan soak, packaging y decisión Beta.
+La secuencia histórica de issues queda sustituida. Este brief no elige ni
+ordena implementación. El flujo vigente es:
+
+1. revisión y aceptación humana de ISA-313 Fase 5;
+2. solo después, creación o reconciliación en Linear de la issue y rama de S1;
+3. replanning de S1 desde la Nightly vigente, con archivos, contratos, riesgos
+   y aceptación concretos;
+4. implementación mediante worker y ampliación de la misma aceptación manual
+   y evaluable por IA.
+
+Las fases y capacidades posteriores se replanifican al entrar. Linear conserva
+ownership y dependencias; ninguna numeración histórica autoriza ejecución.

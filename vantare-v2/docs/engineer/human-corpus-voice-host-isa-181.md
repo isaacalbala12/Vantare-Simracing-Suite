@@ -1,5 +1,9 @@
 # ISA-181 / ENG-10 — corpus humano y selección condicionada de voice-host
 
+> **SNAPSHOT / ISSUE EVIDENCE.** Conserva la evidencia humana y tooling del
+> corte ISA-181; no describe por sí solo el estado actual. Consulta el
+> [router Engineer](README.md) y el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md).
+
 Fecha de corte: 2026-08-02. Ámbito: investigación y tooling test-only para
 Windows 10/11, totalmente offline. No hay cableado productivo, dependencia
 nueva, acceso silencioso al micrófono ni promoción de rama.

@@ -1,12 +1,11 @@
 # Workflow de agentes
 
-> Estado del checkout principal (2026-08-10): el worktree principal
-> `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`
-> (rama `refactor` == `nightly@9c11d7f`). `refactor-b70a950-backup` y
-> `chore/conservacion-untracked-2026-08-10` conservan la punta anterior y
-> trabajo untracked con valor; su destino queda pendiente de decision humana.
-> Trabajo nuevo: rama/worktree por issue de Linear sobre `nightly`, no sobre
-> `refactor`.
+> El estado de checkout, rama y SHA es mutable y no se fija en este documento.
+> Consulta `docs/current-plan.md` y verifica el preflight real con
+> `git rev-parse --show-toplevel`, `git branch --show-current`,
+> `git rev-parse HEAD`, `git status --short` y `git worktree list --porcelain`.
+> Trabajo nuevo: rama/worktree por issue de Linear sobre la Nightly vigente;
+> no asumas una base por una nota histórica.
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
 > `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,

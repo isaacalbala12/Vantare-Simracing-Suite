@@ -44,12 +44,26 @@ conclusiones sanitizadas mediante el brief clean-room autorizado.
 
 ### Implementer
 
-Context pack permitido: `AGENTS.md`, `docs/current-plan.md`, expediente y
-contrato de producto, handoff compacto, issue, plan activo, aceptación, solo
-los contratos/código/tests aplicables y el brief clean-room cuando corresponda.
+Context pack base permitido, con rutas exactas:
+
+- `AGENTS.md`;
+- `docs/current-plan.md`;
+- `docs/vantare-program/README.md`;
+- `docs/vantare-program/product-contract.md`;
+- `docs/vantare-program/handoffs/engineer-spotter.md`;
+- `docs/engineer/README.md`;
+- `docs/engineer/phases/spotter/plan.md`;
+- `docs/engineer/phases/spotter/acceptance.md`;
+- `docs/vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md`;
+- la issue de Linear asignada.
+
+El orquestador añade solo las rutas exactas de contratos, código y tests que
+la issue o el replanning aprobado enumeren. Si esa lista falta o es ambigua, el
+implementer se detiene y la pide; no explora categorías o directorios.
 
 Nunca lee dossiers CrewChief crudos, historia, otros proyectos o fases, ni
-reviews previas. No recibe reportes narrativos de otros workers como autoridad.
+reviews previas. Tampoco abre el índice de research. No recibe reportes
+narrativos de otros workers como autoridad.
 
 ### Spec reviewer
 

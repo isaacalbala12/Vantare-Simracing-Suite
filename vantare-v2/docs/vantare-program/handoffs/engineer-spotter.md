@@ -22,8 +22,9 @@ frases, sonidos, assets ni estructura.
    [aceptación](../../engineer/phases/spotter/acceptance.md), contratos, código,
    tests y evidencia aplicables.
 
-El [índice de research](../research/engineer/README.md) limita el acceso por rol.
-El brief clean-room es la única salida competitiva para implementers.
+El [brief clean-room sanitizado](../research/engineer/crewchief-clean-room-brief-2026-08-10.md)
+es la única salida competitiva para implementers. Los índices y dossiers de
+research quedan fuera de su context pack.
 
 ## Estado Git, PR y CI
 

@@ -41,8 +41,9 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
 - `../engineer/README.md`: router por rol, fase activa y clasificación de los
   documentos Engineer.
-- `research/engineer/README.md`: clasificación clean-room; el brief indicado
-  allí es la única salida competitiva destinada a implementadores Engineer.
+- `research/engineer/crewchief-clean-room-brief-2026-08-10.md`: única salida
+  competitiva sanitizada destinada a implementadores Engineer. El índice y los
+  dossiers de research no forman parte de su context pack.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,

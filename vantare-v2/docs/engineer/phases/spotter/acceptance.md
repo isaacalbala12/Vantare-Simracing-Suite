@@ -27,6 +27,16 @@ y documentará cómo descubrirla, ejecutarla y evaluar su salida.
 - Ninguna expectativa deriva de constantes, frases, sonidos o assets de
   CrewChief.
 
+## Cobertura clean-room acumulativa
+
+Cada capacidad sanitizada del
+[brief clean-room](../../../vantare-program/research/engineer/crewchief-clean-room-brief-2026-08-10.md)
+se registra en la matriz acumulativa como `implementada`, `mejorada` o
+`no disponible`. Cada fila exige evidencia propia de Vantare, escenario
+esperado, escenarios prohibidos y condición de reapertura si no está
+disponible. Una capacidad omitida o sustentada solo por evidencia del
+competidor impide cerrar la subfase aplicable.
+
 ## Escenarios esperados
 
 La matriz se incorpora de forma progresiva:
@@ -66,6 +76,12 @@ eventos prohibidos y reason de silencio o degradación cuando aplique.
 - juicio humano explícito para audibilidad o contenido;
 - fallos, limitaciones y capabilities no disponibles sin maquillarlos.
 
+S4 y S7 no pueden cerrar sin prueba humana ES/EN de audio Kokoro autorizado en
+un dispositivo real. La evidencia incluye timing hasta comienzo del player,
+juicio de audibilidad y paridad con la salida visual compartida. Si licencia,
+pack, dispositivo o entorno impiden la prueba, se registra un bloqueo explícito
+y la subfase permanece abierta; el fallback visual no sustituye este gate.
+
 ### Evaluable por IA
 
 - punto de entrada y prerrequisitos descubribles desde este documento;
@@ -82,10 +98,10 @@ eventos prohibidos y reason de silencio o degradación cuando aplique.
 | S1 | autoridades, secuencia, locale, salida honesta y aislamiento |
 | S2 | topologías laterales, identidad, clears y negativos espaciales |
 | S3 | inhibición, rearme, generación, disconnect y reconnect |
-| S4 | cache, audio, player, dispositivo, preempción y paridad visual |
+| S4 | cache, audio, player, dispositivo real, prueba humana ES/EN, timing/audibilidad, preempción y paridad visual; un bloqueo explícito impide cerrar |
 | S5 | clase, doblados, grupos, cadencia y prioridad informativa |
 | S6 | peligros demostrables y silencios por capability insuficiente |
-| S7 | recorrido completo LMU/Windows, carga, tiempos y regresión |
+| S7 | recorrido completo LMU/Windows, audio Kokoro autorizado ES/EN en dispositivo real, timing/audibilidad humana, paridad visual, carga y regresión; un bloqueo explícito impide cerrar |
 
 ## Cierre
 

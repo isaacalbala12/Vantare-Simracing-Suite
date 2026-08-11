@@ -1,5 +1,9 @@
 # ISA-180 — protocolo y resultados reproducibles TTS/STT
 
+> **SNAPSHOT / ISSUE EVIDENCE.** Conserva el protocolo y resultados del corte
+> ISA-180; no describe por sí solo el estado actual. Consulta el
+> [router Engineer](README.md) y el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md).
+
 ## Propósito
 
 Este protocolo mide rendimiento técnico e inteligibilidad mínima. No mide

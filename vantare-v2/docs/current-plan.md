@@ -52,8 +52,14 @@ Nota TA-03F (2026-08-11, candidata local verificada tras reviews de especificaci
   La regresion que inutiliza deliberadamente ese cmdlet, los harness PS5/PS7 y
   el alias oficial `release:verify` pasan en `69a72a3`. Queda pendiente el
   smoke manual OAuth/instalacion sobre estos artefactos.
-- Pendiente: smoke manual de install/upgrade/rollback/uninstall en Windows 11
-  x64 y Windows 10 x64 si continúa soportado, y revisión humana. No hay
+- Gate humano del 2026-08-12: tras embeber tambien un registro publico Ed25519
+  valido, Isaac instalo/actualizo el artefacto y confirmo arranque y Google
+  OAuth correctos. El exe instalado coincide con la build
+  `dd953d08eb4c9d46eacb3559073529ac0e61b7bcb151af4496f5fe53f598e221` y el
+  runtime instalado pasa manifest trust, inventario exacto de cinco miembros y
+  hashes. Es evidencia funcional de este host, no validacion visual.
+- Pendiente: smoke manual de rollback/uninstall en Windows 11 x64 y repeticion
+  completa en Windows 10 x64 si continúa soportado. No hay
   Linear, push, PR, CI remoto, merge, promoción, release ni publicación.
 
 Nota TA-03E (2026-08-11, candidata local revisada):

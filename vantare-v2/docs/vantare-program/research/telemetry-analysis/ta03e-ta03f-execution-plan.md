@@ -172,9 +172,11 @@ funcional y de packaging, no visual.
   del hijo PowerShell de `wails3 task` queda cerrado en `69a72a3` con hashing
   SHA-256 puro .NET y regresion sin el cmdlet; harness PS5/PS7 y
   `wails3 task release:verify` pasan.
-- Pendiente antes de publicar: instalar/actualizar/desinstalar de verdad y
-  forzar rollback en Windows 11 x64; repetir smoke en Windows 10 x64 si sigue
-  en soporte. Esta rama no instala ni publica artefactos.
+- Gate humano del 2026-08-12: install/upgrade, arranque y Google OAuth pasan.
+  El exe instalado coincide con la build por SHA-256 y el runtime instalado
+  vuelve a pasar trust, inventario y hashes. Pendientes antes de publicar:
+  uninstall y rollback forzado en Windows 11 x64; repetir smoke en Windows 10
+  x64 si sigue en soporte. La rama no publica artefactos.
 
 ## Límite visual
 

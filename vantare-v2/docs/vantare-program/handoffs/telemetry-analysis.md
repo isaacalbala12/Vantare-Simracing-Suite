@@ -78,8 +78,17 @@ descubrio que el hijo PowerShell 5 de `wails3 task` no resolvia el cmdlet
 autoloaded `Get-FileHash`, aunque el script directo si. `69a72a3` reemplaza esa
 dependencia en el verifier por SHA-256 puro .NET y añade una regresion que
 inutiliza deliberadamente el cmdlet. Harness PS5/PS7 y el alias oficial
-`release:verify` pasan. OAuth, instalacion, upgrade y uninstall siguen siendo
-gates manuales; este build no demuestra paridad de licencia.
+`release:verify` pasan. En ese punto OAuth, instalacion, upgrade y uninstall
+seguian siendo gates manuales; el build por si solo no demostraba paridad de
+licencia.
+
+Gate humano del 2026-08-12: con URL, anon key y un registro publico Ed25519
+valido embebidos, Isaac instalo/actualizo la candidata y confirmo arranque y
+Google OAuth correctos. El exe instalado coincide por SHA-256 con la build
+`dd953d08eb4c9d46eacb3559073529ac0e61b7bcb151af4496f5fe53f598e221`; el
+runtime instalado conserva el manifest confiado y sus cinco miembros exactos.
+Quedan rollback, uninstall y Windows 10 si sigue soportado. No hubo revision
+visual ni promocion.
 
 El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
 runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo

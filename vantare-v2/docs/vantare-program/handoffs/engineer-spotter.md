@@ -87,7 +87,8 @@ El brief clean-room es la única salida competitiva para implementers.
 
 ## Issues y bloqueos
 
-- ISA-313 está activa y cierra la entrada documental; Fase 5 no cambia producto.
+- ISA-313 está activa y prepara la entrada documental; Fase 5 sigue pendiente
+  de revisión y aceptación humana y no cambia producto.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; no equivalen todavía a la issue ejecutable de S1.
 - ISA-314 conserva separado el bug de promesa falsa de guardado.

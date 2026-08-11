@@ -1,7 +1,8 @@
 # Spotter observable — plan de fase
 
-Estado: entrada documental aceptada al cerrar ISA-313 / ENG-R01 Fase 5.
-La subfase S1 aún no ha comenzado y necesitará issue, rama y replanning propios.
+Estado: entrada documental preparada por ISA-313 / ENG-R01 Fase 5, pendiente de
+revisión y aceptación humana. S1 aún no ha comenzado; solo después de aceptar
+la Fase 5 tendrá issue, rama y replanning propios.
 
 ## Resultado
 

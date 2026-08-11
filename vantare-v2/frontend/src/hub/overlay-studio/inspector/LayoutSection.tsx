@@ -1,5 +1,7 @@
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
+import { useI18n } from "../../../i18n/I18nProvider";
 import { executeWidgetAction } from "../canvas/widget-actions";
 import type { StudioCommand } from "../state/studio-command";
 
@@ -8,12 +10,13 @@ export type LayoutSectionProps = {
   session: SessionLayoutType;
   widgets: readonly WidgetInstanceV3[];
   savedDocument: ProfileDocumentV3;
+  layoutViewport: LayoutViewport;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
 };
 
 export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
-  const { widget, session, widgets, savedDocument, dispatch, selectWidget } = props;
+  const { widget, session, widgets, savedDocument, layoutViewport, dispatch, selectWidget } = props;
   const { t } = useI18n();
   const definition = widgetTypeRegistry.get(widget.type);
   const canUnlock = definition.capabilities.supportsAspectUnlock;
@@ -25,6 +28,7 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
       widgetIds: [widget.id],
       widgets,
       savedDocument,
+      layoutViewport,
       dispatch,
       selectWidget,
     });
@@ -81,4 +85,3 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
     </div>
   );
 }
-import { useI18n } from "../../../i18n/I18nProvider";

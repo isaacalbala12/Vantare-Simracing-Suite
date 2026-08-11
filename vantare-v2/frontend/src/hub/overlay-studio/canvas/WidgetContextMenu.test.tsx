@@ -37,6 +37,7 @@ describe("WidgetContextMenu", () => {
         session="general"
         widgets={[deltaDefinition.createDefault("delta-main")]}
         savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={vi.fn()}
         selectWidget={vi.fn()}
         confirmDelete={() => true}
@@ -59,6 +60,7 @@ describe("WidgetContextMenu", () => {
         session="general"
         widgets={[deltaDefinition.createDefault("delta-main")]}
         savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={vi.fn()}
         selectWidget={vi.fn()}
         confirmDelete={() => true}
@@ -87,6 +89,7 @@ describe("WidgetContextMenu", () => {
         session="general"
         widgets={[back, front]}
         savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={vi.fn()}
         selectWidget={selectWidget}
         confirmDelete={() => true}
@@ -120,6 +123,7 @@ describe("WidgetContextMenu", () => {
               session="general"
               widgets={[back, front]}
               savedDocument={buildSaved()}
+              layoutViewport={{ width: 1000, height: 1000 }}
               dispatch={vi.fn()}
               selectWidget={setSelectedWidgetId}
               confirmDelete={() => true}
@@ -137,5 +141,40 @@ describe("WidgetContextMenu", () => {
     fireEvent.click(layer);
 
     expect(screen.getByTestId("selected-widget-id").textContent).toBe("delta-back");
+  });
+
+  it("centers against the supplied document surface", () => {
+    const dispatch = vi.fn();
+    const widget = deltaDefinition.createDefault("delta-main");
+
+    render(
+      <WidgetContextMenu
+        menu={{
+          x: 120,
+          y: 80,
+          widgetId: "delta-main",
+          layerWidgetIds: ["delta-main"],
+        }}
+        session="general"
+        widgets={[widget]}
+        savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
+        dispatch={dispatch}
+        selectWidget={vi.fn()}
+        confirmDelete={() => true}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("studio-context-action-center"));
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "widget/layout",
+      session: "general",
+      widgetIds: ["delta-main"],
+      patch: {
+        x: Math.round((1000 - widget.layout.w) / 2),
+        y: Math.round((1000 - widget.layout.h) / 2),
+      },
+    });
   });
 });

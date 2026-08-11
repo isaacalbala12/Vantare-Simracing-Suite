@@ -35,6 +35,7 @@ describe("CanvasActionBar", () => {
         session="general"
         widgets={[widget]}
         savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={dispatch}
         selectWidget={selectWidget}
         confirmDelete={() => true}
@@ -49,5 +50,34 @@ describe("CanvasActionBar", () => {
       newIds: ["delta-main-copy"],
     });
     expect(selectWidget).toHaveBeenCalledWith("delta-main-copy");
+  });
+
+  it("centers against the supplied document surface", () => {
+    const dispatch = vi.fn();
+    const widget = deltaDefinition.createDefault("delta-main");
+
+    render(
+      <CanvasActionBar
+        widgetId="delta-main"
+        session="general"
+        widgets={[widget]}
+        savedDocument={buildSaved()}
+        layoutViewport={{ width: 1000, height: 1000 }}
+        dispatch={dispatch}
+        selectWidget={vi.fn()}
+        confirmDelete={() => true}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("studio-action-center"));
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "widget/layout",
+      session: "general",
+      widgetIds: ["delta-main"],
+      patch: {
+        x: Math.round((1000 - widget.layout.w) / 2),
+        y: Math.round((1000 - widget.layout.h) / 2),
+      },
+    });
   });
 });

@@ -1,8 +1,18 @@
 import { useState } from "react";
+import {
+  MAX_LAYOUT_VIEWPORT_DIMENSION,
+  MIN_LAYOUT_VIEWPORT_DIMENSION,
+  isValidLayoutViewportDimension,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { StudioPreviewState } from "../state/studio-store";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
-import { STUDIO_PREVIEW_RESOLUTION_OPTIONS } from "./preview-resolution";
+import {
+  findLayoutViewportPreset,
+  getLayoutViewportPreset,
+  LAYOUT_VIEWPORT_PRESETS,
+} from "./preview-resolution";
 
 const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125, 150];
 
@@ -13,13 +23,129 @@ function nextZoom(current: StudioPreviewState["zoom"], direction: -1 | 1): Studi
   return ZOOM_STEPS[nextIndex];
 }
 
+function parseDimension(draft: string): number | null {
+  if (draft.trim() === "") {
+    return null;
+  }
+  const value = Number(draft);
+  return isValidLayoutViewportDimension(value) ? value : null;
+}
+
 export type CanvasToolbarProps = {
   preview: StudioPreviewState;
+  layoutViewport: LayoutViewport;
   onPreviewChange(patch: Partial<StudioPreviewState>): void;
+  onLayoutViewportChange(layoutViewport: LayoutViewport): void;
 };
 
+function LayoutViewportControls(props: {
+  layoutViewport: LayoutViewport;
+  onChange(layoutViewport: LayoutViewport): void;
+}): React.ReactElement {
+  const { layoutViewport, onChange } = props;
+  const { t } = useI18n();
+  const [selectedPresetId, setSelectedPresetId] = useState(
+    findLayoutViewportPreset(layoutViewport)?.id ?? "custom",
+  );
+  const [widthDraft, setWidthDraft] = useState(String(layoutViewport.width));
+  const [heightDraft, setHeightDraft] = useState(String(layoutViewport.height));
+  const width = parseDimension(widthDraft);
+  const height = parseDimension(heightDraft);
+  const draftViewport = width !== null && height !== null ? { width, height } : null;
+  const draftChanged =
+    draftViewport !== null &&
+    (draftViewport.width !== layoutViewport.width || draftViewport.height !== layoutViewport.height);
+
+  return (
+    <>
+      <label className="osv3-canvas-toolbar__field">
+        <span>{t("studio.v3.layoutViewport.preset")}</span>
+        <select
+          data-testid="studio-resolution-select"
+          className="osv3-canvas-toolbar__select"
+          value={selectedPresetId}
+          onChange={(event) => {
+            const presetId = event.target.value;
+            setSelectedPresetId(presetId);
+            if (presetId === "custom") {
+              return;
+            }
+            const preset = getLayoutViewportPreset(presetId);
+            if (!preset) {
+              return;
+            }
+            setWidthDraft(String(preset.width));
+            setHeightDraft(String(preset.height));
+            onChange({ width: preset.width, height: preset.height });
+          }}
+        >
+          {LAYOUT_VIEWPORT_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+          <option value="custom">{t("studio.v3.layoutViewport.custom")}</option>
+        </select>
+      </label>
+      <div className="osv3-canvas-toolbar__surface-inputs">
+        <label className="osv3-canvas-toolbar__field">
+          <span>{t("studio.v3.layoutViewport.width")}</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            data-testid="studio-layout-width-input"
+            className="osv3-canvas-toolbar__dimension-input"
+            aria-label={t("studio.v3.layoutViewport.width")}
+            aria-invalid={width === null}
+            min={MIN_LAYOUT_VIEWPORT_DIMENSION}
+            max={MAX_LAYOUT_VIEWPORT_DIMENSION}
+            step={1}
+            value={widthDraft}
+            onChange={(event) => {
+              setSelectedPresetId("custom");
+              setWidthDraft(event.target.value);
+            }}
+          />
+        </label>
+        <label className="osv3-canvas-toolbar__field">
+          <span>{t("studio.v3.layoutViewport.height")}</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            data-testid="studio-layout-height-input"
+            className="osv3-canvas-toolbar__dimension-input"
+            aria-label={t("studio.v3.layoutViewport.height")}
+            aria-invalid={height === null}
+            min={MIN_LAYOUT_VIEWPORT_DIMENSION}
+            max={MAX_LAYOUT_VIEWPORT_DIMENSION}
+            step={1}
+            value={heightDraft}
+            onChange={(event) => {
+              setSelectedPresetId("custom");
+              setHeightDraft(event.target.value);
+            }}
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        data-testid="studio-layout-viewport-apply"
+        className="osv3-canvas-toolbar__button osv3-canvas-toolbar__apply"
+        disabled={!draftViewport || !draftChanged}
+        onClick={() => {
+          if (draftViewport && draftChanged) {
+            onChange(draftViewport);
+          }
+        }}
+      >
+        {t("studio.v3.layoutViewport.apply")}
+      </button>
+    </>
+  );
+}
+
 export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
-  const { preview, onPreviewChange } = props;
+  const { preview, layoutViewport, onPreviewChange, onLayoutViewportChange } = props;
   const { t } = useI18n();
   const [optionsOpen, setOptionsOpen] = useState(false);
 
@@ -27,7 +153,12 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
     <div data-testid="studio-canvas-toolbar" className="osv3-canvas-toolbar">
       <div className="osv3-canvas-toolbar__heading">
         <span className="osv3-canvas-toolbar__eyebrow">{t("studio.v3.canvas.title")}</span>
-        <span className="osv3-canvas-toolbar__dimensions">1920×1080</span>
+        <span
+          data-testid="studio-canvas-dimensions"
+          className="osv3-canvas-toolbar__dimensions"
+        >
+          {layoutViewport.width}×{layoutViewport.height}
+        </span>
       </div>
       <div className="osv3-canvas-toolbar__controls">
         <button
@@ -40,7 +171,7 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
           -
         </button>
         <span data-testid="studio-zoom-label" className="osv3-canvas-toolbar__label">
-          {preview.zoom === "fit" ? "Fit" : `${preview.zoom}%`}
+          {preview.zoom === "fit" ? t("studio.v3.canvas.zoom.fitLabel") : `${preview.zoom}%`}
         </span>
         <button
           type="button"
@@ -74,52 +205,26 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
             >
               {t("studio.v3.canvas.zoom.fit")}
             </button>
-            <select
-              data-testid="studio-resolution-select"
-              className="osv3-canvas-toolbar__select"
-              aria-label={t("studio.v3.preview.resolution")}
-              value={preview.resolution ?? "auto"}
-              onChange={(event) =>
-                onPreviewChange({ resolution: event.target.value as NonNullable<StudioPreviewState["resolution"]> })
-              }
-            >
-              <option value="auto">{t("studio.v3.preview.resolution.auto")}</option>
-              <optgroup label="16:9">
-                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(0, 4).map((resolution) => (
-                  <option key={resolution.id} value={resolution.id}>
-                    {resolution.label}
+            <LayoutViewportControls
+              key={`${layoutViewport.width}x${layoutViewport.height}`}
+              layoutViewport={layoutViewport}
+              onChange={onLayoutViewportChange}
+            />
+            <label className="osv3-canvas-toolbar__field">
+              <span>{t("studio.v3.canvas.background")}</span>
+              <select
+                data-testid="studio-background-select"
+                className="osv3-canvas-toolbar__select"
+                value={preview.backgroundId}
+                onChange={(event) => onPreviewChange({ backgroundId: event.target.value })}
+              >
+                {CANVAS_BACKGROUNDS.map((background) => (
+                  <option key={background.id} value={background.id}>
+                    {t(background.labelKey)}
                   </option>
                 ))}
-              </optgroup>
-              <optgroup label="21:9">
-                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(4, 7).map((resolution) => (
-                  <option key={resolution.id} value={resolution.id}>
-                    {resolution.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="32:9">
-                {STUDIO_PREVIEW_RESOLUTION_OPTIONS.slice(7).map((resolution) => (
-                  <option key={resolution.id} value={resolution.id}>
-                    {resolution.label}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <select
-              data-testid="studio-background-select"
-              className="osv3-canvas-toolbar__select"
-              value={preview.backgroundId}
-              onChange={(event) => onPreviewChange({ backgroundId: event.target.value })}
-            >
-              {CANVAS_BACKGROUNDS.map((background) => (
-                <option key={background.id} value={background.id}>
-                  {/* labelKey estaba declarado desde el principio pero nadie lo
-                      usaba, asi que el selector mostraba el id en crudo. */}
-                  {t(background.labelKey)}
-                </option>
-              ))}
-            </select>
+              </select>
+            </label>
             <label className="osv3-canvas-toolbar__toggle">
               <input
                 data-testid="studio-safe-area-toggle"

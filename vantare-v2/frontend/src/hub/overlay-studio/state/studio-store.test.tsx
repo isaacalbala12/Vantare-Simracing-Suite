@@ -398,6 +398,7 @@ describe("StudioProvider", () => {
     expect(previewHook.result.current.preview.zoom).toBe(125);
     expect(previewHook.result.current.preview.mockSession).toBe("race");
     expect(previewHook.result.current.preview.source).toBe("live");
+    expect("resolution" in previewHook.result.current.preview).toBe(false);
     expect(documentHook.result.current.dirty).toBe(false);
     expect(documentHook.result.current.document?.layouts.general.widgets[0].layout.x).toBe(64);
   });

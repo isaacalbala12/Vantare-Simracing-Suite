@@ -56,6 +56,42 @@ vi.mock("../../lib/license", () => ({
 afterEach(() => cleanup());
 
 describe("V52Shell", () => {
+  it("uses the available width for Profiles while other sections keep the 1920px cap", () => {
+    const { rerender } = render(
+      <LauncherStoreProvider>
+        <V52Shell
+          activeSection="profiles"
+          onNavigate={vi.fn()}
+          version="v0.1.0.3"
+          sourceStatus={null}
+        >
+          <div />
+        </V52Shell>
+      </LauncherStoreProvider>,
+    );
+
+    const profilesWorkspace = screen.getByTestId("v52-content-container");
+    expect(profilesWorkspace.className).toContain("w-full");
+    expect(profilesWorkspace.className).not.toContain("max-w-[1920px]");
+
+    rerender(
+      <LauncherStoreProvider>
+        <V52Shell
+          activeSection="dashboard"
+          onNavigate={vi.fn()}
+          version="v0.1.0.3"
+          sourceStatus={null}
+        >
+          <div />
+        </V52Shell>
+      </LauncherStoreProvider>,
+    );
+
+    const dashboardWorkspace = screen.getByTestId("v52-content-container");
+    expect(dashboardWorkspace.className).toContain("max-w-[1920px]");
+    expect(dashboardWorkspace.className).toContain("mx-auto");
+  });
+
   it("renders top navigation and children", () => {
     render(
       <LauncherStoreProvider>

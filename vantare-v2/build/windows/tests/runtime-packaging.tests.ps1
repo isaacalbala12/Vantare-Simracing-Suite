@@ -4,6 +4,7 @@ param()
 $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $releaseScript = Join-Path $repoRoot "tools\release_artifacts.ps1"
+$runtimeVerifier = Join-Path $repoRoot "build\windows\telemetry-reader\verify-runtime.ps1"
 $runtimeRelative = "runtime\telemetry\duckdb-v1"
 $runtimeMembers = @(
     "manifest.json",
@@ -132,6 +133,15 @@ try {
         $expected = @($runtimeMembers | ForEach-Object { "$runtimeRelative\$_" } | Sort-Object)
         Assert-True ([string]::Join("`n", $actual) -ceq [string]::Join("`n", $expected)) `
             "Portable runtime inventory/path differs. Expected $($expected -join ', '); got $($actual -join ', ')."
+    }
+
+    Invoke-Case "runtime verification does not depend on Get-FileHash availability" {
+        $fixture = New-TestRepo "verify-without-get-file-hash"
+        function Get-FileHash { throw "REGRESSION: verify-runtime invoked Get-FileHash." }
+
+        & $runtimeVerifier `
+            -RuntimeDirectory (Join-Path $fixture "bin\runtime\telemetry\duckdb-v1") `
+            -RepoRoot $fixture | Out-Null
     }
 
     Invoke-Case "portable fails closed when the runtime is absent" {

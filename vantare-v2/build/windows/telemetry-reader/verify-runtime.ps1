@@ -5,6 +5,22 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $stream = $null
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        $digest = $sha256.ComputeHash($stream)
+        return [System.BitConverter]::ToString($digest).Replace("-", "").ToLowerInvariant()
+    } finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+        $sha256.Dispose()
+    }
+}
+
 $runtime = [System.IO.Path]::GetFullPath($RuntimeDirectory)
 $repo = [System.IO.Path]::GetFullPath($RepoRoot)
 $expectedPayload = @(
@@ -33,7 +49,7 @@ if ($trustSource -notmatch 'productionManifestSHA256 = "([0-9a-f]{64})"') {
 }
 $trustedManifestHash = $Matches[1]
 $manifestPath = Join-Path $runtime "manifest.json"
-$manifestHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
+$manifestHash = Get-Sha256Hex -Path $manifestPath
 if ($manifestHash -cne $trustedManifestHash) {
     throw "Telemetry runtime manifest is not trusted by this Vantare build."
 }
@@ -58,7 +74,7 @@ foreach ($name in $expectedPayload) {
     if ($item.PSIsContainer -or (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)) {
         throw "Telemetry runtime member must be a regular file: $name."
     }
-    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+    $hash = Get-Sha256Hex -Path $path
     if ($item.Length -ne [int64]$entry[0].size -or $hash -cne [string]$entry[0].sha256) {
         throw "Telemetry runtime member failed verification: $name."
     }

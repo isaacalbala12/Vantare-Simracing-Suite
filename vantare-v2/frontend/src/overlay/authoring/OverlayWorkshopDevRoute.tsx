@@ -372,6 +372,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
             <p className="overlay-workshop-transport__watch" data-testid="workshop-scene-watch">
               <strong>Qué mirar:</strong> {scene.watchFor}
             </p>
+            {scene.unsupportedSignal ? (
+              <p className="overlay-workshop-transport__unsupported" data-testid="workshop-scene-unsupported">
+                <strong>Solo en el mock:</strong> esta animación necesita{" "}
+                <code>{scene.unsupportedSignal}</code>, que la proyección de telemetría actual no
+                entrega. Aquí se ve; en una carrera real no se dispara.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>

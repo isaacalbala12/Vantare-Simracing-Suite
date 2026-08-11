@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ANIMATION_SCENES,
@@ -50,6 +52,30 @@ describe("animation scene catalog", () => {
     for (const scene of listAnimationScenes("standings")) {
       expect(scene.widget).toBe("standings");
     }
+  });
+
+  // If the projection starts delivering one of these, the warning becomes a
+  // lie. Reading the adapter's own list keeps the two from drifting apart.
+  it("only flags signals the projection actually declares unsupported", () => {
+    const adapter = readFileSync(
+      join(process.cwd(), "src/overlay/projection/overlay-projection-adapter.ts"),
+      "utf8",
+    );
+    const declared = [...adapter.matchAll(/targetPath: "([^"]+)"/g)].map((match) => match[1]);
+    expect(declared.length).toBeGreaterThan(0);
+    for (const scene of ANIMATION_SCENES) {
+      if (scene.unsupportedSignal) {
+        expect(declared, `${scene.id} flags a signal the adapter does not list`).toContain(
+          scene.unsupportedSignal,
+        );
+      }
+    }
+  });
+
+  it("warns that the tire disc never fires against live telemetry", () => {
+    expect(getAnimationScene("standings-tire-change")?.unsupportedSignal).toBe(
+      "scoring[].tireCompound",
+    );
   });
 });
 

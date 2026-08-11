@@ -32,6 +32,13 @@ export type AnimationScene = {
   /** Milliseconds per frame. A battle needs room to breathe; a flash does not. */
   frameMs: number;
   frames: readonly SceneFrame[];
+  /**
+   * Telemetry field this animation needs, when the live projection does not
+   * deliver it. The mock supplies it, so the scene plays here and never in a
+   * real race — which is exactly the kind of thing a catalog should say out
+   * loud. Kept in sync with UNSUPPORTED_FIELDS in overlay-projection-adapter.
+   */
+  unsupportedSignal?: string;
 };
 
 /**
@@ -75,7 +82,7 @@ const BATTLE_SCENE: AnimationScene = {
   widget: "standings",
   label: "Batalla",
   watchFor:
-    "Bajo 0,8 s aparece la costura de luz entre las dos filas; si el duelo se sostiene, cristaliza en caja con el intervalo centrado. Al romperse, la caja se disuelve.",
+    "Bajo 0,8 s aparece la costura de luz entre las dos filas; si el duelo se sostiene, cristaliza en caja con el intervalo centrado, y la celda del gap del perseguidor se llena de carmín conforme cierra. Al romperse, la caja se disuelve. La cristalización depende de un temporizador de 2,5 s, así que hay que dejar correr la escena: avanzando a mano no llega a caja.",
   frameMs: 1600,
   frames: [
     { caption: "Separados: 2,4 s", cars: { "Gianmaria Bruni": { timeBehindLeader: BOVY_BASE + 2.4 } } },
@@ -114,6 +121,7 @@ const TIRE_CHANGE_SCENE: AnimationScene = {
   label: "Parada y cambio de neumático",
   watchFor:
     "La fila pasa a modo pit y, al salir, aparece el disco del compuesto junto al dorsal (S rojo, M amarillo, H blanco) antes de replegarse.",
+  unsupportedSignal: "scoring[].tireCompound",
   frameMs: 1800,
   // The compound has to differ across the stop, or the engine correctly reports
   // no change and the disc never appears.

@@ -88,3 +88,19 @@
 }
 
 .overlay-workshop-transport__watch strong { color: #aeb5c5; }
+
+/* A scene that only ever plays against the mock has to say so where it is
+   being judged, not in a document nobody opens while designing. */
+.overlay-workshop-transport__unsupported {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #6a4a12;
+  border-left: 2px solid #f0a53a;
+  border-radius: 4px;
+  background: #1e1708;
+  color: #f0c98a;
+  font: 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__unsupported strong { color: #f0a53a; }
+.overlay-workshop-transport__unsupported code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }

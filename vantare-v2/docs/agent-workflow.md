@@ -1,12 +1,11 @@
 # Workflow de agentes
 
-> Estado del checkout principal (2026-08-10): el worktree principal
-> `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`
-> (rama `refactor` == `nightly@9c11d7f`). `refactor-b70a950-backup` y
-> `chore/conservacion-untracked-2026-08-10` conservan la punta anterior y
-> trabajo untracked con valor; su destino queda pendiente de decision humana.
-> Trabajo nuevo: rama/worktree por issue de Linear sobre `nightly`, no sobre
-> `refactor`.
+> El estado de checkout, rama y SHA es mutable y no se fija en este documento.
+> Consulta `docs/current-plan.md` y verifica el preflight real con
+> `git rev-parse --show-toplevel`, `git branch --show-current`,
+> `git rev-parse HEAD`, `git status --short` y `git worktree list --porcelain`.
+> Trabajo nuevo: rama/worktree por issue de Linear sobre la Nightly vigente;
+> no asumas una base por una nota histórica.
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
 > `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,
@@ -58,7 +57,8 @@ SHA, PR, CI y release cuando corresponda.
   acotada y documentada del orquestador.
 - No se ejecutan agentes en paralelo sobre el mismo worktree o rama.
 - No se delega trabajo trivial cuando hacerlo directamente reduce coste y
-  riesgo.
+  riesgo, salvo que una regla acotada obligatoria de `AGENTS.md` exija worker;
+  esa regla prevalece.
 - El orquestador revisa por si mismo el diff, los checks y el handoff. El
   resumen de un worker es evidencia a comprobar, no una aprobacion.
 
@@ -70,7 +70,8 @@ Define objetivo, alcance, riesgos, prompt para worker, prompt para reviewer y ch
 
 Puede implementar directamente cuando el usuario lo pida, la tarea sea pequena
 o delegarla cueste mas que resolverla con seguridad. En trabajos amplios debe
-preservar contexto para decisiones, prompts, reviews y verificacion.
+preservar contexto para decisiones, prompts, reviews y verificacion. Estas
+facultades ceden ante cualquier regla acotada obligatoria de `AGENTS.md`.
 
 Puede editar directamente:
 

@@ -1,198 +1,150 @@
-# Engineer Beta — roadmap canónico ENG-12 a ENG-29
+# Engineer — roadmap general por fases
 
-## Estado y autoridad
+Estado: vigente desde ISA-313 / ENG-R01 Fase 5. Linear decide issues,
+dependencias, ramas y estados; el handoff vivo registra el estado demostrado.
 
-- Fecha: 2026-08-02.
-- Base documental: `5b4e0d315d54f99e8d404e617ad8873cedbd3277`
-  (ISA-182 / ENG-11 aceptada).
-- Proyecto Linear: `Engineer & Spotter — LMU Race Companion`.
-- Parent: ISA-123 / ENG-01.
-- Este documento y `docs/vantare-program/handoffs/engineer-spotter.md`
-  gobiernan el trabajo restante.
-- Esta rama solo planifica. No implementa producto, no promociona y no cambia
-  ningún gate técnico o humano a GO.
+## Propósito
 
-## Resultado de producto
+Engineer acompaña al piloto en directo y sustituye funcionalmente a CrewChief
+sin copiar su arquitectura, código, constantes, frases, sonidos, assets o
+estructura. Consume únicamente Telemetry Core, funciona offline, calla ante
+datos ausentes o stale y mantiene coherentes audio, radio, subtítulos y
+overlays.
 
-Engineer Beta acompaña al piloto en directo. Spotter se limita a seguridad,
-proximidad y tráfico inmediato. Ambos consumen exclusivamente Telemetry Core,
-funcionan offline, callan ante datos missing/stale y nunca inventan un hecho.
+La primera Beta empieza en español e inglés y cubre las familias planificadas
+salvo cambio de piloto. Italiano y portugués brasileño quedan para expansión.
+PTT sigue siendo la entrada segura; voz, wake word y acciones solo convergen
+cuando superan sus gates.
 
-La Beta objetivo incluye:
+La fase activa es [Spotter observable](phases/spotter/plan.md). Su aceptación
+acumulativa vive en [acceptance.md](phases/spotter/acceptance.md).
 
-- Spotter LMU real de baja latencia y multiclase.
-- Engineer de carrera real: sesión, control, rivales, fuel, Virtual Energy,
-  neumáticos, daños, pits, penalizaciones demostrables, ritmo y motivación.
-- Español, inglés, italiano y portugués brasileño.
-- PTT mediante teclado, volante, gamepad, button box e HID.
-- Wake words `Ingeniero`, `Engineer`, `Ingegnere` y `Engenheiro`.
-- Consultas y acciones con diálogo/confirmación deterministas.
-- TTS/STT offline, dispositivos, hot-plug, ducking y fallback visual.
-- Personalidades Profesional, Cercano, Exigente y Custom.
-- Pit Manager con confirmación, envío transaccional y readback.
-- Strategy Planner y Overlays mediante contratos versionados.
-- Diagnóstico, replays, soak LMU y gate Beta auditable.
+## Dependencias comunes
 
-## Límites no negociables
+- Nightly, Linear, handoff y capacidades reales reconciliados al entrar.
+- Telemetry Core como única fuente de telemetría, calidad y freshness.
+- Código propio para hechos, intención, prioridad y acciones críticas.
+- Sin dependencia, arquitectura o ampliación material sin revisión de Isaac.
+- Kokoro como único TTS Vantare; clips preparados/cacheados para el camino
+  inmediato y ninguna síntesis en hot path sin evidencia nueva.
+- Contenido, frases, audio y assets propios o licenciados de forma compatible.
+- Acciones mutables con propuesta, confirmación, resultado y readback.
 
-1. Telemetry Core es la única fuente. No se crea otro reader LMU.
-2. Código propio decide hecho, intent, slots, número, prioridad y acción.
-3. Ningún LLM participa en hechos o acciones críticas. Un LLM futuro solo
-   podría reformular texto no crítico después de que el código decida todo.
-4. CrewChief/DRE son referencias funcionales clean-room. No se copian código,
-   frases, gramáticas, audios, nombres internos, UI o assets.
-5. Spotter siempre puede preemptar Engineer, Strategy, motivación o voz.
-6. Micrófono y transcripciones son memory-only por defecto. Cero recording.
-7. Una acción mutable exige propuesta, repetición, confirmación, ejecución y
-   resultado. Strategy y Pit Manager nunca cambian silenciosamente.
-8. Whisper `base` sigue condicionado. Command intent, FAR/FRR y wake word
-   siguen NO-GO hasta corpus humano consentido real.
-9. Kokoro dinámico sigue NO-GO. Ningún agente puede reinterpretar ENG-09.
-10. Fixtures sintéticas prueban contratos/lifecycle, nunca percepción humana.
-11. Toda función sin capability fiable permanece unavailable/disabled.
-12. El flujo es rama de issue -> review -> aprobación inicial de Isaac ->
-    `nightly` -> feedback/correcciones -> `testers` -> aprobación -> `master`.
+## Ciclo de una fase
 
-## Arquitectura objetivo
+Al entrar se replantea la fase desde el estado real. Las subfases siguientes
+son probables, no microtareas congeladas. Cada corte define un resultado
+observable pequeño, conserva el producto compilable y amplía una única ruta de
+aceptación.
 
-```text
-Telemetry Core
-    |
-    v
-Engineer projection -> monitors/Spotter -> policy/scheduler -> presentation
-                                                 |                 |
-                                                 |                 +-> visual/radio/subtitles
-                                                 v
-                                          delivery/audio
+El cierre siempre combina:
 
-Input devices -> PTT/wake -> STT host -> deterministic intent/dialogue
-                                             |              |
-                                             |              +-> read-only queries
-                                             |              +-> confirmed action ports
-                                             v
-                                          no direct stores
+1. validación manual proporcional sobre aplicación, LMU, Windows, hardware,
+   audio o voz cuando sean relevantes;
+2. ampliación de la misma aceptación ejecutable y evaluable por IA, con salida
+   inequívoca y cobertura de escenarios esperados y prohibidos.
 
-Confirmed action ports -> Pit Manager transaction -> LMU readback
-                       -> Strategy proposal/commit -> Overlay snapshot
-```
+Una IA puede dirigir el protocolo y comprobar la evidencia humana, pero no
+suplanta juicios de audibilidad, pronunciación, ergonomía o falsas activaciones.
 
-Las fronteras comparten contratos versionados. Ningún módulo importa la
-persistencia privada o la UI interna de otro. Spotter, ingesta y scheduler
-nunca esperan STT/TTS.
+## Fases
 
-## Milestones Linear
+### 1. Spotter observable — activa documentalmente
 
-| Milestone | Issues | Resultado |
-|---|---|---|
-| ENG-A — Contratos, input y comportamiento real | ENG-12..19 | Catálogo/corpus, PTT, diálogo, audio, personalidades, Spotter y monitores |
-| ENG-B — Voz offline condicionada | ENG-20..23 | STT/wake/TTS detrás de gates reales |
-| ENG-C — Producto e integraciones | ENG-24..27 | UI, Pit, Strategy/Overlays, diagnóstico |
-| ENG-D — Soak y gate Beta | ENG-28..29 | LMU real, packaging y decisión Beta |
+- **Propósito:** primera vertical perceptible de seguridad y tráfico.
+- **Dependencias:** autoridades de la vertical actual, señales LMU demostrables
+  y contenido ES/EN propio para la salida audible.
+- **Subfases probables:** baseline; núcleo lateral; lifecycle; audio/visual;
+  multiclase; peligros; cierre LMU/Windows.
+- **Resultado:** un mismo hecho fresco produce audio Kokoro preparado/cacheado
+  y visual compartido, o una degradación honesta.
+- **Cierre:** escenarios manuales de tráfico y salida real más aceptación
+  acumulativa de decisión, timings, audio, visual y lifecycle.
 
-## Microcortes
+Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. S1 aún no está iniciada:
+la siguiente acción es asignar o crear su issue y rama propias y replanificarla
+concretamente desde la Nightly vigente.
 
-| Orden | Linear | Corte | Bloqueado por | Estado/gate |
-|---:|---|---|---|---|
-| 12 | ISA-183 | Catálogo de comandos, intents y protocolo de corpus humano | ISA-182 | **Primer corte ejecutable** |
-| 13 | ISA-184 | Gate humano command intent, FAR/FRR y wake word | ISA-183 + personas reales | Bloqueo externo real |
-| 14 | ISA-185 | PTT teclado/volante/gamepad/HID | ISA-183 | Autónomo tras ENG-12 |
-| 15 | ISA-186 | Router determinista, diálogo y confirmaciones | ISA-183 | Autónomo tras ENG-12 |
-| 16 | ISA-187 | Audio offline, dispositivos, hot-plug y ducking | ISA-182 | Ejecutable en paralelo |
-| 17 | ISA-188 | Personalidades y frecuencia declarativas | ISA-183 | Autónomo tras ENG-12 |
-| 18 | ISA-189 | Spotter LMU Beta, multiclase y latencia | ISA-182 | Ejecutable en paralelo |
-| 19 | ISA-190 | Monitores Engineer Beta y consultas reales | ISA-189 | Autónomo; capability-gated |
-| 20 | ISA-191 | Voice-host STT productivo condicionado | ISA-184/185/186 | Bloqueado hasta gate humano |
-| 21 | ISA-192 | Wake word traducido y privacidad | ISA-184/191 | Bloqueado hasta FAR/FRR real |
-| 22 | ISA-193 | Gate técnico TTS offline, cuatro idiomas | ISA-182 | Ejecutable en paralelo; percepción pendiente |
-| 23 | ISA-194 | Integración TTS/voice packs/fallback | ISA-187/193 | Feature-gated; escucha en ENG-29 |
-| 24 | ISA-195 | Centro de control, permisos y Ajustes | ISA-185/187/188/189/190 | Puede representar STT/wake disabled |
-| 25 | ISA-196 | Pit Manager LMU transaccional + readback | ISA-186/190 | Gate LMU seguro posterior |
-| 26 | ISA-197 | Strategy Planner + Overlays versionados | ISA-186/190/196 + contrato Strategy | Bloqueo externo acotado |
-| 27 | ISA-198 | Diagnóstico, replays y ledger de paridad | ISA-189..197 aplicables | Cierre funcional auditable |
-| 28 | ISA-199 | Soak LMU real, rendimiento y recuperación | ISA-198 | Requiere entorno LMU autorizado |
-| 29 | ISA-200 | Gate Engineer Beta, idiomas y packaging | ISA-184/199 | Gate humano/técnico final |
+### 2. Engineer de carrera
 
-Cada issue contiene objetivo, contexto, incluye/no incluye, criterios de
-aceptación, restricciones, tests, entrega y resumen público. Las relaciones
-`blockedBy` de Linear son autoridad para el orden operacional.
+- **Propósito:** ampliar la seguridad inmediata hacia acompañamiento útil.
+- **Dependencias:** Spotter estable y capacidades frescas por familia.
+- **Subfases probables:** sesión/rivales/ritmo; fuel y Virtual Energy;
+  neumáticos/daños; banderas/penalizaciones/pits; relevancia y motivación.
+- **Resultado:** mensajes útiles y demostrables para todas las familias Beta
+  salvo cambio de piloto.
+- **Cierre:** sesión LMU representativa y matriz acumulativa de familias,
+  calidad, prioridad, cadencia, cooldowns y salidas.
 
-## DAG y trabajo autónomo
+### 3. Control e interacción
 
-Después de ENG-12, el proyecto no debe detenerse esperando ENG-13. Puede
-continuar con todos los cortes objetivos no bloqueados:
+- **Propósito:** configuración persistente, comprensible y segura.
+- **Dependencias:** autoridades de producto estables y permisos definidos.
+- **Subfases probables:** centro de control; persistencia; PTT/dispositivos;
+  personalidades y preferencias.
+- **Resultado:** preferencias recuperables, estados honestos y PTT sin captura
+  fuera de la intención del usuario.
+- **Cierre:** recorrido manual de reinicio y hot-plug más aceptación acumulativa
+  de UI, persistencia, permisos y ausencia de efectos inesperados.
 
-```text
-ENG-11
-  +-> ENG-12 -> ENG-13 (personas reales) -> ENG-20 -> ENG-21
-  |         +-> ENG-14 --+
-  |         +-> ENG-15 --+-> Pit/Strategy/dialogue
-  |         +-> ENG-17 --+
-  +-> ENG-16 -> ENG-23
-  +-> ENG-18 -> ENG-19 -> ENG-24/25/26
-  +-> ENG-22 -> ENG-23
+### 4. Acciones LMU seguras
 
-ENG-18..26 + voice gates -> ENG-27 -> ENG-28 -> ENG-29
-```
+- **Propósito:** proponer y ejecutar cambios controlados sin perder evidencia.
+- **Dependencias:** comandos, diálogo, capacidades de escritura y readback.
+- **Subfases probables:** propuesta/cancelación; Pit Manager; resultados y
+  recuperación.
+- **Resultado:** ninguna acción cambia LMU sin confirmación y resultado
+  verificable; lo indeterminado falla cerrado.
+- **Cierre:** pruebas manuales autorizadas en LMU más aceptación de estados,
+  idempotencia, fallos parciales y readback.
 
-### Ruta autónoma inmediata
+### 5. Voz offline condicionada — línea paralela
 
-1. ENG-12.
-2. Sin esperar corpus humano: ENG-14, ENG-15, ENG-16, ENG-17, ENG-18,
-   ENG-19 y ENG-22 según bases aceptadas y worktrees aislados.
-3. ENG-24 y la parte determinista de ENG-25 pueden avanzar cuando sus
-   dependencias estén aceptadas.
-4. ENG-13 permanece NO-GO hasta voces humanas. No bloquea esos cortes.
-5. ENG-20/21 no se implementan productivamente antes de ENG-13.
+- **Propósito:** voz local sin bloquear Spotter ni fingir disponibilidad.
+- **Dependencias:** licencias, corpus consentido, privacidad, hardware y gates
+  humanos por locale.
+- **Subfases probables:** viabilidad Kokoro; contenido propio; STT sobre PTT;
+  wake word condicionado.
+- **Resultado:** voz ES/EN donde exista evidencia; PTT y salida visual o
+  cache-only siguen como fallback honesto donde no la haya.
+- **Cierre:** escucha y reconocimiento humanos más aceptación de lifecycle,
+  cancelación, recursos, privacidad y evidencia requerida.
 
-## Gates humanos y externos
+### 6. Strategy y overlays avanzados
 
-| Gate | Evidencia necesaria | Qué bloquea |
-|---|---|---|
-| Corpus humano de comandos | Consentimiento, cuatro locales, diversidad definida, negativos/near-miss, intent/slot accuracy | STT productivo ENG-20 |
-| FAR/FRR wake word | Positivos y negativos humanos por locale/ruido | Wake ENG-21 |
-| Escucha TTS | Pronunciación, naturalidad, números/unidades, personalidad en cuatro locales | Activación Beta en ENG-29; no bloquea tooling/integración disabled |
-| LMU Pit readback | Interfaz/estado final demostrable y entorno autorizado | Acción real ENG-25 |
-| Contrato Strategy | Plan ID/version, proposal, commit y snapshot estables | ENG-26 |
-| LMU real | Sesión completa, grid/multiclase/pits/reconnect | ENG-28/29 |
+- **Propósito:** conectar propuestas y visualización sin duplicar autoridades.
+- **Dependencias:** bases de Engineer, acciones seguras y contratos versionados
+  de Strategy y Overlay.
+- **Subfases probables:** propuestas; aceptación/rechazo; estados versionados;
+  visualización y recuperación.
+- **Resultado:** Engineer propone y refleja estrategia sin aplicarla de forma
+  silenciosa ni crear otro renderer.
+- **Cierre:** flujo manual controlado más aceptación de versiones,
+  confirmaciones, resultados y paridad visual.
 
-Si falta un gate, el corte termina `NO-GO`, `INCONCLUSIVE` o disabled. Nunca se
-bajan umbrales, se regenera evidencia o se sustituye humano por sintético.
+### 7. Beta ES/EN integrada
 
-## Contrato de ejecución por issue
+- **Propósito:** demostrar el compañero de carrera durante sesiones completas.
+- **Dependencias:** fases anteriores aplicables y gates de distribución.
+- **Subfases probables:** diagnóstico; sesiones largas; reconexión; packaging;
+  Windows 10/11; correcciones de testers.
+- **Resultado:** Beta instalable, observable y honesta dentro de su alcance.
+- **Cierre:** recorrido manual desde instalación a sesión y recuperación, más
+  aceptación acumulativa completa de producto, soak, packaging y rollback.
 
-1. Verificar base exacta y worktree limpio.
-2. Leer AGENTS, current-plan, handoff, este roadmap y la issue completa.
-3. Declarar preflight: alcance, archivos, contratos, tests y stop conditions.
-4. Crear regresiones/caracterización antes de cambiar comportamiento.
-5. Implementar el cambio correcto más sencillo; sin capas especulativas.
-6. Ejecutar focal, integración, global, race/bench/visual cuando aplique.
-7. Review independiente P0/P1/P2/P3 y corregir todos los razonables.
-8. Actualizar handoff/current-plan con evidencia y próxima acción exacta.
-9. Commit, push, PR draft apilada y Linear `In Review`.
-10. No promoción. Isaac aprueba una implementación inicial antes de `nightly`.
+### 8. Expansión posterior
 
-## Definition of Done de Engineer Beta
+- **Propósito:** ampliar sin reabrir los fundamentos de la Beta.
+- **Dependencias:** Beta estable y evidencia propia por idioma o capability.
+- **Subfases probables:** italiano/PT-BR; cambio de piloto; otros simuladores;
+  nuevas familias; always-on solo si sus gates lo permiten.
+- **Resultado:** cada ampliación conserva seguridad y paridad previas.
+- **Cierre:** validación real focal y ampliación de la misma aceptación con
+  regresión completa del alcance anterior.
 
-- Spotter supera replays y escenarios LMU reales sin false clears aceptados.
-- Engineer solo comunica hechos respaldados y calla ante missing/stale.
-- Cuatro idiomas cumplen la matriz declarada; cualquier función sin gate queda
-  deshabilitada explícitamente.
-- PTT funciona en dispositivos objetivo; wake word solo donde FAR/FRR pase.
-- STT/TTS son offline, cancelables, acotados y no bloquean el hot path.
-- Personalidad no cambia verdad, prioridad o seguridad.
-- Pit Manager confirma y verifica mediante readback o falla cerrado.
-- Strategy/Overlays comparten una versión aceptada del plan.
-- Diagnóstico explica emitido/descartado/cancelado sin PII/audio/raw.
-- Soak conjunto no deja procesos, puertos, handles, goroutines o mensajes
-  caducados y preserva Spotter bajo presión.
-- Installer/update/rollback/licencias/Windows 10/11 pasan.
-- Review técnica sin findings razonables y checklist humano explícito.
-- No existe promoción automática a `nightly`, `testers` o `master`.
+## Criterio de transición
 
-## Próxima acción exacta
-
-Iniciar ISA-183 / ENG-12 desde el HEAD documental aceptado de
-`vantareapp/engineer-beta-roadmap-eng12-plus`, descendiente directo de
-`5b4e0d315d54f99e8d404e617ad8873cedbd3277`, en rama/worktree aislados. Es un
-corte de contratos, catálogo, protocolo y harness: no requiere voces humanas y
-no implementa STT/PTT/audio productivo.
+Una fase solo termina con resultado observable, evidencia manual y de IA,
+límites visibles, review sin bloqueantes y estado coincidente en Linear,
+handoff y documentos vivos. La fase siguiente se replantea entonces; este
+roadmap no autoriza implementación, promoción ni release por sí mismo.

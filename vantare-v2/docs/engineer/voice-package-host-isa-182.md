@@ -1,5 +1,9 @@
 # ISA-182 / ENG-11 — package manager y voice-host test-only
 
+> **SNAPSHOT / ISSUE EVIDENCE.** Conserva contratos y evidencia del corte
+> ISA-182; no describe por sí solo el estado actual. Consulta el
+> [router Engineer](README.md) y el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md).
+
 ## Resultado
 
 ENG-11 crea la frontera operativa mínima para probar componentes de voz fuera

@@ -1,6 +1,6 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-08-01. Linear es la fuente del estado operativo.
+Estado: 2026-08-11. Linear es la fuente del estado operativo.
 
 ## Grafo principal
 
@@ -30,8 +30,8 @@ almacenamiento privado de otro.
 |---|---|---|---|
 | Telemetry Core | Runtime live modular | ISA-117 / TC-09F técnicamente cerrado, `In Review`; no promovido | ISA-160/161 para Strategy live |
 | Telemetry Analysis | Explicar post-sesión dónde se pierde tiempo | ISA-122/124 en review; ISA-126/135 activos; ISA-132 pendiente | ISA-159 productor Strategy histórico |
-| Engineer/Spotter | Acompañamiento live, seguridad, voz y Pit Manager | ISA-123/125/127/133 en review; siguiente ISA-158 | ISA-158 scheduler determinista |
-| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | ISA-144 / STR-09 implementado: entrada rápida/por vuelta y cálculo manual | Review STR-09; después ISA-168 / TA-03C; STR-10 bloqueado por ISA-159 |
+| Engineer/Spotter | Sustituto clean-room de CrewChief: acompañamiento live, seguridad, voz y Pit Manager | Base ENG-01..12, 14 y 15 en Nightly; ISA-313 Fase 5 deja el [router por rol](../engineer/README.md) y la entrada documental Spotter | Aceptar Fase 5 y replanificar S1 con issue/rama propias |
+| Strategy Planner | Crear, comparar, ejecutar y adaptar estrategias | Pila acumulativa integrada en Nightly por ISA-309@7e39104; sin STR-15B ni ejecución live | Productores Telemetry ISA-159/160/161 y siguientes cortes del handoff Strategy |
 | Overlay Studio | Editor único, Desktop y OBS | proyecto activo | TC-07 y gates visuales |
 | Launcher | Apps, perfiles y módulos fiables | implementación previa | auditoría de integración |
 | Hub | Accesos y resumen real | conservar estructura | consistencia |
@@ -61,13 +61,23 @@ Contenido y marketing no se implementan autónomamente.
 
 1. Cerrar review ISA-117 sin promover; Core canónico permanece como base.
 2. Analysis: ISA-126/135 -> ISA-132 -> ISA-159 productor histórico Strategy.
-3. Engineer: continuar ISA-158 sobre ENG-04 sin reabrir adquisición LMU.
-4. Strategy: review ISA-137 -> ISA-138..157 + ISA-162/163.
-5. Core: ISA-160 audita señales y ISA-161 produce live antes de STR-17.
-6. Strategy asistido se bloquea en ISA-159; live se bloquea en ISA-161.
+3. Engineer: avanzar por fases generales — Spotter observable, Engineer de
+   carrera, control, acciones LMU, Strategy/Overlays y Beta integrada—. Cada
+   fase se microplanifica al entrar y se prueba manualmente más una aceptación
+   acumulativa ejecutable por IA. La primera Beta excluye cambio de piloto.
+4. Engineer voz: mantener una línea condicionada en paralelo. Kokoro, STT y
+   wake solo convergen si pasan licencias, rendimiento, privacidad, corpus y
+   pruebas humanas. Español e inglés se validan primero; italiano y portugués
+   brasileño llegan en la expansión posterior.
+5. Engineer Strategy/Overlays avanzados: integrarlos dentro de la fase de
+   acciones seguras, después de cerrar las bases anteriores y sin duplicar el
+   `engineer-radio` visual existente.
+6. Strategy: revisar la pila integrada y continuar sus cortes propios; Core y
+   Analysis siguen siendo productores de sus proyecciones versionadas.
 7. Cerrar Overlay con LMU real y gates visuales pendientes.
 8. Completar plataforma comercial, distribución y migración de raíz.
-9. Solo después: `nightly` -> feedback -> `testers` -> aprobación -> `master`.
+9. Solo después de cada aprobación aplicable: rama de issue -> `nightly` ->
+   feedback -> `testers` -> aprobación -> `master`.
 
 ## Contratos Strategy pendientes
 

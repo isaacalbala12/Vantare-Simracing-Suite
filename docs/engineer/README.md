@@ -1,3 +1,9 @@
+> **HISTÓRICO / SUPERSEDED — NO USAR PARA IMPLEMENTACIÓN.** La autoridad
+> vigente es el [router Engineer de `vantare-v2`](../../vantare-v2/docs/engineer/README.md).
+> Quedan revocadas las instrucciones inferiores que proclaman autoridad o
+> exigen auditar CrewChief, extraer constantes exactas o trasladar su
+> arquitectura: contradicen la política clean-room vigente.
+
 # Vantare Ingeniero Go — Paquete de Documentación
 
 > **Estado:** v1.

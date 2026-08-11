@@ -1,3 +1,9 @@
+> **HISTÓRICO / SUPERSEDED — SIN AUTORIDAD EJECUTABLE.** Todo el paquete
+> Engineer de la raíz Git está superado por el
+> [router vigente de `vantare-v2`](../../vantare-v2/docs/engineer/README.md).
+> No se usa para implementación; quedan revocadas sus constantes, reglas o
+> instrucciones exactas derivadas de CrewChief.
+
 # Índice del paquete — `docs/engineer/`
 
 > **Última actualización:** 2026-06-27 (pase editorial: alineación de

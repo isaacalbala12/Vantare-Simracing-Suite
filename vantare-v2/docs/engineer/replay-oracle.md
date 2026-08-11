@@ -1,5 +1,10 @@
 # ISA-133 / ENG-04 — Runner y oráculo determinista de replays
 
+> **SNAPSHOT / ISSUE EVIDENCE.** El estado inferior pertenece al corte aislado
+> de ISA-133 y no describe Nightly. Consulta el [router Engineer](README.md) y
+> el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md); usa este
+> archivo solo como evidencia del runner test-only, nunca como fuente runtime.
+
 Estado: implementado en rama aislada sobre ISA-117 `170eaeb`. Sin wiring de
 producto, audio, I/O de simulador, goroutines, merge ni promoción.
 

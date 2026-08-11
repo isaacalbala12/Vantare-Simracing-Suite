@@ -1,5 +1,9 @@
 # ISA-180 / ENG-09 — gate TTS/STT offline
 
+> **SNAPSHOT / ISSUE EVIDENCE.** Conserva la decisión y evidencia del corte
+> ISA-180; no describe por sí solo el estado actual. Consulta el
+> [router Engineer](README.md) y el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md).
+
 Fecha de corte: 2026-08-02. Tipo: investigación técnica y de licencias.
 Ámbito: Windows 10/11, ejecución completamente offline, español internacional,
 inglés internacional, italiano y portugués brasileño. Esta es una decisión de

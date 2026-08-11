@@ -1,5 +1,10 @@
 # ENG-05 — Policy y scheduler determinista de mensajes
 
+> **SNAPSHOT / ISSUE EVIDENCE.** El estado inferior pertenece al corte aislado
+> de ISA-158 y no describe Nightly. Consulta el [router Engineer](README.md) y
+> el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md); usa este
+> archivo solo para contratos/evidencia focales del corte.
+
 Estado: implementación aislada de ISA-158, pendiente de review independiente.
 No existe wiring de producto, audio, UI, Wails/SSE ni adquisición nueva.
 

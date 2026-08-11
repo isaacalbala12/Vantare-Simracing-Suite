@@ -1,5 +1,10 @@
 # Vantare Engineer — OBS Setup
 
+> **HISTORICAL / SUPERSEDED.** Conserva evidencia del setup EN9.4; no describe
+> el estado operativo actual. La autoridad documental está en
+> [Engineer README](engineer/README.md) y
+> [radio-output-contract.md](engineer/radio-output-contract.md).
+
 > **Fase:** EN9.4.
 > **Worktree:** `codex/engineer-release`.
 > **Aplicable a:** OBS Browser Source consumiendo el bus de notificaciones de Vantare Engineer.

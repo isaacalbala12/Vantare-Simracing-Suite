@@ -1,3 +1,9 @@
+> **HISTÓRICO / SUPERSEDED — SIN AUTORIDAD EJECUTABLE.** Todo el paquete
+> Engineer de la raíz Git está superado por el
+> [router vigente de `vantare-v2`](../../vantare-v2/docs/engineer/README.md).
+> No se usa para implementación; quedan revocadas sus constantes, reglas o
+> instrucciones exactas derivadas de CrewChief.
+
 # Plan Actual — Vantare Ingeniero Go
 
 > **Estado:** G2 (Alpha 2) cerrada 2026-06-28 con código review verde

@@ -1,5 +1,10 @@
 # TC-08B — proyección canónica y entrada pura Engineer
 
+> **SNAPSHOT / ISSUE EVIDENCE.** El estado inferior pertenece al corte aislado
+> de ISA-109 y no describe Nightly. Consulta el [router Engineer](README.md) y
+> el [handoff vivo](../vantare-program/handoffs/engineer-spotter.md); usa este
+> archivo solo para contratos/evidencia focales del corte.
+
 Fecha: 2026-08-01. Issue: ISA-109. Estado: implementación aislada, sin
 wiring productivo ni promoción.
 

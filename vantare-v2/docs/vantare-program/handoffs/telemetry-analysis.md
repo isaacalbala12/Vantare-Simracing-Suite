@@ -57,6 +57,14 @@ los hashes confiados, smoke x64 pasó y los artefactos locales pasaron
 version/layout verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
 Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
 merge, promoción ni release.
+
+El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
+runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo
+en `.vantare-install-stage` y un rename atómico publica el exe justo antes del
+commit. Rollback retira producto/staging antes de tocar runtime y restaura el exe
+viejo al final desde staging; un fallo de runtime conserva exe ausente,
+marker/backups y reentrada segura. El modelo corta tras cada operación y sólo
+acepta pareja anterior/nueva o exe ausente.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
@@ -227,6 +235,8 @@ manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
 scope user/machine y verify local PASS. Upgrade/rollback persiste estados
 pending/committed, cubre estados previos parciales y no restaura backups tras
 commit; un harness conductual prueba interrupciones, cleanup fallido y reentrada.
+El segundo endurecimiento publica y restaura el exe mediante staging+rename sólo
+con el runtime ya consistente, y prueba cortes intra-rollback.
 El build CGO real pasa con paths temporales con espacios. Updater conserva su
 protocolo y consume el installer.
 Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el

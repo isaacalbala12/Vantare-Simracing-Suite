@@ -11,6 +11,12 @@ Nota TA-03F (2026-08-11, candidata local verificada tras spec review):
   anterior o conserva siempre el par nuevo, incluso con estado previo parcial
   o fallo de cleanup. Elimina la unidad al desinstalar y compila en scopes
   user/machine.
+- El segundo spec review endureció las ventanas de crash: el runtime nuevo se
+  extrae y verifica con el exe productivo ausente; `wails.files` deja el exe en
+  staging privado del instalador y un `Rename` atómico lo publica justo antes
+  de `committed`. Rollback retira primero cualquier exe nuevo, restaura runtime
+  y publica el exe viejo al final también desde staging. Si falla runtime, el
+  producto queda sin exe y conserva marker/backups reintentables.
 - Evidencia local: harness PowerShell, parser PS5, build reproducible con
   PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0 y rutas temporales con espacios,
   modelo transaccional de cuatro estados previos, smoke Windows x64, build

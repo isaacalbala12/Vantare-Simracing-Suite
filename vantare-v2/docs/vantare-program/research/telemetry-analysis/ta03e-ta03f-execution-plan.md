@@ -133,6 +133,13 @@ funcional y de packaging, no visual.
   presencia/ausencia anterior; despues del commit conserva el par nuevo y una
   reentrada solo reintenta limpieza. Los fallos de Rename/Delete/RMDir conservan
   estado recuperable. No existe mezcla de miembros entre versiones.
+- El exe productivo permanece ausente durante extracción/verificación del
+  runtime y durante la extracción de `wails.files` a
+  `.vantare-install-stage`; sólo se publica con rename atómico inmediatamente
+  antes de `committed`. Rollback elimina primero producto/staging nuevos,
+  completa runtime y restaura el exe viejo al final mediante el mismo patrón
+  staging+rename. El harness corta después de cada operación y exige par viejo,
+  par nuevo o exe ausente; toda reentrada converge.
 - Los flags `CGO_CFLAGS`, `CGO_CXXFLAGS` y `CGO_LDFLAGS` citan el argumento
   completo para el parser de Go/GCC. Una regresion compila C/C++ real y el build
   reproducible completo pasa con directorios temporales que contienen espacios.

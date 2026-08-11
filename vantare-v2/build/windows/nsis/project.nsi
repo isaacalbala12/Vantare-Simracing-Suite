@@ -43,6 +43,7 @@ Unicode true
 !define INSTALL_TX_PENDING "$INSTDIR\.vantare-install.pending"
 !define INSTALL_TX_PENDING_TEMP "$INSTDIR\.vantare-install.pending.tmp"
 !define INSTALL_TX_COMMITTED "$INSTDIR\.vantare-install.committed"
+!define INSTALL_TX_STAGE "$INSTDIR\.vantare-install-stage"
 ####
 ## Include the wails tools
 ####
@@ -194,6 +195,8 @@ Function CleanupCommittedTransaction
 	# The committed marker is the last item removed. Any cleanup failure therefore
 	# remains retryable and can never restore only one member of the old pair.
 	StrCpy $TransactionResult "error"
+	RMDir /r "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" committed_cleanup_done 0
 	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
 	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" committed_cleanup_done 0
 	RMDir /r "${TELEMETRY_RUNTIME_BACKUP}"
@@ -207,9 +210,9 @@ Function CleanupCommittedTransaction
 FunctionEnd
 
 Function RollbackPendingTransaction
-	# The pending marker records which members existed before the transaction.
-	# Restore each existing member independently; prior absence is restored by
-	# deleting the new member. The marker stays until the complete pair is safe.
+	# Retire a published/staged new exe first. Restore the runtime next, then copy
+	# the old exe last while retaining its backup until the restored pair is
+	# committed. A runtime failure therefore leaves no new product exe exposed.
 	StrCpy $TransactionResult "error"
 	Call ReadPendingMarker
 	StrCmp $TransactionResult "ok" 0 rollback_done
@@ -217,24 +220,23 @@ Function RollbackPendingTransaction
 	StrCmp $TransactionPrior "both" rollback_prior_exe
 	StrCmp $TransactionPrior "exe" rollback_prior_exe rollback_no_prior_exe
 	rollback_prior_exe:
-		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_restore_exe rollback_require_old_exe
-	rollback_restore_exe:
+		# A backup proves the product path no longer contains the untouched old exe.
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_retire_exe rollback_require_old_exe
+	rollback_retire_exe:
 		Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
 		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
-		ClearErrors
-		Rename "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-		IfErrors rollback_done
-		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 rollback_done
-		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_done 0
-		Goto rollback_runtime
+		Goto rollback_stage
 	rollback_require_old_exe:
-		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_runtime rollback_done
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_stage rollback_done
 	rollback_no_prior_exe:
 		Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
 		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
 		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_done 0
 
-	rollback_runtime:
+	rollback_stage:
+		RMDir /r "${INSTALL_TX_STAGE}"
+		IfFileExists "${INSTALL_TX_STAGE}" rollback_done 0
+
 		StrCmp $TransactionPrior "both" rollback_prior_runtime
 		StrCmp $TransactionPrior "runtime" rollback_prior_runtime rollback_no_prior_runtime
 	rollback_prior_runtime:
@@ -247,18 +249,44 @@ Function RollbackPendingTransaction
 		IfErrors rollback_done
 		IfFileExists "${TELEMETRY_RUNTIME_DIR}" 0 rollback_done
 		IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" rollback_done 0
-		Goto rollback_finish
+		Goto rollback_restore_exe
 	rollback_require_old_runtime:
-		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_finish rollback_done
+		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_restore_exe rollback_done
 	rollback_no_prior_runtime:
 		RMDir /r "${TELEMETRY_RUNTIME_DIR}"
 		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_done 0
 		IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" rollback_done 0
 
-	rollback_finish:
-		Delete "${INSTALL_TX_PENDING}"
-		IfFileExists "${INSTALL_TX_PENDING}" rollback_done 0
-		StrCpy $TransactionResult "ok"
+	rollback_restore_exe:
+		StrCmp $TransactionPrior "both" rollback_copy_old_exe
+		StrCmp $TransactionPrior "exe" rollback_copy_old_exe rollback_confirm_no_exe
+	rollback_copy_old_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_copy_backup rollback_require_restored_exe
+	rollback_copy_backup:
+		SetOutPath "${INSTALL_TX_STAGE}"
+		ClearErrors
+		CopyFiles /SILENT "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}"
+		IfErrors rollback_done
+		IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" 0 rollback_done
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+		ClearErrors
+		Rename "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+		IfErrors rollback_done
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 rollback_done
+		IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" rollback_done 0
+		RMDir "${INSTALL_TX_STAGE}"
+		IfFileExists "${INSTALL_TX_STAGE}" rollback_done rollback_finalize
+	rollback_require_restored_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_finalize rollback_done
+	rollback_confirm_no_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+
+	rollback_finalize:
+		# The committed marker means the current pair (new install or restored old
+		# pair) is final. Cleanup can then remove backups without future rollback.
+		Call WriteCommittedMarker
+		StrCmp $TransactionResult "ok" 0 rollback_done
+		Call CleanupCommittedTransaction
 	rollback_done:
 FunctionEnd
 
@@ -359,9 +387,8 @@ Section
 	# Always start from an empty destination, including after an incomplete old install.
 	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}" transaction_failed 0
-	ClearErrors
-	!insertmacro wails.files
 	SetOutPath "${TELEMETRY_RUNTIME_DIR}"
+	ClearErrors
 	File /oname=manifest.json "${VANTARE_TELEMETRY_RUNTIME}\manifest.json"
 	File /oname=duckdb.dll "${VANTARE_TELEMETRY_RUNTIME}\duckdb.dll"
 	File /oname=vantare-telemetry-reader.exe "${VANTARE_TELEMETRY_RUNTIME}\vantare-telemetry-reader.exe"
@@ -370,18 +397,45 @@ Section
 
 	IfErrors transaction_failed
 
-	# Verify that the new executable was actually extracted and is not empty.
-	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 transaction_failed
+	# Verify the complete new runtime before staging the executable.
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}\manifest.json" 0 transaction_failed
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb.dll" 0 transaction_failed
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}\vantare-telemetry-reader.exe" 0 transaction_failed
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}\sbom.spdx.json" 0 transaction_failed
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}\THIRD_PARTY_NOTICES.md" 0 transaction_failed
+
+	# wails.files contains only the architecture-selected executable. Extract it
+	# away from the product path so a crash can expose no exe, never a partial one.
+	RMDir /r "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
+	SetOutPath "${INSTALL_TX_STAGE}"
+	ClearErrors
+	!insertmacro wails.files
+	IfErrors transaction_failed
+	IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" 0 transaction_failed
+	ClearErrors
+	FileOpen $0 "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" r
+	IfErrors 0 staged_file_opened
+	Goto transaction_failed
+	staged_file_opened:
+		FileSeek $0 0 END $1
+		FileClose $0
+		IntCmp $1 1024 transaction_failed 0
+
+	# Publish the verified exe atomically only after the runtime is complete.
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" transaction_failed 0
+	ClearErrors
+	Rename "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+	IfErrors transaction_failed
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 transaction_failed
+	IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" transaction_failed 0
+	RMDir "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
 	ClearErrors
 	FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" r
-	IfErrors 0 file_opened
+	IfErrors 0 published_file_opened
 	Goto transaction_failed
-	file_opened:
+	published_file_opened:
 		FileSeek $0 0 END $1
 		FileClose $0
 		IntCmp $1 1024 transaction_failed 0

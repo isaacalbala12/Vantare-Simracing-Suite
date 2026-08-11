@@ -1,6 +1,6 @@
 # Handoff vivo — Engineer/Spotter
 
-Estado verificado: 2026-08-11. Este documento conserva solo el presente; Git y
+Estado verificado: 2026-08-12. Este documento conserva solo el presente; Git y
 Linear preservan la historia.
 
 ## Resultado
@@ -33,8 +33,10 @@ research quedan fuera de su context pack.
 - Nightly integrada y verificada: `8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - Base/HEAD local al entrar en Corte B:
   `90a0905e0f7198623c80c2b6f8f3c63945abae82`.
-- PR draft #196. Último HEAD publicado conocido: `61a5c99`; sus checks estaban
-  verdes. Los commits locales posteriores no tienen push ni CI propios.
+- Cierre remoto auditado en `b2519a25`: PR #196 `OPEN` + `DRAFT`, base
+  `nightly`, merge state `CLEAN`; sin merge ni promoción.
+- Checks de ese cierre: `Validate promotion path` `SUCCESS`,
+  `Validate Vantare blocking gates` `SUCCESS` y GitGuardian `SUCCESS`.
 - Cierre funcional documental de Corte B: rango local
   `90a0905e0f7198623c80c2b6f8f3c63945abae82..ebc0dfb533ffcb41b680ad51d1ef79ecac478695`.
 - Reviews del cierre funcional: spec `ACCEPT`, quality `READY`, navegación
@@ -95,8 +97,8 @@ research quedan fuera de su context pack.
 
 ## Issues y bloqueos
 
-- ISA-313 está activa y prepara la entrada documental; Fase 5 sigue pendiente
-  de aceptación humana, no cambia producto y S1 no ha comenzado.
+- Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. La aceptación no cambia
+  producto ni inicia S1; S1 no ha comenzado.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; no equivalen todavía a la issue ejecutable de S1.
 - ISA-314 conserva separado el bug de promesa falsa de guardado.
@@ -105,8 +107,8 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Revisar y aceptar ISA-313 Fase 5. Después, reconciliar o crear la issue y rama
-propias de S1, verificar la Nightly vigente y replanificar S1 desde
+Asignar o crear la issue y rama propias de S1, verificar la Nightly vigente y
+replanificar S1 concretamente desde
 [plan.md](../../engineer/phases/spotter/plan.md) y
 [acceptance.md](../../engineer/phases/spotter/acceptance.md) antes de editar
 runtime. No iniciar S2 ni fases posteriores por anticipado.

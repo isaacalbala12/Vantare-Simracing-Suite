@@ -23,11 +23,11 @@ no modifica por sí sola un contrato de producto o arquitectura.
 
 ## Fase activa
 
-ISA-313 / ENG-R01 Fase 5 deja preparada la arquitectura documental y el
-[plan de Spotter](phases/spotter/plan.md), pendientes de revisión y aceptación
-humana. S1 todavía no ha comenzado: la siguiente acción es revisar y aceptar la
-Fase 5; solo después se crea o reconcilia su issue y rama y se replantea desde
-la Nightly vigente. La única aceptación de la fase Spotter es
+Isaac aceptó humanamente ISA-313 / ENG-R01 Fase 5 el 2026-08-12 y dejó vigente
+la arquitectura documental y el [plan de Spotter](phases/spotter/plan.md). S1
+todavía no ha comenzado: la siguiente acción es asignar o crear su issue y rama
+propias y replanificarla concretamente desde la Nightly vigente. La única
+aceptación acumulativa de la fase Spotter es
 [acceptance.md](phases/spotter/acceptance.md).
 
 ## Lectura por rol

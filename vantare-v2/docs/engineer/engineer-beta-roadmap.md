@@ -61,9 +61,9 @@ suplanta juicios de audibilidad, pronunciación, ergonomía o falsas activacione
 - **Cierre:** escenarios manuales de tráfico y salida real más aceptación
   acumulativa de decisión, timings, audio, visual y lifecycle.
 
-S1 aún no está iniciada. El plan es una entrada documental preparada por
-ISA-313 Fase 5 y pendiente de revisión y aceptación humana. Solo después podrá
-tener issue, rama y replanning propios.
+Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. S1 aún no está iniciada:
+la siguiente acción es asignar o crear su issue y rama propias y replanificarla
+concretamente desde la Nightly vigente.
 
 ### 2. Engineer de carrera
 

@@ -5235,8 +5235,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
 
-- **Estado:** implementación y gates técnicos de Tasks 0–5 completados. Pendiente
-  de aceptación manual por Isaac en Windows multimonitor antes de promoción.
+- **Estado:** Isaac autorizó el 2026-08-12 la promoción a `nightly` y una nueva
+  pre-release. ISA-330 gobierna la integración aislada y el tag previsto
+  `v0.1.0.7-nightly.7`; no se promueve a `testers` ni `master`.
 - **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
 - **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
@@ -5269,9 +5270,10 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
   sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
   diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
-- **Próxima acción:** Isaac valida manualmente selección/cambio de monitor en
-  Windows, DPI mixto, Desktop fullscreen y OBS; después decide si autoriza la
-  promoción de la rama a `nightly`.
+- **Decisión de promoción:** Isaac acepta que la prueba física multimonitor/DPI
+  mixto quede como riesgo de Nightly y declara OBS indiferente para este corte.
+  La integración parte del `origin/nightly@5069cbb`, fusiona ISA-326 con
+  `--no-ff` y solo podrá publicar tras gates y CI verdes.
 - **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
   transformación, medida CSS no transformada, clipping documental, legacy,
   offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
@@ -5301,7 +5303,21 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   expone un monitor `DISPLAY1` 1920×1080, por lo que no puede certificar cambio
   entre pantallas ni DPI mixto. Studio nativo quedó detrás del login porque el
   worktree no contiene configuración Supabase y no se copiaron secretos.
-- **Bloqueo OBS descubierto:** la CSP histórica del servidor bloquea los assets
+- **Limitación OBS aceptada:** la CSP histórica del servidor bloquea los assets
   JS/CSS propios de `/overlay`, que responde 200 pero deja `#root` vacío. Se
-  registró ISA-329 como bug High y dependencia de este gate; no se mezcló el fix
-  de seguridad/servidor dentro de ISA-326.
+  registró ISA-329 como bug High abierto. Por decisión explícita de Isaac deja
+  de bloquear esta Nightly, debe aparecer en sus notas y no se mezcló el fix de
+  seguridad/servidor dentro de ISA-326.
+- **Integración ISA-330 antes del PR:** merge `--no-ff` limpio en `d0789e5`
+  sobre `origin/nightly@5069cbb`. Resultado combinado: `go test ./...` PASS;
+  frontend 366 archivos/2630 tests PASS; build PASS; `design-system:check` 3/3;
+  visual Studio PASS con 59 baselines, tres capturas responsive y controles de
+  paridad/interacción a 0.000 %. Se actualizaron únicamente los baselines
+  `studio-wide`, `studio-medium` y `studio-small` tras inspección visual: ahora
+  documentan `contain` 16:9 en lugar del antiguo estiramiento vertical.
+- **Lint de integración:** permanece informativo y rojo por deuda previa, pero
+  mejora el baseline exacto: `origin/nightly@5069cbb` tiene 47 errores/2 warnings
+  y la integración 44/2. No se introducen violaciones nuevas. Un primer Go sin
+  `frontend/dist` no fue un gate válido; tras build pasó completo. El único
+  fallo intermitente observado (`OpsBridgeStartTwice...`) pasó 20/20 aislado y
+  la repetición completa.

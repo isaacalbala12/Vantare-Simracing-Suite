@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.7",
+  "channel": "nightly",
+  "title": "Vantare — Studio y Desktop se adaptan a la resolución real",
+  "summary": "Overlay Studio deja atrás el lienzo fijo 1080p: admite superficies arbitrarias, usa el ancho disponible y conserva la geometría en el monitor seleccionado. Esta Nightly también incorpora la auditoría live de Strategy y el catálogo reproducible de animaciones del Workshop. OBS queda expresamente fuera de validación por ISA-329.",
+  "issues": [
+    "ISA-160",
+    "ISA-326",
+    "ISA-331"
+  ]
+}

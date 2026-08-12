@@ -626,8 +626,9 @@ Evidencia Task 4 y cierre acumulado:
   con escala uniforme. El navegador no dispone del runtime Wails ni de un perfil
   servido por el backend, por lo que no sustituye la prueba física Desktop/OBS.
 - Riesgos aceptados: `monitorIndex` es posicional y la enumeración solo se
-  refresca al abrir Studio; hot-plug durante la sesión requiere reabrirlo. Falta
-  prueba manual Windows con dos monitores/DPI mixto y OBS antes de promoción.
+  refresca al abrir Studio; hot-plug durante la sesión requiere reabrirlo. La
+  prueba manual Windows con dos monitores/DPI mixto queda pendiente para
+  Nightly; Isaac excluyó OBS como gate de este corte.
 - Smoke Wails posterior al cierre: build y arranque nativo PASS; Hub 1280×800,
   WebView2 y `/health` operativos. El host solo tiene `DISPLAY1` 1920×1080 y el
   Studio real requiere login/configuración Supabase ausente en este worktree, así
@@ -636,8 +637,18 @@ Evidencia Task 4 y cierre acumulado:
   `/api/profile-v3` conserva `layoutViewport`, pero `/overlay` quedó vacío: la
   CSP preexistente permite inline y bloquea los módulos/estilos propios de Vite.
   ISA-329 (`OBS · CSP local bloquea los assets propios y deja /overlay vacío`)
-  queda como bug High que bloquea el gate OBS. No se amplió silenciosamente el
-  write set de ISA-326 para tocar seguridad/servidor.
-- Estado Git al cerrar producto: rama de issue sobre
-  `origin/nightly@8880a880`; HEAD productivo `4703a48`; sin push, PR, CI remoto,
-  merge, release ni promoción.
+  queda como bug High abierto y limitación conocida; por decisión explícita de
+  Isaac no bloquea esta Nightly. No se amplió silenciosamente el write set de
+  ISA-326 para tocar seguridad/servidor.
+- Promoción autorizada el 2026-08-12: ISA-330 crea una rama de integración desde
+  `origin/nightly@5069cbb`, fusiona la rama ISA-326 (`7600206`) mediante
+  `--no-ff` en `d0789e5` y prepara `v0.1.0.7-nightly.7`. El gate remoto, merge a
+  `nightly`, tag y release deben registrarse aquí solo cuando existan realmente;
+  `testers` y `master` quedan fuera del corte.
+- Gates locales combinados de ISA-330: Go completo PASS; frontend 366 archivos/
+  2630 tests PASS; build PASS; diseño 3/3; visual Studio PASS con widgets,
+  paridad, interacción y los tres viewports responsive a 0.000 %. Los tres
+  baselines de Studio se actualizaron después de inspeccionar que el cambio era
+  el `contain` aprobado y no una pérdida de paneles o controles. Lint global
+  sigue rojo, pero pasa de 47 errores/2 warnings en el `nightly` de base a 44/2
+  en la integración; no añade deuda. Falta todavía push, PR, CI, merge y release.

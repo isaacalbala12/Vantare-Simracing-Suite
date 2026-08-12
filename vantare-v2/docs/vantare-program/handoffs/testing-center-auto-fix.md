@@ -34,8 +34,8 @@ está superada como arquitectura de ejecución.
 - Base actual reconciliada:
   `origin/nightly@234794d238a59fa14be53431065bf88eca46459a`.
 - Worktree: `C:\tmp\vantare-isa317`.
-- Integración: commit documental rebasado `46a6cf0`, rama remota publicada y
-  PR draft #209 hacia `nightly`; CI pendiente al registrar este estado. Sin
+- Integración: rama remota publicada y PR draft #209 hacia `nightly`; los gates
+  del PR pasan y siempre deben verificarse contra su HEAD remoto vigente. Sin
   merge, tag, release o promoción.
 - Runtime: apagado. El workflow existente
   `.github/workflows/testing-center-codex-inert.yml` conserva `if: false`.

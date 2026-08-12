@@ -26,8 +26,8 @@ Nota ISA-317 / CCAF-02 (2026-08-12, arquitectura híbrida y plan TDD):
 - Alcance ISA-317: cinco archivos documentales, sin tests de comportamiento por
   no cambiar runtime. No activa agents, secrets, red, merge, tag, release ni
   promoción. Review independiente DeepSeek V4 Flash: GO, P0/P1/P2=0 tras dos
-  rondas. Rama rebasada sobre `nightly@234794d`, commit `46a6cf0` y PR draft
-  #209; siguiente gate: revisión humana y replanificación de ISA-318-325 más
+  rondas. Rama rebasada sobre `nightly@234794d` y PR draft #209 con gates en
+  verde; siguiente gate: revisión humana y replanificación de ISA-318-325 más
   las issues nuevas según los microcortes RED -> GREEN -> REFACTOR.
 
 Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):

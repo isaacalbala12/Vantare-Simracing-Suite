@@ -1,4 +1,4 @@
-import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
+import { getAnimationScene, sceneFrameAt, type SceneFrame } from "./animation-scenes";
 import { buildMockTelemetry } from "../../core/mock-scenarios";
 import type {
   MockDataState,
@@ -102,6 +102,8 @@ export type AuthoringFixtureScenario = {
   /** Named animation scene from the catalog; takes precedence over variant. */
   sceneId?: string;
   sceneFrame?: number;
+  /** Interpolated scene state, when the player is running between keyframes. */
+  sceneState?: SceneFrame;
 };
 
 function buildStandingsStressScoring(): Record<string, unknown>[] {
@@ -482,6 +484,7 @@ export function buildHarnessTelemetry(input: {
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
+  sceneState?: SceneFrame;
 }): TelemetrySnapshot {
   const variant = input.variant ?? "default";
   const base = buildMockTelemetry({
@@ -586,7 +589,11 @@ export function buildHarnessTelemetry(input: {
   // the animation is about the clock rather than the field.
   const scene = input.sceneId ? getAnimationScene(input.sceneId) : undefined;
   if (scene && scene.widget === input.widget) {
-    const frame = sceneFrameAt(scene, input.sceneFrame ?? 0);
+    // Either an exact keyframe, or the interpolated state the player computed
+    // for this animation frame.
+    const frame = input.sceneState ?? sceneFrameAt(scene, input.sceneFrame ?? 0);
+    const field =
+      scene.widget === "relative" ? buildRelativeMulticlassScoring() : buildStandingsMulticlassScoring();
     return {
       ...readyBase,
       session: {
@@ -594,7 +601,7 @@ export function buildHarnessTelemetry(input: {
         remainingSeconds: frame.remainingSeconds ?? readyBase.session.remainingSeconds,
       },
       player: { ...readyBase.player, ...(frame.player ?? {}) },
-      scoring: buildSceneScoring(scene.id, input.sceneFrame ?? 0),
+      scoring: applyCarOverrides(frame.cars ?? {}, field),
     };
   }
 
@@ -701,6 +708,7 @@ export function buildAuthoringFixtureTelemetry(scenario: AuthoringFixtureScenari
     replayFrame: scenario.replayFrame,
     sceneId: scenario.sceneId,
     sceneFrame: scenario.sceneFrame,
+    sceneState: scenario.sceneState,
   });
 }
 

@@ -13,7 +13,8 @@ import {
   type HarnessVariant,
 } from "./fixtures/authoring-fixtures";
 import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
-import { getAnimationScene, listAnimationScenes, sceneFrameAt } from "./fixtures/animation-scenes";
+import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
+import { interpolateSceneAt, sceneDurationMs } from "./fixtures/scene-interpolation";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
@@ -176,56 +177,72 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   // not rewritten sixty times a minute; pausing or stepping parks it in the
   // query, which is what makes a single frame linkable.
   const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
-  const [sceneFrame, setSceneFrame] = useState(parsed.sceneFrame ?? 0);
   // Nothing plays until asked. Selecting an animation arms it at rest; a run
   // plays that animation once, start to finish, and stops on its last frame.
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
 
+  // A linked frame parks the playhead on that keyframe.
   useEffect(() => {
-    setSceneFrame(parsed.sceneFrame ?? 0);
-  }, [parsed.sceneId, parsed.sceneFrame]);
+    setElapsedMs((parsed.sceneFrame ?? 0) * (scene?.frameMs ?? 0));
+  }, [parsed.sceneId, parsed.sceneFrame, scene]);
+
+  // Playhead in milliseconds, advanced on every animation frame. The scene's
+  // frames are keyframes; what plays between them is interpolated, so a gap
+  // closing or a pedal going down moves instead of stepping.
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   useEffect(() => {
     if (!scene || !playing) {
       return;
     }
-    const timer = setInterval(() => {
-      setSceneFrame((frame) => {
-        const last = scene.frames.length - 1;
-        if (frame >= last) {
-          if (loop) {
-            return 0;
-          }
-          setPlaying(false);
-          return last;
-        }
-        return frame + 1;
-      });
-    }, scene.frameMs);
-    return () => clearInterval(timer);
+    let raf = 0;
+    let start: number | null = null;
+    const offset = elapsedRef.current;
+    const total = sceneDurationMs(scene);
+    const tick = (now: number) => {
+      if (start === null) {
+        start = now;
+      }
+      const next = offset + (now - start);
+      if (!loop && next >= total) {
+        setElapsedMs(total);
+        setPlaying(false);
+        return;
+      }
+      setElapsedMs(next);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [scene, playing, loop]);
+
+  const elapsedRef = useRef(0);
+  elapsedRef.current = elapsedMs;
+
+  const playhead = scene ? interpolateSceneAt(scene, elapsedMs, loop) : null;
+  const currentKeyframe = playhead?.keyframe ?? 0;
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
-    setSceneFrame(frame);
+    setElapsedMs(scene ? frame * scene.frameMs : 0);
     update({ ...parsed, sceneFrame: frame });
   };
   const stepFrame = (delta: number) => {
     if (!scene) return;
     const count = scene.frames.length;
-    parkFrame((((sceneFrame + delta) % count) + count) % count);
+    parkFrame((((currentKeyframe + delta) % count) + count) % count);
   };
   /** Selects an animation and leaves it at rest, without playing anything. */
   const chooseScene = (value: string) => {
     setPlaying(false);
-    setSceneFrame(0);
+    setElapsedMs(0);
     update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
   };
-  /** One click: this animation, from the top, once. */
+  /** One click: this animation, from the top, once, at frame rate. */
   const runScene = (sceneId: string) => {
-    setSceneFrame(0);
+    setElapsedMs(0);
     update({ ...parsed, sceneId, sceneFrame: 0 });
     setPlaying(true);
   };
@@ -260,13 +277,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
 
   const preparedForRender = !prepared
     ? prepared
-    : scene
+    : scene && playhead
       ? {
           ...prepared,
           snapshot: buildAuthoringFixtureTelemetry({
             ...liveFixtureInput,
             sceneId: scene.id,
-            sceneFrame,
+            sceneState: playhead.frame,
           }),
         }
       : parsed.variant === "standings-replay"
@@ -422,20 +439,20 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
             </div>
             <label className="overlay-workshop-transport__scrub">
               <span>
-                Fotograma {(sceneFrame % scene.frames.length) + 1} de {scene.frames.length}
+                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s a 60 fps
               </span>
               <input
                 type="range"
                 min={0}
                 max={scene.frames.length - 1}
                 step={1}
-                value={sceneFrame % scene.frames.length}
+                value={currentKeyframe}
                 onChange={(event) => parkFrame(Number(event.target.value))}
                 data-testid="workshop-scene-scrub"
               />
             </label>
             <p className="overlay-workshop-transport__caption" data-testid="workshop-scene-caption">
-              {sceneFrameAt(scene, sceneFrame).caption}
+              {playhead?.frame.caption}
             </p>
             <p className="overlay-workshop-transport__watch" data-testid="workshop-scene-watch">
               <strong>Qué mirar:</strong> {scene.watchFor}

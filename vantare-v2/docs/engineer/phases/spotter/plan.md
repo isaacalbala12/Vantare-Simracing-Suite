@@ -76,7 +76,7 @@ requiere arquitectura, dependencia o alcance nuevos.
 **Replanning activo ISA-327** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`).
 La implementación no ha comenzado: este microplan debe aprobarse primero.
 Entrada: vertical Nightly existente y riesgos del [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
-Resultado: enable/reset, sensibilidad, locale, calidad por rival, secuencia y estado de salida tienen una autoridad honesta y ninguna deuda P1 conocida impide ampliar Spotter.
+Resultado: enable/reset, sensibilidad, locale, calidad por rival, secuencia y estado de salida tienen una autoridad honesta; ninguna deuda P1 de integración conocida impide ampliar Spotter (S1 no promete cerrar los P1 de fases futuras).
 
 Invariantes objetivo que S1 hará cumplir (hoy no se cumplen: `SetSpotterEnabled` cancela de forma global y `SemanticEvidence` hardcodea sensibilidad Normal):
 
@@ -96,28 +96,25 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
 
 - **MODIFICAR (mínimo):** `service/engineer_service.go` — `SetSpotterEnabled` (toggle aislado, cancelación por familia, reset acotado) y `SetSensitivity` (rearme, sensibilidad compartida);
   `core/runtime.go` — método ADITIVO `ResetSpotter()` o equivalente que resetea solo la máquina Spotter sin tocar monitores;
-  `projectioninput/policy.go` — `SemanticEvidence` usa sensibilidad configurada
-  (no Normal). No se invita a tocar `Status`, `SetEnabled` ni `ProcessMonitorFrame` salvo necesidad real.
+  `projectioninput/policy.go` — `SemanticEvidence` usa sensibilidad configurada (no Normal). No se invita a tocar `Status`, `SetEnabled` ni `ProcessMonitorFrame` salvo necesidad real.
+- **Sensibilidad:** S1 unifica el preset/configuración de sensibilidad y su rearme (detector y revalidación comparten el preset configurado); la divergencia topológica de lados activos/histéresis
+  del baseline queda registrada y diferida a S2, donde se rederiva con evidencia propia. S1 no toca constantes ni geometría.
 - **SOLO LEER / contexto:** `core/runtime.go` — `Reset` global intacto (solo boundaries); `messagepolicy/scheduler.go` y `spotter_policy.go` (`Cancel`, `CancelFamily`) se consumen sin modificar;
   `spotter/state.go` y `types.go` — contrato de rearme, no congelar diseño; `service/engineer_service.go` — `SetEnabled`, `Status`, `ConsumeObservation` solo lectura.
 - **Tests NUEVOS (toggle, no SetOutputMode):** `service/engineer_service_test.go` — `TestSetSpotterEnabledCancelsOnlySpotterAndPreservesFuel` y `TestSetSpotterEnabledRearmsCleanState` (máquina Spotter
   limpia tras re-enable, monitores/familias preservados); `core/runtime_test.go` — regresión de `TestRuntime_Disabled` + reset acotado; `projectioninput/policy_test.go` — sensibilidad compartida.
-  `messagepolicy/scheduler_test.go` y `spotter_policy_test.go` SOLO LECTURA: la regresión de toggle vive en tests de `EngineerService`/`SetSpotterEnabled`; los tests de `SetOutputMode` no cubren el
-  toggle.
+  `messagepolicy/scheduler_test.go` y `spotter_policy_test.go` SOLO LECTURA: la regresión de toggle vive en tests de `EngineerService`/`SetSpotterEnabled`; los tests de `SetOutputMode` no cubren el toggle.
 - **Orden TDD red-verde:** (1) rojo: re-enable conserva estado Spotter obsoleto (still/clear tardío) porque el toggle no limpia la máquina; (2) rojo:
-  Spotter off cancela solo Spotter y preserva Fuel pendiente/en reproducción; (3) rojo: revalidación usa la misma sensibilidad que el detector; (4)
-  verde mínimo.
+  Spotter off cancela solo Spotter y preserva Fuel pendiente/en reproducción; (3) rojo: revalidación usa la misma sensibilidad que el detector; (4) verde mínimo.
 - **Criterios + validación manual:** `SpotterEnabled=false` no altera `Connected`, no deja `lastError` engañoso ni cancela otras familias; re-enable deja la máquina limpia y conserva
-  monitores/familias; cambio de sensibilidad rearma sin estado obsoleto ni versionado nuevo; `Runtime.Reset` global no se invoca por toggle. Manual: apagar Spotter con Fuel pendiente/en reproducción y
-  verificar que Fuel sigue saliendo sin desconexión ni error; re-encender sin still/clear fantasma; cambiar sensibilidad y confirmar rearme. Cierra
-  con manual + tests focales; la ruta acumulativa aún no
-  existe y este corte no la amplía.
+  monitores/familias; cambio de sensibilidad unifica preset y rearme sin estado obsoleto ni versionado nuevo; `Runtime.Reset` global no se invoca por toggle. Manual: apagar Spotter con Fuel pendiente/en reproducción y
+  verificar que Fuel sigue saliendo sin desconexión ni error; re-encender sin still/clear fantasma; cambiar sensibilidad y confirmar rearme. Cierra con manual + tests focales; la ruta acumulativa aún no existe y este corte no la amplía.
 - **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/core`;
   `go test ./internal/engineer/messagepolicy`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/projectioninput`;
   `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** `Reset()` global para un toggle, cancelación de cola completa, versionado nuevo de sensibilidad/evidence, modificar
-  `scheduler.go`/`spotter_policy.go`/`types.go` sin justificación, usar tests de `SetOutputMode` como cobertura del toggle, o test que aísle Spotter sin
-  regresión.
+  `scheduler.go`/`spotter_policy.go`/`types.go` sin justificación, usar tests de `SetOutputMode` como cobertura del toggle, test que aísle Spotter sin regresión, o reutilizar en S1 los lados
+  activos/histéresis topológicos del baseline (diferido a S2).
 
 #### Corte B — autoridad de entrada (secuencia y filtro por rival)
 
@@ -147,7 +144,8 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
   visual+audio coherentes por canal; locale ausente/no soportado/mismatch no produce `completed` silencioso: falla cerrado con reason diagnóstica. No cambian defaults globales, frontend, persistencia, router, player ni `main`.
 - **MODIFICAR (mínimo):** `service/engineer_service.go` — wiring mínimo de locale antes de `Start` que resuelve una autoridad ES/EN coherente por canal/familia (presentación y audio mismo locale o fallo
   cerrado con reason diagnóstica), sin mismatch silencioso; `service/delivery_runtime.go` — solo el tramo cache/resolver/output observable de `productDeliveryPort.Deliver`; `delivery/contract.go` —
-  reason diagnóstica de audio integrada en los puntos contractuales mínimos `knownReason` y `validStateReason`, sin ampliar estados; nuevo `service/s1_cumulative_test.go` — primera ruta acumulativa S1 sobre `EngineerService` productivo, no en replayoracle. No frontend ni persistencia.
+  reason diagnóstica de audio integrada en los puntos contractuales mínimos `knownReason` y `validStateReason`, sin ampliar estados; nuevo `service/s1_cumulative_test.go` — primera ruta acumulativa S1 sobre `EngineerService` productivo, no en replayoracle;
+  `docs/engineer/phases/spotter/acceptance.md` — actualización documental obligatoria al crear `s1_cumulative_test.go` (punto de entrada, comando ejecutable y evaluación esperado/observado/prohibidos); no se crea otro protocolo. No frontend ni persistencia.
 - **SOLO LEER / contexto:** `audio/config.go` (`DefaultAudioConfig`) y `audio/config_test.go` (`TestDefaultAudioConfig`) — se conservan defaults y test actuales; `cmd/vantare/main.go` — composición,
   no cambia; `audio/router.go` y `audio/router_test.go` — se preserva `TestCacheOnlyAudioRouterReadsCanonicalTTSCacheWithoutEngine`; `service/output_policy.go` — no cambia en este corte;
   `EngineerService.SetLocale`, `presentation.ParseLocale` y `presentation.Resolver` — SOLO LEER/intactos, autoridad canónica de locale del wiring S1;

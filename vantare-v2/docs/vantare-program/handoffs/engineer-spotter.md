@@ -33,8 +33,9 @@ research quedan fuera de su context pack.
 - Rama de ISA-327:
   `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`.
 - Base apilada de este corte: productiva merge-base `8880a8800e07e2af21fe5ff37a714578bf8fcd00`
-  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-12:
-  `origin/nightly` en `cc54d3614c5749ee7a014274ba3598365fec477c`, sin deriva en `internal/engineer` ni `cmd/vantare`; el SHA de Nightly es observación, no autoridad fija.
+  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-12 (tras fetch):
+  `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330 #208); sin deriva en `internal/engineer`;
+  cambios `cmd/vantare` (main.go, main_test.go) solo Overlay Studio/window/profile, sin wiring/call sites Engineer; el SHA de Nightly es observación, no autoridad fija.
 - Nivel real: rama de issue. No hay push, PR, CI ni integración en Nightly,
   Testers o Master; no existe release de este corte. El corte documental se
   apila sobre el cierre ISA-313 sin fingir promoción.
@@ -59,6 +60,12 @@ research quedan fuera de su context pack.
   documental (padre `4d437d25f125c8eab6ac74ba75abf835228ab073`); re-review queda
   pendiente y ninguna revisión se marca como superada. El microplan de S1 no está
   aceptado ni S1 iniciado.
+- Re-review read-only DeepSeek V4 Flash max sobre HEAD b2d355c: READY FOR HUMAN
+  APPROVAL, 5/5 PASS (P2-A/B, P3-C/D/E); única observación P3: Nightly stale,
+  ya refrescada. La re-review final por Claude Code MCP y T3 Code MCP devolvió
+  cuota de sesión antes de leer archivos; Fable quedó bloqueado por la misma
+  cuota. No se inventa PASS: la re-review final Opus/Fable queda pendiente y la
+  review Opus 5 anterior no se marca como final PASS.
 
 ## Capacidades demostradas
 
@@ -129,6 +136,6 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Revalidar la Nightly vigente antes del Corte A; detenerse solo si hay deriva funcional nueva en `internal/engineer` o `cmd/vantare` respecto al baseline `8880a880` (el SHA de Nightly es observación, no autoridad fija); sin rebase ahora.
-Aprobar el [microplan de S1](../../engineer/phases/spotter/plan.md) (cortes A/B/C) corregido por la revisión Opus 5 (re-review pendiente, revisión no superada).
-Solo entonces un worker subagente inicia el corte A sobre la Nightly verificada. No iniciar S2 ni fases posteriores por anticipado.
+Revalidar la Nightly vigente antes del Corte A; detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer dentro de `cmd/vantare` respecto a `8880a880` (cambios ajenos en `cmd/vantare` no bloquean solo por path; el SHA de Nightly es observación, no autoridad fija); sin rebase ahora.
+Publicar PR draft/CI y obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS).
+Solo después pedir/aplicar la aprobación humana del [microplan de S1](../../engineer/phases/spotter/plan.md) y la decisión visible Spotter ES→EN. No iniciar Corte A ni S2 por anticipado.

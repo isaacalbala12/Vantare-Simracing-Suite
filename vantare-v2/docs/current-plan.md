@@ -13,7 +13,7 @@
 - Los contratos del [expediente canonico](vantare-program/README.md), el
   [mapa de proyectos](vantare-program/project-map.md) y el handoff vivo de cada
   proyecto explican fronteras y detalle. Un handoff no sustituye a Linear.
-- Base integrada comprobada de este corte: merge-base productivo `8880a8800e07e2af21fe5ff37a714578bf8fcd00`. Observación 2026-08-12: `origin/nightly` en `cc54d3614c5749ee7a014274ba3598365fec477c`, sin deriva en `internal/engineer` ni `cmd/vantare`; el SHA de Nightly es observación, no autoridad fija.
+- Base integrada comprobada de este corte: merge-base productivo `8880a8800e07e2af21fe5ff37a714578bf8fcd00`. Observación 2026-08-12 (tras fetch): `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330); sin deriva en `internal/engineer` y cambios `cmd/vantare` solo Overlay Studio, sin deriva funcional Engineer; el SHA de Nightly es observación, no autoridad fija.
 - El flujo obligatorio sigue siendo `rama de issue -> nightly -> testers -> master`.
   Terminado, integrado, promocionado y publicado son estados distintos; las
   promociones reservadas requieren la aprobacion explicita de Isaac.
@@ -82,8 +82,9 @@
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
   ISA-314 conserva el bug de guardado separado. S2/ISA-189, S4/ISA-187 e
   ISA-314 quedan diferidos expresamente hasta cerrar S1.
-- **Siguiente accion:** revalidar Nightly antes de Corte A (detenerse solo por deriva funcional en `internal/engineer`/`cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observación, no autoridad fija); aprobar el
-  [microplan de S1](engineer/phases/spotter/plan.md) (cortes A/B/C) corregido por la review Opus 5, con re-review pendiente; solo entonces un worker subagente implementa el corte A.
+- **Siguiente accion:** revalidar Nightly antes de Corte A (detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; cambios ajenos en `cmd/vantare` no bloquean solo por path; el SHA de Nightly es observación, no autoridad fija);
+  publicar PR draft/CI y obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS);
+  solo después aprobar humanamente el [microplan de S1](engineer/phases/spotter/plan.md) y decidir el cambio visible Spotter ES→EN. No iniciar Corte A aún.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
   [roadmap general](engineer/engineer-beta-roadmap.md) y

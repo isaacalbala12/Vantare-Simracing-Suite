@@ -9,6 +9,7 @@ import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
+import type { StudioMonitor } from "../state/studio-monitor-client";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
@@ -116,6 +117,77 @@ describe("CanvasToolbar", () => {
     fireEvent.click(screen.getByTestId("studio-safe-area-toggle"));
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
+
+  it("labels native monitors and keeps an unavailable document monitor selected", () => {
+    const monitors: StudioMonitor[] = [
+      {
+        index: 0,
+        id: "display-primary",
+        name: "Main display",
+        isPrimary: true,
+        scaleFactor: 1.25,
+        bounds: { width: 2560, height: 1440 },
+        workArea: { width: 2560, height: 1392 },
+      },
+    ];
+
+    render(
+      <CanvasToolbar
+        preview={{
+          source: "mock",
+          mockSession: "practice",
+          mockLocation: "track",
+          zoom: "fit",
+          backgroundId: "gradient",
+          safeArea: false,
+        }}
+        layoutViewport={{ width: 1000, height: 1000 }}
+        monitors={monitors}
+        monitorStatus="ready"
+        monitorIndex={7}
+        onPreviewChange={() => undefined}
+        onLayoutViewportChange={() => undefined}
+        onMonitorChange={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("studio-canvas-options-toggle"));
+    const select = screen.getByTestId("studio-monitor-select") as HTMLSelectElement;
+    expect(select.value).toBe("unavailable:7");
+    expect(select.textContent).toContain("Monitor actual no disponible");
+    expect(select.textContent).toContain("Main display — 2560×1440 (principal)");
+    expect(select.disabled).toBe(false);
+  });
+
+  it.each(["loading", "unavailable"] as const)(
+    "disables native monitor selection while the capability is %s",
+    (monitorStatus) => {
+      render(
+        <CanvasToolbar
+          preview={{
+            source: "mock",
+            mockSession: "practice",
+            mockLocation: "track",
+            zoom: "fit",
+            backgroundId: "gradient",
+            safeArea: false,
+          }}
+          layoutViewport={{ width: 1000, height: 1000 }}
+          monitors={[]}
+          monitorStatus={monitorStatus}
+          monitorIndex={0}
+          onPreviewChange={() => undefined}
+          onLayoutViewportChange={() => undefined}
+          onMonitorChange={() => undefined}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("studio-canvas-options-toggle"));
+      const select = screen.getByTestId("studio-monitor-select") as HTMLSelectElement;
+      expect(select.disabled).toBe(true);
+      expect(select.textContent).toContain("Monitores no disponibles");
+    },
+  );
 
   it("applies a preset immediately as a document surface", async () => {
     renderToolbar();

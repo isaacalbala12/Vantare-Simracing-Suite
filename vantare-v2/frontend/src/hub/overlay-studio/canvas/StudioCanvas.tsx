@@ -6,6 +6,10 @@ import { canMutateWidget } from "../access/studio-access";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from "../studio-v3-i18n";
 import { getStudioHotkey } from "../state/studio-hotkeys";
+import {
+  listStudioMonitors,
+  type StudioMonitor,
+} from "../state/studio-monitor-client";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { clientToLogical, resolveCanvasScale } from "./canvas-geometry";
 import { resolveCanvasBackground, safeAreaInsets } from "./canvas-backgrounds";
@@ -32,10 +36,11 @@ function sortWidgetsByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstan
 export type StudioCanvasProps = {
   onOpenBrowserView?(): void;
   diagnostics?: WidgetDiagnosticCollector;
+  listMonitors?: () => Promise<StudioMonitor[]>;
 };
 
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
-  const { onOpenBrowserView, diagnostics } = props;
+  const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
   const {
     access,
@@ -63,6 +68,29 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   // cambiando de tamano.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
+  const [monitorState, setMonitorState] = useState<{
+    status: "loading" | "ready" | "unavailable";
+    monitors: StudioMonitor[];
+  }>({ status: "loading", monitors: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+    void listMonitors().then(
+      (monitors) => {
+        if (!cancelled) {
+          setMonitorState({ status: "ready", monitors });
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setMonitorState({ status: "unavailable", monitors: [] });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [listMonitors]);
 
   // useLayoutEffect y no useEffect: la medida tiene que ocurrir antes de que el
   // navegador pinte. Sin esa medida, "fit" no puede resolver la escala de la
@@ -286,9 +314,19 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
         <CanvasToolbar
           preview={preview}
           layoutViewport={layoutViewport}
+          monitors={monitorState.monitors}
+          monitorStatus={monitorState.status}
+          monitorIndex={document?.monitorIndex ?? null}
           onPreviewChange={setPreview}
           onLayoutViewportChange={(viewport) =>
             dispatch({ type: "document/layout-viewport", viewport })
+          }
+          onMonitorChange={(monitor) =>
+            dispatch({
+              type: "document/monitor",
+              monitorIndex: monitor.index,
+              viewport: monitor.bounds,
+            })
           }
         />
       </div>

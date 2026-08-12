@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
-import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
+import {
+  resolveLayoutViewport,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
@@ -11,6 +14,7 @@ import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
+import type { StudioMonitor } from "../state/studio-monitor-client";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -81,6 +85,7 @@ const client = createClient();
 function renderCanvas(
   zoom: "fit" | 50 | 75 | 100 | 125 = "fit",
   document = buildDocument(),
+  listMonitors: () => Promise<StudioMonitor[]> = async () => [],
 ) {
   const coordinator = createTestTelemetryCoordinator();
 
@@ -103,7 +108,7 @@ function renderCanvas(
       <StudioProvider client={createClient(document)} initialFile="profiles/a.json">
         <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
           <ZoomSetter />
-          <StudioCanvas />
+          <StudioCanvas listMonitors={listMonitors} />
         </StudioTelemetryProvider>
       </StudioProvider>
     </div>,
@@ -166,6 +171,258 @@ describe("StudioCanvas", () => {
       expect(screen.getByTestId("studio-canvas-scene").style.height).toBe("1000px");
       expect(Number(screen.getByTestId("studio-canvas-scene").getAttribute("data-scale"))).toBeCloseTo(0.54, 5);
     });
+  });
+
+  it("enumerates native monitors without replacing or dirtying a custom surface", async () => {
+    installViewportResizeObserver(960, 540);
+    const listMonitors = vi.fn(async (): Promise<StudioMonitor[]> => [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1.5,
+        bounds: { width: 2560, height: 1440 },
+        workArea: { width: 2560, height: 1392 },
+      },
+    ]);
+
+    function Probe(): React.ReactElement {
+      const { document, dirty } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <div data-testid="monitor-document-probe">
+          {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}
+        </div>
+      );
+    }
+
+    render(
+      <StudioProvider
+        client={createClient(buildDocument({ width: 1000, height: 1000 }))}
+        initialFile="profiles/a.json"
+      >
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={listMonitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(listMonitors).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toBe(
+        "0:1000x1000:clean",
+      ),
+    );
+  });
+
+  it("ignores a stale monitor enumeration after its effect is cancelled", async () => {
+    installViewportResizeObserver(960, 540);
+    let resolveFirst: ((monitors: StudioMonitor[]) => void) | undefined;
+    const first = () => new Promise<StudioMonitor[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const currentMonitor: StudioMonitor = {
+      index: 0,
+      id: "current",
+      name: "Current",
+      isPrimary: true,
+      scaleFactor: 1,
+      bounds: { width: 1920, height: 1080 },
+      workArea: { width: 1920, height: 1040 },
+    };
+    const staleMonitor: StudioMonitor = {
+      ...currentMonitor,
+      index: 7,
+      id: "stale",
+      name: "Stale",
+    };
+    const coordinator = createTestTelemetryCoordinator();
+    const tree = (listMonitors: () => Promise<StudioMonitor[]>) => (
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <StudioCanvas listMonitors={listMonitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>
+    );
+    const view = render(tree(first));
+    await waitFor(() => expect(resolveFirst).toBeTypeOf("function"));
+
+    view.rerender(tree(async () => [currentMonitor]));
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-monitor-select").textContent).toContain("Current"),
+    );
+    resolveFirst?.([staleMonitor]);
+
+    await Promise.resolve();
+    expect(screen.getByTestId("studio-monitor-select").textContent).not.toContain("Stale");
+  });
+
+  it("selects full monitor bounds as one undoable and redoable document change", async () => {
+    installViewportResizeObserver(960, 540);
+    const monitors: StudioMonitor[] = [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+      {
+        index: 2,
+        id: "display-2",
+        name: "Ultra wide",
+        isPrimary: false,
+        scaleFactor: 1.5,
+        bounds: { width: 3440, height: 1440 },
+        workArea: { width: 3440, height: 1392 },
+      },
+    ];
+
+    function Probe(): React.ReactElement {
+      const { document, dirty, undo, redo } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <>
+          <div data-testid="monitor-document-probe">
+            {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}
+          </div>
+          <button type="button" data-testid="monitor-undo" onClick={undo} />
+          <button type="button" data-testid="monitor-redo" onClick={redo} />
+        </>
+      );
+    }
+
+    render(
+      <StudioProvider client={createClient()} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={async () => monitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-monitor-select")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("studio-monitor-select"), { target: { value: "2" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toBe(
+        "2:3440x1440:dirty",
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("monitor-undo"));
+    expect(screen.getByTestId("monitor-document-probe").textContent).toBe("0:1920x1080:clean");
+    fireEvent.click(screen.getByTestId("monitor-redo"));
+    expect(screen.getByTestId("monitor-document-probe").textContent).toBe("2:3440x1440:dirty");
+  });
+
+  it.each([
+    ["empty", async (): Promise<StudioMonitor[]> => []],
+    ["error", async (): Promise<StudioMonitor[]> => Promise.reject(new Error("unavailable"))],
+  ])("keeps custom dimensions active when monitor enumeration is %s", async (_case, listMonitors) => {
+    installViewportResizeObserver(960, 540);
+    renderCanvas("fit", buildDocument({ width: 1000, height: 1000 }), listMonitors);
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).disabled).toBe(true),
+    );
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "1000x1000",
+    );
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it("keeps the unavailable document monitor selected after hotplug", async () => {
+    installViewportResizeObserver(960, 540);
+    const document = buildDocument({ width: 1000, height: 1000 });
+    document.monitorIndex = 9;
+    renderCanvas("fit", document, async () => [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+    ]);
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).value).toBe(
+        "unavailable:9",
+      ),
+    );
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "1000x1000",
+    );
+  });
+
+  it("resynchronizes monitor and surface after recoverability rejects a selection", async () => {
+    installViewportResizeObserver(960, 540);
+    const document = buildDocument({ width: 3440, height: 1440 });
+    document.monitorIndex = 1;
+    document.layouts.general.widgets[0]!.layout.x = 3200;
+
+    function Probe(): React.ReactElement {
+      const { document, dirty, accessNotice } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <div data-testid="monitor-document-probe">
+          {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}:
+          {accessNotice ?? ""}
+        </div>
+      );
+    }
+
+    const monitors: StudioMonitor[] = [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Small",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+      {
+        index: 1,
+        id: "display-1",
+        name: "Wide",
+        isPrimary: false,
+        scaleFactor: 1,
+        bounds: { width: 3440, height: 1440 },
+        workArea: { width: 3440, height: 1392 },
+      },
+    ];
+    render(
+      <StudioProvider client={createClient(document)} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={async () => monitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).disabled).toBe(false),
+    );
+    fireEvent.change(screen.getByTestId("studio-monitor-select"), { target: { value: "0" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toContain("recoverable"),
+    );
+    expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).value).toBe("1");
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "3440x1440",
+    );
+    expect(screen.getByTestId("monitor-document-probe").textContent).toContain(
+      "1:3440x1440:clean",
+    );
   });
 
   it("renders widgets in ascending z-index order", async () => {

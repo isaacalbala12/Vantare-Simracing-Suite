@@ -7,6 +7,7 @@ import {
 } from "../../../overlay/core/layout-viewport";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { StudioPreviewState } from "../state/studio-store";
+import type { StudioMonitor } from "../state/studio-monitor-client";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
 import {
   findLayoutViewportPreset,
@@ -34,9 +35,65 @@ function parseDimension(draft: string): number | null {
 export type CanvasToolbarProps = {
   preview: StudioPreviewState;
   layoutViewport: LayoutViewport;
+  monitors?: readonly StudioMonitor[];
+  monitorStatus?: "loading" | "ready" | "unavailable";
+  monitorIndex?: number | null;
   onPreviewChange(patch: Partial<StudioPreviewState>): void;
   onLayoutViewportChange(layoutViewport: LayoutViewport): void;
+  onMonitorChange?(monitor: StudioMonitor): void;
 };
+
+function MonitorControls(props: {
+  monitors: readonly StudioMonitor[];
+  status: "loading" | "ready" | "unavailable";
+  monitorIndex: number | null;
+  onChange?: (monitor: StudioMonitor) => void;
+}): React.ReactElement {
+  const { monitors, status, monitorIndex, onChange } = props;
+  const { t } = useI18n();
+  const currentMonitor = monitors.find((monitor) => monitor.index === monitorIndex);
+  const unavailableValue = `unavailable:${monitorIndex ?? "none"}`;
+  const value = currentMonitor ? String(currentMonitor.index) : unavailableValue;
+  const disabled =
+    status !== "ready" || monitors.length === 0 || monitorIndex === null || !onChange;
+
+  return (
+    <label className="osv3-canvas-toolbar__field">
+      <span>{t("studio.v3.monitor.label")}</span>
+      <select
+        data-testid="studio-monitor-select"
+        className="osv3-canvas-toolbar__select"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => {
+          const monitor = monitors.find(
+            (candidate) => String(candidate.index) === event.target.value,
+          );
+          if (monitor) {
+            onChange?.(monitor);
+          }
+        }}
+      >
+        {!currentMonitor && monitorIndex !== null ? (
+          <option value={unavailableValue}>
+            {t("studio.v3.monitor.currentUnavailable")} ({monitorIndex})
+          </option>
+        ) : null}
+        {(status !== "ready" || monitors.length === 0) ? (
+          <option value={monitorIndex === null ? unavailableValue : "monitors-unavailable"}>
+            {t("studio.v3.monitor.unavailable")}
+          </option>
+        ) : null}
+        {monitors.map((monitor) => (
+          <option key={monitor.id} value={monitor.index}>
+            {monitor.name} — {monitor.bounds.width}×{monitor.bounds.height}
+            {monitor.isPrimary ? ` (${t("studio.v3.monitor.primary")})` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 function LayoutViewportControls(props: {
   layoutViewport: LayoutViewport;
@@ -151,7 +208,16 @@ function LayoutViewportControls(props: {
 }
 
 export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
-  const { preview, layoutViewport, onPreviewChange, onLayoutViewportChange } = props;
+  const {
+    preview,
+    layoutViewport,
+    monitors = [],
+    monitorStatus = "unavailable",
+    monitorIndex = null,
+    onPreviewChange,
+    onLayoutViewportChange,
+    onMonitorChange,
+  } = props;
   const { t } = useI18n();
   const [optionsOpen, setOptionsOpen] = useState(false);
 
@@ -215,6 +281,12 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
               key={`${layoutViewport.width}x${layoutViewport.height}`}
               layoutViewport={layoutViewport}
               onChange={onLayoutViewportChange}
+            />
+            <MonitorControls
+              monitors={monitors}
+              status={monitorStatus}
+              monitorIndex={monitorIndex}
+              onChange={onMonitorChange}
             />
             <label className="osv3-canvas-toolbar__field">
               <span>{t("studio.v3.canvas.background")}</span>

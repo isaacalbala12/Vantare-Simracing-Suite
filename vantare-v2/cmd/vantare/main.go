@@ -1161,16 +1161,13 @@ func main() {
 	// racing mode so the next open is not accidentally editable. The guard
 	// on overlayRunning avoids redundant work when Stop() was already called
 	// from the normal stop paths (which clear the flag themselves).
-	overlayController = app.NewOverlayController(&wailsOverlayFactory{
-		app: wailsApp,
-		stopOverlay: func() {
-			overlayController.Stop()
-			if overlayRunning.Load() {
-				resetOverlayDisplayMode(overlayController, studioProfileSvc)
-				overlayRunning.Store(false)
-			}
-		},
-	})
+	overlayController = app.NewOverlayController(newWailsOverlayFactory(wailsApp, func() {
+		overlayController.Stop()
+		if overlayRunning.Load() {
+			resetOverlayDisplayMode(overlayController, studioProfileSvc)
+			overlayRunning.Store(false)
+		}
+	}))
 
 	// Create hub window only (normal framed window).
 	hubW := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -2810,9 +2807,26 @@ func (h *wailsWindowHandle) ensureTransparent() {
 }
 
 // wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
+type overlayScreenResolver interface {
+	GetByIndex(int) *application.Screen
+}
+
 type wailsOverlayFactory struct {
 	app         *application.App
+	screens     overlayScreenResolver
 	stopOverlay func()
+}
+
+func newWailsOverlayFactory(wailsApp *application.App, stopOverlay func()) *wailsOverlayFactory {
+	var screens overlayScreenResolver
+	if wailsApp != nil && wailsApp.Screen != nil {
+		screens = wailsApp.Screen
+	}
+	return &wailsOverlayFactory{
+		app:         wailsApp,
+		screens:     screens,
+		stopOverlay: stopOverlay,
+	}
 }
 
 type wailsOverlayWindow struct {
@@ -2833,18 +2847,44 @@ func (o *wailsOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3
 	return nil
 }
 
-func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
-	w := f.app.Window.NewWithOptions(application.WebviewWindowOptions{
+func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens overlayScreenResolver) (application.WebviewWindowOptions, error) {
+	if document == nil {
+		return application.WebviewWindowOptions{}, fmt.Errorf("overlay profile document is required")
+	}
+	if screens == nil {
+		return application.WebviewWindowOptions{}, fmt.Errorf("overlay screen resolver is unavailable")
+	}
+	screen := screens.GetByIndex(document.MonitorIndex)
+	if screen == nil {
+		return application.WebviewWindowOptions{}, fmt.Errorf("overlay monitor index %d is unavailable", document.MonitorIndex)
+	}
+	viewport := config.ResolveLayoutViewportV3(document)
+	return application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
-		Width:             1920,
-		Height:            1080,
+		Width:             viewport.Width,
+		Height:            viewport.Height,
 		Frameless:         true,
 		BackgroundType:    application.BackgroundTypeTransparent,
 		BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
 		IgnoreMouseEvents: false,
 		AlwaysOnTop:       true,
 		URL:               "/",
-	})
+		Screen:            screen,
+	}, nil
+}
+
+func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
+	if f == nil {
+		return nil, fmt.Errorf("overlay window factory is unavailable")
+	}
+	options, err := resolveOverlayWindowOptions(document, f.screens)
+	if err != nil {
+		return nil, fmt.Errorf("create overlay window: %w", err)
+	}
+	if f.app == nil || f.app.Window == nil {
+		return nil, fmt.Errorf("create overlay window: Wails window manager is unavailable")
+	}
+	w := f.app.Window.NewWithOptions(options)
 
 	// When the user (or Stop) closes the overlay window, we must stop treating
 	// it as the current window so StartOverlay can create a fresh one next time.

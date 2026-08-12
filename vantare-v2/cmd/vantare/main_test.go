@@ -17,6 +17,7 @@ import (
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 func TestShouldPersistValidatedSessionRequiresCurrentOnlineValidation(t *testing.T) {
@@ -271,6 +272,118 @@ func (f *fakeOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3
 	f.created++
 	f.last = &fakeOverlayWindow{}
 	return f.last, nil
+}
+
+type fakeOverlayScreenResolver struct {
+	screens map[int]*application.Screen
+	calls   []int
+}
+
+func (f *fakeOverlayScreenResolver) GetByIndex(index int) *application.Screen {
+	f.calls = append(f.calls, index)
+	return f.screens[index]
+}
+
+func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testing.T) {
+	first := &application.Screen{ID: "first"}
+	second := &application.Screen{ID: "second"}
+
+	tests := []struct {
+		name         string
+		monitorIndex int
+		want         *application.Screen
+	}{
+		{name: "first screen", monitorIndex: 0, want: first},
+		{name: "second screen", monitorIndex: 1, want: second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{0: first, 1: second}}
+			document := &config.ProfileDocumentV3{
+				MonitorIndex:   tt.monitorIndex,
+				LayoutViewport: &config.LayoutViewportV3{Width: 3440, Height: 1440},
+			}
+
+			options, err := resolveOverlayWindowOptions(document, resolver)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if options.Screen != tt.want {
+				t.Fatalf("screen=%p want exact pointer %p", options.Screen, tt.want)
+			}
+			if options.Width != 3440 || options.Height != 1440 {
+				t.Fatalf("initial size=%dx%d want 3440x1440", options.Width, options.Height)
+			}
+			if len(resolver.calls) != 1 || resolver.calls[0] != tt.monitorIndex {
+				t.Fatalf("GetByIndex calls=%v want [%d]", resolver.calls, tt.monitorIndex)
+			}
+		})
+	}
+}
+
+func TestOverlayWindowOptionsUseLegacyViewportDefault(t *testing.T) {
+	screen := &application.Screen{ID: "legacy"}
+	resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{0: screen}}
+
+	options, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if options.Width != 1920 || options.Height != 1080 {
+		t.Fatalf("legacy initial size=%dx%d want 1920x1080", options.Width, options.Height)
+	}
+	if options.Screen != screen {
+		t.Fatalf("screen=%p want exact pointer %p", options.Screen, screen)
+	}
+}
+
+func TestOverlayWindowOptionsRejectInvalidInputsBeforeWindowCreation(t *testing.T) {
+	resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{}}
+
+	tests := []struct {
+		name     string
+		document *config.ProfileDocumentV3
+		screens  overlayScreenResolver
+		contains string
+	}{
+		{name: "nil document", screens: resolver, contains: "document"},
+		{name: "missing resolver", document: &config.ProfileDocumentV3{}, contains: "screen resolver"},
+		{name: "unknown monitor", document: &config.ProfileDocumentV3{MonitorIndex: 7}, screens: resolver, contains: "monitor index 7"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := resolveOverlayWindowOptions(tt.document, tt.screens)
+			if err == nil || !strings.Contains(err.Error(), tt.contains) {
+				t.Fatalf("error=%v want context containing %q", err, tt.contains)
+			}
+		})
+	}
+}
+
+func TestNewWailsOverlayFactoryWiresApplicationScreenManager(t *testing.T) {
+	screens := &application.ScreenManager{}
+	wailsApp := &application.App{Screen: screens}
+
+	factory := newWailsOverlayFactory(wailsApp, nil)
+	if factory.app != wailsApp {
+		t.Fatal("factory did not retain Wails application")
+	}
+	if factory.screens != screens {
+		t.Fatal("factory did not wire wailsApp.Screen as the production resolver")
+	}
+}
+
+func TestNewWailsOverlayFactoryLeavesMissingScreenManagerUnavailable(t *testing.T) {
+	factory := newWailsOverlayFactory(&application.App{}, nil)
+	if factory.screens != nil {
+		t.Fatal("factory exposed a typed nil screen resolver")
+	}
+	_, err := factory.NewOverlayWindow(&config.ProfileDocumentV3{}, config.Rect{}, config.Rect{})
+	if err == nil || !strings.Contains(err.Error(), "screen resolver") {
+		t.Fatalf("error=%v want missing screen resolver context", err)
+	}
 }
 
 type fakeOverlayRuntime struct {

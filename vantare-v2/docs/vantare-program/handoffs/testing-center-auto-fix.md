@@ -30,15 +30,13 @@ está superada como arquitectura de ejecución.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
-  `origin/nightly@5069cbb1c0fb9ab2765093ebb1572f71a90ad5b5`; antes de ejecutar
-  cualquier issue se debe registrar el SHA remoto Nightly vigente y rebasar de
-  forma controlada si cambió.
-- Último `origin/nightly` observado durante el review:
-  `234794d238a59fa14be53431065bf88eca46459a`; sus cambios no alteran este ADR,
-  pero `docs/current-plan.md` deberá reconciliarse antes del commit.
+  `origin/nightly@5069cbb1c0fb9ab2765093ebb1572f71a90ad5b5`.
+- Base actual reconciliada:
+  `origin/nightly@234794d238a59fa14be53431065bf88eca46459a`.
 - Worktree: `C:\tmp\vantare-isa317`.
-- Integración: ninguna; sin commit, push, PR, CI, merge o promoción al crear
-  este handoff.
+- Integración: commit documental rebasado `46a6cf0`, rama remota publicada y
+  PR draft #209 hacia `nightly`; CI pendiente al registrar este estado. Sin
+  merge, tag, release o promoción.
 - Runtime: apagado. El workflow existente
   `.github/workflows/testing-center-codex-inert.yml` conserva `if: false`.
 - Linear: espejo/proyecto de planificación; ya no es dependencia técnica de la
@@ -130,6 +128,9 @@ determinista.
   `needs_owner`, nunca fallback a otra cuenta/API.
 - P3: Linear y los nombres CCAF seguirán mostrando la arquitectura histórica
   hasta completar la replanificación del proyecto.
+- Review documental independiente DeepSeek V4 Flash: GO tras dos rondas,
+  P0/P1/P2=0. Se corrigieron idempotencia por fase, policy completa, bootstrap
+  en rama predeterminada, SHA de release, revert, fixtures, rollback y comandos.
 
 ## Issues
 
@@ -157,9 +158,10 @@ determinista.
 
 ## Siguiente acción exacta
 
-Cerrar ISA-317 con review documental P0/P1/P2=0 y rebasar el documento maestro
-de Linear. Después, dividir ISA-318–325 para ejecutar Task 1 del plan: tests de
-caracterización de la policy actual y contrato v2, sin red ni secretos.
+Revisar el PR draft #209 y rebasar el documento maestro de Linear. Después,
+dividir ISA-318–325 y crear ISA-323B/ISA-322B/bootstrap para ejecutar Task 1 del
+plan: tests de caracterización de la policy actual y contrato v2, sin red ni
+secretos.
 
 Checks de ISA-317:
 

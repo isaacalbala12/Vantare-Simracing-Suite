@@ -25,8 +25,10 @@ Nota ISA-317 / CCAF-02 (2026-08-12, arquitectura híbrida y plan TDD):
   Linear/Codex Cloud queda superada.
 - Alcance ISA-317: cinco archivos documentales, sin tests de comportamiento por
   no cambiar runtime. No activa agents, secrets, red, merge, tag, release ni
-  promoción. Siguiente gate: review documental P0/P1/P2=0 y replanificación de
-  ISA-318-325 según los microcortes RED -> GREEN -> REFACTOR.
+  promoción. Review independiente DeepSeek V4 Flash: GO, P0/P1/P2=0 tras dos
+  rondas. Rama rebasada sobre `nightly@234794d`, commit `46a6cf0` y PR draft
+  #209; siguiente gate: revisión humana y replanificación de ISA-318-325 más
+  las issues nuevas según los microcortes RED -> GREEN -> REFACTOR.
 
 Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
 - La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E

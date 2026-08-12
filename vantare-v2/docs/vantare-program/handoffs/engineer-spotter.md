@@ -38,8 +38,7 @@ research quedan fuera de su context pack.
   `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330 #208); sin deriva en `internal/engineer`;
   cambios `cmd/vantare` (main.go, main_test.go) solo Overlay Studio/window/profile, sin wiring/call sites Engineer; el SHA de Nightly es observación, no autoridad fija.
 - PR #210 `OPEN` + `DRAFT` + `CLEAN` (https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/210):
-  último SHA del rango funcional/documental previo al registro de estado (`c35db15`,
-  snapshot revisado; el commit posterior solo registra estado externo y no se autoancla). Base temporal apilada sobre
+  rango funcional/documental final en `ba3b45d`, remoto y verificado. Base temporal apilada sobre
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter` (PR padre #196), no nightly:
   review aislada sin resolver artificialmente el conflicto de current-plan; cuando #196 se integre por el
   flujo autorizado, #210 se retargetea a nightly y se revalida. No es promoción ni salto de canal.
@@ -58,22 +57,13 @@ research quedan fuera de su context pack.
   evidencia quedaron corregidos en `ebc0dfb`.
 - P3 aceptado conscientemente: no se renombra el paquete legacy porque sus
   banners y el router mitigan la colisión; moverlo exige issue y alcance aparte.
-- Este commit B solo registra evidencia y estado; su SHA se reporta al cierre y
-  no forma parte del rango funcional anterior.
-- Revisión Opus 5 sobre HEAD 75c958d: findings P0-P3 corregidos en este corte
-  documental (padre `75c958d301e286ddf34c6849a12476332f8bda0b`); re-review queda
-  pendiente y la revisión no se marca como superada. El microplan de S1 no está
-  aceptado ni S1 iniciado.
-- Re-review 2026-08-12 (CHANGES REQUIRED, 2 P2 + 3 P3): corregidos en este corte
-  documental (padre `4d437d25f125c8eab6ac74ba75abf835228ab073`); re-review queda
-  pendiente y ninguna revisión se marca como superada. El microplan de S1 no está
-  aceptado ni S1 iniciado.
-- Re-review read-only DeepSeek V4 Flash max sobre HEAD b2d355c: READY FOR HUMAN
-  APPROVAL, 5/5 PASS (P2-A/B, P3-C/D/E); única observación P3: Nightly stale,
-  ya refrescada. La re-review final por Claude Code MCP y T3 Code MCP devolvió
-  cuota de sesión antes de leer archivos; Fable quedó bloqueado por la misma
-  cuota. No se inventa PASS: la re-review final Opus/Fable queda pendiente y la
-  review Opus 5 anterior no se marca como final PASS.
+- Review final DeepSeek V4 Flash max (spec + quality) sobre el rango funcional
+  final `ba3b45d`: ACCEPT sin P0-P3. La review final Opus/Fable queda pendiente
+  por cuota de sesión y no se marca como superada; la review Opus anterior no es
+  final PASS.
+- El microplan de S1 no está aceptado ni S1 iniciado; requiere nueva aprobación
+  humana tras la reconciliación y la decisión visible Spotter ES→EN queda
+  pendiente.
 
 ## Capacidades demostradas
 
@@ -173,5 +163,5 @@ research quedan fuera de su context pack.
 ## Siguiente acción
 
 Tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observación, no autoridad fija; sin rebase manual).
-Obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS).
+Obtener la review final Claude cuando la cuota lo permita (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus/Fable finales pendientes por cuota; la review Opus anterior no se marca como final PASS).
 Solo después pedir/aplicar la aprobación humana del [microplan de S1](../../engineer/phases/spotter/plan.md) y la decisión visible Spotter ES→EN. No iniciar Corte A ni S2 por anticipado.

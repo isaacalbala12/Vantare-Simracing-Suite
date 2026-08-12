@@ -71,19 +71,20 @@
   aceptacion LMU extremo a extremo no estan demostrados.
 - **Issue activa:** ISA-327 / ENG-S1 — replanning técnico de S1 (autoridades y
   baseline confiable), `In Progress` en Linear con comentario/attachment de PR.
-  Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`
-  (último SHA del rango revisado antes del registro de estado: `c35db15`) con PR #210 `OPEN`+`DRAFT`+`CLEAN` apilado sobre ISA-313/PR #196
-  (no nightly) para review aislada; al integrar #196, #210 se retargetea a nightly y se revalida.
-  GitGuardian `SUCCESS`; sin gates branch-channel completos en esta base: no se declara CI
-  completa; sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el
-  2026-08-12; S1 incluye el mínimo frontend en la pestaña Ingeniero y requiere nueva aprobación humana tras la reconciliación; la implementación no ha comenzado hasta aprobar su microplan.
+  Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable` con
+  rango funcional final `ba3b45d` en PR #210 remoto `OPEN`+`DRAFT`+`CLEAN`
+  apilado sobre ISA-313/PR #196 (no nightly) para review aislada; al integrar
+  #196, #210 se retargetea a nightly y se revalida. GitGuardian `SUCCESS`; gates
+  completos branch-channel no ejecutados en esta base: no se declara CI completa;
+  sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el
+  2026-08-12; S1 no iniciado, incluye el mínimo frontend en la pestaña Ingeniero
+  y requiere nueva aprobación humana tras la reconciliación.
 - **Evidencia/publicacion:** el
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
-  ISA-314 conserva el bug de guardado (incluye el footer preexistente de guardado automático, no corregido en S1). S2/ISA-189, S4/ISA-187 e
-  ISA-314 quedan diferidos expresamente hasta cerrar S1.
+  ISA-314 conserva el bug de guardado (footer preexistente de guardado automático, no corregido en S1); S2/ISA-189, S4/ISA-187 e ISA-314 quedan diferidos hasta cerrar S1.
 - **Siguiente accion:** tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
-  obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable pendientes por cuota; Opus anterior no es final PASS);
+  obtener la review final Claude cuando la cuota lo permita (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus/Fable finales pendientes por cuota; Opus anterior no es final PASS);
   solo después aprobar humanamente el [microplan de S1](engineer/phases/spotter/plan.md) y decidir el cambio visible Spotter ES→EN. No iniciar Corte A aún.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),

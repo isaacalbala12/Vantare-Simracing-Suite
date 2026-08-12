@@ -642,13 +642,15 @@ Evidencia Task 4 y cierre acumulado:
   ISA-326 para tocar seguridad/servidor.
 - Promoción autorizada el 2026-08-12: ISA-330 crea una rama de integración desde
   `origin/nightly@5069cbb`, fusiona la rama ISA-326 (`7600206`) mediante
-  `--no-ff` en `d0789e5` y prepara `v0.1.0.7-nightly.7`. El gate remoto, merge a
+  `--no-ff` en `d0789e5`, incorpora después el PR #207 desde
+  `origin/nightly@cc54d36` en `e45bcf9` y prepara `v0.1.0.7-nightly.7`. El gate remoto, merge a
   `nightly`, tag y release deben registrarse aquí solo cuando existan realmente;
   `testers` y `master` quedan fuera del corte.
-- Gates locales combinados de ISA-330: Go completo PASS; frontend 366 archivos/
-  2630 tests PASS; build PASS; diseño 3/3; visual Studio PASS con widgets,
+- Gates locales combinados finales de ISA-330 sobre `cc54d36`: Go completo PASS;
+  frontend 367 archivos/2636 tests PASS; build PASS; diseño 3/3; visual Studio PASS con widgets,
   paridad, interacción y los tres viewports responsive a 0.000 %. Los tres
   baselines de Studio se actualizaron después de inspeccionar que el cambio era
   el `contain` aprobado y no una pérdida de paneles o controles. Lint global
-  sigue rojo, pero pasa de 47 errores/2 warnings en el `nightly` de base a 44/2
-  en la integración; no añade deuda. Falta todavía push, PR, CI, merge y release.
+  sigue rojo por deuda previa, pero pasa de 47 errores/2 warnings en
+  `cc54d36` a 44/2 en la integración; no añade deuda. El PR #208 está abierto;
+  faltan CI verde, merge y release.

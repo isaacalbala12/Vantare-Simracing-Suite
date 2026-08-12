@@ -7,7 +7,8 @@
     "Quince escenas permiten reproducir, pausar y enlazar momentos concretos de las animaciones de Standings, Relative, Delta y Pedals.",
     "El Workshop interpola datos continuos, mantiene discretos los eventos que deben disparar motores y respeta la frecuencia de actualización del runtime.",
     "Relative anima cruces y entradas, Delta señala el cruce del cero y la nueva referencia, y Pedals conserva el pico de presión de frenada.",
-    "El clipping del Workshop coincide con Desktop y OBS para no mostrar contenido que el runtime recortaría."
+    "El clipping del Workshop coincide con Desktop y OBS para no mostrar contenido que el runtime recortaría.",
+    "Standings conserva la identidad de sus filas al romperse una batalla y anima la salida de la celda de presión en vez de hacerla desaparecer."
   ],
   "testing": [
     "Abrir el Workshop y reproducir una escena de cada widget; confirmar que solo se mueve al pulsar reproducir.",
@@ -15,7 +16,6 @@
     "Comparar entrada, cruce y frenada con el widget recortado dentro de sus límites."
   ],
   "knownLimitations": [
-    "La salida de algunas filas sigue siendo brusca porque su nodo se desmonta; este corte no presenta esa salida como corregida.",
     "Dorsal, compuesto y bandera global siguen limitados por campos que la proyección productiva no entrega."
   ]
 }

@@ -5272,8 +5272,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
 - **Decisión de promoción:** Isaac acepta que la prueba física multimonitor/DPI
   mixto quede como riesgo de Nightly y declara OBS indiferente para este corte.
-  La integración parte del `origin/nightly@5069cbb`, fusiona ISA-326 con
-  `--no-ff` y solo podrá publicar tras gates y CI verdes.
+  La integración partió de `origin/nightly@5069cbb`, fusionó ISA-326 con
+  `--no-ff` y se resincronizó con `origin/nightly@cc54d36` cuando entró el PR
+  #207; solo podrá publicar tras repetir los gates y cerrar CI verde.
 - **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
   transformación, medida CSS no transformada, clipping documental, legacy,
   offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
@@ -5309,15 +5310,16 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   de bloquear esta Nightly, debe aparecer en sus notas y no se mezcló el fix de
   seguridad/servidor dentro de ISA-326.
 - **Integración ISA-330 antes del PR:** merge `--no-ff` limpio en `d0789e5`
-  sobre `origin/nightly@5069cbb`. Resultado combinado: `go test ./...` PASS;
-  frontend 366 archivos/2630 tests PASS; build PASS; `design-system:check` 3/3;
+  sobre `origin/nightly@5069cbb`, seguido de sincronización limpia del PR #207
+  (`origin/nightly@cc54d36`) en `e45bcf9`. Resultado combinado final: `go test ./...` PASS;
+  frontend 367 archivos/2636 tests PASS; build PASS; `design-system:check` 3/3;
   visual Studio PASS con 59 baselines, tres capturas responsive y controles de
   paridad/interacción a 0.000 %. Se actualizaron únicamente los baselines
   `studio-wide`, `studio-medium` y `studio-small` tras inspección visual: ahora
   documentan `contain` 16:9 en lugar del antiguo estiramiento vertical.
-- **Lint de integración:** permanece informativo y rojo por deuda previa, pero
-  mejora el baseline exacto: `origin/nightly@5069cbb` tiene 47 errores/2 warnings
-  y la integración 44/2. No se introducen violaciones nuevas. Un primer Go sin
+- **Lint de integración:** permanece informativo y rojo por deuda previa. La
+  comparación final exacta confirma que `origin/nightly@cc54d36` tiene 47
+  errores/2 warnings y la integración 44/2; no añade violaciones. Un primer Go sin
   `frontend/dist` no fue un gate válido; tras build pasó completo. El único
   fallo intermitente observado (`OpsBridgeStartTwice...`) pasó 20/20 aislado y
   la repetición completa.

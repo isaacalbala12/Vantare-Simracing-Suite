@@ -2809,14 +2809,43 @@ func (h *wailsWindowHandle) ensureTransparent() {
 // wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
 type overlayScreenResolver func(int) *application.Screen
 
-func (resolve overlayScreenResolver) GetByIndex(index int) *application.Screen {
-	return resolve(index)
+type overlayWindowLifecycle struct {
+	mu     sync.Mutex
+	next   uint64
+	active uint64
+}
+
+func (l *overlayWindowLifecycle) activate() uint64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.next++
+	l.active = l.next
+	return l.active
+}
+
+func (l *overlayWindowLifecycle) invalidate(generation uint64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.active == generation {
+		l.active = 0
+	}
+}
+
+func (l *overlayWindowLifecycle) claimExternalClose(generation uint64) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.active != generation {
+		return false
+	}
+	l.active = 0
+	return true
 }
 
 type wailsOverlayFactory struct {
 	app         *application.App
 	screens     overlayScreenResolver
 	stopOverlay func()
+	lifecycle   overlayWindowLifecycle
 }
 
 func newWailsOverlayFactory(wailsApp *application.App, stopOverlay func()) *wailsOverlayFactory {
@@ -2832,12 +2861,15 @@ func newWailsOverlayFactory(wailsApp *application.App, stopOverlay func()) *wail
 }
 
 type wailsOverlayWindow struct {
-	w      *application.WebviewWindow
-	handle *wailsWindowHandle
-	mgr    *window.Manager
+	w          *application.WebviewWindow
+	handle     *wailsWindowHandle
+	mgr        *window.Manager
+	lifecycle  *overlayWindowLifecycle
+	generation uint64
 }
 
 func (o *wailsOverlayWindow) Close() {
+	o.lifecycle.invalidate(o.generation)
 	o.w.Close()
 }
 
@@ -2856,15 +2888,22 @@ func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens ove
 	if screens == nil {
 		return application.WebviewWindowOptions{}, fmt.Errorf("overlay screen resolver is unavailable")
 	}
-	screen := screens.GetByIndex(document.MonitorIndex)
+	screen := screens(document.MonitorIndex)
 	if screen == nil {
 		return application.WebviewWindowOptions{}, fmt.Errorf("overlay monitor index %d is unavailable", document.MonitorIndex)
 	}
-	viewport := config.ResolveLayoutViewportV3(document)
+	if screen.Bounds.Width <= 0 || screen.Bounds.Height <= 0 {
+		return application.WebviewWindowOptions{}, fmt.Errorf(
+			"overlay monitor index %d has invalid bounds %dx%d",
+			document.MonitorIndex,
+			screen.Bounds.Width,
+			screen.Bounds.Height,
+		)
+	}
 	return application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
-		Width:             viewport.Width,
-		Height:            viewport.Height,
+		Width:             screen.Bounds.Width,
+		Height:            screen.Bounds.Height,
 		Frameless:         true,
 		BackgroundType:    application.BackgroundTypeTransparent,
 		BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
@@ -2887,10 +2926,14 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 		return nil, fmt.Errorf("create overlay window: Wails window manager is unavailable")
 	}
 	w := f.app.Window.NewWithOptions(options)
+	generation := f.lifecycle.activate()
 
 	// When the user (or Stop) closes the overlay window, we must stop treating
 	// it as the current window so StartOverlay can create a fresh one next time.
 	w.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+		if !f.lifecycle.claimExternalClose(generation) {
+			return
+		}
 		go func() {
 			if stop := f.stopOverlay; stop != nil {
 				stop()
@@ -2903,7 +2946,13 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	// Apply the profile document display mode instead of hard-coding passthrough.
 	// ModeRacing starts click-through; ModeEdit starts interactive.
 	mgr.ApplyProfileV3(document, false)
-	return &wailsOverlayWindow{w: w, handle: handle, mgr: mgr}, nil
+	return &wailsOverlayWindow{
+		w:          w,
+		handle:     handle,
+		mgr:        mgr,
+		lifecycle:  &f.lifecycle,
+		generation: generation,
+	}, nil
 }
 
 // readProfileTarget extracts id/file from a Wails custom event payload.

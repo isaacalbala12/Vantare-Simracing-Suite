@@ -284,17 +284,19 @@ func (f *fakeOverlayScreenResolver) GetByIndex(index int) *application.Screen {
 	return f.screens[index]
 }
 
-func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testing.T) {
-	first := &application.Screen{ID: "first"}
-	second := &application.Screen{ID: "second"}
+func TestOverlayWindowOptionsUseExactSelectedScreenBounds(t *testing.T) {
+	first := &application.Screen{ID: "first", Bounds: application.Rect{Width: 1920, Height: 1080}}
+	second := &application.Screen{ID: "second", Bounds: application.Rect{Width: 2560, Height: 1440}}
 
 	tests := []struct {
 		name         string
 		monitorIndex int
 		want         *application.Screen
+		wantWidth    int
+		wantHeight   int
 	}{
-		{name: "first screen", monitorIndex: 0, want: first},
-		{name: "second screen", monitorIndex: 1, want: second},
+		{name: "first screen", monitorIndex: 0, want: first, wantWidth: 1920, wantHeight: 1080},
+		{name: "second screen", monitorIndex: 1, want: second, wantWidth: 2560, wantHeight: 1440},
 	}
 
 	for _, tt := range tests {
@@ -302,7 +304,7 @@ func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testin
 			resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{0: first, 1: second}}
 			document := &config.ProfileDocumentV3{
 				MonitorIndex:   tt.monitorIndex,
-				LayoutViewport: &config.LayoutViewportV3{Width: 3440, Height: 1440},
+				LayoutViewport: &config.LayoutViewportV3{Width: 5120, Height: 1440},
 			}
 
 			options, err := resolveOverlayWindowOptions(document, resolver.GetByIndex)
@@ -312,8 +314,8 @@ func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testin
 			if options.Screen != tt.want {
 				t.Fatalf("screen=%p want exact pointer %p", options.Screen, tt.want)
 			}
-			if options.Width != 3440 || options.Height != 1440 {
-				t.Fatalf("initial size=%dx%d want 3440x1440", options.Width, options.Height)
+			if options.Width != tt.wantWidth || options.Height != tt.wantHeight {
+				t.Fatalf("initial size=%dx%d want selected screen bounds %dx%d", options.Width, options.Height, tt.wantWidth, tt.wantHeight)
 			}
 			if len(resolver.calls) != 1 || resolver.calls[0] != tt.monitorIndex {
 				t.Fatalf("GetByIndex calls=%v want [%d]", resolver.calls, tt.monitorIndex)
@@ -323,18 +325,36 @@ func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testin
 }
 
 func TestOverlayWindowOptionsUseLegacyViewportDefault(t *testing.T) {
-	screen := &application.Screen{ID: "legacy"}
+	screen := &application.Screen{ID: "legacy", Bounds: application.Rect{Width: 1366, Height: 768}}
 	resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{0: screen}}
 
 	options, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver.GetByIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if options.Width != 1920 || options.Height != 1080 {
-		t.Fatalf("legacy initial size=%dx%d want 1920x1080", options.Width, options.Height)
+	if options.Width != 1366 || options.Height != 768 {
+		t.Fatalf("legacy initial size=%dx%d want selected screen bounds 1366x768", options.Width, options.Height)
 	}
 	if options.Screen != screen {
 		t.Fatalf("screen=%p want exact pointer %p", options.Screen, screen)
+	}
+}
+
+func TestOverlayWindowOptionsRejectInvalidSelectedScreenBounds(t *testing.T) {
+	for _, bounds := range []application.Rect{
+		{Width: 0, Height: 1080},
+		{Width: 1920, Height: 0},
+		{Width: -1, Height: 1080},
+		{Width: 1920, Height: -1},
+	} {
+		resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{
+			0: {ID: "invalid", Bounds: bounds},
+		}}
+
+		_, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver.GetByIndex)
+		if err == nil || !strings.Contains(err.Error(), "bounds") {
+			t.Fatalf("bounds=%+v error=%v want invalid bounds context", bounds, err)
+		}
 	}
 }
 
@@ -372,6 +392,46 @@ func TestOverlayWindowOptionsRejectTypedNilResolverWithoutPanic(t *testing.T) {
 	}
 }
 
+func TestOverlayWindowLifecycleNormalCloseDoesNotDispatchStopCallback(t *testing.T) {
+	lifecycle := &overlayWindowLifecycle{}
+	generation := lifecycle.activate()
+	callbacks := 0
+
+	lifecycle.invalidate(generation)
+	if lifecycle.claimExternalClose(generation) {
+		callbacks++
+	}
+	if lifecycle.claimExternalClose(generation) {
+		callbacks++
+	}
+
+	if callbacks != 0 {
+		t.Fatalf("normal close dispatched %d stop callbacks, want 0", callbacks)
+	}
+}
+
+func TestOverlayWindowLifecycleIgnoresOldDelayedCloseAndClaimsCurrentExternalCloseOnce(t *testing.T) {
+	lifecycle := &overlayWindowLifecycle{}
+	first := lifecycle.activate()
+	lifecycle.invalidate(first)
+	second := lifecycle.activate()
+	callbacks := 0
+
+	if lifecycle.claimExternalClose(first) {
+		callbacks++
+	}
+	if lifecycle.claimExternalClose(second) {
+		callbacks++
+	}
+	if lifecycle.claimExternalClose(second) {
+		callbacks++
+	}
+
+	if callbacks != 1 {
+		t.Fatalf("close callbacks=%d want exactly 1 for current external close", callbacks)
+	}
+}
+
 func TestNewWailsOverlayFactoryWiresApplicationScreenManager(t *testing.T) {
 	screens := &application.ScreenManager{}
 	selected := &application.Screen{
@@ -397,7 +457,7 @@ func TestNewWailsOverlayFactoryWiresApplicationScreenManager(t *testing.T) {
 	if factory.screens == nil {
 		t.Fatal("factory did not wire wailsApp.Screen.GetByIndex as the production resolver")
 	}
-	if got := factory.screens.GetByIndex(0); got != selected {
+	if got := factory.screens(0); got != selected {
 		t.Fatalf("factory resolver result=%p want selected screen %p", got, selected)
 	}
 }

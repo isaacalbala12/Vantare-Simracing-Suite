@@ -305,7 +305,7 @@ func TestOverlayWindowOptionsUseExactSelectedScreenAndDocumentViewport(t *testin
 				LayoutViewport: &config.LayoutViewportV3{Width: 3440, Height: 1440},
 			}
 
-			options, err := resolveOverlayWindowOptions(document, resolver)
+			options, err := resolveOverlayWindowOptions(document, resolver.GetByIndex)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -326,7 +326,7 @@ func TestOverlayWindowOptionsUseLegacyViewportDefault(t *testing.T) {
 	screen := &application.Screen{ID: "legacy"}
 	resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{0: screen}}
 
-	options, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver)
+	options, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver.GetByIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,6 +340,7 @@ func TestOverlayWindowOptionsUseLegacyViewportDefault(t *testing.T) {
 
 func TestOverlayWindowOptionsRejectInvalidInputsBeforeWindowCreation(t *testing.T) {
 	resolver := &fakeOverlayScreenResolver{screens: map[int]*application.Screen{}}
+	resolveScreen := overlayScreenResolver(resolver.GetByIndex)
 
 	tests := []struct {
 		name     string
@@ -347,9 +348,9 @@ func TestOverlayWindowOptionsRejectInvalidInputsBeforeWindowCreation(t *testing.
 		screens  overlayScreenResolver
 		contains string
 	}{
-		{name: "nil document", screens: resolver, contains: "document"},
+		{name: "nil document", screens: resolveScreen, contains: "document"},
 		{name: "missing resolver", document: &config.ProfileDocumentV3{}, contains: "screen resolver"},
-		{name: "unknown monitor", document: &config.ProfileDocumentV3{MonitorIndex: 7}, screens: resolver, contains: "monitor index 7"},
+		{name: "unknown monitor", document: &config.ProfileDocumentV3{MonitorIndex: 7}, screens: resolveScreen, contains: "monitor index 7"},
 	}
 
 	for _, tt := range tests {
@@ -362,16 +363,42 @@ func TestOverlayWindowOptionsRejectInvalidInputsBeforeWindowCreation(t *testing.
 	}
 }
 
+func TestOverlayWindowOptionsRejectTypedNilResolverWithoutPanic(t *testing.T) {
+	var resolver overlayScreenResolver
+
+	_, err := resolveOverlayWindowOptions(&config.ProfileDocumentV3{MonitorIndex: 0}, resolver)
+	if err == nil || !strings.Contains(err.Error(), "screen resolver") {
+		t.Fatalf("error=%v want missing screen resolver context", err)
+	}
+}
+
 func TestNewWailsOverlayFactoryWiresApplicationScreenManager(t *testing.T) {
 	screens := &application.ScreenManager{}
+	selected := &application.Screen{
+		ID:          "selected",
+		IsPrimary:   true,
+		ScaleFactor: 1,
+		PhysicalBounds: application.Rect{
+			Width: 1920, Height: 1080,
+		},
+		PhysicalWorkArea: application.Rect{
+			Width: 1920, Height: 1040,
+		},
+	}
+	if err := screens.LayoutScreens([]*application.Screen{selected}); err != nil {
+		t.Fatal(err)
+	}
 	wailsApp := &application.App{Screen: screens}
 
 	factory := newWailsOverlayFactory(wailsApp, nil)
 	if factory.app != wailsApp {
 		t.Fatal("factory did not retain Wails application")
 	}
-	if factory.screens != screens {
-		t.Fatal("factory did not wire wailsApp.Screen as the production resolver")
+	if factory.screens == nil {
+		t.Fatal("factory did not wire wailsApp.Screen.GetByIndex as the production resolver")
+	}
+	if got := factory.screens.GetByIndex(0); got != selected {
+		t.Fatalf("factory resolver result=%p want selected screen %p", got, selected)
 	}
 }
 

@@ -2807,8 +2807,10 @@ func (h *wailsWindowHandle) ensureTransparent() {
 }
 
 // wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
-type overlayScreenResolver interface {
-	GetByIndex(int) *application.Screen
+type overlayScreenResolver func(int) *application.Screen
+
+func (resolve overlayScreenResolver) GetByIndex(index int) *application.Screen {
+	return resolve(index)
 }
 
 type wailsOverlayFactory struct {
@@ -2820,7 +2822,7 @@ type wailsOverlayFactory struct {
 func newWailsOverlayFactory(wailsApp *application.App, stopOverlay func()) *wailsOverlayFactory {
 	var screens overlayScreenResolver
 	if wailsApp != nil && wailsApp.Screen != nil {
-		screens = wailsApp.Screen
+		screens = wailsApp.Screen.GetByIndex
 	}
 	return &wailsOverlayFactory{
 		app:         wailsApp,

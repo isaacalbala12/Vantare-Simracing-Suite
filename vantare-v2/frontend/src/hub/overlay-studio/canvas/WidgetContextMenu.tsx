@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import type { StudioCommand } from "../state/studio-command";
 import {
   executeWidgetAction,
@@ -30,6 +31,7 @@ export type WidgetContextMenuProps = {
   session: SessionLayoutType;
   widgets: readonly WidgetInstanceV3[];
   savedDocument: ProfileDocumentV3;
+  layoutViewport: LayoutViewport;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
   confirmDelete(message: string): boolean;
@@ -76,6 +78,7 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
       widgetIds,
       widgets: props.widgets,
       savedDocument: props.savedDocument,
+      layoutViewport: props.layoutViewport,
       dispatch: props.dispatch,
       selectWidget: props.selectWidget,
       confirmDelete: props.confirmDelete,

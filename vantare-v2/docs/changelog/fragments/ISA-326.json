@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-326",
+  "type": "feature",
+  "summary": "Overlay Studio y el overlay Desktop dejan de estar atados a 1920×1080 y se adaptan a la superficie real del monitor.",
+  "technicalNotes": [
+    "Cada perfil puede guardar una superficie arbitraria y los perfiles anteriores siguen abriendo como 1920×1080 sin mover sus widgets.",
+    "Studio usa todo el espacio disponible, muestra los límites reales del lienzo y permite presets o medidas personalizadas.",
+    "La selección de monitor actualiza monitor y superficie en una sola operación con undo/redo; Desktop abre en la pantalla seleccionada y escala el layout sin estirar ni recortar.",
+    "La geometría de drag, resize, snap, centrado y área segura utiliza la superficie documental en lugar de constantes 1080p."
+  ],
+  "testing": [
+    "En Overlay Studio, elegir otra pantalla o una medida personalizada y comprobar que el lienzo conserva su proporción y sus límites.",
+    "Probar 1920×1080, 3440×1440 y una resolución personalizada; mover y redimensionar widgets cerca de los cuatro bordes.",
+    "Guardar, cerrar y volver a abrir el perfil; comprobar que monitor, superficie y posiciones se conservan.",
+    "Abrir el overlay Desktop y confirmar que ocupa la pantalla elegida, mantiene proporciones y deja bandas transparentes cuando el ratio difiere."
+  ],
+  "knownLimitations": [
+    "La enumeración de monitores se actualiza al abrir Studio; después de conectar o retirar una pantalla hay que reabrir la vista.",
+    "Esta Nightly no certifica la salida OBS: ISA-329 permanece abierta porque la CSP local bloquea los assets de /overlay.",
+    "La validación física con dos monitores y DPI mixto sigue pendiente de un equipo con ese hardware."
+  ]
+}

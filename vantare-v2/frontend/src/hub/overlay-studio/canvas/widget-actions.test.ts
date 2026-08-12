@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import {
@@ -8,7 +9,6 @@ import {
   mapHotkeyToWidgetAction,
   widgetActionRequiresConfirmation,
 } from "./widget-actions";
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 
 function buildDocument(widgets: WidgetInstanceV3[]): ProfileDocumentV3 {
   return {
@@ -71,21 +71,27 @@ describe("buildWidgetAction", () => {
     });
   });
 
-  it("centers without changing size", () => {
+  it.each([
+    { width: 1280, height: 720 },
+    { width: 3440, height: 1440 },
+    { width: 5120, height: 1440 },
+    { width: 1000, height: 1000 },
+  ] satisfies LayoutViewport[])("centers without changing size in a $width x $height viewport", (layoutViewport) => {
     const built = buildWidgetAction({
       actionId: "center",
       session: "general",
       widgetIds: ["delta-main"],
       widgets: [widget],
       savedDocument: saved,
+      layoutViewport,
     });
     expect(built.command).toEqual({
       type: "widget/layout",
       session: "general",
       widgetIds: ["delta-main"],
       patch: {
-        x: Math.round((CANVAS_WIDTH - widget.layout.w) / 2),
-        y: Math.round((CANVAS_HEIGHT - widget.layout.h) / 2),
+        x: Math.round((layoutViewport.width - widget.layout.w) / 2),
+        y: Math.round((layoutViewport.height - widget.layout.h) / 2),
       },
     });
   });

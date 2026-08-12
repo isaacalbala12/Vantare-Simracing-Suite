@@ -47,6 +47,39 @@ describe("createStudioHistory", () => {
 });
 
 describe("commitStudioCommand", () => {
+  it("tracks an explicit layout viewport through dirty, undo and redo", () => {
+    const history = createStudioHistory(buildDocument());
+    const edited = commitStudioCommand(history, {
+      type: "document/layout-viewport",
+      viewport: { width: 3440, height: 1440 },
+    });
+
+    expect(edited.present.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(edited.past).toHaveLength(1);
+    expect(isStudioHistoryDirty(edited)).toBe(true);
+
+    const undone = undoStudioHistory(edited);
+    expect(undone.present.layoutViewport).toBeUndefined();
+    expect(isStudioHistoryDirty(undone)).toBe(false);
+
+    const redone = redoStudioHistory(undone);
+    expect(redone.present.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(isStudioHistoryDirty(redone)).toBe(true);
+  });
+
+  it("leaves history untouched when a layout viewport command is invalid", () => {
+    const history = createStudioHistory(buildDocument());
+    const before = structuredClone(history);
+
+    expect(() =>
+      commitStudioCommand(history, {
+        type: "document/layout-viewport",
+        viewport: { width: 32, height: 32 },
+      }),
+    ).toThrow("recoverable");
+    expect(history).toEqual(before);
+  });
+
   it("records one history entry per committed command", () => {
     const history = createStudioHistory(buildDocument());
     const next = commitStudioCommand(history, {

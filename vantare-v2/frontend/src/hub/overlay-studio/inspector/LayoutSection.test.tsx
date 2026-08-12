@@ -35,6 +35,7 @@ describe("LayoutSection", () => {
         session="general"
         widgets={[widget]}
         savedDocument={savedDocument}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={vi.fn()}
         selectWidget={vi.fn()}
       />,
@@ -60,6 +61,7 @@ describe("LayoutSection", () => {
         session="general"
         widgets={[widget]}
         savedDocument={savedDocument}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={vi.fn()}
         selectWidget={vi.fn()}
       />,
@@ -81,14 +83,22 @@ describe("LayoutSection", () => {
         session="general"
         widgets={[widget]}
         savedDocument={savedDocument}
+        layoutViewport={{ width: 1000, height: 1000 }}
         dispatch={dispatch}
         selectWidget={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getByTestId("studio-layout-center"));
-    expect(dispatch).toHaveBeenCalled();
-    expect(dispatch.mock.calls[0]?.[0]?.type).toBe("widget/layout");
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "widget/layout",
+      session: "general",
+      widgetIds: ["delta-main"],
+      patch: {
+        x: Math.round((1000 - widget.layout.w) / 2),
+        y: Math.round((1000 - widget.layout.h) / 2),
+      },
+    });
 
     fireEvent.click(screen.getByTestId("studio-layout-front"));
     expect(dispatch.mock.calls.at(-1)?.[0]?.type).toBe("widget/order");

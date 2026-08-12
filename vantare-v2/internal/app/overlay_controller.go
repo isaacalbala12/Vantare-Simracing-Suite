@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -93,6 +94,27 @@ func (c *OverlayController) Stop() OverlayStatus {
 	}
 	c.status.Running = false
 	return c.status
+}
+
+// HandleWindowClosed forgets a window that the native runtime has already
+// closed. A delayed event from an older window cannot clear a newer current
+// window because identity is checked under the controller mutex. onMatched is
+// serialized with Start and Stop; it must not call back into OverlayController.
+func (c *OverlayController) HandleWindowClosed(closed OverlayWindow, onMatched func()) (OverlayStatus, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	currentType := reflect.TypeOf(c.current)
+	closedType := reflect.TypeOf(closed)
+	if currentType == nil || currentType != closedType || !currentType.Comparable() || c.current != closed {
+		return c.status, false
+	}
+	c.current = nil
+	c.status.Running = false
+	if onMatched != nil {
+		onMatched()
+	}
+	return c.status, true
 }
 
 // CurrentWindow returns the active overlay window, or nil if none is running.

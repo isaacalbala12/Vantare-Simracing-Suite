@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import {
   CANVAS_HEIGHT,
@@ -10,6 +11,23 @@ import {
 } from "./canvas-geometry";
 
 describe("resolveCanvasScale", () => {
+  it.each([
+    [{ width: 1280, height: 720 }, 640, 360, 0.5],
+    [{ width: 3440, height: 1440 }, 1720, 720, 0.5],
+    [{ width: 5120, height: 1440 }, 2560, 720, 0.5],
+    [{ width: 1000, height: 1000 }, 800, 600, 0.6],
+  ] satisfies [LayoutViewport, number, number, number][])(
+    "fits a $width x $height document surface",
+    (layoutViewport, containerWidth, containerHeight, expected) => {
+      expect(resolveCanvasScale({
+        containerWidth,
+        containerHeight,
+        zoom: "fit",
+        layoutViewport,
+      })).toBeCloseTo(expected, 5);
+    },
+  );
+
   it("fits the canvas inside the container without upscaling above 100%", () => {
     expect(resolveCanvasScale({ containerWidth: 1920, containerHeight: 1080, zoom: "fit" })).toBe(1);
     expect(resolveCanvasScale({ containerWidth: 960, containerHeight: 540, zoom: "fit" })).toBe(0.5);
@@ -29,7 +47,12 @@ describe("resolveCanvasScale", () => {
   });
 
   it("uses explicit zoom percentages", () => {
-    expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 50 })).toBe(0.5);
+    expect(resolveCanvasScale({
+      containerWidth: 1200,
+      containerHeight: 800,
+      zoom: 50,
+      layoutViewport: { width: 5120, height: 1440 },
+    })).toBe(0.5);
     expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 75 })).toBe(0.75);
     expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 100 })).toBe(1);
     expect(resolveCanvasScale({ containerWidth: 1200, containerHeight: 800, zoom: 125 })).toBe(1.25);
@@ -80,7 +103,10 @@ describe("clampRecoverableLayout", () => {
   }
 
   it("keeps at least 32 recoverable pixels visible after an extreme move", () => {
-    const clamped = clampRecoverableLayout(layout({ x: -500, y: 64 }));
+    const clamped = clampRecoverableLayout(layout({ x: -500, y: 64 }), {
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+    });
     expect(clamped.x + clamped.w).toBeGreaterThanOrEqual(32);
     expect(clamped.x).toBeLessThanOrEqual(CANVAS_WIDTH - 32);
     expect(clamped.y + clamped.h).toBeGreaterThanOrEqual(32);
@@ -88,7 +114,10 @@ describe("clampRecoverableLayout", () => {
   });
 
   it("allows negative positions when part of the widget remains recoverable", () => {
-    const clamped = clampRecoverableLayout(layout({ x: -120, y: -40 }));
+    const clamped = clampRecoverableLayout(layout({ x: -120, y: -40 }), {
+      width: 1280,
+      height: 720,
+    });
     expect(clamped.x).toBeLessThan(0);
     expect(clamped.y).toBeLessThan(0);
     expect(clamped.x + clamped.w).toBeGreaterThanOrEqual(32);
@@ -96,7 +125,10 @@ describe("clampRecoverableLayout", () => {
   });
 
   it("never returns NaN or Infinity", () => {
-    const clamped = clampRecoverableLayout(layout({ x: Number.NaN, y: Number.POSITIVE_INFINITY, w: 0, h: -4 }));
+    const clamped = clampRecoverableLayout(
+      layout({ x: Number.NaN, y: Number.POSITIVE_INFINITY, w: 0, h: -4 }),
+      { width: 1000, height: 1000 },
+    );
     expect(Number.isFinite(clamped.x)).toBe(true);
     expect(Number.isFinite(clamped.y)).toBe(true);
     expect(Number.isFinite(clamped.w)).toBe(true);
@@ -104,4 +136,17 @@ describe("clampRecoverableLayout", () => {
     expect(clamped.w).toBeGreaterThanOrEqual(1);
     expect(clamped.h).toBeGreaterThanOrEqual(1);
   });
+
+  it.each([
+    [{ width: 3440, height: 1440 }, 3408, 1408],
+    [{ width: 5120, height: 1440 }, 5088, 1408],
+    [{ width: 1000, height: 1000 }, 968, 968],
+  ] satisfies [LayoutViewport, number, number][])(
+    "uses the supplied $width x $height viewport as the recoverable boundary",
+    (viewport, expectedX, expectedY) => {
+      const clamped = clampRecoverableLayout(layout({ x: 9000, y: 9000 }), viewport);
+      expect(clamped.x).toBe(expectedX);
+      expect(clamped.y).toBe(expectedY);
+    },
+  );
 });

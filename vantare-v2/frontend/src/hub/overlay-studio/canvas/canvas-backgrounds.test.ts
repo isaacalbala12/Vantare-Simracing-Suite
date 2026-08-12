@@ -5,7 +5,6 @@ import {
   safeAreaInsets,
   SAFE_AREA_INSET_RATIO,
 } from "./canvas-backgrounds";
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 
 describe("CANVAS_BACKGROUNDS", () => {
   it("registers local css backgrounds without remote URLs", () => {
@@ -22,12 +21,16 @@ describe("CANVAS_BACKGROUNDS", () => {
 });
 
 describe("safeAreaInsets", () => {
-  it("uses a five percent inset on every side", () => {
-    const insets = safeAreaInsets(CANVAS_WIDTH, CANVAS_HEIGHT);
-    expect(insets.top).toBe(Math.round(CANVAS_HEIGHT * SAFE_AREA_INSET_RATIO));
-    expect(insets.right).toBe(Math.round(CANVAS_WIDTH * SAFE_AREA_INSET_RATIO));
-    expect(insets.bottom).toBe(Math.round(CANVAS_HEIGHT * SAFE_AREA_INSET_RATIO));
-    expect(insets.left).toBe(Math.round(CANVAS_WIDTH * SAFE_AREA_INSET_RATIO));
+  it.each([
+    [3440, 1440],
+    [5120, 1440],
+    [1000, 1000],
+  ])("uses a five percent inset on every side of a %d x %d viewport", (width, height) => {
+    const insets = safeAreaInsets(width, height);
+    expect(insets.top).toBe(Math.round(height * SAFE_AREA_INSET_RATIO));
+    expect(insets.right).toBe(Math.round(width * SAFE_AREA_INSET_RATIO));
+    expect(insets.bottom).toBe(Math.round(height * SAFE_AREA_INSET_RATIO));
+    expect(insets.left).toBe(Math.round(width * SAFE_AREA_INSET_RATIO));
   });
 });
 

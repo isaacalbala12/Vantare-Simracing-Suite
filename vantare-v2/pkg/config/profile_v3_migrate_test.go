@@ -94,6 +94,59 @@ func TestProfileV3MigrationCoreInvariant(t *testing.T) {
 	}
 }
 
+func TestProfileV3MigrationKeepsLegacyCoordinatesAndResolvesDefaultViewport(t *testing.T) {
+	data, err := os.ReadFile("testdata/profile-v2-core-widgets.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, _, err := MigrateProfileJSONToV3(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if doc.LayoutViewport != nil {
+		t.Fatalf("legacy migration should not materialize viewport, got %#v", doc.LayoutViewport)
+	}
+	if got := ResolveLayoutViewportV3(doc); got != (LayoutViewportV3{Width: 1920, Height: 1080}) {
+		t.Fatalf("resolved viewport=%#v want 1920x1080", got)
+	}
+	widget := indexCoreWidgets(doc.Layouts[LayoutGeneral].Widgets)["delta-main"]
+	if widget.Layout != (WidgetLayoutV3{X: 80, Y: 80, W: 360, H: 120, ZIndex: 0, AspectLocked: true}) {
+		t.Fatalf("legacy coordinates changed: %#v", widget.Layout)
+	}
+}
+
+func TestMigrateProfileJSONToV3RejectsInvalidJSONLayoutViewportNumbers(t *testing.T) {
+	for _, width := range []string{"1920.5", "1e309"} {
+		t.Run(width, func(t *testing.T) {
+			data := []byte(`{"schemaVersion":3,"id":"custom","name":"Custom","displayMode":"edit","monitorIndex":0,"layoutViewport":{"width":` + width + `,"height":1080},"layouts":{"general":{"type":"general","widgets":[]}}}`)
+			if _, _, err := MigrateProfileJSONToV3(data); err == nil {
+				t.Fatalf("expected layout viewport width %s to be rejected", width)
+			}
+		})
+	}
+}
+
+func TestMigrateProfileJSONToV3RejectsNullLayoutViewport(t *testing.T) {
+	data := []byte(`{"schemaVersion":3,"id":"custom","name":"Custom","displayMode":"edit","monitorIndex":0,"layoutViewport":null,"layouts":{"general":{"type":"general","widgets":[]}}}`)
+	_, _, err := MigrateProfileJSONToV3(data)
+	assertValidationPath(t, err, "layoutViewport")
+}
+
+func TestMigrateProfileJSONToV3PreservesArbitraryLayoutViewport(t *testing.T) {
+	data := []byte(`{"schemaVersion":3,"id":"custom","name":"Custom","displayMode":"edit","monitorIndex":0,"layoutViewport":{"width":5120,"height":1440},"layouts":{"general":{"type":"general","widgets":[]}}}`)
+	doc, from, err := MigrateProfileJSONToV3(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from != ProfileSchemaVersionV3 {
+		t.Fatalf("from=%d want %d", from, ProfileSchemaVersionV3)
+	}
+	if got := ResolveLayoutViewportV3(doc); got != (LayoutViewportV3{Width: 5120, Height: 1440}) {
+		t.Fatalf("resolved viewport=%#v want 5120x1440", got)
+	}
+}
+
 func TestProfileV3MigrationDeterministic(t *testing.T) {
 	data, err := os.ReadFile("testdata/profile-v2-core-widgets.json")
 	if err != nil {

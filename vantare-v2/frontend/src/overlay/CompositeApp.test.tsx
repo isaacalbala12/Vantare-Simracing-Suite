@@ -13,6 +13,33 @@ const runtimeMock = vi.hoisted(() => ({
   emit: vi.fn(),
 }));
 
+const originalResizeObserver = globalThis.ResizeObserver;
+let desktopOutput = { width: 1920, height: 1080 };
+
+function installResizeObserver(): void {
+  globalThis.ResizeObserver = class {
+    private readonly callback: ResizeObserverCallback;
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+    }
+
+    observe(target: Element): void {
+      this.callback(
+        [{
+          target,
+          contentBoxSize: [{ inlineSize: desktopOutput.width, blockSize: desktopOutput.height }],
+          contentRect: { width: desktopOutput.width, height: desktopOutput.height },
+        } as unknown as ResizeObserverEntry],
+        this as unknown as ResizeObserver,
+      );
+    }
+
+    disconnect(): void {}
+    unobserve(): void {}
+  } as unknown as typeof ResizeObserver;
+}
+
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: (name: string, handler: Handler) => {
@@ -91,12 +118,15 @@ describe("CompositeApp", () => {
     runtimeMock.onCalls = [];
     runtimeMock.emit.mockReset();
     vi.useFakeTimers();
+    desktopOutput = { width: 1920, height: 1080 };
+    installResizeObserver();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    globalThis.ResizeObserver = originalResizeObserver;
   });
 
   it("subscribes once to the profile and canonical Overlay transport", () => {
@@ -190,6 +220,27 @@ describe("CompositeApp", () => {
 
     const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
     expect(frame.style.left).toBe("120px");
+  });
+
+  it("renders an arbitrary desktop document against the real output with zero logical origin", () => {
+    desktopOutput = { width: 1600, height: 900 };
+    const document = buildRelativeDocument();
+    document.layoutViewport = { width: 1000, height: 1000 };
+    document.layouts.general.widgets[0].layout = {
+      ...document.layouts.general.widgets[0].layout,
+      x: 123,
+      y: 87,
+    };
+
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document));
+    tick(100);
+
+    const scene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
+    const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
+    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    expect(frame.style.left).toBe("123px");
+    expect(frame.style.top).toBe("87px");
   });
 
   it("does not mount edit chrome when overlay:edit-mode-changed fires", () => {

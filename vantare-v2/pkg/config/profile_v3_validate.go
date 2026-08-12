@@ -51,6 +51,10 @@ func ValidateProfileDocumentV3(p *ProfileDocumentV3) error {
 	if p.DefaultVisualSystemID != nil && !isSupportedDesignSystemID(*p.DefaultVisualSystemID) {
 		return validationError("defaultVisualSystemId", "unsupported design system")
 	}
+	if err := validateLayoutViewportV3(p.LayoutViewport); err != nil {
+		return err
+	}
+	viewport := ResolveLayoutViewportV3(p)
 	if p.Layouts == nil {
 		return validationError("layouts.general", "missing required general layout")
 	}
@@ -63,7 +67,7 @@ func ValidateProfileDocumentV3(p *ProfileDocumentV3) error {
 		if layout.Type != layoutKey {
 			return validationError(prefix+".type", "layout key and type mismatch")
 		}
-		if err := validateSessionLayoutV3(prefix, layout); err != nil {
+		if err := validateSessionLayoutV3(prefix, layout, viewport); err != nil {
 			return err
 		}
 	}
@@ -71,7 +75,28 @@ func ValidateProfileDocumentV3(p *ProfileDocumentV3) error {
 	return nil
 }
 
-func validateSessionLayoutV3(prefix string, layout SessionLayoutV3) error {
+func validateLayoutViewportV3(viewport *LayoutViewportV3) error {
+	if viewport == nil {
+		return nil
+	}
+	if viewport.Width < MinLayoutViewportDimension || viewport.Width > MaxLayoutViewportDimension {
+		return validationError("layoutViewport.width", layoutViewportDimensionMessage())
+	}
+	if viewport.Height < MinLayoutViewportDimension || viewport.Height > MaxLayoutViewportDimension {
+		return validationError("layoutViewport.height", layoutViewportDimensionMessage())
+	}
+	return nil
+}
+
+func layoutViewportDimensionMessage() string {
+	return fmt.Sprintf(
+		"must be an integer between %d and %d",
+		MinLayoutViewportDimension,
+		MaxLayoutViewportDimension,
+	)
+}
+
+func validateSessionLayoutV3(prefix string, layout SessionLayoutV3, viewport LayoutViewportV3) error {
 	total := len(layout.Widgets) + len(layout.PreservedWidgets)
 	if total > maxWidgetsPerLayout {
 		return validationError(prefix+".widgets", "exceeds maximum widget count")
@@ -84,7 +109,7 @@ func validateSessionLayoutV3(prefix string, layout SessionLayoutV3) error {
 			return validationError(prefix+".widgets", "duplicate widget id")
 		}
 		seen[widget.ID] = true
-		if err := validateWidgetInstanceV3(path, widget); err != nil {
+		if err := validateWidgetInstanceV3(path, widget, viewport); err != nil {
 			return err
 		}
 	}
@@ -110,7 +135,7 @@ func validateSessionLayoutV3(prefix string, layout SessionLayoutV3) error {
 	return nil
 }
 
-func validateWidgetInstanceV3(path string, widget WidgetInstanceV3) error {
+func validateWidgetInstanceV3(path string, widget WidgetInstanceV3, viewport LayoutViewportV3) error {
 	if widget.ID == "" {
 		return validationError(path+".id", "must not be empty")
 	}
@@ -123,7 +148,7 @@ func validateWidgetInstanceV3(path string, widget WidgetInstanceV3) error {
 	if !isSupportedWidgetTypeV3(widget.Type) {
 		return validationError(path+".type", "unsupported widget type")
 	}
-	if err := validateWidgetLayoutV3(path+".layout", widget.Layout); err != nil {
+	if err := validateWidgetLayoutV3(path+".layout", widget.Layout, viewport); err != nil {
 		return err
 	}
 	if err := validateWidgetBehaviorV3(path+".behavior", widget.Behavior); err != nil {
@@ -153,16 +178,16 @@ func isSupportedWidgetTypeV3(widgetType WidgetTypeV3) bool {
 	}
 }
 
-func validateWidgetLayoutV3(path string, layout WidgetLayoutV3) error {
+func validateWidgetLayoutV3(path string, layout WidgetLayoutV3, viewport LayoutViewportV3) error {
 	if layout.W < 1 {
 		return validationError(path+".w", "must be at least 1")
 	}
 	if layout.H < 1 {
 		return validationError(path+".h", "must be at least 1")
 	}
-	recoverable := layout.X <= StudioCanvasWidth-StudioMinimumVisible &&
+	recoverable := layout.X <= viewport.Width-StudioMinimumVisible &&
 		layout.X+layout.W >= StudioMinimumVisible &&
-		layout.Y <= StudioCanvasHeight-StudioMinimumVisible &&
+		layout.Y <= viewport.Height-StudioMinimumVisible &&
 		layout.Y+layout.H >= StudioMinimumVisible
 	if !recoverable {
 		return validationError(path, "must keep at least 32x32 recoverable pixels on canvas")
@@ -255,6 +280,10 @@ func NormalizeProfileDocumentV3(p *ProfileDocumentV3) *ProfileDocumentV3 {
 		return nil
 	}
 	next := *p
+	if p.LayoutViewport != nil {
+		viewport := *p.LayoutViewport
+		next.LayoutViewport = &viewport
+	}
 	if p.DefaultVisualSystemID != nil {
 		defaultSystem := *p.DefaultVisualSystemID
 		next.DefaultVisualSystemID = &defaultSystem

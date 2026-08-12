@@ -11,6 +11,10 @@ import type {
   WidgetInstanceV3,
   WidgetLayoutV3,
 } from "../../../overlay/core/profile-document";
+import {
+  DEFAULT_LAYOUT_VIEWPORT,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { StudioCommand } from "../state/studio-command";
 import {
@@ -62,6 +66,7 @@ export type UseCanvasInteractionInput = {
   widgets: readonly WidgetInstanceV3[];
   session: SessionLayoutType;
   scale: number;
+  layoutViewport?: LayoutViewport;
   sceneRef: RefObject<HTMLElement | null>;
   selectedWidgetId: string | null;
   dispatch(command: StudioCommand): void;
@@ -169,20 +174,31 @@ export function applyMovePreview(input: {
   pointerCurrent: Point;
   siblings: readonly WidgetLayoutV3[];
   disableSnap: boolean;
+  layoutViewport: LayoutViewport;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const dx = input.pointerCurrent.x - input.pointerOrigin.x;
   const dy = input.pointerCurrent.y - input.pointerOrigin.y;
-  const draft = clampRecoverableLayout({
-    ...input.start,
-    x: input.start.x + dx,
-    y: input.start.y + dy,
-  });
+  const draft = clampRecoverableLayout(
+    {
+      ...input.start,
+      x: input.start.x + dx,
+      y: input.start.y + dy,
+    },
+    input.layoutViewport,
+  );
   const snapped = snapWidgetLayout({
     layout: draft,
     siblings: input.siblings,
     disableSnap: input.disableSnap,
+    layoutViewport: input.layoutViewport,
   });
-  return { layout: snapped.layout, guides: snapped.guides };
+  const layout = clampRecoverableLayout(snapped.layout, input.layoutViewport);
+  const guides = snapped.guides.filter((guide) => (
+    guide.orientation === "vertical"
+      ? layout.x === snapped.layout.x
+      : layout.y === snapped.layout.y
+  ));
+  return { layout, guides };
 }
 
 export function applyResizePreview(input: {
@@ -193,6 +209,7 @@ export function applyResizePreview(input: {
   pointerCurrent: Point;
   siblings: readonly WidgetLayoutV3[];
   disableSnap: boolean;
+  layoutViewport: LayoutViewport;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const definition = widgetTypeRegistry.get(input.widget.type);
   const pointerDelta = {
@@ -209,7 +226,10 @@ export function applyResizePreview(input: {
 
   const resized = resize(pointerDelta);
   if (input.disableSnap) {
-    return { layout: clampRecoverableLayout(resized), guides: [] };
+    return {
+      layout: clampRecoverableLayout(resized, input.layoutViewport),
+      guides: [],
+    };
   }
 
   const movesWest = input.handle === "w" || input.handle === "nw" || input.handle === "sw";
@@ -226,6 +246,7 @@ export function applyResizePreview(input: {
     size: { w: 0, h: 0 },
     siblings: input.siblings,
     disableSnap: false,
+    layoutViewport: input.layoutViewport,
   });
 
   const snappedDelta = { ...pointerDelta };
@@ -242,21 +263,38 @@ export function applyResizePreview(input: {
     }
   }
 
+  const layout = clampRecoverableLayout(resize(snappedDelta), input.layoutViewport);
+  const canSnapYEdge = !locksAspect || (!movesWest && !movesEast);
   const guides = snappedEdge.guides.filter((guide) => {
     if (guide.orientation === "vertical") {
-      return movesWest || movesEast;
+      if (movesWest) {
+        return layout.x === guide.position;
+      }
+      if (movesEast) {
+        return layout.x + layout.w === guide.position;
+      }
+      return false;
     }
-    return (movesNorth || movesSouth) && (!locksAspect || (!movesWest && !movesEast));
+    if (canSnapYEdge && movesNorth) {
+      return layout.y === guide.position;
+    }
+    if (canSnapYEdge && movesSouth) {
+      return layout.y + layout.h === guide.position;
+    }
+    return false;
   });
 
-  return { layout: clampRecoverableLayout(resize(snappedDelta)), guides };
+  return { layout, guides };
 }
 
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {
   const [interaction, setInteraction] = useState<CanvasInteraction>({ kind: "idle" });
   const interactionRef = useRef<CanvasInteractionRef>({ kind: "idle" });
   const guidesFrameRef = useRef<number | null>(null);
-  const inputRef = useRef(input);
+  const inputRef = useRef({
+    ...input,
+    layoutViewport: input.layoutViewport ?? DEFAULT_LAYOUT_VIEWPORT,
+  });
 
   // useLayoutEffect y no useEffect: beginMove/beginResize leen inputRef en el
   // instante en que llega el pointerdown, y con un efecto pasivo ese ref podia
@@ -267,7 +305,10 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
   // El efecto de layout corre dentro del propio commit, antes de que nadie
   // pueda observar el DOM nuevo, asi que esa ventana deja de existir.
   useLayoutEffect(() => {
-    inputRef.current = input;
+    inputRef.current = {
+      ...input,
+      layoutViewport: input.layoutViewport ?? DEFAULT_LAYOUT_VIEWPORT,
+    };
   }, [input]);
 
   const flushGuidesFrame = useCallback(() => {
@@ -368,6 +409,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
         pointerCurrent,
         siblings,
         disableSnap,
+        layoutViewport: inputRef.current.layoutViewport,
       });
       interactionRef.current = {
         ...current,
@@ -387,6 +429,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       pointerCurrent,
       siblings,
       disableSnap,
+      layoutViewport: inputRef.current.layoutViewport,
     });
     interactionRef.current = {
       ...current,

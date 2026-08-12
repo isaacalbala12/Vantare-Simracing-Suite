@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-160",
+  "type": "change",
+  "summary": "Strategy documenta qué señales live existen realmente antes de utilizarlas en carrera.",
+  "technicalNotes": [
+    "La auditoría fija fuente, unidad, autoridad, frescura y estado para combustible, energía virtual, neumáticos, clima, pit y progreso.",
+    "Las señales sin evidencia LMU siguen marcadas como ausentes; este corte no inventa datos ni añade un segundo lector.",
+    "El contrato deja preparada una evolución aditiva sin romper los consumidores actuales."
+  ],
+  "testing": [
+    "Confirmar que Strategy no presenta energía virtual, desgaste de neumáticos o clima como datos live cuando la proyección no los entrega.",
+    "Verificar que las funciones actuales de sesión, progreso y pit continúan sin cambios visibles."
+  ],
+  "knownLimitations": [
+    "Este corte es una auditoría de readiness: no incluye productor live nuevo, solver ni interfaz adicional de Strategy."
+  ]
+}

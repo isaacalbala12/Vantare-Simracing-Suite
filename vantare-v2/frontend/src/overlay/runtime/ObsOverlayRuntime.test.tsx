@@ -6,7 +6,32 @@ import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinat
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { ObsOverlayRuntime } from "./ObsOverlayRuntime";
 
-afterEach(() => cleanup());
+const originalResizeObserver = globalThis.ResizeObserver;
+
+function installViewportResizeObserver(width: number, height: number): void {
+  globalThis.ResizeObserver = class {
+    private readonly callback: ResizeObserverCallback;
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+    }
+
+    observe(target: Element): void {
+      this.callback(
+        [{ target, contentRect: { width, height } } as unknown as ResizeObserverEntry],
+        this as unknown as ResizeObserver,
+      );
+    }
+
+    disconnect(): void {}
+    unobserve(): void {}
+  } as unknown as typeof ResizeObserver;
+}
+
+afterEach(() => {
+  cleanup();
+  globalThis.ResizeObserver = originalResizeObserver;
+});
 
 function buildDocument(): ProfileDocumentV3 {
   return {
@@ -15,6 +40,7 @@ function buildDocument(): ProfileDocumentV3 {
     name: "OBS Runtime",
     displayMode: "streaming",
     monitorIndex: 0,
+    layoutViewport: { width: 3440, height: 1440 },
     layouts: {
       general: {
         type: "general",
@@ -26,6 +52,7 @@ function buildDocument(): ProfileDocumentV3 {
 
 describe("ObsOverlayRuntime", () => {
   it("renders the shared runtime surface in obs mode", () => {
+    installViewportResizeObserver(1920, 1080);
     const coordinator = createTelemetryRateCoordinator();
     coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
@@ -40,6 +67,10 @@ describe("ObsOverlayRuntime", () => {
 
     const surface = view.getByTestId("runtime-overlay-surface");
     expect(surface.getAttribute("data-render-mode")).toBe("obs");
+    const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
+    expect(Number(scene.dataset.scale)).toBeCloseTo(1920 / 3440);
+    expect(Number(scene.dataset.offsetX)).toBe(0);
+    expect(Number(scene.dataset.offsetY)).toBeCloseTo((1080 - 1440 * (1920 / 3440)) / 2);
     expect(view.getByTestId("runtime-widget-frame")).toBeTruthy();
     coordinator.dispose();
   });

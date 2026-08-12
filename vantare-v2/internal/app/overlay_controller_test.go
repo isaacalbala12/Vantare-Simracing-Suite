@@ -9,6 +9,7 @@ import (
 
 type fakeOverlayWindow struct {
 	closed       bool
+	closeCalls   int
 	boundsSet    bool
 	ignoreMouse  bool
 	appliedModes []config.DisplayMode
@@ -16,6 +17,7 @@ type fakeOverlayWindow struct {
 
 func (f *fakeOverlayWindow) Close() {
 	f.closed = true
+	f.closeCalls++
 }
 
 func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
@@ -34,6 +36,22 @@ type fakeOverlayFactory struct {
 	origin  config.Rect
 	bounds  config.Rect
 }
+
+type fixedOverlayFactory struct {
+	window app.OverlayWindow
+}
+
+func (f fixedOverlayFactory) NewOverlayWindow(*config.ProfileDocumentV3, config.Rect, config.Rect) (app.OverlayWindow, error) {
+	return f.window, nil
+}
+
+type nonComparableOverlayWindow struct {
+	values []int
+}
+
+func (nonComparableOverlayWindow) Close() {}
+
+func (nonComparableOverlayWindow) ApplyProfileMode(*config.ProfileDocumentV3) error { return nil }
 
 func (f *fakeOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	f.created++
@@ -100,6 +118,124 @@ func TestOverlayControllerStartClosesPreviousWindow(t *testing.T) {
 	}
 	if factory.created != 2 {
 		t.Fatalf("created=%d, want 2", factory.created)
+	}
+}
+
+func TestOverlayControllerHandleWindowClosedIgnoresStaleWindowAndForgetsCurrentWithoutClosingIt(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	document := racingDocument("default-racing", config.ModeRacing)
+
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+	first := factory.last
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+	second := factory.last
+
+	callbacks := 0
+	status, matched := controller.HandleWindowClosed(first, func() { callbacks++ })
+	if matched {
+		t.Fatal("delayed close from previous window matched current window")
+	}
+	if !status.Running || controller.CurrentWindow() != second {
+		t.Fatalf("stale close changed current state: status=%+v current=%p want=%p", status, controller.CurrentWindow(), second)
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("stale close closed current window %d times", second.closeCalls)
+	}
+
+	status, matched = controller.HandleWindowClosed(second, func() { callbacks++ })
+	if !matched {
+		t.Fatal("current external close was not matched")
+	}
+	if status.Running || controller.CurrentWindow() != nil {
+		t.Fatalf("current close did not clear state: status=%+v current=%v", status, controller.CurrentWindow())
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("already-closing current window was closed %d extra times", second.closeCalls)
+	}
+	if callbacks != 1 {
+		t.Fatalf("matched callbacks=%d want 1", callbacks)
+	}
+	if _, matched = controller.HandleWindowClosed(second, func() { callbacks++ }); matched {
+		t.Fatal("duplicate close event matched a window already forgotten")
+	}
+	if callbacks != 1 {
+		t.Fatalf("duplicate close changed callbacks=%d want 1", callbacks)
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("duplicate close event closed window %d extra times", second.closeCalls)
+	}
+}
+
+func TestOverlayControllerHandleWindowClosedRejectsNonComparableWindowWithoutPanic(t *testing.T) {
+	window := nonComparableOverlayWindow{values: []int{1}}
+	controller := app.NewOverlayController(fixedOverlayFactory{window: window})
+	if _, err := controller.Start(racingDocument("non-comparable", config.ModeRacing)); err != nil {
+		t.Fatal(err)
+	}
+
+	status, matched := controller.HandleWindowClosed(window, func() {
+		t.Fatal("non-comparable window invoked matched callback")
+	})
+	if matched {
+		t.Fatal("non-comparable window unexpectedly matched")
+	}
+	if !status.Running {
+		t.Fatal("non-comparable close changed running status")
+	}
+}
+
+func TestOverlayControllerHandleWindowClosedSerializesMatchedCallbackBeforeNextStart(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	if _, err := controller.Start(racingDocument("first", config.ModeRacing)); err != nil {
+		t.Fatal(err)
+	}
+	first := factory.last
+
+	callbackEntered := make(chan struct{})
+	releaseCallback := make(chan struct{})
+	handleDone := make(chan bool, 1)
+	go func() {
+		_, matched := controller.HandleWindowClosed(first, func() {
+			close(callbackEntered)
+			<-releaseCallback
+		})
+		handleDone <- matched
+	}()
+	<-callbackEntered
+
+	startAttempted := make(chan struct{})
+	startDone := make(chan app.OverlayStatus, 1)
+	go func() {
+		close(startAttempted)
+		status, err := controller.Start(racingDocument("second", config.ModeRacing))
+		if err != nil {
+			t.Errorf("start second overlay: %v", err)
+		}
+		startDone <- status
+	}()
+	<-startAttempted
+	select {
+	case <-startDone:
+		t.Fatal("next Start completed while matched close callback held controller lock")
+	default:
+	}
+
+	close(releaseCallback)
+	if matched := <-handleDone; !matched {
+		t.Fatal("current close did not match")
+	}
+	status := <-startDone
+	if !status.Running || status.ProfileID != "second" {
+		t.Fatalf("second start status=%+v", status)
+	}
+	if controller.CurrentWindow() != factory.last {
+		t.Fatal("second start did not install its window after callback completed")
 	}
 }
 

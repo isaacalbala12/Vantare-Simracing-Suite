@@ -5232,3 +5232,94 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 - **Próxima acción:** merge del PR a `nightly` por parte de Isaac. Después,
   ISA-280 / OS-09L (gate técnico final) y la resolución de la cuestión abierta
   sobre `assertNoReload` del smoke descrita en el handoff.
+
+## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
+
+- **Estado:** Isaac autorizó el 2026-08-12 la promoción a `nightly` y una nueva
+  pre-release. ISA-330 gobierna la integración aislada y el tag previsto
+  `v0.1.0.7-nightly.7`; no se promueve a `testers` ni `master`.
+- **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
+- **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
+- **Decisión:** cada perfil podrá persistir un `layoutViewport` arbitrario en
+  píxeles CSS/DIP. Los V3 antiguos se resuelven como 1920×1080. Studio, Desktop
+  y OBS compartirán una transformación uniforme `contain`; no habrá stretch,
+  crop ni doble aplicación de DPI.
+- **Autoridades:** ADR
+  `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y microplan
+  `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
+- **Monitor nativo:** Wails ya exponía enumeración y selección. Studio persiste
+  `monitorIndex` + `layoutViewport` atómicamente desde `Bounds` CSS/DIP; Desktop
+  resuelve la pantalla exacta por índice, dimensiona la ventana inicialmente con
+  sus límites y pasa a fullscreen sin aplicar DPI dos veces.
+- **Evidencia Task 1:** focal frontend 67/67 PASS, `go test ./pkg/config` PASS,
+  suite frontend 2480/2480 PASS, `go test ./...` PASS, build y lint focal PASS.
+  Review de especificación PASS; review de calidad Ready to proceed, sin
+  Critical/Important. Riesgo menor no bloqueante: falta un test explícito de
+  aceptación del máximo exacto 16384, aunque el límite inclusivo está
+  implementado e inspeccionado.
+- **Evidencia 2A:** focal state/access 66/66 PASS y build PASS. Spec review PASS;
+  quality review Ready sin Critical/Important. El viewport ya participa en
+  dirty/undo/redo/save y los rechazos son atómicos y visibles.
+- **Evidencia 2B:** `8249585`, `50e9b9e` y `5fc3809`; focal canvas 73/73,
+  build/lint/diff-check PASS. Spec review PASS y quality review Ready, sin
+  hallazgos. Fit, clamp, snap, move, resize, safe area y center aceptan viewport;
+  recoverability y guías permanecen coherentes tras snap/clamp.
+- **Evidencia 2C:** `edf3359`, `13fe677` y `1aa1ec7`; Studio elimina la resolución
+  ficticia de preview y usa `layoutViewport` para escena, fit, área segura,
+  interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
+  sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
+  diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
+- **Decisión de promoción:** Isaac acepta que la prueba física multimonitor/DPI
+  mixto quede como riesgo de Nightly y declara OBS indiferente para este corte.
+  La integración partió de `origin/nightly@5069cbb`, fusionó ISA-326 con
+  `--no-ff` y se resincronizó con `origin/nightly@cc54d36` cuando entró el PR
+  #207; solo podrá publicar tras repetir los gates y cerrar CI verde.
+- **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
+  transformación, medida CSS no transformada, clipping documental, legacy,
+  offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
+  diff-check PASS; spec PASS y quality Ready. 3B debe normalizar el origin
+  shrink-wrap que aún entrega la API OBS y probar la integración real.
+- **Evidencia 3B:** `b4a5c94` y corrección `fb5b5ae`; preview OBS gobernada por
+  `layoutViewport`, sin constantes Studio, con `contain` exterior y runtime
+  interior a escala 1. Streaming mide la salida real e ignora el origin
+  shrink-wrap de la API, conservando coordenadas documentales. El recordatorio
+  queda en espacio de salida y no se escala con la escena. Focal 64/64, suite
+  frontend 2543/2543, build/lint/diff-check PASS; spec PASS y quality Ready,
+  cero Critical/Important. Smoke visual real pendiente para Task 5.
+- **Evidencia Task 4:** Hub fluido `0aa50aa`; estado/cliente monitor
+  `3f819d4`/`30c5292`; selector Studio `0421e55`; colocación Desktop y lifecycle
+  corregidos hasta `4703a48`. Todos los microcortes terminaron con spec PASS y
+  quality Ready, cero Critical/Important.
+- **Gates acumulados:** `go test ./...` PASS; frontend 360 archivos y 2567/2567
+  tests PASS; build y diff-check PASS. ESLint directo de los 53 TS/TSX tocados
+  conserva 6 errores y 1 warning heredados; el global, 36 errores y 2 warnings.
+  Las comparaciones por microcorte no detectaron violaciones nuevas. La inspección
+  T3 comprobó Studio a 1440×900,
+  1024×768 y 800×700, superficies 3440×1440 y 1000×1000, sin overflow horizontal.
+  En el cierre inicial no se ejecutó smoke físico Wails/OBS; el resultado parcial
+  posterior y sus bloqueos se registran a continuación.
+- **Smoke nativo posterior:** `wails3 dev` compiló y arrancó la rama en Windows;
+  ventana Hub 1280×800, WebView2 y servidor local saludables. El equipo solo
+  expone un monitor `DISPLAY1` 1920×1080, por lo que no puede certificar cambio
+  entre pantallas ni DPI mixto. Studio nativo quedó detrás del login porque el
+  worktree no contiene configuración Supabase y no se copiaron secretos.
+- **Limitación OBS aceptada:** la CSP histórica del servidor bloquea los assets
+  JS/CSS propios de `/overlay`, que responde 200 pero deja `#root` vacío. Se
+  registró ISA-329 como bug High abierto. Por decisión explícita de Isaac deja
+  de bloquear esta Nightly, debe aparecer en sus notas y no se mezcló el fix de
+  seguridad/servidor dentro de ISA-326.
+- **Integración ISA-330 antes del PR:** merge `--no-ff` limpio en `d0789e5`
+  sobre `origin/nightly@5069cbb`, seguido de sincronización limpia del PR #207
+  (`origin/nightly@cc54d36`) en `e45bcf9`. Resultado combinado final: `go test ./...` PASS;
+  frontend 367 archivos/2636 tests PASS; build PASS; `design-system:check` 3/3;
+  visual Studio PASS con 59 baselines, tres capturas responsive y controles de
+  paridad/interacción a 0.000 %. Se actualizaron únicamente los baselines
+  `studio-wide`, `studio-medium` y `studio-small` tras inspección visual: ahora
+  documentan `contain` 16:9 en lugar del antiguo estiramiento vertical.
+- **Lint de integración:** permanece informativo y rojo por deuda previa. La
+  comparación final exacta confirma que `origin/nightly@cc54d36` tiene 47
+  errores/2 warnings y la integración 44/2; no añade violaciones. Un primer Go sin
+  `frontend/dist` no fue un gate válido; tras build pasó completo. El único
+  fallo intermitente observado (`OpsBridgeStartTwice...`) pasó 20/20 aislado y
+  la repetición completa.

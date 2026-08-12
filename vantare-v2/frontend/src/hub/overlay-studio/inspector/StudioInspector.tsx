@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
+import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
 import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument } from "../state/studio-store";
 import { createWailsWidgetDesignClient } from "../designs/widget-design-client";
@@ -33,6 +34,7 @@ export function StudioInspector(): React.ReactElement {
     activeLayout,
     activeSession,
     selectedWidgetId,
+    document,
     savedDocument,
     dirty,
     dispatch,
@@ -41,6 +43,7 @@ export function StudioInspector(): React.ReactElement {
   } = useStudioDocument();
   const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
   const snapshot = useStudioTelemetrySnapshot();
+  const layoutViewport = document ? resolveLayoutViewport(document) : null;
   const [activeSection, setActiveSection] = useState<{
     widgetId: string | null;
     sectionId: InspectorSectionId | null;
@@ -109,12 +112,13 @@ export function StudioInspector(): React.ReactElement {
           />
         );
       case "layout":
-        return savedDocument ? (
+        return savedDocument && layoutViewport ? (
           <LayoutSection
             widget={selectedWidget}
             session={activeSession}
             widgets={activeLayout.widgets}
             savedDocument={savedDocument}
+            layoutViewport={layoutViewport}
             dispatch={dispatch}
             selectWidget={selectWidget}
           />

@@ -1,23 +1,11 @@
-export type StudioPreviewResolutionId =
-  | "auto"
-  | "1280x720"
-  | "1920x1080"
-  | "2560x1440"
-  | "3840x2160"
-  | "2560x1080"
-  | "3440x1440"
-  | "5120x2160"
-  | "3840x1080"
-  | "5120x1440";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 
-export type StudioPreviewResolutionOption = {
-  id: Exclude<StudioPreviewResolutionId, "auto">;
+export type LayoutViewportPreset = LayoutViewport & {
+  id: string;
   label: string;
-  width: number;
-  height: number;
 };
 
-export const STUDIO_PREVIEW_RESOLUTION_OPTIONS: readonly StudioPreviewResolutionOption[] = [
+export const LAYOUT_VIEWPORT_PRESETS: readonly LayoutViewportPreset[] = [
   { id: "1280x720", label: "1280 × 720", width: 1280, height: 720 },
   { id: "1920x1080", label: "1920 × 1080", width: 1920, height: 1080 },
   { id: "2560x1440", label: "2560 × 1440", width: 2560, height: 1440 },
@@ -29,16 +17,15 @@ export const STUDIO_PREVIEW_RESOLUTION_OPTIONS: readonly StudioPreviewResolution
   { id: "5120x1440", label: "5120 × 1440", width: 5120, height: 1440 },
 ];
 
-export type PreviewSize = { width: number; height: number };
+export function getLayoutViewportPreset(id: string): LayoutViewportPreset | undefined {
+  return LAYOUT_VIEWPORT_PRESETS.find((preset) => preset.id === id);
+}
 
-export function resolveStudioPreviewSize(
-  resolution: StudioPreviewResolutionId | undefined,
-  detectedSize: PreviewSize,
-): PreviewSize {
-  if (!resolution || resolution === "auto") {
-    return detectedSize;
-  }
-
-  const option = STUDIO_PREVIEW_RESOLUTION_OPTIONS.find((candidate) => candidate.id === resolution);
-  return option ? { width: option.width, height: option.height } : detectedSize;
+export function findLayoutViewportPreset(
+  layoutViewport: LayoutViewport,
+): LayoutViewportPreset | undefined {
+  return LAYOUT_VIEWPORT_PRESETS.find(
+    (preset) =>
+      preset.width === layoutViewport.width && preset.height === layoutViewport.height,
+  );
 }

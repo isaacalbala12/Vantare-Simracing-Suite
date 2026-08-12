@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-331",
+  "type": "feature",
+  "summary": "El Workshop incorpora un catálogo reproducible de animaciones y motores de movimiento para Relative, Delta y Pedals.",
+  "technicalNotes": [
+    "Quince escenas permiten reproducir, pausar y enlazar momentos concretos de las animaciones de Standings, Relative, Delta y Pedals.",
+    "El Workshop interpola datos continuos, mantiene discretos los eventos que deben disparar motores y respeta la frecuencia de actualización del runtime.",
+    "Relative anima cruces y entradas, Delta señala el cruce del cero y la nueva referencia, y Pedals conserva el pico de presión de frenada.",
+    "El clipping del Workshop coincide con Desktop y OBS para no mostrar contenido que el runtime recortaría.",
+    "Standings conserva la identidad de sus filas al romperse una batalla y anima la salida de la celda de presión en vez de hacerla desaparecer."
+  ],
+  "testing": [
+    "Abrir el Workshop y reproducir una escena de cada widget; confirmar que solo se mueve al pulsar reproducir.",
+    "Pausar una escena, avanzar paso a paso y recargar su URL para comprobar que el momento seleccionado se conserva.",
+    "Comparar entrada, cruce y frenada con el widget recortado dentro de sus límites."
+  ],
+  "knownLimitations": [
+    "Dorsal, compuesto y bandera global siguen limitados por campos que la proyección productiva no entrega."
+  ]
+}

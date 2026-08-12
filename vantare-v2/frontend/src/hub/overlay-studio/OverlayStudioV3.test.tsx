@@ -1,5 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { deltaDefinition } from "../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
 import { OverlayStudioV3 } from "./OverlayStudioV3";
@@ -99,6 +101,23 @@ describe("OverlayStudioV3", () => {
     expect(screen.getByTestId("studio-widget-list-panel")).toBeTruthy();
     expect(screen.getByTestId("studio-canvas-slot")).toBeTruthy();
     expect(screen.getByTestId("studio-inspector-slot")).toBeTruthy();
+  });
+
+  it("keeps the workbench and canvas column fluid inside the Profiles workspace", async () => {
+    renderWorkbench();
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-slot")).toBeTruthy());
+
+    const studioStyles = readFileSync(join(__dirname, "overlay-studio-v3.css"), "utf8");
+
+    const workbenchRule = studioStyles.match(/^\.osv3-workbench\s*\{([^}]*)\}/m)?.[1] ?? "";
+    const gridRule = studioStyles.match(/^\.osv3-grid\s*\{([^}]*)\}/m)?.[1] ?? "";
+    const canvasRule = studioStyles.match(/^\.osv3-canvas-column\s*\{([^}]*)\}/m)?.[1] ?? "";
+
+    expect(workbenchRule).toMatch(/width:\s*100%/);
+    expect(workbenchRule).toMatch(/max-width:\s*none/);
+    expect(workbenchRule).toMatch(/min-width:\s*0/);
+    expect(gridRule).toMatch(/min-width:\s*0/);
+    expect(canvasRule).toMatch(/min-width:\s*0/);
   });
 
   it("does not expose WidgetStudio chrome or local save-to-widget actions", async () => {

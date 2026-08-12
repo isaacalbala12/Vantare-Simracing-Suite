@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
 import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { canMutateWidget } from "../access/studio-access";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from "../studio-v3-i18n";
 import { getStudioHotkey } from "../state/studio-hotkeys";
+import {
+  listStudioMonitors,
+  type StudioMonitor,
+} from "../state/studio-monitor-client";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
-import { CANVAS_HEIGHT, CANVAS_WIDTH, clientToLogical, resolveCanvasScale } from "./canvas-geometry";
+import { clientToLogical, resolveCanvasScale } from "./canvas-geometry";
 import { resolveCanvasBackground, safeAreaInsets } from "./canvas-backgrounds";
-import { resolveStudioPreviewSize } from "./preview-resolution";
 import { CanvasActionBar } from "./CanvasActionBar";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { PreviewSourceControls } from "./PreviewSourceControls";
@@ -32,10 +36,11 @@ function sortWidgetsByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstan
 export type StudioCanvasProps = {
   onOpenBrowserView?(): void;
   diagnostics?: WidgetDiagnosticCollector;
+  listMonitors?: () => Promise<StudioMonitor[]>;
 };
 
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
-  const { onOpenBrowserView, diagnostics } = props;
+  const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
   const {
     access,
@@ -57,19 +62,40 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const sceneRef = useRef<HTMLDivElement>(null);
   // null mientras no se haya podido medir de verdad. El valor inicial anterior
   // fingia que el contenedor media lo que el lienzo, que con "fit" da escala 1:
-  // el lienzo se pintaba a 1920x1080 dentro de un area mas pequena y, con el
+  // la escena se pintaba a tamano logico dentro de un area mas pequena y, con el
   // margin:auto del contenedor, lo visible era su parte central. De ahi que los
   // widgets aparecieran centrados un instante y luego saltaran a su sitio
   // cambiando de tamano.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
+  const [monitorState, setMonitorState] = useState<{
+    status: "loading" | "ready" | "unavailable";
+    monitors: StudioMonitor[];
+  }>({ status: "loading", monitors: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+    void listMonitors().then(
+      (monitors) => {
+        if (!cancelled) {
+          setMonitorState({ status: "ready", monitors });
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setMonitorState({ status: "unavailable", monitors: [] });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [listMonitors]);
 
   // useLayoutEffect y no useEffect: la medida tiene que ocurrir antes de que el
-  // navegador pinte. El estado inicial finge que el contenedor mide lo que el
-  // lienzo, 1920x1080, asi que con "fit" la primera escala sale 1 y los widgets
-  // se dibujan a tamano real -- casi el doble del que les toca -- hasta que la
-  // medida real llega. Ese fotograma a escala equivocada era el salto al abrir
-  // Overlay Studio.
+  // navegador pinte. Sin esa medida, "fit" no puede resolver la escala de la
+  // superficie documental y los widgets se dibujarian a un tamano transitorio
+  // incorrecto hasta que llegara la medida real.
   useLayoutEffect(() => {
     const node = stageRef.current;
     if (!node) {
@@ -108,18 +134,16 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   // no ha llegado" de "no tiene widgets": un perfil sin widgets es valido y
   // debe pintarse vacio.
   const ready = containerSize !== null && document !== null;
-  const previewSize = resolveStudioPreviewSize(preview.resolution, containerSize ?? {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-  });
+  const layoutViewport = resolveLayoutViewport(document ?? {});
   const scale = resolveCanvasScale({
-    containerWidth: previewSize.width,
-    containerHeight: previewSize.height,
+    containerWidth: containerSize?.width ?? 0,
+    containerHeight: containerSize?.height ?? 0,
     zoom: preview.zoom,
+    layoutViewport,
     allowUpscale: true,
   });
-  const displayWidth = Math.round(CANVAS_WIDTH * scale);
-  const displayHeight = Math.round(CANVAS_HEIGHT * scale);
+  const displayWidth = Math.round(layoutViewport.width * scale);
+  const displayHeight = Math.round(layoutViewport.height * scale);
 
   const widgets = useMemo(
     () => sortWidgetsByZIndex(activeLayout?.widgets ?? []),
@@ -127,7 +151,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   );
 
   const background = resolveCanvasBackground(preview.backgroundId);
-  const safeInsets = safeAreaInsets(CANVAS_WIDTH, CANVAS_HEIGHT);
+  const safeInsets = safeAreaInsets(layoutViewport.width, layoutViewport.height);
 
   const canMutateLayout = useCallback(
     (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
@@ -143,6 +167,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     scale,
     sceneRef,
     selectedWidgetId,
+    layoutViewport,
     dispatch,
     selectWidget,
     canMutateLayout,
@@ -209,6 +234,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       widgetIds: [selectedWidgetId],
       widgets,
       savedDocument,
+      layoutViewport,
     });
     if (!built.command) {
       return;
@@ -221,6 +247,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       widgetIds: [selectedWidgetId],
       widgets,
       savedDocument,
+      layoutViewport,
       dispatch,
       selectWidget,
       confirmDelete,
@@ -231,6 +258,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     dispatch,
     interaction.interaction.kind,
     savedDocument,
+    layoutViewport,
     selectWidget,
     selectedWidgetId,
     widgets,
@@ -283,7 +311,24 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       }}
     >
       <div onPointerDown={stopViewportDeselect}>
-        <CanvasToolbar preview={preview} onPreviewChange={setPreview} />
+        <CanvasToolbar
+          preview={preview}
+          layoutViewport={layoutViewport}
+          monitors={monitorState.monitors}
+          monitorStatus={monitorState.status}
+          monitorIndex={document?.monitorIndex ?? null}
+          onPreviewChange={setPreview}
+          onLayoutViewportChange={(viewport) =>
+            dispatch({ type: "document/layout-viewport", viewport })
+          }
+          onMonitorChange={(monitor) =>
+            dispatch({
+              type: "document/monitor",
+              monitorIndex: monitor.index,
+              viewport: monitor.bounds,
+            })
+          }
+        />
       </div>
       <div
         data-testid="studio-canvas-action-bar-slot"
@@ -298,6 +343,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
               session={activeSession}
               widgets={widgets}
               savedDocument={savedDocument}
+              layoutViewport={layoutViewport}
               dispatch={dispatch}
               selectWidget={selectWidget}
               confirmDelete={confirmDelete}
@@ -309,6 +355,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
               session={activeSession}
               widgets={widgets}
               savedDocument={savedDocument}
+              layoutViewport={layoutViewport}
               dispatch={dispatch}
               selectWidget={selectWidget}
               confirmDelete={confirmDelete}
@@ -316,16 +363,13 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
           )
         ) : null}
       </div>
-      {/* El fondo se dibuja una sola vez, aqui, y cubre todo el area de trabajo.
-          El lienzo es 16:9 y el area no, asi que al ajustar siempre sobra
-          espacio arriba y abajo; pintarlo tambien en el lienzo dejaba ese
-          sobrante como bandas y duplicaba el degradado a dos escalas, con una
-          costura visible al encoger la ventana. El lienzo queda delimitado por
-          su sombra y su borde, no por un cambio de fondo. */}
+      {/* El stage es espacio de trabajo neutral. El fondo seleccionado pertenece
+          al rectangulo documental para que sus limites sigan visibles con
+          cualquier proporcion. */}
       <div
         ref={stageRef}
         data-testid="studio-canvas-stage"
-        className={`osv3-canvas-stage ${background.className}`}
+        className="osv3-canvas-stage"
       >
         <div
           className="osv3-canvas-scene-stage"
@@ -341,12 +385,12 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
           <div
             ref={sceneRef}
             data-testid="studio-canvas-scene"
-            className="osv3-canvas-scene"
+            className={`osv3-canvas-scene ${background.className}`}
             data-scale={String(scale)}
-            data-preview-resolution={preview.resolution ?? "auto"}
+            data-layout-viewport={`${layoutViewport.width}x${layoutViewport.height}`}
             style={{
-              width: `${CANVAS_WIDTH}px`,
-              height: `${CANVAS_HEIGHT}px`,
+              width: `${layoutViewport.width}px`,
+              height: `${layoutViewport.height}px`,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
@@ -397,6 +441,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
           session={activeSession}
           widgets={widgets}
           savedDocument={savedDocument}
+          layoutViewport={layoutViewport}
           dispatch={dispatch}
           selectWidget={selectWidget}
           confirmDelete={confirmDelete}

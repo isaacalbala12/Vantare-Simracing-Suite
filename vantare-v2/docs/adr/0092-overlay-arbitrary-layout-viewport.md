@@ -14,9 +14,10 @@ geometría que consumen Desktop y OBS. Por eso un preset ultrawide sigue siendo
 un documento 16:9 y la posición vista en Studio puede no coincidir con la del
 overlay real.
 
-`monitorIndex` se persiste, pero la selección y enumeración nativa de monitores
-continúa reservada en el runtime actual. No debe fingirse esa capacidad usando
-el tamaño de la ventana del Hub.
+`monitorIndex` ya se persistía. La auditoría de ISA-326 confirmó que la versión
+fijada de Wails expone la enumeración y selección nativa de pantallas, incluidos
+sus límites en unidades CSS/DIP. Esta capacidad no se infiere del tamaño de la
+ventana del Hub.
 
 ## Decisión
 
@@ -41,9 +42,9 @@ La superficie válida usa enteros finitos positivos dentro de límites de
 seguridad compartidos por TypeScript y Go. Los widgets se validan y recuperan
 contra la superficie resuelta del documento, nunca contra constantes globales.
 
-### 2. Una transformación pura y compartida
+### 2. Un contrato geométrico único
 
-Studio, Desktop y OBS consumen la misma función pura:
+Studio, Desktop y OBS aplican el mismo contrato matemático:
 
 ```text
 scale   = min(outputWidth / layoutWidth, outputHeight / layoutHeight)
@@ -55,9 +56,10 @@ La transformación es uniforme (`contain`), con origen explícito. No deforma
 widgets, no recorta contenido y no aplica DPI dos veces. Cuando salida y
 documento coinciden, `scale = 1` y `offset = 0`.
 
-El `layoutOrigin` heredado de ventanas shrink-wrap se normaliza antes de esta
-transformación. No se permite que Desktop, OBS y el preview mantengan fórmulas
-independientes.
+El core expone helpers puros para este contrato. Desktop, OBS y su preview usan
+el resolver de transformación completo; Studio usa el helper de escala del
+canvas y centrado CSS, con tests de equivalencia sobre la misma ecuación. El
+`layoutOrigin` heredado de ventanas shrink-wrap se normaliza antes de transformar.
 
 ### 3. Studio representa la superficie real
 
@@ -87,10 +89,17 @@ solo comodidad, no una lista de resoluciones permitidas.
 ### 5. DPI y monitor
 
 Las dimensiones del runtime se toman del viewport CSS real. `devicePixelRatio`
-no multiplica las coordenadas del documento. La enumeración, selección y
-movimiento de la ventana a `monitorIndex` solo se añadirá mediante una capacidad
-nativa comprobable; si no existe en la base actual, tendrá issue dependiente y
-no bloqueará la paridad geométrica de ISA-326.
+no multiplica las coordenadas del documento. Studio enumera pantallas mediante
+`Screens.GetAll()` y conserva su índice posicional; una selección explícita
+actualiza de forma atómica `monitorIndex` y `layoutViewport` con los límites
+completos (`Bounds`) de esa pantalla en CSS/DIP. Se usan los límites completos,
+no `WorkArea`, porque el overlay Desktop termina en pantalla completa.
+
+Al crear la ventana Desktop, el runtime resuelve el mismo índice mediante
+`Screen.GetByIndex`, entrega la pantalla exacta a Wails y dimensiona la ventana
+inicial con sus `Bounds` antes de activar fullscreen. Una pantalla ausente o con
+límites inválidos falla antes de crear la ventana; no hay fallback silencioso a
+otro monitor ni multiplicación por `ScaleFactor`.
 
 `WidgetVisualHost` y los renderizadores visuales no conocen resolución,
 persistencia ni posición. Solo cambia el marco que los coloca.
@@ -105,6 +114,9 @@ persistencia ni posición. Solo cambia el marco que los coloca.
   eso queda visible y requiere un contrato posterior de anclajes/reflow.
 - La aplicación Hub continúa siendo fluida; la superficie del documento es el
   único rectángulo con dimensiones lógicas fijas.
+- El índice de monitor es posicional, no una identidad estable ante hot-plug. La
+  lista se obtiene al abrir Studio; conectar o desconectar pantallas durante la
+  sesión requiere reabrir Studio para refrescarla.
 
 ## Verificación requerida
 

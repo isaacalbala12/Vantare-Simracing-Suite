@@ -441,10 +441,9 @@ Task 4.
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad Studio/Desktop/OBS
 
-- **Estado al 2026-08-12:** issue In Progress. Tasks 0, 1, 2 y 3 completadas con
-  doble review; Studio, Desktop, OBS y su preview ya comparten la superficie
-  documental arbitraria. Task 4 (Hub fluido y frontera monitor) es la siguiente
-  acción.
+- **Estado al 2026-08-12:** implementación de Tasks 0–4 completada y revisada;
+  gates acumulados de Task 5 ejecutados. Queda la aceptación manual de Isaac en
+  hardware Windows multimonitor antes de cualquier promoción.
 - **Rama/worktree:**
   `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion` en
   `C:\tmp\vantare-isa326\vantare-v2`, desde
@@ -461,9 +460,10 @@ Task 4.
   anclajes/reflow requerirá alcance separado.
 - **Frontera preservada:** `WidgetVisualHost` y los renderizadores visuales no se
   modifican. El canvas conserva preview imperativa durante drag/resize.
-- **Monitor:** `monitorIndex` está reservado en la base. Task 4 verificará si hay
-  una API Wails nativa ya disponible; si no, se abrirá dependencia y el perfil
-  seguirá aceptando dimensiones manuales arbitrarias.
+- **Monitor:** Wails ya aporta `Screens.GetAll` y `Screen.GetByIndex`. Studio
+  persiste índice y `layoutViewport` de forma atómica usando `Bounds` CSS/DIP;
+  Desktop crea y lleva a fullscreen la ventana sobre esa pantalla exacta. No se
+  usa el viewport del Hub, `WorkArea` ni una multiplicación por DPI.
 - **Autoridades:** `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y
   `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
 
@@ -475,8 +475,8 @@ Ledger vivo:
 | 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
 | 2 | Superficie editable en Studio | Completada | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; 2C `edf3359`/`13fe677`/`1aa1ec7`; dobles reviews PASS | Task 3 |
 | 3 | Paridad Desktop/OBS | Completada | 3A `ecda9ee`/`c8f00e5`; 3B `b4a5c94`/`fb5b5ae`; dobles reviews PASS | Task 4 |
-| 4 | Hub fluido + frontera monitor nativo | Pendiente | — | Iniciar implementación TDD y auditoría nativa |
-| 5 | Gates, evidencia y cierre | Pendiente | — | Tasks 1–4 PASS |
+| 4 | Hub fluido + frontera monitor nativo | Completada | `0aa50aa`, `3f819d4`, `30c5292`, `0421e55`, `452b4ce` y correcciones hasta `4703a48`; reviews finales Ready/PASS | Aceptación manual física |
+| 5 | Gates, evidencia y cierre | Completada técnicamente | Go completo PASS; frontend 2567/2567; build y diff-check PASS; lint con deuda heredada documentada | Isaac prueba Windows multimonitor y decide promoción |
 
 Evidencia Task 1:
 
@@ -599,3 +599,35 @@ Evidencia microcorte 3B:
   review Ready, cero Critical/Important. Ruido heredado: dos `AbortError` de
   teardown con exit 0 y warnings de `.eslintignore`/chunk. Smoke visual real
   pendiente para Task 5.
+
+Evidencia Task 4 y cierre acumulado:
+
+- El workspace Profiles/Studio usa todo el ancho disponible sin quitar el cap de
+  1920 px a las demás secciones. Focal 21/21, suite completa 2545/2545, build y
+  review PASS (`0aa50aa`).
+- El cliente nativo enumera pantallas en CSS/DIP, tolera nombres vacíos y valida
+  índice seguro. El comando `document/monitor` hace monitor+superficie en un solo
+  paso de dirty/undo/redo; la UI conserva custom si Wails no está disponible.
+  Commits `3f819d4`, `30c5292` y `0421e55`; reviews Ready sin Critical/Important.
+- Desktop resuelve la pantalla exacta, usa sus `Bounds` para la colocación inicial
+  y después fullscreen. Los cierres tardíos de una ventana reemplazada no pueden
+  cerrar ni desincronizar la nueva; la identidad no comparable falla sin panic y
+  los side effects quedan serializados. Commits desde `452b4ce` hasta
+  `4703a48`; spec PASS y quality Ready, cero Critical/Important.
+- Gates acumulados sobre `4703a48`: `go test ./...` PASS; frontend 360 archivos,
+  2567/2567 PASS; build y `git diff --check origin/nightly...HEAD` PASS. ESLint
+  directo sobre los 53 TS/TSX tocados queda rojo con 6 errores y 1 warning en
+  líneas heredadas; el global conserva 36 errores y 2 warnings. Las comparaciones
+  contra el baseline hechas por microcorte no encontraron violaciones nuevas.
+  La suite conserva dos `AbortError` de teardown de happy-dom tras el resumen,
+  con exit 0.
+- Inspección T3 del harness Studio: superficies 3440×1440 y custom 1000×1000;
+  viewports 1440×900, 1024×768 y 800×700 sin scroll horizontal del documento y
+  con escala uniforme. El navegador no dispone del runtime Wails ni de un perfil
+  servido por el backend, por lo que no sustituye la prueba física Desktop/OBS.
+- Riesgos aceptados: `monitorIndex` es posicional y la enumeración solo se
+  refresca al abrir Studio; hot-plug durante la sesión requiere reabrirlo. Falta
+  prueba manual Windows con dos monitores/DPI mixto y OBS antes de promoción.
+- Estado Git al cerrar producto: rama de issue sobre
+  `origin/nightly@8880a880`; HEAD productivo `4703a48`; sin push, PR, CI remoto,
+  merge, release ni promoción.

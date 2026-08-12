@@ -243,3 +243,26 @@ git status --short
 ```
 
 Commit: `docs(overlay): close ISA-326 implementation evidence`
+
+### Resultado ejecutado (2026-08-12)
+
+- Tasks 0–4 completadas con TDD, spec review y quality review secuenciales. Las
+  revisiones finales no dejan hallazgos Critical/Important.
+- Wails sí incluía una capacidad comprobable de pantallas. El alcance se cerró
+  sin dependencia nueva: Studio enumera `Screens.GetAll`; documento y superficie
+  cambian atómicamente; Desktop resuelve el mismo índice con `GetByIndex`, usa
+  `Screen.Bounds` CSS/DIP para la colocación inicial y activa fullscreen.
+- Gates acumulados: `go test ./...` PASS; frontend 360 archivos, 2567 tests PASS;
+  build y diff-check PASS. ESLint directo sobre los 53 TS/TSX cambiados falla por
+  6 errores y 1 warning heredados; el global falla por 36 errores y 2 warnings.
+  Las comparaciones de baseline por microcorte no detectaron violaciones nuevas.
+- Inspección T3: Studio a 1440×900, 1024×768 y 800×700, superficies 3440×1440
+  y custom 1000×1000, sin overflow horizontal y con escala uniforme. El harness
+  de paridad histórico tiene stage fijo y el navegador no dispone del runtime
+  Wails/backend; por ello la matriz runtime queda demostrada por tests y la
+  prueba física Desktop/OBS multimonitor se conserva como gate manual.
+- Riesgos restantes: índice posicional y enumeración solo al abrir Studio;
+  hot-plug requiere reabrir. Falta aceptación de Isaac en Windows con dos
+  monitores, DPI mixto y OBS antes de cualquier promoción.
+- HEAD productivo revisado: `4703a4886cf43f45af1a37199a4d77b406cd20a5`.
+  No hubo push, PR, CI remoto, merge, release ni promoción.

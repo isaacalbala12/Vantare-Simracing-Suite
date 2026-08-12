@@ -5235,10 +5235,8 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
 
-- **Estado:** In Progress en Linear; Tasks 0, 1, 2 y 3 completadas con doble review.
-  Contrato puro compartido en `5a98553`/`a9c2fc8`; edición documental de Studio
-  en 2A `b873a82`/`7b24f09`, 2B `8249585`/`50e9b9e`/`5fc3809` y 2C
-  `edf3359`/`13fe677`/`1aa1ec7`.
+- **Estado:** implementación y gates técnicos de Tasks 0–5 completados. Pendiente
+  de aceptación manual por Isaac en Windows multimonitor antes de promoción.
 - **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
 - **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
@@ -5249,10 +5247,10 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 - **Autoridades:** ADR
   `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y microplan
   `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
-- **Límite conocido:** `monitorIndex` está reservado pero no implementado como
-  selección nativa. Se comprobará la capacidad existente en Task 4; si falta,
-  se abrirá una issue dependiente sin fingir el monitor mediante el viewport del
-  Hub.
+- **Monitor nativo:** Wails ya exponía enumeración y selección. Studio persiste
+  `monitorIndex` + `layoutViewport` atómicamente desde `Bounds` CSS/DIP; Desktop
+  resuelve la pantalla exacta por índice, dimensiona la ventana inicialmente con
+  sus límites y pasa a fullscreen sin aplicar DPI dos veces.
 - **Evidencia Task 1:** focal frontend 67/67 PASS, `go test ./pkg/config` PASS,
   suite frontend 2480/2480 PASS, `go test ./...` PASS, build y lint focal PASS.
   Review de especificación PASS; review de calidad Ready to proceed, sin
@@ -5271,9 +5269,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
   sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
   diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
-- **Próxima acción:** Task 4, hacer fluido el workspace de perfiles/Studio sin
-  alterar el máximo de las demás secciones y cerrar con evidencia la frontera
-  de selección nativa de monitor.
+- **Próxima acción:** Isaac valida manualmente selección/cambio de monitor en
+  Windows, DPI mixto, Desktop fullscreen y OBS; después decide si autoriza la
+  promoción de la rama a `nightly`.
 - **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
   transformación, medida CSS no transformada, clipping documental, legacy,
   offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
@@ -5286,3 +5284,15 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   queda en espacio de salida y no se escala con la escena. Focal 64/64, suite
   frontend 2543/2543, build/lint/diff-check PASS; spec PASS y quality Ready,
   cero Critical/Important. Smoke visual real pendiente para Task 5.
+- **Evidencia Task 4:** Hub fluido `0aa50aa`; estado/cliente monitor
+  `3f819d4`/`30c5292`; selector Studio `0421e55`; colocación Desktop y lifecycle
+  corregidos hasta `4703a48`. Todos los microcortes terminaron con spec PASS y
+  quality Ready, cero Critical/Important.
+- **Gates acumulados:** `go test ./...` PASS; frontend 360 archivos y 2567/2567
+  tests PASS; build y diff-check PASS. ESLint directo de los 53 TS/TSX tocados
+  conserva 6 errores y 1 warning heredados; el global, 36 errores y 2 warnings.
+  Las comparaciones por microcorte no detectaron violaciones nuevas. La inspección
+  T3 comprobó Studio a 1440×900,
+  1024×768 y 800×700, superficies 3440×1440 y 1000×1000, sin overflow horizontal.
+  No se ejecutó smoke físico Wails/OBS porque este entorno no expone monitores
+  nativos ni un perfil runtime servido; queda como gate humano previo a nightly.

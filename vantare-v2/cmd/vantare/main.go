@@ -1161,13 +1161,13 @@ func main() {
 	// racing mode so the next open is not accidentally editable. A delayed
 	// event from an older window is ignored by the controller identity check.
 	overlayController = app.NewOverlayController(newWailsOverlayFactory(wailsApp, func(closed app.OverlayWindow) {
-		if _, matched := overlayController.HandleWindowClosed(closed); !matched {
-			return
-		}
-		if overlayRunning.Load() {
-			resetOverlayDisplayMode(overlayController, studioProfileSvc)
+		overlayController.HandleWindowClosed(closed, func() {
+			// This callback runs under the controller lock and therefore must not
+			// call back into it. Finish the old window's side effects before a new
+			// Start can install another current window.
 			overlayRunning.Store(false)
-		}
+			resetOverlayProfileDisplayMode(studioProfileSvc)
+		})
 	}))
 
 	// Create hub window only (normal framed window).
@@ -2988,24 +2988,37 @@ func handleOverlayProfileSnapshotRequest(studioProfileSvc *app.StudioProfileServ
 // resetOverlayDisplayMode forces the active V3 document back to racing mode and
 // applies it to the running window when one exists.
 func resetOverlayDisplayMode(overlayController *app.OverlayController, studioProfileSvc *app.StudioProfileService) {
-	if studioProfileSvc == nil {
+	document := resetOverlayProfileDisplayMode(studioProfileSvc)
+	if document == nil {
 		return
+	}
+	if overlayController != nil {
+		current := overlayController.CurrentWindow()
+		if current != nil {
+			if err := current.ApplyProfileMode(document); err != nil {
+				log.Printf("overlay reset display mode apply window error: %v", err)
+			}
+		}
+	}
+}
+
+// resetOverlayProfileDisplayMode resets profile state without touching the
+// controller. It is safe for the serialized native-window-close callback.
+func resetOverlayProfileDisplayMode(studioProfileSvc *app.StudioProfileService) *config.ProfileDocumentV3 {
+	if studioProfileSvc == nil {
+		return nil
 	}
 	document := studioProfileSvc.Document()
 	if document == nil || document.DisplayMode == config.ModeRacing {
-		return
+		return nil
 	}
 	if err := studioProfileSvc.SetDisplayMode(config.ModeRacing); err != nil {
 		log.Printf("overlay reset display mode error: %v", err)
-		return
+		return nil
 	}
 	document = studioProfileSvc.Document()
-	if overlayController != nil && overlayController.CurrentWindow() != nil && document != nil {
-		if err := overlayController.CurrentWindow().ApplyProfileMode(document); err != nil {
-			log.Printf("overlay reset display mode apply window error: %v", err)
-		}
-	}
 	studioProfileSvc.EmitRuntimeLoaded()
+	return document
 }
 
 // buildHotkeyActionMap returns the action map used for hotkey registration and

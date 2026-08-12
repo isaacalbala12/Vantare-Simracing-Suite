@@ -575,6 +575,23 @@ func TestResetOverlayDisplayModeIdempotentWhenRacing(t *testing.T) {
 	}
 }
 
+func TestResetOverlayProfileDisplayModeResetsAndEmitsWithoutController(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeEdit, emitter)
+
+	document := resetOverlayProfileDisplayMode(studioSvc)
+
+	if document == nil || document.DisplayMode != config.ModeRacing {
+		t.Fatalf("reset document=%+v want racing", document)
+	}
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("stored mode=%q want racing", studioSvc.Document().DisplayMode)
+	}
+	if len(emitter.events) != 1 || emitter.events[0] != "overlay:profile-v3-loaded" {
+		t.Fatalf("events=%v want one runtime profile refresh", emitter.events)
+	}
+}
+
 func TestApplyProfileV3WindowModes(t *testing.T) {
 	tests := []struct {
 		name           string

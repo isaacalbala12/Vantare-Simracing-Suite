@@ -35,6 +35,26 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
   posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
   hasta que esa base esté realmente integrada.
 
+Actualización condicionada ISA-161 / TC-10B (2026-08-12):
+
+- Telemetry Core ha implementado en la rama local de ISA-161 el productor
+  `StrategyLiveProjection v1` sobre el único pipeline LMU canónico. Incluye
+  sesión, progreso, pit y Fuel con calidad explícita; VE, tyres, weather y
+  facts permanecen ausentes.
+- ISA-161 se construyó originalmente desde ISA-160 en `nightly@8880a88`; su
+  primer rebase local fue sobre `origin/nightly@234794d` y su base/merge-base
+  actuales son `origin/nightly@b6df494`. La rama está publicada y el PR draft
+  [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212)
+  está OPEN/CLEAN/MERGEABLE hacia `nightly`. El
+  [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366)
+  pasó completo para `19dddea`, incluido GitGuardian. Cualquier amend posterior
+  requiere checks de su nuevo HEAD; el estado final se consulta en el PR.
+  Linear sigue pendiente por reautenticación.
+- Esto no implementa el motor live Strategy ni desbloquea todavía ISA-152 /
+  STR-17. La dependencia técnica solo será desbloqueable tras la promoción
+  aceptada de ISA-161 a `nightly`; no hubo integración, promoción ni release
+  de este corte.
+
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local

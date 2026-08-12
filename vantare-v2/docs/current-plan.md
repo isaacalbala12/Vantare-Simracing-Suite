@@ -1,4 +1,63 @@
-Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
+Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada):
+- ISA-160 / TC-10A está integrada en
+  `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`; ISA-161 se construyó
+  originalmente desde esa base en
+  `vantareapp/isa-161-tc-10b-productor-strategyliveprojection-v1`. Su primer
+  rebase local fue sobre `origin/nightly@234794d`; la base y merge-base actuales
+  son `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
+- Tasks 1-4 están implementadas y revisadas en el HEAD previo a documentación
+  reescrito `fee981be42f7a3053c2673182939fb8898609510`. El único pipeline/driver LMU
+  canónico produce Overlay y Strategy desde el mismo `FinalState`; `Hub()`
+  conserva Overlay y `StrategyHub()` posee el transporte Strategy separado.
+- `StrategyLiveProjection v1` añade de forma compatible `sourceTimeSeconds`,
+  `endTimeSeconds`, `remainingSeconds`, `maximumLaps`, sector, distancia de
+  vuelta, pit y Fuel amount/capacity atómicos. Cada campo conserva presencia,
+  procedencia y freshness; las capabilities son `session`, `progress`, `pit` y
+  `fuel`. Virtual Energy, tyres, weather y facts siguen ausentes, sin cero ni
+  fallback sintético.
+- Wails publica status/projection con nombres canónicos y replay de status.
+  SSE expone solo `GET /telemetry/strategy/projection`, loopback-only. El hub
+  conserva latest full/resync sin fabricar deltas; lifecycle, fail-stop y
+  teardown cubren los dos productos.
+- Replay, compatibilidad old/new, resync, soak Overlay+Engineer+Strategy y
+  benchmark están enlazados en
+  `docs/telemetry-core/evidence/isa-161-strategy-live-producer.md`. `-race` no
+  se ejecutó porque el host tiene `CGO_ENABLED=0` y no dispone de GCC.
+- Gate LMU sanitizado sobre el HEAD del primer rebase `879d5be`: con el proceso
+  `Le Mans Ultimate` activo, el opt-in read-only
+  `LMU_LIVE_SHARED_MEMORY_TEST=1` / `TestLiveLMUSharedMemoryOptIn` pasa. Reporta
+  build normalizada `1.4.0.0`, `supported=true`, runtime `live`,
+  `player-present=false` y fingerprint
+  `LMU_Data/runtime:build=1.4.0.0;size=324820;evidence=active-grid-bijective;telemetry=not-required-no-player`.
+  No se persistieron raw, IDs ni PII. Esto acredita adquisición, mapping,
+  runtime y ausencia correcta de telemetría rápida sin jugador; no acredita un
+  full Strategy con Fuel live en pista. Fuel continúa demostrado por fixtures
+  hash-pinned y replay; la validación con jugador/Fuel en pista no se ejecutó.
+- Gates locales finales sobre el HEAD del primer rebase `879d5be`: Telemetry,
+  app/server, frontend build,
+  `go test ./...` y frontend 367 archivos/2.636 tests pasan. La suite frontend
+  emite dos `AbortError` de teardown happy-dom con exit 0. Vet global termina
+  con exit 1 solo por tres `unsafe.Pointer` heredados; `gofmt` global lista
+  `diagnostics_service.go`, heredado de `origin/nightly` y fuera del diff
+  ISA-161. `git diff --check` queda limpio. No son CI remoto.
+- Estado real: la rama se publicó en `9c028f6` y el PR draft
+  [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212)
+  está OPEN, CLEAN y MERGEABLE hacia `nightly@b6df494`. Para el HEAD publicado
+  `19dddea`, el [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366)
+  terminó COMPLETED/SUCCESS: `Validate promotion path`, frontend build, Go,
+  frontend tests, visual advisory y lint advisory pasaron; GitGuardian también
+  pasó. Cualquier amend posterior necesita checks de su nuevo HEAD y el estado
+  final se consulta en el PR. Linear sigue pendiente por reautenticación; no
+  hubo integración, promoción ni release. ISA-152 / STR-17 no está
+  desbloqueada: su dependencia técnica está implementada, pero solo será
+  desbloqueable tras promoción aceptada a `nightly`. El motor live Strategy
+  todavía no existe.
+- Siguiente acción: actualizar Linear tras reautenticar y obtener la revisión
+  de Isaac sobre el PR #212. La validación con jugador/Fuel en pista continúa
+  pendiente y no bloquea la evidencia fixture/replay ya cerrada; no mergear ni
+  promover sin autorización nueva de Isaac.
+
+Nota ISA-160 / TC-10A (2026-08-11, estado histórico supersedido por ISA-161):
 - La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E
   real sanitizado LMU 1.4 recorre Driver/Fusion/BatchMapper/Reducer/Derive con
   una sola apertura y conserva Fuel exacto `83.80992715710434/115 L`, observed

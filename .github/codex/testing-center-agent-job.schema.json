@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testing-center.agent-job.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "jobKey",
+    "technicalIssueId",
+    "reportDigest",
+    "dossierDigest",
+    "nightlyBaseSha",
+    "reservedNightlyHeadSha",
+    "executionGeneration",
+    "classification",
+    "duplicateOf",
+    "family",
+    "risk",
+    "reproductionComplete",
+    "reproductionDeterministic",
+    "acceptanceCriteria",
+    "files",
+    "redTestCommandId",
+    "baseMatchesNightly",
+    "blockingGatesAvailable",
+    "requiresDependency",
+    "requiresMigration",
+    "requiresAuth",
+    "requiresBilling",
+    "requiresSecrets",
+    "requiresPermissions",
+    "requiresWorkflow",
+    "requiresRelease",
+    "requiresGovernance",
+    "requiresArchitecture",
+    "requiresDeletion",
+    "activePathOverlap",
+    "visualChange",
+    "visualGate",
+    "untrustedTesterText",
+    "untrustedModelOutput"
+  ],
+  "properties": {
+    "contractVersion": { "const": "testing-center.agent-job.v2" },
+    "jobKey": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "technicalIssueId": { "type": "string", "pattern": "^issue_[0-9a-f]{64}$" },
+    "reportDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "dossierDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nightlyBaseSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "reservedNightlyHeadSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "executionGeneration": { "const": 1 },
+    "classification": {
+      "enum": ["bug", "duplicate", "needs_info", "ineligible"]
+    },
+    "duplicateOf": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^issue_[0-9a-f]{64}$" }
+      ]
+    },
+    "family": { "const": "testing-center-ui-state" },
+    "risk": { "enum": ["low", "medium", "high"] },
+    "reproductionComplete": { "type": "boolean" },
+    "reproductionDeterministic": { "type": "boolean" },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 4,
+        "maxLength": 240,
+        "pattern": "^(?!/)(?![a-z]:/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!(?:\\.github|supabase/(?:migrations|rollbacks)|vantare-v2/docs)/)(?!.*(?:^|/)(?:bun\\.lockb?|cargo\\.(?:lock|toml)|deno\\.jsonc?|go\\.(?:mod|sum)|package(?:-lock)?\\.json|pnpm-(?:lock\\.yaml|workspace\\.yaml)|yarn\\.lock)$)(?!.*(?:\\.(?:spec|test)\\.(?:ts|tsx)|_test\\.go)$)[a-z0-9._/-]+\\.(?:css|go|ts|tsx)$"
+      }
+    },
+    "redTestCommandId": {
+      "enum": [
+        "go.test.focal",
+        "frontend.test.focal",
+        "frontend.visual.testing-center"
+      ]
+    },
+    "baseMatchesNightly": { "type": "boolean" },
+    "blockingGatesAvailable": { "type": "boolean" },
+    "requiresDependency": { "type": "boolean" },
+    "requiresMigration": { "type": "boolean" },
+    "requiresAuth": { "type": "boolean" },
+    "requiresBilling": { "type": "boolean" },
+    "requiresSecrets": { "type": "boolean" },
+    "requiresPermissions": { "type": "boolean" },
+    "requiresWorkflow": { "type": "boolean" },
+    "requiresRelease": { "type": "boolean" },
+    "requiresGovernance": { "type": "boolean" },
+    "requiresArchitecture": { "type": "boolean" },
+    "requiresDeletion": { "type": "boolean" },
+    "activePathOverlap": { "type": "boolean" },
+    "visualChange": { "type": "boolean" },
+    "visualGate": {
+      "enum": ["blocking", "advisory", "not_applicable"]
+    },
+    "untrustedTesterText": {
+      "type": "string",
+      "maxLength": 8192
+    },
+    "untrustedModelOutput": {
+      "type": "string",
+      "maxLength": 32768
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "classification": { "const": "duplicate" } },
+        "required": ["classification"]
+      },
+      "then": {
+        "properties": {
+          "duplicateOf": {
+            "type": "string",
+            "pattern": "^issue_[0-9a-f]{64}$"
+          }
+        }
+      },
+      "else": {
+        "properties": { "duplicateOf": { "type": "null" } }
+      }
+    }
+  ]
+}

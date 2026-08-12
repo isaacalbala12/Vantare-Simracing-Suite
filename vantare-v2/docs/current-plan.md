@@ -5294,5 +5294,14 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   Las comparaciones por microcorte no detectaron violaciones nuevas. La inspección
   T3 comprobó Studio a 1440×900,
   1024×768 y 800×700, superficies 3440×1440 y 1000×1000, sin overflow horizontal.
-  No se ejecutó smoke físico Wails/OBS porque este entorno no expone monitores
-  nativos ni un perfil runtime servido; queda como gate humano previo a nightly.
+  En el cierre inicial no se ejecutó smoke físico Wails/OBS; el resultado parcial
+  posterior y sus bloqueos se registran a continuación.
+- **Smoke nativo posterior:** `wails3 dev` compiló y arrancó la rama en Windows;
+  ventana Hub 1280×800, WebView2 y servidor local saludables. El equipo solo
+  expone un monitor `DISPLAY1` 1920×1080, por lo que no puede certificar cambio
+  entre pantallas ni DPI mixto. Studio nativo quedó detrás del login porque el
+  worktree no contiene configuración Supabase y no se copiaron secretos.
+- **Bloqueo OBS descubierto:** la CSP histórica del servidor bloquea los assets
+  JS/CSS propios de `/overlay`, que responde 200 pero deja `#root` vacío. Se
+  registró ISA-329 como bug High y dependencia de este gate; no se mezcló el fix
+  de seguridad/servidor dentro de ISA-326.

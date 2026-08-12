@@ -628,6 +628,16 @@ Evidencia Task 4 y cierre acumulado:
 - Riesgos aceptados: `monitorIndex` es posicional y la enumeración solo se
   refresca al abrir Studio; hot-plug durante la sesión requiere reabrirlo. Falta
   prueba manual Windows con dos monitores/DPI mixto y OBS antes de promoción.
+- Smoke Wails posterior al cierre: build y arranque nativo PASS; Hub 1280×800,
+  WebView2 y `/health` operativos. El host solo tiene `DISPLAY1` 1920×1080 y el
+  Studio real requiere login/configuración Supabase ausente en este worktree, así
+  que multimonitor/DPI mixto continúa siendo gate humano.
+- El smoke HTTP con un perfil V3 custom 1000×1000 confirmó que
+  `/api/profile-v3` conserva `layoutViewport`, pero `/overlay` quedó vacío: la
+  CSP preexistente permite inline y bloquea los módulos/estilos propios de Vite.
+  ISA-329 (`OBS · CSP local bloquea los assets propios y deja /overlay vacío`)
+  queda como bug High que bloquea el gate OBS. No se amplió silenciosamente el
+  write set de ISA-326 para tocar seguridad/servidor.
 - Estado Git al cerrar producto: rama de issue sobre
   `origin/nightly@8880a880`; HEAD productivo `4703a48`; sin push, PR, CI remoto,
   merge, release ni promoción.

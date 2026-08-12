@@ -438,3 +438,206 @@ Task 4.
    separar. Impacto para usuarios y testers: ninguno, el Workshop está excluido de
    Stable y el compile-out lo confirma. Tras el merge: ISA-280 (OS-09L, gate
    técnico final) y resolver la cuestión abierta del punto 6b.
+
+## ISA-326 / OS-11 — superficie arbitraria y paridad Studio/Desktop/OBS
+
+- **Estado al 2026-08-12:** implementación de Tasks 0–4 completada y revisada;
+  gates acumulados de Task 5 ejecutados. Queda la aceptación manual de Isaac en
+  hardware Windows multimonitor antes de cualquier promoción.
+- **Rama/worktree:**
+  `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion` en
+  `C:\tmp\vantare-isa326\vantare-v2`, desde
+  `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- **Hallazgo raíz:** el selector actual solo altera el zoom calculado. Documento,
+  validación, drag/resize, Desktop y OBS siguen ligados a 1920×1080 y mantienen
+  fórmulas/orígenes distintos.
+- **Decisión vigente:** `layoutViewport {width,height}` opcional y
+  retrocompatible en V3; ausencia = 1920×1080. Unidades CSS/DIP. Transformación
+  pura `contain` compartida, centrada y sin deformación. Cualquier resolución es
+  válida; los presets solo son atajos.
+- **Política entre proporciones:** sin reflow implícito. Si documento y salida no
+  coinciden, se preserva la proporción con bandas transparentes. Un contrato de
+  anclajes/reflow requerirá alcance separado.
+- **Frontera preservada:** `WidgetVisualHost` y los renderizadores visuales no se
+  modifican. El canvas conserva preview imperativa durante drag/resize.
+- **Monitor:** Wails ya aporta `Screens.GetAll` y `Screen.GetByIndex`. Studio
+  persiste índice y `layoutViewport` de forma atómica usando `Bounds` CSS/DIP;
+  Desktop crea y lleva a fullscreen la ventana sobre esa pantalla exacta. No se
+  usa el viewport del Hub, `WorkArea` ni una multiplicación por DPI.
+- **Autoridades:** `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y
+  `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
+
+Ledger vivo:
+
+| Task | Contenido | Estado | Evidencia | Próxima condición |
+|---|---|---|---|---|
+| 0 | ADR, microplan y expediente | Completada | Commit documental; diff check limpio | Task 1 |
+| 1 | Contrato TS/Go + transformación pura | Completada | `5a98553` + `a9c2fc8`; TS 67/67, Go pkg y completo PASS; doble review PASS | Task 2 |
+| 2 | Superficie editable en Studio | Completada | 2A `b873a82`/`7b24f09`; 2B `8249585`/`50e9b9e`/`5fc3809`; 2C `edf3359`/`13fe677`/`1aa1ec7`; dobles reviews PASS | Task 3 |
+| 3 | Paridad Desktop/OBS | Completada | 3A `ecda9ee`/`c8f00e5`; 3B `b4a5c94`/`fb5b5ae`; dobles reviews PASS | Task 4 |
+| 4 | Hub fluido + frontera monitor nativo | Completada | `0aa50aa`, `3f819d4`, `30c5292`, `0421e55`, `452b4ce` y correcciones hasta `4703a48`; reviews finales Ready/PASS | Aceptación manual física |
+| 5 | Gates, evidencia y cierre | Completada técnicamente | Go completo PASS; frontend 2567/2567; build y diff-check PASS; lint con deuda heredada documentada | Isaac prueba Windows multimonitor y decide promoción |
+
+Evidencia Task 1:
+
+- `layoutViewport` es opcional en storage V3; ausencia conserva 1920×1080 y
+  `null` se rechaza igual en TS y Go.
+- Límites compartidos: 32..16384 CSS/DIP. Recoverability usa la superficie
+  resuelta; no modifica coordenadas legacy.
+- Transformación pura `contain` con offsets centrados y mapeo forward/inverse;
+  inputs inválidos fallan explícitamente en vez de producir `NaN`/infinito.
+- Checks del worker: frontend focal 67/67, frontend completo 2480/2480,
+  `go test ./pkg/config`, `go test ./...`, build, lint focal y diff-check PASS.
+  El root repitió focal 67/67, Go pkg y diff-check con PASS.
+- Review de especificación: PASS. Review de calidad tras correcciones: Ready to
+  proceed, cero Critical/Important. Minor aceptado para evidencia acumulada:
+  falta test del máximo exacto 16384; la comparación inclusiva fue inspeccionada.
+- Ruido heredado: dos `AbortError` de teardown de happy-dom tras la suite, con
+  exit 0 y todos los tests PASS.
+
+Evidencia microcorte 2A:
+
+- `document/layout-viewport` persiste el tamaño explícito sin mutar documento,
+  comando ni metadata. El parser canónico valida siempre esta edición, también
+  en producción.
+- Una superficie inválida o que deje widgets irrecuperables falla de forma
+  atómica con `StudioCommandError`; Store conserva el historial y publica el
+  mensaje. Errores inesperados de permisos o commit se relanzan.
+- Dirty, undo, redo y save están cubiertos; acceso lo trata como mutación layout
+  documental sobre layouts persistidos.
+- Commits: `b873a82` y corrección de spec `7b24f09`. Root repitió focal 66/66.
+  Build PASS. Spec review PASS y quality review Ready, cero Critical/Important.
+- Minors aceptados: los tests no hacen observable la deduplicación interna de
+  permisos (layout hoy es incondicional) ni fuerzan un error inesperado desde
+  `commitStudioCommand`; la implementación de ambos caminos fue inspeccionada.
+- Task 2 se divide en 2A estado, 2B geometría pura y 2C canvas/controles para
+  mantener write sets acotados y review entre cortes.
+
+Evidencia microcorte 2B:
+
+- Fit, clamp, snap, safe area, center, move y resize consumen `LayoutViewport`.
+  Los aliases 1920×1080 quedan deprecados y solo como fallback transitorio de
+  callers que 2C debe eliminar.
+- Matriz TDD: 1280×720, 3440×1440, 5120×1440, 1000×1000 y bordes custom 1006px
+  no alineados a la rejilla.
+- Review detectó dos regresiones de borde antes de 2C: snap posterior al clamp
+  podía perder recoverability en move y las guides de resize podían quedar en
+  la posición previa al clamp. Corregidas en `50e9b9e` y `5fc3809` con cobertura
+  X/Y y guías perpendiculares.
+- `MINIMUM_VISIBLE` deriva ahora de la autoridad core. Preview drag/resize sigue
+  imperativa y solo hace commit al terminar.
+- Evidencia final: focal 73/73, build, lint focal y diff-check PASS. Spec review
+  PASS y quality review Ready, sin Critical/Important/Minor nuevos.
+
+Evidencia microcorte 2C:
+
+- `StudioPreviewState` ya no contiene una resolución ficticia. El documento
+  gobierna dimensiones, fit, área segura, interacción y todas las rutas visibles
+  de centrado; los perfiles legacy conservan el fallback 1920×1080.
+- Presets planos y dimensiones custom 32..16384 persisten mediante
+  `document/layout-viewport`. La escena muestra límites propios sobre un stage
+  neutral; el fondo seleccionado pertenece a la escena y el panel es responsive.
+- Dos reviews detectaron estados engañosos del selector ante un preset rechazado
+  y ante volver al preset vigente desde un draft custom. Se corrigieron en
+  `13fe677` y `1aa1ec7`; selector, drafts, cabecera, escena y documento quedan
+  sincronizados sin hacer optimista un cambio que recoverability pueda rechazar.
+- Evidencia final independiente: focal 9 archivos 55/55, regresiones de geometría
+  y preview imperativa 67/67, build y diff-check PASS. Spec review PASS y quality
+  review Ready, cero Critical/Important. Lint conserva únicamente 4 errores y 1
+  warning heredados en líneas anteriores a ISA-326.
+- Observación aceptada: elegir explícitamente 1920×1080 en un perfil legacy puede
+  materializar `layoutViewport` y marcar dirty; es coherente con persistir la
+  superficie seleccionada según ADR 0092.
+
+Ejecución Task 3:
+
+- **3A — superficie runtime compartida:** medir la salida CSS, aplicar una sola
+  transformación `contain` a la escena lógica y demostrar paridad Desktop/OBS,
+  offsets centrados, legacy y `layoutOrigin` lógico.
+- **3B — preview y app OBS:** hacer que la preview reciba la superficie
+  documental y eliminar sus imports de constantes Studio, sin doble escala.
+- Los microcortes son secuenciales y cada uno exige spec review y quality review
+  antes de avanzar; sus write sets no se solapan.
+
+Evidencia microcorte 3A:
+
+- `RuntimeOverlaySurface` mide la caja CSS no transformada y aplica una única
+  transformación `contain` a una escena lógica. Desktop y OBS comparten la misma
+  implementación; frames y `layoutOrigin` permanecen en espacio lógico.
+- La escena espera una medida positiva, soporta resize fraccional, legacy
+  1920×1080, offsets X/Y y limpia observer/listener. Los subtítulos viven dentro
+  de la misma escena; ningún renderer ni `RuntimeWidgetFrame` fue modificado.
+- Spec review detectó dos Important antes de 3B: `getBoundingClientRect` podía
+  medir un ancestro ya escalado y causar doble escala, y `overflow: visible`
+  permitía que widgets parciales contaminaran bandas transparentes. Corregidos
+  en `c8f00e5` usando `contentBoxSize/contentRect` o fallback `clientWidth/Height`,
+  y clipping en el límite documental.
+- Evidencia final: focal raíz 5 archivos 39/39, build, ESLint focal y diff-check
+  PASS. Spec review PASS y quality review Ready, cero Critical/Important.
+- Gate 3B: la API OBS todavía entrega `layoutOrigin` shrink-wrap mientras Desktop
+  usa cero. 3B debe normalizar esa diferencia y demostrar paridad end-to-end;
+  no basta con la paridad del componente bajo inputs iguales.
+
+Evidencia microcorte 3B:
+
+- La preview OBS recibe el `layoutViewport` documental, elimina toda dependencia
+  de constantes Studio y usa el transform `contain` core sobre una caja CSS no
+  transformada. Espera la primera medida válida, soporta dimensiones
+  fraccionales y limpia `ResizeObserver` o el fallback de `window.resize`.
+- En preview, la escena exterior aplica una sola escala y el runtime interior
+  mide la superficie lógica con `scale=1`. En streaming, el runtime mide la
+  salida real. Un documento 1000x1000 sobre 1600x900 conserva escala 0,9,
+  offset X 350 y coordenadas documentales `x=123`, `y=87`.
+- `ObsOverlayApp` ignora el `layoutOrigin` shrink-wrap legado del endpoint; OBS
+  deja de desplazar widgets respecto a Desktop. El fondo y la cuadrícula quedan
+  dentro de la escena y las bandas exteriores permanecen neutrales.
+- Spec review detectó que el recordatorio de calendario también se escalaba en
+  preview. Se corrigió en `fb5b5ae`: solo el runtime entra en la escena
+  documental y el banner permanece como capa de salida, con cierre intacto.
+- Evidencia final independiente: focal 8 archivos 64/64, suite frontend
+  2543/2543, build, ESLint focal y diff-check PASS. Spec review PASS y quality
+  review Ready, cero Critical/Important. Ruido heredado: dos `AbortError` de
+  teardown con exit 0 y warnings de `.eslintignore`/chunk. Smoke visual real
+  pendiente para Task 5.
+
+Evidencia Task 4 y cierre acumulado:
+
+- El workspace Profiles/Studio usa todo el ancho disponible sin quitar el cap de
+  1920 px a las demás secciones. Focal 21/21, suite completa 2545/2545, build y
+  review PASS (`0aa50aa`).
+- El cliente nativo enumera pantallas en CSS/DIP, tolera nombres vacíos y valida
+  índice seguro. El comando `document/monitor` hace monitor+superficie en un solo
+  paso de dirty/undo/redo; la UI conserva custom si Wails no está disponible.
+  Commits `3f819d4`, `30c5292` y `0421e55`; reviews Ready sin Critical/Important.
+- Desktop resuelve la pantalla exacta, usa sus `Bounds` para la colocación inicial
+  y después fullscreen. Los cierres tardíos de una ventana reemplazada no pueden
+  cerrar ni desincronizar la nueva; la identidad no comparable falla sin panic y
+  los side effects quedan serializados. Commits desde `452b4ce` hasta
+  `4703a48`; spec PASS y quality Ready, cero Critical/Important.
+- Gates acumulados sobre `4703a48`: `go test ./...` PASS; frontend 360 archivos,
+  2567/2567 PASS; build y `git diff --check origin/nightly...HEAD` PASS. ESLint
+  directo sobre los 53 TS/TSX tocados queda rojo con 6 errores y 1 warning en
+  líneas heredadas; el global conserva 36 errores y 2 warnings. Las comparaciones
+  contra el baseline hechas por microcorte no encontraron violaciones nuevas.
+  La suite conserva dos `AbortError` de teardown de happy-dom tras el resumen,
+  con exit 0.
+- Inspección T3 del harness Studio: superficies 3440×1440 y custom 1000×1000;
+  viewports 1440×900, 1024×768 y 800×700 sin scroll horizontal del documento y
+  con escala uniforme. El navegador no dispone del runtime Wails ni de un perfil
+  servido por el backend, por lo que no sustituye la prueba física Desktop/OBS.
+- Riesgos aceptados: `monitorIndex` es posicional y la enumeración solo se
+  refresca al abrir Studio; hot-plug durante la sesión requiere reabrirlo. Falta
+  prueba manual Windows con dos monitores/DPI mixto y OBS antes de promoción.
+- Smoke Wails posterior al cierre: build y arranque nativo PASS; Hub 1280×800,
+  WebView2 y `/health` operativos. El host solo tiene `DISPLAY1` 1920×1080 y el
+  Studio real requiere login/configuración Supabase ausente en este worktree, así
+  que multimonitor/DPI mixto continúa siendo gate humano.
+- El smoke HTTP con un perfil V3 custom 1000×1000 confirmó que
+  `/api/profile-v3` conserva `layoutViewport`, pero `/overlay` quedó vacío: la
+  CSP preexistente permite inline y bloquea los módulos/estilos propios de Vite.
+  ISA-329 (`OBS · CSP local bloquea los assets propios y deja /overlay vacío`)
+  queda como bug High que bloquea el gate OBS. No se amplió silenciosamente el
+  write set de ISA-326 para tocar seguridad/servidor.
+- Estado Git al cerrar producto: rama de issue sobre
+  `origin/nightly@8880a880`; HEAD productivo `4703a48`; sin push, PR, CI remoto,
+  merge, release ni promoción.

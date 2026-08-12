@@ -5232,3 +5232,76 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 - **Próxima acción:** merge del PR a `nightly` por parte de Isaac. Después,
   ISA-280 / OS-09L (gate técnico final) y la resolución de la cuestión abierta
   sobre `assertNoReload` del smoke descrita en el handoff.
+
+## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
+
+- **Estado:** implementación y gates técnicos de Tasks 0–5 completados. Pendiente
+  de aceptación manual por Isaac en Windows multimonitor antes de promoción.
+- **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
+- **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
+- **Decisión:** cada perfil podrá persistir un `layoutViewport` arbitrario en
+  píxeles CSS/DIP. Los V3 antiguos se resuelven como 1920×1080. Studio, Desktop
+  y OBS compartirán una transformación uniforme `contain`; no habrá stretch,
+  crop ni doble aplicación de DPI.
+- **Autoridades:** ADR
+  `docs/adr/0092-overlay-arbitrary-layout-viewport.md` y microplan
+  `docs/superpowers/plans/2026-08-11-overlay-arbitrary-viewport-parity.md`.
+- **Monitor nativo:** Wails ya exponía enumeración y selección. Studio persiste
+  `monitorIndex` + `layoutViewport` atómicamente desde `Bounds` CSS/DIP; Desktop
+  resuelve la pantalla exacta por índice, dimensiona la ventana inicialmente con
+  sus límites y pasa a fullscreen sin aplicar DPI dos veces.
+- **Evidencia Task 1:** focal frontend 67/67 PASS, `go test ./pkg/config` PASS,
+  suite frontend 2480/2480 PASS, `go test ./...` PASS, build y lint focal PASS.
+  Review de especificación PASS; review de calidad Ready to proceed, sin
+  Critical/Important. Riesgo menor no bloqueante: falta un test explícito de
+  aceptación del máximo exacto 16384, aunque el límite inclusivo está
+  implementado e inspeccionado.
+- **Evidencia 2A:** focal state/access 66/66 PASS y build PASS. Spec review PASS;
+  quality review Ready sin Critical/Important. El viewport ya participa en
+  dirty/undo/redo/save y los rechazos son atómicos y visibles.
+- **Evidencia 2B:** `8249585`, `50e9b9e` y `5fc3809`; focal canvas 73/73,
+  build/lint/diff-check PASS. Spec review PASS y quality review Ready, sin
+  hallazgos. Fit, clamp, snap, move, resize, safe area y center aceptan viewport;
+  recoverability y guías permanecen coherentes tras snap/clamp.
+- **Evidencia 2C:** `edf3359`, `13fe677` y `1aa1ec7`; Studio elimina la resolución
+  ficticia de preview y usa `layoutViewport` para escena, fit, área segura,
+  interacciones y center. Presets/custom, rechazo, undo/redo y UI permanecen
+  sincronizados. Focal 9 archivos 55/55, regresiones imperativas 67/67, build y
+  diff-check PASS; spec PASS y quality Ready, cero Critical/Important.
+- **Próxima acción:** Isaac valida manualmente selección/cambio de monitor en
+  Windows, DPI mixto, Desktop fullscreen y OBS; después decide si autoriza la
+  promoción de la rama a `nightly`.
+- **Evidencia 3A:** `ecda9ee` y `c8f00e5`; escena runtime lógica con una sola
+  transformación, medida CSS no transformada, clipping documental, legacy,
+  offsets, origin lógico y paridad Desktop/OBS. Focal raíz 39/39, build/lint/
+  diff-check PASS; spec PASS y quality Ready. 3B debe normalizar el origin
+  shrink-wrap que aún entrega la API OBS y probar la integración real.
+- **Evidencia 3B:** `b4a5c94` y corrección `fb5b5ae`; preview OBS gobernada por
+  `layoutViewport`, sin constantes Studio, con `contain` exterior y runtime
+  interior a escala 1. Streaming mide la salida real e ignora el origin
+  shrink-wrap de la API, conservando coordenadas documentales. El recordatorio
+  queda en espacio de salida y no se escala con la escena. Focal 64/64, suite
+  frontend 2543/2543, build/lint/diff-check PASS; spec PASS y quality Ready,
+  cero Critical/Important. Smoke visual real pendiente para Task 5.
+- **Evidencia Task 4:** Hub fluido `0aa50aa`; estado/cliente monitor
+  `3f819d4`/`30c5292`; selector Studio `0421e55`; colocación Desktop y lifecycle
+  corregidos hasta `4703a48`. Todos los microcortes terminaron con spec PASS y
+  quality Ready, cero Critical/Important.
+- **Gates acumulados:** `go test ./...` PASS; frontend 360 archivos y 2567/2567
+  tests PASS; build y diff-check PASS. ESLint directo de los 53 TS/TSX tocados
+  conserva 6 errores y 1 warning heredados; el global, 36 errores y 2 warnings.
+  Las comparaciones por microcorte no detectaron violaciones nuevas. La inspección
+  T3 comprobó Studio a 1440×900,
+  1024×768 y 800×700, superficies 3440×1440 y 1000×1000, sin overflow horizontal.
+  En el cierre inicial no se ejecutó smoke físico Wails/OBS; el resultado parcial
+  posterior y sus bloqueos se registran a continuación.
+- **Smoke nativo posterior:** `wails3 dev` compiló y arrancó la rama en Windows;
+  ventana Hub 1280×800, WebView2 y servidor local saludables. El equipo solo
+  expone un monitor `DISPLAY1` 1920×1080, por lo que no puede certificar cambio
+  entre pantallas ni DPI mixto. Studio nativo quedó detrás del login porque el
+  worktree no contiene configuración Supabase y no se copiaron secretos.
+- **Bloqueo OBS descubierto:** la CSP histórica del servidor bloquea los assets
+  JS/CSS propios de `/overlay`, que responde 200 pero deja `#root` vacío. Se
+  registró ISA-329 como bug High y dependencia de este gate; no se mezcló el fix
+  de seguridad/servidor dentro de ISA-326.

@@ -41,6 +41,130 @@ function widget(id: string, overrides: Partial<WidgetInstanceV3> = {}): WidgetIn
 }
 
 describe("applyStudioCommand", () => {
+  it("updates monitor identity and its full DIP bounds atomically without mutating inputs", () => {
+    const document = buildDocument();
+    const before = structuredClone(document);
+    const command = {
+      type: "document/monitor" as const,
+      monitorIndex: 2,
+      viewport: { width: 3440, height: 1440 },
+    };
+    const commandBefore = structuredClone(command);
+
+    const next = applyStudioCommand(document, command);
+
+    expect(next).toStrictEqual({
+      ...before,
+      monitorIndex: 2,
+      layoutViewport: { width: 3440, height: 1440 },
+    });
+    expect(document).toEqual(before);
+    expect(command).toEqual(commandBefore);
+    expect(next.layoutViewport).not.toBe(command.viewport);
+  });
+
+  it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid monitor index %s with a typed command error",
+    (monitorIndex) => {
+      const document = buildDocument();
+      const before = structuredClone(document);
+
+      expect(() =>
+        applyStudioCommand(document, {
+          type: "document/monitor",
+          monitorIndex,
+          viewport: { width: 1920, height: 1080 },
+        }),
+      ).toThrow(StudioCommandError);
+      expect(document).toEqual(before);
+    },
+  );
+
+  it("rejects an atomic monitor change when its bounds make a widget unrecoverable", () => {
+    const document = buildDocument();
+    document.monitorIndex = 1;
+    document.layoutViewport = { width: 3440, height: 1440 };
+    document.layouts.general.widgets[0]!.layout.x = 3200;
+    const before = structuredClone(document);
+
+    try {
+      applyStudioCommand(document, {
+        type: "document/monitor",
+        monitorIndex: 0,
+        viewport: { width: 1920, height: 1080 },
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/monitor");
+      expect((error as Error).message).toContain("recoverable");
+    }
+    expect(document).toEqual(before);
+  });
+
+  it("persists an explicit layout viewport without mutating the command or document", () => {
+    const document = buildDocument();
+    document.source = { kind: "local" };
+    const before = structuredClone(document);
+    const viewport = { width: 3440, height: 1440 };
+
+    const next = applyStudioCommand(document, {
+      type: "document/layout-viewport",
+      viewport,
+    });
+
+    expect(next).toStrictEqual({
+      ...before,
+      layoutViewport: { width: 3440, height: 1440 },
+    });
+    expect(document).toEqual(before);
+    expect(viewport).toEqual({ width: 3440, height: 1440 });
+    expect(next.layoutViewport).not.toBe(viewport);
+  });
+
+  it.each([
+    ["below the safe minimum", { width: 31, height: 1080 }],
+    ["non-integer", { width: 1920, height: 1079.5 }],
+  ])("throws a typed error for a layout viewport dimension that is %s", (_label, viewport) => {
+    try {
+      applyStudioCommand(buildDocument(), {
+        type: "document/layout-viewport",
+        viewport,
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/layout-viewport");
+    }
+  });
+
+  it("rejects a smaller viewport that would leave a persisted widget unrecoverable", () => {
+    const document = buildDocument();
+    document.layoutViewport = { width: 3440, height: 1440 };
+    document.layouts.race = {
+      type: "race",
+      widgets: [
+        widget("delta-race", {
+          layout: { x: 3200, y: 100, w: 200, h: 96, zIndex: 0, aspectLocked: true },
+        }),
+      ],
+    };
+    const before = structuredClone(document);
+
+    try {
+      applyStudioCommand(document, {
+        type: "document/layout-viewport",
+        viewport: { width: 1920, height: 1080 },
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/layout-viewport");
+      expect((error as Error).message).toContain("recoverable");
+    }
+    expect(document).toEqual(before);
+  });
+
   it("materializes a missing session before the first mutation", () => {
     const document = buildDocument();
     const added = widget("delta-race");

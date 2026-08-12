@@ -1,10 +1,31 @@
 package config
 
+import (
+	"bytes"
+	"encoding/json"
+)
+
 const ProfileSchemaVersionV3 = 3
 
-const StudioCanvasWidth = 1920
-const StudioCanvasHeight = 1080
-const StudioMinimumVisible = 32
+const (
+	DefaultLayoutViewportWidth  = 1920
+	DefaultLayoutViewportHeight = 1080
+	MinLayoutViewportDimension  = 32
+	MaxLayoutViewportDimension  = 16384
+	StudioMinimumVisible        = MinLayoutViewportDimension
+)
+
+type LayoutViewportV3 struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+func ResolveLayoutViewportV3(p *ProfileDocumentV3) LayoutViewportV3 {
+	if p != nil && p.LayoutViewport != nil {
+		return *p.LayoutViewport
+	}
+	return LayoutViewportV3{Width: DefaultLayoutViewportWidth, Height: DefaultLayoutViewportHeight}
+}
 
 type WidgetTypeV3 string
 
@@ -43,9 +64,31 @@ type ProfileDocumentV3 struct {
 	Name                  string                         `json:"name"`
 	DisplayMode           DisplayMode                    `json:"displayMode"`
 	MonitorIndex          int                            `json:"monitorIndex"`
+	LayoutViewport        *LayoutViewportV3              `json:"layoutViewport,omitempty"`
 	Layouts               map[LayoutType]SessionLayoutV3 `json:"layouts"`
 	DefaultVisualSystemID *DesignSystemID                `json:"defaultVisualSystemId,omitempty"`
 	Source                *ProfileSourceMeta             `json:"source,omitempty"`
+}
+
+func (p *ProfileDocumentV3) UnmarshalJSON(data []byte) error {
+	type profileDocumentV3JSON ProfileDocumentV3
+	var decoded profileDocumentV3JSON
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	var presence struct {
+		LayoutViewport json.RawMessage `json:"layoutViewport"`
+	}
+	if err := json.Unmarshal(data, &presence); err != nil {
+		return err
+	}
+	if presence.LayoutViewport != nil && bytes.Equal(bytes.TrimSpace(presence.LayoutViewport), []byte("null")) {
+		return validationError("layoutViewport", "must not be null")
+	}
+
+	*p = ProfileDocumentV3(decoded)
+	return nil
 }
 
 type SessionLayoutV3 struct {

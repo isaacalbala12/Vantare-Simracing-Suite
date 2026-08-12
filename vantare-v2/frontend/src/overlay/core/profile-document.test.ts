@@ -6,6 +6,11 @@ import {
   parseProfileDocumentV3,
   type ProfileDocumentV3,
 } from "./profile-document";
+import {
+  DEFAULT_LAYOUT_VIEWPORT,
+  MAX_LAYOUT_VIEWPORT_DIMENSION,
+  resolveLayoutViewport,
+} from "./layout-viewport";
 
 function minimalDocument(): ProfileDocumentV3 {
   return {
@@ -46,6 +51,98 @@ function expectPath(error: unknown, path: string) {
 }
 
 describe("parseProfileDocumentV3", () => {
+  it("resolves a missing layout viewport to the legacy 1920x1080 surface", () => {
+    const document = parseProfileDocumentV3(minimalDocument());
+
+    expect(document.layoutViewport).toBeUndefined();
+    expect(resolveLayoutViewport(document)).toEqual(DEFAULT_LAYOUT_VIEWPORT);
+  });
+
+  it("round-trips an arbitrary valid layout viewport", () => {
+    const document = parseProfileDocumentV3({
+      ...minimalDocument(),
+      layoutViewport: { width: 5120, height: 1440 },
+    });
+
+    expect(document.layoutViewport).toEqual({ width: 5120, height: 1440 });
+    expect(parseProfileDocumentV3(JSON.parse(JSON.stringify(document))).layoutViewport).toEqual({
+      width: 5120,
+      height: 1440,
+    });
+  });
+
+  it("rejects an explicit null layout viewport", () => {
+    try {
+      parseProfileDocumentV3({ ...minimalDocument(), layoutViewport: null });
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, "layoutViewport");
+    }
+  });
+
+  it.each([
+    ["not finite", Number.POSITIVE_INFINITY, "layoutViewport.width"],
+    ["not an integer", 1920.5, "layoutViewport.width"],
+    ["zero", 0, "layoutViewport.width"],
+    ["negative", -1, "layoutViewport.width"],
+    ["below the safe minimum", 31, "layoutViewport.width"],
+    ["above the safe limit", MAX_LAYOUT_VIEWPORT_DIMENSION + 1, "layoutViewport.width"],
+    ["invalid height", 0, "layoutViewport.height"],
+  ])("rejects a layout viewport dimension that is %s", (_label, value, path) => {
+    const layoutViewport = path.endsWith("width")
+      ? { width: value, height: 1080 }
+      : { width: 1920, height: value };
+
+    try {
+      parseProfileDocumentV3({ ...minimalDocument(), layoutViewport });
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, path);
+    }
+  });
+
+  it("accepts the exact 32x32 minimum with recoverable content", () => {
+    const widget = {
+      ...validWidget("delta-1", "delta"),
+      layout: { x: 0, y: 0, w: 32, h: 32, zIndex: 0, aspectLocked: true },
+    };
+
+    expect(() =>
+      parseProfileDocumentV3({
+        ...minimalDocument(),
+        layoutViewport: { width: 32, height: 32 },
+        layouts: { general: { type: "general", widgets: [widget] } },
+      }),
+    ).not.toThrow();
+  });
+
+  it("validates widget recoverability against the resolved layout viewport", () => {
+    const widget = {
+      ...validWidget("delta-1", "delta"),
+      layout: { ...validWidget("delta-1", "delta").layout, x: 3300, y: 100 },
+    };
+
+    const viewportAfterLayouts = JSON.parse(
+      JSON.stringify({
+        schemaVersion: 3,
+        id: "viewport-after-layouts",
+        name: "Viewport after layouts",
+        displayMode: "edit",
+        monitorIndex: 0,
+        layouts: { general: { type: "general", widgets: [widget] } },
+        layoutViewport: { width: 3440, height: 1440 },
+      }),
+    );
+
+    expect(() => parseProfileDocumentV3(viewportAfterLayouts)).not.toThrow();
+    expect(() =>
+      parseProfileDocumentV3({
+        ...minimalDocument(),
+        layouts: { general: { type: "general", widgets: [widget] } },
+      }),
+    ).toThrow(ProfileDocumentValidationError);
+  });
+
   it("defaults older documents to the Original visual system", () => {
     expect(getDefaultVisualSystemId(parseProfileDocumentV3(minimalDocument()))).toBe("vantare-original");
   });

@@ -4,10 +4,14 @@ import type {
   WidgetInstanceV3,
   WidgetLayoutV3,
 } from "../../../overlay/core/profile-document";
+import {
+  DEFAULT_LAYOUT_VIEWPORT,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import type { StudioCommand } from "../state/studio-command";
 import type { StudioHotkey } from "../state/studio-hotkeys";
 import { getStudioHotkeyMoveStep } from "../state/studio-hotkeys";
-import { CANVAS_HEIGHT, CANVAS_WIDTH, type Point } from "./canvas-geometry";
+import type { Point } from "./canvas-geometry";
 
 export type WidgetActionId =
   | "duplicate"
@@ -25,6 +29,7 @@ export type WidgetActionBuildInput = {
   widgetIds: readonly string[];
   widgets: readonly WidgetInstanceV3[];
   savedDocument: ProfileDocumentV3;
+  layoutViewport?: LayoutViewport;
 };
 
 export type WidgetActionBuildResult = {
@@ -61,10 +66,13 @@ function createDuplicateIds(
   });
 }
 
-function centerPatch(layout: WidgetLayoutV3): Partial<WidgetLayoutV3> {
+function centerPatch(
+  layout: WidgetLayoutV3,
+  layoutViewport: LayoutViewport,
+): Partial<WidgetLayoutV3> {
   return {
-    x: Math.round((CANVAS_WIDTH - layout.w) / 2),
-    y: Math.round((CANVAS_HEIGHT - layout.h) / 2),
+    x: Math.round((layoutViewport.width - layout.w) / 2),
+    y: Math.round((layoutViewport.height - layout.h) / 2),
   };
 }
 
@@ -121,6 +129,7 @@ export function buildWidgetAction(input: WidgetActionBuildInput): WidgetActionBu
   }
 
   if (actionId === "center") {
+    const layoutViewport = input.layoutViewport ?? DEFAULT_LAYOUT_VIEWPORT;
     const target = input.widgets.find((widget) => widget.id === widgetIds[0]);
     if (!target) {
       return { command: null, requiresConfirmation: false };
@@ -130,7 +139,7 @@ export function buildWidgetAction(input: WidgetActionBuildInput): WidgetActionBu
         type: "widget/layout",
         session,
         widgetIds,
-        patch: centerPatch(target.layout),
+        patch: centerPatch(target.layout, layoutViewport),
       },
       requiresConfirmation: false,
     };
@@ -229,6 +238,7 @@ export function executeWidgetAction(input: {
   widgetIds: readonly string[];
   widgets: readonly WidgetInstanceV3[];
   savedDocument: ProfileDocumentV3;
+  layoutViewport?: LayoutViewport;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
   confirmDelete?(message: string): boolean;
@@ -240,6 +250,7 @@ export function executeWidgetAction(input: {
     widgetIds: input.widgetIds,
     widgets: input.widgets,
     savedDocument: input.savedDocument,
+    layoutViewport: input.layoutViewport,
   });
 
   if (!built.command) {

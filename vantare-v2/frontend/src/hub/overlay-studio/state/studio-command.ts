@@ -1,5 +1,6 @@
 import {
   parseProfileDocumentV3,
+  ProfileDocumentValidationError,
   type ProfileDocumentV3,
   type SessionLayoutType,
   type WidgetBehaviorV3,
@@ -8,12 +9,15 @@ import {
   type WidgetVisualSelectionV3,
   type WidgetVisualV3,
 } from "../../../overlay/core/profile-document";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { applyWidgetDesign, type WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { getDefaultOfficialDesign } from "../designs/design-utils";
 import { copySessionLayout, materializeSessionLayout, resolveSessionLayout } from "./session-layouts";
 import { normalizeWidgetOrder, reorderWidgets } from "./widget-order";
 
 export type StudioCommand =
+  | { type: "document/layout-viewport"; viewport: LayoutViewport }
+  | { type: "document/monitor"; monitorIndex: number; viewport: LayoutViewport }
   | { type: "widget/add"; session: SessionLayoutType; widget: WidgetInstanceV3 }
   | {
       type: "widget/duplicate";
@@ -428,9 +432,54 @@ function applySessionCopy(document: ProfileDocumentV3, command: Extract<StudioCo
   return copySessionLayout(structuredClone(document), command.source, command.target);
 }
 
+function applyDocumentLayoutViewport(
+  document: ProfileDocumentV3,
+  command: Extract<StudioCommand, { type: "document/layout-viewport" }>,
+): ProfileDocumentV3 {
+  const next = structuredClone(document);
+  next.layoutViewport = structuredClone(command.viewport);
+  try {
+    parseProfileDocumentV3(next);
+    return next;
+  } catch (error) {
+    if (error instanceof ProfileDocumentValidationError) {
+      throw new StudioCommandError(command.type, error.message);
+    }
+    throw error;
+  }
+}
+
+function applyDocumentMonitor(
+  document: ProfileDocumentV3,
+  command: Extract<StudioCommand, { type: "document/monitor" }>,
+): ProfileDocumentV3 {
+  if (!Number.isSafeInteger(command.monitorIndex) || command.monitorIndex < 0) {
+    throw new StudioCommandError(command.type, "monitorIndex must be a non-negative safe integer");
+  }
+
+  const next = structuredClone(document);
+  next.monitorIndex = command.monitorIndex;
+  next.layoutViewport = structuredClone(command.viewport);
+  try {
+    parseProfileDocumentV3(next);
+    return next;
+  } catch (error) {
+    if (error instanceof ProfileDocumentValidationError) {
+      throw new StudioCommandError(command.type, error.message);
+    }
+    throw error;
+  }
+}
+
 export function applyStudioCommand(document: ProfileDocumentV3, command: StudioCommand): ProfileDocumentV3 {
   let next: ProfileDocumentV3;
   switch (command.type) {
+    case "document/layout-viewport":
+      next = applyDocumentLayoutViewport(document, command);
+      break;
+    case "document/monitor":
+      next = applyDocumentMonitor(document, command);
+      break;
     case "widget/add":
       next = applyWidgetAdd(document, command);
       break;

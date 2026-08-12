@@ -1,17 +1,20 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import {
+  resolveLayoutViewport,
+  type LayoutViewport,
+} from "../../../overlay/core/layout-viewport";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas-geometry";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
-import type { StudioPreviewResolutionId } from "./preview-resolution";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
+import type { StudioMonitor } from "../state/studio-monitor-client";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -45,7 +48,7 @@ function installViewportResizeObserver(width: number, height: number): void {
   } as unknown as typeof ResizeObserver;
 }
 
-function buildDocument(): ProfileDocumentV3 {
+function buildDocument(layoutViewport?: LayoutViewport): ProfileDocumentV3 {
   const back = deltaDefinition.createDefault("delta-back");
   back.layout = { ...back.layout, x: 40, y: 40, zIndex: 0 };
   const front = deltaDefinition.createDefault("delta-front");
@@ -56,6 +59,7 @@ function buildDocument(): ProfileDocumentV3 {
     name: "Test",
     displayMode: "edit",
     monitorIndex: 0,
+    ...(layoutViewport ? { layoutViewport } : {}),
     layouts: {
       general: {
         type: "general",
@@ -65,37 +69,46 @@ function buildDocument(): ProfileDocumentV3 {
   };
 }
 
-const client: StudioProfileClient = {
-  load: async () => ({ document: buildDocument(), revision: "rev-1" }),
-  save: async () => ({ status: "saved", document: buildDocument(), revision: "rev-2" }),
-};
+function createClient(document = buildDocument()): StudioProfileClient {
+  return {
+    load: async () => ({ document: structuredClone(document), revision: "rev-1" }),
+    save: async ({ document: saved }) => ({
+      status: "saved",
+      document: structuredClone(saved),
+      revision: "rev-2",
+    }),
+  };
+}
+
+const client = createClient();
 
 function renderCanvas(
   zoom: "fit" | 50 | 75 | 100 | 125 = "fit",
-  resolution?: StudioPreviewResolutionId,
+  document = buildDocument(),
+  listMonitors: () => Promise<StudioMonitor[]> = async () => [],
 ) {
   const coordinator = createTestTelemetryCoordinator();
 
   function ZoomSetter(): React.ReactElement | null {
     const { setPreview } = useStudioPreview();
-    if (zoom === "fit" && !resolution) {
+    if (zoom === "fit") {
       return null;
     }
     return (
       <button
         type="button"
         data-testid="set-preview"
-        onClick={() => setPreview({ zoom, ...(resolution ? { resolution } : {}) })}
+        onClick={() => setPreview({ zoom })}
       />
     );
   }
 
   return render(
     <div style={{ width: 960, height: 540 }}>
-      <StudioProvider client={client} initialFile="profiles/a.json">
+      <StudioProvider client={createClient(document)} initialFile="profiles/a.json">
         <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
           <ZoomSetter />
-          <StudioCanvas />
+          <StudioCanvas listMonitors={listMonitors} />
         </StudioTelemetryProvider>
       </StudioProvider>
     </div>,
@@ -120,15 +133,296 @@ describe("StudioCanvas", () => {
     expect(scene.style.transform).toBe("scale(0.5)");
   });
 
-  it("uses the selected target resolution for preview fit", async () => {
+  it("renders and fits a 3440x1440 document surface", async () => {
     installViewportResizeObserver(960, 540);
-    renderCanvas("fit", "2560x1440");
-    fireEvent.click(screen.getByTestId("set-preview"));
+    renderCanvas("fit", buildDocument({ width: 3440, height: 1440 }));
     await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
 
     const scene = screen.getByTestId("studio-canvas-scene");
-    expect(scene.getAttribute("data-preview-resolution")).toBe("2560x1440");
-    expect(Number(scene.getAttribute("data-scale"))).toBeCloseTo(4 / 3, 5);
+    expect(scene.style.width).toBe("3440px");
+    expect(scene.style.height).toBe("1440px");
+    expect(scene.getAttribute("data-layout-viewport")).toBe("3440x1440");
+    expect(scene.hasAttribute("data-preview-resolution")).toBe(false);
+    expect(Number(scene.getAttribute("data-scale"))).toBeCloseTo(960 / 3440, 5);
+  });
+
+  it("dispatches preset and custom surface edits through the document command", async () => {
+    installViewportResizeObserver(960, 540);
+    renderCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId("studio-resolution-select"), {
+      target: { value: "5120x1440" },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-canvas-scene").style.width).toBe("5120px");
+      expect(screen.getByTestId("studio-canvas-scene").style.height).toBe("1440px");
+    });
+
+    fireEvent.change(screen.getByTestId("studio-layout-width-input"), {
+      target: { value: "1000" },
+    });
+    fireEvent.change(screen.getByTestId("studio-layout-height-input"), {
+      target: { value: "1000" },
+    });
+    fireEvent.click(screen.getByTestId("studio-layout-viewport-apply"));
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-canvas-scene").style.width).toBe("1000px");
+      expect(screen.getByTestId("studio-canvas-scene").style.height).toBe("1000px");
+      expect(Number(screen.getByTestId("studio-canvas-scene").getAttribute("data-scale"))).toBeCloseTo(0.54, 5);
+    });
+  });
+
+  it("enumerates native monitors without replacing or dirtying a custom surface", async () => {
+    installViewportResizeObserver(960, 540);
+    const listMonitors = vi.fn(async (): Promise<StudioMonitor[]> => [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1.5,
+        bounds: { width: 2560, height: 1440 },
+        workArea: { width: 2560, height: 1392 },
+      },
+    ]);
+
+    function Probe(): React.ReactElement {
+      const { document, dirty } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <div data-testid="monitor-document-probe">
+          {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}
+        </div>
+      );
+    }
+
+    render(
+      <StudioProvider
+        client={createClient(buildDocument({ width: 1000, height: 1000 }))}
+        initialFile="profiles/a.json"
+      >
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={listMonitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(listMonitors).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toBe(
+        "0:1000x1000:clean",
+      ),
+    );
+  });
+
+  it("ignores a stale monitor enumeration after its effect is cancelled", async () => {
+    installViewportResizeObserver(960, 540);
+    let resolveFirst: ((monitors: StudioMonitor[]) => void) | undefined;
+    const first = () => new Promise<StudioMonitor[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const currentMonitor: StudioMonitor = {
+      index: 0,
+      id: "current",
+      name: "Current",
+      isPrimary: true,
+      scaleFactor: 1,
+      bounds: { width: 1920, height: 1080 },
+      workArea: { width: 1920, height: 1040 },
+    };
+    const staleMonitor: StudioMonitor = {
+      ...currentMonitor,
+      index: 7,
+      id: "stale",
+      name: "Stale",
+    };
+    const coordinator = createTestTelemetryCoordinator();
+    const tree = (listMonitors: () => Promise<StudioMonitor[]>) => (
+      <StudioProvider client={client} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <StudioCanvas listMonitors={listMonitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>
+    );
+    const view = render(tree(first));
+    await waitFor(() => expect(resolveFirst).toBeTypeOf("function"));
+
+    view.rerender(tree(async () => [currentMonitor]));
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-monitor-select").textContent).toContain("Current"),
+    );
+    resolveFirst?.([staleMonitor]);
+
+    await Promise.resolve();
+    expect(screen.getByTestId("studio-monitor-select").textContent).not.toContain("Stale");
+  });
+
+  it("selects full monitor bounds as one undoable and redoable document change", async () => {
+    installViewportResizeObserver(960, 540);
+    const monitors: StudioMonitor[] = [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+      {
+        index: 2,
+        id: "display-2",
+        name: "Ultra wide",
+        isPrimary: false,
+        scaleFactor: 1.5,
+        bounds: { width: 3440, height: 1440 },
+        workArea: { width: 3440, height: 1392 },
+      },
+    ];
+
+    function Probe(): React.ReactElement {
+      const { document, dirty, undo, redo } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <>
+          <div data-testid="monitor-document-probe">
+            {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}
+          </div>
+          <button type="button" data-testid="monitor-undo" onClick={undo} />
+          <button type="button" data-testid="monitor-redo" onClick={redo} />
+        </>
+      );
+    }
+
+    render(
+      <StudioProvider client={createClient()} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={async () => monitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("studio-monitor-select")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("studio-monitor-select"), { target: { value: "2" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toBe(
+        "2:3440x1440:dirty",
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId("monitor-undo"));
+    expect(screen.getByTestId("monitor-document-probe").textContent).toBe("0:1920x1080:clean");
+    fireEvent.click(screen.getByTestId("monitor-redo"));
+    expect(screen.getByTestId("monitor-document-probe").textContent).toBe("2:3440x1440:dirty");
+  });
+
+  it.each([
+    ["empty", async (): Promise<StudioMonitor[]> => []],
+    ["error", async (): Promise<StudioMonitor[]> => Promise.reject(new Error("unavailable"))],
+  ])("keeps custom dimensions active when monitor enumeration is %s", async (_case, listMonitors) => {
+    installViewportResizeObserver(960, 540);
+    renderCanvas("fit", buildDocument({ width: 1000, height: 1000 }), listMonitors);
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).disabled).toBe(true),
+    );
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "1000x1000",
+    );
+    expect((screen.getByTestId("studio-resolution-select") as HTMLSelectElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it("keeps the unavailable document monitor selected after hotplug", async () => {
+    installViewportResizeObserver(960, 540);
+    const document = buildDocument({ width: 1000, height: 1000 });
+    document.monitorIndex = 9;
+    renderCanvas("fit", document, async () => [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Primary",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+    ]);
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).value).toBe(
+        "unavailable:9",
+      ),
+    );
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "1000x1000",
+    );
+  });
+
+  it("resynchronizes monitor and surface after recoverability rejects a selection", async () => {
+    installViewportResizeObserver(960, 540);
+    const document = buildDocument({ width: 3440, height: 1440 });
+    document.monitorIndex = 1;
+    document.layouts.general.widgets[0]!.layout.x = 3200;
+
+    function Probe(): React.ReactElement {
+      const { document, dirty, accessNotice } = useStudioDocument();
+      const viewport = resolveLayoutViewport(document ?? {});
+      return (
+        <div data-testid="monitor-document-probe">
+          {document?.monitorIndex}:{viewport.width}x{viewport.height}:{dirty ? "dirty" : "clean"}:
+          {accessNotice ?? ""}
+        </div>
+      );
+    }
+
+    const monitors: StudioMonitor[] = [
+      {
+        index: 0,
+        id: "display-0",
+        name: "Small",
+        isPrimary: true,
+        scaleFactor: 1,
+        bounds: { width: 1920, height: 1080 },
+        workArea: { width: 1920, height: 1040 },
+      },
+      {
+        index: 1,
+        id: "display-1",
+        name: "Wide",
+        isPrimary: false,
+        scaleFactor: 1,
+        bounds: { width: 3440, height: 1440 },
+        workArea: { width: 3440, height: 1392 },
+      },
+    ];
+    render(
+      <StudioProvider client={createClient(document)} initialFile="profiles/a.json">
+        <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
+          <Probe />
+          <StudioCanvas listMonitors={async () => monitors} />
+        </StudioTelemetryProvider>
+      </StudioProvider>,
+    );
+
+    await waitFor(() =>
+      expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).disabled).toBe(false),
+    );
+    fireEvent.change(screen.getByTestId("studio-monitor-select"), { target: { value: "0" } });
+    await waitFor(() =>
+      expect(screen.getByTestId("monitor-document-probe").textContent).toContain("recoverable"),
+    );
+    expect((screen.getByTestId("studio-monitor-select") as HTMLSelectElement).value).toBe("1");
+    expect(screen.getByTestId("studio-canvas-scene").getAttribute("data-layout-viewport")).toBe(
+      "3440x1440",
+    );
+    expect(screen.getByTestId("monitor-document-probe").textContent).toContain(
+      "1:3440x1440:clean",
+    );
   });
 
   it("renders widgets in ascending z-index order", async () => {
@@ -252,15 +546,14 @@ describe("StudioCanvas", () => {
     ).toBe("-0.150");
   });
 
-  it("applies preview-only background and safe area overlays", async () => {
-    renderCanvas();
+  it("applies the selected background and safe area inside an arbitrary scene", async () => {
+    renderCanvas("fit", buildDocument({ width: 1000, height: 1000 }));
     await waitFor(() => expect(screen.getByTestId("studio-canvas-scene")).toBeTruthy());
 
-    // El fondo vive en el area de trabajo, no en el lienzo: dibujarlo tambien
-    // dentro dejaba el sobrante de encajar 16:9 como bandas visibles.
     const stage = screen.getByTestId("studio-canvas-stage");
-    expect(stage.className).toContain("osv3-bg-gradient");
-    expect(screen.getByTestId("studio-canvas-scene").className).not.toContain("osv3-bg-");
+    const scene = screen.getByTestId("studio-canvas-scene");
+    expect(stage.className).not.toContain("osv3-bg-");
+    expect(scene.className).toContain("osv3-bg-gradient");
     expect(screen.queryByTestId("studio-safe-area-overlay")).toBeNull();
 
     fireEvent.change(screen.getByTestId("studio-background-select"), {
@@ -268,10 +561,11 @@ describe("StudioCanvas", () => {
     });
     fireEvent.click(screen.getByTestId("studio-safe-area-toggle"));
 
-    expect(screen.getByTestId("studio-canvas-stage").className).toContain("osv3-bg-black");
+    expect(screen.getByTestId("studio-canvas-stage").className).not.toContain("osv3-bg-black");
+    expect(screen.getByTestId("studio-canvas-scene").className).toContain("osv3-bg-black");
     const overlay = screen.getByTestId("studio-safe-area-overlay");
-    expect(overlay.style.top).toBe(`${Math.round(CANVAS_HEIGHT * SAFE_AREA_INSET_RATIO)}px`);
-    expect(overlay.style.left).toBe(`${Math.round(CANVAS_WIDTH * SAFE_AREA_INSET_RATIO)}px`);
+    expect(overlay.style.top).toBe(`${Math.round(1000 * SAFE_AREA_INSET_RATIO)}px`);
+    expect(overlay.style.left).toBe(`${Math.round(1000 * SAFE_AREA_INSET_RATIO)}px`);
   });
 
   it("updates mock telemetry without dirtying the document", async () => {

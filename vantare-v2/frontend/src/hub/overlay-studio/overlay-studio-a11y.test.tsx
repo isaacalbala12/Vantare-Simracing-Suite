@@ -10,7 +10,9 @@ describe("Overlay Studio V3 accessibility contract", () => {
       <>
         <CanvasToolbar
           preview={{ zoom: 100, backgroundId: "solid", safeArea: false, grid: false, mockSession: "practice", mockLocation: "track", source: "mock" }}
+          layoutViewport={{ width: 1920, height: 1080 }}
           onPreviewChange={vi.fn()}
+          onLayoutViewportChange={vi.fn()}
         />
         <DirtyChangesDialog open onSave={vi.fn()} onDiscard={vi.fn()} onCancel={vi.fn()} />
       </>,
@@ -18,6 +20,9 @@ describe("Overlay Studio V3 accessibility contract", () => {
 
     expect(screen.getByRole("button", { name: "Reducir zoom" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Aumentar zoom" })).toBeTruthy();
+    fireEvent.click(screen.getByTestId("studio-canvas-options-toggle"));
+    expect(screen.getByRole("spinbutton", { name: "Ancho de superficie" })).toBeTruthy();
+    expect(screen.getByRole("spinbutton", { name: "Alto de superficie" })).toBeTruthy();
     const dialog = screen.getByRole("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(dialog.getAttribute("aria-labelledby")).toBe("studio-dirty-dialog-title");

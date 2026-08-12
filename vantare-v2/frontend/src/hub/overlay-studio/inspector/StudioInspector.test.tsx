@@ -13,19 +13,24 @@ vi.mock("../designs/widget-design-client", () => ({
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { StudioTelemetryProvider } from "../canvas/StudioTelemetryProvider";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioInspector } from "./StudioInspector";
 
-function buildDocument(widgets: WidgetInstanceV3[]): ProfileDocumentV3 {
+function buildDocument(
+  widgets: WidgetInstanceV3[],
+  layoutViewport?: LayoutViewport,
+): ProfileDocumentV3 {
   return {
     schemaVersion: 3,
     id: "profile-1",
     name: "Test Profile",
     displayMode: "edit",
     monitorIndex: 0,
+    ...(layoutViewport ? { layoutViewport } : {}),
     layouts: {
       general: {
         type: "general",
@@ -118,6 +123,12 @@ function AppearanceProbe() {
   );
 }
 
+function LayoutProbe() {
+  const { activeLayout } = useStudioDocument();
+  const layout = activeLayout?.widgets.find((entry) => entry.id === "delta-main")?.layout;
+  return <div data-testid="layout-probe" data-x={layout?.x} data-y={layout?.y} />;
+}
+
 function AutoSelectWidget(props: { widgetId: string }) {
   const { selectWidget, activeLayout } = useStudioDocument();
   useEffect(() => {
@@ -153,6 +164,7 @@ function renderInspector(document: ProfileDocumentV3, widgetId = "delta-main") {
       <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
         <AutoSelectWidget widgetId={widgetId} />
         <SelectWidgetButtons />
+        <LayoutProbe />
         <StudioInspector />
       </StudioTelemetryProvider>
     </StudioProvider>,
@@ -291,5 +303,23 @@ describe("StudioInspector", () => {
     await waitFor(() =>
       expect(screen.getByTestId("appearance-probe").getAttribute("data-overrides")).toBe('{"saved":true}'),
     );
+  });
+
+  it("centers from the inspector against the current document surface", async () => {
+    const widget = deltaDefinition.createDefault("delta-main");
+    renderInspector(buildDocument([widget], { width: 1000, height: 1000 }));
+
+    await waitFor(() => expect(screen.getByTestId("studio-inspector")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-inspector-rail-item-layout"));
+    fireEvent.click(screen.getByTestId("studio-layout-center"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("layout-probe").getAttribute("data-x")).toBe(
+        String(Math.round((1000 - widget.layout.w) / 2)),
+      );
+      expect(screen.getByTestId("layout-probe").getAttribute("data-y")).toBe(
+        String(Math.round((1000 - widget.layout.h) / 2)),
+      );
+    });
   });
 });

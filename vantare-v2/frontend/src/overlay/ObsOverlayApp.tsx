@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
+import { resolveLayoutViewport } from "./core/layout-viewport";
 import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { readOverlayRouteParams } from "./overlay-route-params";
@@ -15,7 +16,6 @@ import { createSseEngineerPresentationAdapter } from "../engineer/engineer-prese
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
   revision: string;
-  layoutOrigin?: { x: number; y: number };
 };
 
 const STREAMING_MODE_HINT = "obs-streaming";
@@ -26,7 +26,6 @@ export function ObsOverlayApp() {
   );
   const [document, setDocument] = useState<ProfileDocumentV3 | null>(null);
   const [revision, setRevision] = useState("");
-  const [layoutOrigin, setLayoutOrigin] = useState({ x: 0, y: 0 });
   const [error, setError] = useState<string | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
@@ -85,7 +84,6 @@ export function ObsOverlayApp() {
         }
         setDocument(parseProfileDocumentV3(data.document));
         setRevision(data.revision ?? "");
-        setLayoutOrigin(data.layoutOrigin ?? { x: 0, y: 0 });
         setError(null);
       })
       .catch((err: Error) => {
@@ -121,38 +119,36 @@ export function ObsOverlayApp() {
       key={revision}
       document={document}
       revision={revision}
-      layoutOrigin={layoutOrigin}
       telemetry={coordinator}
       engineerPresentations={engineerPresentations}
     />
   );
 
-  const widgetLayer = (
-    <>
-      {runtime}
-      {reminder && (
-        <OverlayCalendarReminderBanner
-          reminder={reminder}
-          onClose={() => setReminder(null)}
-          className="absolute top-4 right-4 z-50"
-        />
-      )}
-    </>
-  );
+  const reminderBanner = reminder ? (
+    <OverlayCalendarReminderBanner
+      reminder={reminder}
+      onClose={() => setReminder(null)}
+      className="absolute top-4 right-4 z-50"
+    />
+  ) : null;
 
   if (studioPreview) {
     return (
-      <ObsOverlayStudioPreview>
-        <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
-          {widgetLayer}
-        </div>
-      </ObsOverlayStudioPreview>
+      <div className="relative w-full h-full overflow-hidden">
+        <ObsOverlayStudioPreview layoutViewport={resolveLayoutViewport(document)}>
+          <div className="relative w-full h-full overflow-hidden" data-vantare-mode={STREAMING_MODE_HINT}>
+            {runtime}
+          </div>
+        </ObsOverlayStudioPreview>
+        {reminderBanner}
+      </div>
     );
   }
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent" data-vantare-mode={STREAMING_MODE_HINT}>
-      {widgetLayer}
+      {runtime}
+      {reminderBanner}
     </div>
   );
 }

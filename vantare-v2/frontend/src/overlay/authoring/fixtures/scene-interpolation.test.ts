@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnimationScene } from "./animation-scenes";
-import { interpolateSceneAt, sceneDurationMs } from "./scene-interpolation";
+import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./scene-interpolation";
 
 const scene: AnimationScene = {
   id: "test",
@@ -108,5 +108,36 @@ describe("scene interpolation", () => {
     expect(mid.remainingSeconds).toBeCloseTo(450, 5);
     expect(mid.player?.brake).toBeCloseTo(0.5, 5);
     expect(mid.player?.deltaSeconds).toBeCloseTo(0, 5);
+  });
+});
+
+describe("sampling at the widget's telemetry rate", () => {
+  it("holds a value for one whole period, like a snapshot does", () => {
+    // 15 Hz: one snapshot every 66.67ms.
+    expect(sampleAtRate(0, 15)).toBe(0);
+    expect(sampleAtRate(60, 15)).toBe(0);
+    expect(sampleAtRate(66, 15)).toBe(0);
+    expect(sampleAtRate(70, 15)).toBeCloseTo(1000 / 15, 5);
+  });
+
+  it("gives standings a quarter of the updates a 60fps clock would", () => {
+    const distinct = new Set<number>();
+    for (let ms = 0; ms < 1000; ms += 1000 / 60) {
+      distinct.add(sampleAtRate(ms, 15));
+    }
+    expect(distinct.size).toBe(15);
+  });
+
+  it("gives delta and pedals twice that", () => {
+    const distinct = new Set<number>();
+    for (let ms = 0; ms < 1000; ms += 1000 / 60) {
+      distinct.add(sampleAtRate(ms, 30));
+    }
+    expect(distinct.size).toBe(30);
+  });
+
+  it("falls back to the raw clock on a nonsense rate", () => {
+    expect(sampleAtRate(123, 0)).toBe(123);
+    expect(sampleAtRate(123, Number.NaN)).toBe(123);
   });
 });

@@ -14,7 +14,8 @@ import {
 } from "./fixtures/authoring-fixtures";
 import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
 import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
-import { interpolateSceneAt, sceneDurationMs } from "./fixtures/scene-interpolation";
+import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
+import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
@@ -221,7 +222,13 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const elapsedRef = useRef(0);
   elapsedRef.current = elapsedMs;
 
-  const playhead = scene ? interpolateSceneAt(scene, elapsedMs, loop) : null;
+  // In a race the world is continuous but telemetry is sampled: a widget only
+  // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
+  // the interpolation straight at 60fps made the Workshop four times smoother
+  // than the product, which is the wrong thing to judge a design against.
+  // The clock advances at frame rate; the data is quantised to the widget's rate.
+  const updateHz = prepared?.widget.behavior.updateHz ?? 30;
+  const playhead = scene ? interpolateSceneAt(scene, sampleAtRate(elapsedMs, updateHz), loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;
 
   const parkFrame = (frame: number) => {
@@ -385,6 +392,18 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           <h2>Animaciones de {parsed.widget}</h2>
           <p>Pulsa una para reproducirla una vez.</p>
         </div>
+        {projectionGapsFor(parsed.widget).length > 0 ? (
+          <div className="overlay-workshop-scenes__gaps" data-testid="workshop-projection-gaps">
+            <strong>Aquí se ve más de lo que llega en carrera.</strong> La telemetría real no entrega:
+            <ul>
+              {projectionGapsFor(parsed.widget).map((gap) => (
+                <li key={gap.field}>
+                  <code>{gap.field}</code> — {gap.consequence}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div className="overlay-workshop-scenes__list" data-testid="workshop-scene-list">
           {scenesForWidget.length === 0 ? (
             <p className="overlay-workshop-scenes__empty">Este widget todavía no tiene animaciones declaradas.</p>
@@ -439,7 +458,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
             </div>
             <label className="overlay-workshop-transport__scrub">
               <span>
-                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s a 60 fps
+                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s · datos a {updateHz} Hz, como en juego
               </span>
               <input
                 type="range"

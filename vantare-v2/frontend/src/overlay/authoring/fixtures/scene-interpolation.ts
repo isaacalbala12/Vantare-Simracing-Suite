@@ -130,3 +130,20 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
 export function sceneDurationMs(scene: AnimationScene): number {
   return scene.frameMs * Math.max(1, scene.frames.length - 1);
 }
+
+/**
+ * Quantises the playhead to a widget's telemetry rate.
+ *
+ * In a race the world is continuous but a widget only sees a new snapshot at
+ * its own updateHz — standings and relative at 15, delta and pedals at 30.
+ * Feeding the interpolation straight to the renderer at frame rate made the
+ * Workshop four times smoother than the product for standings, which is the
+ * wrong thing to judge a design against.
+ */
+export function sampleAtRate(elapsedMs: number, updateHz: number): number {
+  if (!Number.isFinite(updateHz) || updateHz <= 0) {
+    return elapsedMs;
+  }
+  const periodMs = 1000 / updateHz;
+  return Math.floor(elapsedMs / periodMs) * periodMs;
+}

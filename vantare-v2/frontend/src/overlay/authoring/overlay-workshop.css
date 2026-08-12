@@ -157,3 +157,19 @@
 }
 
 .overlay-workshop-transport__loop input { accent-color: #ff3b3b; }
+
+/* What the mock shows and a real session will not. Sits above the animations,
+   because it changes how everything below it should be read. */
+.overlay-workshop-scenes__gaps {
+  padding: 9px 12px;
+  border: 1px solid #6a4a12;
+  border-left: 2px solid #f0a53a;
+  border-radius: 4px;
+  background: #1e1708;
+  color: #f0c98a;
+  font: 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-scenes__gaps strong { color: #f0a53a; }
+.overlay-workshop-scenes__gaps ul { margin: 5px 0 0; padding-left: 18px; }
+.overlay-workshop-scenes__gaps code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }

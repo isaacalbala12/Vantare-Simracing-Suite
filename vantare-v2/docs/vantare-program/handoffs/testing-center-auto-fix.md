@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center Auto-Fix
 
-Última actualización: 2026-08-12, ISA-317, Codex (documentación).
+Última actualización: 2026-08-13, ISA-320, Codex (HAF-04/HAF-05 entregadas).
 
 ## Resultado del proyecto
 
@@ -25,8 +25,9 @@ está superada como arquitectura de ejecución.
 
 ## Estado real
 
-- Fase: documentación y replanificación TDD.
-- Issue activa: ISA-317 / CCAF-02.
+- Fase: contratos/persistencia v2 entregados en ramas aisladas; runtime apagado.
+- Issues de ejecución: ISA-319 y ISA-320 entregadas para revisión; ISA-321 es
+  el siguiente corte dependiente.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -89,6 +90,19 @@ determinista.
 
 ## Evidencia actual
 
+- ISA-319 / HAF-04: commit remoto `02a784c3`, PR draft #213 hacia `nightly`;
+  policy/dossier v2 con suites Deno 147/147, 11/11 y 10/10, checks GitHub en
+  verde y review independiente GO. Entregada, no integrada.
+- ISA-320 / HAF-05: commit remoto `842da34e`, PR draft #214 hacia `nightly`;
+  job_key canónico, máquina de estados, outbox por fase, lease/fencing,
+  reservas, callbacks, RLS y rollback fail-closed. TDD RED→GREEN cerró la
+  revalidación terminal entre claim y reserve. Evidencia fresca: pgTAP 71/71,
+  rollback/reapply 71/71, carrera real de dos workers, cinco guards por tabla,
+  guard terminal y reapply final. Qwen 3.7 Plus y Qwen 3.8 Max: GO; el último
+  con P0/P1/P2=0. Entregada, no integrada.
+- Ambas ramas parten de `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
+  No existe activación remota, merge, promoción, deploy, tag ni release.
+
 - Supabase ya tiene reportes, fingerprints, outbox, leases, fencing,
   candidatas, callbacks y tests PostgreSQL/Deno.
 - El dossier v1 fija repo, base `nightly`, SHA, máximo cinco paths y command IDs,
@@ -140,28 +154,28 @@ determinista.
 - ISA-238–253: contratos y piloto humano previos; conservar evidencia, no
   ejecutar su ruta histórica.
 
-### Activa
+### Activas
 
-- ISA-317: ADR, handoff, plan TDD, índice y plan actual. Solo documentación.
+- ISA-317: expediente documental y handoff vivo, PR draft #209.
+- ISA-319 / HAF-04: policy v2 entregada, PR draft #213; revisión/integración pendiente.
+- ISA-320 / HAF-05: persistencia/outbox entregada, PR draft #214; revisión/integración pendiente.
 
-### Siguientes cortes propuestos
+### Siguientes cortes vigentes
 
-1. Replanificar ISA-318–325 contra el plan TDD nuevo.
-2. Contratos v2 y gate de elegibilidad, todo local/read-only.
-3. Outbox/dispatch cloud y callback, dry-run.
-4. OpenCode/DeepSeek triage sintético.
-5. Claude Max RED/GREEN con PR draft y merge manual.
-6. Opus review y diff gate.
-7. CI `merge_group`, Wails y gates aplicables estrictos.
-8. Smoke, tag Nightly y revert PR.
-9. Piloto único con autorización; solo después, preautorización estrecha.
+1. ISA-321 / HAF-06: triage DeepSeek y dispatch cloud, apoyado en HAF-04/HAF-05.
+2. ISA-323 / HAF-07: sesiones RED/GREEN, diff gate y review independiente.
+3. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
+4. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
+5. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
+6. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
-Revisar el PR draft #209 y rebasar el documento maestro de Linear. Después,
-dividir ISA-318–325 y crear ISA-323B/ISA-322B/bootstrap para ejecutar Task 1 del
-plan: tests de caracterización de la policy actual y contrato v2, sin red ni
-secretos.
+Revisar los PR draft #213 y #214 contra sus SHAs remotos. Continuar ISA-321 sin
+crear nuevas issues y sin activar red ni credenciales: primero caracterizar el
+adaptador de triage y su dispatch en dry-run. Si necesita consumir HAF-04/HAF-05
+antes de su integración, declarar explícitamente el apilado temporal y no abrir
+una ruta que salte `nightly`.
 
 Checks de ISA-317:
 

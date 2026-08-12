@@ -1,3 +1,18 @@
+Nota ISA-319/ISA-320 / HAF-04/HAF-05 (2026-08-13, primeras entregas runtime aisladas):
+- ISA-319 implementa la policy v2 y el dossier determinista de elegibilidad en
+  la rama de issue, commit `02a784c3`, PR draft #213 hacia `nightly`. Sus suites
+  Deno pasan 147/147, 11/11 y 10/10; todos los checks remotos están verdes.
+- ISA-320 implementa el job v2 canónico, outbox por fase, lease/fencing,
+  reservas exactly-once, callbacks idempotentes, terminalidad, RLS y rollback
+  fail-closed en la rama de issue, commit `842da34e`, PR draft #214 hacia
+  `nightly`. TDD cerró una ventana claim->reserve detectada por review; la
+  evidencia final pasa 71/71 pgTAP, reapply, carrera real de dos workers y
+  guards de rollback. Qwen 3.8 Max devuelve GO con P0/P1/P2=0.
+- Ambas entregas parten de `origin/nightly@b6df494`; siguen en `In Progress`
+  hasta revisión e integración humana. No hay runtime automático activo, merge,
+  promoción, deploy, tag ni release. ISA-318-325 siguen siendo el expediente
+  vigente; no se crean issues nuevas.
+
 Nota ISA-317 / CCAF-02 (2026-08-12, arquitectura híbrida y plan TDD):
 - Isaac aprobó sustituir la ruta técnica `Supabase -> Linear -> Codex Cloud`
   por un circuito cloud en el que Supabase es autoridad del job, GitHub lo es

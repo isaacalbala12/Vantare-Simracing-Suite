@@ -1,3 +1,33 @@
+Nota ISA-317 / CCAF-02 (2026-08-12, arquitectura híbrida y plan TDD):
+- Isaac aprobó sustituir la ruta técnica `Supabase -> Linear -> Codex Cloud`
+  por un circuito cloud en el que Supabase es autoridad del job, GitHub lo es
+  de código/CI/merge/release y Linear queda como espejo operativo opcional.
+- Flujo fijado: saneamiento/idempotencia; OpenCode con DeepSeek V4 Flash para
+  triage read-only; gate determinista; Claude Code Max en sesiones separadas
+  RED y GREEN; diff gate; sesión independiente Opus 5 high; CI Go/frontend/
+  Windows-Wails/lint/visuales; Merge Queue a Nightly; smoke post-merge; tag
+  canónico de build `vX.Y.Z.R-nightly.N`; callback Supabase.
+- Un smoke fallido crea cero tags/releases, conserva el lock serial para
+  impedir otro enqueue y abre un PR de revert contra `nightly`; no existe push
+  directo, force-push o movimiento de tags. `testers` y `master` permanecen
+  bajo las autorizaciones humanas vigentes.
+- La automatización completa requiere una preautorización estrecha posterior.
+  El rollout será observe -> PR draft/merge manual -> piloto único -> automático
+  solo tras evidencia. Lint/visuales advisory y la falta de `merge_group` son
+  bloqueos actuales, no checks que puedan ignorarse.
+- ADR canónica:
+  `docs/adr/0008-testing-center-hybrid-agent-autofix.md`. Handoff único:
+  `docs/vantare-program/handoffs/testing-center-auto-fix.md`. Plan ejecutable:
+  `docs/superpowers/plans/2026-08-12-testing-center-hybrid-agent-autofix.md`.
+- ISA-316 conserva el NO-GO histórico de Codex Cloud y ya no bloquea ISA-317.
+  ADR 0007 y los documentos del 2026-08-03 no se borran: sus contratos de
+  privacidad, saneamiento, SHA y auditoría siguen vigentes, pero su ruta
+  Linear/Codex Cloud queda superada.
+- Alcance ISA-317: cinco archivos documentales, sin tests de comportamiento por
+  no cambiar runtime. No activa agents, secrets, red, merge, tag, release ni
+  promoción. Siguiente gate: review documental P0/P1/P2=0 y replanificación de
+  ISA-318-325 según los microcortes RED -> GREEN -> REFACTOR.
+
 Nota ISA-160 / TC-10A (2026-08-11, evidencia local lista para revisión):
 - La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E
   real sanitizado LMU 1.4 recorre Driver/Fusion/BatchMapper/Reducer/Derive con

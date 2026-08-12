@@ -38,7 +38,8 @@ research quedan fuera de su context pack.
   `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330 #208); sin deriva en `internal/engineer`;
   cambios `cmd/vantare` (main.go, main_test.go) solo Overlay Studio/window/profile, sin wiring/call sites Engineer; el SHA de Nightly es observación, no autoridad fija.
 - PR #210 `OPEN` + `DRAFT` + `CLEAN` (https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/210):
-  rama remota HEAD `c35db15`. Base temporal apilada sobre
+  último SHA del rango funcional/documental previo al registro de estado (`c35db15`,
+  snapshot revisado; el commit posterior solo registra estado externo y no se autoancla). Base temporal apilada sobre
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter` (PR padre #196), no nightly:
   review aislada sin resolver artificialmente el conflicto de current-plan; cuando #196 se integre por el
   flujo autorizado, #210 se retargetea a nightly y se revalida. No es promoción ni salto de canal.

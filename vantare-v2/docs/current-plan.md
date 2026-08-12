@@ -72,7 +72,7 @@
 - **Issue activa:** ISA-327 / ENG-S1 — replanning técnico de S1 (autoridades y
   baseline confiable), `In Progress` en Linear con comentario/attachment de PR.
   Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`
-  (remota `c35db15`) con PR #210 `OPEN`+`DRAFT`+`CLEAN` apilado sobre ISA-313/PR #196
+  (último SHA del rango revisado antes del registro de estado: `c35db15`) con PR #210 `OPEN`+`DRAFT`+`CLEAN` apilado sobre ISA-313/PR #196
   (no nightly) para review aislada; al integrar #196, #210 se retargetea a nightly y se revalida.
   GitGuardian `SUCCESS`; sin gates branch-channel completos en esta base: no se declara CI
   completa; sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el

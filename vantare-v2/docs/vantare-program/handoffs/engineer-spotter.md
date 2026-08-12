@@ -94,6 +94,8 @@ research quedan fuera de su context pack.
   path ni segundo motor TTS.
 - STT/wake word condicionados por corpus y gates humanos.
 - Pit Manager con confirmación, ejecución, readback y fallo cerrado.
+- Footer preexistente de guardado automático: alcance/riesgo ISA-314, no se
+  corrige en S1 y no se legitima su promesa.
 
 ## Decisiones vigentes
 
@@ -102,6 +104,31 @@ research quedan fuera de su context pack.
 - Timings, tempo, cadencia, debounce, clears, cooldowns, audio, dispositivo y
   sincronía visual forman parte de la feature y de su aceptación.
 - `WidgetVisualHost` es la única frontera visual compartida.
+- La sección de testing crece de forma acumulativa dentro de la pestaña Ingeniero
+  ya existente: cada corte expone controles seguros, estado/resultado observable
+  y motivo de silencio/degradación/error, y amplía un test automatizado evaluable
+  por IA junto al test backend; sin app, ruta, renderer, estado ni lógica paralela
+  de debug. La UI consume las mismas autoridades/estado/contratos productivos y no
+  admite inyección arbitraria de telemetría. El panel solo gana un observable/
+  control visual cuando la feature aporta señal productiva útil; si ya está
+  representada, se amplían escenario y regresión UI sin inflar componentes, y el
+  test UI crece cuando cambia el contrato/representación. `cmd/spotter-debug` queda
+  como herramienta técnica; la ruta manual primaria es la pestaña Ingeniero. S1
+  incluye solo el mínimo frontend necesario para probar lo que S1 incorpore;
+  persiste la exclusión de persistencia y rediseño de preferencias (ISA-314
+  separada).
+- Wiring mínimo S1: se reutilizan las métricas productivas delivery; `delivery.Metrics.record`
+  persiste el último delivery state+reason por acknowledgement (`Session.Acknowledge`) y
+  `delivery.MetricsSnapshot` lo expone como `lastState`/`lastReason` (camelCase, sin payload),
+  viajando en `service.EngineerStatus`/`engineer:status` y `engineer:stream` (datos acotados, sin
+  cambiar OBS/Desktop/store); `internal/app/engineer_bridge.go` queda SOLO LEER/passthrough sin
+  evento nuevo; la selección de locale efectiva en `productDeliveryPort.Deliver` deriva por delivery desde
+  `EngineerService.audioConfig` cuando no es nil (`decision/family` → `AudioConfig.Lang(channel)` →
+  `ParseLocale`); con `audioConfig == nil` conserva `port.locale` como fallback canónico ya inyectado;
+  config presente inválida (lang vacío/no soportado o mismatch) falla cerrado sin fallback silencioso; el panel
+  Testing/Diagnóstico de la pestaña Ingeniero muestra campos productivos existentes (sin conteo
+  TTS) y último delivery state/reason; `EngineerPage.test.tsx` usa transporte Wails mockeado; la
+  ruta acumulativa Go sobre `EngineerService` es la única prueba de comportamiento y reasons.
 - Cada subfase se replantea al entrar y amplía la misma aceptación manual + IA.
 - Engineer/Spotter se implementa mediante workers subagentes; sus reportes son
   respuestas estructuradas, no documentación nueva.
@@ -133,8 +160,9 @@ research quedan fuera de su context pack.
 
 - Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. La aceptación no cambia
   producto ni inicia S1.
-- ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). La implementación
-  no ha comenzado hasta aprobar su microplan.
+- ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). Tras la
+  reconciliación de la pestaña Ingeniero, el microplan requiere nueva aprobación
+  humana; la implementación no ha comenzado hasta aprobar su microplan.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; S4/ISA-187, S2/ISA-189 e ISA-314 quedan diferidos expresamente hasta
   cerrar S1.

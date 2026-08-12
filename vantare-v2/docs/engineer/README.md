@@ -28,6 +28,8 @@ la arquitectura documental y el [plan de Spotter](phases/spotter/plan.md). S1
 está en **replanning técnico con ISA-327** y rama propia
 `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; la
 implementación no ha comenzado hasta aprobar su microplan (cortes A/B/C). La
+prueba manual de cada corte crece en la pestaña Ingeniero (frontend) sin crear
+lógica paralela de debug. La
 única aceptación acumulativa de la fase Spotter es
 [acceptance.md](phases/spotter/acceptance.md).
 

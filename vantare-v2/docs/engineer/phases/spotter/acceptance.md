@@ -10,6 +10,19 @@ Esta es la única aceptación acumulativa de Spotter. Cada subfase amplía el
 mismo recorrido manual y la misma ruta evaluable por IA; no crea un protocolo,
 harness o documento paralelo por worker.
 
+La prueba manual primaria de cada corte crece de forma acumulativa dentro de la
+pestaña Ingeniero ya existente, sin app, ruta, renderer, estado ni lógica
+paralela de debug. Cada ampliación combina escenario manual, ampliación del
+test frontend/automatizado acumulativo (test de UI con transporte Wails
+mockeado, sobre el contrato recibido; no atraviesa `EngineerService`) y el test
+backend aplicable (única ruta acumulativa Go sobre `EngineerService` productivo),
+bajo el mismo protocolo de aceptación.
+
+El panel solo gana un observable/control visual cuando la feature aporta señal
+productiva útil; si ya está representada, se amplían escenario y regresión UI
+sin inflar componentes, y el test UI crece cuando cambia el contrato o la
+representación aplicable.
+
 Antes de S1 no se fija un comando definitivo. La primera subfase (Corte C)
 crea la única ruta acumulativa S1 — `service/s1_cumulative_test.go` — sobre
 `EngineerService` productivo, atraviesa las fronteras productivas aplicables
@@ -24,6 +37,10 @@ ruta existente ni se crea otro protocolo.
   como comportamiento de producto.
 - La alerta inmediata nunca espera síntesis. Usa un clip Kokoro
   preparado/cacheado cuando está autorizado y disponible.
+- La UI de prueba (pestaña Ingeniero) consume las mismas autoridades/estado/
+  contratos productivos; no duplica lógica ni admite inyección arbitraria de
+  telemetría. El test de UI usa transporte Wails mockeado y no atraviesa
+  `EngineerService`; la ruta acumulativa Go sobre `EngineerService` es distinta.
 - Audio, beep o señal, dispositivo y estado del player son observables.
 - Radio, subtítulos, Desktop y OBS conservan intención, locale, prioridad, TTL
   y lifecycle; el visual usa `WidgetVisualHost`.
@@ -94,6 +111,8 @@ eventos prohibidos y reason de silencio o degradación cuando aplique.
 
 - entorno y versión exactos;
 - guion breve reproducible y escenarios recorridos;
+- escenario recorrido desde la pestaña Ingeniero (ruta manual primaria) con
+  controles seguros y estado/resultado observables;
 - salida observada en superficies y, cuando aplique, audio/dispositivo reales;
 - juicio humano explícito para audibilidad o contenido;
 - fallos, limitaciones y capabilities no disponibles sin maquillarlos.
@@ -108,6 +127,8 @@ y la subfase permanece abierta; el fallback visual no sustituye este gate.
 
 - punto de entrada y prerrequisitos descubribles desde este documento;
 - ejecución determinista o acotada sobre código y contratos productivos;
+- ampliación acumulativa del test de la pestaña Ingeniero (transporte Wails
+  mockeado, sobre el contrato recibido) junto al test backend aplicable;
 - resultado inequívoco con esperado, observado y prohibidos;
 - evidencia de timings y lifecycle aplicables;
 - fallo visible cuando falta una precondición;
@@ -117,7 +138,7 @@ y la subfase permanece abierta; el fallback visual no sustituye este gate.
 
 | Subfase | Ampliación mínima |
 |---|---|
-| S1 | autoridades, secuencia, locale, salida honesta y aislamiento; el Corte C crea `service/s1_cumulative_test.go` como única ruta acumulativa S1 sobre `EngineerService` productivo (no replayoracle) con esperado/observado/prohibidos |
+| S1 | autoridades, secuencia, locale, salida honesta y aislamiento; el Corte C crea `service/s1_cumulative_test.go` como única ruta acumulativa S1 sobre `EngineerService` productivo (no replayoracle) y amplía el test de la pestaña Ingeniero, ambos con esperado/observado/prohibidos |
 | S2 | topologías laterales, identidad, clears y negativos espaciales |
 | S3 | inhibición, rearme, generación, disconnect y reconnect |
 | S4 | cache, audio, player, dispositivo real, prueba humana ES/EN, timing/audibilidad, preempción y paridad visual; un bloqueo explícito impide cerrar |

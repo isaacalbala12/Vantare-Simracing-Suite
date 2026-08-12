@@ -76,11 +76,11 @@
   (no nightly) para review aislada; al integrar #196, #210 se retargetea a nightly y se revalida.
   GitGuardian `SUCCESS`; sin gates branch-channel completos en esta base: no se declara CI
   completa; sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el
-  2026-08-12; la implementación de S1 no ha comenzado hasta aprobar su microplan.
+  2026-08-12; S1 incluye el mínimo frontend en la pestaña Ingeniero y requiere nueva aprobación humana tras la reconciliación; la implementación no ha comenzado hasta aprobar su microplan.
 - **Evidencia/publicacion:** el
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
-  ISA-314 conserva el bug de guardado separado. S2/ISA-189, S4/ISA-187 e
+  ISA-314 conserva el bug de guardado (incluye el footer preexistente de guardado automático, no corregido en S1). S2/ISA-189, S4/ISA-187 e
   ISA-314 quedan diferidos expresamente hasta cerrar S1.
 - **Siguiente accion:** tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
   obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable pendientes por cuota; Opus anterior no es final PASS);

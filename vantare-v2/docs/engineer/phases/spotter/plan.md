@@ -112,8 +112,9 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
   verificar que Fuel sigue saliendo sin desconexión ni error; re-encender sin still/clear fantasma; cambiar sensibilidad y confirmar rearme. Cierra
   con manual + tests focales; la ruta acumulativa aún no
   existe y este corte no la amplía.
-- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/core`; `go test ./internal/engineer/messagepolicy`; `go
-  test ./internal/engineer/spotter`; `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
+- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/core`;
+  `go test ./internal/engineer/messagepolicy`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/projectioninput`;
+  `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** `Reset()` global para un toggle, cancelación de cola completa, versionado nuevo de sensibilidad/evidence, modificar
   `scheduler.go`/`spotter_policy.go`/`types.go` sin justificación, usar tests de `SetOutputMode` como cobertura del toggle, o test que aísle Spotter sin
   regresión.
@@ -133,9 +134,9 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
 - **Criterios + validación manual:** toda observación del mismo epoch avanza la secuencia; una regresión falla cerrado con `ErrCanonicalObservationNotFresh`; replayoracle reporta `ReasonStaleContext`;
   Spotter nunca recibe coordenada cero como rival válido; otras familias no cambian; `Context`/`ClassifyBoundary` y el contrato de observación no cambian. Manual: reproducir snapshots regresivos con
   conexión activa y verificar que no hay mensajes/clears fantasma; un reconnect solo admite snapshots posteriores al borde. Cierra con manual + tests focales; la ruta acumulativa aún no existe.
-- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test
-  ./internal/engineer/replayoracle`; `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/spotter`; `go test
-  ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
+- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/replayoracle`;
+  `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/...`;
+  `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** divergencia de secuencia entre service y replayoracle, filtro que afecte a otra familia, cambio del contrato de
   observación/proyección, o modificar `geometry.go`/su test/`policy.go` en este corte.
 
@@ -161,8 +162,8 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
   ausentes. El corte C cubre acumulativamente A+B+C: ejercita enable/sensibilidad/secuencia/filtro junto con la salida en la misma ruta. Manual: sin
   cache, un modo `audio-only` no afirma salida y expone
   la causa; con cache del locale correcto, la ruta S1 entrega audio o degradación honesta; confirmar que no se abrió el player real ni se tocó el wiring de composición.
-- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test
-  ./internal/engineer/audio`; `go test ./internal/engineer/delivery`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
+- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/audio`;
+  `go test ./internal/engineer/delivery`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** cambio en device/player/hotplug/ducking/audibilidad, reason no válida en `knownReason`/`validStateReason`, ampliación innecesaria de estados de delivery, modificar
   `audio/config.go`, `cmd/vantare/main.go`, `audio/router.go` o `output_policy.go`, replayoracle como base del test acumulativo, o ruta acumulativa creada antes que los tests focales de A y B.
 

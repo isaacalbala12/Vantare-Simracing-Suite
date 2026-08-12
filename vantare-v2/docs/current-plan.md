@@ -13,7 +13,7 @@
 - Los contratos del [expediente canonico](vantare-program/README.md), el
   [mapa de proyectos](vantare-program/project-map.md) y el handoff vivo de cada
   proyecto explican fronteras y detalle. Un handoff no sustituye a Linear.
-- Base integrada comprobada para este corte: `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
+- Base integrada comprobada de este corte: merge-base productivo `8880a8800e07e2af21fe5ff37a714578bf8fcd00`; `origin/nightly` vigente `5069cbb1c0fb9ab2765093ebb1572f71a90ad5b5`, sin deriva en `internal/engineer` ni `cmd/vantare`.
 - El flujo obligatorio sigue siendo `rama de issue -> nightly -> testers -> master`.
   Terminado, integrado, promocionado y publicado son estados distintos; las
   promociones reservadas requieren la aprobacion explicita de Isaac.
@@ -82,9 +82,8 @@
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
   ISA-314 conserva el bug de guardado separado. S2/ISA-189, S4/ISA-187 e
   ISA-314 quedan diferidos expresamente hasta cerrar S1.
-- **Siguiente accion:** aprobar el
-  [microplan de S1](engineer/phases/spotter/plan.md) (cortes A/B/C) antes de
-  editar runtime; solo entonces un worker subagente implementa el corte A.
+- **Siguiente accion:** revalidar Nightly (`origin/nightly@5069cbb1`) antes de Corte A; aprobar el
+  [microplan de S1](engineer/phases/spotter/plan.md) (cortes A/B/C) corregido por la review Opus 5, con re-review pendiente; solo entonces un worker subagente implementa el corte A.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
   [roadmap general](engineer/engineer-beta-roadmap.md) y

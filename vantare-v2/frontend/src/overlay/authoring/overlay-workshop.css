@@ -29,7 +29,11 @@
 .overlay-workshop-stage--transparent { background: repeating-conic-gradient(#d7d9df 0% 25%, #aeb3bf 0% 50%) 50% / 24px 24px; }
 .overlay-workshop-surface { display: grid; gap: 8px; min-width: 0; justify-items: center; }
 .overlay-workshop-surface-label { font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #aeb5c5; }
-.overlay-workshop-widget-root { position: relative; overflow: visible; flex: none; }
+/* Clipped exactly like RuntimeWidgetFrame does in Desktop and OBS. Leaving it
+   visible showed animations that overflow the widget — the crown in flight,
+   halos, retirement ghosts — whole, when a real session cuts them off at the
+   edge. The point of this page is to see what ships. */
+.overlay-workshop-widget-root { position: relative; overflow: hidden; flex: none; }
 .overlay-workshop-error { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #160d10; color: #ffb5bd; font: 14px/1.5 "JetBrains Mono", monospace; }
 @media (max-width: 900px) { .overlay-workshop { padding: 12px; } .overlay-workshop-stage { align-items: flex-start; justify-content: flex-start; } }
 

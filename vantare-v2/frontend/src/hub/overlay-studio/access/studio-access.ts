@@ -180,6 +180,7 @@ function resolveResetSectionMutation(
 export function resolveCommandMutations(command: StudioCommand): StudioMutation[] {
   switch (command.type) {
     case "document/layout-viewport":
+    case "document/monitor":
       return ["layout"];
     case "widget/add":
       return ["add"];
@@ -212,7 +213,8 @@ function findWidgetsForCommand(
   command: StudioCommand,
 ): WidgetInstanceV3[] {
   switch (command.type) {
-    case "document/layout-viewport": {
+    case "document/layout-viewport":
+    case "document/monitor": {
       const widgets = Object.values(document.layouts).flatMap((layout) => layout?.widgets ?? []);
       return [
         ...new Map(widgets.map((widget) => [`${widget.type}:${widget.id}`, widget])).values(),

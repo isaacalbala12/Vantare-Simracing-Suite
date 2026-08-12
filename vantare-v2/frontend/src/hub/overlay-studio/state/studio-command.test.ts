@@ -41,6 +41,64 @@ function widget(id: string, overrides: Partial<WidgetInstanceV3> = {}): WidgetIn
 }
 
 describe("applyStudioCommand", () => {
+  it("updates monitor identity and its full DIP bounds atomically without mutating inputs", () => {
+    const document = buildDocument();
+    const before = structuredClone(document);
+    const command = {
+      type: "document/monitor" as const,
+      monitorIndex: 2,
+      viewport: { width: 3440, height: 1440 },
+    };
+    const commandBefore = structuredClone(command);
+
+    const next = applyStudioCommand(document, command);
+
+    expect(next).toStrictEqual({
+      ...before,
+      monitorIndex: 2,
+      layoutViewport: { width: 3440, height: 1440 },
+    });
+    expect(document).toEqual(before);
+    expect(command).toEqual(commandBefore);
+    expect(next.layoutViewport).not.toBe(command.viewport);
+  });
+
+  it.each([-1, 1.5])("rejects invalid monitor index %s with a typed command error", (monitorIndex) => {
+    const document = buildDocument();
+    const before = structuredClone(document);
+
+    expect(() =>
+      applyStudioCommand(document, {
+        type: "document/monitor",
+        monitorIndex,
+        viewport: { width: 1920, height: 1080 },
+      }),
+    ).toThrow(StudioCommandError);
+    expect(document).toEqual(before);
+  });
+
+  it("rejects an atomic monitor change when its bounds make a widget unrecoverable", () => {
+    const document = buildDocument();
+    document.monitorIndex = 1;
+    document.layoutViewport = { width: 3440, height: 1440 };
+    document.layouts.general.widgets[0]!.layout.x = 3200;
+    const before = structuredClone(document);
+
+    try {
+      applyStudioCommand(document, {
+        type: "document/monitor",
+        monitorIndex: 0,
+        viewport: { width: 1920, height: 1080 },
+      });
+      throw new Error("expected command error");
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioCommandError);
+      expect((error as StudioCommandError).commandType).toBe("document/monitor");
+      expect((error as Error).message).toContain("recoverable");
+    }
+    expect(document).toEqual(before);
+  });
+
   it("persists an explicit layout viewport without mutating the command or document", () => {
     const document = buildDocument();
     document.source = { kind: "local" };

@@ -209,6 +209,18 @@ describe("validateDraftAccess", () => {
 });
 
 describe("assertCommandAccess", () => {
+  it("treats an atomic monitor and viewport change as layout access", () => {
+    const document = buildDocument([deltaDefinition.createDefault("delta-main")]);
+    const command: StudioCommand = {
+      type: "document/monitor",
+      monitorIndex: 1,
+      viewport: { width: 3440, height: 1440 },
+    };
+
+    expect(resolveCommandMutations(command)).toEqual(["layout"]);
+    expect(() => assertCommandAccess(freeAccess, command, document)).not.toThrow();
+  });
+
   it("treats a document viewport edit as layout access across persisted sessions", () => {
     const document = buildDocument([deltaDefinition.createDefault("delta-main")]);
     document.layouts.race = {

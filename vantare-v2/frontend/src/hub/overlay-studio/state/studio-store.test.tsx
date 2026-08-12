@@ -177,6 +177,39 @@ describe("StudioProvider", () => {
     expect(result.current.dirty).toBe(false);
   });
 
+  it("tracks an atomic monitor selection as one dirty undo and redo step", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "document/monitor",
+        monitorIndex: 2,
+        viewport: { width: 3440, height: 1440 },
+      });
+    });
+    expect(result.current.document).toEqual(
+      expect.objectContaining({
+        monitorIndex: 2,
+        layoutViewport: { width: 3440, height: 1440 },
+      }),
+    );
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.document?.monitorIndex).toBe(0);
+    expect(result.current.document?.layoutViewport).toBeUndefined();
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.dirty).toBe(false);
+
+    act(() => result.current.redo());
+    expect(result.current.document?.monitorIndex).toBe(2);
+    expect(result.current.document?.layoutViewport).toEqual({ width: 3440, height: 1440 });
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.dirty).toBe(true);
+  });
+
   it("keeps document history intact and exposes a failed viewport command", async () => {
     const client = createMockClient(buildDocument());
     const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });

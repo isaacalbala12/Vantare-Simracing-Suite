@@ -132,6 +132,43 @@ fotogramas, y el gate visual captura un único fotograma determinista.
 Corresponden al motor de movimiento (`standings-motion.ts`), que ya tiene esa
 infraestructura, no al renderer.
 
+## Estado real del backlog de animaciones (2026-08-11)
+
+Auditado contra `useStandingsMotion.ts` al construir el catálogo de escenas del
+Workshop. **Casi todo el backlog ya estaba implementado**; la lista de abajo se
+conserva como registro de la decisión original, no como trabajo pendiente.
+
+| Animación | Estado |
+|---|---|
+| Adelantamiento FLIP + flash | ✅ duración escalada por distancia, tope de 4 simultáneas |
+| Batalla costura → caja → disolución | ✅ |
+| Vuelta rápida + traspaso de corona | ✅ `flyCrown()` |
+| Chip de delta vivo | ✅ tick de 140 ms, lote escalonado a 40 ms |
+| Entrada de coche | ✅ |
+| Retirada | ✅ fantasmas que se desvanecen |
+| Últimos minutos | ✅ `isFinalMinutes` |
+| Presión de gap cargado | ✅ `chargedGap`, dentro de la batalla cristalizada |
+| Cambio de neumático | ⚠️ implementado, **inerte en producción** |
+| Foto-finish | ⛔ no implementable hoy |
+
+### Dos animaciones que la telemetría no sostiene
+
+`overlay-projection-adapter.ts` declara `session.globalFlag` y
+`scoring[].tireCompound` como `unsupported-by-projection`: la proyección real
+no entrega ninguno de los dos.
+
+- **Foto-finish** necesita saber que ondeó la bandera a cuadros. Sin
+  `globalFlag`, no hay señal. No se implementa: sería una animación que en
+  carrera no se dispara jamás.
+- **Disco de neumático** está implementado y se ve en el Workshop porque el
+  mock sí trae el compuesto, pero **en una carrera real no aparece nunca**.
+
+La escena del Workshop lo declara en pantalla (`unsupportedSignal`), y un test
+lee la lista del adaptador para que el aviso no se quede obsoleto si algún día
+la proyección empieza a entregar esos campos.
+
+Desbloquearlas es trabajo de telemetría (Go + proyección), no de overlays.
+
 ## Backlog de animaciones aprobado (2026-08-06)
 
 Aprobadas por Isaac (todas derivables del diff de ViewModels):

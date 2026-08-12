@@ -2215,6 +2215,19 @@
   animation: ven-red-gapcell-in 320ms ease-out both;
 }
 
+/* The fill mounts at its final width, so the width transition below never gets
+   to run on the way in: the pressure appeared instead of building. Growing it
+   from nothing on mount gives the entry the movement the transition already
+   gives every later change. */
+@keyframes ven-red-gapfill-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
   position: absolute;
   left: 0;
@@ -2222,7 +2235,16 @@
   bottom: 0;
   background: linear-gradient(90deg, #c1121f, #ff4d5c);
   box-shadow: 0 0 12px rgba(255, 77, 92, 0.55);
+  transform-origin: left center;
+  animation: ven-red-gapfill-in 320ms ease-out both;
   transition: width 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
+    animation: none;
+    transition: none;
+  }
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-gapcell span {
@@ -2734,4 +2756,116 @@
   [data-widget-system="vantare-endurance"] .ven-pred-fill {
     transition: none;
   }
+}
+
+/* Redline relative motion. A crossing is the one thing this widget exists to
+   tell you about, so it gets the same ambient light the standings uses for an
+   overtake: colour washing through the row, no borders, no bars. */
+@keyframes ven-rel-cross-wash {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row {
+  position: relative;
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: ven-rel-cross-wash 900ms ease-out both;
+  animation-delay: var(--cross-delay, 0ms);
+}
+
+/* Lost a place to this car: red. Took one back: green. Same semantics the
+   rest of the system uses, so no new colour vocabulary to learn. */
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross="lost"]::after {
+  background: radial-gradient(70% 300% at 50% 50%, rgba(255, 107, 118, 0.38), transparent 90%);
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-cross="gained"]::after {
+  background: radial-gradient(70% 300% at 50% 50%, rgba(53, 199, 123, 0.38), transparent 90%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-rel-row[data-cross]::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Redline delta motion. The bar already animates its own width, so these mark
+   the two things a width change cannot say: the moment the lap flips sides,
+   and the moment the reference lap under it is replaced. */
+@keyframes ven-dred-cross-pulse {
+  0% { transform: translateX(-50%) scaleY(1); opacity: 0.85; }
+  35% { transform: translateX(-50%) scaleY(1.9); opacity: 1; }
+  100% { transform: translateX(-50%) scaleY(1); opacity: 0.85; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross] .ven-dred-zero {
+  animation: ven-dred-cross-pulse 700ms ease-out both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross="gaining"] .ven-dred-zero {
+  box-shadow: 0 0 12px rgba(53, 199, 123, 0.75);
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-cross="losing"] .ven-dred-zero {
+  box-shadow: 0 0 12px rgba(255, 107, 118, 0.75);
+}
+
+/* Fastest-lap purple, the same colour the standings gives a session best. */
+@keyframes ven-dred-best-sweep {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-root[data-new-best] .ven-dred-ref::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(177, 140, 255, 0.35), transparent);
+  animation: ven-dred-best-sweep 1100ms ease-out both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-dred-ref {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-dred-root[data-cross] .ven-dred-zero,
+  [data-widget-system="vantare-endurance"] .ven-dred-root[data-new-best] .ven-dred-ref::after {
+    animation: none;
+  }
+}
+
+/* Peak brake pressure for the braking event in progress. A thin line where the
+   pedal reached, revealed only once the driver eases off it, so it answers
+   "did I get back to the same pressure this lap?" without adding anything to
+   look at while the foot is still going down. */
+[data-widget-system="vantare-endurance"] .ven-pred-peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  border-radius: 1px;
+  background: rgba(232, 232, 232, 0.55);
+  box-shadow: 0 0 5px rgba(232, 232, 232, 0.28);
+  /* Centres the line on the peak height. Without this, a 100% peak sits
+     entirely above the well and the clip hides it — exactly the peak worth
+     seeing. */
+  transform: translateY(50%);
+  transition: bottom 120ms linear, opacity 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-pred-peak { transition: none; }
 }

@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import type { PedalsViewModel } from "../../../widget-types/pedals/pedals-view-model";
+import { nextBrakePeak, shouldRevealPeak } from "./pedals-motion";
 
 /**
  * Below this a pedal reads as released. Telemetry rarely returns a clean zero
@@ -32,6 +33,13 @@ const RAILS = [
  * Only transform and opacity animate, so OBS composites every frame.
  */
 export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
+  // Peak of the current braking event, carried across frames. A single render
+  // has no history, so the mark cannot appear on a still capture.
+  const peakRef = useRef<number | null>(null);
+  peakRef.current = nextBrakePeak(peakRef.current, model.brake);
+  const brakePeak = peakRef.current;
+  const showPeak = shouldRevealPeak(brakePeak, model.brake);
+
   return (
     <div className="ven-pred-root">
       {model.statusMessage ? (
@@ -62,6 +70,14 @@ export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
                       } as CSSProperties
                     }
                   />
+                  {rail.key === "brake" && showPeak && brakePeak !== null ? (
+                    <i
+                      aria-hidden="true"
+                      className="ven-pred-peak"
+                      data-testid="pedals-brake-peak"
+                      style={{ bottom: `${brakePeak * 100}%` } as CSSProperties}
+                    />
+                  ) : null}
                 </div>
                 <div className="ven-pred-slot">
                   <small>{rail.label}</small>

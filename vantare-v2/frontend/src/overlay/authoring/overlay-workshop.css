@@ -1,5 +1,9 @@
+/* index.css pins html/body/#root to height:100% with overflow:hidden, and the
+   hub neutralises it with a class this page does not carry. So the page has to
+   do its own scrolling, or everything below the fold is unreachable. */
 .overlay-workshop {
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
   padding: 20px;
   background: #090a0f;
   color: #f4f5f8;
@@ -22,13 +26,160 @@
 .overlay-workshop-control select { min-width: 145px; border: 1px solid #2d3240; border-radius: 5px; background: #131621; color: #f4f5f8; padding: 8px; font: 12px/1.2 Inter, system-ui, sans-serif; }
 
 /* The stage is authoring chrome; renderer alpha/bounds are asserted on the root below. */
-.overlay-workshop-stage { display: flex; min-height: calc(100vh - 184px); align-items: center; justify-content: center; gap: 28px; padding: 36px; overflow: auto; border: 1px solid #222838; }
+/* A fixed floor rather than one derived from the viewport: the controls above
+   it grew, and a viewport-relative height just pushed the stage off-screen. */
+.overlay-workshop-stage { display: flex; min-height: 480px; align-items: center; justify-content: center; gap: 28px; padding: 36px; overflow: auto; border: 1px solid #222838; }
 .overlay-workshop-stage--grid { background-image: linear-gradient(rgba(110, 121, 150, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(110, 121, 150, .08) 1px, transparent 1px); background-size: 32px 32px; }
 .overlay-workshop-stage--solid { background: #171b25; }
 .overlay-workshop-stage--context { background: radial-gradient(circle at 18% 20%, #353b52, transparent 40%), linear-gradient(135deg, #08090d, #202635); }
 .overlay-workshop-stage--transparent { background: repeating-conic-gradient(#d7d9df 0% 25%, #aeb3bf 0% 50%) 50% / 24px 24px; }
 .overlay-workshop-surface { display: grid; gap: 8px; min-width: 0; justify-items: center; }
 .overlay-workshop-surface-label { font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #aeb5c5; }
-.overlay-workshop-widget-root { position: relative; overflow: visible; flex: none; }
+/* Clipped exactly like RuntimeWidgetFrame does in Desktop and OBS. Leaving it
+   visible showed animations that overflow the widget — the crown in flight,
+   halos, retirement ghosts — whole, when a real session cuts them off at the
+   edge. The point of this page is to see what ships. */
+.overlay-workshop-widget-root { position: relative; overflow: hidden; flex: none; }
 .overlay-workshop-error { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #160d10; color: #ffb5bd; font: 14px/1.5 "JetBrains Mono", monospace; }
 @media (max-width: 900px) { .overlay-workshop { padding: 12px; } .overlay-workshop-stage { align-items: flex-start; justify-content: flex-start; } }
+
+/* Scene catalog and transport. Separated from the selection controls above so
+   the animation being inspected reads as its own thing, not one more dropdown. */
+.overlay-workshop-scenes {
+  display: grid;
+  gap: 12px;
+  max-width: 1280px;
+  margin: 0 auto 16px;
+  padding: 14px 16px;
+  border: 1px solid #2d3240;
+  border-left: 2px solid #ff3b3b;
+  border-radius: 6px;
+  background: #101320;
+}
+
+.overlay-workshop-transport { display: grid; gap: 10px; }
+.overlay-workshop-transport__buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.overlay-workshop-transport__buttons button {
+  min-width: 44px;
+  padding: 7px 12px;
+  border: 1px solid #2d3240;
+  border-radius: 5px;
+  background: #171b28;
+  color: #f4f5f8;
+  font: 700 12px/1.2 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.overlay-workshop-transport__buttons button:hover { border-color: #454c60; background: #1d2231; }
+.overlay-workshop-transport__buttons button[aria-pressed="true"] { border-color: #ff3b3b; color: #ff9ba1; }
+
+.overlay-workshop-transport__scrub {
+  display: grid;
+  gap: 6px;
+  color: #aeb5c5;
+  font: 700 10px/1 "JetBrains Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.overlay-workshop-transport__scrub input { width: 100%; accent-color: #ff3b3b; }
+
+.overlay-workshop-transport__caption {
+  margin: 0;
+  color: #f4f5f8;
+  font: 600 13px/1.4 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__watch {
+  margin: 0;
+  color: #8d94a5;
+  font: 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__watch strong { color: #aeb5c5; }
+
+/* A scene that only ever plays against the mock has to say so where it is
+   being judged, not in a document nobody opens while designing. */
+.overlay-workshop-transport__unsupported {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #6a4a12;
+  border-left: 2px solid #f0a53a;
+  border-radius: 4px;
+  background: #1e1708;
+  color: #f0c98a;
+  font: 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__unsupported strong { color: #f0a53a; }
+.overlay-workshop-transport__unsupported code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }
+
+/* One button per animation. A dropdown hides the catalog behind a click and
+   makes you read a list to find out what exists; buttons show the whole
+   vocabulary of the widget at once, and playing one is a single click. */
+.overlay-workshop-scenes__head h2 {
+  margin: 0;
+  color: #f4f5f8;
+  font: 700 13px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: .01em;
+}
+
+.overlay-workshop-scenes__head p {
+  margin: 3px 0 0;
+  color: #8d94a5;
+  font: 12px/1.4 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-scenes__list { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.overlay-workshop-scenes__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid #2d3240;
+  border-radius: 999px;
+  background: #171b28;
+  color: #f4f5f8;
+  font: 600 12px/1.2 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.overlay-workshop-scenes__item:hover { border-color: #ff3b3b; background: #1d2231; }
+
+.overlay-workshop-scenes__item[data-active="true"] {
+  border-color: #ff3b3b;
+  background: #241419;
+  color: #ffb5bd;
+}
+
+.overlay-workshop-scenes__play { color: #ff3b3b; font-size: 10px; }
+.overlay-workshop-scenes__item--clear { color: #8d94a5; border-style: dashed; }
+.overlay-workshop-scenes__empty { margin: 0; color: #8d94a5; font: 12px/1.5 Inter, system-ui, sans-serif; }
+
+.overlay-workshop-transport__loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #aeb5c5;
+  font: 600 11px/1 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-transport__loop input { accent-color: #ff3b3b; }
+
+/* What the mock shows and a real session will not. Sits above the animations,
+   because it changes how everything below it should be read. */
+.overlay-workshop-scenes__gaps {
+  padding: 9px 12px;
+  border: 1px solid #6a4a12;
+  border-left: 2px solid #f0a53a;
+  border-radius: 4px;
+  background: #1e1708;
+  color: #f0c98a;
+  font: 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.overlay-workshop-scenes__gaps strong { color: #f0a53a; }
+.overlay-workshop-scenes__gaps ul { margin: 5px 0 0; padding-left: 18px; }
+.overlay-workshop-scenes__gaps code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }

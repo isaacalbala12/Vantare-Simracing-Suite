@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
@@ -12,7 +12,10 @@ import {
   resetAndSeedAuthoringInputTelemetry,
   type HarnessVariant,
 } from "./fixtures/authoring-fixtures";
-import { getCrystalHarnessDesign } from "./fixtures/authoring-fixtures";
+import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
+import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
+import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
+import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
@@ -84,7 +87,9 @@ function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
     variant: query.variant,
     ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
   });
-  return { key: serializeOverlayWorkshopQuery(query), widget, snapshot };
+  // Keyed without the frame, matching fixtureKey: stepping a scene must not
+  // count as a different fixture.
+  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, snapshot };
 }
 
 const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
@@ -150,7 +155,12 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   };
 
   const designs = listOfficialDesigns(parsed.widget).filter((design) => design.systemId === parsed.system);
-  const fixtureKey = serializeOverlayWorkshopQuery(parsed);
+  // The frame is deliberately excluded: it changes the snapshot, not the
+  // fixture. Including it remounted the widget on every step, which threw away
+  // the previous ViewModel the motion engines diff against — so discrete
+  // animations (overtake flash, crown flight, relative crossing) could never
+  // fire in the Workshop, which is the one place they need to be visible.
+  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined });
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -164,8 +174,93 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     return () => clearInterval(timer);
   }, [parsed.variant, fixtureKey]);
 
+  // Scene transport. The frame lives in local state while playing so the URL is
+  // not rewritten sixty times a minute; pausing or stepping parks it in the
+  // query, which is what makes a single frame linkable.
+  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
+  // Nothing plays until asked. Selecting an animation arms it at rest; a run
+  // plays that animation once, start to finish, and stops on its last frame.
+  const [playing, setPlaying] = useState(false);
+  const [loop, setLoop] = useState(false);
+  const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
+
+  // A linked frame parks the playhead on that keyframe.
+  useEffect(() => {
+    setElapsedMs((parsed.sceneFrame ?? 0) * (scene?.frameMs ?? 0));
+  }, [parsed.sceneId, parsed.sceneFrame, scene]);
+
+  // Playhead in milliseconds, advanced on every animation frame. The scene's
+  // frames are keyframes; what plays between them is interpolated, so a gap
+  // closing or a pedal going down moves instead of stepping.
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    if (!scene || !playing) {
+      return;
+    }
+    let raf = 0;
+    let start: number | null = null;
+    const offset = elapsedRef.current;
+    const total = sceneDurationMs(scene);
+    const tick = (now: number) => {
+      if (start === null) {
+        start = now;
+      }
+      const next = offset + (now - start);
+      if (!loop && next >= total) {
+        setElapsedMs(total);
+        setPlaying(false);
+        return;
+      }
+      setElapsedMs(next);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [scene, playing, loop]);
+
+  const elapsedRef = useRef(0);
+  elapsedRef.current = elapsedMs;
+
+  // In a race the world is continuous but telemetry is sampled: a widget only
+  // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
+  // the interpolation straight at 60fps made the Workshop four times smoother
+  // than the product, which is the wrong thing to judge a design against.
+  // The clock advances at frame rate; the data is quantised to the widget's rate.
+  const updateHz = prepared?.widget.behavior.updateHz ?? 30;
+  const playhead = scene ? interpolateSceneAt(scene, sampleAtRate(elapsedMs, updateHz), loop) : null;
+  const currentKeyframe = playhead?.keyframe ?? 0;
+
+  const parkFrame = (frame: number) => {
+    setPlaying(false);
+    setElapsedMs(scene ? frame * scene.frameMs : 0);
+    update({ ...parsed, sceneFrame: frame });
+  };
+  const stepFrame = (delta: number) => {
+    if (!scene) return;
+    const count = scene.frames.length;
+    parkFrame((((currentKeyframe + delta) % count) + count) % count);
+  };
+  /** Selects an animation and leaves it at rest, without playing anything. */
+  const chooseScene = (value: string) => {
+    setPlaying(false);
+    setElapsedMs(0);
+    update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
+  };
+  /** One click: this animation, from the top, once, at frame rate. */
+  const runScene = (sceneId: string) => {
+    setElapsedMs(0);
+    update({ ...parsed, sceneId, sceneFrame: 0 });
+    setPlaying(true);
+  };
+
+  // Reads the latest query without making the effect depend on the object
+  // identity, so only a real fixture change rebuilds and remounts.
+  const parsedRef = useRef(parsed);
+  parsedRef.current = parsed;
+
   useLayoutEffect(() => {
-    const next = prepareFixture(parsed);
+    const next = prepareFixture(parsedRef.current);
     resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
     let active = true;
     queueMicrotask(() => {
@@ -175,24 +270,35 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       active = false;
       clearInputTelemetryHistory(next.widget.id);
     };
-  }, [parsed]);
+  }, [fixtureKey]);
 
-  const preparedForRender =
-    prepared && parsed.variant === "standings-replay"
+  const liveFixtureInput = {
+    session: parsed.session,
+    location: parsed.location,
+    state: parsed.state,
+    widget: parsed.widget,
+    system: parsed.system,
+    surface: parsed.surface,
+    variant: parsed.variant,
+  } as const;
+
+  const preparedForRender = !prepared
+    ? prepared
+    : scene && playhead
       ? {
           ...prepared,
           snapshot: buildAuthoringFixtureTelemetry({
-            session: parsed.session,
-            location: parsed.location,
-            state: parsed.state,
-            widget: parsed.widget,
-            system: parsed.system,
-            surface: parsed.surface,
-            variant: parsed.variant,
-            replayFrame,
+            ...liveFixtureInput,
+            sceneId: scene.id,
+            sceneState: playhead.frame,
           }),
         }
-      : prepared;
+      : parsed.variant === "standings-replay"
+        ? {
+            ...prepared,
+            snapshot: buildAuthoringFixtureTelemetry({ ...liveFixtureInput, replayFrame }),
+          }
+        : prepared;
 
   const chooseWidget = (value: string) => {
     const widgetType = value as WidgetType;
@@ -280,6 +386,105 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
         </SelectField>
         <button type="button" onClick={reset}>Reset controls</button>
+      </section>
+      <section className="overlay-workshop-scenes" aria-label="Animaciones" data-overlay-workshop-scenes>
+        <div className="overlay-workshop-scenes__head">
+          <h2>Animaciones de {parsed.widget}</h2>
+          <p>Pulsa una para reproducirla una vez.</p>
+        </div>
+        {projectionGapsFor(parsed.widget).length > 0 ? (
+          <div className="overlay-workshop-scenes__gaps" data-testid="workshop-projection-gaps">
+            <strong>Aquí se ve más de lo que llega en carrera.</strong> La telemetría real no entrega:
+            <ul>
+              {projectionGapsFor(parsed.widget).map((gap) => (
+                <li key={gap.field}>
+                  <code>{gap.field}</code> — {gap.consequence}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <div className="overlay-workshop-scenes__list" data-testid="workshop-scene-list">
+          {scenesForWidget.length === 0 ? (
+            <p className="overlay-workshop-scenes__empty">Este widget todavía no tiene animaciones declaradas.</p>
+          ) : (
+            scenesForWidget.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="overlay-workshop-scenes__item"
+                data-active={item.id === parsed.sceneId ? "true" : undefined}
+                data-testid={`workshop-scene-run-${item.id}`}
+                onClick={() => runScene(item.id)}
+              >
+                <span className="overlay-workshop-scenes__play" aria-hidden="true">▶</span>
+                {item.label}
+              </button>
+            ))
+          )}
+          {scene ? (
+            <button
+              type="button"
+              className="overlay-workshop-scenes__item overlay-workshop-scenes__item--clear"
+              onClick={() => chooseScene("")}
+              data-testid="workshop-scene-clear"
+            >
+              Salir de la animación
+            </button>
+          ) : null}
+        </div>
+        {scene ? (
+          <div className="overlay-workshop-transport" data-overlay-workshop-transport>
+            <div className="overlay-workshop-transport__buttons">
+              <button type="button" onClick={() => stepFrame(-1)} data-testid="workshop-scene-prev" aria-label="Fotograma anterior">◀</button>
+              <button
+                type="button"
+                onClick={() => (playing ? setPlaying(false) : runScene(scene.id))}
+                data-testid="workshop-scene-play"
+                aria-pressed={playing}
+              >
+                {playing ? "❙❙ Pausa" : "▶ Reproducir de nuevo"}
+              </button>
+              <button type="button" onClick={() => stepFrame(1)} data-testid="workshop-scene-next" aria-label="Fotograma siguiente">▶</button>
+              <label className="overlay-workshop-transport__loop">
+                <input
+                  type="checkbox"
+                  checked={loop}
+                  onChange={(event) => setLoop(event.target.checked)}
+                  data-testid="workshop-scene-loop"
+                />
+                En bucle
+              </label>
+            </div>
+            <label className="overlay-workshop-transport__scrub">
+              <span>
+                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s · datos a {updateHz} Hz, como en juego
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={scene.frames.length - 1}
+                step={1}
+                value={currentKeyframe}
+                onChange={(event) => parkFrame(Number(event.target.value))}
+                data-testid="workshop-scene-scrub"
+              />
+            </label>
+            <p className="overlay-workshop-transport__caption" data-testid="workshop-scene-caption">
+              {playhead?.frame.caption}
+            </p>
+            <p className="overlay-workshop-transport__watch" data-testid="workshop-scene-watch">
+              <strong>Qué mirar:</strong> {scene.watchFor}
+            </p>
+            {scene.unsupportedSignal ? (
+              <p className="overlay-workshop-transport__unsupported" data-testid="workshop-scene-unsupported">
+                <strong>Solo en el mock:</strong> esta animación necesita{" "}
+                <code>{scene.unsupportedSignal}</code>, que la proyección de telemetría actual no
+                entrega. Aquí se ve; en una carrera real no se dispara.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (

@@ -115,4 +115,30 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(seeded).toHaveLength(snapshot.derived?.inputHistory.length ?? 0);
     expect(readInputTelemetryHistory("unrelated-workshop-widget", snapshot, 8)).toHaveLength(1);
   });
+
+  // A scene shapes the widget as well as the snapshot. The Workshop used to
+  // pass the scene only to the telemetry, so the standings kept the player's
+  // class alone and the best-lap column off: the fastest-lap scene handed the
+  // crown between two cars that were not on screen, and no glyph could ever
+  // appear.
+  it("builds the widget from the scene, not just the telemetry", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,
+    );
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-overlay-workshop-widget-root] [data-standings-row]")).toBeTruthy(),
+    );
+
+    const classes = new Set(
+      [...document.querySelectorAll("[data-standings-row]")].map((row) =>
+        row.getAttribute("data-class"),
+      ),
+    );
+    expect(classes.size).toBeGreaterThan(1);
+
+    // Without the best-lap column there is no session best, so nothing can
+    // hold the crown for the handover to move.
+    expect(document.querySelector(".ven-red-fastest")).toBeTruthy();
+  });
 });

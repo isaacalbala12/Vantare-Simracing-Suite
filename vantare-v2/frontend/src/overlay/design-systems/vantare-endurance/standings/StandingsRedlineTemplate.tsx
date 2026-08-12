@@ -65,6 +65,12 @@ function RedlineRow({
   battle: BattleState | undefined;
 }) {
   const isLead = classPosition === 1;
+  // A dissolving battle keeps its last interval, so the cell mounts at the
+  // charge it had rather than at zero. The node is new — React rebuilds this
+  // subtree when the battle wrapper goes — so the exit is a keyframe, which
+  // defines both its ends, and not a transition, which would have nothing to
+  // travel from.
+  const leavingBattle = battle?.stage === "dissolve";
   const chargedGap =
     battle && battle.behindId === row.id && battle.stage !== "seam"
       ? Math.max(0.1, Math.min(1, 1 - battle.intervalSeconds / 0.8))
@@ -105,7 +111,7 @@ function RedlineRow({
         {isSessionBest ? <FastestGlyph /> : null}
       </span>
       {chargedGap !== null ? (
-        <span className="ven-red-gapcell">
+        <span className="ven-red-gapcell" data-leaving={leavingBattle ? "true" : undefined}>
           <b style={{ width: `${Math.round(chargedGap * 100)}%` } as CSSProperties} />
           <span>{gapOneDecimal(row.gapText)}</span>
         </span>

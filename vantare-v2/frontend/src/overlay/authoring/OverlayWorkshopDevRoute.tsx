@@ -50,6 +50,11 @@ function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
     system: query.system,
     surface: query.surface,
     variant: query.variant,
+    // The scene shapes the widget as well as the snapshot: without it the
+    // standings kept the player's class only and the best-lap column off, so
+    // the fastest-lap scene handed the crown between two cars that were not
+    // on screen and no glyph could appear at all.
+    sceneId: query.sceneId,
     ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
   });
   if (query.designId) {

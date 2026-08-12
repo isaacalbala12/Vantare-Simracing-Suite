@@ -2215,6 +2215,19 @@
   animation: ven-red-gapcell-in 320ms ease-out both;
 }
 
+/* The fill mounts at its final width, so the width transition below never gets
+   to run on the way in: the pressure appeared instead of building. Growing it
+   from nothing on mount gives the entry the movement the transition already
+   gives every later change. */
+@keyframes ven-red-gapfill-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
   position: absolute;
   left: 0;
@@ -2222,7 +2235,16 @@
   bottom: 0;
   background: linear-gradient(90deg, #c1121f, #ff4d5c);
   box-shadow: 0 0 12px rgba(255, 77, 92, 0.55);
+  transform-origin: left center;
+  animation: ven-red-gapfill-in 320ms ease-out both;
   transition: width 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
+    animation: none;
+    transition: none;
+  }
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-gapcell span {

@@ -68,6 +68,26 @@ describe("listStudioMonitors", () => {
     expect(nativeScreens).toEqual(before);
   });
 
+  it("uses the stable screen ID when the native display name is empty", async () => {
+    vi.doMock("@wailsio/runtime", () => ({
+      Screens: {
+        GetAll: vi.fn(async () => [
+          screen(),
+          screen({ ID: "display-unnamed", Name: "", IsPrimary: false }),
+        ]),
+      },
+    }));
+    const { listStudioMonitors } = await import("./studio-monitor-client");
+
+    const monitors = await listStudioMonitors();
+
+    expect(monitors).toHaveLength(2);
+    expect(monitors.map(({ index, id, name }) => ({ index, id, name }))).toEqual([
+      { index: 0, id: "display-a", name: "Main display" },
+      { index: 1, id: "display-unnamed", name: "display-unnamed" },
+    ]);
+  });
+
   it("fails explicitly when the runtime has no Screens capability", async () => {
     vi.doMock("@wailsio/runtime", () => ({ Screens: undefined }));
     const { listStudioMonitors } = await import("./studio-monitor-client");

@@ -63,19 +63,22 @@ describe("applyStudioCommand", () => {
     expect(next.layoutViewport).not.toBe(command.viewport);
   });
 
-  it.each([-1, 1.5])("rejects invalid monitor index %s with a typed command error", (monitorIndex) => {
-    const document = buildDocument();
-    const before = structuredClone(document);
+  it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid monitor index %s with a typed command error",
+    (monitorIndex) => {
+      const document = buildDocument();
+      const before = structuredClone(document);
 
-    expect(() =>
-      applyStudioCommand(document, {
-        type: "document/monitor",
-        monitorIndex,
-        viewport: { width: 1920, height: 1080 },
-      }),
-    ).toThrow(StudioCommandError);
-    expect(document).toEqual(before);
-  });
+      expect(() =>
+        applyStudioCommand(document, {
+          type: "document/monitor",
+          monitorIndex,
+          viewport: { width: 1920, height: 1080 },
+        }),
+      ).toThrow(StudioCommandError);
+      expect(document).toEqual(before);
+    },
+  );
 
   it("rejects an atomic monitor change when its bounds make a widget unrecoverable", () => {
     const document = buildDocument();

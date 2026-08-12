@@ -39,6 +39,13 @@ function readBoolean(value: unknown, path: string): boolean {
   return value;
 }
 
+function readDisplayName(value: unknown, fallback: string, path: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${path} must be a string`);
+  }
+  return value.length === 0 ? fallback : value;
+}
+
 function readScaleFactor(value: unknown, path: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     throw new Error(`${path} must be a finite positive number`);
@@ -58,10 +65,11 @@ function readViewport(value: unknown, path: string): LayoutViewport {
 
 function mapScreen(value: unknown, index: number): StudioMonitor {
   const screen = readRecord(value, `Screens[${index}]`);
+  const id = readString(screen.ID, `Screens[${index}].ID`);
   return {
     index,
-    id: readString(screen.ID, `Screens[${index}].ID`),
-    name: readString(screen.Name, `Screens[${index}].Name`),
+    id,
+    name: readDisplayName(screen.Name, id, `Screens[${index}].Name`),
     isPrimary: readBoolean(screen.IsPrimary, `Screens[${index}].IsPrimary`),
     scaleFactor: readScaleFactor(screen.ScaleFactor, `Screens[${index}].ScaleFactor`),
     bounds: readViewport(screen.Bounds, `Screens[${index}].Bounds`),

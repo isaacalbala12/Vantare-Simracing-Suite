@@ -453,8 +453,8 @@ function applyDocumentMonitor(
   document: ProfileDocumentV3,
   command: Extract<StudioCommand, { type: "document/monitor" }>,
 ): ProfileDocumentV3 {
-  if (!Number.isInteger(command.monitorIndex) || command.monitorIndex < 0) {
-    throw new StudioCommandError(command.type, "monitorIndex must be a non-negative integer");
+  if (!Number.isSafeInteger(command.monitorIndex) || command.monitorIndex < 0) {
+    throw new StudioCommandError(command.type, "monitorIndex must be a non-negative safe integer");
   }
 
   const next = structuredClone(document);

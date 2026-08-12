@@ -142,26 +142,27 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
 
 #### Corte C — autoridad de salida/aceptación (locale, audio-only, ruta S1)
 
-- **MODIFICAR (mínimo):** `service/engineer_service.go` — wiring mínimo de locale antes de `Start` que resuelve una autoridad ES/EN coherente para la entrega Spotter (presentación y audio mismo locale
-  o fallo cerrado con reason diagnóstica), sin mismatch silencioso; `service/delivery_runtime.go` — solo el tramo cache/resolver/output observable de `productDeliveryPort.Deliver`;
-  `delivery/contract.go` — reason diagnóstica de audio integrada en los puntos contractuales mínimos `knownReason` y `validStateReason`, sin ampliar estados; nuevo `service/s1_cumulative_test.go` —
-  primera ruta acumulativa S1 sobre `EngineerService` productivo, no en replayoracle. No frontend ni persistencia.
+- **Resultado de producto:** se preservan los defaults existentes (`DefaultAudioConfig`: Spotter EN `af_bella`, Engineer ES `ef_dora`) y `cmd/vantare/main.go` es SOLO LEER; la presentación visual de
+  cada entrega usa el locale de su propio canal/familia, de modo que Spotter visual+audio quedan EN y Engineer visual+audio ES por defecto; una configuración explícita solo admite ES/EN y mantiene
+  visual+audio coherentes por canal; locale ausente/no soportado/mismatch no produce `completed` silencioso: falla cerrado con reason diagnóstica. No cambian defaults globales, frontend, persistencia, router, player ni `main`.
+- **MODIFICAR (mínimo):** `service/engineer_service.go` — wiring mínimo de locale antes de `Start` que resuelve una autoridad ES/EN coherente por canal/familia (presentación y audio mismo locale o fallo
+  cerrado con reason diagnóstica), sin mismatch silencioso; `service/delivery_runtime.go` — solo el tramo cache/resolver/output observable de `productDeliveryPort.Deliver`; `delivery/contract.go` —
+  reason diagnóstica de audio integrada en los puntos contractuales mínimos `knownReason` y `validStateReason`, sin ampliar estados; nuevo `service/s1_cumulative_test.go` — primera ruta acumulativa S1 sobre `EngineerService` productivo, no en replayoracle. No frontend ni persistencia.
 - **SOLO LEER / contexto:** `audio/config.go` (`DefaultAudioConfig`) y `audio/config_test.go` (`TestDefaultAudioConfig`) — se conservan defaults y test actuales; `cmd/vantare/main.go` — composición,
   no cambia; `audio/router.go` y `audio/router_test.go` — se preserva `TestCacheOnlyAudioRouterReadsCanonicalTTSCacheWithoutEngine`; `service/output_policy.go` — no cambia en este corte;
   `audio/player.go`, `player_windows.go` y tests de player — no se implementa, cambia ni prueba el player; un player ausente puede producir no-success por backend no configurado, sin cambiarlo. No hay
   device, hotplug, ducking ni audibilidad real.
-- **Tests a ampliar/crear (MODIFICAR/REESCRIBIR porque cambia su premisa):** `service/presentation_delivery_test.go` (`TestProductDeliveryKeepsSpanishVisualOnlyWhenSpotterAudioIsEnglish`) — la premisa
-  de mismatch silencioso por default cambia; el fallback visual sigue cubierto; `service/engineer_service_test.go` — tests de autoridad de locale
-  (mismo locale visual/audio o fallo cerrado con reason);
+- **Tests a ampliar/crear (MODIFICAR/REESCRIBIR porque cambia su premisa):** `service/presentation_delivery_test.go` — se reescribe `TestProductDeliveryKeepsSpanishVisualOnlyWhenSpotterAudioIsEnglish`: resultado esperado, con defaults una entrega Spotter resuelve visual EN + audio EN y completa; un mismatch visual/audio
+  ya no completa en silencio: falla cerrado con reason; el fallback visual de cache miss sin `audio-only` sigue cubierto. Se añade un test Engineer que preserve ES por defecto: canal/familia Engineer entrega visual ES + audio ES y completa.
+  `service/engineer_service_test.go` — tests de autoridad de locale (mismo locale visual/audio o fallo cerrado con reason);
   `service/delivery_runtime_test.go` — `audio-only` miss/mismatch no-success con reason; `delivery/contract_test.go` — `knownReason`/`validStateReason` aceptan la reason nueva;
   `service/s1_cumulative_test.go` — primera ruta acumulativa S1.
 - **Orden TDD red-verde:** (1) rojo: la configuración del servicio produce mismatch silencioso de locale y debe dar locale coherente o fallar cerrado con reason; (2) rojo: `audio-only` sin
   clip/resolver/mismatch no termina `completed` y expone reason diagnóstica; (3) rojo: `s1_cumulative_test.go` reporta esperado/observado/prohibidos sobre EngineerService; (4) verde mínimo.
-- **Criterios + validación manual:** una única autoridad de locale ES/EN para la entrega Spotter, diagnosticable, sin mismatch silencioso; `audio-only` falla cerrado con no-success y reason
-  contractual (clip/resolver/mismatch ausentes o player ausente por backend no configurado) sin cambiar el player; la ruta S1 es ejecutable y evaluable por IA con fallo visible ante precondiciones
-  ausentes. El corte C cubre acumulativamente A+B+C: ejercita enable/sensibilidad/secuencia/filtro junto con la salida en la misma ruta. Manual: sin
-  cache, un modo `audio-only` no afirma salida y expone
-  la causa; con cache del locale correcto, la ruta S1 entrega audio o degradación honesta; confirmar que no se abrió el player real ni se tocó el wiring de composición.
+- **Criterios + validación manual:** una única autoridad de locale ES/EN por canal/familia, diagnosticable, sin mismatch silencioso; defaults intactos (Spotter EN, Engineer ES) en visual y audio;
+  `audio-only` falla cerrado con no-success y reason contractual (clip/resolver/mismatch ausentes o player ausente por backend no configurado) sin cambiar el player; la ruta S1 es ejecutable y
+  evaluable por IA con fallo visible ante precondiciones ausentes. El corte C cubre acumulativamente A+B+C: ejercita enable/sensibilidad/secuencia/filtro junto con la salida en la misma ruta. Manual: sin
+  cache, un modo `audio-only` no afirma salida y expone la causa; con cache del locale correcto, la ruta S1 entrega audio o degradación honesta; confirmar que no se abrió el player real ni se tocó el wiring de composición.
 - **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/audio`;
   `go test ./internal/engineer/delivery`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** cambio en device/player/hotplug/ducking/audibilidad, reason no válida en `knownReason`/`validStateReason`, ampliación innecesaria de estados de delivery, modificar

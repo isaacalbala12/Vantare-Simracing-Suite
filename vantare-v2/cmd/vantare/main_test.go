@@ -392,46 +392,6 @@ func TestOverlayWindowOptionsRejectTypedNilResolverWithoutPanic(t *testing.T) {
 	}
 }
 
-func TestOverlayWindowLifecycleNormalCloseDoesNotDispatchStopCallback(t *testing.T) {
-	lifecycle := &overlayWindowLifecycle{}
-	generation := lifecycle.activate()
-	callbacks := 0
-
-	lifecycle.invalidate(generation)
-	if lifecycle.claimExternalClose(generation) {
-		callbacks++
-	}
-	if lifecycle.claimExternalClose(generation) {
-		callbacks++
-	}
-
-	if callbacks != 0 {
-		t.Fatalf("normal close dispatched %d stop callbacks, want 0", callbacks)
-	}
-}
-
-func TestOverlayWindowLifecycleIgnoresOldDelayedCloseAndClaimsCurrentExternalCloseOnce(t *testing.T) {
-	lifecycle := &overlayWindowLifecycle{}
-	first := lifecycle.activate()
-	lifecycle.invalidate(first)
-	second := lifecycle.activate()
-	callbacks := 0
-
-	if lifecycle.claimExternalClose(first) {
-		callbacks++
-	}
-	if lifecycle.claimExternalClose(second) {
-		callbacks++
-	}
-	if lifecycle.claimExternalClose(second) {
-		callbacks++
-	}
-
-	if callbacks != 1 {
-		t.Fatalf("close callbacks=%d want exactly 1 for current external close", callbacks)
-	}
-}
-
 func TestNewWailsOverlayFactoryWiresApplicationScreenManager(t *testing.T) {
 	screens := &application.ScreenManager{}
 	selected := &application.Screen{

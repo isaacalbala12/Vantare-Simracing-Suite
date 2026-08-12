@@ -95,6 +95,23 @@ func (c *OverlayController) Stop() OverlayStatus {
 	return c.status
 }
 
+// HandleWindowClosed forgets a window that the native runtime has already
+// closed. A delayed event from an older window cannot clear a newer current
+// window because identity is checked under the controller mutex.
+func (c *OverlayController) HandleWindowClosed(closed OverlayWindow) (OverlayStatus, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// OverlayWindow implementations are pointer-backed native window handles,
+	// so interface equality represents the window instance identity here.
+	if closed == nil || c.current != closed {
+		return c.status, false
+	}
+	c.current = nil
+	c.status.Running = false
+	return c.status, true
+}
+
 // CurrentWindow returns the active overlay window, or nil if none is running.
 func (c *OverlayController) CurrentWindow() OverlayWindow {
 	c.mu.Lock()

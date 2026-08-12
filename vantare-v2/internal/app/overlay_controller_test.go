@@ -9,6 +9,7 @@ import (
 
 type fakeOverlayWindow struct {
 	closed       bool
+	closeCalls   int
 	boundsSet    bool
 	ignoreMouse  bool
 	appliedModes []config.DisplayMode
@@ -16,6 +17,7 @@ type fakeOverlayWindow struct {
 
 func (f *fakeOverlayWindow) Close() {
 	f.closed = true
+	f.closeCalls++
 }
 
 func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
@@ -100,6 +102,49 @@ func TestOverlayControllerStartClosesPreviousWindow(t *testing.T) {
 	}
 	if factory.created != 2 {
 		t.Fatalf("created=%d, want 2", factory.created)
+	}
+}
+
+func TestOverlayControllerHandleWindowClosedIgnoresStaleWindowAndForgetsCurrentWithoutClosingIt(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	document := racingDocument("default-racing", config.ModeRacing)
+
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+	first := factory.last
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+	second := factory.last
+
+	status, matched := controller.HandleWindowClosed(first)
+	if matched {
+		t.Fatal("delayed close from previous window matched current window")
+	}
+	if !status.Running || controller.CurrentWindow() != second {
+		t.Fatalf("stale close changed current state: status=%+v current=%p want=%p", status, controller.CurrentWindow(), second)
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("stale close closed current window %d times", second.closeCalls)
+	}
+
+	status, matched = controller.HandleWindowClosed(second)
+	if !matched {
+		t.Fatal("current external close was not matched")
+	}
+	if status.Running || controller.CurrentWindow() != nil {
+		t.Fatalf("current close did not clear state: status=%+v current=%v", status, controller.CurrentWindow())
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("already-closing current window was closed %d extra times", second.closeCalls)
+	}
+	if _, matched = controller.HandleWindowClosed(second); matched {
+		t.Fatal("duplicate close event matched a window already forgotten")
+	}
+	if second.closeCalls != 0 {
+		t.Fatalf("duplicate close event closed window %d extra times", second.closeCalls)
 	}
 }
 

@@ -1156,13 +1156,14 @@ func main() {
 		})
 	}
 	// Overlay controller owns the desktop overlay window lifecycle.
-	// The stopOverlay closure runs when the Wails window closes externally
+	// The windowClosed closure runs when the Wails window closes externally
 	// (e.g. Alt+F4). It must sync overlayRunning and reset the profile to
-	// racing mode so the next open is not accidentally editable. The guard
-	// on overlayRunning avoids redundant work when Stop() was already called
-	// from the normal stop paths (which clear the flag themselves).
-	overlayController = app.NewOverlayController(newWailsOverlayFactory(wailsApp, func() {
-		overlayController.Stop()
+	// racing mode so the next open is not accidentally editable. A delayed
+	// event from an older window is ignored by the controller identity check.
+	overlayController = app.NewOverlayController(newWailsOverlayFactory(wailsApp, func(closed app.OverlayWindow) {
+		if _, matched := overlayController.HandleWindowClosed(closed); !matched {
+			return
+		}
 		if overlayRunning.Load() {
 			resetOverlayDisplayMode(overlayController, studioProfileSvc)
 			overlayRunning.Store(false)
@@ -2809,67 +2810,31 @@ func (h *wailsWindowHandle) ensureTransparent() {
 // wailsOverlayFactory creates a fresh Wails overlay window for each Start call.
 type overlayScreenResolver func(int) *application.Screen
 
-type overlayWindowLifecycle struct {
-	mu     sync.Mutex
-	next   uint64
-	active uint64
-}
-
-func (l *overlayWindowLifecycle) activate() uint64 {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.next++
-	l.active = l.next
-	return l.active
-}
-
-func (l *overlayWindowLifecycle) invalidate(generation uint64) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.active == generation {
-		l.active = 0
-	}
-}
-
-func (l *overlayWindowLifecycle) claimExternalClose(generation uint64) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.active != generation {
-		return false
-	}
-	l.active = 0
-	return true
-}
-
 type wailsOverlayFactory struct {
-	app         *application.App
-	screens     overlayScreenResolver
-	stopOverlay func()
-	lifecycle   overlayWindowLifecycle
+	app          *application.App
+	screens      overlayScreenResolver
+	windowClosed func(app.OverlayWindow)
 }
 
-func newWailsOverlayFactory(wailsApp *application.App, stopOverlay func()) *wailsOverlayFactory {
+func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.OverlayWindow)) *wailsOverlayFactory {
 	var screens overlayScreenResolver
 	if wailsApp != nil && wailsApp.Screen != nil {
 		screens = wailsApp.Screen.GetByIndex
 	}
 	return &wailsOverlayFactory{
-		app:         wailsApp,
-		screens:     screens,
-		stopOverlay: stopOverlay,
+		app:          wailsApp,
+		screens:      screens,
+		windowClosed: windowClosed,
 	}
 }
 
 type wailsOverlayWindow struct {
-	w          *application.WebviewWindow
-	handle     *wailsWindowHandle
-	mgr        *window.Manager
-	lifecycle  *overlayWindowLifecycle
-	generation uint64
+	w      *application.WebviewWindow
+	handle *wailsWindowHandle
+	mgr    *window.Manager
 }
 
 func (o *wailsOverlayWindow) Close() {
-	o.lifecycle.invalidate(o.generation)
 	o.w.Close()
 }
 
@@ -2926,33 +2891,24 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 		return nil, fmt.Errorf("create overlay window: Wails window manager is unavailable")
 	}
 	w := f.app.Window.NewWithOptions(options)
-	generation := f.lifecycle.activate()
+	handle := &wailsWindowHandle{w: w}
+	mgr := window.NewManager(handle, 0)
+	overlayWindow := &wailsOverlayWindow{w: w, handle: handle, mgr: mgr}
 
 	// When the user (or Stop) closes the overlay window, we must stop treating
 	// it as the current window so StartOverlay can create a fresh one next time.
 	w.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
-		if !f.lifecycle.claimExternalClose(generation) {
-			return
-		}
 		go func() {
-			if stop := f.stopOverlay; stop != nil {
-				stop()
+			if notify := f.windowClosed; notify != nil {
+				notify(overlayWindow)
 			}
 		}()
 	})
 
-	handle := &wailsWindowHandle{w: w}
-	mgr := window.NewManager(handle, 0)
 	// Apply the profile document display mode instead of hard-coding passthrough.
 	// ModeRacing starts click-through; ModeEdit starts interactive.
 	mgr.ApplyProfileV3(document, false)
-	return &wailsOverlayWindow{
-		w:          w,
-		handle:     handle,
-		mgr:        mgr,
-		lifecycle:  &f.lifecycle,
-		generation: generation,
-	}, nil
+	return overlayWindow, nil
 }
 
 // readProfileTarget extracts id/file from a Wails custom event payload.

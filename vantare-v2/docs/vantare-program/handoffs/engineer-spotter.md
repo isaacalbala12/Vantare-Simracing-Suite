@@ -33,8 +33,8 @@ research quedan fuera de su context pack.
 - Rama de ISA-327:
   `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`.
 - Base apilada de este corte: productiva merge-base `8880a8800e07e2af21fe5ff37a714578bf8fcd00`
-  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. `origin/nightly` vigente:
-  `5069cbb1c0fb9ab2765093ebb1572f71a90ad5b5`, sin deriva en `internal/engineer` ni `cmd/vantare`.
+  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-12:
+  `origin/nightly` en `cc54d3614c5749ee7a014274ba3598365fec477c`, sin deriva en `internal/engineer` ni `cmd/vantare`; el SHA de Nightly es observación, no autoridad fija.
 - Nivel real: rama de issue. No hay push, PR, CI ni integración en Nightly,
   Testers o Master; no existe release de este corte. El corte documental se
   apila sobre el cierre ISA-313 sin fingir promoción.
@@ -54,6 +54,10 @@ research quedan fuera de su context pack.
 - Revisión Opus 5 sobre HEAD 75c958d: findings P0-P3 corregidos en este corte
   documental (padre `75c958d301e286ddf34c6849a12476332f8bda0b`); re-review queda
   pendiente y la revisión no se marca como superada. El microplan de S1 no está
+  aceptado ni S1 iniciado.
+- Re-review 2026-08-12 (CHANGES REQUIRED, 2 P2 + 3 P3): corregidos en este corte
+  documental (padre `4d437d25f125c8eab6ac74ba75abf835228ab073`); re-review queda
+  pendiente y ninguna revisión se marca como superada. El microplan de S1 no está
   aceptado ni S1 iniciado.
 
 ## Capacidades demostradas
@@ -89,10 +93,10 @@ research quedan fuera de su context pack.
 - ISA-327 replanifica S1 en tres cortes secuenciales A/B/C (máquina, entrada,
   salida/aceptación) dentro del [plan Spotter](../../engineer/phases/spotter/plan.md).
   No se negocian los invariantes objetivo que S1 debe cumplir (reset solo Spotter,
-  cancelación por familia con reset de política Spotter, sensibilidad única,
+  reset de política Spotter con método aditivo/scoped en el toggle, sensibilidad única,
   service/oracle coherentes, filtro solo Spotter, audio-only no-success con reason,
   test acumulativo sobre EngineerService); hoy no se cumplen (cancelación global,
-  `CancelFamily(FamilySpotter)` sin reset de política y sensibilidad Normal hardcodeada)
+  sin reset de política Spotter y sensibilidad Normal hardcodeada)
   y S1 los hace cumplir.
 
 ## Riesgos
@@ -125,6 +129,6 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Revalidar la Nightly vigente (`origin/nightly@5069cbb1`) antes del Corte A; si hay deriva nueva en `internal/engineer` o `cmd/vantare`, detenerse; sin rebase ahora.
+Revalidar la Nightly vigente antes del Corte A; detenerse solo si hay deriva funcional nueva en `internal/engineer` o `cmd/vantare` respecto al baseline `8880a880` (el SHA de Nightly es observación, no autoridad fija); sin rebase ahora.
 Aprobar el [microplan de S1](../../engineer/phases/spotter/plan.md) (cortes A/B/C) corregido por la revisión Opus 5 (re-review pendiente, revisión no superada).
 Solo entonces un worker subagente inicia el corte A sobre la Nightly verificada. No iniciar S2 ni fases posteriores por anticipado.

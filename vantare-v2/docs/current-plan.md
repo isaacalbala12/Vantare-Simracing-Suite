@@ -5235,9 +5235,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-326 / OS-11 — superficie arbitraria y paridad de resolución (2026-08-12)
 
-- **Estado:** Isaac autorizó el 2026-08-12 la promoción a `nightly` y una nueva
-  pre-release. ISA-330 gobierna la integración aislada y el tag previsto
-  `v0.1.0.7-nightly.7`; no se promueve a `testers` ni `master`.
+- **Estado:** promoción completada el 2026-08-12 mediante el PR #208. `nightly`
+  quedó en `234794d` y la pre-release `v0.1.0.7-nightly.7` se publicó sobre ese
+  mismo SHA. No se promovió a `testers` ni `master`.
 - **Rama:** `vantareapp/isa-326-os-11-superficie-arbitraria-y-paridad-de-resolucion`.
 - **Base canónica:** `origin/nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`.
 - **Worktree:** `C:\tmp\vantare-isa326\vantare-v2`.
@@ -5323,3 +5323,12 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   `frontend/dist` no fue un gate válido; tras build pasó completo. El único
   fallo intermitente observado (`OpsBridgeStartTwice...`) pasó 20/20 aislado y
   la repetición completa.
+- **Publicación ISA-330:** el PR #208 pasó CI y se fusionó por squash en
+  `nightly@234794d`. El workflow oficial `Release build` run `31633854889`
+  publicó la pre-release `v0.1.0.7-nightly.7` sobre el mismo SHA. El primer
+  intento falló antes de publicar por una descarga transitoria de Electron y el
+  segundo por el soak Windows intermitente ya inventariado; el rerun final, sin
+  cambios de código, terminó PASS. La release contiene los seis assets oficiales
+  y una descarga independiente confirmó los SHA-256 del instalador, portable y
+  ejecutable. ISA-329 continúa abierta como limitación OBS aceptada para este
+  corte; `testers` y `master` permanecen sin cambios.

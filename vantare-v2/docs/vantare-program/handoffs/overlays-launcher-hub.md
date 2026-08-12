@@ -640,17 +640,24 @@ Evidencia Task 4 y cierre acumulado:
   queda como bug High abierto y limitación conocida; por decisión explícita de
   Isaac no bloquea esta Nightly. No se amplió silenciosamente el write set de
   ISA-326 para tocar seguridad/servidor.
-- Promoción autorizada el 2026-08-12: ISA-330 crea una rama de integración desde
-  `origin/nightly@5069cbb`, fusiona la rama ISA-326 (`7600206`) mediante
-  `--no-ff` en `d0789e5`, incorpora después el PR #207 desde
-  `origin/nightly@cc54d36` en `e45bcf9` y prepara `v0.1.0.7-nightly.7`. El gate remoto, merge a
-  `nightly`, tag y release deben registrarse aquí solo cuando existan realmente;
-  `testers` y `master` quedan fuera del corte.
+- Promoción completada el 2026-08-12: ISA-330 creó una rama de integración desde
+  `origin/nightly@5069cbb`, fusionó la rama ISA-326 (`7600206`) mediante
+  `--no-ff` en `d0789e5`, incorporó después el PR #207 desde
+  `origin/nightly@cc54d36` en `e45bcf9` y preparó `v0.1.0.7-nightly.7`. El PR
+  #208 pasó CI y se fusionó por squash en `nightly@234794d`. `testers` y
+  `master` quedaron fuera del corte.
 - Gates locales combinados finales de ISA-330 sobre `cc54d36`: Go completo PASS;
   frontend 367 archivos/2636 tests PASS; build PASS; diseño 3/3; visual Studio PASS con widgets,
   paridad, interacción y los tres viewports responsive a 0.000 %. Los tres
   baselines de Studio se actualizaron después de inspeccionar que el cambio era
   el `contain` aprobado y no una pérdida de paneles o controles. Lint global
   sigue rojo por deuda previa, pero pasa de 47 errores/2 warnings en
-  `cc54d36` a 44/2 en la integración; no añade deuda. El PR #208 está abierto;
-  faltan CI verde, merge y release.
+  `cc54d36` a 44/2 en la integración; no añade deuda.
+- Release publicada: el workflow oficial `Release build` run `31633854889`
+  terminó PASS en el rerun final sin cambios de código y publicó
+  `v0.1.0.7-nightly.7` sobre `234794d`. La pre-release no es draft, contiene
+  los seis assets oficiales y la descarga independiente confirmó los SHA-256
+  del instalador, portable y ejecutable. Los dos intentos anteriores fallaron
+  antes de publicar por descarga transitoria de Electron y por el soak Windows
+  intermitente ya inventariado. ISA-329 sigue abierta como limitación OBS
+  aceptada expresamente para este corte; no se afirma paridad OBS.

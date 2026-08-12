@@ -14,6 +14,11 @@ import {
 } from "./standings-motion";
 
 export const REDLINE_ROW_STRIDE_PX = 30;
+
+/** Stable identity for a pair, used by both the box set and the dissolve map. */
+function battleKey(pair: BattlePair): string {
+  return `${pair.aheadId}|${pair.behindId}`;
+}
 const FLIP_BASE_MS = 320;
 const FLIP_PER_ROW_MS = 60;
 const FLIP_MAX_MS = 560;
@@ -115,6 +120,8 @@ export function useStandingsMotion(
   const [tires, setTires] = useState<ReadonlyMap<string, TireReveal>>(new Map());
   const [boxKeys, setBoxKeys] = useState<ReadonlySet<string>>(new Set());
   const [dissolving, setDissolving] = useState<ReadonlyMap<string, BattlePair>>(new Map());
+  /** Model the last render was built from, so a broken pair is caught in-render. */
+  const [renderedModel, setRenderedModel] = useState<StandingsViewModel | null>(null);
   const [ghosts, setGhosts] = useState<readonly GhostRow[]>([]);
   const [displayDeltas, setDisplayDeltas] = useState<ReadonlyMap<string, number>>(new Map());
   const prevRef = useRef<StandingsViewModel | null>(null);
@@ -290,25 +297,21 @@ export function useStandingsMotion(
         });
       }
     }
-    const lastPairs = prev ? deriveBattlePairs(prev) : [];
     for (const key of [...battleSeenRef.current]) {
       if (!activeKeys.has(key)) {
         battleSeenRef.current.delete(key);
         // A crystallized box melts over BATTLE_DISSOLVE_MS instead of vanishing;
         // the CSS transition plays the styles back to the plain-rows look.
-        const lastPair = lastPairs.find((pair) => `${pair.aheadId}|${pair.behindId}` === key);
-        schedule(0, () => {
-          setBoxKeys((current) => {
-            if (!current.has(key)) {
-              return current;
-            }
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-          if (lastPair) {
-            setDissolving((current) => new Map(current).set(key, lastPair));
+        // The pair itself entered `dissolving` during the render that dropped
+        // it — see the block below the effect. Only the box flag and the
+        // timed removal belong here.
+        setBoxKeys((current) => {
+          if (!current.has(key)) {
+            return current;
           }
+          const next = new Set(current);
+          next.delete(key);
+          return next;
         });
         schedule(BATTLE_DISSOLVE_MS, () => {
           setDissolving((current) => {
@@ -323,6 +326,37 @@ export function useStandingsMotion(
       }
     }
   }, [enabled, model, rootRef, baseline]);
+
+  // A pair that just broke has to be dissolving BEFORE anything commits.
+  //
+  // Adding it from the effect meant one whole render where the battle was
+  // neither active nor dissolving: the template unwrapped the two rows out of
+  // their .ven-red-battle container, React destroyed that subtree, and the
+  // re-wrap a beat later mounted fresh nodes. Every descendant animation
+  // restarted with them — which is why the pressure cell replayed its entry
+  // instead of leaving.
+  //
+  // Adjusting state during render is React's own answer to this: it re-runs
+  // the component and discards the in-progress output before touching the DOM,
+  // so the intermediate tree never reaches the browser.
+  if (renderedModel !== model) {
+    setRenderedModel(model);
+    if (enabled && model.status === "ready" && renderedModel?.status === "ready") {
+      const stillActive = new Set(deriveBattlePairs(model).map(battleKey));
+      const justBroken = deriveBattlePairs(renderedModel).filter(
+        (pair) => !stillActive.has(battleKey(pair)),
+      );
+      if (justBroken.length > 0) {
+        setDissolving((current) => {
+          const next = new Map(current);
+          for (const pair of justBroken) {
+            next.set(battleKey(pair), pair);
+          }
+          return next;
+        });
+      }
+    }
+  }
 
   if (!enabled || model.status !== "ready") {
     return { positionDeltas: new Map(), tires: new Map(), battles: [], ghosts: [] };

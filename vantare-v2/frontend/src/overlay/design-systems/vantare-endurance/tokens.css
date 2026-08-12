@@ -2240,10 +2240,47 @@
   transition: width 600ms ease-out;
 }
 
+/* Exit. The dissolving battle mounts a NEW node, so there is no previous value
+   for a transition to leave from — a keyframe states both ends and works on a
+   node that has just appeared. These replace the entry animations rather than
+   layering on them: ven-red-gapcell-in uses `both`, so it would otherwise hold
+   opacity at 1 and swallow the fade. 260ms fits inside the 360ms the engine
+   keeps a dissolving battle alive. */
+@keyframes ven-red-gapcell-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ven-red-gapfill-out {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] {
+  animation: ven-red-gapcell-out 260ms ease-in both;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] b {
+  animation: ven-red-gapfill-out 260ms ease-in both;
+  transition: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
     animation: none;
     transition: none;
+  }
+  [data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"],
+  [data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] b {
+    animation: none;
   }
 }
 

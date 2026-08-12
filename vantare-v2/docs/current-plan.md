@@ -69,10 +69,12 @@
 - **Estado demostrado:** ENG-01..12, ENG-14 y ENG-15 estan en Nightly. La
   vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
   aceptacion LMU extremo a extremo no estan demostrados.
-- **Issue/fase activa:** ISA-313 / ENG-R01 aceptada humanamente el 2026-08-12
-  (Fase 5). S1 esta en **replanning tecnico con ISA-327** (In Progress) y rama
-  propia `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`;
-  la implementacion no ha comenzado hasta aprobar su microplan.
+- **Issue activa:** ISA-327 / ENG-S1 — replanning técnico de S1 (autoridades y
+  baseline confiable), `In Progress`, rama propia
+  `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; la
+  implementacion no ha comenzado hasta aprobar su microplan. ISA-313 / ENG-R01
+  sigue como programa/fase padre aceptado humanamente el 2026-08-12, aun no
+  promovido.
 - **Evidencia/publicacion:** el
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica
   autoridad para detalle mutable de rama, SHA, PR, CI y reviews; este indice no

@@ -70,20 +70,20 @@
   vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
   aceptacion LMU extremo a extremo no estan demostrados.
 - **Issue activa:** ISA-327 / ENG-S1 — replanning técnico de S1 (autoridades y
-  baseline confiable), `In Progress`, rama propia
-  `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; la
-  implementacion no ha comenzado hasta aprobar su microplan. ISA-313 / ENG-R01
-  sigue como programa/fase padre aceptado humanamente el 2026-08-12, aun no
-  promovido.
+  baseline confiable), `In Progress` en Linear con comentario/attachment de PR.
+  Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`
+  (remota `c35db15`) con PR #210 `OPEN`+`DRAFT`+`CLEAN` apilado sobre ISA-313/PR #196
+  (no nightly) para review aislada; al integrar #196, #210 se retargetea a nightly y se revalida.
+  GitGuardian `SUCCESS`; sin gates branch-channel completos en esta base: no se declara CI
+  completa; sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el
+  2026-08-12; la implementación de S1 no ha comenzado hasta aprobar su microplan.
 - **Evidencia/publicacion:** el
-  [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica
-  autoridad para detalle mutable de rama, SHA, PR, CI y reviews; este indice no
-  lo duplica.
+  [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
 - **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
   ISA-314 conserva el bug de guardado separado. S2/ISA-189, S4/ISA-187 e
   ISA-314 quedan diferidos expresamente hasta cerrar S1.
-- **Siguiente accion:** revalidar Nightly antes de Corte A (detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; cambios ajenos en `cmd/vantare` no bloquean solo por path; el SHA de Nightly es observación, no autoridad fija);
-  publicar PR draft/CI y obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS);
+- **Siguiente accion:** tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
+  obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable pendientes por cuota; Opus anterior no es final PASS);
   solo después aprobar humanamente el [microplan de S1](engineer/phases/spotter/plan.md) y decidir el cambio visible Spotter ES→EN. No iniciar Corte A aún.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),

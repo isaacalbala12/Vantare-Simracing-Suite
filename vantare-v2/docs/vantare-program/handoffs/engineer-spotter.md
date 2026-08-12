@@ -29,16 +29,23 @@ research quedan fuera de su context pack.
 ## Estado Git, PR y CI
 
 - Issue activa: ISA-327 / ENG-S1 — replanning técnico de S1 Spotter
-  (autoridades y baseline confiable). In Progress en Linear.
+  (autoridades y baseline confiable). In Progress en Linear, con comentario/
+  attachment del PR #210.
 - Rama de ISA-327:
   `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`.
 - Base apilada de este corte: productiva merge-base `8880a8800e07e2af21fe5ff37a714578bf8fcd00`
   y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-12 (tras fetch):
   `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330 #208); sin deriva en `internal/engineer`;
   cambios `cmd/vantare` (main.go, main_test.go) solo Overlay Studio/window/profile, sin wiring/call sites Engineer; el SHA de Nightly es observación, no autoridad fija.
-- Nivel real: rama de issue. No hay push, PR, CI ni integración en Nightly,
-  Testers o Master; no existe release de este corte. El corte documental se
-  apila sobre el cierre ISA-313 sin fingir promoción.
+- PR #210 `OPEN` + `DRAFT` + `CLEAN` (https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/210):
+  rama remota HEAD `c35db15`. Base temporal apilada sobre
+  `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter` (PR padre #196), no nightly:
+  review aislada sin resolver artificialmente el conflicto de current-plan; cuando #196 se integre por el
+  flujo autorizado, #210 se retargetea a nightly y se revalida. No es promoción ni salto de canal.
+  GitGuardian `SUCCESS`; los gates completos de branch-channel no se ejecutaron en esta base apilada:
+  no se declara CI completa. Sin merge/promoción/release.
+- Nivel real: rama de issue, integración en Nightly/Testers/Master sin realizar; no existe release de
+  este corte. El corte documental se apila sobre el cierre ISA-313 sin fingir promoción.
 - Cierre remoto previo auditado en `b2519a25`: PR #196 `OPEN` + `DRAFT`, base
   `nightly`, merge state `CLEAN`; sin merge ni promoción. Checks de ese cierre:
   `Validate promotion path` `SUCCESS`, `Validate Vantare blocking gates`
@@ -136,6 +143,6 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Revalidar la Nightly vigente antes del Corte A; detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer dentro de `cmd/vantare` respecto a `8880a880` (cambios ajenos en `cmd/vantare` no bloquean solo por path; el SHA de Nightly es observación, no autoridad fija); sin rebase ahora.
-Publicar PR draft/CI y obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS).
+Tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observación, no autoridad fija; sin rebase manual).
+Obtener la review final Claude cuando la cuota lo permita (DeepSeek READY; Opus/Fable final pendientes por cuota; la review Opus anterior no se marca como final PASS).
 Solo después pedir/aplicar la aprobación humana del [microplan de S1](../../engineer/phases/spotter/plan.md) y la decisión visible Spotter ES→EN. No iniciar Corte A ni S2 por anticipado.

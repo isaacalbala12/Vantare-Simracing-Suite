@@ -31,9 +31,11 @@ function blendCar(from: SceneOverride | undefined, to: SceneOverride | undefined
   if (!to) {
     return from;
   }
-  // Discrete facts come from the keyframe being approached, so the event lands
-  // with the keyframe rather than halfway between two of them.
-  const blended: SceneOverride = { ...to };
+  // Discrete facts hold the keyframe being left until the playhead actually
+  // reaches the next one. Taking them from `to` made the event land at the
+  // START of the approach: the cars swapped places and only then did the gap
+  // close, which is backwards. The swap has to be what the approach arrives at.
+  const blended: SceneOverride = { ...from };
   for (const field of CONTINUOUS_CAR_FIELDS) {
     const a = from[field];
     const b = to[field];
@@ -51,7 +53,7 @@ function blendPlayer(
 ): ScenePlayerOverride | undefined {
   if (!from) return to;
   if (!to) return from;
-  const blended: ScenePlayerOverride = { ...to };
+  const blended: ScenePlayerOverride = { ...from };
   for (const field of CONTINUOUS_PLAYER_FIELDS) {
     const a = from[field];
     const b = to[field];

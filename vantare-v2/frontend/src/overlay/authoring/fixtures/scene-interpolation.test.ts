@@ -55,6 +55,26 @@ describe("scene interpolation", () => {
     }
   });
 
+  // The bug this guards: taking discrete facts from the keyframe being
+  // approached made the swap happen at the START of the approach, so cars
+  // changed places and only then did the gap close.
+  it("holds a discrete fact until the playhead reaches the keyframe that changes it", () => {
+    for (const ms of [1000, 1200, 1600, 1999]) {
+      expect(interpolateSceneAt(scene, ms, false).frame.cars?.A?.place, `at ${ms}ms`).toBe(9);
+      expect(interpolateSceneAt(scene, ms, false).frame.cars?.A?.inPits, `at ${ms}ms`).toBe(false);
+    }
+    expect(interpolateSceneAt(scene, 2000, false).frame.cars?.A?.place).toBe(8);
+    expect(interpolateSceneAt(scene, 2000, false).frame.cars?.A?.inPits).toBe(true);
+  });
+
+  it("closes the gap before the places change, not after", () => {
+    const swapAt = 2000;
+    const gapJustBefore = gapAt(swapAt - 1)!;
+    const placeJustBefore = interpolateSceneAt(scene, swapAt - 1, false).frame.cars?.A?.place;
+    expect(gapJustBefore).toBeCloseTo(20, 1);
+    expect(placeJustBefore).toBe(9);
+  });
+
   it("stops on the last keyframe when not looping", () => {
     const end = interpolateSceneAt(scene, 99_999, false);
     expect(end.keyframe).toBe(2);

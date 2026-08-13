@@ -1,9 +1,8 @@
 # Spotter observable — plan de fase
 
-Estado: entrada documental aceptada por Isaac el 2026-08-12 (ISA-313 Fase 5);
-microplan S1 aprobado el 2026-08-13, incluido el cambio visible Spotter ES→EN
-del Corte C; S1 iniciado solo a nivel de autorización, sin código. S2-S7
-probables; ISA-189 (S2), ISA-187 (S4) e ISA-314 diferidos hasta cerrar S1.
+Estado: entrada documental aceptada por Isaac el 2026-08-12 (ISA-313 Fase 5); microplan S1 aprobado el 2026-08-13 (incluido el cambio visible Spotter ES→EN del Corte C).
+Corte A implementado y revisado, abierto hasta validación manual; B/C no iniciados. S2-S7 probables;
+ISA-189 (S2), ISA-187 (S4) e ISA-314 diferidos hasta cerrar S1.
 
 ## Resultado
 
@@ -72,12 +71,11 @@ requiere arquitectura, dependencia o alcance nuevos.
 
 ### S1 — Autoridades y baseline confiable
 
-**Aprobado por Isaac el 2026-08-13** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`),
-incluido el cambio visible Spotter ES→EN del Corte C. S1 iniciado solo a nivel de autorización, sin código aún;
-Corte A es la única siguiente implementación. Entrada: vertical Nightly existente y riesgos del [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
+**Aprobado por Isaac el 2026-08-13** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`); incluido el cambio visible Spotter ES→EN del Corte C. Corte A implementado y revisado,
+abierto hasta validación manual. Entrada: vertical Nightly existente y riesgos del [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
 Resultado: enable/reset, sensibilidad, locale, calidad por rival, secuencia y estado de salida tienen una autoridad honesta; ninguna deuda P1 de integración conocida impide ampliar Spotter (S1 no promete cerrar los P1 de fases futuras).
 
-Invariantes objetivo que S1 hará cumplir (hoy no se cumplen: `SetSpotterEnabled` cancela de forma global, `CancelFamily(FamilySpotter)` no resetea la política Spotter y `SemanticEvidence` hardcodea sensibilidad Normal):
+Invariantes objetivo que S1 hará cumplir (el baseline no los cumplía: `SetSpotterEnabled` cancelaba de forma global, `CancelFamily(FamilySpotter)` no reseteaba la política Spotter y `SemanticEvidence` hardcodeaba sensibilidad Normal; el Corte A ya los implementa):
 
 - El toggle de Spotter nunca usa `Runtime.Reset()` global; el reset es solo de la máquina Spotter y resetea la política Spotter con método aditivo/scoped (sin cambiar `CancelFamily` para todos sus callers), nunca de la cola o scheduler completos.
 - Sensibilidad única en evidence y rearme sin versionado nuevo.
@@ -110,6 +108,8 @@ contrato; constantes heredadas intactas; umbral nuevo se rederiva con evidencia 
 - **Stop conditions:** `Reset()` global para un toggle, cancelación de cola completa o API nueva en `audio/queue.go`, versionado nuevo de sensibilidad/evidence, modificar `spotter_policy.go`/`types.go` o `scheduler.go` fuera del cambio mínimo autorizado (reset aditivo/scoped de política Spotter), aserto legacy rojo sin remedio autorizado (STOP y revisión; sin filtro ni cambio lógico en `ConsumeObservation`),
   mover la lógica de secuencia a este corte (es de Corte B), usar tests de `SetOutputMode` como cobertura del toggle, test que aísle Spotter sin regresión, o reutilizar en S1 los lados
   activos/histéresis topológicos del baseline (diferido a S2). Antes de editar, revalidar Nightly: detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer dentro de `cmd/vantare` respecto a `8880a880`; cambios ajenos en `cmd/vantare` se registran/reconcilian y no bloquean solo por nombre de path. El SHA de `origin/nightly` es observación, no autoridad fija (2026-08-13 tras fetch: `b6df494298578ff9a043bbd9b48a66eb1512010f` publicación #211; sin deriva en `internal/engineer` ni wiring Engineer en `cmd/vantare`); no se hace rebase ahora.
+- **Estado de ejecución Corte A:** implementado y revisado en commits locales `cfbe63e` + `1af3fb5` (HEAD `1af3fb5f63dc192c3c1576a10c2f12471c2b3782`); spec `ACCEPT` (P0-P2=0) y quality `READY` (P0-P2=0);
+  `go test ./internal/engineer/...` y `go test ./...` PASS (94 paquetes); `-race` no ejecutable (CGO off). ABIERTO hasta validación manual LMU/pestaña Ingeniero; B/C no iniciados; sin push (PR #210 draft sobre ISA-313).
 
 #### Corte B — autoridad de entrada (secuencia y filtro por rival)
 

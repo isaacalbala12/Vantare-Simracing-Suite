@@ -38,7 +38,7 @@ research quedan fuera de su context pack.
   `origin/nightly` en `b6df494298578ff9a043bbd9b48a66eb1512010f` (publicación #211); sin deriva en `internal/engineer`;
   cambios `cmd/vantare` ajenos al wiring Engineer; el SHA de Nightly es observación, no autoridad fija.
 - PR #210 `OPEN` + `DRAFT` + `CLEAN` (https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/210):
-  rango funcional/documental final en `ba3b45d`, remoto y verificado. Base temporal apilada sobre
+  rango funcional/documental final en `ba3b45d`, remoto y verificado. Localmente el Corte A añade `cfbe63e` + `1af3fb5` (aún sin push). Base temporal apilada sobre
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter` (PR padre #196), no nightly:
   review aislada sin resolver artificialmente el conflicto de current-plan; cuando #196 se integre por el
   flujo autorizado, #210 se retargetea a nightly y se revalida. No es promoción ni salto de canal.
@@ -63,8 +63,11 @@ research quedan fuera de su context pack.
   por cuota y sigue como gate adversarial al cierre; no bloquea el arranque de
   A por aprobación explícita de Isaac; la review Opus anterior no es final PASS.
 - El microplan S1 fue aprobado por Isaac el 2026-08-13 (cortes A/B/C, incluido
-  el cambio visible Spotter ES→EN del Corte C); S1 iniciado solo a nivel de
-  autorización, sin código aún; Corte A es la única siguiente implementación.
+  el cambio visible Spotter ES→EN del Corte C). Corte A implementado y revisado:
+  commits locales `cfbe63e` + `1af3fb5` (HEAD `1af3fb5f63dc192c3c1576a10c2f12471c2b3782`);
+  spec `ACCEPT` (P0-P2=0) y quality `READY` (P0-P2=0); `go test ./internal/engineer/...` y
+  `go test ./...` PASS (94 paquetes); `-race` no ejecutable (CGO off). Validación manual
+  LMU/pestaña Ingeniero NO ejecutada: Corte A abierto hasta ese gate humano; B/C no iniciados.
 
 ## Capacidades demostradas
 
@@ -135,9 +138,9 @@ research quedan fuera de su context pack.
   No se negocian los invariantes objetivo que S1 debe cumplir (reset solo Spotter,
   reset de política Spotter con método aditivo/scoped en el toggle, sensibilidad única,
   service/oracle coherentes, filtro solo Spotter, audio-only no-success con reason,
-  test acumulativo sobre EngineerService); hoy no se cumplen (cancelación global,
-  sin reset de política Spotter y sensibilidad Normal hardcodeada)
-  y S1 los hace cumplir.
+  test acumulativo sobre EngineerService); el Corte A ya implementa reset solo
+  Spotter, reset de política Spotter aditivo/scoped en el toggle y sensibilidad
+  única; los invariantes restantes (secuencia/filtro, audio-only y test acumulativo) los implementan B y C.
 
 ## Riesgos
 
@@ -152,7 +155,9 @@ research quedan fuera de su context pack.
 - **P2:** documentación snapshot conserva estados antiguos; los banners y el
   router evitan usarla como estado operativo.
 - **P3:** parámetros y tests heredados necesitan rederivación clean-room al
-  tocar su subfase.
+   tocar su subfase. Corte A: polling acotado en tests async; residuo teórico/
+  inaccesible por ruta canónica de cola ante hard-error posterior a encolar Spotter;
+  replayoracle usa `Normal` explícito como default determinista. No son bloqueo ni promesa falsa.
 
 ## Issues y bloqueos
 
@@ -160,7 +165,7 @@ research quedan fuera de su context pack.
   producto ni inicia S1.
 - ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). Isaac aprobó el
   microplan el 2026-08-13, incluido el cambio visible Spotter ES→EN del Corte C;
-  S1 iniciado solo a nivel de autorización, sin código aún.
+  Corte A implementado y revisado; validación manual pendiente; B/C no iniciados.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; S4/ISA-187, S2/ISA-189 e ISA-314 quedan diferidos expresamente hasta
   cerrar S1.
@@ -170,5 +175,5 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Implementar Corte A del [microplan S1](../../engineer/phases/spotter/plan.md) via worker subagente (unica siguiente implementacion, sin codigo aun en este registro; B/C despues). Al integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observacion, no autoridad fija; sin rebase manual).
+Ejecutar la validación manual LMU/pestaña Ingeniero del Corte A (gate humano pendiente; no se afirma PASS manual); tras aceptarla, implementar Corte B del [microplan S1](../../engineer/phases/spotter/plan.md) (unica siguiente implementacion; C despues). Al integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observacion, no autoridad fija; sin rebase manual).
 Obtener la review final Opus/Fable como gate adversarial al cierre (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; la review Opus anterior no es final PASS); su cuota previa no bloquea el arranque de A por aprobacion explicita de Isaac.

@@ -67,20 +67,10 @@
 ## Engineer / Spotter
 
 - **Estado demostrado:** ENG-01..12, ENG-14 y ENG-15 estan en Nightly; la vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la aceptacion LMU extremo a extremo no estan demostrados.
-- **Issue activa:** ISA-327 / ENG-S1 `In Progress` en Linear. Rama
-  `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; rango
-  final `ba3b45d` en PR #210 remoto `OPEN`+`DRAFT`+`CLEAN`, apilado sobre
-  ISA-313/PR #196 (`OPEN`+`DRAFT`+`DIRTY`, sin integrar); al integrar #196,
-  #210 se retargetea a nightly. GitGuardian `SUCCESS`; gates branch-channel no
-  ejecutados en esta base; sin merge/promoción/release. Microplan S1 aprobado
-  por Isaac el 2026-08-13 (incluido el cambio visible Spotter ES→EN del Corte
-  C); S1 iniciado solo a nivel de autorización, sin código aún; Corte A única
-  implementación siguiente; `origin/nightly` 2026-08-13 `b6df4942` (#211) sin
-  deriva `internal/engineer` ni wiring Engineer en `cmd/vantare`.
-- **Evidencia/publicacion:** el [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
+- **Issue activa:** ISA-327 / ENG-S1 `In Progress` en Linear. Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; Corte A implementado y revisado en commits locales cfbe63e + 1af3fb5 (HEAD `1af3fb5f63dc192c3c1576a10c2f12471c2b3782`), sin push; PR #210 remoto `OPEN`+`DRAFT`+`CLEAN` en rango previo `ba3b45d`, apilado sobre ISA-313/PR #196 (`OPEN`+`DRAFT`+`DIRTY`, sin integrar); al integrar #196, #210 se retargetea a nightly. GitGuardian `SUCCESS`; gates branch-channel no ejecutados en esta base; sin merge/promoción/release. Microplan S1 aprobado por Isaac el 2026-08-13 (incluido el cambio visible Spotter ES→EN del Corte C); Corte B/C no iniciados. `origin/nightly` 2026-08-13 `b6df4942` (#211) sin deriva `internal/engineer` ni wiring Engineer en `cmd/vantare`.
+- **Evidencia:** spec re-review `ACCEPT` (P0-P2=0) y quality `READY` (P0-P2=0); `go test ./internal/engineer/...` PASS y `go test ./...` PASS (94 paquetes); `go test -race` no ejecutable (CGO deshabilitado). Validación manual LMU/pestaña Ingeniero NO ejecutada: Corte A abierto hasta ese gate humano. El [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
 - **Bloqueo:** ISA-187/ENG-16 e ISA-189/ENG-18 siguen `Backlog`; ISA-314 conserva el bug de guardado (no corregido en S1); S2/ISA-189, S4/ISA-187 e ISA-314 diferidos hasta cerrar S1.
-- **Siguiente accion:** implementar Corte A del [microplan S1](engineer/phases/spotter/plan.md) via worker subagente (unica siguiente; B/C despues); al integrar #196, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
-  obtener la review final Opus/Fable como gate adversarial al cierre (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus anterior no es final PASS); su cuota previa no bloquea el arranque de A por aprobacion explicita.
+- **Siguiente accion:** ejecutar la validación manual LMU/pestaña Ingeniero del Corte A (gate humano pendiente; no se afirma PASS manual); tras aceptarla, implementar Corte B del [microplan S1](engineer/phases/spotter/plan.md) (unica siguiente implementacion; C despues); al integrar #196, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`); obtener la review final Opus/Fable como gate adversarial al cierre (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus anterior no es final PASS).
 - **Gate master:** la seccion visual temporal Testing/Diagnostico de la pestana
   Ingeniero puede existir y crecer en issue/Nightly/Testers, pero debe retirarse
   o quedar totalmente excluida antes de promover a master (no visible en

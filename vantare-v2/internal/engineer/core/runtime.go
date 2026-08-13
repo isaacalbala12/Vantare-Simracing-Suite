@@ -200,6 +200,15 @@ func (r *Runtime) Reset() {
 	r.resetStateLocked()
 }
 
+// ResetSpotter discards only the Spotter state machine so a toggle or a
+// sensitivity change cannot inherit a still/clear derived before it. Monitors
+// and their per-family frame history are never touched.
+func (r *Runtime) ResetSpotter() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.machine = spotter.NewMachine()
+}
+
 // === Simple adapters for the 10 monitors with standard Event struct ===
 
 // flagsAdapter wraps flags.Monitor to satisfy the Monitor interface.

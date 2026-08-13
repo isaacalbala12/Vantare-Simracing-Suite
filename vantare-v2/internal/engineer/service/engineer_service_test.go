@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/delivery"
+	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/engineer/simulator"
 )
@@ -28,6 +30,80 @@ func (e *mockEmitter) Events() []map[string]any {
 	res := make([]map[string]any, len(e.events))
 	copy(res, e.events)
 	return res
+}
+
+// gatePort blocks every delivery until released (or its context is
+// cancelled) and records every decision that reaches the port.
+type gatePort struct {
+	mu         sync.Mutex
+	recorded   []messagepolicy.Decision
+	released   chan struct{}
+	releaseOne sync.Once
+}
+
+func newGatePort() *gatePort {
+	return &gatePort{released: make(chan struct{})}
+}
+
+func (port *gatePort) Deliver(ctx context.Context, request delivery.Request, reporter delivery.Reporter) error {
+	port.mu.Lock()
+	port.recorded = append(port.recorded, request.Decision)
+	port.mu.Unlock()
+	if err := reporter.Acknowledge(delivery.StateStarted, delivery.ReasonNone); err != nil {
+		return err
+	}
+	select {
+	case <-ctx.Done():
+		return reporter.Acknowledge(delivery.StateCancelled, delivery.ReasonLifecycleBoundary)
+	case <-port.released:
+	}
+	return reporter.Acknowledge(delivery.StateCompleted, delivery.ReasonNone)
+}
+
+func (port *gatePort) decisions() []messagepolicy.Decision {
+	port.mu.Lock()
+	defer port.mu.Unlock()
+	return append([]messagepolicy.Decision(nil), port.recorded...)
+}
+
+func (port *gatePort) release() {
+	port.releaseOne.Do(func() { close(port.released) })
+}
+
+func waitFor(t *testing.T, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if condition() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("condition not satisfied within deadline")
+}
+
+func waitForNotification(t *testing.T, svc *service.EngineerService, textKey string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, notification := range svc.RecentNotifications() {
+			if notification.TextKey == textKey {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("notification %q did not appear", textKey)
+}
+
+func spotterDecisionCount(decisions []messagepolicy.Decision) int {
+	count := 0
+	for _, decision := range decisions {
+		if decision.Family == messagepolicy.FamilySpotter {
+			count++
+		}
+	}
+	return count
 }
 
 func TestNotificationStore(t *testing.T) {
@@ -429,5 +505,211 @@ func TestEngineerService_EndToEnd_MonitorEventViaSSE(t *testing.T) {
 	}
 	if found.Text == "" || found.Text == found.TextKey {
 		t.Errorf("expected translated text, got raw key %q", found.Text)
+	}
+}
+
+func TestSetSpotterEnabledCancelsOnlySpotterAndPreservesFuel(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	gate := newGatePort()
+	if err := svc.SetDeliveryTransport(gate); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	// Spotter active delivery in flight, blocked in the gate.
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return len(gate.decisions()) == 1 })
+
+	// Fuel candidate pending while the Spotter delivery is blocked.
+	if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 2, 55, 3)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 3, 49, 4)); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return svc.Health().Policy.Pending == 1 })
+
+	// Disable Spotter: only the active Spotter delivery is cancelled and the
+	// pending Fuel candidate is preserved.
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return svc.DeliveryMetrics().Cancelled == 1 })
+	if count := spotterDecisionCount(gate.decisions()); count != 1 {
+		t.Fatalf("spotter decisions = %d, want exactly the pre-disable one", count)
+	}
+
+	// Engineer stays connected and error-free while Spotter is off.
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("status after disable = %+v, want connected with no error", status)
+	}
+	if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 4, 40, 5)); err != nil {
+		t.Fatalf("fuel observation after Spotter disable failed: %v", err)
+	}
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("status after post-disable observation = %+v", status)
+	}
+
+	// The preserved Fuel candidate must still reach the delivery port.
+	gate.release()
+	waitFor(t, func() bool {
+		for _, decision := range gate.decisions() {
+			if decision.Family == messagepolicy.FamilyFuel {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func TestSetSpotterEnabledRearmsCleanState(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	// Establish the Spotter machine with a left opponent three seconds in the
+	// past: without a machine reset, re-enabling would inherit a late
+	// still_there instead of a fresh detection.
+	first := canonicalSpotterObservationCapturedAt(t, time.Now().Add(-3*time.Second), 1, 1, 2.8)
+	if err := svc.ConsumeObservation(first); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("initial spotter observation did not connect Engineer")
+	}
+
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetSpotterEnabled(true); err != nil {
+		t.Fatal(err)
+	}
+
+	fresh := canonicalSpotterObservationCapturedAt(t, time.Now(), 1, 2, 2.8)
+	if err := svc.ConsumeObservation(fresh); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, notification := range svc.RecentNotifications() {
+			switch notification.TextKey {
+			case "spotter.still_there", "spotter.clear_left", "spotter.clear_right", "spotter.all_clear":
+				t.Fatalf("re-enable inherited stale Spotter state: %+v", notification)
+			case "spotter.car_left":
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("re-enable produced no fresh Spotter detection")
+}
+
+func TestSetSpotterEnabledPreservesActiveNonSpotterVisual(t *testing.T) {
+	t.Run("non spotter visual preserved", func(t *testing.T) {
+		emitter := &mockEmitter{}
+		svc := service.NewEngineerService(emitter)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := svc.Start(ctx); err != nil {
+			t.Fatal(err)
+		}
+		defer svc.Stop()
+
+		if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 1, 55, 3)); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 2, 49, 4)); err != nil {
+			t.Fatal(err)
+		}
+		waitForNotification(t, svc, "fuel.low_half_tank")
+
+		if err := svc.SetSpotterEnabled(false); err != nil {
+			t.Fatal(err)
+		}
+		stream := svc.StreamSnapshot()
+		if !stream.Active || stream.Presentation == nil {
+			t.Fatalf("active non-spotter visual was cleared: %+v", stream)
+		}
+		if stream.Presentation.Category != "fuel" {
+			t.Fatalf("active visual = %q, want fuel", stream.Presentation.Category)
+		}
+	})
+
+	t.Run("spotter visual cleared", func(t *testing.T) {
+		emitter := &mockEmitter{}
+		svc := service.NewEngineerService(emitter)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := svc.Start(ctx); err != nil {
+			t.Fatal(err)
+		}
+		defer svc.Stop()
+
+		if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, 2.8)); err != nil {
+			t.Fatal(err)
+		}
+		waitForNotification(t, svc, "spotter.car_left")
+
+		if err := svc.SetSpotterEnabled(false); err != nil {
+			t.Fatal(err)
+		}
+		stream := svc.StreamSnapshot()
+		if stream.Active || stream.Presentation != nil {
+			t.Fatalf("active Spotter visual was not invalidated: %+v", stream)
+		}
+	})
+}
+
+func TestSetSpotterEnabledDoesNotAlterConnectionOrLastError(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Status().Connected {
+		t.Fatal("initial observation did not connect Engineer")
+	}
+
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("disable altered connection state: %+v", status)
+	}
+
+	// A later observation must still succeed and keep Engineer connected.
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 2, 2.8)); err != nil {
+		t.Fatalf("observation while Spotter disabled failed: %v", err)
+	}
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("post-disable observation altered connection state: %+v", status)
+	}
+
+	if err := svc.SetSpotterEnabled(true); err != nil {
+		t.Fatal(err)
+	}
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("re-enable altered connection state: %+v", status)
 	}
 }

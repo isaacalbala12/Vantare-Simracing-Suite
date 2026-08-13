@@ -470,23 +470,85 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	return nil
 }
 
+// sensitivityFromConfig is the single conversion from the configured string to
+// the shared spotter.Sensitivity preset, reused by SetSensitivity and
+// ConsumeObservation so detector and revalidation always share the preset.
+func sensitivityFromConfig(value string) (spotter.Sensitivity, bool) {
+	switch value {
+	case "conservative":
+		return spotter.SensitivityConservative, true
+	case "normal":
+		return spotter.SensitivityNormal, true
+	case "aggressive":
+		return spotter.SensitivityAggressive, true
+	default:
+		return "", false
+	}
+}
+
 // SetSpotterEnabled enables or disables the spotter engine.
 func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	changed := s.spotterEnabled != enabled
 	s.spotterEnabled = enabled
-	s.runtime.SetEnabled(s.enabled && enabled)
+
+	// The shared runtime gate follows only the service enable switch. Spotter
+	// frames are gated by the approved-family loop in ConsumeObservation, so
+	// disabling Spotter never disables Fuel or any other monitor, never
+	// disconnects Engineer and never clears the legacy queue.
+	if s.runtime != nil {
+		s.runtime.SetEnabled(s.enabled)
+	}
+	if changed && s.runtime != nil {
+		// Rearm only the Spotter machine on both edges of the toggle so
+		// re-enabling cannot inherit a still/clear derived before it.
+		s.runtime.ResetSpotter()
+	}
+	if changed && s.scheduler != nil {
+		s.scheduler.ResetSpotter(messagepolicy.ReasonLifecycleBoundary)
+	}
 	if !enabled {
-		s.advancePresentationLifecycleLocked()
-		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
-		if s.scheduler != nil {
-			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		s.cancelSpotterDeliveryLocked()
+		s.dropQueuedSpotterLocked()
+		if s.activePresentation != nil && s.activePresentation.Category == string(messagepolicy.FamilySpotter) {
+			s.advancePresentationLifecycleLocked()
 		}
-		s.queue.Clear()
 	}
 	s.emitStatusLocked()
 	return nil
+}
+
+// cancelSpotterDeliveryLocked cancels only the active delivery when it belongs
+// to the Spotter family, leaving any Fuel/other delivery in flight.
+func (s *EngineerService) cancelSpotterDeliveryLocked() {
+	if s.activeDelivery != nil && s.activeDelivery.decision.Family == messagepolicy.FamilySpotter {
+		s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
+	}
+}
+
+// dropQueuedSpotterLocked removes only Spotter messages from the legacy queue
+// without clearing it, so pending Fuel messages survive the toggle. It uses
+// only the existing Queue.Next/Enqueue contract; audio/queue.go is untouched.
+func (s *EngineerService) dropQueuedSpotterLocked() {
+	if s.queue == nil {
+		return
+	}
+	var preserved []audio.Message
+	for {
+		message, ok := s.queue.Next(0)
+		if !ok {
+			break
+		}
+		if projectioninput.FamilyForMessage(message) == projectioninput.FamilySpotter {
+			continue
+		}
+		preserved = append(preserved, message)
+	}
+	for _, message := range preserved {
+		s.queue.Enqueue(message)
+	}
 }
 
 // SetSensitivity updates the spotter sensitivity setting.
@@ -494,21 +556,27 @@ func (s *EngineerService) SetSensitivity(value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if value != "conservative" && value != "normal" && value != "aggressive" {
+	sensitivity, ok := sensitivityFromConfig(value)
+	if !ok {
 		return errors.New("invalid sensitivity: must be one of 'conservative', 'normal', or 'aggressive'")
 	}
 
+	changed := s.sensitivity != value
 	s.sensitivity = value
-	var sensitivity spotter.Sensitivity
-	switch value {
-	case "conservative":
-		sensitivity = spotter.SensitivityConservative
-	case "aggressive":
-		sensitivity = spotter.SensitivityAggressive
-	default:
-		sensitivity = spotter.SensitivityNormal
+	if s.runtime != nil {
+		s.runtime.SetSensitivity(sensitivity)
 	}
-	s.runtime.SetSensitivity(sensitivity)
+	if changed {
+		// A sensitivity change re-arms only the Spotter machine and Spotter
+		// policy so the new preset cannot inherit state derived under the
+		// previous one; other families and monitors stay untouched.
+		if s.runtime != nil {
+			s.runtime.ResetSpotter()
+		}
+		if s.scheduler != nil {
+			s.scheduler.ResetSpotter(messagepolicy.ReasonLifecycleBoundary)
+		}
+	}
 	s.emitStatusLocked()
 	return nil
 }
@@ -700,7 +768,8 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if !source.Known() {
 		source = engineerprojection.SourceLive
 	}
-	evidence := projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000)
+	sensitivity, _ := sensitivityFromConfig(s.sensitivity)
+	evidence := projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000, sensitivity)
 	if s.scheduler == nil {
 		return errors.New("engineer message scheduler is unavailable")
 	}

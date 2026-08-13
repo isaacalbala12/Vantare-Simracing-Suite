@@ -16,6 +16,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
@@ -254,6 +255,76 @@ func TestEngineerServiceReconnectAttemptAdvanceRequiresObservationAfterBoundary(
 
 func canonicalSpotterObservation(t *testing.T, epoch uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
 	return canonicalSpotterObservationAt(t, epoch, 1, rivalX)
+}
+
+func canonicalSpotterObservationCapturedAt(t *testing.T, capturedAt time.Time, epoch, sequence uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
+	t.Helper()
+	snapshot := canonicalSpotterObservationAt(t, epoch, sequence, rivalX)
+	snapshot.CapturedAt = capturedAt.UTC().Format(time.RFC3339Nano)
+	return snapshot
+}
+
+// canonicalFuelObservation builds a projected observation whose approved Fuel
+// gate is ready (player fuel, capacity and source time present). It carries no
+// opponent, so the Spotter gate stays closed and no Spotter noise leaks into
+// fuel-focused service scenarios.
+func canonicalFuelObservation(t *testing.T, epoch, sequence uint64, fuel float64, lap int) engineerprojection.ObservationSnapshotV1 {
+	t.Helper()
+	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
+	clock := schema.NewClock(observedField(t, time.Second), observedField(t, time.Second), time.Now().UTC())
+	header := envelope.Header{
+		Source:   "canonical-service-test",
+		Cursor:   schema.Cursor{Epoch: schema.Epoch(epoch), Sequence: schema.Sequence(sequence)},
+		Clock:    clock,
+		Identity: run,
+	}
+	orientation := spatial.Orientation{
+		Row0: spatial.Vector3{X: 1},
+		Row1: spatial.Vector3{Y: 1},
+		Row2: spatial.Vector3{Z: 1},
+	}
+	player := telemetrycore.VehicleState{
+		Identity:      run,
+		Player:        observedField(t, true),
+		LapNumber:     observedField(t, session.LapNumber(lap)),
+		Fuel:          observedField(t, energy.Fuel{Amount: energy.FuelAmount(fuel), Capacity: 100}),
+		Gear:          observedField(t, vehicle.Gear(4)),
+		SpeedMPS:      observedField(t, 40.0),
+		InPit:         observedField(t, pit.InPit(false)),
+		WorldPosition: observedField(t, spatial.Position{X: 100, Z: 100}),
+		LocalVelocity: observedField(t, spatial.LocalVelocity{Z: 40}),
+		Orientation:   observedField(t, orientation),
+	}
+	state := derive.FinalState{Observed: telemetrycore.ObservedState{
+		SourceTime:    observedField(t, time.Second),
+		PlayerPresent: observedField(t, true),
+		VehicleCount:  observedField(t, schema.Count(1)),
+		Vehicles:      []telemetrycore.VehicleState{player},
+	}}
+	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
+		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)
+		return value
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := engineerprojection.NewManifest([]engineerprojection.Capability{
+		{ID: engineerprojection.CapabilitySession, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityStandings, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityControls, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityPit, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityFuel, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityGaps, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilitySpatial, State: engineerprojection.CapabilitySupported},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := engineerprojection.ProjectObservationV1(snapshot, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }
 
 func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {

@@ -220,6 +220,67 @@ func TestRuntime_Disabled(t *testing.T) {
 	}
 }
 
+func TestRuntime_ResetSpotterResetsOnlySpotterMachine(t *testing.T) {
+	frames := simulator.Build(simulator.ScenarioLeftBasic)
+	if len(frames) < 2 {
+		t.Fatalf("expected at least 2 frames, got %d", len(frames))
+	}
+
+	queue := audio.NewQueue()
+	rt := core.NewRuntime(queue, spotter.SensitivityNormal, true)
+
+	// Establish the Spotter machine (left active) and a monitor transition
+	// that needs prior per-family frame state (lap 3 -> 4).
+	rt.ProcessSpotterFrame(1_000, &frames[1])
+	lap3 := telemetry.Frame{
+		Connected: true,
+		Vehicles:  []telemetry.VehicleScoring{{ID: 1, DriverName: "Player", IsPlayer: true}},
+		Session:   &telemetry.SessionInfo{GamePhase: 5},
+		Player:    &telemetry.PlayerTelemetry{ID: 1, LapNumber: 3},
+	}
+	lap4 := telemetry.Frame{
+		Connected: true,
+		Vehicles:  []telemetry.VehicleScoring{{ID: 1, DriverName: "Player", IsPlayer: true}},
+		Session:   &telemetry.SessionInfo{GamePhase: 5},
+		Player:    &telemetry.PlayerTelemetry{ID: 1, LapNumber: 4},
+	}
+	if !rt.ProcessMonitorFrame("laps", 2_000, &lap3) {
+		t.Fatal("laps monitor was not registered")
+	}
+	for {
+		if _, ok := queue.Next(0); !ok {
+			break
+		}
+	}
+
+	rt.ResetSpotter()
+
+	// A fresh left detection must be re-detected, never echoed as still_there.
+	rt.ProcessSpotterFrame(4_000, &frames[1])
+	// The laps monitor must still see its prior frame and fire the transition.
+	if !rt.ProcessMonitorFrame("laps", 5_000, &lap4) {
+		t.Fatal("laps monitor stopped working after ResetSpotter")
+	}
+
+	keys := make(map[string]bool)
+	for {
+		msg, ok := queue.Next(0)
+		if !ok {
+			break
+		}
+		keys[msg.TextKey] = true
+	}
+	if !keys["spotter.car_left"] {
+		t.Error("ResetSpotter did not allow fresh spotter re-detection (car_left missing)")
+	}
+	if keys["spotter.still_there"] {
+		t.Error("stale still_there survived ResetSpotter")
+	}
+	if !keys["laps.lap_completed"] {
+		t.Error("monitor transition was lost by ResetSpotter — monitors were reset")
+	}
+}
+
 func TestProcessMonitorFrameRunsOnlyRequestedFamily(t *testing.T) {
 	queue := audio.NewQueue()
 	runtime := core.NewRuntime(queue, spotter.SensitivityNormal, true)

@@ -16,6 +16,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
+	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
@@ -755,6 +756,7 @@ func TestLegacyCandidateTranslationMatchesTheCharacterizedBoundary(t *testing.T)
 					projectioninput.NewAdapter(),
 					engineerprojection.SourceLive,
 					1,
+					spotter.SensitivityNormal,
 				).ReadyFamilies,
 				Semantic: semantic,
 			})

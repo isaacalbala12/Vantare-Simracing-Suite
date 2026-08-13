@@ -211,6 +211,31 @@ func (scheduler *Scheduler) CancelFamily(family Family, reason Reason) []PolicyO
 	return outcomes
 }
 
+// ResetSpotter cancels only pending Spotter decisions and resets the Spotter
+// delivery state. Evidence, cooldowns, ready families and every other family
+// remain untouched, so the Spotter toggle never disturbs Fuel or the rest of
+// the pipeline. CancelFamily and SetOutputMode semantics are intentionally
+// unchanged.
+func (scheduler *Scheduler) ResetSpotter(reason Reason) []PolicyOutcome {
+	if !knownReason(reason) {
+		reason = ReasonLifecycleBoundary
+	}
+	now := scheduler.clock.NowMS()
+	var outcomes []PolicyOutcome
+	for index := 0; index < len(scheduler.pending); {
+		queued := scheduler.pending[index].candidate
+		if queued.Family != FamilySpotter {
+			index++
+			continue
+		}
+		outcomes = append(outcomes, scheduler.outcome(queued, OutcomeCancelled, reason, now))
+		scheduler.removePending(index)
+	}
+	scheduler.state.Pending = len(scheduler.pending)
+	scheduler.spotter.reset()
+	return outcomes
+}
+
 // Submit validates and copies a candidate. Accepted candidates have no outcome
 // yet; returned outcomes describe rejected, coalesced or preempted candidates.
 func (scheduler *Scheduler) Submit(candidate Candidate) (bool, []PolicyOutcome) {

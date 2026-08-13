@@ -317,6 +317,7 @@ func (state *runState) consume(stepIndex int, step Step) {
 		state.adapter,
 		engineerprojection.SourceLive,
 		state.clock.NowMS()+1_000,
+		spotter.SensitivityNormal,
 	)
 	state.appendPolicyOutcomes(stepIndex, state.scheduler.Observe(evidence))
 
@@ -561,7 +562,7 @@ func candidateFromLegacy(message audio.Message, snapshot engineerprojection.Obse
 }
 
 func semanticEvidence(snapshot engineerprojection.ObservationSnapshotV1, adapter *projectioninput.Adapter) messagepolicy.SemanticEvidence {
-	return projectioninput.SemanticEvidence(snapshot, adapter)
+	return projectioninput.SemanticEvidence(snapshot, adapter, spotter.SensitivityNormal)
 }
 
 func (state *runState) appendPolicyOutcomes(step int, outcomes []messagepolicy.PolicyOutcome) {

@@ -34,15 +34,21 @@ acumulativa vive en [acceptance.md](phases/spotter/acceptance.md).
 
 Al entrar se replantea la fase desde el estado real. Las subfases siguientes
 son probables, no microtareas congeladas. Cada corte define un resultado
-observable pequeño, conserva el producto compilable y amplía una única ruta de
-aceptación.
+observable pequeño y conserva el producto compilable. Hasta que nazca la ruta
+acumulativa S1 (Corte C), cada corte cierra con sus tests focales + validación
+manual; desde que nace, se amplía. Todas las fases y capacidades amplían el
+mismo panel de la pestaña Ingeniero y su test UI al entrar (detalle exacto
+replanificado por subfase), sin app, ruta, renderer, estado ni lógica paralela
+de debug.
 
 El cierre siempre combina:
 
 1. validación manual proporcional sobre aplicación, LMU, Windows, hardware,
    audio o voz cuando sean relevantes;
-2. ampliación de la misma aceptación ejecutable y evaluable por IA, con salida
-   inequívoca y cobertura de escenarios esperados y prohibidos.
+2. ampliación de la misma aceptación ejecutable y evaluable por IA (test
+   frontend/automatizado acumulativo de la pestaña Ingeniero junto al test
+   backend aplicable), con salida inequívoca y cobertura de escenarios esperados
+   y prohibidos.
 
 Una IA puede dirigir el protocolo y comprobar la evidencia humana, pero no
 suplanta juicios de audibilidad, pronunciación, ergonomía o falsas activaciones.
@@ -57,13 +63,18 @@ suplanta juicios de audibilidad, pronunciación, ergonomía o falsas activacione
 - **Subfases probables:** baseline; núcleo lateral; lifecycle; audio/visual;
   multiclase; peligros; cierre LMU/Windows.
 - **Resultado:** un mismo hecho fresco produce audio Kokoro preparado/cacheado
-  y visual compartido, o una degradación honesta.
+  y visual compartido, o una degradación honesta; cada corte es observable y
+  comprobable desde la pestaña Ingeniero.
 - **Cierre:** escenarios manuales de tráfico y salida real más aceptación
   acumulativa de decisión, timings, audio, visual y lifecycle.
 
-Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. S1 aún no está iniciada:
-la siguiente acción es asignar o crear su issue y rama propias y replanificarla
-concretamente desde la Nightly vigente.
+Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12 y aprobó el microplan S1
+(cortes A/B/C, incluido el cambio visible Spotter ES→EN del Corte C) el
+2026-08-13; S1 iniciado solo a nivel de autorización, sin código aún; Corte A
+es la única siguiente implementación en el [plan de fase](phases/spotter/plan.md).
+S1 incorpora el mínimo frontend en la pestaña Ingeniero (persistencia y
+rediseño de preferencias quedan fuera; ISA-314 separada). S2/ISA-189,
+S4/ISA-187 e ISA-314 quedan diferidos expresamente hasta cerrar S1.
 
 ### 2. Engineer de carrera
 
@@ -148,3 +159,10 @@ Una fase solo termina con resultado observable, evidencia manual y de IA,
 límites visibles, review sin bloqueantes y estado coincidente en Linear,
 handoff y documentos vivos. La fase siguiente se replantea entonces; este
 roadmap no autoriza implementación, promoción ni release por sí mismo.
+
+Gate master: la sección visual temporal Testing/Diagnóstico de la pestaña
+Ingeniero puede existir y crecer en issue/Nightly/Testers para validar, pero
+debe retirarse o quedar excluida antes de promover a master (no llega visible
+a master). Tests y contratos productivos se conservan; la retirada se
+replanifica en el cierre S7/promoción master con prueba automática que falle
+si la superficie temporal es visible en master.

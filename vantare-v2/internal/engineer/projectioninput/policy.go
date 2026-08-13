@@ -19,7 +19,7 @@ const (
 
 // PolicyEvidence derives the one bounded proof consumed by message policy
 // from the same canonical observation used to feed the legacy monitors.
-func PolicyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, source engineer.SourceState, freshUntilMS int64) messagepolicy.Evidence {
+func PolicyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, source engineer.SourceState, freshUntilMS int64, sensitivity spotter.Sensitivity) messagepolicy.Evidence {
 	ready := make([]messagepolicy.Family, 0, 6)
 	for _, contract := range monitorContracts {
 		if contract.State != ParityApproved {
@@ -38,17 +38,17 @@ func PolicyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, s
 		Source:            source,
 		FreshUntilMS:      freshUntilMS,
 		ReadyFamilies:     ready,
-		Semantic:          SemanticEvidence(snapshot, adapter),
+		Semantic:          SemanticEvidence(snapshot, adapter, sensitivity),
 	}
 }
 
 // SemanticEvidence exposes only the fixed-size claims policy can revalidate.
-func SemanticEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter) messagepolicy.SemanticEvidence {
+func SemanticEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, sensitivity spotter.Sensitivity) messagepolicy.SemanticEvidence {
 	var result messagepolicy.SemanticEvidence
 	if adapter != nil {
 		if frame, err := adapter.FrameFor(FamilySpotter, snapshot); err == nil {
 			result.SpotterKnown = true
-			for _, zone := range spotter.Classify(frame, spotter.SensitivityNormal) {
+			for _, zone := range spotter.Classify(frame, sensitivity) {
 				switch zone.Side {
 				case spotter.SideLeft:
 					result.SpotterLeft = true

@@ -501,6 +501,69 @@ func semanticClaimFromEvidence(claim SemanticClaim, evidence SemanticEvidence) S
 	return claim
 }
 
+func TestResetSpotterCancelsOnlySpotterAndResetsDeliveryState(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_000}
+	scheduler := newTestScheduler(t, clock, 8)
+	scheduler.Observe(validEvidence(t, 5_000))
+
+	// Spotter must be submitted first so its supersession/preemption does not
+	// evict the lower-priority Fuel candidate from the bounded queue.
+	left := candidateFor("left", FamilySpotter, IntentSpotterCarLeft, "player", PrioritySpotter, 1_000)
+	fuel := candidateFor("fuel", FamilyFuel, IntentFuelHalfTank, "player", PriorityFailureResource, 1_000)
+	for _, candidate := range []Candidate{left, fuel} {
+		if accepted, outcomes := scheduler.Submit(candidate); !accepted || len(outcomes) != 0 {
+			t.Fatalf("submit %q = %t, %+v", candidate.ID, accepted, outcomes)
+		}
+	}
+
+	outcomes := scheduler.ResetSpotter(ReasonLifecycleBoundary)
+	if len(outcomes) != 1 || outcomes[0].Family != FamilySpotter || outcomes[0].State != OutcomeCancelled {
+		t.Fatalf("ResetSpotter outcomes = %+v, want one cancelled Spotter", outcomes)
+	}
+	if scheduler.spotter != (spotterDeliveryState{}) {
+		t.Fatalf("spotter delivery state was not reset: %+v", scheduler.spotter)
+	}
+
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.CandidateID != fuel.ID {
+		t.Fatalf("Fuel was not preserved by ResetSpotter: %+v, %t", decision, ok)
+	}
+}
+
+func TestCancelFamilyPreservesEvidenceAndSpotterDeliveryState(t *testing.T) {
+	t.Parallel()
+
+	clock := &testClock{now: 1_000}
+	scheduler := newTestScheduler(t, clock, 8)
+	scheduler.Observe(validEvidence(t, 5_000))
+
+	left := candidateFor("left", FamilySpotter, IntentSpotterCarLeft, "player", PrioritySpotter, 1_000)
+	fuel := candidateFor("fuel", FamilyFuel, IntentFuelHalfTank, "player", PriorityFailureResource, 1_000)
+	for _, candidate := range []Candidate{left, fuel} {
+		if accepted, _ := scheduler.Submit(candidate); !accepted {
+			t.Fatalf("candidate %q was rejected", candidate.ID)
+		}
+	}
+
+	outcomes := scheduler.CancelFamily(FamilyFuel, ReasonLifecycleBoundary)
+	if len(outcomes) != 1 || outcomes[0].Family != FamilyFuel || outcomes[0].State != OutcomeCancelled {
+		t.Fatalf("CancelFamily outcomes = %+v, want one cancelled Fuel", outcomes)
+	}
+	if !scheduler.hasEvidence || scheduler.evidenceErr != "" {
+		t.Fatal("CancelFamily must not clear evidence")
+	}
+	if scheduler.spotter == (spotterDeliveryState{}) {
+		t.Fatal("CancelFamily must not reset the Spotter delivery state")
+	}
+
+	decision, _, ok := scheduler.Next()
+	if !ok || decision.CandidateID != left.ID {
+		t.Fatalf("Spotter was not preserved by CancelFamily: %+v, %t", decision, ok)
+	}
+}
+
 func TestQueuePressureNeverEvictsSafetyForLowerPriority(t *testing.T) {
 	t.Parallel()
 

@@ -1,0 +1,154 @@
+name: Testing Center Nightly closeout
+
+on:
+  workflow_run:
+    workflows: ["Branch channel gates"]
+    types: [completed]
+    branches: [nightly]
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Local policy fixture; never publishes or reverts
+        required: true
+        type: choice
+        options: [smoke-success, smoke-failure]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testing-center-nightly-closeout
+  cancel-in-progress: false
+
+jobs:
+  fixture:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout pinned policy tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Run closeout policy without network or effects
+        run: python .github/scripts/test_testing_center_nightly_closeout.py -v
+
+  production_disabled:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep closeout effects fail-closed until rollout authorization
+        run: exit 1
+
+  collect:
+    if: github.event_name == 'workflow_run' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      job_key: ${{ steps.facts.outputs.job_key }}
+      source_sha: ${{ steps.facts.outputs.source_sha }}
+      release_tag: ${{ steps.facts.outputs.release_tag }}
+      release_notes: ${{ steps.facts.outputs.release_notes }}
+    steps:
+      - name: Checkout exact workflow-run SHA without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify completed run and collect server-owned closeout facts
+        id: facts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          test "$WORKFLOW_CONCLUSION" = success
+          test "$WORKFLOW_BRANCH" = nightly
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git fetch origin nightly --no-tags
+          test "$(git rev-parse origin/nightly)" = "$SOURCE_SHA"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${WORKFLOW_RUN_ID}" \
+            --jq '.name + ":" + .conclusion + ":" + .head_sha' \
+            | grep -Fx "Branch channel gates:success:${SOURCE_SHA}"
+          echo "production_facts_require_oidc_callback" >&2
+          exit 1
+
+  smoke:
+    needs: collect
+    if: github.event_name == 'workflow_run' && false
+    runs-on: windows-latest
+    timeout-minutes: 25
+    outputs:
+      source_sha: ${{ needs.collect.outputs.source_sha }}
+      release_tag: ${{ needs.collect.outputs.release_tag }}
+      release_notes: ${{ needs.collect.outputs.release_notes }}
+    steps:
+      - name: Checkout exact merged SHA without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.collect.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.25.0"
+          cache: true
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: "9.1.0"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: vantare-v2/frontend/pnpm-lock.yaml
+      - name: Install pinned Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.98
+      - name: Install frontend dependencies
+        run: pnpm --dir vantare-v2/frontend install --frozen-lockfile
+      - name: Post-merge smoke and frontend build
+        run: |
+          go test ./...
+          pnpm --dir vantare-v2/frontend build
+      - name: Post-merge Windows Wails build
+        env:
+          VANTARE_BUILD_CHANNEL: nightly
+        run: wails3 task windows:build
+
+  release:
+    needs: smoke
+    if: github.event_name == 'workflow_run' && false
+    uses: ./.github/workflows/release.yml
+    with:
+      publish_channel: nightly
+      release_tag: ${{ needs.smoke.outputs.release_tag }}
+      release_notes: ${{ needs.smoke.outputs.release_notes }}
+      source_sha: ${{ needs.smoke.outputs.source_sha }}
+    secrets:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
+      DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
+      DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
+      DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+      DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+
+  revert:
+    needs: smoke
+    if: github.event_name == 'workflow_run' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Keep revert PR creation fail-closed until callback facts are wired
+        run: exit 1

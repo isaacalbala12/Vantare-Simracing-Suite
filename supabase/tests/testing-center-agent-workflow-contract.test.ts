@@ -7,6 +7,9 @@ const reviewSchemaPath =
   ".github/agents/testing-center-review-output.schema.json";
 const reviewSettingsPath = ".github/agents/testing-center-review-settings.json";
 const branchGatesPath = ".github/workflows/branch-channel-gates.yml";
+const closeoutPath =
+  ".github/workflows/testing-center-nightly-closeout.yml";
+const releasePath = ".github/workflows/release.yml";
 
 const checkoutPin = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
 const setupDenoPin =
@@ -679,3 +682,73 @@ Deno.test("review deny-list is explicit and security tests run on every PR", asy
   );
   assertNotIncludes(gates, "pip install pyyaml");
 });
+
+Deno.test("nightly closeout is serial source-bound and inert", async () => {
+  const workflow = normalize(await Deno.readTextFile(closeoutPath));
+  assertIncludes(workflow, 'workflows: ["Branch channel gates"]');
+  assertIncludes(workflow, "types: [completed]");
+  assertIncludes(workflow, "branches: [nightly]");
+  assertIncludes(workflow, "group: testing-center-nightly-closeout");
+  assertIncludes(workflow, "cancel-in-progress: false");
+  assertIncludes(workflow, "permissions:\n  contents: read");
+  assertIncludes(workflow, "github.event.workflow_run.head_sha");
+  assertIncludes(workflow, "testing_center_nightly_closeout.py");
+  assertIncludes(workflow, "if: github.event_name == 'workflow_run' && false");
+  assertIncludes(workflow, "uses: ./.github/workflows/release.yml");
+  assertIncludes(workflow, "source_sha: ${{ needs.smoke.outputs.source_sha }}");
+  assertIncludes(workflow, "publish_channel: nightly");
+  assertIncludes(workflow, "VITE_SUPABASE_URL:");
+  assertIncludes(workflow, "VITE_SUPABASE_ANON_KEY:");
+  assertIncludes(workflow, "VANTARE_LICENSE_PUBLIC_KEYS:");
+  assertIncludes(workflow, "DISCORD_PROGRESS_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_BUILD_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_RELEASE_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_KNOWN_ISSUES_WEBHOOK_URL:");
+  assertNotIncludes(workflow, "secrets: inherit");
+  assertNotIncludes(workflow, "git push");
+  assertNotIncludes(workflow, "gh release create");
+});
+
+Deno.test("release reusable contract requires and uses the exact source sha", async () => {
+  const workflow = normalize(await Deno.readTextFile(releasePath));
+  assertIncludes(workflow, "workflow_call:");
+  for (
+    const input of [
+      "publish_channel",
+      "release_tag",
+      "release_notes",
+      "source_sha",
+    ]
+  ) assertIncludes(workflow, `${input}:`);
+  assertIncludes(
+    workflow,
+    "source_sha:\n        description: \"Exact commit to build and publish\"\n        required: true",
+  );
+  for (
+    const secret of [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY",
+      "VANTARE_LICENSE_PUBLIC_KEYS",
+      "DISCORD_PROGRESS_WEBHOOK_URL",
+      "DISCORD_BUILD_WEBHOOK_URL",
+      "DISCORD_RELEASE_WEBHOOK_URL",
+      "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+    ]
+  ) assertIncludes(workflow, `${secret}:\n        required: true`);
+  assertIncludes(workflow, "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}");
+  assertIncludes(workflow, "ref: ${{ env.SOURCE_SHA }}");
+  assertIncludes(workflow, 'git merge-base --is-ancestor "$SOURCE_SHA" "origin/$PUBLISH_CHANNEL"');
+  assertIncludes(workflow, '--target "$SOURCE_SHA"');
+  assertNotIncludes(workflow, '--target "$GITHUB_SHA"');
+  assertNotIncludes(workflow, '--revision "$GITHUB_SHA"');
+  for (const line of usesLines(workflow)) {
+    assertMatchPinned(line);
+  }
+});
+
+function assertMatchPinned(line: string): void {
+  assert(
+    /@[0-9a-f]{40}$/.test(line),
+    `Action must be pinned by full SHA: ${line}`,
+  );
+}

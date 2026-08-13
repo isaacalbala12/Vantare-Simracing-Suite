@@ -35,13 +35,13 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
   posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
   hasta que esa base esté realmente integrada.
 
-Actualización ISA-152 / STR-17 (2026-08-13):
+Actualización ISA-152 / STR-17 (2026-08-14):
 
 - ISA-161 fue aceptada por Isaac e integrada mediante squash del PR #212 en
   `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El gate post-promoción
   31708164123 pasó completo. Linear refleja ISA-161 en `Nightly`.
-- ISA-152 está implementada localmente sobre una rama/worktree aislados desde
-  ese squash. Los commits son `98104b0` (plan), `3f48045` (motor/read model),
+- ISA-152 se implementó sobre una rama/worktree aislados desde ese squash. Los
+  commits fueron `98104b0` (plan), `3f48045` (motor/read model),
   `091f8ba` (adaptador al Hub) y `bf9e9e5` (evidencia LMU). Reviews
   independientes de spec y calidad aprobaron los tres cortes sin findings
   abiertos.
@@ -60,11 +60,14 @@ Actualización ISA-152 / STR-17 (2026-08-13):
   contiene raw, track, fingerprint, IDs reales ni PII.
 - Gates locales: focales x20, vet focal, frontend build, `go test ./...` y
   frontend `367/2636` pasan. `-race` no se ejecutó por CGO desactivado y falta
-  de GCC. La rama se publicó por primera vez en `c532c88` y el PR draft
+  de GCC. El HEAD de rama `c5f965f` pasó CI completo en 31720701167. Isaac
+  autorizó la integración y el PR
   [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
-  está OPEN/MERGEABLE hacia `nightly`; el HEAD vigente y sus checks se
-  consultan en el PR. No hubo merge, promoción o release. Linear permanece
-  `In Progress` hasta cerrar CI y revisión.
+  se integró por squash en
+  `nightly@8de4f511972757476d96d6a525b69c8917f4ca56`; el gate post-promoción
+  [31748815965](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31748815965)
+  pasó completo. Linear refleja `Nightly`. No hubo promoción a
+  `testers`/`master` ni release.
 - Microplan vigente:
   `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
   Evidencia detallada:
@@ -304,12 +307,10 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Esperar los checks del HEAD vigente del PR draft #219 y reflejar SHA/PR/CI
-reales en Linear. No promover ni mergear sin autorización de Isaac.
-El wiring de arranque requiere una issue/decisión que entregue una fuente
-normalizada de stints y objetivos desde la revisión activa; no inventarla en
-STR-17. STR-18 continúa separado.
+Definir mediante issue/decisión la fuente normalizada de stints y objetivos
+desde la revisión activa antes de cablear el motor al arranque. No inventar un
+plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
 
 ## Última actualización
 
-2026-08-13, ISA-152 / STR-17, Codex.
+2026-08-14, ISA-152 / STR-17 integrada en Nightly, Codex.

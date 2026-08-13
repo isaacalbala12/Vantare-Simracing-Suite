@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-13T23:24:30Z",
+  "generatedAt": "2026-08-13T23:34:04Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -217,7 +217,7 @@
               "id": "task_7e215fa62ba27872fac7",
               "title": "· Superficie arbitraria y paridad de resolución Studio/Desktop/OBS",
               "status": "done",
-              "updatedAt": "2026-08-13T22:53:28.216Z"
+              "updatedAt": "2026-08-13T23:32:36.779Z"
             }
           ]
         },

@@ -28,6 +28,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
+	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/recording"
 	recordingsqlite "github.com/vantare/overlays/v2/internal/telemetry/recording/sqlite"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -139,6 +140,8 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTelemetryCoreRuntime() error = %v", err)
 	}
+	cleanupStatusReplayHandlers := registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryRuntime)
+	defer cleanupStatusReplayHandlers()
 	if err := telemetryRuntime.Start(appContext); err != nil {
 		t.Fatalf("TelemetryCoreRuntime.Start() error = %v", err)
 	}
@@ -152,12 +155,21 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	if err := telemetryRuntime.Hub().PublishSnapshot(full, nil); err != nil {
 		t.Fatalf("PublishSnapshot() error = %v", err)
 	}
+	strategySnapshot := readStrategyGolden(t)
+	strategyFull, err := telemetrytransport.NewStrategyFull(strategySnapshot.Metadata, 1, strategySnapshot.PayloadV1)
+	if err != nil {
+		t.Fatalf("NewStrategyFull() error = %v", err)
+	}
+	if err := telemetryRuntime.StrategyHub().PublishSnapshot(strategyFull, nil); err != nil {
+		t.Fatalf("Strategy PublishSnapshot() error = %v", err)
+	}
 
 	httpServer := server.New(server.ServerConfig{
-		Addr:              "127.0.0.1:0",
-		EngineerSvc:       engineer,
-		Emitter:           emitter,
-		OverlayProjection: telemetryRuntime.Hub(),
+		Addr:               "127.0.0.1:0",
+		EngineerSvc:        engineer,
+		Emitter:            emitter,
+		OverlayProjection:  telemetryRuntime.Hub(),
+		StrategyProjection: telemetryRuntime.StrategyHub(),
 	})
 	httpServer.Start()
 	if httpServer.Addr() == "" {
@@ -167,8 +179,19 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 5 * time.Second}
 	assertHealthReachable(t, client, httpServer.Addr())
-	sse := captureSSE(t, appContext, client, httpServer.Addr())
-	wails := awaitWailsTelemetry(t, wailsTransport.events)
+	sse := make(map[string][]byte, 4)
+	for _, product := range []telemetrytransport.ProductID{
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	} {
+		for name, data := range captureSSE(t, appContext, client, httpServer.Addr(), product) {
+			sse[name] = data
+		}
+	}
+	wails := awaitWailsTelemetry(t, wailsTransport.events,
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	)
 	for name, wailsData := range wails {
 		sseData, ok := sse[name]
 		if !ok {
@@ -182,6 +205,39 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		telemetrytransport.ProductOverlay,
 		telemetrytransport.EventSnapshot,
 	)], snapshot)
+	assertStrategyProjectionCursor(t, wails[telemetrytransport.EventName(
+		telemetrytransport.ProductStrategy,
+		telemetrytransport.EventSnapshot,
+	)], strategySnapshot)
+
+	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay))
+	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
+	replayed := awaitWailsStatusReplayEvents(t, wailsTransport.events,
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	)
+	replayCounts := make(map[string]int, 2)
+	for _, event := range replayed {
+		replayCounts[event.name]++
+		product := telemetrytransport.ProductOverlay
+		if event.name == telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus) {
+			product = telemetrytransport.ProductStrategy
+		}
+		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
+		if !bytes.Equal(event.data, wails[name]) {
+			t.Fatalf("%s status replay differs from hub status\noriginal: %s\nreplay:   %s", product, wails[name], event.data)
+		}
+		assertStatusProduct(t, event.name, event.data, product)
+	}
+	for _, product := range []telemetrytransport.ProductID{
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	} {
+		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
+		if replayCounts[name] != 1 {
+			t.Fatalf("%s status replay count = %d, want 1; all=%v", product, replayCounts[name], replayCounts)
+		}
+	}
 
 	opsBridge := app.NewOpsBridge(lifecycleSampler{}, emitter, 10*time.Millisecond)
 	opsBridge.Start()
@@ -222,6 +278,9 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	if metrics := telemetryRuntime.Hub().Metrics(); metrics.CurrentSubscribers != 0 {
 		t.Errorf("telemetry subscribers after shutdown = %d", metrics.CurrentSubscribers)
 	}
+	if metrics := telemetryRuntime.StrategyHub().Metrics(); metrics.CurrentSubscribers != 0 {
+		t.Errorf("Strategy telemetry subscribers after shutdown = %d", metrics.CurrentSubscribers)
+	}
 	if health := engineer.Health(); health.OK || health.Connected || health.Subs != 0 {
 		t.Errorf("Engineer health after shutdown = %#v", health)
 	}
@@ -230,6 +289,167 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	}
 	assertPortClosed(t, httpServer.Addr())
 	assertResourcesReturn(t, baselineGoroutines, baselineHandles)
+}
+
+func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing.T) {
+	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{Enabled: false})
+	if err != nil {
+		t.Fatalf("NewTelemetryCoreRuntime() error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatalf("TelemetryCoreRuntime.Start() error = %v", err)
+	}
+	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Second)
+		defer stopCancel()
+		if err := runtime.Stop(stopCtx); err != nil {
+			t.Errorf("TelemetryCoreRuntime.Stop() error = %v", err)
+		}
+	}()
+
+	events := newSynchronousTelemetryEvents()
+	emitter := &countingTelemetryEmitter{}
+	cleanupFirst := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
+	cleanupFirst()
+	cleanupFirst()
+	cleanupSecond := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
+	defer cleanupSecond()
+
+	for _, product := range []telemetrytransport.ProductID{
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	} {
+		events.Emit(telemetrytransport.StatusRequestEventName(product))
+	}
+
+	replayEvents := emitter.snapshot()
+	if len(replayEvents) != 2 {
+		t.Fatalf("status replay event count = %d, want 2: %#v", len(replayEvents), replayEvents)
+	}
+	counts := make(map[string]int, 2)
+	for _, event := range replayEvents {
+		counts[event.name]++
+		var envelope struct {
+			Product telemetrytransport.ProductID `json:"product"`
+		}
+		if err := json.Unmarshal(event.data, &envelope); err != nil {
+			t.Fatalf("decode replay %q: %v", event.name, err)
+		}
+		if event.name != telemetrytransport.EventName(envelope.Product, telemetrytransport.EventStatus) {
+			t.Fatalf("crossed replay event name=%q product=%q", event.name, envelope.Product)
+		}
+	}
+	for _, product := range []telemetrytransport.ProductID{
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	} {
+		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
+		if counts[name] != 1 {
+			t.Fatalf("%s replay count = %d, want 1; all=%v", product, counts[name], counts)
+		}
+	}
+}
+
+func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
+	events := newSynchronousTelemetryEvents()
+	emitter := &countingTelemetryEmitter{}
+
+	cleanup := registerTelemetryStatusReplayHandlers(events, emitter, nil)
+	if cleanup == nil {
+		t.Fatal("registerTelemetryStatusReplayHandlers() cleanup is nil")
+	}
+
+	for _, product := range []telemetrytransport.ProductID{
+		telemetrytransport.ProductOverlay,
+		telemetrytransport.ProductStrategy,
+	} {
+		events.Emit(telemetrytransport.StatusRequestEventName(product))
+	}
+
+	events.mu.Lock()
+	registered := 0
+	for _, listeners := range events.listeners {
+		registered += len(listeners)
+	}
+	events.mu.Unlock()
+	if registered != 0 {
+		t.Fatalf("registered status replay handlers = %d, want 0", registered)
+	}
+	if emitted := emitter.snapshot(); len(emitted) != 0 {
+		t.Fatalf("status replay events = %d, want 0: %#v", len(emitted), emitted)
+	}
+	cleanup()
+	cleanup()
+}
+
+type countingTelemetryEmitter struct {
+	mu     sync.Mutex
+	events []sseEvent
+}
+
+func (emitter *countingTelemetryEmitter) Emit(name string, data any) {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+	event := sseEvent{name: name, data: encoded}
+	emitter.mu.Lock()
+	emitter.events = append(emitter.events, event)
+	emitter.mu.Unlock()
+}
+
+func (emitter *countingTelemetryEmitter) snapshot() []sseEvent {
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	return append([]sseEvent(nil), emitter.events...)
+}
+
+type synchronousTelemetryEvents struct {
+	mu        sync.Mutex
+	listeners map[string][]*synchronousTelemetryListener
+}
+
+type synchronousTelemetryListener struct {
+	callback func(*application.CustomEvent)
+}
+
+func newSynchronousTelemetryEvents() *synchronousTelemetryEvents {
+	return &synchronousTelemetryEvents{listeners: make(map[string][]*synchronousTelemetryListener)}
+}
+
+func (events *synchronousTelemetryEvents) On(
+	name string,
+	listener func(*application.CustomEvent),
+) func() {
+	registered := &synchronousTelemetryListener{callback: listener}
+	events.mu.Lock()
+	events.listeners[name] = append(events.listeners[name], registered)
+	events.mu.Unlock()
+	var cleanup sync.Once
+	return func() {
+		cleanup.Do(func() {
+			events.mu.Lock()
+			listeners := events.listeners[name]
+			for index, current := range listeners {
+				if current == registered {
+					events.listeners[name] = append(listeners[:index], listeners[index+1:]...)
+					break
+				}
+			}
+			events.mu.Unlock()
+		})
+	}
+}
+
+func (events *synchronousTelemetryEvents) Emit(name string) {
+	events.mu.Lock()
+	listeners := append([]*synchronousTelemetryListener{}, events.listeners[name]...)
+	events.mu.Unlock()
+	for _, listener := range listeners {
+		listener.callback(&application.CustomEvent{Name: name})
+	}
 }
 
 func observedStop(t *testing.T, name string, stop func(context.Context) error) shutdownStep {
@@ -241,12 +461,18 @@ func observedStop(t *testing.T, name string, stop func(context.Context) error) s
 	}}
 }
 
-func captureSSE(t *testing.T, ctx context.Context, client *http.Client, address string) map[string][]byte {
+func captureSSE(
+	t *testing.T,
+	ctx context.Context,
+	client *http.Client,
+	address string,
+	product telemetrytransport.ProductID,
+) map[string][]byte {
 	t.Helper()
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		"http://"+address+telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
+		"http://"+address+telemetrytransport.ProjectionRoute(product),
 		nil,
 	)
 	if err != nil {
@@ -295,21 +521,54 @@ func readSSEEvent(reader *bufio.Reader) (sseEvent, error) {
 	}
 }
 
-func awaitWailsTelemetry(t *testing.T, source <-chan sseEvent) map[string][]byte {
+func awaitWailsTelemetry(
+	t *testing.T,
+	source <-chan sseEvent,
+	products ...telemetrytransport.ProductID,
+) map[string][]byte {
 	t.Helper()
-	statusName := telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus)
-	snapshotName := telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventSnapshot)
-	result := make(map[string][]byte, 2)
+	wanted := make(map[string]struct{}, len(products)*2)
+	for _, product := range products {
+		wanted[telemetrytransport.EventName(product, telemetrytransport.EventStatus)] = struct{}{}
+		wanted[telemetrytransport.EventName(product, telemetrytransport.EventSnapshot)] = struct{}{}
+	}
+	result := make(map[string][]byte, len(wanted))
 	timeout := time.NewTimer(2 * time.Second)
 	defer timeout.Stop()
-	for len(result) < 2 {
+	for len(result) < len(wanted) {
 		select {
 		case event := <-source:
-			if event.name == statusName || event.name == snapshotName {
+			if _, ok := wanted[event.name]; ok {
 				result[event.name] = event.data
 			}
 		case <-timeout.C:
 			t.Fatalf("timed out waiting for Wails telemetry events: got=%v", keys(result))
+		}
+	}
+	return result
+}
+
+func awaitWailsStatusReplayEvents(
+	t *testing.T,
+	source <-chan sseEvent,
+	products ...telemetrytransport.ProductID,
+) []sseEvent {
+	t.Helper()
+	wanted := make(map[string]struct{}, len(products))
+	for _, product := range products {
+		wanted[telemetrytransport.EventName(product, telemetrytransport.EventStatus)] = struct{}{}
+	}
+	result := make([]sseEvent, 0, len(wanted))
+	timeout := time.NewTimer(2 * time.Second)
+	defer timeout.Stop()
+	for len(result) < len(wanted) {
+		select {
+		case event := <-source:
+			if _, ok := wanted[event.name]; ok {
+				result = append(result, event)
+			}
+		case <-timeout.C:
+			t.Fatalf("timed out waiting for Wails status replays: got=%v", result)
 		}
 	}
 	return result
@@ -325,6 +584,20 @@ func readOverlayGolden(t *testing.T) overlay.SnapshotV1 {
 	var result overlay.SnapshotV1
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("decode overlay golden: %v", err)
+	}
+	return result
+}
+
+func readStrategyGolden(t *testing.T) strategyprojection.SnapshotV1 {
+	t.Helper()
+	path := filepath.Join("..", "..", "internal", "telemetry", "projection", "strategy", "testdata", "strategy_v1.golden.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read Strategy golden: %v", err)
+	}
+	var result strategyprojection.SnapshotV1
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("decode Strategy golden: %v", err)
 	}
 	return result
 }
@@ -347,6 +620,48 @@ func assertProjectionCursor(t *testing.T, encoded []byte, snapshot overlay.Snaps
 		envelope.Sequence != uint64(snapshot.Sequence) ||
 		envelope.StatusRevision != 1 {
 		t.Fatalf("projection cursor = %#v", envelope)
+	}
+}
+
+func assertStrategyProjectionCursor(t *testing.T, encoded []byte, snapshot strategyprojection.SnapshotV1) {
+	t.Helper()
+	var envelope struct {
+		Product           telemetrytransport.ProductID `json:"product"`
+		ProjectionVersion uint64                       `json:"projectionVersion"`
+		Epoch             uint64                       `json:"epoch"`
+		Sequence          uint64                       `json:"sequence"`
+		StatusRevision    uint64                       `json:"statusRevision"`
+	}
+	if err := json.Unmarshal(encoded, &envelope); err != nil {
+		t.Fatalf("decode Strategy projection envelope: %v", err)
+	}
+	if envelope.Product != telemetrytransport.ProductStrategy ||
+		envelope.ProjectionVersion != uint64(snapshot.ProjectionVersion) ||
+		envelope.Epoch != uint64(snapshot.Epoch) ||
+		envelope.Sequence != uint64(snapshot.Sequence) ||
+		envelope.StatusRevision != 1 {
+		t.Fatalf("Strategy projection cursor = %#v", envelope)
+	}
+}
+
+func assertStatusProduct(
+	t *testing.T,
+	eventName string,
+	encoded []byte,
+	want telemetrytransport.ProductID,
+) {
+	t.Helper()
+	var envelope struct {
+		Product telemetrytransport.ProductID `json:"product"`
+	}
+	if err := json.Unmarshal(encoded, &envelope); err != nil {
+		t.Fatalf("decode %s status envelope: %v", want, err)
+	}
+	if envelope.Product != want {
+		t.Fatalf("%s payload product = %q, want %q", eventName, envelope.Product, want)
+	}
+	if eventName != telemetrytransport.EventName(want, telemetrytransport.EventStatus) {
+		t.Fatalf("status event = %q, want %q", eventName, telemetrytransport.EventName(want, telemetrytransport.EventStatus))
 	}
 }
 

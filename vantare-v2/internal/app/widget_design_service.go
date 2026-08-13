@@ -57,12 +57,6 @@ var supportedWidgetDesignTypes = map[string]bool{
 	"pedals":    true,
 }
 
-var supportedWidgetDesignSystems = map[string]bool{
-	string(config.DesignSystemVantareOriginal):  true,
-	string(config.DesignSystemVantareCrystal):   true,
-	string(config.DesignSystemVantareEndurance): true,
-}
-
 // WidgetDesignV1 is the versioned user/official widget design wire shape.
 type WidgetDesignV1 struct {
 	ID              string         `json:"id"`
@@ -429,7 +423,7 @@ func validateWidgetDesign(design *WidgetDesignV1) error {
 	if !supportedWidgetDesignTypes[design.WidgetType] {
 		return fmt.Errorf("unsupported widget type: %q", design.WidgetType)
 	}
-	if !supportedWidgetDesignSystems[design.SystemID] {
+	if !config.IsSupportedDesignSystemID(config.DesignSystemID(design.SystemID)) {
 		return fmt.Errorf("unsupported design system: %q", design.SystemID)
 	}
 	if design.SystemVersion < 1 || design.ConfigVersion < 1 {

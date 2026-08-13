@@ -442,8 +442,19 @@ def _is_forbidden_path(path: str) -> bool:
         "gemfile",
         "gemfile.lock",
     }
+    python_shadow_files = {
+        "conftest.py",
+        "json.py",
+        "os.py",
+        "pathlib.py",
+        "re.py",
+        "sitecustomize.py",
+        "sys.py",
+        "usercustomize.py",
+    }
     return (
         name in dependency_files
+        or name in python_shadow_files
         or name.endswith((".lock", "-lock.json", "-lock.yaml", "-lock.yml"))
         or folded.endswith("deno.lock")
     )

@@ -249,7 +249,7 @@ jobs:
         id: diff_outputs
         shell: bash
         run: |
-          python - <<'PY'
+          python -I - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -380,7 +380,7 @@ jobs:
         env:
           REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
         run: |
-          python - <<'PY'
+          python -I - <<'PY'
           import json
           import os
           import re
@@ -448,7 +448,7 @@ jobs:
         env:
           REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
         run: |
-          python - <<'PY'
+          python -I - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -483,7 +483,7 @@ jobs:
       - name: Validate independent verdict without logging model output
         shell: bash
         run: |
-          python - <<'PY'
+          python -I - <<'PY'
           import json
           import os
           import re

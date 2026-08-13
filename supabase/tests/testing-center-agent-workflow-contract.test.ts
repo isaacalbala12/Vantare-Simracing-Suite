@@ -447,6 +447,14 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
   assertIncludes(review, "ref: ${{ github.sha }}");
   assertIncludes(review, "path: .trusted-control-scripts");
+  assertIncludes(
+    review,
+    "persist-credentials: false\n          ref: ${{ needs.diff_gate.outputs.head_sha }}\n      - name: Checkout server-selected trusted verification scripts",
+  );
+  assertIncludes(
+    review,
+    "ref: ${{ github.sha }}\n          persist-credentials: false\n          path: .trusted-control-scripts",
+  );
   assertIncludes(review, "uses: " + downloadArtifactPin);
   assertIncludes(review, "name: testing-center-validated-diff");
   assertIncludes(
@@ -521,6 +529,12 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "retention-days: 7");
   assertIncludes(review, "GITHUB_STEP_SUMMARY");
   assertIncludes(review, "P0={counts['P0']}");
+  assertNotIncludes(review, "python - <<'PY'");
+  assertEquals(
+    review.split("python -I - <<'PY'").length - 1,
+    2,
+    "every review inline Python step must isolate sys.path",
+  );
   assert(
     diff.indexOf("Verify manifest sha256 before gating") <
       diff.indexOf("Evaluate server-owned manifest without network"),

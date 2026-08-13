@@ -1,4 +1,4 @@
-Nota ISA-152 / STR-17 (2026-08-13, entrega local revisada):
+Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
   post-promoción 31708164123 pasó topología y gates bloqueantes completos.
@@ -13,8 +13,10 @@ Nota ISA-152 / STR-17 (2026-08-13, entrega local revisada):
   completada `0` fresh y Fuel `98/115 L` fresh. La desviación quedó missing
   porque el plan explícito de prueba no declaró objetivos Fuel. No se guardaron
   raw, track, fingerprint, IDs reales ni PII.
-- ISA-152 está `In Progress` en Linear. Su rama/worktree aislados parten del
-  squash anterior y el microplan vigente es
+- ISA-152 está integrada mediante squash del PR
+  [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
+  en `nightly@8de4f511972757476d96d6a525b69c8917f4ca56`. Linear refleja el
+  estado `Nightly`; el microplan cerrado es
   `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
 - STR-17 queda implementada y aprobada por reviews independientes de spec y
   calidad. No añade reader LMU, UI, replanificación, VE, tyres, weather,
@@ -23,16 +25,16 @@ Nota ISA-152 / STR-17 (2026-08-13, entrega local revisada):
   revisión y todavía no existe una fuente aprobada de stints/objetivos live.
   Inventar esa traducción violaría el contrato.
 - Gates locales: focales x20, `go vet`, build frontend, `go test ./...` y
-  frontend `367/2636` pasan. El frontend conserva el 403 del roadmap remoto y
-  un `AbortError` de teardown con exit 0. `-race` no está disponible con
-  `CGO_ENABLED=0` y sin GCC. La rama se publicó por primera vez en `c532c88` y
-  el PR draft [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
-  está OPEN/MERGEABLE hacia `nightly`; el estado del HEAD y sus checks se
-  consulta allí. No hubo merge, promoción o release. Linear sigue
-  `In Progress` hasta cerrar CI y la revisión.
-- `Roadmap public snapshot` conserva el fallo heredado
+  frontend `367/2636` pasan. El CI del HEAD de rama `c5f965f` pasó completo en
+  el run 31720701167. El gate post-promoción
+  [31748815965](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31748815965)
+  pasó topología, build, Go, frontend, baseline visual y lint sobre el squash
+  exacto. `-race` no está disponible con `CGO_ENABLED=0` y sin GCC. No hubo
+  promoción a `testers`/`master` ni release.
+- El workflow separado `Roadmap public snapshot` conserva el fallo heredado
   `telemetry-core: empty project must have null progress`; se reproduce en los
-  cuatro commits de `nightly` anteriores a ISA-161 y queda fuera de STR-17.
+  cuatro commits de `nightly` anteriores a ISA-161, reapareció sin cambios en
+  el run 31748815966 y queda fuera de STR-17.
 
 Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada; cierre supersedido por ISA-152):
 - ISA-160 / TC-10A está integrada en

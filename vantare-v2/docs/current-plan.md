@@ -6,7 +6,8 @@ Nota ISA-318 / HAF-03 (2026-08-13, gobierno y bootstrap inerte entregados):
 - HEAD remoto `30beb873`; PR draft #217 hacia `nightly`. La evidencia final
   pasa branch channels 41/41, diff gate 24/24, collector 22/22, `py_compile` y
   diff-check. Opus 5 High devuelve GO con P0/P1/P2=0 y su única precisión P3
-  documental quedó corregida antes del HEAD publicado.
+  documental quedó corregida antes del HEAD publicado. Los dos checks GitHub
+  propios del SHA exacto están verdes.
 - ISA-322 debe verificar criptográficamente procedencia y frescura contra el
   head vivo de la PR y el tip vivo de `nightly`, recomputar el digest y aplicar
   kill switch y exclusiones antes de cada efecto. No hubo merge, promoción,

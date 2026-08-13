@@ -124,7 +124,8 @@ determinista.
   suministrarla, de modo que el bootstrap sigue inerte. Branch channels 41/41,
   gate 24/24, collector 22/22, `py_compile` y diff-check pasan. Opus 5 High:
   GO, P0/P1/P2=0; su precisión documental P3 se cerró antes del HEAD publicado.
-  Entregada, no integrada ni activada.
+  Los dos checks GitHub propios pasan en el SHA exacto. Entregada, no integrada
+  ni activada.
 - Las cinco ramas parten, directa o apiladamente, de
   `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
   No existe activación remota, merge, promoción, deploy, tag ni release.

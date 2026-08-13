@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { I18nProvider } from "../i18n/I18nProvider";
 import { V52Shell } from "../hub/components/V52Shell";
 import { ChainRunnerProvider } from "../hub/launcher/chain-store";
+import { LauncherStoreProvider } from "../hub/launcher/launcher-store";
 import { LicenseProvider } from "../lib/license";
 import { StudioRoute } from "../hub/overlay-studio/StudioRoute";
 import { resetHubMockState, type HubMockSeed } from "./hub-profile-mock-state";
@@ -23,9 +24,13 @@ createRoot(document.getElementById("root")!).render(
     <I18nProvider>
       <LicenseProvider>
         <ChainRunnerProvider>
-          <V52Shell activeSection="profiles" onNavigate={() => undefined} version="0.1.0.4">
-            <StudioRoute liveAvailable={false} />
-          </V52Shell>
+          {/* V52Shell monta el LauncherDock, que lee el store del launcher. Sin
+              este proveedor el harness reventaba antes de pintar el Studio. */}
+          <LauncherStoreProvider>
+            <V52Shell activeSection="profiles" onNavigate={() => undefined} version="0.1.0.4">
+              <StudioRoute liveAvailable={false} />
+            </V52Shell>
+          </LauncherStoreProvider>
         </ChainRunnerProvider>
       </LicenseProvider>
     </I18nProvider>

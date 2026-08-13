@@ -13,6 +13,8 @@ const claudeActionPin =
   "anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639";
 const uploadArtifactPin =
   "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02";
+const downloadArtifactPin =
+  "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -352,6 +354,14 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
     diff,
     'python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH"',
   );
+  assertIncludes(diff, "uses: " + uploadArtifactPin);
+  assertIncludes(diff, "name: testing-center-validated-diff");
+  assertIncludes(
+    diff,
+    'cp "$RUNNER_TEMP/diff-decision.json" .testing-center/diff-decision.json',
+  );
+  assertIncludes(diff, ".testing-center/diff-decision.json");
+  assertNotIncludes(diff, "${{ runner.temp }}/diff-decision.json");
   assertIncludes(diff, "head_sha: ${{ steps.diff_outputs.outputs.head_sha }}");
   assertIncludes(
     diff,
@@ -364,6 +374,8 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "pull-requests: read");
   assertIncludes(review, "persist-credentials: false");
   assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
+  assertIncludes(review, "uses: " + downloadArtifactPin);
+  assertIncludes(review, "name: testing-center-validated-diff");
   assertIncludes(review, "uses: " + claudeActionPin);
   assertIncludes(review, "id: opus_review");
   assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
@@ -471,6 +483,8 @@ Deno.test("review prompt is independent read-only and treats evidence as data", 
       "comentarios",
       "reviews",
       "status",
+      "VALIDATED_HEAD_SHA",
+      "VALIDATED_HEAD_DIGEST",
     ]
   ) assertIncludes(prompt, required);
 });

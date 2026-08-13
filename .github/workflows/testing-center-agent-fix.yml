@@ -182,6 +182,17 @@ jobs:
                   f"head_digest={manifest['expected']['head_digest']}\n"
               )
           PY
+      - name: Stage validated review input
+        run: cp "$RUNNER_TEMP/diff-decision.json" .testing-center/diff-decision.json
+      - name: Upload validated review input
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-validated-diff
+          path: |
+            .testing-center/validated-diff-manifest.json
+            .testing-center/diff-decision.json
+          if-no-files-found: error
+          retention-days: 7
 
   review_opus:
     needs: diff_gate
@@ -201,6 +212,11 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.diff_gate.outputs.head_sha }}
+      - name: Download validated review input
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-validated-diff
+          path: .testing-center
       - name: Load closed review schema
         id: review_schema
         shell: bash

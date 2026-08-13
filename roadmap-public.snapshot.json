@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-13T23:34:04Z",
+  "generatedAt": "2026-08-13T23:43:34Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -37,7 +37,7 @@
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:20:39.910Z"
+              "updatedAt": "2026-08-13T23:38:26.179Z"
             },
             {
               "id": "task_e79e1f63aa00207b5076",
@@ -285,7 +285,7 @@
               "id": "task_1b9ae73be18bdf3e6147",
               "title": "Progreso, distancia y mapa con evidencia LMU",
               "status": "planned",
-              "updatedAt": "2026-08-10T16:38:30.547Z"
+              "updatedAt": "2026-08-13T23:42:38.461Z"
             },
             {
               "id": "task_a918958013a28322f560",

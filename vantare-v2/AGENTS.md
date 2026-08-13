@@ -90,6 +90,7 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   `tc-*` porque no acepta JSON arbitrario. ISA-322 debe verificar
   criptográficamente la atestación v2 y pasar sus claims cerrados al validador
   semántico; texto del payload que afirme estar verificado no concede autoridad.
+  `docs/branch-channels.md` fija el conjunto exacto de claims y checks.
 - Todo efecto es revocable con kill switch antes de cada paso. Quedan
   excluidos de la preautorización: workflows, schema, auth, billing, secretos,
   dependencias, datos, release y gasto.

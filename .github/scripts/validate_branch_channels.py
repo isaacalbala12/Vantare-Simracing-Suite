@@ -69,6 +69,11 @@ def validate(
     *,
     tc_attestation: object | None = None,
 ) -> str:
+    if tc_attestation is not None and not (
+        event == "pull_request" and base == "nightly" and _is_tc_branch(head)
+    ):
+        raise ValueError("automatic attestation supplied for a non-automatic branch")
+
     if event == "push":
         if ref not in ALLOWED_PUSH_REFS:
             raise ValueError(f"push ref {ref!r} is not a channel branch")
@@ -93,8 +98,6 @@ def validate(
                 raise ValueError("trusted attestation required for automatic branch")
             validate_tc_attestation(tc_attestation, expected_head=head)
             return f"tc preauthorization accepted: {head} -> nightly"
-        if tc_attestation is not None:
-            raise ValueError("automatic attestation supplied for a non-automatic branch")
         if not ISSUE_BRANCH.fullmatch(head):
             raise ValueError(
                 "promotion to 'nightly' requires a Linear issue branch named "
@@ -138,7 +141,10 @@ def validate_tc_attestation(
     }
     if set(attestation) != keys:
         raise ValueError("attestation has missing or unknown fields")
-    if attestation["attestation_version"] != 2:
+    if (
+        type(attestation["attestation_version"]) is not int
+        or attestation["attestation_version"] != 2
+    ):
         raise ValueError("unsupported attestation version")
     if attestation["contract"] != TC_ATTESTATION_CONTRACT:
         raise ValueError("unsupported attestation contract")

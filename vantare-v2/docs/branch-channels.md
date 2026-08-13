@@ -46,8 +46,9 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 La corrección automática del Testing Center usa exclusivamente la rama
 `vantareapp/tc-<12 hex minúsculas>-<slug seguro>` (sufijo opcional `-revert`).
-`<slug seguro>` son minúsculas, dígitos y guiones; `-revert` solo puede ser el
-token final y nunca aparece en medio del slug.
+`<slug seguro>` son segmentos de minúsculas y dígitos separados por un único
+guion, sin guion inicial, final ni doble; `revert` solo puede ser el token final
+y nunca aparece en medio del slug.
 
 - La preautorización alcanza únicamente PR de esa rama a `nightly`.
 - La rama automática nunca se dirige a `testers` ni `master`, y nunca hace push
@@ -63,6 +64,25 @@ token final y nunca aparece en medio del slug.
   configura credenciales, dispatch ni ruleset.
 - No se habilita ninguna ruleset ni auto-merge sin autorización expresa de
   Isaac.
+
+La fuente ejecutable de la atestación cerrada es
+`.github/scripts/validate_branch_channels.py::validate_tc_attestation`. Exige:
+
+- repositorio, rama y `base_sha`/`head_sha` exactos, digest y `job_key` SHA-256
+  canónico cuyo prefijo de 12 hex coincide con la rama;
+- policy `testing-center.autofix-policy.v2` elegible, riesgo `low`, entre cero y
+  cinco archivos productivos y TDD probado;
+- review Opus `approve` sobre el mismo `head_sha`, con P0/P1/P2 enteros en cero;
+- exactamente `Validate promotion path` y `Validate Vantare blocking gates`,
+  ambos `success`, emitidos por `github-actions` sobre ese mismo `head_sha`.
+
+Antes de retirar la inercia, ISA-322 debe verificar criptográficamente la
+procedencia y, en el instante de encolar o integrar, comparar `head_sha` con el
+head vivo de la PR, `base_sha` con el tip vivo de `nightly` y recomputar el
+digest desde el árbol verificado. También debe implementar el kill switch antes
+de cada efecto, hacer bloqueantes lint/visuales cuando apliquen y demostrar que
+todas las exclusiones anteriores se aplican en el gate. Una firma válida pero
+obsoleta o reusada falla cerrada.
 
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.

@@ -85,6 +85,8 @@ de Isaac.
   una rama `tc-*` sin atestación confiable. ISA-322 debe verificar
   criptográficamente su procedencia antes de pasar los claims al validador;
   un marcador dentro del payload no concede autoridad.
+- `docs/branch-channels.md` fija los claims, checks y pruebas de frescura
+  exactos que deben cumplirse antes de cualquier activación.
 - Cualquier efecto es revocable mediante kill switch antes de cada paso.
 - Excluidas de la preautorización: workflows, schema, auth, billing, secretos,
   dependencias, datos, release y gasto.

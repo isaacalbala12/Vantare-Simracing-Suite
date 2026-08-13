@@ -168,6 +168,21 @@ class TcBranchPreauthorizationTest(unittest.TestCase):
                 "vantareapp/isa-318",
                 tc_attestation=valid_attestation(),
             )
+        for event, base, head in (
+            ("pull_request", "testers", "nightly"),
+            ("pull_request", "master", "vantareapp/hotfix-isa-9-fix"),
+            ("push", "", ""),
+        ):
+            with self.subTest(event=event, base=base, head=head), self.assertRaisesRegex(
+                ValueError, "non-automatic branch"
+            ):
+                validate(
+                    event,
+                    "refs/heads/nightly" if event == "push" else "refs/pull/50/merge",
+                    base,
+                    head,
+                    tc_attestation=valid_attestation(),
+                )
 
     def test_rejects_malformed_tc_branches_into_nightly(self) -> None:
         for head in (
@@ -220,6 +235,21 @@ class TcBranchPreauthorizationTest(unittest.TestCase):
                 "--manifest",
                 "attacker.json",
             ])
+
+    def test_cli_rejects_tc_branch_without_attestation(self) -> None:
+        with redirect_stderr(StringIO()) as error_output:
+            self.assertEqual(
+                main([
+                    "--event",
+                    "pull_request",
+                    "--base",
+                    "nightly",
+                    "--head",
+                    "vantareapp/tc-0123456789ab-slug-fix",
+                ]),
+                1,
+            )
+        self.assertIn("trusted attestation required", error_output.getvalue())
 
 
 def valid_attestation() -> dict:
@@ -506,6 +536,10 @@ class TcAttestationV2Test(unittest.TestCase):
             self.validate(attestation)
         attestation = valid_attestation()
         attestation["attestation_version"] = 1
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["attestation_version"] = 2.0
         with self.assertRaises(ValueError):
             self.validate(attestation)
 

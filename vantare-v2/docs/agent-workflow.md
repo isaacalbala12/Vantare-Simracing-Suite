@@ -58,6 +58,8 @@ La ruta permanece inerte:
 - ISA-322 debe verificar criptográficamente la procedencia de la atestación v2
   antes de pasar sus claims cerrados al validador semántico; un marcador dentro
   del payload nunca demuestra esa verificación;
+- `docs/branch-channels.md` fija el contenido exacto de los claims, sus checks
+  y las comparaciones de frescura obligatorias;
 - cada efecto se revoca con kill switch antes de ejecutarse;
 - quedan excluidos workflows, schema, auth, billing, secretos, dependencias,
   datos, release y gasto;

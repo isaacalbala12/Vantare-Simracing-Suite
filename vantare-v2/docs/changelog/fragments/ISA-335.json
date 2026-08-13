@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-335",
+  "type": "fix",
+  "summary": "Overlay Studio permite guardar perfiles que usan diseños Vantare Endurance.",
+  "technicalNotes": [
+    "La persistencia V3 reconoce Vantare Endurance tanto como sistema activo o predeterminado como dentro de las memorias visuales de cada widget.",
+    "La biblioteca de diseños acepta plantillas de Vantare Endurance y continúa rechazando identificadores desconocidos."
+  ],
+  "testing": [
+    "Aplicar un diseño Vantare Endurance a un widget, cambiar después a otro sistema y pulsar Guardar.",
+    "Cerrar y volver a abrir el perfil; comprobar que el diseño actual y la memoria de Vantare Endurance se conservan sin mostrar unsupported design system."
+  ],
+  "knownLimitations": []
+}

@@ -58,8 +58,9 @@ var supportedWidgetDesignTypes = map[string]bool{
 }
 
 var supportedWidgetDesignSystems = map[string]bool{
-	string(config.DesignSystemVantareOriginal): true,
-	string(config.DesignSystemVantareCrystal):  true,
+	string(config.DesignSystemVantareOriginal):  true,
+	string(config.DesignSystemVantareCrystal):   true,
+	string(config.DesignSystemVantareEndurance): true,
 }
 
 // WidgetDesignV1 is the versioned user/official widget design wire shape.

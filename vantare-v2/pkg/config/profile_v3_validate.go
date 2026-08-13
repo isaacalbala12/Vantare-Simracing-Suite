@@ -254,7 +254,7 @@ func validateWidgetVisualSelectionV3(path string, visual WidgetVisualSelectionV3
 
 func isSupportedDesignSystemID(systemID DesignSystemID) bool {
 	switch systemID {
-	case DesignSystemVantareOriginal, DesignSystemVantareCrystal:
+	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance:
 		return true
 	default:
 		return false

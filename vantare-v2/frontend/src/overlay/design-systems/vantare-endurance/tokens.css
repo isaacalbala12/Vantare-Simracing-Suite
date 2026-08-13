@@ -2475,6 +2475,20 @@
   letter-spacing: 0.16em;
 }
 
+/* Same trap the pressure fill had: a transition cannot run on the frame an
+   element mounts, so the approach bar arrived at full length instead of
+   reaching out. A keyframe states both ends and plays on a new node. */
+@keyframes ven-rel-approach-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 [data-widget-system="vantare-endurance"] .ven-rel-approach {
   position: absolute;
   left: 8px;
@@ -2482,7 +2496,16 @@
   border-radius: 2px;
   background: linear-gradient(90deg, #c1121f, #ff4d5c);
   box-shadow: 0 0 8px rgba(255, 77, 92, 0.5);
+  transform-origin: left center;
+  animation: ven-rel-approach-in 260ms ease-out both;
   transition: right 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-rel-approach {
+    animation: none;
+    transition: none;
+  }
 }
 
 [data-widget-system="vantare-endurance"] .ven-rel-approach[data-side="ahead"] {
@@ -2875,6 +2898,9 @@
    pedal reached, revealed only once the driver eases off it, so it answers
    "did I get back to the same pressure this lap?" without adding anything to
    look at while the foot is still going down. */
+/* Always mounted, shown by opacity. Rendering it only while it applies made
+   it blink in and out at each end of a braking event; a mounted element can
+   fade both ways. */
 [data-widget-system="vantare-endurance"] .ven-pred-peak {
   position: absolute;
   left: 0;
@@ -2883,11 +2909,16 @@
   border-radius: 1px;
   background: rgba(232, 232, 232, 0.55);
   box-shadow: 0 0 5px rgba(232, 232, 232, 0.28);
+  opacity: 0;
   /* Centres the line on the peak height. Without this, a 100% peak sits
      entirely above the well and the clip hides it — exactly the peak worth
      seeing. */
   transform: translateY(50%);
-  transition: bottom 120ms linear, opacity 160ms ease-out;
+  transition: bottom 120ms linear, opacity 220ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-pred-peak[data-visible="true"] {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -666,6 +666,6 @@ Evidencia Task 4 y cierre acumulado:
 
 - Isaac señaló que el renderer productivo no respetaba las proporciones del HTML `docs/overlay-vantare-crystal-widgets.html`. La issue acota el cambio a `input-crystal-blade`; no modifica el layout documental compartido ni los renderers Original, Capsule o Dense.
 - El Blade ahora contiene una tarjeta interna 400:70 centrada y muestra solo marcha, velocidad y RPM. Las unidades de consulta del contenedor mantienen la composición al redimensionar la caja sin estiramiento ni overflow.
-- Evidencia: focal 52/52; suite frontend 367 archivos y 2636/2636; build; ESLint focal; diseño 3/3; diff-check, todos PASS. T3 midió relación 5,714:1 y cero overflow a 400×70 y 816×86; Original conserva cero overflow a 360×140.
+- Evidencia tras sincronizar `nightly`: focal 52/52; suite frontend 369 archivos y 2645/2645; build; ESLint focal; diseño 3/3; diff-check, todos PASS. T3 midió relación 5,714:1 y cero overflow a 400×70 y 816×86; Original conserva cero overflow a 360×140.
 - Riesgo conocido: el manifiesto/baseline Crystal histórico aún representa el Blade complejo 780×96 de otro HTML. ISA-339 lo reconciliará en un corte separado para no mezclar regeneración de evidencia visual histórica con este renderer fix.
-- Rama basada en `origin/nightly@b635d795`; entrega lista para review, sin merge, promoción ni release.
+- Rama creada desde `origin/nightly@b635d795` y sincronizada antes de la entrega con `origin/nightly@4e1035c`; lista para review, sin merge de PR, promoción ni release.

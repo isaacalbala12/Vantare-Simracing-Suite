@@ -5432,9 +5432,9 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
 
 ## ISA-336 — proporción de Crystal Telemetry Blade (2026-08-14)
 
-- Rama aislada `vantareapp/isa-336-overlay-studio-input-telemetry-debe-respetar-la-proporcion`, basada en `origin/nightly@b635d795`; no se trabajó sobre `nightly` ni sobre el checkout `refactor` con cambios locales.
+- Rama aislada `vantareapp/isa-336-overlay-studio-input-telemetry-debe-respetar-la-proporcion`, creada desde `origin/nightly@b635d795` y sincronizada antes de la entrega con `origin/nightly@4e1035c`; no se trabajó sobre `nightly` ni sobre el checkout `refactor` con cambios locales.
 - El renderer `input-crystal-blade` adopta el contrato compacto de `docs/overlay-vantare-crystal-widgets.html`: marcha, velocidad y RPM dentro de una composición 400:70 centrada. La caja documental del widget no cambia y los diseños Original, Capsule y Dense quedan fuera del cambio.
-- Evidencia final local: focal 52/52, frontend 367 archivos y 2636/2636 tests PASS, build PASS, ESLint focal PASS, `design-system:check` 3/3 y `git diff --check` PASS. Vitest conserva dos `AbortError` de teardown después del resumen con exit 0; Vite conserva el warning histórico de chunk grande.
+- Evidencia final local tras sincronizar `nightly`: focal 52/52, frontend 369 archivos y 2645/2645 tests PASS, build PASS, ESLint focal PASS, `design-system:check` 3/3 y `git diff --check` PASS. Vitest conserva dos `AbortError` de teardown después del resumen con exit 0; Vite conserva el warning histórico de chunk grande.
 - Verificación T3: Blade sin overflow a 400×70 y a 816×86, con relación interna 5,714:1; Original sin overflow a 360×140.
 - El manifiesto visual histórico todavía atribuye al Blade la composición 780×96 de `overlay-glassmorphism-pro.html`. ISA-339 registra su reconciliación; no se regeneran baselines contradictorios dentro de este bugfix.
 - Estado: listo para review; sin merge, promoción ni release. El siguiente paso es revisión de Isaac y, solo tras aprobación, integración canónica en `nightly`.

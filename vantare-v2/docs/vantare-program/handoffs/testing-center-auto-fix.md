@@ -28,7 +28,7 @@ está superada como arquitectura de ejecución.
 - Fase: contratos, persistencia, triage, dispatch, TDD cloud, diff gate y review
   independiente entregados en ramas aisladas; runtime apagado.
 - Issues de ejecución: ISA-319, ISA-320, ISA-321 e ISA-323 entregadas para
-  revisión; ISA-322 es el siguiente corte dependiente.
+  revisión; ISA-318 es el siguiente corte y desbloquea ISA-322.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -193,19 +193,19 @@ determinista.
 
 ### Siguientes cortes vigentes
 
-1. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
-2. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
+1. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
+2. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
 3. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
 4. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
 Revisar los PR draft #213–#216 contra sus SHAs remotos y respetar el orden
-ISA-319 -> ISA-320 -> ISA-321 -> ISA-323. Continuar ISA-322 sin crear nuevas
-issues, declarando cualquier apilado temporal y sin activar red, credenciales o
-una ruta que salte `nightly`. El claim tipado, el reconciliador y los dos P3 de
-activación son condiciones obligatorias antes del piloto, reutilizando
-ISA-318–325.
+ISA-319 -> ISA-320 -> ISA-321 -> ISA-323. Continuar ISA-318 y, solo después,
+ISA-322 sin crear nuevas issues, declarando cualquier apilado temporal y sin
+activar red, credenciales o una ruta que salte `nightly`. El claim tipado, el
+reconciliador y los dos P3 de activación son condiciones obligatorias antes del
+piloto, reutilizando ISA-318–325.
 
 Checks de ISA-317:
 

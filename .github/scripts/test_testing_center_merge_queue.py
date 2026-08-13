@@ -152,6 +152,7 @@ class ReleaseMetadataTest(unittest.TestCase):
         replay = prepare_release(JOB, TAG, "e" * 64)
         self.assertEqual(first, replay)
         self.assertEqual(first.rpc, "testing_center_reserve_agent_resource")
+        self.assertEqual(first.job_key, JOB)
         self.assertEqual(first.reservation_kind, "nightly_release")
         self.assertEqual(first.reservation_key, TAG)
         self.assertEqual(first.binding_digest, "e" * 64)

@@ -48,10 +48,17 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertNotIn('--head "${{ github.head_ref }}"', workflow)
         self.assertIn("ref: ${{ github.sha }}", workflow)
         self.assertIn(
-            "ENFORCE_TESTING_CENTER_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}",
+            "AUTOMATIC_TC_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}",
             workflow,
         )
         self.assertNotIn("github.event_name == 'merge_group' ||", workflow)
+        self.assertIn('if [ "$AUTOMATIC_TC_SCOPE" != "true" ]; then', workflow)
+        self.assertIn('DIFF_BASE_SHA="$(git rev-parse "$GITHUB_SHA^1")"', workflow)
+        self.assertIn(
+            'git diff --name-only --diff-filter=ACMR -z "$DIFF_BASE_SHA" "$GITHUB_SHA"',
+            workflow,
+        )
+        self.assertNotIn("github.event.pull_request.base.sha", workflow)
         self.assertIn(
             "if ($paths.Count -gt 0) {\n"
             "            & pnpm exec eslint -- @paths\n"

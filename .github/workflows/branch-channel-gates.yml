@@ -97,25 +97,26 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Classify changed scope
+      - name: Classify changed automatic scope
         working-directory: ${{ github.workspace }}
         shell: bash
         env:
-          ENFORCE_TESTING_CENTER_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          AUTOMATIC_TC_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}
+          EVENT_NAME: ${{ github.event_name }}
           CHANGED_SCOPE_PATH: ${{ runner.temp }}/testing-center-changed-scope.json
         run: |
           set -euo pipefail
-          test "$BASE_SHA" != "0000000000000000000000000000000000000000"
-          git diff --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/changed-paths.bin"
-          scope_args=()
-          if [ "$ENFORCE_TESTING_CENTER_SCOPE" = "true" ]; then
-            scope_args+=(--enforce-testing-center-scope)
+          if [ "$AUTOMATIC_TC_SCOPE" != "true" ]; then
+            printf '%s\n' '{"eligible":true,"lint_paths":[],"reasons":[],"visual_required":false}' > "$CHANGED_SCOPE_PATH"
+            exit 0
           fi
+          test "$EVENT_NAME" = "pull_request"
+          DIFF_BASE_SHA="$(git rev-parse "$GITHUB_SHA^1")"
+          git diff --name-only --diff-filter=ACMR -z "$DIFF_BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/changed-paths.bin"
           python .github/scripts/testing_center_changed_lint.py \
             --nul-file "$RUNNER_TEMP/changed-paths.bin" \
             --output "$CHANGED_SCOPE_PATH" \
-            "${scope_args[@]}"
+            --enforce-testing-center-scope
 
       - name: Add Go bin to PATH
         run: echo "$env:USERPROFILE\go\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8

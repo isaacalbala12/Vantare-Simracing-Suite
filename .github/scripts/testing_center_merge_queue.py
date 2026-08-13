@@ -34,6 +34,7 @@ class QueueDecision:
 @dataclass(frozen=True)
 class ReleasePlan:
     rpc: str
+    job_key: str
     reservation_kind: str
     reservation_key: str
     binding_digest: str
@@ -53,6 +54,7 @@ def prepare_release(job_key: str, reserved_tag: str, binding_digest: str) -> Rel
     public_issue = f"TC-{job_key[:12].upper()}"
     return ReleasePlan(
         rpc="testing_center_reserve_agent_resource",
+        job_key=job_key,
         reservation_kind="nightly_release",
         reservation_key=reserved_tag,
         binding_digest=binding_digest,

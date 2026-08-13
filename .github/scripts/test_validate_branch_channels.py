@@ -98,6 +98,22 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             validate("pull_request", "refs/pull/1/merge", "nightly", "vantareapp/isa-121"),
             "promotion accepted: vantareapp/isa-121 -> nightly",
         )
+        self.assertEqual(
+            validate(
+                "pull_request",
+                "refs/pull/218/merge",
+                "nightly",
+                "vantareapp/isa-322-haf-08-ci-merge_group-bootstrap-y-merge-queue-serializada",
+            ),
+            "promotion accepted: vantareapp/isa-322-haf-08-ci-merge_group-bootstrap-y-merge-queue-serializada -> nightly",
+        )
+        for head in (
+            "vantareapp/isa-322-_merge-group",
+            "vantareapp/isa-322-merge__group",
+            "vantareapp/isa-322-merge_group_",
+        ):
+            with self.subTest(head=head), self.assertRaises(ValueError):
+                validate("pull_request", "refs/pull/218/merge", "nightly", head)
 
     def test_accepts_only_nightly_into_testers(self) -> None:
         self.assertEqual(

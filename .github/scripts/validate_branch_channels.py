@@ -20,7 +20,9 @@ ALLOWED_PULL_REQUESTS = {
     "testers": "nightly",
     "master": "testers",
 }
-ISSUE_BRANCH = re.compile(r"^vantareapp/isa-[1-9][0-9]*(?:-[a-z0-9]+)*$")
+ISSUE_BRANCH = re.compile(
+    r"^vantareapp/isa-[1-9][0-9]*(?:-[a-z0-9]+(?:_[a-z0-9]+)*)*$"
+)
 HOTFIX_BRANCH = re.compile(
     r"^vantareapp/hotfix-isa-[1-9][0-9]*(?:-[a-z0-9]+)*$"
 )

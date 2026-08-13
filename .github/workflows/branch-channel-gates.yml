@@ -38,6 +38,18 @@ jobs:
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py
 
+      - name: Test Testing Center deterministic diff gate
+        run: python .github/scripts/test_testing_center_diff_gate.py
+
+      - name: Test Testing Center trusted manifest collector
+        run: python .github/scripts/test_testing_center_manifest_collector.py
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+
+      - name: Test Testing Center agent workflow contract
+        run: deno test --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts
+
   product:
     name: Validate Vantare blocking gates
     needs: policy

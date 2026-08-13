@@ -24,13 +24,16 @@ no modifica por sí sola un contrato de producto o arquitectura.
 ## Fase activa
 
 Isaac aceptó humanamente ISA-313 / ENG-R01 Fase 5 el 2026-08-12 y dejó vigente
-la arquitectura documental y el [plan de Spotter](phases/spotter/plan.md). S1
-está en **replanning técnico con ISA-327** y rama propia
-`vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; la
-implementación no ha comenzado hasta aprobar su microplan (cortes A/B/C). La
-prueba manual de cada corte crece en la pestaña Ingeniero (frontend) sin crear
-lógica paralela de debug. La
-única aceptación acumulativa de la fase Spotter es
+la arquitectura documental y el [plan de Spotter](phases/spotter/plan.md). Isaac
+aprobó el microplan S1 (cortes A/B/C, incluido el cambio visible Spotter ES→EN)
+el 2026-08-13 en la rama
+`vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; S1 está
+iniciado solo a nivel de autorización, sin código aún; Corte A es la única
+siguiente implementación. La prueba manual de cada corte crece en la pestaña
+Ingeniero (frontend) sin crear lógica paralela de debug; la superficie visual
+temporal Testing/Diagnóstico puede crecer en issue/Nightly/Testers pero se
+retira o excluye antes de promover a master (gate con prueba automática en el
+cierre S7/promoción). La única aceptación acumulativa de la fase Spotter es
 [acceptance.md](phases/spotter/acceptance.md).
 
 ## Lectura por rol

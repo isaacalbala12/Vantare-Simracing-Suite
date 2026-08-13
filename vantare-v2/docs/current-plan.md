@@ -13,7 +13,7 @@
 - Los contratos del [expediente canonico](vantare-program/README.md), el
   [mapa de proyectos](vantare-program/project-map.md) y el handoff vivo de cada
   proyecto explican fronteras y detalle. Un handoff no sustituye a Linear.
-- Base integrada comprobada de este corte: merge-base productivo `8880a8800e07e2af21fe5ff37a714578bf8fcd00`. Observación 2026-08-12 (tras fetch): `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330); sin deriva en `internal/engineer` y cambios `cmd/vantare` solo Overlay Studio, sin deriva funcional Engineer; el SHA de Nightly es observación, no autoridad fija.
+- Base integrada comprobada de este corte: merge-base productivo `8880a8800e07e2af21fe5ff37a714578bf8fcd00`. Observación 2026-08-13 (tras fetch): `origin/nightly` en `b6df494298578ff9a043bbd9b48a66eb1512010f` (publicación #211); sin deriva en `internal/engineer` y cambios `cmd/vantare` ajenos al wiring Engineer; el SHA de Nightly es observación, no autoridad fija.
 - El flujo obligatorio sigue siendo `rama de issue -> nightly -> testers -> master`.
   Terminado, integrado, promocionado y publicado son estados distintos; las
   promociones reservadas requieren la aprobacion explicita de Isaac.
@@ -66,31 +66,30 @@
 
 ## Engineer / Spotter
 
-- **Estado demostrado:** ENG-01..12, ENG-14 y ENG-15 estan en Nightly. La
-  vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la
-  aceptacion LMU extremo a extremo no estan demostrados.
-- **Issue activa:** ISA-327 / ENG-S1 — replanning técnico de S1 (autoridades y
-  baseline confiable), `In Progress` en Linear con comentario/attachment de PR.
-  Rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable` con
-  rango funcional final `ba3b45d` en PR #210 remoto `OPEN`+`DRAFT`+`CLEAN`
-  apilado sobre ISA-313/PR #196 (no nightly) para review aislada; al integrar
-  #196, #210 se retargetea a nightly y se revalida. GitGuardian `SUCCESS`; gates
-  completos branch-channel no ejecutados en esta base: no se declara CI completa;
-  sin merge/promoción/release. ISA-313 / ENG-R01 sigue como padre aceptado el
-  2026-08-12; S1 no iniciado, incluye el mínimo frontend en la pestaña Ingeniero
-  y requiere nueva aprobación humana tras la reconciliación.
-- **Evidencia/publicacion:** el
-  [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
-- **Bloqueo:** ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen `Backlog` en Linear.
-  ISA-314 conserva el bug de guardado (footer preexistente de guardado automático, no corregido en S1); S2/ISA-189, S4/ISA-187 e ISA-314 quedan diferidos hasta cerrar S1.
-- **Siguiente accion:** tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
-  obtener la review final Claude cuando la cuota lo permita (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus/Fable finales pendientes por cuota; Opus anterior no es final PASS);
-  solo después aprobar humanamente el [microplan de S1](engineer/phases/spotter/plan.md) y decidir el cambio visible Spotter ES→EN. No iniciar Corte A aún.
+- **Estado demostrado:** ENG-01..12, ENG-14 y ENG-15 estan en Nightly; la vertical Spotter existe, pero audio audible, multiclase, FCY/game phase y la aceptacion LMU extremo a extremo no estan demostrados.
+- **Issue activa:** ISA-327 / ENG-S1 `In Progress` en Linear. Rama
+  `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`; rango
+  final `ba3b45d` en PR #210 remoto `OPEN`+`DRAFT`+`CLEAN`, apilado sobre
+  ISA-313/PR #196 (`OPEN`+`DRAFT`+`DIRTY`, sin integrar); al integrar #196,
+  #210 se retargetea a nightly. GitGuardian `SUCCESS`; gates branch-channel no
+  ejecutados en esta base; sin merge/promoción/release. Microplan S1 aprobado
+  por Isaac el 2026-08-13 (incluido el cambio visible Spotter ES→EN del Corte
+  C); S1 iniciado solo a nivel de autorización, sin código aún; Corte A única
+  implementación siguiente; `origin/nightly` 2026-08-13 `b6df4942` (#211) sin
+  deriva `internal/engineer` ni wiring Engineer en `cmd/vantare`.
+- **Evidencia/publicacion:** el [handoff vivo](vantare-program/handoffs/engineer-spotter.md) es la unica autoridad mutable de rama/SHA/PR/CI/reviews; este indice no lo duplica.
+- **Bloqueo:** ISA-187/ENG-16 e ISA-189/ENG-18 siguen `Backlog`; ISA-314 conserva el bug de guardado (no corregido en S1); S2/ISA-189, S4/ISA-187 e ISA-314 diferidos hasta cerrar S1.
+- **Siguiente accion:** implementar Corte A del [microplan S1](engineer/phases/spotter/plan.md) via worker subagente (unica siguiente; B/C despues); al integrar #196, retargetear #210 a nightly y revalidar (gate: deriva funcional Engineer en `internal/engineer` o wiring/call sites en `cmd/vantare` vs `8880a880`);
+  obtener la review final Opus/Fable como gate adversarial al cierre (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus anterior no es final PASS); su cuota previa no bloquea el arranque de A por aprobacion explicita.
+- **Gate master:** la seccion visual temporal Testing/Diagnostico de la pestana
+  Ingeniero puede existir y crecer en issue/Nightly/Testers, pero debe retirarse
+  o quedar totalmente excluida antes de promover a master (no visible en
+  master). Tests y contratos productivos se conservan; retirada replanificada en
+  S7/promocion master con prueba automatica que falle si la superficie es visible.
 - **Entrada de planificacion:** [router Engineer](engineer/README.md),
   [handoff vivo](vantare-program/handoffs/engineer-spotter.md),
-  [roadmap general](engineer/engineer-beta-roadmap.md) y
-  [aceptacion](engineer/phases/spotter/acceptance.md). Todo cambio tecnico
-  Engineer/Spotter lo implementa un worker subagente.
+  [roadmap](engineer/engineer-beta-roadmap.md) y
+  [aceptacion](engineer/phases/spotter/acceptance.md). Todo cambio tecnico Engineer/Spotter lo implementa un worker subagente.
 
 ## Strategy Planner
 

@@ -1,6 +1,6 @@
 # Handoff vivo — Engineer/Spotter
 
-Estado verificado: 2026-08-12. Este documento conserva solo el presente; Git y
+Estado verificado: 2026-08-13. Este documento conserva solo el presente; Git y
 Linear preservan la historia.
 
 ## Resultado
@@ -34,9 +34,9 @@ research quedan fuera de su context pack.
 - Rama de ISA-327:
   `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`.
 - Base apilada de este corte: productiva merge-base `8880a8800e07e2af21fe5ff37a714578bf8fcd00`
-  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-12 (tras fetch):
-  `origin/nightly` en `234794d238a59fa14be53431065bf88eca46459a` (ISA-330 #208); sin deriva en `internal/engineer`;
-  cambios `cmd/vantare` (main.go, main_test.go) solo Overlay Studio/window/profile, sin wiring/call sites Engineer; el SHA de Nightly es observación, no autoridad fija.
+  y padre documental ISA-313 `7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca`. Observación 2026-08-13 (tras fetch):
+  `origin/nightly` en `b6df494298578ff9a043bbd9b48a66eb1512010f` (publicación #211); sin deriva en `internal/engineer`;
+  cambios `cmd/vantare` ajenos al wiring Engineer; el SHA de Nightly es observación, no autoridad fija.
 - PR #210 `OPEN` + `DRAFT` + `CLEAN` (https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/210):
   rango funcional/documental final en `ba3b45d`, remoto y verificado. Base temporal apilada sobre
   `vantareapp/isa-313-eng-r01-reconciliar-nightly-y-replanificar-spotter` (PR padre #196), no nightly:
@@ -49,7 +49,8 @@ research quedan fuera de su context pack.
 - Cierre remoto previo auditado en `b2519a25`: PR #196 `OPEN` + `DRAFT`, base
   `nightly`, merge state `CLEAN`; sin merge ni promoción. Checks de ese cierre:
   `Validate promotion path` `SUCCESS`, `Validate Vantare blocking gates`
-  `SUCCESS` y GitGuardian `SUCCESS`.
+  `SUCCESS` y GitGuardian `SUCCESS`. Estado actual 2026-08-13: PR #196
+  `OPEN`+`DRAFT`+`DIRTY` y no se integra; #210 sigue apilado sobre su rama.
 - Cierre funcional documental de Corte B ISA-313: rango local
   `90a0905e0f7198623c80c2b6f8f3c63945abae82..ebc0dfb533ffcb41b680ad51d1ef79ecac478695`.
   Reviews del cierre funcional: spec `ACCEPT`, quality `READY`, navegación
@@ -59,11 +60,11 @@ research quedan fuera de su context pack.
   banners y el router mitigan la colisión; moverlo exige issue y alcance aparte.
 - Review final DeepSeek V4 Flash max (spec + quality) sobre el rango funcional
   final `ba3b45d`: ACCEPT sin P0-P3. La review final Opus/Fable queda pendiente
-  por cuota de sesión y no se marca como superada; la review Opus anterior no es
-  final PASS.
-- El microplan de S1 no está aceptado ni S1 iniciado; requiere nueva aprobación
-  humana tras la reconciliación y la decisión visible Spotter ES→EN queda
-  pendiente.
+  por cuota y sigue como gate adversarial al cierre; no bloquea el arranque de
+  A por aprobación explícita de Isaac; la review Opus anterior no es final PASS.
+- El microplan S1 fue aprobado por Isaac el 2026-08-13 (cortes A/B/C, incluido
+  el cambio visible Spotter ES→EN del Corte C); S1 iniciado solo a nivel de
+  autorización, sin código aún; Corte A es la única siguiente implementación.
 
 ## Capacidades demostradas
 
@@ -107,6 +108,13 @@ research quedan fuera de su context pack.
   incluye solo el mínimo frontend necesario para probar lo que S1 incorpore;
   persiste la exclusión de persistencia y rediseño de preferencias (ISA-314
   separada).
+- Gate master: la sección visual temporal Testing/Diagnóstico de la pestaña
+  Ingeniero puede existir y crecer en issue/Nightly/Testers para validar, pero
+  debe retirarse o quedar excluida antes de promover a master (no llega visible
+  a master). Tests y contratos productivos se conservan; los controles normales
+  de Engineer no se confunden con la superficie temporal. La retirada se
+  replanifica en el cierre S7/promoción master con prueba automática que falle
+  si la superficie temporal es visible en master.
 - Wiring mínimo S1: se reutilizan las métricas productivas delivery; `delivery.Metrics.record`
   persiste el último delivery state+reason por acknowledgement (`Session.Acknowledge`) y
   `delivery.MetricsSnapshot` lo expone como `lastState`/`lastReason` (camelCase, sin payload),
@@ -150,9 +158,9 @@ research quedan fuera de su context pack.
 
 - Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. La aceptación no cambia
   producto ni inicia S1.
-- ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). Tras la
-  reconciliación de la pestaña Ingeniero, el microplan requiere nueva aprobación
-  humana; la implementación no ha comenzado hasta aprobar su microplan.
+- ISA-327 está `In Progress` y replanifica S1 (cortes A/B/C). Isaac aprobó el
+  microplan el 2026-08-13, incluido el cambio visible Spotter ES→EN del Corte C;
+  S1 iniciado solo a nivel de autorización, sin código aún.
 - ISA-187 / ENG-16 e ISA-189 / ENG-18 siguen en Backlog y bloqueadas por
   ISA-313; S4/ISA-187, S2/ISA-189 e ISA-314 quedan diferidos expresamente hasta
   cerrar S1.
@@ -162,6 +170,5 @@ research quedan fuera de su context pack.
 
 ## Siguiente acción
 
-Tras integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observación, no autoridad fija; sin rebase manual).
-Obtener la review final Claude cuando la cuota lo permita (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; Opus/Fable finales pendientes por cuota; la review Opus anterior no se marca como final PASS).
-Solo después pedir/aplicar la aprobación humana del [microplan de S1](../../engineer/phases/spotter/plan.md) y la decisión visible Spotter ES→EN. No iniciar Corte A ni S2 por anticipado.
+Implementar Corte A del [microplan S1](../../engineer/phases/spotter/plan.md) via worker subagente (unica siguiente implementacion, sin codigo aun en este registro; B/C despues). Al integrar #196 por el flujo autorizado, retargetear #210 a nightly y revalidar (gate: deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer en `cmd/vantare` respecto a `8880a880`; el SHA de Nightly es observacion, no autoridad fija; sin rebase manual).
+Obtener la review final Opus/Fable como gate adversarial al cierre (DeepSeek V4 Flash max spec+quality ACCEPT final sin P0-P3; la review Opus anterior no es final PASS); su cuota previa no bloquea el arranque de A por aprobacion explicita de Isaac.

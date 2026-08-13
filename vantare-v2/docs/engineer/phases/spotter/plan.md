@@ -1,10 +1,9 @@
 # Spotter observable — plan de fase
 
-Estado: entrada documental aceptada humanamente por Isaac el 2026-08-12 dentro
-de ISA-313 / ENG-R01 Fase 5. S1 está en replanning técnico con ISA-327 y rama
-propia; la implementación no comienza hasta aprobar el microplan de S1. S2-S7
-siguen como subfases probables. ISA-189 (S2), ISA-187 (S4) e ISA-314 quedan
-diferidos expresamente hasta cerrar S1.
+Estado: entrada documental aceptada por Isaac el 2026-08-12 (ISA-313 Fase 5);
+microplan S1 aprobado el 2026-08-13, incluido el cambio visible Spotter ES→EN
+del Corte C; S1 iniciado solo a nivel de autorización, sin código. S2-S7
+probables; ISA-189 (S2), ISA-187 (S4) e ISA-314 diferidos hasta cerrar S1.
 
 ## Resultado
 
@@ -73,9 +72,9 @@ requiere arquitectura, dependencia o alcance nuevos.
 
 ### S1 — Autoridades y baseline confiable
 
-**Replanning activo ISA-327** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`).
-La implementación no ha comenzado: este microplan debe aprobarse primero.
-Entrada: vertical Nightly existente y riesgos del [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
+**Aprobado por Isaac el 2026-08-13** (rama `vantareapp/isa-327-eng-s1-spotter-autoridades-y-baseline-confiable`),
+incluido el cambio visible Spotter ES→EN del Corte C. S1 iniciado solo a nivel de autorización, sin código aún;
+Corte A es la única siguiente implementación. Entrada: vertical Nightly existente y riesgos del [baseline Vantare](audits/2026-08-11-vantare-baseline.md).
 Resultado: enable/reset, sensibilidad, locale, calidad por rival, secuencia y estado de salida tienen una autoridad honesta; ninguna deuda P1 de integración conocida impide ampliar Spotter (S1 no promete cerrar los P1 de fases futuras).
 
 Invariantes objetivo que S1 hará cumplir (hoy no se cumplen: `SetSpotterEnabled` cancela de forma global, `CancelFamily(FamilySpotter)` no resetea la política Spotter y `SemanticEvidence` hardcodea sensibilidad Normal):
@@ -87,9 +86,8 @@ Invariantes objetivo que S1 hará cumplir (hoy no se cumplen: `SetSpotterEnabled
 - `audio-only` necesita reason contractual válida y no-success; no toca device, player ni audibilidad.
 - El test acumulativo se crea en S1 sobre `EngineerService` productivo (no es replayoracle ni un framework nuevo) y la UI de prueba crece acumulativamente en la pestaña Ingeniero consumiendo los mismos contratos/estado productivos, sin lógica paralela.
 
-Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribuidas a CrewChief. `spotter/geometry.go`, `state.go` y `types.go` se leen
-  solo como contrato; constantes heredadas intactas; cualquier umbral nuevo se rederiva con evidencia propia o falla cerrado. Un corte que exija
-  tocarlas se detiene y pide revisión.
+Clean-room transversal: prohibido modificar/ajustar constantes o lógica de CrewChief. `spotter/geometry.go`, `state.go` y `types.go` se leen solo como
+contrato; constantes heredadas intactas; umbral nuevo se rederiva con evidencia propia o falla cerrado; un corte que exija tocarlas se detiene y pide revisión.
 
 #### Corte A — autoridad de máquina (enable/reset/cancelación/sensibilidad)
 
@@ -103,17 +101,15 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
 - **Tests NUEVOS (toggle, no SetOutputMode):** `service/engineer_service_test.go` — `TestSetSpotterEnabledCancelsOnlySpotterAndPreservesFuel`, `TestSetSpotterEnabledRearmsCleanState` (aserto de regresión verde: tras re-enable no reaparece ningún mensaje Spotter legacy previo al disable, preservando Fuel; `ConsumeObservation` drena íntegramente la cola con `Queue.Next` sin filtrar, ningún camino productivo deja residual Spotter) y "toggle Spotter preserva el visual activo Fuel/Engineer"
   (guard `activePresentation.Category == FamilySpotter`, patrón de `output_policy.go:86-93`); `messagepolicy/scheduler_test.go` — reset aditivo/scoped de política Spotter invocado desde el toggle `SetSpotterEnabled`, preservando Fuel y sin alterar la semántica de `CancelFamily`;
   `core/runtime_test.go` — regresión `TestRuntime_Disabled` + reset acotado; `projectioninput/policy_test.go` — sensibilidad compartida. `spotter_policy_test.go` SOLO LECTURA; los tests de `SetOutputMode` no cubren el toggle.
-- **Orden TDD red-verde:** (1) rojo: re-enable conserva estado Spotter obsoleto (still/clear tardío) porque el toggle no limpia la máquina Spotter; el aserto de no-reemisión legacy es guard verde de regresión, no paso rojo; (2) rojo:
-  Spotter off cancela solo Spotter (sin `queue.Clear()`) y preserva Fuel pendiente/en reproducción; (3) rojo: revalidación usa la misma sensibilidad que el detector; (4) verde mínimo.
+- **Orden TDD red-verde:** (1) rojo: re-enable conserva estado Spotter obsoleto (still/clear tardío) porque el toggle no limpia la máquina Spotter (aserto de no-reemisión legacy es guard verde, no rojo); (2) rojo: Spotter off cancela solo Spotter sin `queue.Clear()` y preserva Fuel pendiente/en reproducción; (3) rojo: revalidación usa la misma sensibilidad que el detector; (4) verde mínimo.
 - **Criterios + validación manual:** `SpotterEnabled=false` no altera `Connected`, no deja `lastError` engañoso ni cancela otras familias; la cancelación visual solo afecta a `activePresentation.Category == FamilySpotter` (patrón `output_policy.go:86-93`) y deja intacto el visual activo Fuel/Engineer;
   re-enable deja la máquina limpia y conserva monitores/familias; el toggle no llama a `queue.Clear()` (cola legacy drenada íntegramente por observación con `Queue.Next` sin filtrar; `audio/queue.go` sin cambios; ningún camino productivo deja residual Spotter; si el aserto legacy resultara rojo, STOP y revisión, sin API nueva ni filtro/cambio lógico en `ConsumeObservation`); cambio de sensibilidad unifica preset y rearme sin estado obsoleto ni versionado nuevo; `Runtime.Reset` global no se invoca por toggle.
   Manual: apagar Spotter con Fuel pendiente/en reproducción y verificar que Fuel sigue saliendo sin desconexión ni error; apagar Spotter con visual activo de Fuel/Engineer y verificar que el visual no se cancela; re-encender sin still/clear fantasma; cambiar sensibilidad y confirmar rearme. Cierra con manual + tests focales; la ruta acumulativa aún no existe y este corte no la amplía.
 - **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/core`;
-  `go test ./internal/engineer/messagepolicy`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/projectioninput`;
-  `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
+  `go test ./internal/engineer/messagepolicy`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** `Reset()` global para un toggle, cancelación de cola completa o API nueva en `audio/queue.go`, versionado nuevo de sensibilidad/evidence, modificar `spotter_policy.go`/`types.go` o `scheduler.go` fuera del cambio mínimo autorizado (reset aditivo/scoped de política Spotter), aserto legacy rojo sin remedio autorizado (STOP y revisión; sin filtro ni cambio lógico en `ConsumeObservation`),
   mover la lógica de secuencia a este corte (es de Corte B), usar tests de `SetOutputMode` como cobertura del toggle, test que aísle Spotter sin regresión, o reutilizar en S1 los lados
-  activos/histéresis topológicos del baseline (diferido a S2). Antes de editar, revalidar Nightly: detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer dentro de `cmd/vantare` respecto a `8880a880`; cambios ajenos en `cmd/vantare` se registran/reconcilian y no bloquean solo por nombre de path. El SHA de `origin/nightly` es observación, no autoridad fija (2026-08-12 tras fetch: `234794d238a59fa14be53431065bf88eca46459a` ISA-330; cambios `cmd/vantare` solo Overlay Studio, sin deriva funcional Engineer); no se hace rebase ahora.
+  activos/histéresis topológicos del baseline (diferido a S2). Antes de editar, revalidar Nightly: detenerse solo por deriva funcional relevante para Engineer en `internal/engineer` o en wiring/call sites Engineer dentro de `cmd/vantare` respecto a `8880a880`; cambios ajenos en `cmd/vantare` se registran/reconcilian y no bloquean solo por nombre de path. El SHA de `origin/nightly` es observación, no autoridad fija (2026-08-13 tras fetch: `b6df494298578ff9a043bbd9b48a66eb1512010f` publicación #211; sin deriva en `internal/engineer` ni wiring Engineer en `cmd/vantare`); no se hace rebase ahora.
 
 #### Corte B — autoridad de entrada (secuencia y filtro por rival)
 
@@ -133,8 +129,7 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
   otras familias no cambian; `Context`/`ClassifyBoundary` y el contrato de observación no cambian. La regresión determinista de snapshots pertenece a los tests focales/evaluación IA, no a inyección desde la UI ni a una promesa falsa de UI. Manual: la parte observable se comprueba con sesión LMU real y la pestaña Engineer (sin ghosts en boundary/reconnect);
   `cmd/spotter-debug` sigue herramienta técnica opcional. Cierra con manual + tests focales; la ruta acumulativa aún no existe.
 - **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/replayoracle`;
-  `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/...`;
-  `go test ./...` como cierre conforme a AGENTS.
+  `go test ./internal/engineer/projectioninput`; `go test ./internal/engineer/spotter`; `go test ./internal/engineer/...`; `go test ./...` como cierre conforme a AGENTS.
 - **Stop conditions:** divergencia de secuencia entre service y replayoracle, filtro que afecte a otra familia, cambio del contrato de
   observación/proyección, o modificar `geometry.go`/su test/`policy.go` en este corte.
 
@@ -163,8 +158,7 @@ Clean-room transversal: prohibido modificar/ajustar constantes o lógica atribui
   `audio-only` falla cerrado con no-success y reason contractual (clip/resolver/mismatch ausentes o player ausente por backend no configurado) sin cambiar el player; la ruta S1 es ejecutable y
   evaluable por IA con fallo visible ante precondiciones ausentes. El corte C cubre acumulativamente A+B+C: ejercita enable/sensibilidad/secuencia/filtro junto con la salida en la misma ruta. Manual: sin
   cache, un modo `audio-only` no afirma salida y expone la causa; con cache del locale correcto, la ruta S1 entrega audio o degradación honesta; validar cada control/estado desde la pestaña Ingeniero (ruta manual primaria; `cmd/spotter-debug` queda como herramienta técnica); confirmar que no se abrió el player real ni se tocó el wiring de composición.
-- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/audio`;
-  `go test ./internal/engineer/delivery`; `go test ./internal/engineer/...`; `go test ./...`; test focal frontend `EngineerPage.test.tsx`; `pnpm --dir frontend test` (suite completa), `pnpm --dir frontend lint` y `pnpm --dir frontend build` como cierre conforme a AGENTS.
+- **Comandos (desde `vantare-v2/`, tras `gofmt` en los `.go` modificados):** `go test ./internal/engineer/service`; `go test ./internal/engineer/audio`; `go test ./internal/engineer/delivery`; `go test ./internal/engineer/...`; `go test ./...`; test focal frontend `EngineerPage.test.tsx`; `pnpm --dir frontend test` (suite completa), `pnpm --dir frontend lint` y `pnpm --dir frontend build` como cierre conforme a AGENTS.
 - **Stop conditions:** cambio en device/player/hotplug/ducking/audibilidad, reason no válida en `knownReason`/`validStateReason`, ampliación innecesaria de estados de delivery, exponer selector ES/EN o prometer configuración de ambos idiomas por canal en S1, crear app/ruta/renderer/estado/lógica paralela de debug, inyección arbitraria de telemetría o store frontend nuevo, mapa/estado nuevo de locale, payload en `MetricsSnapshot`, modificar `internal/app/engineer_bridge.go` o crear evento nuevo, cambiar OBS/Desktop/store, persistencia o rediseño de preferencias en S1 (ISA-314 separada), cambiar el parsing de `ParseLocale`/`Resolver`, modificar
   `audio/config.go`, `cmd/vantare/main.go`, `audio/router.go` o `output_policy.go`, replayoracle como base del test acumulativo, o ruta acumulativa creada antes que los tests focales de A y B.
 
@@ -218,3 +212,9 @@ Cada subfase amplía [acceptance.md](acceptance.md); no crea otro protocolo ni
 un documento por worker. Los reportes de workers son respuestas estructuradas.
 La fase solo cierra cuando la aceptación acumulativa completa pasa, los límites
 siguen visibles y handoff, Linear y documentos vivos reflejan el mismo estado.
+
+Gate master: la sección visual temporal Testing/Diagnóstico de la pestaña
+Ingeniero puede existir y crecer en issue/Nightly/Testers para validar, pero
+debe retirarse o quedar excluida antes de promover a master. Tests y contratos
+productivos se conservan; la retirada se replanifica en el cierre S7/promoción
+master con prueba automática que falle si la superficie es visible en master.

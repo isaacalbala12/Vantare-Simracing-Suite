@@ -1,8 +1,8 @@
 # Spotter observable — aceptación acumulativa
 
-Estado: contrato de aceptación de la fase. S1 está en replanning técnico con
-ISA-327 (cortes A/B/C); la implementación no ha comenzado hasta aprobar su
-microplan.
+Estado: contrato de aceptación de la fase. Isaac aprobó el microplan S1 el
+2026-08-13 (cortes A/B/C, incluido el cambio visible Spotter ES→EN del Corte
+C); S1 iniciado solo a nivel de autorización, sin código aún.
 
 ## Propósito
 
@@ -47,6 +47,16 @@ ruta existente ni se crea otro protocolo.
 - Datos ausentes, stale, degradados o no soportados fallan cerrados.
 - Ninguna expectativa deriva de constantes, frases, sonidos o assets de
   CrewChief.
+
+## Gate master de superficie temporal
+
+La sección visual temporal Testing/Diagnóstico de la pestaña Ingeniero puede
+existir y crecer en issue/Nightly/Testers, pero debe retirarse o quedar
+excluida antes de promover a master (no llega visible a master). Tests y
+contratos productivos se conservan; los controles normales de Engineer no se
+confunden con la superficie temporal. La retirada se replanifica en el cierre
+S7/promoción master con prueba automática que falle si la superficie temporal
+es visible en master.
 
 ## Cobertura clean-room acumulativa
 

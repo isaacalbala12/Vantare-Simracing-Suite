@@ -68,13 +68,13 @@ suplanta juicios de audibilidad, pronunciación, ergonomía o falsas activacione
 - **Cierre:** escenarios manuales de tráfico y salida real más aceptación
   acumulativa de decisión, timings, audio, visual y lifecycle.
 
-Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12. S1 está en replanning
-técnico con ISA-327 y rama propia; S1 incorpora ahora el mínimo frontend en la
-pestaña Ingeniero para probar lo que incluya (persistencia y rediseño de
-preferencias quedan fuera; ISA-314 separada) y requiere nueva aprobación humana
-tras esta reconciliación; la implementación no comienza hasta aprobar el
-microplan de S1 (cortes A/B/C) en el [plan de fase](phases/spotter/plan.md).
-S2/ISA-189, S4/ISA-187 e ISA-314 quedan diferidos expresamente hasta cerrar S1.
+Isaac aceptó humanamente ISA-313 Fase 5 el 2026-08-12 y aprobó el microplan S1
+(cortes A/B/C, incluido el cambio visible Spotter ES→EN del Corte C) el
+2026-08-13; S1 iniciado solo a nivel de autorización, sin código aún; Corte A
+es la única siguiente implementación en el [plan de fase](phases/spotter/plan.md).
+S1 incorpora el mínimo frontend en la pestaña Ingeniero (persistencia y
+rediseño de preferencias quedan fuera; ISA-314 separada). S2/ISA-189,
+S4/ISA-187 e ISA-314 quedan diferidos expresamente hasta cerrar S1.
 
 ### 2. Engineer de carrera
 
@@ -159,3 +159,10 @@ Una fase solo termina con resultado observable, evidencia manual y de IA,
 límites visibles, review sin bloqueantes y estado coincidente en Linear,
 handoff y documentos vivos. La fase siguiente se replantea entonces; este
 roadmap no autoriza implementación, promoción ni release por sí mismo.
+
+Gate master: la sección visual temporal Testing/Diagnóstico de la pestaña
+Ingeniero puede existir y crecer en issue/Nightly/Testers para validar, pero
+debe retirarse o quedar excluida antes de promover a master (no llega visible
+a master). Tests y contratos productivos se conservan; la retirada se
+replanifica en el cierre S7/promoción master con prueba automática que falle
+si la superficie temporal es visible en master.

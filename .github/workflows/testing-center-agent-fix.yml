@@ -1,0 +1,149 @@
+name: Testing Center agent fix
+
+on:
+  repository_dispatch:
+    types: [testing-center-agent-fix]
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Local fixture name; never invokes a provider
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout pinned fixture tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install pinned Deno runtime
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+      - name: Validate the allowlisted local fixture contract
+        shell: bash
+        env:
+          FIXTURE: ${{ inputs.fixture }}
+        run: |
+          case "$FIXTURE" in
+            small-frontend-bug) ;;
+            *) echo "fixture_not_allowlisted" >&2; exit 1 ;;
+          esac
+          deno test --cached-only --no-lock --allow-read supabase/tests/testing-center-agent-workflow-contract.test.ts
+
+  production_disabled:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep production automation fail-closed
+        run: exit 1
+
+  red_agent:
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned RED tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Run isolated RED session
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          settings: .github/agents/testing-center-agent-settings.json
+          prompt: >-
+            Lee y cumple exclusivamente
+            .github/agents/testing-center-red-prompt.md.
+          claude_args: >-
+            --model claude-sonnet-5
+            --effort high
+            --max-turns 20
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob,Edit,Write
+
+  red_gate:
+    needs: red_agent
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep RED gate fail-closed
+        run: exit 1
+
+  green_agent:
+    needs: red_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned GREEN tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Run isolated GREEN session
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          settings: .github/agents/testing-center-agent-settings.json
+          prompt: >-
+            Lee y cumple exclusivamente
+            .github/agents/testing-center-green-prompt.md.
+          claude_args: >-
+            --model claude-sonnet-5
+            --effort high
+            --max-turns 20
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob,Edit,Write
+
+  green_gate:
+    needs: green_agent
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep GREEN gate fail-closed
+        run: exit 1
+
+  draft_pr:
+    needs: green_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep final stage fail-closed
+        run: exit 1

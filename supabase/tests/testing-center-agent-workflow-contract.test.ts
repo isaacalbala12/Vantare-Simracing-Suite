@@ -442,9 +442,11 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
 
   assertIncludes(review, "needs: diff_gate");
   assertIncludes(review, "contents: read");
-  assertIncludes(review, "pull-requests: read");
+  assertNotIncludes(review, "pull-requests: read");
   assertIncludes(review, "persist-credentials: false");
   assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
+  assertIncludes(review, "ref: ${{ github.sha }}");
+  assertIncludes(review, "path: .trusted-control-scripts");
   assertIncludes(review, "uses: " + downloadArtifactPin);
   assertIncludes(review, "name: testing-center-validated-diff");
   assertIncludes(
@@ -464,6 +466,14 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
     "EXPECTED_CONTROL_SHA256: ${{ needs.diff_gate.outputs.control_sha256 }}",
   );
   assertIncludes(review, "control_sha256_mismatch");
+  assertIncludes(
+    review,
+    "python .trusted-control-scripts/.github/scripts/testing_center_manifest_collector.py control-sha256",
+  );
+  assertIncludes(
+    review,
+    'rm -rf -- "$GITHUB_WORKSPACE/.trusted-control-scripts"',
+  );
   assertIncludes(review, "uses: " + claudeActionPin);
   assertIncludes(review, "id: opus_review");
   assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
@@ -511,6 +521,21 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "retention-days: 7");
   assertIncludes(review, "GITHUB_STEP_SUMMARY");
   assertIncludes(review, "P0={counts['P0']}");
+  assert(
+    diff.indexOf("Verify manifest sha256 before gating") <
+      diff.indexOf("Evaluate server-owned manifest without network"),
+    "manifest digest must be verified before the gate",
+  );
+  assert(
+    review.indexOf("Verify trusted control sha256 before review") <
+      review.indexOf("Load closed review schema from trusted control"),
+    "control digest must be verified before loading the schema",
+  );
+  assert(
+    review.indexOf("Load closed review schema from trusted control") <
+      review.indexOf("Run independent read-only Opus review"),
+    "schema must be loaded before Opus",
+  );
   for (
     const forbidden of [
       "Edit",
@@ -547,6 +572,7 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
 
 Deno.test("Opus review schema is closed bounded and fail-closed", async () => {
   const schema = JSON.parse(await Deno.readTextFile(reviewSchemaPath));
+  assertNotIncludes(JSON.stringify(schema), "'");
   assertEquals(schema.$id, "testing-center-review/v1", "schema id");
   assertEquals(schema.additionalProperties, false, "closed root");
   assertEquals(

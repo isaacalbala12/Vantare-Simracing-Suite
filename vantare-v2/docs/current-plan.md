@@ -1,3 +1,25 @@
+Nota ISA-337 / UI-RESP-01 (2026-08-14, plan aprobado; inicia implementación):
+- Isaac aprobó los supuestos de una UI de escritorio continuamente responsive,
+  eficiente y sin sobreingeniería. La issue cubre solo especificación y
+  auditoría; no autoriza todavía implementación productiva.
+- Rama/worktree aislados desde
+  `origin/nightly@b635d795128de6600b9c5008d0e4bc143872d976`. Spec aprobada y
+  plan técnico redactado en `docs/superpowers/specs/2026-08-14-responsive-desktop-ui-design.md`
+  y `docs/superpowers/plans/2026-08-14-isa-337-responsive-desktop-ui.md`.
+- Alcance previsto: shell y páginas del Hub desde el mínimo Wails `900x600`
+  hasta 4K/32:9 y superiores mediante restricciones fluidas, sin catálogo de
+  resoluciones, dependencia, viewport manager ni rediseño visual.
+- ISA-326 conserva autoridad sobre `layoutViewport` y paridad
+  Studio/Desktop/OBS. Los prototipos Fable ISA-328/332/333 siguen separados y
+  no se trasladan a producción mediante esta issue.
+- La auditoría read-only Fable 5 / Claude Agent high del thread T3 Code
+  `77fee96e-3d11-4711-ae75-676a73a3de49` dio GO CON CAMBIOS. Se corrigieron el
+  detector de recorte, rutas reales del harness, límites globales omitidos,
+  suelo Wails medible y coste de matriz. Isaac aprobó el plan y autorizó iniciar
+  el desarrollo el 2026-08-14. La implementación requiere issue/rama/worktree
+  nuevos desde la cabeza vigente de `nightly`. El hallazgo de superficies aún
+  no conectadas a i18n quedó fuera de alcance en ISA-342.
+
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate

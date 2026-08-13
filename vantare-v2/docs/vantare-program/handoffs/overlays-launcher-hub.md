@@ -10,6 +10,20 @@
 
 ## Estado
 
+- Hub/UI: ISA-337 / UI-RESP-01 tiene spec aprobada y plan técnico revisado sobre
+  `origin/nightly@b635d795128de6600b9c5008d0e4bc143872d976`. Los documentos
+  `docs/superpowers/specs/2026-08-14-responsive-desktop-ui-design.md` y
+  `docs/superpowers/plans/2026-08-14-isa-337-responsive-desktop-ui.md` definen
+  responsive continuo desde el viewport útil que T0 medirá en la ventana Wails
+  mínima hasta 4K/32:9, sin implementación productiva, dependencias ni
+  rediseño. La
+  auditoría read-only Fable 5 / Claude Agent high del thread T3 Code
+  `77fee96e-3d11-4711-ae75-676a73a3de49` dio GO CON CAMBIOS y sus correcciones
+  están incorporadas. El i18n incompleto detectado quedó separado en ISA-342.
+  Isaac aprobó el plan y autorizó iniciar el desarrollo el 2026-08-14 mediante
+  una issue/rama/worktree nuevos desde la cabeza vigente de `nightly`. ISA-326
+  conserva la geometría de overlays y Fable
+  ISA-328/332/333 permanece como exploración separada.
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
   PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR

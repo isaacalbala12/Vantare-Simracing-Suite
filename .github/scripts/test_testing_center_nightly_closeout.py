@@ -26,6 +26,7 @@ def event(**overrides):
         "nightly_sha": MERGE_SHA,
         "reservation_job_key": JOB_KEY,
         "reservation_merge_sha": MERGE_SHA,
+        "reservation_reviewed_head_sha": HEAD_SHA,
         "reserved_tag": TAG,
         "reservation_state": "reserved",
         "state": "merged_nightly",
@@ -54,7 +55,7 @@ class NightlyCloseoutTest(unittest.TestCase):
             event(state="smoke_running", smoke="failure")
         )
         self.assertEqual(result.state, "smoke_failed")
-        self.assertEqual(result.next_effect, "revert_pr")
+        self.assertEqual(result.next_effect, "annul_reservation")
         self.assertFalse(result.tag_allowed)
         self.assertTrue(result.keep_lock)
 
@@ -104,21 +105,39 @@ class NightlyCloseoutTest(unittest.TestCase):
 
     def test_revert_holds_lock_until_verified_or_routes_conflict_to_owner(self):
         opened = decide_closeout(
-            event(state="smoke_failed", smoke="failure", revert="absent")
+            event(
+                state="smoke_failed",
+                smoke="failure",
+                revert="absent",
+                reservation_state="annulled",
+            )
         )
         self.assertEqual(opened.state, "revert_pr_open")
-        self.assertEqual(opened.revert_branch, f"vantareapp/tc-{JOB_KEY[:12]}-revert")
+        self.assertEqual(
+            opened.revert_branch,
+            f"vantareapp/tc-{JOB_KEY[:12]}-nightly-closeout-revert",
+        )
         self.assertTrue(opened.keep_lock)
 
         reverted = decide_closeout(
-            event(state="revert_pr_open", smoke="failure", revert="verified")
+            event(
+                state="revert_pr_open",
+                smoke="failure",
+                revert="verified",
+                reservation_state="annulled",
+            )
         )
         self.assertEqual(reverted.state, "reverted")
         self.assertEqual(reverted.next_effect, "callback")
         self.assertFalse(reverted.keep_lock)
 
         owner = decide_closeout(
-            event(state="revert_pr_open", smoke="failure", revert="conflict")
+            event(
+                state="revert_pr_open",
+                smoke="failure",
+                revert="conflict",
+                reservation_state="annulled",
+            )
         )
         self.assertEqual(owner.state, "needs_owner")
         self.assertIsNone(owner.next_effect)
@@ -133,6 +152,7 @@ class NightlyCloseoutTest(unittest.TestCase):
                 release_source_sha=MERGE_SHA,
                 release_asset_count=6,
                 release_checksums_verified=True,
+                reservation_state="confirmed",
             )
         )
         self.assertEqual(result.state, "completed")
@@ -147,7 +167,7 @@ class NightlyCloseoutTest(unittest.TestCase):
             {"nightly_sha": HEAD_SHA},
             {"reservation_job_key": "d" * 64},
             {"reservation_merge_sha": HEAD_SHA},
-            {"reservation_state": "needs_owner"},
+            {"reservation_reviewed_head_sha": MERGE_SHA},
             {"reserved_tag": "v0.1.0-nightly.43"},
             {"kill_switches_open": True},
         )
@@ -155,6 +175,20 @@ class NightlyCloseoutTest(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(ValueError):
                     decide_closeout(event(**invalid))
+
+    def test_reverted_and_owner_states_converge_with_lock_contract(self):
+        reverted = decide_closeout(
+            event(
+                state="reverted",
+                smoke="failure",
+                revert="verified",
+                reservation_state="annulled",
+            )
+        )
+        self.assertFalse(reverted.keep_lock)
+        owner = decide_closeout(event(state="needs_owner", reservation_state="needs_owner"))
+        self.assertEqual(owner.state, "needs_owner")
+        self.assertTrue(owner.keep_lock)
 
 
 if __name__ == "__main__":

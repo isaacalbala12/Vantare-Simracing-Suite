@@ -24,6 +24,7 @@ CONTRACT_KEYS = {
     "nightly_sha",
     "reservation_job_key",
     "reservation_merge_sha",
+    "reservation_reviewed_head_sha",
     "reserved_tag",
     "reservation_state",
     "state",
@@ -74,8 +75,9 @@ def _validate(event: Mapping[str, Any]) -> None:
         _invalid("nightly_closeout_stale_nightly")
     if (
         event["reservation_job_key"] != event["job_key"]
+        or event["reservation_reviewed_head_sha"] != event["reviewed_head_sha"]
         or event["reservation_merge_sha"] != event["merge_sha"]
-        or event["reservation_state"] not in {"reserved", "confirmed"}
+        or event["reservation_state"] not in {"reserved", "confirmed", "annulled", "needs_owner"}
     ):
         _invalid("nightly_closeout_reservation_mismatch")
     if not NIGHTLY_TAG.fullmatch(str(event["reserved_tag"])):
@@ -116,15 +118,19 @@ def decide_closeout(event: Mapping[str, Any]) -> CloseoutDecision:
     tag = str(event["reserved_tag"])
 
     if state == "merged_nightly":
+        if event["reservation_state"] != "reserved":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["smoke"] != "pending" or event["release"] != "absent":
             _invalid("nightly_closeout_state_evidence_mismatch")
         return CloseoutDecision("smoke_running", "smoke", True)
 
     if state == "smoke_running":
+        if event["reservation_state"] != "reserved":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["release"] != "absent":
             _invalid("nightly_closeout_release_before_smoke")
         if event["smoke"] == "failure":
-            return CloseoutDecision("smoke_failed", "revert_pr", True)
+            return CloseoutDecision("smoke_failed", "annul_reservation", True)
         if event["smoke"] == "success":
             return CloseoutDecision(
                 "nightly_tagged",
@@ -137,22 +143,28 @@ def decide_closeout(event: Mapping[str, Any]) -> CloseoutDecision:
         return CloseoutDecision("smoke_running", None, True)
 
     if state == "nightly_tagged":
+        if event["reservation_state"] != "reserved":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["smoke"] != "success":
             _invalid("nightly_closeout_release_before_smoke")
         _require_verified_release(event)
         return CloseoutDecision("completed", "callback", False)
 
     if state == "smoke_failed":
+        if event["reservation_state"] != "annulled":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["smoke"] != "failure" or event["release"] != "absent":
             _invalid("nightly_closeout_failed_smoke_evidence_invalid")
         return CloseoutDecision(
             "revert_pr_open",
             "revert_pr",
             True,
-            revert_branch=f"vantareapp/tc-{job_key[:12]}-revert",
+            revert_branch=f"vantareapp/tc-{job_key[:12]}-nightly-closeout-revert",
         )
 
     if state == "revert_pr_open":
+        if event["reservation_state"] != "annulled":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["smoke"] != "failure" or event["release"] != "absent":
             _invalid("nightly_closeout_revert_evidence_invalid")
         if event["revert"] == "verified":
@@ -162,14 +174,21 @@ def decide_closeout(event: Mapping[str, Any]) -> CloseoutDecision:
         return CloseoutDecision("revert_pr_open", None, True)
 
     if state == "completed":
+        if event["reservation_state"] != "confirmed":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["smoke"] != "success":
             _invalid("nightly_closeout_completed_evidence_invalid")
         _require_verified_release(event)
         return CloseoutDecision("completed", None, False)
 
     if state == "reverted":
+        if event["reservation_state"] != "annulled":
+            _invalid("nightly_closeout_reservation_state_invalid")
         if event["revert"] != "verified":
             _invalid("nightly_closeout_reverted_evidence_invalid")
         return CloseoutDecision("reverted", None, False)
+
+    if state == "needs_owner":
+        return CloseoutDecision("needs_owner", None, True)
 
     _invalid("nightly_closeout_state_invalid")

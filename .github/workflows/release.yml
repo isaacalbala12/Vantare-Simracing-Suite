@@ -5,6 +5,15 @@ on:
     tags:
       - "v*"
   workflow_call:
+    outputs:
+      release_tag:
+        value: ${{ jobs.release.outputs.release_tag }}
+      release_source_sha:
+        value: ${{ jobs.release.outputs.release_source_sha }}
+      release_asset_count:
+        value: ${{ jobs.release.outputs.release_asset_count }}
+      checksums_verified:
+        value: ${{ jobs.release.outputs.checksums_verified }}
     inputs:
       publish_channel:
         required: true
@@ -379,6 +388,11 @@ jobs:
       ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.publish_channel != 'none')
     permissions:
       contents: write
+    outputs:
+      release_tag: ${{ steps.verify_release.outputs.release_tag }}
+      release_source_sha: ${{ steps.verify_release.outputs.release_source_sha }}
+      release_asset_count: ${{ steps.verify_release.outputs.release_asset_count }}
+      checksums_verified: ${{ steps.verify_release.outputs.checksums_verified }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -463,7 +477,8 @@ jobs:
               fh.write("\nEOF\n")
           PY
 
-      - name: Create or update GitHub Release (idempotent)
+      - name: Create or update and verify GitHub Release (idempotent)
+        id: verify_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -529,6 +544,10 @@ jobs:
             echo "::error::Release does not contain exactly the 6 official assets"
             exit 1
           }
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release_source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "release_asset_count=6" >> "$GITHUB_OUTPUT"
+          echo "checksums_verified=true" >> "$GITHUB_OUTPUT"
           echo "Verified release $TAG: source_sha=$SOURCE_SHA assets=6 checksums=3"
 
       - name: Resolve verified announcement metadata

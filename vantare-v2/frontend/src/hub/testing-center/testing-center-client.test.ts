@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTestingCenterClient, TestingCenterClientError, type TestingCenterEventTransport } from "./testing-center-client";
+import { createTestingCenterClient, mapAgentJobVisibleState, TestingCenterClientError, type TestingCenterEventTransport } from "./testing-center-client";
 
 function fakeTransport(respond: (name: string, payload: Record<string, unknown>, emit: (name: string, value: unknown) => void) => void): TestingCenterEventTransport {
   const listeners = new Map<string, Set<(value: unknown) => void>>();
@@ -16,6 +16,18 @@ function fakeTransport(respond: (name: string, payload: Record<string, unknown>,
 }
 
 describe("Testing Center Wails client", () => {
+  it("does not present a merged job as delivered before verified release", () => {
+    expect(mapAgentJobVisibleState("merged_nightly")).toBe("verifying_nightly");
+    expect(mapAgentJobVisibleState("smoke_running")).toBe("verifying_nightly");
+    expect(mapAgentJobVisibleState("nightly_tagged")).toBe("verifying_nightly");
+    expect(mapAgentJobVisibleState("completed")).toBe("available_nightly");
+    expect(mapAgentJobVisibleState("revert_pr_open")).toBe("reverting_nightly");
+    expect(mapAgentJobVisibleState("reverted")).toBe("reverted_nightly");
+    expect(mapAgentJobVisibleState("needs_owner")).toBe("needs_owner");
+    expect(mapAgentJobVisibleState("red_running")).toBe("processing");
+    expect(mapAgentJobVisibleState("fix_queued")).toBe("stopped");
+    expect(mapAgentJobVisibleState("unexpected_new_state")).toBe("stopped");
+  });
   it("loads an omitted optional draft as empty closed fields", async () => {
     const client = createTestingCenterClient(fakeTransport((name, payload, emit) => {
       if (name === "testing-center:report-draft:load") {

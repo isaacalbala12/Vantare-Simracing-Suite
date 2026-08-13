@@ -30,16 +30,18 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Run closeout policy without network or effects
-        run: python .github/scripts/test_testing_center_nightly_closeout.py -v
+      - name: Run closeout policy and callback contracts without effects
+        run: |
+          python .github/scripts/test_testing_center_nightly_closeout.py -v
+          python .github/scripts/test_testing_center_agent_callback.py -v
 
   production_disabled:
     if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - name: Keep closeout effects fail-closed until rollout authorization
-        run: exit 1
+      - name: Document the inert production route without making the run red
+        run: echo "testing_center_closeout_production_disabled"
 
   collect:
     if: github.event_name == 'workflow_run' && false
@@ -48,9 +50,14 @@ jobs:
     permissions:
       actions: read
       contents: read
+      pull-requests: read
     outputs:
+      kind: ${{ steps.facts.outputs.kind }}
       job_key: ${{ steps.facts.outputs.job_key }}
+      reviewed_head_sha: ${{ steps.facts.outputs.reviewed_head_sha }}
       source_sha: ${{ steps.facts.outputs.source_sha }}
+      failed_merge_sha: ${{ steps.facts.outputs.failed_merge_sha }}
+      closeout_run_id: ${{ steps.facts.outputs.closeout_run_id }}
       release_tag: ${{ steps.facts.outputs.release_tag }}
       release_notes: ${{ steps.facts.outputs.release_notes }}
     steps:
@@ -58,9 +65,9 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
+          fetch-depth: 2
           persist-credentials: false
-      - name: Verify completed run and collect server-owned closeout facts
+      - name: Verify run merge PR and committed closeout metadata
         id: facts
         shell: bash
         env:
@@ -71,19 +78,150 @@ jobs:
           WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
-          test "$WORKFLOW_CONCLUSION" = success
-          test "$WORKFLOW_BRANCH" = nightly
+          if [ "$WORKFLOW_CONCLUSION" != success ] || [ "$WORKFLOW_BRANCH" != nightly ]; then
+            {
+              echo "kind=none"
+              echo "job_key="
+              echo "reviewed_head_sha="
+              echo "source_sha="
+              echo "failed_merge_sha="
+              echo "closeout_run_id="
+              echo "release_tag="
+              echo "release_notes="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           git fetch origin nightly --no-tags
           test "$(git rev-parse origin/nightly)" = "$SOURCE_SHA"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${WORKFLOW_RUN_ID}" \
-            --jq '.name + ":" + .conclusion + ":" + .head_sha' \
-            | grep -Fx "Branch channel gates:success:${SOURCE_SHA}"
-          echo "production_facts_require_oidc_callback" >&2
-          exit 1
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${WORKFLOW_RUN_ID}" > "$RUNNER_TEMP/run.json"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_SHA}/pulls" > "$RUNNER_TEMP/pulls.json"
+          git diff-tree --no-commit-id --name-only -r "${SOURCE_SHA}^1" "$SOURCE_SHA" -- \
+            'vantare-v2/docs/releases/*.json' > "$RUNNER_TEMP/release-paths.txt"
+          python -I - <<'PY'
+          import json, os, pathlib, re
+
+          root = pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          source = os.environ["SOURCE_SHA"]
+          def emit_none():
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                  output.write("kind=none\njob_key=\nreviewed_head_sha=\nsource_sha=\n")
+                  output.write("failed_merge_sha=\ncloseout_run_id=\nrelease_tag=\nrelease_notes=\n")
+
+          run = json.loads((temp / "run.json").read_text())
+          if (run.get("name"), run.get("conclusion"), run.get("head_sha")) != (
+              "Branch channel gates", "success", source
+          ):
+              raise SystemExit("workflow_run_identity_mismatch")
+          pulls = [item for item in json.loads((temp / "pulls.json").read_text())
+                   if item.get("base", {}).get("ref") == "nightly"
+                   and item.get("merged_at") and item.get("merge_commit_sha") == source]
+          if len(pulls) == 0:
+              emit_none()
+              raise SystemExit(0)
+          if len(pulls) > 1:
+              raise SystemExit("automatic_merge_pr_ambiguous")
+          pull = pulls[0]
+          branch = pull.get("head", {}).get("ref", "")
+          if not branch.startswith("vantareapp/tc-"):
+              emit_none()
+              raise SystemExit(0)
+          branch_match = re.fullmatch(r"vantareapp/tc-([0-9a-f]{12})-([a-z0-9]+(?:-[a-z0-9]+)*)", branch)
+          if branch_match is None:
+              raise SystemExit("automatic_merge_branch_invalid")
+          if branch_match.group(2) == "nightly-closeout-revert":
+              marker = re.search(r"<!-- testing-center-revert:(\{[^\n]+\}) -->", pull.get("body") or "")
+              if marker is None:
+                  raise SystemExit("revert_marker_missing")
+              value = json.loads(marker.group(1))
+              if set(value) != {"jobKey", "reviewedHeadSha", "failedMergeSha", "closeoutRunId", "reservedTag"}:
+                  raise SystemExit("revert_marker_invalid")
+              if (re.fullmatch(r"[0-9a-f]{64}", value["jobKey"]) is None
+                  or value["jobKey"][:12] != branch_match.group(1)
+                  or re.fullmatch(r"[0-9a-f]{40}", value["reviewedHeadSha"]) is None
+                  or re.fullmatch(r"[0-9a-f]{40}", value["failedMergeSha"]) is None
+                  or re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-nightly\.[1-9][0-9]*", value["reservedTag"]) is None
+                  or type(value["closeoutRunId"]) is not int or value["closeoutRunId"] < 1):
+                  raise SystemExit("revert_binding_invalid")
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                  output.write("kind=revert\n")
+                  output.write(f"job_key={value['jobKey']}\nreviewed_head_sha={value['reviewedHeadSha']}\n")
+                  output.write(f"source_sha={source}\nfailed_merge_sha={value['failedMergeSha']}\n")
+                  output.write(f"closeout_run_id={value['closeoutRunId']}\nrelease_tag={value['reservedTag']}\nrelease_notes=\n")
+              raise SystemExit(0)
+          paths = [line for line in (temp / "release-paths.txt").read_text().splitlines() if line]
+          if len(paths) != 1:
+              raise SystemExit("automatic_release_manifest_ambiguous")
+          manifest = json.loads((root / paths[0]).read_text(encoding="utf-8"))
+          automation = manifest.get("automation")
+          if not isinstance(automation, dict) or set(automation) != {
+              "contractVersion", "jobKey", "reviewedHeadSha"
+          } or automation.get("contractVersion") != "testing-center.closeout-metadata.v1":
+              raise SystemExit("automatic_release_metadata_invalid")
+          job_key = automation.get("jobKey", "")
+          reviewed = automation.get("reviewedHeadSha", "")
+          tag = manifest.get("tag", "")
+          if (re.fullmatch(r"[0-9a-f]{64}", job_key) is None
+              or branch.split("-")[1] != job_key[:12]
+              or re.fullmatch(r"[0-9a-f]{40}", reviewed) is None
+              or reviewed != pull.get("head", {}).get("sha")
+              or re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-nightly\.[1-9][0-9]*", tag) is None):
+              raise SystemExit("automatic_release_binding_invalid")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"kind=candidate\njob_key={job_key}\nreviewed_head_sha={reviewed}\n")
+              output.write(f"source_sha={source}\nrelease_tag={tag}\n")
+              output.write("failed_merge_sha=\ncloseout_run_id=\n")
+              output.write(f"release_notes=Automatic Testing Center correction {job_key[:12]}\n")
+          PY
+
+  callback_smoke_started:
+    needs: collect
+    if: github.event_name == 'workflow_run' && needs.collect.outputs.kind == 'candidate' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Bind merge and smoke start in strict order
+        shell: bash
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          for phase in merged_nightly smoke_running; do
+            body="$RUNNER_TEMP/${phase}.json"
+            python .github/scripts/testing_center_agent_callback.py build \
+              --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:${phase}" --job-key "$JOB_KEY" \
+              --phase "$phase" --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+              --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+              --release-tag "$RELEASE_TAG" --output "$body"
+            curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+              -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null
+          done
 
   smoke:
-    needs: collect
+    needs: [collect, callback_smoke_started]
     if: github.event_name == 'workflow_run' && false
     runs-on: windows-latest
     timeout-minutes: 25
@@ -117,6 +255,7 @@ jobs:
       - name: Post-merge smoke and frontend build
         run: |
           go test ./...
+          pnpm --dir vantare-v2/frontend test
           pnpm --dir vantare-v2/frontend build
       - name: Post-merge Windows Wails build
         env:
@@ -126,6 +265,8 @@ jobs:
   release:
     needs: smoke
     if: github.event_name == 'workflow_run' && false
+    permissions:
+      contents: write
     uses: ./.github/workflows/release.yml
     with:
       publish_channel: nightly
@@ -141,14 +282,339 @@ jobs:
       DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
       DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
 
-  revert:
-    needs: smoke
+  callback_released:
+    needs: [collect, release]
     if: github.event_name == 'workflow_run' && false
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Record verified tag then completion
+        shell: bash
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.release.outputs.release_source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.release.outputs.release_tag }}
+          RELEASE_ASSET_COUNT: ${{ needs.release.outputs.release_asset_count }}
+          CHECKSUMS_VERIFIED: ${{ needs.release.outputs.checksums_verified }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_SHA" = "${{ needs.collect.outputs.source_sha }}"
+          test "$RELEASE_ASSET_COUNT" = 6
+          test "$CHECKSUMS_VERIFIED" = true
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          for phase in nightly_tagged completed; do
+            body="$RUNNER_TEMP/${phase}.json"
+            extra=()
+            if [ "$phase" = completed ]; then
+              extra=(--release-verified --release-source-sha "$SOURCE_SHA" --release-asset-count 6 --checksums-verified)
+            fi
+            python .github/scripts/testing_center_agent_callback.py build \
+              --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:${phase}" --job-key "$JOB_KEY" \
+              --phase "$phase" --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+              --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+              --release-tag "$RELEASE_TAG" "${extra[@]}" --output "$body"
+            curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+              -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null
+          done
+
+  callback_release_failed:
+    needs: [collect, release]
+    if: always() && github.event_name == 'workflow_run' && needs.release.result == 'failure' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Escalate release failure to owner
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/closeout_failed.json"
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          python .github/scripts/testing_center_agent_callback.py build \
+            --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:release_failed" --job-key "$JOB_KEY" \
+            --phase closeout_failed --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+            --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+            --release-tag "$RELEASE_TAG" --output "$body"
+          curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null
+
+  callback_smoke_failed:
+    needs: [collect, smoke]
+    if: always() && github.event_name == 'workflow_run' && needs.smoke.result == 'failure' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      continue_revert: ${{ steps.callback.outputs.continue_revert }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Annul reservation before any revert
+        id: callback
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/smoke_failed.json"
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          python .github/scripts/testing_center_agent_callback.py build \
+            --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:smoke_failed" --job-key "$JOB_KEY" \
+            --phase smoke_failed --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+            --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+            --release-tag "$RELEASE_TAG" --output "$body"
+          curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" > "$RUNNER_TEMP/result.json"
+          state="$(jq -er .state "$RUNNER_TEMP/result.json")"
+          case "$state" in
+            smoke_failed) echo "continue_revert=true" >> "$GITHUB_OUTPUT" ;;
+            revert_pr_open|reverted) echo "continue_revert=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "unexpected_smoke_failure_state" >&2; exit 1 ;;
+          esac
+
+  revert:
+    needs: [collect, callback_smoke_failed]
+    if: always() && github.event_name == 'workflow_run' && needs.callback_smoke_failed.result == 'success' && needs.callback_smoke_failed.outputs.continue_revert == 'true' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      pull_request: ${{ steps.revert.outputs.pull_request }}
     steps:
-      - name: Keep revert PR creation fail-closed until callback facts are wired
-        run: exit 1
+      - name: Checkout exact failed Nightly merge
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.collect.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Open a reversible PR without pushing to Nightly
+        id: revert
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          branch="vantareapp/tc-${JOB_KEY:0:12}-nightly-closeout-revert"
+          git switch -c "$branch"
+          parent_count="$(git rev-list --parents -n 1 "$SOURCE_SHA" | awk '{print NF - 1}')"
+          case "$parent_count" in
+            1) git revert --no-commit "$SOURCE_SHA" ;;
+            2) git revert --no-commit --mainline 1 "$SOURCE_SHA" ;;
+            *) echo "automatic_revert_parent_count_invalid" >&2; exit 1 ;;
+          esac
+          expected_tree="$(git write-tree)"
+          marker="<!-- testing-center-revert:{\"jobKey\":\"$JOB_KEY\",\"reviewedHeadSha\":\"$REVIEWED_HEAD_SHA\",\"failedMergeSha\":\"$SOURCE_SHA\",\"closeoutRunId\":$GITHUB_RUN_ID,\"reservedTag\":\"$RELEASE_TAG\"} -->"
+          if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null 2>&1; then
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch" --no-tags
+            test "$(git rev-parse "origin/$branch^{tree}")" = "$expected_tree"
+          else
+            git config user.name "vantare-testing-center[bot]"
+            git config user.email "vantare-testing-center[bot]@users.noreply.github.com"
+            git commit -m "revert: TC-${JOB_KEY:0:12} failed Nightly smoke"
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          remote_head="$(git ls-remote origin "refs/heads/$branch" | awk '{print $1}')"
+          test -n "$remote_head"
+          gh pr list --state all --base nightly --head "$branch" --limit 2 \
+            --json url,body,headRefOid > "$RUNNER_TEMP/revert-prs.json"
+          count="$(jq 'length' "$RUNNER_TEMP/revert-prs.json")"
+          test "$count" -le 1
+          if [ "$count" -eq 1 ]; then
+            jq -e --arg marker "$marker" --arg head "$remote_head" \
+              '.[0].body == $marker and .[0].headRefOid == $head' "$RUNNER_TEMP/revert-prs.json" >/dev/null
+            url="$(jq -er '.[0].url' "$RUNNER_TEMP/revert-prs.json")"
+          else
+            url="$(gh pr create --base nightly --head "$branch" --title "revert: TC-${JOB_KEY:0:12} failed Nightly smoke" --body "$marker")"
+          fi
+          echo "pull_request=$url" >> "$GITHUB_OUTPUT"
+
+  callback_revert_failed:
+    needs: [collect, revert]
+    if: always() && github.event_name == 'workflow_run' && needs.revert.result == 'failure' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Escalate revert failure to owner
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/closeout_failed.json"
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          python .github/scripts/testing_center_agent_callback.py build \
+            --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:revert_failed" --job-key "$JOB_KEY" \
+            --phase closeout_failed --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+            --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+            --release-tag "$RELEASE_TAG" --output "$body"
+          curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null
+
+  callback_revert_pr:
+    needs: [collect, revert]
+    if: github.event_name == 'workflow_run' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Record opened revert PR
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.source_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test -n "${{ needs.revert.outputs.pull_request }}"
+          body="$RUNNER_TEMP/revert_pr_open.json"
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          python .github/scripts/testing_center_agent_callback.py build \
+            --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:revert_pr_open" --job-key "$JOB_KEY" \
+            --phase revert_pr_open --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+            --workflow-sha "$GITHUB_SHA" --fencing-token "$GITHUB_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+            --release-tag "$RELEASE_TAG" --output "$body"
+          curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null
+
+  callback_reverted:
+    needs: collect
+    if: github.event_name == 'workflow_run' && needs.collect.outputs.kind == 'revert' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Acquire callback-only GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vantare-testing-center-agent-callback")"
+          token="$(jq -er .value <<<"$response")"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Close only the server-bound original failed merge
+        env:
+          CALLBACK_URL: ${{ secrets.TESTING_CENTER_AGENT_CALLBACK_URL }}
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          JOB_KEY: ${{ needs.collect.outputs.job_key }}
+          SOURCE_SHA: ${{ needs.collect.outputs.failed_merge_sha }}
+          REVIEWED_HEAD_SHA: ${{ needs.collect.outputs.reviewed_head_sha }}
+          CLOSEOUT_RUN_ID: ${{ needs.collect.outputs.closeout_run_id }}
+          RELEASE_TAG: ${{ needs.collect.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/reverted.json"
+          python .github/scripts/testing_center_agent_callback.py validate-url "$CALLBACK_URL"
+          python .github/scripts/testing_center_agent_callback.py build \
+            --delivery-id "run-${GITHUB_RUN_ID}:${JOB_KEY}:reverted" --job-key "$JOB_KEY" \
+            --phase reverted --head-sha "$SOURCE_SHA" --reviewed-head-sha "$REVIEWED_HEAD_SHA" \
+            --workflow-sha "$GITHUB_SHA" --fencing-token "$CLOSEOUT_RUN_ID" --run-id "$GITHUB_RUN_ID" \
+            --release-tag "$RELEASE_TAG" --output "$body"
+          curl --fail --silent --show-error -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" --data-binary "@$body" "$CALLBACK_URL" >/dev/null

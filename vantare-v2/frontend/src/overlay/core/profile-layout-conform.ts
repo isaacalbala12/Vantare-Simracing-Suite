@@ -23,6 +23,16 @@ export function conformAspectLockedLayout(widget: WidgetInstanceV3): WidgetInsta
     // del Studio con los widgets que ya no conoce.
     return widget;
   }
+  if (capabilities.resizeMode === "horizontal-only") {
+    const fixedHeight = capabilities.defaultSize.height;
+    if (widget.layout.h === fixedHeight && !widget.layout.aspectLocked) {
+      return widget;
+    }
+    return {
+      ...widget,
+      layout: { ...widget.layout, h: fixedHeight, aspectLocked: false },
+    };
+  }
   if (capabilities.supportsAspectUnlock) {
     return widget;
   }

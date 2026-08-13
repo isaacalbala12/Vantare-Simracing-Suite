@@ -5429,3 +5429,15 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   y una descarga independiente confirmó los SHA-256 del instalador, portable y
   ejecutable. ISA-329 continúa abierta como limitación OBS aceptada para este
   corte; `testers` y `master` permanecen sin cambios.
+Nota ISA-334 / Broadcast Tower horizontal (2026-08-14, implementación aislada):
+- Issue y rama: `ISA-334`,
+  `vantareapp/isa-334-overlay-studio-broadcast-tower-debe-ocupar-todo-el-ancho-y`,
+  base exacta `origin/nightly@8de4f511972757476d96d6a525b69c8917f4ca56`.
+- Causa: el widget heredaba geometría genérica `520×260`, ocho handles y
+  escalado uniforme por ancho aunque Crystal define una franja horizontal.
+- Solución candidata: altura fija de 50 px, ancho inicial igual al viewport
+  real del perfil, resize solo este/oeste y reflow sin escala tipográfica.
+- Evidencia actual: focal 74/74, frontend 2641/2641, lint focal y build PASS.
+  El browser colaborativo agotó timeout al capturar; la validación visual
+  manual sigue pendiente. Commit `b7a6aa4`, rama remota y PR draft #224
+  creados; sin merge ni promoción.

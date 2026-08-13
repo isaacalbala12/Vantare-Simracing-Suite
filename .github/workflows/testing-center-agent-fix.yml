@@ -557,3 +557,23 @@ jobs:
     steps:
       - name: Keep final stage fail-closed
         run: exit 1
+
+  # ISA-322 bootstrap only. Activation requires a signed bundle, live facts,
+  # promotion of this workflow to master and Isaac's separate ruleset approval.
+  queue_bootstrap_disabled:
+    needs: review_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pinned trusted queue verifier without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Test cryptographic verifier and serialized queue policy
+        run: python .github/scripts/test_testing_center_merge_queue.py
+      - name: Keep enqueue fail-closed until signed bundle and live facts exist
+        run: exit 1

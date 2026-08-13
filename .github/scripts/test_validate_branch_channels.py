@@ -50,7 +50,15 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "Testing Center visual gate",
         ):
             self.assertIn(required, workflow)
-        self.assertNotIn("continue-on-error: true", workflow)
+        self.assertNotIn(
+            "- name: Changed frontend lint\n        continue-on-error: true", workflow
+        )
+        self.assertNotIn(
+            "- name: Testing Center visual gate\n        continue-on-error: true", workflow
+        )
+        self.assertNotIn(
+            "- name: Windows Wails build\n        continue-on-error: true", workflow
+        )
 
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(

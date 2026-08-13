@@ -23,7 +23,21 @@ def fragment(issue="ISA-95", summary="Mensajes fiables"):
     }
 
 
+def tc_fragment():
+    return fragment("TC-0123456789AB", "Corrección automática verificada")
+
+
 class FragmentTests(unittest.TestCase):
+    def test_tc_fragment_is_accepted_without_linear(self):
+        self.assertEqual(
+            communications.validate_fragment(tc_fragment())["issue"],
+            "TC-0123456789AB",
+        )
+
+    def test_tc_fragment_requires_exact_uppercase_hex12(self):
+        for issue in ("TC-0123456789ab", "TC-123", "TC-G123456789AB"):
+            with self.subTest(issue=issue), self.assertRaises(ValueError):
+                communications.validate_fragment(fragment(issue))
     def test_validate_fragment_rejects_missing_required_field(self):
         value = fragment()
         del value["testing"]

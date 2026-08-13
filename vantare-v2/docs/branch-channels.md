@@ -85,6 +85,16 @@ de cada efecto, hacer bloqueantes lint/visuales cuando apliquen y demostrar que
 todas las exclusiones anteriores se aplican en el gate. Una firma válida pero
 obsoleta o reusada falla cerrada.
 
+ISA-322 materializa ese cierre sin activarlo: el verificador ejecuta
+`gh attestation verify` contra repositorio, workflow firmante, SHA del workflow
+en `master`, issuer de GitHub y runner hospedado; después contrasta `head_sha`,
+tip de `nightly` y digest recomputado con hechos vivos. La policy de cola exige
+los dos checks exactos, conversaciones resueltas, diff y Opus aprobados, cuatro
+kill switches cerrados y ausencia de otro closeout. El bootstrap conserva
+`if: false`, permisos `contents: read`, termina en fallo y no contiene comando
+de merge. La reserva Supabase y la metadata `TC-<12 HEX>` son deterministas,
+pero no crean tag ni release. Ruleset y activación siguen requiriendo a Isaac.
+
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.
 - Go, build frontend y todos los tests frontend no inventariados son

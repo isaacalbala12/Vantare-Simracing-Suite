@@ -48,8 +48,8 @@ def validate_fragment(value: dict[str, Any], source: str = "fragment") -> dict[s
             raise ValueError(f"{source}: {field} must be {expected_type.__name__}")
     if value["schemaVersion"] != 1:
         raise ValueError(f"{source}: unsupported schemaVersion")
-    if not re.fullmatch(r"ISA-[0-9]+", value["issue"]):
-        raise ValueError(f"{source}: issue must use ISA-N format")
+    if not re.fullmatch(r"(?:ISA-[0-9]+|TC-[0-9A-F]{12})", value["issue"]):
+        raise ValueError(f"{source}: issue must use ISA-N or TC-<12 HEX> format")
     if value["type"] not in {"feature", "fix", "change", "security"}:
         raise ValueError(f"{source}: unsupported type")
     for field in ("technicalNotes", "testing"):

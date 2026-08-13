@@ -156,3 +156,16 @@ jobs:
         env:
           VANTARE_BUILD_CHANNEL: nightly
         run: wails3 task windows:build
+
+      - name: Overlay Studio visual baselines (human-channel advisory)
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          pnpm exec playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }
+          pnpm visual:overlay-studio
+
+      - name: Global frontend lint debt (human-channel advisory)
+        continue-on-error: true
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: pnpm lint

@@ -15,8 +15,10 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
   PASS; frontend 367 archivos/2636 tests PASS; build frontend PASS; `go test
   ./... -count=1` PASS. La suite frontend conserva los dos `AbortError` de
   teardown documentados con exit 0. Fix y regresiones están en `074dba6`;
-  revisión final de diff y `design-system:check` 3/3 PASS. Pendiente: push, PR
-  draft y CI. Sin merge, promoción ni release.
+  revisión final de diff y `design-system:check` 3/3 PASS. La rama incorporó
+  `origin/nightly@b635d79` sin reescribir historial y la PR draft #223 está
+  OPEN/MERGEABLE hacia `nightly`, con CI en curso. Sin merge, promoción ni
+  release.
 
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash

@@ -503,6 +503,59 @@ func (w *wailsEmitter) Emit(name string, data any) {
 	w.wailsApp.Event.Emit(name, data)
 }
 
+type telemetryStatusReplayEvents interface {
+	On(string, func(*application.CustomEvent)) func()
+}
+
+func registerTelemetryStatusReplayHandlers(
+	events telemetryStatusReplayEvents,
+	emitter telemetrytransport.EventEmitter,
+	telemetryRuntime *app.TelemetryCoreRuntime,
+) func() {
+	if events == nil || emitter == nil || telemetryRuntime == nil {
+		return func() {}
+	}
+	registrations := []struct {
+		product telemetrytransport.ProductID
+		hub     *telemetrytransport.Hub
+	}{
+		{product: telemetrytransport.ProductOverlay, hub: telemetryRuntime.Hub()},
+		{product: telemetrytransport.ProductStrategy, hub: telemetryRuntime.StrategyHub()},
+	}
+	unsubscribes := make([]func(), 0, len(registrations))
+	for _, registration := range registrations {
+		unsubscribe := events.On(
+			telemetrytransport.StatusRequestEventName(registration.product),
+			func(_ *application.CustomEvent) {
+				if registration.hub == nil {
+					return
+				}
+				replay, ok, err := registration.hub.ReplayStatus()
+				if err != nil {
+					log.Printf("%s telemetry status replay error: %v", registration.product, err)
+					return
+				}
+				if !ok {
+					return
+				}
+				emitter.Emit(
+					telemetrytransport.EventName(replay.Product, replay.Kind),
+					replay.Data,
+				)
+			},
+		)
+		unsubscribes = append(unsubscribes, unsubscribe)
+	}
+	var cleanup sync.Once
+	return func() {
+		cleanup.Do(func() {
+			for _, unsubscribe := range unsubscribes {
+				unsubscribe()
+			}
+		})
+	}
+}
+
 func installerURL(release updater.Release) string {
 	if asset := updater.FindInstaller(release); asset != nil {
 		return asset.DownloadURL
@@ -976,6 +1029,7 @@ func main() {
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
+	telemetryStatusReplayCleanup := func() {}
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
@@ -985,6 +1039,10 @@ func main() {
 					if overlayController != nil {
 						overlayController.Stop()
 					}
+					return nil
+				}},
+				{name: "telemetry-status-replay-handlers", stop: func(context.Context) error {
+					telemetryStatusReplayCleanup()
 					return nil
 				}},
 				{name: "telemetry-core", stop: func(ctx context.Context) error {
@@ -1594,6 +1652,12 @@ func main() {
 			}
 			return telemetryCoreRuntime.Hub()
 		}(),
+		StrategyProjection: func() *telemetrytransport.Hub {
+			if telemetryCoreRuntime == nil {
+				return nil
+			}
+			return telemetryCoreRuntime.StrategyHub()
+		}(),
 	})
 	httpSrv.Start()
 	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {
@@ -1851,29 +1915,9 @@ func main() {
 		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
 
-	// Mismo patron para el transporte de overlays. Sin esto, una ventana abierta
-	// a mitad de sesion no recibe estado -- solo se publica cuando cambia -- y el
-	// observador se queda esperando indefinidamente con el widget en blanco.
-	wailsApp.Event.On(
-		telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay),
-		func(event *application.CustomEvent) {
-			if telemetryCoreRuntime == nil {
-				return
-			}
-			hub := telemetryCoreRuntime.Hub()
-			if hub == nil {
-				return
-			}
-			replay, ok, err := hub.ReplayStatus()
-			if err != nil {
-				log.Printf("overlay status replay error: %v", err)
-				return
-			}
-			if !ok {
-				return
-			}
-			emitter.Emit(telemetrytransport.EventName(replay.Product, replay.Kind), replay.Data)
-		})
+	// Las ventanas que aparecen a mitad de sesion solicitan el estado actual de
+	// su producto. Overlay y Strategy comparten lifecycle, pero no hub ni canal.
+	telemetryStatusReplayCleanup = registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryCoreRuntime)
 
 	if updaterSvc != nil {
 		emitUpdaterError := func(message string) {

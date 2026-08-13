@@ -183,14 +183,15 @@ jobs:
               )
           PY
       - name: Stage validated review input
-        run: cp "$RUNNER_TEMP/diff-decision.json" .testing-center/diff-decision.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/testing-center-review-input"
+          cp "$MANIFEST_PATH" "$RUNNER_TEMP/testing-center-review-input/validated-diff-manifest.json"
+          cp "$RUNNER_TEMP/diff-decision.json" "$RUNNER_TEMP/testing-center-review-input/diff-decision.json"
       - name: Upload validated review input
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: testing-center-validated-diff
-          path: |
-            .testing-center/validated-diff-manifest.json
-            .testing-center/diff-decision.json
+          path: ${{ runner.temp }}/testing-center-review-input/
           if-no-files-found: error
           retention-days: 7
 

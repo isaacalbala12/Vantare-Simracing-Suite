@@ -358,9 +358,18 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(diff, "name: testing-center-validated-diff");
   assertIncludes(
     diff,
-    'cp "$RUNNER_TEMP/diff-decision.json" .testing-center/diff-decision.json',
+    'mkdir -p "$RUNNER_TEMP/testing-center-review-input"',
   );
-  assertIncludes(diff, ".testing-center/diff-decision.json");
+  assertIncludes(
+    diff,
+    'cp "$MANIFEST_PATH" "$RUNNER_TEMP/testing-center-review-input/validated-diff-manifest.json"',
+  );
+  assertIncludes(
+    diff,
+    'cp "$RUNNER_TEMP/diff-decision.json" "$RUNNER_TEMP/testing-center-review-input/diff-decision.json"',
+  );
+  assertIncludes(diff, "${{ runner.temp }}/testing-center-review-input/");
+  assertNotIncludes(diff, "path: |\n      .testing-center/");
   assertNotIncludes(diff, "${{ runner.temp }}/diff-decision.json");
   assertIncludes(diff, "head_sha: ${{ steps.diff_outputs.outputs.head_sha }}");
   assertIncludes(

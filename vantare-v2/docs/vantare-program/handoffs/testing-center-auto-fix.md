@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center Auto-Fix
 
-Última actualización: 2026-08-13, ISA-318, Codex (HAF-03–HAF-07 entregadas).
+Última actualización: 2026-08-13, ISA-322, Codex (HAF-03–HAF-08 entregadas).
 
 ## Resultado del proyecto
 
@@ -26,10 +26,10 @@ está superada como arquitectura de ejecución.
 ## Estado real
 
 - Fase: gobierno inerte, contratos, persistencia, triage, dispatch, TDD cloud,
-  diff gate y review independiente entregados en ramas aisladas; runtime
-  apagado.
-- Issues de ejecución: ISA-318, ISA-319, ISA-320, ISA-321 e ISA-323 entregadas
-  para revisión; ISA-322 queda como siguiente corte.
+  diff gate, review independiente, CI estricta y bootstrap de Merge Queue
+  entregados en ramas aisladas; runtime apagado.
+- Issues de ejecución: ISA-318, ISA-319, ISA-320, ISA-321, ISA-322 e ISA-323
+  entregadas para revisión; ISA-324 queda como siguiente corte.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -126,7 +126,15 @@ determinista.
   GO, P0/P1/P2=0; su precisión documental P3 se cerró antes del HEAD publicado.
   Los dos checks GitHub propios pasan en el SHA exacto. Entregada, no integrada
   ni activada.
-- Las cinco ramas parten, directa o apiladamente, de
+- ISA-322 / HAF-08: HEAD remoto `687b1712`, PR draft #218 hacia `nightly`,
+  apilado temporalmente sobre ISA-318. Añade `merge_group`, gates bloqueantes
+  de producto, scope automático estricto, verificación criptográfica y de
+  estado vivo, preparación de reserva/release y cola deliberadamente inerte.
+  Política 43/43, diff 24/24, collector 22/22, changed lint 5/5, cola 11/11,
+  Discord 40/40 y Deno 11/11; la matriz local de Go/frontend/Vitest/visual/Wails
+  pasa. Opus 5 High: GO, P0/P1/P2=0. Política, producto y GitGuardian pasan en
+  el SHA remoto exacto. Entregada, no integrada ni activada.
+- Las seis ramas parten, directa o apiladamente, de
   `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
   No existe activación remota, merge, promoción, deploy, tag ni release.
 
@@ -135,8 +143,9 @@ determinista.
 - El dossier v1 fija repo, base `nightly`, SHA, máximo cinco paths y command IDs,
   pero prohíbe merge/deploy/promoción y está ligado a Codex; v2 debe ser aditivo.
 - El workflow Codex está inerte y con permisos `contents: read`.
-- `branch-channel-gates.yml` ejecuta Go, frontend y build en Windows, pero lint
-  y visuales son advisory.
+- La línea base de `nightly` todavía deja lint y visuales advisory; ISA-322 los
+  hace bloqueantes para el PR automático `tc-*` y revalida producto en
+  `merge_group`, pendiente de integración humana.
 - `validate_branch_channels.py` admite ramas humanas `vantareapp/isa-*` y, solo
   mediante su API interna con atestación cerrada, ramas automáticas `tc-*`
   hacia Nightly. La CLI no expone esa entrada y falla cerrada.
@@ -144,8 +153,8 @@ determinista.
   de versión solo garantiza cuatro; el agente reservará `vX.Y.Z.R-nightly.N`.
   Construye con Wails/NSIS y verifica artefactos; todavía debe exponer
   `workflow_call` y un `source_sha` obligatorio.
-- GitHub Merge Queue exige que los required checks escuchen `merge_group`; el
-  workflow actual no lo hace.
+- ISA-322 hace que los checks escuchen `merge_group`; la configuración del
+  ruleset y la activación siguen reservadas a Isaac.
 - La acción oficial Claude Code admite `claude_code_oauth_token`; Claude Code
   permite generar el token de suscripción para CI mediante
   `claude setup-token`.
@@ -164,9 +173,8 @@ determinista.
   debe verificar presencia, app emisora, SHA y conclusión.
 - P1: no existe todavía smoke post-merge ni reserva atómica de tags Nightly.
 - P2: lint global y visuales advisory impiden automatizar esos scopes.
-- P2 de activación: la excepción automática ya está documentada y modelada,
-  pero ISA-322 debe verificar firma, procedencia, frescura, digest y estado vivo
-  de GitHub antes de que pueda producir efectos.
+- P2 de activación: ISA-322 ya prepara firma, procedencia, frescura, digest y
+  estado vivo, pero la ruta de efectos sigue inerte y sin ruleset autorizado.
 - P2: las GitHub Actions externas actuales no están todas fijadas por SHA.
 - P2: un OAuth de suscripción puede caducar o revocarse; el fallo debe ser
   `needs_owner`, nunca fallback a otra cuenta/API.
@@ -183,6 +191,9 @@ determinista.
   completion falle debe reconciliarse a `needs_owner` antes del piloto.
 - P3: Linear y los nombres CCAF seguirán mostrando la arquitectura histórica
   hasta completar la replanificación del proyecto.
+- P3: el feedback SQL preexistente acepta una gramática de `target_branch` más
+  estrecha que los gates de CI. Falla cerrado; debe alinearse dentro de una ISA
+  vigente antes de permitir ese feedback sobre ramas con guion bajo.
 - Review documental independiente DeepSeek V4 Flash: GO tras dos rondas,
   P0/P1/P2=0. Se corrigieron idempotencia por fase, policy completa, bootstrap
   en rama predeterminada, SHA de release, revert, fixtures, rollback y comandos.
@@ -203,18 +214,18 @@ determinista.
 - ISA-321 / HAF-06: triage/dispatch cloud entregado, PR draft #215; revisión/integración pendiente.
 - ISA-323 / HAF-07: TDD/diff gate/review Opus entregado, PR draft #216; revisión/integración pendiente.
 - ISA-318 / HAF-03: gobierno/preautorización inerte entregado, PR draft #217; revisión/integración pendiente.
+- ISA-322 / HAF-08: CI/`merge_group` y cola inerte entregados, PR draft #218; revisión/integración pendiente.
 
 ### Siguientes cortes vigentes
 
-1. ISA-322 / HAF-08: verificación criptográfica, bootstrap, CI estricta y `merge_group`.
-2. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
-3. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
+1. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
+2. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
-Revisar los PR draft #213–#217 contra sus SHAs remotos y respetar el orden
-ISA-319 -> ISA-320 -> ISA-321 -> ISA-323 -> ISA-318. Continuar ISA-322 sin
-crear nuevas issues, declarando cualquier apilado temporal y sin
+Revisar los PR draft #213–#218 contra sus SHAs remotos y respetar el orden
+ISA-319 -> ISA-320 -> ISA-321 -> ISA-323 -> ISA-318 -> ISA-322. Continuar
+ISA-324 sin crear nuevas issues, declarando cualquier apilado temporal y sin
 activar red, credenciales o una ruta que salte `nightly`. El claim tipado, el
 reconciliador y los dos P3 de activación son condiciones obligatorias antes del
 piloto, reutilizando ISA-318–325.

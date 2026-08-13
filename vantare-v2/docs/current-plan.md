@@ -1,3 +1,18 @@
+Nota ISA-322 / HAF-08 (2026-08-13, CI estricta y Merge Queue inerte entregadas):
+- La rama apilada sobre `ISA-318@30beb873` añade `merge_group` para `nightly`,
+  gates bloqueantes de Go/frontend/Windows-Wails, scope estricto de lint/visual
+  para PR automáticos `tc-*` y la futura verificación atestación v2 -> hechos
+  vivos -> reserva Nightly. El enqueue permanece imposible por construcción.
+- HEAD remoto `687b1712`; PR draft #218 hacia `nightly`. La evidencia final
+  pasa política 43/43, diff 24/24, collector 22/22, changed lint 5/5, cola
+  11/11, Discord 40/40 y Deno 11/11. Go, build frontend, 2636 tests Vitest,
+  visual TC 4/4 y Wails Nightly pasan localmente. Los gates remotos de política,
+  producto y GitGuardian pasan sobre el SHA exacto; Opus 5 High devuelve GO
+  con P0/P1/P2=0.
+- Riesgo P3 preexistente: el feedback SQL valida `target_branch` con una
+  gramática más estricta que CI; falla cerrado y se reutilizará una ISA vigente.
+  No hubo merge, promoción, deploy, tag, release, ruleset, reserva ni activación.
+
 Nota ISA-318 / HAF-03 (2026-08-13, gobierno y bootstrap inerte entregados):
 - La rama apilada sobre `ISA-323@756e2e26` conserva el flujo humano y añade una
   preautorización cerrada solo para `tc-<job_key[:12]>-<slug>[-revert]` hacia
@@ -8,10 +23,9 @@ Nota ISA-318 / HAF-03 (2026-08-13, gobierno y bootstrap inerte entregados):
   diff-check. Opus 5 High devuelve GO con P0/P1/P2=0 y su única precisión P3
   documental quedó corregida antes del HEAD publicado. Los dos checks GitHub
   propios del SHA exacto están verdes.
-- ISA-322 debe verificar criptográficamente procedencia y frescura contra el
-  head vivo de la PR y el tip vivo de `nightly`, recomputar el digest y aplicar
-  kill switch y exclusiones antes de cada efecto. No hubo merge, promoción,
-  deploy, tag, release, ruleset ni auto-merge; no se crearon issues nuevas.
+- ISA-322 entrega esa verificación y la preparación fail-closed, todavía sin
+  efecto ejecutable. No hubo merge, promoción, deploy, tag, release, ruleset
+  ni auto-merge; no se crearon issues nuevas.
 
 Nota ISA-323 / HAF-07 (2026-08-13, TDD cloud y revisión independiente entregados sin activar):
 - La rama apilada sobre `ISA-321@58f55ef` implementa sesiones Claude RED y

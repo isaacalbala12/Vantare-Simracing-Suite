@@ -5,21 +5,25 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
   `visual.systemMemories.vantare-endurance`.
 - La rama aislada
   `vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`
-  parte de `origin/nightly@8de4f511972757476d96d6a525b69c8917f4ca56`.
-  El arreglo añade el ID tipado a las dos allowlists Go, sin migración, cambio
-  visual, renderer, dependencia ni fallback para sistemas desconocidos.
+  partió de `origin/nightly@8de4f511972757476d96d6a525b69c8917f4ca56`.
+  El arreglo añade el ID tipado y la revisión posterior elimina la allowlist
+  duplicada: persistencia y biblioteca de diseños consultan ahora el mismo
+  contrato Go, sin migración, cambio visual, renderer, dependencia ni fallback
+  para sistemas desconocidos.
 - TDD RED confirmó constante ausente en `pkg/config` y `unsupported design
   system` en `WidgetDesignService`; GREEN cubre sistema activo/predeterminado,
   memoria visual, round-trip de archivo y diseño de usuario Endurance.
-- Evidencia fresca: Go focal y paquetes `pkg/config/... ./internal/app/...`
-  PASS; frontend 367 archivos/2636 tests PASS; build frontend PASS; `go test
-  ./... -count=1` PASS. La suite frontend conserva los dos `AbortError` de
-  teardown documentados con exit 0. Fix y regresiones están en `074dba6`;
-  revisión final de diff y `design-system:check` 3/3 PASS. La rama incorporó
-  `origin/nightly@b635d79` sin reescribir historial y la PR draft #223 está
-  OPEN/MERGEABLE hacia `nightly`. El run CI `31751367018` pasó ruta, build, Go,
-  frontend y visuales; el lint advisory conserva solo deuda heredada fuera del
-  diff. Sin merge, promoción ni release.
+- Code review adversarial: se descartó un falso positivo en el comando de
+  aplicación porque `applyWidgetDesign` ya rechaza tipos incompatibles; se
+  corrigió el riesgo real de deriva entre las dos allowlists Go en `a4749e9`.
+- Evidencia fresca sobre `origin/nightly@fc88e4c`: paquetes
+  `pkg/config/... ./internal/app/...` PASS; frontend 369 archivos/2645 tests
+  PASS; `design-system:check` 3/3 PASS; build frontend PASS; `go test ./...
+  -count=1` PASS y `git diff --check` PASS. La suite frontend conserva los dos
+  `AbortError` de teardown documentados con exit 0. Fix y regresiones están en
+  `074dba6`; la rama incorporó Nightly mediante merge normal en `03fffc5`. La
+  PR draft #223 sigue hacia `nightly`; el último CI remoto previo a esta revisión
+  fue `31751988909` PASS. Sin merge de PR, promoción ni release.
 
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash

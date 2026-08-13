@@ -210,16 +210,18 @@ y recientes.
 
 2026-08-14, ISA-335 corrige en rama aislada el rechazo al guardar perfiles con
 `vantare-endurance`. La causa era un desfase entre el catálogo frontend ya
-promovido y las dos allowlists Go de persistencia/diseños. La regresión cubre
-sistema activo/predeterminado, `systemMemories`, round-trip en disco y diseños
-de usuario; los IDs desconocidos siguen fallando cerrados. Go focal y global,
-frontend 367/2636 y build pasan. Base exacta `origin/nightly@8de4f511`; rama
+promovido y las allowlists Go de persistencia/diseños. La revisión adversarial
+eliminó la lista duplicada: ambos consumidores consultan ahora el mismo contrato
+tipado. La regresión cubre sistema activo/predeterminado, `systemMemories`,
+round-trip en disco y diseños de usuario; los IDs desconocidos siguen fallando
+cerrados. Go focal y global, frontend 369/2645 y build pasan. Base inicial
+`origin/nightly@8de4f511`; rama
 `vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`.
-Fix y regresiones: `074dba6`; revisión final y `design-system:check` 3/3 PASS.
-La rama incorporó `origin/nightly@b635d79` mediante merge normal y la PR draft
-#223 está OPEN/MERGEABLE hacia `nightly`. El run CI `31751367018` pasó ruta,
-build, Go, frontend y visuales; el lint advisory conserva deuda heredada fuera
-del diff. Sin merge, promoción o release.
+Fix y regresiones: `074dba6`; centralización revisada: `a4749e9`;
+`design-system:check` 3/3 PASS. La rama incorporó `origin/nightly@fc88e4c`
+mediante merge normal en `03fffc5` y la PR draft #223 sigue hacia `nightly`.
+El último CI remoto previo a esta revisión fue `31751988909` PASS; falta el run
+del nuevo HEAD. Sin merge, promoción o release.
 
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado

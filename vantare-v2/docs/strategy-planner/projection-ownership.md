@@ -1,6 +1,6 @@
 # Strategy Planner — ownership y blockers de proyecciones
 
-**Fecha:** 2026-08-12
+**Fecha:** 2026-08-13
 **Autoridad:** ADR 0006 y Linear
 
 ## Regla
@@ -11,7 +11,7 @@ Strategy y ninguna comparte almacenamiento interno con el consumidor.
 | Contrato | Productor/owner | Issue productora | Consumidor | Issue consumidora |
 | --- | --- | --- | --- | --- |
 | `StrategyInputProjection v1` | Telemetry Analysis | ISA-159 / TA-05 | Adapter histórico Strategy | ISA-145 / STR-10 |
-| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | Motor live Strategy (aún no implementado) | ISA-152 / STR-17 |
+| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | `internal/strategy/live` mediante el adaptador in-process de `internal/app` | ISA-152 / STR-17 |
 
 ## Proyección histórica
 
@@ -59,16 +59,28 @@ status/projection namespaced y replay de status; SSE registra únicamente
 full/resync full y no se fabrica delta. Lifecycle, fail-stop y teardown poseen
 ambos hubs. VE, tyres, weather y facts siguen ausentes sin fallback.
 
-El árbol productivo previo a documentación permanece en `fee981b` tras el fix
-Task 3. La rama está publicada y el PR draft
-[#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) está
-OPEN/CLEAN/MERGEABLE hacia `nightly`. El
-[run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366)
-pasó para `19dddea`; cualquier amend posterior requiere checks del nuevo HEAD y
-el estado final se consulta en el PR. Este productor no está integrado.
-ISA-152 / STR-17 continúa bloqueada de forma absoluta; su dependencia técnica
-queda implementada, pero solo será desbloqueable tras promoción aceptada de
-ISA-161 a `nightly`. El motor live Strategy no existe todavía.
+ISA-161 fue aceptada por Isaac e integrada mediante squash del PR
+[#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) en
+`nightly@b2e4067809d31152fdcf374875179e577d483c03`. El
+[gate post-promoción](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31708164123)
+pasó completo. ISA-152 / STR-17 se implementó localmente sobre una rama aislada
+desde ese SHA. El motor puro importa solo el contrato Strategy público y el
+adaptador consume una única suscripción del Hub ya creado. No abre Shared
+Memory, REST, driver, transporte alternativo ni storage.
+
+El read model conserva cursor, lifecycle, stint, Fuel y próxima acción con
+estados explícitos `missing/fresh/stale/invalid/unsupported`. Solo
+`present+fresh` bajo source live es usable. Los objetivos Fuel son entradas
+exactas del plan: si no existe objetivo para la vuelta completada, la desviación
+queda missing. Un reconnect incrementado degrada el snapshot anterior incluso
+si el Hub coalesce estados intermedios y entrega `live -> live`.
+
+La evidencia opt-in LMU recorre el único pipeline canónico hasta el motor y
+observó cursor `1/3`, vuelta `0` y Fuel `98/115 L` fresh; sin objetivo, la
+desviación permaneció missing. El composition root no arranca todavía una
+ejecución Strategy porque el `ActivePlan` durable solo identifica una revisión
+y no suministra stints/objetivos normalizados. Resolver esa frontera requiere
+alcance explícito; no habilita un plan sintético.
 
 ## Dependencias ejecutables
 

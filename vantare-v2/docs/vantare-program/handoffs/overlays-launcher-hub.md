@@ -217,8 +217,9 @@ frontend 367/2636 y build pasan. Base exacta `origin/nightly@8de4f511`; rama
 `vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`.
 Fix y regresiones: `074dba6`; revisión final y `design-system:check` 3/3 PASS.
 La rama incorporó `origin/nightly@b635d79` mediante merge normal y la PR draft
-#223 está OPEN/MERGEABLE hacia `nightly`, con CI en curso. Sin merge, promoción
-o release.
+#223 está OPEN/MERGEABLE hacia `nightly`. El run CI `31751367018` pasó ruta,
+build, Go, frontend y visuales; el lint advisory conserva deuda heredada fuera
+del diff. Sin merge, promoción o release.
 
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado

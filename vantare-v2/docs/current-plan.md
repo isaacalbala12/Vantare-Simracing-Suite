@@ -17,8 +17,9 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
   teardown documentados con exit 0. Fix y regresiones están en `074dba6`;
   revisión final de diff y `design-system:check` 3/3 PASS. La rama incorporó
   `origin/nightly@b635d79` sin reescribir historial y la PR draft #223 está
-  OPEN/MERGEABLE hacia `nightly`, con CI en curso. Sin merge, promoción ni
-  release.
+  OPEN/MERGEABLE hacia `nightly`. El run CI `31751367018` pasó ruta, build, Go,
+  frontend y visuales; el lint advisory conserva solo deuda heredada fuera del
+  diff. Sin merge, promoción ni release.
 
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash

@@ -8,6 +8,50 @@ from validate_branch_channels import main, validate
 
 
 class ValidateBranchChannelsTest(unittest.TestCase):
+    def test_accepts_only_nightly_merge_group_refs(self) -> None:
+        self.assertEqual(
+            validate(
+                "merge_group",
+                "refs/heads/gh-readonly-queue/nightly/pr-217-deadbeef",
+                "",
+                "",
+            ),
+            "nightly merge group accepted",
+        )
+        for ref in (
+            "refs/heads/gh-readonly-queue/testers/pr-1-deadbeef",
+            "refs/heads/gh-readonly-queue/master/pr-1-deadbeef",
+            "refs/heads/nightly",
+            "refs/heads/gh-readonly-queue/nightly",
+            "refs/heads/gh-readonly-queue/nightly/../master",
+        ):
+            with self.subTest(ref=ref), self.assertRaisesRegex(
+                ValueError, "not a nightly merge group"
+            ):
+                validate("merge_group", ref, "", "")
+
+    def test_channel_workflow_runs_pinned_gates_for_merge_group(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parents[1] / "workflows" / "branch-channel-gates.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("merge_group:\n    types: [checks_requested]", workflow)
+        self.assertIn('--event "${{ github.event_name }}"', workflow)
+        self.assertIn('--ref "${{ github.ref }}"', workflow)
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        for line in workflow.splitlines():
+            if "uses:" in line:
+                self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
+        for required in (
+            "Frontend build",
+            "Go tests",
+            "Frontend tests",
+            "Changed frontend lint",
+            "Windows Wails build",
+            "Testing Center visual gate",
+        ):
+            self.assertIn(required, workflow)
+        self.assertNotIn("continue-on-error: true", workflow)
+
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(
             validate("pull_request", "refs/pull/1/merge", "nightly", "vantareapp/isa-121"),

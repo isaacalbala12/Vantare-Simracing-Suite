@@ -27,6 +27,9 @@ HOTFIX_BRANCH = re.compile(
 TC_PREFIX = "vantareapp/tc-"
 TC_HEX = re.compile(r"[0-9a-f]{12}")
 TC_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+NIGHTLY_MERGE_GROUP_REF = re.compile(
+    r"^refs/heads/gh-readonly-queue/nightly/[A-Za-z0-9._-]+$"
+)
 
 TC_REPO = "isaacalbala12/Vantare-Simracing-Suite"
 TC_ATTESTATION_CONTRACT = "testing-center-attestation/v2"
@@ -73,6 +76,13 @@ def validate(
         event == "pull_request" and base == "nightly" and _is_tc_branch(head)
     ):
         raise ValueError("automatic attestation supplied for a non-automatic branch")
+
+    if event == "merge_group":
+        if not NIGHTLY_MERGE_GROUP_REF.fullmatch(ref):
+            raise ValueError(f"ref {ref!r} is not a nightly merge group")
+        if base or head or tc_attestation is not None:
+            raise ValueError("merge group must derive authority only from its ref")
+        return "nightly merge group accepted"
 
     if event == "push":
         if ref not in ALLOWED_PUSH_REFS:

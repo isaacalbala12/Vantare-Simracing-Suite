@@ -16,12 +16,12 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
 - Code review adversarial: se descartó un falso positivo en el comando de
   aplicación porque `applyWidgetDesign` ya rechaza tipos incompatibles; se
   corrigió el riesgo real de deriva entre las dos allowlists Go en `a4749e9`.
-- Evidencia fresca sobre `origin/nightly@fc88e4c`: paquetes
-  `pkg/config/... ./internal/app/...` PASS; frontend 369 archivos/2645 tests
+- Evidencia fresca sobre `origin/nightly@7e4afe8`: paquetes
+  `pkg/config/... ./internal/app/...` PASS; frontend 370 archivos/2652 tests
   PASS; `design-system:check` 3/3 PASS; build frontend PASS; `go test ./...
   -count=1` PASS y `git diff --check` PASS. La suite frontend conserva los dos
   `AbortError` de teardown documentados con exit 0. Fix y regresiones están en
-  `074dba6`; la rama incorporó Nightly mediante merge normal en `03fffc5`. La
+  `074dba6`; la rama incorporó Nightly mediante merge normal en `a0e1431`. La
   PR draft #223 sigue hacia `nightly`; el CI remoto de la revisión
   `31753459114` pasó ruta, build, Go, frontend y visuales. El lint advisory
   conserva solo deuda heredada fuera del diff. Sin merge de PR, promoción ni

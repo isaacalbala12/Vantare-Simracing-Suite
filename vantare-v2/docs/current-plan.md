@@ -1,3 +1,124 @@
+Nota ISA-324 / HAF-09 (2026-08-13, cierre Nightly inerte entregado):
+- La rama apilada sobre `ISA-322@687b1712` implementa callbacks OIDC/JWKS
+  cerrados, ledger idempotente con fencing, lifecycle del HEAD RED al HEAD final
+  revisado, smoke Windows por SHA exacto, release reusable verificada y revert
+  idempotente por PR para commits de uno o dos padres.
+- HEAD remoto `bde77a67`; PR draft #220 hacia `nightly`. Evidencia final:
+  pgTAP 45/45 y rollback real, frontend 367 archivos/2.640 tests, Go completo,
+  build, lint focal, visual Testing Center 4/4, Wails Nightly, políticas Python,
+  Deno callback/deploy y contratos YAML/workflow en verde. Opus 5 High y la
+  revalidación posterior devuelven GO con P0/P1/P2=0.
+- Los once jobs con efectos externos conservan `&& false`; la Edge Function no
+  está en wrappers de deploy y la migración no se aplicó remotamente. No hubo
+  merge, promoción, deploy, tag, release, ruleset ni activación. Siguiente corte:
+  ISA-325, incluyendo reconciliación owner-visible si falla el propio callback.
+
+Nota ISA-322 / HAF-08 (2026-08-13, CI estricta y Merge Queue inerte entregadas):
+- La rama apilada sobre `ISA-318@30beb873` añade `merge_group` para `nightly`,
+  gates bloqueantes de Go/frontend/Windows-Wails, scope estricto de lint/visual
+  para PR automáticos `tc-*` y la futura verificación atestación v2 -> hechos
+  vivos -> reserva Nightly. El enqueue permanece imposible por construcción.
+- HEAD remoto `687b1712`; PR draft #218 hacia `nightly`. La evidencia final
+  pasa política 43/43, diff 24/24, collector 22/22, changed lint 5/5, cola
+  11/11, Discord 40/40 y Deno 11/11. Go, build frontend, 2636 tests Vitest,
+  visual TC 4/4 y Wails Nightly pasan localmente. Los gates remotos de política,
+  producto y GitGuardian pasan sobre el SHA exacto; Opus 5 High devuelve GO
+  con P0/P1/P2=0.
+- Riesgo P3 preexistente: el feedback SQL valida `target_branch` con una
+  gramática más estricta que CI; falla cerrado y se reutilizará una ISA vigente.
+  No hubo merge, promoción, deploy, tag, release, ruleset, reserva ni activación.
+
+Nota ISA-318 / HAF-03 (2026-08-13, gobierno y bootstrap inerte entregados):
+- La rama apilada sobre `ISA-323@756e2e26` conserva el flujo humano y añade una
+  preautorización cerrada solo para `tc-<job_key[:12]>-<slug>[-revert]` hacia
+  `nightly`, ligada a una atestación v2 semántica. La CLI no acepta la
+  atestación, por lo que el bootstrap permanece deliberadamente inerte.
+- HEAD remoto `30beb873`; PR draft #217 hacia `nightly`. La evidencia final
+  pasa branch channels 41/41, diff gate 24/24, collector 22/22, `py_compile` y
+  diff-check. Opus 5 High devuelve GO con P0/P1/P2=0 y su única precisión P3
+  documental quedó corregida antes del HEAD publicado. Los dos checks GitHub
+  propios del SHA exacto están verdes.
+- ISA-322 entrega esa verificación y la preparación fail-closed, todavía sin
+  efecto ejecutable. No hubo merge, promoción, deploy, tag, release, ruleset
+  ni auto-merge; no se crearon issues nuevas.
+
+Nota ISA-323 / HAF-07 (2026-08-13, TDD cloud y revisión independiente entregados sin activar):
+- La rama apilada sobre `ISA-321@58f55ef` implementa sesiones Claude RED y
+  GREEN separadas, collector de evidencia confiable, diff gate determinista y
+  revisión independiente Opus 5 High. Todos los jobs de provider, PR y
+  activación continúan fail-closed e inertes.
+- HEAD remoto `756e2e26`; PR draft #216 hacia `nightly`. La evidencia final
+  pasa Deno 45/45, pgTAP 71/71 con reapply 71/71, carrera real y guards de
+  rollback, diff gate 24/24, collector 22/22 y branch channels 10/10. Formato,
+  tipos, lint, Python, YAML/JSON y diff-check pasan. Opus devuelve GO con
+  P0/P1/P2=0 y los dos checks GitHub del SHA exacto están verdes.
+- Quedan dos P3 no bloqueantes para la futura activación: mantener parse/lint
+  YAML en CI y contrastar en el job real los flags pineados de Claude. No hubo
+  merge, promoción, deploy, tag ni release; no se crearon issues nuevas.
+
+Nota ISA-321 / HAF-06 (2026-08-13, triage y dispatch cloud entregados sin activar):
+- La rama apilada sobre `ISA-320@842da34e` implementa el contrato de triage
+  DeepSeek read-only, parser/schema cerrados, workflow fixture sin red y el
+  dispatch interno mediante GitHub App, token efímero limitado al repositorio,
+  lease/fencing y endpoint service-role fail-closed.
+- Commits remotos finales `0dbcce7` y `58f55ef`; PR draft #215 hacia `nightly`.
+  La función está reconocida pero excluida de production/pilot deploy. Deno
+  pasa 53/53; el contrato PostgreSQL heredado pasa 71/71, reapply 71/71,
+  carrera real de dos workers y guardas de rollback. Opus high devuelve GO con
+  P0/P1=0; sus P2 accionables se cerraron con regresiones TDD. GitGuardian y el
+  gate de promoción pasan en el HEAD final.
+- Activación sigue en NO-GO hasta filtrar el claim por
+  `effect_kind=github_dispatch`, programar el reconciliador de efectos
+  reservados y configurar/verificar GitHub App, secretos y scheduler. No hubo
+  merge, promoción, deploy, tag ni release; no se crearon issues nuevas.
+
+Nota ISA-319/ISA-320 / HAF-04/HAF-05 (2026-08-13, primeras entregas runtime aisladas):
+- ISA-319 implementa la policy v2 y el dossier determinista de elegibilidad en
+  la rama de issue, commit `02a784c3`, PR draft #213 hacia `nightly`. Sus suites
+  Deno pasan 147/147, 11/11 y 10/10; todos los checks remotos están verdes.
+- ISA-320 implementa el job v2 canónico, outbox por fase, lease/fencing,
+  reservas exactly-once, callbacks idempotentes, terminalidad, RLS y rollback
+  fail-closed en la rama de issue, commit `842da34e`, PR draft #214 hacia
+  `nightly`. TDD cerró una ventana claim->reserve detectada por review; la
+  evidencia final pasa 71/71 pgTAP, reapply, carrera real de dos workers y
+  guards de rollback. Qwen 3.8 Max devuelve GO con P0/P1/P2=0.
+- Ambas entregas parten de `origin/nightly@b6df494`; siguen en `In Progress`
+  hasta revisión e integración humana. No hay runtime automático activo, merge,
+  promoción, deploy, tag ni release. ISA-318-325 siguen siendo el expediente
+  vigente; no se crean issues nuevas.
+
+Nota ISA-317 / CCAF-02 (2026-08-12, arquitectura híbrida y plan TDD):
+- Isaac aprobó sustituir la ruta técnica `Supabase -> Linear -> Codex Cloud`
+  por un circuito cloud en el que Supabase es autoridad del job, GitHub lo es
+  de código/CI/merge/release y Linear queda como espejo operativo opcional.
+- Flujo fijado: saneamiento/idempotencia; OpenCode con DeepSeek V4 Flash para
+  triage read-only; gate determinista; Claude Code Max en sesiones separadas
+  RED y GREEN; diff gate; sesión independiente Opus 5 high; CI Go/frontend/
+  Windows-Wails/lint/visuales; Merge Queue a Nightly; smoke post-merge; tag
+  canónico de build `vX.Y.Z.R-nightly.N`; callback Supabase.
+- Un smoke fallido crea cero tags/releases, conserva el lock serial para
+  impedir otro enqueue y abre un PR de revert contra `nightly`; no existe push
+  directo, force-push o movimiento de tags. `testers` y `master` permanecen
+  bajo las autorizaciones humanas vigentes.
+- La automatización completa requiere una preautorización estrecha posterior.
+  El rollout será observe -> PR draft/merge manual -> piloto único -> automático
+  solo tras evidencia. Lint/visuales advisory y la falta de `merge_group` son
+  bloqueos actuales, no checks que puedan ignorarse.
+- ADR canónica:
+  `docs/adr/0008-testing-center-hybrid-agent-autofix.md`. Handoff único:
+  `docs/vantare-program/handoffs/testing-center-auto-fix.md`. Plan ejecutable:
+  `docs/superpowers/plans/2026-08-12-testing-center-hybrid-agent-autofix.md`.
+- ISA-316 conserva el NO-GO histórico de Codex Cloud y ya no bloquea ISA-317.
+  ADR 0007 y los documentos del 2026-08-03 no se borran: sus contratos de
+  privacidad, saneamiento, SHA y auditoría siguen vigentes, pero su ruta
+  Linear/Codex Cloud queda superada.
+- Alcance ISA-317: cinco archivos documentales, sin tests de comportamiento por
+  no cambiar runtime. No activa agents, secrets, red, merge, tag, release ni
+  promoción. Review independiente DeepSeek V4 Flash: GO, P0/P1/P2=0 tras dos
+  rondas. Rama rebasada sobre `nightly@234794d` y PR draft #209 con gates en
+  verde; siguiente gate: revisión humana y replanificación de ISA-318-325 más
+  las issues nuevas según los microcortes RED -> GREEN -> REFACTOR.
+
 Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada):
 - ISA-160 / TC-10A está integrada en
   `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`; ISA-161 se construyó

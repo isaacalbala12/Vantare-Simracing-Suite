@@ -64,8 +64,8 @@ research quedan fuera de su context pack.
   A por aprobación explícita de Isaac; la review Opus anterior no es final PASS.
 - El microplan S1 fue aprobado por Isaac el 2026-08-13 (cortes A/B/C, incluido
   el cambio visible Spotter ES→EN del Corte C). Corte A implementado y revisado:
-  commits locales `cfbe63e` + `1af3fb5` (HEAD `1af3fb5f63dc192c3c1576a10c2f12471c2b3782`);
-  spec `ACCEPT` (P0-P2=0) y quality `READY` (P0-P2=0); `go test ./internal/engineer/...` y
+  tip funcional local `1af3fb5` (con `cfbe63e` debajo) + commit documental de cierre
+  como HEAD; spec `ACCEPT` (P0-P2=0) y quality `READY` (P0-P2=0); `go test ./internal/engineer/...` y
   `go test ./...` PASS (94 paquetes); `-race` no ejecutable (CGO off). Validación manual
   LMU/pestaña Ingeniero NO ejecutada: Corte A abierto hasta ese gate humano; B/C no iniciados.
 
@@ -146,9 +146,9 @@ research quedan fuera de su context pack.
 
 - **P0:** Pit Manager no tiene transacción/readback demostrados; permanece sin
   efectos productivos.
-- **P1:** enable de Spotter comparte autoridad con runtime; sensibilidad,
-  calidad por rival, secuencias, salida `audio-only`, same-side, ghost y
-  plausibilidad conservan deudas del baseline.
+- **P1:** calidad por rival, secuencias, salida `audio-only`, same-side, ghost y
+  plausibilidad conservan deudas del baseline (secuencia en Corte B, salida en
+  Corte C).
 - **P1:** no existe aceptación LMU real completa ni audio distribuible; ACK o
   replay sintético no demuestran audibilidad.
 - **P1:** licencias y cadena G2P/voz/pack pueden impedir distribución Kokoro.

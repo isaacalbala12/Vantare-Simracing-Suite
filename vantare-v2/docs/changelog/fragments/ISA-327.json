@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "issue": "ISA-327",
   "type": "fix",
-  "summary": "Apagar el Spotter ya no apaga a Fuel ni al Ingeniero y ya no desconecta la conexión: el visual que no es de Spotter se conserva, y al volver a encender o cambiar la sensibilidad solo se rearranca el Spotter.",
+  "summary": "Apagar el Spotter ya no apaga a Fuel ni al Ingeniero y ya no desconecta la conexión: el visual que no es de Spotter se conserva, y al volver a encender o cambiar la sensibilidad solo se rearma el Spotter.",
   "technicalNotes": [
     "El toggle de Spotter deja de usar el reset global del runtime y de vaciar la cola de mensajes: ahora cancela solo las decisiones y entregas de la familia Spotter y conserva Fuel y el resto de monitores.",
-    "El re-enable y el cambio de sensibilidad rearrancan solo la máquina Spotter y su política de mensajes, de modo que no reaparecen avisos obsoletos (still/clear) derivados antes de apagarlo.",
+    "El re-enable y el cambio de sensibilidad rearman solo la máquina Spotter y su política de mensajes, de modo que no reaparecen avisos obsoletos (still/clear) derivados antes de apagarlo.",
     "La sensibilidad pasa a ser única: el detector y la revalidación comparten el preset configurado, sin versionado nuevo; el replayoracle conserva Normal como default determinista.",
     "No cambia el contrato ni la representación del frontend: la pestaña Ingeniero ya expone el toggle general, el toggle Spotter, la conexión, la sensibilidad, los modos y los mensajes."
   ],
@@ -13,7 +13,7 @@
     "En la pestaña Ingeniero: apagar Spotter con Fuel pendiente o en reproducción y comprobar que Fuel sigue saliendo, sin desconexión ni error.",
     "Apagar Spotter con un visual activo de Fuel/Ingeniero y comprobar que el visual se conserva.",
     "Volver a encender Spotter y confirmar que no reaparecen avisos fantasma (still/clear antiguos).",
-    "Cambiar la sensibilidad y confirmar que solo el Spotter se rearranca y que la revalidación usa el nuevo preset.",
+    "Cambiar la sensibilidad y confirmar que solo el Spotter se rearma y que la revalidación usa el nuevo preset.",
     "Automatizado: go test ./internal/engineer/... PASS y go test ./... PASS (94 paquetes)."
   ],
   "knownLimitations": [

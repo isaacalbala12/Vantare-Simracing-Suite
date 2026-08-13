@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center Auto-Fix
 
-Última actualización: 2026-08-13, ISA-322, Codex (HAF-03–HAF-08 entregadas).
+Última actualización: 2026-08-13, ISA-324, Codex (HAF-03–HAF-09 entregadas).
 
 ## Resultado del proyecto
 
@@ -28,8 +28,8 @@ está superada como arquitectura de ejecución.
 - Fase: gobierno inerte, contratos, persistencia, triage, dispatch, TDD cloud,
   diff gate, review independiente, CI estricta y bootstrap de Merge Queue
   entregados en ramas aisladas; runtime apagado.
-- Issues de ejecución: ISA-318, ISA-319, ISA-320, ISA-321, ISA-322 e ISA-323
-  entregadas para revisión; ISA-324 queda como siguiente corte.
+- Issues de ejecución: ISA-318, ISA-319, ISA-320, ISA-321, ISA-322, ISA-323
+  e ISA-324 entregadas para revisión; ISA-325 queda como siguiente corte.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -134,6 +134,15 @@ determinista.
   Discord 40/40 y Deno 11/11; la matriz local de Go/frontend/Vitest/visual/Wails
   pasa. Opus 5 High: GO, P0/P1/P2=0. Política, producto y GitGuardian pasan en
   el SHA remoto exacto. Entregada, no integrada ni activada.
+- ISA-324 / HAF-09: HEAD remoto `bde77a67`, PR draft #220 hacia `nightly`,
+  apilado sobre ISA-322. Añade callback OIDC/JWKS idempotente y fenced,
+  lifecycle RED→HEAD final, smoke Windows post-merge por SHA exacto, release
+  reusable con seis artefactos y checksums, reserva/tag ligado desde el primer
+  callback, anulación atómica y revert idempotente por PR para commits squash o
+  merge. PgTAP 45/45 y rollback real; frontend 2.640/2.640, Go, build, lint
+  focal, visual 4/4 y Wails pasan; suites de policy, Deno y YAML pasan. Opus 5
+  High y su revalidación final: GO, P0/P1/P2=0. Todos los once jobs con efectos
+  siguen bajo `&& false`; función y migración no desplegadas/aplicadas.
 - Las seis ramas parten, directa o apiladamente, de
   `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
   No existe activación remota, merge, promoción, deploy, tag ni release.
@@ -171,7 +180,8 @@ determinista.
   requieren a Isaac y nunca se documentan sus valores.
 - P1: un required check omitido o skipped puede aparecer como éxito. El gate
   debe verificar presencia, app emisora, SHA y conclusión.
-- P1: no existe todavía smoke post-merge ni reserva atómica de tags Nightly.
+- P1 de activación: smoke, reserva y callbacks están implementados por
+  ISA-324, pero siguen deliberadamente inertes y no desplegados hasta ISA-325.
 - P2: lint global y visuales advisory impiden automatizar esos scopes.
 - P2 de activación: ISA-322 ya prepara firma, procedencia, frescura, digest y
   estado vivo, pero la ruta de efectos sigue inerte y sin ruleset autorizado.
@@ -215,20 +225,20 @@ determinista.
 - ISA-323 / HAF-07: TDD/diff gate/review Opus entregado, PR draft #216; revisión/integración pendiente.
 - ISA-318 / HAF-03: gobierno/preautorización inerte entregado, PR draft #217; revisión/integración pendiente.
 - ISA-322 / HAF-08: CI/`merge_group` y cola inerte entregados, PR draft #218; revisión/integración pendiente.
+- ISA-324 / HAF-09: closeout Nightly inerte entregado, PR draft #220; revisión/integración pendiente.
 
 ### Siguientes cortes vigentes
 
-1. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
-2. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
+1. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
-Revisar los PR draft #213–#218 contra sus SHAs remotos y respetar el orden
-ISA-319 -> ISA-320 -> ISA-321 -> ISA-323 -> ISA-318 -> ISA-322. Continuar
-ISA-324 sin crear nuevas issues, declarando cualquier apilado temporal y sin
-activar red, credenciales o una ruta que salte `nightly`. El claim tipado, el
-reconciliador y los dos P3 de activación son condiciones obligatorias antes del
-piloto, reutilizando ISA-318–325.
+Revisar los PR draft #213–#218 y #220 contra sus SHAs remotos y respetar el
+orden ISA-319 -> ISA-320 -> ISA-321 -> ISA-323 -> ISA-318 -> ISA-322 ->
+ISA-324. Continuar ISA-325 sin crear nuevas issues y sin retirar la inercia
+hasta verificar deploy, secretos, reconciliación de callbacks fallidos,
+ruleset/merge queue y piloto autorizado. El claim tipado, el reconciliador y
+los P3 de activación siguen siendo condiciones obligatorias.
 
 Checks de ISA-317:
 

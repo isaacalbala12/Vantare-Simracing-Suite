@@ -1,3 +1,18 @@
+Nota ISA-324 / HAF-09 (2026-08-13, cierre Nightly inerte entregado):
+- La rama apilada sobre `ISA-322@687b1712` implementa callbacks OIDC/JWKS
+  cerrados, ledger idempotente con fencing, lifecycle del HEAD RED al HEAD final
+  revisado, smoke Windows por SHA exacto, release reusable verificada y revert
+  idempotente por PR para commits de uno o dos padres.
+- HEAD remoto `bde77a67`; PR draft #220 hacia `nightly`. Evidencia final:
+  pgTAP 45/45 y rollback real, frontend 367 archivos/2.640 tests, Go completo,
+  build, lint focal, visual Testing Center 4/4, Wails Nightly, políticas Python,
+  Deno callback/deploy y contratos YAML/workflow en verde. Opus 5 High y la
+  revalidación posterior devuelven GO con P0/P1/P2=0.
+- Los once jobs con efectos externos conservan `&& false`; la Edge Function no
+  está en wrappers de deploy y la migración no se aplicó remotamente. No hubo
+  merge, promoción, deploy, tag, release, ruleset ni activación. Siguiente corte:
+  ISA-325, incluyendo reconciliación owner-visible si falla el propio callback.
+
 Nota ISA-322 / HAF-08 (2026-08-13, CI estricta y Merge Queue inerte entregadas):
 - La rama apilada sobre `ISA-318@30beb873` añade `merge_group` para `nightly`,
   gates bloqueantes de Go/frontend/Windows-Wails, scope estricto de lint/visual

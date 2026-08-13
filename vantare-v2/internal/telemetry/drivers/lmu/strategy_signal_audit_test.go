@@ -111,8 +111,9 @@ func TestStrategySignalAuditCarriesRealLMU14FuelToFinalState(t *testing.T) {
 			strategyprojection.CapabilitySession,
 			strategyprojection.CapabilityProgress,
 			strategyprojection.CapabilityPit,
+			strategyprojection.CapabilityFuel,
 		}) {
-			t.Fatalf("Strategy v1 capabilities = %v, want exact session/progress/pit", projected.Capabilities)
+			t.Fatalf("Strategy v1 capabilities = %v, want exact session/progress/pit/fuel", projected.Capabilities)
 		}
 		return
 	}
@@ -318,20 +319,20 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "Vehicles",
 		}},
 		{name: "strategy.SnapshotV1", typeOf: reflect.TypeOf(strategyprojection.SnapshotV1{}), fields: []string{"Metadata", "PayloadV1"}},
-		{name: "strategy.PayloadV1", typeOf: reflect.TypeOf(strategyprojection.PayloadV1{}), fields: []string{"Capabilities", "TrackName", "SessionType", "Player"}},
-		{name: "strategy.PlayerV1", typeOf: reflect.TypeOf(strategyprojection.PlayerV1{}), fields: []string{"ID", "LapNumber", "CompletedLaps", "InPit", "PitStopCount"}},
+		{name: "strategy.PayloadV1", typeOf: reflect.TypeOf(strategyprojection.PayloadV1{}), fields: []string{"Capabilities", "TrackName", "SessionType", "SourceTime", "EndTime", "Remaining", "MaximumLaps", "Player"}},
+		{name: "strategy.PlayerV1", typeOf: reflect.TypeOf(strategyprojection.PlayerV1{}), fields: []string{"ID", "LapNumber", "CompletedLaps", "Sector", "LapDistance", "InPit", "PitStopCount", "FuelLiters", "FuelCapacity"}},
 	} {
 		assertExactStrategyAuditFields(t, current.name, current.typeOf, current.fields)
 	}
 	assertExactStrategyAuditJSONFields(t, "strategy.PayloadV1", reflect.TypeOf(strategyprojection.PayloadV1{}), []string{
-		"capabilities", "trackName", "sessionType", "player",
+		"capabilities", "trackName", "sessionType", "sourceTimeSeconds", "endTimeSeconds", "remainingSeconds", "maximumLaps", "player",
 	})
 	assertExactStrategyAuditJSONFields(t, "strategy.PlayerV1", reflect.TypeOf(strategyprojection.PlayerV1{}), []string{
-		"id", "lapNumber", "completedLaps", "inPit", "pitStopCount",
+		"id", "lapNumber", "completedLaps", "sector", "lapDistanceMeters", "inPit", "pitStopCount", "fuelLiters", "fuelCapacityLiters",
 	})
 
-	if strategyprojection.CapabilitySession != "session" || strategyprojection.CapabilityProgress != "progress" || strategyprojection.CapabilityPit != "pit" {
-		t.Fatalf("Strategy v1 capability values changed: %q/%q/%q", strategyprojection.CapabilitySession, strategyprojection.CapabilityProgress, strategyprojection.CapabilityPit)
+	if strategyprojection.CapabilitySession != "session" || strategyprojection.CapabilityProgress != "progress" || strategyprojection.CapabilityPit != "pit" || strategyprojection.CapabilityFuel != "fuel" {
+		t.Fatalf("Strategy v1 capability values changed: %q/%q/%q/%q", strategyprojection.CapabilitySession, strategyprojection.CapabilityProgress, strategyprojection.CapabilityPit, strategyprojection.CapabilityFuel)
 	}
 
 	forbiddenCatalogKeys := map[string]struct{}{

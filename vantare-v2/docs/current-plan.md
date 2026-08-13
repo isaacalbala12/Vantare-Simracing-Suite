@@ -1,4 +1,23 @@
-Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada):
+Nota ISA-152 / STR-17 (2026-08-13, inicio de ejecución):
+- Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
+  en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
+  post-promoción 31708164123 pasó topología y gates bloqueantes completos.
+- La prueba LMU real con jugador en pista recorrió el único pipeline canónico y
+  observó Strategy Fuel `98/115 L`, present/observed/fresh, cursor `1/1` y
+  capabilities `session progress pit fuel`; el harness temporal se retiró.
+- ISA-152 está `In Progress` en Linear. Su rama/worktree aislados parten del
+  squash anterior y el microplan vigente es
+  `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
+- STR-17 implementará únicamente motor/read model efímero y consumidor del hub
+  existente. No añade reader LMU, UI, replanificación, VE, tyres, weather,
+  persistencia ni dependencias.
+- Baseline focal: Strategy, productor Strategy y telemetrytransport pasan.
+  Todavía no hay cambio productivo, commit, push ni PR de ISA-152.
+- `Roadmap public snapshot` conserva el fallo heredado
+  `telemetry-core: empty project must have null progress`; se reproduce en los
+  cuatro commits de `nightly` anteriores a ISA-161 y queda fuera de STR-17.
+
+Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada; cierre supersedido por ISA-152):
 - ISA-160 / TC-10A está integrada en
   `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`; ISA-161 se construyó
   originalmente desde esa base en

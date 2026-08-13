@@ -35,7 +35,24 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
   posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
   hasta que esa base esté realmente integrada.
 
-Actualización condicionada ISA-161 / TC-10B (2026-08-12):
+Actualización ISA-152 / STR-17 (2026-08-13):
+
+- ISA-161 fue aceptada por Isaac e integrada mediante squash del PR #212 en
+  `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El gate post-promoción
+  31708164123 pasó completo. Linear refleja ISA-161 en `Nightly`.
+- La evidencia LMU real con jugador en pista observó Strategy Fuel `98/115 L`,
+  present/observed/fresh, cursor `1/1`; no se conservaron raw ni datos de
+  usuario.
+- ISA-152 está `In Progress` sobre una rama/worktree aislados desde ese squash.
+  El motor será efímero, consumirá el hub Strategy existente y mantendrá cursor,
+  stint, recursos, desviación solo contra objetivos explícitos y próxima acción
+  planificada. No incluye UI ni replanificación.
+- Microplan vigente:
+  `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
+  Baseline focal verde; todavía no hay código productivo, commit, push ni PR de
+  ISA-152.
+
+Actualización condicionada ISA-161 / TC-10B (2026-08-12; estado histórico):
 
 - Telemetry Core ha implementado en la rama local de ISA-161 el productor
   `StrategyLiveProjection v1` sobre el único pipeline LMU canónico. Incluye

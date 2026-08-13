@@ -59,16 +59,13 @@ status/projection namespaced y replay de status; SSE registra únicamente
 full/resync full y no se fabrica delta. Lifecycle, fail-stop y teardown poseen
 ambos hubs. VE, tyres, weather y facts siguen ausentes sin fallback.
 
-El árbol productivo previo a documentación permanece en `fee981b` tras el fix
-Task 3. La rama está publicada y el PR draft
-[#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) está
-OPEN/CLEAN/MERGEABLE hacia `nightly`. El
-[run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366)
-pasó para `19dddea`; cualquier amend posterior requiere checks del nuevo HEAD y
-el estado final se consulta en el PR. Este productor no está integrado.
-ISA-152 / STR-17 continúa bloqueada de forma absoluta; su dependencia técnica
-queda implementada, pero solo será desbloqueable tras promoción aceptada de
-ISA-161 a `nightly`. El motor live Strategy no existe todavía.
+ISA-161 fue aceptada por Isaac e integrada mediante squash del PR
+[#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) en
+`nightly@b2e4067809d31152fdcf374875179e577d483c03`. El
+[gate post-promoción](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31708164123)
+pasó completo. ISA-152 / STR-17 queda técnicamente desbloqueada y está en
+ejecución sobre una rama aislada desde ese SHA; el motor live aún no existe en
+la base y no puede afirmarse implementado hasta cerrar su propia entrega.
 
 ## Dependencias ejecutables
 

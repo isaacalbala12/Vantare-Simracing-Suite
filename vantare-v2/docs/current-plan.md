@@ -1,3 +1,17 @@
+Nota ISA-323 / HAF-07 (2026-08-13, TDD cloud y revisión independiente entregados sin activar):
+- La rama apilada sobre `ISA-321@58f55ef` implementa sesiones Claude RED y
+  GREEN separadas, collector de evidencia confiable, diff gate determinista y
+  revisión independiente Opus 5 High. Todos los jobs de provider, PR y
+  activación continúan fail-closed e inertes.
+- HEAD remoto `756e2e26`; PR draft #216 hacia `nightly`. La evidencia final
+  pasa Deno 45/45, pgTAP 71/71 con reapply 71/71, carrera real y guards de
+  rollback, diff gate 24/24, collector 22/22 y branch channels 10/10. Formato,
+  tipos, lint, Python, YAML/JSON y diff-check pasan. Opus devuelve GO con
+  P0/P1/P2=0 y los dos checks GitHub del SHA exacto están verdes.
+- Quedan dos P3 no bloqueantes para la futura activación: mantener parse/lint
+  YAML en CI y contrastar en el job real los flags pineados de Claude. No hubo
+  merge, promoción, deploy, tag ni release; no se crearon issues nuevas.
+
 Nota ISA-321 / HAF-06 (2026-08-13, triage y dispatch cloud entregados sin activar):
 - La rama apilada sobre `ISA-320@842da34e` implementa el contrato de triage
   DeepSeek read-only, parser/schema cerrados, workflow fixture sin red y el

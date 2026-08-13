@@ -399,7 +399,11 @@ def _is_forbidden_path(path: str) -> bool:
     folded = path.casefold()
     parts = tuple(part.casefold() for part in PurePosixPath(path).parts)
     name = parts[-1] if parts else ""
-    if parts[:1] == (".github",):
+    if (parts and parts[0].startswith(".")) or name in {
+        ".mcp.json",
+        "agents.md",
+        "claude.md",
+    }:
         return True
     sensitive_segments = {
         "auth",

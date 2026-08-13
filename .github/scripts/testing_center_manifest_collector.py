@@ -20,6 +20,19 @@ from typing import Any, NoReturn
 MANIFEST_VERSION = 1
 CONTRACT_VERSION = "testing-center-diff-gate/v1"
 RUNNER_EVIDENCE_KIND = "verify-runner"
+POLICY_LIMITS = {
+    "max_test_files": 5,
+    "max_product_files": 5,
+    "max_changed_lines": 200,
+}
+CONTROL_FILES = (
+    "testing-center-agent-settings.json",
+    "testing-center-green-prompt.md",
+    "testing-center-red-prompt.md",
+    "testing-center-review-output.schema.json",
+    "testing-center-review-prompt.md",
+    "testing-center-review-settings.json",
+)
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -100,6 +113,27 @@ def manifest_sha256(manifest: dict[str, Any]) -> str:
     """Deterministic sha256 of the canonical JSON rendering of a manifest."""
     canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def control_sha256(directory: Path) -> str:
+    """Hash the exact trusted-control file set with names and contents bound."""
+    if not directory.is_dir() or directory.is_symlink():
+        _invalid("trusted control must be a local directory")
+    entries = {entry.name for entry in directory.iterdir()}
+    if entries != set(CONTROL_FILES):
+        _invalid("trusted control has missing or unknown files")
+    digest = hashlib.sha256()
+    for name in CONTROL_FILES:
+        source = directory / name
+        if not source.is_file() or source.is_symlink():
+            _invalid("trusted control entries must be regular files")
+        content = source.read_bytes()
+        encoded_name = name.encode("utf-8")
+        digest.update(len(encoded_name).to_bytes(4, "big"))
+        digest.update(encoded_name)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
 
 
 def _reject_fail_open_facts(
@@ -329,8 +363,8 @@ def _validate_dossier(value: Any) -> None:
         "dossier.limits",
     )
     for name in ("max_test_files", "max_product_files", "max_changed_lines"):
-        if _integer(limits[name], f"dossier.limits.{name}") < 1:
-            _invalid(f"dossier.limits.{name} must be positive")
+        if _integer(limits[name], f"dossier.limits.{name}") != POLICY_LIMITS[name]:
+            _invalid(f"dossier.limits.{name} does not match gate policy")
 
 
 def _validate_changes(value: Any, location: str) -> None:
@@ -460,6 +494,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     digest.add_argument("--manifest", required=True)
 
+    control_digest = subparsers.add_parser(
+        "control-sha256", help="print the sha256 of the closed trusted-control set"
+    )
+    control_digest.add_argument("--directory", required=True)
+
     args = parser.parse_args(argv)
     try:
         if args.command == "build":
@@ -474,9 +513,11 @@ def main(argv: list[str] | None = None) -> int:
                 encoding="utf-8",
             )
             print(f"manifest_sha256={manifest_sha256(manifest)}")
-        else:
+        elif args.command == "manifest-sha256":
             manifest = _read_json(args.manifest, "manifest")
             print(manifest_sha256(manifest))
+        else:
+            print(control_sha256(Path(args.directory)))
     except (
         OSError,
         UnicodeError,

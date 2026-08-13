@@ -387,6 +387,14 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(collector, "name: testing-center-trusted-manifest");
   assertIncludes(collector, "name: testing-center-trusted-control");
   assertIncludes(collector, "retention-days: 1");
+  assertIncludes(
+    collector,
+    "control_sha256: ${{ steps.control_digest.outputs.control_sha256 }}",
+  );
+  assertIncludes(
+    collector,
+    "testing_center_manifest_collector.py control-sha256",
+  );
 
   // C2: diff_gate requires collector success and recomputes sha256 before the gate.
   assertIncludes(diff, "needs: manifest_collector");
@@ -439,21 +447,23 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
   assertIncludes(review, "uses: " + downloadArtifactPin);
   assertIncludes(review, "name: testing-center-validated-diff");
+  assertIncludes(
+    review,
+    "${{ runner.temp }}/testing-center-review-input/",
+  );
+  assertNotIncludes(review, "path: .testing-center");
   // P1-1: prompt/schema/settings come from the trusted control artifact only.
   assertIncludes(review, "name: testing-center-trusted-control");
   assertIncludes(review, "${{ runner.temp }}/testing-center-control/");
   assertIncludes(
     review,
-    "REVIEW_PROMPT_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md",
-  );
-  assertIncludes(
-    review,
-    "REVIEW_SETTINGS_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json",
-  );
-  assertIncludes(
-    review,
     "settings: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json",
   );
+  assertIncludes(
+    review,
+    "EXPECTED_CONTROL_SHA256: ${{ needs.diff_gate.outputs.control_sha256 }}",
+  );
+  assertIncludes(review, "control_sha256_mismatch");
   assertIncludes(review, "uses: " + claudeActionPin);
   assertIncludes(review, "id: opus_review");
   assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
@@ -473,15 +483,21 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "--effort high");
   assertIncludes(review, "--max-turns 15");
   assertIncludes(review, "--allowedTools Read,Grep,Glob");
-  assertIncludes(review, '--json-schema "$REVIEW_SCHEMA_JSON"');
   assertIncludes(
     review,
-    "REVIEW_SCHEMA_JSON: ${{ steps.review_schema.outputs.json }}",
+    '--add-dir "${{ runner.temp }}/testing-center-control"',
   );
-  assertNotIncludes(
+  assertIncludes(
+    review,
+    '--add-dir "${{ runner.temp }}/testing-center-review-input"',
+  );
+  assertIncludes(
     review,
     "--json-schema '${{ steps.review_schema.outputs.json }}'",
   );
+  assertNotIncludes(review, "REVIEW_PROMPT_PATH:");
+  assertNotIncludes(review, "REVIEW_SETTINGS_PATH:");
+  assertNotIncludes(review, "REVIEW_SCHEMA_JSON:");
   assertNotIncludes(review, ".github/agents/testing-center-review-prompt.md");
   assertNotIncludes(
     review,
@@ -608,4 +624,9 @@ Deno.test("review deny-list is explicit and security tests run on every PR", asy
     gates,
     "deno test --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
   );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_manifest_collector.py",
+  );
+  assertNotIncludes(gates, "pip install pyyaml");
 });

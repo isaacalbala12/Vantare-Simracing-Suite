@@ -266,6 +266,16 @@ class DiffGateBehaviorTest(unittest.TestCase):
             ".github/workflows/release.yml",
             ".github/agents/testing-center-review-prompt.md",
             ".github/scripts/testing_center_diff_gate.py",
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/hooks/run.sh",
+            ".testing-center/diff-decision.json",
+            ".vscode/settings.json",
+            "CLAUDE.md",
+            "docs/CLAUDE.md",
+            "AGENTS.md",
+            "docs/AGENTS.md",
+            ".mcp.json",
             "config/production.json",
             "frontend/src/auth/session.ts",
             "frontend/src/billing/invoice.ts",
@@ -285,6 +295,26 @@ class DiffGateBehaviorTest(unittest.TestCase):
         manifest["phases"]["red"]["changes"] = [change("frontend/src/widget.ts")]
 
         self.assertIn("forbidden_path", evaluate_diff(manifest).reasons)
+
+    def test_server_cannot_allowlist_agent_control_namespaces(self) -> None:
+        for path in [
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/hooks/run.sh",
+            ".testing-center/diff-decision.json",
+            ".vscode/settings.json",
+            "CLAUDE.md",
+            "docs/CLAUDE.md",
+            "AGENTS.md",
+            "docs/AGENTS.md",
+            ".mcp.json",
+        ]:
+            with self.subTest(path=path):
+                manifest = eligible_manifest()
+                manifest["expected"]["product_paths"] = [path]
+                manifest["phases"]["green"]["changes"] = [change(path)]
+                with self.assertRaises(ValueError):
+                    evaluate_diff(manifest)
 
     def test_rejects_ambiguous_or_oversized_server_scope(self) -> None:
         manifests = []

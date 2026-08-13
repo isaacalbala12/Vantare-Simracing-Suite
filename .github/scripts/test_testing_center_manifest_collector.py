@@ -7,12 +7,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import yaml
-
 from testing_center_diff_gate import evaluate_diff
 from testing_center_manifest_collector import (
     ManifestError,
     build_manifest,
+    control_sha256,
     main,
     manifest_sha256,
 )
@@ -24,13 +23,6 @@ JOB_KEY = "testing-center:issue-123"
 VERSION = "testing-center-diff-gate/v1"
 RED_DIGEST = "sha256:" + "a" * 64
 HEAD_DIGEST = "sha256:" + "b" * 64
-
-WORKFLOW_PATH = Path(__file__).parent.parent / "workflows" / "testing-center-agent-fix.yml"
-BRANCH_GATES_PATH = Path(__file__).parent.parent / "workflows" / "branch-channel-gates.yml"
-
-CHECKOUT_PIN = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
-DOWNLOAD_PIN = "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
-UPLOAD_PIN = "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
 
 
 def change(path: str, *, additions: int = 8, deletions: int = 0) -> dict:
@@ -163,6 +155,18 @@ class DossierUnknownTest(unittest.TestCase):
         del work["limits"]
         with self.assertRaises(ManifestError):
             build_manifest(facts, work, command_results())
+
+    def test_rejects_limits_that_do_not_match_gate_policy(self) -> None:
+        for name, value in (
+            ("max_test_files", 6),
+            ("max_product_files", 6),
+            ("max_changed_lines", 201),
+        ):
+            with self.subTest(name=name):
+                work = dossier()
+                work["limits"][name] = value
+                with self.assertRaises(ManifestError):
+                    build_manifest(raw_git_facts(), work, command_results())
 
 
 class ShaValidationTest(unittest.TestCase):
@@ -380,112 +384,45 @@ class CliTest(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertIn('"error":"invalid_manifest"', stdout.getvalue())
 
+    def test_control_sha256_is_stable_closed_and_content_sensitive(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            required = {
+                "testing-center-agent-settings.json": b"agent",
+                "testing-center-green-prompt.md": b"green",
+                "testing-center-red-prompt.md": b"red",
+                "testing-center-review-output.schema.json": b"schema",
+                "testing-center-review-prompt.md": b"review",
+                "testing-center-review-settings.json": b"settings",
+            }
+            for name, content in required.items():
+                (root / name).write_bytes(content)
 
-class WorkflowContractTest(unittest.TestCase):
-    def test_workflow_yaml_parses_and_has_trusted_job_topology(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        jobs = workflow["jobs"]
-        expected_order = [
-            "fixture",
-            "production_disabled",
-            "red_agent",
-            "red_gate",
-            "green_agent",
-            "green_gate",
-            "manifest_collector",
-            "diff_gate",
-            "review_opus",
-            "review_gate",
-            "draft_pr",
-        ]
-        self.assertEqual([name for name in expected_order if name in jobs], expected_order)
-        self.assertEqual(jobs["manifest_collector"]["needs"], "green_gate")
-        self.assertEqual(jobs["diff_gate"]["needs"], "manifest_collector")
+            first = control_sha256(root)
+            self.assertEqual(first, control_sha256(root))
+            (root / "testing-center-review-prompt.md").write_bytes(b"changed")
+            self.assertNotEqual(first, control_sha256(root))
+            (root / "unexpected.txt").write_text("no", encoding="utf-8")
+            with self.assertRaises(ManifestError):
+                control_sha256(root)
 
-    def test_c1_manifest_and_downloads_live_only_under_runner_temp(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        collector = workflow["jobs"]["manifest_collector"]
-        self.assertEqual(
-            collector["env"]["MANIFEST_PATH"],
-            "${{ runner.temp }}/testing-center/trusted-manifest.json",
-        )
-        diff = workflow["jobs"]["diff_gate"]
-        self.assertEqual(
-            diff["env"]["MANIFEST_PATH"],
-            "${{ runner.temp }}/testing-center/trusted-manifest.json",
-        )
-
-    def test_c2_diff_gate_requires_success_and_recomputes_sha256_before_gate(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        diff = workflow["jobs"]["diff_gate"]
-        self.assertIn("needs.manifest_collector.result == 'success'", diff["if"])
-        step_names = [step.get("name") for step in diff["steps"]]
-        verify_index = step_names.index(
-            "Verify manifest sha256 before gating"
-        )
-        gate_index = step_names.index("Evaluate server-owned manifest without network")
-        self.assertLess(verify_index, gate_index)
-        verify = diff["steps"][verify_index]
-        self.assertEqual(
-            verify["env"]["EXPECTED_MANIFEST_SHA256"],
-            "${{ needs.manifest_collector.outputs.manifest_sha256 }}",
-        )
-        self.assertIn("manifest-sha256", verify["run"])
-        self.assertIn("manifest_sha256_mismatch", verify["run"])
-
-    def test_c3_commands_from_verify_runner_only_and_bundle_not_tarball(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        collector = workflow["jobs"]["manifest_collector"]
-        step_names = [step.get("name") for step in collector["steps"]]
-        build_index = step_names.index("Build trusted manifest from verify runner bundle facts only")
-        build = collector["steps"][build_index]
-        self.assertEqual(
-            build["env"]["COMMAND_RESULTS"],
-            "${{ runner.temp }}/testing-center-evidence/command-results.json",
-        )
-        text = WORKFLOW_PATH.read_text(encoding="utf-8")
-        self.assertIn("bundle", text.lower())
-        self.assertNotIn("tarball", text.lower())
-
-    def test_collector_checkout_uses_explicit_control_ref_without_credentials(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        collector = workflow["jobs"]["manifest_collector"]
-        checkout = collector["steps"][0]
-        self.assertEqual(checkout["uses"], CHECKOUT_PIN)
-        self.assertEqual(checkout["with"]["ref"], "${{ github.sha }}")
-        self.assertEqual(checkout["with"]["persist-credentials"], False)
-
-    def test_diff_gate_checks_out_trusted_scripts_without_credentials(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        diff = workflow["jobs"]["diff_gate"]
-        checkout = diff["steps"][0]
-        self.assertEqual(checkout["uses"], CHECKOUT_PIN)
-        self.assertEqual(checkout["with"]["ref"], "${{ github.sha }}")
-        self.assertEqual(checkout["with"]["persist-credentials"], False)
-
-    def test_trusted_artifacts_have_retention_one(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        collector = workflow["jobs"]["manifest_collector"]
-        uploads = [step for step in collector["steps"] if step.get("uses") == UPLOAD_PIN]
-        self.assertEqual({step["with"]["retention-days"] for step in uploads}, {1})
-
-    def test_review_uses_trusted_control_not_head_for_prompt_schema_settings(self) -> None:
-        workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
-        review = workflow["jobs"]["review_opus"]
-        text = json.dumps(review, sort_keys=True)
-        self.assertIn("testing-center-trusted-control", text)
-        self.assertIn("${{ runner.temp }}/testing-center-control/", text)
-        self.assertNotIn(".github/agents/testing-center-review-settings.json", text)
-        self.assertNotIn(".github/agents/testing-center-review-output.schema.json", text)
-        self.assertNotIn(".github/agents/testing-center-review-prompt.md", text)
-
-    def test_branch_ci_runs_collector_tests(self) -> None:
-        gates = yaml.safe_load(BRANCH_GATES_PATH.read_text(encoding="utf-8"))
-        policy_steps = " ".join(
-            json.dumps(step, sort_keys=True)
-            for step in gates["jobs"]["policy"]["steps"]
-        )
-        self.assertIn("test_testing_center_manifest_collector.py", policy_steps)
+    def test_control_sha256_cli_prints_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in (
+                "testing-center-agent-settings.json",
+                "testing-center-green-prompt.md",
+                "testing-center-red-prompt.md",
+                "testing-center-review-output.schema.json",
+                "testing-center-review-prompt.md",
+                "testing-center-review-settings.json",
+            ):
+                (root / name).write_text(name, encoding="utf-8")
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                exit_code = main(["control-sha256", "--directory", str(root)])
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stdout.getvalue().strip(), control_sha256(root))
 
 
 if __name__ == "__main__":

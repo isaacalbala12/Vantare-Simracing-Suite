@@ -156,6 +156,7 @@ jobs:
       MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
     outputs:
       manifest_sha256: ${{ steps.build_manifest.outputs.manifest_sha256 }}
+      control_sha256: ${{ steps.control_digest.outputs.control_sha256 }}
     steps:
       - name: Checkout pinned trusted control ref without credentials
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -176,6 +177,11 @@ jobs:
           cp .github/agents/testing-center-agent-settings.json "$RUNNER_TEMP/testing-center-control/"
           cp .github/agents/testing-center-red-prompt.md "$RUNNER_TEMP/testing-center-control/"
           cp .github/agents/testing-center-green-prompt.md "$RUNNER_TEMP/testing-center-control/"
+      - name: Bind trusted control contents
+        id: control_digest
+        run: |
+          CONTROL_SHA256="$(python .github/scripts/testing_center_manifest_collector.py control-sha256 --directory "$RUNNER_TEMP/testing-center-control")"
+          echo "control_sha256=$CONTROL_SHA256" >> "$GITHUB_OUTPUT"
       - name: Build trusted manifest from verify runner bundle facts only
         id: build_manifest
         env:
@@ -214,6 +220,7 @@ jobs:
     outputs:
       head_sha: ${{ steps.diff_outputs.outputs.head_sha }}
       head_digest: ${{ steps.diff_outputs.outputs.head_digest }}
+      control_sha256: ${{ needs.manifest_collector.outputs.control_sha256 }}
     steps:
       - name: Checkout server-selected trusted control ref without credentials
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -275,7 +282,7 @@ jobs:
           name: testing-center-validated-diff
           path: ${{ runner.temp }}/testing-center-review-input/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1
 
   review_opus:
     needs: diff_gate
@@ -299,18 +306,30 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: testing-center-validated-diff
-          path: .testing-center
+          path: ${{ runner.temp }}/testing-center-review-input/
       - name: Download trusted control artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: testing-center-trusted-control
           path: ${{ runner.temp }}/testing-center-control/
+      - name: Verify trusted control sha256 before review
+        shell: bash
+        env:
+          EXPECTED_CONTROL_SHA256: ${{ needs.diff_gate.outputs.control_sha256 }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(python .github/scripts/testing_center_manifest_collector.py control-sha256 --directory "$RUNNER_TEMP/testing-center-control")"
+          if [ "$ACTUAL" != "$EXPECTED_CONTROL_SHA256" ]; then
+            echo "control_sha256_mismatch" >&2
+            exit 1
+          fi
       - name: Load closed review schema from trusted control
         id: review_schema
         shell: bash
         run: |
           set -euo pipefail
-          echo "json=$(jq -c . "$RUNNER_TEMP/testing-center-control/testing-center-review-output.schema.json")" >> "$GITHUB_OUTPUT"
+          SCHEMA_JSON="$(jq -c . "$RUNNER_TEMP/testing-center-control/testing-center-review-output.schema.json")"
+          echo "json=$SCHEMA_JSON" >> "$GITHUB_OUTPUT"
       - name: Run independent read-only Opus review
         id: opus_review
         uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
@@ -318,9 +337,6 @@ jobs:
           CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
           VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}
           VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}
-          REVIEW_PROMPT_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md
-          REVIEW_SETTINGS_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json
-          REVIEW_SCHEMA_JSON: ${{ steps.review_schema.outputs.json }}
           ANTHROPIC_API_KEY: ""
           ANTHROPIC_AUTH_TOKEN: ""
           ANTHROPIC_BASE_URL: ""
@@ -338,7 +354,9 @@ jobs:
           prompt: >-
             Lee y cumple exclusivamente el archivo de control confiable indicado
             en ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md.
-            Revisa solo el manifest y HEAD validados de este run.
+            Revisa solo HEAD y los ficheros validados
+            ${{ runner.temp }}/testing-center-review-input/validated-diff-manifest.json
+            y ${{ runner.temp }}/testing-center-review-input/diff-decision.json.
           display_report: false
           show_full_output: false
           track_progress: false
@@ -348,7 +366,9 @@ jobs:
             --max-turns 15
             --strict-mcp-config
             --allowedTools Read,Grep,Glob
-            --json-schema "$REVIEW_SCHEMA_JSON"
+            --add-dir "${{ runner.temp }}/testing-center-control"
+            --add-dir "${{ runner.temp }}/testing-center-review-input"
+            --json-schema '${{ steps.review_schema.outputs.json }}'
       - name: Validate and sanitize review artifact
         shell: bash
         env:

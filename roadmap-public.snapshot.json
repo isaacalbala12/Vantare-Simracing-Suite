@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-13T23:43:34Z",
+  "generatedAt": "2026-08-13T23:51:55Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 14,
+            "done": 15,
             "total": 31,
-            "percent": 45
+            "percent": 48
           },
           "tasks": [
             {
@@ -38,12 +38,6 @@
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "in-progress",
               "updatedAt": "2026-08-13T23:38:26.179Z"
-            },
-            {
-              "id": "task_e79e1f63aa00207b5076",
-              "title": "Overlay Studio: Broadcast Tower debe ocupar todo el ancho y redimensionarse solo horizontalmente",
-              "status": "in-progress",
-              "updatedAt": "2026-08-13T22:46:15.065Z"
             },
             {
               "id": "task_609d33340526777a9186",
@@ -176,6 +170,12 @@
               "title": "N01 · Promoción a nightly y pre-release de superficie arbitraria",
               "status": "done",
               "updatedAt": "2026-08-12T20:13:35.786Z"
+            },
+            {
+              "id": "task_e79e1f63aa00207b5076",
+              "title": "Overlay Studio: Broadcast Tower debe ocupar todo el ancho y redimensionarse solo horizontalmente",
+              "status": "done",
+              "updatedAt": "2026-08-13T23:51:46.492Z"
             },
             {
               "id": "task_871b1ab68a2ba77204b2",

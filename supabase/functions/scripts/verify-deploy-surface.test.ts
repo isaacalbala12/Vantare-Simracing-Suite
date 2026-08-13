@@ -47,6 +47,26 @@ Deno.test("testing pilot functions are recognized but remain outside production 
   }
 });
 
+Deno.test("agent dispatch is recognized but remains absent from every deploy wrapper", () => {
+  const entries = [
+    { name: "testing-center-agent-dispatch", isDirectory: true },
+  ] as Deno.DirEntry[];
+  if (invalidDeployableDirectories(entries).length !== 0) {
+    throw new Error("reviewed agent dispatch surface was rejected");
+  }
+  for (
+    const wrapper of [
+      "deploy-approved-functions.ps1",
+      "deploy-testing-center-pilot.ps1",
+    ]
+  ) {
+    const content = Deno.readTextFileSync(new URL(wrapper, import.meta.url));
+    if (content.includes('"testing-center-agent-dispatch"')) {
+      throw new Error(`agent dispatch leaked into deploy wrapper: ${wrapper}`);
+    }
+  }
+});
+
 Deno.test("official deploy workflow can only deploy through the guarded wrapper", () => {
   const surfaceGuard = Deno.readTextFileSync(
     new URL("./verify-deploy-surface.ps1", import.meta.url),
@@ -73,12 +93,14 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   if (!wrapper.includes('"license-credential"')) {
     throw new Error("official wrapper does not deploy the license issuer");
   }
-  for (const functionName of [
-    "billing-checkout",
-    "billing-portal",
-    "billing-webhook",
-    "license-credential",
-  ]) {
+  for (
+    const functionName of [
+      "billing-checkout",
+      "billing-portal",
+      "billing-webhook",
+      "license-credential",
+    ]
+  ) {
     if (!surfaceGuard.includes(`"${functionName}"`)) {
       throw new Error(
         `surface guard does not approve deployed function: ${functionName}`,
@@ -192,17 +214,21 @@ Deno.test("binding generation never receives client credential linker values", (
     /task: common:build:frontend[\s\S]*?ref: \.([A-Z_]+)/,
   );
   if (frontendDependency?.[1] !== "BINDING_FLAGS") {
-    throw new Error("Windows frontend build does not use isolated binding flags");
+    throw new Error(
+      "Windows frontend build does not use isolated binding flags",
+    );
   }
   const bindingFlags = taskfile.match(
     /BINDING_FLAGS:\s*'([^\n]+)'/,
   )?.[1] ?? "";
-  for (const forbidden of [
-    "VANTARE_SUPABASE_URL",
-    "VANTARE_SUPABASE_ANON_KEY",
-    "VANTARE_LICENSE_PUBLIC_KEYS",
-    "ldflags",
-  ]) {
+  for (
+    const forbidden of [
+      "VANTARE_SUPABASE_URL",
+      "VANTARE_SUPABASE_ANON_KEY",
+      "VANTARE_LICENSE_PUBLIC_KEYS",
+      "ldflags",
+    ]
+  ) {
     if (bindingFlags.includes(forbidden)) {
       throw new Error(`binding flags contain linker-only value: ${forbidden}`);
     }

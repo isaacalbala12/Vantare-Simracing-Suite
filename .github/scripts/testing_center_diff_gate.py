@@ -18,6 +18,7 @@ from typing import Any, NoReturn
 MANIFEST_VERSION = 1
 CONTRACT_VERSION = "testing-center-diff-gate/v1"
 MAX_PRODUCT_FILES = 5
+MAX_TEST_FILES = 5
 MAX_CHANGED_LINES = 200
 
 REASON_ORDER = (
@@ -39,8 +40,8 @@ REASON_ORDER = (
     "command_mismatch",
 )
 
-SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
-DIGEST_RE = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:[/\\]")
 SECRET_PATTERNS = (
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -149,10 +150,11 @@ def evaluate_diff(manifest: dict[str, Any]) -> DiffDecision:
         reasons.add("red_test_mutated")
 
     changed_lines = sum(
-        change["additions"] + change["deletions"] for change in green["changes"]
+        change["additions"] + change["deletions"] for change in all_changes
     )
     if (
-        len(green["changes"]) > expected["limits"]["max_product_files"]
+        len(red["changes"]) > expected["limits"]["max_test_files"]
+        or len(green["changes"]) > expected["limits"]["max_product_files"]
         or changed_lines > expected["limits"]["max_changed_lines"]
     ):
         reasons.add("file_budget_exceeded")
@@ -179,6 +181,10 @@ def evaluate_diff(manifest: dict[str, Any]) -> DiffDecision:
     if [command["id"] for command in red_commands] != expected["command_ids"]["red"]:
         reasons.add("command_mismatch")
     if [command["id"] for command in green_commands] != expected["command_ids"]["green"]:
+        reasons.add("command_mismatch")
+    if not set(expected["command_ids"]["red"]).issubset(
+        expected["command_ids"]["green"]
+    ):
         reasons.add("command_mismatch")
     if any(command["status"] != "failed" for command in red_commands):
         reasons.add("command_mismatch")
@@ -261,11 +267,22 @@ def _validate_manifest(manifest: Any) -> None:
             _invalid(f"expected.command_ids.{phase} must be non-empty and unique")
 
     limits = _mapping(expected["limits"], "expected.limits")
-    _keys(limits, {"max_product_files", "max_changed_lines"}, "expected.limits")
+    _keys(
+        limits,
+        {"max_test_files", "max_product_files", "max_changed_lines"},
+        "expected.limits",
+    )
+    max_tests = _integer(limits["max_test_files"], "max_test_files")
     max_files = _integer(limits["max_product_files"], "max_product_files")
     max_lines = _integer(limits["max_changed_lines"], "max_changed_lines")
-    if max_files != MAX_PRODUCT_FILES or max_lines != MAX_CHANGED_LINES:
+    if (
+        max_tests != MAX_TEST_FILES
+        or max_files != MAX_PRODUCT_FILES
+        or max_lines != MAX_CHANGED_LINES
+    ):
         _invalid("limits do not match the gate policy")
+    if len(expected["test_paths"]) > MAX_TEST_FILES:
+        _invalid("expected.test_paths exceeds the file budget")
 
     git = _mapping(root["git"], "git")
     _keys(git, {"base_sha", "red_sha", "head_sha", "ancestry", "commit_counts", "clean"}, "git")
@@ -382,7 +399,7 @@ def _is_forbidden_path(path: str) -> bool:
     folded = path.casefold()
     parts = tuple(part.casefold() for part in PurePosixPath(path).parts)
     name = parts[-1] if parts else ""
-    if parts[:2] == (".github", "workflows"):
+    if parts[:1] == (".github",):
         return True
     sensitive_segments = {
         "auth",

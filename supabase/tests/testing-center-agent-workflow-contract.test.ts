@@ -5,6 +5,8 @@ const settingsPath = ".github/agents/testing-center-agent-settings.json";
 const reviewPromptPath = ".github/agents/testing-center-review-prompt.md";
 const reviewSchemaPath =
   ".github/agents/testing-center-review-output.schema.json";
+const reviewSettingsPath = ".github/agents/testing-center-review-settings.json";
+const branchGatesPath = ".github/workflows/branch-channel-gates.yml";
 
 const checkoutPin = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
 const setupDenoPin =
@@ -102,6 +104,8 @@ Deno.test("workflow exposes only the two approved triggers with read-only conten
       "@main",
       "@latest",
       "contents: write",
+      "pull-requests: write",
+      "issues: write",
       "write-all",
       "git push",
       "gh pr",
@@ -136,7 +140,7 @@ Deno.test("manual fixture is isolated allowlisted and runs only the local cached
   assertIncludes(fixture, '*) echo "fixture_not_allowlisted" >&2; exit 1 ;;');
   assertIncludes(
     fixture,
-    "deno test --cached-only --no-lock --allow-read supabase/tests/testing-center-agent-workflow-contract.test.ts",
+    "deno test --cached-only --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
   );
   for (
     const forbidden of [
@@ -156,6 +160,7 @@ Deno.test("manual fixture is isolated allowlisted and runs only the local cached
       "wget ",
     ]
   ) assertNotIncludes(fixture, forbidden);
+  assertNotIncludes(fixture, "--allow-read ");
 });
 
 Deno.test("repository dispatch fails closed and provider jobs have an inert dependency chain", async () => {
@@ -223,6 +228,8 @@ Deno.test("RED and GREEN are separate pinned least-privilege Claude sessions", a
     assertIncludes(block, "--max-turns 20");
     assertIncludes(block, "--strict-mcp-config");
     assertIncludes(block, "--allowedTools Read,Grep,Glob,Edit,Write");
+    assertIncludes(block, "display_report: false");
+    assertIncludes(block, "track_progress: false");
     assertNotIncludes(block, "Bash");
     assertNotIncludes(block, "mcp__");
     assertNotIncludes(block, "secrets.CLAUDE_CODE_OAUTH_TOKEN");
@@ -394,6 +401,7 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   );
   assertIncludes(review, reviewPromptPath);
   assertIncludes(review, reviewSchemaPath);
+  assertIncludes(review, `settings: ${reviewSettingsPath}`);
   assertIncludes(
     review,
     "VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}",
@@ -406,6 +414,15 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "--effort high");
   assertIncludes(review, "--max-turns 15");
   assertIncludes(review, "--allowedTools Read,Grep,Glob");
+  assertIncludes(review, '--json-schema "$REVIEW_SCHEMA_JSON"');
+  assertIncludes(
+    review,
+    "REVIEW_SCHEMA_JSON: ${{ steps.review_schema.outputs.json }}",
+  );
+  assertNotIncludes(
+    review,
+    "--json-schema '${{ steps.review_schema.outputs.json }}'",
+  );
   assertIncludes(review, "uses: " + uploadArtifactPin);
   assertIncludes(review, "retention-days: 7");
   assertIncludes(review, "GITHUB_STEP_SUMMARY");
@@ -415,7 +432,6 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
       "Edit",
       "Bash",
       "mcp__",
-      "settings:",
       "session_id",
       "display_report: true",
       "show_full_output: true",
@@ -496,4 +512,32 @@ Deno.test("review prompt is independent read-only and treats evidence as data", 
       "VALIDATED_HEAD_DIGEST",
     ]
   ) assertIncludes(prompt, required);
+});
+
+Deno.test("review deny-list is explicit and security tests run on every PR", async () => {
+  const settings = JSON.parse(await Deno.readTextFile(reviewSettingsPath));
+  assertEquals(
+    settings.permissions.allow,
+    ["Read", "Grep", "Glob"],
+    "review allow",
+  );
+  assertEquals(
+    settings.permissions.deny,
+    ["Bash", "WebFetch", "WebSearch", "Task", "Edit", "Write"],
+    "review deny",
+  );
+
+  const gates = normalize(await Deno.readTextFile(branchGatesPath));
+  assertIncludes(
+    gates,
+    "pull_request:\n    branches: [nightly, testers, master]",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_diff_gate.py",
+  );
+  assertIncludes(
+    gates,
+    "deno test --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
+  );
 });

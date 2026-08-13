@@ -36,7 +36,7 @@ jobs:
             small-frontend-bug) ;;
             *) echo "fixture_not_allowlisted" >&2; exit 1 ;;
           esac
-          deno test --cached-only --no-lock --allow-read supabase/tests/testing-center-agent-workflow-contract.test.ts
+          deno test --cached-only --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts
 
   production_disabled:
     if: github.event_name == 'repository_dispatch'
@@ -76,6 +76,9 @@ jobs:
           prompt: >-
             Lee y cumple exclusivamente
             .github/agents/testing-center-red-prompt.md.
+          display_report: false
+          show_full_output: false
+          track_progress: false
           claude_args: >-
             --model claude-sonnet-5
             --effort high
@@ -123,6 +126,9 @@ jobs:
           prompt: >-
             Lee y cumple exclusivamente
             .github/agents/testing-center-green-prompt.md.
+          display_report: false
+          show_full_output: false
+          track_progress: false
           claude_args: >-
             --model claude-sonnet-5
             --effort high
@@ -222,6 +228,7 @@ jobs:
         id: review_schema
         shell: bash
         run: |
+          set -euo pipefail
           echo "json=$(jq -c . .github/agents/testing-center-review-output.schema.json)" >> "$GITHUB_OUTPUT"
       - name: Run independent read-only Opus review
         id: opus_review
@@ -230,6 +237,7 @@ jobs:
           CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
           VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}
           VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}
+          REVIEW_SCHEMA_JSON: ${{ steps.review_schema.outputs.json }}
           ANTHROPIC_API_KEY: ""
           ANTHROPIC_AUTH_TOKEN: ""
           ANTHROPIC_BASE_URL: ""
@@ -243,6 +251,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          settings: .github/agents/testing-center-review-settings.json
           prompt: >-
             Lee y cumple exclusivamente
             .github/agents/testing-center-review-prompt.md. Revisa solo el
@@ -256,7 +265,7 @@ jobs:
             --max-turns 15
             --strict-mcp-config
             --allowedTools Read,Grep,Glob
-            --json-schema '${{ steps.review_schema.outputs.json }}'
+            --json-schema "$REVIEW_SCHEMA_JSON"
       - name: Validate and sanitize review artifact
         shell: bash
         env:

@@ -64,7 +64,11 @@ def eligible_manifest() -> dict:
                 "frontend/src/widget-style.ts",
             ],
             "command_ids": {"red": ["frontend-test"], "green": ["frontend-test"]},
-            "limits": {"max_product_files": 5, "max_changed_lines": 200},
+            "limits": {
+                "max_test_files": 5,
+                "max_product_files": 5,
+                "max_changed_lines": 200,
+            },
         },
         "git": {
             "base_sha": BASE_SHA,
@@ -260,6 +264,8 @@ class DiffGateBehaviorTest(unittest.TestCase):
     def test_rejects_forbidden_sensitive_and_dependency_paths(self) -> None:
         paths = [
             ".github/workflows/release.yml",
+            ".github/agents/testing-center-review-prompt.md",
+            ".github/scripts/testing_center_diff_gate.py",
             "config/production.json",
             "frontend/src/auth/session.ts",
             "frontend/src/billing/invoice.ts",
@@ -311,6 +317,46 @@ class DiffGateBehaviorTest(unittest.TestCase):
 
         self.assertIn("file_budget_exceeded", evaluate_diff(manifest).reasons)
 
+    def test_rejects_red_file_and_combined_line_budgets(self) -> None:
+        too_many_tests = eligible_manifest()
+        too_many_tests["expected"]["test_paths"] = [
+            f"frontend/src/widget-{index}.test.ts" for index in range(6)
+        ]
+        too_many_tests["phases"]["red"]["changes"] = [
+            change(path) for path in too_many_tests["expected"]["test_paths"]
+        ]
+        with self.assertRaises(ValueError):
+            evaluate_diff(too_many_tests)
+
+        oversized_red = eligible_manifest()
+        oversized_red["phases"]["red"]["changes"][0] = change(
+            "frontend/src/widget.test.ts", additions=189
+        )
+        self.assertIn(
+            "file_budget_exceeded", evaluate_diff(oversized_red).reasons
+        )
+
+    def test_green_must_rerun_every_red_command(self) -> None:
+        manifest = eligible_manifest()
+        manifest["expected"]["command_ids"]["green"] = ["unrelated-smoke"]
+        manifest["phases"]["green"]["commands"] = [
+            {"id": "unrelated-smoke", "status": "passed", "failure_kind": None}
+        ]
+
+        self.assertIn("command_mismatch", evaluate_diff(manifest).reasons)
+
+    def test_rejects_uppercase_sha_or_digest_identity(self) -> None:
+        for field, value in [("head_sha", "A" * 40)]:
+            with self.subTest(field=field):
+                manifest = eligible_manifest()
+                manifest["git"][field] = value
+                self.assertIn("invalid_ancestry", evaluate_diff(manifest).reasons)
+
+        manifest = eligible_manifest()
+        manifest["expected"]["head_digest"] = "sha256:" + "B" * 64
+        with self.assertRaises(ValueError):
+            evaluate_diff(manifest)
+
     def test_rejects_explicit_and_patch_secret_signals_without_values(self) -> None:
         explicit = eligible_manifest()
         explicit["secret_findings"] = [{"kind": "provider", "path": "widget.ts"}]
@@ -357,6 +403,7 @@ class DiffGateBehaviorTest(unittest.TestCase):
             lambda m: m.__setitem__("unexpected", True),
             lambda m: m.__setitem__("manifest_version", 2),
             lambda m: m["expected"]["limits"].__setitem__("max_product_files", True),
+            lambda m: m["expected"]["limits"].__setitem__("max_test_files", 6),
             lambda m: m["expected"]["limits"].__setitem__("max_changed_lines", "200"),
             lambda m: m["phases"]["red"]["commands"][0].__setitem__("extra", "no"),
         ]

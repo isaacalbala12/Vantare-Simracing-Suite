@@ -91,7 +91,11 @@ describe("PedalsRedlineTemplate", () => {
 
   it("shows no brake peak on a first render, which keeps stills deterministic", () => {
     const container = renderRedline(model({ brake: 0.9 }));
-    expect(container.querySelector("[data-testid='pedals-brake-peak']")).toBeNull();
+    // The mark is mounted so it can fade both ways; hidden is the absence of
+    // data-visible, not the absence of the node.
+    expect(
+      container.querySelector("[data-testid='pedals-brake-peak']")?.getAttribute("data-visible"),
+    ).toBeFalsy();
   });
 
   it("marks the peak once the driver eases off the brake", () => {
@@ -110,7 +114,7 @@ describe("PedalsRedlineTemplate", () => {
       />,
     );
     const peak = container.querySelector<HTMLElement>("[data-testid='pedals-brake-peak']");
-    expect(peak).toBeTruthy();
+    expect(peak?.getAttribute("data-visible")).toBe("true");
     expect(peak?.style.bottom).toBe("90%");
   });
 
@@ -131,7 +135,9 @@ describe("PedalsRedlineTemplate", () => {
         />,
       );
     }
-    expect(container.querySelector("[data-testid='pedals-brake-peak']")).toBeNull();
+    expect(
+      container.querySelector("[data-testid='pedals-brake-peak']")?.getAttribute("data-visible"),
+    ).toBeFalsy();
   });
 
   it("surfaces a status message without dropping the rails", () => {

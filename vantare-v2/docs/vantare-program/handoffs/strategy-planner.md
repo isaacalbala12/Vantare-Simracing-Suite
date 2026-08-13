@@ -35,6 +35,64 @@ Actualización ISA-309 / STR-N02 (2026-08-10):
   posterior permite promoverlo a `nightly`; STR-15B (ISA-162) no comienza
   hasta que esa base esté realmente integrada.
 
+Actualización ISA-152 / STR-17 (2026-08-14):
+
+- ISA-161 fue aceptada por Isaac e integrada mediante squash del PR #212 en
+  `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El gate post-promoción
+  31708164123 pasó completo. Linear refleja ISA-161 en `Nightly`.
+- ISA-152 se implementó sobre una rama/worktree aislados desde ese squash. Los
+  commits fueron `98104b0` (plan), `3f48045` (motor/read model),
+  `091f8ba` (adaptador al Hub) y `bf9e9e5` (evidencia LMU). Reviews
+  independientes de spec y calidad aprobaron los tres cortes sin findings
+  abiertos.
+- El motor efímero mantiene cursor, lifecycle, stint, Fuel, desviación solo
+  contra objetivos exactos y próxima acción planificada. Duplicados,
+  out-of-order, gaps, epochs, reconnect coalescido y backpressure están
+  cubiertos. Missing, stale, invalid y unsupported permanecen explícitos.
+- El adaptador consume una única suscripción del `StrategyHub()` existente,
+  tolera la evolución aditiva de Strategy v1 y no crea goroutines, readers,
+  endpoints ni almacenamiento. No está conectado al arranque: `ActivePlan`
+  conserva una referencia de revisión, no los stints/objetivos normalizados, y
+  STR-17 no autoriza inventar esa fuente.
+- `TestStrategyLiveLMUOptIn` pasó con el pipeline productivo completo y un solo
+  reader: source live, cursor `1/3`, vuelta completada `0` fresh, Fuel
+  `98/115 L` fresh y desviación missing sin objetivo. El log es sanitizado; no
+  contiene raw, track, fingerprint, IDs reales ni PII.
+- Gates locales: focales x20, vet focal, frontend build, `go test ./...` y
+  frontend `367/2636` pasan. `-race` no se ejecutó por CGO desactivado y falta
+  de GCC. El HEAD de rama `c5f965f` pasó CI completo en 31720701167. Isaac
+  autorizó la integración y el PR
+  [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
+  se integró por squash en
+  `nightly@8de4f511972757476d96d6a525b69c8917f4ca56`; el gate post-promoción
+  [31748815965](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31748815965)
+  pasó completo. Linear refleja `Nightly`. No hubo promoción a
+  `testers`/`master` ni release.
+- Microplan vigente:
+  `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
+  Evidencia detallada:
+  `docs/strategy-planner/evidence/isa-152-strategy-live-engine.md`.
+
+Actualización condicionada ISA-161 / TC-10B (2026-08-12; estado histórico):
+
+- Telemetry Core ha implementado en la rama local de ISA-161 el productor
+  `StrategyLiveProjection v1` sobre el único pipeline LMU canónico. Incluye
+  sesión, progreso, pit y Fuel con calidad explícita; VE, tyres, weather y
+  facts permanecen ausentes.
+- ISA-161 se construyó originalmente desde ISA-160 en `nightly@8880a88`; su
+  primer rebase local fue sobre `origin/nightly@234794d` y su base/merge-base
+  actuales son `origin/nightly@b6df494`. La rama está publicada y el PR draft
+  [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212)
+  está OPEN/CLEAN/MERGEABLE hacia `nightly`. El
+  [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366)
+  pasó completo para `19dddea`, incluido GitGuardian. Cualquier amend posterior
+  requiere checks de su nuevo HEAD; el estado final se consulta en el PR.
+  Linear sigue pendiente por reautenticación.
+- Esto no implementa el motor live Strategy ni desbloquea todavía ISA-152 /
+  STR-17. La dependencia técnica solo será desbloqueable tras la promoción
+  aceptada de ISA-161 a `nightly`; no hubo integración, promoción ni release
+  de este corte.
+
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
 primer contrato productivo versionado. STR-03 implementa el repositorio local
@@ -249,11 +307,10 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Revisar ISA-144 / STR-09. Si queda `ACCEPT`, continuar por ISA-168 / TA-03C.
-No iniciar STR-10 hasta que ISA-159 publique `StrategyInputProjection v1`; no
-añadir parser histórico, solver, replanning live ni otra persistencia durante
-la revisión.
+Definir mediante issue/decisión la fuente normalizada de stints y objetivos
+desde la revisión activa antes de cablear el motor al arranque. No inventar un
+plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
 
 ## Última actualización
 
-2026-08-02, ISA-144 / STR-09, Codex.
+2026-08-14, ISA-152 / STR-17 integrada en Nightly, Codex.

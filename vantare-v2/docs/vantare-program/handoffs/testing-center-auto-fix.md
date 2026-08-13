@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center Auto-Fix
 
-Última actualización: 2026-08-13, ISA-323, Codex (HAF-04–HAF-07 entregadas).
+Última actualización: 2026-08-13, ISA-318, Codex (HAF-03–HAF-07 entregadas).
 
 ## Resultado del proyecto
 
@@ -25,10 +25,11 @@ está superada como arquitectura de ejecución.
 
 ## Estado real
 
-- Fase: contratos, persistencia, triage, dispatch, TDD cloud, diff gate y review
-  independiente entregados en ramas aisladas; runtime apagado.
-- Issues de ejecución: ISA-319, ISA-320, ISA-321 e ISA-323 entregadas para
-  revisión; ISA-318 es el siguiente corte y desbloquea ISA-322.
+- Fase: gobierno inerte, contratos, persistencia, triage, dispatch, TDD cloud,
+  diff gate y review independiente entregados en ramas aisladas; runtime
+  apagado.
+- Issues de ejecución: ISA-318, ISA-319, ISA-320, ISA-321 e ISA-323 entregadas
+  para revisión; ISA-322 queda como siguiente corte.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -117,7 +118,14 @@ determinista.
   canales 10/10; formato, tipos, lint, sintaxis y diff-check pasan. Opus 5 High:
   GO, P0/P1/P2=0. Los dos checks GitHub pasan en el SHA exacto. Entregada, no
   integrada ni activada.
-- Las cuatro ramas parten, directa o apiladamente, de
+- ISA-318 / HAF-03: HEAD remoto `30beb873`, PR draft #217 hacia `nightly`,
+  apilado temporalmente sobre ISA-323. Conserva los canales humanos y añade el
+  contrato cerrado de rama automática y atestación v2; la CLI no puede
+  suministrarla, de modo que el bootstrap sigue inerte. Branch channels 41/41,
+  gate 24/24, collector 22/22, `py_compile` y diff-check pasan. Opus 5 High:
+  GO, P0/P1/P2=0; su precisión documental P3 se cerró antes del HEAD publicado.
+  Entregada, no integrada ni activada.
+- Las cinco ramas parten, directa o apiladamente, de
   `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
   No existe activación remota, merge, promoción, deploy, tag ni release.
 
@@ -128,7 +136,9 @@ determinista.
 - El workflow Codex está inerte y con permisos `contents: read`.
 - `branch-channel-gates.yml` ejecuta Go, frontend y build en Windows, pero lint
   y visuales son advisory.
-- `validate_branch_channels.py` solo admite `vantareapp/isa-*` hacia Nightly.
+- `validate_branch_channels.py` admite ramas humanas `vantareapp/isa-*` y, solo
+  mediante su API interna con atestación cerrada, ramas automáticas `tc-*`
+  hacia Nightly. La CLI no expone esa entrada y falla cerrada.
 - `release.yml` acepta tags de tres o cuatro componentes, pero el sincronizador
   de versión solo garantiza cuatro; el agente reservará `vX.Y.Z.R-nightly.N`.
   Construye con Wails/NSIS y verifica artefactos; todavía debe exponer
@@ -153,8 +163,9 @@ determinista.
   debe verificar presencia, app emisora, SHA y conclusión.
 - P1: no existe todavía smoke post-merge ni reserva atómica de tags Nightly.
 - P2: lint global y visuales advisory impiden automatizar esos scopes.
-- P2: el validador de ramas y `AGENTS.md` todavía exigen una issue Linear; la
-  excepción Supabase debe aprobarse antes del piloto.
+- P2 de activación: la excepción automática ya está documentada y modelada,
+  pero ISA-322 debe verificar firma, procedencia, frescura, digest y estado vivo
+  de GitHub antes de que pueda producir efectos.
 - P2: las GitHub Actions externas actuales no están todas fijadas por SHA.
 - P2: un OAuth de suscripción puede caducar o revocarse; el fallo debe ser
   `needs_owner`, nunca fallback a otra cuenta/API.
@@ -190,19 +201,19 @@ determinista.
 - ISA-320 / HAF-05: persistencia/outbox entregada, PR draft #214; revisión/integración pendiente.
 - ISA-321 / HAF-06: triage/dispatch cloud entregado, PR draft #215; revisión/integración pendiente.
 - ISA-323 / HAF-07: TDD/diff gate/review Opus entregado, PR draft #216; revisión/integración pendiente.
+- ISA-318 / HAF-03: gobierno/preautorización inerte entregado, PR draft #217; revisión/integración pendiente.
 
 ### Siguientes cortes vigentes
 
-1. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
-2. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
-3. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
-4. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
+1. ISA-322 / HAF-08: verificación criptográfica, bootstrap, CI estricta y `merge_group`.
+2. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
+3. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
-Revisar los PR draft #213–#216 contra sus SHAs remotos y respetar el orden
-ISA-319 -> ISA-320 -> ISA-321 -> ISA-323. Continuar ISA-318 y, solo después,
-ISA-322 sin crear nuevas issues, declarando cualquier apilado temporal y sin
+Revisar los PR draft #213–#217 contra sus SHAs remotos y respetar el orden
+ISA-319 -> ISA-320 -> ISA-321 -> ISA-323 -> ISA-318. Continuar ISA-322 sin
+crear nuevas issues, declarando cualquier apilado temporal y sin
 activar red, credenciales o una ruta que salte `nightly`. El claim tipado, el
 reconciliador y los dos P3 de activación son condiciones obligatorias antes del
 piloto, reutilizando ISA-318–325.

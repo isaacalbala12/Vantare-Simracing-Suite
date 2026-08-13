@@ -1,3 +1,17 @@
+Nota ISA-318 / HAF-03 (2026-08-13, gobierno y bootstrap inerte entregados):
+- La rama apilada sobre `ISA-323@756e2e26` conserva el flujo humano y añade una
+  preautorización cerrada solo para `tc-<job_key[:12]>-<slug>[-revert]` hacia
+  `nightly`, ligada a una atestación v2 semántica. La CLI no acepta la
+  atestación, por lo que el bootstrap permanece deliberadamente inerte.
+- HEAD remoto `30beb873`; PR draft #217 hacia `nightly`. La evidencia final
+  pasa branch channels 41/41, diff gate 24/24, collector 22/22, `py_compile` y
+  diff-check. Opus 5 High devuelve GO con P0/P1/P2=0 y su única precisión P3
+  documental quedó corregida antes del HEAD publicado.
+- ISA-322 debe verificar criptográficamente procedencia y frescura contra el
+  head vivo de la PR y el tip vivo de `nightly`, recomputar el digest y aplicar
+  kill switch y exclusiones antes de cada efecto. No hubo merge, promoción,
+  deploy, tag, release, ruleset ni auto-merge; no se crearon issues nuevas.
+
 Nota ISA-323 / HAF-07 (2026-08-13, TDD cloud y revisión independiente entregados sin activar):
 - La rama apilada sobre `ISA-321@58f55ef` implementa sesiones Claude RED y
   GREEN separadas, collector de evidencia confiable, diff gate determinista y

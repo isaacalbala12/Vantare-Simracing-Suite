@@ -40,17 +40,32 @@ Actualización ISA-152 / STR-17 (2026-08-13):
 - ISA-161 fue aceptada por Isaac e integrada mediante squash del PR #212 en
   `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El gate post-promoción
   31708164123 pasó completo. Linear refleja ISA-161 en `Nightly`.
-- La evidencia LMU real con jugador en pista observó Strategy Fuel `98/115 L`,
-  present/observed/fresh, cursor `1/1`; no se conservaron raw ni datos de
-  usuario.
-- ISA-152 está `In Progress` sobre una rama/worktree aislados desde ese squash.
-  El motor será efímero, consumirá el hub Strategy existente y mantendrá cursor,
-  stint, recursos, desviación solo contra objetivos explícitos y próxima acción
-  planificada. No incluye UI ni replanificación.
+- ISA-152 está implementada localmente sobre una rama/worktree aislados desde
+  ese squash. Los commits son `98104b0` (plan), `3f48045` (motor/read model),
+  `091f8ba` (adaptador al Hub) y `bf9e9e5` (evidencia LMU). Reviews
+  independientes de spec y calidad aprobaron los tres cortes sin findings
+  abiertos.
+- El motor efímero mantiene cursor, lifecycle, stint, Fuel, desviación solo
+  contra objetivos exactos y próxima acción planificada. Duplicados,
+  out-of-order, gaps, epochs, reconnect coalescido y backpressure están
+  cubiertos. Missing, stale, invalid y unsupported permanecen explícitos.
+- El adaptador consume una única suscripción del `StrategyHub()` existente,
+  tolera la evolución aditiva de Strategy v1 y no crea goroutines, readers,
+  endpoints ni almacenamiento. No está conectado al arranque: `ActivePlan`
+  conserva una referencia de revisión, no los stints/objetivos normalizados, y
+  STR-17 no autoriza inventar esa fuente.
+- `TestStrategyLiveLMUOptIn` pasó con el pipeline productivo completo y un solo
+  reader: source live, cursor `1/3`, vuelta completada `0` fresh, Fuel
+  `98/115 L` fresh y desviación missing sin objetivo. El log es sanitizado; no
+  contiene raw, track, fingerprint, IDs reales ni PII.
+- Gates locales: focales x20, vet focal, frontend build, `go test ./...` y
+  frontend `367/2636` pasan. `-race` no se ejecutó por CGO desactivado y falta
+  de GCC. La rama sigue local y limpia: sin push, PR, CI, merge, promoción o
+  release; Linear permanece `In Progress` hasta publicar.
 - Microplan vigente:
   `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
-  Baseline focal verde; todavía no hay código productivo, commit, push ni PR de
-  ISA-152.
+  Evidencia detallada:
+  `docs/strategy-planner/evidence/isa-152-strategy-live-engine.md`.
 
 Actualización condicionada ISA-161 / TC-10B (2026-08-12; estado histórico):
 
@@ -286,11 +301,12 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Revisar ISA-144 / STR-09. Si queda `ACCEPT`, continuar por ISA-168 / TA-03C.
-No iniciar STR-10 hasta que ISA-159 publique `StrategyInputProjection v1`; no
-añadir parser histórico, solver, replanning live ni otra persistencia durante
-la revisión.
+Publicar la rama ISA-152, abrir PR draft hacia `nightly`, esperar CI y reflejar
+el SHA/PR reales en Linear. No promover ni mergear sin autorización de Isaac.
+El wiring de arranque requiere una issue/decisión que entregue una fuente
+normalizada de stints y objetivos desde la revisión activa; no inventarla en
+STR-17. STR-18 continúa separado.
 
 ## Última actualización
 
-2026-08-02, ISA-144 / STR-09, Codex.
+2026-08-13, ISA-152 / STR-17, Codex.

@@ -1,18 +1,33 @@
-Nota ISA-152 / STR-17 (2026-08-13, inicio de ejecución):
+Nota ISA-152 / STR-17 (2026-08-13, entrega local revisada):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
   post-promoción 31708164123 pasó topología y gates bloqueantes completos.
-- La prueba LMU real con jugador en pista recorrió el único pipeline canónico y
-  observó Strategy Fuel `98/115 L`, present/observed/fresh, cursor `1/1` y
-  capabilities `session progress pit fuel`; el harness temporal se retiró.
+- El motor puro y el adaptador al Hub Strategy están implementados en cuatro
+  commits locales: plan `98104b0`, dominio revisado `3f48045`, adaptador
+  revisado `091f8ba` y evidencia LMU `bf9e9e5`. El read model conserva cursor,
+  lifecycle, stint, Fuel y próxima acción sin convertir missing/stale/invalid
+  en cero ni estimar objetivos ausentes.
+- La prueba opt-in permanente `TestStrategyLiveLMUOptIn` recorrió el único
+  pipeline productivo LMU -> Telemetry Core -> Strategy Hub -> adapter ->
+  engine. Con jugador en pista observó source live, cursor `1/3`, vuelta
+  completada `0` fresh y Fuel `98/115 L` fresh. La desviación quedó missing
+  porque el plan explícito de prueba no declaró objetivos Fuel. No se guardaron
+  raw, track, fingerprint, IDs reales ni PII.
 - ISA-152 está `In Progress` en Linear. Su rama/worktree aislados parten del
   squash anterior y el microplan vigente es
   `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
-- STR-17 implementará únicamente motor/read model efímero y consumidor del hub
-  existente. No añade reader LMU, UI, replanificación, VE, tyres, weather,
-  persistencia ni dependencias.
-- Baseline focal: Strategy, productor Strategy y telemetrytransport pasan.
-  Todavía no hay cambio productivo, commit, push ni PR de ISA-152.
+- STR-17 queda implementada y aprobada por reviews independientes de spec y
+  calidad. No añade reader LMU, UI, replanificación, VE, tyres, weather,
+  persistencia ni dependencias. El adaptador se inyecta sobre el Hub existente;
+  no se cablea al arranque porque `ActivePlan` solo guarda la referencia de
+  revisión y todavía no existe una fuente aprobada de stints/objetivos live.
+  Inventar esa traducción violaría el contrato.
+- Gates locales: focales x20, `go vet`, build frontend, `go test ./...` y
+  frontend `367/2636` pasan. El frontend conserva el 403 del roadmap remoto y
+  un `AbortError` de teardown con exit 0. `-race` no está disponible con
+  `CGO_ENABLED=0` y sin GCC. La rama continúa local, limpia y sin push, PR, CI,
+  merge, promoción o release; Linear sigue `In Progress` hasta publicar la
+  entrega.
 - `Roadmap public snapshot` conserva el fallo heredado
   `telemetry-core: empty project must have null progress`; se reproduce en los
   cuatro commits de `nightly` anteriores a ISA-161 y queda fuera de STR-17.

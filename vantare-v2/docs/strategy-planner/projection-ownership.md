@@ -1,6 +1,6 @@
 # Strategy Planner — ownership y blockers de proyecciones
 
-**Fecha:** 2026-08-12
+**Fecha:** 2026-08-13
 **Autoridad:** ADR 0006 y Linear
 
 ## Regla
@@ -11,7 +11,7 @@ Strategy y ninguna comparte almacenamiento interno con el consumidor.
 | Contrato | Productor/owner | Issue productora | Consumidor | Issue consumidora |
 | --- | --- | --- | --- | --- |
 | `StrategyInputProjection v1` | Telemetry Analysis | ISA-159 / TA-05 | Adapter histórico Strategy | ISA-145 / STR-10 |
-| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | Motor live Strategy (aún no implementado) | ISA-152 / STR-17 |
+| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | `internal/strategy/live` mediante el adaptador in-process de `internal/app` | ISA-152 / STR-17 |
 
 ## Proyección histórica
 
@@ -63,9 +63,24 @@ ISA-161 fue aceptada por Isaac e integrada mediante squash del PR
 [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) en
 `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El
 [gate post-promoción](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31708164123)
-pasó completo. ISA-152 / STR-17 queda técnicamente desbloqueada y está en
-ejecución sobre una rama aislada desde ese SHA; el motor live aún no existe en
-la base y no puede afirmarse implementado hasta cerrar su propia entrega.
+pasó completo. ISA-152 / STR-17 se implementó localmente sobre una rama aislada
+desde ese SHA. El motor puro importa solo el contrato Strategy público y el
+adaptador consume una única suscripción del Hub ya creado. No abre Shared
+Memory, REST, driver, transporte alternativo ni storage.
+
+El read model conserva cursor, lifecycle, stint, Fuel y próxima acción con
+estados explícitos `missing/fresh/stale/invalid/unsupported`. Solo
+`present+fresh` bajo source live es usable. Los objetivos Fuel son entradas
+exactas del plan: si no existe objetivo para la vuelta completada, la desviación
+queda missing. Un reconnect incrementado degrada el snapshot anterior incluso
+si el Hub coalesce estados intermedios y entrega `live -> live`.
+
+La evidencia opt-in LMU recorre el único pipeline canónico hasta el motor y
+observó cursor `1/3`, vuelta `0` y Fuel `98/115 L` fresh; sin objetivo, la
+desviación permaneció missing. El composition root no arranca todavía una
+ejecución Strategy porque el `ActivePlan` durable solo identifica una revisión
+y no suministra stints/objetivos normalizados. Resolver esa frontera requiere
+alcance explícito; no habilita un plan sintético.
 
 ## Dependencias ejecutables
 

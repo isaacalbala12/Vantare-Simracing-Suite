@@ -5437,4 +5437,5 @@ Nota ISA-334 / Broadcast Tower horizontal (2026-08-14, implementación aislada):
   real del perfil, resize solo este/oeste y reflow sin escala tipográfica.
 - Evidencia actual: focal 74/74, frontend 2641/2641, lint focal y build PASS.
   El browser colaborativo agotó timeout al capturar; la validación visual
-  manual sigue pendiente. Sin commit, push, PR ni promoción.
+  manual sigue pendiente. Commit `b7a6aa4`, rama remota y PR draft #224
+  creados; sin merge ni promoción.

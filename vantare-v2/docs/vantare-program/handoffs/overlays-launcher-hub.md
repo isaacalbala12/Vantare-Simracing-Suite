@@ -208,6 +208,17 @@ y recientes.
 
 ## Última actualización
 
+2026-08-14, ISA-335 corrige en rama aislada el rechazo al guardar perfiles con
+`vantare-endurance`. La causa era un desfase entre el catálogo frontend ya
+promovido y las dos allowlists Go de persistencia/diseños. La regresión cubre
+sistema activo/predeterminado, `systemMemories`, round-trip en disco y diseños
+de usuario; los IDs desconocidos siguen fallando cerrados. Go focal y global,
+frontend 367/2636 y build pasan. Base exacta `origin/nightly@8de4f511`; rama
+`vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`.
+Fix y regresiones: `074dba6`; revisión final y `design-system:check` 3/3 PASS.
+Estado: implementación local verificada, pendiente de push, PR draft y CI;
+sin merge, promoción o release.
+
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado
 superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.

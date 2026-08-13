@@ -1,3 +1,19 @@
+Nota ISA-321 / HAF-06 (2026-08-13, triage y dispatch cloud entregados sin activar):
+- La rama apilada sobre `ISA-320@842da34e` implementa el contrato de triage
+  DeepSeek read-only, parser/schema cerrados, workflow fixture sin red y el
+  dispatch interno mediante GitHub App, token efímero limitado al repositorio,
+  lease/fencing y endpoint service-role fail-closed.
+- Commits remotos finales `0dbcce7` y `58f55ef`; PR draft #215 hacia `nightly`.
+  La función está reconocida pero excluida de production/pilot deploy. Deno
+  pasa 53/53; el contrato PostgreSQL heredado pasa 71/71, reapply 71/71,
+  carrera real de dos workers y guardas de rollback. Opus high devuelve GO con
+  P0/P1=0; sus P2 accionables se cerraron con regresiones TDD. GitGuardian y el
+  gate de promoción pasan en el HEAD final.
+- Activación sigue en NO-GO hasta filtrar el claim por
+  `effect_kind=github_dispatch`, programar el reconciliador de efectos
+  reservados y configurar/verificar GitHub App, secretos y scheduler. No hubo
+  merge, promoción, deploy, tag ni release; no se crearon issues nuevas.
+
 Nota ISA-319/ISA-320 / HAF-04/HAF-05 (2026-08-13, primeras entregas runtime aisladas):
 - ISA-319 implementa la policy v2 y el dossier determinista de elegibilidad en
   la rama de issue, commit `02a784c3`, PR draft #213 hacia `nightly`. Sus suites

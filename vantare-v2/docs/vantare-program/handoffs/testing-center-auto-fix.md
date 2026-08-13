@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center Auto-Fix
 
-Última actualización: 2026-08-13, ISA-320, Codex (HAF-04/HAF-05 entregadas).
+Última actualización: 2026-08-13, ISA-321, Codex (HAF-04/HAF-05/HAF-06 entregadas).
 
 ## Resultado del proyecto
 
@@ -25,9 +25,10 @@ está superada como arquitectura de ejecución.
 
 ## Estado real
 
-- Fase: contratos/persistencia v2 entregados en ramas aisladas; runtime apagado.
-- Issues de ejecución: ISA-319 y ISA-320 entregadas para revisión; ISA-321 es
-  el siguiente corte dependiente.
+- Fase: contratos, persistencia, triage y dispatch v2 entregados en ramas
+  aisladas; runtime apagado.
+- Issues de ejecución: ISA-319, ISA-320 e ISA-321 entregadas para revisión;
+  ISA-323 es el siguiente corte dependiente.
 - Rama:
   `vantareapp/isa-317-ccaf-02-adr-de-arquitectura-y-handoff-vivo`.
 - Base de creación:
@@ -100,7 +101,16 @@ determinista.
   rollback/reapply 71/71, carrera real de dos workers, cinco guards por tabla,
   guard terminal y reapply final. Qwen 3.7 Plus y Qwen 3.8 Max: GO; el último
   con P0/P1/P2=0. Entregada, no integrada.
-- Ambas ramas parten de `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
+- ISA-321 / HAF-06: commits remotos `0dbcce7` y `58f55ef`, PR draft #215 hacia
+  `nightly`, apilado temporalmente sobre ISA-320. Entrega triage DeepSeek
+  read-only con parser/schema cerrados y dispatch GitHub App con credencial JIT,
+  repo/event/base fijos, timeouts, lease/fencing, revocación best-effort y
+  endpoint service-role. Deno 53/53; el PostgreSQL heredado repite 71/71,
+  reapply, carrera real y rollback guards. Review Opus high: GO, P0/P1=0; los
+  P2 accionables quedaron corregidos con TDD. GitGuardian y promotion path
+  pasan en `58f55ef`. Entregada, no integrada ni activada.
+- Las tres ramas parten, directa o apiladamente, de
+  `origin/nightly@b6df494298578ff9a043bbd9b48a66eb1512010f`.
   No existe activación remota, merge, promoción, deploy, tag ni release.
 
 - Supabase ya tiene reportes, fingerprints, outbox, leases, fencing,
@@ -140,6 +150,11 @@ determinista.
 - P2: las GitHub Actions externas actuales no están todas fijadas por SHA.
 - P2: un OAuth de suscripción puede caducar o revocarse; el fallo debe ser
   `needs_owner`, nunca fallback a otra cuenta/API.
+- P1 de activación: el claim genérico de ISA-320 todavía no filtra
+  `effect_kind`; antes de activar HAF-06 debe reclamar solo `github_dispatch`.
+- P1 de activación: ningún caller programa todavía
+  `testing_center_expire_reserved_agent_effect`; un efecto reservado cuya
+  completion falle debe reconciliarse a `needs_owner` antes del piloto.
 - P3: Linear y los nombres CCAF seguirán mostrando la arquitectura histórica
   hasta completar la replanificación del proyecto.
 - Review documental independiente DeepSeek V4 Flash: GO tras dos rondas,
@@ -159,23 +174,23 @@ determinista.
 - ISA-317: expediente documental y handoff vivo, PR draft #209.
 - ISA-319 / HAF-04: policy v2 entregada, PR draft #213; revisión/integración pendiente.
 - ISA-320 / HAF-05: persistencia/outbox entregada, PR draft #214; revisión/integración pendiente.
+- ISA-321 / HAF-06: triage/dispatch cloud entregado, PR draft #215; revisión/integración pendiente.
 
 ### Siguientes cortes vigentes
 
-1. ISA-321 / HAF-06: triage DeepSeek y dispatch cloud, apoyado en HAF-04/HAF-05.
-2. ISA-323 / HAF-07: sesiones RED/GREEN, diff gate y review independiente.
-3. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
-4. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
-5. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
-6. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
+1. ISA-323 / HAF-07: sesiones RED/GREEN, diff gate y review independiente.
+2. ISA-322 / HAF-08: bootstrap, CI estricta y `merge_group`.
+3. ISA-318 / HAF-03: gobernanza y preautorización estrecha.
+4. ISA-324 / HAF-09: smoke, reserva/release/callback/revert.
+5. ISA-325 / HAF-10: rollout observe→draft→pilot→automatic.
 
 ## Siguiente acción exacta
 
-Revisar los PR draft #213 y #214 contra sus SHAs remotos. Continuar ISA-321 sin
-crear nuevas issues y sin activar red ni credenciales: primero caracterizar el
-adaptador de triage y su dispatch en dry-run. Si necesita consumir HAF-04/HAF-05
-antes de su integración, declarar explícitamente el apilado temporal y no abrir
-una ruta que salte `nightly`.
+Revisar los PR draft #213, #214 y #215 contra sus SHAs remotos y respetar el
+orden ISA-319 -> ISA-320 -> ISA-321. Continuar ISA-323 sin crear nuevas issues,
+declarando cualquier apilado temporal y sin activar red, credenciales o una
+ruta que salte `nightly`. El claim tipado y el reconciliador son condiciones
+obligatorias antes del piloto, reutilizando ISA-318-325.
 
 Checks de ISA-317:
 

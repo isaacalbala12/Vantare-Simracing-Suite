@@ -42,6 +42,28 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ## Automatización
 
+### Preautorización estrecha e inerte de la rama automática (ISA-318)
+
+La corrección automática del Testing Center usa exclusivamente la rama
+`vantareapp/tc-<12 hex minúsculas>-<slug seguro>` (sufijo opcional `-revert`).
+`<slug seguro>` son minúsculas, dígitos y guiones; `-revert` solo puede ser el
+token final y nunca aparece en medio del slug.
+
+- La preautorización alcanza únicamente PR de esa rama a `nightly`.
+- La rama automática nunca se dirige a `testers` ni `master`, y nunca hace push
+  directo.
+- La ruta automática permanece **inerte**: la CLI no acepta JSON arbitrario y
+  rechaza toda rama `tc-*` sin atestación confiable. ISA-322 debe verificar
+  criptográficamente su procedencia antes de pasar los claims cerrados al
+  validador semántico; ningún marcador incluido en el payload concede confianza.
+- Cualquier efecto se revoca con el kill switch antes de cada paso, no después.
+- Excluidas de la preautorización: workflows, schema, auth, billing, secretos,
+  dependencias, datos, release y cualquier gasto.
+- El bootstrap de workflows permanece humano e inerte hasta `master`; no
+  configura credenciales, dispatch ni ruleset.
+- No se habilita ninguna ruleset ni auto-merge sin autorización expresa de
+  Isaac.
+
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.
 - Go, build frontend y todos los tests frontend no inventariados son

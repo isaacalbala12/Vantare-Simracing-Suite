@@ -73,6 +73,24 @@ producto corregido tras Nightly y Testers.
 El desarrollo puede continuar apilado hasta completar un módulo, pero no se
 promociona a Nightly sin aprobación inicial.
 
+## Preautorización inerte de la rama automática (ISA-318)
+
+La corrección automática del Testing Center usa únicamente
+`vantareapp/tc-<12 hex minúsculas>-<slug seguro>[-revert]` y solo como PR a
+`nightly`. La rama automática nunca se dirige a `testers`/`master` ni hace push
+directo, y ninguna ruleset ni auto-merge se habilita sin autorización expresa
+de Isaac.
+
+- La ruta permanece inerte: la CLI actual no acepta JSON arbitrario y rechaza
+  una rama `tc-*` sin atestación confiable. ISA-322 debe verificar
+  criptográficamente su procedencia antes de pasar los claims al validador;
+  un marcador dentro del payload no concede autoridad.
+- Cualquier efecto es revocable mediante kill switch antes de cada paso.
+- Excluidas de la preautorización: workflows, schema, auth, billing, secretos,
+  dependencias, datos, release y gasto.
+- El bootstrap de workflows permanece humano e inerte hasta `master` y no
+  configura credenciales, dispatch ni ruleset.
+
 ## Stop conditions
 
 - Tres enfoques razonables fallan.

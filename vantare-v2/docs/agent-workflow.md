@@ -47,6 +47,24 @@ referencia histórica y no recibe trabajo nuevo. La promoción usa una issue de
 integración propia; terminar una feature no la promociona automáticamente.
 Tests y review no sustituyen las aprobaciones.
 
+## Rama automática del Testing Center (ISA-318)
+
+La corrección automática usa únicamente
+`vantareapp/tc-<12 hex minúsculas>-<slug seguro>[-revert]` como PR a `nightly`.
+La ruta permanece inerte:
+
+- la CLI actual no acepta JSON arbitrario y rechaza una rama `tc-*` sin una
+  atestación confiable, por lo que no activa efectos;
+- ISA-322 debe verificar criptográficamente la procedencia de la atestación v2
+  antes de pasar sus claims cerrados al validador semántico; un marcador dentro
+  del payload nunca demuestra esa verificación;
+- cada efecto se revoca con kill switch antes de ejecutarse;
+- quedan excluidos workflows, schema, auth, billing, secretos, dependencias,
+  datos, release y gasto;
+- el bootstrap de workflows es humano e inerte hasta `master` y no configura
+  credenciales, dispatch ni ruleset; no se habilitan rulesets ni auto-merge
+  sin autorización expresa de Isaac.
+
 Terminado en rama, integrado en un canal, promocionado y publicado son estados
 distintos. Cada reporte debe identificar el ultimo estado demostrado con rama,
 SHA, PR, CI y release cuando corresponda.

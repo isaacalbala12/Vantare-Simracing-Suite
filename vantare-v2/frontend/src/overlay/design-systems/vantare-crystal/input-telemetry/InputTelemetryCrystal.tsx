@@ -60,9 +60,19 @@ function DenseReadout({ model }: { model: InputTelemetryViewModel }) {
   return <div className="vc-input-readout"><b>{model.gear === undefined ? "—" : Math.round(model.gear)}</b><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></div>;
 }
 
+function TelemetryBladeReadout({ model }: { model: InputTelemetryViewModel }) {
+  return <>
+    <b className="vc-input-blade-gear" data-metric="gear">{model.gear === undefined ? "—" : Math.round(model.gear)}</b>
+    <div className="vc-input-blade-stats">
+      <span data-metric="speed"><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></span>
+      <span data-metric="rpm"><strong>{model.rpm === undefined ? "—" : Math.round(model.rpm)}</strong><small>RPM</small></span>
+    </div>
+  </>;
+}
+
 export function InputTelemetryCrystal({ model, settings }: WidgetRendererProps<InputTelemetryViewModel>) {
   const template = typeof settings.templateId === "string" ? settings.templateId : "input-blade";
   if (template === "input-capsule") return <section data-widget-system="vantare-crystal" data-widget-renderer="input-telemetry" data-template={template} data-status={model.status} className="vc-input-telemetry vc-input-capsule"><header>INPUTS</header><div className="vc-input-graph"><Trace model={model} template="input-capsule"/></div><VerticalInputs model={model}/><Readout model={model}/></section>;
   if (template === "input-dense") return <section data-widget-system="vantare-crystal" data-widget-renderer="input-telemetry" data-template={template} data-status={model.status} className="vc-input-telemetry vc-input-dense"><header>INP</header><div className="vc-input-graph"><Trace model={model} template="input-dense"/></div><div className="vc-input-horizontal">{[["throttle", "T", model.throttle], ["brake", "B", model.brake], ["clutch", "C", model.clutch]].filter(([name]) => name !== "clutch" || model.showClutch).map(([name, label, raw]) => <div data-input={name} key={String(name)}><b>{label}</b><span><i style={{ width: `${percent(raw as number)}%` }}/></span><em>{String(percent(raw as number)).padStart(3, "0")}</em></div>)}</div><DenseReadout model={model}/></section>;
-  return <section data-widget-system="vantare-crystal" data-widget-renderer="input-telemetry" data-template={template} data-status={model.status} className="vc-input-telemetry vc-input-blade"><header>TELEMETRY</header><div className="vc-input-graph"><Trace model={model} template="input-blade"/></div><VerticalInputs model={model}/><Readout model={model}/></section>;
+  return <section data-widget-system="vantare-crystal" data-widget-renderer="input-telemetry" data-template={template} data-status={model.status} className="vc-input-telemetry vc-input-blade"><div className="vc-input-blade-shell"><TelemetryBladeReadout model={model}/></div></section>;
 }

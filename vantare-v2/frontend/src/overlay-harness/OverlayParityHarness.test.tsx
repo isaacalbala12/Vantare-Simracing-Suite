@@ -92,7 +92,7 @@ describe("OverlayParityHarness", () => {
 
   it("seeds the deterministic Input history before the host builds its ViewModel", () => {
     const parsed = parseHarnessQuery(
-      "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade",
+      "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-capsule",
     );
     if ("error" in parsed) {
       throw new Error(parsed.error);

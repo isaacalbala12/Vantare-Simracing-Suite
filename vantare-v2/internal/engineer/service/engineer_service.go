@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -456,7 +457,11 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
-	s.runtime.SetEnabled(enabled && s.spotterEnabled)
+	// The shared runtime gate follows only the service enable switch. Spotter
+	// frames are gated by the approved-family loop in ConsumeObservation, so a
+	// service re-enable with Spotter off keeps Fuel and the other monitors
+	// active while Spotter stays disabled.
+	s.runtime.SetEnabled(enabled)
 	if !enabled {
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -511,7 +516,6 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	}
 	if !enabled {
 		s.cancelSpotterDeliveryLocked()
-		s.dropQueuedSpotterLocked()
 		if s.activePresentation != nil && s.activePresentation.Category == string(messagepolicy.FamilySpotter) {
 			s.advancePresentationLifecycleLocked()
 		}
@@ -525,29 +529,6 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 func (s *EngineerService) cancelSpotterDeliveryLocked() {
 	if s.activeDelivery != nil && s.activeDelivery.decision.Family == messagepolicy.FamilySpotter {
 		s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
-	}
-}
-
-// dropQueuedSpotterLocked removes only Spotter messages from the legacy queue
-// without clearing it, so pending Fuel messages survive the toggle. It uses
-// only the existing Queue.Next/Enqueue contract; audio/queue.go is untouched.
-func (s *EngineerService) dropQueuedSpotterLocked() {
-	if s.queue == nil {
-		return
-	}
-	var preserved []audio.Message
-	for {
-		message, ok := s.queue.Next(0)
-		if !ok {
-			break
-		}
-		if projectioninput.FamilyForMessage(message) == projectioninput.FamilySpotter {
-			continue
-		}
-		preserved = append(preserved, message)
-	}
-	for _, message := range preserved {
-		s.queue.Enqueue(message)
 	}
 }
 
@@ -768,7 +749,10 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if !source.Known() {
 		source = engineerprojection.SourceLive
 	}
-	sensitivity, _ := sensitivityFromConfig(s.sensitivity)
+	sensitivity, ok := sensitivityFromConfig(s.sensitivity)
+	if !ok {
+		return fmt.Errorf("engineer sensitivity configuration is invalid: %q", s.sensitivity)
+	}
 	evidence := projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000, sensitivity)
 	if s.scheduler == nil {
 		return errors.New("engineer message scheduler is unavailable")

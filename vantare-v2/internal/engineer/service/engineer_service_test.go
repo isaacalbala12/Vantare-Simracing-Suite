@@ -72,7 +72,7 @@ func (port *gatePort) release() {
 
 func waitFor(t *testing.T, condition func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if condition() {
 			return
@@ -672,6 +672,42 @@ func TestSetSpotterEnabledPreservesActiveNonSpotterVisual(t *testing.T) {
 			t.Fatalf("active Spotter visual was not invalidated: %+v", stream)
 		}
 	})
+}
+
+func TestSetEnabledRoundTripKeepsEngineerActiveWhileSpotterOff(t *testing.T) {
+	emitter := &mockEmitter{}
+	svc := service.NewEngineerService(emitter)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	if err := svc.SetEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetEnabled(true); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Status().SpotterEnabled {
+		t.Fatal("Spotter must remain disabled after the service enable round trip")
+	}
+
+	// Engineer (Fuel) must keep working while Spotter stays off.
+	if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 1, 55, 3)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalFuelObservation(t, 1, 2, 49, 4)); err != nil {
+		t.Fatal(err)
+	}
+	waitForNotification(t, svc, "fuel.low_half_tank")
+	if status := svc.Status(); !status.Connected || status.LastError != "" {
+		t.Fatalf("Engineer not healthy after service re-enable with Spotter off: %+v", status)
+	}
 }
 
 func TestSetSpotterEnabledDoesNotAlterConnectionOrLastError(t *testing.T) {

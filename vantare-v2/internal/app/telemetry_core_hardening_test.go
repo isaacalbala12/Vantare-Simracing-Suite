@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -22,10 +23,11 @@ import (
 )
 
 const (
-	hardeningSoakVehicles    = 64
-	hardeningSoakSubscribers = 6
-	hardeningSoakSamples     = 121 // one-minute samples cover exactly two logical hours
-	hardeningSampleInterval  = time.Minute
+	hardeningSoakVehicles                  = 64
+	hardeningSoakSubscribersPerProduct     = 6
+	hardeningSoakFastSubscribersPerProduct = hardeningSoakSubscribersPerProduct - 1
+	hardeningSoakSamples                   = 121 // one-minute samples cover exactly two logical hours
+	hardeningSampleInterval                = time.Minute
 )
 
 func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
@@ -35,18 +37,10 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	subscriptions := make([]*telemetrytransport.Subscription, 0, hardeningSoakSubscribers)
-	for range hardeningSoakSubscribers {
-		subscription, subscribeErr := runtime.Hub().Subscribe(context.Background())
-		if subscribeErr != nil {
-			t.Fatal(subscribeErr)
-		}
-		subscriptions = append(subscriptions, subscription)
-	}
+	overlaySubscriptions := subscribeHardeningProduct(t, runtime.Hub())
+	strategySubscriptions := subscribeHardeningProduct(t, runtime.StrategyHub())
 
 	root := t.TempDir()
-	soakContext, cancelSoak := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancelSoak()
 	const sessionID = "session-local-hardening"
 	ref := recording.SessionRef{Root: root, SessionID: sessionID}
 	manifest := recording.NewSessionManifest(sessionID, "lmu", "hardening-test", hardeningSoakStart)
@@ -65,9 +59,20 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	soakContext, cancelSoak := context.WithTimeout(context.Background(), 30*time.Second)
 	if err := recorder.Start(soakContext); err != nil {
+		cancelSoak()
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		cleanupContext, cancelCleanup := context.WithTimeout(context.Background(), 15*time.Second)
+		err := recorder.Stop(cleanupContext)
+		cancelCleanup()
+		cancelSoak()
+		if err != nil {
+			t.Errorf("cleanup recording coordinator: %v", err)
+		}
+	})
 	mapper := recording.NewMapper()
 
 	for sequence := uint64(1); sequence <= hardeningSoakSamples; sequence++ {
@@ -90,15 +95,28 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 			t.Fatalf("recording sequence %d: %v", sequence, err)
 		}
 
-		for _, subscription := range subscriptions {
+		for index := range hardeningSoakFastSubscribersPerProduct {
 			if sequence == 1 {
-				assertHardeningEvent(t, subscription, telemetrytransport.EventStatus)
+				assertHardeningStatusEvent(t, overlaySubscriptions[index], telemetrytransport.ProductOverlay)
+				assertHardeningStatusEvent(t, strategySubscriptions[index], telemetrytransport.ProductStrategy)
 			}
-			assertHardeningEvent(t, subscription, telemetrytransport.EventSnapshot)
+			assertHardeningSnapshotEvent(t, overlaySubscriptions[index], telemetrytransport.ProductOverlay, 1, schema.Sequence(sequence), telemetrytransport.Full)
+			assertHardeningSnapshotEvent(t, strategySubscriptions[index], telemetrytransport.ProductStrategy, 1, schema.Sequence(sequence), telemetrytransport.Full)
 		}
 	}
 
-	stopContext, cancel := context.WithTimeout(soakContext, 15*time.Second)
+	// Each product keeps one intentionally slow subscriber. Latest-wins
+	// coalescing must preserve status plus the final full, never a backlog.
+	overlaySlow := overlaySubscriptions[hardeningSoakFastSubscribersPerProduct]
+	strategySlow := strategySubscriptions[hardeningSoakFastSubscribersPerProduct]
+	assertHardeningStatusEvent(t, overlaySlow, telemetrytransport.ProductOverlay)
+	assertHardeningStatusEvent(t, strategySlow, telemetrytransport.ProductStrategy)
+	assertHardeningSnapshotEvent(t, overlaySlow, telemetrytransport.ProductOverlay, 1, hardeningSoakSamples, telemetrytransport.Full)
+	assertHardeningSnapshotEvent(t, strategySlow, telemetrytransport.ProductStrategy, 1, hardeningSoakSamples, telemetrytransport.Full)
+	assertHardeningQueueEmpty(t, overlaySlow, telemetrytransport.ProductOverlay)
+	assertHardeningQueueEmpty(t, strategySlow, telemetrytransport.ProductStrategy)
+
+	stopContext, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := recorder.Stop(stopContext); err != nil {
 		t.Fatal(err)
@@ -111,27 +129,42 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	}
 
 	metrics := runtime.Metrics()
-	if metrics.BatchesApplied != hardeningSoakSamples ||
+	if metrics.ObservationsRejected != 0 ||
+		metrics.BatchesApplied != hardeningSoakSamples ||
 		metrics.ProjectionsPublished != hardeningSoakSamples ||
+		metrics.OverlayProjectionsPublished != hardeningSoakSamples ||
+		metrics.StrategyProjectionsPublished != hardeningSoakSamples ||
+		metrics.EngineerStatusesDelivered != hardeningSoakSamples ||
 		metrics.EngineerObservations != hardeningSoakSamples ||
+		metrics.EngineerFacts == 0 || metrics.EngineerFacts != consumer.facts ||
 		metrics.EngineerDeliveryFailures != 0 ||
-		metrics.Transport.CurrentSubscribers != hardeningSoakSubscribers ||
+		metrics.Transport.CurrentSubscribers != hardeningSoakSubscribersPerProduct ||
+		metrics.StrategyTransport.CurrentSubscribers != hardeningSoakSubscribersPerProduct ||
+		metrics.Transport.StatusPublications != 1 ||
+		metrics.StrategyTransport.StatusPublications != 1 ||
 		metrics.Transport.SnapshotPublications != hardeningSoakSamples ||
-		metrics.Transport.SnapshotReplacements != hardeningSoakSamples-1 {
+		metrics.StrategyTransport.SnapshotPublications != hardeningSoakSamples ||
+		metrics.Transport.SnapshotReplacements != hardeningSoakSamples-1 ||
+		metrics.StrategyTransport.SnapshotReplacements != hardeningSoakSamples-1 ||
+		metrics.Transport.DeltasRetained != 0 || metrics.StrategyTransport.DeltasRetained != 0 {
 		t.Fatalf("runtime metrics = %#v", metrics)
 	}
-	if consumer.observations != hardeningSoakSamples || consumer.failures != 0 {
-		t.Fatalf("Engineer counts = observations %d failures %d", consumer.observations, consumer.failures)
+	if consumer.statuses != hardeningSoakSamples || consumer.observations != hardeningSoakSamples ||
+		consumer.facts == 0 || consumer.failures != 0 {
+		t.Fatalf("Engineer counts = statuses %d observations %d facts %d failures %d", consumer.statuses, consumer.observations, consumer.facts, consumer.failures)
 	}
 	assertMetricsContainNoPersonalPayload(t, metrics)
 
-	for _, subscription := range subscriptions {
-		if err := subscription.Close(); err != nil {
-			t.Fatal(err)
+	for _, subscriptions := range [][]*telemetrytransport.Subscription{overlaySubscriptions, strategySubscriptions} {
+		for _, subscription := range subscriptions {
+			if err := subscription.Close(); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
-	if current := runtime.Metrics().Transport.CurrentSubscribers; current != 0 {
-		t.Fatalf("subscribers after teardown = %d", current)
+	metrics = runtime.Metrics()
+	if metrics.Transport.CurrentSubscribers != 0 || metrics.StrategyTransport.CurrentSubscribers != 0 {
+		t.Fatalf("subscribers after teardown: Overlay=%d Strategy=%d", metrics.Transport.CurrentSubscribers, metrics.StrategyTransport.CurrentSubscribers)
 	}
 }
 
@@ -174,6 +207,16 @@ func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
 		if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), batch); err != nil {
 			b.Fatal(err)
 		}
+	}
+	b.StopTimer()
+	// This historical combined benchmark is the regression signal for the
+	// complete Overlay + Engineer + Strategy fan-out. Keep the counter guard so
+	// Strategy cannot be removed while the benchmark still appears healthy.
+	metrics := runtime.Metrics()
+	if metrics.BatchesApplied != sequence || metrics.ProjectionsPublished != sequence ||
+		metrics.OverlayProjectionsPublished != sequence || metrics.StrategyProjectionsPublished != sequence ||
+		metrics.EngineerObservations != sequence || metrics.EngineerDeliveryFailures != 0 {
+		b.Fatalf("combined runtime metrics = %#v, iterations = %d", metrics, sequence)
 	}
 }
 
@@ -269,7 +312,32 @@ func hardeningClock(sequence uint64) schema.Clock {
 	return schema.NewClock(runtimePresent(elapsed), runtimePresent(elapsed), hardeningSoakStart.Add(elapsed))
 }
 
-func assertHardeningEvent(t *testing.T, subscription *telemetrytransport.Subscription, kind telemetrytransport.EventKind) {
+func subscribeHardeningProduct(
+	t *testing.T,
+	hub *telemetrytransport.Hub,
+) []*telemetrytransport.Subscription {
+	t.Helper()
+	subscriptions := make([]*telemetrytransport.Subscription, 0, hardeningSoakSubscribersPerProduct)
+	for range hardeningSoakSubscribersPerProduct {
+		subscription, err := hub.Subscribe(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := subscription.Close(); err != nil {
+				t.Errorf("cleanup telemetry subscription: %v", err)
+			}
+		})
+		subscriptions = append(subscriptions, subscription)
+	}
+	return subscriptions
+}
+
+func assertHardeningStatusEvent(
+	t *testing.T,
+	subscription *telemetrytransport.Subscription,
+	product telemetrytransport.ProductID,
+) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -277,8 +345,67 @@ func assertHardeningEvent(t *testing.T, subscription *telemetrytransport.Subscri
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Kind != kind {
-		t.Fatalf("event kind = %q, want %q", event.Kind, kind)
+	if event.Product != product || event.Kind != telemetrytransport.EventStatus {
+		t.Fatalf("status event = product %q kind %q, want product %q kind %q", event.Product, event.Kind, product, telemetrytransport.EventStatus)
+	}
+	var status telemetrytransport.StatusEnvelope
+	if err := json.Unmarshal(event.Data, &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.Product != product {
+		t.Fatalf("status product = %q, want %q", status.Product, product)
+	}
+}
+
+func assertHardeningSnapshotEvent(
+	t *testing.T,
+	subscription *telemetrytransport.Subscription,
+	product telemetrytransport.ProductID,
+	epoch schema.Epoch,
+	sequence schema.Sequence,
+	kind telemetrytransport.SnapshotKind,
+) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	event, err := subscription.Next(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event.Product != product || event.Kind != telemetrytransport.EventSnapshot {
+		t.Fatalf("snapshot event = product %q kind %q, want product %q kind %q", event.Product, event.Kind, product, telemetrytransport.EventSnapshot)
+	}
+	var snapshot telemetrytransport.Envelope
+	if err := json.Unmarshal(event.Data, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Product != product || snapshot.Epoch != epoch || snapshot.Sequence != sequence || snapshot.Kind != kind {
+		t.Fatalf("snapshot = product %q cursor %d/%d kind %q, want product %q cursor %d/%d kind %q", snapshot.Product, snapshot.Epoch, snapshot.Sequence, snapshot.Kind, product, epoch, sequence, kind)
+	}
+}
+
+func assertHardeningQueueEmpty(
+	t *testing.T,
+	subscription *telemetrytransport.Subscription,
+	product telemetrytransport.ProductID,
+) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	event, err := subscription.Next(ctx)
+	if err == nil {
+		var cursor schema.Cursor
+		if event.Kind == telemetrytransport.EventSnapshot {
+			var snapshot telemetrytransport.Envelope
+			if decodeErr := json.Unmarshal(event.Data, &snapshot); decodeErr != nil {
+				t.Fatalf("unexpected queued event for %q has invalid snapshot: %v", product, decodeErr)
+			}
+			cursor = schema.Cursor{Epoch: snapshot.Epoch, Sequence: snapshot.Sequence}
+		}
+		t.Fatalf("unexpected queued event: product=%q kind=%q cursor=%d/%d", event.Product, event.Kind, cursor.Epoch, cursor.Sequence)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("empty queue Next(%q) error = %v, want %v", product, err, context.DeadlineExceeded)
 	}
 }
 

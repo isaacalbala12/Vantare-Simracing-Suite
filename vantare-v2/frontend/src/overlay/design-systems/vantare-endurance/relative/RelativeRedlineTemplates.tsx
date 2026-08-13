@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import { useRelativeMotion } from "./useRelativeMotion";
 import { resolveRelativeClassColor } from "../../../widget-types/relative/relative-renderer-helpers";
 import type {
@@ -66,6 +66,10 @@ function ClassChip({
   );
 }
 
+/** Ids currently rendered as ghosts, so every variant marks them the same way
+    without each one having to know the engine exists. */
+const GhostRowsContext = createContext<ReadonlySet<string>>(new Set());
+
 function RowShell({
   row,
   variant,
@@ -77,12 +81,14 @@ function RowShell({
   children: ReactNode;
   extra?: ReactNode;
 }) {
+  const ghosts = useContext(GhostRowsContext);
   return (
     <div
       data-relative-row={row.id}
       data-player={row.isPlayer ? "true" : undefined}
       data-tone={row.tone}
       data-class={row.vehicleClass || undefined}
+      data-ghost={ghosts.has(row.id) ? "true" : undefined}
       className="ven-rel-row"
       data-variant={variant}
     >
@@ -293,7 +299,25 @@ export function RelativeRedlineTemplate({
   showHeader: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  useRelativeMotion(model, model.status === "ready", rootRef);
+  const motion = useRelativeMotion(model, model.status === "ready", rootRef);
+
+  // Departed rows are put back where they sat and marked, so the variants keep
+  // rendering a plain list and the fold happens in the right place.
+  const withGhosts = useMemo(() => {
+    if (motion.ghosts.length === 0) {
+      return model;
+    }
+    const rows = [...model.rows];
+    for (const ghost of [...motion.ghosts].sort((a, b) => a.index - b.index)) {
+      rows.splice(Math.min(ghost.index, rows.length), 0, ghost.row);
+    }
+    return { ...model, rows };
+  }, [model, motion.ghosts]);
+
+  const ghostIds = useMemo(
+    () => new Set(motion.ghosts.map((ghost) => ghost.row.id)),
+    [motion.ghosts],
+  );
 
   return (
     <div className="ven-rel-root" ref={rootRef}>
@@ -302,12 +326,14 @@ export function RelativeRedlineTemplate({
           {model.statusMessage}
         </p>
       ) : null}
-      <div className="ven-rel-block" data-variant={variant}>
-        {showHeader ? <Slots model={model} /> : null}
-        {variant === "mirror" ? <MirrorTemplate model={model} settings={settings} /> : null}
-        {variant === "proximity" ? <ProximityTemplate model={model} settings={settings} /> : null}
-        {variant === "traffic" ? <TrafficTemplate model={model} settings={settings} /> : null}
-      </div>
+      <GhostRowsContext.Provider value={ghostIds}>
+        <div className="ven-rel-block" data-variant={variant}>
+          {showHeader ? <Slots model={model} /> : null}
+          {variant === "mirror" ? <MirrorTemplate model={withGhosts} settings={settings} /> : null}
+          {variant === "proximity" ? <ProximityTemplate model={withGhosts} settings={settings} /> : null}
+          {variant === "traffic" ? <TrafficTemplate model={withGhosts} settings={settings} /> : null}
+        </div>
+      </GhostRowsContext.Provider>
     </div>
   );
 }

@@ -1760,12 +1760,33 @@
   animation: ven-red-soft-in 220ms ease-out 420ms both;
 }
 
+/* The gap reading lives in one element whatever the state, so the number never
+   shifts. The charged backing and the fill sit behind it and fade in and out
+   instead of replacing the box. */
 [data-widget-system="vantare-endurance"] .ven-red-gap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 21px;
+  padding: 0 5px;
+  border-radius: 5px;
+  overflow: hidden;
   color: #e8e8e8;
   font-size: 12.5px;
   font-weight: 700;
-  text-align: right;
   font-variant-numeric: tabular-nums;
+  background: transparent;
+  transition: background-color 220ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gap[data-charged="true"] {
+  background-color: rgba(232, 232, 232, 0.07);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-gaptext {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes ven-red-soft-in {
@@ -2193,27 +2214,7 @@
 
 /* — presión: celda del gap cargada (solo en batalla cristalizada) — */
 
-@keyframes ven-red-gapcell-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
-[data-widget-system="vantare-endurance"] .ven-red-gapcell {
-  justify-self: end;
-  position: relative;
-  min-width: 52px;
-  height: 21px;
-  line-height: 21px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: rgba(232, 232, 232, 0.07);
-  text-align: center;
-  animation: ven-red-gapcell-in 320ms ease-out both;
-}
 
 /* The fill mounts at its final width, so the width transition below never gets
    to run on the way in: the pressure appeared instead of building. Growing it
@@ -2228,7 +2229,7 @@
   }
 }
 
-[data-widget-system="vantare-endurance"] .ven-red-gapcell b {
+[data-widget-system="vantare-endurance"] .ven-red-gap b {
   position: absolute;
   left: 0;
   top: 0;
@@ -2240,21 +2241,11 @@
   transition: width 600ms ease-out;
 }
 
-/* Exit. The dissolving battle mounts a NEW node, so there is no previous value
-   for a transition to leave from — a keyframe states both ends and works on a
-   node that has just appeared. These replace the entry animations rather than
-   layering on them: ven-red-gapcell-in uses `both`, so it would otherwise hold
-   opacity at 1 and swallow the fade. 260ms fits inside the 360ms the engine
-   keeps a dissolving battle alive. */
-@keyframes ven-red-gapcell-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
+/* Exit. Only the fill leaves; the backing fades out through its own
+   background-color transition and the reading stays put, because the number
+   now shares this element. A keyframe rather than a transition because the
+   dissolving battle can mount a new node, and a keyframe states both of its
+   ends. 260ms fits inside the 360ms the engine holds a dissolving battle. */
 @keyframes ven-red-gapfill-out {
   from {
     transform: scaleX(1);
@@ -2264,27 +2255,23 @@
   }
 }
 
-[data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] {
-  animation: ven-red-gapcell-out 260ms ease-in both;
-}
-
-[data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] b {
+[data-widget-system="vantare-endurance"] .ven-red-gap[data-leaving="true"] b {
   animation: ven-red-gapfill-out 260ms ease-in both;
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-widget-system="vantare-endurance"] .ven-red-gapcell b {
+  [data-widget-system="vantare-endurance"] .ven-red-gap b {
     animation: none;
     transition: none;
   }
-  [data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"],
-  [data-widget-system="vantare-endurance"] .ven-red-gapcell[data-leaving="true"] b {
+  [data-widget-system="vantare-endurance"] .ven-red-gap[data-leaving="true"],
+  [data-widget-system="vantare-endurance"] .ven-red-gap[data-leaving="true"] b {
     animation: none;
   }
 }
 
-[data-widget-system="vantare-endurance"] .ven-red-gapcell span {
+[data-widget-system="vantare-endurance"] .ven-red-gaptext {
   position: relative;
   color: #ffffff;
   font-size: 12.5px;
@@ -2488,6 +2475,20 @@
   letter-spacing: 0.16em;
 }
 
+/* Same trap the pressure fill had: a transition cannot run on the frame an
+   element mounts, so the approach bar arrived at full length instead of
+   reaching out. A keyframe states both ends and plays on a new node. */
+@keyframes ven-rel-approach-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 [data-widget-system="vantare-endurance"] .ven-rel-approach {
   position: absolute;
   left: 8px;
@@ -2495,7 +2496,16 @@
   border-radius: 2px;
   background: linear-gradient(90deg, #c1121f, #ff4d5c);
   box-shadow: 0 0 8px rgba(255, 77, 92, 0.5);
+  transform-origin: left center;
+  animation: ven-rel-approach-in 260ms ease-out both;
   transition: right 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-rel-approach {
+    animation: none;
+    transition: none;
+  }
 }
 
 [data-widget-system="vantare-endurance"] .ven-rel-approach[data-side="ahead"] {
@@ -2888,6 +2898,9 @@
    pedal reached, revealed only once the driver eases off it, so it answers
    "did I get back to the same pressure this lap?" without adding anything to
    look at while the foot is still going down. */
+/* Always mounted, shown by opacity. Rendering it only while it applies made
+   it blink in and out at each end of a braking event; a mounted element can
+   fade both ways. */
 [data-widget-system="vantare-endurance"] .ven-pred-peak {
   position: absolute;
   left: 0;
@@ -2896,13 +2909,45 @@
   border-radius: 1px;
   background: rgba(232, 232, 232, 0.55);
   box-shadow: 0 0 5px rgba(232, 232, 232, 0.28);
+  opacity: 0;
   /* Centres the line on the peak height. Without this, a 100% peak sits
      entirely above the well and the clip hides it — exactly the peak worth
      seeing. */
   transform: translateY(50%);
-  transition: bottom 120ms linear, opacity 160ms ease-out;
+  transition: bottom 120ms linear, opacity 220ms ease-out;
+}
+
+[data-widget-system="vantare-endurance"] .ven-pred-peak[data-visible="true"] {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-widget-system="vantare-endurance"] .ven-pred-peak { transition: none; }
+}
+
+/* A row that has left the visible window folds away where it sat, instead of
+   the list snapping shut over it. Same idea as the standings ghost: the engine
+   holds the row for a beat so there is something to animate. */
+@keyframes ven-rel-ghost-out {
+  0% {
+    transform: scaleY(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-ghost="true"] {
+  transform-origin: center;
+  pointer-events: none;
+  animation: ven-rel-ghost-out 380ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget-system="vantare-endurance"] .ven-rel-row[data-ghost="true"] {
+    animation: none;
+    opacity: 0;
+  }
 }

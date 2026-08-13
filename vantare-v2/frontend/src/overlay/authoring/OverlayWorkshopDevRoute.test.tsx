@@ -39,8 +39,8 @@ describe("OverlayWorkshopDevRoute", () => {
   it("keeps stage controls accessible and renders the comparison through the same host", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&compare=obs" />);
     await waitFor(() => expect(document.querySelectorAll("[data-overlay-workshop-widget-root]")).toHaveLength(2));
-    expect(screen.getByLabelText("Stage background")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Stage background"), { target: { value: "transparent" } });
+    expect(screen.getByLabelText("Fondo")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Fondo"), { target: { value: "transparent" } });
     expect(document.querySelector(".overlay-workshop-stage--transparent")).toBeTruthy();
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-surface=obs] [data-overlay-workshop-widget-root]")).toBeTruthy());
     expect(document.querySelector("[data-overlay-workshop-surface=obs] .overlay-workshop-surface-label")).toBeNull();
@@ -49,19 +49,19 @@ describe("OverlayWorkshopDevRoute", () => {
   it("applies declared preset dimensions and resets controls to the reproducible URL selection", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&preset=720p" />);
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Apply declared dimensions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar tamaño declarado" }));
     await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("1280px"));
-    fireEvent.change(screen.getByLabelText("State"), { target: { value: "error" } });
-    fireEvent.click(screen.getByRole("button", { name: "Reset controls" }));
-    expect((screen.getByLabelText("State") as HTMLSelectElement).value).toBe("ready");
-    expect((screen.getByLabelText("System") as HTMLSelectElement).value).toBe("vantare-original");
+    fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "error" } });
+    fireEvent.click(screen.getByRole("button", { name: "Restablecer" }));
+    expect((screen.getByLabelText("Estado") as HTMLSelectElement).value).toBe("ready");
+    expect((screen.getByLabelText("Sistema") as HTMLSelectElement).value).toBe("vantare-original");
   });
 
   it("edits width and height together through accessible fields", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />);
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
-    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "640" } });
-    fireEvent.change(screen.getByLabelText("Height"), { target: { value: "240" } });
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "640" } });
+    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "240" } });
     await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
@@ -71,9 +71,9 @@ describe("OverlayWorkshopDevRoute", () => {
     await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
     const initialSearch = window.location.search;
 
-    fireEvent.change(screen.getByLabelText("Width"), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "12" } });
 
-    expect((screen.getByLabelText("Width") as HTMLInputElement).value).toBe("12");
+    expect((screen.getByLabelText("Ancho") as HTMLInputElement).value).toBe("12");
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px");
     expect(window.location.search).toBe(initialSearch);
     expect("error" in parseOverlayWorkshopQuery(window.location.search)).toBe(false);
@@ -83,7 +83,7 @@ describe("OverlayWorkshopDevRoute", () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&scale=0.3" />);
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
 
-    expect((screen.getByLabelText("Scale") as HTMLInputElement).value).toBe("0.3");
+    expect((screen.getByLabelText("Escala") as HTMLInputElement).value).toBe("0.3");
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.transform).toContain("scale(0.3)");
     expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });

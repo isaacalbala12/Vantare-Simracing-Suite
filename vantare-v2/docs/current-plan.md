@@ -22,8 +22,10 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
   -count=1` PASS y `git diff --check` PASS. La suite frontend conserva los dos
   `AbortError` de teardown documentados con exit 0. Fix y regresiones están en
   `074dba6`; la rama incorporó Nightly mediante merge normal en `03fffc5`. La
-  PR draft #223 sigue hacia `nightly`; el último CI remoto previo a esta revisión
-  fue `31751988909` PASS. Sin merge de PR, promoción ni release.
+  PR draft #223 sigue hacia `nightly`; el CI remoto de la revisión
+  `31753459114` pasó ruta, build, Go, frontend y visuales. El lint advisory
+  conserva solo deuda heredada fuera del diff. Sin merge de PR, promoción ni
+  release.
 
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash

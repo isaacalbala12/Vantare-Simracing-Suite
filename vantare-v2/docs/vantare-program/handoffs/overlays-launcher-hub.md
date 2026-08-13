@@ -220,8 +220,9 @@ cerrados. Go focal y global, frontend 369/2645 y build pasan. Base inicial
 Fix y regresiones: `074dba6`; centralización revisada: `a4749e9`;
 `design-system:check` 3/3 PASS. La rama incorporó `origin/nightly@fc88e4c`
 mediante merge normal en `03fffc5` y la PR draft #223 sigue hacia `nightly`.
-El último CI remoto previo a esta revisión fue `31751988909` PASS; falta el run
-del nuevo HEAD. Sin merge, promoción o release.
+El CI remoto de la revisión `31753459114` pasó ruta, build, Go, frontend y
+visuales; el lint advisory conserva deuda heredada fuera del diff. Sin merge,
+promoción o release.
 
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado

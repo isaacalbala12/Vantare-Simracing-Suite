@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-13T23:06:31Z",
+  "generatedAt": "2026-08-13T23:24:30Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -37,7 +37,7 @@
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:05:34.745Z"
+              "updatedAt": "2026-08-13T23:20:39.910Z"
             },
             {
               "id": "task_e79e1f63aa00207b5076",
@@ -49,7 +49,7 @@
               "id": "task_609d33340526777a9186",
               "title": "Overlay Studio: Input Telemetry debe respetar la proporción 400×70 de Telemetry Blade",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:06:15.792Z"
+              "updatedAt": "2026-08-13T23:15:26.651Z"
             },
             {
               "id": "task_f0c3e304758281802415",

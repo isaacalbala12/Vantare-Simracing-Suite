@@ -7,6 +7,7 @@ import {
 import type { DesignSystemId, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import { getStudioMutationGate } from "../access/studio-access";
+import { useStudioConfirm } from "../components/StudioConfirmProvider";
 import { SaveDesignDialog } from "../designs/SaveDesignDialog";
 import {
   buildUserDesignFromWidget,
@@ -55,6 +56,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     promptRename,
   } = props;
   const { t } = useI18n();
+  const studioConfirm = useStudioConfirm();
   const requestRename = promptRename ?? ((currentName: string) => window.prompt(t("studio.v3.design.renamePrompt"), currentName));
 
   const [userDesigns, setUserDesigns] = useState<WidgetDesignV1[]>([]);
@@ -145,6 +147,21 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
         skippedCount > 0 ? ` ${t("studio.v3.design.applyAll.skippedSuffix").replace("{count}", String(skippedCount))}` : "",
       )
       .replace(/\s*$/, ".");
+
+    if (studioConfirm) {
+      studioConfirm.request({
+        title: t("studio.v3.design.applyAllDialog.title"),
+        body: message,
+        hint: t("studio.v3.design.applyAllDialog.hint"),
+        confirmLabel: t("studio.v3.design.apply"),
+        cancelLabel: t("studio.v3.confirm.cancel"),
+        tone: "primary",
+        testIdPrefix: "studio-design-apply-all",
+        commit: () => applyDesign(design, compatibleIds),
+      });
+      return;
+    }
+
     if (confirmApplyAll(message)) {
       applyDesign(design, compatibleIds);
     }
@@ -176,10 +193,32 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     }
   };
 
-  const handleDelete = async (design: WidgetDesignV1) => {
-    if (!canSave || !confirmDelete(t("studio.v3.design.deleteConfirm").replace("{name}", design.name))) {
+  const handleDelete = (design: WidgetDesignV1) => {
+    if (!canSave) {
       return;
     }
+
+    if (studioConfirm) {
+      studioConfirm.request({
+        title: t("studio.v3.design.deleteDialog.title"),
+        body: t("studio.v3.design.deleteDialog.body").replace("{name}", design.name),
+        hint: t("studio.v3.design.deleteDialog.hint"),
+        confirmLabel: t("studio.v3.design.delete"),
+        cancelLabel: t("studio.v3.confirm.cancel"),
+        tone: "danger",
+        testIdPrefix: "studio-design-delete",
+        commit: () => void deleteDesign(design),
+      });
+      return;
+    }
+
+    if (!confirmDelete(t("studio.v3.design.deleteConfirm").replace("{name}", design.name))) {
+      return;
+    }
+    void deleteDesign(design);
+  };
+
+  const deleteDesign = async (design: WidgetDesignV1) => {
     setBusyDesignId(design.id);
     setError(null);
     try {

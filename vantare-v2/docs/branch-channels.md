@@ -68,8 +68,9 @@ y nunca aparece en medio del slug.
 La fuente ejecutable de la atestación cerrada es
 `.github/scripts/validate_branch_channels.py::validate_tc_attestation`. Exige:
 
-- repositorio, rama y `base_sha`/`head_sha` exactos, digest y `job_key` SHA-256
-  canónico cuyo prefijo de 12 hex coincide con la rama;
+- repositorio y rama exactos; `base_sha`/`head_sha` bien formados y coherentes
+  con la review y los checks; digest y `job_key` SHA-256 canónicos cuyo prefijo
+  de 12 hex coincide con la rama;
 - policy `testing-center.autofix-policy.v2` elegible, riesgo `low`, entre cero y
   cinco archivos productivos y TDD probado;
 - review Opus `approve` sobre el mismo `head_sha`, con P0/P1/P2 enteros en cero;

@@ -24,6 +24,8 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "refs/heads/nightly",
             "refs/heads/gh-readonly-queue/nightly",
             "refs/heads/gh-readonly-queue/nightly/../master",
+            "refs/heads/gh-readonly-queue/nightly/..",
+            "refs/heads/gh-readonly-queue/nightly/.",
         ):
             with self.subTest(ref=ref), self.assertRaisesRegex(
                 ValueError, "not a nightly merge group"
@@ -34,10 +36,29 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         workflow = (
             Path(__file__).resolve().parents[1] / "workflows" / "branch-channel-gates.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn("merge_group:\n    types: [checks_requested]", workflow)
-        self.assertIn('--event "${{ github.event_name }}"', workflow)
-        self.assertIn('--ref "${{ github.ref }}"', workflow)
+        self.assertIn(
+            "merge_group:\n    branches: [nightly]\n    types: [checks_requested]",
+            workflow,
+        )
+        self.assertIn("EVENT_NAME: ${{ github.event_name }}", workflow)
+        self.assertIn("EVENT_REF: ${{ github.ref }}", workflow)
+        self.assertIn("EVENT_HEAD: ${{ github.head_ref }}", workflow)
+        self.assertIn('--event "$EVENT_NAME"', workflow)
+        self.assertNotIn('--event "${{ github.event_name }}"', workflow)
+        self.assertNotIn('--head "${{ github.head_ref }}"', workflow)
         self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn(
+            "ENFORCE_TESTING_CENTER_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}",
+            workflow,
+        )
+        self.assertNotIn("github.event_name == 'merge_group' ||", workflow)
+        self.assertIn(
+            "if ($paths.Count -gt 0) {\n"
+            "            & pnpm exec eslint -- @paths\n"
+            "            if ($LASTEXITCODE -ne 0) { throw \"changed frontend lint failed\" }\n"
+            "          }",
+            workflow,
+        )
         for line in workflow.splitlines():
             if "uses:" in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
@@ -58,6 +79,11 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         )
         self.assertNotIn(
             "- name: Windows Wails build\n        continue-on-error: true", workflow
+        )
+        self.assertIn(
+            "- name: Test inert Testing Center merge queue policy\n"
+            "        run: python .github/scripts/test_testing_center_merge_queue.py",
+            workflow,
         )
 
     def test_accepts_issue_branch_into_nightly(self) -> None:

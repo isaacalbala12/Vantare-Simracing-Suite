@@ -38,6 +38,20 @@ class FragmentTests(unittest.TestCase):
         for issue in ("TC-0123456789ab", "TC-123", "TC-G123456789AB"):
             with self.subTest(issue=issue), self.assertRaises(ValueError):
                 communications.validate_fragment(fragment(issue))
+
+    def test_mixed_tc_and_linear_fragments_have_stable_family_order(self):
+        values = [
+            fragment("ISA-304", "Linear nueva"),
+            fragment("TC-ABCDEFABCDEF", "Automática sin dígitos"),
+            fragment("ISA-95", "Linear antigua"),
+            fragment("TC-0123456789AB", "Automática con dígitos"),
+        ]
+        ordered = sorted(values, key=communications._fragment_order, reverse=True)
+        self.assertEqual(
+            [item["issue"] for item in ordered],
+            ["TC-ABCDEFABCDEF", "TC-0123456789AB", "ISA-304", "ISA-95"],
+        )
+
     def test_validate_fragment_rejects_missing_required_field(self):
         value = fragment()
         del value["testing"]

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import unicodedata
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable
@@ -26,7 +27,9 @@ class ChangedScope:
     visual_required: bool
 
 
-def classify_paths(paths: Iterable[str]) -> ChangedScope:
+def classify_paths(
+    paths: Iterable[str], *, enforce_testing_center_scope: bool = False
+) -> ChangedScope:
     """Return a deterministic closed scope or reject ambiguous path input."""
     normalized: list[str] = []
     exact: set[str] = set()
@@ -36,6 +39,8 @@ def classify_paths(paths: Iterable[str]) -> ChangedScope:
             raise ValueError("changed path must be a non-empty string")
         if raw.startswith(("/", "-")) or WINDOWS_ABSOLUTE.match(raw) or "\\" in raw:
             raise ValueError(f"unsafe changed path: {raw!r}")
+        if unicodedata.normalize("NFC", raw) != raw:
+            raise ValueError(f"non-canonical changed path: {raw!r}")
         path = PurePosixPath(raw)
         if path.is_absolute() or any(part in ("", ".", "..") for part in path.parts):
             raise ValueError(f"unsafe changed path: {raw!r}")
@@ -57,7 +62,10 @@ def classify_paths(paths: Iterable[str]) -> ChangedScope:
         for path in ordered
         if path.startswith(FRONTEND_PREFIX) and PurePosixPath(path).suffix in VISUAL_SUFFIXES
     )
-    unsupported_visual = any(
+    testing_center_visual = any(
+        path.startswith(TESTING_CENTER_PREFIX) for path in visual_paths
+    )
+    unsupported_visual = enforce_testing_center_scope and any(
         not path.startswith(TESTING_CENTER_PREFIX) for path in visual_paths
     )
     reasons = ("unsupported_visual_scope",) if unsupported_visual else ()
@@ -65,7 +73,7 @@ def classify_paths(paths: Iterable[str]) -> ChangedScope:
         eligible=not reasons,
         reasons=reasons,
         lint_paths=lint_paths,
-        visual_required=bool(visual_paths) and not unsupported_visual,
+        visual_required=testing_center_visual and not unsupported_visual,
     )
 
 
@@ -73,13 +81,17 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nul-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--enforce-testing-center-scope", action="store_true")
     args = parser.parse_args()
     raw = args.nul_file.read_bytes()
     if raw and not raw.endswith(b"\0"):
         raise SystemExit("changed path input must be NUL terminated")
     try:
         paths = tuple(part.decode("utf-8", errors="strict") for part in raw.split(b"\0")[:-1])
-        decision = classify_paths(paths)
+        decision = classify_paths(
+            paths,
+            enforce_testing_center_scope=args.enforce_testing_center_scope,
+        )
     except (UnicodeDecodeError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
     args.output.write_text(

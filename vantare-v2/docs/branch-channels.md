@@ -85,15 +85,18 @@ de cada efecto, hacer bloqueantes lint/visuales cuando apliquen y demostrar que
 todas las exclusiones anteriores se aplican en el gate. Una firma válida pero
 obsoleta o reusada falla cerrada.
 
-ISA-322 materializa ese cierre sin activarlo: el verificador ejecuta
-`gh attestation verify` contra repositorio, workflow firmante, SHA del workflow
-en `master`, issuer de GitHub y runner hospedado; después contrasta `head_sha`,
-tip de `nightly` y digest recomputado con hechos vivos. La policy de cola exige
-los dos checks exactos, conversaciones resueltas, diff y Opus aprobados, cuatro
-kill switches cerrados y ausencia de otro closeout. El bootstrap conserva
-`if: false`, permisos `contents: read`, termina en fallo y no contiene comando
-de merge. La reserva Supabase y la metadata `TC-<12 HEX>` son deterministas,
-pero no crean tag ni release. Ruleset y activación siguen requiriendo a Isaac.
+ISA-322 define ese cierre sin activarlo. Su entrypoint inerte encadena la futura
+ejecución de `gh attestation verify` (repositorio, workflow firmante, commit
+fuente en `master`, issuer GitHub y runner hospedado) con el validador semántico
+v2 y la comparación de `head_sha`, tip de `nightly` y digest recomputado contra
+hechos vivos. La policy exige los dos checks exactos, conversaciones resueltas,
+cuatro kill switches cerrados, reserva `nightly_release` confirmada y ausencia
+de otro closeout. `prepare_release` solo prepara la petición determinista al RPC
+Supabase ya existente y las rutas de metadata `TC-<12 HEX>`; no ejecuta la
+reserva. El bootstrap conserva `if: false`, permisos `contents: read`, termina
+en fallo y no contiene comandos de merge, tag ni release. Conectar credenciales,
+ejecutar la reserva, crear el ruleset y activar la cola siguen requiriendo la
+fase de activación y autorización expresa de Isaac.
 
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.

@@ -28,7 +28,8 @@ TC_PREFIX = "vantareapp/tc-"
 TC_HEX = re.compile(r"[0-9a-f]{12}")
 TC_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 NIGHTLY_MERGE_GROUP_REF = re.compile(
-    r"^refs/heads/gh-readonly-queue/nightly/[A-Za-z0-9._-]+$"
+    r"^refs/heads/gh-readonly-queue/nightly/"
+    r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
 )
 
 TC_REPO = "isaacalbala12/Vantare-Simracing-Suite"

@@ -3,6 +3,7 @@ import type { AccessContext } from "../../../lib/access-policy";
 import { DesignSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemDefinition } from "../../../overlay/core/design-system-definition";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { broadcastTowerDefinition } from "../../../overlay/widget-types/broadcast-tower/broadcast-tower-definition";
 import { ALL_WIDGET_TYPES, type WidgetType, type WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
@@ -167,6 +168,7 @@ describe("buildAddWidgetCommand", () => {
       type: "delta",
       widgets: existing,
       definition: deltaDefinition,
+      layoutViewport: { width: 1920, height: 1080 },
     });
     expect(command).toEqual({
       type: "widget/add",
@@ -176,6 +178,20 @@ describe("buildAddWidgetCommand", () => {
         type: "delta",
         layout: expect.objectContaining({ zIndex: 4 }),
       }),
+    });
+  });
+
+  it("fits a horizontal-only widget to the profile viewport width", () => {
+    const command = buildAddWidgetCommand({
+      session: "general",
+      type: "broadcast-tower",
+      widgets: [],
+      definition: broadcastTowerDefinition,
+      layoutViewport: { width: 3440, height: 1440 },
+    });
+
+    expect(command).toMatchObject({
+      widget: { layout: { x: 0, w: 3440, h: 50 } },
     });
   });
 });

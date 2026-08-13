@@ -25,9 +25,11 @@ Nota ISA-152 / STR-17 (2026-08-13, entrega local revisada):
 - Gates locales: focales x20, `go vet`, build frontend, `go test ./...` y
   frontend `367/2636` pasan. El frontend conserva el 403 del roadmap remoto y
   un `AbortError` de teardown con exit 0. `-race` no está disponible con
-  `CGO_ENABLED=0` y sin GCC. La rama continúa local, limpia y sin push, PR, CI,
-  merge, promoción o release; Linear sigue `In Progress` hasta publicar la
-  entrega.
+  `CGO_ENABLED=0` y sin GCC. La rama se publicó por primera vez en `c532c88` y
+  el PR draft [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
+  está OPEN/MERGEABLE hacia `nightly`; el estado del HEAD y sus checks se
+  consulta allí. No hubo merge, promoción o release. Linear sigue
+  `In Progress` hasta cerrar CI y la revisión.
 - `Roadmap public snapshot` conserva el fallo heredado
   `telemetry-core: empty project must have null progress`; se reproduce en los
   cuatro commits de `nightly` anteriores a ISA-161 y queda fuera de STR-17.

@@ -4,7 +4,7 @@
 **Issue:** ISA-152
 **Base exacta:** `origin/nightly@b2e4067809d31152fdcf374875179e577d483c03`
 **Rama:** `vantareapp/isa-152-str-17-motor-de-ejecucion-live-sobre-telemetry-core`
-**Estado:** implementación local revisada; pendiente push, PR draft y CI
+**Estado:** PR draft #219 abierto; pendiente CI y revisión de Isaac
 
 ## Objetivo
 
@@ -136,7 +136,8 @@ equivale a integración en `nightly`, promoción a `testers`/`master` ni release
 - [x] Task 3: consumidor de una sola suscripción del Hub Strategy, compatible
   con productor v1 old/new y sin segundo reader.
 - [x] Task 4 local: reviews independientes, evidencia LMU sanitizada y gates.
-- [ ] Publicar rama, abrir PR draft y obtener CI del HEAD publicado.
+- [x] Publicar rama y abrir PR draft #219 hacia `nightly`.
+- [ ] Obtener CI del HEAD vigente publicado.
 - [ ] Actualizar Linear con commit/PR/CI finales.
 
 Commits locales: `98104b0`, `3f48045`, `091f8ba` y `bf9e9e5`. La prueba
@@ -148,3 +149,8 @@ continúa pendiente porque el host usa `CGO_ENABLED=0` y no dispone de GCC.
 No se añadió wiring al arranque: el `ActivePlan` durable identifica una
 revisión, pero no entrega el plan normalizado de stints y objetivos que exige
 el motor. Crear datos sintéticos violaría ADR 0006 y queda fuera de STR-17.
+
+La rama se publicó por primera vez en `c532c88`; el HEAD vigente y los checks
+son autoridad del PR draft
+[#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219).
+No hubo merge, promoción ni release.

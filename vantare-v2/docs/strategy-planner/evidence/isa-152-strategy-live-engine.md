@@ -70,4 +70,7 @@ teardown happy-dom, ambos con exit 0. El detector `-race` no se ejecutó:
   necesita alcance explícito y no se sustituye con un plan sintético.
 - La prueba LMU acredita una observación real puntual, no endurance ni una
   reconexión física. Replay, coalescing y soak se cubren determinísticamente.
-- La rama sigue local: sin push, PR, CI remoto, merge, promoción o release.
+- La rama se publicó por primera vez en `c532c88`. El PR draft
+  [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
+  está abierto hacia `nightly`; el estado del HEAD/checks se consulta allí.
+  No hubo merge, promoción o release.

@@ -60,8 +60,11 @@ Actualización ISA-152 / STR-17 (2026-08-13):
   contiene raw, track, fingerprint, IDs reales ni PII.
 - Gates locales: focales x20, vet focal, frontend build, `go test ./...` y
   frontend `367/2636` pasan. `-race` no se ejecutó por CGO desactivado y falta
-  de GCC. La rama sigue local y limpia: sin push, PR, CI, merge, promoción o
-  release; Linear permanece `In Progress` hasta publicar.
+  de GCC. La rama se publicó por primera vez en `c532c88` y el PR draft
+  [#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219)
+  está OPEN/MERGEABLE hacia `nightly`; el HEAD vigente y sus checks se
+  consultan en el PR. No hubo merge, promoción o release. Linear permanece
+  `In Progress` hasta cerrar CI y revisión.
 - Microplan vigente:
   `docs/superpowers/plans/2026-08-13-isa-152-str-17-live-execution-engine.md`.
   Evidencia detallada:
@@ -301,8 +304,8 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Publicar la rama ISA-152, abrir PR draft hacia `nightly`, esperar CI y reflejar
-el SHA/PR reales en Linear. No promover ni mergear sin autorización de Isaac.
+Esperar los checks del HEAD vigente del PR draft #219 y reflejar SHA/PR/CI
+reales en Linear. No promover ni mergear sin autorización de Isaac.
 El wiring de arranque requiere una issue/decisión que entregue una fuente
 normalizada de stints y objetivos desde la revisión activa; no inventarla en
 STR-17. STR-18 continúa separado.

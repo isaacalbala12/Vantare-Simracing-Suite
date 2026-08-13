@@ -348,49 +348,67 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   return (
     <main className="overlay-workshop" data-overlay-workshop-page>
       <header className="overlay-workshop-header">
-        <p>DEV ONLY · Overlay Workshop</p>
+        <div className="overlay-workshop-header__title">
+          <span className="overlay-workshop-badge">solo desarrollo</span>
+          <h1>Overlay Workshop</h1>
+        </div>
         <span data-overlay-workshop-query>{serializeOverlayWorkshopQuery(parsed)}</span>
       </header>
-      <section className="overlay-workshop-controls" aria-label="Workshop selection">
-        <SelectField label="Widget" value={parsed.widget} onChange={chooseWidget}>
-          {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
-        </SelectField>
-        <SelectField label="System" value={parsed.system} onChange={chooseSystem}>
-          {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
-        </SelectField>
-        <SelectField label="Design" value={parsed.designId ?? ""} onChange={chooseDesign}>
-          <option value="">Default renderer settings</option>
-          {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
-        </SelectField>
-        <SelectField label="State" value={parsed.state} onChange={chooseState}>
-          {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
-        </SelectField>
-        <SelectField label="Session" value={parsed.session} onChange={chooseSession}>
-          {(["practice", "qualifying", "race"] as const).map((session) => <option key={session} value={session}>{session}</option>)}
-        </SelectField>
-        <SelectField label="Location" value={parsed.location} onChange={chooseLocation}>
-          {(["track", "pits"] as const).map((location) => <option key={location} value={location}>{location}</option>)}
-        </SelectField>
-        <SelectField label="Surface" value={parsed.surface} onChange={chooseSurface}>
-          {SURFACES.map((surface) => <option key={surface} value={surface}>{surface}</option>)}
-        </SelectField>
-        <SelectField label="Variant" value={parsed.variant} onChange={chooseVariant}>
-          {VARIANTS.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
-        </SelectField>
-        <SelectField label="Stage background" value={parsed.background} onChange={chooseBackground}>
-          {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
-        </SelectField>
-        <label className="overlay-workshop-control"><span>Scale</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
-        <SelectField label="Preset" value={parsed.preset} onChange={choosePreset}>
-          {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
-        </SelectField>
-        <button type="button" onClick={applyPreset}>Apply declared dimensions</button>
-        <DimensionField label="Width" value={dimensionDraft.width} onChange={(value) => chooseDimension("width", value)} />
-        <DimensionField label="Height" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
-        <SelectField label="Compare" value={parsed.compare ?? ""} onChange={chooseCompare}>
-          <option value="">Off</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
-        </SelectField>
-        <button type="button" onClick={reset}>Reset controls</button>
+      {/* Three groups, in the order the questions actually get asked: what am I
+          looking at, what is it being fed, and how is it being presented. */}
+      <section className="overlay-workshop-controls" aria-label="Selección del Workshop">
+        <fieldset className="overlay-workshop-group">
+          <legend>Qué</legend>
+          <SelectField label="Widget" value={parsed.widget} onChange={chooseWidget}>
+            {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
+          </SelectField>
+          <SelectField label="Sistema" value={parsed.system} onChange={chooseSystem}>
+            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
+          </SelectField>
+          <SelectField label="Diseño" value={parsed.designId ?? ""} onChange={chooseDesign}>
+            <option value="">Ajustes por defecto del renderer</option>
+            {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
+          </SelectField>
+        </fieldset>
+
+        <fieldset className="overlay-workshop-group">
+          <legend>Datos</legend>
+          <SelectField label="Estado" value={parsed.state} onChange={chooseState}>
+            {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+          </SelectField>
+          <SelectField label="Sesión" value={parsed.session} onChange={chooseSession}>
+            {(["practice", "qualifying", "race"] as const).map((session) => <option key={session} value={session}>{session}</option>)}
+          </SelectField>
+          <SelectField label="Ubicación" value={parsed.location} onChange={chooseLocation}>
+            {(["track", "pits"] as const).map((location) => <option key={location} value={location}>{location}</option>)}
+          </SelectField>
+          <SelectField label="Variante" value={parsed.variant} onChange={chooseVariant}>
+            {VARIANTS.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
+          </SelectField>
+        </fieldset>
+
+        <fieldset className="overlay-workshop-group">
+          <legend>Presentación</legend>
+          <SelectField label="Superficie" value={parsed.surface} onChange={chooseSurface}>
+            {SURFACES.map((surface) => <option key={surface} value={surface}>{surface}</option>)}
+          </SelectField>
+          <SelectField label="Comparar con" value={parsed.compare ?? ""} onChange={chooseCompare}>
+            <option value="">Sin comparar</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
+          </SelectField>
+          <SelectField label="Fondo" value={parsed.background} onChange={chooseBackground}>
+            {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
+          </SelectField>
+          <label className="overlay-workshop-control"><span>Escala</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
+          <SelectField label="Resolución" value={parsed.preset} onChange={choosePreset}>
+            {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
+          </SelectField>
+          <DimensionField label="Ancho" value={dimensionDraft.width} onChange={(value) => chooseDimension("width", value)} />
+          <DimensionField label="Alto" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
+          <div className="overlay-workshop-group__actions">
+            <button type="button" onClick={applyPreset}>Aplicar tamaño declarado</button>
+            <button type="button" className="overlay-workshop-button--quiet" onClick={reset}>Restablecer</button>
+          </div>
+        </fieldset>
       </section>
       <section className="overlay-workshop-scenes" aria-label="Animaciones" data-overlay-workshop-scenes>
         <div className="overlay-workshop-scenes__head">

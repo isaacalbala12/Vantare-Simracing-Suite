@@ -70,12 +70,16 @@ export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
                       } as CSSProperties
                     }
                   />
-                  {rail.key === "brake" && showPeak && brakePeak !== null ? (
+                  {/* Mounted whenever there is a brake rail, shown by opacity.
+                      Mounting it only while it applies made it blink in and
+                      out at each end of a braking event. */}
+                  {rail.key === "brake" ? (
                     <i
                       aria-hidden="true"
                       className="ven-pred-peak"
                       data-testid="pedals-brake-peak"
-                      style={{ bottom: `${brakePeak * 100}%` } as CSSProperties}
+                      data-visible={showPeak ? "true" : undefined}
+                      style={{ bottom: `${(brakePeak ?? 0) * 100}%` } as CSSProperties}
                     />
                   ) : null}
                 </div>

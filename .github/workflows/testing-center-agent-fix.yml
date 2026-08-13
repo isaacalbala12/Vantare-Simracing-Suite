@@ -139,8 +139,283 @@ jobs:
       - name: Keep GREEN gate fail-closed
         run: exit 1
 
-  draft_pr:
+  diff_gate:
     needs: green_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      MANIFEST_PATH: .testing-center/validated-diff-manifest.json
+    outputs:
+      head_sha: ${{ steps.diff_outputs.outputs.head_sha }}
+      head_digest: ${{ steps.diff_outputs.outputs.head_digest }}
+    steps:
+      - name: Checkout pinned validated tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Evaluate server-owned manifest without network
+        run: python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH" > "$RUNNER_TEMP/diff-decision.json"
+      - name: Export only validated immutable identity
+        id: diff_outputs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          decision = json.loads(
+              Path(os.environ["RUNNER_TEMP"], "diff-decision.json").read_text()
+          )
+          manifest = json.loads(Path(os.environ["MANIFEST_PATH"]).read_text())
+          if (
+              not decision["approved"]
+              or decision["head_sha"] != manifest["git"]["head_sha"]
+              or manifest["expected"]["head_digest"]
+                  != manifest["phases"]["green"]["digest"]
+          ):
+              raise SystemExit(1)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"head_sha={decision['head_sha']}\n")
+              output.write(
+                  f"head_digest={manifest['expected']['head_digest']}\n"
+              )
+          PY
+
+  review_opus:
+    needs: diff_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      structured_output: ${{ steps.opus_review.outputs.structured_output }}
+      expected_head_sha: ${{ needs.diff_gate.outputs.head_sha }}
+      expected_head_digest: ${{ needs.diff_gate.outputs.head_digest }}
+    steps:
+      - name: Checkout clean reviewed tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ needs.diff_gate.outputs.head_sha }}
+      - name: Load closed review schema
+        id: review_schema
+        shell: bash
+        run: |
+          echo "json=$(jq -c . .github/agents/testing-center-review-output.schema.json)" >> "$GITHUB_OUTPUT"
+      - name: Run independent read-only Opus review
+        id: opus_review
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}
+          VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: >-
+            Lee y cumple exclusivamente
+            .github/agents/testing-center-review-prompt.md. Revisa solo el
+            manifest y HEAD validados de este run.
+          display_report: false
+          show_full_output: false
+          track_progress: false
+          claude_args: >-
+            --model claude-opus-5
+            --effort high
+            --max-turns 15
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob
+            --json-schema '${{ steps.review_schema.outputs.json }}'
+      - name: Validate and sanitize review artifact
+        shell: bash
+        env:
+          REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          review = json.loads(os.environ["REVIEW_JSON"])
+          findings = review["findings"]
+          criteria = review["criteria"]
+          valid = (
+              isinstance(review, dict)
+              and set(review) == {
+                  "contractVersion", "verdict", "headSha", "headDigest",
+                  "criteria", "findings", "testQuality", "scope",
+              }
+              and review["contractVersion"] == "testing-center-review/v1"
+              and review["verdict"] in {"approve", "reject", "needs_owner"}
+              and re.fullmatch(r"[0-9a-f]{40}", review["headSha"]) is not None
+              and re.fullmatch(
+                  r"sha256:[0-9a-f]{64}", review["headDigest"]
+              ) is not None
+              and review["testQuality"] in {"pass", "fail", "unknown"}
+              and review["scope"] in {"pass", "fail", "unknown"}
+              and isinstance(criteria, list)
+              and 1 <= len(criteria) <= 20
+              and all(
+                  isinstance(item, dict)
+                  and set(item) == {"id", "status", "note"}
+                  and isinstance(item["id"], str)
+                  and re.fullmatch(
+                      r"[A-Za-z0-9._-]{1,80}", item["id"]
+                  ) is not None
+                  and item["status"] in {"pass", "fail", "unknown"}
+                  and isinstance(item["note"], str)
+                  and len(item["note"]) <= 500
+                  for item in criteria
+              )
+              and isinstance(findings, dict)
+              and set(findings) == {"P0", "P1", "P2", "P3"}
+              and all(
+                  isinstance(findings[level], list)
+                  and len(findings[level]) <= 20
+                  and all(
+                      isinstance(item, str) and len(item) <= 500
+                      for item in findings[level]
+                  )
+                  for level in ("P0", "P1", "P2", "P3")
+              )
+          )
+          if not valid:
+              raise SystemExit(1)
+          Path(os.environ["RUNNER_TEMP"], "review.json").write_text(
+              json.dumps(review, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          PY
+      - name: Upload bounded review evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-opus-review
+          path: ${{ runner.temp }}/review.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Write sanitized review summary
+        shell: bash
+        env:
+          REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          review = json.loads(os.environ["REVIEW_JSON"])
+          counts = {
+              level: len(review["findings"][level])
+              for level in ("P0", "P1", "P2", "P3")
+          }
+          summary = (
+              "### Testing Center independent review\n\n"
+              f"- verdict: {review['verdict']}\n"
+              f"- findings: P0={counts['P0']}, P1={counts['P1']}, "
+              f"P2={counts['P2']}, P3={counts['P3']}\n"
+          )
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open(
+              "a", encoding="utf-8"
+          ) as output:
+              output.write(summary)
+          PY
+
+  review_gate:
+    needs: review_opus
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      REVIEW_JSON: ${{ needs.review_opus.outputs.structured_output }}
+      EXPECTED_HEAD_SHA: ${{ needs.review_opus.outputs.expected_head_sha }}
+      EXPECTED_HEAD_DIGEST: ${{ needs.review_opus.outputs.expected_head_digest }}
+    steps:
+      - name: Validate independent verdict without logging model output
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          try:
+              review = json.loads(os.environ["REVIEW_JSON"])
+              findings = review["findings"]
+              criteria = review["criteria"]
+              root_valid = (
+                  isinstance(review, dict)
+                  and set(review) == {
+                      "contractVersion", "verdict", "headSha", "headDigest",
+                      "criteria", "findings", "testQuality", "scope",
+                  }
+              )
+              criteria_valid = (
+                  isinstance(criteria, list)
+                  and 1 <= len(criteria) <= 20
+                  and all(
+                      isinstance(item, dict)
+                      and set(item) == {"id", "status", "note"}
+                      and isinstance(item["id"], str)
+                      and re.fullmatch(r"[A-Za-z0-9._-]{1,80}", item["id"]) is not None
+                      and item["status"] in {"pass", "fail", "unknown"}
+                      and isinstance(item["note"], str)
+                      and len(item["note"]) <= 500
+                      for item in criteria
+                  )
+              )
+              findings_valid = (
+                  isinstance(findings, dict)
+                  and set(findings) == {"P0", "P1", "P2", "P3"}
+                  and all(
+                      isinstance(findings[level], list)
+                      and len(findings[level]) <= 20
+                      and all(
+                          isinstance(item, str) and len(item) <= 500
+                          for item in findings[level]
+                      )
+                      for level in ("P0", "P1", "P2", "P3")
+                  )
+              )
+              approved = (
+                  root_valid
+                  and criteria_valid
+                  and findings_valid
+                  and review["contractVersion"] == "testing-center-review/v1"
+                  and review["verdict"] == "approve"
+                  and re.fullmatch(r"[0-9a-f]{40}", review["headSha"]) is not None
+                  and re.fullmatch(r"sha256:[0-9a-f]{64}", review["headDigest"]) is not None
+                  and review["headSha"] == os.environ["EXPECTED_HEAD_SHA"]
+                  and review["headDigest"] == os.environ["EXPECTED_HEAD_DIGEST"]
+                  and review["testQuality"] == "pass"
+                  and review["scope"] == "pass"
+                  and all(item["status"] == "pass" for item in criteria)
+                  and not findings["P0"]
+                  and not findings["P1"]
+                  and not findings["P2"]
+              )
+          except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+              approved = False
+          sys.exit(0 if approved else 1)
+          PY
+
+  draft_pr:
+    needs: review_gate
     if: github.event_name == 'repository_dispatch' && false
     runs-on: ubuntu-latest
     timeout-minutes: 1

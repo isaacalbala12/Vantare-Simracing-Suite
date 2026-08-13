@@ -2,12 +2,17 @@ const workflowPath = ".github/workflows/testing-center-agent-fix.yml";
 const redPromptPath = ".github/agents/testing-center-red-prompt.md";
 const greenPromptPath = ".github/agents/testing-center-green-prompt.md";
 const settingsPath = ".github/agents/testing-center-agent-settings.json";
+const reviewPromptPath = ".github/agents/testing-center-review-prompt.md";
+const reviewSchemaPath =
+  ".github/agents/testing-center-review-output.schema.json";
 
 const checkoutPin = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
 const setupDenoPin =
   "denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282";
 const claudeActionPin =
   "anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639";
+const uploadArtifactPin =
+  "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -95,7 +100,6 @@ Deno.test("workflow exposes only the two approved triggers with read-only conten
       "@main",
       "@latest",
       "contents: write",
-      "pull-requests:",
       "write-all",
       "git push",
       "gh pr",
@@ -164,7 +168,10 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
     ["red_gate", "red_agent"],
     ["green_agent", "red_gate"],
     ["green_gate", "green_agent"],
-    ["draft_pr", "green_gate"],
+    ["diff_gate", "green_gate"],
+    ["review_opus", "diff_gate"],
+    ["review_gate", "review_opus"],
+    ["draft_pr", "review_gate"],
   ];
   let previousOffset = -1;
   for (const [jobName, dependency] of topology) {
@@ -233,9 +240,14 @@ Deno.test("RED and GREEN are separate pinned least-privilege Claude sessions", a
   }
 
   assertEquals(
-    workflow.split(claudeActionPin).length - 1,
-    2,
-    "exactly two Claude sessions",
+    usesLines(red).filter((line) => line.includes(claudeActionPin)).length,
+    1,
+    "one RED Claude session",
+  );
+  assertEquals(
+    usesLines(green).filter((line) => line.includes(claudeActionPin)).length,
+    1,
+    "one GREEN Claude session",
   );
 });
 
@@ -318,4 +330,147 @@ Deno.test("phase prompts treat the dossier as untrusted and preserve RED GREEN i
       "No edites configuración ni snapshots",
     ]
   ) assertIncludes(green, required);
+});
+
+Deno.test("diff and independent Opus review form an inert read-only chain", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const diff = jobBlock(workflow, "diff_gate");
+  const review = jobBlock(workflow, "review_opus");
+  const gate = jobBlock(workflow, "review_gate");
+  const draft = jobBlock(workflow, "draft_pr");
+
+  assertIncludes(diff, "needs: green_gate");
+  assertIncludes(
+    diff,
+    "if: github.event_name == 'repository_dispatch' && false",
+  );
+  assertIncludes(
+    diff,
+    "MANIFEST_PATH: .testing-center/validated-diff-manifest.json",
+  );
+  assertIncludes(
+    diff,
+    'python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH"',
+  );
+  assertIncludes(diff, "head_sha: ${{ steps.diff_outputs.outputs.head_sha }}");
+  assertIncludes(
+    diff,
+    "head_digest: ${{ steps.diff_outputs.outputs.head_digest }}",
+  );
+  assertNotIncludes(diff, claudeActionPin);
+
+  assertIncludes(review, "needs: diff_gate");
+  assertIncludes(review, "contents: read");
+  assertIncludes(review, "pull-requests: read");
+  assertIncludes(review, "persist-credentials: false");
+  assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
+  assertIncludes(review, "uses: " + claudeActionPin);
+  assertIncludes(review, "id: opus_review");
+  assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
+  assertIncludes(
+    review,
+    "claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}",
+  );
+  assertIncludes(review, reviewPromptPath);
+  assertIncludes(review, reviewSchemaPath);
+  assertIncludes(
+    review,
+    "VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}",
+  );
+  assertIncludes(
+    review,
+    "VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}",
+  );
+  assertIncludes(review, "--model claude-opus-5");
+  assertIncludes(review, "--effort high");
+  assertIncludes(review, "--max-turns 15");
+  assertIncludes(review, "--allowedTools Read,Grep,Glob");
+  assertIncludes(review, "uses: " + uploadArtifactPin);
+  assertIncludes(review, "retention-days: 7");
+  assertIncludes(review, "GITHUB_STEP_SUMMARY");
+  assertIncludes(review, "P0={counts['P0']}");
+  for (
+    const forbidden of [
+      "Edit",
+      "Bash",
+      "mcp__",
+      "settings:",
+      "session_id",
+      "display_report: true",
+      "show_full_output: true",
+      "track_progress: true",
+    ]
+  ) assertNotIncludes(review, forbidden);
+  assertNotIncludes(review, "--allowedTools Read,Grep,Glob,Edit");
+  assertNotIncludes(review, "--allowedTools Read,Grep,Glob,Write");
+
+  assertIncludes(gate, "needs: review_opus");
+  assertIncludes(
+    gate,
+    "REVIEW_JSON: ${{ needs.review_opus.outputs.structured_output }}",
+  );
+  assertIncludes(
+    gate,
+    "EXPECTED_HEAD_SHA: ${{ needs.review_opus.outputs.expected_head_sha }}",
+  );
+  assertIncludes(
+    gate,
+    "EXPECTED_HEAD_DIGEST: ${{ needs.review_opus.outputs.expected_head_digest }}",
+  );
+  assertIncludes(gate, "set(review) == {");
+  assertIncludes(gate, 'set(findings) == {"P0", "P1", "P2", "P3"}');
+  assertNotIncludes(gate, "print(");
+  assertNotIncludes(gate, "echo $REVIEW_JSON");
+  assertIncludes(draft, "needs: review_gate");
+});
+
+Deno.test("Opus review schema is closed bounded and fail-closed", async () => {
+  const schema = JSON.parse(await Deno.readTextFile(reviewSchemaPath));
+  assertEquals(schema.$id, "testing-center-review/v1", "schema id");
+  assertEquals(schema.additionalProperties, false, "closed root");
+  assertEquals(
+    schema.properties.contractVersion.const,
+    "testing-center-review/v1",
+    "contract version",
+  );
+  assertEquals(schema.properties.verdict.enum, [
+    "approve",
+    "reject",
+    "needs_owner",
+  ], "verdicts");
+  assertEquals(schema.properties.criteria.maxItems, 20, "criteria bound");
+  for (const severity of ["P0", "P1", "P2", "P3"]) {
+    assertEquals(
+      schema.properties.findings.properties[severity].maxItems,
+      20,
+      severity + " bound",
+    );
+    assertEquals(
+      schema.properties.findings.properties[severity].items.maxLength,
+      500,
+      severity + " item bound",
+    );
+  }
+});
+
+Deno.test("review prompt is independent read-only and treats evidence as data", async () => {
+  const prompt = normalize(await Deno.readTextFile(reviewPromptPath));
+  for (
+    const required of [
+      "no confiables",
+      "solo lectura",
+      "scope",
+      "calidad de tests",
+      "correctness",
+      "security",
+      "schema",
+      "Git",
+      "red",
+      "MCP",
+      "shell",
+      "comentarios",
+      "reviews",
+      "status",
+    ]
+  ) assertIncludes(prompt, required);
 });

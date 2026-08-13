@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-336",
+  "type": "fix",
+  "summary": "Telemetry Blade de Vantare Crystal recupera su composición compacta y mantiene sus proporciones al redimensionarlo en Overlay Studio.",
+  "technicalNotes": [
+    "El Blade muestra únicamente marcha, velocidad y RPM, como define el contrato visual overlay-vantare-crystal-widgets.html.",
+    "La composición interna conserva una relación 400:70 y se centra dentro de la caja del widget sin estirar ni desbordar.",
+    "Original, Capsule y Dense mantienen su geometría y sus renderizadores actuales."
+  ],
+  "testing": [
+    "Abrir Input Telemetry con Vantare Crystal y seleccionar Blade; comprobar que no aparecen la banda TELEMETRY, la gráfica ni las barras de pedales.",
+    "Redimensionar la caja a un formato ancho y bajo, y después a 400×70; comprobar que la tarjeta mantiene la misma proporción y queda centrada.",
+    "Cambiar a Original, Capsule y Dense para confirmar que continúan completos y sin desbordamiento."
+  ],
+  "knownLimitations": [
+    "El baseline histórico del protocolo visual Crystal todavía documenta la variante Blade anterior de 780×96; ISA-339 seguirá su reconciliación con el contrato indicado por Isaac."
+  ]
+}

@@ -110,16 +110,23 @@ function RedlineRow({
         {row.bestLapText}
         {isSessionBest ? <FastestGlyph /> : null}
       </span>
-      {chargedGap !== null ? (
-        <span className="ven-red-gapcell" data-leaving={leavingBattle ? "true" : undefined}>
+      {/* One element in every state. Swapping between a plain gap and a charged
+          cell moved the reading six pixels sideways and resized its box every
+          time a battle started or ended; the number now never moves, and only
+          the fill and the backing appear behind it. */}
+      <span
+        className="ven-red-gap"
+        data-pit={row.pitText ? "true" : undefined}
+        data-charged={chargedGap !== null ? "true" : undefined}
+        data-leaving={leavingBattle ? "true" : undefined}
+      >
+        {chargedGap !== null ? (
           <b style={{ width: `${Math.round(chargedGap * 100)}%` } as CSSProperties} />
-          <span>{gapOneDecimal(row.gapText)}</span>
-        </span>
-      ) : (
-        <span className="ven-red-gap" data-pit={row.pitText ? "true" : undefined}>
+        ) : null}
+        <span className="ven-red-gaptext">
           {row.pitText ? "PIT" : isLead ? "INT" : gapOneDecimal(row.gapText)}
         </span>
-      )}
+      </span>
     </div>
   );
 }

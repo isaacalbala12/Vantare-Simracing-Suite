@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-334",
+  "type": "fix",
+  "summary": "Broadcast Tower vuelve a comportarse como una franja horizontal en Overlay Studio.",
+  "technicalNotes": [
+    "Un Broadcast Tower nuevo ocupa de extremo a extremo el ancho real del lienzo del perfil, también en resoluciones distintas de 1920×1080.",
+    "Su altura queda fija en 50 píxeles lógicos y el canvas muestra únicamente los controles laterales de ancho.",
+    "El renderer se adapta al ancho disponible sin escalar la tipografía ni crear una ruta visual distinta para Crystal."
+  ],
+  "testing": [
+    "Añadir Broadcast Tower en Overlay Studio y comprobar que nace a todo el ancho del lienzo.",
+    "Seleccionarlo y confirmar que solo aparecen los controles izquierdo y derecho; arrastrarlos sin que cambie la altura.",
+    "Aplicar Vantare Crystal y comprobar que se mantiene como una barra horizontal legible."
+  ],
+  "knownLimitations": []
+}

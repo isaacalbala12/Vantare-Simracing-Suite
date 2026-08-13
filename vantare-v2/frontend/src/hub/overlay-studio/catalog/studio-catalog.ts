@@ -4,6 +4,7 @@ import { ALL_WIDGET_TYPES, type DesignSystemId } from "../../../overlay/core/pro
 import type { WidgetType, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
+import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { WidgetTypeRegistry, widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { getStudioMutationGate } from "../access/studio-access";
 import type { StudioCommand } from "../state/studio-command";
@@ -106,10 +107,15 @@ export function buildAddWidgetCommand(input: {
   type: WidgetType;
   widgets: readonly WidgetInstanceV3[];
   definition: WidgetTypeDefinition<Record<string, unknown>>;
+  layoutViewport: LayoutViewport;
 }): StudioCommand {
   const existingIds = new Set(input.widgets.map((widget) => widget.id));
   const widgetId = createNextWidgetId(input.type, existingIds);
   const widget = input.definition.createDefault(widgetId);
+  if (input.definition.capabilities.resizeMode === "horizontal-only") {
+    widget.layout.x = 0;
+    widget.layout.w = input.layoutViewport.width;
+  }
   widget.layout.zIndex = computeNextZIndex(input.widgets);
   return {
     type: "widget/add",

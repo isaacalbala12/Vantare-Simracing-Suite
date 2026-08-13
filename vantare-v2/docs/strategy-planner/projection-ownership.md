@@ -63,8 +63,12 @@ ISA-161 fue aceptada por Isaac e integrada mediante squash del PR
 [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) en
 `nightly@b2e4067809d31152fdcf374875179e577d483c03`. El
 [gate post-promoción](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31708164123)
-pasó completo. ISA-152 / STR-17 se implementó localmente sobre una rama aislada
-desde ese SHA. El motor puro importa solo el contrato Strategy público y el
+pasó completo. ISA-152 / STR-17 se implementó sobre una rama aislada desde ese
+SHA y se integró mediante squash del PR
+[#219](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/219) en
+`nightly@8de4f511972757476d96d6a525b69c8917f4ca56`. El
+[gate post-promoción](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31748815965)
+pasó completo. El motor puro importa solo el contrato Strategy público y el
 adaptador consume una única suscripción del Hub ya creado. No abre Shared
 Memory, REST, driver, transporte alternativo ni storage.
 

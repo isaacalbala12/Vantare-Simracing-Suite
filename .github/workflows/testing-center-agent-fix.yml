@@ -36,7 +36,7 @@ jobs:
             small-frontend-bug) ;;
             *) echo "fixture_not_allowlisted" >&2; exit 1 ;;
           esac
-          deno test --cached-only --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts
+          deno test --cached-only --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts
 
   production_disabled:
     if: github.event_name == 'repository_dispatch'
@@ -145,21 +145,97 @@ jobs:
       - name: Keep GREEN gate fail-closed
         run: exit 1
 
-  diff_gate:
+  manifest_collector:
     needs: green_gate
     if: github.event_name == 'repository_dispatch' && false
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
+    outputs:
+      manifest_sha256: ${{ steps.build_manifest.outputs.manifest_sha256 }}
+    steps:
+      - name: Checkout pinned trusted control ref without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download verify runner evidence under RUNNER_TEMP
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-verify-evidence
+          path: ${{ runner.temp }}/testing-center-evidence/
+      - name: Stage trusted control files
+        run: |
+          mkdir -p "$RUNNER_TEMP/testing-center-control"
+          cp .github/agents/testing-center-review-prompt.md "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-review-output.schema.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-review-settings.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-agent-settings.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-red-prompt.md "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-green-prompt.md "$RUNNER_TEMP/testing-center-control/"
+      - name: Build trusted manifest from verify runner bundle facts only
+        id: build_manifest
+        env:
+          RAW_GIT_FACTS: ${{ runner.temp }}/testing-center-evidence/raw-git-facts.json
+          DOSSIER: ${{ runner.temp }}/testing-center-evidence/dossier.json
+          COMMAND_RESULTS: ${{ runner.temp }}/testing-center-evidence/command-results.json
+        run: |
+          python .github/scripts/testing_center_manifest_collector.py build \
+            --raw-git-facts "$RAW_GIT_FACTS" \
+            --dossier "$DOSSIER" \
+            --command-results "$COMMAND_RESULTS" \
+            --output "$MANIFEST_PATH" > "$RUNNER_TEMP/testing-center-build.txt"
+          grep '^manifest_sha256=' "$RUNNER_TEMP/testing-center-build.txt" >> "$GITHUB_OUTPUT"
+      - name: Upload trusted manifest artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-trusted-manifest
+          path: ${{ runner.temp }}/testing-center/trusted-manifest.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload trusted control artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-trusted-control
+          path: ${{ runner.temp }}/testing-center-control/
+          if-no-files-found: error
+          retention-days: 1
+
+  diff_gate:
+    needs: manifest_collector
+    if: github.event_name == 'repository_dispatch' && needs.manifest_collector.result == 'success' && false
+    runs-on: ubuntu-latest
     timeout-minutes: 2
     env:
-      MANIFEST_PATH: .testing-center/validated-diff-manifest.json
+      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
     outputs:
       head_sha: ${{ steps.diff_outputs.outputs.head_sha }}
       head_digest: ${{ steps.diff_outputs.outputs.head_digest }}
     steps:
-      - name: Checkout pinned validated tree without credentials
+      - name: Checkout server-selected trusted control ref without credentials
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Download trusted manifest under RUNNER_TEMP
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-trusted-manifest
+          path: ${{ runner.temp }}/testing-center/
+      - name: Verify manifest sha256 before gating
+        shell: bash
+        env:
+          EXPECTED_MANIFEST_SHA256: ${{ needs.manifest_collector.outputs.manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(python .github/scripts/testing_center_manifest_collector.py manifest-sha256 --manifest "$MANIFEST_PATH")"
+          if [ "$ACTUAL" != "$EXPECTED_MANIFEST_SHA256" ]; then
+            echo "manifest_sha256_mismatch" >&2
+            exit 1
+          fi
       - name: Evaluate server-owned manifest without network
         run: python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH" > "$RUNNER_TEMP/diff-decision.json"
       - name: Export only validated immutable identity
@@ -224,12 +300,17 @@ jobs:
         with:
           name: testing-center-validated-diff
           path: .testing-center
-      - name: Load closed review schema
+      - name: Download trusted control artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-trusted-control
+          path: ${{ runner.temp }}/testing-center-control/
+      - name: Load closed review schema from trusted control
         id: review_schema
         shell: bash
         run: |
           set -euo pipefail
-          echo "json=$(jq -c . .github/agents/testing-center-review-output.schema.json)" >> "$GITHUB_OUTPUT"
+          echo "json=$(jq -c . "$RUNNER_TEMP/testing-center-control/testing-center-review-output.schema.json")" >> "$GITHUB_OUTPUT"
       - name: Run independent read-only Opus review
         id: opus_review
         uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
@@ -237,6 +318,8 @@ jobs:
           CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
           VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}
           VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}
+          REVIEW_PROMPT_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md
+          REVIEW_SETTINGS_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json
           REVIEW_SCHEMA_JSON: ${{ steps.review_schema.outputs.json }}
           ANTHROPIC_API_KEY: ""
           ANTHROPIC_AUTH_TOKEN: ""
@@ -251,11 +334,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          settings: .github/agents/testing-center-review-settings.json
+          settings: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json
           prompt: >-
-            Lee y cumple exclusivamente
-            .github/agents/testing-center-review-prompt.md. Revisa solo el
-            manifest y HEAD validados de este run.
+            Lee y cumple exclusivamente el archivo de control confiable indicado
+            en ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md.
+            Revisa solo el manifest y HEAD validados de este run.
           display_report: false
           show_full_output: false
           track_progress: false

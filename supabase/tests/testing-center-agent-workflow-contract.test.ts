@@ -140,7 +140,7 @@ Deno.test("manual fixture is isolated allowlisted and runs only the local cached
   assertIncludes(fixture, '*) echo "fixture_not_allowlisted" >&2; exit 1 ;;');
   assertIncludes(
     fixture,
-    "deno test --cached-only --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
+    "deno test --cached-only --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
   );
   for (
     const forbidden of [
@@ -175,7 +175,8 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
     ["red_gate", "red_agent"],
     ["green_agent", "red_gate"],
     ["green_gate", "green_agent"],
-    ["diff_gate", "green_gate"],
+    ["manifest_collector", "green_gate"],
+    ["diff_gate", "manifest_collector"],
     ["review_opus", "diff_gate"],
     ["review_gate", "review_opus"],
     ["draft_pr", "review_gate"],
@@ -185,8 +186,9 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
     const block = jobBlock(workflow, jobName);
     assertIncludes(
       block,
-      "if: github.event_name == 'repository_dispatch' && false",
+      "if: github.event_name == 'repository_dispatch'",
     );
+    assertIncludes(block, "&& false");
     if (dependency) assertIncludes(block, `needs: ${dependency}`);
     const offset = workflow.indexOf(`  ${jobName}:`);
     assert(offset > previousOffset, `Job is out of order: ${jobName}`);
@@ -343,20 +345,65 @@ Deno.test("phase prompts treat the dossier as untrusted and preserve RED GREEN i
 
 Deno.test("diff and independent Opus review form an inert read-only chain", async () => {
   const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const collector = jobBlock(workflow, "manifest_collector");
   const diff = jobBlock(workflow, "diff_gate");
   const review = jobBlock(workflow, "review_opus");
   const gate = jobBlock(workflow, "review_gate");
   const draft = jobBlock(workflow, "draft_pr");
 
-  assertIncludes(diff, "needs: green_gate");
+  // C1: MANIFEST_PATH and every download live under RUNNER_TEMP, never workspace.
+  assertIncludes(collector, "needs: green_gate");
   assertIncludes(
-    diff,
-    "if: github.event_name == 'repository_dispatch' && false",
+    collector,
+    "MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json",
   );
   assertIncludes(
     diff,
-    "MANIFEST_PATH: .testing-center/validated-diff-manifest.json",
+    "MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json",
   );
+  assertNotIncludes(diff, ".testing-center/validated-diff-manifest.json");
+
+  // C3: the collector only reads verify runner evidence and explicit control ref.
+  assertIncludes(collector, "ref: ${{ github.sha }}");
+  assertNotIncludes(collector, "client_payload.control_ref");
+  assertIncludes(collector, "persist-credentials: false");
+  assertIncludes(collector, "uses: " + downloadArtifactPin);
+  assertIncludes(collector, "name: testing-center-verify-evidence");
+  assertIncludes(collector, "${{ runner.temp }}/testing-center-evidence/");
+  assertIncludes(
+    collector,
+    "COMMAND_RESULTS: ${{ runner.temp }}/testing-center-evidence/command-results.json",
+  );
+  assertIncludes(
+    collector,
+    "python .github/scripts/testing_center_manifest_collector.py build",
+  );
+  assertNotIncludes(collector, "client_payload.command_results");
+  assertNotIncludes(collector, "tarball");
+  assertNotIncludes(collector, claudeActionPin);
+
+  // Trusted artifacts are short-lived and never staged in the workspace.
+  assertIncludes(collector, "uses: " + uploadArtifactPin);
+  assertIncludes(collector, "name: testing-center-trusted-manifest");
+  assertIncludes(collector, "name: testing-center-trusted-control");
+  assertIncludes(collector, "retention-days: 1");
+
+  // C2: diff_gate requires collector success and recomputes sha256 before the gate.
+  assertIncludes(diff, "needs: manifest_collector");
+  assertIncludes(
+    diff,
+    "if: github.event_name == 'repository_dispatch' && needs.manifest_collector.result == 'success' && false",
+  );
+  assertIncludes(diff, "uses: " + downloadArtifactPin);
+  assertIncludes(diff, "name: testing-center-trusted-manifest");
+  assertIncludes(diff, "uses: " + checkoutPin);
+  assertIncludes(diff, "ref: ${{ github.sha }}");
+  assertIncludes(diff, "persist-credentials: false");
+  assertIncludes(
+    diff,
+    "EXPECTED_MANIFEST_SHA256: ${{ needs.manifest_collector.outputs.manifest_sha256 }}",
+  );
+  assertIncludes(diff, "manifest_sha256_mismatch");
   assertIncludes(
     diff,
     'python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH"',
@@ -392,6 +439,21 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
   assertIncludes(review, "uses: " + downloadArtifactPin);
   assertIncludes(review, "name: testing-center-validated-diff");
+  // P1-1: prompt/schema/settings come from the trusted control artifact only.
+  assertIncludes(review, "name: testing-center-trusted-control");
+  assertIncludes(review, "${{ runner.temp }}/testing-center-control/");
+  assertIncludes(
+    review,
+    "REVIEW_PROMPT_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md",
+  );
+  assertIncludes(
+    review,
+    "REVIEW_SETTINGS_PATH: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json",
+  );
+  assertIncludes(
+    review,
+    "settings: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json",
+  );
   assertIncludes(review, "uses: " + claudeActionPin);
   assertIncludes(review, "id: opus_review");
   assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
@@ -399,9 +461,6 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
     review,
     "claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}",
   );
-  assertIncludes(review, reviewPromptPath);
-  assertIncludes(review, reviewSchemaPath);
-  assertIncludes(review, `settings: ${reviewSettingsPath}`);
   assertIncludes(
     review,
     "VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}",
@@ -422,6 +481,15 @@ Deno.test("diff and independent Opus review form an inert read-only chain", asyn
   assertNotIncludes(
     review,
     "--json-schema '${{ steps.review_schema.outputs.json }}'",
+  );
+  assertNotIncludes(review, ".github/agents/testing-center-review-prompt.md");
+  assertNotIncludes(
+    review,
+    ".github/agents/testing-center-review-output.schema.json",
+  );
+  assertNotIncludes(
+    review,
+    "settings: .github/agents/testing-center-review-settings.json",
   );
   assertIncludes(review, "uses: " + uploadArtifactPin);
   assertIncludes(review, "retention-days: 7");
@@ -538,6 +606,6 @@ Deno.test("review deny-list is explicit and security tests run on every PR", asy
   );
   assertIncludes(
     gates,
-    "deno test --no-lock --allow-read=supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
+    "deno test --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
   );
 });

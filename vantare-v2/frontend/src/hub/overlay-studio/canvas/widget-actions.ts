@@ -243,6 +243,12 @@ export function executeWidgetAction(input: {
   selectWidget(widgetId: string | null): void;
   confirmDelete?(message: string): boolean;
   deleteMessage?: string;
+  /**
+   * Confirmacion diferida: abre el dialogo del Studio y ejecuta `commit` si la
+   * persona acepta. Tiene prioridad sobre `confirmDelete`, que es la version
+   * sincrona (`window.confirm`) que queda como reserva.
+   */
+  requestDeleteConfirm?(input: { widgetNames: readonly string[]; commit(): void }): void;
 }): boolean {
   const built = buildWidgetAction({
     actionId: input.actionId,
@@ -257,16 +263,40 @@ export function executeWidgetAction(input: {
     return false;
   }
 
+  const command = built.command;
+  const commit = () => {
+    input.dispatch(command);
+    if (built.selectWidgetId !== undefined) {
+      input.selectWidget(built.selectWidgetId);
+    }
+  };
+
   if (built.requiresConfirmation) {
+    if (input.requestDeleteConfirm) {
+      // El borrado ya no ocurre dentro de esta llamada, asi que el `false` de
+      // vuelta significa "aun no", no "cancelado".
+      input.requestDeleteConfirm({
+        widgetNames: describeWidgets(input.widgets, input.widgetIds),
+        commit,
+      });
+      return false;
+    }
     const confirmed = input.confirmDelete?.(input.deleteMessage ?? DELETE_WIDGET_CONFIRM_KEY) ?? false;
     if (!confirmed) {
       return false;
     }
   }
 
-  input.dispatch(built.command);
-  if (built.selectWidgetId !== undefined) {
-    input.selectWidget(built.selectWidgetId);
-  }
+  commit();
   return true;
+}
+
+export function describeWidgets(
+  widgets: readonly WidgetInstanceV3[],
+  widgetIds: readonly string[],
+): string[] {
+  return widgetIds.map((widgetId) => {
+    const widget = widgets.find((entry) => entry.id === widgetId);
+    return widget?.name?.trim() || widget?.type || widgetId;
+  });
 }

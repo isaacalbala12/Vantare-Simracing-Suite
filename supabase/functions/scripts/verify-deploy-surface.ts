@@ -9,9 +9,13 @@ const testingPilotFunctions = new Set([
   "testing-center-linear-webhook",
   "testing-center-linear-worker",
 ]);
+const testingAutomationFunctions = new Set([
+  "testing-center-agent-dispatch",
+]);
 const recognizedFunctions = new Set([
   ...productionFunctions,
   ...testingPilotFunctions,
+  ...testingAutomationFunctions,
 ]);
 const infrastructure = new Set(["_deprecated", "_shared", "scripts"]);
 
@@ -41,6 +45,10 @@ if (import.meta.main) {
   console.log(
     `Known deploy surfaces verified: production=[${
       [...productionFunctions].sort().join(", ")
-    }] testing-pilot=[${[...testingPilotFunctions].sort().join(", ")}]`,
+    }] testing-pilot=[${
+      [...testingPilotFunctions].sort().join(", ")
+    }] testing-automation=[${
+      [...testingAutomationFunctions].sort().join(", ")
+    }]`,
   );
 }

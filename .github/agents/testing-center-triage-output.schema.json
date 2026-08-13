@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testing-center.agent-triage.v2",
+  "description": "Closed model-output shape. The runtime parser is authoritative for byte limits, sanitization and server-owned path policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "classification",
+    "duplicateOf",
+    "reproduction",
+    "acceptanceCriteria",
+    "proposedTestCommandId",
+    "candidatePaths",
+    "risk",
+    "uncertainties"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "testing-center.agent-triage.v2"
+    },
+    "classification": {
+      "enum": ["bug", "duplicate", "needs_info", "ineligible"]
+    },
+    "duplicateOf": {
+      "type": ["string", "null"],
+      "pattern": "^issue_[0-9a-f]{64}$"
+    },
+    "reproduction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps", "expected", "observed"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+        },
+        "expected": { "type": "string", "maxLength": 2048 },
+        "observed": { "type": "string", "maxLength": 2048 }
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+    },
+    "proposedTestCommandId": {
+      "enum": [
+        "go.test.focal",
+        "frontend.test.focal",
+        "frontend.visual.testing-center"
+      ]
+    },
+    "candidatePaths": {
+      "description": "Non-authoritative path proposals; the runtime applies canonicalization and the server-owned allowlist.",
+      "type": "array",
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "pattern": "^[A-Za-z0-9._/-]+$"
+      }
+    },
+    "risk": { "enum": ["low", "medium", "high"] },
+    "uncertainties": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "classification": { "const": "duplicate" } } },
+      "then": {
+        "properties": {
+          "duplicateOf": {
+            "type": "string",
+            "pattern": "^issue_[0-9a-f]{64}$"
+          },
+          "candidatePaths": { "maxItems": 0 },
+          "acceptanceCriteria": { "maxItems": 0 }
+        }
+      },
+      "else": { "properties": { "duplicateOf": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "classification": { "const": "bug" } } },
+      "then": {
+        "properties": {
+          "reproduction": {
+            "properties": {
+              "steps": { "minItems": 1 },
+              "expected": { "minLength": 1 },
+              "observed": { "minLength": 1 }
+            }
+          },
+          "acceptanceCriteria": { "minItems": 1 },
+          "candidatePaths": { "minItems": 1 }
+        }
+      },
+      "else": {
+        "properties": {
+          "candidatePaths": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
+}

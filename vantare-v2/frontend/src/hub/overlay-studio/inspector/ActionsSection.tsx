@@ -1,5 +1,7 @@
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
+import { useI18n } from "../../../i18n/I18nProvider";
+import { useDeleteWidgetConfirm } from "../components/DeleteWidgetConfirmProvider";
 import { executeWidgetAction } from "../canvas/widget-actions";
 import type { StudioCommand } from "../state/studio-command";
 
@@ -25,6 +27,8 @@ export function buildRestoreDefaultsWidget(widget: WidgetInstanceV3): WidgetInst
 
 export function ActionsSection(props: ActionsSectionProps): React.ReactElement {
   const { widget, session, widgets, savedDocument, dispatch, selectWidget, discardAll } = props;
+  const { t } = useI18n();
+  const deleteConfirm = useDeleteWidgetConfirm();
 
   const runAction = (actionId: "duplicate" | "delete") => {
     executeWidgetAction({
@@ -36,6 +40,8 @@ export function ActionsSection(props: ActionsSectionProps): React.ReactElement {
       dispatch,
       selectWidget,
       confirmDelete: (message) => window.confirm(message),
+      requestDeleteConfirm: deleteConfirm?.request,
+      deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
     });
   };
 
@@ -69,6 +75,18 @@ export function ActionsSection(props: ActionsSectionProps): React.ReactElement {
           Descartar todo
         </button>
       </div>
+      {/* Unica salida del "no volver a preguntar": sin esto la preferencia se
+          guarda en localStorage y no hay forma de recuperar el aviso. */}
+      {deleteConfirm && !deleteConfirm.enabled ? (
+        <button
+          type="button"
+          data-testid="studio-action-restore-delete-confirm"
+          className="osv3-inspector-field__hint osv3-inspector-restore-confirm"
+          onClick={() => deleteConfirm.setEnabled(true)}
+        >
+          {t("studio.v3.deleteWidget.restore")}
+        </button>
+      ) : null}
     </div>
   );
 }

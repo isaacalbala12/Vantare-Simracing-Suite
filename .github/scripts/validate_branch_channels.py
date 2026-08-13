@@ -24,7 +24,7 @@ ISSUE_BRANCH = re.compile(
     r"^vantareapp/isa-[1-9][0-9]*(?:-[a-z0-9]+(?:_[a-z0-9]+)*)*$"
 )
 HOTFIX_BRANCH = re.compile(
-    r"^vantareapp/hotfix-isa-[1-9][0-9]*(?:-[a-z0-9]+)*$"
+    r"^vantareapp/hotfix-isa-[1-9][0-9]*(?:-[a-z0-9]+(?:_[a-z0-9]+)*)*$"
 )
 TC_PREFIX = "vantareapp/tc-"
 TC_HEX = re.compile(r"[0-9a-f]{12}")

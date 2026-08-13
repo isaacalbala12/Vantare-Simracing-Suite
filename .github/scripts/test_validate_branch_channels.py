@@ -142,11 +142,24 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "emergency hotfix accepted: "
             "vantareapp/hotfix-isa-175-critical-license-fix -> master",
         )
+        self.assertEqual(
+            validate(
+                "pull_request",
+                "refs/pull/9/merge",
+                "master",
+                "vantareapp/hotfix-isa-175-merge_group-fix",
+            ),
+            "emergency hotfix accepted: "
+            "vantareapp/hotfix-isa-175-merge_group-fix -> master",
+        )
         for head in (
             "hotfix/isa-175",
             "vantareapp/hotfix-175",
             "vantareapp/hotfix-isa-0-invalid",
             "vantareapp/hotfix-isa-175_Invalid",
+            "vantareapp/hotfix-isa-175-_merge-group",
+            "vantareapp/hotfix-isa-175-merge__group",
+            "vantareapp/hotfix-isa-175-merge_group_",
         ):
             with self.subTest(head=head), self.assertRaisesRegex(
                 ValueError, "must come from 'testers'"

@@ -117,6 +117,9 @@ inventariada.
   en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
+- Las ramas Linear `isa-*` y `hotfix-isa-*` usan segmentos separados por
+  guiones; un guion bajo solo es válido entre dos tokens alfanuméricos dentro
+  del mismo segmento (por ejemplo, `merge_group`).
 - La única excepción es un hotfix crítico aprobado expresamente por Isaac:
   parte de `master`, utiliza una rama
   `vantareapp/hotfix-isa-<número>-<descripción>`, conserva PR y todos los gates

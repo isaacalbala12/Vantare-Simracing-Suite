@@ -367,9 +367,15 @@ export function useStandingsMotion(
     stage: boxKeys.has(`${pair.aheadId}|${pair.behindId}`) ? "box" : "seam",
   }));
   const activeBattleKeys = new Set(battles.map((battle) => `${battle.aheadId}|${battle.behindId}`));
-  for (const [key, pair] of dissolving) {
-    if (!activeBattleKeys.has(key)) {
-      battles.push({ ...pair, stage: "dissolve" });
+  if (battles.length === 0) {
+    let latestDissolving: BattlePair | undefined;
+    for (const [key, pair] of dissolving) {
+      if (!activeBattleKeys.has(key)) {
+        latestDissolving = pair;
+      }
+    }
+    if (latestDissolving) {
+      battles.push({ ...latestDissolving, stage: "dissolve" });
     }
   }
 

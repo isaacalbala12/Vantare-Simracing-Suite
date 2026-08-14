@@ -2,6 +2,7 @@ import type {
   StandingsRowViewModel,
   StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
+import { resolveStandingsSessionMode } from "../../../widget-types/standings/standings-formatting";
 import { groupRowsByClass } from "./standings-endurance-shared";
 
 /** Discrete race events derived from two consecutive ViewModels. Pure — no DOM, no timers. */
@@ -134,11 +135,24 @@ export function deriveBattlePairs(
   model: StandingsViewModel,
   thresholdSeconds: number = BATTLE_THRESHOLD_SECONDS,
 ): BattlePair[] {
-  if (model.status !== "ready") {
+  if (
+    model.status !== "ready" ||
+    resolveStandingsSessionMode(model.sessionLabel) !== "race"
+  ) {
     return [];
   }
-  const pairs: BattlePair[] = [];
-  for (const group of groupRowsByClass(model.rows)) {
+  const groups = groupRowsByClass(model.rows);
+  const renderedRows = groups.flatMap((group) => group.rows);
+  const playerIndex = renderedRows.findIndex((row) => row.isPlayer);
+  const rowIndexes = new Map(renderedRows.map((row, index) => [row.id, index]));
+  const candidates: {
+    pair: BattlePair;
+    playerDistance: number;
+    intervalSeconds: number;
+    order: number;
+  }[] = [];
+  let order = 0;
+  for (const group of groups) {
     for (let index = 0; index + 1 < group.rows.length; index += 1) {
       const ahead = group.rows[index]!;
       const behind = group.rows[index + 1]!;
@@ -152,16 +166,33 @@ export function deriveBattlePairs(
       }
       const interval = behindGap - aheadGap;
       if (interval >= 0 && interval < thresholdSeconds) {
-        pairs.push({
-          aheadId: ahead.id,
-          behindId: behind.id,
-          vehicleClass: group.vehicleClass,
-          intervalSeconds: Number(interval.toFixed(1)),
+        const aheadIndex = rowIndexes.get(ahead.id) ?? Number.POSITIVE_INFINITY;
+        const behindIndex = rowIndexes.get(behind.id) ?? Number.POSITIVE_INFINITY;
+        candidates.push({
+          pair: {
+            aheadId: ahead.id,
+            behindId: behind.id,
+            vehicleClass: group.vehicleClass,
+            intervalSeconds: Number(interval.toFixed(1)),
+          },
+          playerDistance:
+            playerIndex === -1
+              ? Number.POSITIVE_INFINITY
+              : Math.min(Math.abs(aheadIndex - playerIndex), Math.abs(behindIndex - playerIndex)),
+          intervalSeconds: interval,
+          order,
         });
+        order += 1;
       }
     }
   }
-  return pairs;
+  candidates.sort(
+    (left, right) =>
+      left.playerDistance - right.playerDistance ||
+      left.intervalSeconds - right.intervalSeconds ||
+      left.order - right.order,
+  );
+  return candidates[0] ? [candidates[0].pair] : [];
 }
 
 /**

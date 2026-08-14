@@ -10,6 +10,16 @@
 
 ## Estado
 
+- ISA-357 corrige localmente la batalla animada de Standings Redline: solo
+  carrera, una pareja máxima y prioridad por cercanía a la fila del jugador,
+  con desempate por intervalo y orden estable. El relevo entre parejas tampoco
+  solapa una disolución anterior con la nueva caja. TDD focal 18/18, frontend
+  370 archivos/2676 tests, build, ESLint focal, design-system 3/3, fragmento y
+  diff-check PASS. Persisten dos `AbortError` heredados de teardown con exit 0.
+  El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
+  fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
+  visual manual continúa pendiente.
+  Rama aislada sobre `origin/nightly@673283a2`; sin PR, CI, promoción ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,

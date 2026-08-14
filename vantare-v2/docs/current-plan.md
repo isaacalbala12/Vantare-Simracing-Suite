@@ -1,8 +1,21 @@
-Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación iniciada):
-- Primer corte contract-first de ISA-346: contrato puro equivalente Go/TS para
-  lotes de 1..10 capturas PNG/JPEG, límites, digests, dimensiones y estados.
-- La rama se apila sobre el diseño ISA-346; SQL, Storage, validador, UI, deploy
-  y activación permanecen fuera de alcance.
+Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
+- Primer corte contract-first de ISA-346 completado: contrato puro equivalente
+  Go/TS para lotes server-owned de 1..10 capturas PNG/JPEG, límites, digests,
+  dimensiones, posiciones, IDs únicos, estados y códigos de rechazo cerrados.
+- La matriz batch/evidencia queda cerrada en ambos lenguajes: `prepared` solo
+  admite `prepared`; `uploading` admite `prepared|uploading|uploaded`;
+  `validating` admite `uploaded|validating|ready|rejected`; `ready|attached`
+  exige `ready`; `expired` admite `expired|removed`.
+- El decoder Go valida JSON crudo exacto. El decoder TypeScript mantiene el
+  patrón del frontend y valida un valor ya parseado; no se añadió un parser
+  JSON paralelo solo para detectar diferencias léxicas sin valor de producto.
+- TDD registrado: RED por símbolos ausentes y después por IDs/estados
+  incompatibles; GREEN focal Go y TypeScript 7/7. Verificación final:
+  `go test ./...`, frontend 371 archivos/2673 tests, build, ESLint focal y
+  `git diff --check` PASS. Dos reviews independientes: spec compliant y calidad
+  Ready sin observaciones tras el fix.
+- La rama se apila sobre el diseño ISA-346; SQL, Storage, validador, UI, deploy,
+  merge y activación permanecen fuera de alcance. Siguiente corte: ISA-350.
 - Microplan TDD:
   `docs/superpowers/plans/2026-08-14-isa-349-testing-center-screenshot-contract.md`.
 

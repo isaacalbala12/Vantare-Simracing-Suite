@@ -3004,3 +3004,16 @@
   font-size: 9px;
   letter-spacing: 0.12em;
 }
+
+[data-widget-system="vantare-endurance"] .ven-tm-car {
+  fill: var(--ven-text-dim);
+  stroke: var(--ven-bg);
+  stroke-width: 1;
+  paint-order: stroke;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-car[data-player="true"] {
+  fill: var(--ven-accent);
+  stroke: var(--ven-bg);
+  stroke-width: 1.5;
+}

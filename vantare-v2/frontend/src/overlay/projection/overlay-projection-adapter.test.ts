@@ -18,6 +18,60 @@ import {
 } from "./overlay-projection-adapter";
 
 describe("authoritative overlay projection adapter", () => {
+  function withPose(
+    projection: OverlayProjectionV1,
+    freshness: "fresh" | "invalid",
+  ): OverlayProjectionV1 {
+    return {
+      ...projection,
+      payload: {
+        ...projection.payload,
+        vehicles: projection.payload.vehicles.map((vehicle, index) =>
+          index === 0
+            ? {
+                ...vehicle,
+                groundPositionCm: {
+                  present: true,
+                  value: { xCm: -48781, zCm: -48282 },
+                  provenance: "observed" as const,
+                  freshness,
+                },
+              }
+            : vehicle,
+        ),
+      },
+    };
+  }
+
+  it("converts a published ground position into metres", () => {
+    const mapping = requireMapped(
+      adaptOverlayProjectionToSnapshot(
+        withPose(readGolden("lmu-1.4-delta-overlay-v1.golden.json"), "fresh"),
+        { transportState: "live" },
+      ),
+    );
+
+    expect(mapping.snapshot.scoring[0]).toMatchObject({
+      groundPositionXMeters: -487.81,
+      groundPositionZMeters: -482.82,
+    });
+  });
+
+  it("drops a position the driver rejected instead of placing the car", () => {
+    const mapping = requireMapped(
+      adaptOverlayProjectionToSnapshot(
+        withPose(readGolden("lmu-1.4-delta-overlay-v1.golden.json"), "invalid"),
+        { transportState: "live" },
+      ),
+    );
+
+    expect(mapping.snapshot.scoring[0]).not.toHaveProperty("groundPositionXMeters");
+    expect(mapping.snapshot.scoring[0]).not.toHaveProperty("groundPositionZMeters");
+    expect(
+      mapping.quality.find((entry) => entry.targetPath === "scoring[].groundPosition"),
+    ).toMatchObject({ present: true, freshness: "invalid", usable: false });
+  });
+
   it("decodes and adapts the first real LMU delta projection produced by Go", () => {
     const projection = readGolden("lmu-1.4-delta-overlay-v1.golden.json");
     const mapping = requireMapped(

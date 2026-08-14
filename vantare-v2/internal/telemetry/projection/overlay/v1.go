@@ -4,6 +4,7 @@ package overlay
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
@@ -15,6 +16,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -33,7 +35,19 @@ const (
 	CapabilityControls  Capability = "controls"
 	CapabilityHistory   Capability = "controls.history"
 	CapabilityPit       Capability = "pit"
+	CapabilitySpatial   Capability = "spatial"
 )
+
+// GroundPositionV1 is a vehicle position on the track plane, in centimetres.
+//
+// Centimetres rather than metres as float64 because a map a few hundred pixels
+// wide cannot resolve even a metre, and integers cost a fraction of the digits.
+// The axes are the world axes reported by the driver, so the same transform
+// places both the circuit outline and the markers on it.
+type GroundPositionV1 struct {
+	XCentimetres int32 `json:"xCm"`
+	ZCentimetres int32 `json:"zCm"`
+}
 
 type SnapshotV1 struct {
 	projection.Metadata
@@ -85,6 +99,7 @@ type VehicleV1 struct {
 	FuelCapacity     projection.Field[energy.FuelCapacity]     `json:"fuelCapacityLiters"`
 	RelativeTimeGap  projection.Field[standings.RelativeTime]  `json:"relativeTimeGapSeconds"`
 	RelativeLapDelta projection.Field[standings.RelativeLaps]  `json:"relativeLapDelta"`
+	GroundPosition   projection.Field[GroundPositionV1]        `json:"groundPositionCm"`
 }
 
 type ControlHistoryV1 struct {
@@ -133,7 +148,7 @@ func (ProjectorV1) Project(snapshot envelope.Snapshot[derive.FinalState]) (envel
 	}
 	state := final.Observed
 	result := PayloadV1{
-		Capabilities: make([]Capability, 0, 5),
+		Capabilities: make([]Capability, 0, 6),
 		TrackName:    projection.FromField(state.TrackName),
 		SessionType:  projection.MapField(state.SessionType, projection.SessionTypeName),
 		Player:       snapshot.Header().Identity.Vehicle,
@@ -210,7 +225,33 @@ func projectVehicle(current core.VehicleState, gap derive.VehicleGap) VehicleV1 
 		}),
 		RelativeTimeGap:  projection.FromField(gap.Time),
 		RelativeLapDelta: projection.FromField(gap.Laps),
+		GroundPosition:   groundPosition(current.WorldPosition),
 	}
+}
+
+// groundPosition drops the vertical axis and quantises the plane. MapField
+// carries presence, provenance and freshness across untouched, so geometry the
+// driver marked invalid stays invalid instead of arriving as a position at the
+// origin. A genuine zero survives: the real fixture proves the origin is a
+// position a car can occupy.
+func groundPosition(field schema.Field[spatial.Position]) projection.Field[GroundPositionV1] {
+	return projection.MapField(field, func(value spatial.Position) GroundPositionV1 {
+		return GroundPositionV1{
+			XCentimetres: centimetres(value.X),
+			ZCentimetres: centimetres(value.Z),
+		}
+	})
+}
+
+func centimetres(metres float64) int32 {
+	scaled := math.Round(metres * 100)
+	if scaled > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if scaled < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(scaled)
 }
 
 func findGap(gaps derive.GapSet, vehicleID identity.VehicleID) derive.VehicleGap {
@@ -261,7 +302,7 @@ func projectDeltaHistory(delta derive.SelfDelta) DeltaHistoryV1 {
 }
 
 func capabilities(snapshot PayloadV1) []Capability {
-	result := make([]Capability, 0, 4)
+	result := make([]Capability, 0, 6)
 	if projection.Available(snapshot.TrackName) || projection.Available(snapshot.SessionType) {
 		result = append(result, CapabilitySession)
 	}
@@ -276,6 +317,9 @@ func capabilities(snapshot PayloadV1) []Capability {
 		}
 		if projection.Available(current.InPit) || projection.Available(current.PitStopCount) {
 			result = appendCapability(result, CapabilityPit)
+		}
+		if projection.Available(current.GroundPosition) {
+			result = appendCapability(result, CapabilitySpatial)
 		}
 	}
 	if snapshot.History.Present && snapshot.History.Freshness != projection.FreshnessInvalid {

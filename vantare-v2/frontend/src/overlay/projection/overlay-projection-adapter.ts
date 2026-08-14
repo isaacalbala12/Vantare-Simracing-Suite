@@ -390,6 +390,19 @@ function mapScoringVehicle(
       "scoring[].place",
     ),
   );
+  // The plane is published in centimetres and consumed in metres, so the widget
+  // never has to remember which unit it is holding. Position and quality travel
+  // together: a rejected reading yields nothing rather than a place on the map.
+  const groundPosition = mappedValue(
+    vehicle.groundPositionCm,
+    quality,
+    `vehicles[${index}].groundPositionCm`,
+    "scoring[].groundPosition",
+  );
+  if (groundPosition !== undefined) {
+    row.groundPositionXMeters = groundPosition.xCm / 100;
+    row.groundPositionZMeters = groundPosition.zCm / 100;
+  }
   const scoringFields = [
     ["sector", vehicle.sector, "sector"],
     ["lapDistanceMeters", vehicle.lapDistanceMeters, "lapDistanceMeters"],

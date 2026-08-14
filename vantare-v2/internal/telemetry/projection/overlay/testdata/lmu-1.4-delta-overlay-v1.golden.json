@@ -192,6 +192,15 @@
         "value": 0,
         "provenance": "unknown",
         "freshness": "missing"
+      },
+      "groundPositionCm": {
+        "present": false,
+        "value": {
+          "xCm": 0,
+          "zCm": 0
+        },
+        "provenance": "unknown",
+        "freshness": "missing"
       }
     }
   ],

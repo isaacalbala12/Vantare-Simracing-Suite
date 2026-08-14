@@ -19,7 +19,15 @@ func Build(manifest catalog.Manifest, payload catalog.Payload, privateKey ed2551
 	}
 	payload.PayloadVersion = catalog.PayloadVersionV1
 	payload.Entries = append([]catalog.Entry(nil), payload.Entries...)
+	decodedPackageBytes := 0
 	for index := range payload.Entries {
+		if len(payload.Entries[index].Package) > catalog.MaxDecodedPackageBytes {
+			return nil, fmt.Errorf("decoded package exceeds individual limit")
+		}
+		if len(payload.Entries[index].Package) > catalog.MaxDecodedPackagesBytes-decodedPackageBytes {
+			return nil, fmt.Errorf("decoded package budget exceeds catalog limit")
+		}
+		decodedPackageBytes += len(payload.Entries[index].Package)
 		payload.Entries[index].Package = append([]byte(nil), payload.Entries[index].Package...)
 	}
 	sort.Slice(payload.Entries, func(left, right int) bool { return payload.Entries[left].ID < payload.Entries[right].ID })
@@ -27,7 +35,7 @@ func Build(manifest catalog.Manifest, payload catalog.Payload, privateKey ed2551
 	if err != nil {
 		return nil, fmt.Errorf("encode payload: %w", err)
 	}
-	if len(payloadBytes) > catalog.MaxPayloadBytes {
+	if len(payloadBytes) > catalog.MaxSerializedPayloadBytes {
 		return nil, fmt.Errorf("payload exceeds limit")
 	}
 	digest := sha256.Sum256(payloadBytes)
@@ -53,7 +61,7 @@ func Build(manifest catalog.Manifest, payload catalog.Payload, privateKey ed2551
 	if err != nil {
 		return nil, fmt.Errorf("encode bundle: %w", err)
 	}
-	if len(document) > catalog.MaxBundleBytes {
+	if len(document) > catalog.MaxSerializedBundleBytes {
 		return nil, fmt.Errorf("bundle exceeds limit")
 	}
 	verifier, err := catalog.NewVerifier(trustedKeys)

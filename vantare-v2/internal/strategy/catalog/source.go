@@ -47,15 +47,15 @@ func (source *HTTPSource) Fetch(ctx context.Context) ([]byte, error) {
 	if response.StatusCode != http.StatusOK {
 		return nil, catalogError(ErrorTransport, "status")
 	}
-	if response.ContentLength > MaxBundleBytes {
+	if response.ContentLength > int64(MaxSerializedBundleBytes) {
 		return nil, catalogError(ErrorTransport, "body")
 	}
-	limited := io.LimitReader(response.Body, MaxBundleBytes+1)
+	limited := io.LimitReader(response.Body, int64(MaxSerializedBundleBytes)+1)
 	document, err := io.ReadAll(limited)
 	if err != nil {
 		return nil, wrapCatalogError(ErrorTransport, "body", err)
 	}
-	if len(document) > MaxBundleBytes {
+	if len(document) > MaxSerializedBundleBytes {
 		return nil, catalogError(ErrorTransport, "body")
 	}
 	return document, nil

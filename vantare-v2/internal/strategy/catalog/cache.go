@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ const (
 
 const currentName = "official-catalog.current.json"
 const previousName = "official-catalog.previous.json"
+const leaseFileName = ".official-catalog.lock"
 
 type Cache struct {
 	mu       sync.Mutex
@@ -39,9 +41,25 @@ func OpenCache(root string, verifier *Verifier) (*Cache, error) {
 	return &Cache{root: root, verifier: verifier, write: writeAtomic}, nil
 }
 
-func (cache *Cache) Load() (VerifiedCatalog, CacheStatus, error) {
+func (cache *Cache) Load() (catalog VerifiedCatalog, status CacheStatus, err error) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+	lease, acquireErr := acquireCacheLease(filepath.Join(cache.root, leaseFileName))
+	if acquireErr != nil {
+		return VerifiedCatalog{}, "", wrapCatalogError(ErrorUnavailable, "cache.lease", acquireErr)
+	}
+	defer func() {
+		if releaseErr := lease.Close(); releaseErr != nil {
+			catalog = VerifiedCatalog{}
+			status = ""
+			wrapped := wrapCatalogError(ErrorUnavailable, "cache.lease", releaseErr)
+			if err == nil {
+				err = wrapped
+			} else {
+				err = errors.Join(err, wrapped)
+			}
+		}
+	}()
 	return cache.loadLocked()
 }
 
@@ -70,8 +88,10 @@ func (cache *Cache) loadLocked() (VerifiedCatalog, CacheStatus, error) {
 		return current.catalog, CacheCurrent, nil
 	}
 	if previous.valid {
-		if err := cache.repairCurrent(previous.document, previous.catalog); err != nil {
-			return VerifiedCatalog{}, "", err
+		if current.missing {
+			if err := cache.repairCurrent(previous.document, previous.catalog); err != nil {
+				return VerifiedCatalog{}, "", err
+			}
 		}
 		return previous.catalog, CacheRecovered, nil
 	}
@@ -87,12 +107,13 @@ type cacheSlot struct {
 	catalog  VerifiedCatalog
 	err      error
 	valid    bool
+	missing  bool
 }
 
 func (cache *Cache) readSlot(name string) cacheSlot {
 	document, err := readCacheFile(filepath.Join(cache.root, name))
 	if err != nil {
-		return cacheSlot{err: err}
+		return cacheSlot{err: err, missing: os.IsNotExist(err)}
 	}
 	verified, err := cache.verifier.Verify(document)
 	if err != nil {
@@ -115,7 +136,7 @@ func (cache *Cache) repairCurrent(document []byte, expected VerifiedCatalog) err
 	return nil
 }
 
-func (cache *Cache) Accept(candidate []byte) (VerifiedCatalog, CacheStatus, error) {
+func (cache *Cache) Accept(candidate []byte) (catalog VerifiedCatalog, status CacheStatus, err error) {
 	candidate = append([]byte(nil), candidate...)
 	verified, err := cache.verifier.Verify(candidate)
 	if err != nil {
@@ -123,15 +144,32 @@ func (cache *Cache) Accept(candidate []byte) (VerifiedCatalog, CacheStatus, erro
 	}
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	currentPath := filepath.Join(cache.root, currentName)
-	hasSlot := false
-	for _, name := range []string{currentName, previousName} {
-		if _, statErr := os.Stat(filepath.Join(cache.root, name)); statErr == nil {
-			hasSlot = true
-		} else if !os.IsNotExist(statErr) {
-			return VerifiedCatalog{}, "", wrapCatalogError(ErrorUnavailable, "cache", statErr)
-		}
+	lease, acquireErr := acquireCacheLease(filepath.Join(cache.root, leaseFileName))
+	if acquireErr != nil {
+		return VerifiedCatalog{}, "", wrapCatalogError(ErrorUnavailable, "cache.lease", acquireErr)
 	}
+	defer func() {
+		if releaseErr := lease.Close(); releaseErr != nil {
+			catalog = VerifiedCatalog{}
+			status = ""
+			wrapped := wrapCatalogError(ErrorUnavailable, "cache.lease", releaseErr)
+			if err == nil {
+				err = wrapped
+			} else {
+				err = errors.Join(err, wrapped)
+			}
+		}
+	}()
+	currentPath := filepath.Join(cache.root, currentName)
+	currentSlot := cache.readSlot(currentName)
+	if err := validateAcceptSlot(currentSlot, "cache.current"); err != nil {
+		return VerifiedCatalog{}, "", err
+	}
+	previousSlot := cache.readSlot(previousName)
+	if err := validateAcceptSlot(previousSlot, "cache.previous"); err != nil {
+		return VerifiedCatalog{}, "", err
+	}
+	hasSlot := !currentSlot.missing || !previousSlot.missing
 	if hasSlot {
 		current, _, currentErr := cache.loadLocked()
 		if currentErr != nil {
@@ -163,12 +201,19 @@ func (cache *Cache) Accept(candidate []byte) (VerifiedCatalog, CacheStatus, erro
 	return cloneVerified(verified), CacheAccepted, nil
 }
 
+func validateAcceptSlot(slot cacheSlot, field string) error {
+	if slot.valid || slot.missing {
+		return nil
+	}
+	return wrapCatalogError(ErrorUnavailable, field, slot.err)
+}
+
 func readCacheFile(path string) ([]byte, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
-	if info.Size() < 0 || info.Size() > MaxBundleBytes {
+	if info.Size() < 0 || info.Size() > int64(MaxSerializedBundleBytes) {
 		return nil, fmt.Errorf("catalog cache file exceeds limit")
 	}
 	handle, err := os.Open(path)
@@ -176,11 +221,11 @@ func readCacheFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer handle.Close()
-	document, err := io.ReadAll(io.LimitReader(handle, MaxBundleBytes+1))
+	document, err := io.ReadAll(io.LimitReader(handle, int64(MaxSerializedBundleBytes)+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(document) > MaxBundleBytes {
+	if len(document) > MaxSerializedBundleBytes {
 		return nil, fmt.Errorf("catalog cache file exceeds limit")
 	}
 	return document, nil

@@ -128,8 +128,8 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 		if readErr != nil {
 			return fmt.Errorf("read package: %w", readErr)
 		}
-		if uint64(len(packageBytes)) > uint64(catalog.MaxPayloadBytes)-retainedPackageBytes {
-			return errors.New("package byte budget exceeds catalog payload limit")
+		if uint64(len(packageBytes)) > uint64(catalog.MaxDecodedPackagesBytes)-retainedPackageBytes {
+			return errors.New("decoded package byte budget exceeds catalog limit")
 		}
 		retainedPackageBytes += uint64(len(packageBytes))
 		payload.Entries = append(payload.Entries, catalog.Entry{ID: item.ID, Title: item.Title, Summary: item.Summary, Compatibility: item.Compatibility, Package: packageBytes})

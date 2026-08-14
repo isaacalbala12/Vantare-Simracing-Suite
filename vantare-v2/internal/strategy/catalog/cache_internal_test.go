@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -8,7 +9,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,8 +23,12 @@ import (
 )
 
 func cacheFixture(t *testing.T, sequence uint64) ([]byte, *Verifier) {
+	return cacheFixtureWithKey(t, sequence, bytes.Repeat([]byte{3}, ed25519.SeedSize), "test-key")
+}
+
+func cacheFixtureWithKey(t *testing.T, sequence uint64, seed []byte, keyID string) ([]byte, *Verifier) {
 	t.Helper()
-	privateKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
+	privateKey := ed25519.NewKeyFromSeed(seed)
 	when := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	draft := contract.PlanDraft[json.RawMessage]{ContractVersion: contract.CurrentVersion, DraftID: "draft-1", PlanID: "plan-1", VariantID: "variant-1", Name: "Official", Mode: contract.PlanModeManual, Capabilities: []contract.Capability{contract.CapabilityManualInputs}, Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "test"}, Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "test"}, UpdatedAt: when, Payload: json.RawMessage(`{"laps":10}`)}
 	revision, err := contract.NewPlanRevision(draft, contract.RevisionMetadata{RevisionID: "revision-1", CreatedAt: when})
@@ -40,7 +48,7 @@ func cacheFixture(t *testing.T, sequence uint64) ([]byte, *Verifier) {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(payloadBytes)
-	manifestBytes, err := json.Marshal(Manifest{BundleVersion: BundleVersionV1, Sequence: sequence, PublishedAt: "2026-08-10T12:00:00Z", KeyID: "test-key", MinimumTrustVersion: 1, PayloadSHA256: hex.EncodeToString(digest[:]), PayloadLength: uint64(len(payloadBytes))})
+	manifestBytes, err := json.Marshal(Manifest{BundleVersion: BundleVersionV1, Sequence: sequence, PublishedAt: "2026-08-10T12:00:00Z", KeyID: keyID, MinimumTrustVersion: 1, PayloadSHA256: hex.EncodeToString(digest[:]), PayloadLength: uint64(len(payloadBytes))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,11 +56,142 @@ func cacheFixture(t *testing.T, sequence uint64) ([]byte, *Verifier) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifier, err := NewVerifier(TrustedKeySet{TrustVersion: TrustVersionV1, Version: 1, Keys: []TrustedKey{{ID: "test-key", Algorithm: "Ed25519", PublicKey: privateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 1}}})
+	verifier, err := NewVerifier(TrustedKeySet{TrustVersion: TrustVersionV1, Version: 1, Keys: []TrustedKey{{ID: keyID, Algorithm: "Ed25519", PublicKey: privateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 1}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return document, verifier
+}
+
+func TestOldVerifierNeverOverwritesUnknownCurrentDuringKeyRotation(t *testing.T) {
+	oldSeed := bytes.Repeat([]byte{0x31}, ed25519.SeedSize)
+	newSeed := bytes.Repeat([]byte{0x32}, ed25519.SeedSize)
+	previousSequence1, oldVerifier := cacheFixtureWithKey(t, 1, oldSeed, "old-key")
+	currentSequence2, newOnlyVerifier := cacheFixtureWithKey(t, 2, newSeed, "new-key")
+	oldCandidateSequence2, _ := cacheFixtureWithKey(t, 2, oldSeed, "old-key")
+	newPrivateKey := ed25519.NewKeyFromSeed(newSeed)
+	oldPrivateKey := ed25519.NewKeyFromSeed(oldSeed)
+	newVerifier, err := NewVerifier(TrustedKeySet{TrustVersion: TrustVersionV1, Version: 2, Keys: []TrustedKey{
+		{ID: "old-key", Algorithm: "Ed25519", PublicKey: oldPrivateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 1},
+		{ID: "new-key", Algorithm: "Ed25519", PublicKey: newPrivateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 2},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newOnlyVerifier.Verify(currentSequence2); err != nil {
+		t.Fatalf("new-key fixture is not valid: %v", err)
+	}
+
+	root := t.TempDir()
+	currentPath := filepath.Join(root, currentName)
+	previousPath := filepath.Join(root, previousName)
+	if err := os.WriteFile(currentPath, currentSequence2, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(previousPath, previousSequence1, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	oldCache, err := OpenCache(root, oldVerifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, status, err := oldCache.Load()
+	if err != nil || loaded.Sequence != 1 || status != CacheRecovered {
+		t.Fatalf("old Load=%+v %q %v, want verified previous without repair", loaded, status, err)
+	}
+	assertCacheSlotBytes(t, currentPath, currentSequence2)
+	assertCacheSlotBytes(t, previousPath, previousSequence1)
+
+	_, _, err = oldCache.Accept(oldCandidateSequence2)
+	assertCatalogErrorField(t, err, ErrorUnavailable, "cache.current")
+	assertCacheSlotBytes(t, currentPath, currentSequence2)
+	assertCacheSlotBytes(t, previousPath, previousSequence1)
+
+	newCache, err := OpenCache(root, newVerifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modern, modernStatus, err := newCache.Load()
+	if err != nil || modern.Sequence != 2 || modernStatus != CacheCurrent {
+		t.Fatalf("new verifier lost modern LKG: %+v %q %v", modern, modernStatus, err)
+	}
+}
+
+func TestOldVerifierNeverOverwritesUnknownPreviousDuringKeyRotation(t *testing.T) {
+	oldSeed := bytes.Repeat([]byte{0x41}, ed25519.SeedSize)
+	newSeed := bytes.Repeat([]byte{0x42}, ed25519.SeedSize)
+	currentSequence1, oldVerifier := cacheFixtureWithKey(t, 1, oldSeed, "old-key")
+	previousSequence2, _ := cacheFixtureWithKey(t, 2, newSeed, "new-key")
+	oldPrivateKey := ed25519.NewKeyFromSeed(oldSeed)
+	newPrivateKey := ed25519.NewKeyFromSeed(newSeed)
+	newVerifier, err := NewVerifier(TrustedKeySet{TrustVersion: TrustVersionV1, Version: 2, Keys: []TrustedKey{
+		{ID: "old-key", Algorithm: "Ed25519", PublicKey: oldPrivateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 1},
+		{ID: "new-key", Algorithm: "Ed25519", PublicKey: newPrivateKey.Public().(ed25519.PublicKey), NotBeforeSequence: 2},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, candidateSequence := range []uint64{2, 3} {
+		t.Run(fmt.Sprintf("candidate-sequence-%d", candidateSequence), func(t *testing.T) {
+			candidate, _ := cacheFixtureWithKey(t, candidateSequence, oldSeed, "old-key")
+			root := t.TempDir()
+			currentPath := filepath.Join(root, currentName)
+			previousPath := filepath.Join(root, previousName)
+			if err := os.WriteFile(currentPath, currentSequence1, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(previousPath, previousSequence2, 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			oldCache, err := OpenCache(root, oldVerifier)
+			if err != nil {
+				t.Fatal(err)
+			}
+			loaded, status, err := oldCache.Load()
+			if err != nil || loaded.Sequence != 1 || status != CacheCurrent {
+				t.Fatalf("old Load=%+v %q %v, want verified current without repair", loaded, status, err)
+			}
+			assertCacheSlotBytes(t, currentPath, currentSequence1)
+			assertCacheSlotBytes(t, previousPath, previousSequence2)
+
+			_, _, err = oldCache.Accept(candidate)
+			assertCatalogErrorField(t, err, ErrorUnavailable, "cache.previous")
+			assertCacheSlotBytes(t, currentPath, currentSequence1)
+			assertCacheSlotBytes(t, previousPath, previousSequence2)
+
+			newCache, err := OpenCache(root, newVerifier)
+			if err != nil {
+				t.Fatal(err)
+			}
+			modern, modernStatus, err := newCache.Load()
+			if err != nil || modern.Sequence != 2 || modernStatus != CacheRecovered {
+				t.Fatalf("new verifier lost previous authority: %+v %q %v", modern, modernStatus, err)
+			}
+			assertCacheSlotBytes(t, currentPath, previousSequence2)
+			assertCacheSlotBytes(t, previousPath, previousSequence2)
+		})
+	}
+}
+
+func assertCacheSlotBytes(t *testing.T, path string, want []byte) {
+	t.Helper()
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("slot %s changed: got %d bytes want %d byte-exact", filepath.Base(path), len(got), len(want))
+	}
+}
+
+func assertCatalogErrorField(t *testing.T, err error, code ErrorCode, field string) {
+	t.Helper()
+	var catalogErr *CatalogError
+	if !errors.As(err, &catalogErr) || catalogErr.Code != code || catalogErr.Field != field {
+		t.Fatalf("error=%v, want code %q field %q", err, code, field)
+	}
 }
 
 func TestCacheWriteFailureDoesNotReplaceLastKnownGood(t *testing.T) {
@@ -222,6 +361,130 @@ func TestCacheAcceptUsesHighestSlotAsRollbackAuthority(t *testing.T) {
 	}
 }
 
+func TestCacheLeaseHelperProcess(t *testing.T) {
+	if os.Getenv("STRATEGY_CATALOG_LEASE_HELPER") != "1" {
+		return
+	}
+	root := os.Getenv("STRATEGY_CATALOG_LEASE_ROOT")
+	lease, err := acquireCacheLease(filepath.Join(root, leaseFileName))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "acquire catalog lease: %v\n", err)
+		os.Exit(2)
+	}
+	fmt.Println("READY")
+	_, _ = io.Copy(io.Discard, os.Stdin)
+	if err := lease.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "release catalog lease: %v\n", err)
+		os.Exit(3)
+	}
+}
+
+type cacheLeaseHelper struct {
+	command *exec.Cmd
+	stdin   io.WriteCloser
+	stderr  *bytes.Buffer
+}
+
+func startCacheLeaseHelper(t *testing.T, root string) cacheLeaseHelper {
+	t.Helper()
+	command := exec.Command(os.Args[0], "-test.run=^TestCacheLeaseHelperProcess$")
+	command.Env = append(os.Environ(),
+		"STRATEGY_CATALOG_LEASE_HELPER=1",
+		"STRATEGY_CATALOG_LEASE_ROOT="+root,
+	)
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr := &bytes.Buffer{}
+	command.Stderr = stderr
+	stdin, err := command.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	readyResult := make(chan struct {
+		line string
+		err  error
+	}, 1)
+	go func() {
+		line, readErr := bufio.NewReader(stdout).ReadString('\n')
+		readyResult <- struct {
+			line string
+			err  error
+		}{line: line, err: readErr}
+	}()
+	select {
+	case ready := <-readyResult:
+		if ready.err != nil || strings.TrimSpace(ready.line) != "READY" {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+			t.Fatalf("helper readiness=%q err=%v stderr=%q", ready.line, ready.err, stderr.String())
+		}
+	case <-time.After(10 * time.Second):
+		_ = command.Process.Kill()
+		_ = command.Wait()
+		t.Fatalf("helper readiness timed out: %s", stderr.String())
+	}
+	return cacheLeaseHelper{command: command, stdin: stdin, stderr: stderr}
+}
+
+func TestCacheLeaseSerializesProcessesReleasesOnCloseAndDeathAndPreventsDurableDowngrade(t *testing.T) {
+	sequence1, verifier := cacheFixture(t, 1)
+	sequence2, _ := cacheFixture(t, 2)
+	sequence3, _ := cacheFixture(t, 3)
+	root := t.TempDir()
+	cache, err := OpenCache(root, verifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := cache.Accept(sequence1); err != nil {
+		t.Fatal(err)
+	}
+
+	graceful := startCacheLeaseHelper(t, root)
+	if _, _, err := cache.Accept(sequence3); !errors.Is(err, ErrUnavailable) {
+		_ = graceful.command.Process.Kill()
+		_ = graceful.command.Wait()
+		t.Fatalf("Accept while another process holds lease=%v, want unavailable", err)
+	}
+	if err := graceful.stdin.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := graceful.command.Wait(); err != nil {
+		t.Fatalf("helper graceful close: %v (%s)", err, graceful.stderr.String())
+	}
+	if _, _, err := cache.Accept(sequence3); err != nil {
+		t.Fatalf("lease not released after Close: %v", err)
+	}
+
+	abrupt := startCacheLeaseHelper(t, root)
+	if _, _, err := cache.Accept(sequence2); !errors.Is(err, ErrUnavailable) {
+		_ = abrupt.command.Process.Kill()
+		_ = abrupt.command.Wait()
+		t.Fatalf("rollback attempt was not excluded by lease: %v", err)
+	}
+	if err := abrupt.command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	if err := abrupt.command.Wait(); err == nil {
+		t.Fatal("abrupt helper death unexpectedly reported success")
+	}
+	if _, _, err := cache.Accept(sequence2); !HasErrorCode(err, ErrorRollback) {
+		t.Fatalf("sequence 2 after sequence 3=%v, want rollback", err)
+	}
+	reopened, err := OpenCache(root, verifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := reopened.Load()
+	if err != nil || loaded.Sequence != 3 {
+		t.Fatalf("durable catalog after contention=%+v err=%v, want sequence 3", loaded, err)
+	}
+}
+
 func TestCacheRejectsOversizedFileWithoutReturningEmptySuccess(t *testing.T) {
 	_, verifier := cacheFixture(t, 1)
 	root := t.TempDir()
@@ -234,7 +497,7 @@ func TestCacheRejectsOversizedFileWithoutReturningEmptySuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := handle.Truncate(MaxBundleBytes + 1); err != nil {
+	if err := handle.Truncate(int64(MaxSerializedBundleBytes) + 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := handle.Close(); err != nil {

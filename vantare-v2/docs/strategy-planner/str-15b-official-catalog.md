@@ -37,6 +37,15 @@ data, profundidad/tamaño excesivos, base64 no canónico, checksum o firma
 incorrectos, claves fuera de ventana, paquetes incompletos y secuencias en
 retroceso o conflictivas.
 
+Los límites distinguen tres capas que no son intercambiables: cada package
+decodificado conserva el contrato de 4 MiB de Strategy Packaging; la suma de
+packages decodificados del catálogo admite como máximo 16 MiB; y el JSON
+serializado necesita presupuestos superiores porque `package`, `payload` y
+`manifest` atraviesan base64. El payload serializado queda acotado por una
+fórmula conservadora de 23.703.577 bytes y el envelope completo por 31.692.339
+bytes. Esos techos se derivan de los campos/textos ya acotados, el peor escape
+JSON y la expansión base64; no aumentan los 16 MiB de contenido retenido.
+
 ## Claves y rotación
 
 El keyset público `strategy.official-catalog.trust.v1` tiene una versión
@@ -58,15 +67,30 @@ Una build con keyset anterior rechaza un manifest que exija una versión
 superior. La clave privada nunca entra en la aplicación, el generador de
 configuración ni el repositorio.
 
+Una build anterior puede encontrar cualquiera de los dos slots firmado por una
+clave que todavía no conoce. `Load` puede servir el otro slot si es verificable,
+pero no repara ni reemplaza el desconocido. `Accept` no admite candidatos si
+`current` o `previous` existe y no es verificable: no puede conocer toda la
+autoridad/secuencia durable y falla cerrado sin tocar bytes. Cuando la build
+nueva vuelve a abrir la caché, la secuencia moderna sigue disponible y puede
+reparar `current` desde un `previous` verificable de secuencia mayor. La
+reparación también sigue autorizada si `current` falta realmente.
+
 ## Caché, offline y rollback
 
 La caché vive en `<strategy-root>/official-catalog` y conserva `current` y
 `previous`. Un candidato se verifica por completo antes de escribir. El
 reemplazo es atómico también en Windows y un error comunicado después del
 replace se reconcilia leyendo y verificando el fichero realmente persistido.
+`Load` y `Accept` mantienen además un lease exclusivo del sistema operativo
+sobre `.official-catalog.lock` durante cualquier decisión que pueda reparar,
+escribir o aplicar anti-downgrade. El mutex sigue serializando una instancia;
+el lease impide intercalados entre instancias o procesos y se libera tanto al
+cerrar normalmente como al terminar abruptamente el proceso.
 
 Si `current` falta o está corrupto, solo un `previous` verificable puede
-recuperarse. Sin last-known-good verificable, load/refresh devuelven
+servirse como recovered. Si falta realmente puede restaurarse; si existe pero
+esta build no puede verificarlo, se preserva byte-exacto. Sin last-known-good verificable, load/refresh devuelven
 indisponibilidad; nunca éxito vacío. Un fallo de red conserva el LKG como
 `offline`; un candidato rechazado conserva el LKG como `stale`.
 
@@ -150,14 +174,19 @@ de confianza. La pestaña no afirma que exista contenido oficial.
 
 - Tests focales Go/TS, repetición 20x de catálogo/CLI/Wails, vet, gofmt, Go
   global, variante `production`, typecheck real, ESLint focal, suite frontend
-  completa (358 archivos / 2493 tests) y build: PASS tras rebasear sobre
-  `origin/nightly@ff286f4`. El
+  completa (370 archivos / 2694 tests) y build de 885 módulos: PASS en el corte
+  histórico `3dc84d0` sobre `origin/nightly@fa9285e`. El historial local está
+  rebasado sobre `origin/nightly@03ca39e`; las correcciones de lease, autoridad
+  de slots y límites serializados están revisadas `APPROVED`, pero todavía no
+  se han publicado ni tienen CI nuevo. El
   lint global se ejecutó y conserva 39 errores y 2 warnings preexistentes fuera
   de los archivos de esta issue; no se declara verde.
 - El workflow real no se ejecutó: no existen manifest oficial aprobado ni
   secret de producción configurado, y el environment protegido descrito arriba
   sigue siendo un prerrequisito operativo externo.
 - Los eventos nuevos no se probaron todavía contra una aplicación Wails viva.
+- El run remoto histórico `31423020048` corresponde al historial anterior del
+  PR #201; el HEAD rebasado necesita CI nuevo después de publicarse.
 - `go test -race` no está disponible en este entorno con `CGO_ENABLED=0`.
 - No se añadieron dependencias, telemetría, Shared Memory, REST de simulador,
   DuckDB, storage de Telemetry Analysis, catálogo community ni fallback

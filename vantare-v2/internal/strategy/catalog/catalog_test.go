@@ -161,6 +161,62 @@ func TestVerifyAcceptsExactSignedBytes(t *testing.T) {
 	}
 }
 
+func TestSerializedLimitsAllowExactDecodedPackageBudgetDespiteBase64Expansion(t *testing.T) {
+	privateKey, verifier := testKeys(t, 1, 0)
+	basePackage := officialPackage(t, "vantare", false, 1)
+	if len(basePackage) > catalog.MaxDecodedPackageBytes {
+		t.Fatalf("fixture package=%d exceeds individual limit", len(basePackage))
+	}
+	padded := append(append([]byte(nil), basePackage...), bytes.Repeat([]byte{' '}, catalog.MaxDecodedPackageBytes-len(basePackage))...)
+	payload := catalog.Payload{PayloadVersion: catalog.PayloadVersionV1}
+	for index := 0; index < catalog.MaxDecodedPackagesBytes/catalog.MaxDecodedPackageBytes; index++ {
+		payload.Entries = append(payload.Entries, catalog.Entry{
+			ID: fmt.Sprintf("entry-%03d", index), Title: "Official", Summary: "Boundary",
+			Compatibility: catalog.Compatibility{Simulator: "LMU", Circuit: "Spa", Car: "GT3", Event: "Race"},
+			Package:       padded,
+		})
+	}
+	document, err := signing.Build(validManifest(1), payload, privateKey, signingKeys(privateKey, "test-key", 1, 1, 0))
+	if err != nil {
+		t.Fatalf("exact decoded package budget rejected after base64 expansion: %v", err)
+	}
+	if len(document) <= 16<<20 {
+		t.Fatalf("boundary bundle=%d did not exercise the former 16 MiB serialized limit", len(document))
+	}
+	if len(document) > catalog.MaxSerializedBundleBytes {
+		t.Fatalf("bundle=%d exceeds derived serialized limit=%d", len(document), catalog.MaxSerializedBundleBytes)
+	}
+	if _, err := verifier.Verify(document); err != nil {
+		t.Fatalf("verifier rejected exact decoded package budget: %v", err)
+	}
+}
+
+func TestSignerRejectsDecodedPackageBudgetPlusOne(t *testing.T) {
+	privateKey, verifier := testKeys(t, 1, 0)
+	basePackage := officialPackage(t, "vantare", false, 1)
+	payload := catalog.Payload{PayloadVersion: catalog.PayloadVersionV1}
+	remaining := catalog.MaxDecodedPackagesBytes + 1
+	for index := 0; index < 5; index++ {
+		size := remaining / (5 - index)
+		remaining -= size
+		if size < len(basePackage) || size > catalog.MaxDecodedPackageBytes {
+			t.Fatalf("test partition package=%d outside valid individual range", size)
+		}
+		payload.Entries = append(payload.Entries, catalog.Entry{
+			ID: fmt.Sprintf("entry-%03d", index), Title: "Official", Summary: "Boundary",
+			Compatibility: catalog.Compatibility{Simulator: "LMU", Circuit: "Spa", Car: "GT3", Event: "Race"},
+			Package:       append(append([]byte(nil), basePackage...), bytes.Repeat([]byte{' '}, size-len(basePackage))...),
+		})
+	}
+	_, err := signing.Build(validManifest(1), payload, privateKey, signingKeys(privateKey, "test-key", 1, 1, 0))
+	if err == nil || !strings.Contains(err.Error(), "decoded package budget") {
+		t.Fatalf("decoded package budget +1 error=%v", err)
+	}
+	if _, err := verifier.Verify(signRaw(t, privateKey, validManifest(1), payload)); !catalog.HasErrorCode(err, catalog.ErrorInvalidPayload) {
+		t.Fatalf("verifier decoded package budget +1 error=%v", err)
+	}
+}
+
 func TestVerifyRejectsEverySingleByteMutation(t *testing.T) {
 	document, verifier := signed(t, 1)
 	var envelope catalog.Envelope

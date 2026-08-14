@@ -25,6 +25,7 @@ const (
 var (
 	ErrRejected    = errors.New("official strategy catalog rejected")
 	ErrUnavailable = errors.New("official strategy catalog unavailable")
+	errLeaseBusy   = errors.New("official strategy catalog cache lease is already held")
 )
 
 type CatalogError struct {

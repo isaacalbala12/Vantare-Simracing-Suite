@@ -162,7 +162,7 @@ func TestCLIRejectsAggregatePackageBudgetBeforeSigning(t *testing.T) {
 	}
 	trusted := writeTestTrustedKeys(t, root, "test", bytes.Repeat([]byte{4}, ed25519.SeedSize))
 	err = run([]string{"-manifest", manifestPath, "-trusted-keys", trusted, "-output", filepath.Join(root, "out.json"), "-private-key-env", "KEY"}, func(string) string { return "" }, &bytes.Buffer{}, &bytes.Buffer{})
-	if err == nil || !strings.Contains(err.Error(), "package byte budget") {
+	if err == nil || !strings.Contains(err.Error(), "decoded package byte budget") {
 		t.Fatalf("expected early aggregate budget rejection, got %v", err)
 	}
 }

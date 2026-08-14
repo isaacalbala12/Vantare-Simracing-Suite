@@ -14,6 +14,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
 )
 
+const MaxDecodedPackageBytes = packaging.MaxPackageBytes
+
 type Verifier struct {
 	keys         map[string]TrustedKey
 	trustVersion uint64
@@ -35,7 +37,7 @@ func NewVerifier(keySet TrustedKeySet) (*Verifier, error) {
 }
 
 func (verifier *Verifier) Verify(document []byte) (VerifiedCatalog, error) {
-	if verifier == nil || len(document) == 0 || len(document) > MaxBundleBytes {
+	if verifier == nil || len(document) == 0 || len(document) > MaxSerializedBundleBytes {
 		return VerifiedCatalog{}, catalogError(ErrorInvalidBundle, "")
 	}
 	if err := rejectDuplicateJSON(document); err != nil {
@@ -45,7 +47,7 @@ func (verifier *Verifier) Verify(document []byte) (VerifiedCatalog, error) {
 	if err := decodeStrict(document, &envelope); err != nil {
 		return VerifiedCatalog{}, wrapCatalogError(ErrorInvalidBundle, "", err)
 	}
-	if envelope.BundleVersion != BundleVersionV1 || len(envelope.Manifest) == 0 || len(envelope.Manifest) > MaxManifestBytes || len(envelope.Payload) == 0 || len(envelope.Payload) > MaxPayloadBytes {
+	if envelope.BundleVersion != BundleVersionV1 || len(envelope.Manifest) == 0 || len(envelope.Manifest) > MaxManifestBytes || len(envelope.Payload) == 0 || len(envelope.Payload) > MaxSerializedPayloadBytes {
 		return VerifiedCatalog{}, catalogError(ErrorInvalidBundle, "bundleVersion")
 	}
 	if err := rejectDuplicateJSON(envelope.Manifest); err != nil {
@@ -116,11 +118,16 @@ func validatePayload(payload Payload) error {
 		return catalogError(ErrorInvalidPayload, "payloadVersion")
 	}
 	previous := ""
+	decodedPackageBytes := 0
 	for _, entry := range payload.Entries {
 		if !safeID.MatchString(entry.ID) || entry.ID <= previous || !boundedText(entry.Title, 160) || !boundedText(entry.Summary, 1024) || !boundedText(entry.Compatibility.Simulator, 128) || !boundedText(entry.Compatibility.Circuit, 128) || !boundedText(entry.Compatibility.Car, 128) || !boundedText(entry.Compatibility.Event, 128) || len(entry.Package) == 0 {
 			return catalogError(ErrorInvalidPayload, "entries")
 		}
 		previous = entry.ID
+		if len(entry.Package) > MaxDecodedPackageBytes || len(entry.Package) > MaxDecodedPackagesBytes-decodedPackageBytes {
+			return catalogError(ErrorInvalidPayload, "entries.package")
+		}
+		decodedPackageBytes += len(entry.Package)
 		if err := rejectDuplicateJSON(entry.Package); err != nil {
 			return wrapCatalogError(ErrorInvalidPayload, "entries.package", err)
 		}

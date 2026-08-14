@@ -6,11 +6,33 @@ const (
 	TrustVersionV1   = "strategy.official-catalog.trust.v1"
 	SignatureDomain  = "vantare.strategy.official-catalog.v1"
 
-	MaxBundleBytes            = 16 << 20
-	MaxPayloadBytes           = 16 << 20
-	MaxManifestBytes          = 64 << 10
-	MaxEntries                = 128
-	MaxJSONSafeInteger uint64 = 1<<53 - 1
+	// MaxDecodedPackagesBytes is the aggregate budget after JSON base64
+	// decoding. MaxDecodedPackageBytes aliases the packaging contract in
+	// verify.go so both layers retain the same individual 4 MiB boundary.
+	MaxDecodedPackagesBytes = 16 << 20
+	MaxManifestBytes        = 64 << 10
+	MaxEntries              = 128
+	MaxJSONSafeInteger      = uint64(1<<53 - 1)
+
+	// A JSON string byte can expand to six ASCII bytes (for example, a control
+	// character encoded as \u00XX). Package []byte fields use padded base64;
+	// separately encoded entries can each add at most one four-byte quantum.
+	maxJSONStringExpansion = 6
+	maxEntryIDBytes        = 128
+	maxEntryTextBytes      = 160 + 1024 + 4*128
+	maxEncodedPackageBytes = ((MaxDecodedPackagesBytes+2)/3)*4 + 4*(MaxEntries-1)
+
+	maxSerializedEntryFixedBytes    = len(`{"id":"","title":"","summary":"","compatibility":{"simulator":"","circuit":"","car":"","event":""},"package":""}`)
+	maxSerializedPayloadFixedBytes  = len(`{"payloadVersion":"","entries":[]}`) + len(PayloadVersionV1)
+	maxSerializedEnvelopeFixedBytes = len(`{"bundleVersion":"","manifest":"","payload":"","signature":""}`) +
+		len(BundleVersionV1) + 86 // unpadded base64url for one Ed25519 signature
+
+	MaxSerializedPayloadBytes = maxSerializedPayloadFixedBytes +
+		MaxEntries*(maxSerializedEntryFixedBytes+maxEntryIDBytes+maxJSONStringExpansion*maxEntryTextBytes) +
+		(MaxEntries - 1) + maxEncodedPackageBytes
+	MaxSerializedBundleBytes = maxSerializedEnvelopeFixedBytes +
+		((MaxManifestBytes+2)/3)*4 +
+		((MaxSerializedPayloadBytes+2)/3)*4
 )
 
 type Envelope struct {

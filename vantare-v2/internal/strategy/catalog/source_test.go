@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func TestHTTPSourceRequiresTimeoutAndRejectsStatusLimitAndRedirect(t *testing.T)
 	}{
 		{"status", func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }},
 		{"limit", func(writer http.ResponseWriter, _ *http.Request) {
-			writer.Header().Set("Content-Length", "16777217")
+			writer.Header().Set("Content-Length", strconv.Itoa(catalog.MaxSerializedBundleBytes+1))
 			writer.WriteHeader(http.StatusOK)
 		}},
 		{"redirect", func(writer http.ResponseWriter, request *http.Request) {

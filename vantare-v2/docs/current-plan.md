@@ -54,6 +54,30 @@ Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
   Este corte es documentación; no crea bucket, migración, deploy, UI ni
   activación y no autoriza promoción fuera de una futura rama de issue.
 
+Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
+- La batalla Redline se deriva solo para sesiones de carrera y devuelve una
+  única pareja: primero la más cercana a la fila del jugador, después el menor
+  intervalo y finalmente el orden estable de la parrilla.
+- El hook no muestra una batalla en disolución junto a una nueva batalla activa;
+  el máximo observable continúa siendo uno durante los relevos.
+- El code review adversarial corrigió tres bordes antes de promoción: la
+  disolución ya no se filtra al pasar de carrera a clasificación, no se elige
+  una pareja sin la fila del jugador y una transición rápida A→B→A conserva
+  como más reciente la pareja A.
+- TDD RED reprodujo los tres hallazgos. Focales 21/21, suite frontend 370
+  archivos/2679 tests, build, ESLint focal, design-system 3/3, validador del
+  fragmento y diff-check pasan. La suite conserva dos `AbortError` heredados de
+  teardown tras el resumen, con exit 0.
+- El Workshop respondió en Vite local, pero el preview T3 falló tanto al tomar
+  snapshot como al evaluar el DOM por timeout. El servidor temporal se cerró;
+  queda pendiente la comprobación visual manual de las tres escenas del fragmento.
+- Rama aislada
+  `vantareapp/isa-357-standings-redline-limitar-la-animacion-de-batalla-a-carrera`
+  partió de `origin/nightly@673283a2` y quedó sincronizada con
+  `origin/nightly@521e862c` mediante `54f27784`. Implementación `71d6b360` y
+  corrección de review `cf83021a`; PR draft #243 hacia `nightly`. Los gates
+  bloqueantes pasaron sobre `54f27784`. Sin merge, promoción ni release.
+
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Cada layout admite exactamente un widget Delta. Studio oculta la acción de
   añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la

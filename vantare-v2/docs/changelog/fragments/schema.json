@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "issue", "type", "summary", "technicalNotes", "testing", "knownLimitations"],
   "properties": {
     "schemaVersion": { "const": 1 },
-    "issue": { "type": "string", "pattern": "^ISA-[0-9]+$" },
+    "issue": { "type": "string", "pattern": "^(ISA-[0-9]+|TC-[0-9A-F]{12})$" },
     "type": { "enum": ["feature", "fix", "change", "security"] },
     "summary": { "type": "string", "minLength": 1 },
     "technicalNotes": { "$ref": "#/$defs/nonEmptyStrings" },

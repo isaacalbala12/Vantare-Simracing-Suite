@@ -85,6 +85,27 @@ de cada efecto, hacer bloqueantes lint/visuales cuando apliquen y demostrar que
 todas las exclusiones anteriores se aplican en el gate. Una firma válida pero
 obsoleta o reusada falla cerrada.
 
+ISA-322 define ese cierre sin activarlo. Su entrypoint inerte encadena la futura
+ejecución de `gh attestation verify` (repositorio, workflow firmante, commit
+fuente en `master`, issuer GitHub y runner hospedado) con el validador semántico
+v2 y la comparación de `head_sha`, tip de `nightly` y digest recomputado contra
+hechos vivos. La policy exige los dos checks exactos, conversaciones resueltas,
+cuatro kill switches cerrados, reserva `nightly_release` confirmada y ausencia
+de otro closeout. `prepare_release` solo prepara la petición determinista al RPC
+Supabase ya existente y las rutas de metadata `TC-<12 HEX>`; no ejecuta la
+reserva. El bootstrap conserva `if: false`, permisos `contents: read`, termina
+en fallo y no contiene comandos de merge, tag ni release. Conectar credenciales,
+ejecutar la reserva, crear el ruleset y activar la cola siguen requiriendo la
+fase de activación y autorización expresa de Isaac.
+
+El lint de archivos cambiados y el visual de Testing Center son bloqueantes
+solo en el PR automático `tc-*`, calculados contra el primer padre real del
+merge sintético. El evento `merge_group` no expone la rama fuente original:
+revalida Go, frontend y Windows/Wails, mientras la futura activación deberá
+exigir los checks exactos ya emitidos sobre el `head_sha` atestado antes de
+encolar. El lint global de los canales humanos continúa advisory por su deuda
+inventariada.
+
 - `.github/workflows/branch-channel-gates.yml` valida la ruta de promoción y
   ejecuta tests Go, frontend, build y lint en `nightly` y `testers`.
 - Go, build frontend y todos los tests frontend no inventariados son
@@ -96,6 +117,9 @@ obsoleta o reusada falla cerrada.
   en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
+- En los gates de canal de CI, las ramas Linear `isa-*` y `hotfix-isa-*` usan
+  segmentos separados por guiones; un guion bajo solo es válido entre dos
+  tokens alfanuméricos dentro del mismo segmento (por ejemplo, `merge_group`).
 - La única excepción es un hotfix crítico aprobado expresamente por Isaac:
   parte de `master`, utiliza una rama
   `vantareapp/hotfix-isa-<número>-<descripción>`, conserva PR y todos los gates

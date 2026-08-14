@@ -180,6 +180,7 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
     ["review_opus", "diff_gate"],
     ["review_gate", "review_opus"],
     ["draft_pr", "review_gate"],
+    ["queue_bootstrap_disabled", "review_gate"],
   ];
   let previousOffset = -1;
   for (const [jobName, dependency] of topology) {
@@ -193,6 +194,14 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
     const offset = workflow.indexOf(`  ${jobName}:`);
     assert(offset > previousOffset, `Job is out of order: ${jobName}`);
     previousOffset = offset;
+  }
+
+  const queueBootstrap = jobBlock(workflow, "queue_bootstrap_disabled");
+  assertIncludes(queueBootstrap, "permissions:\n      contents: read");
+  assertIncludes(queueBootstrap, "persist-credentials: false");
+  assertIncludes(queueBootstrap, "run: exit 1");
+  for (const forbidden of ["gh pr merge", "gh api", "git push", "contents: write"]) {
+    assertNotIncludes(queueBootstrap, forbidden);
   }
 });
 

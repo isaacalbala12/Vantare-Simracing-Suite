@@ -62,6 +62,20 @@
   El gate posterior `31894845365` y el roadmap `31894845385` pasaron sobre el
   SHA integrado. ISA-366 registra la promoción; sin paso a `testers`/`master`
   ni release.
+- Escala proporcional de escritorio (rama `vantareapp/isa-343-ui-resp-escala-proporcional-1080-4k`,
+  sin Linear por decisión de Isaac; el prefijo isa-343 solo cumple la política de canales del CI y
+  no reutiliza la issue descartada; spec `docs/superpowers/specs/2026-08-14-ui-escala-proporcional-1080-a-32-9-4k.md`):
+  el overlay (Desktop/OBS) escala por altura desde la base `1920x1080` (QHD≈1.333x, 4K=2x)
+  y en ultrawide reparte los widgets hasta un frame máximo 21:9 centrado; los widgets
+  full-width (Broadcast Tower) se estiran al frame. El Hub aplica zoom global uniforme
+  (`CSS zoom` en `html.hub`, factor `clamp(altura/1080, 1, 2.5)`) y el Studio escala con él
+  conservando sus coordenadas internas. Los trabajos previos ISA-337/ISA-343 quedan
+  descartados por Isaac y no se reutilizan. Gates: suite frontend completa 378/2768,
+  build, lint focal y runner visual `visual:escala-proporcional` (matriz 10 viewports +
+  zoom 5 + capturas 5) PASS. Las capturas usan UI real productiva: Hub completo con mock
+  Wails (topbar/dock/dashboard) y widgets con diseño oficial sobre el escenario del Studio.
+  Isaac revisó y aprobó las capturas. Pendiente: verificación manual en Windows
+  (zoom WebView2, DPI 100/125/150) y decisión de Isaac sobre promoción a `nightly`.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

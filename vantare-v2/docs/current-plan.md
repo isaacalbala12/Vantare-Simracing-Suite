@@ -106,6 +106,29 @@ Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
   regeneración del roadmap `31894845385` pasaron sobre ese SHA. ISA-366
   registra la integración. Sin promoción a Testers/Master ni release.
 
+Nota UI-ESCALA-PROPORCIONAL (2026-08-14, SDD sin Linear, rama
+`vantareapp/isa-343-ui-resp-escala-proporcional-1080-4k` desde `origin/nightly@03fce9cd`):
+- Spec aprobada por Isaac vía entrevista SDD:
+  `docs/superpowers/specs/2026-08-14-ui-escala-proporcional-1080-a-32-9-4k.md`.
+  Base de diseño `1920x1080` = 1x; QHD ≈ 1.333x; 4K = 2x; ultrawide escala por
+  altura y reparte widgets hasta frame máximo 21:9 centrado (32:9 inclusive);
+  widgets full-width se estiran; Hub con zoom global uniforme por altura de
+  ventana (CSS zoom, tope 2.5); OBS = mismo motor; todos los widget types.
+- Implementación por microcortes TDD: C1 modelo puro (`responsive-layout.ts`),
+  C2 runtime Desktop/OBS, C3 preview Studio, C4 zoom Hub (`hub-zoom.ts` +
+  `use-hub-responsive-zoom`), C5 runner visual (`visual:escala-proporcional`).
+  En 16:9 el transform del overlay es idéntico al contain anterior (sin regresión).
+- Gates: suite frontend completa 378 archivos/2768 tests PASS; build PASS;
+  ESLint focal PASS (los errores de `HubApp.tsx` son heredados de `nightly`);
+  `git diff --check` PASS; runner visual 10/10 overlay + 5/5 zoom + 5 capturas
+  en `frontend/test-results/escala-proporcional/captures`.
+- Los trabajos previos ISA-337/ISA-343 (`worktrees/isa337-responsive-spec`,
+  `worktrees/isa343-responsive-foundation`) están descartados por Isaac y no se
+  reutilizan; sus ramas se conservan como referencia histórica.
+- Pendiente: revisión visual humana de las capturas, smoke manual Windows
+  (WebView2 zoom, DPI 100/125/150) y decisión de Isaac sobre promoción a
+  `nightly`. No hubo push, PR, CI, merge ni release.
+
 Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
 - El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión
   y el canal reales de `app:version`; ya no fija `v0.1.0.2` ni presenta todas

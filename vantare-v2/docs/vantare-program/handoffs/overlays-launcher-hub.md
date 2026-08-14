@@ -10,6 +10,12 @@
 
 ## Estado
 
+- ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
+  `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
+  Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,
+  conserva 50 px de altura y expone solo resize este/oeste. Tests focales,
+  suite frontend, lint focal, build y CI pasan. Queda pendiente la validación
+  visual manual de Isaac; no hubo promoción a `testers` ni `master`.
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
   PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR

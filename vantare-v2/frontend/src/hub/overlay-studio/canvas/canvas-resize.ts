@@ -8,6 +8,7 @@ export type ResizeInput = {
   pointerDelta: { dx: number; dy: number };
   minSize: { width: number; height: number };
   supportsAspectUnlock: boolean;
+  resizeMode?: "free" | "horizontal-only";
 };
 
 function finite(value: number, fallback = 0): number {
@@ -55,9 +56,13 @@ function resizeLockedFromHeight(
 
 export function resizeWidgetLayout(input: ResizeInput): WidgetLayoutV3 {
   const start = input.startLayout;
+  if (input.resizeMode === "horizontal-only" && input.handle !== "e" && input.handle !== "w") {
+    return { ...start };
+  }
   const dx = finite(input.pointerDelta.dx);
   const dy = finite(input.pointerDelta.dy);
-  const lockAspect = shouldLockAspect(start, input.supportsAspectUnlock);
+  const lockAspect = input.resizeMode !== "horizontal-only"
+    && shouldLockAspect(start, input.supportsAspectUnlock);
 
   let x = start.x;
   let y = start.y;

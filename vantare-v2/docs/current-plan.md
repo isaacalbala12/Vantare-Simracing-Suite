@@ -5603,3 +5603,16 @@ Nota ISA-334 / Broadcast Tower horizontal (2026-08-14, promovida a Nightly):
   manual sigue pendiente. PR #224 fusionada por squash en `nightly` como
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`; Linear está en `Nightly`.
   No hubo promoción a `testers`/`master` ni release.
+Nota TA-04F9 (2026-08-14, corte visual descriptivo completado):
+- Gate 0 autorizó C1-C5 y una única ejecución bajo protocolo `d278e759`;
+  runner `713f3124` y freeze local `cf26ede7`.
+- Gate 3 terminó con código 0 en 667 s y `analysis_complete`. Gate 4 verificó
+  C1-C5: 49 grupos, prefijo 1-48 idéntico, grupo 49 estrictamente aditivo;
+  deltas candidatos/canónicos/insuficientes/inválidos `+3/+3/+3/0`.
+- Se congelaron manifest, shape export y SVG técnico de los grupos 1 y 37.
+  Cleanup `0/0/0`, temporales/procesos `0` y privacidad PASS.
+- No es mapa ni capability: `local_shape=unknown`,
+  `product_map_authorization=false`, datum/CRS, anchura y bordes siguen sin
+  demostrarse y TA-04B permanece bloqueada.
+- Entrega ISA-132 en preparación sobre su rama exacta; todavía sin push, PR,
+  CI remoto, merge, promoción ni release. ISA-159 / TA-05 sigue bloqueada.

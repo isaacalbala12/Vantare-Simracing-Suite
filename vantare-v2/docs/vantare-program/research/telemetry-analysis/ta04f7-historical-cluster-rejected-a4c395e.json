@@ -1,0 +1,26 @@
+{
+  "version": "ta04f7/v1",
+  "protocol_sha": "cdfc84879c77915bf7a5f0ea27bb4e276ef75bfe",
+  "runner_sha": "a4c395e04aa8365dd2cb41ee538ce02479141a2e",
+  "outcome": "stop_insufficient",
+  "inventory_stable": true,
+  "population": {
+    "inventory_candidates": 319,
+    "duplicates": 0,
+    "authorization_rejected": 0,
+    "stability_rejected": 0,
+    "artifact_guard_rejected": 0,
+    "data_invalid": 319,
+    "canonical_recordings": 0,
+    "insufficient_laps_recordings": 0,
+    "eligible_recordings": 0
+  },
+  "groups": [],
+  "cleanup": {
+    "open_readers": 0,
+    "staging_entries": 0,
+    "staging_roots": 0
+  },
+  "local_shape": "unknown",
+  "product_map_authorization": false
+}

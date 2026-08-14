@@ -116,6 +116,26 @@ func TestParseLibraryFoldersTrailingContentIgnored(t *testing.T) {
 // Helper to check that readSteamLibraryFolders uses parseLibraryFoldersVDF
 // by verifing the public contract: result always includes the primary Steam
 // path even if no VDF exists. This is an indirect integration check.
+func TestDedupeFoldersCaseInsensitive(t *testing.T) {
+	in := []string{
+		`C:\Program Files (x86)\Steam`,
+		`c:\program files (x86)\steam`,
+		`D:\SteamLibrary`,
+		`C:\Program Files (x86)\Steam\`,
+		``,
+	}
+	out := dedupeFoldersCaseInsensitive(in)
+	if len(out) != 2 {
+		t.Fatalf("expected 2 unique folders, got %d: %v", len(out), out)
+	}
+	if out[0] != `C:\Program Files (x86)\Steam` {
+		t.Errorf("first occurrence must win, got %q", out[0])
+	}
+	if out[1] != `D:\SteamLibrary` {
+		t.Errorf("unexpected second folder %q", out[1])
+	}
+}
+
 func TestReadSteamLibraryFoldersIncludesPrimary(t *testing.T) {
 	// This test is inherently dependent on the build machine Steam install or
 	// its absence. We only verify the slice is non-empty (at least primary).

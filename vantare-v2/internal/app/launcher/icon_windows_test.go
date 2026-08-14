@@ -90,6 +90,63 @@ func TestExtractIconFromLnk(t *testing.T) {
 	}
 }
 
+// TestGetAppIconForAppCacheAndInvalidation proves the icon cache returns the
+// exact same bytes on a second call (even when the source file is gone) and
+// that resetShortcutIndex drops the cached entry so the source is re-probed.
+func TestGetAppIconForAppCacheAndInvalidation(t *testing.T) {
+	src := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if !fileExists(src) {
+		t.Skip("notepad.exe not found")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read notepad.exe: %v", err)
+	}
+	probe := filepath.Join(t.TempDir(), "vantare-cache-probe.exe")
+	if err := os.WriteFile(probe, data, 0o644); err != nil {
+		t.Fatalf("write probe executable: %v", err)
+	}
+
+	first := GetAppIconForApp("cache-probe", probe)
+	if len(first) == 0 {
+		t.Fatal("expected icon bytes from probe executable before removal")
+	}
+	if err := os.Remove(probe); err != nil {
+		t.Fatalf("remove probe executable: %v", err)
+	}
+	// The source is gone, so a non-empty result can only come from the cache.
+	second := GetAppIconForApp("cache-probe", probe)
+	if !bytes.Equal(first, second) {
+		t.Fatal("cached icon must be byte-identical to the first resolution")
+	}
+
+	resetShortcutIndex()
+	third := GetAppIconForApp("cache-probe", probe)
+	if len(third) != 0 {
+		t.Fatal("expected no icon after cache invalidation with the source removed")
+	}
+}
+
+// TestShortcutNameHintsExcludesGeneric verifies the shortcut index does not
+// resolve every .lnk whose name contains a generic executable base like "app"
+// or "update": those matches are mostly unrelated shortcuts, and each resolve
+// is a serialized COM round-trip that slows the first scan.
+func TestShortcutNameHintsExcludesGeneric(t *testing.T) {
+	hints := shortcutNameHints()
+	hintSet := map[string]bool{}
+	for _, h := range hints {
+		hintSet[h] = true
+	}
+	if hintSet["app"] || hintSet["update"] {
+		t.Fatalf("generic executable hints must be excluded, got %v", hints)
+	}
+	for _, required := range []string{"discord", "obs studio", "motec", "simhub", "spotify", "crewchiefv4"} {
+		if !hintSet[required] {
+			t.Errorf("expected hint %q to be present, got %v", required, hints)
+		}
+	}
+}
+
 // TestGetIconHighResDimensions verifies the high-resolution extraction returns
 // a PNG larger than the legacy 32x32, so it stays crisp when scaled in the UI.
 func TestGetIconHighResDimensions(t *testing.T) {

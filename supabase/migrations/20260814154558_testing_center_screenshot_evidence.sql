@@ -14,14 +14,15 @@ begin
   ) then
     raise exception 'testing_center_evidence_bucket_incompatible' using errcode = '55000';
   end if;
-
-  if not found then
-    insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-    values (
-      'testing-center-evidence','testing-center-evidence',false,10485760,
-      array['image/png','image/jpeg']::text[]
-    );
+  if found then
+    raise exception 'testing_center_evidence_bucket_already_exists' using errcode = '55000';
   end if;
+
+  insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+  values (
+    'testing-center-evidence','testing-center-evidence',false,10485760,
+    array['image/png','image/jpeg']::text[]
+  );
 end
 $$;
 
@@ -88,8 +89,8 @@ create table public.testing_center_screenshot_evidence (
     check (
       (state <> 'rejected' and failure_code is null)
       or (state = 'rejected' and failure_code in (
-        'object_missing','size_mismatch','digest_mismatch','mime_mismatch',
-        'signature_invalid','dimensions_invalid','decode_failed','validation_failed'
+        'invalid_size','invalid_media_type','digest_mismatch','invalid_signature',
+        'invalid_dimensions','object_missing','validation_failed'
       ))
     ),
   created_at timestamptz not null default now(),
@@ -378,6 +379,13 @@ begin
   if v_user_id is null then
     raise exception 'testing_center_auth_required' using errcode='42501';
   end if;
+  select * into v_batch
+  from public.testing_center_evidence_batches as batch
+  where batch.batch_id=p_batch_id
+  for update;
+  if not found or v_batch.reporter_user_id <> v_user_id then
+    raise exception 'testing_center_evidence_owner_required' using errcode='42501';
+  end if;
   select evidence.* into v_evidence
   from public.testing_center_screenshot_evidence as evidence
   where evidence.evidence_id=p_evidence_id and evidence.batch_id=p_batch_id
@@ -385,20 +393,16 @@ begin
   if not found then
     raise exception 'testing_center_evidence_not_found' using errcode='42501';
   end if;
-  select * into strict v_batch
-  from public.testing_center_evidence_batches as batch
-  where batch.batch_id=p_batch_id for update;
-  if v_batch.reporter_user_id <> v_user_id then
-    raise exception 'testing_center_evidence_owner_required' using errcode='42501';
-  end if;
-  if v_evidence.state='validating' and exists(
+  if v_evidence.state in ('uploaded','validating') and exists(
     select 1 from public.testing_center_evidence_outbox as job
     where job.evidence_id=p_evidence_id and job.kind='validate'
   ) then
     return query select v_evidence.evidence_id,v_evidence.state,true;
     return;
   end if;
-  if v_evidence.state <> 'prepared' or v_batch.expires_at <= pg_catalog.now() then
+  if v_evidence.state <> 'prepared'
+    or v_batch.state not in ('prepared','uploading')
+    or v_batch.expires_at <= pg_catalog.now() then
     raise exception 'testing_center_evidence_state_invalid' using errcode='55000';
   end if;
   if not exists(
@@ -418,12 +422,29 @@ begin
   values(v_job_id,p_evidence_id,'validate')
   on conflict on constraint testing_center_evidence_outbox_evidence_kind_key do nothing;
   update public.testing_center_screenshot_evidence
-  set state='validating',updated_at=pg_catalog.now()
+  set state='uploaded',updated_at=pg_catalog.now()
   where testing_center_screenshot_evidence.evidence_id=p_evidence_id;
+
+  if exists (
+    select 1
+    from public.testing_center_screenshot_evidence as evidence
+    where evidence.batch_id=p_batch_id and evidence.state='prepared'
+  ) then
+    update public.testing_center_evidence_batches as batch
+    set state='uploading',updated_at=pg_catalog.now()
+    where batch.batch_id=p_batch_id
+      and batch.state in ('prepared','uploading');
+    return query select p_evidence_id,'uploaded'::text,false;
+    return;
+  end if;
+
+  update public.testing_center_screenshot_evidence as evidence
+  set state='validating',updated_at=pg_catalog.now()
+  where evidence.batch_id=p_batch_id and evidence.state='uploaded';
   update public.testing_center_evidence_batches as batch
   set state='validating',updated_at=pg_catalog.now()
   where batch.batch_id=p_batch_id
-    and batch.state in ('prepared','uploading','validating');
+    and batch.state in ('prepared','uploading');
   return query select p_evidence_id,'validating'::text,false;
 end
 $$;

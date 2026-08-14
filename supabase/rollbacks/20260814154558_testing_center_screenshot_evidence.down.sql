@@ -40,6 +40,9 @@ drop table if exists public.testing_center_evidence_outbox;
 drop table if exists public.testing_center_screenshot_evidence;
 drop table if exists public.testing_center_evidence_batches;
 
+delete from public.testing_center_evidence
+where kind='screenshot';
+
 alter table public.testing_center_evidence
   drop constraint testing_center_evidence_kind_check,
   add constraint testing_center_evidence_kind_check

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestGetAppIconNotepad(t *testing.T) {
@@ -170,5 +171,113 @@ func TestGetIconHighResDimensions(t *testing.T) {
 	t.Logf("high-res icon size: %dx%d", w, h)
 	if w < 48 || h < 48 {
 		t.Fatalf("icon too small (%dx%d); expected >=48 for crisp UI", w, h)
+	}
+}
+
+// TestIconDiskCacheRoundTrip persists a resolved icon to disk and loads it
+// back byte-identically on a "fresh process" (empty memory caches).
+func TestIconDiskCacheRoundTrip(t *testing.T) {
+	src := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if !fileExists(src) {
+		t.Skip("notepad.exe not found")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read notepad.exe: %v", err)
+	}
+	probe := filepath.Join(t.TempDir(), "vantare-disk-probe.exe")
+	if err := os.WriteFile(probe, data, 0o644); err != nil {
+		t.Fatalf("write probe: %v", err)
+	}
+
+	iconDiskCacheFileOverride = filepath.Join(t.TempDir(), "icons-cache-v1.json")
+	defer func() { iconDiskCacheFileOverride = "" }()
+	resetShortcutIndex()
+
+	first := GetAppIconForApp("disk-probe", probe)
+	if len(first) == 0 {
+		t.Fatal("expected icon bytes from probe executable")
+	}
+	FlushIconDiskCache()
+
+	// Proceso nuevo: memoria vacia, disco caliente.
+	appIconCache.items = nil
+	iconCache = map[string][]byte{}
+	shortcutIndexCache.items = nil
+
+	second := GetAppIconForApp("disk-probe", probe)
+	if !bytes.Equal(first, second) {
+		t.Fatal("disk-cached icon must be byte-identical to the fresh resolution")
+	}
+}
+
+// TestIconDiskCacheInvalidatedByMtimeChange proves an entry whose source file
+// changed (mtime) is not served from disk.
+func TestIconDiskCacheInvalidatedByMtimeChange(t *testing.T) {
+	src := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if !fileExists(src) {
+		t.Skip("notepad.exe not found")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read notepad.exe: %v", err)
+	}
+	probe := filepath.Join(t.TempDir(), "vantare-mtime-probe.exe")
+	if err := os.WriteFile(probe, data, 0o644); err != nil {
+		t.Fatalf("write probe: %v", err)
+	}
+
+	iconDiskCacheFileOverride = filepath.Join(t.TempDir(), "icons-cache-v1.json")
+	defer func() { iconDiskCacheFileOverride = "" }()
+	resetShortcutIndex()
+
+	if len(GetAppIconForApp("mtime-probe", probe)) == 0 {
+		t.Fatal("expected icon bytes")
+	}
+	FlushIconDiskCache()
+
+	future := time.Now().Add(2 * time.Hour)
+	if err := os.Chtimes(probe, future, future); err != nil {
+		t.Fatalf("chtimes: %v", err)
+	}
+
+	appIconCache.items = nil
+	iconCache = map[string][]byte{}
+	shortcutIndexCache.items = nil
+	if got := loadIconFromDisk(probe); got != nil {
+		t.Fatal("entry with changed mtime must be invalidated")
+	}
+}
+
+// TestResetShortcutIndexClearsDiskCache proves a manual rescan drops the
+// persisted cache file so the next scan sees fresh icons and shortcuts.
+func TestResetShortcutIndexClearsDiskCache(t *testing.T) {
+	src := filepath.Join(os.Getenv("SystemRoot"), "System32", "notepad.exe")
+	if !fileExists(src) {
+		t.Skip("notepad.exe not found")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read notepad.exe: %v", err)
+	}
+	probe := filepath.Join(t.TempDir(), "vantare-reset-probe.exe")
+	if err := os.WriteFile(probe, data, 0o644); err != nil {
+		t.Fatalf("write probe: %v", err)
+	}
+	cacheFile := filepath.Join(t.TempDir(), "icons-cache-v1.json")
+	iconDiskCacheFileOverride = cacheFile
+	defer func() { iconDiskCacheFileOverride = "" }()
+	resetShortcutIndex()
+
+	if len(GetAppIconForApp("reset-probe", probe)) == 0 {
+		t.Fatal("expected icon bytes")
+	}
+	FlushIconDiskCache()
+	if _, err := os.Stat(cacheFile); err != nil {
+		t.Fatalf("expected cache file after flush: %v", err)
+	}
+	resetShortcutIndex()
+	if _, err := os.Stat(cacheFile); !os.IsNotExist(err) {
+		t.Fatal("cache file must be removed by resetShortcutIndex")
 	}
 }

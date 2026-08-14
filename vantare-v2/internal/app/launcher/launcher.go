@@ -263,14 +263,34 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 		appsList = append(appsList, v)
 	}
 	// Enrich each app entry with the icon data URI so the frontend displays it
-	// immediately, without a separate round-trip event.
+	// immediately, without a separate round-trip event. Extraction runs in
+	// parallel: each icon resolves COM work on its own locked thread, and the
+	// shortcut resolves serialize on lnkMu, so a bounded worker pool is safe.
 	s.emitDiscoveryProgress(75, DiscoveryResolvingIcons, true, nil)
+	const iconWorkers = 4
+	var (
+		wg        sync.WaitGroup
+		completed atomic.Int32
+	)
 	for i, a := range appsList {
-		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
-		// Report per app: icon extraction is the longest phase, and a single
-		// emit at 75% left the bar parked there for its whole duration.
-		s.emitDiscoveryProgress(75+(25*(i+1))/len(appsList), DiscoveryResolvingIcons, true, nil)
+		wg.Add(1)
+		go func(i int, a app.LauncherAppEntry) {
+			defer wg.Done()
+			appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
+			// Report per app: icon extraction is the longest phase, and a
+			// single emit at 75% left the bar parked there for its whole
+			// duration. The completed counter keeps progress monotonic even
+			// though apps finish out of order.
+			s.emitDiscoveryProgress(75+(25*int(completed.Add(1)))/len(appsList), DiscoveryResolvingIcons, true, nil)
+		}(i, a)
+		if (i+1)%iconWorkers == 0 {
+			wg.Wait()
+		}
 	}
+	wg.Wait()
+	// Persist the resolved icons and the shortcut index once, after the whole
+	// phase, so the next process session skips the COM pipeline entirely.
+	FlushIconDiskCache()
 	now := time.Now()
 	s.discoveryMu.Lock()
 	s.discovery = LauncherDiscovery{LastScanAt: &now}

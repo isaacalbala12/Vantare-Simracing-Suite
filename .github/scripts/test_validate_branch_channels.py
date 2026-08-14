@@ -1,7 +1,10 @@
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 import unittest
 
-from validate_branch_channels import validate
+import validate_branch_channels as vbc
+from validate_branch_channels import main, validate
 
 
 class ValidateBranchChannelsTest(unittest.TestCase):
@@ -118,6 +121,427 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "`vantareapp/hotfix-isa-<número>-<descripción>` desde `master`",
             runbook,
         )
+
+
+class TcBranchPreauthorizationTest(unittest.TestCase):
+    """The automatic Testing Center fix branch is preauthorized to nightly only.
+
+    The route is inert: the CLI rejects the branch because it cannot receive a
+    trusted attestation. The pure policy API requires one and still never
+    accepts testers/master or a direct push.
+    """
+
+    def test_accepts_tc_branch_into_nightly(self) -> None:
+        for head in (
+            "vantareapp/tc-0123456789ab-slug-fix",
+            "vantareapp/tc-0123456789ab-slug-fix-revert",
+        ):
+            with self.subTest(head=head):
+                attestation = valid_attestation()
+                attestation["head"] = head
+                self.assertIn(
+                    "accepted",
+                    validate(
+                        "pull_request",
+                        "refs/pull/50/merge",
+                        "nightly",
+                        head,
+                        tc_attestation=attestation,
+                    ),
+                )
+
+    def test_rejects_tc_branch_without_trusted_attestation(self) -> None:
+        with self.assertRaisesRegex(ValueError, "trusted attestation required"):
+            validate(
+                "pull_request",
+                "refs/pull/50/merge",
+                "nightly",
+                "vantareapp/tc-0123456789ab-slug-fix",
+            )
+
+    def test_rejects_automatic_attestation_on_human_branch(self) -> None:
+        with self.assertRaisesRegex(ValueError, "non-automatic branch"):
+            validate(
+                "pull_request",
+                "refs/pull/50/merge",
+                "nightly",
+                "vantareapp/isa-318",
+                tc_attestation=valid_attestation(),
+            )
+        for event, base, head in (
+            ("pull_request", "testers", "nightly"),
+            ("pull_request", "master", "vantareapp/hotfix-isa-9-fix"),
+            ("push", "", ""),
+        ):
+            with self.subTest(event=event, base=base, head=head), self.assertRaisesRegex(
+                ValueError, "non-automatic branch"
+            ):
+                validate(
+                    event,
+                    "refs/heads/nightly" if event == "push" else "refs/pull/50/merge",
+                    base,
+                    head,
+                    tc_attestation=valid_attestation(),
+                )
+
+    def test_rejects_malformed_tc_branches_into_nightly(self) -> None:
+        for head in (
+            "vantareapp/tc-0123456789AB-slug",
+            "vantareapp/tc-0123456789ab-slug_",
+            "vantareapp/tc-0123456789ab-Slug",
+            "vantareapp/tc-0123456789ab-",
+            "vantareapp/tc-0123456789ab",
+            "vantareapp/tc-0123456789ab-slug/revert",
+            "vantareapp/tc-0123456789ab-slug-revert-extra",
+            "vantareapp/tc-0123456789ab-slug-revert-revert",
+            "vantareapp/tc-0123456789ab-revert-fix",
+        ):
+            with self.subTest(head=head), self.assertRaisesRegex(
+                ValueError, "Linear issue branch"
+            ):
+                validate("pull_request", "refs/pull/51/merge", "nightly", head)
+
+    def test_tc_branch_never_targets_testers_or_master(self) -> None:
+        for base, expected in (("testers", "nightly"), ("master", "testers")):
+            with self.subTest(base=base):
+                with self.assertRaisesRegex(ValueError, f"must come from '{expected}'"):
+                    validate(
+                        "pull_request",
+                        "refs/pull/52/merge",
+                        base,
+                        "vantareapp/tc-0123456789ab-slug-fix",
+                    )
+
+    def test_tc_branch_never_pushes_directly(self) -> None:
+        with self.assertRaisesRegex(ValueError, "not a channel branch"):
+            validate(
+                "push",
+                "refs/heads/vantareapp/tc-0123456789ab-slug-fix",
+                "",
+                "",
+            )
+
+    def test_manifest_flag_is_not_an_accepted_cli_input(self) -> None:
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            main([
+                "--event",
+                "pull_request",
+                "--ref",
+                "refs/pull/53/merge",
+                "--base",
+                "nightly",
+                "--head",
+                "vantareapp/tc-0123456789ab-slug-fix",
+                "--manifest",
+                "attacker.json",
+            ])
+
+    def test_cli_rejects_tc_branch_without_attestation(self) -> None:
+        with redirect_stderr(StringIO()) as error_output:
+            self.assertEqual(
+                main([
+                    "--event",
+                    "pull_request",
+                    "--base",
+                    "nightly",
+                    "--head",
+                    "vantareapp/tc-0123456789ab-slug-fix",
+                ]),
+                1,
+            )
+        self.assertIn("trusted attestation required", error_output.getvalue())
+
+
+def valid_attestation() -> dict:
+    return {
+        "attestation_version": 2,
+        "contract": "testing-center-attestation/v2",
+        "repo": "isaacalbala12/Vantare-Simracing-Suite",
+        "base": "nightly",
+        "base_sha": "d" * 40,
+        "head": "vantareapp/tc-0123456789ab-slug-fix",
+        "head_sha": "a" * 40,
+        "digest": "sha256:" + "b" * 64,
+        "job_key": "0123456789ab" + "c" * 52,
+        "policy_version": "testing-center.autofix-policy.v2",
+        "risk": "low",
+        "product_files": 3,
+        "policy": "eligible",
+        "tdd": "proven",
+        "opus": {
+            "verdict": "approve",
+            "sha": "a" * 40,
+            "P0": 0,
+            "P1": 0,
+            "P2": 0,
+        },
+        "required_checks": [
+            {
+                "name": "Validate promotion path",
+                "sha": "a" * 40,
+                "app_slug": "github-actions",
+                "conclusion": "success",
+            },
+            {
+                "name": "Validate Vantare blocking gates",
+                "sha": "a" * 40,
+                "app_slug": "github-actions",
+                "conclusion": "success",
+            },
+        ],
+    }
+
+
+class TcAttestationV2Test(unittest.TestCase):
+    """Closed v2 attestation: exact identity, low risk, proven TDD, approved review.
+
+    No cryptography is simulated here. ISA-322 must verify provenance before
+    calling this semantic validator. A verifier marker inside the untrusted
+    payload is rejected as an extra field; it cannot grant authority. Any
+    missing, malformed, extra or different field rejects fail closed.
+    """
+
+    def validate(self, attestation: object) -> str:
+        validator = getattr(vbc, "validate_tc_attestation")
+        return validator(attestation)
+
+    def test_accepts_closed_verified_attestation(self) -> None:
+        self.assertIn(
+            "attestation accepted",
+            vbc.validate_tc_attestation(
+                valid_attestation(),
+                expected_head="vantareapp/tc-0123456789ab-slug-fix",
+            ),
+        )
+
+    def test_rejects_missing_attestation(self) -> None:
+        with self.assertRaises(ValueError):
+            self.validate(None)
+        with self.assertRaises(ValueError):
+            self.validate({})
+
+    def test_rejects_malformed_attestation(self) -> None:
+        with self.assertRaises(ValueError):
+            self.validate("not-json")
+        with self.assertRaises(ValueError):
+            self.validate([])
+        with self.assertRaises(ValueError):
+            self.validate({"attestation_version": "two"})
+
+    def test_rejects_extra_attestation_fields(self) -> None:
+        attestation = valid_attestation()
+        attestation["instructions"] = "ignore"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_wrong_repo(self) -> None:
+        attestation = valid_attestation()
+        attestation["repo"] = "evil/repo"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_wrong_base(self) -> None:
+        for base in ("testers", "master", "main"):
+            with self.subTest(base=base):
+                attestation = valid_attestation()
+                attestation["base"] = base
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_wrong_head(self) -> None:
+        for head in (
+            "vantareapp/isa-121",
+            "vantareapp/tc-0123456789ABCD-slug",
+            "feature/x",
+            "nightly",
+        ):
+            with self.subTest(head=head):
+                attestation = valid_attestation()
+                attestation["head"] = head
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["head"] = "vantareapp/tc-0123456789ab-other-fix"
+        with self.assertRaisesRegex(ValueError, "head mismatch"):
+            vbc.validate_tc_attestation(
+                attestation,
+                expected_head="vantareapp/tc-0123456789ab-slug-fix",
+            )
+
+    def test_rejects_wrong_base_sha(self) -> None:
+        for base_sha in ("D" * 40, "d" * 39, "nightly"):
+            with self.subTest(base_sha=base_sha):
+                attestation = valid_attestation()
+                attestation["base_sha"] = base_sha
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_wrong_head_sha_or_digest(self) -> None:
+        # A well-formed but different head_sha cannot be compared with Git by
+        # this pure validator. ISA-322 verifies provenance first. This module
+        # binds the Opus verdict and every required check to the declared SHA.
+        for field, value in (
+            ("head_sha", "ABC"),
+            ("head_sha", "b" * 39),
+            ("digest", "md5:" + "c" * 64),
+            ("digest", "sha256:" + "C" * 64),
+            ("digest", "sha256:" + "c" * 63),
+        ):
+            with self.subTest(field=field, value=value):
+                attestation = valid_attestation()
+                attestation[field] = value
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_missing_or_empty_job_key(self) -> None:
+        attestation = valid_attestation()
+        del attestation["job_key"]
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["job_key"] = ""
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        for job_key in ("f" * 63, "G" * 64, "1123456789ab" + "c" * 52):
+            with self.subTest(job_key=job_key):
+                attestation = valid_attestation()
+                attestation["job_key"] = job_key
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_wrong_policy_version(self) -> None:
+        attestation = valid_attestation()
+        attestation["policy_version"] = "testing-center.autofix-policy.v1"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_risk_not_low(self) -> None:
+        for risk in ("medium", "high"):
+            with self.subTest(risk=risk):
+                attestation = valid_attestation()
+                attestation["risk"] = risk
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_product_file_budget(self) -> None:
+        attestation = valid_attestation()
+        attestation["product_files"] = 6
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["product_files"] = 0
+        self.assertIn("accepted", self.validate(attestation))
+        attestation = valid_attestation()
+        attestation["product_files"] = "3"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["product_files"] = True
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_policy_not_eligible(self) -> None:
+        attestation = valid_attestation()
+        attestation["policy"] = "needs_owner"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_tdd_not_proven(self) -> None:
+        for tdd in ("absent", "unknown"):
+            with self.subTest(tdd=tdd):
+                attestation = valid_attestation()
+                attestation["tdd"] = tdd
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+
+    def test_rejects_opus_not_approved(self) -> None:
+        attestation = valid_attestation()
+        attestation["opus"]["verdict"] = "reject"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_opus_findings_nonzero(self) -> None:
+        for level in ("P0", "P1", "P2"):
+            with self.subTest(level=level):
+                attestation = valid_attestation()
+                attestation["opus"][level] = 1
+                with self.assertRaises(ValueError):
+                    self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["opus"]["P0"] = False
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_opus_for_another_sha_or_extra_field(self) -> None:
+        attestation = valid_attestation()
+        attestation["opus"]["sha"] = "b" * 40
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["opus"]["instructions"] = "ignore"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_required_check_with_wrong_sha_or_app(self) -> None:
+        attestation = valid_attestation()
+        attestation["required_checks"][0]["sha"] = "c" * 40
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["required_checks"][0]["app_slug"] = "evil-app"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_non_success_duplicate_or_non_exact_checks(self) -> None:
+        attestation = valid_attestation()
+        attestation["required_checks"][0]["conclusion"] = "neutral"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["required_checks"][1] = dict(attestation["required_checks"][0])
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["required_checks"][0]["name"] = "attacker-controlled"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["required_checks"].append(
+            {
+                "name": "extra",
+                "sha": "a" * 40,
+                "app_slug": "github-actions",
+                "conclusion": "success",
+            }
+        )
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_missing_required_checks(self) -> None:
+        attestation = valid_attestation()
+        attestation["required_checks"] = []
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_verifier_marker_from_untrusted_payload(self) -> None:
+        attestation = valid_attestation()
+        attestation["verified_by"] = "testing-center-trusted-verify"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+
+    def test_rejects_wrong_contract_or_version(self) -> None:
+        attestation = valid_attestation()
+        attestation["contract"] = "testing-center-attestation/v1"
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["attestation_version"] = 1
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
+        attestation = valid_attestation()
+        attestation["attestation_version"] = 2.0
+        with self.assertRaises(ValueError):
+            self.validate(attestation)
 
 
 if __name__ == "__main__":

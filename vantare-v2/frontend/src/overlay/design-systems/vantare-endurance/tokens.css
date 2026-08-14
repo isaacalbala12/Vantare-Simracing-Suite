@@ -3005,15 +3005,17 @@
   letter-spacing: 0.12em;
 }
 
+/* Fill is set per marker from the shared class palette, so it is deliberately
+   not declared here: a CSS fill would outrank the presentation attribute. */
 [data-widget-system="vantare-endurance"] .ven-tm-car {
-  fill: var(--ven-text-dim);
   stroke: var(--ven-bg);
   stroke-width: 1;
   paint-order: stroke;
 }
 
+/* The player is found by its ring, not by its colour: in a single-class stint
+   every car on the map shares one fill. */
 [data-widget-system="vantare-endurance"] .ven-tm-car[data-player="true"] {
-  fill: var(--ven-accent);
-  stroke: var(--ven-bg);
-  stroke-width: 1.5;
+  stroke: var(--ven-text);
+  stroke-width: 2;
 }

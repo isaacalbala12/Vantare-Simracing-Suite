@@ -17,6 +17,7 @@ import { RelativeEndurance } from "./relative/RelativeEndurance";
 import { parseRelativeEnduranceSettings } from "./relative/relative-endurance-settings";
 import { StandingsEndurance } from "./standings/StandingsEndurance";
 import { TrackMapEndurance } from "./track-map/TrackMapEndurance";
+import { RELATIVE_DEFAULT_APPEARANCE } from "../../widget-types/relative/relative-renderer-helpers";
 import { parseTrackMapEnduranceSettings } from "./track-map/track-map-endurance-settings";
 import { buildTrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
 import { createDefaultTrackMapContent } from "../../widget-types/track-map/track-map-content";
@@ -117,6 +118,80 @@ describe("vantare-endurance contract", () => {
     expect(cars.map((car) => Number(car.getAttribute("cy")))).toEqual(
       model.markers.map((marker) => marker.y),
     );
+  });
+
+  it("colours each car by its class, from the palette Relative already uses", () => {
+    const mapped = {
+      ...snapshot,
+      session: { ...snapshot.session, trackName: "Vantare Reference Loop" },
+      scoring: [
+        { id: "hy", isPlayer: true, vehicleClass: "HYPERCAR", groundPositionXMeters: 0, groundPositionZMeters: 0 },
+        { id: "p2", vehicleClass: "LMP2", groundPositionXMeters: 50, groundPositionZMeters: 0 },
+        { id: "gt", vehicleClass: "LMGT3", groundPositionXMeters: 100, groundPositionZMeters: 0 },
+        { id: "unknown", vehicleClass: "SOMETHING ELSE", groundPositionXMeters: 150, groundPositionZMeters: 0 },
+        { id: "absent", groundPositionXMeters: 200, groundPositionZMeters: 0 },
+      ],
+    };
+    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
+    );
+    const fills = new Map(
+      [...rootOf(view.container).querySelectorAll("[data-track-map-car]")].map((car) => [
+        car.getAttribute("data-track-map-car"),
+        car.getAttribute("fill"),
+      ]),
+    );
+
+    expect(fills.get("hy")).toBe(RELATIVE_DEFAULT_APPEARANCE.classHypercarColor);
+    expect(fills.get("p2")).toBe(RELATIVE_DEFAULT_APPEARANCE.classLmp2Color);
+    expect(fills.get("gt")).toBe(RELATIVE_DEFAULT_APPEARANCE.classGt3Color);
+    // An unrecognised or absent class falls to neutral, never to another
+    // category's colour.
+    expect(fills.get("unknown")).toBe(RELATIVE_DEFAULT_APPEARANCE.classUnknownColor);
+    expect(fills.get("absent")).toBe(RELATIVE_DEFAULT_APPEARANCE.classUnknownColor);
+  });
+
+  it("honours a configured class colour, so one setting means one category everywhere", () => {
+    const mapped = {
+      ...snapshot,
+      session: { ...snapshot.session, trackName: "Vantare Reference Loop" },
+      scoring: [{ id: "p2", vehicleClass: "LMP2", groundPositionXMeters: 0, groundPositionZMeters: 0 }],
+    };
+    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance
+        model={model}
+        settings={{ classLmp2Color: "#00ff88" }}
+        renderMode="harness"
+      />,
+    );
+    expect(
+      rootOf(view.container).querySelector('[data-track-map-car="p2"]')?.getAttribute("fill"),
+    ).toBe("#00ff88");
+  });
+
+  it("keeps the player findable without relying on colour", () => {
+    const mapped = {
+      ...snapshot,
+      session: { ...snapshot.session, trackName: "Vantare Reference Loop" },
+      scoring: [
+        { id: "me", isPlayer: true, vehicleClass: "LMP2", groundPositionXMeters: 0, groundPositionZMeters: 0 },
+        { id: "rival", vehicleClass: "LMP2", groundPositionXMeters: 50, groundPositionZMeters: 0 },
+      ],
+    };
+    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
+    );
+    const root = rootOf(view.container);
+    const me = root.querySelector('[data-track-map-car="me"]')!;
+    const rival = root.querySelector('[data-track-map-car="rival"]')!;
+
+    // Same class, so the same fill: the distinction cannot come from colour.
+    expect(me.getAttribute("fill")).toBe(rival.getAttribute("fill"));
+    expect(me.getAttribute("data-player")).toBe("true");
+    expect(Number(me.getAttribute("r"))).toBeGreaterThan(Number(rival.getAttribute("r")));
   });
 
   it("draws nothing and says so when the circuit is not mapped", () => {

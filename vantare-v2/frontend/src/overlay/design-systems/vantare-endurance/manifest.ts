@@ -244,6 +244,23 @@ const trackMapAppearanceControls = [
     path: "showTrackLabel",
     defaultValue: true,
   },
+  // Same paths and defaults as Relative and Standings, so one configured colour
+  // means one category across every widget.
+  ...(
+    [
+      ["class-hypercar-color", "classHypercarColor"],
+      ["class-lmp2-color", "classLmp2Color"],
+      ["class-lmp3-color", "classLmp3Color"],
+      ["class-gt3-color", "classGt3Color"],
+      ["class-unknown-color", "classUnknownColor"],
+    ] as const
+  ).map(([id, path]) => ({
+    kind: "color" as const,
+    id,
+    labelKey: `overlay.inspector.relative.${path}`,
+    path,
+    defaultValue: RELATIVE_DEFAULT_APPEARANCE[path],
+  })),
 ];
 
 validateInspectorControls(trackMapAppearanceControls);

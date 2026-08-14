@@ -31,10 +31,10 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
   queda pendiente la comprobación visual manual de las tres escenas del fragmento.
 - Rama aislada
   `vantareapp/isa-357-standings-redline-limitar-la-animacion-de-batalla-a-carrera`
-  partió de `origin/nightly@673283a2` y está sincronizada con
-  `origin/nightly@521e862c`. Implementación `71d6b360` y corrección de review
-  `cf83021a`; PR draft #243 hacia `nightly`. Nuevo CI pendiente de la
-  publicación. Sin merge, promoción ni release.
+  partió de `origin/nightly@673283a2` y quedó sincronizada con
+  `origin/nightly@521e862c` mediante `54f27784`. Implementación `71d6b360` y
+  corrección de review `cf83021a`; PR draft #243 hacia `nightly`. Los gates
+  bloqueantes pasaron sobre `54f27784`. Sin merge, promoción ni release.
 
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Cada layout admite exactamente un widget Delta. Studio oculta la acción de

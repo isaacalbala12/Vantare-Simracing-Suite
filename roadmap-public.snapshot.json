@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T16:52:46Z",
+  "generatedAt": "2026-08-14T18:51:09Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -255,10 +255,16 @@
           },
           "progress": {
             "done": 0,
-            "total": 1,
+            "total": 2,
             "percent": 0
           },
           "tasks": [
+            {
+              "id": "task_a42d48a75062a36b354d",
+              "title": ".1 — Seleccionar el proceso LMU utilizable entre procesos homónimos",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T18:06:30.342Z"
+            },
             {
               "id": "task_4b0f3bebe07b8ee55483",
               "title": "Ampliar StrategyLiveProjection para replanificación",
@@ -610,7 +616,7 @@
               "id": "task_7f6bd0e8290884567a7f",
               "title": "Resolver la revisión activa y cablear el motor live",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T04:24:23.678Z"
+              "updatedAt": "2026-08-14T17:20:38.530Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-13T23:51:55Z",
+  "generatedAt": "2026-08-14T00:01:42Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -37,7 +37,7 @@
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:38:26.179Z"
+              "updatedAt": "2026-08-13T23:57:45.914Z"
             },
             {
               "id": "task_609d33340526777a9186",
@@ -175,7 +175,7 @@
               "id": "task_e79e1f63aa00207b5076",
               "title": "Overlay Studio: Broadcast Tower debe ocupar todo el ancho y redimensionarse solo horizontalmente",
               "status": "done",
-              "updatedAt": "2026-08-13T23:51:46.492Z"
+              "updatedAt": "2026-08-14T00:01:30.881Z"
             },
             {
               "id": "task_871b1ab68a2ba77204b2",

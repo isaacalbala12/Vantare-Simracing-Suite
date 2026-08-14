@@ -144,6 +144,9 @@ export function deriveBattlePairs(
   const groups = groupRowsByClass(model.rows);
   const renderedRows = groups.flatMap((group) => group.rows);
   const playerIndex = renderedRows.findIndex((row) => row.isPlayer);
+  if (playerIndex === -1) {
+    return [];
+  }
   const rowIndexes = new Map(renderedRows.map((row, index) => [row.id, index]));
   const candidates: {
     pair: BattlePair;
@@ -175,10 +178,10 @@ export function deriveBattlePairs(
             vehicleClass: group.vehicleClass,
             intervalSeconds: Number(interval.toFixed(1)),
           },
-          playerDistance:
-            playerIndex === -1
-              ? Number.POSITIVE_INFINITY
-              : Math.min(Math.abs(aheadIndex - playerIndex), Math.abs(behindIndex - playerIndex)),
+          playerDistance: Math.min(
+            Math.abs(aheadIndex - playerIndex),
+            Math.abs(behindIndex - playerIndex),
+          ),
           intervalSeconds: interval,
           order,
         });

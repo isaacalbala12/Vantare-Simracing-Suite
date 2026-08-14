@@ -120,7 +120,7 @@ describe("standings-motion", () => {
   it("derives battle pairs only under the threshold and never with pitted cars", () => {
     const battle = model([
       row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "b", position: 2, gapText: "+0.5s" }),
+      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
       row({ id: "c", position: 3, gapText: "+4.0s" }),
     ]);
     const pairs = deriveBattlePairs(battle);
@@ -130,7 +130,7 @@ describe("standings-motion", () => {
 
     const pitted = model([
       row({ id: "a", position: 1, gapText: "—", pitText: "PIT" }),
-      row({ id: "b", position: 2, gapText: "+0.5s" }),
+      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
     ]);
     expect(deriveBattlePairs(pitted)).toHaveLength(0);
   });
@@ -147,6 +147,17 @@ describe("standings-motion", () => {
     );
 
     expect(deriveBattlePairs(qualifying)).toHaveLength(0);
+  });
+
+  it("does not derive a battle when the player row is absent", () => {
+    const withoutPlayer = model([
+      row({ id: "a", position: 1, gapText: "—" }),
+      row({ id: "b", position: 2, gapText: "+0.2s" }),
+      row({ id: "c", position: 3, gapText: "+4.0s" }),
+      row({ id: "d", position: 4, gapText: "+4.4s" }),
+    ]);
+
+    expect(deriveBattlePairs(withoutPlayer)).toHaveLength(0);
   });
 
   it("returns only the closest battle to the player and breaks ties by interval", () => {

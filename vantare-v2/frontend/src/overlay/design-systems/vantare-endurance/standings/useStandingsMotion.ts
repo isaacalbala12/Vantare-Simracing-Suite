@@ -3,6 +3,7 @@ import type {
   StandingsRowViewModel,
   StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
+import { resolveStandingsSessionMode } from "../../../widget-types/standings/standings-formatting";
 import {
   classPositionsById,
   deriveBattlePairs,
@@ -339,9 +340,11 @@ export function useStandingsMotion(
   // Adjusting state during render is React's own answer to this: it re-runs
   // the component and discards the in-progress output before touching the DOM,
   // so the intermediate tree never reaches the browser.
+  const battleSessionActive =
+    model.status === "ready" && resolveStandingsSessionMode(model.sessionLabel) === "race";
   if (renderedModel !== model) {
     setRenderedModel(model);
-    if (enabled && model.status === "ready" && renderedModel?.status === "ready") {
+    if (enabled && battleSessionActive && renderedModel?.status === "ready") {
       const stillActive = new Set(deriveBattlePairs(model).map(battleKey));
       const justBroken = deriveBattlePairs(renderedModel).filter(
         (pair) => !stillActive.has(battleKey(pair)),
@@ -350,7 +353,9 @@ export function useStandingsMotion(
         setDissolving((current) => {
           const next = new Map(current);
           for (const pair of justBroken) {
-            next.set(battleKey(pair), pair);
+            const key = battleKey(pair);
+            next.delete(key);
+            next.set(key, pair);
           }
           return next;
         });
@@ -367,7 +372,7 @@ export function useStandingsMotion(
     stage: boxKeys.has(`${pair.aheadId}|${pair.behindId}`) ? "box" : "seam",
   }));
   const activeBattleKeys = new Set(battles.map((battle) => `${battle.aheadId}|${battle.behindId}`));
-  if (battles.length === 0) {
+  if (battleSessionActive && battles.length === 0) {
     let latestDissolving: BattlePair | undefined;
     for (const [key, pair] of dissolving) {
       if (!activeBattleKeys.has(key)) {

@@ -154,6 +154,7 @@ export function WidgetListPanel(): React.ReactElement {
       <AddWidgetDialog
         open={addDialogOpen}
         access={access}
+        unavailableTypes={(activeLayout?.widgets ?? []).some((widget) => widget.type === "delta") ? ["delta"] : []}
         onClose={() => setAddDialogOpen(false)}
         onAdd={handleAddWidget}
       />

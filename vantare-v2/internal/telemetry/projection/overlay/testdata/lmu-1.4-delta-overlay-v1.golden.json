@@ -225,6 +225,24 @@
     "provenance": "derived",
     "freshness": "fresh"
   },
+  "playerDeltaPersonalBestSeconds": {
+    "present": false,
+    "value": 0,
+    "provenance": "unknown",
+    "freshness": "missing"
+  },
+  "playerDeltaSessionBestSeconds": {
+    "present": true,
+    "value": -0.030563504,
+    "provenance": "derived",
+    "freshness": "fresh"
+  },
+  "playerDeltaPreviousLapSeconds": {
+    "present": true,
+    "value": -0.030563504,
+    "provenance": "derived",
+    "freshness": "fresh"
+  },
   "playerDeltaReference": {
     "present": true,
     "value": "best-completed-player-lap",

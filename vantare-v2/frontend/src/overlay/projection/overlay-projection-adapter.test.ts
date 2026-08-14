@@ -58,6 +58,22 @@ describe("authoritative overlay projection adapter", () => {
     ]);
   });
 
+  it("maps independent delta references without collapsing their quality", () => {
+    const mapping = requireMapped(
+      adaptOverlayProjectionToSnapshot(readGolden(), { transportState: "live" }),
+    );
+    expect(mapping.snapshot.player).toMatchObject({
+      deltaPersonalBestSeconds: -0.2,
+      deltaSessionBestSeconds: -0.25,
+      deltaPreviousLapSeconds: 0.1,
+    });
+    expect(mapping.quality).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourcePath: "playerDeltaPersonalBestSeconds", provenance: "observed", usable: true }),
+      expect.objectContaining({ sourcePath: "playerDeltaSessionBestSeconds", provenance: "derived", usable: true }),
+      expect.objectContaining({ sourcePath: "playerDeltaPreviousLapSeconds", provenance: "derived", usable: true }),
+    ]));
+  });
+
   it("maps the demonstrated golden fields and identifies the player by ID", () => {
     const mapping = requireMapped(
       adaptOverlayProjectionToSnapshot(readGolden(), {

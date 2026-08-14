@@ -419,6 +419,7 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 		vehicle.Brake = copyFreshness(vehicle.Brake, freshness)
 		vehicle.Clutch = copyFreshness(vehicle.Clutch, freshness)
 		vehicle.Fuel = copyFreshness(vehicle.Fuel, freshness)
+		vehicle.DeltaBest = copyFreshness(vehicle.DeltaBest, freshness)
 	}
 	return value
 }

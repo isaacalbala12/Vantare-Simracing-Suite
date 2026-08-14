@@ -2,9 +2,11 @@ package lmu
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -78,6 +80,56 @@ func TestBatchMapperRealFixtureTraversesParseFusionMapperAndReducer(t *testing.T
 	}
 	if players != 1 {
 		t.Fatalf("players = %d, want 1", players)
+	}
+}
+
+func TestNativeDeltaBestTraversesLMUBufferToOverlayWithoutReferenceWarmup(t *testing.T) {
+	input, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scoringBase, _ := lmu13Layout.ScoringRows.rowBase(43)
+	binary.LittleEndian.PutUint64(input[scoringBase+lmu13Layout.Scoring.BestLapTime.Offset:], math.Float64bits(90.5))
+	telemetryBase := telemetryOffset + int(input[128465])*telemetryStride
+	binary.LittleEndian.PutUint64(input[telemetryBase+lmu13Layout.Telemetry.DeltaBest.Offset:], math.Float64bits(-0.245))
+
+	parsed, err := parseSupported(input, time.Unix(100, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	fused := new(Fusion).Merge(parsed.ReceivedUTC, 0, parsed)
+	mapper, reducer := NewBatchMapper(), telemetrycore.NewReducer()
+	pipeline := derive.NewPipeline(derive.Config{})
+	var projected overlayprojection.SnapshotV1
+	sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
+		observed, err := reducer.Apply(batch)
+		if err != nil {
+			return err
+		}
+		final, err := pipeline.Apply(context.Background(), observed)
+		if err != nil {
+			return err
+		}
+		projected, err = overlayprojection.ProjectV1(final)
+		return err
+	})
+	if err := mapper.WriteObservation(context.Background(), fused, sink); err != nil {
+		t.Fatal(err)
+	}
+	if !projected.PlayerDelta.Present || projected.PlayerDelta.Value != session.DeltaSeconds(-0.245) ||
+		projected.PlayerDelta.Provenance != telemetryprojection.ProvenanceObserved {
+		t.Fatalf("projected native delta = %+v", projected.PlayerDelta)
+	}
+	if !projected.PlayerDeltaPersonalBest.Present || projected.PlayerDeltaPersonalBest.Value != session.DeltaSeconds(-0.245) ||
+		projected.PlayerDeltaPersonalBest.Provenance != telemetryprojection.ProvenanceObserved {
+		t.Fatalf("projected personal-best delta = %+v", projected.PlayerDeltaPersonalBest)
+	}
+	if projected.PlayerDeltaSessionBest.Present || projected.PlayerDeltaPreviousLap.Present {
+		t.Fatalf("first frame invented derived references: session=%+v previous=%+v", projected.PlayerDeltaSessionBest, projected.PlayerDeltaPreviousLap)
+	}
+	if !projected.DeltaReference.Present || projected.DeltaReference.Value != "best-completed-player-lap" ||
+		projected.DeltaReference.Provenance != telemetryprojection.ProvenanceObserved {
+		t.Fatalf("projected native delta reference = %+v", projected.DeltaReference)
 	}
 }
 
@@ -565,6 +617,19 @@ func TestBatchMapperRejectsInvalidIdentityFactsAtomically(t *testing.T) {
 			writeMapped(t, mapper, trackObservation(7), sink)
 			assertCursor(t, sink.last(t), 1, 1)
 		})
+	}
+}
+
+func TestBatchMapperPreservesObservedNativeDeltaBest(t *testing.T) {
+	observation := trackObservation(7)
+	observation.Vehicles[0].DeltaBest = observed(session.DeltaSeconds(-0.245))
+	mapper, sink := NewBatchMapper(), new(batchCollector)
+	writeMapped(t, mapper, observation, sink)
+
+	field := sink.last(t).State.Vehicles[0].DeltaBest
+	value, present := field.Value()
+	if !present || value != session.DeltaSeconds(-0.245) || field.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("mapped native delta = (%v,%t,%v)", value, present, field.Provenance())
 	}
 }
 

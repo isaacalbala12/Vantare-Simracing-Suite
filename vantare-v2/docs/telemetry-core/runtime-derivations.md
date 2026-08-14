@@ -29,7 +29,7 @@ El registro canónico contiene cuatro derivaciones fijas:
 | 1 | `controls.history` | 1 | throttle, brake y clutch observados del vehículo activo | historial de controles | 120 muestras | epoch, sesión, run y vehículo |
 | 2 | `session.remaining` | 1 | reloj actual y fin observado de sesión | segundos restantes | — | epoch y sesión |
 | 3 | `standings.relative-gaps` | 1 | tiempo y vueltas detrás del líder de jugador y rivales | gap temporal o delta de vueltas por vehículo | — | epoch, sesión, run y vehículo |
-| 4 | `session.self-delta` | 1 | reloj, vuelta, distancia e InPit observados del jugador | delta, referencia y tendencia | 18.000 muestras privadas; 120 públicas | epoch, sesión, run y vehículo |
+| 4 | `session.self-delta` | 1 | delta best nativo o reloj, vuelta, distancia e InPit observados del jugador | delta, referencia y tendencia | 18.000 muestras privadas; 120 públicas | epoch, sesión, run y vehículo |
 
 `Registry` devuelve copias defensivas. `ValidateDefinitions` rechaza ID+versión
 duplicados, órdenes duplicados/no contiguos, outputs con más de un productor,
@@ -73,11 +73,20 @@ publica el delta de vueltas: nunca transforma una vuelta en segundos ficticios.
 Player markers, procedencia observada, presencia, finitud y calidad deben ser
 demostrables.
 
-`session.self-delta@1` usa la mejor vuelta válida completada por el jugador como
-referencia. Positivo significa que la vuelta actual es más lenta y negativo que
-es más rápida. La referencia se interpola por distancia exclusivamente entre
-muestras observadas; no extrapola, no consume `mDeltaBest` y no usa el fallback
-legacy de velocidad constante.
+`session.self-delta@1` conserva simultáneamente tres referencias seleccionables:
+mejor vuelta personal, mejor vuelta válida de la sesión y última vuelta completa
+válida. Selecciona primero el delta nativo del simulador contra la mejor vuelta
+personal cuando llega con presencia y calidad explícitas. En LMU
+procede de `mDeltaBest`; positivo significa más lento y negativo más rápido. El
+valor y la referencia conservan procedencia `observed` y no necesitan una vuelta
+de calentamiento en Vantare.
+
+La referencia de sesión conserva la vuelta completa más rápida observada por
+Vantare; la referencia anterior conserva la última vuelta completa aunque sea
+más lenta. Ambas se interpolan exclusivamente entre muestras observadas y no
+extrapolan. El delta personal puede usar la referencia de sesión como fallback
+para el campo legacy, pero la proyección separada no sustituye un modo ausente
+por otro.
 
 La primera vuelta parcial solo sincroniza. Pit, dato missing/invalid, regresión
 de vuelta, cambio de epoch/sesión/run/vehículo o una discontinuidad grande

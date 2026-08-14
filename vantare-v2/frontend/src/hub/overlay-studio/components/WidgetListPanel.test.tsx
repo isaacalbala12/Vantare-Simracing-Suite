@@ -15,6 +15,11 @@ function widget(id: string, zIndex: number, enabled = true): WidgetInstanceV3 {
 }
 
 function buildDocument(): ProfileDocumentV3 {
+  const first = widget("delta-a", 0);
+  const second = widget("delta-b", 2);
+  second.type = "relative";
+  const third = widget("delta-c", 1, false);
+  third.type = "standings";
   return {
     schemaVersion: 3,
     id: "profile-1",
@@ -24,7 +29,7 @@ function buildDocument(): ProfileDocumentV3 {
     layouts: {
       general: {
         type: "general",
-        widgets: [widget("delta-a", 0), widget("delta-b", 2), widget("delta-c", 1, false)],
+        widgets: [first, second, third],
         preservedWidgets: [{ id: "legacy-1", type: "standings", source: {} }],
       },
     },
@@ -82,11 +87,11 @@ describe("WidgetListPanel", () => {
     await waitFor(() => expect(screen.getByTestId("studio-show-add-widget")).toBeTruthy());
     fireEvent.click(screen.getByTestId("studio-show-add-widget"));
     expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy();
-    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
+    expect(screen.getByTestId("studio-catalog-entry-pedals")).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId("studio-catalog-add-delta"));
-    await waitFor(() => expect(screen.getByTestId("studio-widget-row-delta-main")).toBeTruthy());
-    expect(screen.getByTestId("studio-widget-row-delta-main").className).toContain("osv3-list-panel__row--selected");
+    fireEvent.click(screen.getByTestId("studio-catalog-add-pedals"));
+    await waitFor(() => expect(screen.getByTestId("studio-widget-row-pedals-main")).toBeTruthy());
+    expect(screen.getByTestId("studio-widget-row-pedals-main").className).toContain("osv3-list-panel__row--selected");
   });
 
   it("shows preserved legacy widgets as read-only entries", async () => {

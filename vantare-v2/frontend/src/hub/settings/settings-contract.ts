@@ -69,6 +69,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",
+    cycleDeltaReference: "ctrl+shift+d",
     nextProfile: "ctrl+shift+right",
     prevProfile: "ctrl+shift+left",
   },
@@ -79,7 +80,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
  * i18n dictionaries under settings.hotkeys.<key>; this list only decides which
  * ones exist and in what order.
  */
-export const HOTKEY_KEYS = ["toggleOverlay", "nextProfile", "prevProfile"] as const;
+export const HOTKEY_KEYS = ["toggleOverlay", "cycleDeltaReference", "nextProfile", "prevProfile"] as const;
 
 export const CHANNEL_LABELS: Record<Channel, string> = {
   stable: "Stable",

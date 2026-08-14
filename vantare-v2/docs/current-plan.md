@@ -1,3 +1,40 @@
+Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
+- Cada layout admite exactamente un widget Delta. Studio oculta la acción de
+  añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la
+  duplicación y un documento externo con dos Delta. Al cargar un perfil antiguo,
+  el primer Delta sigue activo y cualquier extra se conserva íntegro como widget
+  preservado, sin renderizarlo ni borrar su configuración.
+- Delta permite elegir en Contenido entre mejor vuelta personal, mejor vuelta
+  de la sesión y vuelta anterior. Los perfiles existentes migran de forma
+  compatible a `personal-best`; no se reanima el antiguo ajuste global
+  `deltaMode`.
+- Telemetry Core conserva las tres referencias simultáneamente: personal usa el
+  `mDeltaBest` observado de LMU; sesión y anterior se reconstruyen solo desde
+  vueltas completas válidas de la sesión actual. Cada campo conserva presencia,
+  provenance y freshness; un modo ausente no toma silenciosamente el valor de otro.
+- El hotkey global configurable `cycleDeltaReference` usa `Ctrl+Shift+D` por
+  defecto y recorre Personal → Sesión → Anterior → Personal. Sincroniza los
+  layouts explícitos del perfil activo, persiste el documento y lo vuelve a
+  emitir a Desktop/OBS mediante el runtime existente.
+- Gates sobre `origin/nightly@7e4eac6`: `go test ./...` PASS; frontend 370
+  archivos/2673 tests PASS; build y ESLint focal PASS. La suite mantiene dos
+  `AbortError` heredados de teardown de happy-dom después del resumen, con exit 0.
+- Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`;
+  no hay commit, push, PR ni promoción todavía.
+
+Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
+- El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como
+  señal observada con signo, presencia, freshness y provenance explícitos.
+  El dato nativo gana sin warm-up; `session.self-delta@1` permanece como
+  fallback cuando el simulador no publica un valor usable.
+- El widget Delta conserva el último valor durante `stale` en vez de sustituirlo
+  por `—`. Un test buffer-to-overlay prueba `-0.245` en el primer frame con
+  provenance `observed`; tests separados cubren positivo, cero válido, startup
+  missing, inválido, stale y fallback derivado.
+- Gates: Telemetry Core focal PASS; frontend completo 370/2656 PASS; build PASS;
+  ESLint focal y diff-check PASS. `go test ./...` tuvo dos flakes ajenos en dos
+  ejecuciones (`engineer/ptt` y diagnostics bridge); ambos pasan aislados.
+
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
@@ -1753,7 +1790,9 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
 - La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
   y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
   weather no admitido, fases/banderas, pit-state labels, remaining raw,
-  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+  `FuelFraction` continúa missing, nunca cero inventado. Corrección 2026-08-14:
+  native `mDeltaBest` vuelve a estar admitido como `session.native_delta_best`,
+  gana sobre el self-delta derivado y conserva presencia, freshness y provenance.
 - Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
   `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
   jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;

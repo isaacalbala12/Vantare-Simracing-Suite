@@ -201,10 +201,11 @@ func DefaultAppSettings() *AppSettings {
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
 		Hotkeys: map[string]string{
-			"toggleOverlay":  "ctrl+shift+v",
-			"toggleEditMode": "ctrl+shift+e",
-			"nextProfile":    "ctrl+shift+right",
-			"prevProfile":    "ctrl+shift+left",
+			"toggleOverlay":       "ctrl+shift+v",
+			"toggleEditMode":      "ctrl+shift+e",
+			"cycleDeltaReference": "ctrl+shift+d",
+			"nextProfile":         "ctrl+shift+right",
+			"prevProfile":         "ctrl+shift+left",
 		},
 		LauncherApps:     defaultLauncherApps(),
 		LauncherProfiles: defaultLauncherProfiles(),
@@ -271,7 +272,7 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 2
+const appSettingsSchemaVersion = 3
 
 // migrateSettings applies schema migrations in place.
 //
@@ -282,6 +283,8 @@ const appSettingsSchemaVersion = 2
 //	          keys in an older file are ignored by the decoder, so a v1 file
 //	          loads cleanly. cpuSampling stays -- it drives the runtime CPU
 //	          sampler through SetCPUEnabled.
+//	v2 -> v3: add the configurable Delta reference hotkey without replacing any
+//	          user-defined combinations.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -292,8 +295,17 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 			settings.LauncherProfiles = defaultLauncherProfiles()
 		}
 	}
-	if settings.SchemaVersion < appSettingsSchemaVersion {
-		settings.SchemaVersion = appSettingsSchemaVersion
+	if settings.SchemaVersion < 2 {
+		settings.SchemaVersion = 2
+	}
+	if settings.SchemaVersion < 3 {
+		if settings.Hotkeys == nil {
+			settings.Hotkeys = map[string]string{}
+		}
+		if _, exists := settings.Hotkeys["cycleDeltaReference"]; !exists {
+			settings.Hotkeys["cycleDeltaReference"] = "ctrl+shift+d"
+		}
+		settings.SchemaVersion = 3
 	}
 }
 
@@ -601,10 +613,11 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		}
 	} else {
 		merged.Hotkeys = map[string]string{
-			"toggleOverlay":  "ctrl+shift+v",
-			"toggleEditMode": "ctrl+shift+e",
-			"nextProfile":    "ctrl+shift+right",
-			"prevProfile":    "ctrl+shift+left",
+			"toggleOverlay":       "ctrl+shift+v",
+			"toggleEditMode":      "ctrl+shift+e",
+			"cycleDeltaReference": "ctrl+shift+d",
+			"nextProfile":         "ctrl+shift+right",
+			"prevProfile":         "ctrl+shift+left",
 		}
 	}
 	if loaded.LauncherApps != nil {

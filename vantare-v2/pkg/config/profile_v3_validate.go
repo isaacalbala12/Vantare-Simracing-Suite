@@ -103,12 +103,19 @@ func validateSessionLayoutV3(prefix string, layout SessionLayoutV3, viewport Lay
 	}
 
 	seen := map[string]bool{}
+	deltaSeen := false
 	for i, widget := range layout.Widgets {
 		path := fmt.Sprintf("%s.widgets[%d]", prefix, i)
 		if seen[widget.ID] {
 			return validationError(prefix+".widgets", "duplicate widget id")
 		}
 		seen[widget.ID] = true
+		if widget.Type == WidgetTypeDelta {
+			if deltaSeen {
+				return validationError(prefix+".widgets", "only one delta widget is allowed per layout")
+			}
+			deltaSeen = true
+		}
 		if err := validateWidgetInstanceV3(path, widget, viewport); err != nil {
 			return err
 		}

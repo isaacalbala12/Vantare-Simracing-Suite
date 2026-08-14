@@ -4,11 +4,12 @@ Estado histórico: ISA-129 / TC-07A.1, microcorte D4A. Este documento conserva
 la matriz ejecutable `v3` auditada en ese corte.
 
 Nota vigente ISA-160 / TC-10A (2026-08-11): el runtime productivo actual es
-`MatrixVersion=4`, definido por `authorityMatrixV4` y expuesto mediante
-`AuthorityMatrix()` en `internal/telemetry/drivers/lmu/fusion.go`. V4 conserva
+`MatrixVersion=5`, definido por `authorityMatrixV4` y expuesto mediante
+`AuthorityMatrix()` en `internal/telemetry/drivers/lmu/fusion.go`. V4 conservó
 las 33 reglas v3 siguientes y añade al final las tres señales SHM-only
 `spatial.position`, `spatial.orientation` y `spatial.local_velocity`, todas con
-TTL de 500 ms. La fuente de verdad ejecutable es `fusion.go`, protegida por
+TTL de 500 ms. V5 añade `session.native_delta_best`, también SHM-only y con TTL
+de 500 ms. La fuente de verdad ejecutable es `fusion.go`, protegida por
 `fusion_test.go` y por los contrastes no circulares de
 `strategy_signal_audit_test.go`. Esta nota no reinterpreta la evidencia
 histórica D4A ni amplía las señales Strategy admitidas.

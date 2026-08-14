@@ -100,6 +100,8 @@ var definitions = []Definition{
 	{ID: SignalSessionSelfDeltaSeconds, Key: "session.self_delta_seconds", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed player delta against the declared reference."},
 	{ID: SignalSessionSelfDeltaReference, Key: "session.self_delta_reference", Domain: schema.DomainSession, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Known canonical self-delta reference enum only."},
 	{ID: SignalSpatialLocalVelocity, Key: "spatial.local_velocity", Domain: schema.DomainSpatial, Unit: schema.UnitMetersPerSecond, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Vehicle-local XYZ velocity in m/s; LMU axes are +X left, +Y up and +Z rearward."},
+	{ID: SignalSessionNativeDeltaBest, Key: "session.native_delta_best", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed simulator-provided player delta to the personal best lap; validity remains explicit."},
+	{ID: SignalSessionPreviousLapDelta, Key: "session.previous_lap_delta", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed player delta against the most recent complete valid lap observed in the current session."},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

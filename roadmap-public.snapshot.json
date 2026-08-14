@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T21:20:24Z",
+  "generatedAt": "2026-08-14T21:35:26Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -601,9 +601,9 @@
             "it": "Pianificazione manuale della gara."
           },
           "progress": {
-            "done": 18,
+            "done": 19,
             "total": 29,
-            "percent": 62
+            "percent": 66
           },
           "tasks": [
             {
@@ -611,12 +611,6 @@
               "title": "Catálogo oficial firmado de Vantare",
               "status": "in-progress",
               "updatedAt": "2026-08-14T00:57:30.536Z"
-            },
-            {
-              "id": "task_03c0faf16940f92e6c4b",
-              "title": "Exponer activación y desactivación del plan en la UI",
-              "status": "in-progress",
-              "updatedAt": "2026-08-14T21:12:37.544Z"
             },
             {
               "id": "task_7f6bd0e8290884567a7f",
@@ -707,6 +701,12 @@
               "title": "Entrada manual avanzada y fuel-save",
               "status": "done",
               "updatedAt": "2026-08-03T00:34:28.706Z"
+            },
+            {
+              "id": "task_03c0faf16940f92e6c4b",
+              "title": "Exponer activación y desactivación del plan en la UI",
+              "status": "done",
+              "updatedAt": "2026-08-14T21:35:16.189Z"
             },
             {
               "id": "task_637de38f9ebdb077cecd",

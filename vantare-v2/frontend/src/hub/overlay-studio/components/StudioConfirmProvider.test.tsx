@@ -2,12 +2,12 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DELETE_WIDGET_CONFIRM_STORAGE_KEY,
-  readDeleteWidgetConfirmEnabled,
-} from "../state/delete-widget-confirm";
+  readConfirmEnabled,
+} from "../state/studio-confirm-preferences";
 import {
-  DeleteWidgetConfirmProvider,
+  StudioConfirmProvider,
   useDeleteWidgetConfirm,
-} from "./DeleteWidgetConfirmProvider";
+} from "./StudioConfirmProvider";
 
 function memoryStorage(seed: Record<string, string> = {}): Storage {
   const map = new Map(Object.entries(seed));
@@ -38,7 +38,7 @@ function Harness(props: { commit(): void; names?: readonly string[] }): React.Re
   );
 }
 
-describe("DeleteWidgetConfirmProvider", () => {
+describe("StudioConfirmProvider", () => {
   afterEach(() => cleanup());
 
   it("asks before deleting instead of falling back to the native confirm", () => {
@@ -46,9 +46,9 @@ describe("DeleteWidgetConfirmProvider", () => {
     const nativeConfirm = vi.fn();
     vi.stubGlobal("confirm", nativeConfirm);
     render(
-      <DeleteWidgetConfirmProvider storage={memoryStorage()}>
+      <StudioConfirmProvider storage={memoryStorage()}>
         <Harness commit={commit} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
@@ -62,9 +62,9 @@ describe("DeleteWidgetConfirmProvider", () => {
   it("keeps the widget when the dialog is cancelled or dismissed with Escape", () => {
     const commit = vi.fn();
     render(
-      <DeleteWidgetConfirmProvider storage={memoryStorage()}>
+      <StudioConfirmProvider storage={memoryStorage()}>
         <Harness commit={commit} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
@@ -81,9 +81,9 @@ describe("DeleteWidgetConfirmProvider", () => {
   it("deletes once confirmed and closes the dialog", () => {
     const commit = vi.fn();
     render(
-      <DeleteWidgetConfirmProvider storage={memoryStorage()}>
+      <StudioConfirmProvider storage={memoryStorage()}>
         <Harness commit={commit} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
@@ -95,9 +95,9 @@ describe("DeleteWidgetConfirmProvider", () => {
 
   it("lists every target when several widgets go at once", () => {
     render(
-      <DeleteWidgetConfirmProvider storage={memoryStorage()}>
+      <StudioConfirmProvider storage={memoryStorage()}>
         <Harness commit={vi.fn()} names={["Delta", "Relative"]} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
@@ -110,9 +110,9 @@ describe("DeleteWidgetConfirmProvider", () => {
     const storage = memoryStorage();
     const commit = vi.fn();
     render(
-      <DeleteWidgetConfirmProvider storage={storage}>
+      <StudioConfirmProvider storage={storage}>
         <Harness commit={commit} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
@@ -129,12 +129,12 @@ describe("DeleteWidgetConfirmProvider", () => {
   it("starts silent when the opt-out was stored in a previous session", () => {
     const commit = vi.fn();
     const storage = memoryStorage({ [DELETE_WIDGET_CONFIRM_STORAGE_KEY]: "off" });
-    expect(readDeleteWidgetConfirmEnabled(storage)).toBe(false);
+    expect(readConfirmEnabled(DELETE_WIDGET_CONFIRM_STORAGE_KEY, storage)).toBe(false);
 
     render(
-      <DeleteWidgetConfirmProvider storage={storage}>
+      <StudioConfirmProvider storage={storage}>
         <Harness commit={commit} />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("trigger"));

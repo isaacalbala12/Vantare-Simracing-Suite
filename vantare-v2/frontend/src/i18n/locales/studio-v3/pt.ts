@@ -170,10 +170,18 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.design.renamePrompt": "Novo nome do design",
   "studio.v3.design.loadFailed": "Não foi possível carregar os designs guardados.",
   "studio.v3.design.applyAll.confirm":
-    'Aplicar "{name}" a {count} widget(s) compatível(eis) nesta sessão',
+    "Aplicar «{name}» a {count} widget(s) compatível(eis) nesta sessão",
   "studio.v3.design.applyAll.skippedSuffix": "({count} omitido(s) por incompatibilidade)",
   "studio.v3.design.saveFailed": "Não foi possível guardar o design.",
   "studio.v3.design.deleteConfirm": 'Eliminar o design "{name}"?',
+  "studio.v3.confirm.cancel": "Cancelar",
+  "studio.v3.design.deleteDialog.title": "Eliminar o design?",
+  "studio.v3.design.deleteDialog.body": "«{name}» vai ser removido dos teus designs guardados.",
+  "studio.v3.design.deleteDialog.hint":
+    "Os widgets que já o usam mantêm o aspeto atual.",
+  "studio.v3.design.applyAllDialog.title": "Aplicar a todos?",
+  "studio.v3.design.applyAllDialog.hint":
+    "Podes desfazer com Ctrl+Z enquanto não guardares as alterações.",
   "studio.v3.design.deleteFailed": "Não foi possível eliminar o design.",
   "studio.v3.design.renameFailed": "Não foi possível renomear o design.",
   "studio.v3.design.status.active": "Ativo",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T01:56:12Z",
+  "generatedAt": "2026-08-14T02:17:31Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,16 +28,16 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 16,
+            "done": 17,
             "total": 33,
-            "percent": 48
+            "percent": 52
           },
           "tasks": [
             {
               "id": "task_9b688e53bf087679e0f7",
               "title": "Delta — referencias reales de telemetría, instancia única y hotkey global",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T01:47:30.394Z"
+              "updatedAt": "2026-08-14T02:12:04.269Z"
             },
             {
               "id": "task_609d33340526777a9186",
@@ -50,12 +50,6 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
-            },
-            {
-              "id": "task_fc2a79ce7d269c04e458",
-              "title": "Promover a Nightly",
-              "status": "in-progress",
-              "updatedAt": "2026-08-14T00:50:50.442Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -175,7 +169,7 @@
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "done",
-              "updatedAt": "2026-08-14T01:56:02.601Z"
+              "updatedAt": "2026-08-14T02:17:18.303Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
@@ -200,6 +194,12 @@
               "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
               "status": "done",
               "updatedAt": "2026-08-12T01:13:03.034Z"
+            },
+            {
+              "id": "task_fc2a79ce7d269c04e458",
+              "title": "Promover a Nightly",
+              "status": "done",
+              "updatedAt": "2026-08-14T02:17:18.303Z"
             },
             {
               "id": "task_7110c13b4b7c325111c7",

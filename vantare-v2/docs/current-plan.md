@@ -13,9 +13,11 @@ Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
   El preview T3 abrió el Vite correcto en 1280x800, pero snapshot y evaluación
   fallaron/agotaron tiempo, por lo que la inspección visual manual sigue
   pendiente.
-- Estado: implementación en `4258ca06`, nacida de
-  `origin/nightly@673283a2` y sincronizada después con
-  `origin/nightly@521e862c`. Sin promoción ni release.
+- Estado: promovida mediante PR #245 y squash
+  `2909ba73d907eee993fcdec866829973b1bb1474` sobre
+  `nightly@c394e71f`. Los gates del PR y el gate posterior de Nightly
+  (`31817001802`) pasaron; el snapshot público del roadmap se regeneró en
+  `31817001849`. Sin promoción a `testers`/`master` ni release.
 
 Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
 - Primer corte contract-first de ISA-346 completado: contrato puro equivalente

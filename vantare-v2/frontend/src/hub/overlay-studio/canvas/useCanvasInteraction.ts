@@ -222,6 +222,7 @@ export function applyResizePreview(input: {
     pointerDelta: delta,
     minSize: definition.capabilities.minimumSize,
     supportsAspectUnlock: definition.capabilities.supportsAspectUnlock,
+    resizeMode: definition.capabilities.resizeMode,
   });
 
   const resized = resize(pointerDelta);

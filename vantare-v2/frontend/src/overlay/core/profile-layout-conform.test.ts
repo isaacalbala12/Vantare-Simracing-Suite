@@ -53,4 +53,13 @@ describe("conformAspectLockedLayout", () => {
     const original = widget(unlockable!.type, 777, 111);
     expect(conformAspectLockedLayout(original)).toBe(original);
   });
+
+  it("normalizes legacy broadcast towers to their fixed strip height", () => {
+    const legacy = widget("broadcast-tower", 520, 260);
+    legacy.layout.aspectLocked = true;
+
+    const conformed = conformAspectLockedLayout(legacy);
+
+    expect(conformed.layout).toMatchObject({ w: 520, h: 50, aspectLocked: false });
+  });
 });

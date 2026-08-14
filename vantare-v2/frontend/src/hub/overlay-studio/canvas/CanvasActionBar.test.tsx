@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import { DeleteWidgetConfirmProvider } from "../components/DeleteWidgetConfirmProvider";
 import { CanvasActionBar } from "./CanvasActionBar";
 
 function buildSaved(): ProfileDocumentV3 {
@@ -79,5 +80,37 @@ describe("CanvasActionBar", () => {
         y: Math.round((1000 - widget.layout.h) / 2),
       },
     });
+  });
+
+  it("routes delete through the studio dialog instead of the native confirm", () => {
+    const dispatch = vi.fn();
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal("confirm", nativeConfirm);
+    const widget = deltaDefinition.createDefault("delta-main");
+
+    render(
+      <DeleteWidgetConfirmProvider storage={null}>
+        <CanvasActionBar
+          widgetId="delta-main"
+          session="general"
+          widgets={[widget]}
+          savedDocument={buildSaved()}
+          dispatch={dispatch}
+          selectWidget={vi.fn()}
+        />
+      </DeleteWidgetConfirmProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("studio-action-delete"));
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("studio-delete-widget-confirm"));
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "widget/delete",
+      session: "general",
+      widgetIds: ["delta-main"],
+    });
+    vi.unstubAllGlobals();
   });
 });

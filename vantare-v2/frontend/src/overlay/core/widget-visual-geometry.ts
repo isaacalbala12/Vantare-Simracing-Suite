@@ -28,6 +28,10 @@ export function resolveWidgetVisualGeometryForType(
   layout: VisualLayoutSize,
   widgetType: WidgetType,
 ): WidgetVisualGeometry {
-  const { width } = widgetTypeRegistry.get(widgetType).capabilities.defaultSize;
+  const capabilities = widgetTypeRegistry.get(widgetType).capabilities;
+  if (capabilities.resizeMode === "horizontal-only") {
+    return resolveWidgetVisualGeometry(layout, layout.w);
+  }
+  const { width } = capabilities.defaultSize;
   return resolveWidgetVisualGeometry(layout, width);
 }

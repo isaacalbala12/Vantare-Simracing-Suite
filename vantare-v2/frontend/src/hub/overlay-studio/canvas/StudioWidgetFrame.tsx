@@ -10,6 +10,7 @@ import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot
 import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../../../overlay/core/WidgetVisualViewport";
+import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ResizeHandle } from "./canvas-resize";
@@ -66,6 +67,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
   const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const resizeHandles = widgetTypeRegistry.get(widget.type).capabilities.resizeMode === "horizontal-only"
+    ? (["e", "w"] as const)
+    : RESIZE_HANDLES;
 
   useLayoutEffect(() => {
     registerStudioFrameElement(widget.id, frameRef.current);
@@ -135,7 +139,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         </span>
       ) : null}
       {selected && onResizePointerDown
-        ? RESIZE_HANDLES.map((handle) => (
+        ? resizeHandles.map((handle) => (
             <button
               key={handle}
               type="button"

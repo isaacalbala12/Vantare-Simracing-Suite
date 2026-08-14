@@ -1,46 +1,132 @@
-/* index.css pins html/body/#root to height:100% with overflow:hidden, and the
-   hub neutralises it with a class this page does not carry. So the page has to
-   do its own scrolling, or everything below the fold is unreachable. */
+/* Authoring chrome for the Workshop. Uses the app's own tokens rather than a
+   private palette, so this page reads as part of Vantare and not as a
+   different product with the same widgets inside it. */
 .overlay-workshop {
   height: 100%;
   overflow-y: auto;
-  padding: 20px;
-  background: #090a0f;
-  color: #f4f5f8;
-  font-family: Inter, system-ui, sans-serif;
+  padding: 24px;
+  background: var(--v-bg);
+  color: var(--v-text);
+  font-family: var(--v-font-sans), Inter, system-ui, sans-serif;
 }
 
-.overlay-workshop-header,
-.overlay-workshop-controls {
+.overlay-workshop-header {
   display: flex;
-  gap: 12px;
-  align-items: center;
   flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin: 0 auto 18px;
+}
+
+.overlay-workshop-header__title { display: flex; align-items: center; gap: 10px; }
+
+.overlay-workshop-header h1 {
+  margin: 0;
+  font: 700 18px/1.2 var(--v-font-sans), Inter, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.overlay-workshop-badge {
+  padding: 3px 8px;
+  border: 1px solid var(--v-red-500);
+  border-radius: 999px;
+  color: var(--v-red-400);
+  font: 700 9px/1 "JetBrains Mono", monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.overlay-workshop-header span[data-overlay-workshop-query] {
+  color: var(--v-text-dim);
+  font: 11px/1.4 "JetBrains Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+/* align-items:start so each group is as tall as its own contents; stretching
+   them to match the tallest left two panels mostly empty. */
+.overlay-workshop-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+  gap: 12px;
   max-width: 1280px;
   margin: 0 auto 16px;
 }
 
-.overlay-workshop-header p { margin: 0; font: 700 12px/1 "JetBrains Mono", monospace; letter-spacing: .12em; color: #ff3b3b; }
-.overlay-workshop-header span { font: 12px/1.4 "JetBrains Mono", monospace; color: #8d94a5; overflow-wrap: anywhere; }
-.overlay-workshop-control { display: grid; gap: 5px; color: #aeb5c5; font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
-.overlay-workshop-control select { min-width: 145px; border: 1px solid #2d3240; border-radius: 5px; background: #131621; color: #f4f5f8; padding: 8px; font: 12px/1.2 Inter, system-ui, sans-serif; }
+.overlay-workshop-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  align-content: start;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--v-border);
+  border-radius: 10px;
+  background: var(--v-surface);
+}
+
+.overlay-workshop-group legend {
+  padding: 0 6px;
+  color: var(--v-text-muted);
+  font: 700 10px/1 "JetBrains Mono", monospace;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.overlay-workshop-group__actions { display: flex; gap: 8px; align-items: flex-end; }
+
+.overlay-workshop-group button {
+  padding: 8px 12px;
+  border: 1px solid var(--v-border);
+  border-radius: 6px;
+  background: rgba(245, 245, 245, .04);
+  color: var(--v-text);
+  font: 600 12px/1.2 var(--v-font-sans), Inter, sans-serif;
+  cursor: pointer;
+}
+
+.overlay-workshop-group button:hover { border-color: var(--v-border-hover); background: rgba(245, 245, 245, .07); }
+.overlay-workshop-button--quiet { color: var(--v-text-muted) !important; }
+
+.overlay-workshop-control { display: grid; gap: 5px; color: var(--v-text-muted); font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+/* Inputs get the same treatment as selects: styling only the selects left
+   Width, Height and Scale as bare unstyled fields that read as broken. */
+.overlay-workshop-control select,
+.overlay-workshop-control input {
+  min-width: 128px;
+  border: 1px solid var(--v-border);
+  border-radius: 6px;
+  background: var(--v-bg);
+  color: var(--v-text);
+  padding: 8px;
+  font: 12px/1.2 var(--v-font-sans), Inter, sans-serif;
+}
+
+.overlay-workshop-control select:focus-visible,
+.overlay-workshop-control input:focus-visible {
+  outline: none;
+  border-color: var(--v-red-500);
+}
 
 /* The stage is authoring chrome; renderer alpha/bounds are asserted on the root below. */
 /* A fixed floor rather than one derived from the viewport: the controls above
    it grew, and a viewport-relative height just pushed the stage off-screen. */
-.overlay-workshop-stage { display: flex; min-height: 480px; align-items: center; justify-content: center; gap: 28px; padding: 36px; overflow: auto; border: 1px solid #222838; }
+.overlay-workshop-stage { display: flex; min-height: 480px; align-items: center; justify-content: center; gap: 28px; padding: 36px; overflow: auto; border: 1px solid var(--v-border); }
 .overlay-workshop-stage--grid { background-image: linear-gradient(rgba(110, 121, 150, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(110, 121, 150, .08) 1px, transparent 1px); background-size: 32px 32px; }
 .overlay-workshop-stage--solid { background: #171b25; }
 .overlay-workshop-stage--context { background: radial-gradient(circle at 18% 20%, #353b52, transparent 40%), linear-gradient(135deg, #08090d, #202635); }
 .overlay-workshop-stage--transparent { background: repeating-conic-gradient(#d7d9df 0% 25%, #aeb3bf 0% 50%) 50% / 24px 24px; }
 .overlay-workshop-surface { display: grid; gap: 8px; min-width: 0; justify-items: center; }
-.overlay-workshop-surface-label { font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: #aeb5c5; }
+.overlay-workshop-surface-label { font: 700 10px/1 "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--v-text-muted); }
 /* Clipped exactly like RuntimeWidgetFrame does in Desktop and OBS. Leaving it
    visible showed animations that overflow the widget — the crown in flight,
    halos, retirement ghosts — whole, when a real session cuts them off at the
    edge. The point of this page is to see what ships. */
 .overlay-workshop-widget-root { position: relative; overflow: hidden; flex: none; }
-.overlay-workshop-error { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #160d10; color: #ffb5bd; font: 14px/1.5 "JetBrains Mono", monospace; }
+.overlay-workshop-error { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #160d10; color: var(--v-red-400); font: 14px/1.5 "JetBrains Mono", monospace; }
 @media (max-width: 900px) { .overlay-workshop { padding: 12px; } .overlay-workshop-stage { align-items: flex-start; justify-content: flex-start; } }
 
 /* Scene catalog and transport. Separated from the selection controls above so
@@ -51,10 +137,10 @@
   max-width: 1280px;
   margin: 0 auto 16px;
   padding: 14px 16px;
-  border: 1px solid #2d3240;
-  border-left: 2px solid #ff3b3b;
+  border: 1px solid var(--v-border);
+  border-left: 2px solid var(--v-red-500);
   border-radius: 6px;
-  background: #101320;
+  background: var(--v-surface);
 }
 
 .overlay-workshop-transport { display: grid; gap: 10px; }
@@ -63,41 +149,41 @@
 .overlay-workshop-transport__buttons button {
   min-width: 44px;
   padding: 7px 12px;
-  border: 1px solid #2d3240;
+  border: 1px solid var(--v-border);
   border-radius: 5px;
-  background: #171b28;
-  color: #f4f5f8;
+  background: rgba(245, 245, 245, .04);
+  color: var(--v-text);
   font: 700 12px/1.2 Inter, system-ui, sans-serif;
   cursor: pointer;
 }
 
-.overlay-workshop-transport__buttons button:hover { border-color: #454c60; background: #1d2231; }
-.overlay-workshop-transport__buttons button[aria-pressed="true"] { border-color: #ff3b3b; color: #ff9ba1; }
+.overlay-workshop-transport__buttons button:hover { border-color: var(--v-border-hover); background: rgba(245, 245, 245, .07); }
+.overlay-workshop-transport__buttons button[aria-pressed="true"] { border-color: var(--v-red-400); color: #ff9ba1; }
 
 .overlay-workshop-transport__scrub {
   display: grid;
   gap: 6px;
-  color: #aeb5c5;
+  color: var(--v-text-muted);
   font: 700 10px/1 "JetBrains Mono", monospace;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.overlay-workshop-transport__scrub input { width: 100%; accent-color: #ff3b3b; }
+.overlay-workshop-transport__scrub input { width: 100%; accent-color: var(--v-red-400); }
 
 .overlay-workshop-transport__caption {
   margin: 0;
-  color: #f4f5f8;
+  color: var(--v-text);
   font: 600 13px/1.4 Inter, system-ui, sans-serif;
 }
 
 .overlay-workshop-transport__watch {
   margin: 0;
-  color: #8d94a5;
+  color: var(--v-text-muted);
   font: 12px/1.5 Inter, system-ui, sans-serif;
 }
 
-.overlay-workshop-transport__watch strong { color: #aeb5c5; }
+.overlay-workshop-transport__watch strong { color: var(--v-text-muted); }
 
 /* A scene that only ever plays against the mock has to say so where it is
    being judged, not in a document nobody opens while designing. */
@@ -120,14 +206,14 @@
    vocabulary of the widget at once, and playing one is a single click. */
 .overlay-workshop-scenes__head h2 {
   margin: 0;
-  color: #f4f5f8;
+  color: var(--v-text);
   font: 700 13px/1.2 Inter, system-ui, sans-serif;
   letter-spacing: .01em;
 }
 
 .overlay-workshop-scenes__head p {
   margin: 3px 0 0;
-  color: #8d94a5;
+  color: var(--v-text-muted);
   font: 12px/1.4 Inter, system-ui, sans-serif;
 }
 
@@ -138,35 +224,35 @@
   align-items: center;
   gap: 8px;
   padding: 8px 13px;
-  border: 1px solid #2d3240;
+  border: 1px solid var(--v-border);
   border-radius: 999px;
-  background: #171b28;
-  color: #f4f5f8;
+  background: rgba(245, 245, 245, .04);
+  color: var(--v-text);
   font: 600 12px/1.2 Inter, system-ui, sans-serif;
   cursor: pointer;
 }
 
-.overlay-workshop-scenes__item:hover { border-color: #ff3b3b; background: #1d2231; }
+.overlay-workshop-scenes__item:hover { border-color: var(--v-red-400); background: rgba(245, 245, 245, .07); }
 
 .overlay-workshop-scenes__item[data-active="true"] {
-  border-color: #ff3b3b;
-  background: #241419;
-  color: #ffb5bd;
+  border-color: var(--v-red-400);
+  background: rgba(193, 18, 31, .14);
+  color: var(--v-red-400);
 }
 
-.overlay-workshop-scenes__play { color: #ff3b3b; font-size: 10px; }
-.overlay-workshop-scenes__item--clear { color: #8d94a5; border-style: dashed; }
-.overlay-workshop-scenes__empty { margin: 0; color: #8d94a5; font: 12px/1.5 Inter, system-ui, sans-serif; }
+.overlay-workshop-scenes__play { color: var(--v-red-400); font-size: 10px; }
+.overlay-workshop-scenes__item--clear { color: var(--v-text-muted); border-style: dashed; }
+.overlay-workshop-scenes__empty { margin: 0; color: var(--v-text-muted); font: 12px/1.5 Inter, system-ui, sans-serif; }
 
 .overlay-workshop-transport__loop {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #aeb5c5;
+  color: var(--v-text-muted);
   font: 600 11px/1 Inter, system-ui, sans-serif;
 }
 
-.overlay-workshop-transport__loop input { accent-color: #ff3b3b; }
+.overlay-workshop-transport__loop input { accent-color: var(--v-red-400); }
 
 /* What the mock shows and a real session will not. Sits above the animations,
    because it changes how everything below it should be read. */

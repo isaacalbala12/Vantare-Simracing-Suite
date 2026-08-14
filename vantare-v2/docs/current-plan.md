@@ -1,3 +1,17 @@
+Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
+- El primer corte de evidencia visual del Testing Center admite solo archivos
+  PNG/JPEG existentes: máximo 10 capturas, 10 MiB cada una y 100 MiB por lote.
+- Se aprueba Supabase Storage privado con manifest relacional, rutas
+  server-owned, validación cloud de SHA-256/tamaño/firma/dimensiones, acceso
+  temporal para agentes y limpieza durable. Los bytes no pasan por PostgreSQL,
+  Linear, prompts, RPC JSON ni drafts locales.
+- Se descartan Streamable, vídeo, grabación/captura integrada y enlaces
+  externos. No hace falta `tus-js-client` ni otra dependencia nueva.
+- La autoridad técnica es
+  `docs/superpowers/specs/2026-08-14-testing-center-screenshot-evidence-design.md`.
+  Este corte es documentación; no crea bucket, migración, deploy, UI ni
+  activación y no autoriza promoción fuera de una futura rama de issue.
+
 Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
 - La batalla Redline se deriva solo para sesiones de carrera y devuelve una
   única pareja: primero la más cercana a la fila del jugador, después el menor
@@ -17,8 +31,9 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
   queda pendiente la comprobación visual manual de las tres escenas del fragmento.
 - Rama aislada
   `vantareapp/isa-357-standings-redline-limitar-la-animacion-de-batalla-a-carrera`
-  sobre `origin/nightly@673283a2`. Implementación `71d6b360` y corrección de
-  review `cf83021a`; PR draft #243 hacia `nightly`. Nuevo CI pendiente de la
+  partió de `origin/nightly@673283a2` y está sincronizada con
+  `origin/nightly@521e862c`. Implementación `71d6b360` y corrección de review
+  `cf83021a`; PR draft #243 hacia `nightly`. Nuevo CI pendiente de la
   publicación. Sin merge, promoción ni release.
 
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):

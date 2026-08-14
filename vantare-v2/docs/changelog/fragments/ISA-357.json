@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-357",
+  "type": "fix",
+  "summary": "Standings muestra una sola batalla cercana y únicamente durante la carrera.",
+  "technicalNotes": [
+    "La animación de presión deja de activarse en clasificación, entrenamientos y otras sesiones que no sean carrera, incluso durante la transición desde una carrera.",
+    "Si varias parejas están por debajo del umbral, se elige la más próxima a la fila del jugador; si esa fila no está visible no se anima ninguna pareja. Los empates se resuelven por el menor intervalo y por el orden estable de la parrilla.",
+    "La salida de una batalla anterior no puede coincidir con la entrada de la nueva, y las transiciones rápidas conservan la pareja más reciente, por lo que el overlay mantiene como máximo una animación de batalla visible."
+  ],
+  "testing": [
+    "Abrir Standings Redline durante clasificación con dos tiempos separados por menos de 0,8 segundos y confirmar que no aparece la caja de batalla.",
+    "En carrera, provocar varias parejas bajo 0,8 segundos y comprobar que solo se anima la más cercana a la posición del jugador.",
+    "Cambiar cuál es la pareja prioritaria y confirmar que nunca aparecen dos cajas de batalla a la vez."
+  ],
+  "knownLimitations": []
+}

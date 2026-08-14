@@ -27,15 +27,27 @@ function row(partial: Partial<StandingsRowViewModel> & { id: string }): Standing
  * by the derivation, so the follower's gap IS the interval between them.
  */
 function model(interval: number): StandingsViewModel {
+  return modelWithRows([
+    row({ id: "ahead", position: 1, gapText: "+0.0" }),
+    row({
+      id: "behind",
+      position: 2,
+      gapText: `+${interval.toFixed(1)}`,
+      isPlayer: true,
+    }),
+  ]);
+}
+
+function modelWithRows(
+  rows: StandingsRowViewModel[],
+  sessionLabel = "RACE",
+): StandingsViewModel {
   return {
     type: "standings",
     status: "ready",
-    sessionLabel: "RACE",
+    sessionLabel,
     remainingText: "10:00",
-    rows: [
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "behind", position: 2, gapText: `+${interval.toFixed(1)}` }),
-    ],
+    rows,
   } as StandingsViewModel;
 }
 
@@ -87,6 +99,73 @@ describe("battle teardown", () => {
 
     rerender({ value: model(0.5) });
     expect(result.current.battles).toHaveLength(1);
+    expect(result.current.battles[0]?.stage).not.toBe("dissolve");
+  });
+
+  it("drops a race battle immediately when the session changes to qualifying", () => {
+    const rows = [
+      row({ id: "ahead", position: 1, gapText: "+0.0" }),
+      row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
+    ];
+    const { result, rerender } = renderMotion(modelWithRows(rows));
+    expect(result.current.battles).toHaveLength(1);
+
+    rerender({ value: modelWithRows(rows, "QUALIFYING") });
+
+    expect(result.current.battles).toHaveLength(0);
+  });
+
+  it("dissolves the freshest pair after rapid battle changes", () => {
+    const battleAhead = modelWithRows([
+      row({ id: "ahead", position: 1, gapText: "+0.0" }),
+      row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+2.0" }),
+    ]);
+    const battleBehind = modelWithRows([
+      row({ id: "ahead", position: 1, gapText: "+0.0" }),
+      row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+2.4" }),
+    ]);
+    const noBattle = modelWithRows([
+      row({ id: "ahead", position: 1, gapText: "+0.0" }),
+      row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+4.0" }),
+    ]);
+    const { result, rerender } = renderMotion(battleAhead);
+
+    rerender({ value: battleBehind });
+    rerender({ value: battleAhead });
+    rerender({ value: noBattle });
+
+    expect(result.current.battles).toHaveLength(1);
+    expect(result.current.battles[0]).toMatchObject({
+      aheadId: "ahead",
+      behindId: "player",
+      stage: "dissolve",
+    });
+  });
+
+  it("never reports a dissolving battle alongside a newly selected closer battle", () => {
+    const { result, rerender } = renderMotion(
+      modelWithRows([
+        row({ id: "ahead", position: 1, gapText: "+0.0" }),
+        row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
+        row({ id: "behind", position: 3, gapText: "+2.0" }),
+      ]),
+    );
+    expect(result.current.battles).toHaveLength(1);
+    expect(result.current.battles[0]?.aheadId).toBe("ahead");
+
+    rerender({
+      value: modelWithRows([
+        row({ id: "ahead", position: 1, gapText: "+0.0" }),
+        row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
+        row({ id: "behind", position: 3, gapText: "+2.4" }),
+      ]),
+    });
+
+    expect(result.current.battles).toHaveLength(1);
+    expect(result.current.battles[0]?.aheadId).toBe("player");
     expect(result.current.battles[0]?.stage).not.toBe("dissolve");
   });
 });

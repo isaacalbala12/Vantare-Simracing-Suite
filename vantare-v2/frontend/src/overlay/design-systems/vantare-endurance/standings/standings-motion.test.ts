@@ -33,12 +33,16 @@ function row(partial: Partial<StandingsRowViewModel> & { id: string }): Standing
   };
 }
 
-function model(rows: StandingsRowViewModel[], status: StandingsViewModel["status"] = "ready"): StandingsViewModel {
+function model(
+  rows: StandingsRowViewModel[],
+  status: StandingsViewModel["status"] = "ready",
+  sessionLabel = "RACE",
+): StandingsViewModel {
   return {
     type: "standings",
     status,
     activeClass: "GT3",
-    sessionLabel: "RACE",
+    sessionLabel,
     remainingText: "01:00:00",
     columns: [],
     rows,
@@ -116,7 +120,7 @@ describe("standings-motion", () => {
   it("derives battle pairs only under the threshold and never with pitted cars", () => {
     const battle = model([
       row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "b", position: 2, gapText: "+0.5s" }),
+      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
       row({ id: "c", position: 3, gapText: "+4.0s" }),
     ]);
     const pairs = deriveBattlePairs(battle);
@@ -126,9 +130,53 @@ describe("standings-motion", () => {
 
     const pitted = model([
       row({ id: "a", position: 1, gapText: "—", pitText: "PIT" }),
-      row({ id: "b", position: 2, gapText: "+0.5s" }),
+      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
     ]);
     expect(deriveBattlePairs(pitted)).toHaveLength(0);
+  });
+
+  it("does not derive battle pairs outside a race session", () => {
+    const qualifying = model(
+      [
+        row({ id: "a", position: 1, gapText: "1:40.000" }),
+        row({ id: "b", position: 2, gapText: "1:40.500" }),
+        row({ id: "c", position: 3, gapText: "1:40.700", isPlayer: true }),
+      ],
+      "ready",
+      "QUALIFYING",
+    );
+
+    expect(deriveBattlePairs(qualifying)).toHaveLength(0);
+  });
+
+  it("does not derive a battle when the player row is absent", () => {
+    const withoutPlayer = model([
+      row({ id: "a", position: 1, gapText: "—" }),
+      row({ id: "b", position: 2, gapText: "+0.2s" }),
+      row({ id: "c", position: 3, gapText: "+4.0s" }),
+      row({ id: "d", position: 4, gapText: "+4.4s" }),
+    ]);
+
+    expect(deriveBattlePairs(withoutPlayer)).toHaveLength(0);
+  });
+
+  it("returns only the closest battle to the player and breaks ties by interval", () => {
+    const multipleBattles = model([
+      row({ id: "far-ahead", position: 1, gapText: "—" }),
+      row({ id: "far-behind", position: 2, gapText: "+0.2s" }),
+      row({ id: "near-ahead", position: 3, gapText: "+4.0s" }),
+      row({ id: "player", position: 4, gapText: "+4.6s", isPlayer: true }),
+      row({ id: "near-behind", position: 5, gapText: "+4.9s" }),
+    ]);
+
+    expect(deriveBattlePairs(multipleBattles)).toEqual([
+      {
+        aheadId: "player",
+        behindId: "near-behind",
+        vehicleClass: "GT3",
+        intervalSeconds: 0.3,
+      },
+    ]);
   });
 
   it("computes FLIP offsets from in-class index changes", () => {

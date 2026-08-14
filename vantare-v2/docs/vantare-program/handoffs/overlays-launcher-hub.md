@@ -20,6 +20,21 @@
   snapshot ni evaluación; queda pendiente la comprobación visual manual. No
   La implementación está en `4258ca06`, nació de `nightly@673283a2` y se
   sincronizó después con `nightly@521e862c`. No hubo promoción ni release.
+- ISA-357 corrige localmente la batalla animada de Standings Redline: solo
+  carrera, una pareja máxima y prioridad por cercanía a la fila del jugador,
+  con desempate por intervalo y orden estable. El relevo entre parejas tampoco
+  solapa una disolución anterior con la nueva caja. El code review corrigió la
+  transición carrera→clasificación, la ausencia de la fila del jugador y la
+  frescura de una secuencia rápida A→B→A. TDD focal 21/21, frontend 370
+  archivos/2679 tests, build, ESLint focal, design-system 3/3, fragmento y
+  diff-check PASS. Persisten dos `AbortError` heredados de teardown con exit 0.
+  El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
+  fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
+  visual manual continúa pendiente.
+  Rama aislada desde `origin/nightly@673283a2`, sincronizada con
+  `origin/nightly@521e862c` mediante `54f27784`; implementación `71d6b360` y fix
+  de review `cf83021a`. Los gates bloqueantes de la PR draft #243 hacia
+  `nightly` pasaron sobre `54f27784`. Sin merge, promoción ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,

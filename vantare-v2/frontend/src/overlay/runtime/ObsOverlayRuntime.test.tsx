@@ -68,9 +68,9 @@ describe("ObsOverlayRuntime", () => {
     const surface = view.getByTestId("runtime-overlay-surface");
     expect(surface.getAttribute("data-render-mode")).toBe("obs");
     const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
-    expect(Number(scene.dataset.scale)).toBeCloseTo(1920 / 3440);
+    expect(Number(scene.dataset.scale)).toBeCloseTo(1080 / 1440);
     expect(Number(scene.dataset.offsetX)).toBe(0);
-    expect(Number(scene.dataset.offsetY)).toBeCloseTo((1080 - 1440 * (1920 / 3440)) / 2);
+    expect(Number(scene.dataset.offsetY)).toBe(0);
     expect(view.getByTestId("runtime-widget-frame")).toBeTruthy();
     coordinator.dispose();
   });

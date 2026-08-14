@@ -65,10 +65,10 @@ afterEach(() => {
 
 describe("ObsOverlayStudioPreview", () => {
   it.each([
-    ["legacy", { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, 4 / 3, 0, 0],
-    ["ultrawide", { width: 3440, height: 1440 }, { width: 1920, height: 1080 }, 1920 / 3440, 0, (1080 - 1440 * (1920 / 3440)) / 2],
-    ["custom", { width: 1000, height: 1000 }, { width: 1600, height: 900 }, 0.9, 350, 0],
-  ])("fits the %s document surface with the shared centered transform", (_label, layoutViewport, output, scale, offsetX, offsetY) => {
+    ["legacy", { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, 4 / 3, 0, 0, 1920, 1080],
+    ["ultrawide", { width: 3440, height: 1440 }, { width: 1920, height: 1080 }, 0.75, 0, 0, 2560, 1440],
+    ["custom", { width: 1000, height: 1000 }, { width: 1600, height: 900 }, 0.9, 0, 0, 1600 / 0.9, 1000],
+  ])("fits the %s document surface with the shared responsive transform", (_label, layoutViewport, output, scale, offsetX, offsetY, layoutWidth, layoutHeight) => {
     render(
       <ObsOverlayStudioPreview layoutViewport={layoutViewport}>
         <div />
@@ -79,8 +79,8 @@ describe("ObsOverlayStudioPreview", () => {
     act(() => observers[0].trigger(output.width, output.height));
 
     const scene = screen.getByTestId("obs-studio-preview-scene") as HTMLElement;
-    expect(scene.style.width).toBe(`${layoutViewport.width}px`);
-    expect(scene.style.height).toBe(`${layoutViewport.height}px`);
+    expect(Number.parseFloat(scene.style.width)).toBeCloseTo(layoutWidth);
+    expect(Number.parseFloat(scene.style.height)).toBeCloseTo(layoutHeight);
     expect(Number(scene.dataset.scale)).toBeCloseTo(scale);
     expect(Number(scene.dataset.offsetX)).toBeCloseTo(offsetX);
     expect(Number(scene.dataset.offsetY)).toBeCloseTo(offsetY);
@@ -127,7 +127,7 @@ describe("ObsOverlayStudioPreview", () => {
     );
 
     expect((view.getByTestId("obs-studio-preview-scene") as HTMLElement).style.transform).toBe(
-      "translate(350px, 0px) scale(0.9)",
+      "translate(0px, 0px) scale(0.9)",
     );
     expect(addEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(1);
     view.unmount();

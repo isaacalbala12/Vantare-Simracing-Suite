@@ -238,8 +238,8 @@ describe("CompositeApp", () => {
 
     const scene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
     const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
-    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
-    expect(frame.style.left).toBe("123px");
+    expect(scene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
+    expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
   });
 

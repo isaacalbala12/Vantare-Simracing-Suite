@@ -100,7 +100,7 @@ select is(
 );
 select is(
   (select proconfig from pg_proc where oid = 'public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)'::regprocedure),
-  array['search_path=']::text[],
+  array['search_path=""']::text[],
   'prepare uses an empty search_path'
 );
 
@@ -182,7 +182,7 @@ select * from public.testing_center_prepare_screenshot_batch(
 select is((select idempotent from prepared_result),false,'first prepare is not idempotent');
 select is((select jsonb_array_length(slots) from prepared_result),1,'prepare returns one sanitized slot');
 select ok(
-  (select slots::text !~* 'evidence-primary|example|private|filename|reporter'),
+  (select slots::text !~* 'evidence-primary|example|private|filename|reporter' from prepared_result),
   'prepare response contains no reporter PII or filenames'
 );
 select is(
@@ -196,6 +196,7 @@ select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','prepare-key',pg_temp.manifest(repeat('b',64)))$$,
   '23505', null, 'same key with changed manifest conflicts'
 );
+reset role;
 select is((select count(*)::integer from public.testing_center_evidence_batches),1,'prepare creates exactly one batch');
 select is((select count(*)::integer from public.testing_center_screenshot_evidence),1,'prepare creates exactly one slot');
 select ok(
@@ -203,6 +204,8 @@ select ok(
   'server-owned object path is opaque'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
 select throws_ok(
   $$insert into storage.objects(bucket_id,name,owner_id) values ('testing-center-evidence','chosen/by/client','00000000-0000-4000-8000-000000000501')$$,
   '42501', null, 'client cannot choose a storage path'

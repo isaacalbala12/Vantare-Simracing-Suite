@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T02:17:31Z",
+  "generatedAt": "2026-08-14T04:57:47Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,17 +28,11 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 17,
+            "done": 18,
             "total": 33,
-            "percent": 52
+            "percent": 55
           },
           "tasks": [
-            {
-              "id": "task_9b688e53bf087679e0f7",
-              "title": "Delta — referencias reales de telemetría, instancia única y hotkey global",
-              "status": "in-progress",
-              "updatedAt": "2026-08-14T02:12:04.269Z"
-            },
             {
               "id": "task_609d33340526777a9186",
               "title": "Overlay Studio: Input Telemetry debe respetar la proporción 400×70 de Telemetry Blade",
@@ -154,6 +148,12 @@
               "updatedAt": "2026-08-07T18:24:01.988Z"
             },
             {
+              "id": "task_9b688e53bf087679e0f7",
+              "title": "Delta — referencias reales de telemetría, instancia única y hotkey global",
+              "status": "done",
+              "updatedAt": "2026-08-14T04:57:38.184Z"
+            },
+            {
               "id": "task_7a01dcafb5e466f56f0b",
               "title": "Estabilizar navegación del inspector Studio en suite completa",
               "status": "done",
@@ -169,7 +169,7 @@
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "done",
-              "updatedAt": "2026-08-14T02:17:18.303Z"
+              "updatedAt": "2026-08-14T02:28:13.806Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
@@ -199,7 +199,7 @@
               "id": "task_fc2a79ce7d269c04e458",
               "title": "Promover a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-14T02:17:18.303Z"
+              "updatedAt": "2026-08-14T02:28:14.076Z"
             },
             {
               "id": "task_7110c13b4b7c325111c7",
@@ -601,6 +601,12 @@
               "updatedAt": "2026-08-14T00:57:30.536Z"
             },
             {
+              "id": "task_7f6bd0e8290884567a7f",
+              "title": "Resolver la revisión activa y cablear el motor live",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T04:24:23.678Z"
+            },
+            {
               "id": "task_164f55172f72bcd41ef7",
               "title": "Adapter de StrategyInputProjection de Telemetry Analysis",
               "status": "planned",
@@ -647,12 +653,6 @@
               "title": "Replanificación live y aceptación",
               "status": "planned",
               "updatedAt": "2026-08-13T23:00:42.706Z"
-            },
-            {
-              "id": "task_7f6bd0e8290884567a7f",
-              "title": "Resolver la revisión activa y cablear el motor live",
-              "status": "planned",
-              "updatedAt": "2026-08-13T23:00:40.835Z"
             },
             {
               "id": "task_b40051fa6a37306acaac",

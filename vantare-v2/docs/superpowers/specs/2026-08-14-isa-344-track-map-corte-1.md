@@ -133,10 +133,14 @@ Cubre obligatoriamente:
 
 ## Preguntas abiertas
 
-1. **Geometría real bloqueada.** No existe captura con vuelta completa de posiciones
-   mundo en el repo: las fixtures `testdata/*.bin` son fotogramas únicos y
-   `derive/testdata/lmu-1.4-self-delta-trace-v1.jsonl` sólo lleva `lap_distance_m`
-   y `speed_mps`. Los circuitos reales requieren una captura que debe producir Isaac.
+1. ~~**Geometría real bloqueada.**~~ **RESUELTA (2026-08-14), ver ISA-348 / TM-02.**
+   Era cierto que el repositorio no contiene ninguna captura con vuelta completa de
+   posiciones mundo. Era falso que hiciera falta una captura nueva: LMU ya escribe
+   una base DuckDB por sesión en `UserData\Telemetry`, con canales `GPS Latitude` y
+   `GPS Longitude` a 10 Hz que no son geográficos sino la posición mundo anclada en
+   60°N, 0°E. Ajustado contra los 44 vehículos de `testdata/lmu-fixture.bin` da RMS
+   1,07 m, rotación 0,00°, sin reflexión y traslación nula, con el ancla constante
+   en los 16 circuitos. El pack real se genera offline sin capturar nada.
 2. **Puerta de ancho de banda.** Antes de publicar poses por frame hay que medir la
    fixture de 44 coches contra el contrato candidato. Medición previa verificada:
    2.480 B/vehículo, 44 coches ≈ 109 KB por frame, 43 % del tope de 256 KiB, a 60 Hz

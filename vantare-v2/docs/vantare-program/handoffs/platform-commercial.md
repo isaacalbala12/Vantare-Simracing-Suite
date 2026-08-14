@@ -178,8 +178,9 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - Evidencia fresca sobre `nightly@d45d8d8d`: runner ISA-350 80/80, rollback y
   reaplicación 80/80, revocación post-prepare, locks concurrentes y finalize
   exactly-once PASS; harness v1 72/56/55 y concurrencia PASS. Reviews finales
-  `SPEC PASS` y `QUALITY PASS`. No hay apply remoto, UI, validador, URLs
-  temporales, agentes, merge ni promoción implícita.
+  `SPEC PASS` y `QUALITY PASS`. PR draft #253 hacia `nightly`; gates remotos
+  `31827610539` en verde. No hay apply remoto, UI, validador, URLs temporales,
+  agentes, merge ni promoción implícita.
 - Plan vigente:
   `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
 - TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus

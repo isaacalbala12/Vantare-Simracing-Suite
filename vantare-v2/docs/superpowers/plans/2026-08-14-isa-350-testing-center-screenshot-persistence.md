@@ -1,6 +1,6 @@
 # ISA-350 — persistencia privada de capturas
 
-Estado: ejecutado y validado localmente; pendiente PR draft y CI remoto.
+Estado: ejecutado y validado; PR draft #253 abierto con CI remoto en verde.
 
 ## Objetivo
 
@@ -86,5 +86,5 @@ submission existente, `git diff --check` y revisión completa.
 
 Rama aislada sincronizada con `nightly@d45d8d8d`, commits RED/GREEN conservados,
 runner 80/80 y harness v1 72/56/55 en PASS. Reviews finales `SPEC PASS` y
-`QUALITY PASS`. Pendiente PR draft a `nightly`; sin merge, bucket remoto ni
-activación.
+`QUALITY PASS`. PR draft #253 abierto hacia `nightly`; gates remotos
+`31827610539` en verde. Sin merge, bucket remoto ni activación.

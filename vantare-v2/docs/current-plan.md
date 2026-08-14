@@ -32,7 +32,9 @@ Nota ISA-350 / TC-EVIDENCE-03 (2026-08-14, implementación local validada):
   core 72 + access 56 + report 55, rollback/reapply y concurrencia PASS.
   Revisiones independientes: `SPEC PASS` y `QUALITY PASS` sin pendientes.
 - Rama sincronizada con `nightly@d45d8d8d7f815562af76a14ad7343b692dac41db`.
-  Bytes reales, UI, validador, acceso de agentes y deploy remoto siguen fuera.
+  PR draft #253 abierto hacia `nightly`; los gates remotos de ruta y bloqueo
+  pasaron en `31827610539`. Bytes reales, UI, validador, acceso de agentes y
+  deploy remoto siguen fuera.
   Plan TDD:
   `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
 

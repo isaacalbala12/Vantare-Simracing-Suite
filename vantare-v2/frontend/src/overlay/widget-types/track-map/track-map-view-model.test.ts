@@ -34,7 +34,7 @@ describe("buildTrackMapViewModel", () => {
   });
 
   it("reports an unknown track rather than drawing something close enough", () => {
-    for (const trackName of ["Circuit de Barcelona", "Le Mans", "", undefined]) {
+    for (const trackName of ["Suzuka", "Circuit de Barcelona GP", "", undefined]) {
       const model = buildTrackMapViewModel(snapshot({ trackName }), content);
       expect(model.unavailableReason).toBe("unknown-track");
       expect(model.outlinePath).toBeUndefined();
@@ -73,7 +73,7 @@ describe("buildTrackMapViewModel", () => {
 describe("buildTrackMapPreviewViewModel", () => {
   it("falls back to the reference loop so authoring has something to lay out", () => {
     const model = buildTrackMapPreviewViewModel(
-      snapshot({ status: "missing", trackName: "Circuit de Barcelona" }),
+      snapshot({ status: "missing", trackName: "Suzuka" }),
       content,
     );
 

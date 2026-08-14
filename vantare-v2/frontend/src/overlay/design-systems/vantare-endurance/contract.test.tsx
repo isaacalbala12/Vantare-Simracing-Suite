@@ -74,6 +74,7 @@ describe("vantare-endurance contract", () => {
   it("draws the outline when the circuit resolves, and badges it as reference", () => {
     const mapped = { ...snapshot, session: { ...snapshot.session, trackName: "Vantare Reference Loop" } };
     const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    expect(model.synthetic).toBe(true);
     const view = render(
       <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
     );
@@ -87,7 +88,8 @@ describe("vantare-endurance contract", () => {
   });
 
   it("draws nothing and says so when the circuit is not mapped", () => {
-    const model = buildTrackMapViewModel(snapshot, createDefaultTrackMapContent());
+    const unmapped = { ...snapshot, session: { ...snapshot.session, trackName: "Suzuka" } };
+    const model = buildTrackMapViewModel(unmapped, createDefaultTrackMapContent());
     const view = render(
       <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
     );

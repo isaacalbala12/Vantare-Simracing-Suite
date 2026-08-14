@@ -125,8 +125,9 @@ describe("OverlayParityHarness", () => {
         expect(markups[0]).toContain("PREVIEW");
         expect(markups[1]).not.toContain("data-preview");
       } else if (widget === "track-map") {
-        // Authoring falls back to the reference outline so the widget can be
-        // laid out before real circuits ship; runtime refuses to guess.
+        // The harness fixtures name no circuit the pack ships, so authoring
+        // falls back to the reference outline to stay layout-able while runtime
+        // refuses to guess. The divergence is the point, not an accident.
         expect(markups[0]).toContain("data-track-map-synthetic");
         expect(markups[1]).toContain("data-track-map-empty");
       } else {

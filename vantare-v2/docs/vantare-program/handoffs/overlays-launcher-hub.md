@@ -24,7 +24,8 @@
   ISA-311 quedó corregido y promovido mediante PR #200 a `nightly@54f267b`.
 - Delta: ISA-347 está implementada y validada en rama aislada sobre
   `origin/nightly@7e4eac6`; añade referencias reales personal/sesión/anterior,
-  unicidad por layout y hotkey global configurable. No está promovida.
+  unicidad por layout y hotkey global configurable. PR draft #233 abierta
+  contra `nightly`; no está fusionada ni promovida.
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
@@ -244,8 +245,9 @@ superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
 - Evidencia: `go test ./...` PASS; frontend 370 archivos/2673 tests PASS;
   build y ESLint focal PASS. Vitest conserva dos `AbortError` heredados de
   teardown después del resumen con exit 0.
-- Estado real: implementación local sin commit, push, PR ni promoción. Requiere
-  revisión de diff y aceptación manual antes de solicitar Nightly.
+- Estado real: implementación `3a54d34` publicada en PR draft #233 contra
+  `nightly`. Sin merge ni promoción; requiere comprobación manual LMU/Wails,
+  revisión y aceptación de Isaac.
 
 ### ISA-262 — usar el Workshop local
 

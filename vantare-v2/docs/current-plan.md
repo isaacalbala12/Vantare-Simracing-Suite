@@ -19,8 +19,10 @@ Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Gates sobre `origin/nightly@7e4eac6`: `go test ./...` PASS; frontend 370
   archivos/2673 tests PASS; build y ESLint focal PASS. La suite mantiene dos
   `AbortError` heredados de teardown de happy-dom después del resumen, con exit 0.
-- Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`;
-  no hay commit, push, PR ni promoción todavía.
+- Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`,
+  commit de implementación `3a54d34` y PR draft #233 contra `nightly`. No hay
+  merge ni promoción; queda pendiente la comprobación manual con LMU/Wails y la
+  aceptación de Isaac.
 
 Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
 - El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como

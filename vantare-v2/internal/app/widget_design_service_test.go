@@ -123,6 +123,28 @@ func TestWidgetDesignServiceSaveWritesDesignsAtomically(t *testing.T) {
 	}
 }
 
+func TestWidgetDesignServiceSavesVantareEnduranceDesign(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewWidgetDesignService(dir, nil)
+	design := WidgetDesignV1{
+		Name:          "Endurance Strip",
+		WidgetType:    "delta",
+		SystemID:      "vantare-endurance",
+		SystemVersion: 1,
+		ConfigVersion: 1,
+		Visual:        map[string]any{"templateId": "delta-strip"},
+		Origin:        "user",
+	}
+
+	if err := svc.Save(&design); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.List()
+	if len(got) != 1 || got[0].SystemID != "vantare-endurance" {
+		t.Fatalf("designs=%+v want one vantare-endurance design", got)
+	}
+}
+
 func TestWidgetDesignServiceDeleteDoesNotMutateProfileWidgets(t *testing.T) {
 	dir := t.TempDir()
 	svc := NewWidgetDesignService(dir, nil)

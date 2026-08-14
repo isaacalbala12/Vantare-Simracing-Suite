@@ -107,10 +107,10 @@ func TestProfileV3MigrationCoreInvariant(t *testing.T) {
 		if v0Widget.Layout != v2Widget.Layout {
 			t.Fatalf("%s layout mismatch:\nv0=%#v\nv2=%#v", id, v0Widget.Layout, v2Widget.Layout)
 		}
-		if !isSupportedDesignSystemID(v0Widget.Visual.SystemID) {
+		if !IsSupportedDesignSystemID(v0Widget.Visual.SystemID) {
 			t.Fatalf("%s v0 has unsupported system %s", id, v0Widget.Visual.SystemID)
 		}
-		if !isSupportedDesignSystemID(v2Widget.Visual.SystemID) {
+		if !IsSupportedDesignSystemID(v2Widget.Visual.SystemID) {
 			t.Fatalf("%s v2 has unsupported system %s", id, v2Widget.Visual.SystemID)
 		}
 	}

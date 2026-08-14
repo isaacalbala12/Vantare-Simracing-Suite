@@ -173,6 +173,25 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets[0].visual.systemId")
 	})
 
+	t.Run("vantare endurance system and memory", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Visual.SystemID = DesignSystemVantareEndurance
+		w.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+			DesignSystemVantareEndurance: {
+				SystemVersion:       1,
+				ConfigVersion:       1,
+				BaseSettings:        map[string]any{"templateId": "delta-strip"},
+				AppearanceOverrides: map[string]any{},
+			},
+		}
+		doc := validProfileV3(w)
+		defaultSystem := DesignSystemVantareEndurance
+		doc.DefaultVisualSystemID = &defaultSystem
+		if err := ValidateProfileDocumentV3(doc); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("system version less than 1", func(t *testing.T) {
 		w := validWidget("delta-1", WidgetTypeDelta)
 		w.Visual.SystemVersion = 0

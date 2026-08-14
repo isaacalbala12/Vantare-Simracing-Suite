@@ -2,6 +2,15 @@ do $$
 declare
   v_bucket storage.buckets%rowtype;
 begin
+  if exists (
+    select 1
+    from storage.objects
+    where bucket_id='testing-center-evidence'
+  ) then
+    raise exception 'testing_center_evidence_rollback_bucket_not_empty'
+      using errcode='55000';
+  end if;
+
   select * into v_bucket
   from storage.buckets
   where id='testing-center-evidence';
@@ -48,12 +57,14 @@ alter table public.testing_center_evidence
   add constraint testing_center_evidence_kind_check
   check (kind in ('report_context','diagnostic','reproduction'));
 
-delete from storage.objects
-where bucket_id='testing-center-evidence';
-
 delete from storage.buckets
 where id='testing-center-evidence'
   and name='testing-center-evidence'
   and public=false
   and file_size_limit=10485760
-  and allowed_mime_types=array['image/png','image/jpeg']::text[];
+  and allowed_mime_types=array['image/png','image/jpeg']::text[]
+  and not exists (
+    select 1
+    from storage.objects
+    where bucket_id='testing-center-evidence'
+  );

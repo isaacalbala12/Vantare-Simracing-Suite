@@ -222,10 +222,10 @@ $$;
     Invoke-PsqlFile "/tmp/$($migration.Name)"
   }
 
-  Write-Output "[2/7] Running 71 pgTAP assertions"
+  Write-Output "[2/8] Running 71 pgTAP assertions"
   Assert-PgTap "Initial screenshot evidence"
 
-  Write-Output "[3/7] Creating a real submitted screenshot before rollback"
+  Write-Output "[3/8] Creating a real submitted screenshot before rollback"
   Invoke-PsqlFile "/tmp/evidence-rollback-use.sql"
 
   Write-Output "[4/8] Verifying rollback fails closed before any partial mutation"
@@ -272,6 +272,8 @@ $$;
   }
 
   Write-Output "[8/8] Verifying every pre-existing bucket fails closed"
+  docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "delete from storage.objects where bucket_id='testing-center-evidence';" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not simulate Storage API cleanup after concurrency test" }
   Invoke-PsqlFile "/tmp/$rollbackName"
   docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values ('testing-center-evidence','testing-center-evidence',true,1,array['image/gif']);" | Out-Null
   $saved = $ErrorActionPreference

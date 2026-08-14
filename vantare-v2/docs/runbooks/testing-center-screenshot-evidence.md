@@ -68,10 +68,16 @@ git diff --check
 ```
 
 El primer runner crea PostgreSQL desechable, aplica el historial, exige 71/71
-aserciones pgTAP, envía evidencia real antes de ejecutar un rollback exacto,
-reaplica y repite 71/71, prueba una carrera real de dos procesos sobre
+aserciones pgTAP y envía evidencia simulada antes del rollback. Primero exige
+que el down falle cerrado, sin mutación parcial, mientras exista metadata de un
+objeto; después simula que una Storage API autorizada ya eliminó el objeto
+borrando únicamente la fila metadata del stub, ejecuta el rollback exacto,
+reaplica y repite 71/71. También prueba una carrera real de dos procesos sobre
 `finalize` y verifica que todo bucket previo, compatible o incompatible, falla
-cerrado. El segundo protege la compatibilidad de la RPC v1.
+cerrado. El runner no almacena bytes reales: esa eliminación de metadata solo
+prueba la precondición SQL y no acredita que los bytes físicos hayan sido
+eliminados de Supabase Storage. El segundo runner protege la compatibilidad de
+la RPC v1.
 
 No se necesitan ni deben leerse archivos `.env*` o secretos para estos checks.
 
@@ -79,14 +85,26 @@ No se necesitan ni deben leerse archivos `.env*` o secretos para estos checks.
 
 En un entorno autorizado, aplicar
 `supabase/rollbacks/20260814154558_testing_center_screenshot_evidence.down.sql`
-solo después de detener productores y comprobar que no hay datos que deban
-preservarse. El rollback falla cerrado si la configuración del bucket ya no
-coincide, elimina sus objetos, RPCs, policy, tablas y bucket de ISA-350, borra
-únicamente las proyecciones canónicas `kind='screenshot'` creadas por este
-corte y restaura exactamente el conjunto anterior de tipos de evidencia.
+solo después de:
 
-El runner local prueba esta simetría sobre una base desechable. Este runbook no
-autoriza rollback, migración ni mutación en Supabase remoto.
+1. detener todos los productores y uploads al bucket;
+2. eliminar cada objeto mediante la Storage API o interfaz S3 autorizada, de
+   modo que se borren tanto los bytes físicos como su metadata;
+3. listar el bucket mediante esa misma frontera autorizada y comprobar que está
+   vacío antes de ejecutar el down.
+
+El rollback no borra filas de `storage.objects`. Falla cerrado con
+`testing_center_evidence_rollback_bucket_not_empty` si queda cualquier objeto
+del bucket, y esta precondición se evalúa antes de revocar o eliminar funciones,
+policies, tablas o datos. Solo elimina el bucket cuando ya está vacío. También
+falla cerrado si la configuración del bucket no coincide, borra las RPCs,
+policy y tablas de ISA-350, elimina únicamente las proyecciones canónicas
+`kind='screenshot'` creadas por este corte y restaura exactamente el conjunto
+anterior de tipos de evidencia.
+
+El runner local prueba esta simetría sobre una base desechable y un stub de
+metadata; no demuestra la eliminación física de bytes. Este runbook no autoriza
+rollback, migración ni mutación en Supabase remoto.
 
 ## Criterio de cierre
 

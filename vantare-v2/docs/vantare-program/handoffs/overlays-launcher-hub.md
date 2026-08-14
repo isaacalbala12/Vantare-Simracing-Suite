@@ -23,9 +23,10 @@
   completa la cobertura visual de los cuatro widgets insignia. El flaky de CI
   ISA-311 quedó corregido y promovido mediante PR #200 a `nightly@54f267b`.
 - Delta: ISA-347 está implementada y validada en rama aislada sobre
-  `origin/nightly@7e4eac6`; añade referencias reales personal/sesión/anterior,
-  unicidad por layout y hotkey global configurable. PR draft #233 abierta
-  contra `nightly`; no está fusionada ni promovida.
+  `origin/nightly`; añade referencias reales personal/sesión/anterior, unicidad
+  por layout y hotkey global configurable. La rama incorporó
+  `nightly@32e9b70` en `e0ff917`; PR draft #233 abierta contra `nightly`, sin
+  fusión ni promoción.
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
@@ -262,8 +263,9 @@ superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
   build y ESLint focal PASS. Vitest conserva dos `AbortError` heredados de
   teardown después del resumen con exit 0.
 - Estado real: implementación `3a54d34` publicada en PR draft #233 contra
-  `nightly`. Sin merge ni promoción; requiere comprobación manual LMU/Wails,
-  revisión y aceptación de Isaac.
+  `nightly`, sincronizada con `nightly@32e9b70` mediante `e0ff917`. La suite Go
+  completa volvió a pasar después de la sincronización. Sin merge ni promoción;
+  requiere comprobación manual LMU/Wails, revisión y aceptación de Isaac.
 
 ### ISA-262 — usar el Workshop local
 

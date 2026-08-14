@@ -21,8 +21,9 @@ Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
   `AbortError` heredados de teardown de happy-dom después del resumen, con exit 0.
 - Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`,
   commit de implementación `3a54d34` y PR draft #233 contra `nightly`. No hay
-  merge ni promoción; queda pendiente la comprobación manual con LMU/Wails y la
-  aceptación de Isaac.
+  merge ni promoción. La rama incorporó `nightly@32e9b70` mediante merge normal
+  `e0ff917`; `go test ./...` volvió a pasar sobre esa base. Queda pendiente la
+  comprobación manual con LMU/Wails y la aceptación de Isaac.
 
 Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
 - El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como

@@ -16,14 +16,21 @@ Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
   defecto y recorre Personal → Sesión → Anterior → Personal. Sincroniza los
   layouts explícitos del perfil activo, persiste el documento y lo vuelve a
   emitir a Desktop/OBS mediante el runtime existente.
-- Gates sobre `origin/nightly@7e4eac6`: `go test ./...` PASS; frontend 370
-  archivos/2673 tests PASS; build y ESLint focal PASS. La suite mantiene dos
-  `AbortError` heredados de teardown de happy-dom después del resumen, con exit 0.
+- Code review adversarial posterior corrigió tres P1 antes de promoción:
+  historial nativo mezclado con el delta de sesión en el mismo cursor,
+  selección canónica incorrecta cuando `general` no tenía `reference`, y
+  pulsaciones concurrentes compitiendo por una revisión. Regresiones RED→GREEN
+  cubren los tres caminos; 12 pulsaciones simultáneas pasan 10 ejecuciones.
+- Gates frescos sobre `origin/nightly@638b470`: `go test ./... -count=1` PASS;
+  frontend 370 archivos/2673 tests PASS; build, ESLint focal, vet focal sin
+  deuda nueva y diff-check PASS. La suite mantiene dos `AbortError` heredados
+  de teardown de happy-dom después del resumen, con exit 0.
 - Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`,
   commit de implementación `3a54d34` y PR draft #233 contra `nightly`. No hay
-  merge ni promoción. La rama incorporó `nightly@32e9b70` mediante merge normal
-  `e0ff917`; `go test ./...` volvió a pasar sobre esa base. Queda pendiente la
-  comprobación manual con LMU/Wails y la aceptación de Isaac.
+  merge ni promoción. Fix de review `46df1b2`; la rama incorporó
+  `nightly@638b470` mediante merge normal `f0e40bd`. Isaac autorizó reencolar la
+  promoción el 2026-08-14. Queda pendiente la comprobación manual con LMU/Wails;
+  la cola no autoriza `testers`, `master` ni release.
 
 Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
 - El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como

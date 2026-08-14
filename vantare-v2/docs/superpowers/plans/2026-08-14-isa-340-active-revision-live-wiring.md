@@ -29,14 +29,14 @@
 - Create: `internal/strategy/live/active_revision_test.go`
 - Modify: `internal/strategy/live/architecture_test.go`
 
-- [ ] Write failing tests for: nil active plan; exact revision missing; same revision ID with a different plan/variant/hash; unknown editor version; corrupt/trailing/duplicate/unknown JSON; missing or invalid stint fields; duplicate IDs; unsafe/non-positive laps; exact valid v1 mapping; `FuelTargets == nil`; input ownership; and two independent repository opens producing equal plans.
-- [ ] Run `go test -count=1 ./internal/strategy/live -run 'ActiveRevision|EditorV1|Restart'` and record the RED caused by the absent resolver and sentinels.
-- [ ] Add typed sentinel errors and a small `ResolveActivePlan(active *contract.ActivePlan, revisions []contract.PlanRevision[json.RawMessage]) (Plan, error)` boundary.
-- [ ] Resolve by revision identity before reading the payload. Reject an ID collision with a different complete ref as an integrity mismatch.
-- [ ] Decode `strategy.editor.v1` with the standard library, strict EOF/unknown-field checks and the existing contract canonical parser where needed to preserve duplicate-key and resource-limit guarantees.
-- [ ] Map only `stints[].id` and `stints[].lapCount`, then call `NewPlan` with the exact active plan and `FuelTargets: nil`.
-- [ ] Run the focal test, then `go test -count=20 ./internal/strategy/live` and keep production imports within Strategy contract plus the public telemetry projection already allowed.
-- [ ] Commit only the Task 1 paths with the repository commit style and required co-author footer.
+- [x] Write failing tests for: nil active plan; exact revision missing; same revision ID with a different plan/variant/hash; unknown editor version; corrupt/trailing/duplicate/unknown JSON; missing or invalid stint fields; duplicate IDs; unsafe/non-positive laps; exact valid v1 mapping; `FuelTargets == nil`; input ownership; and two independent repository opens producing equal plans.
+- [x] Run `go test -count=1 ./internal/strategy/live -run 'ActiveRevision|EditorV1|Restart'` and record the RED caused by the absent resolver and sentinels.
+- [x] Add typed sentinel errors and a small `ResolveActivePlan(active *contract.ActivePlan, revisions []contract.PlanRevision[json.RawMessage]) (Plan, error)` boundary.
+- [x] Resolve by revision identity before reading the payload. Reject an ID collision with a different complete ref as an integrity mismatch.
+- [x] Decode `strategy.editor.v1` with the standard library, strict EOF/unknown-field checks and the existing contract canonical parser where needed to preserve duplicate-key and resource-limit guarantees.
+- [x] Map only `stints[].id` and `stints[].lapCount`, then call `NewPlan` with the exact active plan and `FuelTargets: nil`.
+- [x] Run the focal test, then `go test -count=20 ./internal/strategy/live` and keep production imports within Strategy contract plus the public telemetry projection already allowed.
+- [x] Commit only the Task 1 paths with the repository commit style and required co-author footer.
 
 ## Task 2 — Own the live consumer in the canonical Telemetry Core lifecycle
 
@@ -46,13 +46,13 @@
 - Modify: `internal/app/telemetry_core_strategy_test.go`
 - Modify if a focused adapter regression is clearer: `internal/app/strategy_live_runtime_test.go`
 
-- [ ] Write failing tests proving an optional real engine receives status/full from `StrategyHub`, only one Strategy subscription exists, nil keeps zero consumer subscriptions, cancellation/Stop removes the subscription, Start failure cleans it up, and an unexpected consumer failure is visible through the existing runtime fail-stop result.
-- [ ] Run `go test -count=1 ./internal/app -run 'StrategyLiveConsumer|StrategyExecution|TelemetryCore.*Strategy'` and record the RED for the missing config/lifecycle wiring.
-- [ ] Add one optional `StrategyLiveConsumer` to `TelemetryCoreRuntimeConfig`; construct one `StrategyLiveRuntime` against `runtime.strategyHub` when present.
-- [ ] Launch its blocking `Run` method under the existing runtime context and wait group. Do not create a hub, reader, transport, endpoint, persistence layer or detached lifecycle.
-- [ ] Treat context cancellation as normal teardown. Route an unexpected adapter/consumer error through the runtime’s existing contextual fail-stop path so it is observable and both hubs close coherently.
-- [ ] Run the focal tests x20 and the full `internal/app` package.
-- [ ] Commit only the Task 2 paths with the required footer.
+- [x] Write failing tests proving an optional real engine receives status/full from `StrategyHub`, only one Strategy subscription exists, nil keeps zero consumer subscriptions, cancellation/Stop removes the subscription, Start failure cleans it up, and an unexpected consumer failure is visible through the existing runtime fail-stop result.
+- [x] Run `go test -count=1 ./internal/app -run 'StrategyLiveConsumer|StrategyExecution|TelemetryCore.*Strategy'` and record the RED for the missing config/lifecycle wiring.
+- [x] Add one optional `StrategyLiveConsumer` to `TelemetryCoreRuntimeConfig`; construct one `StrategyLiveRuntime` against `runtime.strategyHub` when present.
+- [x] Launch its blocking `Run` method under the existing runtime context and wait group. Do not create a hub, reader, transport, endpoint, persistence layer or detached lifecycle.
+- [x] Treat context cancellation as normal teardown. Route an unexpected adapter/consumer error through the runtime’s existing contextual fail-stop path so it is observable and both hubs close coherently.
+- [x] Run the focal tests x20 and the full `internal/app` package.
+- [x] Commit only the Task 2 paths with the required footer.
 
 ## Task 3 — Composition-root bootstrap and restart proof
 
@@ -62,14 +62,14 @@
 - Modify: `cmd/vantare/main_test.go`
 - Modify if needed for one end-to-end lifecycle test: `cmd/vantare/telemetry_lifecycle_harness_test.go`
 
-- [ ] Write failing tests around a small bootstrap helper using a real temporary Strategy repository: valid active revision returns one engine; reopening produces the same plan; no active plan, absent revision, mismatched hash, corrupt/incompatible editor payload and repository read error return explicit errors and no engine.
-- [ ] Run `go test -count=1 ./cmd/vantare -run 'StrategyLive|ActiveRevision'` and record the RED.
-- [ ] Retain the already-opened `Repository[json.RawMessage]` in the composition root instead of reopening storage.
-- [ ] Snapshot it once, call `live.ResolveActivePlan`, construct `live.NewEngine`, and pass the engine to `TelemetryCoreRuntimeConfig`. Log a bounded contextual reason when Strategy live is unavailable; never log payload bytes.
-- [ ] Preserve the current Strategy application bridge and startup behavior. No active revision is a fail-closed Strategy state, not a process-wide startup failure.
-- [ ] Prove the production root passes the same engine to the same core runtime and does not call `NewPlan`, `NewEngine` or `NewStrategyLiveRuntime` through a second path.
-- [ ] Run focused tests x20 and `go test -count=1 ./cmd/vantare` after producing `frontend/dist` from the locked frontend workspace if the embed requires it.
-- [ ] Commit only the Task 3 paths with the required footer.
+- [x] Write failing tests around a small bootstrap helper using a real temporary Strategy repository: valid active revision returns one engine; reopening produces the same plan; no active plan, absent revision, mismatched hash, corrupt/incompatible editor payload and repository read error return explicit errors and no engine.
+- [x] Run `go test -count=1 ./cmd/vantare -run 'StrategyLive|ActiveRevision'` and record the RED.
+- [x] Retain the already-opened `Repository[json.RawMessage]` in the composition root instead of reopening storage.
+- [x] Snapshot it once, call `live.ResolveActivePlan`, construct `live.NewEngine`, and pass the engine to `TelemetryCoreRuntimeConfig`. Log a bounded contextual reason when Strategy live is unavailable; never log payload bytes.
+- [x] Preserve the current Strategy application bridge and startup behavior. No active revision is a fail-closed Strategy state, not a process-wide startup failure.
+- [x] Prove the production root passes the same engine to the same core runtime and does not call `NewPlan`, `NewEngine` or `NewStrategyLiveRuntime` through a second path.
+- [x] Run focused tests x20 and `go test -count=1 ./cmd/vantare` after producing `frontend/dist` from the locked frontend workspace if the embed requires it.
+- [x] Commit only the Task 3 paths with the required footer.
 
 ## Task 4 — Evidence, review and closure in the issue branch
 
@@ -81,9 +81,9 @@
 - Create: `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`
 - Modify: this plan
 
-- [ ] Document exact startup behavior, the absence of Fuel targets, restart evidence, failure modes and the fact that runtime activation changes remain out of scope.
-- [ ] Run an independent specification review, correct all findings, then run an independent code-quality/security review and correct all findings.
-- [ ] Run fresh final gates:
+- [x] Document exact startup behavior, the absence of Fuel targets, restart evidence, failure modes and the fact that runtime activation changes remain out of scope.
+- [x] Run independent reviews for Tasks 1, 2 and 3, correct the P1/P2 findings, and obtain `APPROVED` for all three cuts.
+- [x] Run fresh final gates:
 
 ```powershell
 go test -count=20 ./internal/strategy/live
@@ -96,17 +96,37 @@ gofmt -l internal/strategy/live internal/app cmd/vantare
 git diff --check
 ```
 
-- [ ] Record `go test -race` as not executed if this host still has `CGO_ENABLED=0` and no GCC. Do not imply race coverage.
-- [ ] Update Linear through direct `mcp__linear__*` with branch, commits, exact checks, omissions and remaining manual proof.
-- [ ] Commit/push and open or update a draft PR only after reviews and fresh gates. Do not merge or promote to Nightly, Testers or Master without Isaac’s separate authorization.
+- [x] Record `go test -race` as not executed: this host has `CGO_ENABLED=0` and no GCC. No race coverage is claimed.
+- [x] Update Linear through direct `mcp__linear__*` with branch, commits, exact checks, omissions and remaining manual proof.
+- [ ] Push the issue branch.
+- [ ] Open or update a draft PR and obtain CI for the pushed HEAD.
+- [ ] Merge or promote to Nightly, Testers or Master only with Isaac’s separate authorization.
+
+El cierre documental local queda separado de los cuatro commits productivos.
+Push, PR, CI remoto, merge y promociones permanecen pendientes. Linear ya
+contiene los seis criterios técnicos verificados y el comentario de evidencia,
+pero permanece `In Progress` hasta la prueba manual/publicación. Evidencia detallada:
+`docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 
 ## Manual verification after automated closure
 
-1. Create/save a `strategy.editor.v1` revision and activate it through the existing Strategy UI.
-2. Restart Vantare with LMU in a session and confirm the logs report one resolved active revision without payload contents.
-3. Enter the track and verify the existing sanitized live probe/read model observes the real Strategy cursor and stint boundary.
-4. Confirm Fuel remains observed from Telemetry Core but deviation remains missing because the persisted editor v1 document has no explicit per-lap target series.
-5. Deactivate the plan, restart, and confirm Strategy live stays disabled while Overlay/Engineer telemetry continues.
+El primer intento quedó bloqueado por ISA-361 / TC-03C.1: con dos procesos LMU
+homónimos, el detector de build abandonaba ante el primer candidato cuya ruta
+no podía consultar y Telemetry Core permanecía `degraded`. La integración local
+`integration/isa-340-361-local-smoke@6de086d1` combinó por cherry-pick el fix
+productivo ISA-361 y los tres commits productivos ISA-340 sobre
+`nightly@d45d8d8d`; build frontend, gates Go focales y suite Go global pasaron.
+El primer smoke se ejecutó sin jugador y falló con cursor `0/0`. Tras la
+confirmación explícita de Isaac en pista se ejecutó exactamente una vez y pasó
+con source live, cursor `epoch=1/sequence=3`, vuelta completada `0` y Fuel
+`98/115 L` present/fresh; la desviación siguió missing sin objetivo exacto.
+Esto no sustituye la verificación manual completa en Wails ni `-race`.
+
+- [ ] Create/save a `strategy.editor.v1` revision and activate it through the existing Strategy UI.
+- [ ] Restart Vantare with LMU in a session and confirm the logs report one resolved active revision without payload contents.
+- [x] Enter the track and verify the existing sanitized live probe/read model observes the real Strategy cursor and stint boundary.
+- [x] Confirm Fuel remains observed from Telemetry Core but deviation remains missing because the persisted editor v1 document has no explicit per-lap target series.
+- [ ] Deactivate the plan, restart, and confirm Strategy live stays disabled while Overlay/Engineer telemetry continues.
 
 ## Closure boundary
 

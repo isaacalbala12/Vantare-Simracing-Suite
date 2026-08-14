@@ -11,7 +11,7 @@ Strategy y ninguna comparte almacenamiento interno con el consumidor.
 | Contrato | Productor/owner | Issue productora | Consumidor | Issue consumidora |
 | --- | --- | --- | --- | --- |
 | `StrategyInputProjection v1` | Telemetry Analysis | ISA-159 / TA-05 | Adapter histórico Strategy | ISA-145 / STR-10 |
-| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | `internal/strategy/live` mediante el adaptador in-process de `internal/app` | ISA-152 / STR-17 |
+| `StrategyLiveProjection v1` | Telemetry Core | ISA-160 / TC-10A + ISA-161 / TC-10B | `internal/strategy/live` mediante el adaptador in-process de `internal/app` | ISA-152 / STR-17 + ISA-340 / STR-17A |
 
 ## Proyección histórica
 
@@ -81,10 +81,28 @@ si el Hub coalesce estados intermedios y entrega `live -> live`.
 
 La evidencia opt-in LMU recorre el único pipeline canónico hasta el motor y
 observó cursor `1/3`, vuelta `0` y Fuel `98/115 L` fresh; sin objetivo, la
-desviación permaneció missing. El composition root no arranca todavía una
-ejecución Strategy porque el `ActivePlan` durable solo identifica una revisión
-y no suministra stints/objetivos normalizados. Resolver esa frontera requiere
-alcance explícito; no habilita un plan sintético.
+desviación permaneció missing.
+
+ISA-340 / STR-17A resuelve la frontera de arranque sin añadir una segunda
+fuente. Sobre `origin/nightly@d9e4bd352b62824b0e83a05b5c3c631fec1f0c73`,
+el HEAD productivo local `668f54c3e87d9a26f41d593d71713e86b48a1134`:
+
+- busca la referencia activa completa exacta y su hash entre las revisiones
+  inmutables ya decodificadas por el repositorio;
+- acepta solo `strategy.editor.v1` estricto y mapea únicamente ID y `lapCount`
+  de cada stint; `FuelTargets` queda `nil`;
+- abre un repositorio Strategy y comparte esa instancia entre el bridge y un
+  único snapshot de startup; no hay hot-reload de una activación posterior;
+- entrega el engine como consumer opcional al `TelemetryCoreRuntime`, que lo
+  ejecuta una vez sobre su `StrategyHub` y lifecycle existentes;
+- ante ausencia, mismatch, incompatibilidad o error de repositorio deshabilita
+  solo Strategy live y registra una razón sanitizada.
+
+No aparecen readers LMU, hubs, endpoints, transportes ni persistencia paralelos.
+La prueba manual con LMU/Wails y reinicio sigue pendiente. ISA-153 / STR-18 queda
+técnicamente desbloqueable, no terminada. La rama continúa local, Linear sigue
+`In Progress` y no hubo push, PR, CI, merge, promoción ni release. Evidencia:
+`docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 
 ## Dependencias ejecutables
 
@@ -98,6 +116,8 @@ ISA-117 / TC-09F
   -> ISA-160 / TC-10A signal audit/schema
       -> ISA-161 / TC-10B StrategyLiveProjection producer
           -> ISA-152 / STR-17 consumer
+              -> ISA-340 / STR-17A active revision startup wiring
+                  -> ISA-153 / STR-18 técnicamente desbloqueable
 ```
 
 ## Guards requeridos

@@ -16,6 +16,52 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-340 / STR-17A (2026-08-14, rama local validada con LMU en pista):
+
+- La rama oficial parte de `origin/nightly@d9e4bd352b62824b0e83a05b5c3c631fec1f0c73`
+  y el corte productivo termina en `668f54c3e87d9a26f41d593d71713e86b48a1134`
+  con cuatro commits locales: plan, resolver, lifecycle y composition root.
+- La revisión activa se resuelve por referencia completa exacta y hash. Solo
+  `strategy.editor.v1` atraviesa el decoder estricto; live recibe únicamente
+  ID y `lapCount` por stint. `FuelTargets` permanece `nil` porque el documento
+  no contiene una serie explícita de objetivos Fuel por vuelta.
+- `TelemetryCoreRuntime` posee el único consumer sobre su `StrategyHub`, con el
+  mismo contexto, wait group, fail-stop y cierre. El composition root abre un
+  solo repositorio compartido por bridge y snapshot, resuelve una sola vez al
+  startup y aplica una activación posterior únicamente tras reiniciar.
+- Ausencia, incompatibilidad, mismatch o error de repositorio deshabilitan solo
+  Strategy live con logs sanitizados. Telemetry Core, Overlay y Engineer siguen
+  arrancando; no se añade reader, hub, endpoint, storage ni dependencia.
+- Reviews de Tasks 1, 2 y 3: `APPROVED` tras los fixes P1/P2. Gates finales
+  sobre `668f54c3`: focales live/app/cmd x20, conjunto Strategy/app/transport/cmd,
+  global Go final (37,6 s), vet focal, gofmt, diff-check y build frontend de 897
+  módulos pasan. La primera global tuvo dos timeouts ajenos que pasaron aislados
+  antes de la repetición global verde.
+- `-race` no se ejecutó (`CGO_ENABLED=0`, sin GCC); no hubo frontend tests
+  porque ISA-340 no toca source frontend.
+- Para comprobar el encaje sin contaminar las ramas de issue se creó la
+  integración local desechable `integration/isa-340-361-local-smoke@6de086d1`
+  sobre `nightly@d45d8d8d`. Contiene cherry-picks exactos del fix productivo
+  ISA-361 y de los tres commits productivos ISA-340; build frontend, gates Go
+  focales y suite Go global pasaron.
+- El primer smoke combinado se lanzó sin jugador en pista y falló con cursor
+  `0/0`. Tras la confirmación explícita de Isaac de que el coche estaba en
+  pista, se ejecutó exactamente una vez más y pasó con `source=live`, cursor
+  `epoch=1/sequence=3`, vueltas completadas `0` present/fresh, Fuel `98/115 L`
+  present/fresh y desviación missing al no existir un objetivo exacto.
+- Esa ejecución acredita LMU -> Telemetry Core -> Strategy en pista. No acredita
+  aún el flujo manual completo por la aplicación Wails, sus reinicios y la
+  desactivación, ni aporta cobertura `-race`.
+- Evidencia:
+  `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
+  Estado externo: rama de issue e integración de smoke solo locales. Linear se
+  sincronizó previamente mediante MCP directo:
+  los seis criterios técnicos constan verificados y la issue permanece
+  `In Progress` hasta la prueba manual/publicación. Sin push, PR, CI, merge,
+  promoción o release. Testers permanece diferido.
+- ISA-153 / STR-18 queda técnicamente desbloqueable, pero sigue siendo un corte
+  separado, no terminado ni autorizado por este cierre.
+
 Actualización ISA-309 / STR-N02 (2026-08-10):
 
 - La pila acumulativa de Strategy posterior a STR-09 se reconstruyó sobre
@@ -51,9 +97,9 @@ Actualización ISA-152 / STR-17 (2026-08-14):
   cubiertos. Missing, stale, invalid y unsupported permanecen explícitos.
 - El adaptador consume una única suscripción del `StrategyHub()` existente,
   tolera la evolución aditiva de Strategy v1 y no crea goroutines, readers,
-  endpoints ni almacenamiento. No está conectado al arranque: `ActivePlan`
-  conserva una referencia de revisión, no los stints/objetivos normalizados, y
-  STR-17 no autoriza inventar esa fuente.
+  endpoints ni almacenamiento. En el corte histórico ISA-152 no estaba
+  conectado al arranque: `ActivePlan` conservaba una referencia de revisión y
+  STR-17 no autorizaba inventar la normalización que ahora posee ISA-340.
 - `TestStrategyLiveLMUOptIn` pasó con el pipeline productivo completo y un solo
   reader: source live, cursor `1/3`, vuelta completada `0` fresh, Fuel
   `98/115 L` fresh y desviación missing sin objetivo. El log es sanitizado; no
@@ -88,10 +134,10 @@ Actualización condicionada ISA-161 / TC-10B (2026-08-12; estado histórico):
   pasó completo para `19dddea`, incluido GitGuardian. Cualquier amend posterior
   requiere checks de su nuevo HEAD; el estado final se consulta en el PR.
   Linear sigue pendiente por reautenticación.
-- Esto no implementa el motor live Strategy ni desbloquea todavía ISA-152 /
-  STR-17. La dependencia técnica solo será desbloqueable tras la promoción
-  aceptada de ISA-161 a `nightly`; no hubo integración, promoción ni release
-  de este corte.
+- En ese estado histórico todavía no existía el motor live ni estaba
+  desbloqueada ISA-152 / STR-17. Las actualizaciones posteriores de ISA-152 e
+  ISA-340 superseden ese bloqueo; no hubo integración, promoción ni release de
+  este corte condicionado.
 
 STR-00 y STR-01 quedaron aceptados. STR-01 rescata Product A solo como oráculo
 histórico aislado; no conecta sus contratos al producto. STR-02 introduce el
@@ -302,15 +348,16 @@ Actualización ISA-134 / STR-00:
 - Guard de entrega: denylist 69/69, manifiesto versionado del delta y discovery
   de raíz compatible con `-trimpath`.
 - Contrato STR-02: `docs/strategy-planner/str-02-contract.md`.
-- Issue activa: ISA-144 / STR-09, implementación lista para review independiente
-  sobre el commit aceptado de STR-08.
+- Issue de cierre vigente: ISA-340 / STR-17A, validada en rama local y aún
+  `In Progress` en Linear hasta el cierre del orquestador.
 
 ## Siguiente acción exacta
 
-Definir mediante issue/decisión la fuente normalizada de stints y objetivos
-desde la revisión activa antes de cablear el motor al arranque. No inventar un
-plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
+Completar en Wails la creación/activación por UI, los reinicios y la
+desactivación del plan, y obtener la revisión de Isaac antes de cualquier
+push/PR o promoción. ISA-153 / STR-18 queda técnicamente desbloqueable, pero
+continúa separado y no se marca hecho.
 
 ## Última actualización
 
-2026-08-14, ISA-152 / STR-17 integrada en Nightly, Codex.
+2026-08-14, ISA-340 / STR-17A validada en rama local con LMU en pista, Codex.

@@ -338,6 +338,49 @@ Nota ISA-335 / ISA-345 / OS-BUG (2026-08-14, integrada en Nightly):
   pasó. El lint global conserva solo deuda heredada advisory. Nivel alcanzado:
   Nightly; sin promoción a Testers/Master y sin release.
 
+Nota ISA-340 / STR-17A (2026-08-14, rama local validada con LMU en pista):
+- Base y merge-base exactos:
+  `origin/nightly@d9e4bd352b62824b0e83a05b5c3c631fec1f0c73`. El corte productivo
+  contiene cuatro commits locales y termina en
+  `668f54c3e87d9a26f41d593d71713e86b48a1134`.
+- La referencia activa se resuelve por plan, variante, revisión y hash exactos.
+  Solo `strategy.editor.v1` estricto se normaliza; live recibe ID y `lapCount`
+  de cada stint, con `FuelTargets` exactamente `nil`.
+- El único consumer usa `StrategyHub` y el lifecycle de `TelemetryCoreRuntime`.
+  El composition root abre un repositorio compartido por bridge/snapshot,
+  resuelve una vez al startup y no aplica hot-reload de activaciones posteriores.
+  Ausencia, mismatch, incompatibilidad o error deshabilitan solo Strategy y se
+  registran mediante razones sanitizadas.
+- Reviews Tasks 1, 2 y 3: `APPROVED` tras fixes P1/P2. Gates finales sobre
+  `668f54c3`: live/app/cmd x20, conjunto Strategy+app+transport+cmd, global Go
+  final en 37,6 s, vet focal, gofmt, diff-check y build frontend de 897 módulos
+  pasan. La primera global tuvo dos timeouts ajenos; pasaron aislados y la
+  repetición final global quedó verde. El lockfile no cambió.
+- No se ejecutó `-race` (`CGO_ENABLED=0`, sin GCC) ni tests frontend porque no
+  se tocó source frontend.
+- La integración local desechable
+  `integration/isa-340-361-local-smoke@6de086d1` partió de
+  `nightly@d45d8d8d` y aplicó por cherry-pick el fix productivo ISA-361 y los
+  tres commits productivos ISA-340 exactos. Build frontend, gates Go focales y
+  suite Go global pasaron sobre ese árbol.
+- El primer smoke combinado, ejecutado sin jugador en pista, falló con cursor
+  `0/0` y no aportó evidencia live. Tras la confirmación explícita de Isaac de
+  que el coche estaba en pista, el probe se ejecutó exactamente una vez y pasó:
+  `source=live`, cursor `epoch=1/sequence=3`, vueltas completadas `0`
+  present/fresh, Fuel `98/115 L` present/fresh y desviación missing porque la
+  revisión no declara un objetivo exacto.
+- Esto acredita LMU -> Telemetry Core -> Strategy con jugador en pista. No
+  acredita todavía el recorrido manual completo por Wails (UI, reinicios y
+  desactivación) ni cobertura `-race`.
+- Evidencia:
+  `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
+  La rama de issue y la integración de smoke siguen locales. Linear permanece
+  `In Progress`; el MCP directo previo marcó
+  los seis criterios técnicos y añadió la evidencia, pero aún no hay push, PR,
+  CI, merge, promoción a `nightly`/`testers`/`master` ni release. Testers está
+  diferido.
+  ISA-153 / STR-18 queda técnicamente desbloqueable, no terminada.
+
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
@@ -361,9 +404,9 @@ Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - STR-17 queda implementada y aprobada por reviews independientes de spec y
   calidad. No añade reader LMU, UI, replanificación, VE, tyres, weather,
   persistencia ni dependencias. El adaptador se inyecta sobre el Hub existente;
-  no se cablea al arranque porque `ActivePlan` solo guarda la referencia de
-  revisión y todavía no existe una fuente aprobada de stints/objetivos live.
-  Inventar esa traducción violaría el contrato.
+  en ese corte histórico no se cableó al arranque porque `ActivePlan` solo
+  guardaba la referencia. ISA-340 posee ahora la normalización estricta y el
+  wiring de startup sin inventar objetivos Fuel.
 - Gates locales: focales x20, `go vet`, build frontend, `go test ./...` y
   frontend `367/2636` pasan. El CI del HEAD de rama `c5f965f` pasó completo en
   el run 31720701167. El gate post-promoción
@@ -425,15 +468,11 @@ Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada; cierre supersedido po
   terminó COMPLETED/SUCCESS: `Validate promotion path`, frontend build, Go,
   frontend tests, visual advisory y lint advisory pasaron; GitGuardian también
   pasó. Cualquier amend posterior necesita checks de su nuevo HEAD y el estado
-  final se consulta en el PR. Linear sigue pendiente por reautenticación; no
-  hubo integración, promoción ni release. ISA-152 / STR-17 no está
-  desbloqueada: su dependencia técnica está implementada, pero solo será
-  desbloqueable tras promoción aceptada a `nightly`. El motor live Strategy
-  todavía no existe.
-- Siguiente acción: actualizar Linear tras reautenticar y obtener la revisión
-  de Isaac sobre el PR #212. La validación con jugador/Fuel en pista continúa
-  pendiente y no bloquea la evidencia fixture/replay ya cerrada; no mergear ni
-  promover sin autorización nueva de Isaac.
+  final se consulta en el PR. En ese estado histórico, Linear seguía pendiente,
+  no había integración y ISA-152 aún dependía de promover ISA-161; las notas
+  posteriores de ISA-152 e ISA-340 superseden ese bloqueo y ese siguiente paso.
+- Siguiente acción histórica ya supersedida: reautenticar Linear, revisar el PR
+  #212 y validar jugador/Fuel en pista antes de promover ISA-161.
 
 Nota ISA-160 / TC-10A (2026-08-11, estado histórico supersedido por ISA-161):
 - La auditoría Strategy live queda ejecutable sin cambios productivos: un E2E

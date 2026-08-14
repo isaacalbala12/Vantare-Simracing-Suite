@@ -1,3 +1,17 @@
+Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
+- El primer corte de evidencia visual del Testing Center admite solo archivos
+  PNG/JPEG existentes: máximo 10 capturas, 10 MiB cada una y 100 MiB por lote.
+- Se aprueba Supabase Storage privado con manifest relacional, rutas
+  server-owned, validación cloud de SHA-256/tamaño/firma/dimensiones, acceso
+  temporal para agentes y limpieza durable. Los bytes no pasan por PostgreSQL,
+  Linear, prompts, RPC JSON ni drafts locales.
+- Se descartan Streamable, vídeo, grabación/captura integrada y enlaces
+  externos. No hace falta `tus-js-client` ni otra dependencia nueva.
+- La autoridad técnica es
+  `docs/superpowers/specs/2026-08-14-testing-center-screenshot-evidence-design.md`.
+  Este corte es documentación; no crea bucket, migración, deploy, UI ni
+  activación y no autoriza promoción fuera de una futura rama de issue.
+
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Cada layout admite exactamente un widget Delta. Studio oculta la acción de
   añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la

@@ -4,8 +4,9 @@ $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
 $testingPilot = @("testing-center-feedback", "testing-center-linear-webhook", "testing-center-linear-worker")
 $allowed = $production + $testingPilot
+$testingAutomation = @("testing-center-agent-dispatch", "testing-center-agent-callback")
 $infrastructure = @("_deprecated", "_shared", "scripts")
-$known = $allowed + $infrastructure
+$known = $allowed + $testingAutomation + $infrastructure
 $unexpected = Get-ChildItem -LiteralPath $functionsRoot -Directory |
   Where-Object { $_.Name -notin $known } |
   Select-Object -ExpandProperty Name |

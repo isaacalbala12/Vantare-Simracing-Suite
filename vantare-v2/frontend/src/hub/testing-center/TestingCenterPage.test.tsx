@@ -82,6 +82,65 @@ describe("TestingCenterPage", () => {
     expect(await screen.findByText(result.reportId)).toBeTruthy();
   });
 
+  it("shows the authenticated automation state without claiming delivery before release", async () => {
+    const result: SubmittedReport = {
+      reportId: `report_${"f".repeat(64)}`,
+      reportState: "submitted",
+      idempotent: false,
+      createdAt: "2026-08-13T20:00:00Z",
+    };
+    const loadAgentJobState = vi.fn()
+      .mockResolvedValueOnce({ state: "red_running", updatedAt: "2026-08-13T20:00:00Z" })
+      .mockResolvedValueOnce({ state: "merged_nightly", updatedAt: "2026-08-13T20:01:00Z" })
+      .mockResolvedValueOnce({ state: "completed", updatedAt: "2026-08-13T20:02:00Z" });
+    render(
+      <TestingCenterPage
+        channel="nightly"
+        version="v0.1.0.5"
+        client={client()}
+        submitReport={vi.fn().mockResolvedValue(result)}
+        feedbackClient={feedbackClient()}
+        loadAgentJobState={loadAgentJobState}
+        agentPollIntervalMs={10}
+      />,
+    );
+    expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
+    fireEvent.submit(screen.getByRole("button", { name: "Enviar reporte" }).closest("form")!);
+    expect(await screen.findByText("Procesando incidencia")).toBeTruthy();
+    expect(await screen.findByText("Verificando Nightly")).toBeTruthy();
+    expect(await screen.findByText("Corrección disponible en Nightly")).toBeTruthy();
+    expect(loadAgentJobState).toHaveBeenCalledWith(result.reportId);
+  });
+
+  it("stops polling for a known terminal triage result", async () => {
+    const result: SubmittedReport = {
+      reportId: `report_${"a".repeat(64)}`,
+      reportState: "submitted",
+      idempotent: false,
+      createdAt: "2026-08-13T20:00:00Z",
+    };
+    const loadAgentJobState = vi.fn().mockResolvedValue({
+      state: "ineligible",
+      updatedAt: "2026-08-13T20:00:01Z",
+    });
+    render(
+      <TestingCenterPage
+        channel="nightly"
+        version="v0.1.0.5"
+        client={client()}
+        submitReport={vi.fn().mockResolvedValue(result)}
+        feedbackClient={feedbackClient()}
+        loadAgentJobState={loadAgentJobState}
+        agentPollIntervalMs={1}
+      />,
+    );
+    expect(await screen.findByDisplayValue("opened launcher")).toBeTruthy();
+    fireEvent.submit(screen.getByRole("button", { name: "Enviar reporte" }).closest("form")!);
+    expect(await screen.findByText("Automatización detenida")).toBeTruthy();
+    await new Promise((resolve) => window.setTimeout(resolve, 20));
+    expect(loadAgentJobState).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the same draft available after a failed submission", async () => {
     const testingClient = client();
     const submitReport = vi.fn().mockRejectedValue(new Error("network"));

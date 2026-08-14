@@ -7,6 +7,9 @@ const reviewSchemaPath =
   ".github/agents/testing-center-review-output.schema.json";
 const reviewSettingsPath = ".github/agents/testing-center-review-settings.json";
 const branchGatesPath = ".github/workflows/branch-channel-gates.yml";
+const closeoutPath = ".github/workflows/testing-center-nightly-closeout.yml";
+const releasePath = ".github/workflows/release.yml";
+const triageWorkflowPath = ".github/workflows/testing-center-agent-triage.yml";
 
 const checkoutPin = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
 const setupDenoPin =
@@ -200,7 +203,9 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
   assertIncludes(queueBootstrap, "permissions:\n      contents: read");
   assertIncludes(queueBootstrap, "persist-credentials: false");
   assertIncludes(queueBootstrap, "run: exit 1");
-  for (const forbidden of ["gh pr merge", "gh api", "git push", "contents: write"]) {
+  for (
+    const forbidden of ["gh pr merge", "gh api", "git push", "contents: write"]
+  ) {
     assertNotIncludes(queueBootstrap, forbidden);
   }
 });
@@ -677,5 +682,161 @@ Deno.test("review deny-list is explicit and security tests run on every PR", asy
     gates,
     "python .github/scripts/test_testing_center_manifest_collector.py",
   );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_nightly_closeout.py -v",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_agent_callback.py -v",
+  );
+  assertIncludes(
+    gates,
+    "supabase/functions/testing-center-agent-callback/index.test.ts",
+  );
+  assertIncludes(
+    gates,
+    "supabase/functions/scripts/verify-deploy-surface.test.ts",
+  );
   assertNotIncludes(gates, "pip install pyyaml");
+});
+
+Deno.test("nightly closeout is serial source-bound and inert", async () => {
+  const workflow = normalize(await Deno.readTextFile(closeoutPath));
+  assertIncludes(workflow, 'workflows: ["Branch channel gates"]');
+  assertIncludes(workflow, "types: [completed]");
+  assertIncludes(workflow, "branches: [nightly]");
+  assertIncludes(workflow, "group: testing-center-nightly-closeout");
+  assertIncludes(workflow, "cancel-in-progress: false");
+  assertIncludes(workflow, "permissions:\n  contents: read");
+  assertIncludes(workflow, "github.event.workflow_run.head_sha");
+  assertIncludes(workflow, "testing_center_nightly_closeout.py");
+  assertIncludes(workflow, "if: github.event_name == 'workflow_run' && false");
+  assertIncludes(workflow, "uses: ./.github/workflows/release.yml");
+  assertIncludes(workflow, "source_sha: ${{ needs.smoke.outputs.source_sha }}");
+  assertIncludes(workflow, "publish_channel: nightly");
+  assertIncludes(workflow, "VITE_SUPABASE_URL:");
+  assertIncludes(workflow, "VITE_SUPABASE_ANON_KEY:");
+  assertIncludes(workflow, "VANTARE_LICENSE_PUBLIC_KEYS:");
+  assertIncludes(workflow, "DISCORD_PROGRESS_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_BUILD_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_RELEASE_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_KNOWN_ISSUES_WEBHOOK_URL:");
+  assertNotIncludes(workflow, "secrets: inherit");
+  assertIncludes(workflow, 'git push origin "HEAD:refs/heads/$branch"');
+  assertIncludes(
+    workflow,
+    'branch="vantareapp/tc-${JOB_KEY:0:12}-nightly-closeout-revert"',
+  );
+  assertNotIncludes(workflow, "git push --force");
+  assertNotIncludes(workflow, "git push origin nightly");
+  assertIncludes(workflow, "needs.smoke.result == 'failure'");
+  assertIncludes(workflow, 'echo "kind=none"');
+  assertIncludes(workflow, 'if not branch.startswith("vantareapp/tc-")');
+  assertIncludes(workflow, "if len(pulls) == 0:");
+  assertIncludes(workflow, 'git revert --no-commit "$SOURCE_SHA"');
+  assertIncludes(
+    workflow,
+    'parent_count="$(git rev-list --parents -n 1 "$SOURCE_SHA"',
+  );
+  assertIncludes(workflow, 'git revert --no-commit --mainline 1 "$SOURCE_SHA"');
+  assertIncludes(workflow, '"reservedTag"');
+  assertIncludes(workflow, '--release-tag "$RELEASE_TAG"');
+  assertIncludes(workflow, "needs.release.result == 'failure'");
+  assertIncludes(workflow, "needs.revert.result == 'failure'");
+  assertIncludes(workflow, "--phase closeout_failed");
+  assertIncludes(workflow, "continue_revert");
+  assertIncludes(workflow, 'git rev-parse "origin/$branch^{tree}"');
+  assertIncludes(workflow, "gh pr list --state all");
+  assertIncludes(workflow, "release_asset_count");
+  assertIncludes(workflow, "checksums_verified");
+  assertNotIncludes(workflow, "gh release create");
+});
+
+Deno.test("release reusable contract requires and uses the exact source sha", async () => {
+  const workflow = normalize(await Deno.readTextFile(releasePath));
+  assertIncludes(workflow, "workflow_call:");
+  assertIncludes(
+    workflow,
+    "value: ${{ jobs.release.outputs.release_source_sha }}",
+  );
+  for (
+    const input of [
+      "publish_channel",
+      "release_tag",
+      "release_notes",
+      "source_sha",
+    ]
+  ) assertIncludes(workflow, `${input}:`);
+  assertIncludes(
+    workflow,
+    'source_sha:\n        description: "Exact commit to build and publish"\n        required: true',
+  );
+  for (
+    const secret of [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY",
+      "VANTARE_LICENSE_PUBLIC_KEYS",
+      "DISCORD_PROGRESS_WEBHOOK_URL",
+      "DISCORD_BUILD_WEBHOOK_URL",
+      "DISCORD_RELEASE_WEBHOOK_URL",
+      "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+    ]
+  ) assertIncludes(workflow, `${secret}:\n        required: true`);
+  assertIncludes(
+    workflow,
+    "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}",
+  );
+  assertIncludes(workflow, "ref: ${{ env.SOURCE_SHA }}");
+  assertIncludes(
+    workflow,
+    'git merge-base --is-ancestor "$SOURCE_SHA" "origin/$PUBLISH_CHANNEL"',
+  );
+  assertIncludes(workflow, '--target "$SOURCE_SHA"');
+  assertNotIncludes(workflow, '--target "$GITHUB_SHA"');
+  assertNotIncludes(workflow, '--revision "$GITHUB_SHA"');
+  for (const line of usesLines(workflow)) {
+    assertMatchPinned(line);
+  }
+});
+
+function assertMatchPinned(line: string): void {
+  assert(
+    /@[0-9a-f]{40}$/.test(line),
+    `Action must be pinned by full SHA: ${line}`,
+  );
+}
+
+Deno.test("OIDC authority exists only in same-run inert closeout callback jobs", async () => {
+  for (const path of [triageWorkflowPath, workflowPath]) {
+    const workflow = normalize(await Deno.readTextFile(path));
+    assertNotIncludes(workflow, "id-token: write");
+    assertNotIncludes(workflow, "ACTIONS_ID_TOKEN_REQUEST_TOKEN");
+    assertIncludes(workflow, "callback_contract_disabled:");
+  }
+  const workflow = normalize(await Deno.readTextFile(closeoutPath));
+  const callbackNames = [
+    "callback_smoke_started",
+    "callback_released",
+    "callback_release_failed",
+    "callback_smoke_failed",
+    "callback_revert_failed",
+    "callback_revert_pr",
+    "callback_reverted",
+  ];
+  let withoutCallbacks = workflow;
+  for (const name of callbackNames) {
+    const callback = jobBlock(workflow, name);
+    assertIncludes(callback, "id-token: write");
+    assertIncludes(callback, "contents: read");
+    assertIncludes(callback, "&& false");
+    assertIncludes(callback, "audience=vantare-testing-center-agent-callback");
+    assertIncludes(callback, "TESTING_CENTER_AGENT_CALLBACK_URL");
+    assertIncludes(callback, "testing_center_agent_callback.py build");
+    assertIncludes(callback, "testing_center_agent_callback.py validate-url");
+    assertIncludes(callback, 'echo "::add-mask::$token"');
+    withoutCallbacks = withoutCallbacks.replace(callback, "");
+  }
+  assertNotIncludes(withoutCallbacks, "id-token: write");
+  assertNotIncludes(withoutCallbacks, "ACTIONS_ID_TOKEN_REQUEST_TOKEN");
 });

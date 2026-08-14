@@ -14,6 +14,32 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 8_000;
 
+export type AgentJobVisibleState =
+  | "processing"
+  | "verifying_nightly"
+  | "available_nightly"
+  | "reverting_nightly"
+  | "reverted_nightly"
+  | "needs_owner"
+  | "stopped";
+
+export function mapAgentJobVisibleState(state: string): AgentJobVisibleState {
+  if (["merge_queued", "merged_nightly", "smoke_running", "nightly_tagged"].includes(state)) {
+    return "verifying_nightly";
+  }
+  if (state === "completed") return "available_nightly";
+  if (state === "smoke_failed" || state === "revert_pr_open") {
+    return "reverting_nightly";
+  }
+  if (state === "reverted") return "reverted_nightly";
+  if (state === "needs_owner") return "needs_owner";
+  const active = [
+    "triage_queued", "triaged", "eligible", "red_running", "red_verified",
+    "green_running", "diff_verified", "review_approved", "ci_running",
+  ];
+  return active.includes(state) ? "processing" : "stopped";
+}
+
 export type TestingCenterEventTransport = {
   emit(name: string, payload: unknown): void;
   on(name: string, listener: (payload: unknown) => void): () => void;

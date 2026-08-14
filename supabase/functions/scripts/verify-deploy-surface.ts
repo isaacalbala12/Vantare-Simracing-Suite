@@ -11,6 +11,7 @@ const testingPilotFunctions = new Set([
 ]);
 const testingAutomationFunctions = new Set([
   "testing-center-agent-dispatch",
+  "testing-center-agent-callback",
 ]);
 const recognizedFunctions = new Set([
   ...productionFunctions,

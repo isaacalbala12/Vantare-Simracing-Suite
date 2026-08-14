@@ -118,6 +118,18 @@ func TestSelfDeltaKeepsPersonalSessionAndPreviousReferencesIndependent(t *testin
 	assertReferenceDelta(t, got.PreviousLap, -1, schema.ProvenanceDerived)
 }
 
+func TestNativePersonalDeltaReplacesDerivedHistoryForSameCursor(t *testing.T) {
+	tracker := readyDeltaTracker(t)
+	observed := deltaObserved(3, 100, 59*time.Second, false, schema.FreshnessFresh)
+	observed.Vehicles[0].DeltaBest = derivedInput(session.DeltaSeconds(-0.245), schema.FreshnessFresh)
+
+	got := tracker.Apply(deltaHeader(6), observed)
+
+	if len(got.History) != 1 || got.History[0].Seconds != session.DeltaSeconds(-0.245) {
+		t.Fatalf("native history = %+v, want the displayed personal delta", got.History)
+	}
+}
+
 func assertReferenceDelta(t testing.TB, field schema.Field[session.DeltaSeconds], want session.DeltaSeconds, provenance schema.Provenance) {
 	t.Helper()
 	got, present := field.Value()

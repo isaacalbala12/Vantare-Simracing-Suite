@@ -29,6 +29,9 @@ func nextDeltaReference(current string) string {
 // runtime document. Session layouts are synchronized because only one of them
 // can be active at a time and the hotkey represents one global driver choice.
 func (s *StudioProfileService) CycleDeltaReference() (string, error) {
+	s.deltaCycleMu.Lock()
+	defer s.deltaCycleMu.Unlock()
+
 	if s.loaded == nil || s.loaded.Document == nil {
 		return "", fmt.Errorf("profile not loaded")
 	}
@@ -49,6 +52,7 @@ func (s *StudioProfileService) CycleDeltaReference() (string, error) {
 
 	current := ""
 	found := false
+	canonicalSelected := false
 	for _, layoutName := range layoutTypes {
 		layout := document.Layouts[config.LayoutType(layoutName)]
 		for _, widget := range layout.Widgets {
@@ -56,7 +60,8 @@ func (s *StudioProfileService) CycleDeltaReference() (string, error) {
 				continue
 			}
 			found = true
-			if current == "" {
+			if !canonicalSelected {
+				canonicalSelected = true
 				if reference, ok := widget.Content["reference"].(string); ok {
 					current = reference
 				}

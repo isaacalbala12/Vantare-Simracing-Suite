@@ -306,7 +306,9 @@ func (tracker *selfDeltaTracker) recordSelectedDelta(
 		lapDistance.Freshness() != schema.FreshnessFresh {
 		return
 	}
-	if tracker.lastPublic != 0 && source-tracker.lastPublic < selfDeltaSampleInterval {
+	last := len(tracker.history) - 1
+	sameCursor := last >= 0 && tracker.history[last].Cursor == header.Cursor
+	if !sameCursor && tracker.lastPublic != 0 && source-tracker.lastPublic < selfDeltaSampleInterval {
 		return
 	}
 	sample := DeltaSample{
@@ -316,7 +318,7 @@ func (tracker *selfDeltaTracker) recordSelectedDelta(
 		LapDistance: distance,
 		Seconds:     seconds,
 	}
-	if last := len(tracker.history) - 1; last >= 0 && tracker.history[last].Cursor == header.Cursor {
+	if sameCursor {
 		tracker.history[last] = sample
 	} else {
 		tracker.history = append(tracker.history, sample)

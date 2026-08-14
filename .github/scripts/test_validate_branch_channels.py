@@ -8,11 +8,112 @@ from validate_branch_channels import main, validate
 
 
 class ValidateBranchChannelsTest(unittest.TestCase):
+    def test_accepts_only_nightly_merge_group_refs(self) -> None:
+        self.assertEqual(
+            validate(
+                "merge_group",
+                "refs/heads/gh-readonly-queue/nightly/pr-217-deadbeef",
+                "",
+                "",
+            ),
+            "nightly merge group accepted",
+        )
+        for ref in (
+            "refs/heads/gh-readonly-queue/testers/pr-1-deadbeef",
+            "refs/heads/gh-readonly-queue/master/pr-1-deadbeef",
+            "refs/heads/nightly",
+            "refs/heads/gh-readonly-queue/nightly",
+            "refs/heads/gh-readonly-queue/nightly/../master",
+            "refs/heads/gh-readonly-queue/nightly/..",
+            "refs/heads/gh-readonly-queue/nightly/.",
+        ):
+            with self.subTest(ref=ref), self.assertRaisesRegex(
+                ValueError, "not a nightly merge group"
+            ):
+                validate("merge_group", ref, "", "")
+
+    def test_channel_workflow_runs_pinned_gates_for_merge_group(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parents[1] / "workflows" / "branch-channel-gates.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "merge_group:\n    branches: [nightly]\n    types: [checks_requested]",
+            workflow,
+        )
+        self.assertIn("EVENT_NAME: ${{ github.event_name }}", workflow)
+        self.assertIn("EVENT_REF: ${{ github.ref }}", workflow)
+        self.assertIn("EVENT_HEAD: ${{ github.head_ref }}", workflow)
+        self.assertIn('--event "$EVENT_NAME"', workflow)
+        self.assertNotIn('--event "${{ github.event_name }}"', workflow)
+        self.assertNotIn('--head "${{ github.head_ref }}"', workflow)
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn(
+            "AUTOMATIC_TC_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}",
+            workflow,
+        )
+        self.assertNotIn("github.event_name == 'merge_group' ||", workflow)
+        self.assertIn('if [ "$AUTOMATIC_TC_SCOPE" != "true" ]; then', workflow)
+        self.assertIn('DIFF_BASE_SHA="$(git rev-parse "$GITHUB_SHA^1")"', workflow)
+        self.assertIn(
+            'git diff --name-only --diff-filter=ACMR -z "$DIFF_BASE_SHA" "$GITHUB_SHA"',
+            workflow,
+        )
+        self.assertNotIn("github.event.pull_request.base.sha", workflow)
+        self.assertIn(
+            "if ($paths.Count -gt 0) {\n"
+            "            & pnpm exec eslint -- @paths\n"
+            "            if ($LASTEXITCODE -ne 0) { throw \"changed frontend lint failed\" }\n"
+            "          }",
+            workflow,
+        )
+        for line in workflow.splitlines():
+            if "uses:" in line:
+                self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
+        for required in (
+            "Frontend build",
+            "Go tests",
+            "Frontend tests",
+            "Changed frontend lint",
+            "Windows Wails build",
+            "Testing Center visual gate",
+        ):
+            self.assertIn(required, workflow)
+        self.assertNotIn(
+            "- name: Changed frontend lint\n        continue-on-error: true", workflow
+        )
+        self.assertNotIn(
+            "- name: Testing Center visual gate\n        continue-on-error: true", workflow
+        )
+        self.assertNotIn(
+            "- name: Windows Wails build\n        continue-on-error: true", workflow
+        )
+        self.assertIn(
+            "- name: Test inert Testing Center merge queue policy\n"
+            "        run: python .github/scripts/test_testing_center_merge_queue.py",
+            workflow,
+        )
+
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(
             validate("pull_request", "refs/pull/1/merge", "nightly", "vantareapp/isa-121"),
             "promotion accepted: vantareapp/isa-121 -> nightly",
         )
+        self.assertEqual(
+            validate(
+                "pull_request",
+                "refs/pull/218/merge",
+                "nightly",
+                "vantareapp/isa-322-haf-08-ci-merge_group-bootstrap-y-merge-queue-serializada",
+            ),
+            "promotion accepted: vantareapp/isa-322-haf-08-ci-merge_group-bootstrap-y-merge-queue-serializada -> nightly",
+        )
+        for head in (
+            "vantareapp/isa-322-_merge-group",
+            "vantareapp/isa-322-merge__group",
+            "vantareapp/isa-322-merge_group_",
+        ):
+            with self.subTest(head=head), self.assertRaises(ValueError):
+                validate("pull_request", "refs/pull/218/merge", "nightly", head)
 
     def test_accepts_only_nightly_into_testers(self) -> None:
         self.assertEqual(
@@ -41,11 +142,24 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "emergency hotfix accepted: "
             "vantareapp/hotfix-isa-175-critical-license-fix -> master",
         )
+        self.assertEqual(
+            validate(
+                "pull_request",
+                "refs/pull/9/merge",
+                "master",
+                "vantareapp/hotfix-isa-175-merge_group-fix",
+            ),
+            "emergency hotfix accepted: "
+            "vantareapp/hotfix-isa-175-merge_group-fix -> master",
+        )
         for head in (
             "hotfix/isa-175",
             "vantareapp/hotfix-175",
             "vantareapp/hotfix-isa-0-invalid",
             "vantareapp/hotfix-isa-175_Invalid",
+            "vantareapp/hotfix-isa-175-_merge-group",
+            "vantareapp/hotfix-isa-175-merge__group",
+            "vantareapp/hotfix-isa-175-merge_group_",
         ):
             with self.subTest(head=head), self.assertRaisesRegex(
                 ValueError, "must come from 'testers'"

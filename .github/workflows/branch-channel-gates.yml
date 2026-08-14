@@ -5,6 +5,9 @@ on:
     branches: [nightly, testers]
   pull_request:
     branches: [nightly, testers, master]
+  merge_group:
+    branches: [nightly]
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -16,6 +19,7 @@ concurrency:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.1.0"
+  WAILS_VERSION: "v3.0.0-alpha.98-tui"
   VANTARE_DIR: "vantare-v2"
 
 jobs:
@@ -23,17 +27,24 @@ jobs:
     name: Validate promotion path
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Check branch topology
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_BASE: ${{ github.base_ref }}
+          EVENT_HEAD: ${{ github.head_ref }}
         run: |
           python .github/scripts/validate_branch_channels.py \
-            --event "${{ github.event_name }}" \
-            --ref "${{ github.ref }}" \
-            --base "${{ github.base_ref }}" \
-            --head "${{ github.head_ref }}"
+            --event "$EVENT_NAME" \
+            --ref "$EVENT_REF" \
+            --base "$EVENT_BASE" \
+            --head "$EVENT_HEAD"
 
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py
@@ -43,6 +54,12 @@ jobs:
 
       - name: Test Testing Center trusted manifest collector
         run: python .github/scripts/test_testing_center_manifest_collector.py
+      - name: Test Testing Center changed lint scope
+        run: python .github/scripts/test_testing_center_changed_lint.py
+
+      - name: Test inert Testing Center merge queue policy
+        run: python .github/scripts/test_testing_center_merge_queue.py
+
       - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: 2.7.13
@@ -59,22 +76,53 @@ jobs:
         shell: powershell
         working-directory: ${{ env.VANTARE_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version-file: ${{ env.VANTARE_DIR }}/go.mod
           cache-dependency-path: ${{ env.VANTARE_DIR }}/go.sum
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
           version: ${{ env.PNPM_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Classify changed automatic scope
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        env:
+          AUTOMATIC_TC_SCOPE: ${{ startsWith(github.head_ref, 'vantareapp/tc-') }}
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGED_SCOPE_PATH: ${{ runner.temp }}/testing-center-changed-scope.json
+        run: |
+          set -euo pipefail
+          if [ "$AUTOMATIC_TC_SCOPE" != "true" ]; then
+            printf '%s\n' '{"eligible":true,"lint_paths":[],"reasons":[],"visual_required":false}' > "$CHANGED_SCOPE_PATH"
+            exit 0
+          fi
+          test "$EVENT_NAME" = "pull_request"
+          DIFF_BASE_SHA="$(git rev-parse "$GITHUB_SHA^1")"
+          git diff --name-only --diff-filter=ACMR -z "$DIFF_BASE_SHA" "$GITHUB_SHA" > "$RUNNER_TEMP/changed-paths.bin"
+          python .github/scripts/testing_center_changed_lint.py \
+            --nul-file "$RUNNER_TEMP/changed-paths.bin" \
+            --output "$CHANGED_SCOPE_PATH" \
+            --enforce-testing-center-scope
+
+      - name: Add Go bin to PATH
+        run: echo "$env:USERPROFILE\go\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Install pinned Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Install frontend dependencies
         working-directory: ${{ env.VANTARE_DIR }}/frontend
@@ -96,10 +144,34 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm exec vitest run
 
-      # Advisory, no bloqueante: las baselines se capturan en Windows local y el
-      # antialiasing de fuentes puede diferir en el runner. Promover a bloqueante
-      # solo cuando varias ejecuciones seguidas pasen limpias en CI.
-      - name: Overlay Studio visual baselines (advisory until CI rendering is proven)
+      - name: Changed frontend lint
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          $scope = Get-Content "$env:RUNNER_TEMP/testing-center-changed-scope.json" -Raw | ConvertFrom-Json
+          if (-not $scope.eligible) { throw "automatic scope is not eligible" }
+          $paths = @($scope.lint_paths | ForEach-Object { $_.Substring("vantare-v2/frontend/".Length) })
+          if ($paths.Count -gt 0) {
+            & pnpm exec eslint -- @paths
+            if ($LASTEXITCODE -ne 0) { throw "changed frontend lint failed" }
+          }
+
+      - name: Testing Center visual gate
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          $scope = Get-Content "$env:RUNNER_TEMP/testing-center-changed-scope.json" -Raw | ConvertFrom-Json
+          if ($scope.visual_required) {
+            pnpm exec playwright install chromium
+            if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }
+            pnpm visual:testing-center
+            if ($LASTEXITCODE -ne 0) { throw "Testing Center visual gate failed" }
+          }
+
+      - name: Windows Wails build
+        env:
+          VANTARE_BUILD_CHANNEL: nightly
+        run: wails3 task windows:build
+
+      - name: Overlay Studio visual baselines (human-channel advisory)
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: |
@@ -107,7 +179,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }
           pnpm visual:overlay-studio
 
-      - name: Frontend lint (advisory while inherited debt is isolated)
+      - name: Global frontend lint debt (human-channel advisory)
         continue-on-error: true
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm lint

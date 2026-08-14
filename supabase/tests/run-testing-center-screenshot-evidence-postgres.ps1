@@ -220,7 +220,7 @@ for each row when (old.id='testing-center-evidence')
 execute function public.isa350_fail_bucket_delete();
 '@
 
-  Write-Output "[1/8] Installing history and ISA-350 into disposable PostgreSQL"
+  Write-Output "[1/9] Installing history and ISA-350 into disposable PostgreSQL"
   docker exec $container createdb -U postgres $database
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
   docker cp (Join-Path $root "supabase\tests\testing_center_screenshot_evidence.test.sql") "${container}:/tmp/evidence.test.sql"

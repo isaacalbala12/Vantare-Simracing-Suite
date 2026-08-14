@@ -130,6 +130,9 @@ create index testing_center_evidence_batches_expiry_idx
   on public.testing_center_evidence_batches(state,expires_at);
 create index testing_center_screenshot_evidence_batch_idx
   on public.testing_center_screenshot_evidence(batch_id,state,position);
+create index testing_center_screenshot_evidence_report_idx
+  on public.testing_center_screenshot_evidence(report_id)
+  where report_id is not null;
 create index testing_center_evidence_outbox_claim_idx
   on public.testing_center_evidence_outbox(state,available_at,lease_expires_at);
 
@@ -169,6 +172,7 @@ as $$
     from public.testing_center_screenshot_evidence as evidence
     join public.testing_center_evidence_batches as batch using(batch_id)
     where batch.reporter_user_id = auth.uid()
+      and public.testing_center_can_view_channel(batch.channel)
       and batch.expires_at > pg_catalog.now()
       and batch.state in ('prepared','uploading','validating')
       and evidence.object_path = p_object_path
@@ -385,6 +389,9 @@ begin
   for update;
   if not found or v_batch.reporter_user_id <> v_user_id then
     raise exception 'testing_center_evidence_owner_required' using errcode='42501';
+  end if;
+  if not public.testing_center_can_view_channel(v_batch.channel) then
+    raise exception 'testing_center_evidence_channel_role_required' using errcode='42501';
   end if;
   select evidence.* into v_evidence
   from public.testing_center_screenshot_evidence as evidence

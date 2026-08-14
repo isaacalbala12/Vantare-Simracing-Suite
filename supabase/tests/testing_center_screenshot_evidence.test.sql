@@ -23,10 +23,12 @@ select is(
 select ok(
   exists (
     select 1
-    from pg_indexes
-    where schemaname = 'public'
-      and tablename = 'testing_center_screenshot_evidence'
-      and indexdef ~ '\\(report_id\\)'
+    from pg_index as index
+    join pg_attribute as attribute
+      on attribute.attrelid=index.indrelid
+      and attribute.attnum=any(index.indkey)
+    where index.indrelid='public.testing_center_screenshot_evidence'::regclass
+      and attribute.attname='report_id'
   ),
   'screenshot report foreign key has a supporting index'
 );

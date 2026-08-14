@@ -2,19 +2,28 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/license"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	strategylive "github.com/vantare/overlays/v2/internal/strategy/live"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
+	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -94,6 +103,447 @@ func TestStrategyRepositoryRoot(t *testing.T) {
 			t.Fatalf("strategyRepositoryRoot(%q) did not reject invalid path", invalid)
 		}
 	}
+}
+
+func TestStrategyLiveBootstrapResolvesActiveRevisionAndRestartsDeterministically(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repository, err := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed := commitActiveStrategyRevision(t, repository, 0, "revision-1", validStrategyEditorPayload(17, 22))
+
+	first, err := loadStrategyLiveEngine(ctx, repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == nil || first.Snapshot().ActivePlan.Revision != committed.ActivePlan.Revision {
+		t.Fatalf("engine active revision = %#v, want %#v", first, committed.ActivePlan.Revision)
+	}
+
+	core, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+		StrategyLiveConsumer: first,
+	})
+	if err != nil {
+		t.Fatalf("engine was not usable as StrategyLiveConsumer: %v", err)
+	}
+	if err := core.Start(ctx); err != nil {
+		t.Fatalf("core start with resolved engine: %v", err)
+	}
+	if err := core.Stop(ctx); err != nil {
+		t.Fatalf("core stop with resolved engine: %v", err)
+	}
+
+	reopened, err := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := loadStrategyLiveEngine(ctx, reopened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := second.Snapshot().ActivePlan, first.Snapshot().ActivePlan; got.Revision != want.Revision {
+		t.Fatalf("restart changed active revision: got %#v want %#v", got.Revision, want.Revision)
+	}
+}
+
+func TestStrategyLiveBootstrapFailsClosedWithoutBlockingTelemetryCore(t *testing.T) {
+	validRevision := strategyEditorRevision(t, "revision-1", validStrategyEditorPayload(17, 22))
+	validActive := activeStrategyRevision(t, validRevision, "activation-1")
+	mismatchedRef := validRevision.Ref()
+	mismatchedRef.ContentHash = strings.Repeat("b", 64)
+	mismatchedActive, err := contract.NewActivePlan(
+		"activation-mismatch",
+		mismatchedRef,
+		time.Date(2026, 8, 14, 8, 3, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		snapshot strategyrepository.Snapshot[json.RawMessage]
+		want     error
+	}{
+		{name: "no active plan", snapshot: strategyrepository.Snapshot[json.RawMessage]{Revisions: []contract.PlanRevision[json.RawMessage]{validRevision}}, want: strategylive.ErrNoActivePlan},
+		{name: "active revision missing", snapshot: strategyrepository.Snapshot[json.RawMessage]{ActivePlan: &validActive}, want: strategylive.ErrActiveRevisionNotFound},
+		{name: "active revision mismatched", snapshot: strategyrepository.Snapshot[json.RawMessage]{ActivePlan: &mismatchedActive, Revisions: []contract.PlanRevision[json.RawMessage]{validRevision}}, want: strategylive.ErrActiveRevisionMismatch},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			engine, err := resolveStrategyLiveEngine(test.snapshot)
+			if engine != nil || !errors.Is(err, test.want) {
+				t.Fatalf("resolveStrategyLiveEngine = (%#v, %v), want (nil, %v)", engine, err, test.want)
+			}
+		})
+	}
+
+	core, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{StrategyLiveConsumer: nil})
+	if err != nil {
+		t.Fatalf("Strategy failure blocked Telemetry Core construction: %v", err)
+	}
+	if err := core.Start(context.Background()); err != nil {
+		t.Fatalf("Strategy failure blocked Telemetry Core start: %v", err)
+	}
+	if err := core.Stop(context.Background()); err != nil {
+		t.Fatalf("Telemetry Core stop after nil Strategy consumer: %v", err)
+	}
+}
+
+func TestStrategyLiveBootstrapRejectsIncompatibleOrUnreadableRepository(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name    string
+		payload json.RawMessage
+		want    error
+	}{
+		{name: "corrupt editor document", payload: json.RawMessage(`{"editorVersion":"strategy.editor.v1"}`), want: strategylive.ErrInvalidEditorDocument},
+		{name: "unsupported editor document", payload: json.RawMessage(`{"editorVersion":"strategy.editor.v2"}`), want: strategylive.ErrUnsupportedEditorVersion},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository, err := strategyrepository.Open[json.RawMessage](t.TempDir(), strategyrepository.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			commitActiveStrategyRevision(t, repository, 0, "revision-invalid", test.payload)
+			engine, err := loadStrategyLiveEngine(ctx, repository)
+			if engine != nil || !errors.Is(err, test.want) {
+				t.Fatalf("loadStrategyLiveEngine = (%#v, %v), want (nil, %v)", engine, err, test.want)
+			}
+		})
+	}
+
+	root := t.TempDir()
+	repository, err := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "strategy-repository.json"), []byte(`{"privatePayload":"do-not-log"`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine, err := loadStrategyLiveEngine(ctx, repository)
+	if engine != nil || !errors.Is(err, strategyrepository.ErrCorruptRepository) {
+		t.Fatalf("unreadable repository = (%#v, %v), want nil ErrCorruptRepository", engine, err)
+	}
+
+	engine, err = loadStrategyLiveEngine(ctx, nil)
+	if engine != nil || !errors.Is(err, errStrategyLiveRepositoryUnavailable) {
+		t.Fatalf("nil repository = (%#v, %v), want nil repository unavailable", engine, err)
+	}
+}
+
+func TestStrategyLiveBootstrapReadsOnceAndAppliesActivationOnNextRestart(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repository, err := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstCommit := commitActiveStrategyRevision(t, repository, 0, "revision-1", validStrategyEditorPayload(17, 22))
+	engine, err := loadStrategyLiveEngine(ctx, repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondCommit := commitActiveStrategyRevision(t, repository, firstCommit.Version, "revision-2", validStrategyEditorPayload(18, 21))
+
+	if got := engine.Snapshot().ActivePlan.Revision; got != firstCommit.ActivePlan.Revision {
+		t.Fatalf("running engine auto-applied a later activation: got %#v want %#v", got, firstCommit.ActivePlan.Revision)
+	}
+	reopened, err := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := loadStrategyLiveEngine(ctx, reopened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := restarted.Snapshot().ActivePlan.Revision; got != secondCommit.ActivePlan.Revision {
+		t.Fatalf("restart active revision = %#v, want %#v", got, secondCommit.ActivePlan.Revision)
+	}
+}
+
+func TestStrategyLiveUnavailableReasonNeverLeaksPayloadOrPaths(t *testing.T) {
+	private := `C:\\Users\\private\\strategy.json token=secret payload={"driver":"Isaac"}`
+	for _, err := range []error{
+		fmt.Errorf("resolve: %w: %s", strategylive.ErrInvalidEditorDocument, private),
+		fmt.Errorf("snapshot: %w: %s", strategyrepository.ErrCorruptRepository, private),
+		errors.New(private),
+	} {
+		reason := strategyLiveUnavailableReason(err)
+		if reason == "" || strings.Contains(reason, "private") || strings.Contains(reason, "secret") || strings.Contains(reason, "Isaac") {
+			t.Fatalf("reason leaked private details: %q", reason)
+		}
+	}
+}
+
+func TestStrategyLiveCompositionRootHasOneCanonicalWiringPath(t *testing.T) {
+	t.Parallel()
+	files := parseVantareProductionFiles(t)
+
+	callCounts := map[string]int{}
+	var openRepositoryNames []string
+	var serviceRepositoryNames []string
+	var liveRepositoryNames []string
+	var consumerAssignments []struct {
+		config   string
+		consumer string
+		position token.Pos
+	}
+	var telemetryRuntimeCalls []struct {
+		config   string
+		position token.Pos
+	}
+
+	for _, file := range files {
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch node := node.(type) {
+			case *ast.AssignStmt:
+				if len(node.Rhs) == 1 {
+					if call, ok := node.Rhs[0].(*ast.CallExpr); ok && isSelectorCall(call, "strategyrepository", "Open") {
+						if len(node.Lhs) > 0 {
+							if repository, ok := node.Lhs[0].(*ast.Ident); ok {
+								openRepositoryNames = append(openRepositoryNames, repository.Name)
+							}
+						}
+					}
+				}
+				if len(node.Lhs) == 1 && len(node.Rhs) == 1 {
+					selector, selectorOK := node.Lhs[0].(*ast.SelectorExpr)
+					if !selectorOK || selector.Sel.Name != "StrategyLiveConsumer" {
+						break
+					}
+					assignment := struct {
+						config   string
+						consumer string
+						position token.Pos
+					}{position: node.Pos()}
+					config, configOK := selector.X.(*ast.Ident)
+					if configOK {
+						assignment.config = config.Name
+					}
+					consumer, consumerOK := node.Rhs[0].(*ast.Ident)
+					if consumerOK {
+						assignment.consumer = consumer.Name
+					}
+					consumerAssignments = append(consumerAssignments, assignment)
+				}
+			case *ast.CallExpr:
+				for _, expected := range []struct {
+					qualifier string
+					name      string
+					key       string
+				}{
+					{qualifier: "strategyrepository", name: "Open", key: "strategyrepository.Open"},
+					{qualifier: "strategylive", name: "ResolveActivePlan", key: "strategylive.ResolveActivePlan"},
+					{qualifier: "strategylive", name: "NewEngine", key: "strategylive.NewEngine"},
+					{qualifier: "app", name: "NewStrategyLiveRuntime", key: "app.NewStrategyLiveRuntime"},
+				} {
+					if isSelectorCall(node, expected.qualifier, expected.name) {
+						callCounts[expected.key]++
+					}
+				}
+
+				if isSelectorCall(node, "strategyapplication", "NewService") {
+					callCounts["strategyapplication.NewService"]++
+					if repository, ok := callIdentifierArgument(node, 0); ok {
+						serviceRepositoryNames = append(serviceRepositoryNames, repository)
+					}
+				}
+				if isIdentifierCall(node, "loadStrategyLiveEngine") {
+					callCounts["loadStrategyLiveEngine"]++
+					if repository, ok := callIdentifierArgument(node, 1); ok {
+						liveRepositoryNames = append(liveRepositoryNames, repository)
+					}
+				}
+				if isSelectorCall(node, "app", "NewTelemetryCoreRuntime") {
+					callCounts["app.NewTelemetryCoreRuntime"]++
+					config, _ := callIdentifierArgument(node, 0)
+					telemetryRuntimeCalls = append(telemetryRuntimeCalls, struct {
+						config   string
+						position token.Pos
+					}{config: config, position: node.Pos()})
+				}
+			}
+			return true
+		})
+	}
+
+	for name, want := range map[string]int{
+		"strategyrepository.Open":        1,
+		"strategyapplication.NewService": 1,
+		"loadStrategyLiveEngine":         1,
+		"strategylive.ResolveActivePlan": 1,
+		"strategylive.NewEngine":         1,
+		"app.NewTelemetryCoreRuntime":    1,
+		"app.NewStrategyLiveRuntime":     0,
+	} {
+		if got := callCounts[name]; got != want {
+			t.Errorf("production call count for %s = %d, want %d", name, got, want)
+		}
+	}
+	if len(openRepositoryNames) != 1 || len(serviceRepositoryNames) != 1 || len(liveRepositoryNames) != 1 ||
+		openRepositoryNames[0] != serviceRepositoryNames[0] || openRepositoryNames[0] != liveRepositoryNames[0] {
+		t.Errorf("repository wiring = open %v, application %v, live %v; want the same single identifier",
+			openRepositoryNames, serviceRepositoryNames, liveRepositoryNames)
+	}
+	if len(consumerAssignments) != 1 {
+		t.Errorf("StrategyLiveConsumer assignments = %d, want 1", len(consumerAssignments))
+	} else if consumerAssignments[0].config != "telemetryConfig" || consumerAssignments[0].consumer != "strategyLiveConsumer" {
+		t.Errorf("StrategyLiveConsumer assignment = %s.%s, want telemetryConfig.StrategyLiveConsumer = strategyLiveConsumer",
+			consumerAssignments[0].config, consumerAssignments[0].consumer)
+	}
+	if len(telemetryRuntimeCalls) == 1 {
+		if telemetryRuntimeCalls[0].config != "telemetryConfig" {
+			t.Errorf("NewTelemetryCoreRuntime argument = %q, want telemetryConfig", telemetryRuntimeCalls[0].config)
+		}
+		if len(consumerAssignments) == 1 && consumerAssignments[0].position >= telemetryRuntimeCalls[0].position {
+			t.Error("StrategyLiveConsumer must be assigned before NewTelemetryCoreRuntime")
+		}
+	}
+}
+
+func parseVantareProductionFiles(t testing.TB) []*ast.File {
+	t.Helper()
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate cmd/vantare tests")
+	}
+	directory := filepath.Dir(currentFile)
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatalf("read cmd/vantare: %v", err)
+	}
+	fileSet := token.NewFileSet()
+	files := make([]*ast.File, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".go" || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		path := filepath.Join(directory, entry.Name())
+		file, err := parser.ParseFile(fileSet, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse production source %s: %v", entry.Name(), err)
+		}
+		files = append(files, file)
+	}
+	if len(files) == 0 {
+		t.Fatal("no cmd/vantare production Go files found")
+	}
+	return files
+}
+
+func isSelectorCall(call *ast.CallExpr, qualifier, name string) bool {
+	function := call.Fun
+	switch generic := function.(type) {
+	case *ast.IndexExpr:
+		function = generic.X
+	case *ast.IndexListExpr:
+		function = generic.X
+	}
+	selector, ok := function.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != name {
+		return false
+	}
+	identifier, ok := selector.X.(*ast.Ident)
+	return ok && identifier.Name == qualifier
+}
+
+func isIdentifierCall(call *ast.CallExpr, name string) bool {
+	identifier, ok := call.Fun.(*ast.Ident)
+	return ok && identifier.Name == name
+}
+
+func callIdentifierArgument(call *ast.CallExpr, index int) (string, bool) {
+	if index < 0 || index >= len(call.Args) {
+		return "", false
+	}
+	identifier, ok := call.Args[index].(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	return identifier.Name, true
+}
+
+func commitActiveStrategyRevision(
+	t testing.TB,
+	repository *strategyrepository.Repository[json.RawMessage],
+	expectedVersion uint64,
+	revisionID contract.RevisionID,
+	payload json.RawMessage,
+) strategyrepository.CommitResult[json.RawMessage] {
+	t.Helper()
+	revision := strategyEditorRevision(t, revisionID, payload)
+	active := activeStrategyRevision(t, revision, contract.ActivationID("activation-"+revisionID))
+	committed, err := repository.Commit(context.Background(), expectedVersion, strategyrepository.ChangeSet[json.RawMessage]{
+		Revisions: []contract.PlanRevision[json.RawMessage]{revision},
+		Activate:  &active,
+	})
+	if err != nil {
+		t.Fatalf("commit active Strategy revision: %v", err)
+	}
+	return committed
+}
+
+func strategyEditorRevision(
+	t testing.TB,
+	revisionID contract.RevisionID,
+	payload json.RawMessage,
+) contract.PlanRevision[json.RawMessage] {
+	t.Helper()
+	draft := contract.PlanDraft[json.RawMessage]{
+		ContractVersion: contract.CurrentVersion,
+		DraftID:         contract.DraftID("draft-" + revisionID),
+		PlanID:          "plan-1",
+		VariantID:       "variant-1",
+		Name:            "Race plan",
+		Mode:            contract.PlanModeManual,
+		Capabilities:    []contract.Capability{contract.CapabilityManualInputs},
+		Provenance:      contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "strategy-editor"},
+		Confidence:      contract.Confidence{Level: contract.ConfidenceHigh, Basis: "saved editor revision"},
+		UpdatedAt:       time.Date(2026, 8, 14, 8, 0, 0, 0, time.UTC),
+		Payload:         append(json.RawMessage(nil), payload...),
+	}
+	revision, err := contract.NewPlanRevision(draft, contract.RevisionMetadata{
+		RevisionID: revisionID,
+		CreatedAt:  time.Date(2026, 8, 14, 8, 1, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("create Strategy revision: %v", err)
+	}
+	return revision
+}
+
+func activeStrategyRevision(
+	t testing.TB,
+	revision contract.PlanRevision[json.RawMessage],
+	activationID contract.ActivationID,
+) contract.ActivePlan {
+	t.Helper()
+	active, err := contract.NewActivePlan(
+		activationID,
+		revision.Ref(),
+		time.Date(2026, 8, 14, 8, 2, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatalf("create active Strategy revision: %v", err)
+	}
+	return active
+}
+
+func validStrategyEditorPayload(firstLaps, secondLaps int) json.RawMessage {
+	return json.RawMessage(fmt.Sprintf(`{
+		"editorVersion":"strategy.editor.v1",
+		"nextStintNumber":3,
+		"stints":[
+			{"id":"opening","lapCount":%d,"fuelLitres":82,"pace":"2:18.4","assignments":{"front_left":null,"front_right":null,"rear_left":null,"rear_right":null}},
+			{"id":"finish","lapCount":%d,"fuelLitres":96,"pace":"2:19.1","assignments":{"front_left":null,"front_right":null,"rear_left":null,"rear_right":null}}
+		],
+		"tyres":[],
+		"manualInputs":{}
+	}`, firstLaps, secondLaps))
 }
 
 func TestExecuteStrategyApplicationCommandPreservesCommandIDAndTypedErrors(t *testing.T) {

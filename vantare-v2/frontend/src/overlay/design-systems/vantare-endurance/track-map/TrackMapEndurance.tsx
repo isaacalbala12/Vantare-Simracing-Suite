@@ -4,6 +4,7 @@ import type {
   TrackMapUnavailableReason,
   TrackMapViewModel,
 } from "../../../widget-types/track-map/track-map-view-model";
+import { resolveRelativeClassColor } from "../../../widget-types/relative/relative-renderer-helpers";
 import { parseTrackMapEnduranceSettings } from "./track-map-endurance-settings";
 import { useTrackMapMotion } from "./useTrackMapMotion";
 
@@ -44,7 +45,11 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
               cx={marker.x}
               cy={marker.y}
               r={marker.isPlayer ? 5 : 3.5}
+              // The palette is shared with Relative and Standings on purpose:
+              // one configured colour must mean the same category everywhere.
+              fill={resolveRelativeClassColor(marker.vehicleClass, settings)}
               data-track-map-car={marker.id}
+              data-vehicle-class={marker.vehicleClass}
               data-player={marker.isPlayer ? "true" : undefined}
             />
           ))}

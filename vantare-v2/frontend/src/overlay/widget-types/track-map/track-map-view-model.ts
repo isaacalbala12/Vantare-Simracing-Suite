@@ -27,6 +27,8 @@ export type TrackMapMarker = Readonly<{
   x: number;
   y: number;
   isPlayer: boolean;
+  /** Absent when the session did not report one; never guessed. */
+  vehicleClass?: string;
 }>;
 
 export type TrackMapViewModel = WidgetViewModelBase & {
@@ -153,6 +155,7 @@ function buildMarkers(
       x: projected.x,
       y: projected.y,
       isPlayer: row.isPlayer === true,
+      vehicleClass: typeof row.vehicleClass === "string" ? row.vehicleClass : undefined,
     });
   }
   return markers;

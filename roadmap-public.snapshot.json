@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T00:50:27Z",
+  "generatedAt": "2026-08-14T01:56:12Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,16 +28,16 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 15,
-            "total": 32,
-            "percent": 47
+            "done": 16,
+            "total": 33,
+            "percent": 48
           },
           "tasks": [
             {
-              "id": "task_fa966f800545f5bca61b",
-              "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
+              "id": "task_9b688e53bf087679e0f7",
+              "title": "Delta — referencias reales de telemetría, instancia única y hotkey global",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T00:18:06.296Z"
+              "updatedAt": "2026-08-14T01:47:30.394Z"
             },
             {
               "id": "task_609d33340526777a9186",
@@ -55,7 +55,7 @@
               "id": "task_fc2a79ce7d269c04e458",
               "title": "Promover a Nightly",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T00:18:10.659Z"
+              "updatedAt": "2026-08-14T00:50:50.442Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -170,6 +170,12 @@
               "title": "Fixtures portables y deterministas para autoría",
               "status": "done",
               "updatedAt": "2026-08-07T18:23:55.610Z"
+            },
+            {
+              "id": "task_fa966f800545f5bca61b",
+              "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
+              "status": "done",
+              "updatedAt": "2026-08-14T01:56:02.601Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
@@ -291,7 +297,7 @@
               "id": "task_1b9ae73be18bdf3e6147",
               "title": "Progreso, distancia y mapa con evidencia LMU",
               "status": "planned",
-              "updatedAt": "2026-08-13T23:42:38.461Z"
+              "updatedAt": "2026-08-14T01:48:28.805Z"
             },
             {
               "id": "task_a918958013a28322f560",
@@ -303,13 +309,13 @@
               "id": "task_7176d410d0ef064a24b1",
               "title": "Adaptador DuckDB productivo y packaging Windows",
               "status": "done",
-              "updatedAt": "2026-08-10T15:37:20.708Z"
+              "updatedAt": "2026-08-14T01:48:28.805Z"
             },
             {
               "id": "task_a054d22f28012668b44e",
               "title": "Caracterización DuckDB LMU y modelo histórico canónico",
               "status": "done",
-              "updatedAt": "2026-08-03T00:27:18.159Z"
+              "updatedAt": "2026-08-14T01:48:28.805Z"
             },
             {
               "id": "task_1139647671949b65a7b3",
@@ -592,7 +598,7 @@
               "id": "task_28ad2725a706bd5ccf64",
               "title": "Catálogo oficial firmado de Vantare",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T00:44:05.176Z"
+              "updatedAt": "2026-08-14T00:57:30.536Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",

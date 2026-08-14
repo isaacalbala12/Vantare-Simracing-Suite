@@ -10,6 +10,7 @@ $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
 $raceSeed = Join-Path $env:TEMP "$container-race-seed.sql"
 $raceCallA = Join-Path $env:TEMP "$container-race-a.sql"
 $raceCallB = Join-Path $env:TEMP "$container-race-b.sql"
+$rollbackUse = Join-Path $env:TEMP "$container-rollback-use.sql"
 $migrationName = "20260814154558_testing_center_screenshot_evidence.sql"
 $rollbackName = "20260814154558_testing_center_screenshot_evidence.down.sql"
 
@@ -24,7 +25,7 @@ function Invoke-PsqlFile([string]$File) {
 
 function Assert-PgTap([string]$Label) {
   $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -f /tmp/evidence.test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch '1\.\.62') {
+  if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch '1\.\.71') {
     throw "$Label pgTAP failed:`n$tap"
   }
 }
@@ -153,6 +154,57 @@ from public.testing_center_finalize_screenshot(
 ) as result;
 '@
 
+  Write-Utf8NoBom $rollbackUse @'
+insert into auth.users(id,email) values
+  ('00000000-0000-4000-8000-000000000505','evidence-rollback@example.invalid');
+set role service_role;
+insert into public.testing_center_memberships(user_id,actor_id,role,active) values
+  ('00000000-0000-4000-8000-000000000505','evidence-rollback','primary_tester',true);
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000505',false);
+create temporary table rollback_prepared as
+select * from public.testing_center_prepare_screenshot_batch(
+  'testing-center.screenshot-evidence.v1','nightly','rollback-used-key',
+  '[{"position":1,"mediaType":"image/png","byteSize":1024,"sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","width":100,"height":100}]'::jsonb
+);
+grant select on rollback_prepared to service_role;
+reset role;
+set role service_role;
+insert into storage.objects(bucket_id,name,owner_id)
+select 'testing-center-evidence',slot->>'objectPath','00000000-0000-4000-8000-000000000505'
+from rollback_prepared cross join lateral jsonb_array_elements(slots) as slot;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000505',false);
+select * from public.testing_center_finalize_screenshot(
+  (select batch_id from rollback_prepared),
+  (select (slots->0->>'evidenceId')::uuid from rollback_prepared)
+);
+reset role;
+set role service_role;
+update public.testing_center_screenshot_evidence set state='ready',validated_at=now(),updated_at=now()
+where batch_id=(select batch_id from rollback_prepared);
+update public.testing_center_evidence_batches set state='ready',updated_at=now()
+where batch_id=(select batch_id from rollback_prepared);
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000505',false);
+select * from public.testing_center_submit_report_with_evidence(
+  'testing-center.v1','nightly','Rollback action','Rollback expected','Rollback observed',null,
+  'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,
+  'rollback-used-key',(select batch_id from rollback_prepared)
+);
+reset role;
+do $$
+begin
+  if (select count(*) from public.testing_center_evidence where kind='screenshot') <> 1 then
+    raise exception 'rollback_use_did_not_create_screenshot_projection';
+  end if;
+end
+$$;
+'@
+
   Write-Output "[1/6] Installing history and ISA-350 into disposable PostgreSQL"
   docker exec $container createdb -U postgres $database
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
@@ -160,6 +212,7 @@ from public.testing_center_finalize_screenshot(
   docker cp $raceSeed "${container}:/tmp/evidence-race-seed.sql"
   docker cp $raceCallA "${container}:/tmp/evidence-race-a.sql"
   docker cp $raceCallB "${container}:/tmp/evidence-race-b.sql"
+  docker cp $rollbackUse "${container}:/tmp/evidence-rollback-use.sql"
   Invoke-PsqlFile "/tmp/bootstrap.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") |
     Where-Object { $_.Name -le $migrationName } | Sort-Object Name
@@ -169,10 +222,13 @@ from public.testing_center_finalize_screenshot(
     Invoke-PsqlFile "/tmp/$($migration.Name)"
   }
 
-  Write-Output "[2/6] Running 62 pgTAP assertions"
+  Write-Output "[2/7] Running 71 pgTAP assertions"
   Assert-PgTap "Initial screenshot evidence"
 
-  Write-Output "[3/6] Rolling back and checking exact restoration"
+  Write-Output "[3/7] Creating a real submitted screenshot before rollback"
+  Invoke-PsqlFile "/tmp/evidence-rollback-use.sql"
+
+  Write-Output "[4/7] Rolling back used feature and checking exact restoration"
   docker cp (Join-Path $root "supabase\rollbacks\$rollbackName") "${container}:/tmp/$rollbackName"
   Invoke-PsqlFile "/tmp/$rollbackName"
   $rollback = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -c `
@@ -181,11 +237,11 @@ from public.testing_center_finalize_screenshot(
     throw "Rollback did not restore the exact prior contract: $rollback"
   }
 
-  Write-Output "[4/6] Reapplying and rerunning pgTAP"
+  Write-Output "[5/7] Reapplying and rerunning pgTAP"
   Invoke-PsqlFile "/tmp/$migrationName"
   Assert-PgTap "Reapplied screenshot evidence"
 
-  Write-Output "[5/6] Running a real two-process finalize race"
+  Write-Output "[6/7] Running a real two-process finalize race"
   Invoke-PsqlFile "/tmp/evidence-race-seed.sql"
   docker exec $container sh -c 'psql -X -q -v ON_ERROR_STOP=1 -U postgres -d testing_evidence -f /tmp/evidence-race-a.sql >/tmp/race-a.log 2>&1 & p1=$!; psql -X -q -v ON_ERROR_STOP=1 -U postgres -d testing_evidence -f /tmp/evidence-race-b.sql >/tmp/race-b.log 2>&1 & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; if [ "$s1" -eq 0 ] && [ "$s2" -eq 0 ]; then exit 0; fi; cat /tmp/race-a.log /tmp/race-b.log; exit 1'
   if ($LASTEXITCODE -ne 0) { throw "Concurrent finalize calls failed" }
@@ -195,7 +251,7 @@ from public.testing_center_finalize_screenshot(
     throw "Concurrent finalize was not exactly-once: $race"
   }
 
-  Write-Output "[6/6] Verifying incompatible existing bucket fails closed"
+  Write-Output "[7/7] Verifying every pre-existing bucket fails closed"
   Invoke-PsqlFile "/tmp/$rollbackName"
   docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values ('testing-center-evidence','testing-center-evidence',true,1,array['image/gif']);" | Out-Null
   $saved = $ErrorActionPreference
@@ -207,9 +263,19 @@ from public.testing_center_finalize_screenshot(
     throw "Incompatible existing bucket did not fail closed:`n$closed"
   }
 
-  Write-Output "Testing Center screenshot evidence: 62/62 + rollback exact + reapply 62/62 + concurrent finalize exactly-once + incompatible bucket fail-closed PASS"
+  docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "update storage.buckets set public=false,file_size_limit=10485760,allowed_mime_types=array['image/png','image/jpeg'] where id='testing-center-evidence';" | Out-Null
+  $saved = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $closed = docker exec $container psql -X --set=ON_ERROR_STOP=1 --set=VERBOSITY=verbose -U postgres -d $database -f "/tmp/$migrationName" 2>&1 | Out-String
+  $closedCode = $LASTEXITCODE
+  $ErrorActionPreference = $saved
+  if ($closedCode -eq 0 -or $closed -notmatch 'testing_center_evidence_bucket_already_exists') {
+    throw "Compatible existing bucket was adopted instead of failing closed:`n$closed"
+  }
+
+  Write-Output "Testing Center screenshot evidence: 71/71 + rollback after submit exact + reapply 71/71 + concurrent finalize exactly-once + all pre-existing buckets fail-closed PASS"
 } finally {
   $ErrorActionPreference = "Continue"
   docker rm -f $container 2>$null | Out-Null
-  Remove-Item -LiteralPath $bootstrap,$raceSeed,$raceCallA,$raceCallB -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $bootstrap,$raceSeed,$raceCallA,$raceCallB,$rollbackUse -Force -ErrorAction SilentlyContinue
 }

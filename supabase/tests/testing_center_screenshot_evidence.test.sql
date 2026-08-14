@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(71);
 
 select has_table('public', 'testing_center_evidence_batches', 'private batch table exists');
 select has_table('public', 'testing_center_screenshot_evidence', 'private screenshot slot table exists');
@@ -123,6 +123,15 @@ returns jsonb language sql immutable as $$
   ))
 $$;
 
+create function pg_temp.manifest_count(p_count integer, p_size integer default 1024)
+returns jsonb language sql immutable as $$
+  select jsonb_agg(jsonb_build_object(
+    'position',position,'mediaType','image/png','byteSize',p_size,
+    'sha256',lpad(to_hex(position),64,'0'),'width',100,'height',100
+  ) order by position)
+  from generate_series(1,p_count) as position
+$$;
+
 set local role anon;
 select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','anon-key',pg_temp.manifest())$$,
@@ -174,20 +183,46 @@ select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','bad-pixels','[{"position":1,"mediaType":"image/png","byteSize":1,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","width":10000,"height":5000}]'::jsonb)$$,
   '22023', null, 'more than 40 megapixels is rejected'
 );
+select throws_ok(
+  $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','eleven-slots',pg_temp.manifest_count(11))$$,
+  '22023', null, 'an eleventh screenshot is rejected'
+);
+create temporary table maximum_batch_result as
+select * from public.testing_center_prepare_screenshot_batch(
+  'testing-center.screenshot-evidence.v1','nightly','maximum-batch',
+  pg_temp.manifest_count(10,10485760)
+);
+select is(
+  (select jsonb_array_length(slots) from maximum_batch_result),
+  10,
+  'ten screenshots at the 100 MiB aggregate boundary are accepted'
+);
+reset role;
+select is(
+  (select sum(byte_size)::bigint from public.testing_center_screenshot_evidence
+   where batch_id=(select batch_id from maximum_batch_result)),
+  104857600::bigint,
+  'the accepted aggregate limit is exactly 100 MiB'
+);
 
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
 create temporary table prepared_result as
 select * from public.testing_center_prepare_screenshot_batch(
-  'testing-center.screenshot-evidence.v1','nightly','prepare-key',pg_temp.manifest()
+  'testing-center.screenshot-evidence.v1','nightly','prepare-key',
+  '[{"position":1,"mediaType":"image/png","byteSize":1024,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","width":100,"height":100},{"position":2,"mediaType":"image/jpeg","byteSize":2048,"sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","width":200,"height":100}]'::jsonb
 );
+grant select on prepared_result to service_role;
 select is((select idempotent from prepared_result),false,'first prepare is not idempotent');
-select is((select jsonb_array_length(slots) from prepared_result),1,'prepare returns one sanitized slot');
+select is((select jsonb_array_length(slots) from prepared_result),2,'prepare returns two sanitized slots');
 select ok(
   (select slots::text !~* 'evidence-primary|example|private|filename|reporter' from prepared_result),
   'prepare response contains no reporter PII or filenames'
 );
 select is(
   (select count(*)::integer from public.testing_center_prepare_screenshot_batch(
-    'testing-center.screenshot-evidence.v1','nightly','prepare-key',pg_temp.manifest()
+    'testing-center.screenshot-evidence.v1','nightly','prepare-key',
+    '[{"position":1,"mediaType":"image/png","byteSize":1024,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","width":100,"height":100},{"position":2,"mediaType":"image/jpeg","byteSize":2048,"sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","width":200,"height":100}]'::jsonb
   ) where idempotent),
   1,
   'same key and manifest reuses the batch'
@@ -197,10 +232,12 @@ select throws_ok(
   '23505', null, 'same key with changed manifest conflicts'
 );
 reset role;
-select is((select count(*)::integer from public.testing_center_evidence_batches),1,'prepare creates exactly one batch');
-select is((select count(*)::integer from public.testing_center_screenshot_evidence),1,'prepare creates exactly one slot');
+select is((select count(*)::integer from public.testing_center_evidence_batches where batch_id=(select batch_id from prepared_result)),1,'prepare creates exactly one requested batch');
+select is((select count(*)::integer from public.testing_center_screenshot_evidence where batch_id=(select batch_id from prepared_result)),2,'prepare creates exactly two requested slots');
 select ok(
-  (select object_path !~* 'evidence-primary|example|prepare-key' from public.testing_center_screenshot_evidence),
+  (select bool_and(object_path !~* 'evidence-primary|example|prepare-key')
+   from public.testing_center_screenshot_evidence
+   where batch_id=(select batch_id from prepared_result)),
   'server-owned object path is opaque'
 );
 
@@ -241,7 +278,7 @@ select is(
     (select (slots->0->>'evidenceId')::uuid from prepared_result)
   )),
   false,
-  'first finalize queues validation'
+  'first finalize queues one validation'
 );
 select is(
   (select idempotent from public.testing_center_finalize_screenshot(
@@ -252,9 +289,44 @@ select is(
   'finalize retry is idempotent'
 );
 reset role;
-select is((select count(*)::integer from public.testing_center_evidence_outbox where kind='validate'),1,'finalize creates one validate job');
-select is((select state from public.testing_center_screenshot_evidence),'validating','finalize moves slot to validating');
-select is((select state from public.testing_center_evidence_batches),'validating','finalize moves batch to validating');
+select is((select count(*)::integer from public.testing_center_evidence_outbox where kind='validate' and evidence_id=(select (slots->0->>'evidenceId')::uuid from prepared_result)),1,'partial finalize creates one validate job');
+select is((select state from public.testing_center_screenshot_evidence where evidence_id=(select (slots->0->>'evidenceId')::uuid from prepared_result)),'uploaded','partial finalize leaves the finalized slot uploaded');
+select is((select state from public.testing_center_screenshot_evidence where evidence_id=(select (slots->1->>'evidenceId')::uuid from prepared_result)),'prepared','partial finalize leaves the other slot prepared');
+select is((select state from public.testing_center_evidence_batches where batch_id=(select batch_id from prepared_result)),'uploading','partial finalize leaves the batch uploading');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select is(
+  (select idempotent from public.testing_center_finalize_screenshot(
+    (select batch_id from prepared_result),
+    (select (slots->1->>'evidenceId')::uuid from prepared_result)
+  )),
+  false,
+  'last finalize queues its validation'
+);
+select is(
+  (select idempotent from public.testing_center_finalize_screenshot(
+    (select batch_id from prepared_result),
+    (select (slots->1->>'evidenceId')::uuid from prepared_result)
+  )),
+  true,
+  'last finalize retry is idempotent'
+);
+reset role;
+select is((select count(*)::integer from public.testing_center_evidence_outbox where kind='validate' and evidence_id in (select evidence_id from public.testing_center_screenshot_evidence where batch_id=(select batch_id from prepared_result))),2,'two finalized slots create exactly two validate jobs');
+select is((select count(*)::integer from public.testing_center_screenshot_evidence where batch_id=(select batch_id from prepared_result) and state='validating'),2,'last finalize moves every uploaded slot to validating');
+select is((select state from public.testing_center_evidence_batches where batch_id=(select batch_id from prepared_result)),'validating','last finalize moves the batch to validating');
+
+select ok(
+  (select pg_get_constraintdef(oid) from pg_constraint where conname='testing_center_screenshot_evidence_failure_check')
+    ~ 'invalid_size.*invalid_media_type.*digest_mismatch.*invalid_signature.*invalid_dimensions.*object_missing.*validation_failed',
+  'failure codes include every ISA-349 value'
+);
+select ok(
+  (select pg_get_constraintdef(oid) from pg_constraint where conname='testing_center_screenshot_evidence_failure_check')
+    !~ 'size_mismatch|mime_mismatch|signature_invalid|dimensions_invalid|decode_failed',
+  'failure codes contain no aliases or extra values'
+);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
@@ -264,8 +336,22 @@ select throws_ok(
 );
 reset role;
 set local role service_role;
-update public.testing_center_screenshot_evidence set state='ready',validated_at=now(),updated_at=now();
-update public.testing_center_evidence_batches set state='ready',updated_at=now();
+update public.testing_center_screenshot_evidence
+set state='rejected',failure_code='validation_failed',validated_at=now(),updated_at=now()
+where evidence_id=(select (slots->0->>'evidenceId')::uuid from prepared_result);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select throws_ok(
+  $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
+  '55000', null, 'submit rejects a batch containing rejected evidence'
+);
+reset role;
+set local role service_role;
+update public.testing_center_screenshot_evidence set state='ready',failure_code=null,validated_at=now(),updated_at=now()
+where batch_id=(select batch_id from prepared_result);
+update public.testing_center_evidence_batches set state='ready',updated_at=now()
+where batch_id=(select batch_id from prepared_result);
 reset role;
 
 set local role authenticated;
@@ -292,12 +378,16 @@ select is(
   'evidence submit retry converges'
 );
 reset role;
-select is((select state from public.testing_center_evidence_batches),'attached','successful submit attaches the batch');
-select ok((select report_id is not null from public.testing_center_screenshot_evidence),'slot links to the report');
+select is((select state from public.testing_center_evidence_batches where batch_id=(select batch_id from prepared_result)),'attached','successful submit attaches the batch');
+select ok(
+  (select bool_and(report_id is not null) from public.testing_center_screenshot_evidence
+   where batch_id=(select batch_id from prepared_result)),
+  'every slot links to the report'
+);
 select is(
-  (select count(*)::integer from public.testing_center_evidence where kind='screenshot'),
-  1,
-  'submit adds one canonical screenshot digest'
+  (select count(*)::integer from public.testing_center_evidence where kind='screenshot' and report_id=(select report_id from submitted_result)),
+  2,
+  'submit adds one canonical digest per distinct screenshot'
 );
 select is(
   (select count(*)::integer from public.testing_center_reports where report_id=(select report_id from submitted_result)),

@@ -177,8 +177,8 @@ de confianza. La pestaña no afirma que exista contenido oficial.
   completa (370 archivos / 2694 tests) y build de 885 módulos: PASS en el corte
   histórico `3dc84d0` sobre `origin/nightly@fa9285e`. El historial local está
   rebasado sobre `origin/nightly@03ca39e`; las correcciones de lease, autoridad
-  de slots y límites serializados están revisadas `APPROVED`, pero todavía no
-  se han publicado ni tienen CI nuevo. El
+  de slots y límites serializados están revisadas `APPROVED` y publicadas en
+  `dea00ec`. El run `31757823939` pasó los gates del PR sobre ese HEAD. El
   lint global se ejecutó y conserva 39 errores y 2 warnings preexistentes fuera
   de los archivos de esta issue; no se declara verde.
 - El workflow real no se ejecutó: no existen manifest oficial aprobado ni
@@ -186,7 +186,12 @@ de confianza. La pestaña no afirma que exista contenido oficial.
   sigue siendo un prerrequisito operativo externo.
 - Los eventos nuevos no se probaron todavía contra una aplicación Wails viva.
 - El run remoto histórico `31423020048` corresponde al historial anterior del
-  PR #201; el HEAD rebasado necesita CI nuevo después de publicarse.
+  PR #201; el run `31757823939` acredita el producto publicado en `dea00ec`.
+  Un commit documental posterior debe volver a completar los checks del PR.
+- En la verificación local fresca de `dea00ec` pasan catálogo/signing/CLI 20x,
+  variante `production`, Go global, vet, gofmt, guards, typecheck, 99 tests
+  focales, 371 archivos / 2706 tests frontend y build de 888 módulos. El lint
+  focal pasa; el global conserva 49 errores y 2 warnings ajenos.
 - `go test -race` no está disponible en este entorno con `CGO_ENABLED=0`.
 - No se añadieron dependencias, telemetría, Shared Memory, REST de simulador,
   DuckDB, storage de Telemetry Analysis, catálogo community ni fallback

@@ -291,17 +291,18 @@
 
   Actualizar handoff/current-plan y Linear tras cada worker y al cierre. Preparar commits pequeños, push normal y PR draft hacia `nightly` solo después de checks/reviews. No merge, promoción, release ni ejecución del workflow firmado sin nueva autorización de Isaac.
 
-  Estado actual: ocho commits de producto/documentación rebasados limpiamente
-  sobre `origin/nightly@03ca39e`. Las correcciones de lease, autoridad de slots
-  y límites serializados están revisadas `APPROVED` y quedan en commits locales
-  separados de código y estado documental. La rama remota y el PR draft
-  #201 todavía conservan el historial anterior en `b447027`; no existe CI nuevo
-  para este árbol. ISA-162 permanece `In Progress` y no está integrada. Sin
-  merge, promoción, release ni workflow firmado.
+  Estado actual: el corte de ocho commits de producto/documentación fue
+  rebasado limpiamente sobre `origin/nightly@03ca39e`. Las correcciones de lease, autoridad de slots
+  y límites serializados están revisadas `APPROVED` y quedan en commits
+  separados de código y estado documental. La rama se publicó en `dea00ec` y
+  el PR draft #201 sigue OPEN y MERGEABLE. El run `31757823939` acredita ese
+  HEAD exacto; ISA-162 permanece `In Progress` y no está integrada. Sin merge,
+  promoción, release ni workflow firmado.
 
   CI histórico del PR: run `31423020048` PASS en topología y gates bloqueantes,
-  pero no acredita el HEAD rebasado actual. Tras publicar el historial con
-  protección frente a deriva remota, el PR necesita un run nuevo. Las
+  pero solo acredita el historial anterior. El run `31757823939` pasó sobre
+  `dea00ec`; esta sincronización documental posterior no cambia producto y
+  debe completar otra vez los checks del PR. Las
   anotaciones restantes pertenecen al lint advisory heredado y a la deprecación
   Node 20 de actions; no afectan archivos ISA-162 ni convierten el lint local
   global en verde.

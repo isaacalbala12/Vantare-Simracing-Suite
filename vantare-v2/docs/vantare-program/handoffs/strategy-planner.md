@@ -99,10 +99,15 @@ Actualización ISA-162 / STR-15B (2026-08-14):
   YAML, fragmento y diff-check PASS. ESLint focal PASS; el lint global conserva
   39 errores y 2 warnings preexistentes fuera de ISA-162, por lo que no se
   declara verde ni se amplía esta issue para arreglarlos.
-- La entrega anterior quedó publicada y el PR draft #201 apunta a `nightly`;
-  Linear sigue en `In Progress`. La rama remota y el PR conservan `b447027`;
-  el historial local rebasado y el hardening aprobado todavía no se han
-  publicado ni tienen CI nuevo. No hubo merge, promoción ni release.
+- La rama rebasada y el hardening aprobado se publicaron con lease exacto en
+  `dea00ec`. El PR draft #201 sigue OPEN y MERGEABLE hacia `nightly`; Linear
+  permanece `In Progress`. El run `31757823939` acredita ese HEAD exacto con
+  topología, build, Go, frontend, visuales y lint advisory en `SUCCESS`;
+  GitGuardian también pasó. No hubo merge, promoción ni release.
+- Sobre `dea00ec` pasan catálogo/signing/CLI 20x, variante `production`, Go
+  global, vet, gofmt, guards, typecheck, 99 tests focales, 371 archivos / 2706
+  tests frontend y build de 888 módulos. El lint focal pasa; el global conserva
+  49 errores y 2 warnings fuera de ISA-162.
 - El run remoto histórico `31423020048` del PR pasó topología y todos los gates
   bloqueantes: build frontend, Go, 2493 tests frontend y visual advisory. El
   lint advisory quedó verde con anotaciones heredadas fuera de ISA-162; los
@@ -111,17 +116,20 @@ Actualización ISA-162 / STR-15B (2026-08-14):
   workflow real, GitHub debe tener `strategy-catalog-signing` con required
   reviewer, deployment branch `master` y la privada exclusivamente como secret
   del environment. No hay contenido oficial aprobado todavía.
-- La base remota avanzó hasta `nightly@03ca39e` por ISA-323/ISA-334, Testing
+- El merge-base autorizado quedó en `nightly@03ca39e` por ISA-323/ISA-334, Testing
   Center, Overlay Studio y la política ISA-318, sin solape con el código de
   catálogo. El rebase final fue limpio; `current-plan.md` conserva el bloque
   ISA-162 y el historial entrante, y el `range-diff` mantiene los ocho commits
-  equivalentes salvo esta adaptación de base/estado.
+  equivalentes salvo esta adaptación de base/estado. `nightly` avanzó después
+  mediante cambios frontend disjuntos; el PR queda detrás pero mergeable.
 - Evidencia histórica del HEAD pre-fix `3dc84d0`: Go global/focal/repetido y variante
   `production`, vet, gofmt, guard PowerShell normal/dot-sourced, typecheck real,
   ESLint focal, 370/370 archivos y 2694/2694 tests frontend y build de 885
   módulos pasan. Los dos `AbortError` de teardown happy-dom y el warning de
   chunk >500 kB son heredados y terminaron con exit 0. El CI histórico no
-  acredita el HEAD reescrito; PR #201 necesita checks nuevos tras publicar.
+  acredita el historial reescrito; el run `31757823939` sí acredita el HEAD
+  publicado `dea00ec`. Esta sincronización documental no altera producto y
+  debe completar de nuevo los checks del PR.
 
 Actualización ISA-309 / STR-N02 (2026-08-10):
 
@@ -419,4 +427,4 @@ plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
 
 ## Última actualización
 
-2026-08-14, ISA-162 / STR-15B rebasada y verificada localmente, pendiente de publicación y CI nuevo, Codex.
+2026-08-14, ISA-162 / STR-15B publicada en rama y con CI verde, pendiente de integración autorizada, Codex.

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.9",
+  "channel": "nightly",
+  "title": "Vantare — Hub principal con datos canónicos",
+  "summary": "Esta Nightly hace que el Hub principal refleje la versión, el calendario, el roadmap y las novedades reales de Vantare.",
+  "issues": [
+    "ISA-358"
+  ]
+}

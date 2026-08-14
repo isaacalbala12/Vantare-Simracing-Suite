@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T00:21:48Z",
+  "generatedAt": "2026-08-14T00:50:27Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -592,7 +592,7 @@
               "id": "task_28ad2725a706bd5ccf64",
               "title": "Catálogo oficial firmado de Vantare",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:01:06.225Z"
+              "updatedAt": "2026-08-14T00:44:05.176Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",

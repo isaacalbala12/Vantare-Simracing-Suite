@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T05:10:04Z",
+  "generatedAt": "2026-08-14T15:25:51Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -29,8 +29,8 @@
           },
           "progress": {
             "done": 18,
-            "total": 33,
-            "percent": 55
+            "total": 34,
+            "percent": 53
           },
           "tasks": [
             {
@@ -44,6 +44,12 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_ae3b20ffec4db4422020",
+              "title": "Standings Redline: limitar la animación de batalla a carrera y a la pareja más cercana al jugador",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T15:22:39.509Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",

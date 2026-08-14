@@ -64,6 +64,9 @@ func MigrateProfileJSONToV3(data []byte) (*ProfileDocumentV3, int, error) {
 			return nil, 0, fmt.Errorf("parse profile v3: %w", err)
 		}
 		normalized := NormalizeProfileDocumentV3(&doc)
+		if err := preserveExtraDeltaWidgets(normalized); err != nil {
+			return nil, 0, err
+		}
 		if err := ValidateProfileDocumentV3(normalized); err != nil {
 			return nil, 0, err
 		}
@@ -80,10 +83,49 @@ func MigrateProfileJSONToV3(data []byte) (*ProfileDocumentV3, int, error) {
 		return nil, 0, err
 	}
 	normalized := NormalizeProfileDocumentV3(doc)
+	if err := preserveExtraDeltaWidgets(normalized); err != nil {
+		return nil, 0, err
+	}
 	if err := ValidateProfileDocumentV3(normalized); err != nil {
 		return nil, 0, err
 	}
 	return normalized, from, nil
+}
+
+// preserveExtraDeltaWidgets keeps older profiles loadable after Delta became a
+// singleton per layout. The first Delta remains active; every additional one is
+// retained as complete structured source data instead of being discarded.
+func preserveExtraDeltaWidgets(doc *ProfileDocumentV3) error {
+	for layoutType, layout := range doc.Layouts {
+		deltaSeen := false
+		widgets := make([]WidgetInstanceV3, 0, len(layout.Widgets))
+		for _, widget := range layout.Widgets {
+			if widget.Type != WidgetTypeDelta || !deltaSeen {
+				widgets = append(widgets, widget)
+				if widget.Type == WidgetTypeDelta {
+					deltaSeen = true
+				}
+				continue
+			}
+
+			data, err := json.Marshal(widget)
+			if err != nil {
+				return fmt.Errorf("preserve extra delta %s: %w", widget.ID, err)
+			}
+			var source map[string]any
+			if err := json.Unmarshal(data, &source); err != nil {
+				return fmt.Errorf("preserve extra delta %s source: %w", widget.ID, err)
+			}
+			layout.PreservedWidgets = append(layout.PreservedWidgets, PreservedWidgetV3{
+				ID:     widget.ID,
+				Type:   string(widget.Type),
+				Source: source,
+			})
+		}
+		layout.Widgets = widgets
+		doc.Layouts[layoutType] = layout
+	}
+	return nil
 }
 
 func migrateLegacyProfileRaw(raw map[string]any, from int) (*ProfileDocumentV3, error) {

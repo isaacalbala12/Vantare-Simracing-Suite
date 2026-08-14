@@ -22,6 +22,12 @@
   #191 están también en Nightly. Pedals Redline se entrega en PR draft #195 y
   completa la cobertura visual de los cuatro widgets insignia. El flaky de CI
   ISA-311 quedó corregido y promovido mediante PR #200 a `nightly@54f267b`.
+- Delta: ISA-347 está implementada y validada en rama aislada sobre
+  `origin/nightly`; añade referencias reales personal/sesión/anterior, unicidad
+  por layout y hotkey global configurable. El code review corrigió historial
+  nativo, selección canónica legacy y concurrencia del hotkey en `46df1b2`. La
+  rama incorporó `nightly@638b470` en `f0e40bd`; PR draft #233 autorizada para
+  reencolar contra `nightly`, sin promoción a `testers`/`master` ni release.
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
@@ -235,6 +241,36 @@ heredada advisory. Sin promoción a Testers/Master ni release.
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado
 superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
+
+### ISA-347 — Delta real, único y controlable por hotkey
+
+- Rama/worktree:
+  `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`
+  en `C:\tmp\vantare-isa347\vantare-v2`, desde
+  `origin/nightly@7e4eac63fdc3a81278f8815d28e33c8a1293db4a`.
+- La telemetría Delta mantiene tres referencias independientes y fail-closed:
+  personal observado desde LMU cuando existe, mejor válida de la sesión y
+  vuelta anterior válida. Ninguna referencia ausente hereda otra bajo una
+  etiqueta falsa.
+- Cada layout admite un solo widget `delta`. Catálogo, comandos Studio y
+  validadores TS/Go aplican el mismo contrato; los layouts de sesión explícitos
+  son alternativos y nunca se renderizan simultáneamente. Los Delta extra de un
+  perfil histórico pasan a `preservedWidgets` con su configuración completa,
+  de modo que no se renderizan ni se pierden.
+- Hotkey `cycleDeltaReference`, configurable en Ajustes y por defecto
+  `Ctrl+Shift+D`: Personal → Sesión → Anterior → Personal. Usa el gestor global
+  existente, guarda el perfil activo y vuelve a publicar el documento runtime.
+  La migración de AppSettings v2→v3 añade el atajo sin sustituir combinaciones
+  ya configuradas.
+- Evidencia: `go test ./...` PASS; frontend 370 archivos/2673 tests PASS;
+  build y ESLint focal PASS. Vitest conserva dos `AbortError` heredados de
+  teardown después del resumen con exit 0.
+- Estado real: implementación `3a54d34` publicada en PR draft #233 contra
+  `nightly`. Review adversarial: P0=0, P1=3 corregidos, P2=0 y P3=0;
+  fix `46df1b2`, sincronización con `nightly@638b470` mediante `f0e40bd`.
+  `go test ./... -count=1`, frontend 370/2673, build, ESLint focal, vet focal
+  sin deuda nueva y diff-check pasan. Isaac autorizó reencolar la PR el
+  2026-08-14; sigue pendiente la comprobación manual LMU/Wails.
 
 ### ISA-262 — usar el Workshop local
 

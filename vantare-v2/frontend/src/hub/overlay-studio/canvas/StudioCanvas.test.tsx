@@ -7,6 +7,7 @@ import {
 } from "../../../overlay/core/layout-viewport";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { pedalsDefinition } from "../../../overlay/widget-types/pedals/pedals-definition";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
@@ -51,7 +52,7 @@ function installViewportResizeObserver(width: number, height: number): void {
 function buildDocument(layoutViewport?: LayoutViewport): ProfileDocumentV3 {
   const back = deltaDefinition.createDefault("delta-back");
   back.layout = { ...back.layout, x: 40, y: 40, zIndex: 0 };
-  const front = deltaDefinition.createDefault("delta-front");
+  const front = pedalsDefinition.createDefault("delta-front");
   front.layout = { ...front.layout, x: 200, y: 120, zIndex: 2 };
   return {
     schemaVersion: 3,
@@ -442,7 +443,7 @@ describe("StudioCanvas", () => {
     renderCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
 
-    fireEvent.pointerDown(screen.getByTestId("studio-widget-frame-delta-back"), {
+    fireEvent.pointerDown(screen.getByTestId("studio-widget-frame-delta-front"), {
       pointerId: 1,
       button: 0,
       clientX: 80,
@@ -454,10 +455,10 @@ describe("StudioCanvas", () => {
     fireEvent.click(screen.getByTestId("studio-action-duplicate"));
 
     await waitFor(() =>
-      expect(screen.getByTestId("studio-widget-frame-delta-back-copy")).toBeTruthy(),
+      expect(screen.getByTestId("studio-widget-frame-delta-front-copy")).toBeTruthy(),
     );
     expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-selected-widget-id")).toBe(
-      "delta-back-copy",
+      "delta-front-copy",
     );
   });
 

@@ -286,10 +286,13 @@ func overlayInput(t *testing.T) envelope.Snapshot[derive.FinalState] {
 				{Vehicle: "car-9", Time: testField(t, standings.RelativeTime(2), schema.ProvenanceDerived, fresh), Laps: testField(t, standings.RelativeLaps(0), schema.ProvenanceDerived, fresh)},
 			}},
 			Delta: derive.SelfDelta{
-				Freshness: fresh,
-				Seconds:   testField(t, session.DeltaSeconds(-0.25), schema.ProvenanceDerived, fresh),
-				Reference: testField(t, session.DeltaReferenceBestCompletedPlayerLap, schema.ProvenanceDerived, fresh),
-				History:   []derive.DeltaSample{{Cursor: header.Cursor, CapturedAt: header.Clock.ReceivedUTC, SourceTime: 3600 * time.Second, LapDistance: 1234.5, Seconds: -0.25}},
+				Freshness:    fresh,
+				Seconds:      testField(t, session.DeltaSeconds(-0.25), schema.ProvenanceDerived, fresh),
+				Reference:    testField(t, session.DeltaReferenceBestCompletedPlayerLap, schema.ProvenanceDerived, fresh),
+				History:      []derive.DeltaSample{{Cursor: header.Cursor, CapturedAt: header.Clock.ReceivedUTC, SourceTime: 3600 * time.Second, LapDistance: 1234.5, Seconds: -0.25}},
+				PersonalBest: testField(t, session.DeltaSeconds(-0.20), schema.ProvenanceObserved, fresh),
+				SessionBest:  testField(t, session.DeltaSeconds(-0.25), schema.ProvenanceDerived, fresh),
+				PreviousLap:  testField(t, session.DeltaSeconds(0.10), schema.ProvenanceDerived, fresh),
 			},
 			ControlsHistory: derive.ControlHistory{
 				Freshness: schema.FreshnessFresh,

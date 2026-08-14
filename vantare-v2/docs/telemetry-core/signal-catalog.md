@@ -48,6 +48,8 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 42 | `session.self_delta_seconds` | session | seconds | unknown | appended | Signed player delta against the declared reference. |
 | 43 | `session.self_delta_reference` | session | text | unsupported | appended | Known canonical self-delta reference enum only. |
 | 44 | `spatial.local_velocity` | spatial | m/s | unknown | appended | Vehicle-local XYZ velocity in m/s; LMU axes are +X left, +Y up and +Z rearward. |
+| 45 | `session.native_delta_best` | session | seconds | unknown | appended | Signed simulator-provided player delta to the personal best lap; validity remains explicit. |
+| 46 | `session.previous_lap_delta` | session | seconds | unknown | appended | Signed player delta against the most recent complete valid lap observed in the current session. |
 
 ## Tombstoned IDs
 

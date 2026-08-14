@@ -36,6 +36,37 @@ func TestMigrateProfileJSONToV3Golden(t *testing.T) {
 	}
 }
 
+func TestMigrateProfileJSONToV3PreservesExtraDeltaWithoutRenderingIt(t *testing.T) {
+	primary := validWidget("delta-main", WidgetTypeDelta)
+	primary.Content = map[string]any{"reference": "personal-best"}
+	extra := validWidget("delta-secondary", WidgetTypeDelta)
+	extra.Content = map[string]any{"reference": "previous-lap", "legacyLabel": "secondary"}
+	doc := validProfileV3(primary, extra)
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, from, err := MigrateProfileJSONToV3(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if from != ProfileSchemaVersionV3 {
+		t.Fatalf("from=%d want %d", from, ProfileSchemaVersionV3)
+	}
+	layout := migrated.Layouts[LayoutGeneral]
+	if len(layout.Widgets) != 1 || layout.Widgets[0].ID != "delta-main" {
+		t.Fatalf("widgets=%+v want only delta-main", layout.Widgets)
+	}
+	if len(layout.PreservedWidgets) != 1 || layout.PreservedWidgets[0].ID != "delta-secondary" {
+		t.Fatalf("preserved=%+v want delta-secondary", layout.PreservedWidgets)
+	}
+	content, ok := layout.PreservedWidgets[0].Source["content"].(map[string]any)
+	if !ok || content["reference"] != "previous-lap" || content["legacyLabel"] != "secondary" {
+		t.Fatalf("preserved content=%v", layout.PreservedWidgets[0].Source["content"])
+	}
+}
+
 func TestProfileV3MigrationCoreInvariant(t *testing.T) {
 	v0Data, err := os.ReadFile("testdata/profile-v0-core-widgets.json")
 	if err != nil {

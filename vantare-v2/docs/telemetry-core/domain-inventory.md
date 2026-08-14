@@ -113,7 +113,7 @@ Fuente de verdad actual: `pkg/models/telemetry.go`. Consumers: `TelemetryBridge`
 | `EngineRPM` | `float64` | rpm | shared memory | input widgets | continuous signal / `schema/vehicle` | Directo; cero válido con motor parado. |
 | `Fuel` | `float64` | litros, por confirmar LMU | shared memory | fuel widgets | continuous signal / `schema/energy` | Directo; cero válido. Confirmar unidad. |
 | `FuelCap` | `float64` | litros, por confirmar | shared memory | fuel/Engineer | attribute / `schema/energy` | Directo; cero no prueba ausencia. |
-| `DeltaBest` | `float64` | segundos | nativo LMU o motor AlphaDelta | delta widgets | derivation/fusion / `schema/session` | Provenance cambia por frame y hoy no viaja. TC-03 debe distinguir observado/derivado. |
+| `DeltaBest` | `float64` | segundos | nativo LMU o self-delta canónico | delta widgets | derivation/fusion / `schema/session` | La procedencia viaja: `observed` para `mDeltaBest`, `derived` para fallback. |
 | `Throttle` | `float64` | 0..1 observado | shared memory | input widgets/historial | continuous signal / `schema/controls` | Directo; cero válido. Frontend normaliza tolerando porcentaje. |
 | `Brake` | `float64` | 0..1 observado | shared memory | input widgets/historial | continuous signal / `schema/controls` | Directo; cero válido. |
 | `Clutch` | `float64` | 0..1 observado | shared memory | input widgets/historial | continuous signal / `schema/controls` | Directo; cero válido. |
@@ -195,7 +195,10 @@ Todos los campos son por vehículo. Cada fila hereda rango/frecuencia de RF-0 o 
 | `player.speedKph` | `Player.Speed` | continuous signal | Nombre KPH, valor backend documentado m/s; deuda crítica para TC-03. |
 | `player.rpm/gear/fuelLiters` | player RPM/Gear/Fuel | continuous signal | Availability se infiere por presencia JSON; unidades de fuel por confirmar. |
 | `player.totalLaps` | fila player `TotalLaps` | continuous signal | Duplicado funcional con `lapNumber`; semántica pendiente. |
-| `player.deltaSeconds` | `DeltaBest` | derivation/fusion | No expone si fue nativo o AlphaDelta. |
+| `player.deltaSeconds` | `DeltaBest` | derivation/fusion | Campo legacy seleccionado: nativo personal con fallback de sesión. |
+| `player.deltaPersonalBestSeconds` | `DeltaBest` | fusion | `mDeltaBest` observado; no se sustituye si está ausente. |
+| `player.deltaSessionBestSeconds` | self-delta | derivation | Comparación contra la vuelta completa válida más rápida de la sesión actual. |
+| `player.deltaPreviousLapSeconds` | previous-lap delta | derivation | Comparación contra la última vuelta completa válida observada. |
 | `player.lastLapSeconds/bestLapSeconds` | fila player | fact | Cero/omitido puede perder distinción. |
 | `player.lapNumber` | fila player `TotalLaps` | derivation | No usa `Player.LapNumber`; divergencia a resolver, no corregida aquí. |
 | `player.predictedLapSeconds` | `EstimatedLapTime` | derivation | Estimación sin provenance. |

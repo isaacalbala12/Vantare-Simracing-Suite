@@ -123,6 +123,9 @@ export type OverlayPayloadV1 = Readonly<{
   remainingSeconds: OverlayProjectionField<number>;
   maximumLaps: OverlayProjectionField<number>;
   playerDeltaSeconds: OverlayProjectionField<number>;
+  playerDeltaPersonalBestSeconds: OverlayProjectionField<number>;
+  playerDeltaSessionBestSeconds: OverlayProjectionField<number>;
+  playerDeltaPreviousLapSeconds: OverlayProjectionField<number>;
   playerDeltaReference: OverlayProjectionField<OverlayDeltaReference>;
   deltaHistory: OverlayDeltaHistoryV1;
 }>;
@@ -216,6 +219,24 @@ export function decodeOverlayProjectionV1(
       playerDeltaSeconds: decodeOptionalField(
         payload,
         "playerDeltaSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaPersonalBestSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaPersonalBestSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaSessionBestSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaSessionBestSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaPreviousLapSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaPreviousLapSeconds",
         requireFiniteNumber,
         0,
       ),

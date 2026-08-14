@@ -136,6 +136,14 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets")
 	})
 
+	t.Run("more than one delta widget within a layout", func(t *testing.T) {
+		doc := validProfileV3(
+			validWidget("delta-main", WidgetTypeDelta),
+			validWidget("delta-secondary", WidgetTypeDelta),
+		)
+		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets")
+	})
+
 	t.Run("unsupported widget type", func(t *testing.T) {
 		w := validWidget("telemetry-1", WidgetTypeV3("telemetry"))
 		doc := validProfileV3(w)

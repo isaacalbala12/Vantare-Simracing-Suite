@@ -46,6 +46,7 @@ const (
 	SignalObservedLapNumber        SignalID = "observed.session.lap-number"
 	SignalObservedLapDistance      SignalID = "observed.standings.lap-distance"
 	SignalObservedInPit            SignalID = "observed.pit.in-pit"
+	SignalObservedDeltaBest        SignalID = "observed.session.delta-best"
 	SignalObservedThrottle         SignalID = "observed.vehicle.throttle"
 	SignalObservedBrake            SignalID = "observed.vehicle.brake"
 	SignalObservedClutch           SignalID = "observed.vehicle.clutch"
@@ -104,7 +105,7 @@ var canonicalRegistry = []Definition{
 	},
 	{
 		ID: DerivationSelfDelta, Version: 1, Order: 4,
-		Inputs:       []SignalID{SignalObservedSourceTime, SignalObservedLapNumber, SignalObservedLapDistance, SignalObservedInPit},
+		Inputs:       []SignalID{SignalObservedSourceTime, SignalObservedLapNumber, SignalObservedLapDistance, SignalObservedInPit, SignalObservedDeltaBest},
 		Outputs:      []SignalID{SignalSelfDeltaSeconds, SignalSelfDeltaRef},
 		Reset:        ResetEpoch | ResetSession | ResetRun | ResetVehicle,
 		HistoryLimit: MaxSelfDeltaSamples,

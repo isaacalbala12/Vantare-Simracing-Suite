@@ -147,6 +147,7 @@ export const it: Record<string, string> = {
   "settings.status.saved": "Impostazioni salvate.",
   "settings.hotkeys.change": "Modifica",
   "settings.hotkeys.toggleOverlay": "Attiva overlay",
+  "settings.hotkeys.cycleDeltaReference": "Cambia riferimento Delta",
   "settings.hotkeys.nextProfile": "Profilo successivo",
   "settings.hotkeys.prevProfile": "Profilo precedente",
   "settings.cpu.title": "Prestazioni",

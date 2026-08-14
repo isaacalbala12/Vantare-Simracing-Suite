@@ -25,7 +25,7 @@ function createDeps(
 }
 
 describe("resolveInspectorSections", () => {
-  it("returns Design, Appearance, Behavior, Layout and Actions for Delta without Content", () => {
+  it("returns the per-widget Content selector for Delta", () => {
     const widget = deltaDefinition.createDefault("delta-main");
     const system = designSystemRegistry.resolve(
       widget.visual.systemId,
@@ -40,11 +40,12 @@ describe("resolveInspectorSections", () => {
     expect(sectionIds(sections)).toEqual([
       "design",
       "appearance",
+      "content",
       "behavior",
       "layout",
       "actions",
     ]);
-    expect(sections.find((section) => section.id === "content")).toBeUndefined();
+    expect(sections.find((section) => section.id === "content")).toBeDefined();
   });
 
   it("includes Content when the widget definition exposes content controls", () => {
@@ -144,6 +145,6 @@ describe("resolveInspectorSections", () => {
       createDeps(deltaDefinition, systemWithoutAppearance),
     );
 
-    expect(sectionIds(sections)).toEqual(["design", "behavior", "layout", "actions"]);
+    expect(sectionIds(sections)).toEqual(["design", "content", "behavior", "layout", "actions"]);
   });
 });

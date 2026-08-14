@@ -51,6 +51,21 @@ describe("AddWidgetDialog", () => {
     expect(screen.queryByTestId("studio-catalog-add-relative")).toBeNull();
   });
 
+  it("does not offer another delta when the active layout already has one", () => {
+    render(
+      <AddWidgetDialog
+        open
+        access={freeAccess}
+        unavailableTypes={["delta"]}
+        onAdd={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("studio-catalog-add-delta")).toBeNull();
+    expect(screen.getByTestId("studio-catalog-unavailable-delta").textContent).toContain("añadido");
+  });
+
   it("returns null when closed", () => {
     const { container } = render(
       <AddWidgetDialog open={false} access={freeAccess} onAdd={vi.fn()} onClose={vi.fn()} />,

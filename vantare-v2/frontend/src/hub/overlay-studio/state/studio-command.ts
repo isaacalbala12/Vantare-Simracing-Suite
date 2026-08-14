@@ -202,6 +202,9 @@ function applyWidgetAdd(document: ProfileDocumentV3, command: Extract<StudioComm
     if (widgets.some((widget) => widget.id === command.widget.id)) {
       throw new StudioCommandError(command.type, `duplicate widget id: ${command.widget.id}`);
     }
+    if (command.widget.type === "delta" && widgets.some((widget) => widget.type === "delta")) {
+      throw new StudioCommandError(command.type, "only one delta widget is allowed per layout");
+    }
     return normalizeWidgetOrder([...widgets, structuredClone(command.widget)]);
   });
 }
@@ -229,6 +232,9 @@ function applyWidgetDuplicate(
       const source = ordered.find((widget) => widget.id === sourceId);
       if (!source) {
         throw new StudioCommandError(command.type, `unknown widget id: ${sourceId}`);
+      }
+      if (source.type === "delta") {
+        throw new StudioCommandError(command.type, "only one delta widget is allowed per layout");
       }
       copies.push({
         ...structuredClone(source),

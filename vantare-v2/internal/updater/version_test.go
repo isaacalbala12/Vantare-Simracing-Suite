@@ -74,3 +74,25 @@ func TestCompareNumericSuffixSegments(t *testing.T) {
 		}
 	}
 }
+
+func TestProductLine(t *testing.T) {
+	cases := []struct {
+		in   string
+		line string
+		ok   bool
+	}{
+		{"v0.1.0.7-nightly.8", "0.1", true},
+		{"v0.1.0.7-testers.12", "0.1", true},
+		{"0.3.10.0", "0.3", true},
+		{"v2.0.0-beta.1", "2.0", true},
+		{"v0.1.1-prealpha", "0.1", true},
+		{"dev", "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		line, ok := productLine(c.in)
+		if line != c.line || ok != c.ok {
+			t.Fatalf("productLine(%q) = (%q, %v), want (%q, %v)", c.in, line, ok, c.line, c.ok)
+		}
+	}
+}

@@ -7,6 +7,7 @@ import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetDesignV1 } from "../../../overlay/core/widget-design";
 import type { WidgetDesignClient } from "../designs/widget-design-client";
 import type { StudioCommand } from "../state/studio-command";
+import { StudioConfirmProvider } from "../components/StudioConfirmProvider";
 import { DesignSection } from "./DesignSection";
 
 const freeAccess: AccessContext = {
@@ -202,7 +203,7 @@ describe("DesignSection", () => {
     fireEvent.click(screen.getByTestId("studio-design-apply-all-delta-original-base"));
 
     expect(confirmApplyAll).toHaveBeenCalledWith(
-      'Aplicar "Original Base" a 2 widget(s) compatible(s) en esta sesión.',
+      "Aplicar «Original Base» a 2 widget(s) compatible(s) en esta sesión.",
     );
     const command = dispatch.mock.calls[0]?.[0];
     expect(command?.type).toBe("widget/apply-design");
@@ -302,5 +303,84 @@ describe("DesignSection", () => {
       expect(designClient.delete).toHaveBeenCalledWith("user-design-1");
     });
     expect(screen.queryByTestId("studio-design-item-user-design-1")).toBeNull();
+  });
+
+  it("asks in the studio dialog before deleting a design, and honours the cancel", async () => {
+    const widget = deltaDefinition.createDefault("delta-main");
+    const designClient = createDesignClient([userDesign()]);
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal("confirm", nativeConfirm);
+
+    render(
+      <StudioConfirmProvider storage={null}>
+        <DesignSection
+          widget={widget}
+          session="general"
+          widgets={[widget]}
+          access={paidAccess}
+          dispatch={vi.fn()}
+          designClient={designClient}
+        />
+      </StudioConfirmProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-design-delete-user-design-1")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId("studio-design-delete-user-design-1"));
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    const dialog = screen.getByTestId("studio-design-delete-dialog");
+    expect(dialog.textContent).toContain("User Delta");
+
+    fireEvent.click(screen.getByTestId("studio-design-delete-cancel"));
+    expect(designClient.delete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("studio-design-delete-user-design-1"));
+    fireEvent.click(screen.getByTestId("studio-design-delete-confirm"));
+    await waitFor(() => {
+      expect(designClient.delete).toHaveBeenCalledWith("user-design-1");
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("asks in the studio dialog before applying a design to every compatible widget", async () => {
+    const widgetA = deltaDefinition.createDefault("delta-a");
+    const widgetB = deltaDefinition.createDefault("delta-b");
+    const dispatch = vi.fn<(command: StudioCommand) => void>();
+    const nativeConfirm = vi.fn();
+    vi.stubGlobal("confirm", nativeConfirm);
+
+    render(
+      <StudioConfirmProvider storage={null}>
+        <DesignSection
+          widget={widgetA}
+          session="general"
+          widgets={[widgetA, widgetB]}
+          access={freeAccess}
+          dispatch={dispatch}
+          designClient={createDesignClient()}
+        />
+      </StudioConfirmProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-design-apply-all-delta-original-base")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId("studio-design-apply-all-delta-original-base"));
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(screen.getByTestId("studio-design-apply-all-dialog").textContent).toContain(
+      "2 widget(s) compatible(s)",
+    );
+
+    fireEvent.click(screen.getByTestId("studio-design-apply-all-confirm"));
+    const command = dispatch.mock.calls[0]?.[0];
+    expect(command?.type).toBe("widget/apply-design");
+    if (command?.type === "widget/apply-design") {
+      expect(command.widgetIds).toEqual(["delta-a", "delta-b"]);
+    }
+    vi.unstubAllGlobals();
   });
 });

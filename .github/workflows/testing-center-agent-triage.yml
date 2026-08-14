@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 1
     steps:
       - name: Keep provider route fail-closed until bootstrap and authorization
-        run: echo "testing_center_triage_production_disabled"
+        run: exit 1
 
   production_triage:
     # BLOCKER Task 11: replace this hard stop only after the workflow can

@@ -1,6 +1,7 @@
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { useI18n } from "../../../i18n/I18nProvider";
+import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
 import type { StudioCommand } from "../state/studio-command";
 import {
   executeWidgetAction,
@@ -26,13 +27,14 @@ export type CanvasActionBarProps = {
   layoutViewport: LayoutViewport;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
-  confirmDelete(message: string): boolean;
+  confirmDelete?(message: string): boolean;
   inert?: boolean;
 };
 
 export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement {
   const { inert = false } = props;
   const { t } = useI18n();
+  const deleteConfirm = useDeleteWidgetConfirm();
 
   return (
     <div
@@ -62,6 +64,7 @@ export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement
                     dispatch: props.dispatch,
                     selectWidget: props.selectWidget,
                     confirmDelete: props.confirmDelete,
+                    requestDeleteConfirm: deleteConfirm?.request,
                     deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
                   })
           }

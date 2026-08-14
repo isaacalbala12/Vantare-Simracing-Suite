@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
+import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
 import type { StudioCommand } from "../state/studio-command";
 import {
   executeWidgetAction,
@@ -34,13 +35,14 @@ export type WidgetContextMenuProps = {
   layoutViewport: LayoutViewport;
   dispatch(command: StudioCommand): void;
   selectWidget(widgetId: string | null): void;
-  confirmDelete(message: string): boolean;
+  confirmDelete?(message: string): boolean;
   onClose(): void;
 };
 
 export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactElement | null {
   const panelRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
+  const deleteConfirm = useDeleteWidgetConfirm();
 
   useEffect(() => {
     if (!props.menu) {
@@ -82,6 +84,7 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
       dispatch: props.dispatch,
       selectWidget: props.selectWidget,
       confirmDelete: props.confirmDelete,
+      requestDeleteConfirm: deleteConfirm?.request,
       deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
     });
     props.onClose();

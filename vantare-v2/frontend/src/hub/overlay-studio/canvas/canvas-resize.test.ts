@@ -16,6 +16,30 @@ function startLayout(): WidgetLayoutV3 {
 const deltaCapabilities = { width: 120, height: 48 };
 
 describe("resizeWidgetLayout", () => {
+  it("keeps height fixed for horizontal-only widgets", () => {
+    const start = startLayout();
+
+    const vertical = resizeWidgetLayout({
+      startLayout: start,
+      handle: "s",
+      pointerDelta: { dx: 0, dy: 80 },
+      minSize: { width: 120, height: 50 },
+      supportsAspectUnlock: true,
+      resizeMode: "horizontal-only",
+    });
+    const horizontal = resizeWidgetLayout({
+      startLayout: start,
+      handle: "e",
+      pointerDelta: { dx: 80, dy: 80 },
+      minSize: { width: 120, height: 50 },
+      supportsAspectUnlock: true,
+      resizeMode: "horizontal-only",
+    });
+
+    expect(vertical).toEqual(start);
+    expect(horizontal).toMatchObject({ w: 280, h: 100 });
+  });
+
   it("respects minimum size from widget capabilities", () => {
     const resized = resizeWidgetLayout({
       startLayout: startLayout(),

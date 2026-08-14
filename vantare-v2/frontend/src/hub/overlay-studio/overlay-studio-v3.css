@@ -2304,3 +2304,248 @@ html.osv3-harness #root {
   color: var(--v-text);
   text-transform: lowercase;
 }
+
+/* ---------------------------------------------------------------------------
+   Confirmacion de borrado de widget
+   El dialogo sustituye al window.confirm nativo, que en Wails llegaba con
+   titulo del navegador y la clave i18n sin resolver. Se apoya en las clases
+   osv3-dialog-* para no inventar un segundo lenguaje de dialogos.
+   ------------------------------------------------------------------------ */
+
+.osv3-dialog-backdrop--blur {
+  /* Lo bastante oscuro para que el foco caiga en el dialogo, no tanto como
+     para tapar el widget del que se esta hablando. */
+  background: rgba(4, 4, 6, 0.55);
+  backdrop-filter: blur(4px);
+  animation: osv3-confirm-dialog-fade 140ms ease-out;
+}
+
+.osv3-confirm-dialog {
+  position: relative;
+  width: min(400px, 100%);
+  padding: 22px 22px 18px;
+  border-radius: 14px;
+  border-color: rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(193, 18, 31, 0.14), transparent 62%),
+    linear-gradient(180deg, #17171b, var(--v-panel));
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(193, 18, 31, 0.16);
+  animation: osv3-confirm-dialog-rise 160ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.osv3-confirm-dialog::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22px;
+  right: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--v-accent), transparent);
+  opacity: 0.7;
+}
+
+.osv3-confirm-dialog__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.osv3-confirm-dialog__mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(193, 18, 31, 0.35);
+  background: rgba(193, 18, 31, 0.12);
+  color: #ff6b74;
+  flex-shrink: 0;
+}
+
+.osv3-confirm-dialog__title {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.osv3-confirm-dialog__body {
+  margin: 0 0 12px;
+  color: var(--v-text);
+  line-height: 1.5;
+}
+
+.osv3-confirm-dialog__targets {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  list-style: none;
+  max-height: 132px;
+  overflow-y: auto;
+  border: 1px solid var(--v-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.osv3-confirm-dialog__target {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--v-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osv3-confirm-dialog__target::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--v-accent);
+  vertical-align: middle;
+}
+
+.osv3-confirm-dialog__target--more {
+  color: var(--v-text-muted);
+}
+
+.osv3-confirm-dialog__target--more::before {
+  background: var(--v-text-dim);
+}
+
+.osv3-confirm-dialog__hint {
+  margin: 0 0 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--v-text-muted);
+}
+
+.osv3-confirm-dialog__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 11px;
+  color: var(--v-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.osv3-confirm-dialog__remember input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  border: 1px solid var(--v-border);
+  border-radius: 4px;
+  background: var(--v-surface);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.osv3-confirm-dialog__remember input:checked {
+  border-color: rgba(193, 18, 31, 0.6);
+  background: var(--v-accent);
+}
+
+.osv3-confirm-dialog__remember input:checked::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border: solid #fff;
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.osv3-confirm-dialog__remember input:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 2px;
+}
+
+.osv3-dialog-panel__button--danger {
+  border-color: rgba(193, 18, 31, 0.55);
+  background: linear-gradient(180deg, #d21422, #8f0d18);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.osv3-dialog-panel__button--danger:hover {
+  background: linear-gradient(180deg, #e6202f, #a3101c);
+}
+
+.osv3-inspector-restore-confirm {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.osv3-inspector-restore-confirm:hover {
+  color: var(--v-text);
+}
+
+@keyframes osv3-confirm-dialog-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes osv3-confirm-dialog-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .osv3-dialog-backdrop--blur,
+  .osv3-confirm-dialog {
+    animation: none;
+  }
+}
+
+/* Tono neutro: la misma caja para preguntas que no destruyen nada, como
+   aplicar un diseno a todos los widgets compatibles. */
+.osv3-confirm-dialog--primary {
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(56, 189, 248, 0.1), transparent 62%),
+    linear-gradient(180deg, #17171b, var(--v-panel));
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(56, 189, 248, 0.14);
+}
+
+.osv3-confirm-dialog--primary::before {
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.9), transparent);
+}
+
+.osv3-confirm-dialog--primary .osv3-confirm-dialog__mark {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.osv3-confirm-dialog--primary .osv3-confirm-dialog__target::before {
+  background: rgba(56, 189, 248, 0.85);
+}
+
+.osv3-confirm-dialog--primary .osv3-confirm-dialog__remember input:checked {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: #38bdf8;
+}
+
+.osv3-dialog-panel__button--primary {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(56, 189, 248, 0.08));
+  color: #e0f2fe;
+  font-weight: 600;
+}
+
+.osv3-dialog-panel__button--primary:hover {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.26), rgba(56, 189, 248, 0.12));
+}

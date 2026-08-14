@@ -8,6 +8,7 @@ import { createWidgetDiagnosticCollector } from "../../overlay/core/widget-diagn
 import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
 import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
+import { StudioConfirmProvider } from "./components/StudioConfirmProvider";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
 import { InspectorSlot } from "./components/InspectorSlot";
 import { RecoveryDialog } from "./components/RecoveryDialog";
@@ -252,21 +253,23 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
           </button>
         </div>
       ) : null}
-      <ResponsivePanelControls
-        viewportWidth={viewportWidth}
-        selectedWidgetId={selectedWidgetId}
-        listPanel={<WidgetListPanel />}
-        canvasPanel={
-          <StudioTelemetryProvider {...telemetryProps}>
-            <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} diagnostics={diagnostics} />
-          </StudioTelemetryProvider>
-        }
-        inspectorPanel={
-          <StudioTelemetryProvider {...telemetryProps}>
-            <InspectorSlot />
-          </StudioTelemetryProvider>
-        }
-      />
+      <StudioConfirmProvider>
+        <ResponsivePanelControls
+          viewportWidth={viewportWidth}
+          selectedWidgetId={selectedWidgetId}
+          listPanel={<WidgetListPanel />}
+          canvasPanel={
+            <StudioTelemetryProvider {...telemetryProps}>
+              <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} diagnostics={diagnostics} />
+            </StudioTelemetryProvider>
+          }
+          inspectorPanel={
+            <StudioTelemetryProvider {...telemetryProps}>
+              <InspectorSlot />
+            </StudioTelemetryProvider>
+          }
+        />
+      </StudioConfirmProvider>
       <DirtyChangesDialog
         open={dirtyDialogOpen}
         saving={dirtySaving}

@@ -170,8 +170,7 @@ Deno.test("repository dispatch fails closed and provider jobs have an inert depe
   const workflow = normalize(await Deno.readTextFile(workflowPath));
   const disabled = jobBlock(workflow, "production_disabled");
   assertIncludes(disabled, "if: github.event_name == 'repository_dispatch'");
-  assertIncludes(disabled, "testing_center_fix_production_disabled");
-  assertNotIncludes(disabled, "run: exit 1");
+  assertIncludes(disabled, "run: exit 1");
   assertNotIncludes(disabled, claudeActionPin);
 
   const topology: Array<[string, string | null]> = [

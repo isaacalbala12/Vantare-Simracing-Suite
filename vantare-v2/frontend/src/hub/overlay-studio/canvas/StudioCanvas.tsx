@@ -3,6 +3,7 @@ import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
 import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
 import { canMutateWidget } from "../access/studio-access";
+import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from "../studio-v3-i18n";
 import { getStudioHotkey } from "../state/studio-hotkeys";
@@ -184,6 +185,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
 
   const snapshotOverride = isCanvasInteracting ? snapshotDuringInteractionRef.current : undefined;
 
+  const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
 
   const stopViewportDeselect = useCallback((event: React.PointerEvent) => {
@@ -251,10 +253,14 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       dispatch,
       selectWidget,
       confirmDelete,
+      requestDeleteConfirm: deleteConfirm?.request,
+      deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
     });
   }, [
     activeSession,
     confirmDelete,
+    deleteConfirm?.request,
+    t,
     dispatch,
     interaction.interaction.kind,
     savedDocument,

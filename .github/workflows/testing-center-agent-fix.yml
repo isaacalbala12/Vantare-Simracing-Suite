@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 1
     steps:
       - name: Keep production automation fail-closed
-        run: echo "testing_center_fix_production_disabled"
+        run: exit 1
 
   red_agent:
     if: github.event_name == 'repository_dispatch' && false

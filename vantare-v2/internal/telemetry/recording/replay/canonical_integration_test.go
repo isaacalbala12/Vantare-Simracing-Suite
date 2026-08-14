@@ -8,16 +8,23 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	analysisprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 type collectingFactSink struct {
@@ -71,6 +78,21 @@ func canonicalIntegrationDigest(
 	metadata := testMetadata()
 	metadata.SchemaID = "canonical-observation"
 	frame := canonicalFrame(t, metadata.StartedAtUTC, 1, 1, 1)
+	frame.Batch.State.SourceTime = replayField(t, 12500*time.Millisecond, schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.EndTime = replayField(t, session.EndTime(7200), schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.MaximumLaps = replayField(t, session.MaximumLaps(42), schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.TrackName = replayField(t, "sanitized-track", schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.SessionType = replayField(t, session.TypeRace, schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.VehicleCount = replayField(t, schema.Count(1), schema.ProvenanceObserved, schema.FreshnessFresh)
+	frame.Batch.State.PlayerPresent = replayField(t, true, schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle := &frame.Batch.State.Vehicles[0]
+	vehicle.LapNumber = replayField(t, session.LapNumber(8), schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.CompletedLaps = replayField(t, standings.CompletedLaps(7), schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.Sector = replayField(t, standings.SectorTwo, schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.LapDistance = replayField(t, standings.LapDistance(1234.5), schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.InPit = replayField(t, pit.InPit(false), schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.PitStopCount = replayField(t, pit.StopCount(1), schema.ProvenanceObserved, schema.FreshnessFresh)
+	vehicle.Fuel = replayField(t, energy.Fuel{Amount: 25.5, Capacity: 100}, schema.ProvenanceObserved, schema.FreshnessFresh)
 	source, err := NewCanonicalSource(metadata, []CanonicalFrame{frame})
 	if err != nil {
 		t.Fatalf("NewCanonicalSource() error = %v", err)
@@ -124,6 +146,7 @@ func canonicalIntegrationDigest(
 		if err != nil {
 			return err
 		}
+		assertCanonicalReplayStrategy(t, strategy, metadata.StartedAtUTC)
 		engineer, err := engineerprojection.ProjectV1(final)
 		if err != nil {
 			return err
@@ -153,4 +176,82 @@ func canonicalIntegrationDigest(
 	}
 	sum := sha256.Sum256(encoded)
 	return hex.EncodeToString(sum[:]), waits
+}
+
+func replayField[T comparable](
+	t testing.TB,
+	value T,
+	provenance schema.Provenance,
+	freshness schema.Freshness,
+) schema.Field[T] {
+	t.Helper()
+	field, err := schema.NewField(value, provenance, freshness)
+	if err != nil {
+		t.Fatalf("NewField(%v) error = %v", value, err)
+	}
+	return field
+}
+
+func assertCanonicalReplayStrategy(
+	t testing.TB,
+	got strategyprojection.SnapshotV1,
+	capturedAt time.Time,
+) {
+	t.Helper()
+	if got.CanonicalVersion != schema.CanonicalVersionV1 ||
+		got.ProjectionVersion != strategyprojection.VersionV1 ||
+		got.Epoch != 1 || got.Sequence != 1 ||
+		got.CapturedAt != capturedAt.UTC().Format(time.RFC3339Nano) {
+		t.Fatalf("Strategy replay metadata = %#v", got.Metadata)
+	}
+	wantCapabilities := []strategyprojection.Capability{
+		strategyprojection.CapabilitySession,
+		strategyprojection.CapabilityProgress,
+		strategyprojection.CapabilityPit,
+		strategyprojection.CapabilityFuel,
+	}
+	if !reflect.DeepEqual(got.Capabilities, wantCapabilities) {
+		t.Fatalf("Strategy replay capabilities = %v, want %v", got.Capabilities, wantCapabilities)
+	}
+	assertReplayProjectionField(t, "track", got.TrackName, "sanitized-track", projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "session type", got.SessionType, "race", projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "source time", got.SourceTime, 12.5, projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "end time", got.EndTime, session.EndTime(7200), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "remaining", got.Remaining, session.RemainingTime(7187.5), projection.ProvenanceDerived, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "maximum laps", got.MaximumLaps, session.MaximumLaps(42), projection.ProvenanceObserved, projection.FreshnessFresh)
+	if got.Player.ID != "vehicle-local" {
+		t.Fatalf("Strategy replay player ID = %q", got.Player.ID)
+	}
+	assertReplayProjectionField(t, "lap number", got.Player.LapNumber, session.LapNumber(8), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "completed laps", got.Player.CompletedLaps, standings.CompletedLaps(7), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "sector", got.Player.Sector, standings.SectorTwo, projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "lap distance", got.Player.LapDistance, standings.LapDistance(1234.5), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "in pit", got.Player.InPit, pit.InPit(false), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "pit stops", got.Player.PitStopCount, pit.StopCount(1), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "fuel", got.Player.FuelLiters, energy.FuelAmount(25.5), projection.ProvenanceObserved, projection.FreshnessFresh)
+	assertReplayProjectionField(t, "fuel capacity", got.Player.FuelCapacity, energy.FuelCapacity(100), projection.ProvenanceObserved, projection.FreshnessFresh)
+
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, unsupported := range []string{"virtualEnergy", "tyres", "compound", "wear", "weather"} {
+		if strings.Contains(string(encoded), unsupported) {
+			t.Fatalf("Strategy replay leaked unsupported family %q: %s", unsupported, encoded)
+		}
+	}
+}
+
+func assertReplayProjectionField[T comparable](
+	t testing.TB,
+	name string,
+	got projection.Field[T],
+	want T,
+	provenance projection.Provenance,
+	freshness projection.Freshness,
+) {
+	t.Helper()
+	if !got.Present || got.Value != want || got.Provenance != provenance || got.Freshness != freshness {
+		t.Fatalf("Strategy replay %s = %#v, want value %v provenance %q freshness %q", name, got, want, provenance, freshness)
+	}
 }

@@ -122,6 +122,7 @@ type VehicleObservation struct {
 	Brake            schema.Field[schema.Ratio]
 	Clutch           schema.Field[schema.Ratio]
 	Fuel             schema.Field[energy.Fuel]
+	DeltaBest        schema.Field[session.DeltaSeconds]
 	WorldPosition    schema.Field[spatial.Position]
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
@@ -354,6 +355,19 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 		row.Fuel = observed(fuel)
 	} else {
 		row.Fuel = invalid[energy.Fuel]()
+	}
+	deltaBest := readFloat64(buf, base+lmu13Layout.Telemetry.DeltaBest.Offset)
+	bestLap, hasBestLap := row.BestLapTime.Value()
+	switch {
+	case !finite(deltaBest) || math.Abs(deltaBest) >= 10_000:
+		row.DeltaBest = invalid[session.DeltaSeconds]()
+	case deltaBest != 0 || (hasBestLap && row.BestLapTime.Freshness() == schema.FreshnessFresh && bestLap > 0):
+		row.DeltaBest = observed(session.DeltaSeconds(deltaBest))
+	default:
+		// LMU has no companion validity flag like iRacing's
+		// LapDeltaToBestLap_OK. A zero before any completed best lap means the
+		// native comparison is not available yet, rather than a real 0.000 s.
+		row.DeltaBest = schema.MissingField[session.DeltaSeconds]()
 	}
 }
 

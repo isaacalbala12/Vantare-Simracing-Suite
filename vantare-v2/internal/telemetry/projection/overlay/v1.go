@@ -41,18 +41,21 @@ type SnapshotV1 struct {
 }
 
 type PayloadV1 struct {
-	Capabilities   []Capability                            `json:"capabilities"`
-	TrackName      projection.Field[string]                `json:"trackName"`
-	SessionType    projection.Field[string]                `json:"sessionType"`
-	Player         identity.VehicleID                      `json:"playerVehicleId"`
-	Vehicles       []VehicleV1                             `json:"vehicles"`
-	History        ControlHistoryV1                        `json:"controlsHistory"`
-	EndTime        projection.Field[session.EndTime]       `json:"endTimeSeconds"`
-	Remaining      projection.Field[session.RemainingTime] `json:"remainingSeconds"`
-	MaximumLaps    projection.Field[session.MaximumLaps]   `json:"maximumLaps"`
-	PlayerDelta    projection.Field[session.DeltaSeconds]  `json:"playerDeltaSeconds"`
-	DeltaReference projection.Field[string]                `json:"playerDeltaReference"`
-	DeltaHistory   DeltaHistoryV1                          `json:"deltaHistory"`
+	Capabilities            []Capability                            `json:"capabilities"`
+	TrackName               projection.Field[string]                `json:"trackName"`
+	SessionType             projection.Field[string]                `json:"sessionType"`
+	Player                  identity.VehicleID                      `json:"playerVehicleId"`
+	Vehicles                []VehicleV1                             `json:"vehicles"`
+	History                 ControlHistoryV1                        `json:"controlsHistory"`
+	EndTime                 projection.Field[session.EndTime]       `json:"endTimeSeconds"`
+	Remaining               projection.Field[session.RemainingTime] `json:"remainingSeconds"`
+	MaximumLaps             projection.Field[session.MaximumLaps]   `json:"maximumLaps"`
+	PlayerDelta             projection.Field[session.DeltaSeconds]  `json:"playerDeltaSeconds"`
+	PlayerDeltaPersonalBest projection.Field[session.DeltaSeconds]  `json:"playerDeltaPersonalBestSeconds"`
+	PlayerDeltaSessionBest  projection.Field[session.DeltaSeconds]  `json:"playerDeltaSessionBestSeconds"`
+	PlayerDeltaPreviousLap  projection.Field[session.DeltaSeconds]  `json:"playerDeltaPreviousLapSeconds"`
+	DeltaReference          projection.Field[string]                `json:"playerDeltaReference"`
+	DeltaHistory            DeltaHistoryV1                          `json:"deltaHistory"`
 }
 
 type VehicleV1 struct {
@@ -133,16 +136,19 @@ func (ProjectorV1) Project(snapshot envelope.Snapshot[derive.FinalState]) (envel
 	}
 	state := final.Observed
 	result := PayloadV1{
-		Capabilities: make([]Capability, 0, 5),
-		TrackName:    projection.FromField(state.TrackName),
-		SessionType:  projection.MapField(state.SessionType, projection.SessionTypeName),
-		Player:       snapshot.Header().Identity.Vehicle,
-		Vehicles:     make([]VehicleV1, len(state.Vehicles)),
-		History:      projectHistory(final.Derived.ControlsHistory),
-		EndTime:      projection.FromField(state.EndTime),
-		Remaining:    projection.FromField(final.Derived.SessionRemaining),
-		MaximumLaps:  projection.FromField(state.MaximumLaps),
-		PlayerDelta:  projection.FromField(final.Derived.Delta.Seconds),
+		Capabilities:            make([]Capability, 0, 5),
+		TrackName:               projection.FromField(state.TrackName),
+		SessionType:             projection.MapField(state.SessionType, projection.SessionTypeName),
+		Player:                  snapshot.Header().Identity.Vehicle,
+		Vehicles:                make([]VehicleV1, len(state.Vehicles)),
+		History:                 projectHistory(final.Derived.ControlsHistory),
+		EndTime:                 projection.FromField(state.EndTime),
+		Remaining:               projection.FromField(final.Derived.SessionRemaining),
+		MaximumLaps:             projection.FromField(state.MaximumLaps),
+		PlayerDelta:             projection.FromField(final.Derived.Delta.Seconds),
+		PlayerDeltaPersonalBest: projection.FromField(final.Derived.Delta.PersonalBest),
+		PlayerDeltaSessionBest:  projection.FromField(final.Derived.Delta.SessionBest),
+		PlayerDeltaPreviousLap:  projection.FromField(final.Derived.Delta.PreviousLap),
 		DeltaReference: projection.MapField(final.Derived.Delta.Reference, func(reference session.DeltaReference) string {
 			return "best-completed-player-lap"
 		}),

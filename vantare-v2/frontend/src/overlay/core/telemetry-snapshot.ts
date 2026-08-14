@@ -24,6 +24,10 @@ export type TelemetrySnapshot = {
     fuelLiters?: number;
     totalLaps?: number;
     deltaSeconds?: number;
+    deltaPersonalBestSeconds?: number;
+    deltaSessionBestSeconds?: number;
+    deltaPreviousLapSeconds?: number;
+    deltaReferenceSet?: boolean;
     lastLapSeconds?: number;
     bestLapSeconds?: number;
     lapNumber?: number;

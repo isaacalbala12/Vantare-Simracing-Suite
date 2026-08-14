@@ -12,6 +12,52 @@ Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
   Este corte es documentación; no crea bucket, migración, deploy, UI ni
   activación y no autoriza promoción fuera de una futura rama de issue.
 
+Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
+- Cada layout admite exactamente un widget Delta. Studio oculta la acción de
+  añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la
+  duplicación y un documento externo con dos Delta. Al cargar un perfil antiguo,
+  el primer Delta sigue activo y cualquier extra se conserva íntegro como widget
+  preservado, sin renderizarlo ni borrar su configuración.
+- Delta permite elegir en Contenido entre mejor vuelta personal, mejor vuelta
+  de la sesión y vuelta anterior. Los perfiles existentes migran de forma
+  compatible a `personal-best`; no se reanima el antiguo ajuste global
+  `deltaMode`.
+- Telemetry Core conserva las tres referencias simultáneamente: personal usa el
+  `mDeltaBest` observado de LMU; sesión y anterior se reconstruyen solo desde
+  vueltas completas válidas de la sesión actual. Cada campo conserva presencia,
+  provenance y freshness; un modo ausente no toma silenciosamente el valor de otro.
+- El hotkey global configurable `cycleDeltaReference` usa `Ctrl+Shift+D` por
+  defecto y recorre Personal → Sesión → Anterior → Personal. Sincroniza los
+  layouts explícitos del perfil activo, persiste el documento y lo vuelve a
+  emitir a Desktop/OBS mediante el runtime existente.
+- Code review adversarial posterior corrigió tres P1 antes de promoción:
+  historial nativo mezclado con el delta de sesión en el mismo cursor,
+  selección canónica incorrecta cuando `general` no tenía `reference`, y
+  pulsaciones concurrentes compitiendo por una revisión. Regresiones RED→GREEN
+  cubren los tres caminos; 12 pulsaciones simultáneas pasan 10 ejecuciones.
+- Gates frescos sobre `origin/nightly@638b470`: `go test ./... -count=1` PASS;
+  frontend 370 archivos/2673 tests PASS; build, ESLint focal, vet focal sin
+  deuda nueva y diff-check PASS. La suite mantiene dos `AbortError` heredados
+  de teardown de happy-dom después del resumen, con exit 0.
+- Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`,
+  implementación `3a54d34`, fix de review `46df1b2` y sincronización con
+  `nightly@638b470` mediante `f0e40bd`. La PR #233 pasó los gates bloqueantes y
+  se integró por squash en `nightly@5499008` el 2026-08-14. Queda pendiente la
+  comprobación manual con LMU/Wails; no hubo promoción a `testers`, `master` ni
+  release.
+
+Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
+- El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como
+  señal observada con signo, presencia, freshness y provenance explícitos.
+  El dato nativo gana sin warm-up; `session.self-delta@1` permanece como
+  fallback cuando el simulador no publica un valor usable.
+- El widget Delta conserva el último valor durante `stale` en vez de sustituirlo
+  por `—`. Un test buffer-to-overlay prueba `-0.245` en el primer frame con
+  provenance `observed`; tests separados cubren positivo, cero válido, startup
+  missing, inválido, stale y fallback derivado.
+- Gates: Telemetry Core focal PASS; frontend completo 370/2656 PASS; build PASS;
+  ESLint focal y diff-check PASS. `go test ./...` tuvo dos flakes ajenos en dos
+  ejecuciones (`engineer/ptt` y diagnostics bridge); ambos pasan aislados.
 Nota ISA-335 / ISA-345 / OS-BUG (2026-08-14, integrada en Nightly):
 - Overlay Studio permitía seleccionar `vantare-endurance`, pero el contrato Go
   de perfiles V3 y la biblioteca de diseños seguían aceptando únicamente
@@ -1799,7 +1845,9 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
 - La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
   y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
   weather no admitido, fases/banderas, pit-state labels, remaining raw,
-  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+  `FuelFraction` continúa missing, nunca cero inventado. Corrección 2026-08-14:
+  native `mDeltaBest` vuelve a estar admitido como `session.native_delta_best`,
+  gana sobre el self-delta derivado y conserva presencia, freshness y provenance.
 - Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
   `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
   jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;

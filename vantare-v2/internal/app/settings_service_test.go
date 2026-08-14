@@ -24,14 +24,17 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
 	}
-	if len(s.Hotkeys) != 4 {
-		t.Errorf("expected 4 hotkeys, got %d", len(s.Hotkeys))
+	if len(s.Hotkeys) != 5 {
+		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
 	}
 	if s.Hotkeys["toggleOverlay"] != "ctrl+shift+v" {
 		t.Errorf("unexpected toggleOverlay: %q", s.Hotkeys["toggleOverlay"])
 	}
 	if s.Hotkeys["toggleEditMode"] != "ctrl+shift+e" {
 		t.Errorf("unexpected toggleEditMode: %q", s.Hotkeys["toggleEditMode"])
+	}
+	if s.Hotkeys["cycleDeltaReference"] != "ctrl+shift+d" {
+		t.Errorf("unexpected cycleDeltaReference: %q", s.Hotkeys["cycleDeltaReference"])
 	}
 }
 
@@ -395,15 +398,18 @@ func TestSaveNilSettingsWithValidPathReturnsError(t *testing.T) {
 	}
 }
 
-func TestLoadPreservesSchemaVersion(t *testing.T) {
+func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
 	data := `{"schemaVersion": 2, "activeOverlayProfileId": "x", "cpuSampling": true, "hotkeys": {}, "launcherApps": {}, "launcherProfiles": []}`
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 2 {
-		t.Errorf("expected SchemaVersion=2 preserved, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 3 {
+		t.Errorf("expected SchemaVersion=3, got %d", svc.Settings().SchemaVersion)
+	}
+	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
+		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
 	}
 }
 
@@ -526,8 +532,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 2 {
-		t.Fatalf("expected SchemaVersion=2, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 3 {
+		t.Fatalf("expected SchemaVersion=3, got %d", s.SchemaVersion)
 	}
 }
 
@@ -597,8 +603,8 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 2 {
-		t.Errorf("expected SchemaVersion=2 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 3 {
+		t.Errorf("expected SchemaVersion=3 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -637,8 +643,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 2 {
-		t.Errorf("expected defaults with SchemaVersion=2")
+	if svc.Settings().SchemaVersion != 3 {
+		t.Errorf("expected defaults with SchemaVersion=3")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")

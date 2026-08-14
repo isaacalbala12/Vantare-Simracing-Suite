@@ -12,6 +12,7 @@ export type AddWidgetDialogProps = {
   open: boolean;
   access: AccessContext;
   catalog?: readonly StudioCatalogEntry[];
+  unavailableTypes?: readonly WidgetType[];
   onClose(): void;
   onAdd(type: WidgetType): void;
 };
@@ -28,7 +29,7 @@ function lockMessage(entry: StudioCatalogEntry, access: AccessContext, t: (key: 
 }
 
 export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement | null {
-  const { open, access, catalog = deriveStudioCatalog(), onClose, onAdd } = props;
+  const { open, access, catalog = deriveStudioCatalog(), unavailableTypes = [], onClose, onAdd } = props;
   const { t } = useI18n();
   if (!open) {
     return null;
@@ -52,6 +53,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
         <div className="osv3-catalog-dialog__list">
           {catalog.map((entry) => {
             const canAdd = canAddCatalogEntry(access, entry);
+            const unavailable = unavailableTypes.includes(entry.type);
             return (
               <div
                 key={entry.type}
@@ -67,7 +69,15 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
                       .replace("{count}", String(entry.compatibleSystems.length))}
                   </span>
                 </div>
-                {canAdd ? (
+                {unavailable ? (
+                  <div
+                    className="osv3-catalog-dialog__locked"
+                    data-testid={`studio-catalog-unavailable-${entry.type}`}
+                  >
+                    <span className="osv3-catalog-dialog__lock-label">{t("studio.v3.catalog.added")}</span>
+                    <span className="osv3-catalog-dialog__lock-hint">{t("studio.v3.catalog.deltaUnique")}</span>
+                  </div>
+                ) : canAdd ? (
                   <button
                     type="button"
                     data-testid={`studio-catalog-add-${entry.type}`}

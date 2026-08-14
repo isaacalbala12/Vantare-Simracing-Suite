@@ -109,6 +109,8 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalSessionSelfDeltaSeconds, "session.self_delta_seconds", schema.DomainSession},
 		{SignalSessionSelfDeltaReference, "session.self_delta_reference", schema.DomainSession},
 		{SignalSpatialLocalVelocity, "spatial.local_velocity", schema.DomainSpatial},
+		{SignalSessionNativeDeltaBest, "session.native_delta_best", schema.DomainSession},
+		{SignalSessionPreviousLapDelta, "session.previous_lap_delta", schema.DomainSession},
 	}
 
 	got := All()
@@ -151,14 +153,16 @@ func TestCatalogISA129IDsAreStableAndAppendOnly(t *testing.T) {
 		SignalStandingsRelativeTimeGap, SignalStandingsRelativeLapDelta,
 		SignalEnergyFuelCapacity, SignalSessionSelfDeltaSeconds, SignalSessionSelfDeltaReference,
 		SignalSpatialLocalVelocity,
+		SignalSessionNativeDeltaBest,
+		SignalSessionPreviousLapDelta,
 	}
 	for index, id := range appended {
 		if want := SignalID(25 + index); id != want {
 			t.Fatalf("appended ID at index %d = %d, want %d", index, id, want)
 		}
 	}
-	if got := len(All()); got != 44 {
-		t.Fatalf("catalog definitions = %d, want 44", got)
+	if got := len(All()); got != 46 {
+		t.Fatalf("catalog definitions = %d, want 46", got)
 	}
 }
 
@@ -215,6 +219,8 @@ func TestCatalogISA129ReuseHardenAppendMatrix(t *testing.T) {
 		{SignalSessionSelfDeltaSeconds, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
 		{SignalSessionSelfDeltaReference, LedgerAppended, schema.UnitText, schema.UnsupportedRange()},
 		{SignalSpatialLocalVelocity, LedgerAppended, schema.UnitMetersPerSecond, schema.UnknownRange()},
+		{SignalSessionNativeDeltaBest, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
+		{SignalSessionPreviousLapDelta, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
 	}
 
 	for _, tt := range tests {

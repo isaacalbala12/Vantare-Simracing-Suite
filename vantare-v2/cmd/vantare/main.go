@@ -3076,6 +3076,19 @@ func buildHotkeyActionMap(
 	emitter app.EventEmitter,
 ) map[string]func() {
 	return map[string]func(){
+		"cycleDeltaReference": func() {
+			if studioProfileSvc == nil {
+				return
+			}
+			reference, err := studioProfileSvc.CycleDeltaReference()
+			if err != nil {
+				log.Printf("hotkey cycle delta reference error: %v", err)
+				return
+			}
+			if emitter != nil {
+				emitter.Emit("overlay:delta-reference-changed", map[string]any{"reference": reference})
+			}
+		},
 		"toggleOverlay": func() {
 			if hubSvc == nil {
 				return

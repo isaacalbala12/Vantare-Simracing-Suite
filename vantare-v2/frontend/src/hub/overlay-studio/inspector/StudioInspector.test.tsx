@@ -222,7 +222,7 @@ describe("StudioInspector", () => {
     expect(screen.queryByTestId("studio-inspector-section-behavior")).toBeNull();
   });
 
-  it("removes unavailable sections immediately when capability disappears", async () => {
+  it("keeps Content available and resets to Design when switching to Delta", async () => {
     const deltaMain = deltaDefinition.createDefault("delta-main");
     const standingsMain = standingsDefinition.createDefault("standings-main");
     renderInspector(buildDocument([deltaMain, standingsMain]));
@@ -233,7 +233,7 @@ describe("StudioInspector", () => {
     expect(screen.getByTestId("studio-inspector-section-content")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("select-delta-main"));
-    await waitFor(() => expect(screen.queryByTestId("studio-inspector-rail-item-content")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("studio-inspector-rail-item-content")).toBeTruthy());
     expect(screen.getByTestId("studio-inspector-rail-item-design")).toBeTruthy();
     expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy();
   });

@@ -91,6 +91,54 @@ func TestParsePlayerInPitUsesDemonstratedScoringBooleanWithExplicitPresence(t *t
 	}
 }
 
+func TestParsePlayerNativeDeltaBestPreservesSignAndExplicitAvailability(t *testing.T) {
+	tests := []struct {
+		name        string
+		delta       float64
+		bestLap     float64
+		freshness   schema.Freshness
+		want        session.DeltaSeconds
+		wantPresent bool
+	}{
+		{name: "negative gaining delta", delta: -0.245, bestLap: 90.5, freshness: schema.FreshnessFresh, want: -0.245, wantPresent: true},
+		{name: "positive losing delta", delta: 0.380, bestLap: 90.5, freshness: schema.FreshnessFresh, want: 0.380, wantPresent: true},
+		{name: "exact zero after a best lap", delta: 0, bestLap: 90.5, freshness: schema.FreshnessFresh, wantPresent: true},
+		{name: "startup zero without reference", delta: 0, bestLap: 0, freshness: schema.FreshnessMissing},
+		{name: "non finite delta", delta: math.NaN(), bestLap: 90.5, freshness: schema.FreshnessInvalid, wantPresent: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := knownBuffer(t)
+			scoringBase, _ := lmu13Layout.ScoringRows.rowBase(43)
+			binary.LittleEndian.PutUint64(buf[scoringBase+lmu13Layout.Scoring.BestLapTime.Offset:], math.Float64bits(tt.bestLap))
+			telemetryBase := telemetryOffset + int(buf[128465])*telemetryStride
+			binary.LittleEndian.PutUint64(buf[telemetryBase+696:], math.Float64bits(tt.delta))
+
+			got, err := parseSupported(buf, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var player *VehicleObservation
+			for index := range got.Vehicles {
+				if value, present := got.Vehicles[index].Player.Value(); present && value {
+					player = &got.Vehicles[index]
+					break
+				}
+			}
+			if player == nil {
+				t.Fatal("parsed observation has no player")
+			}
+			if player.DeltaBest.Freshness() != tt.freshness {
+				t.Fatalf("freshness = %v, want %v", player.DeltaBest.Freshness(), tt.freshness)
+			}
+			value, present := player.DeltaBest.Value()
+			if present != tt.wantPresent || (present && value != tt.want) {
+				t.Fatalf("delta = (%v,%t), want (%v,%t)", value, present, tt.want, tt.wantPresent)
+			}
+		})
+	}
+}
+
 func TestMenuDoesNotRequireTelemetryIndexWithoutPlayer(t *testing.T) {
 	buf, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-menu-fixture.bin"))
 	if err != nil {

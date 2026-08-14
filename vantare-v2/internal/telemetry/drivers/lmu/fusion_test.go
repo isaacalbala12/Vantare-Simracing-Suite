@@ -14,7 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV4ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV5ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
 		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent,
@@ -31,9 +31,10 @@ func TestAuthorityMatrixV4ReferencesEveryParsedCanonicalSignalExactlyOnce(t *tes
 		catalog.SignalEnergyFuelAmount, catalog.SignalEnergyFuelCapacity,
 		catalog.SignalSpatialPosition, catalog.SignalSpatialOrientation,
 		catalog.SignalSpatialLocalVelocity,
+		catalog.SignalSessionNativeDeltaBest,
 	}
 	first, second := AuthorityMatrix(), AuthorityMatrix()
-	if MatrixVersion != 4 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
+	if MatrixVersion != 5 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
 		t.Fatalf("version=%d matrix=%#v", MatrixVersion, first)
 	}
 	overlaps := map[catalog.SignalID]bool{

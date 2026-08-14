@@ -17,6 +17,45 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 - El despliegue de Functions queda limitado a la lista aprobada y siempre ejecuta su control de superficie antes de publicar.
 - El drill local valida permisos y 48 contratos, carreras concurrentes y rechazo de backups truncados o corruptos en PowerShell 5.1 y 7.
 
+### Lote del 13-14 de agosto 2026
+
+**Overlays Studio (V3) y Perfiles**
+
+- Cada widget Delta permite elegir su referencia: mejor vuelta personal, mejor vuelta de la sesión o vuelta anterior. Las referencias no disponibles permanecen vacías en lugar de mostrar otro delta con una etiqueta incorrecta.
+- Delta queda limitado a una instancia por layout y puede cambiar de referencia durante la conducción con un atajo configurable (`Ctrl+Shift+D` por defecto), conservando la selección en el perfil activo. (ISA-347, pendiente de promoción)
+- Al borrar un widget en Overlays Studio ya no aparece el diálogo nativo del sistema: usa el diálogo de confirmación propio de la app, con opción de recordar la decisión y textos en es/en/pt/it. (ISA-338, #226)
+- Lo mismo aplica a Perfiles: borrar un perfil ya usa el diálogo propio de la app, no el del sistema operativo. (ISA-338, #231)
+- Broadcast Tower mantiene su orientación horizontal aunque el lienzo sea más alto que ancho; también aplica en la preview de OBS. (ISA-334)
+
+**Workshop**
+
+- El Workshop ahora enseña exactamente lo que se ve en carrera: paridad runtime con la pista, plantillas redline de Relative, Standings y Pedals alineadas con los tokens del design system. (ISA-95)
+
+**Ingeniero / Strategy live (backend)**
+
+- Motor de ejecución Strategy live conectado a Telemetry Core: produce la proyección `StrategyLiveProjection` v1 en vivo desde LMU, verificada contra el simulador. (ISA-152, ISA-161)
+
+**Plataforma y CI (interno, sin efecto visible para testers)**
+
+- Autofix con política fail-closed v2, máquina de estados para jobs de agentes con jaulas de seguridad, triage DeepSeek de solo lectura y dispatch GitHub App en cloud, y TDD cloud con diff gate y revisión Opus. (ISA-319, ISA-320, ISA-321, ISA-323)
+
+**Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
+
+- **Perfiles**: guardar perfiles ya acepta los perfiles oficiales Vantare Endurance (antes los rechazaba). (ISA-335)
+- **Studio**: el blade de Input Telemetry vuelve a respetar su proporción. (ISA-336)
+- **Widget nuevo Track Map (TM-01)**: primer corte con la geometría estática del circuito y silueta en Vantare Endurance, sin posicionar vehículos todavía. (ISA-344)
+- **Widget Relative y Workshop**: la fila que sale de la ventana visible se pliega como fantasma en lugar de desaparecer; el gap no salta cuando empieza una batalla; los dos últimos elementos ya no aparecen y desaparecen al cortar; controles del Workshop agrupados y vestidos con los tokens de la app. (ISA-95 follow-ups)
+- **Ingeniero**: el motor del spotter queda aislado en su propia máquina de autoridades y el módulo sigue activo con el spotter apagado. (ISA-327)
+- **Estrategia**: endurecimiento de la caché del catálogo oficial. (ISA-162)
+- Interno: gates de merge queue en CI, closeout inerte de Nightly y rollout de auditoría. (ISA-322, ISA-324, ISA-325)
+
+**Para testers**
+
+- Al borrar un widget (menú contextual del lienzo o inspector) o un perfil ya no debe aparecer el cuadro de confirmación del sistema operativo: aparece el diálogo del Studio. Probá también la opción de "no volver a preguntar" y que después la eliminación directa siga funcionando.
+- Colocá Broadcast Tower en el canvas y hacé la preview con OBS: debe verse horizontal, como en la carrera, aunque el lienzo sea vertical.
+- Abrí el Workshop con un perfil que use Relative, Standings o Pedals: lo que muestra debe coincidir con el comportamiento del widget en pista.
+- En esta build todavía NO está el mapa de circuito TM-01, ni el fix de guardar perfiles con Vantare Endurance, ni el ajuste de proporción del blade de Input Telemetry: están en review y llegan en el próximo lote.
+
 ## v0.1.0.5
 
 Lote acumulado de launcher de Windows, UI del hub, servicios internos y documentación de marca/disseño.
@@ -136,7 +175,7 @@ Esta build consolida el conjunto de features estables probadas durante la fase a
 - Consolidacion de la suite local: Vantare ya no se describe solo como app de overlays, sino como suite con modulos `Overlays Studio`, `Ingeniero`, `Telemetria` y `Setup`.
 - El backend prioriza el `DeltaBest` nativo de LMU cuando llega desde Shared Memory, en lugar de calcularlo a mano.
 - Los deltas negativos ya no se descartan en la fusion de telemetria.
-- `DeltaBest == 0` se trata como dato no disponible para no pisar un delta valido previo.
+- `DeltaBest == 0` solo se admite como empate exacto cuando ya existe una mejor vuelta válida; antes de esa referencia permanece missing.
 - Release workflow idempotente: reruns sobre tags ya publicados no fallan.
 - WidgetStudio: selector de escenario mock (Practica/Qualy/Carrera) para Standings.
 - URL de OBS en Ajustes usa un perfil real activo o el fallback seguro `example-racing.json`.

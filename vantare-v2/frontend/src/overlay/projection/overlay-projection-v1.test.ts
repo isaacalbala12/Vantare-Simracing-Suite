@@ -45,6 +45,9 @@ describe("authoritative overlay projection v1 decoder", () => {
       remainingSeconds: { present: true, value: 3600 },
       maximumLaps: { present: true, value: 0 },
       playerDeltaSeconds: { present: true, value: -0.25 },
+      playerDeltaPersonalBestSeconds: { present: true, value: -0.2, provenance: "observed" },
+      playerDeltaSessionBestSeconds: { present: true, value: -0.25, provenance: "derived" },
+      playerDeltaPreviousLapSeconds: { present: true, value: 0.1, provenance: "derived" },
       playerDeltaReference: {
         present: true,
         value: "best-completed-player-lap",

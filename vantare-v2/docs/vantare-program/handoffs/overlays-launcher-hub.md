@@ -32,10 +32,10 @@
   El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
   fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
   visual manual continúa pendiente.
-  Rama aislada desde `origin/nightly@673283a2`, sincronizada con
-  `origin/nightly@521e862c` mediante `54f27784`; implementación `71d6b360` y fix
-  de review `cf83021a`. Los gates bloqueantes de la PR draft #243 hacia
-  `nightly` pasaron sobre `54f27784`. Sin merge, promoción ni release.
+  Rama aislada desde `origin/nightly@673283a2`, sincronizada finalmente con
+  `nightly@2909ba73` en `a389f8d0`; implementación `71d6b360` y fix de review
+  `cf83021a`. La PR #243 se integró por squash en `nightly@fe04a0af`; gates de
+  PR y posteriores al merge PASS. Sin promoción a `testers`/`master` ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,

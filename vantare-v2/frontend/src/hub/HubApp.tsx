@@ -30,6 +30,7 @@ import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
 import { LauncherStoreProvider } from './launcher/launcher-store';
+import { useHubResponsiveZoom } from './use-hub-responsive-zoom';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
@@ -121,6 +122,8 @@ function HubShell() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
   const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
+
+  useHubResponsiveZoom();
 
   const visibleSection: Section = section === "testing-center" && !testingCenterChannel
     ? "dashboard"

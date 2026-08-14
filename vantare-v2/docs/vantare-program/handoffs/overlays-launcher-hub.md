@@ -18,8 +18,8 @@
   Focales 46/46, suite frontend 371/2681, build, lint focal propio y diff-check
   pasan. El preview T3 abrió el servidor correcto pero no pudo producir
   snapshot ni evaluación; queda pendiente la comprobación visual manual. No
-  La implementación está en `4258ca06`; documentación de cierre en el commit
-  siguiente. No hubo promoción ni release.
+  La implementación está en `4258ca06`, nació de `nightly@673283a2` y se
+  sincronizó después con `nightly@521e862c`. No hubo promoción ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,

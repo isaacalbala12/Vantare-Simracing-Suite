@@ -102,14 +102,17 @@ describe("RuntimeOverlaySurface", () => {
   });
 
   it.each([
-    ["identity", { width: 1920, height: 1080 }, { width: 1920, height: 1080 }, 1, 0, 0],
-    ["downscale", { width: 1920, height: 1080 }, { width: 960, height: 540 }, 0.5, 0, 0],
-    ["upscale", { width: 1920, height: 1080 }, { width: 3840, height: 2160 }, 2, 0, 0],
-    ["custom mismatch", { width: 1000, height: 1000 }, { width: 1600, height: 900 }, 0.9, 350, 0],
-    ["ultrawide mismatch", { width: 3440, height: 1440 }, { width: 1920, height: 1080 }, 1920 / 3440, 0, (1080 - 1440 * (1920 / 3440)) / 2],
+    ["identity", { width: 1920, height: 1080 }, { width: 1920, height: 1080 }, 1, 0, 0, 1920, 1080],
+    ["downscale", { width: 1920, height: 1080 }, { width: 960, height: 540 }, 0.5, 0, 0, 1920, 1080],
+    ["upscale", { width: 1920, height: 1080 }, { width: 3840, height: 2160 }, 2, 0, 0, 1920, 1080],
+    ["qhd 16:9", { width: 1920, height: 1080 }, { width: 2560, height: 1440 }, 4 / 3, 0, 0, 1920, 1080],
+    ["21:9 fill", { width: 1920, height: 1080 }, { width: 3440, height: 1440 }, 4 / 3, 40, 0, 2520, 1080],
+    ["32:9 centered", { width: 1920, height: 1080 }, { width: 5120, height: 1440 }, 4 / 3, 880, 0, 2520, 1080],
+    ["32:9 4k", { width: 1920, height: 1080 }, { width: 7680, height: 2160 }, 2, 1320, 0, 2520, 1080],
+    ["custom mismatch", { width: 1000, height: 1000 }, { width: 1600, height: 900 }, 0.9, 0, 0, 1600 / 0.9, 1000],
   ])(
-    "applies one shared contain transform for %s output",
-    (_label, layoutViewport, outputViewport, scale, offsetX, offsetY) => {
+    "applies one shared responsive transform for %s output",
+    (_label, layoutViewport, outputViewport, scale, offsetX, offsetY, layoutWidth, layoutHeight) => {
       measuredWidth = outputViewport.width;
       measuredHeight = outputViewport.height;
       const coordinator = createTelemetryRateCoordinator();
@@ -121,8 +124,8 @@ describe("RuntimeOverlaySurface", () => {
       );
 
       const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
-      expect(scene.style.width).toBe(`${layoutViewport.width}px`);
-      expect(scene.style.height).toBe(`${layoutViewport.height}px`);
+      expect(Number(scene.dataset.layoutWidth)).toBeCloseTo(layoutWidth);
+      expect(Number(scene.dataset.layoutHeight)).toBeCloseTo(layoutHeight);
       expect(Number(scene.dataset.scale)).toBeCloseTo(scale);
       expect(Number(scene.dataset.offsetX)).toBeCloseTo(offsetX);
       expect(Number(scene.dataset.offsetY)).toBeCloseTo(offsetY);
@@ -244,9 +247,9 @@ describe("RuntimeOverlaySurface", () => {
     );
 
     const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
-    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    expect(scene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
     act(() => window.dispatchEvent(new Event("resize")));
-    expect(scene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
+    expect(scene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
     expect(transformedRect).not.toHaveBeenCalled();
     expect(addEventListener.mock.calls.filter(([event]) => event === "resize")).toHaveLength(1);
 
@@ -280,8 +283,8 @@ describe("RuntimeOverlaySurface", () => {
     expect(surface.style.overflow).toBe("hidden");
     expect(surface.style.background).toBe("transparent");
     expect(scene.style.overflow).toBe("hidden");
-    expect(scene.dataset.offsetX).toBe("350");
-    expect(frame.style.left).toBe("-100px");
+    expect(scene.dataset.offsetX).toBe("0");
+    expect(frame.style.left).toBe("-177.777778px");
     expect(frame.style.width).toBe("200px");
     coordinator.dispose();
   });

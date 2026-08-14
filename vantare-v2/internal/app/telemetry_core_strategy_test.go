@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/strategy/live"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
@@ -43,6 +44,112 @@ func TestTelemetryCoreRuntimeStrategyHubIsNilSafeAndSharesOneCanonicalPipeline(t
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.coord), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.derive), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.hub), 2)
+	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.strategyLive), 1)
+}
+
+func TestTelemetryCoreRuntimeStrategyLiveConsumerNilKeepsZeroSubscriptions(t *testing.T) {
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.StrategyHub().Metrics().CurrentSubscribers; got != 0 {
+		t.Fatalf("Strategy subscribers with nil consumer = %d, want 0", got)
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.StrategyHub().Metrics().CurrentSubscribers; got != 0 {
+		t.Fatalf("Strategy subscribers after Stop = %d, want 0", got)
+	}
+}
+
+func TestTelemetryCoreRuntimeStrategyExecutionReceivesCanonicalStatusAndFull(t *testing.T) {
+	engine := newStrategyLiveEngine(t)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		StrategyLiveConsumer: engine,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitForStrategySubscribers(t, runtime.StrategyHub(), 1)
+
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
+		t.Fatal(err)
+	}
+	waitForStrategyExecution(t, engine)
+
+	model := engine.Snapshot()
+	source, present := model.Source.Value()
+	if !present || source.State != "stopped" || source.Revision != 1 {
+		t.Fatalf("Strategy source = %#v present=%v", source, present)
+	}
+	if model.Cursor != (live.Cursor{Epoch: 1, Sequence: 1}) {
+		t.Fatalf("Strategy cursor = %#v, want 1/1", model.Cursor)
+	}
+	if completed, present := model.CompletedLaps.Value(); !present || completed != 1 ||
+		model.CompletedLaps.State() != live.ValueStale || model.CompletedLaps.Usable() {
+		t.Fatalf("Strategy completed laps = %v present=%v state=%v", completed, present, model.CompletedLaps.State())
+	}
+	if fuel, present := model.FuelAmount.Value(); !present || fuel.Value() != 60 ||
+		model.FuelAmount.State() != live.ValueStale || model.FuelAmount.Usable() {
+		t.Fatalf("Strategy Fuel = %v present=%v state=%v", fuel, present, model.FuelAmount.State())
+	}
+	if model.Status != "stopped" {
+		t.Fatalf("Strategy execution status = %q, want stopped", model.Status)
+	}
+	metrics := runtime.Metrics()
+	if metrics.ProjectionsPublished != 1 || metrics.OverlayProjectionsPublished != 1 ||
+		metrics.StrategyProjectionsPublished != 1 || metrics.Transport.SnapshotPublications != 1 ||
+		metrics.StrategyTransport.SnapshotPublications != 1 || metrics.StrategyTransport.CurrentSubscribers != 1 {
+		t.Fatalf("canonical Strategy pipeline metrics = %#v", metrics)
+	}
+
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.StrategyHub().Metrics().CurrentSubscribers; got != 0 {
+		t.Fatalf("Strategy subscribers after Stop = %d, want 0", got)
+	}
+}
+
+func TestTelemetryCoreRuntimeRejectsTypedNilStrategyLiveConsumer(t *testing.T) {
+	var consumer *recordingStrategyLiveConsumer
+	if _, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		StrategyLiveConsumer: consumer,
+	}); !errors.Is(err, ErrInvalidStrategyLiveRuntime) {
+		t.Fatalf("typed-nil Strategy consumer error = %v, want %v", err, ErrInvalidStrategyLiveRuntime)
+	}
+}
+
+func TestTelemetryCoreRuntimeStrategyLiveConsumerFailureFailsStopAndClosesHubs(t *testing.T) {
+	want := errors.New("Strategy consumer unavailable")
+	consumer := &recordingStrategyLiveConsumer{statusErr: want}
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		StrategyLiveConsumer: consumer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitForRuntimeError(t, runtime, "run Strategy live consumer")
+
+	assertRuntimeHubClosed(t, runtime.Hub())
+	assertRuntimeHubClosed(t, runtime.StrategyHub())
+	if got := runtime.StrategyHub().Metrics().CurrentSubscribers; got != 0 {
+		t.Fatalf("Strategy subscribers after consumer failure = %d, want 0", got)
+	}
+	if err := runtime.Stop(context.Background()); !errors.Is(err, want) ||
+		!strings.Contains(err.Error(), "run Strategy live consumer") {
+		t.Fatalf("Stop() Strategy consumer error = %v", err)
+	}
 }
 
 func TestTelemetryCoreRuntimePublishesOverlayAndStrategyFromSameFinalState(t *testing.T) {
@@ -367,9 +474,13 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 	}
 }
 
-func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *testing.T) {
+func TestTelemetryCoreRuntimeStrategyConsumerFailedStartClosesBothHubsAndBecomesTerminal(t *testing.T) {
 	consumer := &recordingEngineerConsumer{}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	strategyConsumer := &recordingStrategyLiveConsumer{}
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Engineer:             consumer,
+		StrategyLiveConsumer: strategyConsumer,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,6 +500,11 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 	}
 	if len(consumer.calls) != 0 {
 		t.Fatalf("Engineer calls before initial status = %v, want none", consumer.calls)
+	}
+	if len(strategyConsumer.statuses) != 0 || len(strategyConsumer.snapshots) != 0 ||
+		runtime.StrategyHub().Metrics().CurrentSubscribers != 0 {
+		t.Fatalf("Strategy consumer started during failed Start: statuses=%v snapshots=%v metrics=%#v",
+			strategyConsumer.statuses, strategyConsumer.snapshots, runtime.StrategyHub().Metrics())
 	}
 	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
@@ -861,4 +977,19 @@ func waitForRuntimeError(t *testing.T, runtime *TelemetryCoreRuntime, contains s
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 	t.Fatalf("runtime error = %v, want context %q", runtime.runErr, contains)
+}
+
+func waitForStrategyExecution(t testing.TB, engine interface{ Snapshot() live.ReadModel }) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for {
+		model := engine.Snapshot()
+		if model.Cursor.Epoch == 1 && model.Cursor.Sequence == 1 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("Strategy execution cursor = %#v, want 1/1", model.Cursor)
+		}
+		goruntime.Gosched()
+	}
 }

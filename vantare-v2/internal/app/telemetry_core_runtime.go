@@ -58,8 +58,9 @@ type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
-	Emitter  telemetrytransport.EventEmitter
-	Engineer EngineerProjectionConsumer
+	Emitter              telemetrytransport.EventEmitter
+	Engineer             EngineerProjectionConsumer
+	StrategyLiveConsumer StrategyLiveConsumer
 }
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
@@ -121,6 +122,7 @@ type TelemetryCoreRuntime struct {
 	derive           *derive.Pipeline
 	engineer         EngineerProjectionConsumer
 	engineerManifest engineerprojection.Manifest
+	strategyLive     *StrategyLiveRuntime
 
 	statusState   driver.State
 	statusAttempt int
@@ -179,7 +181,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
-	return &TelemetryCoreRuntime{
+	runtime := &TelemetryCoreRuntime{
 		enabled: config.Enabled,
 		emitter: config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
@@ -203,7 +205,15 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		derive:           derive.NewPipeline(derive.Config{}),
 		engineer:         config.Engineer,
 		engineerManifest: engineerManifest,
-	}, nil
+	}
+	if config.StrategyLiveConsumer != nil {
+		strategyLive, err := NewStrategyLiveRuntime(runtime.strategyHub, config.StrategyLiveConsumer)
+		if err != nil {
+			return nil, fmt.Errorf("build Strategy live runtime: %w", err)
+		}
+		runtime.strategyLive = strategyLive
+	}
+	return runtime, nil
 }
 
 func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
@@ -336,6 +346,10 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 	if err := ctx.Err(); err != nil {
 		runtime.lifecycleMu.Unlock()
 		return runtime.abortStart(err)
+	}
+	if runtime.strategyLive != nil {
+		runtime.wg.Add(1)
+		go runtime.runStrategyLive(ctx)
 	}
 	if runtime.enabled {
 		if err := runtime.manager.Start(ctx, runtimeObservationSink{runtime: runtime}); err != nil {
@@ -564,6 +578,21 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 		return
 	}
 	runtime.failStop(fmt.Errorf("serve %s telemetry: %w", productName(product), err))
+}
+
+func (runtime *TelemetryCoreRuntime) runStrategyLive(ctx context.Context) {
+	defer runtime.wg.Done()
+	err := runtime.strategyLive.Run(ctx)
+	if err == nil || ctx.Err() != nil || errors.Is(err, context.Canceled) {
+		return
+	}
+	runtime.lifecycleMu.Lock()
+	expectedClose := runtime.lifecycle == telemetryRuntimeTerminal
+	runtime.lifecycleMu.Unlock()
+	if errors.Is(err, telemetrytransport.ErrClosed) && expectedClose {
+		return
+	}
+	runtime.failStop(fmt.Errorf("run Strategy live consumer: %w", err))
 }
 
 func productName(product telemetrytransport.ProductID) string {

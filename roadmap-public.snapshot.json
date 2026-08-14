@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T00:01:42Z",
+  "generatedAt": "2026-08-14T00:21:48Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -29,15 +29,15 @@
           },
           "progress": {
             "done": 15,
-            "total": 31,
-            "percent": 48
+            "total": 32,
+            "percent": 47
           },
           "tasks": [
             {
               "id": "task_fa966f800545f5bca61b",
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "in-progress",
-              "updatedAt": "2026-08-13T23:57:45.914Z"
+              "updatedAt": "2026-08-14T00:18:06.296Z"
             },
             {
               "id": "task_609d33340526777a9186",
@@ -50,6 +50,12 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_fc2a79ce7d269c04e458",
+              "title": "Promover a Nightly",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T00:18:10.659Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",

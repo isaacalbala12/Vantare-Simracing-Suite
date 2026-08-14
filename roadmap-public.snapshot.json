@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T04:57:47Z",
+  "generatedAt": "2026-08-14T05:10:04Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -151,7 +151,7 @@
               "id": "task_9b688e53bf087679e0f7",
               "title": "Delta — referencias reales de telemetría, instancia única y hotkey global",
               "status": "done",
-              "updatedAt": "2026-08-14T04:57:38.184Z"
+              "updatedAt": "2026-08-14T05:09:49.669Z"
             },
             {
               "id": "task_7a01dcafb5e466f56f0b",

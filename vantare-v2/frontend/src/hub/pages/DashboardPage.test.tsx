@@ -1,10 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const calendarCallOrder = vi.hoisted(() => [] as string[]);
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
-    On: vi.fn(() => vi.fn()),
-    Emit: vi.fn(),
+    On: vi.fn((name: string) => {
+      if (name === "calendar:loaded") calendarCallOrder.push("subscribe");
+      return vi.fn();
+    }),
+    Emit: vi.fn((name: string) => {
+      if (name === "calendar:get") calendarCallOrder.push("request");
+    }),
   },
 }));
 vi.mock("../../i18n/I18nProvider", () => ({
@@ -14,8 +21,41 @@ vi.mock("../../i18n/I18nProvider", () => ({
   }),
 }));
 
+vi.mock("../roadmap/projects-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../roadmap/projects-data")>();
+  return {
+    ...actual,
+    fetchRoadmapProjectsDataset: vi.fn().mockResolvedValue({
+      status: "remote-fresh",
+      state: "remote-fresh",
+      provenance: "remote",
+      reason: null,
+      dataset: {
+        schemaVersion: 1,
+        channel: "nightly",
+        generatedAt: "2026-08-14T12:00:00Z",
+        staleAfterSeconds: 86400,
+        tabs: [{
+          id: "product",
+          label: { es: "Producto", en: "Product", pt: "Produto", it: "Prodotto" },
+          projects: [{
+            id: "connected-roadmap",
+            title: { es: "Roadmap conectado", en: "Connected roadmap", pt: "Roadmap conectado", it: "Roadmap connessa" },
+            progress: { done: 1, total: 2, percent: 50 },
+            tasks: [
+              { id: "done", title: "Terminado", status: "done", updatedAt: "2026-08-14T10:00:00Z" },
+              { id: "active", title: "En curso", status: "in-progress", updatedAt: "2026-08-14T11:00:00Z" },
+            ],
+          }],
+        }],
+      },
+    }),
+  };
+});
+
 afterEach(() => {
   cleanup();
+  calendarCallOrder.length = 0;
 });
 
 import { DashboardPage } from "./DashboardPage";
@@ -25,6 +65,14 @@ describe("DashboardPage — beta honest hub", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("dashboard-hero-banner")).toBeTruthy();
     expect(screen.getByText(/Vantare Beta/i)).toBeTruthy();
+  });
+
+  it("renders the runtime version and channel instead of a hardcoded release", () => {
+    render(<DashboardPage version="v0.1.0.7-nightly.8" buildChannel="nightly" />);
+
+    expect(screen.getByText("v0.1.0.7-nightly.8")).toBeTruthy();
+    expect(screen.getByText("NIGHTLY")).toBeTruthy();
+    expect(screen.queryByText("v0.1.0.2")).toBeNull();
   });
 
   it("renders Gestionar cuenta button in hero banner", () => {
@@ -48,12 +96,25 @@ describe("DashboardPage — beta honest hub", () => {
     expect(screen.getByText(/Próximas carreras/i)).toBeTruthy();
   });
 
+  it("subscribes before requesting the calendar so an immediate response is not lost", () => {
+    render(<DashboardPage />);
+
+    expect(calendarCallOrder.slice(0, 2)).toEqual(["subscribe", "request"]);
+  });
+
 
 
   it("renders Novedades Vantare section", () => {
     render(<DashboardPage />);
     expect(screen.getByTestId("dashboard-novedades")).toBeTruthy();
     expect(screen.getByText(/Novedades Vantare/i)).toBeTruthy();
+  });
+
+  it("renders news from the latest canonical release manifests", () => {
+    render(<DashboardPage />);
+
+    expect(screen.getByText("v0.1.0.7-nightly.8 · nightly")).toBeTruthy();
+    expect(screen.getByText(/Broadcast Tower y perfiles Endurance más fiables/i)).toBeTruthy();
   });
 
 
@@ -93,5 +154,14 @@ describe("DashboardPage — beta honest hub", () => {
     expect(cta).toBeTruthy();
     fireEvent.click(cta);
     expect(onNavigate).toHaveBeenCalledWith("roadmap");
+  });
+
+  it("renders current public roadmap data with its provenance", async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Roadmap conectado")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-roadmap-provenance").textContent).toContain("Fuente remota actual");
+    });
   });
 });

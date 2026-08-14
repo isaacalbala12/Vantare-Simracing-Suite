@@ -10,6 +10,16 @@
 
 ## Estado
 
+- Hub / ISA-358 está implementada en rama aislada sobre
+  `origin/nightly@673283a2`: la versión/canal del hero procede del runtime, el
+  calendario comparte un único estado y no pierde respuestas inmediatas, el
+  carrusel usa el snapshot público generado desde Linear con procedencia
+  visible y Novedades usa los manifiestos canónicos de release auto-descubiertos.
+  Focales 46/46, suite frontend 371/2681, build, lint focal propio y diff-check
+  pasan. El preview T3 abrió el servidor correcto pero no pudo producir
+  snapshot ni evaluación; queda pendiente la comprobación visual manual. No
+  La implementación está en `4258ca06`, nació de `nightly@673283a2` y se
+  sincronizó después con `nightly@521e862c`. No hubo promoción ni release.
 - ISA-357 corrige localmente la batalla animada de Standings Redline: solo
   carrera, una pareja máxima y prioridad por cercanía a la fila del jugador,
   con desempate por intervalo y orden estable. El relevo entre parejas tampoco
@@ -54,7 +64,7 @@
   separados de raíz, Billing, artefactos y aprobación; no está autorizada por
   este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
-- Hub: sin issue activa.
+- Hub: ISA-358 activa para reconciliar las fuentes del HUD principal.
 - Base documental ISA-315 rebasada: `nightly@54f267b`.
 - PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
   venta y release permanecen fuera del alcance. Las integraciones en `develop`

@@ -5,39 +5,56 @@ import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-st
 import type { Calendar } from "../../calendar/calendar-types";
 import { V52InfoCard } from "../components/V52InfoCard";
 import { DashboardFeatureCarousel } from "../components/DashboardFeatureCarousel";
-import { ROADMAP_CHANGELOG } from "../roadmap/roadmap-data";
-import { useI18n } from "../../i18n/I18nProvider";
+import { fetchRoadmapProjectsDataset, type RoadmapProjectsLoadResult } from "../roadmap/projects-data";
+import { RELEASE_NEWS } from "../release-news";
+import type { VantareBuildChannel } from "../testing-center/contracts";
 
-const CHANGELOG_TONE_MAP: Record<string, "green" | "blue" | "purple" | "amber" | "red"> = {
-  v0102: "green",
-  "hub-v52": "blue",
-  "launcher-lmu": "green",
-  "roadmap-public": "purple",
+const RELEASE_TONE_MAP: Record<VantareBuildChannel, "green" | "blue" | "purple"> = {
+  master: "green",
+  testers: "blue",
+  nightly: "purple",
 };
 
 type DashboardPageProps = {
   onNavigate?: (section: string) => void;
   hasActiveProfile?: boolean;
   onUseRecommended?: () => void;
+  version?: string | null;
+  buildChannel?: VantareBuildChannel | null;
 };
 
 export function DashboardPage({
   onNavigate,
+  version,
+  buildChannel,
 }: DashboardPageProps) {
   const handleNavigate = onNavigate ?? (() => {});
-  const { t } = useI18n();
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [calendar, setCalendar] = useState<Calendar | null>(null);
+  const [roadmap, setRoadmap] = useState<RoadmapProjectsLoadResult | null>(null);
 
   useEffect(() => {
-    requestCalendar();
     const unsub = subscribeToCalendar((state) => {
       if (state.kind === "loaded") {
         setCalendar(state.calendar);
       }
     });
+    requestCalendar();
     return unsub;
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchRoadmapProjectsDataset(controller.signal).then(setRoadmap).catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  const channelLabel = buildChannel === "master"
+    ? "STABLE"
+    : buildChannel?.toUpperCase() ?? "BETA";
+  const productTitle = buildChannel === "master"
+    ? "Vantare"
+    : `Vantare ${buildChannel === "nightly" ? "Nightly" : buildChannel === "testers" ? "Testers" : "Beta"}`;
 
   return (
     <div className="flex flex-col gap-5 pb-8">
@@ -51,13 +68,13 @@ export function DashboardPage({
         <div className="relative p-7 flex flex-col md:flex-row items-center gap-6">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className="pro-badge">BETA</span>
+              <span className="pro-badge">{channelLabel}</span>
               <span className="text-xs text-vantare-red-400 font-semibold bg-[#9a0606]/50 px-2 py-1 rounded-full border border-vantare-red-500/30 whitespace-nowrap">
-                v0.1.0.2
+                {version?.trim() || "Versión pendiente"}
               </span>
             </div>
             <h3 className="font-bold text-3xl text-white mb-2 tracking-tight">
-              Vantare Beta
+              {productTitle}
             </h3>
             <p className="text-sm text-vantare-textMuted leading-relaxed">
               Overlays para simulación, editor de widgets, Ingeniero de spotter y OBS local. Plan Free activo con acceso básico.
@@ -76,29 +93,29 @@ export function DashboardPage({
       </div>
 
       {/* Próximas carreras — 3 cards + WEC Weekly row */}
-      <CalendarHeroUpcomingPanel onNavigate={handleNavigate} onTierClick={setSelectedTier} />
-      {/* Feature carousel — animación fade de áreas in-progress del roadmap */}
-      <DashboardFeatureCarousel onNavigate={handleNavigate} />
+      <CalendarHeroUpcomingPanel calendar={calendar} onNavigate={handleNavigate} onTierClick={setSelectedTier} />
+      {/* Feature carousel — snapshot público generado desde Linear */}
+      <DashboardFeatureCarousel onNavigate={handleNavigate} roadmap={roadmap} />
 
 
-      {/* Novedades Vantare — desde ROADMAP_CHANGELOG */}
+      {/* Novedades Vantare — manifiestos canónicos de releases */}
       <section className="glass-panel rounded-xl p-4" data-testid="dashboard-novedades">
         <div className="flex items-center justify-between mb-3">
           <span className="v52-eyebrow">Novedades Vantare</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {ROADMAP_CHANGELOG.slice(0, 4).map((entry) => (
+          {RELEASE_NEWS.slice(0, 4).map((entry) => (
             <button
-              key={entry.id}
+              key={entry.tag}
               type="button"
               onClick={() => handleNavigate("roadmap")}
               className="text-left w-full"
             >
               <V52InfoCard
-                label={entry.version}
-                title={t(`roadmap.changelog.${entry.id}.title`)}
-                body={t(`roadmap.changelog.${entry.id}.body`)}
-                tone={CHANGELOG_TONE_MAP[entry.id] ?? "red"}
+                label={`${entry.tag} · ${entry.channel}`}
+                title={entry.title}
+                body={entry.summary}
+                tone={RELEASE_TONE_MAP[entry.channel]}
               />
             </button>
           ))}

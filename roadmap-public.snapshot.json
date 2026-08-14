@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T16:17:08Z",
+  "generatedAt": "2026-08-14T16:38:00Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 19,
+            "done": 18,
             "total": 34,
-            "percent": 56
+            "percent": 53
           },
           "tasks": [
             {
@@ -44,6 +44,12 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_ae3b20ffec4db4422020",
+              "title": "Standings Redline: limitar la animación de batalla a carrera y a la pareja más cercana al jugador",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T16:29:51.393Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -206,12 +212,6 @@
               "title": "Protocolo root, alpha, bounds y overflow",
               "status": "done",
               "updatedAt": "2026-08-07T18:24:20.603Z"
-            },
-            {
-              "id": "task_ae3b20ffec4db4422020",
-              "title": "Standings Redline: limitar la animación de batalla a carrera y a la pareja más cercana al jugador",
-              "status": "done",
-              "updatedAt": "2026-08-14T16:16:57.297Z"
             },
             {
               "id": "task_b22567b960d2c25f9552",

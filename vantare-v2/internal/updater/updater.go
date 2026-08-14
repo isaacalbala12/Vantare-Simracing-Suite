@@ -59,13 +59,23 @@ func (u *Updater) ListAvailable(settings *Settings) ([]Release, error) {
 }
 
 // ListAvailableCtx returns releases matching the user's channel that have an installer.
+// Only releases from the same product line as the running version are considered:
+// legacy lines (e.g. the pre-v2 "Overlays Studio" 0.3.x releases) must not compete
+// numerically for "latest" -- 0.3.10.0 is older than 0.1.0.7 but would sort first.
 func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]Release, error) {
 	releases, err := listReleasesURL(ctx, u.httpClient, u.releasesURL)
 	if err != nil {
 		return nil, err
 	}
+	line, lineKnown := productLine(u.currentVersion)
 	var out []Release
 	for _, r := range releases {
+		if lineKnown {
+			releaseLine, ok := productLine(r.TagName)
+			if !ok || releaseLine != line {
+				continue
+			}
+		}
 		if !ChannelIncludesRelease(settings.Channel, r) {
 			continue
 		}

@@ -120,3 +120,16 @@ func compareSuffix(a, b string) int {
 func (v Version) IsNewerThan(other Version) bool {
 	return v.Compare(other) > 0
 }
+
+// productLine returns the "major.minor" line a version tag belongs to, e.g.
+// "v0.1.0.7-nightly.8" -> "0.1". ok is false when the tag has no numeric line
+// to speak of. Lines let the updater ignore releases from other product lines:
+// the legacy "Overlays Studio" 0.3.x tags must not outrank the current 0.1.x
+// line just because 3 is numerically greater than 1.
+func productLine(tag string) (string, bool) {
+	m := semverRE.FindStringSubmatch(tag)
+	if m == nil || m[1] == "" || m[2] == "" {
+		return "", false
+	}
+	return m[1] + "." + m[2], true
+}

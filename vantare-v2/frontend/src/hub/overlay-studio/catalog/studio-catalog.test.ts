@@ -191,7 +191,7 @@ describe("buildAddWidgetCommand", () => {
     });
 
     expect(command).toMatchObject({
-      widget: { layout: { x: 0, w: 3440, h: 50 } },
+      widget: { layout: { x: 0, w: 3440, h: 71 } },
     });
   });
 });

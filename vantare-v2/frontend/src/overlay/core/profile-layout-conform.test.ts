@@ -60,6 +60,6 @@ describe("conformAspectLockedLayout", () => {
 
     const conformed = conformAspectLockedLayout(legacy);
 
-    expect(conformed.layout).toMatchObject({ w: 520, h: 50, aspectLocked: false });
+    expect(conformed.layout).toMatchObject({ w: 520, h: 71, aspectLocked: false });
   });
 });

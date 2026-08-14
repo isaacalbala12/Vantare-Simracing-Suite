@@ -102,6 +102,7 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.widgetTypes.carDamageVisual": "Dano visual do carro",
   "studio.v3.widgetTypes.carDamageNumbers": "Dano numérico do carro",
   "studio.v3.widgetTypes.engineerRadio": "Rádio do engenheiro",
+  "studio.v3.widgetTypes.trackMap": "Mapa do circuito",
   "studio.v3.dirtyDialog.title": "Alterações por guardar",
   "studio.v3.dirtyDialog.body": "Tens alterações pendentes. O que queres fazer antes de sair?",
   "studio.v3.dirtyDialog.save": "Guardar",

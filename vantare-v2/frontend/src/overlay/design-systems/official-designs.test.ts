@@ -99,6 +99,9 @@ describe("official-designs", () => {
       if (definition.type === "engineer-radio") {
         return [`${definition.type}:vantare-crystal`];
       }
+      if (definition.type === "track-map") {
+        return [`${definition.type}:vantare-endurance`];
+      }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
       if (enduranceTypes.has(definition.type)) {
         pairs.push(`${definition.type}:vantare-endurance`);

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T18:51:09Z",
+  "generatedAt": "2026-08-14T21:20:24Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -263,7 +263,7 @@
               "id": "task_a42d48a75062a36b354d",
               "title": ".1 — Seleccionar el proceso LMU utilizable entre procesos homónimos",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T18:06:30.342Z"
+              "updatedAt": "2026-08-14T20:52:05.316Z"
             },
             {
               "id": "task_4b0f3bebe07b8ee55483",
@@ -294,6 +294,12 @@
           },
           "tasks": [
             {
+              "id": "task_1b9ae73be18bdf3e6147",
+              "title": "Progreso, distancia y mapa con evidencia LMU",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T20:59:38.231Z"
+            },
+            {
               "id": "task_e6b932448079b1366a64",
               "title": "Reconciliar estado documental de tras promoción a Nightly",
               "status": "in-progress",
@@ -303,13 +309,7 @@
               "id": "task_62bf4878e08849125f60",
               "title": "Productor StrategyInputProjection v1",
               "status": "planned",
-              "updatedAt": "2026-08-02T10:58:43.075Z"
-            },
-            {
-              "id": "task_1b9ae73be18bdf3e6147",
-              "title": "Progreso, distancia y mapa con evidencia LMU",
-              "status": "planned",
-              "updatedAt": "2026-08-14T01:48:28.805Z"
+              "updatedAt": "2026-08-14T20:45:18.844Z"
             },
             {
               "id": "task_a918958013a28322f560",
@@ -602,8 +602,8 @@
           },
           "progress": {
             "done": 18,
-            "total": 28,
-            "percent": 64
+            "total": 29,
+            "percent": 62
           },
           "tasks": [
             {
@@ -613,10 +613,16 @@
               "updatedAt": "2026-08-14T00:57:30.536Z"
             },
             {
+              "id": "task_03c0faf16940f92e6c4b",
+              "title": "Exponer activación y desactivación del plan en la UI",
+              "status": "in-progress",
+              "updatedAt": "2026-08-14T21:12:37.544Z"
+            },
+            {
               "id": "task_7f6bd0e8290884567a7f",
               "title": "Resolver la revisión activa y cablear el motor live",
               "status": "in-progress",
-              "updatedAt": "2026-08-14T17:20:38.530Z"
+              "updatedAt": "2026-08-14T21:12:37.382Z"
             },
             {
               "id": "task_164f55172f72bcd41ef7",
@@ -670,7 +676,7 @@
               "id": "task_b40051fa6a37306acaac",
               "title": "Activación y lifecycle del plan",
               "status": "done",
-              "updatedAt": "2026-08-10T16:31:09.700Z"
+              "updatedAt": "2026-08-14T21:12:37.553Z"
             },
             {
               "id": "task_95e8dfeafd3b87445fcd",
@@ -712,7 +718,7 @@
               "id": "task_eb88dda744e5ea57576b",
               "title": "Motor de ejecución live sobre Telemetry Core",
               "status": "done",
-              "updatedAt": "2026-08-13T23:00:42.224Z"
+              "updatedAt": "2026-08-14T21:12:37.396Z"
             },
             {
               "id": "task_abfc7b6ff159f09de8ab",
@@ -766,7 +772,7 @@
               "id": "task_3b94344ae85a4edf9fb5",
               "title": "UI de Mis planes y paquetes import/export",
               "status": "done",
-              "updatedAt": "2026-08-10T16:31:08.565Z"
+              "updatedAt": "2026-08-14T21:12:37.467Z"
             },
             {
               "id": "task_c6c4e42fe0926cb43de0",

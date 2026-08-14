@@ -1,5 +1,5 @@
 begin;
-select plan(71);
+select plan(80);
 
 select has_table('public', 'testing_center_evidence_batches', 'private batch table exists');
 select has_table('public', 'testing_center_screenshot_evidence', 'private screenshot slot table exists');
@@ -19,6 +19,16 @@ select is(
   (select allowed_mime_types from storage.buckets where id = 'testing-center-evidence'),
   array['image/png','image/jpeg']::text[],
   'evidence bucket accepts only PNG and JPEG'
+);
+select ok(
+  exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'testing_center_screenshot_evidence'
+      and indexdef ~ '\\(report_id\\)'
+  ),
+  'screenshot report foreign key has a supporting index'
 );
 
 select ok(
@@ -240,6 +250,110 @@ select ok(
    where batch_id=(select batch_id from prepared_result)),
   'server-owned object path is opaque'
 );
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+create temporary table revoked_batch as
+select * from public.testing_center_prepare_screenshot_batch(
+  'testing-center.screenshot-evidence.v1','nightly','revoked-after-prepare',
+  pg_temp.manifest(repeat('c',64))
+);
+reset role;
+set local role service_role;
+update public.testing_center_memberships
+set active=false
+where user_id='00000000-0000-4000-8000-000000000501';
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select throws_ok(
+  format(
+    'insert into storage.objects(bucket_id,name,owner_id) values (%L,%L,%L::uuid)',
+    'testing-center-evidence',
+    (select slots->0->>'objectPath' from revoked_batch),
+    '00000000-0000-4000-8000-000000000501'
+  ),
+  '42501', null, 'inactive membership cannot upload after prepare'
+);
+select throws_ok(
+  format(
+    'select * from public.testing_center_finalize_screenshot(%L::uuid,%L::uuid)',
+    (select batch_id from revoked_batch),
+    (select slots->0->>'evidenceId' from revoked_batch)
+  ),
+  '42501', null, 'inactive membership cannot finalize after prepare'
+);
+reset role;
+select is(
+  (select count(*)::integer from storage.objects
+   where bucket_id='testing-center-evidence'
+     and name=(select slots->0->>'objectPath' from revoked_batch)),
+  0,
+  'inactive upload leaves no storage object'
+);
+select is(
+  (select count(*)::integer from public.testing_center_evidence_outbox
+   where evidence_id=(select (slots->0->>'evidenceId')::uuid from revoked_batch)),
+  0,
+  'inactive finalize creates no outbox job'
+);
+
+set local role service_role;
+update public.testing_center_memberships
+set active=true,role='primary_tester'
+where user_id='00000000-0000-4000-8000-000000000501';
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+create temporary table degraded_batch as
+select * from public.testing_center_prepare_screenshot_batch(
+  'testing-center.screenshot-evidence.v1','nightly','degraded-after-prepare',
+  pg_temp.manifest(repeat('d',64))
+);
+reset role;
+set local role service_role;
+update public.testing_center_memberships
+set role='tester'
+where user_id='00000000-0000-4000-8000-000000000501';
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select throws_ok(
+  format(
+    'insert into storage.objects(bucket_id,name,owner_id) values (%L,%L,%L::uuid)',
+    'testing-center-evidence',
+    (select slots->0->>'objectPath' from degraded_batch),
+    '00000000-0000-4000-8000-000000000501'
+  ),
+  '42501', null, 'tester cannot upload to a nightly batch after role degradation'
+);
+select throws_ok(
+  format(
+    'select * from public.testing_center_finalize_screenshot(%L::uuid,%L::uuid)',
+    (select batch_id from degraded_batch),
+    (select slots->0->>'evidenceId' from degraded_batch)
+  ),
+  '42501', null, 'tester cannot finalize a nightly batch after role degradation'
+);
+reset role;
+select is(
+  (select count(*)::integer from storage.objects
+   where bucket_id='testing-center-evidence'
+     and name=(select slots->0->>'objectPath' from degraded_batch)),
+  0,
+  'degraded upload leaves no storage object'
+);
+select is(
+  (select count(*)::integer from public.testing_center_evidence_outbox
+   where evidence_id=(select (slots->0->>'evidenceId')::uuid from degraded_batch)),
+  0,
+  'degraded finalize creates no outbox job'
+);
+set local role service_role;
+update public.testing_center_memberships
+set role='primary_tester'
+where user_id='00000000-0000-4000-8000-000000000501';
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);

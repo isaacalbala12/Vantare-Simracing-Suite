@@ -11,6 +11,7 @@ $raceSeed = Join-Path $env:TEMP "$container-race-seed.sql"
 $raceCallA = Join-Path $env:TEMP "$container-race-a.sql"
 $raceCallB = Join-Path $env:TEMP "$container-race-b.sql"
 $rollbackUse = Join-Path $env:TEMP "$container-rollback-use.sql"
+$rollbackFailure = Join-Path $env:TEMP "$container-rollback-failure.sql"
 $migrationName = "20260814154558_testing_center_screenshot_evidence.sql"
 $rollbackName = "20260814154558_testing_center_screenshot_evidence.down.sql"
 
@@ -25,7 +26,7 @@ function Invoke-PsqlFile([string]$File) {
 
 function Assert-PgTap([string]$Label) {
   $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -f /tmp/evidence.test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch '1\.\.71') {
+  if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch '1\.\.80') {
     throw "$Label pgTAP failed:`n$tap"
   }
 }
@@ -205,6 +206,20 @@ end
 $$;
 '@
 
+  Write-Utf8NoBom $rollbackFailure @'
+create function public.isa350_fail_bucket_delete()
+returns trigger language plpgsql as $$
+begin
+  perform pg_sleep(3);
+  raise exception 'isa350_forced_late_rollback_failure';
+end
+$$;
+create trigger isa350_fail_bucket_delete
+before delete on storage.buckets
+for each row when (old.id='testing-center-evidence')
+execute function public.isa350_fail_bucket_delete();
+'@
+
   Write-Output "[1/8] Installing history and ISA-350 into disposable PostgreSQL"
   docker exec $container createdb -U postgres $database
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
@@ -213,6 +228,7 @@ $$;
   docker cp $raceCallA "${container}:/tmp/evidence-race-a.sql"
   docker cp $raceCallB "${container}:/tmp/evidence-race-b.sql"
   docker cp $rollbackUse "${container}:/tmp/evidence-rollback-use.sql"
+  docker cp $rollbackFailure "${container}:/tmp/evidence-rollback-failure.sql"
   Invoke-PsqlFile "/tmp/bootstrap.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") |
     Where-Object { $_.Name -le $migrationName } | Sort-Object Name
@@ -222,13 +238,13 @@ $$;
     Invoke-PsqlFile "/tmp/$($migration.Name)"
   }
 
-  Write-Output "[2/8] Running 71 pgTAP assertions"
+  Write-Output "[2/9] Running 80 pgTAP assertions"
   Assert-PgTap "Initial screenshot evidence"
 
-  Write-Output "[3/8] Creating a real submitted screenshot before rollback"
+  Write-Output "[3/9] Creating a real submitted screenshot before rollback"
   Invoke-PsqlFile "/tmp/evidence-rollback-use.sql"
 
-  Write-Output "[4/8] Verifying rollback fails closed before any partial mutation"
+  Write-Output "[4/9] Verifying rollback fails closed before any partial mutation"
   docker cp (Join-Path $root "supabase\rollbacks\$rollbackName") "${container}:/tmp/$rollbackName"
   $beforeRejectedRollback = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -c `
     "select (to_regclass('public.testing_center_evidence_batches') is not null)::int||':'||(to_regclass('public.testing_center_screenshot_evidence') is not null)::int||':'||(to_regclass('public.testing_center_evidence_outbox') is not null)::int||':'||(to_regprocedure('public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)') is not null)::int||':'||(select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname='testing_center_evidence_insert_own_slot')||':'||(select count(*) from storage.buckets where id='testing-center-evidence')||':'||(select count(*) from storage.objects where bucket_id='testing-center-evidence')||':'||(select count(*) from public.testing_center_evidence_batches)||':'||(select count(*) from public.testing_center_screenshot_evidence)||':'||(select count(*) from public.testing_center_evidence_outbox)||':'||(select count(*) from public.testing_center_evidence where kind='screenshot')"
@@ -247,9 +263,30 @@ $$;
     throw "Rejected rollback mutated state partially. Before: $beforeRejectedRollback After: $afterRejectedRollback"
   }
 
-  Write-Output "[5/8] Simulating authorized Storage API deletion and checking exact restoration"
+  Write-Output "[5/9] Simulating authorized Storage API deletion"
   docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "delete from storage.objects where bucket_id='testing-center-evidence';" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not simulate Storage API metadata deletion" }
+
+  Write-Output "[6/9] Proving late rollback failure is atomic and concurrent inserts block"
+  Invoke-PsqlFile "/tmp/evidence-rollback-failure.sql"
+  $beforeForcedFailure = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -c `
+    "select (to_regclass('public.testing_center_evidence_batches') is not null)::int||':'||(to_regclass('public.testing_center_screenshot_evidence') is not null)::int||':'||(to_regclass('public.testing_center_evidence_outbox') is not null)::int||':'||(to_regprocedure('public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)') is not null)::int||':'||(select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname='testing_center_evidence_insert_own_slot')||':'||(select count(*) from storage.buckets where id='testing-center-evidence')||':'||(select count(*) from public.testing_center_evidence where kind='screenshot')||':'||(select pg_get_constraintdef(oid) from pg_constraint where conname='testing_center_evidence_kind_check')"
+  if ($LASTEXITCODE -ne 0) { throw "Could not snapshot state before forced late rollback failure" }
+  docker exec $container sh -c 'psql -X -q -v ON_ERROR_STOP=1 "application_name=isa350-down dbname=testing_evidence user=postgres" -f /tmp/20260814154558_testing_center_screenshot_evidence.down.sql >/tmp/down.log 2>&1 & dp=$!; sleeping=0; for i in $(seq 1 100); do n=$(psql -X -At -U postgres -d testing_evidence -c "select count(*) from pg_stat_activity where application_name=''isa350-down'' and wait_event=''PgSleep''"); if [ "$n" = "1" ]; then sleeping=1; break; fi; sleep 0.05; done; share=$(psql -X -At -U postgres -d testing_evidence -c "select count(*) from pg_locks l join pg_stat_activity a using(pid) where a.application_name=''isa350-down'' and l.relation=''storage.objects''::regclass and l.mode=''ShareLock'' and l.granted"); psql -X -q -v ON_ERROR_STOP=1 "application_name=isa350-insert dbname=testing_evidence user=postgres" -c "set role service_role; insert into storage.objects(bucket_id,name,owner_id) values (''testing-center-evidence'',''forced-concurrent-insert'',''00000000-0000-4000-8000-000000000505'');" >/tmp/insert.log 2>&1 & ip=$!; blocked=0; for i in $(seq 1 40); do n=$(psql -X -At -U postgres -d testing_evidence -c "select count(*) from pg_stat_activity where application_name=''isa350-insert'' and wait_event_type=''Lock''"); if [ "$n" = "1" ]; then blocked=1; break; fi; if ! kill -0 $ip 2>/dev/null; then break; fi; sleep 0.05; done; wait $dp; ds=$?; wait $ip; is=$?; echo "$sleeping:$share:$blocked:$ds:$is" >/tmp/rollback-race.result; exit 0'
+  if ($LASTEXITCODE -ne 0) { throw "Could not execute forced rollback race" }
+  $rollbackRace = docker exec $container sh -c 'cat /tmp/rollback-race.result'
+  $afterForcedFailure = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -c `
+    "select (to_regclass('public.testing_center_evidence_batches') is not null)::int||':'||(to_regclass('public.testing_center_screenshot_evidence') is not null)::int||':'||(to_regclass('public.testing_center_evidence_outbox') is not null)::int||':'||(to_regprocedure('public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)') is not null)::int||':'||(select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname='testing_center_evidence_insert_own_slot')||':'||(select count(*) from storage.buckets where id='testing-center-evidence')||':'||(select count(*) from public.testing_center_evidence where kind='screenshot')||':'||(select pg_get_constraintdef(oid) from pg_constraint where conname='testing_center_evidence_kind_check')"
+  if ($LASTEXITCODE -ne 0 -or $afterForcedFailure.Trim() -ne $beforeForcedFailure.Trim()) {
+    throw "Forced late rollback failure was not atomic. Before: $beforeForcedFailure After: $afterForcedFailure"
+  }
+  if ($rollbackRace.Trim() -notmatch '^1:[1-9][0-9]*:1:[1-9][0-9]*:0$') {
+    throw "Rollback did not hold a blocking Storage lock through the late failure: $rollbackRace"
+  }
+  docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "drop trigger isa350_fail_bucket_delete on storage.buckets; drop function public.isa350_fail_bucket_delete(); delete from storage.objects where bucket_id='testing-center-evidence';" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not clean forced rollback fixture" }
+
+  Write-Output "[7/9] Checking exact restoration after authorized cleanup"
   Invoke-PsqlFile "/tmp/$rollbackName"
   $rollback = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d $database -c `
     "select (to_regclass('public.testing_center_evidence_batches') is null)::int||':'||(to_regclass('public.testing_center_screenshot_evidence') is null)::int||':'||(to_regclass('public.testing_center_evidence_outbox') is null)::int||':'||(to_regprocedure('public.testing_center_prepare_screenshot_batch(text,text,text,jsonb)') is null)::int||':'||(select count(*) from storage.buckets where id='testing-center-evidence')||':'||(select pg_get_constraintdef(oid) from pg_constraint where conname='testing_center_evidence_kind_check')"
@@ -257,11 +294,11 @@ $$;
     throw "Rollback did not restore the exact prior contract: $rollback"
   }
 
-  Write-Output "[6/8] Reapplying and rerunning pgTAP"
+  Write-Output "[8/9] Reapplying and rerunning pgTAP"
   Invoke-PsqlFile "/tmp/$migrationName"
   Assert-PgTap "Reapplied screenshot evidence"
 
-  Write-Output "[7/8] Running a real two-process finalize race"
+  Write-Output "[9/9] Running a real two-process finalize race"
   Invoke-PsqlFile "/tmp/evidence-race-seed.sql"
   docker exec $container sh -c 'psql -X -q -v ON_ERROR_STOP=1 -U postgres -d testing_evidence -f /tmp/evidence-race-a.sql >/tmp/race-a.log 2>&1 & p1=$!; psql -X -q -v ON_ERROR_STOP=1 -U postgres -d testing_evidence -f /tmp/evidence-race-b.sql >/tmp/race-b.log 2>&1 & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; if [ "$s1" -eq 0 ] && [ "$s2" -eq 0 ]; then exit 0; fi; cat /tmp/race-a.log /tmp/race-b.log; exit 1'
   if ($LASTEXITCODE -ne 0) { throw "Concurrent finalize calls failed" }
@@ -271,7 +308,7 @@ $$;
     throw "Concurrent finalize was not exactly-once: $race"
   }
 
-  Write-Output "[8/8] Verifying every pre-existing bucket fails closed"
+  Write-Output "[post] Verifying every pre-existing bucket fails closed"
   docker exec $container psql -X -v ON_ERROR_STOP=1 -U postgres -d $database -c "delete from storage.objects where bucket_id='testing-center-evidence';" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not simulate Storage API cleanup after concurrency test" }
   Invoke-PsqlFile "/tmp/$rollbackName"
@@ -295,9 +332,9 @@ $$;
     throw "Compatible existing bucket was adopted instead of failing closed:`n$closed"
   }
 
-  Write-Output "Testing Center screenshot evidence: 71/71 + non-empty rollback fail-closed without partial mutation + authorized Storage deletion simulation + exact rollback after submit + reapply 71/71 + concurrent finalize exactly-once + all pre-existing buckets fail-closed PASS"
+  Write-Output "Testing Center screenshot evidence: 80/80 + revoked/degraded post-prepare denial + non-empty rollback fail-closed + atomic late-failure rollback + concurrent insert blocking + exact rollback after submit + reapply 80/80 + concurrent finalize exactly-once + all pre-existing buckets fail-closed PASS"
 } finally {
   $ErrorActionPreference = "Continue"
   docker rm -f $container 2>$null | Out-Null
-  Remove-Item -LiteralPath $bootstrap,$raceSeed,$raceCallA,$raceCallB,$rollbackUse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $bootstrap,$raceSeed,$raceCallA,$raceCallB,$rollbackUse,$rollbackFailure -Force -ErrorAction SilentlyContinue
 }

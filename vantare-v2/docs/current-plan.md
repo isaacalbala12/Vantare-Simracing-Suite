@@ -1,3 +1,22 @@
+Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
+- El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión
+  y el canal reales de `app:version`; ya no fija `v0.1.0.2` ni presenta todas
+  las builds como la misma Beta.
+- El resumen de roadmap consume `roadmap-public.snapshot.json` mediante el
+  loader canónico de la página Roadmap y expone procedencia fresh, stale o
+  fallback. Novedades descubre automáticamente los manifiestos canónicos de
+  `docs/releases/*.json`; el calendario tiene una sola fuente de estado y se
+  suscribe antes de solicitar el documento.
+- Gates: focales 46/46, frontend completo 371 archivos/2681 tests, build,
+  ESLint focal del cambio y `git diff --check` PASS. El lint de `HubApp.tsx`
+  conserva el error heredado `react-hooks/refs` de la línea 77, fuera del diff.
+  El preview T3 abrió el Vite correcto en 1280x800, pero snapshot y evaluación
+  fallaron/agotaron tiempo, por lo que la inspección visual manual sigue
+  pendiente.
+- Estado: implementación en `4258ca06`, nacida de
+  `origin/nightly@673283a2` y sincronizada después con
+  `origin/nightly@521e862c`. Sin promoción ni release.
+
 Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
 - Primer corte contract-first de ISA-346 completado: contrato puro equivalente
   Go/TS para lotes server-owned de 1..10 capturas PNG/JPEG, límites, digests,

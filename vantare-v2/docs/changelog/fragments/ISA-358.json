@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-358",
+  "type": "fix",
+  "summary": "El Hub principal vuelve a reflejar la versión, el calendario, el roadmap y las novedades reales de Vantare.",
+  "technicalNotes": [
+    "La cabecera usa la versión y el canal publicados por la propia build, sin una versión fija en la interfaz.",
+    "El resumen de desarrollo comparte el snapshot público generado desde Linear e indica si la fuente es actual, antigua o un respaldo empaquetado.",
+    "Novedades se alimenta automáticamente de los manifiestos canónicos de las releases y el calendario conserva una única copia de sus datos."
+  ],
+  "testing": [
+    "Abrir el Hub y comprobar que el hero y la barra superior muestran la misma versión y que el canal corresponde a la build instalada.",
+    "Confirmar que Próximas carreras carga el calendario y que al seleccionar una categoría se abre su detalle.",
+    "Comprobar que En desarrollo muestra procedencia y proyectos actuales, y que Novedades incluye las últimas builds publicadas."
+  ],
+  "knownLimitations": [
+    "Si el snapshot remoto de roadmap no está disponible, el Hub muestra de forma explícita el respaldo empaquetado hasta la siguiente actualización."
+  ]
+}

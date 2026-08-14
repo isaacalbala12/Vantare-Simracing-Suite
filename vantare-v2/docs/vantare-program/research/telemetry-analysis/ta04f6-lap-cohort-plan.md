@@ -94,7 +94,7 @@ Comandos previstos desde la raíz del proyecto:
 go test ./tools/ta04f6-cohort-selector/...
 go test -race ./tools/ta04f6-cohort-selector/...
 go run ./tools/ta04f6-cohort-selector -mode=synthetic
-go run ./tools/ta04f6-cohort-selector -mode=existing-authorized -protocol-sha <SHA_DEL_COMMIT_DEL_PLAN> -runner-sha <SHA_DEL_COMMIT_DEL_RUNNER> -output "C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f6-selection-freeze.md"
+go run ./tools/ta04f6-cohort-selector -mode=existing-authorized -protocol-sha <SHA_DEL_COMMIT_DEL_PLAN> -runner-sha <SHA_DEL_COMMIT_DEL_RUNNER> -output "<WORKTREE_ABSOLUTO>\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f6-selection-freeze.md"
 ```
 
 Reglas de flags:
@@ -139,7 +139,7 @@ El modo real no acepta un directorio temporal privado, una ruta elegida por el
 usuario ni una nueva política ACL. El único output permitido es exactamente:
 
 ```text
-C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f6-selection-freeze.md
+<WORKTREE_ABSOLUTO>\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f6-selection-freeze.md
 ```
 
 Ese manifest sanitizado ya está autorizado para review y commit local por este

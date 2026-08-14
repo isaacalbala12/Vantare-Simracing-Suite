@@ -14,7 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/duckdbadapter"
 )
 
-const expectedOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f6-selection-freeze.md`
+var expectedOutputPath = projectOutputPath("ta04f6-selection-freeze.md")
 
 type productionExistingBackendV1 struct {
 	projectDir     string

@@ -14,7 +14,7 @@ import (
 	"unicode/utf8"
 )
 
-const expectedOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f7-historical-cluster-freeze-v2.json`
+var expectedOutputPath = projectOutputPath("ta04f7-historical-cluster-freeze-v2.json")
 const maxOpaqueIDBytes = 256
 const maxGroupTokenBytes = 4*256 + 3
 

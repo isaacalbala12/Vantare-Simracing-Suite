@@ -6,8 +6,8 @@ const liveProtocolSHA = "d278e7599c4a0acbac720ff23b0e73916757dd57"
 const liveAuthorizationSHA = "f0f8c9ffe5e825c4bf65d045b17338e9e4c1c78b"
 const liveShapeMode = "existing-live-inventory-shape"
 
-const expectedLiveShapeOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f9-shape-export-v1.json`
-const expectedLiveControlOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f9-historical-cluster-manifest-v1.json`
+var expectedLiveShapeOutputPath = projectOutputPath("ta04f9-shape-export-v1.json")
+var expectedLiveControlOutputPath = projectOutputPath("ta04f9-historical-cluster-manifest-v1.json")
 
 const (
 	liveBaselineCandidates   = 319

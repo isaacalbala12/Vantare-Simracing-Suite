@@ -24,8 +24,8 @@ const shapeSignEpsilon = 1e-6
 // shapeAnisotropyRatio is the erratum E1 dimensionless degeneracy guard.
 const shapeAnisotropyRatio = 1e-6
 
-const expectedShapeOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f8-shape-export-v1.json`
-const expectedControlOutputPath = `C:\Users\isaac\Desktop\Vantare-Overlays\worktrees\ta04f-repetition-variance\vantare-v2\vantare-v2\docs\vantare-program\research\telemetry-analysis\ta04f8-historical-cluster-manifest-v3.json`
+var expectedShapeOutputPath = projectOutputPath("ta04f8-shape-export-v1.json")
+var expectedControlOutputPath = projectOutputPath("ta04f8-historical-cluster-manifest-v3.json")
 
 // shapeAuthorizedOrdinals is the frozen panel set of the real gate 3 artifact:
 // the two ta04f7 freeze-v2 groups decided technical_go_local_shape_local_only.

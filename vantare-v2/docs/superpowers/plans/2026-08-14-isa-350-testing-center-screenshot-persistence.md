@@ -1,6 +1,6 @@
 # ISA-350 — persistencia privada de capturas
 
-Estado: microplan TDD listo para ejecución local.
+Estado: ejecutado y validado localmente; pendiente PR draft y CI remoto.
 
 ## Objetivo
 
@@ -84,5 +84,7 @@ submission existente, `git diff --check` y revisión completa.
 
 ## Entrega
 
-Rama aislada desde `nightly@c394e71f`, commits RED/GREEN/REFACTOR, review de
-spec y calidad, PR draft a `nightly`. Sin merge, bucket remoto ni activación.
+Rama aislada sincronizada con `nightly@d45d8d8d`, commits RED/GREEN conservados,
+runner 80/80 y harness v1 72/56/55 en PASS. Reviews finales `SPEC PASS` y
+`QUALITY PASS`. Pendiente PR draft a `nightly`; sin merge, bucket remoto ni
+activación.

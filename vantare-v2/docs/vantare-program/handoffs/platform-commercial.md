@@ -171,10 +171,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 - ISA-346 y ISA-349 están integradas únicamente en
   `nightly@c394e71f0945e26ac02ccb7360ffffcd8955c157`: diseño privado de hasta
   diez capturas y contrato puro equivalente Go/TypeScript.
-- ISA-350 inicia la persistencia local en una rama/worktree limpios. Alcance:
-  migración aditiva, rollback, bucket privado, policy de upload exact-path,
-  prepare/finalize/submit aditivo y pgTAP adversarial. No hay apply remoto, UI,
-  validador, URLs temporales, agentes ni promoción implícita.
+- ISA-350 completa en rama aislada la persistencia local: migración aditiva,
+  bucket privado, policy INSERT exact-path, batches/slots, outbox durable y RPCs
+  prepare/finalize/submit aditivo. El rollback exige limpieza física previa por
+  Storage API/S3 y ejecuta la fase PostgreSQL de forma atómica y fail-closed.
+- Evidencia fresca sobre `nightly@d45d8d8d`: runner ISA-350 80/80, rollback y
+  reaplicación 80/80, revocación post-prepare, locks concurrentes y finalize
+  exactly-once PASS; harness v1 72/56/55 y concurrencia PASS. Reviews finales
+  `SPEC PASS` y `QUALITY PASS`. No hay apply remoto, UI, validador, URLs
+  temporales, agentes, merge ni promoción implícita.
 - Plan vigente:
   `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
 - TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus

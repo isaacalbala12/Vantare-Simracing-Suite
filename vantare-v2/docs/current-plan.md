@@ -1,3 +1,11 @@
+Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación iniciada):
+- Primer corte contract-first de ISA-346: contrato puro equivalente Go/TS para
+  lotes de 1..10 capturas PNG/JPEG, límites, digests, dimensiones y estados.
+- La rama se apila sobre el diseño ISA-346; SQL, Storage, validador, UI, deploy
+  y activación permanecen fuera de alcance.
+- Microplan TDD:
+  `docs/superpowers/plans/2026-08-14-isa-349-testing-center-screenshot-contract.md`.
+
 Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
 - El primer corte de evidencia visual del Testing Center admite solo archivos
   PNG/JPEG existentes: máximo 10 capturas, 10 MiB cada una y 100 MiB por lote.

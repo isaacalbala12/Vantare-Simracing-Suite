@@ -121,6 +121,26 @@ func TestOverlayControllerStartClosesPreviousWindow(t *testing.T) {
 	}
 }
 
+func TestOverlayControllerApplyProfileModeUpdatesWindowAndStatus(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	document := racingDocument("default-racing", config.ModeRacing)
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+
+	document.DisplayMode = config.ModeEdit
+	if err := controller.ApplyProfileMode(document); err != nil {
+		t.Fatal(err)
+	}
+	if got := factory.last.appliedModes; len(got) != 1 || got[0] != config.ModeEdit {
+		t.Fatalf("applied modes=%v, want [edit]", got)
+	}
+	if status := controller.Status(); status.Mode != config.ModeEdit {
+		t.Fatalf("status mode=%q, want edit", status.Mode)
+	}
+}
+
 func TestOverlayControllerHandleWindowClosedIgnoresStaleWindowAndForgetsCurrentWithoutClosingIt(t *testing.T) {
 	factory := &fakeOverlayFactory{}
 	controller := app.NewOverlayController(factory)

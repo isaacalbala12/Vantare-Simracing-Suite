@@ -189,7 +189,8 @@
   position: relative;
   display: flex;
   width: 100%;
-  height: 100%;
+  height: fit-content;
+  max-height: 100%;
   box-sizing: border-box;
   color: var(--vc-text);
   font-family: var(--vc-font-sans);
@@ -199,10 +200,11 @@
 [data-widget-system="vantare-crystal"] .vc-standings-frame {
   position: relative;
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
   overflow: hidden;
   background: var(--vc-glass-surface);
   border: 1px solid var(--vc-glass-border);
@@ -274,10 +276,14 @@
 
 [data-widget-system="vantare-crystal"] .vc-standings-rows {
   display: flex;
-  flex: 1;
+  flex: none;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+[data-widget-system="vantare-crystal"] .vc-standings-empty-row {
+  color: var(--vc-muted);
 }
 
 [data-widget-system="vantare-crystal"] .vc-standings-row {

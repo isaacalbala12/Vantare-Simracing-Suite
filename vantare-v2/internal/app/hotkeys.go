@@ -19,10 +19,11 @@ const (
 	WM_QUIT   = 0x0012
 	WM_HOTKEY = 0x0312
 
-	MOD_ALT     = 0x0001
-	MOD_CONTROL = 0x0002
-	MOD_SHIFT   = 0x0004
-	MOD_WIN     = 0x0008
+	MOD_ALT      = 0x0001
+	MOD_CONTROL  = 0x0002
+	MOD_SHIFT    = 0x0004
+	MOD_WIN      = 0x0008
+	MOD_NOREPEAT = 0x4000
 )
 
 // Virtual key code mapping for common keys.
@@ -79,6 +80,10 @@ var (
 	procPostThreadMessageW = user32.NewProc("PostThreadMessageW")
 	procGetCurrentThreadID = kernel32.NewProc("GetCurrentThreadId")
 )
+
+func registrationModifiers(mods uint32) uint32 {
+	return mods | MOD_NOREPEAT
+}
 
 // ParseHotkeyCombo converts "ctrl+shift+v" into modifier flags and virtual key code.
 func ParseHotkeyCombo(combo string) (mods uint32, vk uint32, err error) {
@@ -274,7 +279,7 @@ func (m *HotkeyManager) registerOne(e hotkeyEntry) {
 		log.Printf("hotkey: skip entry id=%d: %v", e.id, err)
 		return
 	}
-	ret, _, _ := procRegisterHotKey.Call(0, uintptr(e.id), uintptr(mods), uintptr(vk))
+	ret, _, _ := procRegisterHotKey.Call(0, uintptr(e.id), uintptr(registrationModifiers(mods)), uintptr(vk))
 	if ret == 0 {
 		log.Printf("hotkey: RegisterHotKey failed for id=%d combo=%q mods=0x%x vk=0x%x", e.id, e.combo, mods, vk)
 	}
@@ -343,7 +348,7 @@ func (m *HotkeyManager) UpdateFromSettings(settings *AppSettings, actionMap map[
 		// Register with Windows if started
 		if m.started {
 			mods, vk, _ := ParseHotkeyCombo(combo)
-			ret, _, _ := procRegisterHotKey.Call(0, uintptr(id), uintptr(mods), uintptr(vk))
+			ret, _, _ := procRegisterHotKey.Call(0, uintptr(id), uintptr(registrationModifiers(mods)), uintptr(vk))
 			if ret == 0 {
 				log.Printf("hotkey: RegisterHotKey failed for %q combo=%q", name, combo)
 			}

@@ -68,6 +68,39 @@ Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
   cuatro commits de `nightly` anteriores a ISA-161, reapareció sin cambios en
   el run 31748815966 y queda fuera de STR-17.
 
+Nota HOTFIX-OVERLAY-6-7 (2026-08-14, PR draft publicado):
+- Esta excepción aprobada omite Linear. La implementación nueva se limita al
+  punto 6: edición directa del overlay desktop mediante hotkey. El punto 7 ya
+  estaba en el commit padre y los puntos 1–5 siguen fuera de esta rama.
+- `Ctrl+Shift+E` ya no navega al Studio: alterna la misma ventana Wails entre
+  `ModeRacing` click-through y `ModeEdit` interactivo. Si no hay overlay, abre
+  el perfil activo en modo edición. `MOD_NOREPEAT` evita toggles repetidos al
+  mantener el acorde.
+- Desktop monta una capa mínima que reutiliza `WidgetVisualHost`, las reglas y
+  preview imperativa del canvas: selección única, mover, resize, snapping,
+  borrador local y Guardar/Cancelar/Escape. Guardar persiste un único documento
+  V3 con revisión optimista y `displayMode=racing`; conflicto/error conserva el
+  borrador abierto. OBS permanece read-only.
+- Autoridad SDD:
+  `docs/overlays-studio/in-game-overlay-editing-hotkey-spec.md`. La investigación
+  de capa separada queda como fallback si el smoke Windows/LMU encuentra
+  problemas de foco o captura.
+- Tower/Standings usan las filas efectivas de telemetría, conservan una fila
+  vacía deliberada cuando no hay pilotos y no mutan la geometría guardada del
+  perfil. Rama `fix/overlay-hotfixes-6-7`, rebasada sobre
+  `nightly@638b4704d7afb57cf6a7213eef796fc9c7304a80` y publicada en el PR draft
+  [#234](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/234).
+- Evidencia nueva punto 6: typecheck y build de producción pasan; 6 archivos
+  focales / 99 tests pasan; ESLint focal pasa. La suite completa queda en 368
+  archivos y 2.654 tests aprobados, con un único fallo reproducible en
+  `CalendarMonthView.test.tsx`, no modificado y fuera de alcance. El lint global
+  conserva su deuda heredada.
+  Go/gofmt no están instalados en este contenedor; sus tests y cross-build
+  Windows quedan pendientes. También queda pendiente el smoke Wails real en
+  Windows/LMU para DPI, monitores, foco, click-through y captura.
+- La rama y el PR draft están publicados. CI y smoke Windows/LMU siguen
+  pendientes; no hay merge, integración, promoción ni release autorizados.
+
 Nota ISA-161 / TC-10B (2026-08-12, entrega local revisada; cierre supersedido por ISA-152):
 - ISA-160 / TC-10A está integrada en
   `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`; ISA-161 se construyó

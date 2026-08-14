@@ -277,4 +277,10 @@ export const studioV3En: Record<string, string> = {
   "studio.v3.access.premiumSaveDenied":
     "You cannot save changes to premium widgets without the proper license.",
   "studio.v3.standings.rowCount": "Rows",
+  "overlay.inGameEdit.title": "Edit overlay",
+  "overlay.inGameEdit.ready": "Select a widget to move or resize it",
+  "overlay.inGameEdit.unsaved": "Unsaved changes",
+  "overlay.inGameEdit.saving": "Saving…",
+  "overlay.inGameEdit.save": "Save",
+  "overlay.inGameEdit.cancel": "Cancel",
 };

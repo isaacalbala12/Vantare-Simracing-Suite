@@ -39,6 +39,16 @@ function renderCrystal(
 }
 
 describe("StandingsCrystal", () => {
+  it("sizes the visible shell from the live driver count with a one-row empty state", () => {
+    const two = renderCrystal({ ...readyModel, rows: readyModel.rows.slice(0, 2) });
+    expect(two.root.dataset.driverCount).toBe("2");
+    expect(two.root.dataset.visibleRows).toBe("2");
+    cleanup();
+    const empty = renderCrystal(unavailable("missing"));
+    expect(empty.root.dataset.visibleRows).toBe("1");
+    expect(empty.root.querySelector(".vc-standings-empty-row")).toBeTruthy();
+  });
+
   it("exposes the Crystal system root and standings renderer marker", () => {
     const { root } = renderCrystal(readyModel);
     expect(root).toBeTruthy();

@@ -2,6 +2,7 @@ import type { ProfileDocumentV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
+import { InGameOverlayEditor } from "./InGameOverlayEditor";
 
 export type DesktopOverlayRuntimeProps = {
   document: ProfileDocumentV3;
@@ -13,6 +14,17 @@ export type DesktopOverlayRuntimeProps = {
 
 export function DesktopOverlayRuntime(props: DesktopOverlayRuntimeProps): React.ReactElement {
   const { document, layoutOrigin, telemetry, engineerPresentations } = props;
+  if (document.displayMode === "edit") {
+    return (
+      <InGameOverlayEditor
+        document={document}
+        revision={props.revision}
+        layoutOrigin={layoutOrigin}
+        telemetry={telemetry}
+        engineerPresentations={engineerPresentations}
+      />
+    );
+  }
   return (
     <RuntimeOverlaySurface
       document={document}

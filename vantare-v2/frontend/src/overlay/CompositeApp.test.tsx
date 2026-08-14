@@ -74,7 +74,7 @@ function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1") {
     document,
     revision,
     layoutOrigin: { x: 0, y: 0 },
-    windowMode: "racing",
+    windowMode: document.displayMode,
   };
 }
 
@@ -120,6 +120,7 @@ describe("CompositeApp", () => {
     vi.useFakeTimers();
     desktopOutput = { width: 1920, height: 1080 };
     installResizeObserver();
+    HTMLElement.prototype.setPointerCapture = vi.fn();
   });
 
   afterEach(() => {
@@ -243,16 +244,120 @@ describe("CompositeApp", () => {
     expect(frame.style.top).toBe("87px");
   });
 
-  it("does not mount edit chrome when overlay:edit-mode-changed fires", () => {
+  it("mounts in-game edit chrome from the canonical edit-mode profile snapshot", () => {
+    const document = buildRelativeDocument();
+    document.displayMode = "edit";
     render(<CompositeApp />);
-    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document));
     tick(100);
 
-    dispatch("overlay:edit-mode-changed", { mode: "edit" });
+    expect(screen.getByTestId("in-game-overlay-editor")).toBeTruthy();
+    expect(screen.getByTestId("runtime-edit-frame-relative-main")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
+  });
+
+  it("cancels in-game editing without saving from the button or Escape", () => {
+    const document = buildRelativeDocument();
+    document.displayMode = "edit";
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document));
     tick(100);
 
-    expect(screen.queryByTestId("edit-mode-hint")).toBeNull();
-    expect(screen.queryByTestId("edit-frame-relative")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:toggle-edit-mode");
+    expect(runtimeMock.emit).not.toHaveBeenCalledWith("studio:profile:save", expect.anything());
+
+    runtimeMock.emit.mockClear();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:toggle-edit-mode");
+    expect(runtimeMock.emit).not.toHaveBeenCalledWith("studio:profile:save", expect.anything());
+  });
+
+  it("saves one correlated racing-mode draft with the loaded revision", () => {
+    const document = buildRelativeDocument();
+    document.displayMode = "edit";
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document, "rev-edit-base"));
+    tick(100);
+
+    const frame = screen.getByTestId("runtime-edit-frame-relative-main");
+    fireEvent.pointerDown(frame, {
+      pointerId: 1,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      bubbles: true,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      clientX: 140,
+      clientY: 130,
+      altKey: true,
+      bubbles: true,
+    });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 140, clientY: 130, bubbles: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    const saveCall = runtimeMock.emit.mock.calls.find(([name]) => name === "studio:profile:save");
+    expect(saveCall).toBeTruthy();
+    const payload = saveCall?.[1] as {
+      expectedRevision: string;
+      document: ProfileDocumentV3;
+    };
+    expect(payload.expectedRevision).toBe("rev-edit-base");
+    expect(payload.document.displayMode).toBe("racing");
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBeGreaterThan(
+      document.layouts.general.widgets[0].layout.x,
+    );
+  });
+
+  it("keeps the draft editor open when saving conflicts", async () => {
+    const document = buildRelativeDocument();
+    document.displayMode = "edit";
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document, "rev-conflict-base"));
+    tick(100);
+
+    const frame = screen.getByTestId("runtime-edit-frame-relative-main");
+    fireEvent.pointerDown(frame, { pointerId: 2, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 2, clientX: 130, clientY: 125, altKey: true, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 2, clientX: 130, clientY: 125, bubbles: true });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    const saveCall = runtimeMock.emit.mock.calls.find(([name]) => name === "studio:profile:save");
+    const requestId = (saveCall?.[1] as { requestId: string }).requestId;
+    dispatch("studio:profile:conflict", { requestId, message: "profile changed elsewhere" });
+    await act(async () => undefined);
+
+    expect(screen.getByTestId("in-game-overlay-editor")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("profile changed elsewhere");
+  });
+
+  it("requests the canonical racing snapshot after a successful save", async () => {
+    const document = buildRelativeDocument();
+    document.displayMode = "edit";
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(document, "rev-save-base"));
+    tick(100);
+
+    const frame = screen.getByTestId("runtime-edit-frame-relative-main");
+    fireEvent.pointerDown(frame, { pointerId: 3, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 3, clientX: 120, clientY: 120, altKey: true, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 3, clientX: 120, clientY: 120, bubbles: true });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    const saveCall = runtimeMock.emit.mock.calls.find(([name]) => name === "studio:profile:save");
+    const savePayload = saveCall?.[1] as { requestId: string; document: ProfileDocumentV3 };
+    dispatch("studio:profile:saved", {
+      requestId: savePayload.requestId,
+      document: savePayload.document,
+      revision: "rev-saved",
+    });
+    await act(async () => undefined);
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
   });
 
   it("shows calendar reminder banner on calendar:reminder event", () => {

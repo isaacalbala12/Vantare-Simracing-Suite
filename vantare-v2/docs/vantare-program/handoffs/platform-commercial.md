@@ -168,6 +168,15 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Testing Center
 
+- ISA-346 y ISA-349 están integradas únicamente en
+  `nightly@c394e71f0945e26ac02ccb7360ffffcd8955c157`: diseño privado de hasta
+  diez capturas y contrato puro equivalente Go/TypeScript.
+- ISA-350 inicia la persistencia local en una rama/worktree limpios. Alcance:
+  migración aditiva, rollback, bucket privado, policy de upload exact-path,
+  prepare/finalize/submit aditivo y pgTAP adversarial. No hay apply remoto, UI,
+  validador, URLs temporales, agentes ni promoción implícita.
+- Plan vigente:
+  `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
 - TAU-00/01 y TAU-02A/B/C permanecen en PR draft a `nightly`; TAU-02C cerró sus
   gates locales y remotos sin deploy ni merge.
 - ISA-215 / TAU-03 añade el paquete local

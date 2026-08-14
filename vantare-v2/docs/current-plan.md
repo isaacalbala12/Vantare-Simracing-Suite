@@ -19,6 +19,14 @@ Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
   (`31817001802`) pasaron; el snapshot público del roadmap se regeneró en
   `31817001849`. Sin promoción a `testers`/`master` ni release.
 
+Nota ISA-350 / TC-EVIDENCE-03 (2026-08-14, implementación iniciada):
+- Persistencia local contract-first para batches/slots, bucket privado, policy
+  INSERT exact-path y RPCs prepare/finalize/submit aditivo. La RPC v1 permanece
+  intacta; bytes, UI, validador, acceso de agentes y deploy quedan fuera.
+- Base limpia `nightly@c394e71f0945e26ac02ccb7360ffffcd8955c157`; migración
+  creada con Supabase CLI y plan TDD:
+  `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
+
 Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
 - Primer corte contract-first de ISA-346 completado: contrato puro equivalente
   Go/TS para lotes server-owned de 1..10 capturas PNG/JPEG, límites, digests,

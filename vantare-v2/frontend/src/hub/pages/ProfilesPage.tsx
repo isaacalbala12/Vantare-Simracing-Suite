@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Events } from "@wailsio/runtime";
 import { profileLabel, type ProfileEntry } from "../state/overlay-workbench";
+import { ConfirmDialog } from "../settings/ConfirmDialog";
 import type { ProfileConfig } from "../../lib/profile";
 
 type ProfileTarget = {
@@ -21,6 +22,7 @@ export function ProfilesPage() {
   const [managingTarget, setManagingTarget] = useState<ProfileTarget | null>(null);
   const [managingConfig, setManagingConfig] = useState<ProfileConfig | null>(null);
   const [modalNameInput, setModalNameInput] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<ProfileEntry | null>(null);
 
   useEffect(() => {
     const unsub = Events.On("hub:profiles", (event: { data: unknown }) => {
@@ -99,14 +101,20 @@ export function ProfilesPage() {
     Events.Emit("hub:create", { name });
   }, [newName]);
 
+  // El borrado se pide en dos tiempos: el confirm nativo del WebView llegaba
+  // con el titulo "wails.localhost dice" y no se parecia en nada al Hub.
   const handleDelete = useCallback((profile: ProfileEntry) => {
-    const label = profileLabel(profile);
-    if (!window.confirm(`¿Eliminar el perfil "${label}"? Esta acción no se puede deshacer.`)) {
+    setDeleteTarget(profile);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteTarget) {
       return;
     }
     setError(null);
-    Events.Emit("hub:delete", { id: profile.id, file: profile.file });
-  }, []);
+    Events.Emit("hub:delete", { id: deleteTarget.id, file: deleteTarget.file });
+    setDeleteTarget(null);
+  }, [deleteTarget]);
 
   const handleSelect = useCallback((profile: ProfileEntry) => {
     setError(null);
@@ -385,6 +393,20 @@ export function ProfilesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="¿Eliminar perfil?"
+          cancelLabel="Cancelar"
+          confirmLabel="Eliminar"
+          testId="profiles-delete-dialog"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+        >
+          Se borrará <span className="font-semibold text-white">{profileLabel(deleteTarget)}</span> y
+          su archivo de configuración. Esta acción no se puede deshacer.
+        </ConfirmDialog>
       )}
     </div>
   );

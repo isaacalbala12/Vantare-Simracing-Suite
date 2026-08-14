@@ -109,7 +109,12 @@ func sameAtomicPathV1(a, b string) bool {
 	a = filepath.Clean(a)
 	b = filepath.Clean(b)
 	if runtime.GOOS == "windows" {
-		return strings.EqualFold(a, b)
+		if strings.EqualFold(a, b) {
+			return true
+		}
+		left, leftErr := os.Lstat(a)
+		right, rightErr := os.Lstat(b)
+		return leftErr == nil && rightErr == nil && os.SameFile(left, right)
 	}
 	return a == b
 }

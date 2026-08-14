@@ -55,7 +55,7 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 				wanted[strings.ToLower(name)] = struct{}{}
 			}
 		}
-		executables := indexExecutables(common, wanted, 3)
+		executables := indexExecutables(common, wanted, 2)
 		for _, known := range KnownApps {
 			if existing, ok := found[known.ID]; ok && existing.ExecutablePath != "" {
 				continue

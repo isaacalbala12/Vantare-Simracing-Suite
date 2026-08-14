@@ -5,6 +5,7 @@ package launcher
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/png"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -106,6 +108,199 @@ var appIconCache = struct {
 	sync.Mutex
 	items map[string][]byte
 }{}
+
+// ---------------------------------------------------------------------------
+// Disk cache (icons + shortcut index). A fresh process pays the full COM
+// pipeline once; later sessions load the validated entries instead of
+// re-walking the Start Menu and re-extracting icons. Every entry is validated
+// by file existence + mtime + size, and a manual rescan (resetShortcutIndex)
+// drops the whole file, so a reinstall or new shortcut is always picked up.
+// ---------------------------------------------------------------------------
+
+// iconDiskCacheFileOverride is injectable from tests; empty means the default
+// UserCacheDir location.
+var iconDiskCacheFileOverride string
+
+const (
+	iconDiskCacheVersion   = 1
+	iconDiskCacheMaxIcons  = 50
+	iconDiskIndexFreshness = 15 * time.Minute
+)
+
+type iconDiskEntry struct {
+	Path    string `json:"path"`
+	MtimeMs int64  `json:"mtimeMs"`
+	Size    int64  `json:"size"`
+	IconB64 string `json:"iconB64"`
+}
+
+type shortcutDiskEntry struct {
+	LnkPath string `json:"lnkPath"`
+	MtimeMs int64  `json:"mtimeMs"`
+}
+
+type iconDiskCache struct {
+	Version   int                          `json:"version"`
+	Icons     map[string]iconDiskEntry     `json:"icons"`
+	Shortcuts map[string]shortcutDiskEntry `json:"shortcuts"`
+	SavedAt   time.Time                    `json:"savedAt"`
+}
+
+var (
+	iconDiskMu     sync.Mutex
+	iconDiskLoaded bool
+	iconDiskData   iconDiskCache
+)
+
+func iconDiskCachePath() string {
+	if iconDiskCacheFileOverride != "" {
+		return iconDiskCacheFileOverride
+	}
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "vantare", "launcher", "icons-cache-v1.json")
+}
+
+func loadIconDiskCache() *iconDiskCache {
+	iconDiskMu.Lock()
+	defer iconDiskMu.Unlock()
+	return loadIconDiskCacheLocked()
+}
+
+// loadIconDiskCacheLocked loads the cache; the caller must hold iconDiskMu.
+func loadIconDiskCacheLocked() *iconDiskCache {
+	if iconDiskLoaded {
+		return &iconDiskData
+	}
+	iconDiskLoaded = true
+	path := iconDiskCachePath()
+	if path == "" {
+		return &iconDiskData
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return &iconDiskData
+	}
+	var cache iconDiskCache
+	if json.Unmarshal(data, &cache) != nil || cache.Version != iconDiskCacheVersion {
+		return &iconDiskData
+	}
+	if cache.Icons == nil {
+		cache.Icons = map[string]iconDiskEntry{}
+	}
+	if cache.Shortcuts == nil {
+		cache.Shortcuts = map[string]shortcutDiskEntry{}
+	}
+	iconDiskData = cache
+	return &iconDiskData
+}
+
+func persistIconDiskCache() {
+	iconDiskMu.Lock()
+	defer iconDiskMu.Unlock()
+	path := iconDiskCachePath()
+	if path == "" {
+		return
+	}
+	iconDiskData.Version = iconDiskCacheVersion
+	iconDiskData.SavedAt = time.Now()
+	data, err := json.Marshal(&iconDiskData)
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, path)
+}
+
+// clearIconDiskCache drops the on-disk cache and marks the in-memory copy
+// empty. resetShortcutIndex calls this so a manual rescan sees fresh data.
+func clearIconDiskCache() {
+	iconDiskMu.Lock()
+	iconDiskLoaded = true
+	iconDiskData = iconDiskCache{
+		Icons:     map[string]iconDiskEntry{},
+		Shortcuts: map[string]shortcutDiskEntry{},
+	}
+	path := iconDiskCachePath()
+	iconDiskMu.Unlock()
+	if path != "" {
+		_ = os.Remove(path)
+	}
+}
+
+func fileFingerprint(path string) (mtimeMs int64, size int64, ok bool) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, 0, false
+	}
+	return info.ModTime().UnixMilli(), info.Size(), true
+}
+
+func iconDiskKey(path string) string {
+	return strings.ToLower(filepath.Clean(path))
+}
+
+func loadIconFromDisk(exePath string) []byte {
+	if exePath == "" {
+		return nil
+	}
+	iconDiskMu.Lock()
+	defer iconDiskMu.Unlock()
+	cache := loadIconDiskCacheLocked()
+	if len(cache.Icons) == 0 {
+		return nil
+	}
+	mtimeMs, size, ok := fileFingerprint(exePath)
+	if !ok {
+		return nil
+	}
+	entry, found := cache.Icons[iconDiskKey(exePath)]
+	if !found || entry.Path != exePath || entry.MtimeMs != mtimeMs || entry.Size != size {
+		return nil
+	}
+	b, err := base64.StdEncoding.DecodeString(entry.IconB64)
+	if err != nil || len(b) == 0 {
+		return nil
+	}
+	return b
+}
+
+func saveIconToDisk(exePath string, icon []byte) {
+	if exePath == "" || len(icon) == 0 {
+		return
+	}
+	iconDiskMu.Lock()
+	defer iconDiskMu.Unlock()
+	cache := loadIconDiskCacheLocked()
+	if len(cache.Icons) >= iconDiskCacheMaxIcons {
+		return
+	}
+	mtimeMs, size, ok := fileFingerprint(exePath)
+	if !ok {
+		return
+	}
+	cache.Icons[iconDiskKey(exePath)] = iconDiskEntry{
+		Path:    exePath,
+		MtimeMs: mtimeMs,
+		Size:    size,
+		IconB64: base64.StdEncoding.EncodeToString(icon),
+	}
+}
+
+// FlushIconDiskCache writes the accumulated icon and shortcut index entries to
+// disk. The scan calls it once, after resolving every icon, instead of writing
+// the file after every single resolution (which cost more than it saved).
+func FlushIconDiskCache() {
+	persistIconDiskCache()
+}
 
 // GetAppIcon extracts the primary icon from an executable and returns it as PNG bytes.
 // Results are cached in memory. Returns empty bytes if extraction fails.
@@ -501,6 +696,7 @@ func resetShortcutIndex() {
 	appIconCache.Lock()
 	appIconCache.items = nil
 	appIconCache.Unlock()
+	clearIconDiskCache()
 }
 
 // genericShortcutHints are executable base names too broad to act as shortcut
@@ -520,6 +716,12 @@ var genericShortcutHints = map[string]struct{}{
 func shortcutNameHints() []string {
 	var hints []string
 	for _, known := range KnownApps {
+		// steam-uri apps (e.g. LMU) resolve via the Steam library or registry;
+		// their shortcut hints only match unrelated .lnk files and cost COM
+		// round-trips during the index build, so they are skipped.
+		if known.LaunchMethod == "steam-uri" {
+			continue
+		}
 		for _, matcher := range known.DisplayNameMatchers {
 			hints = append(hints, strings.ToLower(matcher))
 		}
@@ -540,13 +742,50 @@ func shortcutNameHints() []string {
 // shortcutIndex returns the target-executable to .lnk index, walking the search
 // folders once and resolving each .lnk exactly once. Earlier folders win, so
 // the Desktop keeps priority over the Start Menu as it did when each caller ran
-// its own walk.
+// its own walk. A validated on-disk copy from a recent session is reused
+// instead of re-walking; a manual rescan invalidates it.
 func shortcutIndex() map[string]string {
 	shortcutIndexCache.Lock()
 	defer shortcutIndexCache.Unlock()
 	if shortcutIndexCache.items != nil {
 		return shortcutIndexCache.items
 	}
+
+	if cache := loadIconDiskCache(); len(cache.Shortcuts) > 0 && time.Since(cache.SavedAt) < iconDiskIndexFreshness {
+		index := map[string]string{}
+		allValid := true
+		for base, entry := range cache.Shortcuts {
+			mtimeMs, _, ok := fileFingerprint(entry.LnkPath)
+			if !ok || mtimeMs != entry.MtimeMs {
+				allValid = false
+				break
+			}
+			index[base] = entry.LnkPath
+		}
+		if allValid {
+			shortcutIndexCache.items = index
+			return index
+		}
+	}
+
+	index := buildShortcutIndex()
+	iconDiskMu.Lock()
+	cache := loadIconDiskCacheLocked()
+	cache.Shortcuts = map[string]shortcutDiskEntry{}
+	for base, lnk := range index {
+		if mtimeMs, _, ok := fileFingerprint(lnk); ok {
+			cache.Shortcuts[base] = shortcutDiskEntry{LnkPath: lnk, MtimeMs: mtimeMs}
+		}
+	}
+	iconDiskMu.Unlock()
+	shortcutIndexCache.items = index
+	return index
+}
+
+// buildShortcutIndex walks the shortcut search folders and resolves every .lnk
+// whose name matches a hint. It is the expensive path; shortcutIndex prefers
+// the persisted copy when it is still valid.
+func buildShortcutIndex() map[string]string {
 	index := map[string]string{}
 	hints := shortcutNameHints()
 	for _, dir := range shortcutSearchDirs() {
@@ -678,8 +917,10 @@ func getIconHighRes(path string) ([]byte, error) {
 // without the .lnk overlay, then its TargetPath is rendered through the
 // Windows Shell image list, matching the taskbar identity.
 //
-// Results are cached by (id, exePath) so repeated snapshots do not re-run the
-// COM pipeline; resetShortcutIndex invalidates the cache on every rescan.
+// Results are cached by (id, exePath) in memory and persisted to disk (keyed
+// by the executable path, validated by mtime/size) so a fresh process does
+// not re-run the COM pipeline for icons that have not changed.
+// resetShortcutIndex invalidates both caches on every rescan.
 func GetAppIconForApp(id, exePath string) []byte {
 	key := id + "\x00" + exePath
 	appIconCache.Lock()
@@ -688,6 +929,16 @@ func GetAppIconForApp(id, exePath string) []byte {
 		return cached
 	}
 	appIconCache.Unlock()
+
+	if b := loadIconFromDisk(exePath); b != nil {
+		appIconCache.Lock()
+		if appIconCache.items == nil {
+			appIconCache.items = map[string][]byte{}
+		}
+		appIconCache.items[key] = b
+		appIconCache.Unlock()
+		return b
+	}
 
 	icon := resolveAppIcon(id, exePath)
 	if icon == nil {
@@ -699,6 +950,7 @@ func GetAppIconForApp(id, exePath string) []byte {
 	}
 	appIconCache.items[key] = icon
 	appIconCache.Unlock()
+	saveIconToDisk(exePath, icon)
 	return icon
 }
 

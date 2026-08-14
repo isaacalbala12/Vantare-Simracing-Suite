@@ -114,7 +114,9 @@ func discoverPlatform() map[string]app.LauncherAppEntry {
 // readSteamLibraryFolders returns absolute paths to Steam library roots by
 // parsing libraryfolders.vdf. The parser is intentionally minimal: it extracts
 // the quoted "path" values. Steam's primary install is always included so at
-// least the default library is considered.
+// least the default library is considered. The result is deduplicated
+// case-insensitively because the primary path appears both as the registry
+// SteamPath and as the first VDF entry, often with different capitalization.
 func readSteamLibraryFolders() []string {
 	// SteamPath del registro HKCU\Software\Valve\Steam; fallback a ProgramFiles(x86)\Steam si no existe.
 	steamPath := ""
@@ -133,9 +135,29 @@ func readSteamLibraryFolders() []string {
 	vdf := filepath.Join(steamPath, "steamapps", "libraryfolders.vdf")
 	data, err := os.ReadFile(vdf)
 	if err != nil {
-		return libs
+		return dedupeFoldersCaseInsensitive(libs)
 	}
 
 	libs = append(libs, parseLibraryFoldersVDF(string(data))...)
-	return libs
+	return dedupeFoldersCaseInsensitive(libs)
+}
+
+// dedupeFoldersCaseInsensitive removes duplicate folders comparing paths
+// case-insensitively and cleaned (Windows paths may differ in case and
+// trailing separators while naming the same folder). First occurrence wins.
+func dedupeFoldersCaseInsensitive(paths []string) []string {
+	seen := make(map[string]struct{}, len(paths))
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		key := strings.ToLower(filepath.Clean(p))
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, p)
+	}
+	return out
 }

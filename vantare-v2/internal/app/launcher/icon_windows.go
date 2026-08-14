@@ -97,6 +97,16 @@ type bitMap struct {
 var iconCache = map[string][]byte{}
 var iconCacheMu sync.Mutex
 
+// appIconCache holds the resolved icon bytes keyed by id|exePath. The icon
+// pipeline has several expensive, uncached stages (shortcut COM resolution,
+// the shell image list, PNG encoding), so every snapshot currently re-runs
+// them all. This cache makes repeated snapshots O(1). It is invalidated by
+// resetShortcutIndex, exactly when discovery resets the shortcut index.
+var appIconCache = struct {
+	sync.Mutex
+	items map[string][]byte
+}{}
+
 // GetAppIcon extracts the primary icon from an executable and returns it as PNG bytes.
 // Results are cached in memory. Returns empty bytes if extraction fails.
 func GetAppIcon(exePath string) []byte {
@@ -477,19 +487,36 @@ func shortcutSearchDirs() []shortcutSearchDir {
 }
 
 // resetShortcutIndex discards the shortcut index so the next lookup rebuilds
-// it. Discovery calls this on every scan, which is what lets a rescan pick up
-// apps installed since the process started.
+// it, and drops every cached icon so a rescan sees the current disk state
+// (e.g. an app reinstalled with a different .lnk or embedded icon). Discovery
+// calls this on every scan, which is what lets a rescan pick up apps installed
+// since the process started.
 func resetShortcutIndex() {
 	shortcutIndexCache.Lock()
 	shortcutIndexCache.items = nil
 	shortcutIndexCache.Unlock()
+	iconCacheMu.Lock()
+	iconCache = map[string][]byte{}
+	iconCacheMu.Unlock()
+	appIconCache.Lock()
+	appIconCache.items = nil
+	appIconCache.Unlock()
+}
+
+// genericShortcutHints are executable base names too broad to act as shortcut
+// hints: they match many unrelated .lnk files, and resolving every matched
+// shortcut is a serialized COM round-trip that dominates the first scan.
+var genericShortcutHints = map[string]struct{}{
+	"app":    {},
+	"update": {},
 }
 
 // shortcutNameHints returns the lower-cased fragments a catalogued app's
 // shortcut file name is expected to contain: its display-name matchers plus its
-// executable base names. Resolving a .lnk is a COM round-trip, and the search
-// folders hold hundreds of them while the catalog only has a handful of apps,
-// so the index resolves only the .lnk files whose own name matches a hint.
+// executable base names (except generic ones). Resolving a .lnk is a COM
+// round-trip, and the search folders hold hundreds of them while the catalog
+// only has a handful of apps, so the index resolves only the .lnk files whose
+// own name matches a hint.
 func shortcutNameHints() []string {
 	var hints []string
 	for _, known := range KnownApps {
@@ -498,9 +525,13 @@ func shortcutNameHints() []string {
 		}
 		for _, name := range known.ExecutableNames {
 			base := strings.ToLower(strings.TrimSuffix(name, filepath.Ext(name)))
-			if base != "" {
-				hints = append(hints, base)
+			if base == "" {
+				continue
 			}
+			if _, generic := genericShortcutHints[base]; generic {
+				continue
+			}
+			hints = append(hints, base)
 		}
 	}
 	return hints
@@ -646,7 +677,32 @@ func getIconHighRes(path string) ([]byte, error) {
 // A shortcut is used only for discovery: its explicit IconLocation is tried
 // without the .lnk overlay, then its TargetPath is rendered through the
 // Windows Shell image list, matching the taskbar identity.
+//
+// Results are cached by (id, exePath) so repeated snapshots do not re-run the
+// COM pipeline; resetShortcutIndex invalidates the cache on every rescan.
 func GetAppIconForApp(id, exePath string) []byte {
+	key := id + "\x00" + exePath
+	appIconCache.Lock()
+	if cached, ok := appIconCache.items[key]; ok {
+		appIconCache.Unlock()
+		return cached
+	}
+	appIconCache.Unlock()
+
+	icon := resolveAppIcon(id, exePath)
+	if icon == nil {
+		return nil
+	}
+	appIconCache.Lock()
+	if appIconCache.items == nil {
+		appIconCache.items = map[string][]byte{}
+	}
+	appIconCache.items[key] = icon
+	appIconCache.Unlock()
+	return icon
+}
+
+func resolveAppIcon(id, exePath string) []byte {
 	target := exePath
 	shortcut := ""
 	if known, ok := KnownAppsByID[id]; ok {

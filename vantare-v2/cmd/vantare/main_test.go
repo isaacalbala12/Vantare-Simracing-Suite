@@ -1144,7 +1144,8 @@ func TestHandleAppUpdateEmitsUpdated(t *testing.T) {
 	}
 
 	emitter := &spyMainEmitter{}
-	handleAppUpdate("obs", "--new-args", settingsSvc2, emitter)
+	svc := launcher.NewService(settingsSvc2, emitter, nil)
+	handleAppUpdate("obs", "--new-args", svc, emitter)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
 		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
@@ -1164,7 +1165,8 @@ func TestHandleAppUpdateEmitsErrorOnUnknown(t *testing.T) {
 	}
 
 	emitter := &spyMainEmitter{}
-	handleAppUpdate("ghost", "args", settingsSvc, emitter)
+	svc := launcher.NewService(settingsSvc, emitter, nil)
+	handleAppUpdate("ghost", "args", svc, emitter)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)

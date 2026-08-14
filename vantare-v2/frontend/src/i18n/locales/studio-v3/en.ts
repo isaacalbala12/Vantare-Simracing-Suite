@@ -170,10 +170,18 @@ export const studioV3En: Record<string, string> = {
   "studio.v3.design.renamePrompt": "New design name",
   "studio.v3.design.loadFailed": "Could not load saved designs.",
   "studio.v3.design.applyAll.confirm":
-    'Apply "{name}" to {count} compatible widget(s) in this session',
+    "Apply “{name}” to {count} compatible widget(s) in this session",
   "studio.v3.design.applyAll.skippedSuffix": "({count} skipped due to incompatibility)",
   "studio.v3.design.saveFailed": "Could not save design.",
   "studio.v3.design.deleteConfirm": 'Delete design "{name}"?',
+  "studio.v3.confirm.cancel": "Cancel",
+  "studio.v3.design.deleteDialog.title": "Delete design?",
+  "studio.v3.design.deleteDialog.body": "“{name}” will be removed from your saved designs.",
+  "studio.v3.design.deleteDialog.hint":
+    "Widgets already using it keep their current appearance.",
+  "studio.v3.design.applyAllDialog.title": "Apply to all?",
+  "studio.v3.design.applyAllDialog.hint":
+    "You can undo it with Ctrl+Z as long as you haven't saved.",
   "studio.v3.design.deleteFailed": "Could not delete design.",
   "studio.v3.design.renameFailed": "Could not rename design.",
   "studio.v3.design.status.active": "Active",

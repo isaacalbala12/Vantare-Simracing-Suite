@@ -42,6 +42,22 @@
   conserva 50 px de altura y expone solo resize este/oeste. Tests focales,
   suite frontend, lint focal, build y CI pasan. Queda pendiente la validación
   visual manual de Isaac; no hubo promoción a `testers` ni `master`.
+- Hotfixes 6–7 aislados en `fix/overlay-hotfixes-6-7`, base
+  `nightly@638b4704d7afb57cf6a7213eef796fc9c7304a80`, con excepción explícita
+  de Linear aprobada por Isaac. El punto 6 está implementado localmente con
+  SDD: `Ctrl+Shift+E` alterna la misma ventana desktop entre racing/edit, abre
+  el perfil activo si estaba cerrada, y monta selección/move/resize con
+  borrador y Save/Cancel/Escape sobre `WidgetVisualHost`. La persistencia usa
+  revisión optimista y siempre guarda `displayMode=racing`; el registro Win32
+  añade `MOD_NOREPEAT`. Punto 7 conserva la contracción Tower/Standings ya
+  presente en el commit padre. Los puntos 1–5 no forman parte de esta rama.
+  Evidencia punto 6: typecheck, build, 99 tests focales y ESLint focal pasan;
+  suite completa 2.654/2.655 con el único fallo heredado de Calendario. Go y
+  gofmt no existen en este contenedor; falta test/cross-build Go y smoke real
+  Windows/LMU (DPI, multi-monitor, foco, click-through y captura). Rama
+  publicada en el PR draft
+  [#234](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/234);
+  CI pendiente. No hay merge, integración, promoción ni release autorizados.
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
   PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR

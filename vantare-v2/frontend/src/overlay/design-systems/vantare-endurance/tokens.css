@@ -76,6 +76,15 @@
   border-collapse: collapse;
 }
 
+[data-widget-system="vantare-endurance"] .ven-standings-empty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  color: var(--ven-text-dim);
+  background: var(--ven-row-alt);
+}
+
 [data-widget-system="vantare-endurance"] .ven-standings-head th {
   padding: 2px 4px;
   font-size: 10px;

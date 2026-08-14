@@ -2257,7 +2257,14 @@ func main() {
 	})
 
 	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {
-		handleOpenOverlayStudio(studioProfileSvc, emitter)
+		if err := toggleOverlayEditMode(
+			overlayController,
+			studioProfileSvc,
+			&overlayRunning,
+			hubSvc.StartActiveOverlay,
+		); err != nil {
+			log.Printf("overlay:toggle-edit-mode error: %v", err)
+		}
 	})
 
 	wailsApp.Event.On("profile:set-mode", func(event *application.CustomEvent) {
@@ -3009,24 +3016,6 @@ func refreshActiveOverlayAfterSave(
 	resetOverlayDisplayMode(overlayController, studioProfileSvc)
 }
 
-// handleOpenOverlayStudio requests Hub navigation to Overlay Studio for the
-// active profile. Runtime editing chrome is never toggled from the hotkey.
-func handleOpenOverlayStudio(studioProfileSvc *app.StudioProfileService, emitter app.EventEmitter) {
-	if emitter == nil {
-		return
-	}
-	payload := map[string]any{}
-	if studioProfileSvc != nil {
-		if doc := studioProfileSvc.Document(); doc != nil && doc.ID != "" {
-			payload["profileId"] = doc.ID
-		}
-		if path := studioProfileSvc.Path(); path != "" {
-			payload["file"] = filepath.Base(path)
-		}
-	}
-	emitter.Emit("hub:open-overlay-studio", payload)
-}
-
 // handleOverlayProfileSnapshotRequest responds to the desktop WebView only
 // after its profile listener is ready. The startup broadcast can otherwise
 // race a newly-created window and leave it loading indefinitely.
@@ -3044,14 +3033,69 @@ func resetOverlayDisplayMode(overlayController *app.OverlayController, studioPro
 	if document == nil {
 		return
 	}
-	if overlayController != nil {
-		current := overlayController.CurrentWindow()
-		if current != nil {
-			if err := current.ApplyProfileMode(document); err != nil {
-				log.Printf("overlay reset display mode apply window error: %v", err)
-			}
+	if overlayController != nil && overlayController.Status().Running {
+		if err := overlayController.ApplyProfileMode(document); err != nil {
+			log.Printf("overlay reset display mode apply window error: %v", err)
 		}
 	}
+}
+
+type startActiveOverlay func() (app.OverlayStatus, error)
+
+// toggleOverlayEditMode makes the existing desktop overlay interactive. If no
+// overlay is running, it starts the active profile first. The profile mutation
+// is rolled back if the native window cannot apply the requested mode.
+func toggleOverlayEditMode(
+	overlayController *app.OverlayController,
+	studioProfileSvc *app.StudioProfileService,
+	overlayRunning *atomic.Bool,
+	startActive startActiveOverlay,
+) error {
+	if overlayController == nil || studioProfileSvc == nil || overlayRunning == nil {
+		return fmt.Errorf("overlay edit mode is unavailable")
+	}
+
+	status := overlayController.Status()
+	if !overlayRunning.Load() || !status.Running {
+		if startActive == nil {
+			return fmt.Errorf("active overlay starter is unavailable")
+		}
+		if document := studioProfileSvc.Document(); document != nil && document.DisplayMode != config.ModeRacing {
+			if err := studioProfileSvc.SetDisplayMode(config.ModeRacing); err != nil {
+				return fmt.Errorf("reset overlay before edit: %w", err)
+			}
+		}
+		started, err := startActive()
+		if err != nil {
+			overlayRunning.Store(started.Running)
+			return fmt.Errorf("start active overlay for edit: %w", err)
+		}
+		overlayRunning.Store(started.Running)
+		if !started.Running {
+			return fmt.Errorf("active overlay did not start")
+		}
+	}
+
+	document := studioProfileSvc.Document()
+	if document == nil {
+		return fmt.Errorf("active overlay profile is unavailable")
+	}
+	previousMode := document.DisplayMode
+	targetMode := config.ModeEdit
+	if previousMode == config.ModeEdit {
+		targetMode = config.ModeRacing
+	}
+	if err := studioProfileSvc.SetDisplayMode(targetMode); err != nil {
+		return fmt.Errorf("set overlay edit mode: %w", err)
+	}
+	if err := overlayController.ApplyProfileMode(studioProfileSvc.Document()); err != nil {
+		if rollbackErr := studioProfileSvc.SetDisplayMode(previousMode); rollbackErr != nil {
+			log.Printf("overlay edit mode rollback error: %v", rollbackErr)
+		}
+		return err
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
+	return nil
 }
 
 // resetOverlayProfileDisplayMode resets profile state without touching the
@@ -3155,7 +3199,13 @@ func buildHotkeyActionMap(
 			}
 		},
 		"toggleEditMode": func() {
-			handleOpenOverlayStudio(studioProfileSvc, emitter)
+			var startActive startActiveOverlay
+			if hubSvc != nil {
+				startActive = hubSvc.StartActiveOverlay
+			}
+			if err := toggleOverlayEditMode(overlayController, studioProfileSvc, overlayRunning, startActive); err != nil {
+				log.Printf("hotkey toggle edit mode error: %v", err)
+			}
 		},
 	}
 }

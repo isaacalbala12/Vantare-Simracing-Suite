@@ -58,6 +58,8 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
       data-widget-system="vantare-crystal"
       data-widget-renderer="standings"
       data-status={model.status}
+      data-driver-count={model.rows.length}
+      data-visible-rows={Math.max(1, model.rows.length)}
       data-compact={compactRows ? "true" : undefined}
       className="vc-standings"
     >
@@ -112,6 +114,16 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
               </span>
             </article>
           ))}
+          {model.rows.length === 0 ? (
+            <div className="vc-standings-row vc-standings-empty-row" aria-label="No drivers">
+              <span aria-hidden="true" />
+              <span>—</span>
+              <span>—</span>
+              <span className="vc-standings-driver">—</span>
+              <span>—</span>
+              <span>—</span>
+            </div>
+          ) : null}
         </div>
         <CrystalFooter>
           <span>LE MANS ULTIMATE</span>

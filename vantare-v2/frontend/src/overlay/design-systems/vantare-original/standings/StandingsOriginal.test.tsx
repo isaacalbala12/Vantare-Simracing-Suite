@@ -45,6 +45,17 @@ describe("StandingsOriginal", () => {
     expect(root.getAttribute("data-status")).toBe("ready");
   });
 
+  it("sizes the visible shell from the live driver count with a one-row empty state", () => {
+    const two = renderOriginal({ ...readyModel, rows: readyModel.rows.slice(0, 2) });
+    expect(two.root.dataset.driverCount).toBe("2");
+    expect(two.root.dataset.visibleRows).toBe("2");
+    cleanup();
+    const empty = renderOriginal(unavailable("missing"));
+    expect(empty.root.dataset.driverCount).toBe("0");
+    expect(empty.root.dataset.visibleRows).toBe("1");
+    expect(empty.root.querySelector(".vo-standings-empty-row")).toBeTruthy();
+  });
+
   it("renders enabled columns in configured order", () => {
     const { root } = renderOriginal(readyModel);
     const headers = [...root.querySelectorAll("thead th")].map((cell) => cell.getAttribute("data-metric"));

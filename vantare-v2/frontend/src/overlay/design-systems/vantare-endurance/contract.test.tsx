@@ -55,6 +55,29 @@ function rootOf(container: HTMLElement): HTMLElement {
 }
 
 describe("vantare-endurance contract", () => {
+  it("exposes the live driver count and a one-row empty standings state", () => {
+    const two = render(
+      <StandingsEndurance
+        model={{ ...standingsModel, rows: standingsModel.rows.slice(0, 2) }}
+        settings={{ templateId: "standings-lmu" }}
+        renderMode="harness"
+      />,
+    );
+    expect(rootOf(two.container).dataset.visibleRows).toBe("2");
+    cleanup();
+
+    const empty = render(
+      <StandingsEndurance
+        model={{ ...standingsModel, rows: [] }}
+        settings={{ templateId: "standings-lmu" }}
+        renderMode="harness"
+      />,
+    );
+    expect(rootOf(empty.container).dataset.driverCount).toBe("0");
+    expect(rootOf(empty.container).dataset.visibleRows).toBe("1");
+    expect(rootOf(empty.container).querySelector(".ven-standings-empty-row")).toBeTruthy();
+  });
+
   it("registers exactly the four implemented core widgets", () => {
     expect(vantareEnduranceManifest.id).toBe("vantare-endurance");
     expect(vantareEnduranceManifest.version).toBe(1);

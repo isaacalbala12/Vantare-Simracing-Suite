@@ -32,6 +32,8 @@ export function StandingsOriginal({ model, settings }: WidgetRendererProps<Stand
       data-widget-system="vantare-original"
       data-widget-renderer="standings"
       data-status={model.status}
+      data-driver-count={model.rows.length}
+      data-visible-rows={Math.max(1, model.rows.length)}
       data-compact={compactRows ? "true" : undefined}
       className="vo-standings"
       style={buildStandingsAppearanceStyle(settings)}
@@ -98,6 +100,11 @@ export function StandingsOriginal({ model, settings }: WidgetRendererProps<Stand
                 ))}
               </tr>
             ))}
+            {model.rows.length === 0 ? (
+              <tr className="vo-standings-empty-row" aria-label="No drivers">
+                <td colSpan={Math.max(1, model.columns.length)}>—</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

@@ -6,8 +6,9 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type RefObject,
 } from "react";
-import type { ProfileDocumentV3 } from "../core/profile-document";
+import type { ProfileDocumentV3, SessionLayoutType } from "../core/profile-document";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
   resolveLayoutViewport,
@@ -17,10 +18,13 @@ import {
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
-import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
+import { mapTelemetrySessionToLayoutType, resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
+import { useCanvasInteraction } from "../../hub/overlay-studio/canvas/useCanvasInteraction";
+import { CanvasGuides } from "../../hub/overlay-studio/canvas/CanvasGuides";
+import { applyStudioCommand, type StudioCommand } from "../../hub/overlay-studio/state/studio-command";
 
 export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
 
@@ -32,17 +36,107 @@ export type RuntimeOverlaySurfaceProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
+  editing?: {
+    onDocumentChange(document: ProfileDocumentV3): void;
+  };
 };
+
+type RuntimeEditSceneProps = {
+  document: ProfileDocumentV3;
+  session: SessionLayoutType;
+  widgets: ReturnType<typeof selectRuntimeWidgets>;
+  scale: number;
+  sceneStyle: CSSProperties;
+  telemetry: TelemetryRateCoordinator;
+  layoutOrigin?: { x: number; y: number };
+  onDocumentChange(document: ProfileDocumentV3): void;
+  onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
+  diagnostics: WidgetDiagnosticCollector;
+  engineerPresentation: ReturnType<EngineerPresentationStore["getSnapshot"]>;
+  engineerSubtitlesEnabled: boolean;
+};
+
+function RuntimeEditScene(props: RuntimeEditSceneProps): React.ReactElement {
+  const {
+    document,
+    session,
+    widgets,
+    scale,
+    sceneStyle,
+    telemetry,
+    layoutOrigin,
+    onDocumentChange,
+    onDiagnostic,
+    diagnostics,
+    engineerPresentation,
+    engineerSubtitlesEnabled,
+  } = props;
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const dispatch = (command: StudioCommand) => onDocumentChange(applyStudioCommand(document, command));
+  const interaction = useCanvasInteraction({
+    widgets,
+    session,
+    scale,
+    layoutViewport: resolveLayoutViewport(document),
+    sceneRef: sceneRef as RefObject<HTMLElement | null>,
+    selectedWidgetId,
+    dispatch,
+    selectWidget: setSelectedWidgetId,
+  });
+
+  return (
+    <div
+      ref={sceneRef}
+      data-testid="runtime-overlay-scene"
+      data-layout-width={resolveLayoutViewport(document).width}
+      data-layout-height={resolveLayoutViewport(document).height}
+      data-scale={scale}
+      style={sceneStyle}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) setSelectedWidgetId(null);
+      }}
+    >
+      <CanvasGuides guides={interaction.guides} />
+      {widgets.map((widget) => (
+        <RuntimeWidgetFrame
+          key={widget.id}
+          widget={widget}
+          telemetry={telemetry}
+          renderMode="desktop"
+          layoutOrigin={layoutOrigin}
+          onDiagnostic={onDiagnostic}
+          diagnostics={diagnostics}
+          engineerPresentation={engineerPresentation}
+          engineerSubtitlesEnabled={engineerSubtitlesEnabled}
+          edit={{
+            selected: selectedWidgetId === widget.id,
+            previewActive: interaction.isWidgetPreviewActive(widget.id),
+            onSelect: setSelectedWidgetId,
+            onFramePointerDown: interaction.onFramePointerDown,
+            onResizePointerDown: interaction.onResizePointerDown,
+            onLostPointerCapture: interaction.onLostPointerCapture,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, editing } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
   const layout = resolveRuntimeLayout(document, snapshot);
   const widgets = selectRuntimeWidgets(layout, snapshot);
+  const requestedSession = mapTelemetrySessionToLayoutType(snapshot.session.type);
+  const activeSession = document.layouts[requestedSession] ? requestedSession : "general";
+  const editWidgets = [...(document.layouts[activeSession]?.widgets ?? [])]
+    .filter((widget) => widget.behavior.enabled)
+    .sort((left, right) => left.layout.zIndex - right.layout.zIndex);
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
@@ -145,7 +239,22 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
 
   return (
     <div ref={surfaceRef} data-testid="runtime-overlay-surface" data-render-mode={renderMode} style={surfaceStyle}>
-      {transform && sceneStyle ? (
+      {transform && sceneStyle && editing && renderMode === "desktop" ? (
+        <RuntimeEditScene
+          document={document}
+          session={activeSession}
+          widgets={editWidgets}
+          scale={transform.scale}
+          sceneStyle={sceneStyle}
+          telemetry={telemetry}
+          layoutOrigin={layoutOrigin}
+          onDocumentChange={editing.onDocumentChange}
+          onDiagnostic={onDiagnostic}
+          diagnostics={diagnostics}
+          engineerPresentation={engineerPresentation}
+          engineerSubtitlesEnabled={subtitlesEnabled}
+        />
+      ) : transform && sceneStyle ? (
         <div
           data-testid="runtime-overlay-scene"
           data-layout-width={layoutViewport.width}

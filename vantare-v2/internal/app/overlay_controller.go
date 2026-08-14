@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -122,6 +123,26 @@ func (c *OverlayController) CurrentWindow() OverlayWindow {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.current
+}
+
+// ApplyProfileMode updates the active native window and only then publishes
+// the new mode in controller status. The document is owned by the profile
+// service; this method does not mutate or persist it.
+func (c *OverlayController) ApplyProfileMode(document *config.ProfileDocumentV3) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if document == nil {
+		return fmt.Errorf("overlay profile document is required")
+	}
+	if c.current == nil || !c.status.Running {
+		return fmt.Errorf("overlay window is not running")
+	}
+	if err := c.current.ApplyProfileMode(document); err != nil {
+		return fmt.Errorf("apply overlay profile mode: %w", err)
+	}
+	c.status.Mode = document.DisplayMode
+	return nil
 }
 
 // Status returns the current overlay status.

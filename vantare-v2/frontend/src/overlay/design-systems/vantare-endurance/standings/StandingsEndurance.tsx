@@ -332,11 +332,16 @@ export function StandingsEndurance({ model, settings }: WidgetRendererProps<Stan
       data-widget-system="vantare-endurance"
       data-widget-renderer="standings"
       data-status={model.status}
+      data-driver-count={model.rows.length}
+      data-visible-rows={Math.max(1, model.rows.length)}
       data-template={parsed.templateId}
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
       {templateBody(parsed.templateId, model, settings, parsed.showSessionHeader)}
+      {model.rows.length === 0 ? (
+        <div className="ven-standings-empty-row" aria-label="No drivers">—</div>
+      ) : null}
     </section>
   );
 }

@@ -275,7 +275,7 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.deleteWidget.restore": "Reativar o aviso ao eliminar",
   "studio.v3.contextMenu.selectLayer": "Selecionar camada",
   "studio.v3.canvas.widgetHidden": "Oculto",
-  "studio.v3.canvas.resizeHandleAria": "Resize {handle}",
+  "studio.v3.canvas.resizeHandleAria": "Redimensionar {handle}",
   "studio.v3.errors.loadProfileFailed": "Não foi possível carregar o perfil do studio",
   "studio.v3.errors.accessDenied": "Acesso ao studio negado",
   "studio.v3.errors.profileNotLoaded": "O perfil do studio não está carregado",
@@ -283,4 +283,10 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.access.premiumSaveDenied":
     "Não podes guardar alterações em widgets premium sem a licença adequada.",
   "studio.v3.standings.rowCount": "Linhas",
+  "overlay.inGameEdit.title": "Editar overlay",
+  "overlay.inGameEdit.ready": "Seleciona um widget para mover ou redimensionar",
+  "overlay.inGameEdit.unsaved": "Alterações por guardar",
+  "overlay.inGameEdit.saving": "A guardar…",
+  "overlay.inGameEdit.save": "Guardar",
+  "overlay.inGameEdit.cancel": "Cancelar",
 };

@@ -67,6 +67,7 @@ const (
 	EvidenceReportContext EvidenceKind = "report_context"
 	EvidenceDiagnostic    EvidenceKind = "diagnostic"
 	EvidenceReproduction  EvidenceKind = "reproduction"
+	EvidenceScreenshot    EvidenceKind = "screenshot"
 )
 
 type Evidence struct {

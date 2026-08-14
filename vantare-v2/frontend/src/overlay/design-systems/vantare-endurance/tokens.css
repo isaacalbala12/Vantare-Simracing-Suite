@@ -2951,3 +2951,56 @@
     opacity: 0;
   }
 }
+
+/* Track map ---------------------------------------------------------------- */
+
+[data-widget-system="vantare-endurance"].ven-track-map {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-outline {
+  fill: none;
+  stroke: var(--ven-accent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ven-text-dim);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  border: 1px dashed var(--ven-line);
+  border-radius: 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ven-text-dim);
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-synthetic {
+  color: var(--ven-best);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}

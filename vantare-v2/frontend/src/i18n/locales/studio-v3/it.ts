@@ -98,6 +98,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.widgetTypes.carDamageVisual": "Danni auto visivi",
   "studio.v3.widgetTypes.carDamageNumbers": "Danni auto numerici",
   "studio.v3.widgetTypes.engineerRadio": "Radio dell'ingegnere",
+  "studio.v3.widgetTypes.trackMap": "Mappa del circuito",
   "studio.v3.dirtyDialog.title": "Modifiche non salvate",
   "studio.v3.dirtyDialog.body": "Hai modifiche in sospeso. Cosa vuoi fare prima di uscire?",
   "studio.v3.dirtyDialog.save": "Salva",

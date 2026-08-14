@@ -99,14 +99,14 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 describe("deriveStudioCatalog", () => {
   it("keeps the 18 reference types plus the functional Engineer radio registration", () => {
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES);
-    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(19);
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(20);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions["input-telemetry"]).toEqual([
       "input-crystal-blade",
       "input-crystal-capsule",
       "input-crystal-dense",
     ]);
-    expect(deriveStudioCatalog()).toHaveLength(19);
+    expect(deriveStudioCatalog()).toHaveLength(20);
     expect(deriveStudioCatalog().map((entry) => entry.type)).toContain("input-telemetry");
   });
 

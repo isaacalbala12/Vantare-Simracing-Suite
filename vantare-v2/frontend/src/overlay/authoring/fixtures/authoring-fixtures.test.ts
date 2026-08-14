@@ -16,8 +16,8 @@ import {
 
 describe("authoring fixtures", () => {
   it("constructs the complete functional catalog without folding Engineer into historical Crystal parity", () => {
-    expect(AUTHORING_WIDGET_TYPES).toHaveLength(19);
-    expect(new Set(AUTHORING_WIDGET_TYPES).size).toBe(19);
+    expect(AUTHORING_WIDGET_TYPES).toHaveLength(20);
+    expect(new Set(AUTHORING_WIDGET_TYPES).size).toBe(20);
     expect(AUTHORING_HISTORICAL_CRYSTAL_DESIGNS).toHaveLength(21);
     expect(new Set(AUTHORING_HISTORICAL_CRYSTAL_DESIGNS.map((design) => design.widgetType)).size).toBe(18);
     expect(AUTHORING_ENGINEER_CONTRACT_DESIGNS).toEqual([

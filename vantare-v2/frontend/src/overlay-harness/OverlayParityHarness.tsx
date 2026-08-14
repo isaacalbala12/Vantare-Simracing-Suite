@@ -47,7 +47,18 @@ const DEFAULT_QUERY: HarnessQuery = {
   variant: "default",
 };
 
-const SYSTEMS = new Set<HarnessSystem>(["vantare-original", "vantare-crystal"]);
+// Widgets whose only renderer lives outside the default system are shown in the
+// system that actually implements them, otherwise the harness renders nothing.
+const DEFAULT_SYSTEM_BY_WIDGET: Partial<Record<HarnessWidget, HarnessSystem>> = {
+  "engineer-radio": "vantare-crystal",
+  "track-map": "vantare-endurance",
+};
+
+const SYSTEMS = new Set<HarnessSystem>([
+  "vantare-original",
+  "vantare-crystal",
+  "vantare-endurance",
+]);
 const SESSIONS = new Set<MockSessionScenario>(["practice", "qualifying", "race"]);
 const LOCATIONS = new Set<MockLocationScenario>(["track", "pits"]);
 const STATES = new Set<MockDataState>(["ready", "stale", "disconnected", "error"]);
@@ -58,7 +69,7 @@ const ENGINEER_SEVERITIES = new Set<EngineerSeverity>(["info", "warning", "criti
 export function parseHarnessQuery(search: string): HarnessQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_QUERY.widget) as HarnessWidget;
-  const system = (params.get("system") ?? (widget === "engineer-radio" ? "vantare-crystal" : DEFAULT_QUERY.system)) as HarnessSystem;
+  const system = (params.get("system") ?? DEFAULT_SYSTEM_BY_WIDGET[widget] ?? DEFAULT_QUERY.system) as HarnessSystem;
   const session = (params.get("session") ?? DEFAULT_QUERY.session) as MockSessionScenario;
   const location = (params.get("location") ?? DEFAULT_QUERY.location) as MockLocationScenario;
   const state = (params.get("state") ?? DEFAULT_QUERY.state) as MockDataState;

@@ -10,6 +10,7 @@ import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/in
 import type { DeltaViewModel } from "../widget-types/delta/delta-view-model";
 import type { DeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
 import type { DeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
+import type { TrackMapViewModel } from "../widget-types/track-map/track-map-view-model";
 import type { FuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
 import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
 import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
@@ -525,6 +526,21 @@ export const OVERLAY_SHADOW_POLICIES = {
       multiclassRelativeRows,
       unsupported("rows[].classColor", target("scoring[].teamBrandColor")),
       unsupported("rows[].number", target("scoring[].driverNumber")),
+    ],
+  },
+  "track-map": {
+    widgetType: "track-map",
+    coverage: "partial",
+    rules: [
+      ...statusRules,
+      scalar("trackLabel", (model) => (model as TrackMapViewModel).trackLabel, presenceDisclosure, allOf(target("session.trackName"))),
+      scalar("synthetic", (model) => (model as TrackMapViewModel).synthetic, booleanDisclosure, allOf(target("session.trackName"))),
+      scalar("unavailableReason", (model) => (model as TrackMapViewModel).unavailableReason, redactedDisclosure, allOf(target("session.trackName"))),
+      // The outline is a static build asset keyed by track name, not telemetry,
+      // so there is nothing for the shadow comparator to reconcile.
+      unsupported("outlinePath", target("session.trackName")),
+      unsupported("viewBox", target("session.trackName")),
+      unsupported("showTrackLabel", target("session.trackName")),
     ],
   },
   "track-weather": {

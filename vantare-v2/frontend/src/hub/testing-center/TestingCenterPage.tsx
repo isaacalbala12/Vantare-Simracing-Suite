@@ -10,9 +10,12 @@ import {
   type TestingCenterModule,
 } from "./contracts";
 import {
+  mapAgentJobVisibleState,
   TestingCenterClientError,
+  type AgentJobVisibleState,
   type TestingCenterClient,
 } from "./testing-center-client";
+import type { AgentJobState } from "./agent-job-state-client";
 import type { SubmitReportInput } from "./report-submission-client";
 import { DiagnosticPreviewPanel } from "./DiagnosticPreviewPanel";
 import { hasReportFieldErrors, normalizedReportFields, validateReportFields } from "./validation";
@@ -27,12 +30,29 @@ const EMPTY_FIELDS: ReportDraftFields = {
   module: "unknown",
 };
 
+const loadDefaultAgentJobState = async (reportId: string): Promise<AgentJobState | null> => {
+  const { loadTestingCenterAgentJobState } = await import("./agent-job-state-client");
+  return loadTestingCenterAgentJobState(reportId);
+};
+
+const TERMINAL_AGENT_JOB_STATES = new Set([
+  "completed",
+  "reverted",
+  "needs_owner",
+  "duplicate",
+  "needs_info",
+  "ineligible",
+  "stopped",
+]);
+
 type TestingCenterPageProps = {
   channel: TestingCenterChannel;
   version: string | null;
   client: TestingCenterClient;
   submitReport: (input: SubmitReportInput) => Promise<SubmittedReport>;
   feedbackClient: TestingCenterFeedbackClient;
+  loadAgentJobState?: (reportId: string) => Promise<AgentJobState | null>;
+  agentPollIntervalMs?: number;
 };
 
 const MODULE_LABELS: Record<TestingCenterModule, string> = {
@@ -61,6 +81,8 @@ export function TestingCenterPage({
   client,
   submitReport,
   feedbackClient,
+  loadAgentJobState = loadDefaultAgentJobState,
+  agentPollIntervalMs = 15_000,
 }: TestingCenterPageProps) {
   const { t } = useI18n();
   const [fields, setFields] = useState<ReportDraftFields>(EMPTY_FIELDS);
@@ -75,6 +97,7 @@ export function TestingCenterPage({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState<SubmittedReport | null>(null);
+  const [agentState, setAgentState] = useState<AgentJobVisibleState>("processing");
   const [discardWarning, setDiscardWarning] = useState(false);
   const [activeView, setActiveView] = useState<"report" | "validate">("report");
   const edited = useRef(false);
@@ -157,6 +180,29 @@ export function TestingCenterPage({
     return () => { active = false; };
   }, [channel, client, fields.module, includeDiagnostic, includeLogs]);
 
+  useEffect(() => {
+    if (!submitted) return;
+    let active = true;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const result = await loadAgentJobState(submitted.reportId);
+        if (!active) return;
+        const visible = result ? mapAgentJobVisibleState(result.state) : "processing";
+        setAgentState(visible);
+        if (result && TERMINAL_AGENT_JOB_STATES.has(result.state)) return;
+      } catch {
+        if (!active) return;
+      }
+      timer = window.setTimeout(poll, agentPollIntervalMs);
+    };
+    void poll();
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [agentPollIntervalMs, loadAgentJobState, submitted]);
+
   const changeField = useCallback((field: keyof ReportDraftFields, value: string) => {
     edited.current = true;
     setSubmitted(null);
@@ -234,6 +280,7 @@ export function TestingCenterPage({
         idempotencyKey: saved.idempotencyKey,
       });
       setSubmitted(result);
+      setAgentState("processing");
       try {
         // A debounce that already fired while the RPC was in flight must
         // finish before deletion or it could recreate the draft afterwards.
@@ -300,6 +347,9 @@ export function TestingCenterPage({
         <section className="rounded-xl border border-green-500/30 bg-green-500/10 p-4" role="status">
           <h2 className="font-semibold text-green-200">{t("testingCenter.success.title")}</h2>
           <p className="mt-1 text-sm text-green-100">{t("testingCenter.success.description")}</p>
+          <p className="mt-2 text-sm font-medium text-green-100" data-testid="testing-center-agent-state">
+            {t(`testingCenter.agent.${agentState}`)}
+          </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <code className="min-w-0 break-all rounded bg-black/30 px-3 py-2 text-xs text-white">{submitted.reportId}</code>
             <button type="button" className="btn-secondary min-h-11 px-4 text-sm" onClick={() => navigator.clipboard?.writeText(submitted.reportId)}>

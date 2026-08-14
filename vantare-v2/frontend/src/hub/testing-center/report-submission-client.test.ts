@@ -8,6 +8,7 @@ vi.mock("../../lib/supabase-auth", () => ({
   getSupabaseClient: () => ({ rpc }),
 }));
 
+import { loadTestingCenterAgentJobState } from "./agent-job-state-client";
 import { submitTestingCenterReport, type SubmitReportInput } from "./report-submission-client";
 
 function input(): SubmitReportInput {
@@ -118,5 +119,28 @@ describe("Testing Center report submission", () => {
     }
     rpc.mockResolvedValueOnce({ data: [{ report_id: "bad" }], error: null });
     await expect(submitTestingCenterReport(input())).rejects.toBeInstanceOf(TestingCenterContractError);
+  });
+
+  it("loads only the authenticated report's closed agent state", async () => {
+    const reportId = `report_${"c".repeat(64)}`;
+    rpc.mockResolvedValue({
+      data: [{ state: "merged_nightly", updated_at: "2026-08-13T20:00:00Z" }],
+      error: null,
+    });
+    await expect(loadTestingCenterAgentJobState(reportId)).resolves.toEqual({
+      state: "merged_nightly",
+      updatedAt: "2026-08-13T20:00:00Z",
+    });
+    expect(rpc).toHaveBeenCalledWith("testing_center_get_agent_job_state", {
+      p_report_id: reportId,
+    });
+  });
+
+  it("returns no state before an agent job exists and rejects malformed rows", async () => {
+    const reportId = `report_${"d".repeat(64)}`;
+    rpc.mockResolvedValueOnce({ data: [], error: null });
+    await expect(loadTestingCenterAgentJobState(reportId)).resolves.toBeNull();
+    rpc.mockResolvedValueOnce({ data: [{ state: 1, updated_at: "never" }], error: null });
+    await expect(loadTestingCenterAgentJobState(reportId)).rejects.toBeInstanceOf(TestingCenterContractError);
   });
 });

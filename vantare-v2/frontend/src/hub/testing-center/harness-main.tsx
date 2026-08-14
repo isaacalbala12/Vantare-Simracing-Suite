@@ -95,7 +95,14 @@ if (!root) throw new Error("Testing Center harness root missing");
 createRoot(root).render(
   <I18nProvider>
     <main className="v52-shell-bg min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <TestingCenterPage channel="nightly" version="v0.1.0.5" client={client} submitReport={submitReport} feedbackClient={feedbackClient} />
+      <TestingCenterPage
+        channel="nightly"
+        version="v0.1.0.5"
+        client={client}
+        submitReport={submitReport}
+        feedbackClient={feedbackClient}
+        loadAgentJobState={async () => null}
+      />
     </main>
   </I18nProvider>,
 );

@@ -47,12 +47,13 @@ Deno.test("testing pilot functions are recognized but remain outside production 
   }
 });
 
-Deno.test("agent dispatch is recognized but remains absent from every deploy wrapper", () => {
+Deno.test("agent automation is recognized but remains absent from every deploy wrapper", () => {
   const entries = [
     { name: "testing-center-agent-dispatch", isDirectory: true },
+    { name: "testing-center-agent-callback", isDirectory: true },
   ] as Deno.DirEntry[];
   if (invalidDeployableDirectories(entries).length !== 0) {
-    throw new Error("reviewed agent dispatch surface was rejected");
+    throw new Error("reviewed agent automation surface was rejected");
   }
   for (
     const wrapper of [
@@ -61,8 +62,13 @@ Deno.test("agent dispatch is recognized but remains absent from every deploy wra
     ]
   ) {
     const content = Deno.readTextFileSync(new URL(wrapper, import.meta.url));
-    if (content.includes('"testing-center-agent-dispatch"')) {
-      throw new Error(`agent dispatch leaked into deploy wrapper: ${wrapper}`);
+    if (
+      content.includes('"testing-center-agent-dispatch"') ||
+      content.includes('"testing-center-agent-callback"')
+    ) {
+      throw new Error(
+        `agent automation leaked into deploy wrapper: ${wrapper}`,
+      );
     }
   }
 });

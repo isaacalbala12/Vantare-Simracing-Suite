@@ -577,3 +577,12 @@ jobs:
         run: python .github/scripts/test_testing_center_merge_queue.py
       - name: Keep enqueue fail-closed until signed bundle and live facts exist
         run: exit 1
+
+  callback_contract_disabled:
+    needs: draft_pr
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Keep callback transport honest until every phase emits trusted output
+        run: echo "testing_center_fix_callback_transport_disabled"

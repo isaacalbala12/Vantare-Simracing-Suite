@@ -104,28 +104,44 @@ func TestScreenshotEvidenceBatchValidation(t *testing.T) {
 func TestScreenshotEvidenceBoundariesAndClosedEnums(t *testing.T) {
 	t.Parallel()
 
-	batchStates := []ScreenshotBatchState{
-		ScreenshotBatchPrepared, ScreenshotBatchUploading, ScreenshotBatchValidating,
-		ScreenshotBatchReady, ScreenshotBatchAttached, ScreenshotBatchExpired,
+	batchStates := []struct {
+		batchState    ScreenshotBatchState
+		evidenceState ScreenshotEvidenceState
+	}{
+		{ScreenshotBatchPrepared, ScreenshotEvidencePrepared},
+		{ScreenshotBatchUploading, ScreenshotEvidenceUploading},
+		{ScreenshotBatchValidating, ScreenshotEvidenceValidating},
+		{ScreenshotBatchReady, ScreenshotEvidenceReady},
+		{ScreenshotBatchAttached, ScreenshotEvidenceReady},
+		{ScreenshotBatchExpired, ScreenshotEvidenceExpired},
 	}
-	for _, state := range batchStates {
+	for _, states := range batchStates {
 		batch := validScreenshotBatch()
-		batch.State = state
+		batch.State = states.batchState
+		batch.Screenshots[0].State = states.evidenceState
 		if err := batch.Validate(); err != nil {
-			t.Errorf("batch state %q: %v", state, err)
+			t.Errorf("batch state %q: %v", states.batchState, err)
 		}
 	}
 
-	evidenceStates := []ScreenshotEvidenceState{
-		ScreenshotEvidencePrepared, ScreenshotEvidenceUploading, ScreenshotEvidenceUploaded,
-		ScreenshotEvidenceValidating, ScreenshotEvidenceReady, ScreenshotEvidenceRemoved,
-		ScreenshotEvidenceExpired,
+	evidenceStates := []struct {
+		batchState    ScreenshotBatchState
+		evidenceState ScreenshotEvidenceState
+	}{
+		{ScreenshotBatchUploading, ScreenshotEvidencePrepared},
+		{ScreenshotBatchUploading, ScreenshotEvidenceUploading},
+		{ScreenshotBatchUploading, ScreenshotEvidenceUploaded},
+		{ScreenshotBatchValidating, ScreenshotEvidenceValidating},
+		{ScreenshotBatchValidating, ScreenshotEvidenceReady},
+		{ScreenshotBatchExpired, ScreenshotEvidenceRemoved},
+		{ScreenshotBatchExpired, ScreenshotEvidenceExpired},
 	}
-	for _, state := range evidenceStates {
+	for _, states := range evidenceStates {
 		batch := validScreenshotBatch()
-		batch.Screenshots[0].State = state
+		batch.State = states.batchState
+		batch.Screenshots[0].State = states.evidenceState
 		if err := batch.Validate(); err != nil {
-			t.Errorf("evidence state %q: %v", state, err)
+			t.Errorf("evidence state %q: %v", states.evidenceState, err)
 		}
 	}
 
@@ -137,6 +153,7 @@ func TestScreenshotEvidenceBoundariesAndClosedEnums(t *testing.T) {
 	}
 	for _, code := range failureCodes {
 		batch := validScreenshotBatch()
+		batch.State = ScreenshotBatchValidating
 		batch.Screenshots[0].State = ScreenshotEvidenceRejected
 		batch.Screenshots[0].FailureCode = code
 		if err := batch.Validate(); err != nil {
@@ -157,6 +174,75 @@ func TestScreenshotEvidenceBoundariesAndClosedEnums(t *testing.T) {
 	}
 	if err := batch.Validate(); err != nil {
 		t.Fatalf("maximum valid batch rejected: %v", err)
+	}
+}
+
+func TestScreenshotEvidenceBatchInvariants(t *testing.T) {
+	t.Parallel()
+
+	t.Run("duplicate evidence id", func(t *testing.T) {
+		batch := validScreenshotBatch()
+		duplicate := batch.Screenshots[0]
+		duplicate.Position = 2
+		batch.Screenshots = append(batch.Screenshots, duplicate)
+		if err := batch.Validate(); err == nil {
+			t.Fatal("Validate() error = nil, want error")
+		}
+	})
+
+	invalidStates := []struct {
+		name          string
+		batchState    ScreenshotBatchState
+		evidenceState ScreenshotEvidenceState
+	}{
+		{"prepared batch with uploaded evidence", ScreenshotBatchPrepared, ScreenshotEvidenceUploaded},
+		{"ready batch with validating evidence", ScreenshotBatchReady, ScreenshotEvidenceValidating},
+		{"attached batch with uploading evidence", ScreenshotBatchAttached, ScreenshotEvidenceUploading},
+		{"expired batch with ready evidence", ScreenshotBatchExpired, ScreenshotEvidenceReady},
+		{"uploading batch with validating evidence", ScreenshotBatchUploading, ScreenshotEvidenceValidating},
+		{"validating batch with prepared evidence", ScreenshotBatchValidating, ScreenshotEvidencePrepared},
+	}
+	for _, test := range invalidStates {
+		t.Run(test.name, func(t *testing.T) {
+			batch := validScreenshotBatch()
+			batch.State = test.batchState
+			batch.Screenshots[0].State = test.evidenceState
+			if err := batch.Validate(); err == nil {
+				t.Fatal("Validate() error = nil, want error")
+			}
+		})
+	}
+
+	validStates := []struct {
+		name          string
+		batchState    ScreenshotBatchState
+		evidenceState ScreenshotEvidenceState
+	}{
+		{"prepared accepts prepared", ScreenshotBatchPrepared, ScreenshotEvidencePrepared},
+		{"uploading accepts prepared", ScreenshotBatchUploading, ScreenshotEvidencePrepared},
+		{"uploading accepts uploading", ScreenshotBatchUploading, ScreenshotEvidenceUploading},
+		{"uploading accepts uploaded", ScreenshotBatchUploading, ScreenshotEvidenceUploaded},
+		{"validating accepts uploaded", ScreenshotBatchValidating, ScreenshotEvidenceUploaded},
+		{"validating accepts validating", ScreenshotBatchValidating, ScreenshotEvidenceValidating},
+		{"validating accepts ready", ScreenshotBatchValidating, ScreenshotEvidenceReady},
+		{"validating accepts rejected", ScreenshotBatchValidating, ScreenshotEvidenceRejected},
+		{"ready accepts ready", ScreenshotBatchReady, ScreenshotEvidenceReady},
+		{"attached accepts ready", ScreenshotBatchAttached, ScreenshotEvidenceReady},
+		{"expired accepts expired", ScreenshotBatchExpired, ScreenshotEvidenceExpired},
+		{"expired accepts removed", ScreenshotBatchExpired, ScreenshotEvidenceRemoved},
+	}
+	for _, test := range validStates {
+		t.Run(test.name, func(t *testing.T) {
+			batch := validScreenshotBatch()
+			batch.State = test.batchState
+			batch.Screenshots[0].State = test.evidenceState
+			if test.evidenceState == ScreenshotEvidenceRejected {
+				batch.Screenshots[0].FailureCode = ScreenshotFailureValidationFailed
+			}
+			if err := batch.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
 	}
 }
 

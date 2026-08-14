@@ -87,6 +87,25 @@ function includes<T extends string>(values: readonly T[], value: unknown): value
   return typeof value === "string" && values.includes(value as T);
 }
 
+function validEvidenceStateForBatch(
+  batchState: ScreenshotBatchState,
+  evidenceState: ScreenshotEvidenceState,
+): boolean {
+  switch (batchState) {
+    case "prepared":
+      return evidenceState === "prepared";
+    case "uploading":
+      return ["prepared", "uploading", "uploaded"].includes(evidenceState);
+    case "validating":
+      return ["uploaded", "validating", "ready", "rejected"].includes(evidenceState);
+    case "ready":
+    case "attached":
+      return evidenceState === "ready";
+    case "expired":
+      return evidenceState === "expired" || evidenceState === "removed";
+  }
+}
+
 function decodeScreenshot(value: unknown, expectedPosition: number): ScreenshotEvidence {
   const item = exact(
     value,
@@ -136,15 +155,21 @@ export function decodeScreenshotEvidenceBatch(value: unknown): ScreenshotEvidenc
     root.screenshots.length < 1 || root.screenshots.length > MAX_SCREENSHOTS
   ) invalid();
 
+  const batchState = root.state as ScreenshotBatchState;
   const screenshots = root.screenshots.map((item, index) => decodeScreenshot(item, index + 1));
-  if (screenshots.reduce((total, screenshot) => total + screenshot.byteSize, 0) > MAX_BATCH_BYTES) {
+  const evidenceIds = new Set(screenshots.map((screenshot) => screenshot.evidenceId));
+  if (
+    evidenceIds.size !== screenshots.length ||
+    screenshots.some((screenshot) => !validEvidenceStateForBatch(batchState, screenshot.state)) ||
+    screenshots.reduce((total, screenshot) => total + screenshot.byteSize, 0) > MAX_BATCH_BYTES
+  ) {
     invalid();
   }
   return {
     contractVersion: SCREENSHOT_EVIDENCE_VERSION,
     batchId: opaque(root.batchId),
     channel: root.channel,
-    state: root.state,
+    state: batchState,
     screenshots,
   };
 }

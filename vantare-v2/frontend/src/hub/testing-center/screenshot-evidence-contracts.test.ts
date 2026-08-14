@@ -95,15 +95,27 @@ describe("screenshot evidence contracts", () => {
   });
 
   it("accepts only closed states and rejected failure codes", () => {
-    const batchStates = ["prepared", "uploading", "validating", "ready", "attached", "expired"];
-    for (const state of batchStates) {
-      expect(decodeScreenshotEvidenceBatch({ ...validBatch(), state }).state).toBe(state);
+    const batchStates = [
+      ["prepared", "prepared"], ["uploading", "uploading"], ["validating", "validating"],
+      ["ready", "ready"], ["attached", "ready"], ["expired", "expired"],
+    ];
+    for (const [state, evidenceState] of batchStates) {
+      const value = {
+        ...validBatch(), state,
+        screenshots: [{ ...validBatch().screenshots[0], state: evidenceState }],
+      };
+      expect(decodeScreenshotEvidenceBatch(value).state).toBe(state);
     }
     const evidenceStates = [
-      "prepared", "uploading", "uploaded", "validating", "ready", "removed", "expired",
+      ["uploading", "prepared"], ["uploading", "uploading"], ["uploading", "uploaded"],
+      ["validating", "validating"], ["validating", "ready"],
+      ["expired", "removed"], ["expired", "expired"],
     ];
-    for (const state of evidenceStates) {
-      const value = { ...validBatch(), screenshots: [{ ...validBatch().screenshots[0], state }] };
+    for (const [batchState, state] of evidenceStates) {
+      const value = {
+        ...validBatch(), state: batchState,
+        screenshots: [{ ...validBatch().screenshots[0], state }],
+      };
       expect(decodeScreenshotEvidenceBatch(value).screenshots[0].state).toBe(state);
     }
     const failureCodes = [
@@ -112,7 +124,7 @@ describe("screenshot evidence contracts", () => {
     ];
     for (const failureCode of failureCodes) {
       const value = {
-        ...validBatch(),
+        ...validBatch(), state: "validating",
         screenshots: [{ ...validBatch().screenshots[0], state: "rejected", failureCode }],
       };
       expect(decodeScreenshotEvidenceBatch(value).screenshots[0].failureCode).toBe(failureCode);
@@ -128,5 +140,55 @@ describe("screenshot evidence contracts", () => {
     for (const value of invalid) {
       expect(() => decodeScreenshotEvidenceBatch(value)).toThrow(TestingCenterContractError);
     }
+  });
+
+  it("rejects duplicate evidence ids within a batch", () => {
+    const screenshot = validBatch().screenshots[0];
+    const value = {
+      ...validBatch(),
+      screenshots: [screenshot, { ...screenshot, position: 2 }],
+    };
+    expect(() => decodeScreenshotEvidenceBatch(value)).toThrow(TestingCenterContractError);
+  });
+
+  it("enforces batch and evidence state invariants", () => {
+    const invalidStates = [
+      ["prepared", "uploaded"],
+      ["ready", "validating"],
+      ["attached", "uploading"],
+      ["expired", "ready"],
+      ["uploading", "validating"],
+      ["validating", "prepared"],
+    ];
+    for (const [state, evidenceState] of invalidStates) {
+      const value = {
+        ...validBatch(), state,
+        screenshots: [{ ...validBatch().screenshots[0], state: evidenceState }],
+      };
+      expect(() => decodeScreenshotEvidenceBatch(value)).toThrow(TestingCenterContractError);
+    }
+
+    const validStates = [
+      ["prepared", "prepared"],
+      ["uploading", "prepared"], ["uploading", "uploading"], ["uploading", "uploaded"],
+      ["validating", "uploaded"], ["validating", "validating"], ["validating", "ready"],
+      ["ready", "ready"], ["attached", "ready"],
+      ["expired", "expired"], ["expired", "removed"],
+    ];
+    for (const [state, evidenceState] of validStates) {
+      const value = {
+        ...validBatch(), state,
+        screenshots: [{ ...validBatch().screenshots[0], state: evidenceState }],
+      };
+      expect(decodeScreenshotEvidenceBatch(value).state).toBe(state);
+    }
+
+    const rejected = {
+      ...validBatch(), state: "validating",
+      screenshots: [{
+        ...validBatch().screenshots[0], state: "rejected", failureCode: "validation_failed",
+      }],
+    };
+    expect(decodeScreenshotEvidenceBatch(rejected).screenshots[0].state).toBe("rejected");
   });
 });

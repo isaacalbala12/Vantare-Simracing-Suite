@@ -98,6 +98,7 @@ func (batch ScreenshotEvidenceBatch) Validate() error {
 		return fmt.Errorf("screenshots: %w", ErrInvalidDocument)
 	}
 	var totalBytes int64
+	evidenceIDs := make(map[string]struct{}, len(batch.Screenshots))
 	for index, screenshot := range batch.Screenshots {
 		if screenshot.Position != index+1 {
 			return fmt.Errorf("screenshots[%d].position: %w", index, ErrInvalidDocument)
@@ -105,12 +106,41 @@ func (batch ScreenshotEvidenceBatch) Validate() error {
 		if err := screenshot.validate(index); err != nil {
 			return err
 		}
+		if _, exists := evidenceIDs[screenshot.EvidenceID]; exists {
+			return fmt.Errorf("screenshots[%d].evidenceId: %w", index, ErrInvalidDocument)
+		}
+		evidenceIDs[screenshot.EvidenceID] = struct{}{}
+		if !validScreenshotStateForBatch(batch.State, screenshot.State) {
+			return fmt.Errorf("screenshots[%d].state: %w", index, ErrInvalidDocument)
+		}
 		totalBytes += screenshot.ByteSize
 	}
 	if totalBytes > maxScreenshotBatchBytes {
 		return fmt.Errorf("screenshots byte total: %w", ErrInvalidDocument)
 	}
 	return nil
+}
+
+func validScreenshotStateForBatch(batchState ScreenshotBatchState, evidenceState ScreenshotEvidenceState) bool {
+	switch batchState {
+	case ScreenshotBatchPrepared:
+		return evidenceState == ScreenshotEvidencePrepared
+	case ScreenshotBatchUploading:
+		return evidenceState == ScreenshotEvidencePrepared ||
+			evidenceState == ScreenshotEvidenceUploading ||
+			evidenceState == ScreenshotEvidenceUploaded
+	case ScreenshotBatchValidating:
+		return evidenceState == ScreenshotEvidenceUploaded ||
+			evidenceState == ScreenshotEvidenceValidating ||
+			evidenceState == ScreenshotEvidenceReady ||
+			evidenceState == ScreenshotEvidenceRejected
+	case ScreenshotBatchReady, ScreenshotBatchAttached:
+		return evidenceState == ScreenshotEvidenceReady
+	case ScreenshotBatchExpired:
+		return evidenceState == ScreenshotEvidenceExpired || evidenceState == ScreenshotEvidenceRemoved
+	default:
+		return false
+	}
 }
 
 func (screenshot ScreenshotEvidence) validate(index int) error {

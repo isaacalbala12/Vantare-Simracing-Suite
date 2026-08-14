@@ -37,7 +37,7 @@ Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
 - Gates: Telemetry Core focal PASS; frontend completo 370/2656 PASS; build PASS;
   ESLint focal y diff-check PASS. `go test ./...` tuvo dos flakes ajenos en dos
   ejecuciones (`engineer/ptt` y diagnostics bridge); ambos pasan aislados.
-Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
+Nota ISA-335 / ISA-345 / OS-BUG (2026-08-14, integrada en Nightly):
 - Overlay Studio permitía seleccionar `vantare-endurance`, pero el contrato Go
   de perfiles V3 y la biblioteca de diseños seguían aceptando únicamente
   Original/Crystal. Guardar fallaba especialmente al conservar
@@ -55,16 +55,19 @@ Nota ISA-335 / OS-BUG (2026-08-14, implementación local verificada):
 - Code review adversarial: se descartó un falso positivo en el comando de
   aplicación porque `applyWidgetDesign` ya rechaza tipos incompatibles; se
   corrigió el riesgo real de deriva entre las dos allowlists Go en `a4749e9`.
-- Evidencia fresca sobre `origin/nightly@7e4afe8`: paquetes
-  `pkg/config/... ./internal/app/...` PASS; frontend 370 archivos/2652 tests
+- Evidencia previa a promoción: paquetes `pkg/config/... ./internal/app/...`
+  PASS; frontend 370 archivos/2661 tests
   PASS; `design-system:check` 3/3 PASS; build frontend PASS; `go test ./...
   -count=1` PASS y `git diff --check` PASS. La suite frontend conserva los dos
   `AbortError` de teardown documentados con exit 0. Fix y regresiones están en
-  `074dba6`; la rama incorporó Nightly mediante merge normal en `a0e1431`. La
-  PR draft #223 sigue hacia `nightly`; el CI remoto de la revisión
-  `31753459114` pasó ruta, build, Go, frontend y visuales. El lint advisory
-  conserva solo deuda heredada fuera del diff. Sin merge de PR, promoción ni
-  release.
+  `074dba6`; centralización revisada en `a4749e9`.
+- Isaac autorizó la promoción y, después, el auto-merge necesario ante el flujo
+  continuo de integraciones. ISA-345 registró la promoción: PR #223 integrada
+  por squash en `nightly@32e9b70907458874d79fd28c5a37ae97cccc436d`.
+  El gate post-integración `31762153097` pasó ruta, build frontend, Go, frontend,
+  lint de cambios, visuales y Windows/Wails; el snapshot `31762153118` también
+  pasó. El lint global conserva solo deuda heredada advisory. Nivel alcanzado:
+  Nightly; sin promoción a Testers/Master y sin release.
 
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash

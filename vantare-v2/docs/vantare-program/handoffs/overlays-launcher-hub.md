@@ -19,7 +19,9 @@
   El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
   fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
   visual manual continúa pendiente.
-  Rama aislada sobre `origin/nightly@673283a2`; sin PR, CI, promoción ni release.
+  Rama aislada sobre `origin/nightly@673283a2`; implementación `71d6b360`, rama
+  publicada y PR draft #243 hacia `nightly`, con CI pendiente. Sin merge,
+  promoción ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,

@@ -16,13 +16,13 @@ son fases históricas.
 
 ## Estado
 
-Actualización ISA-162 / STR-15B (2026-08-10):
+Actualización ISA-162 / STR-15B (2026-08-14):
 
 - PR #192 quedó integrado por squash en `nightly@7e39104`; el CI post-merge
   `31408412459` pasó todos los gates. ISA-147..151 están en Nightly y la
   dependencia ISA-150 de STR-15B está satisfecha.
-- ISA-162 está `In Progress` en su rama/worktree aislados, rebasados sin
-  conflictos sobre `origin/nightly@ff286f4`. El
+- ISA-162 está `In Progress` en su rama/worktree aislados, rebasados sobre
+  `origin/nightly@03ca39e`. El
   contrato ejecutable vive en
   `docs/superpowers/plans/2026-08-10-isa-162-signed-strategy-catalog.md`.
 - Threat model cerrado: firma Ed25519 domain-separated sobre manifest/payload
@@ -33,11 +33,11 @@ Actualización ISA-162 / STR-15B (2026-08-10):
 - La aplicación solo verificará y consumirá; la firma pertenece a un CLI y
   workflow separados que reciben la privada externamente. No hay claves
   privadas, contenido oficial inventado ni dependencias nuevas en el repo.
-- Baseline verde: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50
+- Hito inicial histórico: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50
   tests frontend focales. El núcleo firmado se implementó mediante TDD y fue
   revisado por el orquestador; quedan cableado Wails, workflow, UI, reviews
-  finales, suites completas y entrega en rama. Sin commit, push, PR, promoción
-  o release de ISA-162.
+  finales, suites completas y entrega en rama. En ese momento todavía no había
+  commit, push, PR, promoción o release de ISA-162.
 - Primer corte entregado y revisado localmente: dominio/verificador, keyset,
   source HTTPS, caché current/previous, servicio/bridge JSON, signer separado y
   CLI. El orquestador encontró y cerró incompatibilidad Windows, bypass de
@@ -74,21 +74,36 @@ Actualización ISA-162 / STR-15B (2026-08-10):
   empaquetada sin override de confianza, correlación exacta y orden
   load/refresh por generación. El preflight del workflow y el CLI comparten la
   misma regla de containment del keyset bajo el manifest.
+- Correcciones de hardening revisadas por el orquestador y `APPROVED`: `Load` y
+  `Accept` mantienen un lease OS además del mutex durante
+  reparación, decisión anti-downgrade y escritura. Una regresión multiproceso
+  demuestra exclusión, liberación tras close/muerte y que seq2 no puede quedar
+  durable después de seq3.
+- Los límites separan 4 MiB por package y 16 MiB agregados decodificados de los
+  techos serializados derivados para payload JSON y envelope. Un catálogo en
+  la frontera real de 16 MiB ya no falla por expansión base64; +1 se rechaza
+  tanto al firmar como al verificar.
+- Las regresiones simétricas de rotación usan dos keysets/builds: el viejo sirve
+  el slot verificable sin reemplazar el firmado por la clave nueva y rechaza
+  `Accept` sin tocar bytes si `current` o `previous` es desconocido. El verifier
+  nuevo conserva o repara después el LKG moderno. Solo ausencia real de
+  `current` o dos slots verificables con `previous` de mayor secuencia permiten
+  reparación.
 - Las dos re-reviews finales quedaron `ACCEPT`, con P0/P1/P2 = 0 en seguridad
   y calidad. El último borde de packaging se cerró con sources build-tagged:
   solo `!production` admite opt-in local y toda ruta `production` falla cerrada
   aunque no se genere configuración. Tests locales/production 20x, compilación
   production y guards pasan.
-- Gates globales frescos repetidos tras rebase: `gofmt`, vet, Go focal/global y
+- Gates globales del primer rebase histórico: `gofmt`, vet, Go focal/global y
   `production`, typecheck, 358 archivos / 2493 tests frontend, build, guard,
   YAML, fragmento y diff-check PASS. ESLint focal PASS; el lint global conserva
   39 errores y 2 warnings preexistentes fuera de ISA-162, por lo que no se
   declara verde ni se amplía esta issue para arreglarlos.
-- La rama quedó publicada y el PR draft #201 apunta a `nightly`; Linear sigue
-  en `In Progress` porque el equipo no ofrece un estado de review intermedio.
-  HEAD de la entrega antes de este registro de estado: `b02674a`. No hubo
-  merge, promoción ni release.
-- El run remoto `31423020048` del PR pasó topología y todos los gates
+- La entrega anterior quedó publicada y el PR draft #201 apunta a `nightly`;
+  Linear sigue en `In Progress`. La rama remota y el PR conservan `b447027`;
+  el historial local rebasado y el hardening aprobado todavía no se han
+  publicado ni tienen CI nuevo. No hubo merge, promoción ni release.
+- El run remoto histórico `31423020048` del PR pasó topología y todos los gates
   bloqueantes: build frontend, Go, 2493 tests frontend y visual advisory. El
   lint advisory quedó verde con anotaciones heredadas fuera de ISA-162; los
   avisos de actions/Node 20 tampoco bloquean esta entrega.
@@ -96,9 +111,17 @@ Actualización ISA-162 / STR-15B (2026-08-10):
   workflow real, GitHub debe tener `strategy-catalog-signing` con required
   reviewer, deployment branch `master` y la privada exclusivamente como secret
   del environment. No hay contenido oficial aprobado todavía.
-- La base remota avanzó a `nightly@ff286f4` por Testing Center, sin solape. El
-  worktree ISA-162 quedó rebasado sin conflictos y volvió a pasar los gates
-  finales sobre esa base.
+- La base remota avanzó hasta `nightly@03ca39e` por ISA-323/ISA-334, Testing
+  Center, Overlay Studio y la política ISA-318, sin solape con el código de
+  catálogo. El rebase final fue limpio; `current-plan.md` conserva el bloque
+  ISA-162 y el historial entrante, y el `range-diff` mantiene los ocho commits
+  equivalentes salvo esta adaptación de base/estado.
+- Evidencia histórica del HEAD pre-fix `3dc84d0`: Go global/focal/repetido y variante
+  `production`, vet, gofmt, guard PowerShell normal/dot-sourced, typecheck real,
+  ESLint focal, 370/370 archivos y 2694/2694 tests frontend y build de 885
+  módulos pasan. Los dos `AbortError` de teardown happy-dom y el warning de
+  chunk >500 kB son heredados y terminaron con exit 0. El CI histórico no
+  acredita el HEAD reescrito; PR #201 necesita checks nuevos tras publicar.
 
 Actualización ISA-309 / STR-N02 (2026-08-10):
 
@@ -396,4 +419,4 @@ plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
 
 ## Última actualización
 
-2026-08-14, ISA-152 / STR-17 integrada en Nightly, Codex.
+2026-08-14, ISA-162 / STR-15B rebasada y verificada localmente, pendiente de publicación y CI nuevo, Codex.

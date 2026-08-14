@@ -20,6 +20,9 @@
 - El payload usa `strategy.official-catalog.payload.v1`, máximo 128 entradas y 16 MiB totales. IDs son únicos y ordenados; cada compatibilidad exige simulador, circuito, coche y evento explícitos.
 - Cada entrada contiene exactamente un `strategy.package.v1`, sin draft y con al menos una revisión. Su provenance debe nombrar `vantare`. Un fallo rechaza el catálogo completo.
 - Un candidato inválido, viejo o ambiguo no escribe current ni previous. Un current corrupto solo puede recuperarse desde previous si previous vuelve a verificar con las claves actuales.
+- Un slot presente pero no verificable nunca se sobrescribe desde una build vieja: `Load` puede servir el otro slot verificado sin reparar y `Accept` falla cerrado si `current` o `previous` es desconocido. Solo `current` realmente ausente, o dos slots verificables donde `previous` demuestra mayor secuencia, autorizan reparación.
+- Toda lectura que pueda reparar y toda aceptación que decida anti-downgrade o escriba mantiene mutex local y lease OS exclusivo; dos procesos no pueden intercalar la decisión de secuencia con el reemplazo durable.
+- El límite de contenido es 4 MiB por package y 16 MiB agregados después de decodificar base64. Payload JSON y envelope tienen límites serializados separados, derivados de esa base64, los textos acotados y el manifest; la expansión de transporte no reduce el presupuesto real de packages.
 - Sin current/previous verificado, la UI muestra ausencia/error; nunca crea planes, ceros ni estimaciones.
 - El transporte HTTP tiene timeout, límite de bytes, status 200 y URL `https`; el endpoint y las claves públicas se inyectan como configuración pública. No hay Shared Memory, LMU REST, DuckDB, Analysis ni almacenamiento privado ajeno.
 - El CLI lee la clave privada desde una variable de entorno cuyo nombre recibe por flag. Tests usan una clave efímera. Ninguna clave privada o valor de secreto se escribe en el repo, logs o artefactos.
@@ -107,6 +110,19 @@
   ```
 
   `VerifiedCatalog` no conserva aliases mutables: copia manifest, payload y paquetes. `Accept` verifica antes de cualquier write; compara contra current verificado; escribe previous y current con temp+sync+replace. La recuperación verifica previous antes de restaurar.
+
+  Corrección posterior: `Load` y `Accept` adquieren también un lease de fichero
+  no bloqueante, equivalente al ya probado por STR-03, mientras leen slots para
+  reparar o decidir secuencia y hasta terminar cualquier reemplazo. Los tests
+  multiproceso cubren exclusión, liberación normal/abrupta y persistencia de la
+  secuencia mayor. Los límites separan 4 MiB por package, 16 MiB agregados
+  decodificados, payload JSON serializado y envelope serializado.
+
+  Corrección de rotación: regresiones simétricas con keyset viejo/nuevo fijan
+  que el verifier viejo no destruya ningún slot firmado por clave desconocida.
+  `Load` conserva ambos slots byte-exactos y sirve el verificable; `Accept` no
+  puede decidir anti-downgrade si `current` o `previous` es desconocido y falla
+  cerrado. El verifier nuevo continúa cargando o reparando la secuencia moderna.
 
 - [x] **Step 4: Implementar firma y CLI fuera del runtime**
 
@@ -263,9 +279,9 @@
 
   `go test -race` queda pendiente de CI porque este Windows no dispone de CGO/gcc; se declara, no se simula.
 
-  Evidencia repetida tras la rebase sobre `origin/nightly@ff286f4`: `gofmt`,
-  vet, Go focal y global, variante `production`, typecheck real, 358 archivos /
-  2493 tests frontend, build,
+  Evidencia histórica repetida tras la rebase sobre `origin/nightly@fa9285e`:
+  `gofmt`, vet, Go focal y global, variante `production`, typecheck real,
+  370 archivos / 2694 tests frontend, build,
   guard PowerShell, YAML, fragmento y `git diff --check` pasan. `pnpm lint` se
   ejecutó y conserva el baseline rojo del repositorio (39 errores y 2 warnings
   fuera de los archivos ISA-162); el ESLint focal de los cuatro archivos TS/TSX
@@ -275,13 +291,17 @@
 
   Actualizar handoff/current-plan y Linear tras cada worker y al cierre. Preparar commits pequeños, push normal y PR draft hacia `nightly` solo después de checks/reviews. No merge, promoción, release ni ejecución del workflow firmado sin nueva autorización de Isaac.
 
-  Estado alcanzado: cuatro commits de producto/documentación rebasados sobre
-  `origin/nightly@ff286f4`, rama publicada y PR draft #201 abierto hacia
-  `nightly`. ISA-162 permanece `In Progress`, porque este equipo no tiene un
-  estado intermedio de review y el PR aún no está integrado. Sin merge,
-  promoción, release ni workflow firmado.
+  Estado actual: ocho commits de producto/documentación rebasados limpiamente
+  sobre `origin/nightly@03ca39e`. Las correcciones de lease, autoridad de slots
+  y límites serializados están revisadas `APPROVED` y quedan en commits locales
+  separados de código y estado documental. La rama remota y el PR draft
+  #201 todavía conservan el historial anterior en `b447027`; no existe CI nuevo
+  para este árbol. ISA-162 permanece `In Progress` y no está integrada. Sin
+  merge, promoción, release ni workflow firmado.
 
-  CI del PR: run `31423020048` PASS en topología y gates bloqueantes. Las
+  CI histórico del PR: run `31423020048` PASS en topología y gates bloqueantes,
+  pero no acredita el HEAD rebasado actual. Tras publicar el historial con
+  protección frente a deriva remota, el PR necesita un run nuevo. Las
   anotaciones restantes pertenecen al lint advisory heredado y a la deprecación
   Node 20 de actions; no afectan archivos ISA-162 ni convierten el lint local
   global en verde.

@@ -182,26 +182,26 @@ Nota ISA-311 (2026-08-10, corrección local verificada):
   `31416018600`, `31416779711` y `31435630710`, todos sin rerun. Linear refleja
   ISA-311 en `Nightly`. No hubo promoción a `testers`/`master` ni release.
 
-Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
+Nota ISA-162 / STR-15B (2026-08-14, entrega rebasada pendiente de publicación):
 - ISA-309 / PR #192 se integró por squash en `nightly@7e39104` con el run
   post-merge `31408412459` completamente verde; ISA-147..151 quedaron en
   Nightly y STR-15B está desbloqueada.
 - ISA-162 se ejecuta en la rama canónica
   `vantareapp/isa-162-str-15b-catalogo-oficial-firmado-de-vantare`, worktree
-  aislado `C:\tmp\vantare-isa-162`, rebasado sin conflictos sobre
-  `origin/nightly@ff286f4`.
+  aislado `C:\tmp\vantare-isa-162`, rebasado sobre
+  `origin/nightly@03ca39e`.
 - El microplan vigente es
   `docs/superpowers/plans/2026-08-10-isa-162-signed-strategy-catalog.md`.
   Cierra firma Ed25519 sobre bytes exactos, trusted keys versionadas, rechazo
   integral, anti-downgrade, caché current/previous last-known-good, generador
   sin secretos en repo/runtime y UI oficial separada de `Mis planes`.
-- Baseline: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50 tests
+- Hito inicial histórico: Strategy Go (`test`, `vet`, `gofmt`), typecheck real y 50 tests
   frontend focales pasan. El frontend del worktree se instaló con el lockfile
   congelado, sin cambiar dependencias.
-- El núcleo firmado se implementó mediante TDD en un worker
+- En ese hito el núcleo firmado se implementó mediante TDD en un worker
   `ocx-deepseek-v4-flash`; el orquestador revisó el diff y la evidencia antes
-  de aceptar el corte. No hay commit, push, PR, merge, promoción, firma real ni
-  release de ISA-162.
+  de aceptar el corte. En ese momento todavía no había commit, push, PR,
+  merge, promoción, firma real ni release de ISA-162.
 - Primer worker revisado: creó `internal/strategy/catalog`, su subpaquete
   `signing` y `cmd/strategy-catalog`. El RED inicial demostró los tres targets
   ausentes; el GREEN independiente pasa 20x focal, vet y toda Strategy.
@@ -240,24 +240,39 @@ Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
   agregados en CLI y TS, build empaquetada sin override de entorno,
   correlación exacta y generación monotónica load/refresh. El preflight exige
   además que el keyset quede bajo el directorio real del manifest.
+- Correcciones de hardening revisadas por el orquestador y `APPROVED`:
+  la caché usa ahora mutex más lease OS en `Load`/`Accept`, de modo que la
+  decisión anti-downgrade y cualquier reparación/escritura no se intercalan
+  entre procesos. La regresión multiproceso cubre exclusión, liberación por
+  cierre o muerte y confirma que una secuencia menor no queda durable.
+- Los presupuestos ya no confunden contenido decodificado con transporte:
+  siguen siendo 4 MiB por package y 16 MiB agregados, mientras payload JSON y
+  envelope usan techos serializados derivados suficientes para sus dos capas
+  de base64. La frontera exacta de 16 MiB pasa y 16 MiB + 1 se rechaza en
+  signer y verifier.
+- La rotación cross-build queda fail-closed: `Load` sirve el slot verificable
+  que corresponda sin modificar el otro si esta build no conoce su clave.
+  `Accept` falla sin tocar bytes si cualquier slot existente no es verificable,
+  porque no puede conocer toda la autoridad/secuencia durable. Al reabrir con
+  el keyset nuevo sigue disponible y reparable la secuencia mayor.
 - Las dos re-reviews finales quedaron `ACCEPT`: seguridad y calidad reportan
   P0/P1/P2 = 0. La última corrección separa por build tag el override local
   (`!production`) del comportamiento empaquetado (`production`); `package`,
   `package:all` y release usan el segundo y fallan cerrados aunque no exista
   source generado. Tests locales y production 20x, compilación production y
   guards pasan.
-- Gates globales frescos repetidos tras la rebase: `gofmt`, vet, Go
+- Gates globales repetidos tras el primer rebase histórico: `gofmt`, vet, Go
   focal/global, variante `production`, typecheck real, 358 archivos / 2493
   tests frontend,
   build, guard normal/dot-sourced, YAML, fragmento y diff-check pasan. El lint
   focal ISA-162 pasa; `pnpm lint` global sigue rojo por 39 errores y 2 warnings
   preexistentes en archivos ajenos (Hub/Overlay Studio/harness), sin errores en
   este diff. No se mezclan esas correcciones fuera de alcance.
-- La rama quedó publicada y el PR draft #201 apunta a `nightly`; ISA-162 sigue
-  `In Progress` porque el workflow del equipo no ofrece un estado de review
-  intermedio y todavía no hay integración. HEAD de la entrega antes de este
-  registro de estado: `b02674a`.
-- CI remoto del PR: run `31423020048` completamente verde en topología y gates
+- La entrega anterior quedó publicada y el PR draft #201 apunta a `nightly`;
+  ISA-162 sigue `In Progress` porque todavía no hay integración. La rama
+  remota y el PR conservan `b447027`; el historial local rebasado y el
+  hardening aprobado todavía no se han publicado ni tienen CI nuevo.
+- CI histórico del PR: run `31423020048` completamente verde en topología y gates
   bloqueantes (build, Go, frontend 2493/2493 y visual advisory). El lint
   advisory concluyó verde pero conserva anotaciones de deuda heredada fuera de
   ISA-162; también hay avisos deprecados de Node 20 en actions, no bloqueantes.
@@ -265,9 +280,21 @@ Nota ISA-162 / STR-15B (2026-08-10, ejecución iniciada):
   environment `strategy-catalog-signing` debe configurarse externamente con
   required reviewer, deployment branch `master` y la privada solo como secret
   de ese environment; el workflow real no se ejecuta en este corte.
-- `origin/nightly` avanzó a `ff286f4` con un cambio de Testing Center que no
-  solapa ISA-162. La rama quedó rebasada sin conflictos sobre ese SHA y los
-  gates se repitieron antes de entregar.
+- `origin/nightly` avanzó hasta `03ca39e` con ISA-323/ISA-334, cambios de
+  Testing Center/Overlay Studio y la política de ejecución ISA-318, sin solape
+  con el código de catálogo. El rebase final de los ocho commits fue limpio;
+  `current-plan` conserva este bloque ISA-162 y el historial entrante, y
+  `range-diff` mantiene los ocho commits equivalentes salvo esta adaptación de
+  base/estado.
+- Evidencia histórica del HEAD pre-fix `3dc84d0` sobre `fa9285e`:
+  `go test -count=1 ./...`,
+  Go focal y repetido, variante `production`, vet, gofmt, guard PowerShell
+  normal/dot-sourced, typecheck real, ESLint focal, 370 archivos / 2694 tests
+  frontend y build de 885 módulos pasan. Los dos `AbortError` de teardown
+  happy-dom y el warning de chunk >500 kB mantienen exit 0 y son heredados.
+  El run `31423020048` no acredita este historial reescrito: después de
+  publicar con protección frente a deriva remota, el PR #201 necesita CI nuevo
+  sobre su HEAD exacto.
 
 Nota ISA-309 / STR-N02 (2026-08-10, integración acumulativa cerrada):
 - Linear creó ISA-309 para reconstruir sobre `origin/nightly@08fcfc1` la pila

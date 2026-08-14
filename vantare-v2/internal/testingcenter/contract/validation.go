@@ -78,7 +78,7 @@ func (evidence Evidence) Validate() error {
 		return err
 	}
 	switch evidence.Kind {
-	case EvidenceReportContext, EvidenceDiagnostic, EvidenceReproduction:
+	case EvidenceReportContext, EvidenceDiagnostic, EvidenceReproduction, EvidenceScreenshot:
 	default:
 		return fmt.Errorf("kind: %w", ErrUnknownState)
 	}

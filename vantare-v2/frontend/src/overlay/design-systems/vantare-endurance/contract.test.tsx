@@ -107,6 +107,16 @@ describe("vantare-endurance contract", () => {
     expect(cars.map((car) => car.getAttribute("data-track-map-car"))).toEqual(["car-1", "car-2"]);
     expect(cars[0].getAttribute("data-player")).toBe("true");
     expect(cars[1].hasAttribute("data-player")).toBe(false);
+
+    // The markup carries the published positions. Easing between samples is
+    // applied imperatively on later frames, so a single render is still exactly
+    // what telemetry said and the visual gate stays deterministic.
+    expect(cars.map((car) => Number(car.getAttribute("cx")))).toEqual(
+      model.markers.map((marker) => marker.x),
+    );
+    expect(cars.map((car) => Number(car.getAttribute("cy")))).toEqual(
+      model.markers.map((marker) => marker.y),
+    );
   });
 
   it("draws nothing and says so when the circuit is not mapped", () => {

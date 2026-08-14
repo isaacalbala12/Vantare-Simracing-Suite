@@ -81,6 +81,23 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No leas, imprimas, copies ni versionees secretos o archivos `.env*`. Trabaja
   solo con nombres de variables y procedimientos sanitizados.
 
+## Preautorización inerte de la rama automática (ISA-318)
+
+- La corrección automática del Testing Center usa exclusivamente
+  `vantareapp/tc-<12 hex minúsculas>-<slug seguro>[-revert]` y solo como PR a
+  `nightly`; nunca a `testers`/`master` ni push directo.
+- La ruta automática permanece inerte: la CLI actual rechaza toda rama
+  `tc-*` porque no acepta JSON arbitrario. ISA-322 debe verificar
+  criptográficamente la atestación v2 y pasar sus claims cerrados al validador
+  semántico; texto del payload que afirme estar verificado no concede autoridad.
+  `docs/branch-channels.md` fija el conjunto exacto de claims y checks.
+- Todo efecto es revocable con kill switch antes de cada paso. Quedan
+  excluidos de la preautorización: workflows, schema, auth, billing, secretos,
+  dependencias, datos, release y gasto.
+- El bootstrap de workflows permanece humano e inerte hasta `master` y no
+  configura credenciales, dispatch ni ruleset. No se habilita ninguna ruleset
+  ni auto-merge sin autorización expresa de Isaac.
+
 ## Autoridad y acciones externas
 
 Dentro de una issue aprobada, los agentes pueden crear o actualizar Linear,

@@ -34,6 +34,39 @@ describe("canonical projection telemetry adapter", () => {
     adapter.stop();
   });
 
+  it("keeps the last usable snapshot stale while a live revision waits for its projection", () => {
+    const handlers = new Map<string, (data: unknown) => void>();
+    const snapshots: TelemetrySnapshot[] = [];
+    const adapter = createWailsProjectionTelemetryAdapter({
+      coordinator: coordinator(snapshots),
+      runtime: "desktop",
+      now: () => 1_000,
+      subscribe: (name, listener) => {
+        handlers.set(name, listener);
+        return () => handlers.delete(name);
+      },
+    });
+    adapter.start();
+    const projection = readGoldenEnvelope();
+    emitStatus(handlers, 1, "live");
+    handlers.get(eventName("overlay", "projection"))?.(projection);
+
+    const recoveryStart = snapshots.length;
+    emitStatus(handlers, 2, "stale");
+    emitStatus(handlers, 3, "live");
+    handlers.get(eventName("overlay", "projection"))?.({
+      ...projection,
+      statusRevision: 3,
+    });
+
+    expect(snapshots.slice(recoveryStart).map(({ status }) => status)).toEqual([
+      "stale",
+      "stale",
+      "ready",
+    ]);
+    adapter.stop();
+  });
+
   it("fails closed when a live projection has no demonstrated player", () => {
     const handlers = new Map<string, (data: unknown) => void>();
     const snapshots: TelemetrySnapshot[] = [];
@@ -52,6 +85,33 @@ describe("canonical projection telemetry adapter", () => {
       ...projection,
       payload: { ...projection.payload, playerVehicleId: "missing-player" },
     });
+    expect(snapshots.at(-1)?.status).toBe("disconnected");
+    adapter.stop();
+  });
+
+  it("does not retain a previous snapshot when the next live projection is blocked", () => {
+    const handlers = new Map<string, (data: unknown) => void>();
+    const snapshots: TelemetrySnapshot[] = [];
+    const adapter = createWailsProjectionTelemetryAdapter({
+      coordinator: coordinator(snapshots),
+      runtime: "desktop",
+      subscribe: (name, listener) => {
+        handlers.set(name, listener);
+        return () => handlers.delete(name);
+      },
+    });
+    adapter.start();
+    const projection = readGoldenEnvelope();
+    emitStatus(handlers, 1, "live");
+    handlers.get(eventName("overlay", "projection"))?.(projection);
+    expect(snapshots.at(-1)?.status).toBe("ready");
+
+    handlers.get(eventName("overlay", "projection"))?.({
+      ...projection,
+      sequence: projection.sequence + 1,
+      payload: { ...projection.payload, playerVehicleId: "missing-player" },
+    });
+
     expect(snapshots.at(-1)?.status).toBe("disconnected");
     adapter.stop();
   });

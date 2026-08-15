@@ -15,7 +15,9 @@ Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
   `_absent` en `authoring-fixtures.ts:231`, fuera de las líneas modificadas.
 - Rama aislada nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
   `nightly@028c7512` y publicada en la PR draft #263 hacia `nightly`; sin
-  integración, promoción ni release. Spec y microplan:
+  integración, promoción ni release. El CI de la PR, run `31896030791`, pasó
+  ruta de promoción, gates bloqueantes y seguridad sobre `4fb880de`. Spec y
+  microplan:
   `docs/superpowers/specs/2026-08-15-isa-365-relative-fisico-2x2-design.md` y
   `docs/superpowers/plans/2026-08-15-isa-365-relative-fisico-2x2.md`.
 

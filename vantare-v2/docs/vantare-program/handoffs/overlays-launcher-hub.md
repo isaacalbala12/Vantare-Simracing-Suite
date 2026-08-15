@@ -21,7 +21,8 @@
   heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Rama
   nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
   `nightly@028c7512` y publicada en la PR draft #263 hacia `nightly`; sin
-  integración, promoción ni release.
+  integración, promoción ni release. El CI de la PR, run `31896030791`, pasó
+  ruta de promoción, gates bloqueantes y seguridad sobre `4fb880de`.
 - ISA-364 está promovida a `nightly` y corrige el listado vacío de
   `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
   migrador canónico, mientras el

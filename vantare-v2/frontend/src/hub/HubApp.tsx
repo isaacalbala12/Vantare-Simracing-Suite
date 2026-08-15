@@ -123,8 +123,6 @@ function HubShell() {
   const settingsRef = useRef<Record<string, unknown> | null>(null);
   const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
 
-  useHubResponsiveZoom();
-
   const visibleSection: Section = section === "testing-center" && !testingCenterChannel
     ? "dashboard"
     : section;
@@ -238,6 +236,7 @@ function HubShell() {
 }
 
 export function HubApp() {
+  useHubResponsiveZoom();
   return (
     <LicenseProvider>
       <I18nProvider>

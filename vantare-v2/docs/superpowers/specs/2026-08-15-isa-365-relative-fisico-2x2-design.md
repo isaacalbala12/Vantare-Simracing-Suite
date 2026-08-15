@@ -1,6 +1,7 @@
 # ISA-365 — Relative físico 2+2
 
-Estado: especificación aprobada para implementación.
+Estado: implementada y validada en la rama de ISA-365; pendiente de revisión e
+integración.
 
 Issue: [ISA-365](https://linear.app/vantareapp/issue/ISA-365/rel-01-relative-fisico-22-con-degradacion-neutral-en-boxes)
 
@@ -56,6 +57,17 @@ LMU Shared Memory
 
 El cambio es frontend puro. El ViewModel continúa sin I/O, persistencia,
 Wails, SSE ni acceso directo a LMU.
+
+## Evidencia de implementación
+
+- 376 archivos y 2750 tests frontend pasan.
+- La build de producción pasa.
+- Las 14 referencias visuales de Relative pasan al 0 % en Original y Crystal,
+  incluidas Studio, Desktop, OBS, fill, stale, disconnected y error.
+- La paridad visual de Relative pasa. El gate visual global conserva dos
+  diferencias ajenas en los estados stale de Delta.
+- El lint de los archivos propios pasa; el barrido completo reproduce un error
+  heredado `_absent` en `authoring-fixtures.ts:231`, fuera del diff.
 
 ## Requisitos funcionales
 

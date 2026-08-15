@@ -6,6 +6,9 @@ Aplicar el contrato aprobado en la
 [especificación](../specs/2026-08-15-isa-365-relative-fisico-2x2-design.md)
 mediante cortes frontend pequeños y TDD. No se modifica Telemetry Core.
 
+Estado: tareas 1–4 completadas y verificadas; pendiente de revisión e
+integración de la rama.
+
 ## Decisiones arquitectónicas
 
 - `lapDistanceMeters` ya proyectado es la autoridad de selección.
@@ -27,7 +30,7 @@ tests de selección
 
 ## Tareas
 
-### Tarea 1 — Probar y construir la selección física
+### Tarea 1 — Probar y construir la selección física — completada
 
 Descripción: reproducir el bug de 38 coches/1 gap y fijar orden circular,
 doblados, clases, estabilidad y degradación sin distancia.
@@ -51,7 +54,7 @@ Archivos:
 
 Dependencias: ninguna. Alcance: pequeño.
 
-### Tarea 2 — Separar lado y gap en el ViewModel
+### Tarea 2 — Separar lado y gap en el ViewModel — completada
 
 Descripción: añadir `side`, conservar filas sin gap y neutralizar tiempos no
 comparables en pit, vuelta distinta o signo contradictorio.
@@ -77,7 +80,7 @@ Dependencias: tarea 1. Alcance: pequeño.
 - diff limitado a lógica Relative;
 - ninguna modificación backend.
 
-### Tarea 3 — Normalizar el contrato persistido 2+1+2
+### Tarea 3 — Normalizar el contrato persistido 2+1+2 — completada
 
 Descripción: cambiar defaults y migración a dos por lado, forzar jugador y
 retirar del inspector los controles incompatibles.
@@ -104,7 +107,7 @@ Archivos:
 
 Dependencias: tarea 2. Alcance: medio.
 
-### Tarea 4 — Adaptar Endurance al lado físico
+### Tarea 4 — Adaptar Endurance al lado físico — completada
 
 Descripción: impedir que gaps nulos conviertan todos los rivales en “detrás” y
 suprimir alertas basadas en tiempos no comparables.
@@ -137,6 +140,16 @@ corepack pnpm --dir frontend exec eslint src/overlay/widget-types/relative src/o
 corepack pnpm --dir frontend visual:overlay-studio
 git diff --check
 ```
+
+Resultado:
+
+- suite frontend: 376 archivos y 2750 tests, PASS;
+- build: PASS;
+- Relative visual y paridad: PASS al 0 %; el gate global conserva dos
+  diferencias no relacionadas de Delta stale;
+- lint focal propio: PASS; el barrido completo conserva el error heredado
+  `_absent` en `authoring-fixtures.ts:231`, fuera del diff;
+- `git diff --check`: PASS.
 
 Además:
 

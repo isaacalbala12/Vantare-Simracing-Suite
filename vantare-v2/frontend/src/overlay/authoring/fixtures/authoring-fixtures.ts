@@ -154,6 +154,7 @@ const MULTICLASS_GRID: readonly (readonly [vehicleClass: string, entries: readon
 type ReplayOverride = {
   place?: number;
   timeBehindLeader?: number;
+  lapDistanceMeters?: number;
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
@@ -275,6 +276,7 @@ export function buildRelativeMulticlassScoring(): Record<string, unknown>[] {
     vehicleClass,
     isPlayer: gap === 0,
     inPits: false,
+    lapDistanceMeters: 1_000 + gap * 100,
     timeGapToPlayer: gap,
     timeGapToLeader: 42.5 - gap,
     timeBehindLeader: 42.5 - gap,

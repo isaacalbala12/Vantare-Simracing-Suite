@@ -355,6 +355,9 @@ function buildCanonicalScoring(widget: HarnessWidget): Record<string, unknown>[]
       vehicleClass,
       isPlayer,
       inPits: false,
+      ...(widget === "relative"
+        ? { lapDistanceMeters: 4_000 + (playerPlace - place) * 100 }
+        : {}),
       timeGapToPlayer: isPlayer ? 0 : (place - playerPlace) * 1.84,
       timeGapToLeader: place === 1 ? 0 : place * 3.45,
       timeBehindLeader: place === 1 ? 0 : place * 3.45,

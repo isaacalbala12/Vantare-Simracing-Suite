@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.9",
+  "channel": "nightly",
+  "title": "Vantare — overlays y Hub más resistentes",
+  "summary": "Esta Nightly evita la desaparición momentánea de widgets durante la recuperación de telemetría, recupera los perfiles V3 en el Hub, limita la batalla de Standings a la carrera y actualiza la información real de la aplicación.",
+  "issues": [
+    "ISA-357",
+    "ISA-358",
+    "ISA-363",
+    "ISA-364"
+  ]
+}

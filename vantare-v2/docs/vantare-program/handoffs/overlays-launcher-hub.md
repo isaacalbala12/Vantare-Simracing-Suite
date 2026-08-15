@@ -18,7 +18,8 @@
   375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
   `AbortError` de teardown frontend permanecen heredados y el proceso termina
   con exit 0. Rama aislada desde `origin/nightly@3eb5dd7b`, lista para revisión;
-  sin promoción.
+  implementación `f753c172` publicada en el PR draft #261 hacia `nightly`, sin
+  merge ni promoción.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

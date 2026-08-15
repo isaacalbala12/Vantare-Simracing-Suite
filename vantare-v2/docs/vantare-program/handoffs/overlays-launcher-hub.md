@@ -10,6 +10,15 @@
 
 ## Estado
 
+- ISA-364 corrige localmente el listado vacío de `Mis perfiles`: los documentos
+  guardados como V3 puro se listan mediante el migrador canónico, mientras el
+  camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
+  incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
+  y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
+  375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
+  `AbortError` de teardown frontend permanecen heredados y el proceso termina
+  con exit 0. Rama aislada desde `origin/nightly@3eb5dd7b`, lista para revisión;
+  sin promoción.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

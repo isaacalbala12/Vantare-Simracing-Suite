@@ -1,3 +1,19 @@
+Nota ISA-364 / OS-BUG (2026-08-15, implementación local validada):
+- `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.
+  El listado usa la migración canónica solo como fallback del camino legacy,
+  conserva previews V3 y no modifica archivos del usuario.
+- La regresión reproduce el perfil invisible con el almacén V3 productivo y
+  verifica identidad, modo, widgets, preview y rechazo del nombre duplicado.
+  Los JSON de ajustes con `schemaVersion: 3` y los JSON inválidos permanecen
+  excluidos.
+- TDD: RED confirmado con `profiles len=0, want 1`; GREEN focal y paquete
+  `internal/app` PASS. Gates finales: `go test ./...`, frontend 375 archivos y
+  2734 tests, build, `go vet ./internal/app`, fragmento y diff-check PASS. La
+  suite frontend conserva los `AbortError` heredados de teardown con exit 0.
+- Rama `vantareapp/isa-364-os-bug-mis-perfiles-oculta-perfiles-v3-y-bloquea-recrearlos`
+  desde `origin/nightly@3eb5dd7b`; lista para revisión, sin promoción a
+  Nightly/Testers/Master.
+
 Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
 - El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión
   y el canal reales de `app:version`; ya no fija `v0.1.0.2` ni presenta todas

@@ -222,6 +222,9 @@ export const en: Record<string, string> = {
   // Widget Studio - New keys (P1 review fixes)
 
   "studio.editMode": "Edit Mode",
+  "overlay.editMode.chip": "EDIT MODE",
+  "overlay.editMode.hint": "Ctrl+Shift+E to exit - drag to move, Alt disables snap",
+  "overlay.editMode.saveError": "Save failed - conflict with the Hub editor. Reopen the profile to continue.",
   "studio.addWidget": "+ Add widget",
 
   // Widget Config Sections

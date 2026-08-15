@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-15T16:12:04Z",
+  "generatedAt": "2026-08-15T16:35:29Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 20,
+            "done": 21,
             "total": 38,
-            "percent": 53
+            "percent": 55
           },
           "tasks": [
             {
@@ -50,12 +50,6 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
-            },
-            {
-              "id": "task_c91419b2a4ab0d726966",
-              "title": "Promover a Nightly",
-              "status": "in-progress",
-              "updatedAt": "2026-08-15T16:11:27.319Z"
             },
             {
               "id": "task_def44d3e0bb80e6b86ac",
@@ -193,7 +187,7 @@
               "id": "task_a745bf41c7e0fbb257fb",
               "title": "Mis perfiles oculta perfiles V3 y bloquea recrearlos",
               "status": "done",
-              "updatedAt": "2026-08-15T16:11:55.600Z"
+              "updatedAt": "2026-08-15T16:35:18.916Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
@@ -218,6 +212,12 @@
               "title": "Plan de estabilización en Testers y lanzamiento comercial controlado",
               "status": "done",
               "updatedAt": "2026-08-12T01:13:03.034Z"
+            },
+            {
+              "id": "task_c91419b2a4ab0d726966",
+              "title": "Promover a Nightly",
+              "status": "done",
+              "updatedAt": "2026-08-15T16:35:18.915Z"
             },
             {
               "id": "task_fc2a79ce7d269c04e458",

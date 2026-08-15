@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-15T17:14:50Z",
+  "generatedAt": "2026-08-15T22:33:36Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -193,7 +193,7 @@
               "id": "task_007585ce0abde04c4d98",
               "title": "Overlay runtime: evitar el frame disconnected entre stale y live",
               "status": "done",
-              "updatedAt": "2026-08-15T17:14:39.707Z"
+              "updatedAt": "2026-08-15T17:14:54.837Z"
             },
             {
               "id": "task_e79e1f63aa00207b5076",
@@ -205,7 +205,7 @@
               "id": "task_cdfcf9e4b68a16baffba",
               "title": "OVERLAY-INTEGRATION — Promover a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-15T17:14:39.706Z"
+              "updatedAt": "2026-08-15T17:26:14.805Z"
             },
             {
               "id": "task_871b1ab68a2ba77204b2",

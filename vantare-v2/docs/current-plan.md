@@ -10,6 +10,8 @@ Nota ISA-364 / OS-BUG (2026-08-15, implementación local validada):
   `internal/app` PASS. Gates finales: `go test ./...`, frontend 375 archivos y
   2734 tests, build, `go vet ./internal/app`, fragmento y diff-check PASS. La
   suite frontend conserva los `AbortError` heredados de teardown con exit 0.
+  El CI del PR #261, run `31893488756`, pasó topología, gates bloqueantes,
+  build Wails y pasos informativos sobre `81cde2ff`.
 - Rama `vantareapp/isa-364-os-bug-mis-perfiles-oculta-perfiles-v3-y-bloquea-recrearlos`
   desde `origin/nightly@3eb5dd7b`; implementación `f753c172` publicada en el
   PR draft #261 hacia `nightly`. Lista para revisión, sin merge ni promoción a

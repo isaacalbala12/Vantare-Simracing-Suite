@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-15T16:51:11Z",
+  "generatedAt": "2026-08-15T17:14:50Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,9 +28,9 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 22,
+            "done": 23,
             "total": 39,
-            "percent": 56
+            "percent": 59
           },
           "tasks": [
             {
@@ -38,12 +38,6 @@
               "title": "Overlay Studio: Input Telemetry debe respetar la proporción 400×70 de Telemetry Blade",
               "status": "in-progress",
               "updatedAt": "2026-08-13T23:15:26.651Z"
-            },
-            {
-              "id": "task_cdfcf9e4b68a16baffba",
-              "title": "OVERLAY-INTEGRATION — Promover a Nightly",
-              "status": "in-progress",
-              "updatedAt": "2026-08-15T16:38:06.452Z"
             },
             {
               "id": "task_f0c3e304758281802415",
@@ -55,7 +49,7 @@
               "id": "task_def44d3e0bb80e6b86ac",
               "title": "Relative físico 2+2 con degradación neutral en boxes",
               "status": "in-progress",
-              "updatedAt": "2026-08-15T16:49:48.143Z"
+              "updatedAt": "2026-08-15T17:13:45.325Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -199,13 +193,19 @@
               "id": "task_007585ce0abde04c4d98",
               "title": "Overlay runtime: evitar el frame disconnected entre stale y live",
               "status": "done",
-              "updatedAt": "2026-08-15T16:51:00.230Z"
+              "updatedAt": "2026-08-15T17:14:39.707Z"
             },
             {
               "id": "task_e79e1f63aa00207b5076",
               "title": "Overlay Studio: Broadcast Tower debe ocupar todo el ancho y redimensionarse solo horizontalmente",
               "status": "done",
               "updatedAt": "2026-08-14T00:01:30.881Z"
+            },
+            {
+              "id": "task_cdfcf9e4b68a16baffba",
+              "title": "OVERLAY-INTEGRATION — Promover a Nightly",
+              "status": "done",
+              "updatedAt": "2026-08-15T17:14:39.706Z"
             },
             {
               "id": "task_871b1ab68a2ba77204b2",

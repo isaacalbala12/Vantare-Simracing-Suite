@@ -18,8 +18,21 @@
   Frontend 376/2750 y build PASS; el gate visual valida todas las capturas de
   Relative al 0 % y conserva dos diferencias ajenas de Delta stale. El lint
   focal propio pasa y el barrido completo del diff solo reproduce el error
-  heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Base
-  `origin/nightly@3eb5dd7b`; sin integración, promoción ni release.
+  heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Rama
+  nacida sobre `origin/nightly@3eb5dd7b` y sincronizada con
+  `nightly@22946e6f`; sin integración, promoción ni release.
+- ISA-364 corrige localmente el listado vacío de `Mis perfiles`: los documentos
+  guardados como V3 puro se listan mediante el migrador canónico, mientras el
+  camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
+  incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
+  y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
+  375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
+  `AbortError` de teardown frontend permanecen heredados y el proceso termina
+  con exit 0. El CI del PR #261, run `31893488756`, pasó topología, gates
+  bloqueantes, build Wails y pasos informativos sobre `81cde2ff`. Rama aislada
+  desde `origin/nightly@3eb5dd7b`, lista para revisión; implementación
+  `f753c172` publicada en el PR draft #261 hacia `nightly`, sin merge ni
+  promoción.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

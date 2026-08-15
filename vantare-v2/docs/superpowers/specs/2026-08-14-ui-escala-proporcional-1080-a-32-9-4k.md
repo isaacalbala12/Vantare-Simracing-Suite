@@ -2,7 +2,8 @@
 
 Estado: fase Specify, decisiones cerradas con Isaac el 2026-08-14
 Issue: sin Linear (decisión explícita de Isaac); rama
-`vantareapp/ui-resp-escala-proporcional-1080-4k`
+`vantareapp/isa-343-ui-resp-escala-proporcional-1080-4k` (prefijo isa- solo para
+cumplir la política de canales del CI; el trabajo previo ISA-343 está descartado)
 Base: `origin/nightly@03fce9cd` (ISA-344, TM-01)
 Worktree: `C:/Users/isaac/Desktop/Vantare-Overlays/worktrees/ui-resp-escala-proporcional`
 

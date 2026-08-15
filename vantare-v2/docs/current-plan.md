@@ -13,9 +13,9 @@ Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
   Relative y su paridad; la ejecución global conserva dos diferencias
   heredadas de Delta stale. El lint global del diff conserva un error heredado
   `_absent` en `authoring-fixtures.ts:231`, fuera de las líneas modificadas.
-- Rama aislada nacida sobre `origin/nightly@3eb5dd7b` y sincronizada con
-  `nightly@22946e6f`; sin integración, promoción ni
-  release. Spec y microplan:
+- Rama aislada nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
+  `nightly@22946e6f` y publicada en la PR draft #263 hacia `nightly`; sin
+  integración, promoción ni release. Spec y microplan:
   `docs/superpowers/specs/2026-08-15-isa-365-relative-fisico-2x2-design.md` y
   `docs/superpowers/plans/2026-08-15-isa-365-relative-fisico-2x2.md`.
 

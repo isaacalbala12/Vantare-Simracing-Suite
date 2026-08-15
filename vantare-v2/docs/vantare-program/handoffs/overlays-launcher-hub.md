@@ -19,8 +19,9 @@
   Relative al 0 % y conserva dos diferencias ajenas de Delta stale. El lint
   focal propio pasa y el barrido completo del diff solo reproduce el error
   heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Rama
-  nacida sobre `origin/nightly@3eb5dd7b` y sincronizada con
-  `nightly@22946e6f`; sin integración, promoción ni release.
+  nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
+  `nightly@22946e6f` y publicada en la PR draft #263 hacia `nightly`; sin
+  integración, promoción ni release.
 - ISA-364 corrige localmente el listado vacío de `Mis perfiles`: los documentos
   guardados como V3 puro se listan mediante el migrador canónico, mientras el
   camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni

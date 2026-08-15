@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-15T16:35:29Z",
+  "generatedAt": "2026-08-15T16:51:11Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,22 +28,22 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 21,
-            "total": 38,
-            "percent": 55
+            "done": 22,
+            "total": 39,
+            "percent": 56
           },
           "tasks": [
-            {
-              "id": "task_007585ce0abde04c4d98",
-              "title": "Overlay runtime: evitar el frame disconnected entre stale y live",
-              "status": "in-progress",
-              "updatedAt": "2026-08-15T15:48:00.488Z"
-            },
             {
               "id": "task_609d33340526777a9186",
               "title": "Overlay Studio: Input Telemetry debe respetar la proporción 400×70 de Telemetry Blade",
               "status": "in-progress",
               "updatedAt": "2026-08-13T23:15:26.651Z"
+            },
+            {
+              "id": "task_cdfcf9e4b68a16baffba",
+              "title": "OVERLAY-INTEGRATION — Promover a Nightly",
+              "status": "in-progress",
+              "updatedAt": "2026-08-15T16:38:06.452Z"
             },
             {
               "id": "task_f0c3e304758281802415",
@@ -55,7 +55,7 @@
               "id": "task_def44d3e0bb80e6b86ac",
               "title": "Relative físico 2+2 con degradación neutral en boxes",
               "status": "in-progress",
-              "updatedAt": "2026-08-15T15:53:32.831Z"
+              "updatedAt": "2026-08-15T16:49:48.143Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -187,13 +187,19 @@
               "id": "task_a745bf41c7e0fbb257fb",
               "title": "Mis perfiles oculta perfiles V3 y bloquea recrearlos",
               "status": "done",
-              "updatedAt": "2026-08-15T16:35:18.916Z"
+              "updatedAt": "2026-08-15T16:47:33.859Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
               "title": "N01 · Promoción a nightly y pre-release de superficie arbitraria",
               "status": "done",
               "updatedAt": "2026-08-12T20:13:35.786Z"
+            },
+            {
+              "id": "task_007585ce0abde04c4d98",
+              "title": "Overlay runtime: evitar el frame disconnected entre stale y live",
+              "status": "done",
+              "updatedAt": "2026-08-15T16:51:00.230Z"
             },
             {
               "id": "task_e79e1f63aa00207b5076",
@@ -217,7 +223,7 @@
               "id": "task_c91419b2a4ab0d726966",
               "title": "Promover a Nightly",
               "status": "done",
-              "updatedAt": "2026-08-15T16:35:18.915Z"
+              "updatedAt": "2026-08-15T16:47:34.285Z"
             },
             {
               "id": "task_fc2a79ce7d269c04e458",

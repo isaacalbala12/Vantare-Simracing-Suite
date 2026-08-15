@@ -20,9 +20,17 @@
   focal propio pasa y el barrido completo del diff solo reproduce el error
   heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Rama
   nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
-  `nightly@028c7512` y publicada en la PR draft #263 hacia `nightly`; sin
-  integración, promoción ni release. El CI de la PR, run `31896030791`, pasó
-  ruta de promoción, gates bloqueantes y seguridad sobre `4fb880de`.
+  `nightly@7341e8cd` y publicada en la PR draft #263 hacia `nightly`; sin
+  integración, promoción ni release. El CI de la PR, run `31896585676`, pasó
+  ruta de promoción, gates bloqueantes y seguridad sobre `839603f5`.
+- ISA-363 corrige en rama aislada el parpadeo de widgets durante el relevo
+  `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`
+  hasta recibir la proyección de la nueva revisión, sin publicar el frame
+  `disconnected` intermedio. Arranque sin datos, estados reales de conexión o
+  parada y proyecciones bloqueadas mantienen el cierre seguro. TDD RED/GREEN,
+  focal 4/4, frontend 375 archivos/2736 tests, build, ESLint focal y diff-check
+  PASS; el lint global conserva 49 errores y 2 warnings heredados fuera del
+  cambio. Rama desde `origin/nightly@3eb5dd7b`, sin promoción ni release.
 - ISA-364 está promovida a `nightly` y corrige el listado vacío de
   `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
   migrador canónico, mientras el

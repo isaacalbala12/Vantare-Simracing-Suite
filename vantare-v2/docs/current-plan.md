@@ -1,4 +1,4 @@
-Nota ISA-364 / OS-BUG (2026-08-15, implementación local validada):
+Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
 - `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.
   El listado usa la migración canónica solo como fallback del camino legacy,
   conserva previews V3 y no modifica archivos del usuario.
@@ -10,12 +10,14 @@ Nota ISA-364 / OS-BUG (2026-08-15, implementación local validada):
   `internal/app` PASS. Gates finales: `go test ./...`, frontend 375 archivos y
   2734 tests, build, `go vet ./internal/app`, fragmento y diff-check PASS. La
   suite frontend conserva los `AbortError` heredados de teardown con exit 0.
-  El CI del PR #261, run `31893488756`, pasó topología, gates bloqueantes,
-  build Wails y pasos informativos sobre `81cde2ff`.
+  El CI final del PR #261, run `31894030661`, pasó topología, gates
+  bloqueantes, build Wails y pasos informativos sobre `03a0205b`.
 - Rama `vantareapp/isa-364-os-bug-mis-perfiles-oculta-perfiles-v3-y-bloquea-recrearlos`
   desde `origin/nightly@3eb5dd7b`; implementación `f753c172` publicada en el
-  PR draft #261 hacia `nightly`. Lista para revisión, sin merge ni promoción a
-  Nightly/Testers/Master.
+  PR #261 y promovida por squash a `nightly@22946e6f` tras la autorización
+  explícita de Isaac. El gate posterior de Nightly `31894845365` y la
+  regeneración del roadmap `31894845385` pasaron sobre ese SHA. ISA-366
+  registra la integración. Sin promoción a Testers/Master ni release.
 
 Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
 - El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión

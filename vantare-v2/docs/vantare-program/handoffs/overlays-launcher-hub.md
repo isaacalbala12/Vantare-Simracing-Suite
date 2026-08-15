@@ -10,18 +10,21 @@
 
 ## Estado
 
-- ISA-364 corrige localmente el listado vacío de `Mis perfiles`: los documentos
-  guardados como V3 puro se listan mediante el migrador canónico, mientras el
+- ISA-364 está promovida a `nightly` y corrige el listado vacío de
+  `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
+  migrador canónico, mientras el
   camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
   incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
   y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
   375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
   `AbortError` de teardown frontend permanecen heredados y el proceso termina
-  con exit 0. El CI del PR #261, run `31893488756`, pasó topología, gates
-  bloqueantes, build Wails y pasos informativos sobre `81cde2ff`. Rama aislada
-  desde `origin/nightly@3eb5dd7b`, lista para revisión; implementación
-  `f753c172` publicada en el PR draft #261 hacia `nightly`, sin merge ni
-  promoción.
+  con exit 0. El CI final del PR #261, run `31894030661`, pasó topología,
+  gates bloqueantes, build Wails y pasos informativos sobre `03a0205b`. La
+  rama partió de `origin/nightly@3eb5dd7b`; implementación `f753c172` y merge
+  squash del PR #261 en `nightly@22946e6f`, autorizada expresamente por Isaac.
+  El gate posterior `31894845365` y el roadmap `31894845385` pasaron sobre el
+  SHA integrado. ISA-366 registra la promoción; sin paso a `testers`/`master`
+  ni release.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

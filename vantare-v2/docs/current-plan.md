@@ -1,3 +1,49 @@
+Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, promovida a Nightly):
+- El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable
+  como `stale` mientras un estado `live` espera su proyección de la misma
+  revisión. La recuperación observable pasa de `ready -> stale -> disconnected
+  -> ready` a `ready -> stale -> stale -> ready`, evitando que los widgets
+  desaparezcan durante ese relevo.
+- El cambio no relaja el cierre seguro: el arranque sin snapshot, una proyección
+  bloqueada y los estados reales de parada o conexión siguen publicando
+  `disconnected`. No cambia el TTL, Shared Memory, REST, reducers, renderizadores
+  ni CSS.
+- TDD: la regresión falló primero con `stale, disconnected, ready` y pasa tras
+  el fix con `stale, stale, ready`; el caso de proyección bloqueada después de
+  un snapshot válido también queda cubierto. Focal 4/4, frontend completo 375
+  archivos/2736 tests, build, ESLint focal y `git diff --check` PASS. El lint
+  global conserva 49 errores y 2 warnings heredados fuera del diff.
+- Rama
+  `vantareapp/isa-363-overlay-runtime-evitar-el-frame-disconnected-entre-stale-y`
+  sincronizada con `origin/nightly@028c7512`; implementación aprobada
+  `ae313e2e` y head final `ac46c3c3`. El CI final del PR #260, run
+  `31896118568`, pasó topología, gates bloqueantes, build Wails y checks
+  informativos. Tras autorización explícita de Isaac, el PR #260 se promovió
+  por squash a `nightly@7341e8cd`; el gate posterior `31896647826` y el
+  roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la integración.
+  Sin promoción a `testers`/`master` ni release.
+
+Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
+- `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.
+  El listado usa la migración canónica solo como fallback del camino legacy,
+  conserva previews V3 y no modifica archivos del usuario.
+- La regresión reproduce el perfil invisible con el almacén V3 productivo y
+  verifica identidad, modo, widgets, preview y rechazo del nombre duplicado.
+  Los JSON de ajustes con `schemaVersion: 3` y los JSON inválidos permanecen
+  excluidos.
+- TDD: RED confirmado con `profiles len=0, want 1`; GREEN focal y paquete
+  `internal/app` PASS. Gates finales: `go test ./...`, frontend 375 archivos y
+  2734 tests, build, `go vet ./internal/app`, fragmento y diff-check PASS. La
+  suite frontend conserva los `AbortError` heredados de teardown con exit 0.
+  El CI final del PR #261, run `31894030661`, pasó topología, gates
+  bloqueantes, build Wails y pasos informativos sobre `03a0205b`.
+- Rama `vantareapp/isa-364-os-bug-mis-perfiles-oculta-perfiles-v3-y-bloquea-recrearlos`
+  desde `origin/nightly@3eb5dd7b`; implementación `f753c172` publicada en el
+  PR #261 y promovida por squash a `nightly@22946e6f` tras la autorización
+  explícita de Isaac. El gate posterior de Nightly `31894845365` y la
+  regeneración del roadmap `31894845385` pasaron sobre ese SHA. ISA-366
+  registra la integración. Sin promoción a Testers/Master ni release.
+
 Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
 - El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión
   y el canal reales de `app:version`; ya no fija `v0.1.0.2` ni presenta todas

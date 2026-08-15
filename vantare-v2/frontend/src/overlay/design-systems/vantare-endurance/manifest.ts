@@ -23,6 +23,11 @@ import {
   normalizeRelativeEnduranceSettings,
 } from "./relative/relative-endurance-settings";
 import { StandingsEndurance } from "./standings/StandingsEndurance";
+import { TrackMapEndurance } from "./track-map/TrackMapEndurance";
+import {
+  TRACK_MAP_ENDURANCE_DEFAULT_SETTINGS,
+  normalizeTrackMapEnduranceSettings,
+} from "./track-map/track-map-endurance-settings";
 import {
   STANDINGS_ENDURANCE_DEFAULT_SETTINGS,
   normalizeStandingsEnduranceSettings,
@@ -231,6 +236,34 @@ const pedalsRegistration = {
   Renderer: PedalsEndurance as ComponentType<WidgetRendererProps>,
 };
 
+const trackMapAppearanceControls = [
+  {
+    kind: "toggle" as const,
+    id: "show-track-label",
+    labelKey: "overlay.inspector.trackMap.showTrackLabel",
+    path: "showTrackLabel",
+    defaultValue: true,
+  },
+];
+
+validateInspectorControls(trackMapAppearanceControls);
+
+const trackMapRegistration = {
+  widgetType: "track-map" as const,
+  configVersion: 1,
+  defaultSettings: { ...TRACK_MAP_ENDURANCE_DEFAULT_SETTINGS },
+  configMigrations: {
+    0: (settings: Record<string, unknown>) => normalizeTrackMapEnduranceSettings(settings),
+  },
+  parseSettings(input: unknown): Record<string, unknown> {
+    return normalizeTrackMapEnduranceSettings(input);
+  },
+  inspector: {
+    appearance: trackMapAppearanceControls,
+  },
+  Renderer: TrackMapEndurance as ComponentType<WidgetRendererProps>,
+};
+
 export const vantareEnduranceManifest: DesignSystemDefinition = {
   id: "vantare-endurance",
   version: 1,
@@ -243,5 +276,6 @@ export const vantareEnduranceManifest: DesignSystemDefinition = {
     standingsRegistration,
     relativeRegistration,
     pedalsRegistration,
+    trackMapRegistration,
   ],
 };

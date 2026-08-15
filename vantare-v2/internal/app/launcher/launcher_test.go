@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
@@ -288,5 +289,46 @@ func TestCancelChainReturnsFalseWhenIdle(t *testing.T) {
 	svc := NewService(backend, &spyEmitter{}, nil)
 	if svc.CancelChain("whatever") {
 		t.Fatal("CancelChain should return false when no chain is active")
+	}
+}
+
+func TestTerminalChainIsCleanedUpAfterDelay(t *testing.T) {
+	backend := newBackendWithLMU()
+	svc := NewService(backend, &spyEmitter{}, nil)
+	// 500ms, not shorter: every Snapshot() call resolves icons through the
+	// Windows COM pipeline (hundreds of ms), and the cleanup timer must never
+	// fire while the test is still asserting the pre-cleanup state.
+	svc.chainCleanupDelay = 500 * time.Millisecond
+
+	svc.chain.emit.Emit("launcher:chain:done", ChainProgress{ProfileID: "creator", Status: "done", Success: true})
+	if chains := svc.Snapshot().ActiveChains; len(chains) != 1 || chains[0].Status != "done" {
+		t.Fatalf("expected the finished chain to be visible before cleanup, got %+v", chains)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(svc.Snapshot().ActiveChains) == 0 {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatal("terminal chain was not cleaned up after the cleanup delay")
+}
+
+func TestTerminalCleanupLeavesARelaunchedChainAlive(t *testing.T) {
+	backend := newBackendWithLMU()
+	svc := NewService(backend, &spyEmitter{}, nil)
+	svc.chainCleanupDelay = 500 * time.Millisecond
+
+	svc.chain.emit.Emit("launcher:chain:done", ChainProgress{ProfileID: "creator", Status: "done", Success: true})
+	// A new chain for the same profile starts before the old timer fires.
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "launching", Pid: 42})
+
+	// Wait past the stale timer's firing window, then assert the relaunched
+	// chain is still present: the timer must not drop a running chain.
+	time.Sleep(700 * time.Millisecond)
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || chains[0].Status != "launching" {
+		t.Fatalf("relaunched chain must survive the stale cleanup timer, got %+v", chains)
 	}
 }

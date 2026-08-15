@@ -16,6 +16,10 @@ import { PedalsEndurance } from "./pedals/PedalsEndurance";
 import { RelativeEndurance } from "./relative/RelativeEndurance";
 import { parseRelativeEnduranceSettings } from "./relative/relative-endurance-settings";
 import { StandingsEndurance } from "./standings/StandingsEndurance";
+import { TrackMapEndurance } from "./track-map/TrackMapEndurance";
+import { parseTrackMapEnduranceSettings } from "./track-map/track-map-endurance-settings";
+import { buildTrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
+import { createDefaultTrackMapContent } from "../../widget-types/track-map/track-map-content";
 import { parseStandingsEnduranceSettings } from "./standings/standings-endurance-settings";
 import { vantareEnduranceManifest } from "./manifest";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
@@ -55,7 +59,7 @@ function rootOf(container: HTMLElement): HTMLElement {
 }
 
 describe("vantare-endurance contract", () => {
-  it("registers exactly the four implemented core widgets", () => {
+  it("registers exactly the five implemented core widgets", () => {
     expect(vantareEnduranceManifest.id).toBe("vantare-endurance");
     expect(vantareEnduranceManifest.version).toBe(1);
     expect(vantareEnduranceManifest.widgets.map((widget) => widget.widgetType)).toEqual([
@@ -63,15 +67,43 @@ describe("vantare-endurance contract", () => {
       "standings",
       "relative",
       "pedals",
+      "track-map",
     ]);
   });
 
+  it("draws the outline when the circuit resolves, and badges it as reference", () => {
+    const mapped = { ...snapshot, session: { ...snapshot.session, trackName: "Vantare Reference Loop" } };
+    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
+    );
+    const root = rootOf(view.container);
+
+    expect(root.getAttribute("data-widget-renderer")).toBe("track-map");
+    expect(root.getAttribute("data-availability")).toBe("available");
+    expect(root.querySelector(".ven-tm-outline")?.getAttribute("d")).toBe(model.outlinePath);
+    expect(root.querySelector("[data-track-map-synthetic]")).toBeTruthy();
+    expect(root.querySelector("[data-track-map-empty]")).toBeFalsy();
+  });
+
+  it("draws nothing and says so when the circuit is not mapped", () => {
+    const model = buildTrackMapViewModel(snapshot, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
+    );
+    const root = rootOf(view.container);
+
+    expect(root.getAttribute("data-availability")).toBe("unknown-track");
+    expect(root.querySelector("svg")).toBeFalsy();
+    expect(root.querySelector("[data-track-map-empty]")?.textContent).toBe("TRACK NOT MAPPED");
+  });
   it("falls back to the declared template with an observable diagnostic", () => {
     for (const [parse, fallback] of [
       [parseDeltaEnduranceSettings, "delta-redline"],
       [parseStandingsEnduranceSettings, "standings-redline"],
       [parseRelativeEnduranceSettings, "relative-redline-mirror"],
       [parsePedalsEnduranceSettings, "pedals-redline"],
+      [parseTrackMapEnduranceSettings, "track-map-outline"],
     ] as const) {
       const parsed = parse({ templateId: "nope" });
       expect(parsed.templateId).toBe(fallback);

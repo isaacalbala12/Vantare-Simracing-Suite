@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-14T21:35:26Z",
+  "generatedAt": "2026-08-15T16:12:04Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -28,11 +28,17 @@
             "it": "Editor visuale di overlay."
           },
           "progress": {
-            "done": 19,
-            "total": 34,
-            "percent": 56
+            "done": 20,
+            "total": 38,
+            "percent": 53
           },
           "tasks": [
+            {
+              "id": "task_007585ce0abde04c4d98",
+              "title": "Overlay runtime: evitar el frame disconnected entre stale y live",
+              "status": "in-progress",
+              "updatedAt": "2026-08-15T15:48:00.488Z"
+            },
             {
               "id": "task_609d33340526777a9186",
               "title": "Overlay Studio: Input Telemetry debe respetar la proporción 400×70 de Telemetry Blade",
@@ -44,6 +50,18 @@
               "title": "Programa Overlay Workshop code-first",
               "status": "in-progress",
               "updatedAt": "2026-08-05T02:09:01.710Z"
+            },
+            {
+              "id": "task_c91419b2a4ab0d726966",
+              "title": "Promover a Nightly",
+              "status": "in-progress",
+              "updatedAt": "2026-08-15T16:11:27.319Z"
+            },
+            {
+              "id": "task_def44d3e0bb80e6b86ac",
+              "title": "Relative físico 2+2 con degradación neutral en boxes",
+              "status": "in-progress",
+              "updatedAt": "2026-08-15T15:53:32.831Z"
             },
             {
               "id": "task_0b00d0a9f9284d02f9db",
@@ -170,6 +188,12 @@
               "title": "Guardar perfiles rechaza vantare-endurance como sistema no soportado",
               "status": "done",
               "updatedAt": "2026-08-14T02:28:13.806Z"
+            },
+            {
+              "id": "task_a745bf41c7e0fbb257fb",
+              "title": "Mis perfiles oculta perfiles V3 y bloquea recrearlos",
+              "status": "done",
+              "updatedAt": "2026-08-15T16:11:55.600Z"
             },
             {
               "id": "task_f5abea673401145dbe8c",
@@ -706,7 +730,7 @@
               "id": "task_03c0faf16940f92e6c4b",
               "title": "Exponer activación y desactivación del plan en la UI",
               "status": "done",
-              "updatedAt": "2026-08-14T21:35:16.189Z"
+              "updatedAt": "2026-08-14T22:09:31.866Z"
             },
             {
               "id": "task_637de38f9ebdb077cecd",

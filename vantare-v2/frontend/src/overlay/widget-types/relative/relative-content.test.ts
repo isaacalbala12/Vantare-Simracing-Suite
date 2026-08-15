@@ -3,7 +3,6 @@ import {
   createDefaultRelativeContent,
   moveRelativeColumn,
   parseRelativeContent,
-  RELATIVE_RANGE_MAX,
   toggleRelativeColumn,
   updateRelativeFilters,
 } from "./relative-content";
@@ -11,8 +10,8 @@ import {
 describe("relative content", () => {
   it("creates stable defaults", () => {
     const content = createDefaultRelativeContent();
-    expect(content.rangeAhead).toBe(3);
-    expect(content.rangeBehind).toBe(3);
+    expect(content.rangeAhead).toBe(2);
+    expect(content.rangeBehind).toBe(2);
     expect(content.classScope).toBe("all");
     expect(content.includePlayer).toBe(true);
     expect(content.rowHeightMode).toBe("compact");
@@ -26,7 +25,7 @@ describe("relative content", () => {
     ]);
   });
 
-  it("parses migrated filters and maps comfortable row height to fill", () => {
+  it("normalizes migrated filters to 2+1+2 and maps comfortable row height to fill", () => {
     const parsed = parseRelativeContent({
       filters: {
         rangeAhead: 4,
@@ -36,17 +35,17 @@ describe("relative content", () => {
         rowHeightMode: "comfortable",
       },
     });
-    expect(parsed.rangeAhead).toBe(4);
+    expect(parsed.rangeAhead).toBe(2);
     expect(parsed.rangeBehind).toBe(2);
     expect(parsed.classScope).toBe("sameClass");
-    expect(parsed.includePlayer).toBe(false);
+    expect(parsed.includePlayer).toBe(true);
     expect(parsed.rowHeightMode).toBe("fill");
   });
 
-  it("clamps ranges to 0..20", () => {
+  it("normalizes top-level legacy ranges to the fixed contract", () => {
     const parsed = parseRelativeContent({ rangeAhead: 99, rangeBehind: -8 });
-    expect(parsed.rangeAhead).toBe(RELATIVE_RANGE_MAX);
-    expect(parsed.rangeBehind).toBe(0);
+    expect(parsed.rangeAhead).toBe(2);
+    expect(parsed.rangeBehind).toBe(2);
   });
 
   it("rejects duplicate metric ids", () => {
@@ -68,8 +67,9 @@ describe("relative content", () => {
     const moved = moveRelativeColumn(content, "driverName", "up");
     expect(moved.columns[2]?.metricId).toBe("driverName");
 
-    const filtered = updateRelativeFilters(content, { rangeAhead: 1, rowHeightMode: "fill" });
-    expect(filtered.rangeAhead).toBe(1);
+    const filtered = updateRelativeFilters(content, { classScope: "sameClass", rowHeightMode: "fill" });
+    expect(filtered.rangeAhead).toBe(2);
+    expect(filtered.classScope).toBe("sameClass");
     expect(filtered.rowHeightMode).toBe("fill");
   });
 });

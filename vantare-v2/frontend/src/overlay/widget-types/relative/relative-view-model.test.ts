@@ -57,13 +57,11 @@ describe("selectRelativeRows", () => {
   it("selects ahead, player and behind rows in physical order", () => {
     const rows = selectRelativeRows(vehicles, content);
     expect(selectedNames(rows)).toEqual([
-      "Ahead far",
       "Ahead near",
       "Ahead gt",
       "Player",
       "Behind near",
       "Behind gt",
-      "Behind far",
     ]);
   });
 

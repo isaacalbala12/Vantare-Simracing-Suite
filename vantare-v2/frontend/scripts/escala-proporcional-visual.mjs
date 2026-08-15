@@ -144,7 +144,7 @@ async function assertOverlayInvariants(page, viewport, errors) {
   errors.push(viewport.name);
 }
 
-async function assertHubZoom(page, viewport, errors) {
+async function assertHubZoom(page, viewport) {
   await page.goto(`${baseUrl}/hub-zoom-harness.html`, { waitUntil: "networkidle" });
   await page.waitForSelector("[data-hub-zoom-probe]");
 
@@ -157,7 +157,13 @@ async function assertHubZoom(page, viewport, errors) {
   const scaledWidth = 960 * Number(probe.zoom);
   assert.ok(Math.abs(probe.width - scaledWidth) < 1.5, `${viewport.name}: probe width ${probe.width} != ${scaledWidth}`);
 
-  errors.push(viewport.name);
+  const fixed = await page.locator("[data-hub-zoom-fixed]").evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
+  });
+  assert.ok(fixed.left >= 0 && fixed.top >= 0, `${viewport.name}: fixed element escaped the viewport`);
+  assert.ok(fixed.left < fixed.viewportWidth && fixed.top < fixed.viewportHeight,
+    `${viewport.name}: fixed element outside viewport (${fixed.left},${fixed.top})`);
 }
 
 let browser;
@@ -175,7 +181,8 @@ try {
   const zoomOk = [];
   for (const viewport of CAPTURES) {
     const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
-    await assertHubZoom(page, viewport, zoomOk);
+    await assertHubZoom(page, viewport);
+    zoomOk.push(viewport.name);
     await page.close();
   }
 

@@ -37,7 +37,8 @@ export function resolveResponsiveSceneTransform(
   return {
     scale,
     offsetX: (outputViewport.width - frameWidth) / 2,
-    offsetY: (outputViewport.height - layoutViewport.height * scale) / 2,
+    // offsetY es 0 por construcción: la escala deriva de la altura exacta.
+    offsetY: 0,
     designWidth: layoutViewport.width,
     layoutWidth,
     layoutHeight: layoutViewport.height,
@@ -56,7 +57,7 @@ export function mapWidgetFrameToResponsive(
 
   const touchesRightEdge = frame.x + frame.w >= transform.designWidth;
   if (touchesRightEdge) {
-    return { x: transform.layoutWidth - frame.w, y: frame.y, w: frame.w, h: frame.h };
+    return { x: Math.max(0, transform.layoutWidth - frame.w), y: frame.y, w: frame.w, h: frame.h };
   }
 
   return { x: frame.x * repartition, y: frame.y, w: frame.w, h: frame.h };

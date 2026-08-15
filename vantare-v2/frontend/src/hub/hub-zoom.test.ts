@@ -10,11 +10,7 @@ describe("resolveHubZoomFactor", () => {
     expect(resolveHubZoomFactor(1440)).toBeCloseTo(4 / 3);
   });
 
-  it("scales 4K to 2", () => {
-    expect(resolveHubZoomFactor(2160)).toBe(2);
-  });
-
-  it("scales 32:9 4K to 2", () => {
+  it("scales 4K and 32:9 4K to 2", () => {
     expect(resolveHubZoomFactor(2160)).toBe(2);
   });
 

@@ -1,3 +1,23 @@
+Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, implementación local validada):
+- El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable
+  como `stale` mientras un estado `live` espera su proyección de la misma
+  revisión. La recuperación observable pasa de `ready -> stale -> disconnected
+  -> ready` a `ready -> stale -> stale -> ready`, evitando que los widgets
+  desaparezcan durante ese relevo.
+- El cambio no relaja el cierre seguro: el arranque sin snapshot, una proyección
+  bloqueada y los estados reales de parada o conexión siguen publicando
+  `disconnected`. No cambia el TTL, Shared Memory, REST, reducers, renderizadores
+  ni CSS.
+- TDD: la regresión falló primero con `stale, disconnected, ready` y pasa tras
+  el fix con `stale, stale, ready`; el caso de proyección bloqueada después de
+  un snapshot válido también queda cubierto. Focal 4/4, frontend completo 375
+  archivos/2736 tests, build, ESLint focal y `git diff --check` PASS. El lint
+  global conserva 49 errores y 2 warnings heredados fuera del diff.
+- Rama aislada
+  `vantareapp/isa-363-overlay-runtime-evitar-el-frame-disconnected-entre-stale-y`
+  desde `origin/nightly@3eb5dd7b`. Sin promoción a `nightly`, `testers` o
+  `master`, y sin release.
+
 Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
 - `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.
   El listado usa la migración canónica solo como fallback del camino legacy,

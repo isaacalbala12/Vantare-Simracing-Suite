@@ -60,11 +60,19 @@ function createProjectionTelemetryAdapter(
   let lastSnapshot: TelemetrySnapshot | undefined;
   let lastStatus: string | undefined;
 
-  const publishFallback = (status: OverlayProjectionObservation["status"], force = false) => {
+  const publishFallback = (
+    status: OverlayProjectionObservation["status"],
+    force = false,
+    preserveLastOnLive = false,
+  ) => {
     const key = status ?? "missing";
     if (!force && key === lastStatus) return;
     lastStatus = key;
-    if ((status === "degraded" || status === "stale") && lastSnapshot) {
+    if (
+      (status === "degraded" || status === "stale" ||
+        (status === "live" && preserveLastOnLive)) &&
+      lastSnapshot
+    ) {
       options.coordinator.publish(snapshotFromStale(lastSnapshot, now()));
       return;
     }
@@ -84,7 +92,11 @@ function createProjectionTelemetryAdapter(
         options.coordinator.publish(observation.adaptation.snapshot);
         return;
       }
-      publishFallback(observation.status, observation.adaptation?.kind === "blocked");
+      publishFallback(
+        observation.status,
+        observation.adaptation?.kind === "blocked",
+        observation.adaptation === undefined,
+      );
     },
     onDiagnostics(diagnostics) {
       if (diagnostics.result === "error") {

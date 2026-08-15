@@ -223,6 +223,75 @@ func TestHubServiceListProfilesIncludesProfileConfig(t *testing.T) {
 	}
 }
 
+func TestHubServiceListProfilesIncludesPureV3Profile(t *testing.T) {
+	dir := t.TempDir()
+	doc := &config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "custom-v3-only",
+		Name:          "V3 Only",
+		DisplayMode:   config.ModeEdit,
+		MonitorIndex:  0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {
+				Type: config.LayoutGeneral,
+				Widgets: []config.WidgetInstanceV3{
+					{
+						ID:   "delta",
+						Type: config.WidgetTypeDelta,
+						Layout: config.WidgetLayoutV3{
+							X: 100, Y: 100, W: 400, H: 48,
+							AspectLocked: true,
+						},
+						Behavior: config.WidgetBehaviorV3{Enabled: true, UpdateHz: 30},
+						Content:  map[string]any{},
+						Visual: config.WidgetVisualV3{
+							SystemID:            config.DesignSystemVantareOriginal,
+							SystemVersion:       1,
+							ConfigVersion:       1,
+							BaseSettings:        map[string]any{},
+							AppearanceOverrides: map[string]any{},
+						},
+					},
+				},
+			},
+		},
+	}
+	store := config.ProfileDocumentStore{}
+	if _, err := store.Save(
+		filepath.Join(dir, "custom-v3-only.json"),
+		"",
+		doc,
+		config.ProfileSchemaVersionV3,
+	); err != nil {
+		t.Fatalf("save V3 profile: %v", err)
+	}
+
+	service := app.NewHubService(dir, nil, nil, nil)
+	got, err := service.ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles() error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("profiles len=%d, want 1", len(got))
+	}
+	entry := got[0]
+	if entry.ID != "custom-v3-only" || entry.Name != "V3 Only" {
+		t.Fatalf("profile identity=%q/%q, want custom-v3-only/V3 Only", entry.ID, entry.Name)
+	}
+	if entry.DisplayMode != config.ModeEdit {
+		t.Fatalf("display mode=%q, want edit", entry.DisplayMode)
+	}
+	if entry.Widgets != 1 {
+		t.Fatalf("widgets=%d, want 1", entry.Widgets)
+	}
+	if entry.PreviewDocument == nil || entry.PreviewDocument.SchemaVersion != config.ProfileSchemaVersionV3 {
+		t.Fatal("expected V3 preview document")
+	}
+	if err := service.CreateProfile("V3 Only"); err == nil {
+		t.Fatal("expected duplicate create error for existing V3 profile")
+	}
+}
+
 func TestHubServiceListProfilesSkipsNonProfileJSONFiles(t *testing.T) {
 	dir := t.TempDir()
 	profile := &config.ProfileConfig{
@@ -237,11 +306,14 @@ func TestHubServiceListProfilesSkipsNonProfileJSONFiles(t *testing.T) {
 	if err := config.SaveFile(filepath.Join(dir, "preview-profile.json"), profile); err != nil {
 		t.Fatalf("save profile: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "app-settings.json"), []byte(`{"activeOverlayProfileId":"self","cpuSampling":true}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "app-settings.json"), []byte(`{"schemaVersion":3,"activeOverlayProfileId":"self","cpuSampling":true}`), 0644); err != nil {
 		t.Fatalf("write settings: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "updater-settings.json"), []byte(`{"channel":"stable"}`), 0644); err != nil {
 		t.Fatalf("write updater settings: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "invalid.json"), []byte(`{"schemaVersion":`), 0644); err != nil {
+		t.Fatalf("write invalid JSON: %v", err)
 	}
 
 	service := app.NewHubService(dir, nil, nil, nil)

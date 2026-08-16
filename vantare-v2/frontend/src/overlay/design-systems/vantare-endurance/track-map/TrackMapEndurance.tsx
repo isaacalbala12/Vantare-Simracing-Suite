@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type {
   TrackMapUnavailableReason,
   TrackMapViewModel,
 } from "../../../widget-types/track-map/track-map-view-model";
 import { parseTrackMapEnduranceSettings } from "./track-map-endurance-settings";
+import { useTrackMapMotion } from "./useTrackMapMotion";
 
 const UNAVAILABLE_LABEL: Record<TrackMapUnavailableReason, string> = {
   "no-telemetry": "NO TELEMETRY",
@@ -13,6 +15,8 @@ const UNAVAILABLE_LABEL: Record<TrackMapUnavailableReason, string> = {
 export function TrackMapEndurance({ model, settings }: WidgetRendererProps<TrackMapViewModel>) {
   const parsed = parseTrackMapEnduranceSettings(settings);
   const showLabel = parsed.showTrackLabel && model.showTrackLabel;
+  const canvasRef = useRef<SVGSVGElement | null>(null);
+  useTrackMapMotion(model.markers, model.status === "ready" && !prefersReducedMotion(), canvasRef);
 
   return (
     <section
@@ -25,6 +29,7 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
     >
       {model.outlinePath ? (
         <svg
+          ref={canvasRef}
           className="ven-tm-canvas"
           viewBox={model.viewBox}
           role="img"
@@ -61,5 +66,17 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
         </footer>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Drivers who ask their system to reduce motion get the published positions
+ * exactly, with no easing between them.
+ */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }

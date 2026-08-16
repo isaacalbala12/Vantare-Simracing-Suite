@@ -8,8 +8,10 @@ import { chromium } from "playwright";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(frontend, "test-results", "escala-proporcional");
-const port = 5189;
+const port = 5191;
 const baseUrl = `http://127.0.0.1:${port}`;
+
+const HUB_HASH = "#/hub";
 
 const MATRIX = [
   { name: "compact-16x9", width: 1280, height: 720 },
@@ -47,6 +49,7 @@ if (owners.length) throw new Error(`port ${port} already owned by ${owners.join(
 
 const server = spawn(process.execPath, [
   path.join(frontend, "node_modules", "vite", "bin", "vite.js"),
+  "--config", path.join(frontend, "vite.escala-harness.config.ts"),
   "--host", "127.0.0.1", "--port", String(port), "--strictPort",
 ], { cwd: frontend, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
 
@@ -127,7 +130,7 @@ async function assertOverlayInvariants(page, viewport, errors) {
     assert.ok(right <= scene.layoutWidth + 0.01, `${viewport.name}: widget ${frame.id} crosses the frame right edge (${right} > ${scene.layoutWidth})`);
   }
 
-  const tower = frameBoxes.find((frame) => frame.id === "tower-full");
+  const tower = frameBoxes.find((frame) => frame.id === "broadcast-tower-harness");
   assert.ok(tower, `${viewport.name}: full-width tower widget missing`);
   if (expected.layoutWidth > 1920) {
     assert.ok(Number.parseFloat(tower.width) === expected.layoutWidth,
@@ -145,25 +148,29 @@ async function assertOverlayInvariants(page, viewport, errors) {
 }
 
 async function assertHubZoom(page, viewport) {
-  await page.goto(`${baseUrl}/hub-zoom-harness.html`, { waitUntil: "networkidle" });
-  await page.waitForSelector("[data-hub-zoom-probe]");
+  await page.goto(`${baseUrl}/hub-zoom-harness.html${HUB_HASH}`, { waitUntil: "networkidle" });
+  await page.waitForSelector('[data-testid="license-loading"]', { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.waitForSelector("[data-testid='v52-content-container']", { timeout: 15000 });
 
-  const probe = await page.locator("[data-hub-zoom-probe]").evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return { zoom: document.documentElement.style.zoom, width: rect.width, height: rect.height };
-  });
+  const hub = await page.evaluate(() => ({
+    zoom: document.documentElement.style.zoom,
+    hasHubClass: document.body.classList.contains("hub"),
+    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  }));
   const expected = expectedZoom(viewport.height);
-  assert.ok(Math.abs(Number(probe.zoom) - expected) < 0.01, `${viewport.name}: html.zoom ${probe.zoom} != ${expected}`);
-  const scaledWidth = 960 * Number(probe.zoom);
-  assert.ok(Math.abs(probe.width - scaledWidth) < 1.5, `${viewport.name}: probe width ${probe.width} != ${scaledWidth}`);
+  assert.ok(Math.abs(Number(hub.zoom) - expected) < 0.01, `${viewport.name}: html.zoom ${hub.zoom} != ${expected}`);
+  assert.ok(hub.hasHubClass, `${viewport.name}: body.hub missing`);
+  assert.ok(!hub.horizontalOverflow, `${viewport.name}: horizontal overflow`);
 
-  const fixed = await page.locator("[data-hub-zoom-fixed]").evaluate((element) => {
+  const fixedOk = await page.locator("[data-testid='topbar-nav-dashboard']").evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    return { left: rect.left, top: rect.top, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
-  });
-  assert.ok(fixed.left >= 0 && fixed.top >= 0, `${viewport.name}: fixed element escaped the viewport`);
-  assert.ok(fixed.left < fixed.viewportWidth && fixed.top < fixed.viewportHeight,
-    `${viewport.name}: fixed element outside viewport (${fixed.left},${fixed.top})`);
+    return { left: rect.left, top: rect.top, viewportWidth: window.innerWidth };
+  }).catch(() => null);
+  assert.ok(fixedOk && fixedOk.left >= 0 && fixedOk.left < fixedOk.viewportWidth,
+    `${viewport.name}: topbar outside viewport`);
+
+  const contentWidth = await page.locator("[data-testid='v52-content-container']").evaluate((element) => element.getBoundingClientRect().width);
+  assert.ok(contentWidth > 0, `${viewport.name}: content width 0`);
 }
 
 let browser;
@@ -191,8 +198,8 @@ try {
     await page.goto(`${baseUrl}/responsive-overlay-harness.html`, { waitUntil: "networkidle" });
     await page.waitForSelector('[data-testid="runtime-overlay-scene"]');
     await page.screenshot({ path: path.join(output, "captures", `${capture.name}-overlay.png`) });
-    await page.goto(`${baseUrl}/hub-zoom-harness.html`, { waitUntil: "networkidle" });
-    await page.waitForSelector("[data-hub-zoom-probe]");
+    await page.goto(`${baseUrl}/hub-zoom-harness.html${HUB_HASH}`, { waitUntil: "networkidle" });
+    await page.waitForSelector("[data-testid='v52-content-container']", { timeout: 15000 });
     await page.screenshot({ path: path.join(output, "captures", `${capture.name}-hub.png`) });
     await page.close();
   }

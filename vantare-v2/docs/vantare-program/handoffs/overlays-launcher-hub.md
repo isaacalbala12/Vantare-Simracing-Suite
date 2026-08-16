@@ -23,14 +23,20 @@
   `nightly@7341e8cd` y publicada en la PR draft #263 hacia `nightly`; sin
   integración, promoción ni release. El CI de la PR, run `31896585676`, pasó
   ruta de promoción, gates bloqueantes y seguridad sobre `839603f5`.
-- ISA-363 corrige en rama aislada el parpadeo de widgets durante el relevo
+- ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
+  el relevo
   `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`
   hasta recibir la proyección de la nueva revisión, sin publicar el frame
   `disconnected` intermedio. Arranque sin datos, estados reales de conexión o
   parada y proyecciones bloqueadas mantienen el cierre seguro. TDD RED/GREEN,
   focal 4/4, frontend 375 archivos/2736 tests, build, ESLint focal y diff-check
   PASS; el lint global conserva 49 errores y 2 warnings heredados fuera del
-  cambio. Rama desde `origin/nightly@3eb5dd7b`, sin promoción ni release.
+  cambio. La rama se sincronizó con `origin/nightly@028c7512`; implementación
+  aprobada `ae313e2e`, head final `ac46c3c3` y CI final del PR #260
+  `31896118568` en verde. Tras autorización expresa de Isaac, el PR #260 se
+  integró por squash en `nightly@7341e8cd`. El gate posterior `31896647826` y
+  el roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la
+  promoción; sin paso a `testers`/`master` ni release.
 - ISA-364 está promovida a `nightly` y corrige el listado vacío de
   `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
   migrador canónico, mientras el

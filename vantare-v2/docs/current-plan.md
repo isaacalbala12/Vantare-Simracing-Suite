@@ -21,7 +21,7 @@ Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
   `docs/superpowers/specs/2026-08-15-isa-365-relative-fisico-2x2-design.md` y
   `docs/superpowers/plans/2026-08-15-isa-365-relative-fisico-2x2.md`.
 
-Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, implementación local validada):
+Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, promovida a Nightly):
 - El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable
   como `stale` mientras un estado `live` espera su proyección de la misma
   revisión. La recuperación observable pasa de `ready -> stale -> disconnected
@@ -36,10 +36,15 @@ Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, implementación local validada):
   un snapshot válido también queda cubierto. Focal 4/4, frontend completo 375
   archivos/2736 tests, build, ESLint focal y `git diff --check` PASS. El lint
   global conserva 49 errores y 2 warnings heredados fuera del diff.
-- Rama aislada
+- Rama
   `vantareapp/isa-363-overlay-runtime-evitar-el-frame-disconnected-entre-stale-y`
-  desde `origin/nightly@3eb5dd7b`. Sin promoción a `nightly`, `testers` o
-  `master`, y sin release.
+  sincronizada con `origin/nightly@028c7512`; implementación aprobada
+  `ae313e2e` y head final `ac46c3c3`. El CI final del PR #260, run
+  `31896118568`, pasó topología, gates bloqueantes, build Wails y checks
+  informativos. Tras autorización explícita de Isaac, el PR #260 se promovió
+  por squash a `nightly@7341e8cd`; el gate posterior `31896647826` y el
+  roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la integración.
+  Sin promoción a `testers`/`master` ni release.
 
 Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
 - `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.

@@ -340,6 +340,109 @@ func TestStudioProfileServiceHandleLoadMissingFileEmitsError(t *testing.T) {
 	}
 }
 
+func TestStudioProfileServiceSaveInPlacePersistsWithoutOnSaved(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "studio-inplace",
+		Name:          "Studio In Place",
+		DisplayMode:   config.ModeEdit,
+		MonitorIndex:  0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+
+	spy := &studioProfileSpy{}
+	callbackCount := 0
+	svc := NewStudioProfileService(spy, func(saved StudioProfileSaved) {
+		callbackCount++
+	})
+	svc.path = path
+	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "", MigratedFrom: config.ProfileSchemaVersionV3}
+
+	if err := svc.SaveInPlace("req-inplace-1", "", doc); err != nil {
+		t.Fatal(err)
+	}
+	if callbackCount != 0 {
+		t.Fatalf("onSaved calls=%d want 0 (window must not be recreated)", callbackCount)
+	}
+	if svc.loaded.Revision == "" {
+		t.Fatal("service revision not updated")
+	}
+
+	foundSaved := false
+	for i, event := range spy.events {
+		if event == "studio:profile:saved" {
+			foundSaved = true
+			payload := spy.data[i].(map[string]any)
+			if payload["requestId"] != "req-inplace-1" {
+				t.Fatalf("requestId=%v want req-inplace-1", payload["requestId"])
+			}
+			if payload["revision"] != svc.loaded.Revision {
+				t.Fatalf("saved revision=%v want %q", payload["revision"], svc.loaded.Revision)
+			}
+		}
+	}
+	if !foundSaved {
+		t.Fatalf("events=%v want studio:profile:saved", spy.events)
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("profile file not persisted: %v", err)
+	}
+}
+
+func TestStudioProfileServiceSaveInPlaceConflictWithoutOnSaved(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "studio-inplace-conflict",
+		Name:          "Studio In Place Conflict",
+		DisplayMode:   config.ModeEdit,
+		MonitorIndex:  0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+
+	spy := &studioProfileSpy{}
+	callbackCount := 0
+	svc := NewStudioProfileService(spy, func(saved StudioProfileSaved) {
+		callbackCount++
+	})
+	svc.path = path
+	svc.loaded = &config.LoadedProfileV3{Document: doc, Revision: "", MigratedFrom: config.ProfileSchemaVersionV3}
+	if err := svc.Save("req-inplace-initial", "", doc); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.SaveInPlace("req-inplace-stale", "stale-revision", doc); err == nil {
+		t.Fatal("expected conflict error")
+	}
+	if callbackCount != 1 {
+		t.Fatalf("onSaved calls=%d want 1 (only the initial Save)", callbackCount)
+	}
+	if len(spy.events) == 0 || spy.events[len(spy.events)-1] != "studio:profile:conflict" {
+		t.Fatalf("events=%v want terminal studio:profile:conflict", spy.events)
+	}
+	conflict := spy.data[len(spy.data)-1].(map[string]any)
+	if conflict["requestId"] != "req-inplace-stale" {
+		t.Fatalf("requestId=%v want req-inplace-stale", conflict["requestId"])
+	}
+}
+
+func TestStudioProfileServiceHandleSaveInPlaceMissingDocumentEmitsError(t *testing.T) {
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	svc.HandleSaveInPlace(nil)
+	if len(spy.events) == 0 || spy.events[len(spy.events)-1] != "studio:profile:error" {
+		t.Fatalf("events=%v want terminal studio:profile:error", spy.events)
+	}
+}
+
 func TestStudioProfileServiceHandleSaveMissingDocumentEmitsError(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

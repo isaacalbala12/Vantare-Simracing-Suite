@@ -23,6 +23,16 @@
   `nightly@7341e8cd` y publicada en la PR draft #263 hacia `nightly`; sin
   integración, promoción ni release. El CI de la PR, run `31896585676`, pasó
   ruta de promoción, gates bloqueantes y seguridad sobre `839603f5`.
+- **Edit mode in-place del overlay (2026-08-16, promovido a `nightly`):** la
+  hotkey `Ctrl+Shift+E` (`toggleEditMode`) ya no abre Overlay Studio en el Hub:
+  alterna el overlay desktop entre racing y un modo edición de layout in-place
+  (seleccionar/mover/redimensionar con snap, guías de alineación y autosave).
+  Rama de integración `vantareapp/isa-401-os-12-n01-promover-inplace-edit-a-nightly`;
+  spec `docs/superpowers/specs/2026-08-16-overlay-inplace-edit-hotkey-design.md` y
+  plan `docs/superpowers/plans/2026-08-16-overlay-inplace-edit-hotkey.md`.
+  Gates locales PASS (Go completo, frontend 378/2765, build, lint focal) y CI
+  del PR #267 PASS sobre el HEAD exacto. Sin issue de Linear (decisión de
+  Isaac 2026-08-16); el nombre `isa-401` cumple el gate de topología.
 - ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
   el relevo
   `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`

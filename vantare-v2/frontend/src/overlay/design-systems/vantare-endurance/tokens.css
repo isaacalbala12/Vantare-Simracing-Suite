@@ -2927,20 +2927,22 @@
 
 /* A row that has left the visible window folds away where it sat, instead of
    the list snapping shut over it. Same idea as the standings ghost: the engine
-   holds the row for a beat so there is something to animate. */
+   holds the row for a beat so there is something to animate. The height is
+   animated -- not just scaleY -- so the row collapses its layout box and the
+   widget never grows while the ghost fades. */
 @keyframes ven-rel-ghost-out {
   0% {
-    transform: scaleY(1);
+    height: 30px;
     opacity: 0.55;
   }
   100% {
-    transform: scaleY(0);
+    height: 0;
     opacity: 0;
   }
 }
 
 [data-widget-system="vantare-endurance"] .ven-rel-row[data-ghost="true"] {
-  transform-origin: center;
+  overflow: hidden;
   pointer-events: none;
   animation: ven-rel-ghost-out 380ms ease-in both;
 }
@@ -2948,6 +2950,7 @@
 @media (prefers-reduced-motion: reduce) {
   [data-widget-system="vantare-endurance"] .ven-rel-row[data-ghost="true"] {
     animation: none;
+    height: 0;
     opacity: 0;
   }
 }

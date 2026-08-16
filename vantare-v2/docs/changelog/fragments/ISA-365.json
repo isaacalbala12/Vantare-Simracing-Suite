@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-365",
+  "type": "fix",
+  "summary": "Relative vuelve a mostrar los dos coches físicamente más cercanos delante y detrás, también cuando faltan gaps o el jugador está en boxes.",
+  "technicalNotes": [
+    "La selección usa el orden circular de la distancia recorrida publicada por LMU y mantiene al jugador centrado en una lista fija de cinco filas.",
+    "Los gaps no comparables se presentan como un guion neutral sin ocultar los coches, incluidos los casos de boxes y vehículos doblados.",
+    "Original, Crystal y Endurance comparten el mismo lado físico y los perfiles anteriores se normalizan automáticamente al formato 2+1+2."
+  ],
+  "testing": [
+    "En pista, comprobar que aparecen dos coches delante, el jugador y dos detrás aunque LMU solo publique gap para el jugador.",
+    "Entrar en boxes y confirmar que las cinco filas siguen visibles y los gaps no comparables muestran un guion neutral.",
+    "Cruzar la línea de meta cerca de otros coches y verificar que el orden cambia de forma circular sin duplicados ni saltos de lado."
+  ],
+  "knownLimitations": [
+    "Un coche sin distancia física válida no puede participar en la selección hasta que LMU vuelva a publicar ese dato."
+  ]
+}

@@ -7,6 +7,7 @@ import type { AuthoringFixtureWidget } from "./authoring-fixtures";
 export type SceneOverride = {
   place?: number;
   timeBehindLeader?: number;
+  lapDistanceMeters?: number;
   /** Signed gap to the player, which is what the relative is built around. */
   timeGapToPlayer?: number;
   inPits?: boolean;
@@ -290,10 +291,10 @@ const RELATIVE_CROSS_SCENE: AnimationScene = {
     "La fila que cruza al jugador se desliza al otro lado y se lava de color: rojo si te ha pasado, verde si le has pasado tú.",
   frameMs: 1400,
   frames: [
-    { caption: "Bruni te sigue a 0,3 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.3 } } },
-    { caption: "Te pasa: cruza al otro lado y se lava en rojo", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.5 } } },
-    { caption: "Se va: 1,4 s por delante", cars: { "Gianmaria Bruni": { timeGapToPlayer: 1.4 } } },
-    { caption: "Lo recuperas: cruza de vuelta en verde", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.4 } } },
+    { caption: "Bruni te sigue a 0,3 s", cars: { "Gianmaria Bruni": { lapDistanceMeters: 970, timeGapToPlayer: -0.3 } } },
+    { caption: "Te pasa: cruza al otro lado y se lava en rojo", cars: { "Gianmaria Bruni": { lapDistanceMeters: 1_050, timeGapToPlayer: 0.5 } } },
+    { caption: "Se va: 1,4 s por delante", cars: { "Gianmaria Bruni": { lapDistanceMeters: 1_140, timeGapToPlayer: 1.4 } } },
+    { caption: "Lo recuperas: cruza de vuelta en verde", cars: { "Gianmaria Bruni": { lapDistanceMeters: 960, timeGapToPlayer: -0.4 } } },
   ],
 };
 
@@ -305,8 +306,8 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   frameMs: 1500,
   frames: [
     { caption: "Birch fuera de la ventana", cars: { "Michael Birch": { absent: true } } },
-    { caption: "Aparece por detrás: la fila se despliega" },
-    { caption: "Ya asentado" },
+    { caption: "Aparece por detrás: la fila se despliega", cars: { "Michael Birch": { lapDistanceMeters: 850 } } },
+    { caption: "Ya asentado", cars: { "Michael Birch": { lapDistanceMeters: 850 } } },
   ],
 };
 

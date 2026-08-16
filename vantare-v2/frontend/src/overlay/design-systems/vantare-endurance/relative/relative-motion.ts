@@ -27,14 +27,9 @@ function rivalsById(model: RelativeViewModel): Map<string, RelativeRowViewModel>
   return rivals;
 }
 
-/**
- * A crossing is only reported when both sides are unambiguous. A row sitting
- * exactly on the player, or one whose tone is neutral because the gap is
- * unknown, would otherwise flicker between states and fire on noise.
- */
 function side(row: RelativeRowViewModel): "ahead" | "behind" | null {
-  if (row.tone === "ahead" || row.tone === "behind") {
-    return row.tone;
+  if (!row.isPlayer && (row.side === "ahead" || row.side === "behind")) {
+    return row.side;
   }
   return null;
 }

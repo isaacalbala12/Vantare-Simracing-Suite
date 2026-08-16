@@ -440,7 +440,10 @@ export function buildMockTelemetry(input: {
       sectorFlags: ["green", "green", "green"],
     },
     player: buildReadyPlayer(input.location),
-    scoring: CANONICAL_SCORING.map((entry) => ({ ...entry })),
+    scoring: CANONICAL_SCORING.map((entry, index) => ({
+      ...entry,
+      lapDistanceMeters: 4_000 - index * 100,
+    })),
   };
 
   if (state === "disconnected") {

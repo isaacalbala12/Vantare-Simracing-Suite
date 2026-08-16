@@ -4,8 +4,6 @@ import {
   moveRelativeColumn,
   parseRelativeContent,
   RELATIVE_COLUMN_TEMPLATES,
-  RELATIVE_RANGE_MAX,
-  RELATIVE_RANGE_MIN,
   toggleRelativeColumn,
   updateRelativeColumn,
   updateRelativeFilters,
@@ -13,7 +11,6 @@ import {
 
 const WIDTH_PRESET_OPTIONS: readonly WidgetColumnWidthPreset[] = ["xs", "sm", "md", "lg", "auto"];
 const ALIGN_OPTIONS = ["left", "center", "right"] as const;
-const RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_MAX - RELATIVE_RANGE_MIN + 1 }, (_, index) => index);
 
 function templateLabel(columnId: string): string {
   return RELATIVE_COLUMN_TEMPLATES.find((template) => template.id === columnId)?.label ?? columnId;
@@ -32,40 +29,6 @@ export function RelativeContentInspector(props: CustomInspectorProps): React.Rea
       <fieldset className="osv3-relative-filters" data-testid="studio-relative-filters">
         <legend>Filtros</legend>
         <label>
-          Adelante
-          <select
-            value={content.rangeAhead}
-            disabled={disabled}
-            data-testid="studio-relative-range-ahead"
-            onChange={(event) =>
-              publish(updateRelativeFilters(content, { rangeAhead: Number(event.target.value) }))
-            }
-          >
-            {RANGE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Detrás
-          <select
-            value={content.rangeBehind}
-            disabled={disabled}
-            data-testid="studio-relative-range-behind"
-            onChange={(event) =>
-              publish(updateRelativeFilters(content, { rangeBehind: Number(event.target.value) }))
-            }
-          >
-            {RANGE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
           Clase
           <select
             value={content.classScope}
@@ -82,16 +45,6 @@ export function RelativeContentInspector(props: CustomInspectorProps): React.Rea
             <option value="all">Todas</option>
             <option value="sameClass">Misma clase</option>
           </select>
-        </label>
-        <label className="osv3-relative-filters__toggle">
-          <input
-            type="checkbox"
-            checked={content.includePlayer}
-            disabled={disabled}
-            data-testid="studio-relative-include-player"
-            onChange={() => publish(updateRelativeFilters(content, { includePlayer: !content.includePlayer }))}
-          />
-          Incluir jugador
         </label>
         <label>
           Altura fila

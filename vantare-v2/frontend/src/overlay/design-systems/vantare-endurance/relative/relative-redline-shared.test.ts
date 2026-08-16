@@ -19,6 +19,7 @@ function row(partial: Partial<RelativeRowViewModel> & { id: string }): RelativeR
     bestLapText: "-",
     lastLapText: "-",
     isPlayer: false,
+    side: "behind",
     tone: "neutral",
     gapSeconds: null,
     ...partial,

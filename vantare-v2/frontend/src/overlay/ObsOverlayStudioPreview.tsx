@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
-  resolveLayoutViewportTransform,
   type LayoutViewport,
   type ViewportSize,
 } from "./core/layout-viewport";
+import { resolveResponsiveSceneTransform } from "./core/responsive-layout";
 import "./obs-overlay-studio-preview.css";
 
 export type ObsOverlayStudioPreviewProps = {
@@ -64,12 +64,12 @@ export function ObsOverlayStudioPreview({
   }, []);
 
   const transform = outputViewport
-    ? resolveLayoutViewportTransform(layoutViewport, outputViewport)
+    ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
   const sceneStyle: CSSProperties | undefined = transform
     ? {
-        width: layoutViewport.width,
-        height: layoutViewport.height,
+        width: transform.layoutWidth,
+        height: transform.layoutHeight,
         transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
         transformOrigin: "top left",
       }

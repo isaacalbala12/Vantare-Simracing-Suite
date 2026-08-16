@@ -30,6 +30,7 @@ import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
 import { LauncherStoreProvider } from './launcher/launcher-store';
+import { useHubResponsiveZoom } from './use-hub-responsive-zoom';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
@@ -235,6 +236,7 @@ function HubShell() {
 }
 
 export function HubApp() {
+  useHubResponsiveZoom();
   return (
     <LicenseProvider>
       <I18nProvider>

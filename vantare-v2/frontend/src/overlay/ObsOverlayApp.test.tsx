@@ -271,14 +271,14 @@ describe("ObsOverlayApp", () => {
     const previewScene = screen.getByTestId("obs-studio-preview-scene") as HTMLElement;
     const runtimeScene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
     const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
-    expect(previewScene.style.width).toBe("1000px");
+    expect(previewScene.style.width).toBe("1777.777778px");
     expect(previewScene.style.height).toBe("1000px");
     expect(previewScene.dataset.scale).toBe("0.9");
-    expect(previewScene.dataset.offsetX).toBe("350");
+    expect(previewScene.dataset.offsetX).toBe("0");
     expect(runtimeScene.dataset.scale).toBe("1");
     expect(runtimeScene.dataset.offsetX).toBe("0");
     expect(runtimeScene.dataset.offsetY).toBe("0");
-    expect(frame.style.left).toBe("123px");
+    expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
   });
 
@@ -321,7 +321,7 @@ describe("ObsOverlayApp", () => {
     const runtime = screen.getByTestId("runtime-overlay-surface") as HTMLElement;
     const banner = screen.getByTestId("overlay-calendar-reminder-banner") as HTMLElement;
     expect(previewScene.dataset.scale).toBe("0.9");
-    expect(previewScene.dataset.offsetX).toBe("350");
+    expect(previewScene.dataset.offsetX).toBe("0");
     expect(previewScene.contains(runtime)).toBe(true);
     expect(previewScene.contains(banner)).toBe(false);
     expect(preview.parentElement).toBe(banner.parentElement);
@@ -363,8 +363,8 @@ describe("ObsOverlayApp", () => {
     expect(screen.queryByTestId("obs-studio-preview")).toBeNull();
     const runtimeScene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
     const frame = screen.getByTestId("runtime-widget-frame") as HTMLElement;
-    expect(runtimeScene.style.transform).toBe("translate(350px, 0px) scale(0.9)");
-    expect(frame.style.left).toBe("123px");
+    expect(runtimeScene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
+    expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
   });
 

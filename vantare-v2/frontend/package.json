@@ -25,6 +25,7 @@
     "smoke:overlay-workshop-hmr": "node scripts/overlay-workshop-hmr-smoke.mjs",
     "visual:engineer-radio": "node scripts/engineer-radio-visual.mjs",
     "visual:testing-center": "node scripts/testing-center-visual.mjs",
+    "visual:escala-proporcional": "node scripts/escala-proporcional-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "design-system:check": "node scripts/check-design-system.mjs"

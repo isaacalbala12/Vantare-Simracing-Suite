@@ -11,9 +11,12 @@ import type { ProfileDocumentV3 } from "../core/profile-document";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
   resolveLayoutViewport,
-  resolveLayoutViewportTransform,
   type ViewportSize,
 } from "../core/layout-viewport";
+import {
+  mapWidgetFrameToResponsive,
+  resolveResponsiveSceneTransform,
+} from "../core/responsive-layout";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
@@ -118,8 +121,18 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
   }, []);
 
   const transform = outputViewport
-    ? resolveLayoutViewportTransform(layoutViewport, outputViewport)
+    ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
+
+  const responsiveWidgets = transform
+    ? widgets.map((widget) => ({
+        ...widget,
+        layout: {
+          ...widget.layout,
+          ...mapWidgetFrameToResponsive(widget.layout, transform),
+        },
+      }))
+    : widgets;
 
   const surfaceStyle: CSSProperties = {
     position: "relative",
@@ -134,8 +147,8 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
         position: "absolute",
         left: 0,
         top: 0,
-        width: layoutViewport.width,
-        height: layoutViewport.height,
+        width: transform.layoutWidth,
+        height: transform.layoutHeight,
         overflow: "hidden",
         background: "transparent",
         transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
@@ -148,14 +161,14 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       {transform && sceneStyle ? (
         <div
           data-testid="runtime-overlay-scene"
-          data-layout-width={layoutViewport.width}
-          data-layout-height={layoutViewport.height}
+          data-layout-width={transform.layoutWidth}
+          data-layout-height={transform.layoutHeight}
           data-scale={transform.scale}
           data-offset-x={transform.offsetX}
           data-offset-y={transform.offsetY}
           style={sceneStyle}
         >
-          {widgets.map((widget) => (
+          {responsiveWidgets.map((widget) => (
             <RuntimeWidgetFrame
               key={widget.id}
               widget={widget}

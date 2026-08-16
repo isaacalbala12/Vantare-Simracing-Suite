@@ -69,7 +69,7 @@ describe("DesktopOverlayRuntime", () => {
     const surface = view.getByTestId("runtime-overlay-surface");
     expect(surface.getAttribute("data-render-mode")).toBe("desktop");
     expect((view.getByTestId("runtime-overlay-scene") as HTMLElement).style.transform).toBe(
-      "translate(350px, 0px) scale(0.9)",
+      "translate(0px, 0px) scale(0.9)",
     );
     expect(view.getByTestId("runtime-widget-frame")).toBeTruthy();
     coordinator.dispose();

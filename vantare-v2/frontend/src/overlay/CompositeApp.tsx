@@ -9,6 +9,7 @@ import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
 import { InPlaceEditOverlay } from "./edit/InPlaceEditOverlay";
+import { InPlaceEditModeBranch } from "./edit/InPlaceEditModeBranch";
 import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
@@ -127,12 +128,14 @@ export function CompositeApp() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {editMode ? (
-        <InPlaceEditOverlay
-          document={document}
-          revision={revision}
-          layoutOrigin={layoutOrigin}
-          telemetry={coordinator}
-        />
+        <InPlaceEditModeBranch document={document} revision={revision} layoutOrigin={layoutOrigin}>
+          <InPlaceEditOverlay
+            document={document}
+            revision={revision}
+            layoutOrigin={layoutOrigin}
+            telemetry={coordinator}
+          />
+        </InPlaceEditModeBranch>
       ) : (
         <DesktopOverlayRuntime
           key={revision}

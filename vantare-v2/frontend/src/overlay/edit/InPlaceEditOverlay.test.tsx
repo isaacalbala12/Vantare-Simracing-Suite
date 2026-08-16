@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+﻿import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
@@ -81,6 +81,26 @@ function buildDocument(): ProfileDocumentV3 {
   };
 }
 
+function buildRaceDocument(): ProfileDocumentV3 {
+  const base = buildDocument();
+  return {
+    ...base,
+    layouts: {
+      ...base.layouts,
+      race: {
+        type: "race",
+        widgets: [
+          {
+            ...base.layouts.general.widgets[0],
+            id: "delta-race",
+            layout: { x: 200, y: 200, w: 280, h: 96, zIndex: 0, aspectLocked: true },
+          },
+        ],
+      },
+    },
+  };
+}
+
 beforeEach(() => {
   installResizeObserver();
   runtimeMock.emit.mockClear();
@@ -95,7 +115,7 @@ afterEach(() => {
 describe("InPlaceEditOverlay", () => {
   it("renders edit frames with chrome for every widget of the active layout", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -114,7 +134,7 @@ describe("InPlaceEditOverlay", () => {
 
   it("emits overlay:edit-layout:save with the committed layout on drag release", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -154,7 +174,7 @@ describe("InPlaceEditOverlay", () => {
 
   it("does not save when the pointer did not move", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -188,7 +208,7 @@ describe("InPlaceEditOverlay", () => {
 
   it("updates the local revision when studio:profile:saved matches its request id", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -231,7 +251,7 @@ describe("InPlaceEditOverlay", () => {
 
   it("shows the save error chip on studio:profile:conflict for its request id", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -268,7 +288,7 @@ describe("InPlaceEditOverlay", () => {
 
   it("shows a center guide while dragging near the viewport center", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay
@@ -305,9 +325,87 @@ describe("InPlaceEditOverlay", () => {
     expect(screen.queryByTestId("inplace-edit-guide-vertical")).toBeNull();
   });
 
+  it("edits the resolved general fallback without materializing race", () => {
+    const coordinator = createTestTelemetryCoordinator();
+    // Telemetria indica race, pero el perfil solo tiene general: el comando
+    // debe ir a general y NO crear layouts.race.
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+
+    render(
+      <InPlaceEditOverlay
+        document={buildDocument()}
+        revision="rev-1"
+        layoutOrigin={{ x: 0, y: 0 }}
+        telemetry={coordinator}
+      />,
+    );
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    scene.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1920,
+      bottom: 1080,
+      width: 1920,
+      height: 1080,
+      toJSON: () => ({}),
+    });
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 148, clientY: 148, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    const saveCalls = runtimeMock.emit.mock.calls.filter(([name]) => name === "overlay:edit-layout:save");
+    expect(saveCalls).toHaveLength(1);
+    const payload = saveCalls[0][1] as { document: ProfileDocumentV3 };
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(152);
+    expect(payload.document.layouts.race).toBeUndefined();
+  });
+
+  it("edits race only when race is the resolved layout", () => {
+    const coordinator = createTestTelemetryCoordinator();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+
+    render(
+      <InPlaceEditOverlay
+        document={buildRaceDocument()}
+        revision="rev-1"
+        layoutOrigin={{ x: 0, y: 0 }}
+        telemetry={coordinator}
+      />,
+    );
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    scene.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1920,
+      bottom: 1080,
+      width: 1920,
+      height: 1080,
+      toJSON: () => ({}),
+    });
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-race") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 200, clientY: 200, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 248, clientY: 248, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    const saveCalls = runtimeMock.emit.mock.calls.filter(([name]) => name === "overlay:edit-layout:save");
+    expect(saveCalls).toHaveLength(1);
+    const payload = saveCalls[0][1] as { document: ProfileDocumentV3 };
+    expect(payload.document.layouts.race?.widgets[0].layout.x).toBe(248);
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(100);
+  });
+
   it("ignores studio:profile:saved for other request ids", () => {
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry("race", "track"));
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditOverlay

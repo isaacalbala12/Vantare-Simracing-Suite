@@ -5,7 +5,6 @@ import type {
 } from "../../../widget-types/relative/relative-view-model";
 import {
   deriveRelativeEvents,
-  deriveRelativeFlipOffsets,
   deriveThreatRows,
 } from "./relative-motion";
 
@@ -77,28 +76,6 @@ describe("relative motion events", () => {
     const before = model([row({ id: "me", isPlayer: true, tone: "player", gapSeconds: 0 })]);
     const after = model([row({ id: "me", isPlayer: true, tone: "ahead", gapSeconds: 1 })]);
     expect(deriveRelativeEvents(before, after)).toEqual([]);
-  });
-});
-
-describe("relative FLIP offsets", () => {
-  it("measures how far each row has to slide from where it was", () => {
-    const before = model([row({ id: "a" }), row({ id: "b" }), player]);
-    const after = model([row({ id: "b" }), row({ id: "a" }), player]);
-    const offsets = deriveRelativeFlipOffsets(before, after, 30);
-    expect(offsets.get("a")).toBe(-30);
-    expect(offsets.get("b")).toBe(30);
-  });
-
-  it("leaves rows that did not move out of the map", () => {
-    const before = model([row({ id: "a" }), player]);
-    const after = model([row({ id: "a" }), player]);
-    expect(deriveRelativeFlipOffsets(before, after, 30).size).toBe(0);
-  });
-
-  it("skips rows with no previous position, which enter instead of sliding", () => {
-    const before = model([player]);
-    const after = model([row({ id: "new" }), player]);
-    expect(deriveRelativeFlipOffsets(before, after, 30).has("new")).toBe(false);
   });
 });
 

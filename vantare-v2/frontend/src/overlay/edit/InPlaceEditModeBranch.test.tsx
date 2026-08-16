@@ -1,7 +1,9 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
+import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
+import { buildMockTelemetry } from "../core/mock-scenarios";
 import { InPlaceEditModeBranch } from "./InPlaceEditModeBranch";
 
 type Handler = (event: { data: unknown }) => void;
@@ -25,12 +27,30 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
-function dispatch(name: string, data: unknown) {
-  act(() => {
-    for (const handler of runtimeMock.handlers.get(name) ?? []) {
-      handler({ data });
+const originalResizeObserver = globalThis.ResizeObserver;
+
+function installResizeObserver(): void {
+  globalThis.ResizeObserver = class {
+    private readonly callback: ResizeObserverCallback;
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
     }
-  });
+
+    observe(target: Element): void {
+      this.callback(
+        [{
+          target,
+          contentBoxSize: [{ inlineSize: 1920, blockSize: 1080 }],
+          contentRect: { width: 1920, height: 1080 },
+        } as unknown as ResizeObserverEntry],
+        this as unknown as ResizeObserver,
+      );
+    }
+
+    disconnect(): void {}
+    unobserve(): void {}
+  } as unknown as typeof ResizeObserver;
 }
 
 function buildDocument(): ProfileDocumentV3 {
@@ -43,15 +63,19 @@ function buildDocument(): ProfileDocumentV3 {
     displayMode: "edit",
     monitorIndex: 0,
     layouts: {
-      general: {
-        type: "general",
-        widgets: [delta],
-      },
+      general: { type: "general", widgets: [delta] },
     },
   };
 }
 
+function dispatch(name: string, data: unknown) {
+  for (const handler of runtimeMock.handlers.get(name) ?? []) {
+    handler({ data });
+  }
+}
+
 beforeEach(() => {
+  installResizeObserver();
   runtimeMock.emit.mockClear();
   runtimeMock.handlers.clear();
   localStorage.clear();
@@ -59,31 +83,29 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  globalThis.ResizeObserver = originalResizeObserver;
 });
 
 describe("InPlaceEditModeBranch", () => {
-  it("uses the stored locale in the in-place edit branch", () => {
+  it("uses the stored locale and mounts the edit overlay inside the providers", async () => {
     localStorage.setItem("vantare.locale", "es");
+    const coordinator = createTestTelemetryCoordinator();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
-      <InPlaceEditModeBranch document={buildDocument()} revision="rev-1" layoutOrigin={{ x: 0, y: 0 }}>
-        <div data-testid="branch-child">child</div>
-      </InPlaceEditModeBranch>,
+      <InPlaceEditModeBranch
+        document={buildDocument()}
+        revision="rev-1"
+        layoutOrigin={{ x: 0, y: 0 }}
+        telemetry={coordinator}
+      />,
     );
 
-    expect(screen.getByTestId("branch-child")).toBeTruthy();
     dispatch("license:cached:get", {});
     dispatch("license:changed", {
       data: { state: "active", email: "test@example.com", entitlements: [], capabilities: [], operationalRoles: [] },
     });
-  });
 
-  it("mounts without a profile document", () => {
-    render(
-      <InPlaceEditModeBranch document={null} revision="" layoutOrigin={{ x: 0, y: 0 }}>
-        <div data-testid="branch-child">child</div>
-      </InPlaceEditModeBranch>,
-    );
-    expect(screen.getByTestId("branch-child")).toBeTruthy();
+    expect(screen.getByTestId("inplace-edit-overlay")).toBeTruthy();
   });
 });

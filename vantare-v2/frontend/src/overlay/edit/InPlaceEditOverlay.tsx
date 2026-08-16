@@ -13,12 +13,14 @@ import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
 import { StudioProvider, useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
 import type { AccessContext } from "../../lib/access-policy";
 import { InPlaceWidgetEditFrame } from "./InPlaceWidgetEditFrame";
+import { MemoInPlaceInspectorPanel } from "./InPlaceInspectorPanel";
 import { useInplaceInteraction } from "./use-inplace-interaction";
 import { useInplaceAutosave } from "./use-inplace-autosave";
 import { createInPlaceProfileClient } from "./inplace-profile-client";
 import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
 import { RUNTIME_SURFACE_VISIBILITY_HZ } from "../runtime/RuntimeOverlaySurface";
 import { useI18n } from "../../i18n/I18nProvider";
+import "./inplace-edit.css";
 
 export type InPlaceEditOverlayProps = {
   document: ProfileDocumentV3;
@@ -26,10 +28,11 @@ export type InPlaceEditOverlayProps = {
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
   access?: AccessContext;
+  licenseLoading?: boolean;
 };
 
 export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document, revision, layoutOrigin, telemetry, access } = props;
+  const { document, revision, layoutOrigin, telemetry, access, licenseLoading } = props;
   const transport = useMemo(() => createWailsStudioEventTransport(), []);
   const client = useMemo(
     () => createInPlaceProfileClient({ document, revision, transport }),
@@ -45,16 +48,17 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
     >
       <InPlaceEditOverlayContent
         document={document}
-        revision={revision}
         layoutOrigin={layoutOrigin}
         telemetry={telemetry}
+        access={access}
+        licenseLoading={licenseLoading ?? false}
       />
     </StudioProvider>
   );
 }
 
-function InPlaceEditOverlayContent(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document, layoutOrigin, telemetry } = props;
+function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
+  const { document, layoutOrigin, telemetry, access, licenseLoading } = props;
   const { t } = useI18n();
   const {
     document: storeDocument,
@@ -180,7 +184,6 @@ function InPlaceEditOverlayContent(props: InPlaceEditOverlayProps): React.ReactE
   const selectedWidget = selectedWidgetIdLocal
     ? widgets.find((widget) => widget.id === selectedWidgetIdLocal) ?? null
     : null;
-  void selectedWidget;
 
   return (
     <div ref={surfaceRef} data-testid="inplace-edit-overlay" style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "transparent" }}>
@@ -284,6 +287,14 @@ function InPlaceEditOverlayContent(props: InPlaceEditOverlayProps): React.ReactE
           {t("overlay.editMode.saveError")}
         </div>
       ) : null}
+      <MemoInPlaceInspectorPanel
+        widget={selectedWidget}
+        session={editingSession}
+        telemetry={telemetry}
+        access={access}
+        licenseLoading={licenseLoading}
+        autosave={autosave}
+      />
     </div>
   );
 }

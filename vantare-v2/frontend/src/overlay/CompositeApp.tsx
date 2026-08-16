@@ -8,7 +8,6 @@ import { statusRequestEventName } from "../telemetry-transport/contracts";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
-import { InPlaceEditOverlay } from "./edit/InPlaceEditOverlay";
 import { InPlaceEditModeBranch } from "./edit/InPlaceEditModeBranch";
 import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
@@ -127,15 +126,13 @@ export function CompositeApp() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
-      {editMode ? (
-        <InPlaceEditModeBranch document={document} revision={revision} layoutOrigin={layoutOrigin}>
-          <InPlaceEditOverlay
-            document={document}
-            revision={revision}
-            layoutOrigin={layoutOrigin}
-            telemetry={coordinator}
-          />
-        </InPlaceEditModeBranch>
+      {editMode && document ? (
+        <InPlaceEditModeBranch
+          document={document}
+          revision={revision}
+          layoutOrigin={layoutOrigin}
+          telemetry={coordinator}
+        />
       ) : (
         <DesktopOverlayRuntime
           key={revision}

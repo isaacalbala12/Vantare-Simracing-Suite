@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -21,6 +21,7 @@ import {
   type DOMRectLike,
   type Point,
 } from "../../hub/overlay-studio/canvas/canvas-geometry";
+import type { SnapGuide } from "../../hub/overlay-studio/canvas/canvas-snap";
 import type { ResizeHandle } from "../../hub/overlay-studio/canvas/canvas-resize";
 import {
   applyInplaceFrameLayoutPreview,
@@ -53,6 +54,7 @@ export type InplaceInteraction =
 
 type ActiveInplaceInteraction = Exclude<InplaceInteraction, { kind: "idle" }> & {
   preview: WidgetLayoutV3;
+  guides: SnapGuide[];
 };
 
 type InplaceInteractionRef = { kind: "idle" } | ActiveInplaceInteraction;
@@ -71,6 +73,7 @@ export type UseInplaceInteractionInput = {
 export type UseInplaceInteractionResult = {
   isInteractionActive: boolean;
   isWidgetPreviewActive(widgetId: string): boolean;
+  guides: readonly SnapGuide[];
   resolveLayout(widget: WidgetInstanceV3): WidgetLayoutV3;
   onFramePointerDown(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown(
@@ -124,6 +127,7 @@ function toLogicalPoint(
 
 export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInplaceInteractionResult {
   const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+  const [guides, setGuides] = useState<SnapGuide[]>([]);
   const interactionRef = useRef<InplaceInteractionRef>({ kind: "idle" });
   const inputRef = useRef({
     ...input,
@@ -140,6 +144,18 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
   const setInteraction = useCallback((next: InplaceInteractionRef) => {
     interactionRef.current = next;
     setActiveWidgetId(next.kind === "idle" ? null : next.widgetId);
+    if (next.kind === "idle") {
+      setGuides([]);
+    }
+  }, []);
+
+  const updateGuides = useCallback((nextGuides: SnapGuide[]) => {
+    const current = interactionRef.current;
+    if (current.kind === "idle") {
+      return;
+    }
+    interactionRef.current = { ...current, guides: nextGuides };
+    setGuides(nextGuides);
   }, []);
 
   const cancelInteraction = useCallback(() => {
@@ -200,8 +216,10 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
       interactionRef.current = {
         ...current,
         preview: next.layout,
+        guides: next.guides,
       };
       applyInplaceFrameLayoutPreview(current.widgetId, next.layout);
+      updateGuides(next.guides);
       return;
     }
 
@@ -218,9 +236,11 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
     interactionRef.current = {
       ...current,
       preview: next.layout,
+      guides: next.guides,
     };
     applyInplaceFrameLayoutPreview(current.widgetId, next.layout);
-  }, [cancelInteraction]);
+    updateGuides(next.guides);
+  }, [cancelInteraction, updateGuides]);
 
   const endPointer = useCallback((event: PointerEvent) => {
     const current = interactionRef.current;
@@ -301,6 +321,7 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
       scale,
       start,
       preview: start,
+      guides: [],
     });
     inputRef.current.onSelect(widgetId);
   }, [setInteraction]);
@@ -348,6 +369,7 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
       scale,
       start,
       preview: start,
+      guides: [],
     });
     inputRef.current.onSelect(widgetId);
   }, [setInteraction]);
@@ -361,6 +383,7 @@ export function useInplaceInteraction(input: UseInplaceInteractionInput): UseInp
   return {
     isInteractionActive: activeWidgetId !== null,
     isWidgetPreviewActive,
+    guides,
     resolveLayout,
     onFramePointerDown: beginMove,
     onResizePointerDown: beginResize,

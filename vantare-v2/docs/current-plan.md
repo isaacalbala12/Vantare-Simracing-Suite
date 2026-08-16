@@ -1,4 +1,4 @@
-Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
+Nota ISA-365 / REL-01 (2026-08-15, implementada y promovida a Nightly):
 - Relative selecciona por orden circular de `lapDistanceMeters` los dos coches
   físicamente más próximos delante y los dos detrás, con el jugador siempre
   centrado. La identidad de las filas ya no depende de que LMU publique gap.
@@ -20,6 +20,45 @@ Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
   microplan:
   `docs/superpowers/specs/2026-08-15-isa-365-relative-fisico-2x2-design.md` y
   `docs/superpowers/plans/2026-08-15-isa-365-relative-fisico-2x2.md`.
+
+Nota OVERLAY-INPLACE-EDIT (2026-08-16, implementada en rama, sin promoción):
+- El overlay desktop entra en modo edición in-place de layout con la hotkey
+  `Ctrl+Shift+E` (`toggleEditMode`, default ya existente): seleccionar, mover y
+  redimensionar widgets con snap sobre el juego, sin pasar por la preview del
+  Hub. Si el overlay no está abierto, la hotkey lo abre y entra en edit; el
+  streaming (sin ventana desktop) es no-op; abrir/cerrar el overlay fuerza
+  `ModeRacing`.
+- Backend: `handleToggleEditMode` alterna `ModeRacing`/`ModeEdit` aplicando el
+  modo a la ventana real (`ApplyProfileMode`), emite `overlay:edit-mode-changed`
+  y re-emite el documento con `windowMode`. `StudioProfileService.SaveInPlace`
+  persiste el documento V3 con revisión optimista SIN recrear la ventana del
+  overlay; el canal es `overlay:edit-layout:save` con respuestas
+  `studio:profile:saved|conflict|error` correlacionadas por `requestId`.
+- Frontend: `CompositeApp` renderiza `InPlaceEditOverlay` (escena con la misma
+  transformación `contain` del runtime, frames editables con `WidgetVisualHost
+  renderMode="desktop"`, snapshot de telemetría congelado durante el gesto,
+  autosave al soltar, chip EDIT MODE y hint). Drag/resize con preview
+  imperativa del DOM (patrón `canvas-drag-imperative-preview.md`), snap a
+  grid/edges con `Alt` para desactivarlo, Escape cancela, commit único
+  `widget/layout` al soltar; handles E/W para widgets horizontal-only y 8
+  handles para el resto; `WidgetVisualHost` sigue siendo la frontera única de
+  render (sin renderer paralelo).
+- Gates: Go completo PASS (95 paquetes; un flake heredado de soak en el primer
+  run, pasa aislado), frontend completo 378 archivos/2761 tests PASS, build
+  PASS, ESLint focal sobre los archivos del corte limpio (solo el warning
+  heredado de `.eslintignore`), `git diff --check` limpio. Rama:
+  `vantareapp/overlay-inplace-edit-hotkey` sobre `origin/nightly@2d5ec944`.
+  Spec: `docs/superpowers/specs/2026-08-16-overlay-inplace-edit-hotkey-design.md`;
+  plan: `docs/superpowers/plans/2026-08-16-overlay-inplace-edit-hotkey.md`.
+- Límites conocidos: el usuario no puede rebindear `toggleEditMode` desde
+  Ajustes (falta `HOTKEY_KEYS`); no editar a la vez en el overlay y en Overlay
+  Studio con el mismo perfil (el guardado de uno puede conflictuar el otro);
+  el guardado del Studio en Hub recrea la ventana del overlay (comportamiento
+  previo intacto). Fase 2 (inspector de contenido/apariencia/comportamiento,
+  delete/duplicate/center/z-order por UI, undo/redo) queda fuera de este corte.
+- Sin issue de Linear por decisión de Isaac (2026-08-16): se trabaja en rama
+  propia y se reflejará en Linear al retomar el flujo. Promovido a `nightly`
+  mediante PR #267 (merge squash sobre el HEAD exacto con CI PASS).
 
 Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, promovida a Nightly):
 - El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable

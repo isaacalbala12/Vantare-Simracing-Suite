@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -137,6 +138,10 @@ export function StudioProvider(props: {
   const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Ref del presente para que save() lea siempre el documento mas reciente,
+  // incluso si una edicion B ocurrio mientras una peticion A estaba en vuelo.
+  const historyRef = useRef<StudioHistory | null>(null);
+  const revisionRef = useRef<string>("");
   const recoveryStore = useMemo(
     () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
     [recoveryStorage],
@@ -155,7 +160,9 @@ export function StudioProvider(props: {
         }
         const initial = buildInitialHistory(loaded.document);
         setHistory(initial.history);
+        historyRef.current = initial.history;
         setRevision(loaded.revision);
+        revisionRef.current = loaded.revision;
         setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
         setActiveSession("general");
         setSelectedWidgetId(null);
@@ -167,6 +174,7 @@ export function StudioProvider(props: {
         const message = error instanceof Error ? error.message : "failed to load studio profile";
         setLoadError(message);
         setHistory(null);
+        historyRef.current = null;
       },
     );
 
@@ -229,6 +237,7 @@ export function StudioProvider(props: {
         }
         setAccessNotice(null);
         setHistory(next);
+        historyRef.current = next;
         setSaveState("idle");
         return true;
       } catch (error) {
@@ -251,6 +260,7 @@ export function StudioProvider(props: {
       return false;
     }
     setHistory(next);
+    historyRef.current = next;
     return true;
   }, [history]);
 
@@ -263,6 +273,7 @@ export function StudioProvider(props: {
       return false;
     }
     setHistory(next);
+    historyRef.current = next;
     return true;
   }, [history]);
 
@@ -302,10 +313,16 @@ export function StudioProvider(props: {
   );
 
   const save = useCallback(async (): Promise<StudioSaveResult> => {
-    if (!history || !document || !history.saved) {
+    // Se lee del ref para guardar siempre el documento mas reciente: una
+    // edicion B ocurrida mientras una peticion A estaba en vuelo se conserva
+    // en el presente y este save la incluye.
+    const currentHistory = historyRef.current;
+    const currentDocument = currentHistory?.present ?? null;
+    const currentRevision = revisionRef.current;
+    if (!currentHistory || !currentDocument || !currentHistory.saved) {
       return { status: "error", message: "studio profile is not loaded" };
     }
-    const draftValidation = validateDraftAccess(access, history.saved, document);
+    const draftValidation = validateDraftAccess(access, currentHistory.saved, currentDocument);
     if (!draftValidation.allowed) {
       setSaveState("error");
       setAccessNotice(draftValidation.reason);
@@ -313,18 +330,23 @@ export function StudioProvider(props: {
     }
     setSaveState("saving");
     setAccessNotice(null);
-    const result = await client.save({ document, expectedRevision: revision });
+    const result = await client.save({ document: currentDocument, expectedRevision: currentRevision });
     if (result.status === "saved") {
       // Hardening: solo se actualizan saved y revision. El presente se
       // conserva tal como exista al resolver la peticion: una edicion B
       // realizada mientras A estaba en vuelo no desaparece.
-      setHistory((current) =>
-        current ? markStudioHistorySaved(current, result.document) : current,
-      );
+      setHistory((current) => {
+        const next = current ? markStudioHistorySaved(current, result.document) : current;
+        if (next) {
+          historyRef.current = next;
+        }
+        return next;
+      });
       if (recoveryStore) {
         recoveryStore.clear(result.document.id);
       }
       setRevision(result.revision);
+      revisionRef.current = result.revision;
       setSaveState("saved");
       setVisuallyMigratedWidgetIds([]);
       return result;

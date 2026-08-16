@@ -68,31 +68,6 @@ export function deriveRelativeEvents(
 }
 
 /**
- * Vertical offsets for a FLIP slide, in pixels: where each row was versus where
- * it now is. Only rows present in both models move; entries and exits are
- * animated separately because they have no "before" to slide from.
- */
-export function deriveRelativeFlipOffsets(
-  prev: RelativeViewModel | null,
-  next: RelativeViewModel,
-  rowStridePx: number,
-): Map<string, number> {
-  const offsets = new Map<string, number>();
-  if (!prev || prev.status !== "ready" || next.status !== "ready") {
-    return offsets;
-  }
-  const previousIndex = new Map(prev.rows.map((row, index) => [row.id, index]));
-  next.rows.forEach((row, index) => {
-    const before = previousIndex.get(row.id);
-    if (before === undefined || before === index) {
-      return;
-    }
-    offsets.set(row.id, (before - index) * rowStridePx);
-  });
-  return offsets;
-}
-
-/**
  * Rows within striking distance of the player, by absolute gap. Used to mark
  * the rows worth watching without inventing a new threshold per template.
  */

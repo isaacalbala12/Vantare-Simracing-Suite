@@ -9,9 +9,10 @@ export const OVERLAY_PROJECTION_MAX_DELTA_SAMPLES = 120;
 const CAPABILITIES = [
   "session",
   "standings",
+  "pit",
+  "spatial",
   "controls",
   "controls.history",
-  "pit",
 ] as const;
 const PROVENANCE = ["unknown", "observed", "derived", "estimated"] as const;
 const FRESHNESS = ["missing", "fresh", "stale", "invalid"] as const;

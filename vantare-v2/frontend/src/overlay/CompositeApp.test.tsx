@@ -69,12 +69,12 @@ function tick(ms: number) {
   });
 }
 
-function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1") {
+function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1", windowMode = "racing") {
   return {
     document,
     revision,
     layoutOrigin: { x: 0, y: 0 },
-    windowMode: "racing",
+    windowMode,
   };
 }
 
@@ -243,16 +243,42 @@ describe("CompositeApp", () => {
     expect(frame.style.top).toBe("87px");
   });
 
-  it("does not mount edit chrome when overlay:edit-mode-changed fires", () => {
+  it("mounts edit chrome when overlay:edit-mode-changed fires", () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
+    expect(screen.queryByTestId("edit-mode-hint")).toBeNull();
+    expect(screen.queryByTestId("inplace-edit-overlay")).toBeNull();
+
     dispatch("overlay:edit-mode-changed", { mode: "edit" });
     tick(100);
 
-    expect(screen.queryByTestId("edit-mode-hint")).toBeNull();
-    expect(screen.queryByTestId("edit-frame-relative")).toBeNull();
+    expect(screen.getByTestId("edit-mode-hint")).toBeTruthy();
+    expect(screen.getByTestId("inplace-edit-overlay")).toBeTruthy();
+  });
+
+  it("returns to the runtime surface when overlay:edit-mode-changed sets racing", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument(), "rev-1", "edit"));
+    tick(100);
+
+    expect(screen.getByTestId("inplace-edit-overlay")).toBeTruthy();
+
+    dispatch("overlay:edit-mode-changed", { mode: "racing" });
+    tick(100);
+
+    expect(screen.queryByTestId("inplace-edit-overlay")).toBeNull();
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+  });
+
+  it("enters edit mode from windowMode in the profile payload", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument(), "rev-1", "edit"));
+    tick(100);
+
+    expect(screen.getByTestId("inplace-edit-overlay")).toBeTruthy();
+    expect(screen.queryByTestId("runtime-overlay-surface")).toBeNull();
   });
 
   it("shows calendar reminder banner on calendar:reminder event", () => {

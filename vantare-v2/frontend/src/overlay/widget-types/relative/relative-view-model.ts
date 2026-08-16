@@ -5,7 +5,7 @@ import type { WidgetColumnV3 } from "../shared/widget-column";
 import type { RelativeContent } from "./relative-content";
 import { getEnabledRelativeColumns } from "./relative-content";
 import { formatRelativeColumnValue, type RelativeScoringRow } from "./relative-formatting";
-import { resolveRelativeTone, selectRelativeRows } from "./relative-row-selection";
+import { resolveRelativeTone, selectRelativeRows, type RelativeSide } from "./relative-row-selection";
 
 export type RelativeRowViewModel = {
   id: string;
@@ -17,6 +17,7 @@ export type RelativeRowViewModel = {
   bestLapText: string;
   lastLapText: string;
   isPlayer: boolean;
+  side: RelativeSide;
   tone: "ahead" | "behind" | "player" | "neutral";
   gapSeconds: number | null;
 };
@@ -47,13 +48,25 @@ function buildRowViewModel(
   row: RelativeScoringRow,
   columns: readonly WidgetColumnV3[],
   index: number,
+  side: RelativeSide,
+  playerInPit: boolean,
 ): RelativeRowViewModel | null {
   const id = readScoringString(row, "id") ?? String(readScoringNumber(row, "id") ?? index);
   if (!id) {
     return null;
   }
-  const gapSeconds = readScoringNumber(row, "timeGapToPlayer") ?? null;
   const isPlayer = readScoringBoolean(row, "isPlayer") ?? false;
+  const rawGapSeconds = readScoringNumber(row, "timeGapToPlayer") ?? null;
+  const relativeLapDelta = readScoringNumber(row, "relativeLapDelta");
+  const rivalInPit = readScoringBoolean(row, "inPit") ?? false;
+  const gapMatchesSide =
+    (side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
+    (side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
+  const gapSeconds =
+    isPlayer ||
+    (!playerInPit && !rivalInPit && (relativeLapDelta == null || relativeLapDelta === 0) && gapMatchesSide)
+      ? rawGapSeconds
+      : null;
   const columnValues = Object.fromEntries(
     columns.map((column) => [column.metricId, formatRelativeColumnValue(column.metricId, row, column)]),
   ) as Record<string, string>;
@@ -64,10 +77,11 @@ function buildRowViewModel(
     vehicleClass: columnValues.class ?? "",
     driverNumber: columnValues.carNumber ?? "",
     driverName: columnValues.driverName ?? "?",
-    gapText: columnValues.gap ?? "—",
+    gapText: !isPlayer && gapSeconds == null ? "—" : columnValues.gap ?? "—",
     bestLapText: columnValues.bestLap ?? "-",
     lastLapText: columnValues.lastLap ?? "-",
     isPlayer,
+    side,
     tone: resolveRelativeTone(gapSeconds ?? undefined, isPlayer),
     gapSeconds,
   };
@@ -113,8 +127,10 @@ export function buildRelativeViewModel(
   }
 
   const selected = selectRelativeRows(snapshot.scoring, content);
+  const playerInPit =
+    readScoringBoolean(selected.find(({ side }) => side === "player")?.row ?? {}, "inPit") ?? false;
   const rows = selected
-    .map((row, index) => buildRowViewModel(row, columns, index))
+    .map(({ row, side }, index) => buildRowViewModel(row, columns, index, side, playerInPit))
     .filter((row): row is RelativeRowViewModel => row !== null);
 
   return {

@@ -1,3 +1,26 @@
+Nota ISA-365 / REL-01 (2026-08-15, implementación lista en rama):
+- Relative selecciona por orden circular de `lapDistanceMeters` los dos coches
+  físicamente más próximos delante y los dos detrás, con el jugador siempre
+  centrado. La identidad de las filas ya no depende de que LMU publique gap.
+- En boxes, con coches doblados o cuando el signo temporal no es comparable,
+  las filas permanecen visibles con `—` y tono neutral. Original, Crystal y
+  Endurance consumen un `side` físico explícito; Studio, Desktop, OBS y
+  Workshop comparten el mismo ViewModel.
+- Los perfiles existentes se normalizan al contrato fijo 2+1+2 y el inspector
+  deja de ofrecer cantidades o exclusión del jugador incompatibles.
+- TDD focal y suite frontend completa PASS: 376 archivos/2750 tests; build y
+  lint focal propio PASS. El gate visual valida al 0 % todas las capturas de
+  Relative y su paridad; la ejecución global conserva dos diferencias
+  heredadas de Delta stale. El lint global del diff conserva un error heredado
+  `_absent` en `authoring-fixtures.ts:231`, fuera de las líneas modificadas.
+- Rama aislada nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
+  `nightly@7341e8cd` y publicada en la PR draft #263 hacia `nightly`; sin
+  integración, promoción ni release. El CI de la PR, run `31896585676`, pasó
+  ruta de promoción, gates bloqueantes y seguridad sobre `839603f5`. Spec y
+  microplan:
+  `docs/superpowers/specs/2026-08-15-isa-365-relative-fisico-2x2-design.md` y
+  `docs/superpowers/plans/2026-08-15-isa-365-relative-fisico-2x2.md`.
+
 Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, promovida a Nightly):
 - El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable
   como `stale` mientras un estado `live` espera su proyección de la misma

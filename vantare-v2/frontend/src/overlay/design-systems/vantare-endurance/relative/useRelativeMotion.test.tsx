@@ -18,6 +18,7 @@ function row(id: string, gapSeconds: number, isPlayer = false): RelativeRowViewM
     bestLapText: "1:38.0",
     lastLapText: "1:38.4",
     isPlayer,
+    side: isPlayer ? "player" : gapSeconds > 0 ? "ahead" : "behind",
     tone: isPlayer ? "player" : gapSeconds > 0 ? "ahead" : "behind",
     gapSeconds,
   };

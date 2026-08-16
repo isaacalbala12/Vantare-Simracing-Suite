@@ -19,6 +19,7 @@ function row(partial: Partial<RelativeRowViewModel> & { id: string }): RelativeR
     bestLapText: "1:38.0",
     lastLapText: "1:38.4",
     isPlayer: false,
+    side: "ahead",
     tone: "ahead",
     gapSeconds: 1,
     ...partial,
@@ -29,7 +30,7 @@ function model(rows: RelativeRowViewModel[]): RelativeViewModel {
   return { type: "relative", status: "ready", columns: [], rowHeightMode: "auto", rows };
 }
 
-const player = row({ id: "me", isPlayer: true, tone: "player", gapSeconds: 0 });
+const player = row({ id: "me", isPlayer: true, side: "player", tone: "player", gapSeconds: 0 });
 
 describe("relative motion events", () => {
   it("reports nothing without a previous model", () => {
@@ -37,8 +38,16 @@ describe("relative motion events", () => {
   });
 
   it("reports a crossing when a rival changes side of the player", () => {
-    const before = model([row({ id: "a", tone: "ahead", gapSeconds: 0.4 }), player]);
-    const after = model([player, row({ id: "a", tone: "behind", gapSeconds: -0.3 })]);
+    const before = model([row({ id: "a", side: "ahead", tone: "ahead", gapSeconds: 0.4 }), player]);
+    const after = model([player, row({ id: "a", side: "behind", tone: "behind", gapSeconds: -0.3 })]);
+    expect(deriveRelativeEvents(before, after)).toEqual([
+      { kind: "cross", rowId: "a", to: "behind" },
+    ]);
+  });
+
+  it("reports a physical crossing while temporal presentation stays neutral", () => {
+    const before = model([row({ id: "a", side: "ahead", tone: "neutral", gapSeconds: null }), player]);
+    const after = model([player, row({ id: "a", side: "behind", tone: "neutral", gapSeconds: null })]);
     expect(deriveRelativeEvents(before, after)).toEqual([
       { kind: "cross", rowId: "a", to: "behind" },
     ]);

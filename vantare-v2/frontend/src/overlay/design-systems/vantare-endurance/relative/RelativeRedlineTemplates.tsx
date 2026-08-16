@@ -121,8 +121,8 @@ function MirrorTemplate({
 }) {
   const player = playerRow(model);
   const playerClass = player?.vehicleClass ?? "";
-  const ahead = model.rows.filter((row) => !row.isPlayer && (row.gapSeconds ?? 0) > 0);
-  const behind = model.rows.filter((row) => !row.isPlayer && (row.gapSeconds ?? 0) <= 0);
+  const ahead = model.rows.filter((row) => row.side === "ahead");
+  const behind = model.rows.filter((row) => row.side === "behind");
 
   const renderRow = (row: RelativeRowViewModel, side: "ahead" | "behind") => (
     <RowShell
@@ -193,7 +193,7 @@ function ProximityTemplate({
   return (
     <>
       {model.rows.map((row, index) => {
-        const side = (row.gapSeconds ?? 0) > 0 ? "ahead" : "behind";
+        const side = row.side === "ahead" ? "ahead" : "behind";
         const rendered = row.isPlayer ? (
           <RowShell key={row.id} row={row} variant="proximity">
             <span className="ven-rel-pos">{row.position}</span>

@@ -10,12 +10,80 @@
 
 ## Estado
 
+- ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
+  el relevo
+  `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`
+  hasta recibir la proyección de la nueva revisión, sin publicar el frame
+  `disconnected` intermedio. Arranque sin datos, estados reales de conexión o
+  parada y proyecciones bloqueadas mantienen el cierre seguro. TDD RED/GREEN,
+  focal 4/4, frontend 375 archivos/2736 tests, build, ESLint focal y diff-check
+  PASS; el lint global conserva 49 errores y 2 warnings heredados fuera del
+  cambio. La rama se sincronizó con `origin/nightly@028c7512`; implementación
+  aprobada `ae313e2e`, head final `ac46c3c3` y CI final del PR #260
+  `31896118568` en verde. Tras autorización expresa de Isaac, el PR #260 se
+  integró por squash en `nightly@7341e8cd`. El gate posterior `31896647826` y
+  el roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la
+  promoción; sin paso a `testers`/`master` ni release.
+- ISA-364 está promovida a `nightly` y corrige el listado vacío de
+  `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
+  migrador canónico, mientras el
+  camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
+  incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
+  y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
+  375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
+  `AbortError` de teardown frontend permanecen heredados y el proceso termina
+  con exit 0. El CI final del PR #261, run `31894030661`, pasó topología,
+  gates bloqueantes, build Wails y pasos informativos sobre `03a0205b`. La
+  rama partió de `origin/nightly@3eb5dd7b`; implementación `f753c172` y merge
+  squash del PR #261 en `nightly@22946e6f`, autorizada expresamente por Isaac.
+  El gate posterior `31894845365` y el roadmap `31894845385` pasaron sobre el
+  SHA integrado. ISA-366 registra la promoción; sin paso a `testers`/`master`
+  ni release.
+- Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
+  `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
+  calendario comparte un único estado y no pierde respuestas inmediatas, el
+  carrusel usa el snapshot público generado desde Linear con procedencia
+  visible y Novedades usa los manifiestos canónicos de release auto-descubiertos.
+  Focales 46/46, suite frontend 371/2681, build, lint focal propio y diff-check
+  pasan. El preview T3 abrió el servidor correcto pero no pudo producir
+  snapshot ni evaluación; queda pendiente la comprobación visual manual. Los
+  gates del PR, el gate posterior de Nightly `31817001802` y la regeneración
+  del snapshot público `31817001849` pasaron. No hubo promoción a
+  `testers`/`master` ni release.
+- ISA-357 corrige localmente la batalla animada de Standings Redline: solo
+  carrera, una pareja máxima y prioridad por cercanía a la fila del jugador,
+  con desempate por intervalo y orden estable. El relevo entre parejas tampoco
+  solapa una disolución anterior con la nueva caja. El code review corrigió la
+  transición carrera→clasificación, la ausencia de la fila del jugador y la
+  frescura de una secuencia rápida A→B→A. TDD focal 21/21, frontend 370
+  archivos/2679 tests, build, ESLint focal, design-system 3/3, fragmento y
+  diff-check PASS. Persisten dos `AbortError` heredados de teardown con exit 0.
+  El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
+  fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
+  visual manual continúa pendiente.
+  Rama aislada desde `origin/nightly@673283a2`, sincronizada finalmente con
+  `nightly@2909ba73` en `a389f8d0`; implementación `71d6b360` y fix de review
+  `cf83021a`. La PR #243 se integró por squash en `nightly@fe04a0af`; gates de
+  PR y posteriores al merge PASS. Sin promoción a `testers`/`master` ni release.
+- ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
+  `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
+  Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,
+  conserva 50 px de altura y expone solo resize este/oeste. Tests focales,
+  suite frontend, lint focal, build y CI pasan. Queda pendiente la validación
+  visual manual de Isaac; no hubo promoción a `testers` ni `master`.
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
   PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR
   #191 están también en Nightly. Pedals Redline se entrega en PR draft #195 y
   completa la cobertura visual de los cuatro widgets insignia. El flaky de CI
   ISA-311 quedó corregido y promovido mediante PR #200 a `nightly@54f267b`.
+- Delta: ISA-347 está implementada y validada en rama aislada sobre
+  `origin/nightly`; añade referencias reales personal/sesión/anterior, unicidad
+  por layout y hotkey global configurable. El code review corrigió historial
+  nativo, selección canónica legacy y concurrencia del hotkey en `46df1b2`. La
+  rama incorporó `nightly@638b470` en `f0e40bd`; la PR #233 pasó los gates y se
+  integró por squash en `nightly@5499008`, sin promoción a `testers`/`master` ni
+  release.
 - Decisión ISA-315: objetivo 2026-08-31 = Overlay Studio V1 estable en
   `testers`. No equivale a `master`, release pública ni suite completa. Existe
   una cohorte aproximada de 10 testers Windows 10/11 con respuesta el mismo
@@ -26,7 +94,8 @@
   separados de raíz, Billing, artefactos y aprobación; no está autorizada por
   este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
-- Hub: sin issue activa.
+- Hub: ISA-358 integrada en Nightly; ISA-360 registra la promoción y su
+  evidencia exacta.
 - Base documental ISA-315 rebasada: `nightly@54f267b`.
 - PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
   venta y release permanecen fuera del alcance. Las integraciones en `develop`
@@ -208,9 +277,58 @@ y recientes.
 
 ## Última actualización
 
+2026-08-14, ISA-335 corrige en Nightly el rechazo al guardar perfiles con
+`vantare-endurance`. La causa era un desfase entre el catálogo frontend ya
+promovido y las allowlists Go de persistencia/diseños. La revisión adversarial
+eliminó la lista duplicada: ambos consumidores consultan ahora el mismo contrato
+tipado. La regresión cubre sistema activo/predeterminado, `systemMemories`,
+round-trip en disco y diseños de usuario; los IDs desconocidos siguen fallando
+cerrados. Go focal y global, frontend 370/2661 y build pasan. Base inicial
+`origin/nightly@8de4f511`; rama
+`vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`.
+Fix y regresiones: `074dba6`; centralización revisada: `a4749e9`;
+`design-system:check` 3/3 PASS. Isaac autorizó la promoción y el auto-merge
+necesario ante integraciones concurrentes; ISA-345 conserva el registro. La PR
+#223 se integró por squash en
+`nightly@32e9b70907458874d79fd28c5a37ae97cccc436d`. El gate post-integración
+`31762153097` pasó ruta, build frontend, Go, frontend, lint de cambios, visuales
+y Windows/Wails; el snapshot `31762153118` pasó. El lint global conserva deuda
+heredada advisory. Sin promoción a Testers/Master ni release.
+
 2026-08-10, ISA-315 fija el objetivo Stable en Testers para Overlay Studio V1
 y la ventana comercial controlada de septiembre. Esta decisión y el estado
 superior prevalecen sobre los bloques históricos de OS-09 que siguen debajo.
+
+### ISA-347 — Delta real, único y controlable por hotkey
+
+- Rama/worktree:
+  `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`
+  en `C:\tmp\vantare-isa347\vantare-v2`, desde
+  `origin/nightly@7e4eac63fdc3a81278f8815d28e33c8a1293db4a`.
+- La telemetría Delta mantiene tres referencias independientes y fail-closed:
+  personal observado desde LMU cuando existe, mejor válida de la sesión y
+  vuelta anterior válida. Ninguna referencia ausente hereda otra bajo una
+  etiqueta falsa.
+- Cada layout admite un solo widget `delta`. Catálogo, comandos Studio y
+  validadores TS/Go aplican el mismo contrato; los layouts de sesión explícitos
+  son alternativos y nunca se renderizan simultáneamente. Los Delta extra de un
+  perfil histórico pasan a `preservedWidgets` con su configuración completa,
+  de modo que no se renderizan ni se pierden.
+- Hotkey `cycleDeltaReference`, configurable en Ajustes y por defecto
+  `Ctrl+Shift+D`: Personal → Sesión → Anterior → Personal. Usa el gestor global
+  existente, guarda el perfil activo y vuelve a publicar el documento runtime.
+  La migración de AppSettings v2→v3 añade el atajo sin sustituir combinaciones
+  ya configuradas.
+- Evidencia: `go test ./...` PASS; frontend 370 archivos/2673 tests PASS;
+  build y ESLint focal PASS. Vitest conserva dos `AbortError` heredados de
+  teardown después del resumen con exit 0.
+- Estado real: implementación `3a54d34` y fix `46df1b2`, sincronizados con
+  `nightly@638b470` mediante `f0e40bd`. Review adversarial: P0=0, P1=3
+  corregidos, P2=0 y P3=0. `go test ./... -count=1`, frontend 370/2673, build,
+  ESLint focal, vet focal sin deuda nueva y diff-check pasan. La PR #233 pasó
+  los gates bloqueantes y se integró por squash en `nightly@5499008` el
+  2026-08-14. Sigue pendiente la comprobación manual LMU/Wails; no hubo
+  promoción a `testers`, `master` ni release.
 
 ### ISA-262 — usar el Workshop local
 

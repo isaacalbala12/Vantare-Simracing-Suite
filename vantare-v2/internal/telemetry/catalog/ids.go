@@ -49,4 +49,6 @@ const (
 	SignalSessionSelfDeltaSeconds
 	SignalSessionSelfDeltaReference
 	SignalSpatialLocalVelocity
+	SignalSessionNativeDeltaBest
+	SignalSessionPreviousLapDelta
 )

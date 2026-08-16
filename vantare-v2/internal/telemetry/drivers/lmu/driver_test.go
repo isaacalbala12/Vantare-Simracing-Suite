@@ -445,6 +445,7 @@ func TestWithFreshnessExpiresEverySharedMemoryVehicleFieldWithoutMutatingInput(t
 			"brake":              {before.Brake.Freshness(), after.Brake.Freshness()},
 			"clutch":             {before.Clutch.Freshness(), after.Clutch.Freshness()},
 			"fuel":               {before.Fuel.Freshness(), after.Fuel.Freshness()},
+			"delta best":         {before.DeltaBest.Freshness(), after.DeltaBest.Freshness()},
 		})
 	}
 }

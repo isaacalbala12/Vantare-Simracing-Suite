@@ -3,7 +3,7 @@
   "simulatorBuild": "1.4.0.0",
   "menuFixtureSha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
   "trackFixtureSha256": "c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5",
-  "trackOverlayProjectionSha256": "411c5ce1bdf5be35da88bc903b924ee9f61257fd247b29456e12e07fa5a2e8f7",
+  "trackOverlayProjectionSha256": "ac733a8abdae1090963cdedfa26a8880edbbaf8b3a07200b079aa99e6a1e52e2",
   "deterministicRuns": 20,
   "trackVehicleCount": 38,
   "trackPlayerPresent": true,

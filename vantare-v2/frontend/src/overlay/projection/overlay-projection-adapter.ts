@@ -124,6 +124,9 @@ export function adaptOverlayProjectionToSnapshot(
     playerVehicle,
     playerIndex,
     projection.payload.playerDeltaSeconds,
+    projection.payload.playerDeltaPersonalBestSeconds,
+    projection.payload.playerDeltaSessionBestSeconds,
+    projection.payload.playerDeltaPreviousLapSeconds,
     quality,
   );
   quality.push({
@@ -189,6 +192,9 @@ function mapPlayer(
   vehicle: OverlayVehicleV1 | undefined,
   index: number,
   playerDelta: OverlayProjectionField<number>,
+  playerDeltaPersonalBest: OverlayProjectionField<number>,
+  playerDeltaSessionBest: OverlayProjectionField<number>,
+  playerDeltaPreviousLap: OverlayProjectionField<number>,
   quality: OverlayMappedField[],
 ): TelemetrySnapshot["player"] | undefined {
   if (!vehicle || index < 0) {
@@ -202,6 +208,7 @@ function mapPlayer(
     "player.inPit",
   );
   const optional: Omit<TelemetrySnapshot["player"], "inPit"> = {};
+  optional.deltaReferenceSet = true;
   assignIfPresent(
     optional,
     "speedKph",
@@ -237,6 +244,21 @@ function mapPlayer(
       "playerDeltaSeconds",
       "player.deltaSeconds",
     ),
+  );
+  assignIfPresent(
+    optional,
+    "deltaPersonalBestSeconds",
+    mappedValue(playerDeltaPersonalBest, quality, "playerDeltaPersonalBestSeconds", "player.deltaPersonalBestSeconds"),
+  );
+  assignIfPresent(
+    optional,
+    "deltaSessionBestSeconds",
+    mappedValue(playerDeltaSessionBest, quality, "playerDeltaSessionBestSeconds", "player.deltaSessionBestSeconds"),
+  );
+  assignIfPresent(
+    optional,
+    "deltaPreviousLapSeconds",
+    mappedValue(playerDeltaPreviousLap, quality, "playerDeltaPreviousLapSeconds", "player.deltaPreviousLapSeconds"),
   );
   assignIfPresent(
     optional,

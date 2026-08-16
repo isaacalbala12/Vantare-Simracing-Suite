@@ -62,6 +62,7 @@ export type WidgetRuntimeInput = {
 export type WidgetCapabilities = {
   inspectorSections: readonly InspectorSectionId[];
   supportsAspectUnlock: boolean;
+  resizeMode?: "free" | "horizontal-only";
   minimumSize: { width: number; height: number };
   defaultSize: { width: number; height: number };
   requiredFeature: FeatureId;

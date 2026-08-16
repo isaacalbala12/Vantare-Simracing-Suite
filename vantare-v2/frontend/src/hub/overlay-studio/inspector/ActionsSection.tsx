@@ -1,7 +1,7 @@
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { useI18n } from "../../../i18n/I18nProvider";
-import { useDeleteWidgetConfirm } from "../components/DeleteWidgetConfirmProvider";
+import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
 import { executeWidgetAction } from "../canvas/widget-actions";
 import type { StudioCommand } from "../state/studio-command";
 

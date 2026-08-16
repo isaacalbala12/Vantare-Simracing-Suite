@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -23,14 +24,15 @@ type StudioProfileSaved struct {
 
 // StudioProfileService manages Overlay Studio V3 profile documents in parallel to legacy ProfileService.
 type StudioProfileService struct {
-	path        string
-	loaded      *config.LoadedProfileV3
-	store       config.ProfileDocumentStore
-	emitter     EventEmitter
-	logger      *slog.Logger
-	onSaved     func(StudioProfileSaved)
-	profilesDir string
-	mgr         *window.Manager
+	deltaCycleMu sync.Mutex
+	path         string
+	loaded       *config.LoadedProfileV3
+	store        config.ProfileDocumentStore
+	emitter      EventEmitter
+	logger       *slog.Logger
+	onSaved      func(StudioProfileSaved)
+	profilesDir  string
+	mgr          *window.Manager
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.

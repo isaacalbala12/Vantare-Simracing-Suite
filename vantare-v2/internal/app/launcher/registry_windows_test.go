@@ -5,6 +5,7 @@ package launcher
 import "testing"
 
 func TestListRegistryAppsFiltersOutSystemApps(t *testing.T) {
+	resetRegistryListCache()
 	original := readUninstallEntries
 	defer func() { readUninstallEntries = original }()
 	readUninstallEntries = func() []discoveredCandidate {
@@ -45,6 +46,7 @@ func TestListRegistryAppsFiltersOutSystemApps(t *testing.T) {
 }
 
 func TestListRegistryAppsReturnsEmptyWhenAllFiltered(t *testing.T) {
+	resetRegistryListCache()
 	original := readUninstallEntries
 	defer func() { readUninstallEntries = original }()
 	readUninstallEntries = func() []discoveredCandidate {
@@ -60,6 +62,7 @@ func TestListRegistryAppsReturnsEmptyWhenAllFiltered(t *testing.T) {
 }
 
 func TestListRegistryAppsReturnsEmptyWhenNoEntries(t *testing.T) {
+	resetRegistryListCache()
 	original := readUninstallEntries
 	defer func() { readUninstallEntries = original }()
 	readUninstallEntries = func() []discoveredCandidate { return nil }

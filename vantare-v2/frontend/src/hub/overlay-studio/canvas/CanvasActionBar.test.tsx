@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
-import { DeleteWidgetConfirmProvider } from "../components/DeleteWidgetConfirmProvider";
+import { StudioConfirmProvider } from "../components/StudioConfirmProvider";
 import { CanvasActionBar } from "./CanvasActionBar";
 
 function buildSaved(): ProfileDocumentV3 {
@@ -89,7 +89,7 @@ describe("CanvasActionBar", () => {
     const widget = deltaDefinition.createDefault("delta-main");
 
     render(
-      <DeleteWidgetConfirmProvider storage={null}>
+      <StudioConfirmProvider storage={null}>
         <CanvasActionBar
           widgetId="delta-main"
           session="general"
@@ -98,7 +98,7 @@ describe("CanvasActionBar", () => {
           dispatch={dispatch}
           selectWidget={vi.fn()}
         />
-      </DeleteWidgetConfirmProvider>,
+      </StudioConfirmProvider>,
     );
 
     fireEvent.click(screen.getByTestId("studio-action-delete"));

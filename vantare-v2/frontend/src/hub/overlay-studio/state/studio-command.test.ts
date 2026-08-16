@@ -167,14 +167,14 @@ describe("applyStudioCommand", () => {
 
   it("materializes a missing session before the first mutation", () => {
     const document = buildDocument();
-    const added = widget("delta-race");
+    const added = widget("relative-race", { type: "relative" });
     const next = applyStudioCommand(document, {
       type: "widget/add",
       session: "race",
       widget: added,
     });
     expect(next.layouts.race?.type).toBe("race");
-    expect(next.layouts.race?.widgets.map((entry) => entry.id)).toEqual(["delta-1", "delta-race"]);
+    expect(next.layouts.race?.widgets.map((entry) => entry.id)).toEqual(["delta-1", "relative-race"]);
     expect(document.layouts.race).toBeUndefined();
   });
 
@@ -189,8 +189,32 @@ describe("applyStudioCommand", () => {
     ).toThrow(StudioCommandError);
   });
 
+  it("rejects adding a second delta to the same session layout", () => {
+    const document = buildDocument();
+    expect(() =>
+      applyStudioCommand(document, {
+        type: "widget/add",
+        session: "general",
+        widget: widget("delta-2"),
+      }),
+    ).toThrowError(/one delta/i);
+  });
+
+  it("rejects duplicating the delta widget", () => {
+    const document = buildDocument();
+    expect(() =>
+      applyStudioCommand(document, {
+        type: "widget/duplicate",
+        session: "general",
+        widgetIds: ["delta-1"],
+        newIds: ["delta-copy"],
+      }),
+    ).toThrowError(/one delta/i);
+  });
+
   it("duplicates widgets with offset position and adjacent z-order", () => {
     const source = widget("delta-1", {
+      type: "relative",
       layout: { x: 40, y: 80, w: 280, h: 96, zIndex: 1, aspectLocked: true },
       content: {},
       visual: {
@@ -201,8 +225,8 @@ describe("applyStudioCommand", () => {
         appearanceOverrides: { opacity: 0.8 },
       },
     });
-    const blocker = widget("delta-2", { layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 2, aspectLocked: true } });
-    const document = buildDocument([widget("delta-0", { layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 0, aspectLocked: true } }), source, blocker]);
+    const blocker = widget("delta-2", { type: "relative", layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 2, aspectLocked: true } });
+    const document = buildDocument([widget("delta-0", { type: "relative", layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 0, aspectLocked: true } }), source, blocker]);
 
     const next = applyStudioCommand(document, {
       type: "widget/duplicate",
@@ -273,9 +297,9 @@ describe("applyStudioCommand", () => {
 
   it("reorders widgets and normalizes z-index values", () => {
     const document = buildDocument([
-      widget("a", { layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 0, aspectLocked: true } }),
-      widget("b", { layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 1, aspectLocked: true } }),
-      widget("c", { layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 2, aspectLocked: true } }),
+      widget("a", { type: "relative", layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 0, aspectLocked: true } }),
+      widget("b", { type: "relative", layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 1, aspectLocked: true } }),
+      widget("c", { type: "relative", layout: { x: 0, y: 0, w: 100, h: 50, zIndex: 2, aspectLocked: true } }),
     ]);
     const next = applyStudioCommand(document, {
       type: "widget/order",
@@ -407,6 +431,7 @@ describe("applyStudioCommand", () => {
   it("applies a design to multiple widgets in one command", () => {
     const document = buildDocument([
       widget("delta-1", {
+        type: "relative",
         visual: {
           systemId: "vantare-original",
           systemVersion: 1,
@@ -416,6 +441,7 @@ describe("applyStudioCommand", () => {
         },
       }),
       widget("delta-2", {
+        type: "relative",
         layout: { x: 40, y: 50, w: 280, h: 96, zIndex: 1, aspectLocked: true },
         visual: {
           systemId: "vantare-original",
@@ -433,9 +459,9 @@ describe("applyStudioCommand", () => {
       widgetIds: ["delta-1", "delta-2"],
       appliedAt: "2026-07-10T12:00:00Z",
       design: {
-        id: "delta-crystal-bar",
+        id: "relative-crystal-bar",
         name: "Crystal Base",
-        widgetType: "delta",
+        widgetType: "relative",
         systemId: "vantare-crystal",
         systemVersion: 1,
         configVersion: 1,
@@ -450,7 +476,7 @@ describe("applyStudioCommand", () => {
       expect(applied.visual.systemId).toBe("vantare-crystal");
       expect(applied.visual.baseSettings).toEqual({ showHeader: true, accent: "cyan" });
       expect(applied.visual.appearanceOverrides).toEqual({});
-      expect(applied.visual.provenance?.designId).toBe("delta-crystal-bar");
+      expect(applied.visual.provenance?.designId).toBe("relative-crystal-bar");
     }
     expect(next.layouts.general.widgets[0]?.layout).toEqual(document.layouts.general.widgets[0]?.layout);
     expect(next.layouts.general.widgets[1]?.layout.x).toBe(40);

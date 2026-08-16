@@ -1,0 +1,842 @@
+const workflowPath = ".github/workflows/testing-center-agent-fix.yml";
+const redPromptPath = ".github/agents/testing-center-red-prompt.md";
+const greenPromptPath = ".github/agents/testing-center-green-prompt.md";
+const settingsPath = ".github/agents/testing-center-agent-settings.json";
+const reviewPromptPath = ".github/agents/testing-center-review-prompt.md";
+const reviewSchemaPath =
+  ".github/agents/testing-center-review-output.schema.json";
+const reviewSettingsPath = ".github/agents/testing-center-review-settings.json";
+const branchGatesPath = ".github/workflows/branch-channel-gates.yml";
+const closeoutPath = ".github/workflows/testing-center-nightly-closeout.yml";
+const releasePath = ".github/workflows/release.yml";
+const triageWorkflowPath = ".github/workflows/testing-center-agent-triage.yml";
+
+const checkoutPin = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
+const setupDenoPin =
+  "denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282";
+const claudeActionPin =
+  "anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639";
+const uploadArtifactPin =
+  "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02";
+const downloadArtifactPin =
+  "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093";
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+function assertIncludes(actual: string, expected: string): void {
+  assert(actual.includes(expected), `Expected text to include: ${expected}`);
+}
+
+function assertNotIncludes(actual: string, forbidden: string): void {
+  assert(!actual.includes(forbidden), `Forbidden text found: ${forbidden}`);
+}
+
+function assertNotMatch(actual: string, forbidden: RegExp): void {
+  assert(!forbidden.test(actual), `Forbidden pattern found: ${forbidden}`);
+}
+
+function assertEquals(
+  actual: unknown,
+  expected: unknown,
+  message: string,
+): void {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  assert(
+    actualJson === expectedJson,
+    `${message}: ${actualJson} !== ${expectedJson}`,
+  );
+}
+
+function normalize(text: string): string {
+  return text.replaceAll("\r\n", "\n");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function jobBlock(workflow: string, jobName: string): string {
+  const lines = normalize(workflow).split("\n");
+  const jobsIndex = lines.findIndex((line) => line === "jobs:");
+  assert(jobsIndex >= 0, "Missing jobs mapping");
+
+  const header = new RegExp(`^  ${escapeRegExp(jobName)}:\\s*$`);
+  const start = lines.findIndex((line, index) =>
+    index > jobsIndex && header.test(line)
+  );
+  assert(start >= 0, `Missing job: ${jobName}`);
+
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index++) {
+    if (/^[ ]{2}[A-Za-z0-9_-]+:\s*$/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n");
+}
+
+function usesLines(block: string): string[] {
+  return block.split("\n").map((line) => line.trim()).filter((line) =>
+    line.startsWith("uses:")
+  );
+}
+
+Deno.test("workflow exposes only the two approved triggers with read-only contents", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+
+  assertIncludes(
+    workflow,
+    "repository_dispatch:\n    types: [testing-center-agent-fix]",
+  );
+  assertIncludes(workflow, "workflow_dispatch:\n    inputs:\n      fixture:");
+  assertIncludes(workflow, "fixture:\n        description:");
+  assertIncludes(workflow, "required: true");
+  assertIncludes(workflow, "permissions:\n  contents: read");
+
+  for (
+    const forbidden of [
+      "pull_request_target:",
+      "pull_request:",
+      "push:",
+      "schedule:",
+      "workflow_call:",
+      "@main",
+      "@latest",
+      "contents: write",
+      "pull-requests: write",
+      "issues: write",
+      "write-all",
+      "git push",
+      "gh pr",
+      "create-pull-request",
+      "merge:",
+      "release:",
+    ]
+  ) assertNotIncludes(workflow, forbidden);
+
+  for (
+    const forbidden of [
+      /\b(?:git|gh)\s+push\b/i,
+      /\bgh\s+pr\b/i,
+      /\b(?:git|gh)\s+merge\b/i,
+      /\bgh\s+release\b/i,
+    ]
+  ) assertNotMatch(workflow, forbidden);
+});
+
+Deno.test("manual fixture is isolated allowlisted and runs only the local cached contract", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const fixture = jobBlock(workflow, "fixture");
+
+  assertIncludes(fixture, "if: github.event_name == 'workflow_dispatch'");
+  assertEquals(usesLines(fixture), [
+    `uses: ${checkoutPin}`,
+    `uses: ${setupDenoPin}`,
+  ], "fixture actions");
+  assertIncludes(fixture, "persist-credentials: false");
+  assertIncludes(fixture, "deno-version: 2.7.13");
+  assertIncludes(fixture, "small-frontend-bug) ;;");
+  assertIncludes(fixture, '*) echo "fixture_not_allowlisted" >&2; exit 1 ;;');
+  assertIncludes(
+    fixture,
+    "deno test --cached-only --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
+  );
+  for (
+    const forbidden of [
+      claudeActionPin,
+      "CLAUDE_CODE_OAUTH_TOKEN",
+      "ANTHROPIC_API_KEY",
+      "app-id:",
+      "private-key:",
+      "github-app",
+      "contents: write",
+      "pull-requests:",
+      "git push",
+      "gh pr",
+      "merge:",
+      "release:",
+      "curl ",
+      "wget ",
+    ]
+  ) assertNotIncludes(fixture, forbidden);
+  assertNotIncludes(fixture, "--allow-read ");
+});
+
+Deno.test("repository dispatch fails closed and provider jobs have an inert dependency chain", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const disabled = jobBlock(workflow, "production_disabled");
+  assertIncludes(disabled, "if: github.event_name == 'repository_dispatch'");
+  assertIncludes(disabled, "run: exit 1");
+  assertNotIncludes(disabled, claudeActionPin);
+
+  const topology: Array<[string, string | null]> = [
+    ["red_agent", null],
+    ["red_gate", "red_agent"],
+    ["green_agent", "red_gate"],
+    ["green_gate", "green_agent"],
+    ["manifest_collector", "green_gate"],
+    ["diff_gate", "manifest_collector"],
+    ["review_opus", "diff_gate"],
+    ["review_gate", "review_opus"],
+    ["draft_pr", "review_gate"],
+    ["queue_bootstrap_disabled", "review_gate"],
+  ];
+  let previousOffset = -1;
+  for (const [jobName, dependency] of topology) {
+    const block = jobBlock(workflow, jobName);
+    assertIncludes(
+      block,
+      "if: github.event_name == 'repository_dispatch'",
+    );
+    assertIncludes(block, "&& false");
+    if (dependency) assertIncludes(block, `needs: ${dependency}`);
+    const offset = workflow.indexOf(`  ${jobName}:`);
+    assert(offset > previousOffset, `Job is out of order: ${jobName}`);
+    previousOffset = offset;
+  }
+
+  const queueBootstrap = jobBlock(workflow, "queue_bootstrap_disabled");
+  assertIncludes(queueBootstrap, "permissions:\n      contents: read");
+  assertIncludes(queueBootstrap, "persist-credentials: false");
+  assertIncludes(queueBootstrap, "run: exit 1");
+  for (
+    const forbidden of ["gh pr merge", "gh api", "git push", "contents: write"]
+  ) {
+    assertNotIncludes(queueBootstrap, forbidden);
+  }
+});
+
+Deno.test("RED and GREEN are separate pinned least-privilege Claude sessions", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const red = jobBlock(workflow, "red_agent");
+  const green = jobBlock(workflow, "green_agent");
+
+  assertEquals(usesLines(red), [
+    `uses: ${checkoutPin}`,
+    `uses: ${claudeActionPin}`,
+  ], "RED actions");
+  assertEquals(usesLines(green), [
+    `uses: ${checkoutPin}`,
+    `uses: ${claudeActionPin}`,
+  ], "GREEN actions");
+
+  for (
+    const [phase, block, promptPath] of [
+      ["RED", red, redPromptPath],
+      ["GREEN", green, greenPromptPath],
+    ]
+  ) {
+    assertIncludes(block, "persist-credentials: false");
+    assertIncludes(
+      block,
+      "claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}",
+    );
+    assertIncludes(block, "github_token: ${{ github.token }}");
+    assertIncludes(block, `settings: ${settingsPath}`);
+    assertIncludes(block, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
+    assertIncludes(block, promptPath);
+    assertIncludes(block, "--model claude-sonnet-5");
+    assertIncludes(block, "--effort high");
+    assertIncludes(block, "--max-turns 20");
+    assertIncludes(block, "--strict-mcp-config");
+    assertIncludes(block, "--allowedTools Read,Grep,Glob,Edit,Write");
+    assertIncludes(block, "display_report: false");
+    assertIncludes(block, "track_progress: false");
+    assertNotIncludes(block, "Bash");
+    assertNotIncludes(block, "mcp__");
+    assertNotIncludes(block, "secrets.CLAUDE_CODE_OAUTH_TOKEN");
+    for (
+      const scrubbed of [
+        'ANTHROPIC_API_KEY: ""',
+        'ANTHROPIC_AUTH_TOKEN: ""',
+        'ANTHROPIC_BASE_URL: ""',
+        'CLAUDE_CODE_USE_BEDROCK: ""',
+        'CLAUDE_CODE_USE_VERTEX: ""',
+      ]
+    ) assertIncludes(block, scrubbed);
+    assert(
+      block !== (phase === "RED" ? green : red),
+      `${phase} must be separate`,
+    );
+  }
+
+  assertEquals(
+    usesLines(red).filter((line) => line.includes(claudeActionPin)).length,
+    1,
+    "one RED Claude session",
+  );
+  assertEquals(
+    usesLines(green).filter((line) => line.includes(claudeActionPin)).length,
+    1,
+    "one GREEN Claude session",
+  );
+});
+
+Deno.test("gates never invoke Claude and draft_pr can only fail closed", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  for (const gateName of ["red_gate", "green_gate"]) {
+    const gate = jobBlock(workflow, gateName);
+    assertNotIncludes(gate, claudeActionPin);
+    assertNotIncludes(gate, "CLAUDE_CODE_OAUTH_TOKEN");
+  }
+
+  const draft = jobBlock(workflow, "draft_pr");
+  assertNotIncludes(draft, "uses:");
+  assertEquals(
+    draft.split("\n").map((line) => line.trim()).filter((line) =>
+      line.startsWith("run:")
+    ),
+    ["run: exit 1"],
+    "draft_pr commands",
+  );
+});
+
+Deno.test("settings deny shell web and delegation while allowing only file tools", async () => {
+  const settingsText = await Deno.readTextFile(settingsPath);
+  const settings = JSON.parse(settingsText) as {
+    permissions: { allow: string[]; deny: string[] };
+    mcpServers?: unknown;
+  };
+
+  assertEquals(settings.permissions.allow, [
+    "Read",
+    "Grep",
+    "Glob",
+    "Edit",
+    "Write",
+  ], "allowed tools");
+  assertEquals(settings.permissions.deny, [
+    "Bash",
+    "WebFetch",
+    "WebSearch",
+    "Task",
+  ], "denied tools");
+  assert(
+    !Object.hasOwn(settings, "mcpServers"),
+    "settings must not define mcpServers",
+  );
+});
+
+Deno.test("phase prompts treat the dossier as untrusted and preserve RED GREEN isolation", async () => {
+  const red = normalize(await Deno.readTextFile(redPromptPath));
+  const green = normalize(await Deno.readTextFile(greenPromptPath));
+
+  for (const prompt of [red, green]) {
+    for (
+      const required of [
+        "dossier no confiable",
+        "fail-closed",
+        "Git",
+        "red",
+        "MCP",
+        "shell",
+      ]
+    ) assertIncludes(prompt, required);
+  }
+
+  for (
+    const required of [
+      "Solo puedes editar tests allowlisted",
+      "No edites producto, configuración ni snapshots",
+      "No intentes arreglar el producto",
+    ]
+  ) assertIncludes(red, required);
+
+  for (
+    const required of [
+      "sesión nueva",
+      "tests están congelados",
+      "Solo puedes editar producto allowlisted",
+      "fix mínimo",
+      "No edites configuración ni snapshots",
+    ]
+  ) assertIncludes(green, required);
+});
+
+Deno.test("diff and independent Opus review form an inert read-only chain", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  const collector = jobBlock(workflow, "manifest_collector");
+  const diff = jobBlock(workflow, "diff_gate");
+  const review = jobBlock(workflow, "review_opus");
+  const gate = jobBlock(workflow, "review_gate");
+  const draft = jobBlock(workflow, "draft_pr");
+
+  // C1: MANIFEST_PATH and every download live under RUNNER_TEMP, never workspace.
+  assertIncludes(collector, "needs: green_gate");
+  assertIncludes(
+    collector,
+    "MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json",
+  );
+  assertIncludes(
+    diff,
+    "MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json",
+  );
+  assertNotIncludes(diff, ".testing-center/validated-diff-manifest.json");
+
+  // C3: the collector only reads verify runner evidence and explicit control ref.
+  assertIncludes(collector, "ref: ${{ github.sha }}");
+  assertNotIncludes(collector, "client_payload.control_ref");
+  assertIncludes(collector, "persist-credentials: false");
+  assertIncludes(collector, "uses: " + downloadArtifactPin);
+  assertIncludes(collector, "name: testing-center-verify-evidence");
+  assertIncludes(collector, "${{ runner.temp }}/testing-center-evidence/");
+  assertIncludes(
+    collector,
+    "COMMAND_RESULTS: ${{ runner.temp }}/testing-center-evidence/command-results.json",
+  );
+  assertIncludes(
+    collector,
+    "python .github/scripts/testing_center_manifest_collector.py build",
+  );
+  assertNotIncludes(collector, "client_payload.command_results");
+  assertNotIncludes(collector, "tarball");
+  assertNotIncludes(collector, claudeActionPin);
+
+  // Trusted artifacts are short-lived and never staged in the workspace.
+  assertIncludes(collector, "uses: " + uploadArtifactPin);
+  assertIncludes(collector, "name: testing-center-trusted-manifest");
+  assertIncludes(collector, "name: testing-center-trusted-control");
+  assertIncludes(collector, "retention-days: 1");
+  assertIncludes(
+    collector,
+    "control_sha256: ${{ steps.control_digest.outputs.control_sha256 }}",
+  );
+  assertIncludes(
+    collector,
+    "testing_center_manifest_collector.py control-sha256",
+  );
+
+  // C2: diff_gate requires collector success and recomputes sha256 before the gate.
+  assertIncludes(diff, "needs: manifest_collector");
+  assertIncludes(
+    diff,
+    "if: github.event_name == 'repository_dispatch' && needs.manifest_collector.result == 'success' && false",
+  );
+  assertIncludes(diff, "uses: " + downloadArtifactPin);
+  assertIncludes(diff, "name: testing-center-trusted-manifest");
+  assertIncludes(diff, "uses: " + checkoutPin);
+  assertIncludes(diff, "ref: ${{ github.sha }}");
+  assertIncludes(diff, "persist-credentials: false");
+  assertIncludes(
+    diff,
+    "EXPECTED_MANIFEST_SHA256: ${{ needs.manifest_collector.outputs.manifest_sha256 }}",
+  );
+  assertIncludes(diff, "manifest_sha256_mismatch");
+  assertIncludes(
+    diff,
+    'python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH"',
+  );
+  assertIncludes(diff, "uses: " + uploadArtifactPin);
+  assertIncludes(diff, "name: testing-center-validated-diff");
+  assertIncludes(
+    diff,
+    'mkdir -p "$RUNNER_TEMP/testing-center-review-input"',
+  );
+  assertIncludes(
+    diff,
+    'cp "$MANIFEST_PATH" "$RUNNER_TEMP/testing-center-review-input/validated-diff-manifest.json"',
+  );
+  assertIncludes(
+    diff,
+    'cp "$RUNNER_TEMP/diff-decision.json" "$RUNNER_TEMP/testing-center-review-input/diff-decision.json"',
+  );
+  assertIncludes(diff, "${{ runner.temp }}/testing-center-review-input/");
+  assertNotIncludes(diff, "path: |\n      .testing-center/");
+  assertNotIncludes(diff, "${{ runner.temp }}/diff-decision.json");
+  assertIncludes(diff, "head_sha: ${{ steps.diff_outputs.outputs.head_sha }}");
+  assertIncludes(
+    diff,
+    "head_digest: ${{ steps.diff_outputs.outputs.head_digest }}",
+  );
+  assertNotIncludes(diff, claudeActionPin);
+
+  assertIncludes(review, "needs: diff_gate");
+  assertIncludes(review, "contents: read");
+  assertNotIncludes(review, "pull-requests: read");
+  assertIncludes(review, "persist-credentials: false");
+  assertIncludes(review, "ref: ${{ needs.diff_gate.outputs.head_sha }}");
+  assertIncludes(review, "ref: ${{ github.sha }}");
+  assertIncludes(review, "path: .trusted-control-scripts");
+  assertIncludes(
+    review,
+    "persist-credentials: false\n          ref: ${{ needs.diff_gate.outputs.head_sha }}\n      - name: Checkout server-selected trusted verification scripts",
+  );
+  assertIncludes(
+    review,
+    "ref: ${{ github.sha }}\n          persist-credentials: false\n          path: .trusted-control-scripts",
+  );
+  assertIncludes(review, "uses: " + downloadArtifactPin);
+  assertIncludes(review, "name: testing-center-validated-diff");
+  assertIncludes(
+    review,
+    "${{ runner.temp }}/testing-center-review-input/",
+  );
+  assertNotIncludes(review, "path: .testing-center");
+  // P1-1: prompt/schema/settings come from the trusted control artifact only.
+  assertIncludes(review, "name: testing-center-trusted-control");
+  assertIncludes(review, "${{ runner.temp }}/testing-center-control/");
+  assertIncludes(
+    review,
+    "settings: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json",
+  );
+  assertIncludes(
+    review,
+    "EXPECTED_CONTROL_SHA256: ${{ needs.diff_gate.outputs.control_sha256 }}",
+  );
+  assertIncludes(review, "control_sha256_mismatch");
+  assertIncludes(
+    review,
+    "python .trusted-control-scripts/.github/scripts/testing_center_manifest_collector.py control-sha256",
+  );
+  assertIncludes(
+    review,
+    'rm -rf -- "$GITHUB_WORKSPACE/.trusted-control-scripts"',
+  );
+  assertIncludes(review, "uses: " + claudeActionPin);
+  assertIncludes(review, "id: opus_review");
+  assertIncludes(review, 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"');
+  assertIncludes(
+    review,
+    "claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}",
+  );
+  assertIncludes(
+    review,
+    "VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}",
+  );
+  assertIncludes(
+    review,
+    "VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}",
+  );
+  assertIncludes(review, "--model claude-opus-5");
+  assertIncludes(review, "--effort high");
+  assertIncludes(review, "--max-turns 15");
+  assertIncludes(review, "--allowedTools Read,Grep,Glob");
+  assertIncludes(
+    review,
+    '--add-dir "${{ runner.temp }}/testing-center-control"',
+  );
+  assertIncludes(
+    review,
+    '--add-dir "${{ runner.temp }}/testing-center-review-input"',
+  );
+  assertIncludes(
+    review,
+    "--json-schema '${{ steps.review_schema.outputs.json }}'",
+  );
+  assertNotIncludes(review, "REVIEW_PROMPT_PATH:");
+  assertNotIncludes(review, "REVIEW_SETTINGS_PATH:");
+  assertNotIncludes(review, "REVIEW_SCHEMA_JSON:");
+  assertNotIncludes(review, ".github/agents/testing-center-review-prompt.md");
+  assertNotIncludes(
+    review,
+    ".github/agents/testing-center-review-output.schema.json",
+  );
+  assertNotIncludes(
+    review,
+    "settings: .github/agents/testing-center-review-settings.json",
+  );
+  assertIncludes(review, "uses: " + uploadArtifactPin);
+  assertIncludes(review, "retention-days: 7");
+  assertIncludes(review, "GITHUB_STEP_SUMMARY");
+  assertIncludes(review, "P0={counts['P0']}");
+  assertNotIncludes(review, "python - <<'PY'");
+  assertEquals(
+    review.split("python -I - <<'PY'").length - 1,
+    2,
+    "every review inline Python step must isolate sys.path",
+  );
+  assert(
+    diff.indexOf("Verify manifest sha256 before gating") <
+      diff.indexOf("Evaluate server-owned manifest without network"),
+    "manifest digest must be verified before the gate",
+  );
+  assert(
+    review.indexOf("Verify trusted control sha256 before review") <
+      review.indexOf("Load closed review schema from trusted control"),
+    "control digest must be verified before loading the schema",
+  );
+  assert(
+    review.indexOf("Load closed review schema from trusted control") <
+      review.indexOf("Run independent read-only Opus review"),
+    "schema must be loaded before Opus",
+  );
+  for (
+    const forbidden of [
+      "Edit",
+      "Bash",
+      "mcp__",
+      "session_id",
+      "display_report: true",
+      "show_full_output: true",
+      "track_progress: true",
+    ]
+  ) assertNotIncludes(review, forbidden);
+  assertNotIncludes(review, "--allowedTools Read,Grep,Glob,Edit");
+  assertNotIncludes(review, "--allowedTools Read,Grep,Glob,Write");
+
+  assertIncludes(gate, "needs: review_opus");
+  assertIncludes(
+    gate,
+    "REVIEW_JSON: ${{ needs.review_opus.outputs.structured_output }}",
+  );
+  assertIncludes(
+    gate,
+    "EXPECTED_HEAD_SHA: ${{ needs.review_opus.outputs.expected_head_sha }}",
+  );
+  assertIncludes(
+    gate,
+    "EXPECTED_HEAD_DIGEST: ${{ needs.review_opus.outputs.expected_head_digest }}",
+  );
+  assertIncludes(gate, "set(review) == {");
+  assertIncludes(gate, 'set(findings) == {"P0", "P1", "P2", "P3"}');
+  assertNotIncludes(gate, "print(");
+  assertNotIncludes(gate, "echo $REVIEW_JSON");
+  assertIncludes(draft, "needs: review_gate");
+});
+
+Deno.test("Opus review schema is closed bounded and fail-closed", async () => {
+  const schema = JSON.parse(await Deno.readTextFile(reviewSchemaPath));
+  assertNotIncludes(JSON.stringify(schema), "'");
+  assertEquals(schema.$id, "testing-center-review/v1", "schema id");
+  assertEquals(schema.additionalProperties, false, "closed root");
+  assertEquals(
+    schema.properties.contractVersion.const,
+    "testing-center-review/v1",
+    "contract version",
+  );
+  assertEquals(schema.properties.verdict.enum, [
+    "approve",
+    "reject",
+    "needs_owner",
+  ], "verdicts");
+  assertEquals(schema.properties.criteria.maxItems, 20, "criteria bound");
+  for (const severity of ["P0", "P1", "P2", "P3"]) {
+    assertEquals(
+      schema.properties.findings.properties[severity].maxItems,
+      20,
+      severity + " bound",
+    );
+    assertEquals(
+      schema.properties.findings.properties[severity].items.maxLength,
+      500,
+      severity + " item bound",
+    );
+  }
+});
+
+Deno.test("review prompt is independent read-only and treats evidence as data", async () => {
+  const prompt = normalize(await Deno.readTextFile(reviewPromptPath));
+  for (
+    const required of [
+      "no confiables",
+      "solo lectura",
+      "scope",
+      "calidad de tests",
+      "correctness",
+      "security",
+      "schema",
+      "Git",
+      "red",
+      "MCP",
+      "shell",
+      "comentarios",
+      "reviews",
+      "status",
+      "VALIDATED_HEAD_SHA",
+      "VALIDATED_HEAD_DIGEST",
+    ]
+  ) assertIncludes(prompt, required);
+});
+
+Deno.test("review deny-list is explicit and security tests run on every PR", async () => {
+  const settings = JSON.parse(await Deno.readTextFile(reviewSettingsPath));
+  assertEquals(
+    settings.permissions.allow,
+    ["Read", "Grep", "Glob"],
+    "review allow",
+  );
+  assertEquals(
+    settings.permissions.deny,
+    ["Bash", "WebFetch", "WebSearch", "Task", "Edit", "Write"],
+    "review deny",
+  );
+
+  const gates = normalize(await Deno.readTextFile(branchGatesPath));
+  assertIncludes(
+    gates,
+    "pull_request:\n    branches: [nightly, testers, master]",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_diff_gate.py",
+  );
+  assertIncludes(
+    gates,
+    "deno test --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_manifest_collector.py",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_nightly_closeout.py -v",
+  );
+  assertIncludes(
+    gates,
+    "python .github/scripts/test_testing_center_agent_callback.py -v",
+  );
+  assertIncludes(
+    gates,
+    "supabase/functions/testing-center-agent-callback/index.test.ts",
+  );
+  assertIncludes(
+    gates,
+    "supabase/functions/scripts/verify-deploy-surface.test.ts",
+  );
+  assertNotIncludes(gates, "pip install pyyaml");
+});
+
+Deno.test("nightly closeout is serial source-bound and inert", async () => {
+  const workflow = normalize(await Deno.readTextFile(closeoutPath));
+  assertIncludes(workflow, 'workflows: ["Branch channel gates"]');
+  assertIncludes(workflow, "types: [completed]");
+  assertIncludes(workflow, "branches: [nightly]");
+  assertIncludes(workflow, "group: testing-center-nightly-closeout");
+  assertIncludes(workflow, "cancel-in-progress: false");
+  assertIncludes(workflow, "permissions:\n  contents: read");
+  assertIncludes(workflow, "github.event.workflow_run.head_sha");
+  assertIncludes(workflow, "testing_center_nightly_closeout.py");
+  assertIncludes(workflow, "if: github.event_name == 'workflow_run' && false");
+  assertIncludes(workflow, "uses: ./.github/workflows/release.yml");
+  assertIncludes(workflow, "source_sha: ${{ needs.smoke.outputs.source_sha }}");
+  assertIncludes(workflow, "publish_channel: nightly");
+  assertIncludes(workflow, "VITE_SUPABASE_URL:");
+  assertIncludes(workflow, "VITE_SUPABASE_ANON_KEY:");
+  assertIncludes(workflow, "VANTARE_LICENSE_PUBLIC_KEYS:");
+  assertIncludes(workflow, "DISCORD_PROGRESS_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_BUILD_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_RELEASE_WEBHOOK_URL:");
+  assertIncludes(workflow, "DISCORD_KNOWN_ISSUES_WEBHOOK_URL:");
+  assertNotIncludes(workflow, "secrets: inherit");
+  assertIncludes(workflow, 'git push origin "HEAD:refs/heads/$branch"');
+  assertIncludes(
+    workflow,
+    'branch="vantareapp/tc-${JOB_KEY:0:12}-nightly-closeout-revert"',
+  );
+  assertNotIncludes(workflow, "git push --force");
+  assertNotIncludes(workflow, "git push origin nightly");
+  assertIncludes(workflow, "needs.smoke.result == 'failure'");
+  assertIncludes(workflow, 'echo "kind=none"');
+  assertIncludes(workflow, 'if not branch.startswith("vantareapp/tc-")');
+  assertIncludes(workflow, "if len(pulls) == 0:");
+  assertIncludes(workflow, 'git revert --no-commit "$SOURCE_SHA"');
+  assertIncludes(
+    workflow,
+    'parent_count="$(git rev-list --parents -n 1 "$SOURCE_SHA"',
+  );
+  assertIncludes(workflow, 'git revert --no-commit --mainline 1 "$SOURCE_SHA"');
+  assertIncludes(workflow, '"reservedTag"');
+  assertIncludes(workflow, '--release-tag "$RELEASE_TAG"');
+  assertIncludes(workflow, "needs.release.result == 'failure'");
+  assertIncludes(workflow, "needs.revert.result == 'failure'");
+  assertIncludes(workflow, "--phase closeout_failed");
+  assertIncludes(workflow, "continue_revert");
+  assertIncludes(workflow, 'git rev-parse "origin/$branch^{tree}"');
+  assertIncludes(workflow, "gh pr list --state all");
+  assertIncludes(workflow, "release_asset_count");
+  assertIncludes(workflow, "checksums_verified");
+  assertNotIncludes(workflow, "gh release create");
+});
+
+Deno.test("release reusable contract requires and uses the exact source sha", async () => {
+  const workflow = normalize(await Deno.readTextFile(releasePath));
+  assertIncludes(workflow, "workflow_call:");
+  assertIncludes(
+    workflow,
+    "value: ${{ jobs.release.outputs.release_source_sha }}",
+  );
+  for (
+    const input of [
+      "publish_channel",
+      "release_tag",
+      "release_notes",
+      "source_sha",
+    ]
+  ) assertIncludes(workflow, `${input}:`);
+  assertIncludes(
+    workflow,
+    'source_sha:\n        description: "Exact commit to build and publish"\n        required: true',
+  );
+  for (
+    const secret of [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY",
+      "VANTARE_LICENSE_PUBLIC_KEYS",
+      "DISCORD_PROGRESS_WEBHOOK_URL",
+      "DISCORD_BUILD_WEBHOOK_URL",
+      "DISCORD_RELEASE_WEBHOOK_URL",
+      "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+    ]
+  ) assertIncludes(workflow, `${secret}:\n        required: true`);
+  assertIncludes(
+    workflow,
+    "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}",
+  );
+  assertIncludes(workflow, "ref: ${{ env.SOURCE_SHA }}");
+  assertIncludes(
+    workflow,
+    'git merge-base --is-ancestor "$SOURCE_SHA" "origin/$PUBLISH_CHANNEL"',
+  );
+  assertIncludes(workflow, '--target "$SOURCE_SHA"');
+  assertNotIncludes(workflow, '--target "$GITHUB_SHA"');
+  assertNotIncludes(workflow, '--revision "$GITHUB_SHA"');
+  for (const line of usesLines(workflow)) {
+    assertMatchPinned(line);
+  }
+});
+
+function assertMatchPinned(line: string): void {
+  assert(
+    /@[0-9a-f]{40}$/.test(line),
+    `Action must be pinned by full SHA: ${line}`,
+  );
+}
+
+Deno.test("OIDC authority exists only in same-run inert closeout callback jobs", async () => {
+  for (const path of [triageWorkflowPath, workflowPath]) {
+    const workflow = normalize(await Deno.readTextFile(path));
+    assertNotIncludes(workflow, "id-token: write");
+    assertNotIncludes(workflow, "ACTIONS_ID_TOKEN_REQUEST_TOKEN");
+    assertIncludes(workflow, "callback_contract_disabled:");
+  }
+  const workflow = normalize(await Deno.readTextFile(closeoutPath));
+  const callbackNames = [
+    "callback_smoke_started",
+    "callback_released",
+    "callback_release_failed",
+    "callback_smoke_failed",
+    "callback_revert_failed",
+    "callback_revert_pr",
+    "callback_reverted",
+  ];
+  let withoutCallbacks = workflow;
+  for (const name of callbackNames) {
+    const callback = jobBlock(workflow, name);
+    assertIncludes(callback, "id-token: write");
+    assertIncludes(callback, "contents: read");
+    assertIncludes(callback, "&& false");
+    assertIncludes(callback, "audience=vantare-testing-center-agent-callback");
+    assertIncludes(callback, "TESTING_CENTER_AGENT_CALLBACK_URL");
+    assertIncludes(callback, "testing_center_agent_callback.py build");
+    assertIncludes(callback, "testing_center_agent_callback.py validate-url");
+    assertIncludes(callback, 'echo "::add-mask::$token"');
+    withoutCallbacks = withoutCallbacks.replace(callback, "");
+  }
+  assertNotIncludes(withoutCallbacks, "id-token: write");
+  assertNotIncludes(withoutCallbacks, "ACTIONS_ID_TOKEN_REQUEST_TOKEN");
+});

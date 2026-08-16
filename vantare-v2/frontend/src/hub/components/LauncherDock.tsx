@@ -168,12 +168,15 @@ export function LauncherDock({ onNavigate }: LauncherDockProps) {
         <ListIcon />
       </button>
       <div className="overflow-y-auto flex flex-col gap-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(245,245,245,0.16) transparent" }}>
-        {activeChains.map((chain) => (
-          <div key={`active-${chain.profileId}`} className="v52-dock-item relative" title={`${chain.profileId}: ${chain.status}`} data-testid={`dock-active-${chain.profileId}`}>
-            <span className="text-[9px] font-bold text-vantare-red-400" aria-label={`Cadena ${chain.profileId} ${chain.status}`}>●</span>
-            <button type="button" className="sr-only" onClick={() => dispatchLauncherCommand("launcher:app:restart", { profileId: chain.profileId })}>Reiniciar {chain.profileId}</button>
-          </div>
-        ))}
+        {activeChains.map((chain) => {
+          const restartStep = chain.steps?.find((step) => step.pid);
+          return (
+            <div key={`active-${chain.profileId}`} className="v52-dock-item relative" title={`${chain.profileId}: ${chain.status}`} data-testid={`dock-active-${chain.profileId}`}>
+              <span className="text-[9px] font-bold text-vantare-red-400" aria-label={`Cadena ${chain.profileId} ${chain.status}`}>●</span>
+              <button type="button" className="sr-only" onClick={() => dispatchLauncherCommand("launcher:app:restart", { id: restartStep?.appId ?? chain.profileId, pid: restartStep?.pid ?? 0 })}>Reiniciar {chain.profileId}</button>
+            </div>
+          );
+        })}
         {orderedProfiles.map((p) => {
           const displayName =
             p.id === "creator"

@@ -37,7 +37,8 @@ una no-biyección activa invalida el frame completo.
 
 Permanecen missing —no cero— equipo, número, compuesto, Virtual Energy, daños,
 weather no admitido, fases/banderas, pit-state labels, el remaining raw,
-`FuelFraction` y native `mDeltaBest`. La compatibilidad productiva continúa
+`FuelFraction`. Desde la corrección de 2026-08-14, native `mDeltaBest` está
+admitido como señal observada y gana sobre el fallback self-delta. La compatibilidad productiva continúa
 fijada a los fixtures LMU 1.3; LMU 1.4 requiere la evidencia diagnóstica D4B.
 
 D0 no cambió la clasificación original. D1-D6 cerraron el mock, el driver, la
@@ -94,7 +95,7 @@ anterior. La disponibilidad fina está en cada `Field` y en quality metadata.
 
 | Tipo registrado | Consumo real del ViewModel | Campo nuevo disponible | Campo ausente o incompatible | Cobertura |
 |---|---|---|---|---|
-| `delta` | `player.deltaSeconds`, last/best/predicted lap, lap y player scoring | delta self-reference, last/best/estimated lap, lap/completed laps | nada central; referencia limitada a mejor vuelta completa del jugador | Exact |
+| `delta` | referencia personal/sesión/anterior seleccionada, last/best/predicted lap, lap y player scoring | delta nativo personal y deltas derivados contra mejor de sesión y vuelta anterior; last/best/estimated lap, lap/completed laps | hotkey de cambio durante la conducción | Exact para selector persistido |
 | `standings` | sesión/remaining, id, place, número, piloto, clase, equipo/color, gaps/interval, vueltas, pit, compuesto | remaining, id, position, piloto, clase, completedLaps, pit, gaps y tiempos | número, equipo/color, fastest lap y compuesto; gap de modo qualifying sigue parcial | Partial |
 | `relative` | id, place, isPlayer, `timeGapToPlayer`, clase, número, piloto y tiempos | id, position, isPlayer, gap relativo, piloto, clase y tiempos | número de coche | Partial |
 | `pedals` | throttle, brake, clutch y status | los tres ratios del player | nada para el valor instantáneo | Exact para valor instantáneo |
@@ -120,7 +121,7 @@ con `widgetTypeRegistry.list()` para detectar tipos nuevos u huérfanos.
 
 | Tipo | Builder | Paths de telemetría activables |
 |---|---|---|
-| `delta` | `buildDeltaViewModel` en `widget-types/delta/delta-view-model.ts` | `player.deltaSeconds`, `bestLapSeconds`, `lastLapSeconds`, `predictedLapSeconds`, `lapNumber`; player scoring `totalLaps/estimatedLapTime` |
+| `delta` | `buildDeltaViewModel` en `widget-types/delta/delta-view-model.ts` | `player.deltaPersonalBestSeconds`, `deltaSessionBestSeconds`, `deltaPreviousLapSeconds`, `bestLapSeconds`, `lastLapSeconds`, `predictedLapSeconds`, `lapNumber`; player scoring `totalLaps/estimatedLapTime` |
 | `standings` | `buildStandingsViewModel` en `widget-types/standings/standings-view-model.ts` | `session.type/remainingSeconds`; scoring `id/place/isPlayer/driverNumber/driverName/vehicleClass/teamCode/teamBrandColor/gaps/laps/lap times/pit/tireCompound` según columnas |
 | `relative` | `buildRelativeViewModel` en `widget-types/relative/relative-view-model.ts` | scoring `id/place/isPlayer/timeGapToPlayer/vehicleClass/driverNumber/driverName/bestLapTime/lastLapTime` según columnas |
 | `pedals` | `buildPedalsViewModel` en `widget-types/pedals/pedals-view-model.ts` | `player.throttle/brake/clutch` |

@@ -39,6 +39,12 @@ type SelfDelta struct {
 	Seconds   schema.Field[session.DeltaSeconds]
 	Reference schema.Field[session.DeltaReference]
 	History   []DeltaSample
+	// PersonalBest is the simulator-provided personal reference.
+	// SessionBest and PreviousLap are independently reconstructed from complete
+	// valid laps observed during the current canonical session.
+	PersonalBest schema.Field[session.DeltaSeconds]
+	SessionBest  schema.Field[session.DeltaSeconds]
+	PreviousLap  schema.Field[session.DeltaSeconds]
 }
 
 type lapSample struct {
@@ -71,6 +77,9 @@ type selfDeltaTracker struct {
 	hasReference      bool
 	referenceDuration time.Duration
 	reference         []lapSample
+	hasPrevious       bool
+	previousDuration  time.Duration
+	previous          []lapSample
 
 	history    []DeltaSample
 	lastPublic time.Duration
@@ -90,11 +99,50 @@ func cloneSelfDeltaTracker(input *selfDeltaTracker) *selfDeltaTracker {
 	result := *input
 	result.candidate = slices.Clone(input.candidate)
 	result.reference = slices.Clone(input.reference)
+	result.previous = slices.Clone(input.previous)
 	result.history = slices.Clone(input.history)
 	return &result
 }
 
 func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.ObservedState) SelfDelta {
+	derived := tracker.applySelf(header, observed)
+	current, found := activeDeltaVehicle(header.Identity.Vehicle, observed.Vehicles)
+	if !found {
+		return derived
+	}
+	value, present := current.DeltaBest.Value()
+	if !present || current.DeltaBest.Provenance() != schema.ProvenanceObserved ||
+		current.DeltaBest.Freshness() == schema.FreshnessMissing ||
+		current.DeltaBest.Freshness() == schema.FreshnessInvalid ||
+		!isFinite(float64(value)) || math.Abs(float64(value)) >= 10_000 {
+		return derived
+	}
+	derived.PersonalBest = current.DeltaBest
+
+	freshness := current.DeltaBest.Freshness()
+	if freshness == schema.FreshnessFresh {
+		tracker.recordSelectedDelta(header, observed.SourceTime, current.LapDistance, value)
+	}
+	reference, err := schema.NewField(
+		session.DeltaReferenceBestCompletedPlayerLap,
+		schema.ProvenanceObserved,
+		freshness,
+	)
+	if err != nil {
+		return derived
+	}
+	return SelfDelta{
+		Freshness:    freshness,
+		Seconds:      current.DeltaBest,
+		Reference:    reference,
+		History:      slices.Clone(tracker.history),
+		PersonalBest: current.DeltaBest,
+		SessionBest:  derived.SessionBest,
+		PreviousLap:  derived.PreviousLap,
+	}
+}
+
+func (tracker *selfDeltaTracker) applySelf(header envelope.Header, observed core.ObservedState) SelfDelta {
 	if tracker.initialized && (tracker.epoch != header.Cursor.Epoch || tracker.session != header.Identity.Session || tracker.player != header.Identity.Vehicle) {
 		limit := tracker.limit
 		*tracker = *newSelfDeltaTracker(limit)
@@ -246,6 +294,41 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 	}
 }
 
+func (tracker *selfDeltaTracker) recordSelectedDelta(
+	header envelope.Header,
+	sourceTime schema.Field[time.Duration],
+	lapDistance schema.Field[standings.LapDistance],
+	seconds session.DeltaSeconds,
+) {
+	source, sourcePresent := sourceTime.Value()
+	distance, distancePresent := lapDistance.Value()
+	if !sourcePresent || !distancePresent || sourceTime.Freshness() != schema.FreshnessFresh ||
+		lapDistance.Freshness() != schema.FreshnessFresh {
+		return
+	}
+	last := len(tracker.history) - 1
+	sameCursor := last >= 0 && tracker.history[last].Cursor == header.Cursor
+	if !sameCursor && tracker.lastPublic != 0 && source-tracker.lastPublic < selfDeltaSampleInterval {
+		return
+	}
+	sample := DeltaSample{
+		Cursor:      header.Cursor,
+		CapturedAt:  header.Clock.ReceivedUTC,
+		SourceTime:  source,
+		LapDistance: distance,
+		Seconds:     seconds,
+	}
+	if sameCursor {
+		tracker.history[last] = sample
+	} else {
+		tracker.history = append(tracker.history, sample)
+	}
+	if overflow := len(tracker.history) - MaxSelfDeltaHistory; overflow > 0 {
+		tracker.history = slices.Clone(tracker.history[overflow:])
+	}
+	tracker.lastPublic = source
+}
+
 func (tracker *selfDeltaTracker) completeAndStartLap(boundary time.Duration, input selfDeltaInput) {
 	tracker.completeCandidate(boundary)
 	tracker.synchronized = true
@@ -361,6 +444,9 @@ func (tracker *selfDeltaTracker) completeCandidate(boundary time.Duration) {
 	if duration <= 0 {
 		return
 	}
+	tracker.hasPrevious = true
+	tracker.previousDuration = duration
+	tracker.previous = slices.Clone(tracker.candidate)
 	if !tracker.hasReference || duration < tracker.referenceDuration {
 		tracker.hasReference = true
 		tracker.referenceDuration = duration
@@ -395,7 +481,16 @@ func (tracker *selfDeltaTracker) currentDelta(header envelope.Header, input self
 		}
 		tracker.lastPublic = input.sourceTime
 	}
-	return tracker.output(schema.FreshnessFresh, mustDerived(value, schema.FreshnessFresh))
+	result := tracker.output(schema.FreshnessFresh, mustDerived(value, schema.FreshnessFresh))
+	if tracker.hasPrevious {
+		if previousElapsed, previousOK := interpolateReference(tracker.previous, input.distance); previousOK {
+			previousSeconds := float64(currentElapsed-previousElapsed) / float64(time.Second)
+			if isFinite(previousSeconds) {
+				result.PreviousLap = mustDerived(session.DeltaSeconds(previousSeconds), schema.FreshnessFresh)
+			}
+		}
+	}
+	return result
 }
 
 func interpolateReference(samples []lapSample, distance standings.LapDistance) (time.Duration, bool) {
@@ -427,10 +522,13 @@ func interpolateReference(samples []lapSample, distance standings.LapDistance) (
 
 func (tracker *selfDeltaTracker) output(freshness schema.Freshness, seconds schema.Field[session.DeltaSeconds]) SelfDelta {
 	result := SelfDelta{
-		Freshness: freshness,
-		Seconds:   seconds,
-		Reference: schema.MissingField[session.DeltaReference](),
-		History:   slices.Clone(tracker.history),
+		Freshness:    freshness,
+		Seconds:      seconds,
+		Reference:    schema.MissingField[session.DeltaReference](),
+		History:      slices.Clone(tracker.history),
+		PersonalBest: schema.MissingField[session.DeltaSeconds](),
+		SessionBest:  seconds,
+		PreviousLap:  schema.MissingField[session.DeltaSeconds](),
 	}
 	if tracker.hasReference {
 		result.Reference = mustDerived(session.DeltaReferenceBestCompletedPlayerLap, schema.FreshnessFresh)
@@ -464,6 +562,9 @@ func (tracker *selfDeltaTracker) clearReference() {
 	tracker.hasReference = false
 	tracker.referenceDuration = 0
 	tracker.reference = nil
+	tracker.hasPrevious = false
+	tracker.previousDuration = 0
+	tracker.previous = nil
 	tracker.history = nil
 	tracker.lastPublic = 0
 }

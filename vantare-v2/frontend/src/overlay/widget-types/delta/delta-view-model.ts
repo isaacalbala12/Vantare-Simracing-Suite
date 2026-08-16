@@ -96,13 +96,10 @@ function buildUnavailableModel(
 
 export function buildDeltaViewModel(
   snapshot: TelemetrySnapshot,
-  _content: DeltaContent,
+  content: DeltaContent,
 ): DeltaViewModel {
   if (snapshot.status === "disconnected") {
     return buildUnavailableModel("disconnected");
-  }
-  if (snapshot.status === "stale") {
-    return buildUnavailableModel("stale");
   }
   if (snapshot.status === "error") {
     return buildUnavailableModel("error", snapshot.errorMessage);
@@ -111,11 +108,17 @@ export function buildDeltaViewModel(
     return buildUnavailableModel("missing");
   }
 
-  const deltaSeconds = snapshot.player.deltaSeconds;
+  const reference = content.reference ?? "personal-best";
+  const deltaSeconds = reference === "previous-lap"
+      ? snapshot.player.deltaPreviousLapSeconds
+      : reference === "session-best"
+        ? snapshot.player.deltaSessionBestSeconds
+        : snapshot.player.deltaPersonalBestSeconds ??
+          (snapshot.player.deltaReferenceSet ? undefined : snapshot.player.deltaSeconds);
   if (deltaSeconds == null || !Number.isFinite(deltaSeconds)) {
     return {
       type: "delta",
-      status: "missing",
+      status: snapshot.status === "stale" ? "stale" : "missing",
       tone: "neutral",
       deltaText: PLACEHOLDER,
       lastLapText: formatLapTime(snapshot.player.lastLapSeconds),
@@ -127,7 +130,7 @@ export function buildDeltaViewModel(
 
   return {
     type: "delta",
-    status: "ready",
+    status: snapshot.status === "stale" ? "stale" : "ready",
     tone: resolveTone(deltaSeconds),
     deltaText: formatDeltaText(deltaSeconds),
     lastLapText: formatLapTime(snapshot.player.lastLapSeconds),

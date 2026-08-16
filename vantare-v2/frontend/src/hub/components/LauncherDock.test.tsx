@@ -208,4 +208,30 @@ describe("LauncherDock", () => {
     expect(screen.getByTestId("dock-active-creator")).toBeTruthy();
     expect(screen.getByLabelText("Cadena creator running")).toBeTruthy();
   });
+
+  it("emits launcher:app:restart with the confirmed pid of the active chain", () => {
+    renderDock();
+    dispatch("launcher:snapshot", {
+      revision: 3,
+      apps: [],
+      vantareProfiles: [],
+      userProfiles: [],
+      activeChains: [
+        {
+          profileId: "creator",
+          status: "running",
+          steps: [
+            { appId: "lmu", status: "done", pid: 4242 },
+            { appId: "obs", status: "pending" },
+          ],
+        },
+      ],
+      discovery: { scanning: false, lastScanAt: null, error: null },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reiniciar creator" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:app:restart", {
+      id: "lmu",
+      pid: 4242,
+    });
+  });
 });

@@ -146,6 +146,41 @@ func TestProfileDocumentStoreSaveAcceptsEmptyGeneralWidgets(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreVantareEnduranceMemoryRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "endurance-memory.json")
+	widget := validWidget("delta-main", WidgetTypeDelta)
+	widget.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+		DesignSystemVantareEndurance: {
+			SystemVersion:       1,
+			ConfigVersion:       1,
+			BaseSettings:        map[string]any{"templateId": "delta-strip"},
+			AppearanceOverrides: map[string]any{"accentColor": "#ff2a3b"},
+		},
+	}
+	doc := validProfileV3(widget)
+	store := ProfileDocumentStore{}
+
+	revision, err := store.Save(path, "", doc, ProfileSchemaVersionV3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Revision != revision {
+		t.Fatalf("revision=%q want %q", loaded.Revision, revision)
+	}
+	memory, ok := loaded.Document.Layouts[LayoutGeneral].Widgets[0].Visual.SystemMemories[DesignSystemVantareEndurance]
+	if !ok {
+		t.Fatal("vantare-endurance memory was not preserved")
+	}
+	if memory.BaseSettings["templateId"] != "delta-strip" {
+		t.Fatalf("baseSettings=%v want preserved templateId", memory.BaseSettings)
+	}
+}
+
 func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "engineer-radio.json")

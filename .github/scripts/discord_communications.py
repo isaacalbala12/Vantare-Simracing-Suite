@@ -48,8 +48,8 @@ def validate_fragment(value: dict[str, Any], source: str = "fragment") -> dict[s
             raise ValueError(f"{source}: {field} must be {expected_type.__name__}")
     if value["schemaVersion"] != 1:
         raise ValueError(f"{source}: unsupported schemaVersion")
-    if not re.fullmatch(r"ISA-[0-9]+", value["issue"]):
-        raise ValueError(f"{source}: issue must use ISA-N format")
+    if not re.fullmatch(r"(?:ISA-[0-9]+|TC-[0-9A-F]{12})", value["issue"]):
+        raise ValueError(f"{source}: issue must use ISA-N or TC-<12 HEX> format")
     if value["type"] not in {"feature", "fix", "change", "security"}:
         raise ValueError(f"{source}: unsupported type")
     for field in ("technicalNotes", "testing"):
@@ -281,10 +281,16 @@ def _channel_image_name(channel: str) -> str:
     return NIGHTLY_IMAGE_NAME if channel == "nightly" else TESTERS_IMAGE_NAME
 
 
-def _fragment_order(fragment: dict[str, Any]) -> int:
-    """Issue number, so ISA-95 sorts before ISA-304 rather than after it."""
-    match = re.search(r"(\d+)", str(fragment.get("issue", "")))
-    return int(match.group(1)) if match else 0
+def _fragment_order(fragment: dict[str, Any]) -> tuple[int, str]:
+    """Stable newest-first key for numeric Linear IDs and opaque TC IDs."""
+    issue = str(fragment.get("issue", ""))
+    linear = re.fullmatch(r"ISA-(\d+)", issue)
+    if linear:
+        return (0, f"{int(linear.group(1)):020d}")
+    testing_center = re.fullmatch(r"TC-([0-9A-F]{12})", issue)
+    if testing_center:
+        return (1, testing_center.group(1))
+    return (-1, "")
 
 
 def render_channel_update(fragments: list[dict[str, Any]], revision: str, channel: str,

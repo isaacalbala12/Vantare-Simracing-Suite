@@ -5,6 +5,7 @@ import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { broadcastTowerDefinition } from "../../../overlay/widget-types/broadcast-tower/broadcast-tower-definition";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
 import { StudioProvider } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
@@ -124,6 +125,17 @@ describe("StudioWidgetFrame", () => {
     expect(visual.contains(chrome)).toBe(false);
   });
 
+  it("offers only east and west resize handles for the broadcast tower", () => {
+    const widget = broadcastTowerDefinition.createDefault("broadcast-tower-main");
+    renderFrame(widget, { selected: true, onResizePointerDown: vi.fn() });
+
+    expect(screen.getByTestId("studio-resize-handle-e-broadcast-tower-main")).toBeTruthy();
+    expect(screen.getByTestId("studio-resize-handle-w-broadcast-tower-main")).toBeTruthy();
+    for (const handle of ["n", "ne", "se", "s", "sw", "nw"]) {
+      expect(screen.queryByTestId(`studio-resize-handle-${handle}-broadcast-tower-main`)).toBeNull();
+    }
+  });
+
   it("shows a hidden badge for disabled widgets while keeping the frame selectable", () => {
     const onSelect = vi.fn();
     const widget = buildWidget({ behavior: { enabled: false, updateHz: 30 } });
@@ -156,11 +168,12 @@ describe("StudioWidgetFrame", () => {
 
       const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-main`);
       const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-main`);
-      const expectedScale = 500 / definition.capabilities.defaultSize.width;
+      const horizontalOnly = definition.capabilities.resizeMode === "horizontal-only";
+      const expectedScale = horizontalOnly ? 1 : 500 / definition.capabilities.defaultSize.width;
       expect(frame.style.width).toBe("500px");
       expect(frame.style.height).toBe("180px");
       expect(screen.getByTestId(`studio-widget-visual-${definition.type}-main`)).toBeTruthy();
-      expect(viewport.style.width).toBe(`${definition.capabilities.defaultSize.width}px`);
+      expect(viewport.style.width).toBe(`${horizontalOnly ? 500 : definition.capabilities.defaultSize.width}px`);
       expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
       expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
     },
@@ -181,11 +194,12 @@ describe("StudioWidgetFrame", () => {
 
       const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-locked`);
       const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-locked`);
-      const expectedScale = 500 / definition.capabilities.defaultSize.width;
+      const horizontalOnly = definition.capabilities.resizeMode === "horizontal-only";
+      const expectedScale = horizontalOnly ? 1 : 500 / definition.capabilities.defaultSize.width;
       expect(frame.style.width).toBe("500px");
       expect(frame.style.height).toBe("180px");
       expect(screen.getByTestId(`studio-widget-visual-${definition.type}-locked`)).toBeTruthy();
-      expect(viewport.style.width).toBe(`${definition.capabilities.defaultSize.width}px`);
+      expect(viewport.style.width).toBe(`${horizontalOnly ? 500 : definition.capabilities.defaultSize.width}px`);
       expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
       expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
     },

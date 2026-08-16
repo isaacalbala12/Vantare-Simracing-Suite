@@ -1,3 +1,227 @@
+Nota ISA-363 / OVERLAY-STALE-LIVE (2026-08-15, promovida a Nightly):
+- El adaptador compartido de Desktop/OBS conserva el último snapshot utilizable
+  como `stale` mientras un estado `live` espera su proyección de la misma
+  revisión. La recuperación observable pasa de `ready -> stale -> disconnected
+  -> ready` a `ready -> stale -> stale -> ready`, evitando que los widgets
+  desaparezcan durante ese relevo.
+- El cambio no relaja el cierre seguro: el arranque sin snapshot, una proyección
+  bloqueada y los estados reales de parada o conexión siguen publicando
+  `disconnected`. No cambia el TTL, Shared Memory, REST, reducers, renderizadores
+  ni CSS.
+- TDD: la regresión falló primero con `stale, disconnected, ready` y pasa tras
+  el fix con `stale, stale, ready`; el caso de proyección bloqueada después de
+  un snapshot válido también queda cubierto. Focal 4/4, frontend completo 375
+  archivos/2736 tests, build, ESLint focal y `git diff --check` PASS. El lint
+  global conserva 49 errores y 2 warnings heredados fuera del diff.
+- Rama
+  `vantareapp/isa-363-overlay-runtime-evitar-el-frame-disconnected-entre-stale-y`
+  sincronizada con `origin/nightly@028c7512`; implementación aprobada
+  `ae313e2e` y head final `ac46c3c3`. El CI final del PR #260, run
+  `31896118568`, pasó topología, gates bloqueantes, build Wails y checks
+  informativos. Tras autorización explícita de Isaac, el PR #260 se promovió
+  por squash a `nightly@7341e8cd`; el gate posterior `31896647826` y el
+  roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la integración.
+  Sin promoción a `testers`/`master` ni release.
+
+Nota ISA-364 / OS-BUG (2026-08-15, promovida a Nightly):
+- `Mis perfiles` ya reconoce documentos V3 puros además de perfiles V0/V2.
+  El listado usa la migración canónica solo como fallback del camino legacy,
+  conserva previews V3 y no modifica archivos del usuario.
+- La regresión reproduce el perfil invisible con el almacén V3 productivo y
+  verifica identidad, modo, widgets, preview y rechazo del nombre duplicado.
+  Los JSON de ajustes con `schemaVersion: 3` y los JSON inválidos permanecen
+  excluidos.
+- TDD: RED confirmado con `profiles len=0, want 1`; GREEN focal y paquete
+  `internal/app` PASS. Gates finales: `go test ./...`, frontend 375 archivos y
+  2734 tests, build, `go vet ./internal/app`, fragmento y diff-check PASS. La
+  suite frontend conserva los `AbortError` heredados de teardown con exit 0.
+  El CI final del PR #261, run `31894030661`, pasó topología, gates
+  bloqueantes, build Wails y pasos informativos sobre `03a0205b`.
+- Rama `vantareapp/isa-364-os-bug-mis-perfiles-oculta-perfiles-v3-y-bloquea-recrearlos`
+  desde `origin/nightly@3eb5dd7b`; implementación `f753c172` publicada en el
+  PR #261 y promovida por squash a `nightly@22946e6f` tras la autorización
+  explícita de Isaac. El gate posterior de Nightly `31894845365` y la
+  regeneración del roadmap `31894845385` pasaron sobre ese SHA. ISA-366
+  registra la integración. Sin promoción a Testers/Master ni release.
+
+Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
+- El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión
+  y el canal reales de `app:version`; ya no fija `v0.1.0.2` ni presenta todas
+  las builds como la misma Beta.
+- El resumen de roadmap consume `roadmap-public.snapshot.json` mediante el
+  loader canónico de la página Roadmap y expone procedencia fresh, stale o
+  fallback. Novedades descubre automáticamente los manifiestos canónicos de
+  `docs/releases/*.json`; el calendario tiene una sola fuente de estado y se
+  suscribe antes de solicitar el documento.
+- Gates: focales 46/46, frontend completo 371 archivos/2681 tests, build,
+  ESLint focal del cambio y `git diff --check` PASS. El lint de `HubApp.tsx`
+  conserva el error heredado `react-hooks/refs` de la línea 77, fuera del diff.
+  El preview T3 abrió el Vite correcto en 1280x800, pero snapshot y evaluación
+  fallaron/agotaron tiempo, por lo que la inspección visual manual sigue
+  pendiente.
+- Estado: promovida mediante PR #245 y squash
+  `2909ba73d907eee993fcdec866829973b1bb1474` sobre
+  `nightly@c394e71f`. Los gates del PR y el gate posterior de Nightly
+  (`31817001802`) pasaron; el snapshot público del roadmap se regeneró en
+  `31817001849`. Sin promoción a `testers`/`master` ni release.
+
+Nota ISA-350 / TC-EVIDENCE-03 (2026-08-14, implementación local validada):
+- Persistencia contract-first completada para batches/slots, bucket privado,
+  upload INSERT exact-path, outbox durable y RPCs idempotentes de
+  prepare/finalize/submit aditivo. La RPC v1 de 15 argumentos permanece intacta.
+- El rollback es bifásico: exige limpieza física previa mediante Storage API/S3
+  y su fase PostgreSQL es transaccional, bloquea inserts concurrentes y falla
+  cerrado antes de mutar si queda cualquier objeto.
+- TDD y gates: REDs conservados; runner ISA-350 80/80 inicial y tras reaplicar,
+  revocación/degradación post-prepare, rollback tardío atómico, insert bloqueado,
+  finalize exactly-once y buckets preexistentes fail-closed PASS. Harness v1
+  core 72 + access 56 + report 55, rollback/reapply y concurrencia PASS.
+  Revisiones independientes: `SPEC PASS` y `QUALITY PASS` sin pendientes.
+- Rama sincronizada con `nightly@d45d8d8d7f815562af76a14ad7343b692dac41db`.
+  PR draft #253 abierto hacia `nightly`; los gates remotos de ruta y bloqueo
+  pasaron en `31827610539`. Bytes reales, UI, validador, acceso de agentes y
+  deploy remoto siguen fuera.
+  Plan TDD:
+  `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
+
+Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
+- Primer corte contract-first de ISA-346 completado: contrato puro equivalente
+  Go/TS para lotes server-owned de 1..10 capturas PNG/JPEG, límites, digests,
+  dimensiones, posiciones, IDs únicos, estados y códigos de rechazo cerrados.
+- La matriz batch/evidencia queda cerrada en ambos lenguajes: `prepared` solo
+  admite `prepared`; `uploading` admite `prepared|uploading|uploaded`;
+  `validating` admite `uploaded|validating|ready|rejected`; `ready|attached`
+  exige `ready`; `expired` admite `expired|removed`.
+- El decoder Go valida JSON crudo exacto. El decoder TypeScript mantiene el
+  patrón del frontend y valida un valor ya parseado; no se añadió un parser
+  JSON paralelo solo para detectar diferencias léxicas sin valor de producto.
+- TDD registrado: RED por símbolos ausentes y después por IDs/estados
+  incompatibles; GREEN focal Go y TypeScript 7/7. Verificación final:
+  `go test ./...`, frontend 371 archivos/2673 tests, build, ESLint focal y
+  `git diff --check` PASS. Dos reviews independientes: spec compliant y calidad
+  Ready sin observaciones tras el fix.
+- La rama se apila sobre el diseño ISA-346; SQL, Storage, validador, UI, deploy,
+  merge y activación permanecen fuera de alcance. Siguiente corte: ISA-350.
+- Microplan TDD:
+  `docs/superpowers/plans/2026-08-14-isa-349-testing-center-screenshot-contract.md`.
+
+Nota ISA-346 / TC-EVIDENCE-01 (2026-08-14, diseño aprobado):
+- El primer corte de evidencia visual del Testing Center admite solo archivos
+  PNG/JPEG existentes: máximo 10 capturas, 10 MiB cada una y 100 MiB por lote.
+- Se aprueba Supabase Storage privado con manifest relacional, rutas
+  server-owned, validación cloud de SHA-256/tamaño/firma/dimensiones, acceso
+  temporal para agentes y limpieza durable. Los bytes no pasan por PostgreSQL,
+  Linear, prompts, RPC JSON ni drafts locales.
+- Se descartan Streamable, vídeo, grabación/captura integrada y enlaces
+  externos. No hace falta `tus-js-client` ni otra dependencia nueva.
+- La autoridad técnica es
+  `docs/superpowers/specs/2026-08-14-testing-center-screenshot-evidence-design.md`.
+  Este corte es documentación; no crea bucket, migración, deploy, UI ni
+  activación y no autoriza promoción fuera de una futura rama de issue.
+
+Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
+- La batalla Redline se deriva solo para sesiones de carrera y devuelve una
+  única pareja: primero la más cercana a la fila del jugador, después el menor
+  intervalo y finalmente el orden estable de la parrilla.
+- El hook no muestra una batalla en disolución junto a una nueva batalla activa;
+  el máximo observable continúa siendo uno durante los relevos.
+- El code review adversarial corrigió tres bordes antes de promoción: la
+  disolución ya no se filtra al pasar de carrera a clasificación, no se elige
+  una pareja sin la fila del jugador y una transición rápida A→B→A conserva
+  como más reciente la pareja A.
+- TDD RED reprodujo los tres hallazgos. Focales 21/21, suite frontend 370
+  archivos/2679 tests, build, ESLint focal, design-system 3/3, validador del
+  fragmento y diff-check pasan. La suite conserva dos `AbortError` heredados de
+  teardown tras el resumen, con exit 0.
+- El Workshop respondió en Vite local, pero el preview T3 falló tanto al tomar
+  snapshot como al evaluar el DOM por timeout. El servidor temporal se cerró;
+  queda pendiente la comprobación visual manual de las tres escenas del fragmento.
+- Rama aislada
+  `vantareapp/isa-357-standings-redline-limitar-la-animacion-de-batalla-a-carrera`
+  partió de `origin/nightly@673283a2` y terminó sincronizada con
+  `nightly@2909ba73` en `a389f8d0`. Implementación `71d6b360` y corrección de
+  review `cf83021a`; PR #243 integrada por squash en
+  `nightly@fe04a0af`. Los gates de la PR y los posteriores al merge pasaron.
+  No hubo promoción a `testers`/`master` ni release.
+
+Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
+- Cada layout admite exactamente un widget Delta. Studio oculta la acción de
+  añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la
+  duplicación y un documento externo con dos Delta. Al cargar un perfil antiguo,
+  el primer Delta sigue activo y cualquier extra se conserva íntegro como widget
+  preservado, sin renderizarlo ni borrar su configuración.
+- Delta permite elegir en Contenido entre mejor vuelta personal, mejor vuelta
+  de la sesión y vuelta anterior. Los perfiles existentes migran de forma
+  compatible a `personal-best`; no se reanima el antiguo ajuste global
+  `deltaMode`.
+- Telemetry Core conserva las tres referencias simultáneamente: personal usa el
+  `mDeltaBest` observado de LMU; sesión y anterior se reconstruyen solo desde
+  vueltas completas válidas de la sesión actual. Cada campo conserva presencia,
+  provenance y freshness; un modo ausente no toma silenciosamente el valor de otro.
+- El hotkey global configurable `cycleDeltaReference` usa `Ctrl+Shift+D` por
+  defecto y recorre Personal → Sesión → Anterior → Personal. Sincroniza los
+  layouts explícitos del perfil activo, persiste el documento y lo vuelve a
+  emitir a Desktop/OBS mediante el runtime existente.
+- Code review adversarial posterior corrigió tres P1 antes de promoción:
+  historial nativo mezclado con el delta de sesión en el mismo cursor,
+  selección canónica incorrecta cuando `general` no tenía `reference`, y
+  pulsaciones concurrentes compitiendo por una revisión. Regresiones RED→GREEN
+  cubren los tres caminos; 12 pulsaciones simultáneas pasan 10 ejecuciones.
+- Gates frescos sobre `origin/nightly@638b470`: `go test ./... -count=1` PASS;
+  frontend 370 archivos/2673 tests PASS; build, ESLint focal, vet focal sin
+  deuda nueva y diff-check PASS. La suite mantiene dos `AbortError` heredados
+  de teardown de happy-dom después del resumen, con exit 0.
+- Rama `vantareapp/isa-347-delta-referencias-reales-de-telemetria-instancia-unica-y`,
+  implementación `3a54d34`, fix de review `46df1b2` y sincronización con
+  `nightly@638b470` mediante `f0e40bd`. La PR #233 pasó los gates bloqueantes y
+  se integró por squash en `nightly@5499008` el 2026-08-14. Queda pendiente la
+  comprobación manual con LMU/Wails; no hubo promoción a `testers`, `master` ni
+  release.
+
+Nota DELTA-TELEMETRY (2026-08-14, corrección local validada):
+- El pipeline canónico vuelve a admitir `mDeltaBest` LMU (`telemetry +696`) como
+  señal observada con signo, presencia, freshness y provenance explícitos.
+  El dato nativo gana sin warm-up; `session.self-delta@1` permanece como
+  fallback cuando el simulador no publica un valor usable.
+- El widget Delta conserva el último valor durante `stale` en vez de sustituirlo
+  por `—`. Un test buffer-to-overlay prueba `-0.245` en el primer frame con
+  provenance `observed`; tests separados cubren positivo, cero válido, startup
+  missing, inválido, stale y fallback derivado.
+- Gates: Telemetry Core focal PASS; frontend completo 370/2656 PASS; build PASS;
+  ESLint focal y diff-check PASS. `go test ./...` tuvo dos flakes ajenos en dos
+  ejecuciones (`engineer/ptt` y diagnostics bridge); ambos pasan aislados.
+Nota ISA-335 / ISA-345 / OS-BUG (2026-08-14, integrada en Nightly):
+- Overlay Studio permitía seleccionar `vantare-endurance`, pero el contrato Go
+  de perfiles V3 y la biblioteca de diseños seguían aceptando únicamente
+  Original/Crystal. Guardar fallaba especialmente al conservar
+  `visual.systemMemories.vantare-endurance`.
+- La rama aislada
+  `vantareapp/isa-335-os-bug-guardar-perfiles-rechaza-vantare-endurance-como`
+  partió de `origin/nightly@8de4f511972757476d96d6a525b69c8917f4ca56`.
+  El arreglo añade el ID tipado y la revisión posterior elimina la allowlist
+  duplicada: persistencia y biblioteca de diseños consultan ahora el mismo
+  contrato Go, sin migración, cambio visual, renderer, dependencia ni fallback
+  para sistemas desconocidos.
+- TDD RED confirmó constante ausente en `pkg/config` y `unsupported design
+  system` en `WidgetDesignService`; GREEN cubre sistema activo/predeterminado,
+  memoria visual, round-trip de archivo y diseño de usuario Endurance.
+- Code review adversarial: se descartó un falso positivo en el comando de
+  aplicación porque `applyWidgetDesign` ya rechaza tipos incompatibles; se
+  corrigió el riesgo real de deriva entre las dos allowlists Go en `a4749e9`.
+- Evidencia previa a promoción: paquetes `pkg/config/... ./internal/app/...`
+  PASS; frontend 370 archivos/2661 tests
+  PASS; `design-system:check` 3/3 PASS; build frontend PASS; `go test ./...
+  -count=1` PASS y `git diff --check` PASS. La suite frontend conserva los dos
+  `AbortError` de teardown documentados con exit 0. Fix y regresiones están en
+  `074dba6`; centralización revisada en `a4749e9`.
+- Isaac autorizó la promoción y, después, el auto-merge necesario ante el flujo
+  continuo de integraciones. ISA-345 registró la promoción: PR #223 integrada
+  por squash en `nightly@32e9b70907458874d79fd28c5a37ae97cccc436d`.
+  El gate post-integración `31762153097` pasó ruta, build frontend, Go, frontend,
+  lint de cambios, visuales y Windows/Wails; el snapshot `31762153118` también
+  pasó. El lint global conserva solo deuda heredada advisory. Nivel alcanzado:
+  Nightly; sin promoción a Testers/Master y sin release.
+
 Nota ISA-152 / STR-17 (2026-08-14, integrada en Nightly):
 - Isaac autorizó la promoción de ISA-161. El PR #212 se integró mediante squash
   en `nightly@b2e4067809d31152fdcf374875179e577d483c03`; el gate
@@ -1753,7 +1977,9 @@ Nota ISA-129 / TC-07A.1 D0 (2026-07-31):
 - La matriz D0 fija fuente, offset, unidad, rango, referencia, signo, freshness
   y autoridad SHM/REST. Equipo, número, compuesto, Virtual Energy, daños,
   weather no admitido, fases/banderas, pit-state labels, remaining raw,
-  `FuelFraction` y native `mDeltaBest` continúan missing, nunca cero inventado.
+  `FuelFraction` continúa missing, nunca cero inventado. Corrección 2026-08-14:
+  native `mDeltaBest` vuelve a estar admitido como `session.native_delta_best`,
+  gana sobre el self-delta derivado y conserva presencia, freshness y provenance.
 - Corrección de review D0: scoring y telemetry solo se correlacionan dentro de
   `[0,mNumVehicles)`, con IDs activos no negativos, únicos y biyectivos. El
   jugador procede del único `mIsPlayer` scoring y su telemetry de igual ID;
@@ -5429,3 +5655,16 @@ Nota ISA-291 / OS-09G2 (2026-08-05, planificación de autoría directa):
   y una descarga independiente confirmó los SHA-256 del instalador, portable y
   ejecutable. ISA-329 continúa abierta como limitación OBS aceptada para este
   corte; `testers` y `master` permanecen sin cambios.
+Nota ISA-334 / Broadcast Tower horizontal (2026-08-14, promovida a Nightly):
+- Issue y rama: `ISA-334`,
+  `vantareapp/isa-334-overlay-studio-broadcast-tower-debe-ocupar-todo-el-ancho-y`,
+  base exacta `origin/nightly@8de4f511972757476d96d6a525b69c8917f4ca56`.
+- Causa: el widget heredaba geometría genérica `520×260`, ocho handles y
+  escalado uniforme por ancho aunque Crystal define una franja horizontal.
+- Solución candidata: altura fija de 50 px, ancho inicial igual al viewport
+  real del perfil, resize solo este/oeste y reflow sin escala tipográfica.
+- Evidencia actual: focal 74/74, frontend 2641/2641, lint focal, build y CI PASS.
+  El browser colaborativo agotó timeout al capturar; la validación visual
+  manual sigue pendiente. PR #224 fusionada por squash en `nightly` como
+  `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`; Linear está en `Nightly`.
+  No hubo promoción a `testers`/`master` ni release.

@@ -8,13 +8,14 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 const (
-	MatrixVersion          uint16 = 4
+	MatrixVersion          uint16 = 5
 	maxConflictDiagnostics        = 5
 )
 
@@ -64,6 +65,7 @@ var authorityMatrixV4 = [...]AuthorityRule{
 	{catalog.SignalSpatialPosition, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalSpatialOrientation, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalSpatialLocalVelocity, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalSessionNativeDeltaBest, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 }
 
 func AuthorityMatrix() []AuthorityRule {
@@ -230,6 +232,7 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.Brake = ageGridField(elapsed, updated, forceStale, row.Brake)
 		row.Clutch = ageGridField(elapsed, updated, forceStale, row.Clutch)
 		row.Fuel = ageGridField(elapsed, updated, forceStale, row.Fuel)
+		row.DeltaBest = ageGridField(elapsed, updated, forceStale, row.DeltaBest)
 		row.WorldPosition = ageGridField(elapsed, updated, forceStale, row.WorldPosition)
 		row.LocalVelocity = ageGridField(elapsed, updated, forceStale, row.LocalVelocity)
 		row.Orientation = ageGridField(elapsed, updated, forceStale, row.Orientation)
@@ -321,6 +324,8 @@ func inferredDecision(result Observation, rule AuthorityRule) FieldDecision {
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[spatial.Orientation] { return row.Orientation })
 	case catalog.SignalSpatialLocalVelocity:
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[spatial.LocalVelocity] { return row.LocalVelocity })
+	case catalog.SignalSessionNativeDeltaBest:
+		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[session.DeltaSeconds] { return row.DeltaBest })
 	default:
 		return FieldDecision{Signal: rule.Signal, Source: SourceUnknown, Freshness: schema.FreshnessMissing}
 	}

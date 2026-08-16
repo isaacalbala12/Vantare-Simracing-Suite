@@ -55,6 +55,89 @@ func TestSelfDeltaRequiresCompletedReferenceAndInterpolatesDocumentedSign(t *tes
 	assertDeltaSeconds(t, slower, 1)
 }
 
+func TestDeltaPrefersFreshNativeBestLapWithoutWarmupAndKeepsDerivedFallback(t *testing.T) {
+	tracker := newSelfDeltaTracker(MaxSelfDeltaSamples)
+	native := deltaObserved(1, 100, 10*time.Second, false, schema.FreshnessFresh)
+	native.Vehicles[0].DeltaBest = derivedInput(session.DeltaSeconds(-0.245), schema.FreshnessFresh)
+	got := tracker.Apply(deltaHeader(1), native)
+	value, present := got.Seconds.Value()
+	if !present || value != session.DeltaSeconds(-0.245) || got.Seconds.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("native delta = (%v,%t,%v)", value, present, got.Seconds.Freshness())
+	}
+	if got.Seconds.Provenance() != schema.ProvenanceObserved || got.Reference.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("native delta provenance = seconds:%v reference:%v", got.Seconds.Provenance(), got.Reference.Provenance())
+	}
+
+	staleNative := deltaObserved(1, 110, 11*time.Second, false, schema.FreshnessStale)
+	staleNative.Vehicles[0].DeltaBest = derivedInput(session.DeltaSeconds(-0.240), schema.FreshnessStale)
+	stale := tracker.Apply(deltaHeader(2), staleNative)
+	staleValue, stalePresent := stale.Seconds.Value()
+	if !stalePresent || staleValue != session.DeltaSeconds(-0.240) || stale.Freshness != schema.FreshnessStale ||
+		stale.Seconds.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("stale native delta = %+v", stale)
+	}
+
+	missingNative := deltaObserved(2, 0, 20*time.Second, false, schema.FreshnessFresh)
+	missingNative.Vehicles[0].DeltaBest = schema.MissingField[session.DeltaSeconds]()
+	if fallback := tracker.Apply(deltaHeader(3), missingNative); fallback.Freshness != schema.FreshnessMissing {
+		t.Fatalf("fallback before completed reference = %+v", fallback)
+	}
+}
+
+func TestSelfDeltaKeepsPersonalSessionAndPreviousReferencesIndependent(t *testing.T) {
+	tracker := newSelfDeltaTracker(MaxSelfDeltaSamples)
+	sequence := schema.Sequence(0)
+	apply := func(lap session.LapNumber, distance standings.LapDistance, at time.Duration, native session.DeltaSeconds) SelfDelta {
+		sequence++
+		observed := deltaObserved(lap, distance, at, false, schema.FreshnessFresh)
+		observed.Vehicles[0].DeltaBest = derivedInput(native, schema.FreshnessFresh)
+		return tracker.Apply(deltaHeader(sequence), observed)
+	}
+
+	apply(1, 100, 10*time.Second, -0.40)
+	apply(2, 0, 20*time.Second, -0.35)
+	apply(2, 100, 30*time.Second, -0.30)
+	apply(2, 200, 40*time.Second, -0.25)
+	apply(3, 0, 50*time.Second, -0.20) // lap 2: 30 seconds
+	apply(3, 100, 58*time.Second, -0.15)
+	apply(3, 200, 66*time.Second, -0.10)
+	apply(4, 0, 74*time.Second, -0.05) // lap 3: 24 seconds, new session best
+	got := apply(4, 100, 83*time.Second, 0.125)
+
+	assertReferenceDelta(t, got.PersonalBest, 0.125, schema.ProvenanceObserved)
+	assertReferenceDelta(t, got.SessionBest, 1, schema.ProvenanceDerived)
+	assertReferenceDelta(t, got.PreviousLap, 1, schema.ProvenanceDerived)
+
+	// A slower completed lap becomes "previous", but must not replace the
+	// session-best curve.
+	apply(4, 200, 94*time.Second, 0.20)
+	apply(5, 0, 105*time.Second, 0.25) // lap 4: 31 seconds
+	got = apply(5, 100, 113*time.Second, 0.30)
+	assertReferenceDelta(t, got.PersonalBest, 0.30, schema.ProvenanceObserved)
+	assertReferenceDelta(t, got.SessionBest, 0, schema.ProvenanceDerived)
+	assertReferenceDelta(t, got.PreviousLap, -1, schema.ProvenanceDerived)
+}
+
+func TestNativePersonalDeltaReplacesDerivedHistoryForSameCursor(t *testing.T) {
+	tracker := readyDeltaTracker(t)
+	observed := deltaObserved(3, 100, 59*time.Second, false, schema.FreshnessFresh)
+	observed.Vehicles[0].DeltaBest = derivedInput(session.DeltaSeconds(-0.245), schema.FreshnessFresh)
+
+	got := tracker.Apply(deltaHeader(6), observed)
+
+	if len(got.History) != 1 || got.History[0].Seconds != session.DeltaSeconds(-0.245) {
+		t.Fatalf("native history = %+v, want the displayed personal delta", got.History)
+	}
+}
+
+func assertReferenceDelta(t testing.TB, field schema.Field[session.DeltaSeconds], want session.DeltaSeconds, provenance schema.Provenance) {
+	t.Helper()
+	got, present := field.Value()
+	if !present || field.Freshness() != schema.FreshnessFresh || field.Provenance() != provenance || math.Abs(float64(got-want)) > 1e-9 {
+		t.Fatalf("reference delta = (%v,%t,%v,%v), want (%v,true,fresh,%v)", got, present, field.Freshness(), field.Provenance(), want, provenance)
+	}
+}
+
 func TestSelfDeltaPromotesOnlyValidNonPitMonotonicLaps(t *testing.T) {
 	tests := []struct {
 		name   string

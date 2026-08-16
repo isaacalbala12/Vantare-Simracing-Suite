@@ -3,6 +3,7 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import type { WidgetType } from "../../../overlay/core/profile-document";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
 import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
 import { buildAddWidgetCommand } from "../catalog/studio-catalog";
 import { useStudioDocument } from "../state/studio-store";
@@ -50,7 +51,7 @@ function WidgetTypeIcon({ type }: { type: WidgetType }): React.ReactElement {
 }
 
 export function WidgetListPanel(): React.ReactElement {
-  const { access, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } = useStudioDocument();
+  const { access, document, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } = useStudioDocument();
   const [query, setQuery] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const { t } = useI18n();
@@ -74,6 +75,7 @@ export function WidgetListPanel(): React.ReactElement {
       type,
       widgets: activeLayout?.widgets ?? [],
       definition,
+      layoutViewport: resolveLayoutViewport(document ?? {}),
     });
     dispatch(command);
     if (command.type === "widget/add") {
@@ -152,6 +154,7 @@ export function WidgetListPanel(): React.ReactElement {
       <AddWidgetDialog
         open={addDialogOpen}
         access={access}
+        unavailableTypes={(activeLayout?.widgets ?? []).some((widget) => widget.type === "delta") ? ["delta"] : []}
         onClose={() => setAddDialogOpen(false)}
         onAdd={handleAddWidget}
       />

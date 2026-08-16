@@ -513,7 +513,7 @@ func TestBuildHotkeyActionMapIncludesToggleEditMode(t *testing.T) {
 	var overlayRunning atomic.Bool
 	actionMap := buildHotkeyActionMap(nil, nil, nil, &overlayRunning, nil)
 
-	expected := []string{"toggleOverlay", "toggleEditMode", "nextProfile", "prevProfile"}
+	expected := []string{"toggleOverlay", "toggleEditMode", "nextProfile", "prevProfile", "cycleDeltaReference"}
 	if len(actionMap) != len(expected) {
 		t.Fatalf("expected %d actions, got %d", len(actionMap), len(expected))
 	}
@@ -796,6 +796,40 @@ func TestBuildHotkeyActionMapToggleEditModeOpensStudio(t *testing.T) {
 
 	if len(emitter.events) != 1 || emitter.events[0] != "hub:open-overlay-studio" {
 		t.Fatalf("events=%v", emitter.events)
+	}
+}
+
+func TestBuildHotkeyActionMapCyclesDeltaReference(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	actionMap := buildHotkeyActionMap(nil, studioSvc, nil, nil, emitter)
+
+	actionMap["cycleDeltaReference"]()
+
+	document := studioSvc.Document()
+	if document == nil {
+		t.Fatal("document missing after delta hotkey")
+	}
+	general := document.Layouts[config.LayoutGeneral]
+	if len(general.Widgets) != 1 {
+		t.Fatalf("widgets=%d want 1", len(general.Widgets))
+	}
+	if got := general.Widgets[0].Content["reference"]; got != "session-best" {
+		t.Fatalf("reference=%v want session-best", got)
+	}
+	found := false
+	for index, event := range emitter.events {
+		if event != "overlay:delta-reference-changed" {
+			continue
+		}
+		payload := emitter.data[index].(map[string]any)
+		if payload["reference"] != "session-best" {
+			t.Fatalf("payload=%v", payload)
+		}
+		found = true
+	}
+	if !found {
+		t.Fatalf("events=%v want overlay:delta-reference-changed", emitter.events)
 	}
 }
 
@@ -1110,7 +1144,8 @@ func TestHandleAppUpdateEmitsUpdated(t *testing.T) {
 	}
 
 	emitter := &spyMainEmitter{}
-	handleAppUpdate("obs", "--new-args", settingsSvc2, emitter)
+	svc := launcher.NewService(settingsSvc2, emitter, nil)
+	handleAppUpdate("obs", "--new-args", svc, emitter)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
 		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
@@ -1130,7 +1165,8 @@ func TestHandleAppUpdateEmitsErrorOnUnknown(t *testing.T) {
 	}
 
 	emitter := &spyMainEmitter{}
-	handleAppUpdate("ghost", "args", settingsSvc, emitter)
+	svc := launcher.NewService(settingsSvc, emitter, nil)
+	handleAppUpdate("ghost", "args", svc, emitter)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)

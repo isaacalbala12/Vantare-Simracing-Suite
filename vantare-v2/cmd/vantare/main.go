@@ -682,13 +682,21 @@ func handleRegistryList(emitter app.EventEmitter) {
 
 // handleAppUpdate updates the Args field of a launcher app entry identified by
 // id. The caller emits the canonical snapshot after this succeeds.
-func handleAppUpdate(id, args string, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
-	if err := settingsSvc.UpdateLauncherAppArgs(id, args); err != nil {
+func handleAppUpdate(id, args string, svc *launcher.Service, emitter app.EventEmitter) {
+	apps := svc.Settings().GetLauncherApps()
+	entry, ok := apps[id]
+	if !ok {
+		emitter.Emit("launcher:error", map[string]any{"message": fmt.Sprintf("launcher: app %q not found", id)})
+		return
+	}
+	entry.Args = args
+	apps[id] = entry
+	if err := svc.Settings().SetLauncherApps(apps); err != nil {
 		log.Printf("launcher:app:update error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
 	}
-	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
+	handleLauncherSnapshot(svc, emitter)
 }
 
 func emitLauncherCommandError(emitter app.EventEmitter, err error) {
@@ -2465,7 +2473,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleAppUpdate(payload.ID, payload.Args, settingsSvc, emitter)
+		handleAppUpdate(payload.ID, payload.Args, launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:app:path:set", func(event *application.CustomEvent) {
@@ -3076,6 +3084,19 @@ func buildHotkeyActionMap(
 	emitter app.EventEmitter,
 ) map[string]func() {
 	return map[string]func(){
+		"cycleDeltaReference": func() {
+			if studioProfileSvc == nil {
+				return
+			}
+			reference, err := studioProfileSvc.CycleDeltaReference()
+			if err != nil {
+				log.Printf("hotkey cycle delta reference error: %v", err)
+				return
+			}
+			if emitter != nil {
+				emitter.Emit("overlay:delta-reference-changed", map[string]any{"reference": reference})
+			}
+		},
 		"toggleOverlay": func() {
 			if hubSvc == nil {
 				return

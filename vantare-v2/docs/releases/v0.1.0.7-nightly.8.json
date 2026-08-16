@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.8",
+  "channel": "nightly",
+  "title": "Vantare — Broadcast Tower y perfiles Endurance más fiables",
+  "summary": "Esta Nightly corrige el comportamiento horizontal de Broadcast Tower en resoluciones arbitrarias y permite guardar perfiles que usan el diseño Vantare Endurance.",
+  "issues": [
+    "ISA-334",
+    "ISA-335"
+  ]
+}

@@ -65,6 +65,25 @@ Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
   (`31817001802`) pasaron; el snapshot público del roadmap se regeneró en
   `31817001849`. Sin promoción a `testers`/`master` ni release.
 
+Nota ISA-350 / TC-EVIDENCE-03 (2026-08-14, implementación local validada):
+- Persistencia contract-first completada para batches/slots, bucket privado,
+  upload INSERT exact-path, outbox durable y RPCs idempotentes de
+  prepare/finalize/submit aditivo. La RPC v1 de 15 argumentos permanece intacta.
+- El rollback es bifásico: exige limpieza física previa mediante Storage API/S3
+  y su fase PostgreSQL es transaccional, bloquea inserts concurrentes y falla
+  cerrado antes de mutar si queda cualquier objeto.
+- TDD y gates: REDs conservados; runner ISA-350 80/80 inicial y tras reaplicar,
+  revocación/degradación post-prepare, rollback tardío atómico, insert bloqueado,
+  finalize exactly-once y buckets preexistentes fail-closed PASS. Harness v1
+  core 72 + access 56 + report 55, rollback/reapply y concurrencia PASS.
+  Revisiones independientes: `SPEC PASS` y `QUALITY PASS` sin pendientes.
+- Rama sincronizada con `nightly@d45d8d8d7f815562af76a14ad7343b692dac41db`.
+  PR draft #253 abierto hacia `nightly`; los gates remotos de ruta y bloqueo
+  pasaron en `31827610539`. Bytes reales, UI, validador, acceso de agentes y
+  deploy remoto siguen fuera.
+  Plan TDD:
+  `docs/superpowers/plans/2026-08-14-isa-350-testing-center-screenshot-persistence.md`.
+
 Nota ISA-349 / TC-EVIDENCE-02 (2026-08-14, implementación lista en rama):
 - Primer corte contract-first de ISA-346 completado: contrato puro equivalente
   Go/TS para lotes server-owned de 1..10 capturas PNG/JPEG, límites, digests,

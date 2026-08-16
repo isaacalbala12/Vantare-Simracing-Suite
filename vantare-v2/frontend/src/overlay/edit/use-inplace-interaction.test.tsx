@@ -59,6 +59,20 @@ function Harness({ widgets, scale = 1, onCommit, onSelect }: HarnessProps): Reac
   return (
     <div>
       <div ref={sceneRef} data-testid="inplace-edit-scene">
+        {interaction.guides.map((guide, index) => (
+          <div
+            key={index}
+            data-testid={`inplace-guide-${guide.orientation}`}
+            data-guide-kind={guide.kind}
+            data-guide-position={guide.position}
+            style={{
+              position: "absolute",
+              ...(guide.orientation === "vertical"
+                ? { left: guide.position, top: 0, bottom: 0, width: 1 }
+                : { top: guide.position, left: 0, right: 0, height: 1 }),
+            }}
+          />
+        ))}
         {widgets.map((widget) => {
           const previewActive = interaction.isWidgetPreviewActive(widget.id);
           const geometry = interaction.resolveLayout(widget);
@@ -192,6 +206,43 @@ describe("useInplaceInteraction", () => {
     expect(readFrameVisualLeft(frame)).toBe(100);
     expect(frame.style.top).toBe("100px");
     expect(commits).toEqual([]);
+  });
+
+  it("reports a center guide when the widget snaps to the viewport center", () => {
+    renderHarness();
+
+    pointerDownFrame();
+    // Delta hasta el centro del viewport: target = (1920-280)/2 = 820.
+    pointerMove(820, 100);
+
+    const verticalCenter = screen.queryByTestId("inplace-guide-vertical");
+    expect(verticalCenter).toBeTruthy();
+    expect(verticalCenter?.getAttribute("data-guide-kind")).toBe("center");
+    expect(verticalCenter?.getAttribute("data-guide-position")).toBe("960");
+  });
+
+  it("reports edge guides when the widget snaps to a sibling edge", () => {
+    renderHarness();
+
+    // El hermano relative empieza en x=400; mover delta-main hasta x=400.
+    pointerDownFrame();
+    pointerMove(400, 100);
+
+    const verticalEdge = screen.queryByTestId("inplace-guide-vertical");
+    expect(verticalEdge).toBeTruthy();
+    expect(verticalEdge?.getAttribute("data-guide-kind")).toBe("edge");
+    expect(verticalEdge?.getAttribute("data-guide-position")).toBe("400");
+  });
+
+  it("clears guides when the interaction ends without a commit", () => {
+    renderHarness();
+
+    pointerDownFrame();
+    pointerMove(820, 100);
+    expect(screen.queryByTestId("inplace-guide-vertical")).toBeTruthy();
+
+    pointerUp();
+    expect(screen.queryByTestId("inplace-guide-vertical")).toBeNull();
   });
 
   it("cancels and restores on lostpointercapture", () => {

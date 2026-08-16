@@ -196,6 +196,22 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
               onLostPointerCapture={interaction.onLostPointerCapture}
             />
           ))}
+          {interaction.guides.map((guide, index) => (
+            <div
+              key={`${guide.orientation}-${guide.position}-${guide.kind}-${index}`}
+              data-testid={`inplace-edit-guide-${guide.orientation}`}
+              data-guide-kind={guide.kind}
+              style={{
+                position: "absolute",
+                background: "rgba(56, 189, 248, 0.85)",
+                pointerEvents: "none",
+                zIndex: 0,
+                ...(guide.orientation === "vertical"
+                  ? { left: guide.position, top: 0, bottom: 0, width: 1 }
+                  : { top: guide.position, left: 0, right: 0, height: 1 }),
+              }}
+            />
+          ))}
         </div>
       ) : null}
       <div

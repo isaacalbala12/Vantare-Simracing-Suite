@@ -266,6 +266,45 @@ describe("InPlaceEditOverlay", () => {
     expect(screen.getByTestId("edit-mode-save-error")).toBeTruthy();
   });
 
+  it("shows a center guide while dragging near the viewport center", () => {
+    const coordinator = createTestTelemetryCoordinator();
+    coordinator.publish(buildMockTelemetry("race", "track"));
+
+    render(
+      <InPlaceEditOverlay
+        document={buildDocument()}
+        revision="rev-1"
+        layoutOrigin={{ x: 0, y: 0 }}
+        telemetry={coordinator}
+      />,
+    );
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    scene.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1920,
+      bottom: 1080,
+      width: 1920,
+      height: 1080,
+      toJSON: () => ({}),
+    });
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 820, clientY: 100, bubbles: true });
+
+    const guides = screen.queryAllByTestId("inplace-edit-guide-vertical");
+    const centerGuide = guides.find((guide) => guide.getAttribute("data-guide-kind") === "center");
+    expect(centerGuide).toBeTruthy();
+    expect(centerGuide?.style.left).toBe("960px");
+
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    expect(screen.queryByTestId("inplace-edit-guide-vertical")).toBeNull();
+  });
+
   it("ignores studio:profile:saved for other request ids", () => {
     const coordinator = createTestTelemetryCoordinator();
     coordinator.publish(buildMockTelemetry("race", "track"));

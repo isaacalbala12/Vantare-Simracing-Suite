@@ -22,7 +22,7 @@ export type LauncherStore = {
   subscribe: (listener: () => void) => () => void;
   getDiscoveryProgress: () => LauncherDiscoveryProgress | null;
   subscribeDiscoveryProgress: (listener: () => void) => () => void;
-  discoverApps: () => void;
+  discoverApps: (force?: boolean) => void;
   start: () => void;
   stop: () => void;
   requestSnapshot: () => void;
@@ -35,6 +35,13 @@ const defaultBridge: LauncherBridgeLike = {
   requestSnapshot: bridgeRequestSnapshot,
   dispatchLauncherCommand: bridgeDispatchLauncherCommand,
 };
+
+// DISCOVER_TTL_MS is how long a completed scan stays fresh. Entering the
+// Launcher tab mounts LauncherPage, which asks for discovery on every mount;
+// without a freshness window each visit would re-run the full disk scan
+// (registry + Steam libraries + shortcut COM + icons). The Rescan button
+// forces a scan regardless of this window.
+const DISCOVER_TTL_MS = 5 * 60 * 1000;
 
 export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge): LauncherStore {
   let snapshot: LauncherSnapshot | null = null;
@@ -80,7 +87,20 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
     requestSnapshot: () => bridge.requestSnapshot(),
     getDiscoveryProgress: () => discoveryProgress,
     subscribeDiscoveryProgress: (listener) => { progressSubscribers.add(listener); return () => progressSubscribers.delete(listener); },
-    discoverApps: () => { if (discoveryRequested) return; discoveryRequested = true; bridge.dispatchLauncherCommand("launcher:apps:discover"); },
+    discoverApps: (force = false) => {
+      if (discoveryRequested) return;
+      if (
+        !force &&
+        snapshot?.discovery.lastScanAt
+      ) {
+        const lastScan = new Date(snapshot.discovery.lastScanAt).getTime();
+        if (!Number.isNaN(lastScan) && Date.now() - lastScan < DISCOVER_TTL_MS) {
+          return;
+        }
+      }
+      discoveryRequested = true;
+      bridge.dispatchLauncherCommand("launcher:apps:discover");
+    },
     dispatchLauncherCommand: (name, payload) =>
       bridge.dispatchLauncherCommand(name, payload),
   };

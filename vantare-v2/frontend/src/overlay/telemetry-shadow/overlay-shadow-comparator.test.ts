@@ -180,7 +180,7 @@ describe("overlay shadow comparator policies", () => {
     const registered = widgetTypeRegistry.list().map((definition) => definition.type).sort();
     const policyTypes = Object.keys(OVERLAY_SHADOW_POLICIES).sort();
 
-    expect(registered).toHaveLength(19);
+    expect(registered).toHaveLength(20);
     expect(policyTypes).toEqual(registered);
     expect(OVERLAY_SHADOW_POLICIES.pedals.coverage).toBe("exact");
     expect(OVERLAY_SHADOW_POLICIES["race-schedule"].coverage).toBe("external");
@@ -194,7 +194,7 @@ describe("overlay shadow comparator policies", () => {
       ),
     ).toEqual({
       exact: 2,
-      partial: 10,
+      partial: 11,
       "not-comparable": 5,
       external: 2,
     });
@@ -225,11 +225,11 @@ describe("overlay shadow comparator policies", () => {
       widgets: [...widgets].reverse(),
     });
 
-    expect(report.widgets).toHaveLength(19);
+    expect(report.widgets).toHaveLength(20);
     expect(report.widgets.map((entry) => entry.widgetType)).toEqual(
       [...report.widgets.map((entry) => entry.widgetType)].sort(),
     );
-    expect(report.summary.widgets).toBe(19);
+    expect(report.summary.widgets).toBe(20);
     expect(report.widgets.find((entry) => entry.widgetType === "race-schedule")?.entries)
       .toContainEqual(expect.objectContaining({ classification: "external-consumer" }));
     for (const entry of report.widgets) {

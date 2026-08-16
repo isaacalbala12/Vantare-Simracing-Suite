@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-364",
+  "type": "fix",
+  "summary": "Mis perfiles vuelve a mostrar los perfiles guardados por Overlay Studio V3.",
+  "technicalNotes": [
+    "El Hub reconoce tanto los perfiles antiguos como los documentos V3 puros sin modificar los archivos del usuario.",
+    "Los archivos de ajustes, otros JSON ajenos a perfiles y los JSON inválidos continúan fuera del listado.",
+    "Intentar crear otra vez un nombre ya existente sigue mostrando el error de perfil duplicado."
+  ],
+  "testing": [
+    "Abrir Overlay Studio, entrar en Mis perfiles y comprobar que aparecen los perfiles guardados anteriormente.",
+    "Crear un perfil nuevo, guardarlo desde el editor, volver a Mis perfiles y confirmar que continúa visible.",
+    "Intentar crear de nuevo el mismo nombre y comprobar que se informa del duplicado sin sobrescribirlo."
+  ],
+  "knownLimitations": []
+}

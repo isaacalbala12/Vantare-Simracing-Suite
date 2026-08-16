@@ -157,7 +157,45 @@ describe("AppsPanel", () => {
     expect(screen.getByTestId("launcher-scan-overlay")).toBeTruthy();
   });
 
-  it("emits launcher:app:update when editing args", () => {
+  it("emits launcher:app:update after the args debounce", () => {
+    vi.useFakeTimers();
+    try {
+      renderPanel();
+      dispatchSnapshot([
+          {
+            id: "obs",
+            displayName: "OBS Studio",
+            abbreviation: "OBS",
+            category: "streaming",
+            launchMethod: "executable",
+            executablePath: "C:\\obs\\obs64.exe",
+            args: "",
+            detected: true,
+            gradientFrom: "#302e31",
+            gradientTo: "#1a1a1a",
+          },
+      ]);
+      fireEvent.click(screen.getByTestId("app-row-obs"));
+      fireEvent.change(screen.getByTestId("app-args-input-obs"), {
+        target: { value: "--start-streaming" },
+      });
+      expect(
+        emitCalls.some((c) => c.name === "launcher:app:update"),
+      ).toBe(false);
+      act(() => vi.advanceTimersByTime(400));
+      const updateCall = emitCalls.find(
+        (c) => c.name === "launcher:app:update",
+      );
+      expect(updateCall).toBeDefined();
+      const data = updateCall!.data as { id: string; args: string };
+      expect(data.id).toBe("obs");
+      expect(data.args).toBe("--start-streaming");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("commits args immediately on blur", () => {
     renderPanel();
     dispatchSnapshot([
         {
@@ -177,6 +215,7 @@ describe("AppsPanel", () => {
     fireEvent.change(screen.getByTestId("app-args-input-obs"), {
       target: { value: "--start-streaming" },
     });
+    fireEvent.blur(screen.getByTestId("app-args-input-obs"));
     const updateCall = emitCalls.find(
       (c) => c.name === "launcher:app:update",
     );

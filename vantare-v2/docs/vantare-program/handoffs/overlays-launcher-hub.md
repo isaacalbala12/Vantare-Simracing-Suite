@@ -10,6 +10,35 @@
 
 ## Estado
 
+- ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
+  el relevo
+  `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`
+  hasta recibir la proyección de la nueva revisión, sin publicar el frame
+  `disconnected` intermedio. Arranque sin datos, estados reales de conexión o
+  parada y proyecciones bloqueadas mantienen el cierre seguro. TDD RED/GREEN,
+  focal 4/4, frontend 375 archivos/2736 tests, build, ESLint focal y diff-check
+  PASS; el lint global conserva 49 errores y 2 warnings heredados fuera del
+  cambio. La rama se sincronizó con `origin/nightly@028c7512`; implementación
+  aprobada `ae313e2e`, head final `ac46c3c3` y CI final del PR #260
+  `31896118568` en verde. Tras autorización expresa de Isaac, el PR #260 se
+  integró por squash en `nightly@7341e8cd`. El gate posterior `31896647826` y
+  el roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la
+  promoción; sin paso a `testers`/`master` ni release.
+- ISA-364 está promovida a `nightly` y corrige el listado vacío de
+  `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
+  migrador canónico, mientras el
+  camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
+  incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
+  y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
+  375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
+  `AbortError` de teardown frontend permanecen heredados y el proceso termina
+  con exit 0. El CI final del PR #261, run `31894030661`, pasó topología,
+  gates bloqueantes, build Wails y pasos informativos sobre `03a0205b`. La
+  rama partió de `origin/nightly@3eb5dd7b`; implementación `f753c172` y merge
+  squash del PR #261 en `nightly@22946e6f`, autorizada expresamente por Isaac.
+  El gate posterior `31894845365` y el roadmap `31894845385` pasaron sobre el
+  SHA integrado. ISA-366 registra la promoción; sin paso a `testers`/`master`
+  ni release.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

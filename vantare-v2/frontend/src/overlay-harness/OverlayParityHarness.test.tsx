@@ -124,6 +124,11 @@ describe("OverlayParityHarness", () => {
         expect(markups[0]).toContain('data-preview="true"');
         expect(markups[0]).toContain("PREVIEW");
         expect(markups[1]).not.toContain("data-preview");
+      } else if (widget === "track-map") {
+        // Authoring falls back to the reference outline so the widget can be
+        // laid out before real circuits ship; runtime refuses to guess.
+        expect(markups[0]).toContain("data-track-map-synthetic");
+        expect(markups[1]).toContain("data-track-map-empty");
       } else {
         expect(markups[0]).toBe(markups[1]);
       }

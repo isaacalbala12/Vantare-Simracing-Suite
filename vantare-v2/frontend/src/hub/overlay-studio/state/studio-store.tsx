@@ -76,12 +76,12 @@ type StudioDocumentContextValue = {
   lastError: string | null;
   accessNotice: string | null;
   visuallyMigratedWidgetIds: readonly string[];
-  dispatch(command: StudioCommand): void;
+  dispatch(command: StudioCommand): boolean;
   selectWidget(id: string | null): void;
   selectSession(type: SessionLayoutType): void;
   save(): Promise<StudioSaveResult>;
-  undo(): void;
-  redo(): void;
+  undo(): boolean;
+  redo(): boolean;
   discardAll(): void;
   acceptRecovery(recoveredDocument: ProfileDocumentV3): void;
   dismissAccessNotice(): void;
@@ -204,49 +204,67 @@ export function StudioProvider(props: {
   }, [document, activeSession]);
 
   const dispatch = useCallback(
-    (command: StudioCommand) => {
-      setHistory((current) => {
-        if (!current?.present) {
-          return current;
+    (command: StudioCommand): boolean => {
+      if (!history?.present) {
+        return false;
+      }
+      try {
+        assertCommandAccess(
+          access,
+          command,
+          history.present,
+          command.type === "widget/apply-design" ? command.design : undefined,
+        );
+      } catch (error) {
+        if (error instanceof StudioAccessError) {
+          setAccessNotice(error.message);
+          return false;
         }
-        try {
-          assertCommandAccess(
-            access,
-            command,
-            current.present,
-            command.type === "widget/apply-design" ? command.design : undefined,
-          );
-        } catch (error) {
-          if (error instanceof StudioAccessError) {
-            setAccessNotice(error.message);
-            return current;
-          }
-          throw error;
+        throw error;
+      }
+      try {
+        const next = commitStudioCommand(history, command);
+        if (next === history) {
+          return false;
         }
-        try {
-          const next = commitStudioCommand(current, command);
-          setAccessNotice(null);
-          return next;
-        } catch (error) {
-          if (error instanceof StudioCommandError) {
-            setAccessNotice(error.message);
-            return current;
-          }
-          throw error;
+        setAccessNotice(null);
+        setHistory(next);
+        setSaveState("idle");
+        return true;
+      } catch (error) {
+        if (error instanceof StudioCommandError) {
+          setAccessNotice(error.message);
+          return false;
         }
-      });
-      setSaveState("idle");
+        throw error;
+      }
     },
-    [access],
+    [access, history],
   );
 
-  const undo = useCallback(() => {
-    setHistory((current) => (current ? undoStudioHistory(current) : current));
-  }, []);
+  const undo = useCallback((): boolean => {
+    if (!history) {
+      return false;
+    }
+    const next = undoStudioHistory(history);
+    if (next === history) {
+      return false;
+    }
+    setHistory(next);
+    return true;
+  }, [history]);
 
-  const redo = useCallback(() => {
-    setHistory((current) => (current ? redoStudioHistory(current) : current));
-  }, []);
+  const redo = useCallback((): boolean => {
+    if (!history) {
+      return false;
+    }
+    const next = redoStudioHistory(history);
+    if (next === history) {
+      return false;
+    }
+    setHistory(next);
+    return true;
+  }, [history]);
 
   const discardAll = useCallback(() => {
     setHistory((current) => {
@@ -297,8 +315,11 @@ export function StudioProvider(props: {
     setAccessNotice(null);
     const result = await client.save({ document, expectedRevision: revision });
     if (result.status === "saved") {
+      // Hardening: solo se actualizan saved y revision. El presente se
+      // conserva tal como exista al resolver la peticion: una edicion B
+      // realizada mientras A estaba en vuelo no desaparece.
       setHistory((current) =>
-        current ? markStudioHistorySaved({ ...current, present: result.document }, result.document) : current,
+        current ? markStudioHistorySaved(current, result.document) : current,
       );
       if (recoveryStore) {
         recoveryStore.clear(result.document.id);

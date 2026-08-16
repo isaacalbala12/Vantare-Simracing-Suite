@@ -111,7 +111,11 @@ function awaitCorrelatedEvent(
   });
 }
 
-export function createStudioProfileClient(transport: StudioEventTransport): StudioProfileClient {
+export function createStudioProfileClient(
+  transport: StudioEventTransport,
+  options?: { saveRequestEvent?: string },
+): StudioProfileClient {
+  const saveRequestEvent = options?.saveRequestEvent ?? SAVE_REQUEST_EVENT;
   return {
     load(file) {
       const requestId = createRequestId();
@@ -178,7 +182,7 @@ export function createStudioProfileClient(transport: StudioEventTransport): Stud
           },
         },
       ], "Timeout waiting for studio profile save response") as Promise<StudioSaveResult>;
-      transport.emit(SAVE_REQUEST_EVENT, {
+      transport.emit(saveRequestEvent, {
         document: input.document,
         expectedRevision: input.expectedRevision,
         requestId,

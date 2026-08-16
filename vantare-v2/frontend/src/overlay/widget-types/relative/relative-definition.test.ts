@@ -14,8 +14,9 @@ describe("relativeDefinition", () => {
     expect(widget.type).toBe("relative");
     expect(widget.behavior.updateHz).toBe(15);
     expect(widget.content).toMatchObject({
-      rangeAhead: 3,
-      rangeBehind: 3,
+      rangeAhead: 2,
+      rangeBehind: 2,
+      includePlayer: true,
       rowHeightMode: "compact",
     });
   });

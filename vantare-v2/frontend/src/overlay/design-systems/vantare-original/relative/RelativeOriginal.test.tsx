@@ -12,13 +12,13 @@ import { RelativeOriginal } from "./RelativeOriginal";
 const testDir = dirname(fileURLToPath(import.meta.url));
 
 const vehicles = [
-  { id: 1, driverName: "Ahead far", place: 1, vehicleClass: "HYPERCAR", timeGapToPlayer: 6, driverNumber: "7" },
-  { id: 2, driverName: "Ahead near", place: 2, vehicleClass: "HYPERCAR", timeGapToPlayer: 2, driverNumber: "36" },
-  { id: 3, driverName: "Ahead gt", place: 3, vehicleClass: "LMGT3", timeGapToPlayer: 1, driverNumber: "12" },
-  { id: 4, driverName: "Player", place: 4, vehicleClass: "HYPERCAR", isPlayer: true, timeGapToPlayer: 0, driverNumber: "8" },
-  { id: 5, driverName: "Behind near", place: 5, vehicleClass: "HYPERCAR", timeGapToPlayer: -1, driverNumber: "23" },
-  { id: 6, driverName: "Behind gt", place: 6, vehicleClass: "LMGT3", timeGapToPlayer: -2, driverNumber: "44" },
-  { id: 7, driverName: "Behind far", place: 7, vehicleClass: "HYPERCAR", timeGapToPlayer: -5, driverNumber: "99" },
+  { id: 1, driverName: "Ahead far", place: 1, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_300, timeGapToPlayer: 6, driverNumber: "7" },
+  { id: 2, driverName: "Ahead near", place: 2, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_200, timeGapToPlayer: 2, driverNumber: "36" },
+  { id: 3, driverName: "Ahead gt", place: 3, vehicleClass: "LMGT3", lapDistanceMeters: 1_100, timeGapToPlayer: 1, driverNumber: "12" },
+  { id: 4, driverName: "Player", place: 4, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_000, isPlayer: true, timeGapToPlayer: 0, driverNumber: "8" },
+  { id: 5, driverName: "Behind near", place: 5, vehicleClass: "HYPERCAR", lapDistanceMeters: 900, timeGapToPlayer: -1, driverNumber: "23" },
+  { id: 6, driverName: "Behind gt", place: 6, vehicleClass: "LMGT3", lapDistanceMeters: 800, timeGapToPlayer: -2, driverNumber: "44" },
+  { id: 7, driverName: "Behind far", place: 7, vehicleClass: "HYPERCAR", lapDistanceMeters: 700, timeGapToPlayer: -5, driverNumber: "99" },
 ];
 
 afterEach(() => cleanup());
@@ -107,6 +107,22 @@ describe("RelativeOriginal", () => {
     expect(player.getAttribute("data-tone")).toBe("player");
     expect(ahead.getAttribute("data-tone")).toBe("ahead");
     expect(behind.getAttribute("data-tone")).toBe("behind");
+  });
+
+  it("renders five neutral rows while the player is in pit", () => {
+    const content = createDefaultRelativeContent();
+    const model = buildRelativeViewModel(
+      {
+        ...buildMockTelemetry({ session: "race", location: "pit", state: "ready" }),
+        scoring: vehicles.map((row) => (row.isPlayer ? { ...row, inPit: true } : row)),
+      },
+      content,
+    );
+    const { root } = renderOriginal(model);
+    const rivals = [...root.querySelectorAll("[data-relative-row]:not([data-player='true'])")];
+    expect(root.querySelectorAll("[data-relative-row]")).toHaveLength(5);
+    expect(rivals.every((row) => row.getAttribute("data-tone") === "neutral")).toBe(true);
+    expect(rivals.every((row) => row.textContent?.includes("—"))).toBe(true);
   });
 
   it("applies class color bars from vehicle class", () => {

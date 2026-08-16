@@ -10,6 +10,19 @@
 
 ## Estado
 
+- ISA-365 corrige en rama aislada el Relative: selecciona por distancia física
+  circular dos rivales delante y dos detrás, mantiene al jugador centrado y no
+  elimina filas cuando LMU carece de gap temporal. En boxes y ante datos no
+  comparables muestra `—` neutral; Original, Crystal y Endurance respetan el
+  lado físico explícito. Los perfiles antiguos se normalizan a 2+1+2.
+  Frontend 376/2750 y build PASS; el gate visual valida todas las capturas de
+  Relative al 0 % y conserva dos diferencias ajenas de Delta stale. El lint
+  focal propio pasa y el barrido completo del diff solo reproduce el error
+  heredado `_absent` de `authoring-fixtures.ts:231`, fuera del cambio. Rama
+  nacida sobre `origin/nightly@3eb5dd7b`, sincronizada con
+  `nightly@7341e8cd` y publicada en la PR draft #263 hacia `nightly`; sin
+  integración, promoción ni release. El CI de la PR, run `31896585676`, pasó
+  ruta de promoción, gates bloqueantes y seguridad sobre `839603f5`.
 - ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
   el relevo
   `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`

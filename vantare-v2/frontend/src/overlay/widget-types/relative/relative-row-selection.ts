@@ -2,8 +2,27 @@ import { readScoringBoolean, readScoringNumber, readScoringString } from "../sha
 import type { RelativeClassScope, RelativeContent } from "./relative-content";
 import type { RelativeScoringRow } from "./relative-formatting";
 
-function readGap(row: RelativeScoringRow): number | undefined {
-  return readScoringNumber(row, "timeGapToPlayer");
+export type RelativeSide = "ahead" | "player" | "behind";
+
+export type SelectedRelativeRow = {
+  row: RelativeScoringRow;
+  side: RelativeSide;
+};
+
+function readLapDistance(row: RelativeScoringRow): number | undefined {
+  return readScoringNumber(row, "lapDistanceMeters");
+}
+
+function stableRowIdentity(row: RelativeScoringRow): string {
+  const stringId = readScoringString(row, "id");
+  if (stringId != null) {
+    return stringId;
+  }
+  const numericId = readScoringNumber(row, "id");
+  if (numericId != null) {
+    return String(numericId);
+  }
+  return readScoringString(row, "driverNumber") ?? readScoringString(row, "driverName") ?? "";
 }
 
 export function selectRelativeRows(
@@ -12,10 +31,13 @@ export function selectRelativeRows(
     RelativeContent,
     "rangeAhead" | "rangeBehind" | "classScope" | "includePlayer"
   >,
-): RelativeScoringRow[] {
+): SelectedRelativeRow[] {
   const player = rows.find((row) => readScoringBoolean(row, "isPlayer"));
   if (!player) {
     return [];
+  }
+  if (readLapDistance(player) == null) {
+    return filters.includePlayer ? [{ row: player, side: "player" }] : [];
   }
 
   const playerClass = (readScoringString(player, "vehicleClass") ?? "").toUpperCase();
@@ -23,8 +45,7 @@ export function selectRelativeRows(
     if (readScoringBoolean(row, "isPlayer")) {
       return false;
     }
-    const gap = readGap(row);
-    if (gap == null) {
+    if (readLapDistance(row) == null) {
       return false;
     }
     if (filters.classScope === "sameClass") {
@@ -33,20 +54,42 @@ export function selectRelativeRows(
     return true;
   });
 
-  const withGap = candidates.map((row) => ({ row, gap: readGap(row)! }));
-  const ahead = withGap
-    .filter((item) => item.gap > 0)
-    .sort((left, right) => left.gap - right.gap)
-    .slice(0, filters.rangeAhead)
-    .map((item) => item.row)
-    .reverse();
-  const behind = withGap
-    .filter((item) => item.gap < 0)
-    .sort((left, right) => right.gap - left.gap)
-    .slice(0, filters.rangeBehind)
-    .map((item) => item.row);
+  const ordered = [...candidates, player].sort((left, right) => {
+    const distance = readLapDistance(left)! - readLapDistance(right)!;
+    return distance !== 0
+      ? distance
+      : stableRowIdentity(left).localeCompare(stableRowIdentity(right));
+  });
+  const playerIndex = ordered.indexOf(player);
+  const selected = new Set<RelativeScoringRow>([player]);
+  const aheadNearToFar: RelativeScoringRow[] = [];
+  const behind: RelativeScoringRow[] = [];
+  for (
+    let offset = 1;
+    offset < ordered.length &&
+    (aheadNearToFar.length < filters.rangeAhead || behind.length < filters.rangeBehind);
+    offset += 1
+  ) {
+    const ahead = ordered[(playerIndex + offset) % ordered.length];
+    if (ahead && aheadNearToFar.length < filters.rangeAhead && !selected.has(ahead)) {
+      selected.add(ahead);
+      aheadNearToFar.push(ahead);
+    }
 
-  return filters.includePlayer ? [...ahead, player, ...behind] : [...ahead, ...behind];
+    const behindCandidate = ordered[(playerIndex - offset + ordered.length) % ordered.length];
+    if (behindCandidate && behind.length < filters.rangeBehind && !selected.has(behindCandidate)) {
+      selected.add(behindCandidate);
+      behind.push(behindCandidate);
+    }
+  }
+
+  const ahead = aheadNearToFar.reverse();
+
+  const selectedAhead = ahead.map((row) => ({ row, side: "ahead" as const }));
+  const selectedBehind = behind.map((row) => ({ row, side: "behind" as const }));
+  return filters.includePlayer
+    ? [...selectedAhead, { row: player, side: "player" }, ...selectedBehind]
+    : [...selectedAhead, ...selectedBehind];
 }
 
 export function resolveRelativeTone(gap: number | undefined, isPlayer: boolean): "ahead" | "behind" | "player" | "neutral" {

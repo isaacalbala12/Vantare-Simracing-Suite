@@ -74,8 +74,14 @@
   build, lint focal y runner visual `visual:escala-proporcional` (matriz 10 viewports +
   zoom 5 + capturas 5) PASS. Las capturas usan UI real productiva: Hub completo con mock
   Wails (topbar/dock/dashboard) y widgets con diseño oficial sobre el escenario del Studio.
-  Isaac revisó y aprobó las capturas. Pendiente: verificación manual en Windows
-  (zoom WebView2, DPI 100/125/150) y decisión de Isaac sobre promoción a `nightly`.
+  Isaac revisó y aprobó las capturas. Promovida a `nightly` por squash del PR
+  #259 en `nightly@c91d3d0f` tras autorización expresa de Isaac; gates del PR y
+  posteriores al merge (`Branch channel gates` `31961141424` y `Roadmap public
+  snapshot` `31961141399`) SUCCESS sobre ese SHA. El workflow ajeno
+  `testing-center-agent-fix.yml` conserva un fallo preexistente (también falla
+  en el SHA anterior `3be8a30`), fuera de este cambio. Pendiente: verificación
+  manual en Windows (zoom WebView2, DPI 100/125/150) y decisión de Isaac sobre
+  promoción a `testers`.
 - Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
   `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
   calendario comparte un único estado y no pierde respuestas inmediatas, el

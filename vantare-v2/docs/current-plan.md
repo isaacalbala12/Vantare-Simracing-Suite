@@ -125,9 +125,13 @@ Nota UI-ESCALA-PROPORCIONAL (2026-08-14, SDD sin Linear, rama
 - Los trabajos previos ISA-337/ISA-343 (`worktrees/isa337-responsive-spec`,
   `worktrees/isa343-responsive-foundation`) están descartados por Isaac y no se
   reutilizan; sus ramas se conservan como referencia histórica.
-- Pendiente: revisión visual humana de las capturas, smoke manual Windows
-  (WebView2 zoom, DPI 100/125/150) y decisión de Isaac sobre promoción a
-  `nightly`. No hubo push, PR, CI, merge ni release.
+- Pendiente: smoke manual Windows (WebView2 zoom, DPI 100/125/150) y decisión
+  de Isaac sobre promoción a `testers`. Promovida a `nightly` por squash del PR
+  #259 en `nightly@c91d3d0f` tras autorización expresa de Isaac; gates
+  posteriores `31961141424` (Branch channel gates) y `31961141399` (Roadmap
+  public snapshot) SUCCESS sobre ese SHA. El workflow ajeno
+  `testing-center-agent-fix.yml` conserva un fallo preexistente (falla también
+  en `3be8a30`, prepromoción); fuera del diff. Sin promoción a `testers`/`master`.
 
 Nota ISA-358 / HUD-01 (2026-08-14, implementación local validada):
 - El Hub principal conserva su diseño, pero la cabecera recibe ahora la versión

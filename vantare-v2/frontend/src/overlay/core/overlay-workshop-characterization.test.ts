@@ -41,11 +41,11 @@ describe("Overlay Workshop characterization", () => {
     const crystal = designs.filter((design) => design.systemId === "vantare-crystal");
     const historical = historicalCrystalManifest.entries;
 
-    expect(ALL_WIDGET_TYPES).toHaveLength(19);
+    expect(ALL_WIDGET_TYPES).toHaveLength(20);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 4],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5],
     ]);
-    expect(designs).toHaveLength(63);
+    expect(designs).toHaveLength(64);
     expect(crystal).toHaveLength(22);
     expect(new Set(crystal.map((design) => design.widgetType)).size).toBe(19);
     expect(crystal.find((design) => design.id === "engineer-radio-crystal")?.widgetType).toBe("engineer-radio");

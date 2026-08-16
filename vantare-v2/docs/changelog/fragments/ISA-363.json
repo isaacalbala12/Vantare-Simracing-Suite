@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-363",
+  "type": "fix",
+  "summary": "Los widgets del overlay dejan de desaparecer brevemente cuando la telemetría vuelve a estar disponible.",
+  "technicalNotes": [
+    "Durante el relevo entre un estado de telemetría obsoleto y la siguiente proyección válida, el overlay conserva el último frame utilizable como obsoleto en vez de publicar una desconexión intermedia.",
+    "El arranque sin datos, los estados de conexión y parada, y las proyecciones inválidas continúan cerrándose como desconectados."
+  ],
+  "testing": [
+    "Entrar a pista con widgets visibles y provocar una interrupción breve de telemetría; confirmar que los valores se congelan momentáneamente pero los widgets no desaparecen.",
+    "Salir de la sesión o cerrar el simulador y confirmar que el overlay sí pasa a desconectado."
+  ],
+  "knownLimitations": []
+}

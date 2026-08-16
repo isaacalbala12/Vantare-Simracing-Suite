@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import {
   formatInZone,
@@ -11,6 +10,7 @@ import {
 import { buildUpcomingRaceItems, type UpcomingRaceItem } from "./calendar-upcoming";
 
 type CalendarHeroUpcomingPanelProps = {
+  calendar?: Calendar | null;
   now?: () => Date;
   onNavigate?: (section: string) => void;
   onTierClick?: (tier: string) => void;
@@ -143,19 +143,8 @@ function TierCard({ item, tierKey, now, onNavigate, onTierClick }: { item: Upcom
   );
 }
 
-export function CalendarHeroUpcomingPanel({ now, onNavigate, onTierClick }: CalendarHeroUpcomingPanelProps) {
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
+export function CalendarHeroUpcomingPanel({ calendar = null, now, onNavigate, onTierClick }: CalendarHeroUpcomingPanelProps) {
   const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    requestCalendar();
-    const unsub = subscribeToCalendar((state) => {
-      if (state.kind === "loaded") {
-        setCalendar(state.calendar);
-      }
-    });
-    return unsub;
-  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((n) => n + 1), 60_000);

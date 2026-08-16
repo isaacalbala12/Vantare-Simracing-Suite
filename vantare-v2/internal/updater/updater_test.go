@@ -498,14 +498,14 @@ func TestCheckContextCancellation(t *testing.T) {
 }
 
 func TestListAvailableSortsByVersionNotDate(t *testing.T) {
-	// GitHub returns releases newest-first by creation date. v0.3.10.0 is the
+	// GitHub returns releases newest-first by creation date. v0.1.0.9 is the
 	// highest version but the oldest publication, so date order would hide it.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`[
-			{"tag_name":"v0.1.0.2","prerelease":false,"published_at":"2026-06-29T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/a.exe"}]},
-			{"tag_name":"v0.1.0.1","prerelease":false,"published_at":"2026-06-28T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/b.exe"}]},
-			{"tag_name":"v0.3.10.0","prerelease":false,"published_at":"2026-06-27T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/c.exe"}]}
+			{"tag_name":"v0.1.0.1","prerelease":false,"published_at":"2026-06-29T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/a.exe"}]},
+			{"tag_name":"v0.1.0.7","prerelease":false,"published_at":"2026-06-28T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/b.exe"}]},
+			{"tag_name":"v0.1.0.9","prerelease":false,"published_at":"2026-06-27T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/c.exe"}]}
 		]`))
 	}))
 	defer server.Close()
@@ -517,10 +517,47 @@ func TestListAvailableSortsByVersionNotDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("check error: %v", err)
 	}
-	if info.LatestVersion != "v0.3.10.0" {
-		t.Fatalf("latest=%s, want v0.3.10.0", info.LatestVersion)
+	if info.LatestVersion != "v0.1.0.9" {
+		t.Fatalf("latest=%s, want v0.1.0.9", info.LatestVersion)
 	}
 	if !info.HasUpdate {
 		t.Fatal("expected an update to be offered")
+	}
+}
+
+func TestListAvailableExcludesLegacyProductLine(t *testing.T) {
+	// The legacy "Overlays Studio" line (0.3.x) must not compete numerically
+	// with the current 0.1.x line: 0.3.10.0 is older than 0.1.0.7 but would
+	// sort first and be reported as "latest" without this filter.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[
+			{"tag_name":"v0.1.0.7-nightly.1","prerelease":true,"published_at":"2026-08-01T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/n.exe"}]},
+			{"tag_name":"v0.1.0.2","prerelease":false,"published_at":"2026-06-29T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/s.exe"}]},
+			{"tag_name":"v0.3.10.0","prerelease":false,"published_at":"2026-06-28T00:00:00Z","assets":[{"name":"vantare-amd64-installer.exe","size":100,"browser_download_url":"https://example.com/l.exe"}]}
+		]`))
+	}))
+	defer server.Close()
+
+	u := newTestUpdater(t, "v0.1.0.7")
+	u.releasesURL = server.URL
+
+	info, err := u.Check(&Settings{Channel: ChannelStable})
+	if err != nil {
+		t.Fatalf("stable check error: %v", err)
+	}
+	if len(info.Releases) != 1 || info.Releases[0].TagName != "v0.1.0.2" {
+		t.Fatalf("stable releases=%+v, want only v0.1.0.2", info.Releases)
+	}
+
+	info, err = u.Check(&Settings{Channel: ChannelNightly})
+	if err != nil {
+		t.Fatalf("nightly check error: %v", err)
+	}
+	if len(info.Releases) != 2 {
+		t.Fatalf("nightly releases=%d, want 2", len(info.Releases))
+	}
+	if info.Releases[0].TagName != "v0.1.0.7-nightly.1" {
+		t.Fatalf("latest=%s, want v0.1.0.7-nightly.1", info.Releases[0].TagName)
 	}
 }

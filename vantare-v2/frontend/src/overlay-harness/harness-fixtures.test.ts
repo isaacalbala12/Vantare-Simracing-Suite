@@ -31,8 +31,8 @@ describe("CRYSTAL_HARNESS_DESIGNS", () => {
 });
 
 describe("buildHarnessWidget", () => {
-  it("creates all 19 widget types with the requested visual system", () => {
-    expect(HARNESS_WIDGETS).toHaveLength(19);
+  it("creates all 20 widget types with the requested visual system", () => {
+    expect(HARNESS_WIDGETS).toHaveLength(20);
     for (const widgetType of HARNESS_WIDGETS) {
       const widget = buildHarnessWidget(widgetType, "vantare-crystal");
       expect(widget.type).toBe(widgetType);

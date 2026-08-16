@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   appSortOrder,
@@ -40,6 +40,40 @@ export function AppsPanel({ className }: AppsPanelProps) {
   );
   const [showAdd, setShowAdd] = useState(false);
   const [detailsAppId, setDetailsAppId] = useState<string | null>(null);
+  // argsDrafts keeps the text field responsive between keystrokes: the app
+  // entry only updates after the debounce commits, so without a local draft
+  // the controlled input would snap back to the last committed value.
+  const [argsDrafts, setArgsDrafts] = useState<Record<string, string>>({});
+  const argsDebounces = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  useEffect(
+    () => () => {
+      argsDebounces.current.forEach((timer) => clearTimeout(timer));
+      argsDebounces.current.clear();
+    },
+    [],
+  );
+
+  const flushArgs = (id: string, args: string) => {
+    const pending = argsDebounces.current.get(id);
+    if (pending) {
+      clearTimeout(pending);
+      argsDebounces.current.delete(id);
+    }
+    dispatchLauncherCommand("launcher:app:update", { id, args });
+  };
+
+  const handleArgsChange = (id: string, value: string) => {
+    setArgsDrafts((prev) => ({ ...prev, [id]: value }));
+    const pending = argsDebounces.current.get(id);
+    if (pending) clearTimeout(pending);
+    argsDebounces.current.set(
+      id,
+      setTimeout(() => {
+        argsDebounces.current.delete(id);
+        dispatchLauncherCommand("launcher:app:update", { id, args: value });
+      }, 400),
+    );
+  };
   // Dismissing the scan overlay hides it for the scan in flight only; a fresh
   // scan is a new request from the user and shows it again. The reset happens
   // during render rather than in an effect so no dismissed overlay is ever
@@ -78,7 +112,7 @@ export function AppsPanel({ className }: AppsPanelProps) {
           </button>
           <button
             type="button"
-            onClick={discoverApps}
+            onClick={() => discoverApps(true)}
             disabled={scanning}
             aria-busy={scanning}
             className="px-3 py-1.5 rounded-lg border border-white/20 text-[10px] font-bold uppercase tracking-[.18em] text-white/70 hover:border-white/40 hover:text-white transition-colors"
@@ -202,13 +236,9 @@ export function AppsPanel({ className }: AppsPanelProps) {
                     Args:
                     <input
                       type="text"
-                      value={app.args ?? ""}
-                      onChange={(e) =>
-                        dispatchLauncherCommand("launcher:app:update", {
-                          id: app.id,
-                          args: e.target.value,
-                        })
-                      }
+                      value={argsDrafts[app.id] ?? app.args ?? ""}
+                      onChange={(e) => handleArgsChange(app.id, e.target.value)}
+                      onBlur={(e) => flushArgs(app.id, e.target.value)}
                       data-testid={`app-args-input-${app.id}`}
                       className="ml-2 rounded bg-black/40 border border-white/10 px-2 py-0.5 text-white w-48"
                     />

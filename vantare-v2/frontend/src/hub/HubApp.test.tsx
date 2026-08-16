@@ -106,6 +106,20 @@ vi.mock("./onboarding/BetaWelcome", () => ({
   ),
 }));
 
+vi.mock("./roadmap/projects-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./roadmap/projects-data")>();
+  return {
+    ...actual,
+    fetchRoadmapProjectsDataset: vi.fn().mockResolvedValue({
+      dataset: actual.ROADMAP_PROJECTS_FALLBACK,
+      status: "embedded-fallback",
+      state: "embedded-fallback",
+      provenance: "embedded",
+      reason: "unavailable",
+    }),
+  };
+});
+
 import { HubApp } from "./HubApp";
 
 function setLicense(result: unknown, loading = false) {
@@ -211,6 +225,32 @@ describe("HubApp gate (production)", () => {
     expect(screen.getByTestId("license-banner")).toBeTruthy();
     expect(screen.queryByTestId("login-screen")).toBeNull();
     expect(screen.queryByTestId("paywall-screen")).toBeNull();
+  });
+
+  it("forwards the runtime version and channel to the dashboard hero", async () => {
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === "app:version") {
+        setTimeout(() => cb({ data: { version: "v0.1.0.7-nightly.8", buildChannel: "nightly" } }), 0);
+      }
+      if (name === "settings") {
+        setTimeout(() => cb({ data: { betaWelcomeCompleted: true } }), 0);
+      }
+      return () => false;
+    });
+    setLicense({
+      state: "active",
+      entitlements: ["overlays"],
+      userId: "u",
+      email: "u@example.com",
+      deviceOK: true,
+    });
+
+    render(<HubApp />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("v0.1.0.7-nightly.8")).toHaveLength(2);
+      expect(screen.getByText("NIGHTLY")).toBeTruthy();
+    });
   });
 
   it("renders shell with banner when grace", () => {

@@ -52,4 +52,44 @@ describe("launcher store", () => {
     view.unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it("skips automatic discovery while lastScanAt is fresh, and honors force", () => {
+    let receiveSnapshot: ((value: LauncherSnapshot) => void) | undefined;
+    const bridge: LauncherBridgeLike = {
+      subscribeSnapshot: vi.fn((listener) => {
+        receiveSnapshot = listener;
+        return vi.fn();
+      }),
+      requestSnapshot: vi.fn(),
+      dispatchLauncherCommand: vi.fn(),
+    };
+    const store = createLauncherStore(bridge);
+    store.start();
+
+    const fresh = new Date(Date.now() - 60_000).toISOString();
+    act(() =>
+      receiveSnapshot?.({
+        ...snapshot,
+        discovery: { scanning: false, lastScanAt: fresh, error: null },
+      }),
+    );
+    store.discoverApps();
+    expect(bridge.dispatchLauncherCommand).not.toHaveBeenCalled();
+    store.discoverApps(true);
+    expect(bridge.dispatchLauncherCommand).toHaveBeenCalledWith(
+      "launcher:apps:discover",
+    );
+    store.stop();
+  });
+
+  it("discovers automatically when the last scan is stale or absent", () => {
+    const bridge: LauncherBridgeLike = {
+      subscribeSnapshot: vi.fn(() => vi.fn()),
+      requestSnapshot: vi.fn(),
+      dispatchLauncherCommand: vi.fn(),
+    };
+    const store = createLauncherStore(bridge);
+    store.discoverApps();
+    expect(bridge.dispatchLauncherCommand).toHaveBeenCalledTimes(1);
+  });
 });

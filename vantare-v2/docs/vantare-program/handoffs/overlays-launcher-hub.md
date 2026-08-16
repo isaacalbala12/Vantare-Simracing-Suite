@@ -10,6 +10,61 @@
 
 ## Estado
 
+- ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
+  el relevo
+  `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`
+  hasta recibir la proyección de la nueva revisión, sin publicar el frame
+  `disconnected` intermedio. Arranque sin datos, estados reales de conexión o
+  parada y proyecciones bloqueadas mantienen el cierre seguro. TDD RED/GREEN,
+  focal 4/4, frontend 375 archivos/2736 tests, build, ESLint focal y diff-check
+  PASS; el lint global conserva 49 errores y 2 warnings heredados fuera del
+  cambio. La rama se sincronizó con `origin/nightly@028c7512`; implementación
+  aprobada `ae313e2e`, head final `ac46c3c3` y CI final del PR #260
+  `31896118568` en verde. Tras autorización expresa de Isaac, el PR #260 se
+  integró por squash en `nightly@7341e8cd`. El gate posterior `31896647826` y
+  el roadmap `31896647803` pasaron sobre ese SHA. ISA-367 registra la
+  promoción; sin paso a `testers`/`master` ni release.
+- ISA-364 está promovida a `nightly` y corrige el listado vacío de
+  `Mis perfiles`: los documentos guardados como V3 puro se listan mediante el
+  migrador canónico, mientras el
+  camino V0/V2 conserva su compatibilidad. El servicio no modifica perfiles ni
+  incluye JSON de ajustes o inválidos. TDD RED confirmado; focales de listado
+  y paquete `internal/app` PASS. Gates finales: `go test ./...`, frontend
+  375/2734, build, `go vet ./internal/app`, fragmento y diff-check PASS; los
+  `AbortError` de teardown frontend permanecen heredados y el proceso termina
+  con exit 0. El CI final del PR #261, run `31894030661`, pasó topología,
+  gates bloqueantes, build Wails y pasos informativos sobre `03a0205b`. La
+  rama partió de `origin/nightly@3eb5dd7b`; implementación `f753c172` y merge
+  squash del PR #261 en `nightly@22946e6f`, autorizada expresamente por Isaac.
+  El gate posterior `31894845365` y el roadmap `31894845385` pasaron sobre el
+  SHA integrado. ISA-366 registra la promoción; sin paso a `testers`/`master`
+  ni release.
+- Hub / ISA-358 está promovida a `nightly` mediante PR #245 y squash
+  `2909ba73d907eee993fcdec866829973b1bb1474`: la versión/canal del hero procede del runtime, el
+  calendario comparte un único estado y no pierde respuestas inmediatas, el
+  carrusel usa el snapshot público generado desde Linear con procedencia
+  visible y Novedades usa los manifiestos canónicos de release auto-descubiertos.
+  Focales 46/46, suite frontend 371/2681, build, lint focal propio y diff-check
+  pasan. El preview T3 abrió el servidor correcto pero no pudo producir
+  snapshot ni evaluación; queda pendiente la comprobación visual manual. Los
+  gates del PR, el gate posterior de Nightly `31817001802` y la regeneración
+  del snapshot público `31817001849` pasaron. No hubo promoción a
+  `testers`/`master` ni release.
+- ISA-357 corrige localmente la batalla animada de Standings Redline: solo
+  carrera, una pareja máxima y prioridad por cercanía a la fila del jugador,
+  con desempate por intervalo y orden estable. El relevo entre parejas tampoco
+  solapa una disolución anterior con la nueva caja. El code review corrigió la
+  transición carrera→clasificación, la ausencia de la fila del jugador y la
+  frescura de una secuencia rápida A→B→A. TDD focal 21/21, frontend 370
+  archivos/2679 tests, build, ESLint focal, design-system 3/3, fragmento y
+  diff-check PASS. Persisten dos `AbortError` heredados de teardown con exit 0.
+  El Workshop respondió con Vite, pero snapshot y evaluación DOM de T3
+  fallaron/agotaron timeout; el servidor temporal quedó cerrado y la inspección
+  visual manual continúa pendiente.
+  Rama aislada desde `origin/nightly@673283a2`, sincronizada finalmente con
+  `nightly@2909ba73` en `a389f8d0`; implementación `71d6b360` y fix de review
+  `cf83021a`. La PR #243 se integró por squash en `nightly@fe04a0af`; gates de
+  PR y posteriores al merge PASS. Sin promoción a `testers`/`master` ni release.
 - ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
   Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,
@@ -39,7 +94,8 @@
   separados de raíz, Billing, artefactos y aprobación; no está autorizada por
   este handoff.
 - Launcher: ISA-9 fue validada históricamente; integración real por auditar.
-- Hub: sin issue activa.
+- Hub: ISA-358 integrada en Nightly; ISA-360 registra la promoción y su
+  evidencia exacta.
 - Base documental ISA-315 rebasada: `nightly@54f267b`.
 - PR #198 está autorizado para promoción a `nightly`; `testers`, `master`,
   venta y release permanecen fuera del alcance. Las integraciones en `develop`

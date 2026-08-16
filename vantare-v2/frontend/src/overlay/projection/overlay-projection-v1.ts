@@ -44,6 +44,9 @@ export type OverlayProjectionAbsentField = Readonly<{
   freshness: "missing";
 }>;
 
+/** Vehicle position on the track plane, in centimetres of world space. */
+export type OverlayGroundPositionV1 = Readonly<{ xCm: number; zCm: number }>;
+
 export type OverlayProjectionField<T> =
   | OverlayProjectionPresentField<T>
   | OverlayProjectionAbsentField;
@@ -78,6 +81,7 @@ export type OverlayVehicleV1 = Readonly<{
   fuelCapacityLiters: OverlayProjectionField<number>;
   relativeTimeGapSeconds: OverlayProjectionField<number>;
   relativeLapDelta: OverlayProjectionField<number>;
+  groundPositionCm: OverlayProjectionField<OverlayGroundPositionV1>;
 }>;
 
 export type OverlayControlSampleV1 = Readonly<{
@@ -402,6 +406,12 @@ function decodeVehicles(value: unknown): OverlayVehicleV1[] {
         requireSafeInteger,
         0,
       ),
+      groundPositionCm: decodeOptionalField(
+        object,
+        "groundPositionCm",
+        requireGroundPosition,
+        { xCm: 0, zCm: 0 },
+      ),
     };
   });
 }
@@ -615,6 +625,15 @@ function requireBoolean(value: unknown): boolean {
     invalid();
   }
   return value;
+}
+
+function requireGroundPosition(value: unknown): OverlayGroundPositionV1 {
+  const object = requireObject(value);
+  requireKeys(object, ["xCm", "zCm"]);
+  return {
+    xCm: requireSafeInteger(object.xCm),
+    zCm: requireSafeInteger(object.zCm),
+  };
 }
 
 function requireSafeInteger(value: unknown): number {

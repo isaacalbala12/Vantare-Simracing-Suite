@@ -3,8 +3,10 @@ import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import {
   buildTrackOutlinePath,
   createTrackProjection,
+  projectTrackPoint,
   resolveTrackGeometry,
   type TrackGeometry,
+  type TrackProjection,
   type TrackViewport,
 } from "../../track-geometry/track-geometry";
 import { REFERENCE_LOOP_ID, TRACK_GEOMETRY_PACK } from "../../track-geometry/track-geometry-pack";
@@ -20,6 +22,13 @@ import type { TrackMapContent } from "./track-map-content";
  */
 export type TrackMapUnavailableReason = "no-telemetry" | "unknown-track";
 
+export type TrackMapMarker = Readonly<{
+  id: string;
+  x: number;
+  y: number;
+  isPlayer: boolean;
+}>;
+
 export type TrackMapViewModel = WidgetViewModelBase & {
   type: "track-map";
   outlinePath?: string;
@@ -29,6 +38,7 @@ export type TrackMapViewModel = WidgetViewModelBase & {
   unavailableReason?: TrackMapUnavailableReason;
   viewBox: string;
   showTrackLabel: boolean;
+  markers: readonly TrackMapMarker[];
 };
 
 export const TRACK_MAP_VIEWPORT: TrackViewport = { width: 320, height: 220, padding: 12 };
@@ -96,6 +106,7 @@ function draw(
     synthetic: geometry.synthetic,
     viewBox: VIEW_BOX,
     showTrackLabel: content.showTrackLabel,
+    markers: buildMarkers(snapshot, projection),
   };
 }
 
@@ -112,5 +123,37 @@ function unavailable(
     unavailableReason: reason,
     viewBox: VIEW_BOX,
     showTrackLabel: content.showTrackLabel,
+    markers: [],
   };
+}
+
+/**
+ * Places every vehicle whose position survived the adapter.
+ *
+ * The markers reuse the transform that drew the outline rather than computing
+ * their own, so a car can never appear off a track that was scaled differently.
+ * A vehicle without a usable position is left out entirely: the adapter only
+ * emits these fields when the driver vouched for the reading, so an absent
+ * position means we do not know where the car is, not that it is at the origin.
+ */
+function buildMarkers(
+  snapshot: TelemetrySnapshot,
+  projection: TrackProjection,
+): readonly TrackMapMarker[] {
+  const markers: TrackMapMarker[] = [];
+  for (const row of snapshot.scoring) {
+    const x = row.groundPositionXMeters;
+    const z = row.groundPositionZMeters;
+    if (typeof x !== "number" || typeof z !== "number") {
+      continue;
+    }
+    const projected = projectTrackPoint({ x, z }, projection);
+    markers.push({
+      id: typeof row.id === "string" ? row.id : `row-${markers.length}`,
+      x: projected.x,
+      y: projected.y,
+      isPlayer: row.isPlayer === true,
+    });
+  }
+  return markers;
 }

@@ -1,20 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import { REFERENCE_LOOP_ID, TRACK_GEOMETRY_PACK } from "../../track-geometry/track-geometry-pack";
+import { createTrackProjection, projectTrackPoint } from "../../track-geometry/track-geometry";
 import { createDefaultTrackMapContent, parseTrackMapContent } from "./track-map-content";
 import { trackMapDefinition } from "./track-map-definition";
-import { buildTrackMapPreviewViewModel, buildTrackMapViewModel } from "./track-map-view-model";
+import {
+  buildTrackMapPreviewViewModel,
+  buildTrackMapViewModel,
+  TRACK_MAP_VIEWPORT,
+} from "./track-map-view-model";
 
 function snapshot(overrides: {
   status?: TelemetrySnapshot["status"];
   trackName?: string;
+  scoring?: readonly Record<string, unknown>[];
 }): TelemetrySnapshot {
   return {
     status: overrides.status ?? "ready",
     capturedAt: 0,
     session: { type: "race", trackName: overrides.trackName },
     player: { inPit: false },
-    scoring: [],
+    scoring: overrides.scoring ?? [],
   };
 }
 
@@ -34,7 +40,7 @@ describe("buildTrackMapViewModel", () => {
   });
 
   it("reports an unknown track rather than drawing something close enough", () => {
-    for (const trackName of ["Circuit de Barcelona", "Le Mans", "", undefined]) {
+    for (const trackName of ["Suzuka", "Circuit de Barcelona GP", "", undefined]) {
       const model = buildTrackMapViewModel(snapshot({ trackName }), content);
       expect(model.unavailableReason).toBe("unknown-track");
       expect(model.outlinePath).toBeUndefined();
@@ -73,7 +79,7 @@ describe("buildTrackMapViewModel", () => {
 describe("buildTrackMapPreviewViewModel", () => {
   it("falls back to the reference loop so authoring has something to lay out", () => {
     const model = buildTrackMapPreviewViewModel(
-      snapshot({ status: "missing", trackName: "Circuit de Barcelona" }),
+      snapshot({ status: "missing", trackName: "Suzuka" }),
       content,
     );
 
@@ -112,5 +118,49 @@ describe("track-map definition", () => {
     expect(instance.layout.w).toBe(trackMapDefinition.capabilities.defaultSize.width);
     expect(instance.layout.h).toBe(trackMapDefinition.capabilities.defaultSize.height);
     expect(trackMapDefinition.parseContent(instance.content)).toEqual(content);
+  });
+});
+
+describe("track map markers", () => {
+  const grid = [
+    { id: "car-1", isPlayer: true, groundPositionXMeters: 0, groundPositionZMeters: 0 },
+    { id: "car-2", groundPositionXMeters: 200, groundPositionZMeters: -150 },
+    { id: "car-3" },
+    { id: "car-4", groundPositionXMeters: 10 },
+  ];
+
+  it("places only the vehicles whose position survived the adapter", () => {
+    const model = buildTrackMapViewModel(
+      snapshot({ trackName: referenceLabel, scoring: grid }),
+      content,
+    );
+
+    expect(model.markers.map((marker) => marker.id)).toEqual(["car-1", "car-2"]);
+    expect(model.markers[0].isPlayer).toBe(true);
+    expect(model.markers[1].isPlayer).toBe(false);
+  });
+
+  it("places markers with the transform that drew the outline", () => {
+    const model = buildTrackMapViewModel(
+      snapshot({ trackName: referenceLabel, scoring: grid }),
+      content,
+    );
+    const geometry = TRACK_GEOMETRY_PACK.find((entry) => entry.id === REFERENCE_LOOP_ID)!;
+    const projection = createTrackProjection(geometry.points, TRACK_MAP_VIEWPORT)!;
+
+    expect(model.markers[0]).toMatchObject(projectTrackPoint({ x: 0, z: 0 }, projection));
+    expect(model.markers[1]).toMatchObject(projectTrackPoint({ x: 200, z: -150 }, projection));
+  });
+
+  it("has no markers when there is no outline to place them on", () => {
+    expect(
+      buildTrackMapViewModel(snapshot({ trackName: "Suzuka", scoring: grid }), content).markers,
+    ).toEqual([]);
+    expect(
+      buildTrackMapViewModel(
+        snapshot({ status: "missing", trackName: referenceLabel, scoring: grid }),
+        content,
+      ).markers,
+    ).toEqual([]);
   });
 });

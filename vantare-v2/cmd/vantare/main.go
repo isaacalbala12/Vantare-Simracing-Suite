@@ -2256,8 +2256,8 @@ func main() {
 		handleOverlayProfileSnapshotRequest(studioProfileSvc)
 	})
 
-	wailsApp.Event.On("overlay:toggle-edit-mode", func(event *application.CustomEvent) {
-		handleOpenOverlayStudio(studioProfileSvc, emitter)
+	wailsApp.Event.On("overlay:toggle-edit-mode", func(_ *application.CustomEvent) {
+		handleToggleEditMode(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter)
 	})
 
 	wailsApp.Event.On("profile:set-mode", func(event *application.CustomEvent) {
@@ -3009,6 +3009,61 @@ func refreshActiveOverlayAfterSave(
 	resetOverlayDisplayMode(overlayController, studioProfileSvc)
 }
 
+// handleToggleEditMode toggles the running desktop overlay between racing and
+// edit display mode. When the overlay is not running, it opens the active
+// profile and enters edit mode directly. Streaming (no desktop window) is a
+// no-op: there is no in-place surface to edit.
+func handleToggleEditMode(
+	hubSvc *app.HubService,
+	studioProfileSvc *app.StudioProfileService,
+	overlayController *app.OverlayController,
+	overlayRunning *atomic.Bool,
+	emitter app.EventEmitter,
+) {
+	if studioProfileSvc == nil {
+		return
+	}
+	if !overlayRunning.Load() {
+		if hubSvc == nil {
+			return
+		}
+		status, err := hubSvc.StartActiveOverlay()
+		if err != nil || !status.Running {
+			if overlayRunning != nil {
+				overlayRunning.Store(false)
+			}
+			if err != nil {
+				log.Printf("hotkey toggle edit mode open overlay error: %v", err)
+			}
+			return
+		}
+		overlayRunning.Store(true)
+	}
+	document := studioProfileSvc.Document()
+	if document == nil {
+		return
+	}
+	target := config.ModeEdit
+	if document.DisplayMode == config.ModeEdit {
+		target = config.ModeRacing
+	}
+	if err := studioProfileSvc.SetDisplayMode(target); err != nil {
+		log.Printf("hotkey toggle edit mode error: %v", err)
+		return
+	}
+	if overlayController != nil {
+		if current := overlayController.CurrentWindow(); current != nil {
+			if err := current.ApplyProfileMode(studioProfileSvc.Document()); err != nil {
+				log.Printf("hotkey toggle edit mode apply window error: %v", err)
+			}
+		}
+	}
+	studioProfileSvc.EmitRuntimeLoaded()
+	if emitter != nil {
+		emitter.Emit("overlay:edit-mode-changed", map[string]any{"mode": string(target)})
+	}
+}
+
 // handleOpenOverlayStudio requests Hub navigation to Overlay Studio for the
 // active profile. Runtime editing chrome is never toggled from the hotkey.
 func handleOpenOverlayStudio(studioProfileSvc *app.StudioProfileService, emitter app.EventEmitter) {
@@ -3155,7 +3210,7 @@ func buildHotkeyActionMap(
 			}
 		},
 		"toggleEditMode": func() {
-			handleOpenOverlayStudio(studioProfileSvc, emitter)
+			handleToggleEditMode(hubSvc, studioProfileSvc, overlayController, overlayRunning, emitter)
 		},
 	}
 }

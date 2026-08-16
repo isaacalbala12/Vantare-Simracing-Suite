@@ -787,15 +787,147 @@ func TestRefreshActiveOverlayAfterSaveSkipsDifferentProfile(t *testing.T) {
 	}
 }
 
-func TestBuildHotkeyActionMapToggleEditModeOpensStudio(t *testing.T) {
+func TestHandleToggleEditModeEntersEditOnRunningOverlay(t *testing.T) {
 	emitter := &spyMainEmitter{}
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
 	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
-	actionMap := buildHotkeyActionMap(nil, studioSvc, nil, nil, emitter)
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
+		t.Fatalf("start overlay: %v", err)
+	}
+	var overlayRunning atomic.Bool
+	overlayRunning.Store(true)
 
+	handleToggleEditMode(nil, studioSvc, controller, &overlayRunning, emitter)
+
+	if studioSvc.Document().DisplayMode != config.ModeEdit {
+		t.Fatalf("mode=%q want edit", studioSvc.Document().DisplayMode)
+	}
+	if factory.last == nil || len(factory.last.appliedModes) == 0 || factory.last.appliedModes[len(factory.last.appliedModes)-1] != config.ModeEdit {
+		t.Fatalf("window modes=%v want trailing ModeEdit", factory.last.appliedModes)
+	}
+	found := false
+	for i, event := range emitter.events {
+		if event != "overlay:edit-mode-changed" {
+			continue
+		}
+		found = true
+		payload := emitter.data[i].(map[string]any)
+		if payload["mode"] != "edit" {
+			t.Fatalf("edit-mode-changed payload=%v want mode edit", payload)
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want overlay:edit-mode-changed", emitter.events)
+	}
+}
+
+func TestHandleToggleEditModeExitsToRacing(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	studioSvc := newTestStudioProfileService(t, config.ModeEdit, emitter)
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
+		t.Fatalf("start overlay: %v", err)
+	}
+	var overlayRunning atomic.Bool
+	overlayRunning.Store(true)
+
+	handleToggleEditMode(nil, studioSvc, controller, &overlayRunning, emitter)
+
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("mode=%q want racing", studioSvc.Document().DisplayMode)
+	}
+	if factory.last == nil || len(factory.last.appliedModes) == 0 || factory.last.appliedModes[len(factory.last.appliedModes)-1] != config.ModeRacing {
+		t.Fatalf("window modes=%v want trailing ModeRacing", factory.last.appliedModes)
+	}
+}
+
+func TestHandleToggleEditModeOpensOverlayWhenNotRunning(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	hubSvc := app.NewHubService(t.TempDir(), nil, emitter, controller)
+	hubSvc.SetStudioProfileService(studioSvc)
+	var overlayRunning atomic.Bool
+
+	handleToggleEditMode(hubSvc, studioSvc, controller, &overlayRunning, emitter)
+
+	if !overlayRunning.Load() {
+		t.Fatal("overlayRunning should be true after opening")
+	}
+	if studioSvc.Document().DisplayMode != config.ModeEdit {
+		t.Fatalf("mode=%q want edit after opening overlay", studioSvc.Document().DisplayMode)
+	}
+	if factory.created != 1 {
+		t.Fatalf("created=%d want 1", factory.created)
+	}
+	found := false
+	for _, event := range emitter.events {
+		if event == "overlay:edit-mode-changed" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("events=%v want overlay:edit-mode-changed", emitter.events)
+	}
+}
+
+func TestHandleToggleEditModeNoopWithoutDesktopWindow(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	runtime := &fakeOverlayRuntime{err: errors.New("no desktop window in streaming")}
+	hubSvc := app.NewHubService(t.TempDir(), nil, emitter, runtime)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	hubSvc.SetStudioProfileService(studioSvc)
+	var overlayRunning atomic.Bool
+
+	handleToggleEditMode(hubSvc, studioSvc, nil, &overlayRunning, emitter)
+
+	if studioSvc.Document().DisplayMode != config.ModeRacing {
+		t.Fatalf("mode=%q want racing (no-op)", studioSvc.Document().DisplayMode)
+	}
+	if overlayRunning.Load() {
+		t.Fatal("overlayRunning should stay false when no desktop window")
+	}
+	for _, event := range emitter.events {
+		if event == "overlay:edit-mode-changed" {
+			t.Fatalf("events=%v must not emit edit-mode-changed", emitter.events)
+		}
+	}
+}
+
+func TestHandleToggleEditModeStoresRunningOnStartFailure(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	runtime := &fakeOverlayRuntime{err: errors.New("start failed")}
+	hubSvc := app.NewHubService(t.TempDir(), nil, emitter, runtime)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	hubSvc.SetStudioProfileService(studioSvc)
+	var overlayRunning atomic.Bool
+
+	handleToggleEditMode(hubSvc, studioSvc, nil, &overlayRunning, emitter)
+
+	if overlayRunning.Load() {
+		t.Fatal("overlayRunning must be false after start failure")
+	}
+}
+
+func TestBuildHotkeyActionMapToggleEditModeEntersEditWhenRunning(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	studioSvc := newTestStudioProfileService(t, config.ModeRacing, emitter)
+	if _, err := controller.Start(studioSvc.Document()); err != nil {
+		t.Fatalf("start overlay: %v", err)
+	}
+	var overlayRunning atomic.Bool
+	overlayRunning.Store(true)
+
+	actionMap := buildHotkeyActionMap(nil, studioSvc, controller, &overlayRunning, emitter)
 	actionMap["toggleEditMode"]()
 
-	if len(emitter.events) != 1 || emitter.events[0] != "hub:open-overlay-studio" {
-		t.Fatalf("events=%v", emitter.events)
+	if studioSvc.Document().DisplayMode != config.ModeEdit {
+		t.Fatalf("mode=%q want edit", studioSvc.Document().DisplayMode)
 	}
 }
 

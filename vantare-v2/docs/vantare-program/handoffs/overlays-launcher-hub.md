@@ -10,6 +10,18 @@
 
 ## Estado
 
+- **Edit mode in-place del overlay (2026-08-16, rama sin promoción):** la hotkey
+  `Ctrl+Shift+E` (`toggleEditMode`) ya no abre Overlay Studio en el Hub: alterna
+  el overlay desktop entre racing y un modo edición de layout in-place
+  (seleccionar/mover/redimensionar con snap y autosave). Rama
+  `vantareapp/overlay-inplace-edit-hotkey` sobre `origin/nightly@2d5ec944`; spec
+  `docs/superpowers/specs/2026-08-16-overlay-inplace-edit-hotkey-design.md` y
+  plan `docs/superpowers/plans/2026-08-16-overlay-inplace-edit-hotkey.md`.
+  Gates locales PASS (Go completo, frontend 378/2761, build, lint focal). Sin
+  push/PR/promoción; sin issue de Linear por decisión de Isaac. Siguiente:
+  revisión de Isaac, luego push + PR draft hacia `nightly` (autorización
+  pendiente).
+
 - ISA-363 está promovida a `nightly` y corrige el parpadeo de widgets durante
   el relevo
   `stale -> live`: Desktop y OBS conservan el último snapshot como `stale`

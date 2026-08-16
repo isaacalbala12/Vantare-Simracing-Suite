@@ -32,6 +32,17 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
           preserveAspectRatio="xMidYMid meet"
         >
           <path className="ven-tm-outline" d={model.outlinePath} />
+          {model.markers.map((marker) => (
+            <circle
+              key={marker.id}
+              className="ven-tm-car"
+              cx={marker.x}
+              cy={marker.y}
+              r={marker.isPlayer ? 5 : 3.5}
+              data-track-map-car={marker.id}
+              data-player={marker.isPlayer ? "true" : undefined}
+            />
+          ))}
         </svg>
       ) : (
         <div className="ven-tm-empty" data-track-map-empty>

@@ -478,11 +478,18 @@ function parseSessionLayout(
     );
   }
   const seen = new Set<string>();
+  let deltaSeen = false;
   for (const widget of widgets) {
     if (seen.has(widget.id)) {
       validationError(`${path}.widgets`, "duplicate widget id");
     }
     seen.add(widget.id);
+    if (widget.type === "delta") {
+      if (deltaSeen) {
+        validationError(`${path}.widgets`, "only one delta widget is allowed per layout");
+      }
+      deltaSeen = true;
+    }
   }
   for (const preserved of preservedWidgets ?? []) {
     if (seen.has(preserved.id)) {

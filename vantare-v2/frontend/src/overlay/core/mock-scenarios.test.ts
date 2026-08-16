@@ -16,6 +16,11 @@ describe("buildMockTelemetry", () => {
         expect(snapshot.player.deltaSeconds).toBe(-0.15);
         expect(snapshot.player.throttle).toBeCloseTo(0.78, 2);
         expect(snapshot.scoring.length).toBeGreaterThan(0);
+        expect(
+          snapshot.scoring.every(
+            (row) => typeof row.lapDistanceMeters === "number" && Number.isFinite(row.lapDistanceMeters),
+          ),
+        ).toBe(true);
       }
     }
   });

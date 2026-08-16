@@ -38,6 +38,14 @@ producción y no convierte campos legacy en autoridad canónica.
 No queda activo ningún gate histórico de D0-D5. El gate actual es la revisión
 independiente de D6 antes de continuar con D7.
 
+Nota vigente (2026-08-14): el contrato posterior admite `mDeltaBest` en el
+offset telemetry `+696` como `session.native_delta_best`. Los apartados D0-D7
+que lo enumeran como excluido describen la decisión histórica anterior a esta
+corrección y no el runtime actual. El parser exige finitud/rango, conserva signo
+y calidad. La proyección conserva además, como campos independientes, la mejor
+vuelta válida de sesión y la vuelta anterior reconstruidas por Vantare; ninguna
+referencia ausente se disfraza con el valor de otra.
+
 ## Evidencia real fijada
 
 | Fixture | Estado | Evidencia | SHA-256 |
@@ -93,7 +101,7 @@ de su objeto o stride y las ventanas admitidas de un mismo scope no se solapan.
 
 La API de layout no contiene accesores para los campos excluidos de este
 documento: fases/banderas, pit-state labels, remaining raw, temperaturas,
-`FuelFraction`, native `mDeltaBest`, equipo, número, compuesto, Virtual Energy,
+`FuelFraction`, equipo, número, compuesto, Virtual Energy,
 daños o weather. Conocer que ciertos bytes existen no los vuelve admisibles.
 
 D4A consume este contrato sin ampliar la allowlist productiva. La versión
@@ -216,7 +224,6 @@ dato observado:
 - `mGamePhase`, yellow/sector/vehicle flags y pit-state labels;
 - `mSessionTimeRemaining`;
 - `mFuelFraction`;
-- native `mDeltaBest`.
 
 La temperatura ambiente/pista, aunque existe en código legacy, tampoco entra
 en D3–D7 porque el corte no dispone de procedencia LMU admitida completa para

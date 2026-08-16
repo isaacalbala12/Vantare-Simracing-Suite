@@ -83,6 +83,7 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Telemetry.Clutch, scopeTelemetryRow, 444, sourceFloat64, 1},
 		{lmu13Layout.Telemetry.FuelLiters, scopeTelemetryRow, 524, sourceFloat64, 1},
 		{lmu13Layout.Telemetry.FuelCapacityLiters, scopeTelemetryRow, 608, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.DeltaBest, scopeTelemetryRow, 696, sourceFloat64, 1},
 	}
 
 	if lmu13Layout.Version != "1.3.0.0" || lmu13Layout.ObjectSize != 324820 {
@@ -220,7 +221,6 @@ func TestLMU13LayoutAdmittedWindowsDoNotOverlapKnownExcludedWindows(t *testing.T
 		{Name: "scoring.vehicle_flag", Scope: scopeScoringRow, Offset: 504, Type: sourceUint8, Count: 1},
 		{Name: "scoring.fuel_fraction", Scope: scopeScoringRow, Offset: 578, Type: sourceUint8, Count: 1},
 		{Name: "telemetry.filtered_steering", Scope: scopeTelemetryRow, Offset: 436, Type: sourceFloat64, Count: 1},
-		{Name: "telemetry.delta_best", Scope: scopeTelemetryRow, Offset: 696, Type: sourceFloat64, Count: 1},
 	}
 	for _, admitted := range lmu13Layout.admittedFields() {
 		for _, blocked := range excluded {
@@ -267,7 +267,6 @@ func TestLMU13LayoutAdmitsNoExcludedFields(t *testing.T) {
 		"scoring.pit_state",
 		"scoring.vehicle_flag",
 		"scoring.fuel_fraction",
-		"telemetry.delta_best",
 		"vehicle.team",
 		"vehicle.car_number",
 		"vehicle.tyre_compound",
@@ -279,6 +278,19 @@ func TestLMU13LayoutAdmitsNoExcludedFields(t *testing.T) {
 			t.Fatalf("excluded field %q is admitted by LMU 1.3 layout", excluded)
 		}
 	}
+}
+
+func TestLMU13LayoutAdmitsNativePlayerDeltaBest(t *testing.T) {
+	for _, field := range lmu13Layout.admittedFields() {
+		if field.Name != "telemetry.delta_best" {
+			continue
+		}
+		if field.Scope != scopeTelemetryRow || field.Offset != 696 || field.Type != sourceFloat64 || field.Count != 1 {
+			t.Fatalf("delta best layout = %+v", field)
+		}
+		return
+	}
+	t.Fatal("native telemetry.delta_best is not admitted")
 }
 
 func readPinnedLMU13Fixture(t *testing.T, name, wantHash string) []byte {

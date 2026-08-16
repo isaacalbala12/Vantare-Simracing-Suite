@@ -29,21 +29,28 @@ type LauncherSettingsBackend interface {
 	SetLauncherProfiles([]app.LaunchProfile) error
 }
 
+// defaultChainCleanupDelay keeps a finished chain visible in snapshots for a
+// short window (so the UI can show the outcome) and then drops it, so
+// ActiveChains never grows without bound across a session.
+const defaultChainCleanupDelay = 30 * time.Second
+
 // Service is the launcher orchestrator. It owns the ChainRunner and delegates
 // every other operation to the package-level helpers in apps.go / profiles.go
 // / discovery.go. It is safe to use from multiple goroutines because the only
 // shared mutable state is wrapped by ChainRunner (its own mutex) and every
 // LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings       LauncherSettingsBackend
-	emit           Emitter
-	chain          *ChainRunner
-	revision       atomic.Uint64
-	activeMu       sync.Mutex
-	active         map[string]LauncherActiveChain
-	discoveryMu    sync.RWMutex
-	discovery      LauncherDiscovery
-	discoveryRunMu sync.Mutex
+	settings           LauncherSettingsBackend
+	emit               Emitter
+	chain              *ChainRunner
+	revision           atomic.Uint64
+	activeMu           sync.Mutex
+	active             map[string]LauncherActiveChain
+	chainCleanupDelay  time.Duration
+	chainCleanupTimers map[string]*time.Timer
+	discoveryMu        sync.RWMutex
+	discovery          LauncherDiscovery
+	discoveryRunMu     sync.Mutex
 }
 
 type serviceEmitter struct {
@@ -68,10 +75,12 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		execFn = defaultExecLauncher
 	}
 	s := &Service{
-		settings:  settings,
-		emit:      emit,
-		active:    make(map[string]LauncherActiveChain),
-		discovery: LauncherDiscovery{},
+		settings:           settings,
+		emit:               emit,
+		active:             make(map[string]LauncherActiveChain),
+		discovery:          LauncherDiscovery{},
+		chainCleanupDelay:  defaultChainCleanupDelay,
+		chainCleanupTimers: make(map[string]*time.Timer),
 	}
 	s.chain = NewChainRunner(s.settings, serviceEmitter{service: s, downstream: emit}, execFn)
 	return s
@@ -82,21 +91,24 @@ func (s *Service) recordChainEvent(name string, data any) {
 	if !ok {
 		return
 	}
+	terminal := false
 	s.activeMu.Lock()
-	defer s.activeMu.Unlock()
 	chain := s.active[progress.ProfileID]
 	if chain.ProfileID == "" {
 		chain = LauncherActiveChain{ProfileID: progress.ProfileID, Status: "running", StartedAt: time.UnixMilli(progress.StartedAt)}
 	}
-	if name == "launcher:chain:done" {
+	switch name {
+	case "launcher:chain:done":
+		terminal = true
 		if progress.Success {
 			chain.Status = "done"
 		} else {
 			chain.Status = "failed"
 		}
-	} else if name == "launcher:chain:error" {
+	case "launcher:chain:error":
+		terminal = true
 		chain.Status = "failed"
-	} else {
+	default:
 		chain.Status = progress.Status
 		for len(chain.Steps) <= progress.StepIndex {
 			chain.Steps = append(chain.Steps, LauncherActiveStep{})
@@ -104,6 +116,43 @@ func (s *Service) recordChainEvent(name string, data any) {
 		chain.Steps[progress.StepIndex] = LauncherActiveStep{AppID: progress.AppID, Status: progress.Status, PID: progress.Pid, Message: progress.Message}
 	}
 	s.active[progress.ProfileID] = chain
+	s.activeMu.Unlock()
+	if terminal {
+		s.scheduleChainCleanup(progress.ProfileID)
+	}
+}
+
+// scheduleChainCleanup drops a terminal chain from snapshots after
+// chainCleanupDelay. A new chain for the same profile cancels the pending
+// timer, and the status guard means a timer that fires during a relaunch
+// leaves the running chain untouched.
+func (s *Service) scheduleChainCleanup(profileID string) {
+	s.activeMu.Lock()
+	if timer, ok := s.chainCleanupTimers[profileID]; ok {
+		timer.Stop()
+		delete(s.chainCleanupTimers, profileID)
+	}
+	s.chainCleanupTimers[profileID] = time.AfterFunc(s.chainCleanupDelay, func() {
+		s.activeMu.Lock()
+		chain, ok := s.active[profileID]
+		if !ok || !isTerminalChainStatus(chain.Status) {
+			s.activeMu.Unlock()
+			return
+		}
+		delete(s.active, profileID)
+		delete(s.chainCleanupTimers, profileID)
+		s.activeMu.Unlock()
+		s.emit.Emit("launcher:snapshot", s.Snapshot())
+	})
+	s.activeMu.Unlock()
+}
+
+func isTerminalChainStatus(status string) bool {
+	switch status {
+	case "done", "failed", "stopped", "error":
+		return true
+	}
+	return false
 }
 
 // Settings returns the backend the orchestrator was constructed with. Handlers
@@ -214,14 +263,34 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 		appsList = append(appsList, v)
 	}
 	// Enrich each app entry with the icon data URI so the frontend displays it
-	// immediately, without a separate round-trip event.
+	// immediately, without a separate round-trip event. Extraction runs in
+	// parallel: each icon resolves COM work on its own locked thread, and the
+	// shortcut resolves serialize on lnkMu, so a bounded worker pool is safe.
 	s.emitDiscoveryProgress(75, DiscoveryResolvingIcons, true, nil)
+	const iconWorkers = 4
+	var (
+		wg        sync.WaitGroup
+		completed atomic.Int32
+	)
 	for i, a := range appsList {
-		appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
-		// Report per app: icon extraction is the longest phase, and a single
-		// emit at 75% left the bar parked there for its whole duration.
-		s.emitDiscoveryProgress(75+(25*(i+1))/len(appsList), DiscoveryResolvingIcons, true, nil)
+		wg.Add(1)
+		go func(i int, a app.LauncherAppEntry) {
+			defer wg.Done()
+			appsList[i].IconURL = GetAppIconForAppBase64(a.ID, a.ExecutablePath)
+			// Report per app: icon extraction is the longest phase, and a
+			// single emit at 75% left the bar parked there for its whole
+			// duration. The completed counter keeps progress monotonic even
+			// though apps finish out of order.
+			s.emitDiscoveryProgress(75+(25*int(completed.Add(1)))/len(appsList), DiscoveryResolvingIcons, true, nil)
+		}(i, a)
+		if (i+1)%iconWorkers == 0 {
+			wg.Wait()
+		}
 	}
+	wg.Wait()
+	// Persist the resolved icons and the shortcut index once, after the whole
+	// phase, so the next process session skips the COM pipeline entirely.
+	FlushIconDiskCache()
 	now := time.Now()
 	s.discoveryMu.Lock()
 	s.discovery = LauncherDiscovery{LastScanAt: &now}
@@ -302,6 +371,7 @@ func (s *Service) CancelChain(profileID string) bool {
 			s.active[profileID] = chain
 		}
 		s.activeMu.Unlock()
+		s.scheduleChainCleanup(profileID)
 		s.emit.Emit("launcher:snapshot", s.Snapshot())
 	}
 	return cancelled

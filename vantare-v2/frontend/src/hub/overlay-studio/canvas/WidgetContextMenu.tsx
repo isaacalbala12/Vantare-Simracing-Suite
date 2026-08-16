@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
-import { useDeleteWidgetConfirm } from "../components/DeleteWidgetConfirmProvider";
+import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
 import type { StudioCommand } from "../state/studio-command";
 import {
   executeWidgetAction,

@@ -121,6 +121,7 @@ type telemetryLayout struct {
 	Clutch             layoutField
 	FuelLiters         layoutField
 	FuelCapacityLiters layoutField
+	DeltaBest          layoutField
 }
 
 type layoutContract struct {
@@ -198,6 +199,7 @@ var lmu13Layout = layoutContract{
 		Clutch:             telemetryField("telemetry.clutch", 444, sourceFloat64, 1),
 		FuelLiters:         telemetryField("telemetry.fuel_liters", 524, sourceFloat64, 1),
 		FuelCapacityLiters: telemetryField("telemetry.fuel_capacity_liters", 608, sourceFloat64, 1),
+		DeltaBest:          telemetryField("telemetry.delta_best", 696, sourceFloat64, 1),
 	},
 }
 
@@ -243,5 +245,6 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Telemetry.Clutch,
 		layout.Telemetry.FuelLiters,
 		layout.Telemetry.FuelCapacityLiters,
+		layout.Telemetry.DeltaBest,
 	}
 }

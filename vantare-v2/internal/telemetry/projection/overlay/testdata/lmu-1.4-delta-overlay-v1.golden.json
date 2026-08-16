@@ -192,6 +192,15 @@
         "value": 0,
         "provenance": "unknown",
         "freshness": "missing"
+      },
+      "groundPositionCm": {
+        "present": false,
+        "value": {
+          "xCm": 0,
+          "zCm": 0
+        },
+        "provenance": "unknown",
+        "freshness": "missing"
       }
     }
   ],
@@ -220,6 +229,24 @@
     "freshness": "missing"
   },
   "playerDeltaSeconds": {
+    "present": true,
+    "value": -0.030563504,
+    "provenance": "derived",
+    "freshness": "fresh"
+  },
+  "playerDeltaPersonalBestSeconds": {
+    "present": false,
+    "value": 0,
+    "provenance": "unknown",
+    "freshness": "missing"
+  },
+  "playerDeltaSessionBestSeconds": {
+    "present": true,
+    "value": -0.030563504,
+    "provenance": "derived",
+    "freshness": "fresh"
+  },
+  "playerDeltaPreviousLapSeconds": {
     "present": true,
     "value": -0.030563504,
     "provenance": "derived",

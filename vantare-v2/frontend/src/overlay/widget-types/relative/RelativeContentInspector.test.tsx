@@ -15,15 +15,22 @@ describe("RelativeContentInspector", () => {
     render(<RelativeContentInspector widget={createWidget()} onContentChange={vi.fn()} />);
     expect(screen.getByTestId("studio-relative-filters")).toBeTruthy();
     expect(screen.getByTestId("studio-relative-columns")).toBeTruthy();
-    expect(screen.getByTestId("studio-relative-range-ahead")).toBeTruthy();
+    expect(screen.queryByTestId("studio-relative-range-ahead")).toBeNull();
+    expect(screen.queryByTestId("studio-relative-range-behind")).toBeNull();
+    expect(screen.queryByTestId("studio-relative-include-player")).toBeNull();
     expect(screen.getByTestId("studio-relative-column-position")).toBeTruthy();
   });
 
   it("dispatches one content change when a filter changes", () => {
     const onContentChange = vi.fn();
     render(<RelativeContentInspector widget={createWidget()} onContentChange={onContentChange} />);
-    fireEvent.change(screen.getByTestId("studio-relative-range-ahead"), { target: { value: "1" } });
+    fireEvent.change(screen.getByTestId("studio-relative-class-scope"), { target: { value: "sameClass" } });
     expect(onContentChange).toHaveBeenCalledTimes(1);
-    expect(onContentChange.mock.calls[0]?.[0]).toMatchObject({ rangeAhead: 1 });
+    expect(onContentChange.mock.calls[0]?.[0]).toMatchObject({
+      rangeAhead: 2,
+      rangeBehind: 2,
+      includePlayer: true,
+      classScope: "sameClass",
+    });
   });
 });

@@ -48,7 +48,7 @@ func ValidateProfileDocumentV3(p *ProfileDocumentV3) error {
 	if len(p.Name) > maxProfileNameLength {
 		return validationError("name", "exceeds maximum length")
 	}
-	if p.DefaultVisualSystemID != nil && !isSupportedDesignSystemID(*p.DefaultVisualSystemID) {
+	if p.DefaultVisualSystemID != nil && !IsSupportedDesignSystemID(*p.DefaultVisualSystemID) {
 		return validationError("defaultVisualSystemId", "unsupported design system")
 	}
 	if err := validateLayoutViewportV3(p.LayoutViewport); err != nil {
@@ -103,12 +103,19 @@ func validateSessionLayoutV3(prefix string, layout SessionLayoutV3, viewport Lay
 	}
 
 	seen := map[string]bool{}
+	deltaSeen := false
 	for i, widget := range layout.Widgets {
 		path := fmt.Sprintf("%s.widgets[%d]", prefix, i)
 		if seen[widget.ID] {
 			return validationError(prefix+".widgets", "duplicate widget id")
 		}
 		seen[widget.ID] = true
+		if widget.Type == WidgetTypeDelta {
+			if deltaSeen {
+				return validationError(prefix+".widgets", "only one delta widget is allowed per layout")
+			}
+			deltaSeen = true
+		}
 		if err := validateWidgetInstanceV3(path, widget, viewport); err != nil {
 			return err
 		}
@@ -203,7 +210,7 @@ func validateWidgetBehaviorV3(path string, behavior WidgetBehaviorV3) error {
 }
 
 func validateWidgetVisualV3(path string, visual WidgetVisualV3) error {
-	if !isSupportedDesignSystemID(visual.SystemID) {
+	if !IsSupportedDesignSystemID(visual.SystemID) {
 		return validationError(path+".systemId", "unsupported design system")
 	}
 	if err := validateWidgetVisualSelectionV3(path, WidgetVisualSelectionV3{
@@ -217,7 +224,7 @@ func validateWidgetVisualV3(path string, visual WidgetVisualV3) error {
 	}
 	for systemID, memory := range visual.SystemMemories {
 		memoryPath := path + ".systemMemories." + string(systemID)
-		if !isSupportedDesignSystemID(systemID) {
+		if !IsSupportedDesignSystemID(systemID) {
 			return validationError(memoryPath, "unsupported design system")
 		}
 		if err := validateWidgetVisualSelectionV3(memoryPath, memory); err != nil {
@@ -252,9 +259,10 @@ func validateWidgetVisualSelectionV3(path string, visual WidgetVisualSelectionV3
 	return nil
 }
 
-func isSupportedDesignSystemID(systemID DesignSystemID) bool {
+// IsSupportedDesignSystemID reports whether systemID belongs to the profile V3 contract.
+func IsSupportedDesignSystemID(systemID DesignSystemID) bool {
 	switch systemID {
-	case DesignSystemVantareOriginal, DesignSystemVantareCrystal:
+	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance:
 		return true
 	default:
 		return false

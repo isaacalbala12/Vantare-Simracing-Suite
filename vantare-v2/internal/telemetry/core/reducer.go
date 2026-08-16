@@ -65,6 +65,7 @@ type VehicleState struct {
 	TimeBehindNext   schema.Field[standings.TimeGap]
 	LapsBehindNext   schema.Field[standings.LapGap]
 	Fuel             schema.Field[energy.Fuel]
+	DeltaBest        schema.Field[session.DeltaSeconds]
 	WorldPosition    schema.Field[spatial.Position]
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]

@@ -8,6 +8,7 @@ import { statusRequestEventName } from "../telemetry-transport/contracts";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
+import { InPlaceEditOverlay } from "./edit/InPlaceEditOverlay";
 import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
@@ -23,6 +24,7 @@ export function CompositeApp() {
   const [document, setDocument] = useState<ProfileDocumentV3 | null>(null);
   const [revision, setRevision] = useState("");
   const [layoutOrigin, setLayoutOrigin] = useState({ x: 0, y: 0 });
+  const [editMode, setEditMode] = useState(false);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
@@ -76,6 +78,7 @@ export function CompositeApp() {
         setDocument(conformAspectLockedLayouts(parseProfileDocumentV3(data.document)));
         setRevision(data.revision ?? "");
         setLayoutOrigin(data.layoutOrigin ?? { x: 0, y: 0 });
+        setEditMode(data.windowMode === "edit");
       } catch (err) {
         console.error("overlay:profile-v3-loaded parse failed", err);
       }
@@ -85,6 +88,16 @@ export function CompositeApp() {
     // was broadcast. Subscribe first, then request the current snapshot so the
     // desktop runtime cannot remain stuck in its loading state.
     Events.Emit("overlay:profile-v3:get");
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsub = Events.On("overlay:edit-mode-changed", (event: { data: { mode?: string } }) => {
+      setEditMode(event.data?.mode === "edit");
+    });
 
     return () => {
       unsub?.();
@@ -113,14 +126,23 @@ export function CompositeApp() {
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
-      <DesktopOverlayRuntime
-        key={revision}
-        document={document}
-        revision={revision}
-        layoutOrigin={layoutOrigin}
-        telemetry={coordinator}
-        engineerPresentations={engineerPresentations}
-      />
+      {editMode ? (
+        <InPlaceEditOverlay
+          document={document}
+          revision={revision}
+          layoutOrigin={layoutOrigin}
+          telemetry={coordinator}
+        />
+      ) : (
+        <DesktopOverlayRuntime
+          key={revision}
+          document={document}
+          revision={revision}
+          layoutOrigin={layoutOrigin}
+          telemetry={coordinator}
+          engineerPresentations={engineerPresentations}
+        />
+      )}
       {reminder && (
         <OverlayCalendarReminderBanner
           reminder={reminder}

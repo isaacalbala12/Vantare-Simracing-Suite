@@ -204,6 +204,8 @@ function HubShell() {
       {visibleSection === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
+          version={version}
+          buildChannel={buildChannel}
         />
       )}
       {visibleSection === "profiles" && (

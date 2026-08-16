@@ -147,6 +147,7 @@ export const es: Record<string, string> = {
   "settings.status.saved": "Ajustes guardados.",
   "settings.hotkeys.change": "Cambiar",
   "settings.hotkeys.toggleOverlay": "Toggle overlay",
+  "settings.hotkeys.cycleDeltaReference": "Cambiar referencia Delta",
   "settings.hotkeys.nextProfile": "Siguiente perfil",
   "settings.hotkeys.prevProfile": "Perfil anterior",
   "settings.cpu.title": "Rendimiento",
@@ -221,6 +222,9 @@ export const es: Record<string, string> = {
   // Widget Studio - New keys (P1 review fixes)
 
   "studio.editMode": "Modo edición",
+  "overlay.editMode.chip": "EDIT MODE",
+  "overlay.editMode.hint": "Ctrl+Shift+E para salir - arrastra para mover, Alt desactiva el snap",
+  "overlay.editMode.saveError": "Guardado fallido - conflicto con el editor del Hub. Reabre el perfil para continuar.",
   "studio.addWidget": "+ Añadir widget",
 
   // Widget Config Sections

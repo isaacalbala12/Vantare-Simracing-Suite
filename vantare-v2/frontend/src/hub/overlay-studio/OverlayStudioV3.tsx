@@ -8,7 +8,7 @@ import { createWidgetDiagnosticCollector } from "../../overlay/core/widget-diagn
 import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
 import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
 import { StudioCanvas } from "./canvas/StudioCanvas";
-import { DeleteWidgetConfirmProvider } from "./components/DeleteWidgetConfirmProvider";
+import { StudioConfirmProvider } from "./components/StudioConfirmProvider";
 import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
 import { InspectorSlot } from "./components/InspectorSlot";
 import { RecoveryDialog } from "./components/RecoveryDialog";
@@ -253,7 +253,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
           </button>
         </div>
       ) : null}
-      <DeleteWidgetConfirmProvider>
+      <StudioConfirmProvider>
         <ResponsivePanelControls
           viewportWidth={viewportWidth}
           selectedWidgetId={selectedWidgetId}
@@ -269,7 +269,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
             </StudioTelemetryProvider>
           }
         />
-      </DeleteWidgetConfirmProvider>
+      </StudioConfirmProvider>
       <DirtyChangesDialog
         open={dirtyDialogOpen}
         saving={dirtySaving}

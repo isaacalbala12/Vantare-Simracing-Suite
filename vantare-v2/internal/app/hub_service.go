@@ -170,31 +170,60 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 		if readErr != nil {
 			continue
 		}
-		p, err := config.LoadFile(fullPath)
-		if err != nil {
+		legacyProfile, loadErr := config.LoadFile(fullPath)
+		if loadErr == nil && isListableProfile(legacyProfile) {
+			id := legacyProfile.ID
+			if id == "" {
+				id = strings.TrimSuffix(e.Name(), ".json")
+			}
+			entry := ProfileEntry{
+				ID:          id,
+				File:        e.Name(),
+				Name:        legacyProfile.Name,
+				DisplayMode: legacyProfile.DisplayMode,
+				Widgets:     len(legacyProfile.Widgets),
+				Profile:     legacyProfile,
+			}
+			if previewDoc, _, migrateErr := config.MigrateProfileJSONToV3(raw); migrateErr == nil {
+				entry.PreviewDocument = previewDoc
+			}
+			profiles = append(profiles, entry)
 			continue
 		}
-		if !isListableProfile(p) {
+
+		previewDoc, migratedFrom, migrateErr := config.MigrateProfileJSONToV3(raw)
+		if migrateErr != nil || migratedFrom != config.ProfileSchemaVersionV3 || !isListableProfileDocument(previewDoc) {
 			continue
 		}
-		id := p.ID
+
+		id := previewDoc.ID
 		if id == "" {
 			id = strings.TrimSuffix(e.Name(), ".json")
 		}
+		generalLayout := previewDoc.Layouts[config.LayoutGeneral]
 		entry := ProfileEntry{
-			ID:          id,
-			File:        e.Name(),
-			Name:        p.Name,
-			DisplayMode: p.DisplayMode,
-			Widgets:     len(p.Widgets),
-			Profile:     p,
-		}
-		if previewDoc, _, migErr := config.MigrateProfileJSONToV3(raw); migErr == nil {
-			entry.PreviewDocument = previewDoc
+			ID:              id,
+			File:            e.Name(),
+			Name:            previewDoc.Name,
+			DisplayMode:     previewDoc.DisplayMode,
+			Widgets:         len(generalLayout.Widgets),
+			PreviewDocument: previewDoc,
 		}
 		profiles = append(profiles, entry)
 	}
 	return profiles, nil
+}
+
+func isListableProfileDocument(p *config.ProfileDocumentV3) bool {
+	if p == nil || p.Layouts == nil {
+		return false
+	}
+	switch p.DisplayMode {
+	case config.ModeRacing, config.ModeEdit, config.ModeStreaming:
+		return true
+	default:
+		return false
+	}
 }
 
 func isListableProfile(p *config.ProfileConfig) bool {

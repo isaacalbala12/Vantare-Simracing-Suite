@@ -1,0 +1,588 @@
+name: Testing Center agent fix
+
+on:
+  repository_dispatch:
+    types: [testing-center-agent-fix]
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Local fixture name; never invokes a provider
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout pinned fixture tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install pinned Deno runtime
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+      - name: Validate the allowlisted local fixture contract
+        shell: bash
+        env:
+          FIXTURE: ${{ inputs.fixture }}
+        run: |
+          case "$FIXTURE" in
+            small-frontend-bug) ;;
+            *) echo "fixture_not_allowlisted" >&2; exit 1 ;;
+          esac
+          deno test --cached-only --no-lock --allow-read=.github/workflows,.github/agents,supabase/tests/testing-center-agent-workflow-contract.test.ts supabase/tests/testing-center-agent-workflow-contract.test.ts
+
+  production_disabled:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep production automation fail-closed
+        run: exit 1
+
+  red_agent:
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned RED tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Run isolated RED session
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          settings: .github/agents/testing-center-agent-settings.json
+          prompt: >-
+            Lee y cumple exclusivamente
+            .github/agents/testing-center-red-prompt.md.
+          display_report: false
+          show_full_output: false
+          track_progress: false
+          claude_args: >-
+            --model claude-sonnet-5
+            --effort high
+            --max-turns 20
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob,Edit,Write
+
+  red_gate:
+    needs: red_agent
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep RED gate fail-closed
+        run: exit 1
+
+  green_agent:
+    needs: red_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned GREEN tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Run isolated GREEN session
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          settings: .github/agents/testing-center-agent-settings.json
+          prompt: >-
+            Lee y cumple exclusivamente
+            .github/agents/testing-center-green-prompt.md.
+          display_report: false
+          show_full_output: false
+          track_progress: false
+          claude_args: >-
+            --model claude-sonnet-5
+            --effort high
+            --max-turns 20
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob,Edit,Write
+
+  green_gate:
+    needs: green_agent
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep GREEN gate fail-closed
+        run: exit 1
+
+  manifest_collector:
+    needs: green_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
+    outputs:
+      manifest_sha256: ${{ steps.build_manifest.outputs.manifest_sha256 }}
+      control_sha256: ${{ steps.control_digest.outputs.control_sha256 }}
+    steps:
+      - name: Checkout pinned trusted control ref without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download verify runner evidence under RUNNER_TEMP
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-verify-evidence
+          path: ${{ runner.temp }}/testing-center-evidence/
+      - name: Stage trusted control files
+        run: |
+          mkdir -p "$RUNNER_TEMP/testing-center-control"
+          cp .github/agents/testing-center-review-prompt.md "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-review-output.schema.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-review-settings.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-agent-settings.json "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-red-prompt.md "$RUNNER_TEMP/testing-center-control/"
+          cp .github/agents/testing-center-green-prompt.md "$RUNNER_TEMP/testing-center-control/"
+      - name: Bind trusted control contents
+        id: control_digest
+        run: |
+          CONTROL_SHA256="$(python .github/scripts/testing_center_manifest_collector.py control-sha256 --directory "$RUNNER_TEMP/testing-center-control")"
+          echo "control_sha256=$CONTROL_SHA256" >> "$GITHUB_OUTPUT"
+      - name: Build trusted manifest from verify runner bundle facts only
+        id: build_manifest
+        env:
+          RAW_GIT_FACTS: ${{ runner.temp }}/testing-center-evidence/raw-git-facts.json
+          DOSSIER: ${{ runner.temp }}/testing-center-evidence/dossier.json
+          COMMAND_RESULTS: ${{ runner.temp }}/testing-center-evidence/command-results.json
+        run: |
+          python .github/scripts/testing_center_manifest_collector.py build \
+            --raw-git-facts "$RAW_GIT_FACTS" \
+            --dossier "$DOSSIER" \
+            --command-results "$COMMAND_RESULTS" \
+            --output "$MANIFEST_PATH" > "$RUNNER_TEMP/testing-center-build.txt"
+          grep '^manifest_sha256=' "$RUNNER_TEMP/testing-center-build.txt" >> "$GITHUB_OUTPUT"
+      - name: Upload trusted manifest artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-trusted-manifest
+          path: ${{ runner.temp }}/testing-center/trusted-manifest.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload trusted control artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-trusted-control
+          path: ${{ runner.temp }}/testing-center-control/
+          if-no-files-found: error
+          retention-days: 1
+
+  diff_gate:
+    needs: manifest_collector
+    if: github.event_name == 'repository_dispatch' && needs.manifest_collector.result == 'success' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
+    outputs:
+      head_sha: ${{ steps.diff_outputs.outputs.head_sha }}
+      head_digest: ${{ steps.diff_outputs.outputs.head_digest }}
+      control_sha256: ${{ needs.manifest_collector.outputs.control_sha256 }}
+    steps:
+      - name: Checkout server-selected trusted control ref without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download trusted manifest under RUNNER_TEMP
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-trusted-manifest
+          path: ${{ runner.temp }}/testing-center/
+      - name: Verify manifest sha256 before gating
+        shell: bash
+        env:
+          EXPECTED_MANIFEST_SHA256: ${{ needs.manifest_collector.outputs.manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(python .github/scripts/testing_center_manifest_collector.py manifest-sha256 --manifest "$MANIFEST_PATH")"
+          if [ "$ACTUAL" != "$EXPECTED_MANIFEST_SHA256" ]; then
+            echo "manifest_sha256_mismatch" >&2
+            exit 1
+          fi
+      - name: Evaluate server-owned manifest without network
+        run: python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH" > "$RUNNER_TEMP/diff-decision.json"
+      - name: Export only validated immutable identity
+        id: diff_outputs
+        shell: bash
+        run: |
+          python -I - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          decision = json.loads(
+              Path(os.environ["RUNNER_TEMP"], "diff-decision.json").read_text()
+          )
+          manifest = json.loads(Path(os.environ["MANIFEST_PATH"]).read_text())
+          if (
+              not decision["approved"]
+              or decision["head_sha"] != manifest["git"]["head_sha"]
+              or manifest["expected"]["head_digest"]
+                  != manifest["phases"]["green"]["digest"]
+          ):
+              raise SystemExit(1)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"head_sha={decision['head_sha']}\n")
+              output.write(
+                  f"head_digest={manifest['expected']['head_digest']}\n"
+              )
+          PY
+      - name: Stage validated review input
+        run: |
+          mkdir -p "$RUNNER_TEMP/testing-center-review-input"
+          cp "$MANIFEST_PATH" "$RUNNER_TEMP/testing-center-review-input/validated-diff-manifest.json"
+          cp "$RUNNER_TEMP/diff-decision.json" "$RUNNER_TEMP/testing-center-review-input/diff-decision.json"
+      - name: Upload validated review input
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-validated-diff
+          path: ${{ runner.temp }}/testing-center-review-input/
+          if-no-files-found: error
+          retention-days: 1
+
+  review_opus:
+    needs: diff_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      structured_output: ${{ steps.opus_review.outputs.structured_output }}
+      expected_head_sha: ${{ needs.diff_gate.outputs.head_sha }}
+      expected_head_digest: ${{ needs.diff_gate.outputs.head_digest }}
+    steps:
+      - name: Checkout clean reviewed tree without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ needs.diff_gate.outputs.head_sha }}
+      - name: Checkout server-selected trusted verification scripts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          path: .trusted-control-scripts
+      - name: Download validated review input
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-validated-diff
+          path: ${{ runner.temp }}/testing-center-review-input/
+      - name: Download trusted control artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: testing-center-trusted-control
+          path: ${{ runner.temp }}/testing-center-control/
+      - name: Verify trusted control sha256 before review
+        shell: bash
+        env:
+          EXPECTED_CONTROL_SHA256: ${{ needs.diff_gate.outputs.control_sha256 }}
+        run: |
+          set -euo pipefail
+          ACTUAL="$(python .trusted-control-scripts/.github/scripts/testing_center_manifest_collector.py control-sha256 --directory "$RUNNER_TEMP/testing-center-control")"
+          if [ "$ACTUAL" != "$EXPECTED_CONTROL_SHA256" ]; then
+            echo "control_sha256_mismatch" >&2
+            exit 1
+          fi
+          rm -rf -- "$GITHUB_WORKSPACE/.trusted-control-scripts"
+      - name: Load closed review schema from trusted control
+        id: review_schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCHEMA_JSON="$(jq -c . "$RUNNER_TEMP/testing-center-control/testing-center-review-output.schema.json")"
+          echo "json=$SCHEMA_JSON" >> "$GITHUB_OUTPUT"
+      - name: Run independent read-only Opus review
+        id: opus_review
+        uses: anthropics/claude-code-action@dfb8fc798e1a98ff989c587a166b75010bfe2639
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
+          VALIDATED_HEAD_SHA: ${{ needs.diff_gate.outputs.head_sha }}
+          VALIDATED_HEAD_DIGEST: ${{ needs.diff_gate.outputs.head_digest }}
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_AUTH_TOKEN: ""
+          ANTHROPIC_BASE_URL: ""
+          CLAUDE_CODE_USE_BEDROCK: ""
+          CLAUDE_CODE_USE_VERTEX: ""
+          CLAUDE_CODE_USE_FOUNDRY: ""
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AWS_SESSION_TOKEN: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+        with:
+          claude_code_oauth_token: ${{ secrets.TESTING_CENTER_CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          settings: ${{ runner.temp }}/testing-center-control/testing-center-review-settings.json
+          prompt: >-
+            Lee y cumple exclusivamente el archivo de control confiable indicado
+            en ${{ runner.temp }}/testing-center-control/testing-center-review-prompt.md.
+            Revisa solo HEAD y los ficheros validados
+            ${{ runner.temp }}/testing-center-review-input/validated-diff-manifest.json
+            y ${{ runner.temp }}/testing-center-review-input/diff-decision.json.
+          display_report: false
+          show_full_output: false
+          track_progress: false
+          claude_args: >-
+            --model claude-opus-5
+            --effort high
+            --max-turns 15
+            --strict-mcp-config
+            --allowedTools Read,Grep,Glob
+            --add-dir "${{ runner.temp }}/testing-center-control"
+            --add-dir "${{ runner.temp }}/testing-center-review-input"
+            --json-schema '${{ steps.review_schema.outputs.json }}'
+      - name: Validate and sanitize review artifact
+        shell: bash
+        env:
+          REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
+        run: |
+          python -I - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          review = json.loads(os.environ["REVIEW_JSON"])
+          findings = review["findings"]
+          criteria = review["criteria"]
+          valid = (
+              isinstance(review, dict)
+              and set(review) == {
+                  "contractVersion", "verdict", "headSha", "headDigest",
+                  "criteria", "findings", "testQuality", "scope",
+              }
+              and review["contractVersion"] == "testing-center-review/v1"
+              and review["verdict"] in {"approve", "reject", "needs_owner"}
+              and re.fullmatch(r"[0-9a-f]{40}", review["headSha"]) is not None
+              and re.fullmatch(
+                  r"sha256:[0-9a-f]{64}", review["headDigest"]
+              ) is not None
+              and review["testQuality"] in {"pass", "fail", "unknown"}
+              and review["scope"] in {"pass", "fail", "unknown"}
+              and isinstance(criteria, list)
+              and 1 <= len(criteria) <= 20
+              and all(
+                  isinstance(item, dict)
+                  and set(item) == {"id", "status", "note"}
+                  and isinstance(item["id"], str)
+                  and re.fullmatch(
+                      r"[A-Za-z0-9._-]{1,80}", item["id"]
+                  ) is not None
+                  and item["status"] in {"pass", "fail", "unknown"}
+                  and isinstance(item["note"], str)
+                  and len(item["note"]) <= 500
+                  for item in criteria
+              )
+              and isinstance(findings, dict)
+              and set(findings) == {"P0", "P1", "P2", "P3"}
+              and all(
+                  isinstance(findings[level], list)
+                  and len(findings[level]) <= 20
+                  and all(
+                      isinstance(item, str) and len(item) <= 500
+                      for item in findings[level]
+                  )
+                  for level in ("P0", "P1", "P2", "P3")
+              )
+          )
+          if not valid:
+              raise SystemExit(1)
+          Path(os.environ["RUNNER_TEMP"], "review.json").write_text(
+              json.dumps(review, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          PY
+      - name: Upload bounded review evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-center-opus-review
+          path: ${{ runner.temp }}/review.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Write sanitized review summary
+        shell: bash
+        env:
+          REVIEW_JSON: ${{ steps.opus_review.outputs.structured_output }}
+        run: |
+          python -I - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          review = json.loads(os.environ["REVIEW_JSON"])
+          counts = {
+              level: len(review["findings"][level])
+              for level in ("P0", "P1", "P2", "P3")
+          }
+          summary = (
+              "### Testing Center independent review\n\n"
+              f"- verdict: {review['verdict']}\n"
+              f"- findings: P0={counts['P0']}, P1={counts['P1']}, "
+              f"P2={counts['P2']}, P3={counts['P3']}\n"
+          )
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open(
+              "a", encoding="utf-8"
+          ) as output:
+              output.write(summary)
+          PY
+
+  review_gate:
+    needs: review_opus
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      REVIEW_JSON: ${{ needs.review_opus.outputs.structured_output }}
+      EXPECTED_HEAD_SHA: ${{ needs.review_opus.outputs.expected_head_sha }}
+      EXPECTED_HEAD_DIGEST: ${{ needs.review_opus.outputs.expected_head_digest }}
+    steps:
+      - name: Validate independent verdict without logging model output
+        shell: bash
+        run: |
+          python -I - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          try:
+              review = json.loads(os.environ["REVIEW_JSON"])
+              findings = review["findings"]
+              criteria = review["criteria"]
+              root_valid = (
+                  isinstance(review, dict)
+                  and set(review) == {
+                      "contractVersion", "verdict", "headSha", "headDigest",
+                      "criteria", "findings", "testQuality", "scope",
+                  }
+              )
+              criteria_valid = (
+                  isinstance(criteria, list)
+                  and 1 <= len(criteria) <= 20
+                  and all(
+                      isinstance(item, dict)
+                      and set(item) == {"id", "status", "note"}
+                      and isinstance(item["id"], str)
+                      and re.fullmatch(r"[A-Za-z0-9._-]{1,80}", item["id"]) is not None
+                      and item["status"] in {"pass", "fail", "unknown"}
+                      and isinstance(item["note"], str)
+                      and len(item["note"]) <= 500
+                      for item in criteria
+                  )
+              )
+              findings_valid = (
+                  isinstance(findings, dict)
+                  and set(findings) == {"P0", "P1", "P2", "P3"}
+                  and all(
+                      isinstance(findings[level], list)
+                      and len(findings[level]) <= 20
+                      and all(
+                          isinstance(item, str) and len(item) <= 500
+                          for item in findings[level]
+                      )
+                      for level in ("P0", "P1", "P2", "P3")
+                  )
+              )
+              approved = (
+                  root_valid
+                  and criteria_valid
+                  and findings_valid
+                  and review["contractVersion"] == "testing-center-review/v1"
+                  and review["verdict"] == "approve"
+                  and re.fullmatch(r"[0-9a-f]{40}", review["headSha"]) is not None
+                  and re.fullmatch(r"sha256:[0-9a-f]{64}", review["headDigest"]) is not None
+                  and review["headSha"] == os.environ["EXPECTED_HEAD_SHA"]
+                  and review["headDigest"] == os.environ["EXPECTED_HEAD_DIGEST"]
+                  and review["testQuality"] == "pass"
+                  and review["scope"] == "pass"
+                  and all(item["status"] == "pass" for item in criteria)
+                  and not findings["P0"]
+                  and not findings["P1"]
+                  and not findings["P2"]
+              )
+          except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+              approved = False
+          sys.exit(0 if approved else 1)
+          PY
+
+  draft_pr:
+    needs: review_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Keep final stage fail-closed
+        run: exit 1
+
+  # ISA-322 bootstrap only. Activation requires a signed bundle, live facts,
+  # promotion of this workflow to master and Isaac's separate ruleset approval.
+  queue_bootstrap_disabled:
+    needs: review_gate
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pinned trusted queue verifier without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Test cryptographic verifier and serialized queue policy
+        run: python .github/scripts/test_testing_center_merge_queue.py
+      - name: Keep enqueue fail-closed until signed bundle and live facts exist
+        run: exit 1
+
+  callback_contract_disabled:
+    needs: draft_pr
+    if: github.event_name == 'repository_dispatch' && false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Keep callback transport honest until every phase emits trusted output
+        run: echo "testing_center_fix_callback_transport_disabled"

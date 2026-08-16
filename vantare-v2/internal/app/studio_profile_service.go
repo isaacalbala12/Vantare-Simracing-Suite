@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -23,14 +24,15 @@ type StudioProfileSaved struct {
 
 // StudioProfileService manages Overlay Studio V3 profile documents in parallel to legacy ProfileService.
 type StudioProfileService struct {
-	path        string
-	loaded      *config.LoadedProfileV3
-	store       config.ProfileDocumentStore
-	emitter     EventEmitter
-	logger      *slog.Logger
-	onSaved     func(StudioProfileSaved)
-	profilesDir string
-	mgr         *window.Manager
+	deltaCycleMu sync.Mutex
+	path         string
+	loaded       *config.LoadedProfileV3
+	store        config.ProfileDocumentStore
+	emitter      EventEmitter
+	logger       *slog.Logger
+	onSaved      func(StudioProfileSaved)
+	profilesDir  string
+	mgr          *window.Manager
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.
@@ -54,8 +56,21 @@ func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error
 	return loaded, nil
 }
 
-// Save persists the supplied document using optimistic revision checks.
+// Save persists the supplied document using optimistic revision checks and
+// notifies the runtime refresh callback (which recreates the desktop window).
 func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
+	return s.save(requestID, expectedRevision, doc, true)
+}
+
+// SaveInPlace persists the supplied document using optimistic revision checks
+// WITHOUT invoking the onSaved callback: the edit-mode overlay saves the layout
+// without recreating its own window. The studio:profile:saved event is emitted
+// with the requestID so the overlay can update its local revision.
+func (s *StudioProfileService) SaveInPlace(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
+	return s.save(requestID, expectedRevision, doc, false)
+}
+
+func (s *StudioProfileService) save(requestID, expectedRevision string, doc *config.ProfileDocumentV3, notifySaved bool) error {
 	if s.path == "" {
 		err := fmt.Errorf("profile path not configured")
 		s.emitError(requestID, "save", err)
@@ -87,7 +102,7 @@ func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *con
 	if s.emitter != nil {
 		s.emitter.Emit("studio:profile:saved", payload)
 	}
-	if s.onSaved != nil {
+	if notifySaved && s.onSaved != nil {
 		s.onSaved(StudioProfileSaved{
 			Path:     s.path,
 			Document: s.loaded.Document,
@@ -104,6 +119,9 @@ func (s *StudioProfileService) RegisterHandlers(app *application.App) {
 	})
 	app.Event.On("studio:profile:save", func(event *application.CustomEvent) {
 		s.HandleSave(event.Data)
+	})
+	app.Event.On("overlay:edit-layout:save", func(event *application.CustomEvent) {
+		s.HandleSaveInPlace(event.Data)
 	})
 }
 
@@ -159,6 +177,17 @@ func (s *StudioProfileService) HandleSave(data any) {
 		return
 	}
 	_ = s.Save(requestID, expectedRevision, doc)
+}
+
+// HandleSaveInPlace decodes a correlated in-place save request (edit-mode
+// overlay) and persists without recreating the desktop window.
+func (s *StudioProfileService) HandleSaveInPlace(data any) {
+	requestID, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
+	if err != nil {
+		s.emitError(requestID, "save", err)
+		return
+	}
+	_ = s.SaveInPlace(requestID, expectedRevision, doc)
 }
 
 // EmitLoaded emits studio:profile:loaded for the current in-memory document.

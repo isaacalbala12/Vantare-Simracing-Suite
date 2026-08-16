@@ -34,6 +34,38 @@ const disconnected: TelemetrySnapshot = {
 };
 
 describe("buildDeltaViewModel", () => {
+  it("selects personal, session or previous delta from the widget content", () => {
+    const snapshot: TelemetrySnapshot = {
+      ...baseReady,
+      player: {
+      ...baseReady.player,
+      deltaSeconds: 9,
+      deltaPersonalBestSeconds: -0.125,
+      deltaSessionBestSeconds: 0.250,
+      deltaPreviousLapSeconds: -0.375,
+      },
+    };
+
+    expect(buildDeltaViewModel(snapshot, { reference: "personal-best" }).deltaText).toBe("-0.125");
+    expect(buildDeltaViewModel(snapshot, { reference: "session-best" }).deltaText).toBe("+0.250");
+    expect(buildDeltaViewModel(snapshot, { reference: "previous-lap" }).deltaText).toBe("-0.375");
+  });
+
+  it("does not disguise a missing personal reference as the session delta", () => {
+    const snapshot: TelemetrySnapshot = {
+      ...baseReady,
+      player: {
+        inPit: false,
+        deltaSeconds: -0.5,
+        deltaReferenceSet: true,
+        deltaSessionBestSeconds: -0.5,
+      },
+    };
+    expect(buildDeltaViewModel(snapshot, { reference: "personal-best" })).toMatchObject({
+      status: "missing",
+      deltaText: "—",
+    });
+  });
   it("maps negative delta to gaining tone and signed text", () => {
     expect(buildDeltaViewModel(negative, {})).toMatchObject({
       type: "delta",
@@ -60,8 +92,14 @@ describe("buildDeltaViewModel", () => {
   });
 
   it("propagates stale and error states with messages", () => {
-    const stale: TelemetrySnapshot = { ...baseReady, status: "stale" };
-    expect(buildDeltaViewModel(stale, {}).status).toBe("stale");
+    const stale: TelemetrySnapshot = { ...negative, status: "stale" };
+    expect(buildDeltaViewModel(stale, {})).toMatchObject({
+      status: "stale",
+      deltaText: "-0.245",
+      tone: "gaining",
+      lastLapText: "1:31.221",
+      bestLapText: "1:30.876",
+    });
 
     const error: TelemetrySnapshot = {
       ...baseReady,

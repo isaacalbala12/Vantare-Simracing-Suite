@@ -136,6 +136,14 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets")
 	})
 
+	t.Run("more than one delta widget within a layout", func(t *testing.T) {
+		doc := validProfileV3(
+			validWidget("delta-main", WidgetTypeDelta),
+			validWidget("delta-secondary", WidgetTypeDelta),
+		)
+		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets")
+	})
+
 	t.Run("unsupported widget type", func(t *testing.T) {
 		w := validWidget("telemetry-1", WidgetTypeV3("telemetry"))
 		doc := validProfileV3(w)
@@ -163,6 +171,25 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		w.Visual.SystemID = DesignSystemID("broadcast-pro")
 		doc := validProfileV3(w)
 		assertValidationPath(t, ValidateProfileDocumentV3(doc), "layouts.general.widgets[0].visual.systemId")
+	})
+
+	t.Run("vantare endurance system and memory", func(t *testing.T) {
+		w := validWidget("delta-1", WidgetTypeDelta)
+		w.Visual.SystemID = DesignSystemVantareEndurance
+		w.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+			DesignSystemVantareEndurance: {
+				SystemVersion:       1,
+				ConfigVersion:       1,
+				BaseSettings:        map[string]any{"templateId": "delta-strip"},
+				AppearanceOverrides: map[string]any{},
+			},
+		}
+		doc := validProfileV3(w)
+		defaultSystem := DesignSystemVantareEndurance
+		doc.DefaultVisualSystemID = &defaultSystem
+		if err := ValidateProfileDocumentV3(doc); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("system version less than 1", func(t *testing.T) {

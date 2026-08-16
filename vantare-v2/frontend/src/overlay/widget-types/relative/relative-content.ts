@@ -37,8 +37,8 @@ export const RELATIVE_METRIC_IDS: readonly RelativeMetricId[] = [
   "lastLap",
 ];
 
-export const RELATIVE_RANGE_MIN = 0;
-export const RELATIVE_RANGE_MAX = 20;
+export const RELATIVE_RANGE_AHEAD = 2;
+export const RELATIVE_RANGE_BEHIND = 2;
 
 type RelativeColumnTemplate = {
   id: string;
@@ -101,13 +101,6 @@ function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
   return best;
 }
 
-function clampRange(value: unknown, fallback: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return Math.max(RELATIVE_RANGE_MIN, Math.min(RELATIVE_RANGE_MAX, Math.round(value)));
-}
-
 function readClassScope(value: unknown, fallback: RelativeClassScope): RelativeClassScope {
   return value === "sameClass" || value === "all" ? value : fallback;
 }
@@ -122,10 +115,6 @@ function readRowHeightMode(value: unknown, fallback: RelativeRowHeightMode): Rel
   return fallback;
 }
 
-function readBoolean(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
-
 export function createDefaultRelativeContent(): RelativeContent {
   return {
     columns: RELATIVE_COLUMN_TEMPLATES.map((template) => ({
@@ -136,8 +125,8 @@ export function createDefaultRelativeContent(): RelativeContent {
       ...(template.format ? { format: structuredClone(template.format) } : {}),
       ...(template.style ? { style: structuredClone(template.style) } : {}),
     })),
-    rangeAhead: 3,
-    rangeBehind: 3,
+    rangeAhead: RELATIVE_RANGE_AHEAD,
+    rangeBehind: RELATIVE_RANGE_BEHIND,
     classScope: "all",
     includePlayer: true,
     rowHeightMode: "compact",
@@ -172,17 +161,8 @@ function normalizeLegacyColumn(raw: Record<string, unknown>): WidgetColumnV3 {
 
 function readFilterFields(source: Record<string, unknown>): Partial<RelativeContent> {
   const patch: Partial<RelativeContent> = {};
-  if ("rangeAhead" in source) {
-    patch.rangeAhead = clampRange(source.rangeAhead, 3);
-  }
-  if ("rangeBehind" in source) {
-    patch.rangeBehind = clampRange(source.rangeBehind, 3);
-  }
   if ("classScope" in source) {
     patch.classScope = readClassScope(source.classScope, "all");
-  }
-  if ("includePlayer" in source) {
-    patch.includePlayer = readBoolean(source.includePlayer, true);
   }
   if ("rowHeightMode" in source) {
     patch.rowHeightMode = readRowHeightMode(source.rowHeightMode, "compact");
@@ -287,15 +267,15 @@ export function updateRelativeColumn(
 export function updateRelativeFilters(
   content: RelativeContent,
   patch: Partial<
-    Pick<RelativeContent, "rangeAhead" | "rangeBehind" | "classScope" | "includePlayer" | "rowHeightMode">
+    Pick<RelativeContent, "classScope" | "rowHeightMode">
   >,
 ): RelativeContent {
   return {
     ...content,
-    ...(patch.rangeAhead !== undefined ? { rangeAhead: clampRange(patch.rangeAhead, content.rangeAhead) } : {}),
-    ...(patch.rangeBehind !== undefined ? { rangeBehind: clampRange(patch.rangeBehind, content.rangeBehind) } : {}),
+    rangeAhead: RELATIVE_RANGE_AHEAD,
+    rangeBehind: RELATIVE_RANGE_BEHIND,
+    includePlayer: true,
     ...(patch.classScope !== undefined ? { classScope: readClassScope(patch.classScope, content.classScope) } : {}),
-    ...(patch.includePlayer !== undefined ? { includePlayer: patch.includePlayer } : {}),
     ...(patch.rowHeightMode !== undefined
       ? { rowHeightMode: readRowHeightMode(patch.rowHeightMode, content.rowHeightMode) }
       : {}),

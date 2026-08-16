@@ -63,6 +63,31 @@ describe("authoring fixtures", () => {
     );
   });
 
+  it("builds a canonical Relative authoring model with physical 2+1+2 rows", () => {
+    const scenario = {
+      session: "race" as const,
+      location: "track" as const,
+      state: "ready" as const,
+      widget: "relative" as const,
+      system: "vantare-crystal" as const,
+      surface: "studio" as const,
+    };
+    const widget = buildAuthoringFixtureWidget(scenario);
+    const snapshot = buildAuthoringFixtureTelemetry(scenario);
+    const model = buildAuthoringFixtureViewModel(widget, snapshot);
+
+    expect(
+      snapshot.scoring.every(
+        (row) => typeof row.lapDistanceMeters === "number" && Number.isFinite(row.lapDistanceMeters),
+      ),
+    ).toBe(true);
+    expect(model.type).toBe("relative");
+    if (model.type !== "relative") {
+      throw new Error("expected relative authoring model");
+    }
+    expect(model.rows).toHaveLength(5);
+  });
+
   it("resets Input Telemetry before deterministically seeding a scenario", () => {
     const scenario = {
       session: "race" as const,

@@ -44,6 +44,9 @@ export type OverlayProjectionAbsentField = Readonly<{
   freshness: "missing";
 }>;
 
+/** Vehicle position on the track plane, in centimetres of world space. */
+export type OverlayGroundPositionV1 = Readonly<{ xCm: number; zCm: number }>;
+
 export type OverlayProjectionField<T> =
   | OverlayProjectionPresentField<T>
   | OverlayProjectionAbsentField;
@@ -78,6 +81,7 @@ export type OverlayVehicleV1 = Readonly<{
   fuelCapacityLiters: OverlayProjectionField<number>;
   relativeTimeGapSeconds: OverlayProjectionField<number>;
   relativeLapDelta: OverlayProjectionField<number>;
+  groundPositionCm: OverlayProjectionField<OverlayGroundPositionV1>;
 }>;
 
 export type OverlayControlSampleV1 = Readonly<{
@@ -123,6 +127,9 @@ export type OverlayPayloadV1 = Readonly<{
   remainingSeconds: OverlayProjectionField<number>;
   maximumLaps: OverlayProjectionField<number>;
   playerDeltaSeconds: OverlayProjectionField<number>;
+  playerDeltaPersonalBestSeconds: OverlayProjectionField<number>;
+  playerDeltaSessionBestSeconds: OverlayProjectionField<number>;
+  playerDeltaPreviousLapSeconds: OverlayProjectionField<number>;
   playerDeltaReference: OverlayProjectionField<OverlayDeltaReference>;
   deltaHistory: OverlayDeltaHistoryV1;
 }>;
@@ -216,6 +223,24 @@ export function decodeOverlayProjectionV1(
       playerDeltaSeconds: decodeOptionalField(
         payload,
         "playerDeltaSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaPersonalBestSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaPersonalBestSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaSessionBestSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaSessionBestSeconds",
+        requireFiniteNumber,
+        0,
+      ),
+      playerDeltaPreviousLapSeconds: decodeOptionalField(
+        payload,
+        "playerDeltaPreviousLapSeconds",
         requireFiniteNumber,
         0,
       ),
@@ -380,6 +405,12 @@ function decodeVehicles(value: unknown): OverlayVehicleV1[] {
         "relativeLapDelta",
         requireSafeInteger,
         0,
+      ),
+      groundPositionCm: decodeOptionalField(
+        object,
+        "groundPositionCm",
+        requireGroundPosition,
+        { xCm: 0, zCm: 0 },
       ),
     };
   });
@@ -594,6 +625,15 @@ function requireBoolean(value: unknown): boolean {
     invalid();
   }
   return value;
+}
+
+function requireGroundPosition(value: unknown): OverlayGroundPositionV1 {
+  const object = requireObject(value);
+  requireKeys(object, ["xCm", "zCm"]);
+  return {
+    xCm: requireSafeInteger(object.xCm),
+    zCm: requireSafeInteger(object.zCm),
+  };
 }
 
 function requireSafeInteger(value: unknown): number {

@@ -87,6 +87,28 @@ describe("vantare-endurance contract", () => {
     expect(root.querySelector("[data-track-map-empty]")).toBeFalsy();
   });
 
+  it("draws every placed car, with the player marked", () => {
+    const mapped = {
+      ...snapshot,
+      session: { ...snapshot.session, trackName: "Vantare Reference Loop" },
+      scoring: [
+        { id: "car-1", isPlayer: true, groundPositionXMeters: 0, groundPositionZMeters: 0 },
+        { id: "car-2", groundPositionXMeters: 200, groundPositionZMeters: -150 },
+        { id: "car-3" },
+      ],
+    };
+    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const view = render(
+      <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
+    );
+    const root = rootOf(view.container);
+
+    const cars = [...root.querySelectorAll("[data-track-map-car]")] as SVGCircleElement[];
+    expect(cars.map((car) => car.getAttribute("data-track-map-car"))).toEqual(["car-1", "car-2"]);
+    expect(cars[0].getAttribute("data-player")).toBe("true");
+    expect(cars[1].hasAttribute("data-player")).toBe(false);
+  });
+
   it("draws nothing and says so when the circuit is not mapped", () => {
     const unmapped = { ...snapshot, session: { ...snapshot.session, trackName: "Suzuka" } };
     const model = buildTrackMapViewModel(unmapped, createDefaultTrackMapContent());

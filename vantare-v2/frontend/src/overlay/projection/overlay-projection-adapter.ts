@@ -124,6 +124,9 @@ export function adaptOverlayProjectionToSnapshot(
     playerVehicle,
     playerIndex,
     projection.payload.playerDeltaSeconds,
+    projection.payload.playerDeltaPersonalBestSeconds,
+    projection.payload.playerDeltaSessionBestSeconds,
+    projection.payload.playerDeltaPreviousLapSeconds,
     quality,
   );
   quality.push({
@@ -189,6 +192,9 @@ function mapPlayer(
   vehicle: OverlayVehicleV1 | undefined,
   index: number,
   playerDelta: OverlayProjectionField<number>,
+  playerDeltaPersonalBest: OverlayProjectionField<number>,
+  playerDeltaSessionBest: OverlayProjectionField<number>,
+  playerDeltaPreviousLap: OverlayProjectionField<number>,
   quality: OverlayMappedField[],
 ): TelemetrySnapshot["player"] | undefined {
   if (!vehicle || index < 0) {
@@ -202,6 +208,7 @@ function mapPlayer(
     "player.inPit",
   );
   const optional: Omit<TelemetrySnapshot["player"], "inPit"> = {};
+  optional.deltaReferenceSet = true;
   assignIfPresent(
     optional,
     "speedKph",
@@ -237,6 +244,21 @@ function mapPlayer(
       "playerDeltaSeconds",
       "player.deltaSeconds",
     ),
+  );
+  assignIfPresent(
+    optional,
+    "deltaPersonalBestSeconds",
+    mappedValue(playerDeltaPersonalBest, quality, "playerDeltaPersonalBestSeconds", "player.deltaPersonalBestSeconds"),
+  );
+  assignIfPresent(
+    optional,
+    "deltaSessionBestSeconds",
+    mappedValue(playerDeltaSessionBest, quality, "playerDeltaSessionBestSeconds", "player.deltaSessionBestSeconds"),
+  );
+  assignIfPresent(
+    optional,
+    "deltaPreviousLapSeconds",
+    mappedValue(playerDeltaPreviousLap, quality, "playerDeltaPreviousLapSeconds", "player.deltaPreviousLapSeconds"),
   );
   assignIfPresent(
     optional,
@@ -390,6 +412,19 @@ function mapScoringVehicle(
       "scoring[].place",
     ),
   );
+  // The plane is published in centimetres and consumed in metres, so the widget
+  // never has to remember which unit it is holding. Position and quality travel
+  // together: a rejected reading yields nothing rather than a place on the map.
+  const groundPosition = mappedValue(
+    vehicle.groundPositionCm,
+    quality,
+    `vehicles[${index}].groundPositionCm`,
+    "scoring[].groundPosition",
+  );
+  if (groundPosition !== undefined) {
+    row.groundPositionXMeters = groundPosition.xCm / 100;
+    row.groundPositionZMeters = groundPosition.zCm / 100;
+  }
   const scoringFields = [
     ["sector", vehicle.sector, "sector"],
     ["lapDistanceMeters", vehicle.lapDistanceMeters, "lapDistanceMeters"],

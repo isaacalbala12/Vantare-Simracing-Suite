@@ -378,6 +378,24 @@ describe("parseProfileDocumentV3", () => {
     }
   });
 
+  it("rejects more than one delta widget in the same layout", () => {
+    const doc = {
+      ...minimalDocument(),
+      layouts: {
+        general: {
+          type: "general",
+          widgets: [validWidget("delta-main", "delta"), validWidget("delta-secondary", "delta")],
+        },
+      },
+    };
+    try {
+      parseProfileDocumentV3(doc);
+      throw new Error("expected validation error");
+    } catch (error) {
+      expectPath(error, "layouts.general.widgets");
+    }
+  });
+
   it("rejects unsupported widget type", () => {
     const doc = {
       ...minimalDocument(),

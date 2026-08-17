@@ -225,6 +225,12 @@ export const it: Record<string, string> = {
   "overlay.editMode.chip": "EDIT MODE",
   "overlay.editMode.hint": "Ctrl+Shift+E per uscire - trascina per muovere, Alt disattiva lo snap",
   "overlay.editMode.saveError": "Salvataggio fallito - conflitto con l'editor dell'Hub. Riapri il profilo per continuare.",
+  "overlay.editMode.panel.empty": "Seleziona un widget per modificarne le proprietà.",
+  "overlay.editMode.panel.undo": "Annulla",
+  "overlay.editMode.panel.redo": "Ripeti",
+  "overlay.editMode.panel.retry": "Riprova",
+  "overlay.editMode.panel.conflict": "Conflitto - ricarica per continuare",
+  "overlay.editMode.panel.saving": "Salvataggio...",
   "studio.addWidget": "+ Aggiungi widget",
 
   // Widget Config Sections

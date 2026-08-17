@@ -12,6 +12,8 @@ const hostConsumers = [
   "overlay/runtime/RuntimeWidgetFrame.tsx",
   "hub/overlays/ProfilePreview.tsx",
   "overlay/authoring/OverlayWorkshopDevRoute.tsx",
+  "overlay/edit/InPlaceWidgetEditFrame.tsx",
+  "overlay-harness/OverlayParityHarness.tsx",
 ] as const;
 const hostPath = "overlay/core/WidgetVisualHost.tsx";
 

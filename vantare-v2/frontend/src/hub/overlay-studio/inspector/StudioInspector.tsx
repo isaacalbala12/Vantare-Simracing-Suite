@@ -5,14 +5,12 @@ import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument } from "../state/studio-store";
 import { createWailsWidgetDesignClient } from "../designs/widget-design-client";
 import { ActionsSection } from "./ActionsSection";
-import { AppearanceSection } from "./AppearanceSection";
-import { BehaviorSection } from "./BehaviorSection";
-import { ContentSection } from "./ContentSection";
 import { DesignSection } from "./DesignSection";
 import { InspectorRail } from "./InspectorRail";
 import { InspectorSectionFrame } from "./InspectorSectionFrame";
 import { InspectorSectionPlaceholder } from "./InspectorSectionPlaceholder";
 import { LayoutSection } from "./LayoutSection";
+import { WidgetPropertyInspectorView } from "./WidgetPropertyInspectorView";
 import { resolveInspectorSections } from "./inspector-sections";
 
 function resolveInitialSection(
@@ -97,17 +95,15 @@ export function StudioInspector(): React.ReactElement {
     }
     switch (resolvedActiveSection.id) {
       case "appearance":
-        return (
-          <AppearanceSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />
-        );
       case "content":
-        return <ContentSection widget={selectedWidget} session={activeSession} dispatch={dispatch} />;
       case "behavior":
         return (
-          <BehaviorSection
+          <WidgetPropertyInspectorView
+            sectionId={resolvedActiveSection.id}
             widget={selectedWidget}
             session={activeSession}
             snapshot={snapshot}
+            access={access}
             dispatch={dispatch}
           />
         );

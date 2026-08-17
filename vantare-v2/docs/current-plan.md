@@ -1,8 +1,8 @@
 Nota ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
 - La rama `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
   quedó sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`; el
-  HEAD productivo verificado es `588920f09c8a177de52563d7375be0030696a440`,
-  con cinco commits propios.
+  HEAD productivo verificado es `7452c8ef817535d8c3c29562ce7ece24a2092490`,
+  con cuatro commits de implementación y tres commits documentales en la rama.
   El estado anterior se conserva en
   `backup/isa-340-pre-reconcile-20260817@abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
 - Pasan los focos Go x20 de Strategy live/app/cmd, `go test ./...`, `go vet`,
@@ -10,10 +10,12 @@ Nota ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
   Go del diff están formateados; `gofmt` amplio solo muestra la deuda heredada
   `internal/app/diagnostics_service.go` de Nightly.
 - Isaac confirmó el smoke Wails aislado de guardar/activar, reiniciar/recuperar
-  y desactivar/reiniciar usando la acumulación que contiene ISA-340. La sesión
-  no incluyó LMU ni captura de logs, y queda pendiente observar continuidad de
-  Overlay/Engineer al desactivar Strategy. No hubo push, PR, CI, merge,
-  promoción ni release; ISA-340 permanece `In Progress` en Linear.
+  y desactivar/reiniciar usando la acumulación que contiene ISA-340. También
+  confirmó con LMU el log de una única revisión resuelta sin payload y la
+  continuidad de Overlay/Engineer tras desactivar Strategy. La evidencia es
+  manual y no incluye un artefacto de log; no hubo push, PR, CI, merge,
+  promoción ni release. ISA-340 permanece `In Progress` en Linear hasta
+  publicar la rama.
 
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel

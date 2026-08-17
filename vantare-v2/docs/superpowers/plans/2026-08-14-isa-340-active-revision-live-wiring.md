@@ -105,8 +105,9 @@ git diff --check
 ## Estado posterior a la reconciliación (2026-08-17)
 
 La rama se rebasó limpiamente sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`.
-El HEAD productivo verificado es `588920f09c8a177de52563d7375be0030696a440`,
-con cinco commits propios y un backup del SHA anterior en
+El HEAD productivo verificado es `7452c8ef817535d8c3c29562ce7ece24a2092490`,
+con cuatro commits de implementación y tres commits documentales posteriores;
+el backup del SHA anterior queda en
 `backup/isa-340-pre-reconcile-20260817`
 (`abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`). Los gates
 focales x20, `go test ./...`, `go vet`, el build frontend, `wails3 build
@@ -116,11 +117,11 @@ archivos Go propios de ISA-340 están formateados.
 
 Isaac confirmó el smoke manual aislado de persistencia Wails realizado sobre
 la acumulación que contiene ISA-340: crear/guardar/activar, reiniciar y
-recuperar el plan activo, desactivar y reiniciar. Ese recorrido no incluyó una
-sesión LMU ni una captura de logs/continuidad de Overlay y Engineer, por lo
-que esas dos comprobaciones observables siguen pendientes. No hay push, PR,
-CI remoto, merge, promoción ni release. Linear permanece `In Progress` hasta
-cerrar esa evidencia y publicar la rama. Evidencia detallada:
+recuperar el plan activo, desactivar y reiniciar. También confirmó el reinicio
+con LMU, la resolución única sin payload y la continuidad de Overlay/Engineer
+tras desactivar Strategy. La validación es manual y no se adjuntó un artefacto
+de log; no hay push, PR, CI remoto, merge, promoción ni release. Linear
+permanece `In Progress` únicamente hasta publicar la rama. Evidencia detallada:
 `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 
 ## Manual verification after automated closure
@@ -135,13 +136,14 @@ El primer smoke se ejecutó sin jugador y falló con cursor `0/0`. Tras la
 confirmación explícita de Isaac en pista se ejecutó exactamente una vez y pasó
 con source live, cursor `epoch=1/sequence=3`, vuelta completada `0` y Fuel
 `98/115 L` present/fresh; la desviación siguió missing sin objetivo exacto.
-Esto no sustituye la verificación manual completa en Wails ni `-race`.
+La confirmación manual posterior de Isaac completa estos dos puntos; `-race`
+sigue omitido por las limitaciones del host.
 
 - [x] Create/save a `strategy.editor.v1` revision and activate it through the existing Strategy UI (smoke Wails confirmado por Isaac en la acumulación de ISA-362 que contiene ISA-340).
-- [ ] Restart Vantare with LMU in a session and confirm the logs report one resolved active revision without payload contents.
+- [x] Restart Vantare with LMU in a session and confirm the logs report one resolved active revision without payload contents (confirmado manualmente por Isaac; no se adjuntó log).
 - [x] Enter the track and verify the existing sanitized live probe/read model observes the real Strategy cursor and stint boundary.
 - [x] Confirm Fuel remains observed from Telemetry Core but deviation remains missing because the persisted editor v1 document has no explicit per-lap target series.
-- [ ] Deactivate the plan, restart, and confirm Strategy live stays disabled while Overlay/Engineer telemetry continues.
+- [x] Deactivate the plan, restart, and confirm Strategy live stays disabled while Overlay/Engineer telemetry continues (confirmado manualmente por Isaac).
 
 ## Closure boundary
 

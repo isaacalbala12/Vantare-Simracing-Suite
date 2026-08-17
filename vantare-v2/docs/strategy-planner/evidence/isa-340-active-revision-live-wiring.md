@@ -3,16 +3,17 @@
 **Fecha:** 2026-08-17
 **Base y merge-base:** `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`
 **Rama:** `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
-**HEAD productivo verificado:** `588920f09c8a177de52563d7375be0030696a440`
+**HEAD productivo verificado:** `7452c8ef817535d8c3c29562ce7ece24a2092490`
 
 **Backup pre-reconciliación:** `backup/isa-340-pre-reconcile-20260817` en
 `abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
 
 ## Resultado
 
-- El corte productivo contiene cinco commits locales sobre la base Nightly
-  actual: `9f6c9c9f` (wiring), `63f4f87f` (resolver), `4b9f63f4` (lifecycle),
-  `7452c8ef` (composition root) y `588920f0` (evidencia). La reconciliación
+- El corte productivo contiene cuatro commits de implementación sobre la base
+  Nightly actual: `9f6c9c9f` (wiring), `63f4f87f` (resolver), `4b9f63f4`
+  (lifecycle) y `7452c8ef` (composition root). Los commits `588920f0`,
+  `d0299977` y `29d37016` son documentación y evidencia. La reconciliación
   desde la rama histórica se realizó sin conflictos.
 - `ResolveActivePlan` exige la referencia completa exacta de la revisión activa:
   plan, variante, ID de revisión y hash. Una colisión de ID con otra referencia
@@ -43,7 +44,7 @@
   P1/P2.
 - No quedan findings P1/P2 abiertos en los tres cortes.
 
-## Gates finales sobre `588920f0`
+## Gates finales sobre `7452c8ef`
 
 - `go test -count=20 ./internal/strategy/live` — PASS.
 - `go test -count=20 ./internal/app -run 'StrategyLive|StrategyExecution|TelemetryCore.*Strategy'`
@@ -100,40 +101,38 @@ ejecutó exactamente una vez y pasó con:
   objetivo Fuel exacto por vuelta.
 
 Esto acredita el camino productivo LMU -> Telemetry Core -> Strategy con el
-jugador en pista. No acredita una prueba manual completa de la aplicación Wails:
-siguen pendientes la creación/activación por UI, la comprobación de logs y
-consumer tras reiniciar, y la desactivación seguida de otro reinicio. Tampoco
-acredita cobertura `-race`.
+jugador en pista. En el momento de esa ejecución aún no acreditaba por sí sola
+la prueba manual completa de Wails; la confirmación manual posterior de Isaac,
+documentada abajo, cerró UI, reinicio, logs y desactivación. Tampoco acredita
+cobertura `-race`.
 
 ## Actualización de smoke Wails (2026-08-17)
 
 Isaac confirmó el recorrido manual de persistencia ejecutado en una aplicación
 Wails aislada sobre la acumulación que contiene ISA-340: crear/guardar una
 revisión, activarla, reiniciar y recuperar el plan activo, desactivarlo y
-reiniciar de nuevo. Esto cierra la parte observable de UI, persistencia y
-reinicio del estado activo.
+reiniciar de nuevo. También confirmó el reinicio con LMU, el log con una sola
+revisión resuelta sin payload y la continuidad simultánea de Overlay y Engineer
+al desactivar Strategy. La evidencia de esos tres puntos es confirmación
+manual de Isaac; no se adjuntó un artefacto de log en el repositorio.
 
-El smoke no se ejecutó con una sesión LMU ni dejó una captura de los logs de
-arranque, por lo que no se afirma todavía que el log visible reporte una sola
-revisión resuelta sin payload. Tampoco se observó en ese recorrido la
-continuidad simultánea de Overlay y Engineer al desactivar Strategy. El
-resultado actual es, por tanto:
+El resultado actual es, por tanto:
 
 - UI create/save/activate: confirmado manualmente.
-- LMU + log de resolución única sin payload: pendiente de captura.
+- LMU + log de resolución única sin payload: confirmado manualmente.
 - Camino live con jugador en pista: confirmado por el probe integrado anterior.
 - Fuel observado y desviación missing sin objetivo: confirmado por el probe.
-- Deactivate + restart con continuidad Overlay/Engineer: pendiente de
-  verificación conjunta.
+- Deactivate + restart con continuidad Overlay/Engineer: confirmado
+  manualmente.
 
 ## Estado de entrega
 
 El resultado está validado en la rama de issue reconciliada y en una
 integración de smoke, ambas solo locales. No hubo push, PR, CI remoto, merge,
 promoción a `nightly`, `testers` o `master`, ni release. Linear permanece
-`In Progress`: los seis criterios técnicos están verificados y la evidencia
-manual de persistencia UI está confirmada, pero siguen pendientes la captura
-LMU/log y la continuidad de Overlay/Engineer. ISA-153 queda técnicamente
+`In Progress`: los seis criterios técnicos y la verificación manual están
+confirmados. Solo queda publicar la rama; no se adjuntó un artefacto de log.
+ISA-153 queda técnicamente
 desbloqueable, pero esta evidencia no la marca terminada ni autoriza empezar,
 integrar o promover ese corte. Testers permanece diferido por instrucción de
 Isaac.

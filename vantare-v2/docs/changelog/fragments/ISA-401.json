@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-401",
+  "type": "feature",
+  "summary": "El overlay desktop permite editar el layout in-place con la hotkey Ctrl+Shift+E.",
+  "technicalNotes": [
+    "El modo edición permite seleccionar, mover y redimensionar widgets con snap, guías de alineación y preview DOM imperativa.",
+    "El autosave persiste el documento V3 con revisión optimista mediante el canal overlay:edit-layout:save sin recrear la ventana al guardar.",
+    "La telemetría queda congelada durante el gesto y el mismo WidgetVisualHost renderiza el modo racing y el editor."
+  ],
+  "testing": [
+    "Los gates de la promoción pasaron con Go completo, 378 archivos y 2761 tests frontend, build y lint focal.",
+    "Se verificaron drag, resize, snap, guías, cancelación con Escape y guardado único al soltar."
+  ],
+  "knownLimitations": [
+    "La hotkey no se puede reasignar desde Ajustes.",
+    "Editar simultáneamente el mismo perfil en el overlay y en Overlay Studio puede producir un conflicto de guardado."
+  ]
+}

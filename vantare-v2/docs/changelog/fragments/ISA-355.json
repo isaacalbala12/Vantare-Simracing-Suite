@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-355",
+  "type": "feature",
+  "summary": "Track Map muestra la posición física de cada coche sobre la geometría del circuito.",
+  "technicalNotes": [
+    "El payload Overlay añade groundPositionCm con presencia, procedencia y frescura conservadas; la capability spatial solo aparece con una posición usable.",
+    "Los marcadores reutilizan la transformación del trazado y el selector de circuitos falla cerrado ante candidatos ambiguos o geometría incompleta.",
+    "El decoder acepta la capability spatial y las animaciones Relative colapsan las filas salientes y miden el movimiento desde las posiciones pintadas."
+  ],
+  "testing": [
+    "La evidencia de PR valida 15 circuitos con el pack real y 44 vehículos de fixture; el error RMS reportado fue 4,32 m.",
+    "Se ejecutaron go test ./..., suite frontend, build y pruebas focales del mapa, decoder y animaciones."
+  ],
+  "knownLimitations": [
+    "Lusail queda fuera porque sus sesiones no contienen una vuelta completa.",
+    "El pack y la extracción se validan offline; no se añade un lector DuckDB al runtime."
+  ]
+}

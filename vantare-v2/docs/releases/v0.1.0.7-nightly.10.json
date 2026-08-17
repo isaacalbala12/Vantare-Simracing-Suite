@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.10",
+  "channel": "nightly",
+  "title": "Vantare — mapa, edición in-place y evidencia privada",
+  "summary": "Esta Nightly añade posiciones físicas en Track Map, edición in-place con inspector y persistencia privada de evidencia del Testing Center, además de mejoras de Relative y Broadcast Tower.",
+  "issues": [
+    "ISA-334",
+    "ISA-350",
+    "ISA-355",
+    "ISA-365",
+    "ISA-401",
+    "ISA-402"
+  ]
+}

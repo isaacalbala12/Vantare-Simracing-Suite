@@ -118,12 +118,14 @@
   `nightly@2909ba73` en `a389f8d0`; implementación `71d6b360` y fix de review
   `cf83021a`. La PR #243 se integró por squash en `nightly@fe04a0af`; gates de
   PR y posteriores al merge PASS. Sin promoción a `testers`/`master` ni release.
-- ISA-334 fue promovida a `nightly` mediante PR #224, merge squash
-  `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`:
-  Broadcast Tower nace como franja horizontal a todo el ancho real del perfil,
-  conserva 50 px de altura y expone solo resize este/oeste. Tests focales,
-  suite frontend, lint focal, build y CI pasan. Queda pendiente la validación
-  visual manual de Isaac; no hubo promoción a `testers` ni `master`.
+- ISA-334 (Broadcast Tower horizontal): el fix `04c3ac3c` ya está promovido
+  a `nightly`, y se portó a la rama `vantareapp/isa-338-...` (commit `4d69de18`,
+  2026-08-14). El widget nace como franja horizontal a todo el ancho real del
+  perfil con la altura canónica Crystal de 71px (1872×71), con resize solo
+  este/oeste y conformado de layouts legacy a esa franja. El port ajusta la
+  altura a 71px (no a los 50px del fix original) para que el renderer Crystal
+  no se recorte. Verificado en harness: catálogo 1920×71, frame 1920×71,
+  handles E/W, renderer Crystal sin scroll vertical.
 - Overlay: el Workshop y sus barandillas fueron promovidos a Nightly mediante
   PR #162; continúa excluido físicamente de Stable. Los arreglos de Studio de
   PR #187, el gate visual de PR #193 y Standings/Relative/Delta Redline de PR

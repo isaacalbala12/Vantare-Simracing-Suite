@@ -6,7 +6,7 @@ import { buildBroadcastTowerViewModel, type BroadcastTowerViewModel } from "./br
 
 export type BroadcastTowerContent = { rowCount: number; showWeather: boolean; showSof: boolean };
 const DEFAULT_CONTENT: BroadcastTowerContent = { rowCount: 5, showWeather: true, showSof: true };
-const DEFAULT_LAYOUT = { x: 0, y: 64, w: 1920, h: 50, zIndex: 0, aspectLocked: false } as const;
+const DEFAULT_LAYOUT = { x: 0, y: 64, w: 1920, h: 71, zIndex: 0, aspectLocked: false } as const;
 const inspector = { content: [
   { kind: "range" as const, id: "row-count", labelKey: "studio.v3.inspector.broadcastTower.rowCount", path: "rowCount", defaultValue: 5, min: 3, max: 10, step: 1 },
   { kind: "toggle" as const, id: "show-weather", labelKey: "studio.v3.inspector.broadcastTower.showWeather", path: "showWeather", defaultValue: true },

@@ -11,10 +11,10 @@ describe("broadcastTowerDefinition", () => {
   it("starts as a full-width horizontal strip", () => {
     const widget = broadcastTowerDefinition.createDefault("tower-1");
 
-    expect(widget.layout).toMatchObject({ x: 0, w: 1920, h: 50, aspectLocked: false });
+    expect(widget.layout).toMatchObject({ x: 0, w: 1920, h: 71, aspectLocked: false });
     expect(broadcastTowerDefinition.capabilities).toMatchObject({
-      defaultSize: { width: 1920, height: 50 },
-      minimumSize: { width: 340, height: 50 },
+      defaultSize: { width: 1920, height: 71 },
+      minimumSize: { width: 340, height: 71 },
       resizeMode: "horizontal-only",
     });
   });

@@ -1,8 +1,9 @@
-Nota ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
+Nota ISA-340 / STR-17A (2026-08-17, reconciliada, publicada y validada):
 - La rama `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
   quedó sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`; el
   HEAD productivo verificado es `7452c8ef817535d8c3c29562ce7ece24a2092490`,
-  con cuatro commits de implementación y tres commits documentales en la rama.
+  con cuatro commits de implementación. La rama publicada añade cinco commits
+  documentales y su HEAD exacto es `281e2ea50fbafdf43ea8aa0cf4aac822e33bdbb0`.
   El estado anterior se conserva en
   `backup/isa-340-pre-reconcile-20260817@abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
 - Pasan los focos Go x20 de Strategy live/app/cmd, `go test ./...`, `go vet`,
@@ -13,11 +14,11 @@ Nota ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
   y desactivar/reiniciar usando la acumulación que contiene ISA-340. También
   confirmó con LMU el log de una única revisión resuelta sin payload y la
   continuidad de Overlay/Engineer tras desactivar Strategy. La evidencia es
-  manual y no incluye un artefacto de log; no hubo push, PR, CI, merge,
-  promoción ni release. La rama ya está publicada y el PR draft `#280` apunta
-  a `nightly`; el run CI `32045640679` pasa todos los gates bloqueantes y solo
-  deja avisos advisory de lint global heredado. ISA-340 permanece `In Progress`
-  en Linear mientras la revisión esté pendiente.
+  manual y no incluye un artefacto de log. La rama está publicada y el PR draft
+  `#280` apunta a `nightly`; el run CI exacto del HEAD publicado,
+  `32046622190`, pasa todos los gates bloqueantes y solo deja avisos advisory
+  de lint global heredado. No hubo merge, promoción ni release. ISA-340
+  permanece `In Progress` en Linear mientras la revisión esté pendiente.
 
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel

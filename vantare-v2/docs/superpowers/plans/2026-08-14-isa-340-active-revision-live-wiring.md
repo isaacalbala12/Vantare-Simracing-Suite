@@ -100,14 +100,14 @@ git diff --check
 - [x] Update Linear through direct `mcp__linear__*` with branch, commits, exact checks, omissions and remaining manual proof.
 - [x] Push the issue branch (`origin/vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`).
 - [x] Open a draft PR against `nightly` (`#280`).
-- [x] Obtain CI for the pushed HEAD and review its result (`32045640679` — PASS; advisory global lint debt remains non-blocking).
+- [x] Obtain CI for the pushed HEAD and review its result (`32046622190` — PASS; advisory global lint debt remains non-blocking).
 - [ ] Merge or promote to Nightly, Testers or Master only with Isaac’s separate authorization.
 
 ## Estado posterior a la reconciliación (2026-08-17)
 
 La rama se rebasó limpiamente sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758` y ya está publicada en `origin`.
 El HEAD productivo verificado es `7452c8ef817535d8c3c29562ce7ece24a2092490`,
-con cuatro commits de implementación y tres commits documentales posteriores;
+con cuatro commits de implementación y cinco commits documentales posteriores;
 el backup del SHA anterior queda en
 `backup/isa-340-pre-reconcile-20260817`
 (`abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`). Los gates
@@ -121,9 +121,10 @@ la acumulación que contiene ISA-340: crear/guardar/activar, reiniciar y
 recuperar el plan activo, desactivar y reiniciar. También confirmó el reinicio
 con LMU, la resolución única sin payload y la continuidad de Overlay/Engineer
 tras desactivar Strategy. La validación es manual y no se adjuntó un artefacto
-de log; no hay push, PR, CI remoto, merge, promoción ni release. Linear
+de log. La rama está publicada y el PR draft existe; no hay merge, promoción ni release. Linear
 permanece `In Progress` mientras la revisión del PR esté pendiente. El PR
-draft es `#280` hacia `nightly`; CI `32045640679` pasa sus gates bloqueantes.
+draft es `#280` hacia `nightly`; el CI exacto `32046622190` pasa sus gates
+bloqueantes sobre el HEAD publicado `281e2ea50fbafdf43ea8aa0cf4aac822e33bdbb0`.
 No hay merge, promoción ni release.
 Evidencia detallada:
 `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.

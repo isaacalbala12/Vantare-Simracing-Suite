@@ -16,13 +16,14 @@ son fases históricas.
 
 ## Estado
 
-Actualización ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
+Actualización ISA-340 / STR-17A (2026-08-17, reconciliada, publicada y validada):
 
 - La rama exacta
   `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
   parte de `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`; el corte
   productivo termina en `7452c8ef817535d8c3c29562ce7ece24a2092490`, con cuatro
-  commits de implementación; la rama añade tres commits documentales.
+  commits de implementación; la rama publicada añade cinco commits
+  documentales y termina en `281e2ea50fbafdf43ea8aa0cf4aac822e33bdbb0`.
   El SHA anterior se conserva en
   `backup/isa-340-pre-reconcile-20260817@abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
 - `go test -count=20` de Strategy live, app y cmd/vantare, `go test ./...`,
@@ -40,10 +41,11 @@ Actualización ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente
   desviación missing sin objetivo exacto. No se ejecutó `-race` por
   `CGO_ENABLED=0` y ausencia de GCC.
 - Estado externo: la rama ya está publicada en `origin` y el PR draft `#280`
-  apunta a `nightly`. El run CI `32045640679` pasa todos los gates bloqueantes;
-  solo deja avisos advisory de lint global heredado. Linear conserva ISA-340
-  en `In Progress` mientras la revisión esté pendiente. No hubo merge,
-  promoción ni release; ISA-153 sigue separado.
+  apunta a `nightly`. El run CI exacto del HEAD publicado,
+  `32046622190`, pasa todos los gates bloqueantes; solo deja avisos advisory
+  de lint global heredado. Linear conserva ISA-340 en `In Progress` mientras
+  la revisión esté pendiente. No hubo merge, promoción ni release; ISA-153
+  sigue separado.
 
 Actualización ISA-340 / STR-17A (2026-08-14, rama local validada con LMU en pista):
 

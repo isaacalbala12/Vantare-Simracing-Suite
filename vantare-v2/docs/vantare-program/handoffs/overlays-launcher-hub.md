@@ -10,6 +10,22 @@
 
 ## Estado
 
+- **Fase 2 — inspector flotante in-place (2026-08-16, implementada en rama):**
+  extensión del modo edición del overlay con un panel flotante para editar
+  content/appearance/behavior del widget seleccionado con datos live.
+  Implementada en `vantareapp/isa-402-fase2-inspector-flotante` (6 cortes
+  completos): sesión única con `StudioProvider` + `InPlaceProfileClient`
+  (load en memoria, save → `overlay:edit-layout:save`, nunca
+  `studio:profile:save`), `useInplaceAutosave` por comandos con debounce/
+  coalescing, hardening del store (refs de documento/revisión), vista headless
+  `WidgetPropertyInspectorView` compartida con el Hub (guard de imports),
+  panel fijo a 5 Hz con undo/redo por botones, `LicenseProvider`/`I18nProvider`
+  en la rama edit, `recoveryStorage={null}`, sesión pineada a `layout.type`,
+  gate P1 de preview imperativa bajo el store PASS. Gates locales: frontend
+  388/2863 PASS, Go completo PASS, build/lint focal/diff-check PASS. Spec:
+  `docs/superpowers/specs/2026-08-16-overlay-inplace-edit-fase2-inspector-design.md`
+  (ACCEPTED); plan: `docs/superpowers/plans/2026-08-16-overlay-inplace-edit-fase2-execution-plan.md`.
+  Sin push/PR/promoción; pendiente de revisión de Isaac.
 - ISA-365 corrige en rama aislada el Relative: selecciona por distancia física
   circular dos rivales delante y dos detrás, mantiene al jugador centrado y no
   elimina filas cuando LMU carece de gap temporal. En boxes y ante datos no

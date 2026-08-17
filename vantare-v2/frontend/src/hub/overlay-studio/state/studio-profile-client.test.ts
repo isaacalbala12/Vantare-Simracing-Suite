@@ -181,4 +181,50 @@ describe("createStudioProfileClient", () => {
     expect(transport.listeners.get("studio:profile:conflict")?.size ?? 0).toBe(0);
     expect(transport.listeners.get("studio:profile:error")?.size ?? 0).toBe(0);
   });
+
+  it("keeps studio:profile:save as the default save request event", async () => {
+    client.save({ document: buildDocument(), expectedRevision: "rev-1" });
+    expect(transport.emitted[0].name).toBe("studio:profile:save");
+  });
+
+  it("emits the custom save request event when configured", async () => {
+    const inPlaceClient = createStudioProfileClient(transport, { saveRequestEvent: "overlay:edit-layout:save" });
+    inPlaceClient.save({ document: buildDocument(), expectedRevision: "rev-1" });
+    expect(transport.emitted[0].name).toBe("overlay:edit-layout:save");
+
+    const requestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+    transport.emit("studio:profile:saved", { requestId, document: buildDocument(), revision: "rev-2" });
+  });
+
+  it("correlates the custom save event responses by request id", async () => {
+    const inPlaceClient = createStudioProfileClient(transport, { saveRequestEvent: "overlay:edit-layout:save" });
+    const savePromise = inPlaceClient.save({ document: buildDocument(), expectedRevision: "rev-1" });
+    const requestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+
+    transport.emit("studio:profile:saved", {
+      requestId: "other",
+      document: buildDocument(),
+      revision: "rev-other",
+    });
+    transport.emit("studio:profile:saved", {
+      requestId,
+      document: buildDocument(),
+      revision: "rev-2",
+    });
+
+    await expect(savePromise).resolves.toMatchObject({
+      status: "saved",
+      revision: "rev-2",
+    });
+    expect(transport.listeners.get("studio:profile:saved")?.size ?? 0).toBe(0);
+  });
+
+  it("cleans up custom save listeners after timeout", async () => {
+    const inPlaceClient = createStudioProfileClient(transport, { saveRequestEvent: "overlay:edit-layout:save" });
+    const savePromise = inPlaceClient.save({ document: buildDocument(), expectedRevision: "rev-1" });
+    const rejection = expect(savePromise).rejects.toThrow(/timeout/i);
+    vi.advanceTimersByTime(10_001);
+    await rejection;
+    expect(transport.listeners.get("studio:profile:saved")?.size ?? 0).toBe(0);
+  });
 });

@@ -1,5 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Events } from "@wailsio/runtime";
+﻿import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetLayoutV3 } from "../core/profile-document";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
@@ -11,103 +10,115 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { useRateLimitedTelemetry } from "../runtime/use-rate-limited-telemetry";
 import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
-import { applyStudioCommand } from "../../hub/overlay-studio/state/studio-command";
+import { StudioProvider, useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
+import type { AccessContext } from "../../lib/access-policy";
 import { InPlaceWidgetEditFrame } from "./InPlaceWidgetEditFrame";
+import { MemoInPlaceInspectorPanel } from "./InPlaceInspectorPanel";
 import { useInplaceInteraction } from "./use-inplace-interaction";
+import { useInplaceAutosave } from "./use-inplace-autosave";
+import { createInPlaceProfileClient } from "./inplace-profile-client";
+import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
 import { RUNTIME_SURFACE_VISIBILITY_HZ } from "../runtime/RuntimeOverlaySurface";
 import { useI18n } from "../../i18n/I18nProvider";
+import "./inplace-edit.css";
 
 export type InPlaceEditOverlayProps = {
   document: ProfileDocumentV3;
   revision: string;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
+  access?: AccessContext;
+  licenseLoading?: boolean;
 };
 
-type SaveState = "idle" | "saving" | "saved" | "conflict" | "error";
-
 export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document: initialDocument, revision: initialRevision, layoutOrigin, telemetry } = props;
+  const { document, revision, layoutOrigin, telemetry, access, licenseLoading } = props;
+  const transport = useMemo(() => createWailsStudioEventTransport(), []);
+  const client = useMemo(
+    () => createInPlaceProfileClient({ document, revision, transport }),
+    [document, revision, transport],
+  );
+
+  return (
+    <StudioProvider
+      client={client}
+      initialFile="in-place"
+      recoveryStorage={null}
+      access={access}
+    >
+      <InPlaceEditOverlayContent
+        document={document}
+        layoutOrigin={layoutOrigin}
+        telemetry={telemetry}
+        access={access}
+        licenseLoading={licenseLoading ?? false}
+      />
+    </StudioProvider>
+  );
+}
+
+function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
+  const { document, layoutOrigin, telemetry, access, licenseLoading } = props;
   const { t } = useI18n();
-  const [document, setDocument] = useState<ProfileDocumentV3>(initialDocument);
-  const [revision, setRevision] = useState(initialRevision);
-  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [requestId] = useState(() => `inplace-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const {
+    document: storeDocument,
+    dispatch,
+    selectWidget,
+    save,
+    undo,
+    redo,
+    saveState,
+  } = useStudioDocument();
+  const [selectedWidgetIdLocal, setSelectedWidgetIdLocal] = useState<string | null>(null);
   const [frozenSnapshot, setFrozenSnapshot] = useState<TelemetrySnapshot | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
   const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
-  const layout = resolveRuntimeLayout(document, snapshot);
-  const layoutViewport = resolveLayoutViewport(document);
+  const layout = resolveRuntimeLayout(storeDocument ?? document, snapshot);
+  const layoutViewport = resolveLayoutViewport(storeDocument ?? document);
   const widgets = useMemo(
     () => [...layout.widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex),
     [layout.widgets],
   );
 
+  const editingSession = layout.type as SessionLayoutType;
+
+  const autosave = useInplaceAutosave({
+    dispatch,
+    undo,
+    redo,
+    save,
+    interactionActive: false,
+  });
+
   const interaction = useInplaceInteraction({
     widgets,
-    session: layout.type as SessionLayoutType,
+    session: editingSession,
     scale: 1,
     layoutViewport,
     sceneRef: surfaceRef,
-    selectedWidgetId,
+    selectedWidgetId: selectedWidgetIdLocal,
     onCommit: (widgetId, nextLayout) => {
-      const next = applyStudioCommand(document, {
+      autosave.dispatch({
         type: "widget/layout",
-        session: layout.type as SessionLayoutType,
+        session: editingSession,
         widgetIds: [widgetId],
-        patch: buildLayoutPatch(widgets.find((widget) => widget.id === widgetId)?.layout, nextLayout),
-      });
-      setDocument(next);
-      setSaveState("saving");
-      Events.Emit("overlay:edit-layout:save", {
-        requestId: requestId,
-        expectedRevision: revision,
-        document: next,
+        patch: buildLayoutPatch(
+          widgets.find((widget) => widget.id === widgetId)?.layout,
+          nextLayout,
+        ),
       });
     },
     onSelect: (widgetId) => {
       setFrozenSnapshot(snapshot);
-      setSelectedWidgetId(widgetId);
+      setSelectedWidgetIdLocal(widgetId);
+      selectWidget(widgetId);
     },
   });
 
   // Durante un gesto el snapshot queda congelado (capturado al seleccionar) para
   // que los re-renders de telemetria no pisen la preview imperativa del frame.
   const snapshotOverride = interaction.isInteractionActive ? frozenSnapshot ?? undefined : undefined;
-
-  useEffect(() => {
-    const unsubSaved = Events.On("studio:profile:saved", (event: { data: unknown }) => {
-      const payload = event.data as { requestId?: string; revision?: string } | null;
-      if (!payload || payload.requestId !== requestId) {
-        return;
-      }
-      if (payload.revision) {
-        setRevision(payload.revision);
-      }
-      setSaveState("saved");
-    });
-    const unsubConflict = Events.On("studio:profile:conflict", (event: { data: unknown }) => {
-      const payload = event.data as { requestId?: string } | null;
-      if (!payload || payload.requestId !== requestId) {
-        return;
-      }
-      setSaveState("conflict");
-    });
-    const unsubError = Events.On("studio:profile:error", (event: { data: unknown }) => {
-      const payload = event.data as { requestId?: string } | null;
-      if (!payload || payload.requestId !== requestId) {
-        return;
-      }
-      setSaveState("error");
-    });
-    return () => {
-      unsubSaved?.();
-      unsubConflict?.();
-      unsubError?.();
-    };
-  }, [requestId]);
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
@@ -170,6 +181,10 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
       }
     : undefined;
 
+  const selectedWidget = selectedWidgetIdLocal
+    ? widgets.find((widget) => widget.id === selectedWidgetIdLocal) ?? null
+    : null;
+
   return (
     <div ref={surfaceRef} data-testid="inplace-edit-overlay" style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "transparent" }}>
       {transform && sceneStyle ? (
@@ -186,11 +201,11 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
               widget={widget}
               layout={widget.layout}
               previewActive={interaction.isWidgetPreviewActive(widget.id)}
-              selected={selectedWidgetId === widget.id}
+              selected={selectedWidgetIdLocal === widget.id}
               layoutOrigin={layoutOrigin}
               telemetry={telemetry}
               snapshotOverride={snapshotOverride}
-              onSelect={setSelectedWidgetId}
+              onSelect={setSelectedWidgetIdLocal}
               onFramePointerDown={interaction.onFramePointerDown}
               onResizePointerDown={interaction.onResizePointerDown}
               onLostPointerCapture={interaction.onLostPointerCapture}
@@ -272,6 +287,14 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
           {t("overlay.editMode.saveError")}
         </div>
       ) : null}
+      <MemoInPlaceInspectorPanel
+        widget={selectedWidget}
+        session={editingSession}
+        telemetry={telemetry}
+        access={access}
+        licenseLoading={licenseLoading}
+        autosave={autosave}
+      />
     </div>
   );
 }

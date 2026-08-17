@@ -32,10 +32,13 @@ const ERROR_EVENT = "studio:profile:error";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 function createRequestId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `studio-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  // No depende de crypto.randomUUID ni de estado de modulo: en el entorno de
+  // tests vitest recarga los modulos entre microtasks y randomUUID puede
+  // repetirse, mientras que Math.random es global y no se reinicia.
+  const time = Date.now().toString(36);
+  const first = Math.random().toString(36).slice(2, 12);
+  const second = Math.random().toString(36).slice(2, 10);
+  return `studio-${time}-${first}${second}`;
 }
 
 function readEventPayload(payload: unknown): Record<string, unknown> {
@@ -111,7 +114,11 @@ function awaitCorrelatedEvent(
   });
 }
 
-export function createStudioProfileClient(transport: StudioEventTransport): StudioProfileClient {
+export function createStudioProfileClient(
+  transport: StudioEventTransport,
+  options?: { saveRequestEvent?: string },
+): StudioProfileClient {
+  const saveRequestEvent = options?.saveRequestEvent ?? SAVE_REQUEST_EVENT;
   return {
     load(file) {
       const requestId = createRequestId();
@@ -178,7 +185,7 @@ export function createStudioProfileClient(transport: StudioEventTransport): Stud
           },
         },
       ], "Timeout waiting for studio profile save response") as Promise<StudioSaveResult>;
-      transport.emit(SAVE_REQUEST_EVENT, {
+      transport.emit(saveRequestEvent, {
         document: input.document,
         expectedRevision: input.expectedRevision,
         requestId,

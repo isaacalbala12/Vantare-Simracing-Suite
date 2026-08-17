@@ -1,3 +1,34 @@
+Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
+- El modo edición in-place del overlay (Fase 1) se extiende con un panel
+  flotante que permite editar contenido, apariencia y comportamiento del
+  widget seleccionado con los datos live del juego, sin abrir el Hub.
+- Sesión única: `InPlaceEditOverlay` monta `StudioProvider` con
+  `InPlaceProfileClient` (load en memoria, save → `overlay:edit-layout:save`,
+  nunca `studio:profile:save`) y `recoveryStorage={null}`. Desaparecen el
+  `useState` documental, el Emit manual y `applyStudioCommand` directo del
+  overlay.
+- `useInplaceAutosave`: guarda por comandos aceptados (nunca por dirty), layout
+  inmediato, propiedades con debounce 300 ms, una petición en vuelo con
+  coalescing, error/retry y conflict sin reintento automático. Hardening del
+  store: `save()` lee documento/revisión de refs (una edición B durante el
+  vuelo de A se conserva).
+- Vista headless `WidgetPropertyInspectorView` (appearance/content/behavior)
+  compartida por StudioInspector (Hub) y el panel del overlay, con guard de
+  imports (sin store/telemetría/diseños/Wails).
+- Panel fijo a la derecha (5 Hz, memoizado, colapsable) con undo/redo por
+  botones, dirty, retry/conflict; `LicenseProvider` + `I18nProvider` en la
+  rama edit (access real por plan; propiedades deshabilitadas hasta que la
+  licencia resuelve); claves i18n en 4 idiomas; sesión pineada a `layout.type`
+  (sin materializar `layouts.race`).
+- Gate P1 PASS: `keeps imperative preview and frozen telemetry across
+  StudioProvider rerenders during drag` (DOM en preview, documento intacto,
+  un solo save).
+- Gates: frontend completo 388 archivos/2863 tests PASS, Go completo PASS,
+  build, lint focal y diff-check PASS. Rama
+  `vantareapp/isa-402-fase2-inspector-flotante` sobre `origin/nightly@c91d3d0f`;
+  spec ACCEPTED y plan en `docs/superpowers/`. Sin push/PR/promoción;
+  pendiente de revisión de Isaac.
+
 Nota ISA-365 / REL-01 (2026-08-15, implementada y promovida a Nightly):
 - Relative selecciona por orden circular de `lapDistanceMeters` los dos coches
   físicamente más próximos delante y los dos detrás, con el jugador siempre

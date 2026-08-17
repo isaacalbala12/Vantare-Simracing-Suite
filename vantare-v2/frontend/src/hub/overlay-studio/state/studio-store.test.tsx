@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AccessContext } from "../../../lib/access-policy";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { StudioProfileClient } from "./studio-profile-client";
+import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
 import { StudioProvider, useStudioDocument, useStudioPreview } from "./studio-store";
 
 const freeAccess: AccessContext = {
@@ -481,5 +481,140 @@ describe("StudioProvider", () => {
     });
     expect(result.current.saveState).toBe("saved");
     expect(client.save).toHaveBeenCalled();
+  });
+
+  it("preserves edit B when save A resolves and uses A revision for the next save", async () => {
+    const deferred: { resolve: (value: StudioSaveResult) => void } = { resolve: () => undefined };
+    const client = createMockClient(buildDocument());
+    const originalSave = client.save;
+    let firstCall = true;
+    client.save = vi.fn((input) => {
+      if (firstCall) {
+        firstCall = false;
+        return new Promise<StudioSaveResult>((resolve) => {
+          deferred.resolve = resolve;
+        });
+      }
+      return originalSave(input);
+    }) as typeof client.save;
+
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 150 },
+      });
+    });
+    const documentA = result.current.document!;
+
+    let saveAPromise: Promise<StudioSaveResult>;
+    act(() => {
+      saveAPromise = result.current.save();
+    });
+
+    // Edicion B mientras A esta en vuelo.
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 250 },
+      });
+    });
+    const documentB = result.current.document!;
+    expect(documentB.layouts.general.widgets[0].layout.x).toBe(250);
+
+    // Resuelve A con revision 2 y el documento A.
+    await act(async () => {
+      deferred.resolve({
+        status: "saved",
+        document: structuredClone(documentA),
+        revision: "rev-2",
+      });
+      await saveAPromise;
+    });
+
+    // El presente conserva B; solo saved y revision cambian.
+    expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(250);
+    expect(result.current.dirty).toBe(true);
+    expect(result.current.revision).toBe("rev-2");
+
+    // El siguiente save usa B con la revision de A.
+    await act(async () => {
+      await result.current.save();
+    });
+    const nextCall = vi.mocked(originalSave).mock.calls.at(-1);
+    expect(nextCall?.[0].document.layouts.general.widgets[0].layout.x).toBe(250);
+    expect(nextCall?.[0].expectedRevision).toBe("rev-2");
+  });
+
+  it("dispatch returns true only when the command creates history", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    let changed: boolean | undefined;
+    act(() => {
+      changed = result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 150 },
+      });
+    });
+    expect(changed).toBe(true);
+
+    act(() => {
+      changed = result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 150 },
+      });
+    });
+    expect(changed).toBe(false);
+  });
+
+  it("undo and redo report whether they changed history", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+    const originalX = result.current.document!.layouts.general.widgets[0].layout.x;
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: originalX + 50 },
+      });
+    });
+
+    let changed: boolean | undefined;
+    act(() => {
+      changed = result.current.undo();
+    });
+    expect(changed).toBe(true);
+    expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(originalX);
+
+    act(() => {
+      changed = result.current.undo();
+    });
+    expect(changed).toBe(false);
+
+    act(() => {
+      changed = result.current.redo();
+    });
+    expect(changed).toBe(true);
+    expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(originalX + 50);
+
+    act(() => {
+      changed = result.current.redo();
+    });
+    expect(changed).toBe(false);
   });
 });

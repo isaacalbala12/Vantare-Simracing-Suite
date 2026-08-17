@@ -15,8 +15,9 @@ Nota ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
   continuidad de Overlay/Engineer tras desactivar Strategy. La evidencia es
   manual y no incluye un artefacto de log; no hubo push, PR, CI, merge,
   promoción ni release. La rama ya está publicada y el PR draft `#280` apunta
-  a `nightly`; CI y revisión están pendientes. ISA-340 permanece `In Progress`
-  en Linear.
+  a `nightly`; el run CI `32045640679` pasa todos los gates bloqueantes y solo
+  deja avisos advisory de lint global heredado. ISA-340 permanece `In Progress`
+  en Linear mientras la revisión esté pendiente.
 
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel

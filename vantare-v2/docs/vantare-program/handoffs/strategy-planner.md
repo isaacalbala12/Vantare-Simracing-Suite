@@ -40,9 +40,10 @@ Actualización ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente
   desviación missing sin objetivo exacto. No se ejecutó `-race` por
   `CGO_ENABLED=0` y ausencia de GCC.
 - Estado externo: la rama ya está publicada en `origin` y el PR draft `#280`
-  apunta a `nightly`; CI y revisión están pendientes. Linear conserva ISA-340
-  en `In Progress`. No hubo merge, promoción ni release; ISA-153 sigue
-  separado.
+  apunta a `nightly`. El run CI `32045640679` pasa todos los gates bloqueantes;
+  solo deja avisos advisory de lint global heredado. Linear conserva ISA-340
+  en `In Progress` mientras la revisión esté pendiente. No hubo merge,
+  promoción ni release; ISA-153 sigue separado.
 
 Actualización ISA-340 / STR-17A (2026-08-14, rama local validada con LMU en pista):
 
@@ -381,9 +382,9 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Esperar CI y revisar el PR draft `#280`; obtener la revisión de Isaac antes de
-cualquier promoción. ISA-153 / STR-18 queda técnicamente desbloqueable, pero
-continúa separado y no se marca hecho.
+Revisar el PR draft `#280` y obtener la revisión de Isaac antes de cualquier
+promoción. ISA-153 / STR-18 queda técnicamente desbloqueable, pero continúa
+separado y no se marca hecho.
 
 ## Última actualización
 

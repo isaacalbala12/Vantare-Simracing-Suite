@@ -100,7 +100,7 @@ git diff --check
 - [x] Update Linear through direct `mcp__linear__*` with branch, commits, exact checks, omissions and remaining manual proof.
 - [x] Push the issue branch (`origin/vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`).
 - [x] Open a draft PR against `nightly` (`#280`).
-- [ ] Obtain CI for the pushed HEAD and review its result.
+- [x] Obtain CI for the pushed HEAD and review its result (`32045640679` — PASS; advisory global lint debt remains non-blocking).
 - [ ] Merge or promote to Nightly, Testers or Master only with Isaac’s separate authorization.
 
 ## Estado posterior a la reconciliación (2026-08-17)
@@ -122,8 +122,9 @@ recuperar el plan activo, desactivar y reiniciar. También confirmó el reinicio
 con LMU, la resolución única sin payload y la continuidad de Overlay/Engineer
 tras desactivar Strategy. La validación es manual y no se adjuntó un artefacto
 de log; no hay push, PR, CI remoto, merge, promoción ni release. Linear
-permanece `In Progress` mientras CI y la revisión del PR estén pendientes. El
-PR draft es `#280` hacia `nightly`; no hay merge, promoción ni release.
+permanece `In Progress` mientras la revisión del PR esté pendiente. El PR
+draft es `#280` hacia `nightly`; CI `32045640679` pasa sus gates bloqueantes.
+No hay merge, promoción ni release.
 Evidencia detallada:
 `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 

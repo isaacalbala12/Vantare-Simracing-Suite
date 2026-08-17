@@ -129,10 +129,12 @@ El resultado actual es, por tanto:
 
 El resultado está validado en la rama de issue reconciliada y en una
 integración de smoke. La rama ya está publicada en `origin` y existe el PR
-draft `#280` hacia `nightly`; CI está pendiente. No hubo merge, promoción a
-`testers` o `master`, ni release. Linear permanece `In Progress`: los seis
-criterios técnicos y la verificación manual están confirmados. No se adjuntó
-un artefacto de log. ISA-153 queda técnicamente
+draft `#280` hacia `nightly`; el run `32045640679` pasa todos los gates
+bloqueantes. Solo quedan avisos advisory de lint global heredado. No hubo
+merge, promoción a `testers` o `master`, ni release. Linear permanece
+`In Progress` mientras la revisión del PR esté pendiente: los seis criterios
+técnicos y la verificación manual están confirmados. No se adjuntó un artefacto
+de log. ISA-153 queda técnicamente
 desbloqueable, pero esta evidencia no la marca terminada ni autoriza empezar,
 integrar o promover ese corte. Testers permanece diferido por instrucción de
 Isaac.

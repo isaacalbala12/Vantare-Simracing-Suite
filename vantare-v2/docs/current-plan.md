@@ -262,8 +262,8 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
 
 ## ISA-369 / HUD-ORBIT-01 — fundamentos Command Orbit v0.3 (2026-08-17)
 
-- **Estado:** implementación aislada completada en rama; pendiente de PR/review,
-  sin integración ni promoción.
+- **Estado:** implementación aislada completada; PR draft #279 abierto a
+  `nightly`, pendiente de review, sin integración ni promoción.
 - **Rama:**
   `vantareapp/isa-369-hud-orbit-01-fundamentos-orbit-tema-tokens-sprite-de-iconos`.
 - **Base real:** `origin/nightly@7a92241d`; la fuente de diseño
@@ -276,7 +276,7 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
   focal PASS y `visual:orbit-foundations` PASS con capturas balanced/compact a
   1920×1080. El lint global conserva exactamente los 46 errores/2 warnings de
   `origin/nightly`; ISA-369 no añade deuda.
-- **Siguiente acción:** review del PR a `nightly`. No iniciar el briefing
+- **Siguiente acción:** review del PR #279 a `nightly`. No iniciar el briefing
   `01-shell.md` hasta aceptar todos los criterios de `00-fundamentos.md`.
 
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):

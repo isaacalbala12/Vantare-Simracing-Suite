@@ -862,6 +862,6 @@ Evidencia Task 4 y cierre acumulado:
 - Lint global: 46 errores/2 warnings tanto en esta rama como en un worktree
   temporal limpio de `origin/nightly@7a92241d`; la deuda es heredada y no se
   corrigió fuera de alcance.
-- Review propio en cinco ejes: Approve, sin Critical/Required pendientes.
-  Siguiente gate: PR/review de ISA-369; `01-shell` permanece bloqueado hasta la
+- Review propio en cinco ejes: Approve, sin Critical/Required pendientes. PR
+  draft #279 abierto a `nightly`; `01-shell` permanece bloqueado hasta la
   aceptación de este briefing.

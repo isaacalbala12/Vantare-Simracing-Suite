@@ -4,7 +4,7 @@
 **Base y merge-base:** `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`
 **Rama:** `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
 **HEAD productivo verificado:** `7452c8ef817535d8c3c29562ce7ece24a2092490`
-**HEAD de la rama publicada:** `281e2ea50fbafdf43ea8aa0cf4aac822e33bdbb0`
+**Revisión de implementación/documentación validada por CI:** `ee008cc00b601c280df7c62c930a6e66f2628f4c`
 
 **Backup pre-reconciliación:** `backup/isa-340-pre-reconcile-20260817` en
 `abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
@@ -13,10 +13,9 @@
 
 - El corte productivo contiene cuatro commits de implementación sobre la base
   Nightly actual: `9f6c9c9f` (wiring), `63f4f87f` (resolver), `4b9f63f4`
-  (lifecycle) y `7452c8ef` (composition root). La rama añade cinco commits de
-  documentación y evidencia: `588920f0`, `d0299977`, `85e5bc11`, `9b4fd5f2` y
-  `281e2ea5`. La reconciliación desde la rama histórica se realizó sin
-  conflictos.
+  (lifecycle) y `7452c8ef` (composition root). La rama incorpora además el
+  expediente documental de entrega. La reconciliación desde la rama histórica
+  se realizó sin conflictos.
 - `ResolveActivePlan` exige la referencia completa exacta de la revisión activa:
   plan, variante, ID de revisión y hash. Una colisión de ID con otra referencia
   es un error de integridad, no un resultado "no encontrado".
@@ -131,9 +130,9 @@ El resultado actual es, por tanto:
 
 El resultado está validado en la rama de issue reconciliada y en una
 integración de smoke. La rama ya está publicada en `origin` y existe el PR
-draft `#280` hacia `nightly`; el run exacto del HEAD publicado,
-`32046622190`, pasa todos los gates bloqueantes. Solo quedan avisos advisory
-de lint global heredado. No hubo merge, promoción a `testers` o `master`, ni
+draft `#280` hacia `nightly`; el run de la revisión validada
+`32047829206` pasa todos los gates bloqueantes. Solo quedan avisos advisory de
+lint global heredado. No hubo merge, promoción a `testers` o `master`, ni
 release. Linear permanece `In Progress` mientras la revisión del PR esté
 pendiente: los seis criterios técnicos y la verificación manual están
 confirmados. No se adjuntó un artefacto de log. ISA-153 queda técnicamente

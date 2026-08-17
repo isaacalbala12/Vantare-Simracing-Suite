@@ -3,7 +3,7 @@ import type {
   RelativeRowViewModel,
   RelativeViewModel,
 } from "../../../widget-types/relative/relative-view-model";
-import { deriveRelativeEvents, deriveRelativeFlipOffsets } from "./relative-motion";
+import { deriveRelativeEvents } from "./relative-motion";
 
 /** Row pitch used to translate an index change into pixels for the FLIP slide. */
 export const RELATIVE_ROW_STRIDE_PX = 26;
@@ -54,6 +54,14 @@ export function useRelativeMotion(
   /** Model the last render was built from, so a departure is caught in-render. */
   const [renderedModel, setRenderedModel] = useState<RelativeViewModel | null>(null);
   const ghostTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  /**
+   * Top position of every row in the last painted model, relative to the root.
+   * Measured imperatively after each paint; the next model slides each row from
+   * its previous position to its current one, which is what makes a crossing
+   * through the player row (and past the axis seams) read as one continuous
+   * glide instead of an estimated jump.
+   */
+  const rectsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -68,13 +76,38 @@ export function useRelativeMotion(
   useLayoutEffect(() => {
     if (!enabled || model.status !== "ready") {
       prevRef.current = model.status === "ready" ? model : null;
+      rectsRef.current = new Map();
       return;
     }
     const prev = prevRef.current;
     prevRef.current = model;
     const root = rootRef.current;
-    if (!prev || !root) {
+    if (!root) {
       return;
+    }
+    const rootTop = root.getBoundingClientRect().top;
+
+    // FLIP real: cada fila se desliza desde la posicion que ocupaba en el modelo
+    // anterior (medida) hasta la actual. La distancia medida atraviesa tambien
+    // los ejes y la fila del jugador, asi que un cruce recorre una trayectoria
+    // continua en vez de un salto estimado por indice.
+    if (prev) {
+      for (const [rowId, previousTop] of rectsRef.current) {
+        const element = rowElement(root, rowId);
+        if (!element) {
+          continue;
+        }
+        const offsetPx = previousTop - (element.getBoundingClientRect().top - rootTop);
+        if (Math.abs(offsetPx) < 0.5) {
+          continue;
+        }
+        const rowsMoved = Math.abs(offsetPx) / RELATIVE_ROW_STRIDE_PX;
+        const duration = Math.min(FLIP_MAX_MS, FLIP_BASE_MS + rowsMoved * FLIP_PER_ROW_MS);
+        element.animate(
+          [{ transform: `translateY(${offsetPx}px)` }, { transform: "translateY(0)" }],
+          { duration, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+        );
+      }
     }
 
     const schedule = (durationMs: number, run: () => void) => {
@@ -84,15 +117,6 @@ export function useRelativeMotion(
       }, durationMs);
       timersRef.current.add(timer);
     };
-
-    for (const [rowId, offset] of deriveRelativeFlipOffsets(prev, model, RELATIVE_ROW_STRIDE_PX)) {
-      const rowsMoved = Math.abs(offset) / RELATIVE_ROW_STRIDE_PX;
-      const duration = Math.min(FLIP_MAX_MS, FLIP_BASE_MS + rowsMoved * FLIP_PER_ROW_MS);
-      rowElement(root, rowId)?.animate(
-        [{ transform: `translateY(${offset}px)` }, { transform: "translateY(0)" }],
-        { duration, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
-      );
-    }
 
     let crossBudget = MAX_CONCURRENT_CROSSES;
     let crossIndex = 0;
@@ -124,6 +148,17 @@ export function useRelativeMotion(
         }
       }
     }
+
+    // Posiciones actuales para el siguiente modelo: el FLIP del proximo render
+    // deslizara cada fila desde aqui hasta su nuevo sitio.
+    const nextRects = new Map<string, number>();
+    for (const row of model.rows) {
+      const element = rowElement(root, row.id);
+      if (element) {
+        nextRects.set(row.id, element.getBoundingClientRect().top - rootTop);
+      }
+    }
+    rectsRef.current = nextRects;
   }, [enabled, model, rootRef]);
 
   useEffect(() => {

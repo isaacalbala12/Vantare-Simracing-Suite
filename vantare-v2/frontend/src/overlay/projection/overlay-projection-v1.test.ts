@@ -99,6 +99,16 @@ describe("authoritative overlay projection v1 decoder", () => {
     }
   });
 
+  it("decodes capabilities emitted by the Go producer including spatial (ISA-355)", () => {
+    const liveEnvelope = cloneEnvelope(golden);
+    (liveEnvelope.payload.capabilities as string[]).push("spatial");
+
+    const decoded = decodeOverlayProjectionV1(liveEnvelope);
+
+    expect(decoded.payload.capabilities).toContain("spatial");
+    expect(decoded.payload.vehicles.length).toBeGreaterThan(0);
+  });
+
   it("keeps the new golden compatible with the frozen pre-D7 consumer surface", () => {
     const oldConsumer = decodeAsPreD7Consumer(golden);
 

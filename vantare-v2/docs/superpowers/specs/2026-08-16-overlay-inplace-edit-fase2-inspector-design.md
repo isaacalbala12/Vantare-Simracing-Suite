@@ -1,11 +1,11 @@
 ﻿# Spec: Fase 2 ΓÇö Inspector flotante en el modo edici├│n in-place del overlay
 
-**Fecha:** 2026-08-16  
-**Estado:** ACCEPTED - implementada en rama vantareapp/isa-402-fase2-inspector-flotante (cortes 1-6 completos, gates PASS, pendiente de revision de Isaac y promocion)  
-**Rama de documentaci├│n:** `vantareapp/overlay-inplace-edit-fase2-spec`  
-**Base documental:** `origin/nightly@3be8a307`  
-**Dependencias:** Fase 1 integrada en `nightly@77c2f648` mediante PR #267; ADR 0003; `StudioProvider`; `StudioProfileService.SaveInPlace`; preview imperativa de drag/resize.  
-**Ejecuci├│n:** seis cortes secuenciales en un ├║nico worktree. No se permite ejecutar agentes en paralelo sobre la misma rama o worktree.  
+**Fecha:** 2026-08-16
+**Estado:** ACCEPTED - implementada en rama vantareapp/isa-402-fase2-inspector-flotante (cortes 1-6 completos, gates PASS, pendiente de revision de Isaac y promocion)
+**Rama de documentaci├│n:** `vantareapp/overlay-inplace-edit-fase2-spec`
+**Base documental:** `origin/nightly@3be8a307`
+**Dependencias:** Fase 1 integrada en `nightly@77c2f648` mediante PR #267; ADR 0003; `StudioProvider`; `StudioProfileService.SaveInPlace`; preview imperativa de drag/resize.
+**Ejecuci├│n:** seis cortes secuenciales en un ├║nico worktree. No se permite ejecutar agentes en paralelo sobre la misma rama o worktree.
 **Linear:** sin issue por decisi├│n expresa del propietario el 2026-08-16.
 
 ## 1. Objetivo y alcance

@@ -124,7 +124,7 @@ export function useInplaceAutosave(input: UseInplaceAutosaveInput): InPlaceAutos
       scheduleSave(true);
     }
     return changed;
-  }, [redo, scheduleSave, undo]);
+  }, [scheduleSave, undo]);
 
   const redoChecked = useCallback((): boolean => {
     const changed = redo();

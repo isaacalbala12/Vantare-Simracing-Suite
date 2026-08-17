@@ -149,15 +149,15 @@ export function StudioProvider(props: {
 
   useEffect(() => {
     let cancelled = false;
-    setSaveState("idle");
-    setAccessNotice(null);
-    setLoadError(null);
 
     void client.load(initialFile).then(
       (loaded) => {
         if (cancelled) {
           return;
         }
+        setSaveState("idle");
+        setAccessNotice(null);
+        setLoadError(null);
         const initial = buildInitialHistory(loaded.document);
         setHistory(initial.history);
         historyRef.current = initial.history;
@@ -172,6 +172,8 @@ export function StudioProvider(props: {
           return;
         }
         const message = error instanceof Error ? error.message : "failed to load studio profile";
+        setSaveState("idle");
+        setAccessNotice(null);
         setLoadError(message);
         setHistory(null);
         historyRef.current = null;
@@ -359,7 +361,7 @@ export function StudioProvider(props: {
     setSaveState("error");
     setAccessNotice(result.message);
     return result;
-  }, [access, client, document, history, recoveryStore, revision]);
+  }, [access, client, recoveryStore]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));
@@ -433,6 +435,9 @@ export function StudioProvider(props: {
   );
 }
 
+// The provider and its hooks intentionally share this module so every consumer
+// observes the same context values. Fast Refresh cannot infer that arrangement.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useStudioDocument(): StudioDocumentContextValue {
   const context = useContext(StudioDocumentContext);
   if (!context) {
@@ -441,6 +446,7 @@ export function useStudioDocument(): StudioDocumentContextValue {
   return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useStudioPreview(): StudioPreviewContextValue {
   const context = useContext(StudioPreviewContext);
   if (!context) {

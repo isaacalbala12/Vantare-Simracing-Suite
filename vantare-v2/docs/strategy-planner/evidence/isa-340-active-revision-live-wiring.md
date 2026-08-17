@@ -1,15 +1,19 @@
 # ISA-340 / STR-17A — evidencia del wiring de la revisión activa
 
-**Fecha:** 2026-08-14
-**Base y merge-base:** `origin/nightly@d9e4bd352b62824b0e83a05b5c3c631fec1f0c73`
+**Fecha:** 2026-08-17
+**Base y merge-base:** `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`
 **Rama:** `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
-**HEAD productivo verificado:** `668f54c3e87d9a26f41d593d71713e86b48a1134`
+**HEAD productivo verificado:** `588920f09c8a177de52563d7375be0030696a440`
+
+**Backup pre-reconciliación:** `backup/isa-340-pre-reconcile-20260817` en
+`abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
 
 ## Resultado
 
-- El corte productivo contiene cuatro commits locales sobre la base Nightly:
-  plan `2dd6a6af`, resolver `db7bceb1`, lifecycle `ca7eea01` y composition
-  root `668f54c3`.
+- El corte productivo contiene cinco commits locales sobre la base Nightly
+  actual: `9f6c9c9f` (wiring), `63f4f87f` (resolver), `4b9f63f4` (lifecycle),
+  `7452c8ef` (composition root) y `588920f0` (evidencia). La reconciliación
+  desde la rama histórica se realizó sin conflictos.
 - `ResolveActivePlan` exige la referencia completa exacta de la revisión activa:
   plan, variante, ID de revisión y hash. Una colisión de ID con otra referencia
   es un error de integridad, no un resultado "no encontrado".
@@ -39,26 +43,27 @@
   P1/P2.
 - No quedan findings P1/P2 abiertos en los tres cortes.
 
-## Gates finales sobre `668f54c3`
+## Gates finales sobre `588920f0`
 
 - `go test -count=20 ./internal/strategy/live` — PASS.
 - `go test -count=20 ./internal/app -run 'StrategyLive|StrategyExecution|TelemetryCore.*Strategy'`
   — PASS.
 - `go test -count=20 ./cmd/vantare -run 'StrategyLive|ActiveRevision'` — PASS.
-- `go test -count=1 ./internal/strategy/... ./internal/app ./internal/app/telemetrytransport ./cmd/vantare`
-  — PASS.
-- `go test -count=1 ./...` — PASS final en 37,6 s. La primera corrida global
-  tuvo dos timeouts ajenos al cambio; ambos pasaron aislados y la repetición
-  global final quedó verde.
+- `go test -count=1 ./...` — PASS.
 - `go vet ./internal/strategy/live ./internal/app ./cmd/vantare` — PASS.
-- `gofmt -l internal/strategy/live internal/app cmd/vantare` — limpio.
+- Los archivos Go propios del diff pasan `gofmt -l`; el chequeo amplio
+  `gofmt -l internal/strategy/live internal/app cmd/vantare` sigue listando
+  únicamente `internal/app/diagnostics_service.go`, deuda heredada de
+  `origin/nightly` y fuera del alcance de ISA-340.
 - `git diff --check` — PASS.
-- `pnpm --dir frontend build` — PASS, 897 módulos; lockfile sin cambios. Fue
+- `pnpm --dir frontend build` — PASS, 918 módulos; lockfile sin cambios. Fue
   solo el prerrequisito del embed de `cmd/vantare`: ISA-340 no modifica source
   frontend.
+- `wails3 build DEV=true` — PASS, binario Windows generado correctamente.
 
 No se ejecutó `go test -race`: este host conserva `CGO_ENABLED=0` y no dispone
-de GCC. Tampoco se ejecutó la suite frontend porque no se tocó source frontend.
+de GCC. Tampoco se ejecutó la suite frontend porque no se tocó source frontend;
+sí se ejecutaron el typecheck y el build productivo.
 
 ## Evidencia LMU integrada
 
@@ -100,14 +105,35 @@ siguen pendientes la creación/activación por UI, la comprobación de logs y
 consumer tras reiniciar, y la desactivación seguida de otro reinicio. Tampoco
 acredita cobertura `-race`.
 
+## Actualización de smoke Wails (2026-08-17)
+
+Isaac confirmó el recorrido manual de persistencia ejecutado en una aplicación
+Wails aislada sobre la acumulación que contiene ISA-340: crear/guardar una
+revisión, activarla, reiniciar y recuperar el plan activo, desactivarlo y
+reiniciar de nuevo. Esto cierra la parte observable de UI, persistencia y
+reinicio del estado activo.
+
+El smoke no se ejecutó con una sesión LMU ni dejó una captura de los logs de
+arranque, por lo que no se afirma todavía que el log visible reporte una sola
+revisión resuelta sin payload. Tampoco se observó en ese recorrido la
+continuidad simultánea de Overlay y Engineer al desactivar Strategy. El
+resultado actual es, por tanto:
+
+- UI create/save/activate: confirmado manualmente.
+- LMU + log de resolución única sin payload: pendiente de captura.
+- Camino live con jugador en pista: confirmado por el probe integrado anterior.
+- Fuel observado y desviación missing sin objetivo: confirmado por el probe.
+- Deactivate + restart con continuidad Overlay/Engineer: pendiente de
+  verificación conjunta.
+
 ## Estado de entrega
 
-El resultado está validado en la rama de issue y en una integración de smoke,
-ambas solo locales. No hubo push, PR, CI remoto, merge, promoción a `nightly`,
-`testers` o `master`, ni release. Linear fue sincronizado previamente mediante
-el MCP directo: los seis criterios técnicos están
-marcados y la issue permanece `In Progress` hasta la prueba manual/publicación.
-ISA-153 queda técnicamente
+El resultado está validado en la rama de issue reconciliada y en una
+integración de smoke, ambas solo locales. No hubo push, PR, CI remoto, merge,
+promoción a `nightly`, `testers` o `master`, ni release. Linear permanece
+`In Progress`: los seis criterios técnicos están verificados y la evidencia
+manual de persistencia UI está confirmada, pero siguen pendientes la captura
+LMU/log y la continuidad de Overlay/Engineer. ISA-153 queda técnicamente
 desbloqueable, pero esta evidencia no la marca terminada ni autoriza empezar,
 integrar o promover ese corte. Testers permanece diferido por instrucción de
 Isaac.

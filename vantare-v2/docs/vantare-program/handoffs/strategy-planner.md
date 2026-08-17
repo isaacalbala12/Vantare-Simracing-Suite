@@ -16,6 +16,32 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-340 / STR-17A (2026-08-17, reconciliada y validada localmente):
+
+- La rama exacta
+  `vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`
+  parte de `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`; el corte
+  productivo termina en `588920f09c8a177de52563d7375be0030696a440`, con cinco
+  commits propios.
+  El SHA anterior se conserva en
+  `backup/isa-340-pre-reconcile-20260817@abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`.
+- `go test -count=20` de Strategy live, app y cmd/vantare, `go test ./...`,
+  `go vet` focal, build frontend, `wails3 build DEV=true` y `git diff --check`
+  pasan. Los archivos Go del diff están formateados; el chequeo amplio de
+  `gofmt` solo encuentra `internal/app/diagnostics_service.go`, deuda heredada
+  de Nightly y fuera de alcance.
+- Isaac confirmó el smoke Wails aislado de crear/guardar/activar, reiniciar y
+  recuperar, desactivar y reiniciar sobre la acumulación que contiene ISA-340.
+  No incluyó sesión LMU ni captura de logs de arranque, y no observó la
+  continuidad conjunta de Overlay/Engineer; esas dos comprobaciones siguen
+  pendientes sin convertirlas en evidencia implícita.
+- La evidencia LMU integrada previa sigue acreditando `source=live`, cursor
+  `epoch=1/sequence=3`, vuelta completada `0` y Fuel `98/115 L` fresh, con
+  desviación missing sin objetivo exacto. No se ejecutó `-race` por
+  `CGO_ENABLED=0` y ausencia de GCC.
+- Estado externo: Linear conserva ISA-340 en `In Progress`. No hubo push, PR,
+  CI remoto, merge, promoción ni release; ISA-153 sigue separado.
+
 Actualización ISA-340 / STR-17A (2026-08-14, rama local validada con LMU en pista):
 
 - La rama oficial parte de `origin/nightly@d9e4bd352b62824b0e83a05b5c3c631fec1f0c73`
@@ -353,11 +379,13 @@ Actualización ISA-134 / STR-00:
 
 ## Siguiente acción exacta
 
-Completar en Wails la creación/activación por UI, los reinicios y la
-desactivación del plan, y obtener la revisión de Isaac antes de cualquier
-push/PR o promoción. ISA-153 / STR-18 queda técnicamente desbloqueable, pero
-continúa separado y no se marca hecho.
+Completar la captura manual conjunta con LMU: un reinicio que deje en logs una
+sola revisión resuelta sin payload y una desactivación/reinicio donde se
+observe la continuidad de Overlay y Engineer. Después, obtener la revisión de
+Isaac antes de cualquier push/PR o promoción. ISA-153 / STR-18 queda
+técnicamente desbloqueable, pero continúa separado y no se marca hecho.
 
 ## Última actualización
 
-2026-08-14, ISA-340 / STR-17A validada en rama local con LMU en pista, Codex.
+2026-08-17, ISA-340 / STR-17A reconciliada sobre Nightly y validada con gates
+locales y smoke Wails de persistencia, Codex.

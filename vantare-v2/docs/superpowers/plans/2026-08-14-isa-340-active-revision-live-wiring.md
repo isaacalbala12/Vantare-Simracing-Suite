@@ -102,10 +102,25 @@ git diff --check
 - [ ] Open or update a draft PR and obtain CI for the pushed HEAD.
 - [ ] Merge or promote to Nightly, Testers or Master only with Isaac’s separate authorization.
 
-El cierre documental local queda separado de los cuatro commits productivos.
-Push, PR, CI remoto, merge y promociones permanecen pendientes. Linear ya
-contiene los seis criterios técnicos verificados y el comentario de evidencia,
-pero permanece `In Progress` hasta la prueba manual/publicación. Evidencia detallada:
+## Estado posterior a la reconciliación (2026-08-17)
+
+La rama se rebasó limpiamente sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`.
+El HEAD productivo verificado es `588920f09c8a177de52563d7375be0030696a440`,
+con cinco commits propios y un backup del SHA anterior en
+`backup/isa-340-pre-reconcile-20260817`
+(`abaf5f7931ef4cfe8ef19297e99aa9b6bbe2c556`). Los gates
+focales x20, `go test ./...`, `go vet`, el build frontend, `wails3 build
+DEV=true` y `git diff --check` pasan. El chequeo amplio de `gofmt` conserva
+únicamente la deuda heredada de `internal/app/diagnostics_service.go`; los
+archivos Go propios de ISA-340 están formateados.
+
+Isaac confirmó el smoke manual aislado de persistencia Wails realizado sobre
+la acumulación que contiene ISA-340: crear/guardar/activar, reiniciar y
+recuperar el plan activo, desactivar y reiniciar. Ese recorrido no incluyó una
+sesión LMU ni una captura de logs/continuidad de Overlay y Engineer, por lo
+que esas dos comprobaciones observables siguen pendientes. No hay push, PR,
+CI remoto, merge, promoción ni release. Linear permanece `In Progress` hasta
+cerrar esa evidencia y publicar la rama. Evidencia detallada:
 `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 
 ## Manual verification after automated closure
@@ -122,7 +137,7 @@ con source live, cursor `epoch=1/sequence=3`, vuelta completada `0` y Fuel
 `98/115 L` present/fresh; la desviación siguió missing sin objetivo exacto.
 Esto no sustituye la verificación manual completa en Wails ni `-race`.
 
-- [ ] Create/save a `strategy.editor.v1` revision and activate it through the existing Strategy UI.
+- [x] Create/save a `strategy.editor.v1` revision and activate it through the existing Strategy UI (smoke Wails confirmado por Isaac en la acumulación de ISA-362 que contiene ISA-340).
 - [ ] Restart Vantare with LMU in a session and confirm the logs report one resolved active revision without payload contents.
 - [x] Enter the track and verify the existing sanitized live probe/read model observes the real Strategy cursor and stint boundary.
 - [x] Confirm Fuel remains observed from Telemetry Core but deviation remains missing because the persisted editor v1 document has no explicit per-lap target series.

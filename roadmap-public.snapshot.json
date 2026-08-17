@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "channel": "nightly",
-  "generatedAt": "2026-08-16T15:12:15Z",
+  "generatedAt": "2026-08-17T01:14:55Z",
   "staleAfterSeconds": 86400,
   "tabs": [
     {
@@ -193,7 +193,7 @@
               "id": "task_e79e1f63aa00207b5076",
               "title": "Overlay Studio: Broadcast Tower debe ocupar todo el ancho y redimensionarse solo horizontalmente",
               "status": "done",
-              "updatedAt": "2026-08-14T00:01:30.881Z"
+              "updatedAt": "2026-08-17T01:14:42.660Z"
             },
             {
               "id": "task_cdfcf9e4b68a16baffba",

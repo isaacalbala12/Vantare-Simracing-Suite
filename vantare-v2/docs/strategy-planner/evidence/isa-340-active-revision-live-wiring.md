@@ -128,11 +128,11 @@ El resultado actual es, por tanto:
 ## Estado de entrega
 
 El resultado está validado en la rama de issue reconciliada y en una
-integración de smoke, ambas solo locales. No hubo push, PR, CI remoto, merge,
-promoción a `nightly`, `testers` o `master`, ni release. Linear permanece
-`In Progress`: los seis criterios técnicos y la verificación manual están
-confirmados. Solo queda publicar la rama; no se adjuntó un artefacto de log.
-ISA-153 queda técnicamente
+integración de smoke. La rama ya está publicada en `origin` y existe el PR
+draft `#280` hacia `nightly`; CI está pendiente. No hubo merge, promoción a
+`testers` o `master`, ni release. Linear permanece `In Progress`: los seis
+criterios técnicos y la verificación manual están confirmados. No se adjuntó
+un artefacto de log. ISA-153 queda técnicamente
 desbloqueable, pero esta evidencia no la marca terminada ni autoriza empezar,
 integrar o promover ese corte. Testers permanece diferido por instrucción de
 Isaac.

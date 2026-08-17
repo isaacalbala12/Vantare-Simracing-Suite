@@ -98,13 +98,14 @@ git diff --check
 
 - [x] Record `go test -race` as not executed: this host has `CGO_ENABLED=0` and no GCC. No race coverage is claimed.
 - [x] Update Linear through direct `mcp__linear__*` with branch, commits, exact checks, omissions and remaining manual proof.
-- [ ] Push the issue branch.
-- [ ] Open or update a draft PR and obtain CI for the pushed HEAD.
+- [x] Push the issue branch (`origin/vantareapp/isa-340-str-17a-resolver-la-revision-activa-y-cablear-el-motor-live`).
+- [x] Open a draft PR against `nightly` (`#280`).
+- [ ] Obtain CI for the pushed HEAD and review its result.
 - [ ] Merge or promote to Nightly, Testers or Master only with Isaac’s separate authorization.
 
 ## Estado posterior a la reconciliación (2026-08-17)
 
-La rama se rebasó limpiamente sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758`.
+La rama se rebasó limpiamente sobre `origin/nightly@7a92241d4a1c7375106e601ce2daee36e6328758` y ya está publicada en `origin`.
 El HEAD productivo verificado es `7452c8ef817535d8c3c29562ce7ece24a2092490`,
 con cuatro commits de implementación y tres commits documentales posteriores;
 el backup del SHA anterior queda en
@@ -121,7 +122,9 @@ recuperar el plan activo, desactivar y reiniciar. También confirmó el reinicio
 con LMU, la resolución única sin payload y la continuidad de Overlay/Engineer
 tras desactivar Strategy. La validación es manual y no se adjuntó un artefacto
 de log; no hay push, PR, CI remoto, merge, promoción ni release. Linear
-permanece `In Progress` únicamente hasta publicar la rama. Evidencia detallada:
+permanece `In Progress` mientras CI y la revisión del PR estén pendientes. El
+PR draft es `#280` hacia `nightly`; no hay merge, promoción ni release.
+Evidencia detallada:
 `docs/strategy-planner/evidence/isa-340-active-revision-live-wiring.md`.
 
 ## Manual verification after automated closure

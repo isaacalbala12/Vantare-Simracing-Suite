@@ -834,3 +834,34 @@ Evidencia Task 4 y cierre acumulado:
   antes de publicar por descarga transitoria de Electron y por el soak Windows
   intermitente ya inventariado. ISA-329 sigue abierta como limitación OBS
   aceptada expresamente para este corte; no se afirma paridad OBS.
+
+## ISA-369 / HUD-ORBIT-01 — fundamentos Command Orbit v0.3 (2026-08-17)
+
+- Alcance aislado del briefing `docs/design/orbit-v03/15-briefings/00-fundamentos.md`.
+  No toca páginas, shell, kit completo ni algoritmos de dominio.
+- Rama
+  `vantareapp/isa-369-hud-orbit-01-fundamentos-orbit-tema-tokens-sprite-de-iconos`,
+  worktree `C:\tmp\vantare-isa369`, base real `origin/nightly@7a92241d` y
+  commit funcional `cd34753a`. `e6a8a994` está contenido en la base.
+- `VantareTheme` reconoce `vantare-orbit`; sus extensiones son opcionales y
+  emiten defaults Orbit para mantener compatibles `vantare-v5` y
+  `vantare-lite`. El runtime resuelve el tema almacenado sin convertirlo aún
+  en tema predeterminado.
+- `orbit.tokens.css` coincide línea por línea con la copia canónica y expone
+  utilidades Tailwind 4. Inter variable y Cascadia Code se empaquetan en
+  `frontend/src`; el harness comprueba que no hay requests a Google Fonts.
+- El sprite contiene los 14 símbolos del prototipo y `ui/orbit/Icon` conserva
+  tamaño/trazo configurables. La densidad usa la clave
+  `vantare.v03orbit.density` y aplica `body.dataset.density` con fallback
+  `balanced` tolerante a fallos de storage.
+- Evidencia fresca: focal 3 archivos/14 tests PASS; suite frontend 390
+  archivos/2869 tests PASS; build PASS; ESLint focal PASS;
+  `visual:orbit-foundations` PASS. Capturas balanced/compact 1920×1080 en
+  `docs/design/orbit-v03/evidence/porte/00-fundamentos/`, inspeccionadas sin
+  iconos ausentes, recortes ni fallos tipográficos.
+- Lint global: 46 errores/2 warnings tanto en esta rama como en un worktree
+  temporal limpio de `origin/nightly@7a92241d`; la deuda es heredada y no se
+  corrigió fuera de alcance.
+- Review propio en cinco ejes: Approve, sin Critical/Required pendientes.
+  Siguiente gate: PR/review de ISA-369; `01-shell` permanece bloqueado hasta la
+  aceptación de este briefing.

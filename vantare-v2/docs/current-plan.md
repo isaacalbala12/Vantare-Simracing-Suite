@@ -260,6 +260,25 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
   `nightly@fe04a0af`. Los gates de la PR y los posteriores al merge pasaron.
   No hubo promoción a `testers`/`master` ni release.
 
+## ISA-369 / HUD-ORBIT-01 — fundamentos Command Orbit v0.3 (2026-08-17)
+
+- **Estado:** implementación aislada completada en rama; pendiente de PR/review,
+  sin integración ni promoción.
+- **Rama:**
+  `vantareapp/isa-369-hud-orbit-01-fundamentos-orbit-tema-tokens-sprite-de-iconos`.
+- **Base real:** `origin/nightly@7a92241d`; la fuente de diseño
+  `e6a8a994` es ancestro de esa base.
+- **Commit funcional:** `cd34753a`.
+- **Resultado:** tema `vantare-orbit`, tokens Tailwind, Inter variable y
+  Cascadia Code locales, sprite de 14 iconos, `ui/orbit/Icon`, densidad
+  persistida y harness visual dedicado; no se tocaron páginas del hub.
+- **Evidencia:** frontend 390 archivos/2869 tests PASS, build PASS, ESLint
+  focal PASS y `visual:orbit-foundations` PASS con capturas balanced/compact a
+  1920×1080. El lint global conserva exactamente los 46 errores/2 warnings de
+  `origin/nightly`; ISA-369 no añade deuda.
+- **Siguiente acción:** review del PR a `nightly`. No iniciar el briefing
+  `01-shell.md` hasta aceptar todos los criterios de `00-fundamentos.md`.
+
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Cada layout admite exactamente un widget Delta. Studio oculta la acción de
   añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la

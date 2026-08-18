@@ -11,7 +11,7 @@ import { type Section } from "../../navigation";
 import { formatMessage } from "../../orbit/format-message";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import { applyOrbitThemeWhileMounted } from "../../orbit/orbit-theme";
-import { PROVISIONAL_SERIES } from "../../orbit/provisional-series";
+import { useCalendarStarts } from "../../orbit/use-calendar-starts";
 import { useOverlayState } from "../../orbit/use-overlay-state";
 import {
   canSeeView,
@@ -31,6 +31,8 @@ import { SideLauncher } from "./SideLauncher";
 import { SideProfile } from "./SideProfile";
 import { SideRaces } from "./SideRaces";
 import { Topbar } from "./Topbar";
+import { HomeContext } from "../../home-orbit/HomeContext";
+import { HomeOrbitPage } from "../../home-orbit/HomeOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -90,6 +92,7 @@ function OrbitShellBody({
   const access = useAccess();
   const { result: license } = useLicense();
   const overlay = useOverlayState();
+  const races = useCalendarStarts();
   const launcher = useLauncherSnapshot();
 
   const activeView = sectionToView(activeSection);
@@ -220,8 +223,8 @@ function OrbitShellBody({
               empty: t("shell.column.noRaces"),
             }}
             onSeeAll={() => navigate("carreras")}
-            onSelect={() => navigate("carreras")}
-            series={PROVISIONAL_SERIES}
+            onSelect={(seriesId) => navigate("carreras", seriesId)}
+            starts={races.starts}
           />
         ),
       },
@@ -266,12 +269,15 @@ function OrbitShellBody({
         ),
       },
     ],
-    [launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, t, toggleOverlay],
+    [launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, races.starts, t, toggleOverlay],
   );
 
-  // El contexto por sección lo rellena cada briefing de pantalla; hasta
-  // entonces el slot está vacío y la columna solo lleva bloques y pie.
-  const contextNode: ReactNode = null;
+  // El contexto por sección lo rellena cada briefing de pantalla. Inicio
+  // (briefing 03) ya lo tiene; el resto sigue sin panel propio.
+  const contextNode: ReactNode =
+    activeView === "inicio" ? (
+      <HomeContext onNavigate={navigate} overlay={overlay} races={races.starts} />
+    ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
       ? 0
@@ -409,7 +415,25 @@ function OrbitShellBody({
             updateLabel={updateLabel}
             view={activeView}
           />
-          <div className="orbit-workspace">{children}</div>
+          <div className="orbit-workspace">
+            {activeView === "inicio" ? (
+              <HomeOrbitPage
+                onActivateProfile={(profile) =>
+                  Events.Emit("hub:set-active", { id: profile.id, file: profile.file })
+                }
+                onNavigate={navigate}
+                onOpenPalette={() => setPaletteOpen(true)}
+                onToggleOverlay={toggleOverlay}
+                overlay={overlay}
+                races={races.starts}
+                simStatus={simStatus}
+                target={races.target}
+                userName={license?.email?.split("@")[0]}
+              />
+            ) : (
+              children
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,0 +1,412 @@
+/* Layout propio de la vista Inicio (`06 · Inicio`, `03 · 3.6`).
+   Todo lo que ya cubre el kit —superficie destacada, dial, mini-lienzo, filas,
+   chips, botones— se usa tal cual: aquí solo vive la rejilla de la pantalla y
+   las piezas que no son componentes (saludo, superficie de comando, chips
+   rápidos, meta de la focal). */
+
+.orbit-home {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ---------------------------------------------------------------- HERO */
+
+.orbit-home__hero {
+  display: grid;
+  flex: none;
+  gap: 40px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.orbit-home__hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.orbit-home__greet {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-greet);
+  font-weight: 690;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+/* El estado del sim en el hero es solo color; el texto vive en el pie de la
+   columna contextual (criterio del briefing 03). */
+.orbit-home__sim {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: currentcolor;
+  color: var(--orbit-green);
+  box-shadow: 0 0 14px currentcolor;
+}
+
+.orbit-home__sim[data-s="searching"] {
+  color: var(--orbit-ember);
+}
+
+.orbit-home__sim[data-s="disconnected"] {
+  color: #6b676d;
+  box-shadow: none;
+}
+
+.orbit-home__command {
+  display: grid;
+  gap: 17px;
+  align-items: center;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  min-height: 86px;
+  padding: 0 18px 0 23px;
+}
+
+.orbit-home__command-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: var(--orbit-brand-gradient);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(213, 47, 73, 0.29), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.orbit-home__command-copy {
+  min-width: 0;
+}
+
+.orbit-home__command-copy b {
+  display: block;
+  color: var(--orbit-ink-2);
+  font-size: 16px;
+  font-weight: 560;
+}
+
+.orbit-home__command-copy span {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-home__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.orbit-home__chip {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.022);
+  color: var(--orbit-ink-3);
+  font-family: inherit;
+  font-size: var(--orbit-fs-secondary);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-home__chip:hover {
+  border-color: rgba(240, 71, 85, 0.17);
+  background: rgba(213, 47, 73, 0.055);
+  color: var(--orbit-ink);
+}
+
+.orbit-home__chip:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}
+
+.orbit-home__hero-side {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 236px;
+}
+
+.orbit-home__hero-side::before {
+  content: "";
+  position: absolute;
+  inset: -20% -16%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(213, 47, 73, 0.14),
+    rgba(213, 47, 73, 0.03) 40%,
+    transparent 68%
+  );
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------- REJILLA */
+
+.orbit-home__grid {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  align-items: stretch;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: repeat(12, 1fr);
+  min-height: 0;
+  margin-top: 12px;
+}
+
+.orbit-home__focal {
+  display: grid;
+  flex: none;
+  gap: 28px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) 470px;
+  padding: 22px 22px 22px 28px;
+}
+
+.orbit-home__races {
+  grid-column: span 7;
+  min-width: 0;
+}
+
+.orbit-home__profiles {
+  grid-column: span 5;
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------- FOCAL */
+
+.orbit-home__focal-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.orbit-home__focal-copy h2 {
+  margin: 8px 0 6.5px;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-focal);
+  font-weight: 690;
+  letter-spacing: -0.03em;
+}
+
+.orbit-home__focal-copy p {
+  margin: 0;
+  max-width: 40ch;
+  color: #9a9598;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.orbit-home__meta-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin: 14px 0 22px;
+}
+
+.orbit-home__meta {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-home__meta--num {
+  font-family: var(--orbit-font-mono);
+}
+
+.orbit-home__overlay-state::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #5f5b61;
+  vertical-align: 1px;
+}
+
+.orbit-home__overlay-state[data-s="running"] {
+  color: #9bd3a6;
+}
+
+.orbit-home__overlay-state[data-s="running"]::before {
+  background: var(--orbit-green);
+  box-shadow: 0 0 10px var(--orbit-green);
+}
+
+.orbit-home__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.orbit-home__stage {
+  align-self: center;
+}
+
+/* --------------------------------------------------- LISTAS DE LA REJILLA */
+
+.orbit-home__time {
+  flex: none;
+  width: 54px;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.orbit-row--next .orbit-home__time {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 16px rgba(255, 106, 95, 0.4);
+}
+
+.orbit-home__active {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  color: var(--orbit-green);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-home__tick {
+  flex: none;
+}
+
+.orbit-home__activate {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-row:hover .orbit-home__activate {
+  color: var(--orbit-ink);
+}
+
+.orbit-home__empty {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  text-align: center;
+}
+
+/* ------------------------------------------- CONTEXTO DE LA COLUMNA */
+
+.orbit-home__context {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.orbit-home__context dt {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.orbit-home__context dd {
+  margin: 2px 0 0;
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-kpi);
+  font-weight: 700;
+}
+
+.orbit-home__context-note {
+  margin: 10px 0 8px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+/* ------------------------------------------------- MODO COMPACTO (≤940px) */
+
+.orbit-home[data-compact="true"] {
+  padding-top: 16px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__greet {
+  font-size: var(--orbit-fs-page);
+}
+
+.orbit-home[data-compact="true"] .orbit-home__hero-main {
+  gap: 16px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__command {
+  min-height: 72px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__hero-side {
+  min-height: 200px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__grid {
+  margin-top: 10px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__focal {
+  grid-template-columns: minmax(0, 1fr) 340px;
+  padding: 16px 18px 16px 24px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__focal-copy h2 {
+  margin: 4px 0 2px;
+  font-size: var(--orbit-fs-kpi);
+}
+
+.orbit-home[data-compact="true"] .orbit-home__focal-copy p {
+  display: none;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__meta-row {
+  margin: 8px 0 12px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__actions .orbit-btn {
+  height: var(--orbit-control-h-sm);
+}
+
+.orbit-home[data-compact="true"] .orbit-surface__head {
+  min-height: 50px;
+  padding: 8px 20px;
+}
+
+/* ≤1152px de ancho: el hero pasa a una columna y pierde el dial (`03 · 3.7`). */
+@media (max-width: 1152px) {
+  .orbit-home__hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .orbit-home__hero-side {
+    display: none;
+  }
+
+  .orbit-home__races,
+  .orbit-home__profiles {
+    grid-column: 1 / -1;
+  }
+}

@@ -7,6 +7,9 @@ export type HubMockProfileEntry = {
   name: string;
   displayMode: "edit" | "racing" | "streaming";
   widgets: number;
+  /** El backend real (`hub_service.go`) adjunta el documento a cada entrada de
+   *  `hub:list` para que las miniaturas pinten widgets reales; el mock también. */
+  previewDocument?: ProfileDocumentV3;
 };
 
 type StoredDocument = {
@@ -160,7 +163,10 @@ export function resetHubMockState(seed: HubMockSeed = "empty"): void {
 }
 
 export function listHubProfiles(): HubMockProfileEntry[] {
-  return profiles.map((profile) => ({ ...profile }));
+  return profiles.map((profile) => ({
+    ...profile,
+    previewDocument: documents.get(profile.file)?.document,
+  }));
 }
 
 export function getHubMockSettings(): HubMockSettings {

@@ -1,5 +1,6 @@
 import { studioV3En } from "./studio-v3/en";
 import { shellOrbitEn } from "./shell-orbit/en";
+import { homeOrbitEn } from "./home-orbit/en";
 import { diagnosticsEn } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEn } from "../../hub/testing-center/translations";
 
@@ -579,4 +580,5 @@ export const en: Record<string, string> = {
   ...studioV3En,
   // Command Orbit shell
   ...shellOrbitEn,
+  ...homeOrbitEn,
 };

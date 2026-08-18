@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { ListRow } from "../../../ui/orbit/ListRow";
 import { formatMessage } from "../../orbit/format-message";
-import {
-  formatCountdown,
-  formatStartTime,
-  upcoming,
-  type Series,
-} from "../../orbit/next-starts";
+import { formatCountdown, formatStartTime } from "../../orbit/next-starts";
+import type { RaceStart } from "../../orbit/race-starts";
+
+/** Salidas que caben en el bloque persistente de la columna. */
+const ROWS = 3;
 
 export interface SideRacesProps {
-  series: Series[];
+  /** Salidas reales del calendario del hub, ya ordenadas. */
+  starts: RaceStart[];
   onSeeAll(): void;
   onSelect(seriesId: string): void;
   labels: { title: string; seeAll: string; in: string; empty: string };
@@ -20,7 +20,7 @@ export interface SideRacesProps {
 
 /** Bloque persistente "Próximas carreras": 3 salidas con cuenta atrás a 1 s. */
 export function SideRaces({
-  series,
+  starts,
   onSeeAll,
   onSelect,
   labels,
@@ -36,7 +36,7 @@ export function SideRaces({
   }, [now]);
 
   const reference = new Date(now ? now.getTime() : tick);
-  const rows = upcoming(series, reference, 3);
+  const rows = starts.filter((start) => start.at.getTime() >= reference.getTime()).slice(0, ROWS);
 
   return (
     <section aria-label={labels.title} className={["orbit-block", className].filter(Boolean).join(" ")}>
@@ -52,14 +52,12 @@ export function SideRaces({
         ) : (
           rows.map((row, index) => (
             <ListRow
-              key={`${row.series.id}-${row.at.getTime()}`}
-              leading={
-                <i aria-hidden="true" className="orbit-tier-dot" data-tier={row.series.tier} />
-              }
+              key={`${row.seriesId}-${row.at.getTime()}`}
+              leading={<i aria-hidden="true" className="orbit-tier-dot" data-tier={row.tier} />}
               next={index === 0}
-              onClick={() => onSelect(row.series.id)}
-              subtitle={row.series.track}
-              title={row.series.name}
+              onClick={() => onSelect(row.seriesId)}
+              subtitle={row.track}
+              title={row.name}
               trailing={
                 <span className="orbit-when">
                   <b>{formatStartTime(row.at)}</b>

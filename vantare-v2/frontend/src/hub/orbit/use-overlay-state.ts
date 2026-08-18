@@ -40,7 +40,11 @@ export function useOverlayState(): OrbitOverlayState {
     const unsubStatus = Events.On("overlay:status", (event: { data?: OverlayStatus }) => {
       setStatus(event.data ?? null);
     });
-    Events.Emit("hub:profiles:get");
+    // `hub:list` es el nombre real del comando en el backend (`hub_service.go`,
+    // y lo que emiten `ActiveOverlayCard`, `StudioRoute` y `ProfilesPage`). El
+    // briefing 01 escribió `hub:profiles:get`, que nadie atiende: manda el
+    // código, y sin este cambio la columna nunca recibía perfiles.
+    Events.Emit("hub:list");
     Events.Emit("settings:get");
     Events.Emit("overlay:status:get");
     return () => {

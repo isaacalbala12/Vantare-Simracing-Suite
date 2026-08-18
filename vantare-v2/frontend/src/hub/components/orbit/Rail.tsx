@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import markUrl from "../../../assets/orbit/vantare-mark.png";
 import { Icon, type IconName } from "../../../ui/orbit/Icon";
 import { Tooltip } from "../../../ui/orbit/Tooltip";
 import type { ViewId } from "../../orbit/views";
@@ -31,7 +30,6 @@ export interface RailProps {
   /** Copias ya traducidas: el kit no habla i18n (`12-contratos-componentes.md`). */
   labels: {
     rail: string;
-    brand: string;
     palette: string;
     settings: string;
     account: string;
@@ -74,19 +72,8 @@ export function Rail({
 
   return (
     <aside aria-label={labels.rail} className={["orbit-rail", className].filter(Boolean).join(" ")}>
-      {/* Sin `title` nativo (briefing 01): la marca lleva el mismo tooltip
-          propio que el resto del rail, visible con hover y con foco. */}
-      <div
-        aria-label={labels.brand}
-        className="orbit-rail__brand"
-        data-testid="orbit-rail-brand"
-        data-tip={labels.brand}
-        data-tip-side="right"
-        role="img"
-      >
-        <img alt="" draggable={false} height={26} src={markUrl} width={26} />
-      </div>
-
+      {/* Sin losa de marca (D-96): el rail arranca en Inicio, que ya pinta la
+          marca como icono. Repetirla arriba era decir dos veces lo mismo. */}
       {items.map((item) => {
         const locked = Boolean(item.locked);
         const tip = locked ? labels.requiresPlan : item.label;

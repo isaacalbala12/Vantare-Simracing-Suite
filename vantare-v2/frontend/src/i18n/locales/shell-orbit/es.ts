@@ -16,7 +16,6 @@ export const shellOrbitEs: Record<string, string> = {
   "shell.rail.toggleColumn": "Mostrar la columna lateral",
   "shell.rail.toggleColumnHide": "Ocultar la columna lateral",
   "shell.rail.noContext": "Esta sección no tiene panel contextual",
-  "shell.rail.brand": "Vantare",
   "shell.rail.label": "Secciones de Vantare",
 
   "shell.column.label": "Panel contextual",

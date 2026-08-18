@@ -447,7 +447,6 @@ function OrbitShellBody({
           items={railItems}
           labels={{
             rail: t("shell.rail.label"),
-            brand: t("shell.rail.brand"),
             palette: t("shell.rail.palette"),
             settings: t("shell.rail.settings"),
             account: accountLabel,

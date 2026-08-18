@@ -38,7 +38,9 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px 10px;
+  /* Sin losa de marca (D-96): el primer botón (52 px) queda centrado en la
+     banda de la topbar (70 px) → (70 − 52) / 2 = 9 px de padding superior. */
+  padding: 9px 10px 16px;
   overflow: visible;
   border-right: 1px solid var(--orbit-line);
   background: var(--orbit-rail-bg);
@@ -46,26 +48,6 @@
      al mismo nivel que la columna en vez de flotar por encima de ella. */
   position: relative;
   z-index: var(--orbit-z-rail);
-}
-
-.orbit-rail__brand {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 49px;
-  height: 49px;
-  margin-bottom: 16px;
-  border-radius: 16px;
-  background: linear-gradient(160deg, var(--orbit-surface-3), var(--orbit-surface-1));
-  box-shadow: 0 13px 36px rgba(213, 47, 73, 0.18), var(--orbit-inset-glass);
-  user-select: none;
-}
-
-.orbit-rail__brand img {
-  display: block;
-  width: 26px;
-  height: 26px;
-  filter: drop-shadow(0 4px 10px rgba(240, 71, 85, 0.45));
 }
 
 .orbit-rail__button {

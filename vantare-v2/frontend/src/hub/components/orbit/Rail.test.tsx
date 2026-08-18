@@ -4,7 +4,6 @@ import { Rail, type RailItem } from "./Rail";
 
 const labels = {
   rail: "Secciones de Vantare",
-  brand: "Vantare",
   palette: "Comando de Vantare · Ctrl K",
   settings: "Ajustes",
   account: "Cuenta · plan Free",
@@ -148,10 +147,13 @@ describe("Rail", () => {
     expect(screen.getByTestId("orbit-rail-account").textContent).toBe("I");
   });
 
-  it("la marca no usa `title` nativo: lleva el tooltip propio del rail", () => {
+  it("no pinta la losa de marca: el rail arranca en Inicio (D-96)", () => {
     renderRail();
-    const brand = screen.getByTestId("orbit-rail-brand");
-    expect(brand.getAttribute("title")).toBeNull();
-    expect(brand.getAttribute("data-tip")).toBe(labels.brand);
+    const rail = document.querySelector(".orbit-rail")!;
+    expect(screen.queryByTestId("orbit-rail-brand")).toBeNull();
+    expect(rail.querySelector(".orbit-rail__brand")).toBeNull();
+    expect(rail.querySelector("img")).toBeNull();
+    // El primer nodo del rail es ya el botón de Inicio.
+    expect(rail.firstElementChild).toBe(screen.getByTestId("orbit-rail-inicio"));
   });
 });

@@ -105,7 +105,7 @@ try {
   if (contract.proof.background !== "rgb(8, 9, 11)" || contract.proof.color !== "rgb(245, 243, 242)" || contract.proof.radius !== "18px") {
     throw new Error(`Tailwind Orbit utilities changed: ${JSON.stringify(contract.proof)}`);
   }
-  if (contract.icons !== 14) throw new Error(`expected 14 icons, found ${contract.icons}`);
+  if (contract.icons !== 15) throw new Error(`expected 15 icons, found ${contract.icons}`);
   if (contract.density !== "balanced" || contract.bodyRow !== "49px") throw new Error(`balanced density changed: ${JSON.stringify(contract)}`);
   if (!contract.fontsLoaded || contract.externalFontRequest) throw new Error(`offline font contract failed: ${JSON.stringify(contract)}`);
   if (browserProblems.length) throw new Error(`browser console not clean\n${browserProblems.join("\n")}`);

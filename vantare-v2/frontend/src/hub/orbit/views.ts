@@ -79,7 +79,8 @@ export function planLabelOf(access: AccessContext): string {
 
 /** Orden fijo del rail (`03-shell-y-layout.md § 3.2`). */
 export const RAIL_ORDER: { id: ViewId; icon: IconName }[] = [
-  { id: "inicio", icon: "i-inicio" },
+  // Inicio lleva la marca de Vantare, no una casita (briefing rail).
+  { id: "inicio", icon: "i-vantare" },
   { id: "studio", icon: "i-studio" },
   { id: "launcher", icon: "i-launcher" },
   { id: "carreras", icon: "i-carreras" },

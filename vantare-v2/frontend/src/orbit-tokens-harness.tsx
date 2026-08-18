@@ -21,6 +21,7 @@ const colors = [
 ] as const;
 
 const icons: { name: IconName; label: string }[] = [
+  { name: "i-vantare", label: "Vantare" },
   { name: "i-inicio", label: "Inicio" },
   { name: "i-studio", label: "Studio" },
   { name: "i-launcher", label: "Launcher" },
@@ -86,7 +87,7 @@ export function Harness() {
               <p className="orbit-harness__eyebrow">Iconografía</p>
               <h2>Sprite del hub</h2>
             </div>
-            <span className="orbit-harness__meta">14 símbolos</span>
+            <span className="orbit-harness__meta">15 símbolos</span>
           </div>
           <div className="orbit-harness__icons" data-testid="orbit-icon-grid">
             {icons.map((icon) => (

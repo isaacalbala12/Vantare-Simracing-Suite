@@ -275,3 +275,21 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-80 · El canal lo pone la shell, que es la única que lo sabe
 **Decisión.** El `StatRow` pide «Canal actual» y el frontend no tiene un servicio de canal de actualización expuesto a la vista: lo más cercano es el canal de Testing Center que `OrbitShell` ya resuelve (build + capacidades de la licencia). La pantalla recibe ese canal como prop y cae en `stable` cuando no hay ninguno, en vez de inventar un selector o leer un ajuste que no existe.
+
+## D-81 · Los atajos se portan agrupados, pero solo los que la app registra
+**Decisión.** El prototipo dibuja cuatro grupos y trece combinaciones (Overlay 4 · Launcher y carrera 3 · Studio 4 · Global 2). El contrato real (`settings-contract.ts · HOTKEY_KEYS`) declara **cuatro**, y las cuatro son del overlay. Se porta el grupo «Overlay» con sus cuatro filas reales y una `Note` que dice exactamente qué falta y por qué; los otros nueve atajos no se pintan ni siquiera en gris, porque una fila con keycaps es una promesa de que pulsar esa combinación hace algo. `HOTKEY_GROUPS` está escrito para que añadir un grupo sea añadir una entrada el día que el backend registre más.
+
+## D-82 · «Instalar automáticamente al salir», «Cerrar a la bandeja» y «Unidades» no se pintan
+**Decisión.** Los tres controles existen en la referencia y ninguno tiene nada detrás: el actualizador no guarda una preferencia de instalación automática (la instalación siempre la lanza el usuario), y la configuración de la app no tiene ni cierre a bandeja ni sistema de unidades. Un toggle que no escribe en ningún sitio es peor que su ausencia, así que las secciones lo declaran en una `Note` en vez de dibujar un control decorativo. Se mantienen los que sí existen: inicio con Windows, empezar minimizado y los tres avisos.
+
+## D-83 · Dispositivos enseña uno, el verificado, porque el servicio no publica la lista
+**Decisión.** La referencia lista «este dispositivo» más otros con botón «Cerrar». `docs/license-service-contract.md` solo expone `deviceOK` para el equipo actual y un `license:reset-device` con límite de 1 cada 24 h; no hay endpoint que enumere dispositivos ni que cierre uno remoto. La tarjeta muestra el equipo actual con su estado real y ofrece «Restablecer dispositivo», que es la acción que de verdad existe, con una `Note` explicando por qué no hay más filas.
+
+## D-84 · El tema se guarda aunque Orbit imponga el suyo
+**Decisión.** `applyOrbitThemeWhileMounted` fuerza el tema Orbit mientras la shell está montada y restaura el del usuario al desmontarla (D-06). Las tres muestras de Interfaz siguen siendo reales: escriben la preferencia con `persistThemeId`, que es la que vuelve al apagar el flag. La fila lo dice en su subtítulo y en una `Note`, en vez de fingir un cambio inmediato que la shell revertiría en el mismo frame.
+
+## D-85 · «Reducir animaciones» es una preferencia local declarada como tal
+**Decisión.** No hay contrato en Go para el movimiento reducido. En vez de omitir la fila o inventar un ajuste del backend, se implementa igual que la densidad: `data-reduce-motion` en el `body`, persistido en `localStorage`, y CSS que apaga las mismas duraciones que ya apaga `prefers-reduced-motion` en los tokens. El subtítulo dice que es local y que la preferencia del sistema se respeta siempre.
+
+## D-86 · Un payload de ajustes sin `hotkeys` ya no borra las cuatro combinaciones
+**Decisión.** `useAppSettings` sustituía el objeto entero al recibir el evento `settings`, así que un backend que marshala el mapa nil como `null` —o cualquier payload antiguo sin el campo— dejaba las cuatro filas en «sin asignar» sobre atajos que el backend seguía registrando. Ahora las claves ausentes se rellenan con `DEFAULT_APP_SETTINGS.hotkeys` y las presentes mandan. Es un arreglo del hook real, no de la pantalla: la página v5.2 tenía el mismo agujero.

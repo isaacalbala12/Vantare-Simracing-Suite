@@ -8,6 +8,7 @@ import { strategyOrbitIt } from "./strategy-orbit/it";
 import { engineerOrbitIt } from "./engineer-orbit/it";
 import { telemetryOrbitIt } from "./telemetry-orbit/it";
 import { roadmapOrbitIt } from "./roadmap-orbit/it";
+import { settingsOrbitIt } from "./settings-orbit/it";
 import { diagnosticsIt } from "../../hub/settings/diagnostics/translations";
 import { testingCenterIt } from "../../hub/testing-center/translations";
 
@@ -595,4 +596,5 @@ export const it: Record<string, string> = {
   ...engineerOrbitIt,
   ...telemetryOrbitIt,
   ...roadmapOrbitIt,
+  ...settingsOrbitIt,
 };

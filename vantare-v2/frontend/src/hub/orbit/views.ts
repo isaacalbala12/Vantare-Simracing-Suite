@@ -92,3 +92,31 @@ export const RAIL_ORDER: { id: ViewId; icon: IconName }[] = [
 
 /** Vistas sin panel contextual propio (`03-shell-y-layout.md § 3.3`). */
 export const VIEWS_WITHOUT_CONTEXT: ViewId[] = ["inicio", "ingeniero", "testing"];
+
+/** Secciones de Ajustes (`06-pantallas.md § Ajustes`, briefing 11). */
+export const SETTINGS_SECTIONS = [
+  "account",
+  "application",
+  "updates",
+  "hotkeys",
+  "diagnostics",
+] as const;
+
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+export function isSettingsSection(value: string | null | undefined): value is SettingsSection {
+  return Boolean(value) && (SETTINGS_SECTIONS as readonly string[]).includes(value as string);
+}
+
+/**
+ * Sección pedida por la URL (`?settings=…`).
+ *
+ * Devuelve `null` cuando el parámetro falta o no nombra una sección real, para
+ * que quien llame decida el respaldo (la preferencia guardada o `application`,
+ * que es a donde llevan el rail y la paleta).
+ */
+export function readSettingsSectionFromSearch(search: string): SettingsSection | null {
+  const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
+  const raw = params.get("settings");
+  return isSettingsSection(raw) ? raw : null;
+}

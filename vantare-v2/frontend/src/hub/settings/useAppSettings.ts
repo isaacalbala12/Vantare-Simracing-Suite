@@ -33,7 +33,16 @@ export function useAppSettings() {
       // as "is this a real payload". With that field gone the check has to say
       // what it means: accept any settings object.
       Events.On("settings", (event: { data: AppSettings }) => {
-        if (event.data && typeof event.data === "object") setAppSettings(event.data);
+        if (!event.data || typeof event.data !== "object") return;
+        // Go marshala un mapa nil como `null`, y un payload antiguo puede no
+        // traer `hotkeys` en absoluto. Sustituir el objeto entero dejaba las
+        // cuatro combinaciones en blanco y la pantalla decía «sin asignar»
+        // sobre atajos que el backend sigue registrando. Las que falten se
+        // rellenan con el contrato; las que vengan mandan.
+        setAppSettings({
+          ...event.data,
+          hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.hotkeys ?? {}) },
+        });
       }),
     );
 
@@ -105,6 +114,13 @@ export function useAppSettings() {
     Events.Emit("settings:save", appSettings);
   }
 
+  // Restablecer sí escribe: no es una edición a medias que el usuario todavía
+  // esté componiendo, es una decisión completa sobre las cuatro teclas.
+  function resetHotkeys() {
+    setCapturingKey(null);
+    save({ ...appSettings, hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys } });
+  }
+
   return {
     appSettings,
     settingsStatus,
@@ -114,5 +130,6 @@ export function useAppSettings() {
     toggleCpuSampling,
     setNotifications,
     saveHotkeys,
+    resetHotkeys,
   };
 }

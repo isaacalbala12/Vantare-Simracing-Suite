@@ -1,0 +1,1021 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Events } from "@wailsio/runtime";
+import { useI18n } from "../../i18n/I18nProvider";
+import { SUPPORTED_LOCALES, translate, type Locale } from "../../i18n/i18n";
+import {
+  Button,
+  Chip,
+  Dot,
+  Icon,
+  KeycapRow,
+  ListRow,
+  Note,
+  Select,
+  StatRow,
+  StatTile,
+  SubtleStatus,
+  Surface,
+  Toggle,
+} from "../../ui/orbit";
+import { useAccess } from "../../lib/access";
+import { useLicense } from "../../lib/license";
+import { allowedUpdateChannels } from "../../lib/access-policy";
+import { buildSummary, PLAN_LABELS, PLAN_STATUS_LABELS } from "../../lib/plan";
+import { signOut } from "../../lib/supabase-auth";
+import {
+  isPremiumUnlocked,
+  refreshCurrentUserEntitlements,
+  resetActiveDevice,
+} from "../../lib/entitlements-refresh";
+import {
+  applyDensity,
+  getStoredDensity,
+  persistDensity,
+  type Density,
+} from "../../lib/density";
+import { getStoredThemeId, persistThemeId, type ThemeId } from "../../lib/theme";
+import { isOpsMetrics, type OpsMetrics } from "../../lib/ops-metrics";
+import { formatMessage } from "../orbit/format-message";
+import { useOrbitSlot } from "../orbit/use-orbit-slot";
+import { useOverlayState } from "../orbit/use-overlay-state";
+import { useOrbitSimStatus } from "../orbit/sim-status-context";
+import { SETTINGS_SECTIONS, type SettingsSection } from "../orbit/views";
+import { RELEASE_NEWS } from "../release-news";
+import type { Channel } from "../settings/settings-contract";
+import { useAppSettings } from "../settings/useAppSettings";
+import { useUpdaterSettings } from "../settings/useUpdaterSettings";
+import { useStartupSettings } from "../settings/useStartupSettings";
+import { useStorageSettings, formatBytes } from "../settings/useStorageSettings";
+import { useSystemNotifications } from "../settings/useSystemNotifications";
+import {
+  createDiagnosticsClient,
+  type DiagnosticsEventTransport,
+} from "../settings/diagnostics/diagnostics-client";
+import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
+import { DowngradeModal } from "../settings/DowngradeModal";
+import {
+  applyReduceMotion,
+  conflictingHotkeys,
+  getStoredReduceMotion,
+  HOTKEY_GROUPS,
+  keycapsOf,
+  maskEmail,
+  persistReduceMotion,
+  persistSettingsSection,
+  resolveSettingsSection,
+} from "./settings-orbit-model";
+import "../../styles/orbit-settings.css";
+
+export const SETTINGS_CONTEXT_SLOT_ID = "orbit-settings-context-slot";
+
+const THEME_SWATCHES: { id: ThemeId; g1: string; g2: string }[] = [
+  { id: "vantare-orbit", g1: "#0d0e11", g2: "#d52f49" },
+  { id: "vantare-v5", g1: "#1a1a1f", g2: "#4a4a52" },
+  { id: "vantare-lite", g1: "#2a0d13", g2: "#ff6a5f" },
+];
+
+const DENSITIES: Density[] = ["compact", "balanced", "comfortable"];
+
+/** Módulos del plan. `soon` = el producto todavía no lo entrega. */
+const PLAN_MODULES: { id: string; entitlement: "overlays" | "engineer" | null; soon?: boolean }[] = [
+  { id: "overlays", entitlement: "overlays" },
+  { id: "launcher", entitlement: null },
+  { id: "races", entitlement: null },
+  { id: "strategy", entitlement: "overlays" },
+  { id: "engineer", entitlement: "engineer" },
+  { id: "telemetry", entitlement: "overlays", soon: true },
+];
+
+const CHANNELS: Channel[] = ["stable", "testers", "nightly"];
+
+export interface SettingsOrbitPageProps {
+  /** Sección pedida por quien navega (rail, paleta o `?settings=`). */
+  target?: string;
+}
+
+/**
+ * Ajustes de Command Orbit (`15-briefings/11-ajustes.md`).
+ *
+ * La pantalla no guarda ningún estado propio de dominio: la sesión y el plan
+ * salen de `useLicense`, el canal y las versiones de `useUpdaterSettings`, los
+ * atajos de `useAppSettings` (con su bucle real de grabación), el arranque de
+ * `useStartupSettings`, los datos de disco de `useStorageSettings` y las
+ * métricas de proceso del evento `ops:metrics` del backend. Donde el prototipo
+ * dibuja algo que la app todavía no tiene (lista de dispositivos, instalación
+ * automática, unidades, búfer de registros) la sección lo dice en una `Note`
+ * en vez de inventarlo.
+ */
+export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
+  const { t, locale, setLocale } = useI18n();
+  const contextSlot = useOrbitSlot(SETTINGS_CONTEXT_SLOT_ID);
+
+  const [section, setSection] = useState<SettingsSection>(() =>
+    resolveSettingsSection(
+      target ??
+        (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("settings")),
+    ),
+  );
+
+  // Cuando la shell despacha una navegación nueva («Ajustes» del rail, «Cuenta»
+  // del avatar) el destino cambia y la sección tiene que seguirlo. Se ajusta
+  // durante el render y no en un efecto: así no hay un frame con la sección
+  // vieja pintada, que es lo que se veía al pulsar el avatar desde Ajustes.
+  const [lastTarget, setLastTarget] = useState(target);
+  if (target !== lastTarget) {
+    setLastTarget(target);
+    if (target) setSection(resolveSettingsSection(target, section));
+  }
+
+  const selectSection = useCallback((next: SettingsSection) => {
+    setSection(next);
+    persistSettingsSection(next);
+  }, []);
+
+  return (
+    <div className="orbit-set" data-section={section} data-testid="orbit-settings">
+      <header className="orbit-set__head">
+        <div className="orbit-set__head-copy" data-testid="orbit-settings-head" key={section}>
+          <span className="orbit-eyebrow">{t("settings.eyebrow")}</span>
+          <h2 data-testid="orbit-settings-title">{t(`settings.sec.${section}.title`)}</h2>
+          <p data-testid="orbit-settings-lead">{t(`settings.sec.${section}.lead`)}</p>
+        </div>
+      </header>
+
+      <div
+        aria-live="polite"
+        className="orbit-set__panel"
+        data-testid={`orbit-settings-panel-${section}`}
+        key={section}
+        role="tabpanel"
+      >
+        {section === "account" ? <AccountSection /> : null}
+        {section === "application" ? (
+          <ApplicationSection locale={locale} setLocale={setLocale} />
+        ) : null}
+        {section === "updates" ? <UpdatesSection /> : null}
+        {section === "hotkeys" ? <HotkeysSection /> : null}
+        {section === "diagnostics" ? <DiagnosticsSection /> : null}
+      </div>
+
+      {contextSlot
+        ? createPortal(
+            <div className="orbit-set__context">
+              <section aria-label={t("settings.nav.label")} className="orbit-block">
+                <div className="orbit-block__head">
+                  <span className="orbit-eyebrow">{t("settings.nav.sections")}</span>
+                </div>
+                <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
+                  {SETTINGS_SECTIONS.map((id) => (
+                    <ListRow
+                      ariaSelected={id === section}
+                      key={id}
+                      onClick={() => selectSection(id)}
+                      selected={id === section}
+                      subtitle={t(`settings.nav.${id}Sub`)}
+                      title={t(`settings.nav.${id}`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>,
+            contextSlot,
+          )
+        : null}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════ CUENTA ══ */
+
+type AccessFeedback = "idle" | "checking" | "ok" | "none" | "error";
+
+function AccountSection() {
+  const { t } = useI18n();
+  const { result: license, clearLicense } = useLicense();
+  const access = useAccess();
+  const [checking, setChecking] = useState<AccessFeedback>("idle");
+  const [resetting, setResetting] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const summary = useMemo(
+    () => buildSummary(license?.state ?? null, license?.entitlements ?? []),
+    [license?.state, license?.entitlements],
+  );
+  const entitlements = useMemo(() => new Set(license?.entitlements ?? []), [license?.entitlements]);
+  const channels = allowedUpdateChannels({
+    roles: license?.operationalRoles ?? [],
+    capabilities: license?.capabilities ?? [],
+  });
+
+  const suite = summary.label === "suite";
+  const modules = PLAN_MODULES.map((module) => ({
+    ...module,
+    on:
+      summary.status !== "blocked" &&
+      summary.status !== "anonymous" &&
+      (module.entitlement === null || suite || entitlements.has(module.entitlement)),
+  }));
+  const included = modules.filter((module) => module.on && !module.soon).length;
+
+  const email = license?.email ?? "";
+  const name = email ? email.split("@")[0] : t("settings.account.noSession");
+  const none = t("settings.diag.none");
+
+  const checkAccess = useCallback(async () => {
+    setChecking("checking");
+    setProblem(null);
+    const refreshed = await refreshCurrentUserEntitlements();
+    if (!refreshed.ok) {
+      setChecking("error");
+      return;
+    }
+    setChecking(isPremiumUnlocked(refreshed.license) ? "ok" : "none");
+  }, []);
+
+  const doSignOut = useCallback(async () => {
+    const outcome = await signOut();
+    if (!outcome.localCleared) {
+      setProblem(outcome.localError ?? "");
+      return;
+    }
+    clearLicense();
+  }, [clearLicense]);
+
+  const doResetDevice = useCallback(async () => {
+    setResetting(true);
+    const reset = await resetActiveDevice();
+    setResetting(false);
+    if (!reset.ok) setProblem(t("account.resetError"));
+  }, [t]);
+
+  return (
+    <>
+      <div className="orbit-set__hero" data-testid="orbit-settings-acct-hero">
+        <section aria-label={t("settings.account.identity")} className="orbit-set-acct">
+          <span aria-hidden="true" className="orbit-set-acct__avatar">
+            {email ? email.charAt(0).toUpperCase() : "·"}
+          </span>
+          <div className="orbit-set-acct__copy">
+            <b>{name}</b>
+            <span>{email ? maskEmail(email) : t("settings.account.noEmail")}</span>
+            <div className="orbit-set-acct__badges">
+              <Chip tier="gold">{PLAN_LABELS[summary.label]}</Chip>
+              <Chip>{t(`settings.upd.channel.${channels[channels.length - 1]}`)}</Chip>
+              <Chip>
+                {license?.deviceOK
+                  ? t("settings.account.deviceBadge")
+                  : t("settings.account.deviceBadgeOff")}
+              </Chip>
+            </div>
+          </div>
+          <div className="orbit-set-acct__actions">
+            <Button
+              data-testid="orbit-settings-check-access"
+              disabled={checking === "checking"}
+              onClick={checkAccess}
+              size="sm"
+            >
+              {checking === "checking" ? t("settings.account.checking") : t("settings.account.check")}
+            </Button>
+            <Button data-testid="orbit-settings-sign-out" onClick={doSignOut} size="sm">
+              {t("settings.account.signOut")}
+            </Button>
+          </div>
+        </section>
+
+        <section aria-label={t("settings.account.planEyebrow")} className="orbit-set-plan">
+          <span className="orbit-eyebrow">{t("settings.account.planEyebrow")}</span>
+          <b className="orbit-set-plan__name">{PLAN_LABELS[summary.label]}</b>
+          <span className="orbit-set-plan__sub">
+            {formatMessage(t("settings.account.planSub"), {
+              modules: included,
+              total: PLAN_MODULES.length,
+            })}
+          </span>
+          <div className="orbit-set-plan__modules">
+            {modules.map((module) => (
+              <span
+                className="orbit-set-plan__module"
+                data-state={module.soon ? "soon" : module.on ? "on" : "off"}
+                data-testid={`orbit-settings-module-${module.id}`}
+                key={module.id}
+              >
+                <i aria-hidden="true" />
+                {t(`settings.account.module.${module.id}`)}
+                {module.soon ? ` · ${t("settings.account.planSoon")}` : ""}
+              </span>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="orbit-set__grid2">
+        <Surface
+          aria-label={t("settings.account.session")}
+          fill
+          meta={t("settings.account.sessionMeta")}
+          title={t("settings.account.session")}
+        >
+          <dl className="orbit-set-kv" data-testid="orbit-settings-session">
+            <div>
+              <dt>{t("settings.account.state")}</dt>
+              <dd>
+                <Dot variant={summary.status === "active" ? "ok" : "ring"} />
+                {PLAN_STATUS_LABELS[summary.status]}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("settings.account.lastAccess")}</dt>
+              <dd>
+                {license?.lastValidated
+                  ? new Date(license.lastValidated).toLocaleString()
+                  : t("settings.account.unknown")}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("settings.account.graceEnds")}</dt>
+              <dd>
+                {license?.graceEndsAt
+                  ? new Date(license.graceEndsAt).toLocaleString()
+                  : t("settings.account.unknown")}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("settings.account.channels")}</dt>
+              <dd>{channels.map((channel) => t(`settings.upd.channel.${channel}`)).join(" · ")}</dd>
+            </div>
+          </dl>
+        </Surface>
+
+        <Surface
+          aria-label={t("settings.account.devices")}
+          fill
+          meta={license?.deviceOK ? "1" : none}
+          title={t("settings.account.devices")}
+        >
+          <div className="orbit-set-devices" data-testid="orbit-settings-devices">
+            <div className="orbit-set-device" data-state={license?.deviceOK ? "on" : "off"}>
+              <span aria-hidden="true" className="orbit-set-device__ico">
+                PC
+              </span>
+              <span className="orbit-set-device__copy">
+                <b>{t("settings.account.thisDevice")}</b>
+                <span>
+                  {license?.deviceOK
+                    ? t("settings.account.deviceOk")
+                    : t("settings.account.deviceKo")}
+                </span>
+              </span>
+              <Dot variant={license?.deviceOK ? "ok" : "ring"} />
+            </div>
+            <Note>{t("settings.account.devicesNote")}</Note>
+            <Button
+              data-testid="orbit-settings-reset-device"
+              disabled={resetting}
+              onClick={doResetDevice}
+              size="sm"
+            >
+              {resetting ? t("settings.account.resettingDevice") : t("settings.account.resetDevice")}
+            </Button>
+          </div>
+        </Surface>
+      </div>
+
+      {checking !== "idle" && checking !== "checking" ? (
+        <SubtleStatus tone={checking === "ok" ? "ok" : "attn"}>
+          {checking === "ok"
+            ? t("account.accessActivated")
+            : checking === "none"
+              ? t("account.noPremiumAccess")
+              : t("account.refreshAccessError")}
+        </SubtleStatus>
+      ) : null}
+      {problem ? <SubtleStatus tone="attn">{problem}</SubtleStatus> : null}
+      {access.isUnconfigured ? <Note>{t("license.unconfiguredDesc1")}</Note> : null}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════ APLICACIÓN ══ */
+
+function SettingRow({
+  title,
+  hint,
+  control,
+  testid,
+}: {
+  title: string;
+  hint: string;
+  control: ReactNode;
+  testid?: string;
+}) {
+  return (
+    <div className="orbit-set-row" data-testid={testid}>
+      <span className="orbit-set-row__copy">
+        <b>{title}</b>
+        <span>{hint}</span>
+      </span>
+      {control}
+    </div>
+  );
+}
+
+function ApplicationSection({
+  locale,
+  setLocale,
+}: {
+  locale: Locale;
+  setLocale(next: Locale): void;
+}) {
+  const { t } = useI18n();
+  const app = useAppSettings();
+  const startup = useStartupSettings();
+  const system = useSystemNotifications();
+  const notifications = app.appSettings.notifications ?? {};
+
+  const [density, setDensity] = useState<Density>(() => getStoredDensity());
+  const [theme, setTheme] = useState<ThemeId>(() => getStoredThemeId());
+  const [reduce, setReduce] = useState<boolean>(() => getStoredReduceMotion());
+
+  const changeDensity = useCallback((next: Density) => {
+    setDensity(next);
+    // Se aplica antes de persistir: el usuario ve el cambio en el mismo frame.
+    applyDensity(next);
+    persistDensity(next);
+  }, []);
+
+  const changeReduce = useCallback((next: boolean) => {
+    setReduce(next);
+    applyReduceMotion(next);
+    persistReduceMotion(next);
+  }, []);
+
+  return (
+    <div className="orbit-set__grid2">
+      <Surface aria-label={t("settings.app.interface")} fill title={t("settings.app.interface")}>
+        <div className="orbit-set-group">
+          <SettingRow
+            control={
+              <Select
+                label={t("settings.app.language")}
+                onChange={(next) => setLocale(next as Locale)}
+                options={SUPPORTED_LOCALES.map((value) => ({
+                  value,
+                  label: translate(value, `language.${value}`),
+                }))}
+                value={locale}
+                width={168}
+              />
+            }
+            hint={t("settings.app.languageSub")}
+            testid="orbit-settings-language"
+            title={t("settings.app.language")}
+          />
+          <SettingRow
+            control={
+              <Select
+                label={t("settings.app.density")}
+                onChange={(next) => changeDensity(next as Density)}
+                options={DENSITIES.map((value) => ({
+                  value,
+                  label: t(`settings.app.density.${value}`),
+                }))}
+                value={density}
+                width={168}
+              />
+            }
+            hint={t("settings.app.densitySub")}
+            testid="orbit-settings-density"
+            title={t("settings.app.density")}
+          />
+          <SettingRow
+            control={
+              <div className="orbit-set-themes" data-testid="orbit-settings-themes">
+                {THEME_SWATCHES.map((swatch) => (
+                  <button
+                    aria-label={t(`settings.app.theme.${swatch.id}`)}
+                    aria-pressed={theme === swatch.id}
+                    className="orbit-set-theme"
+                    data-testid={`orbit-settings-theme-${swatch.id}`}
+                    key={swatch.id}
+                    onClick={() => {
+                      setTheme(swatch.id);
+                      persistThemeId(swatch.id);
+                    }}
+                    type="button"
+                  >
+                    <i
+                      aria-hidden="true"
+                      style={{ background: `linear-gradient(135deg, ${swatch.g1}, ${swatch.g2})` }}
+                    />
+                  </button>
+                ))}
+              </div>
+            }
+            hint={t("settings.app.themeSub")}
+            title={t("settings.app.theme")}
+          />
+          <SettingRow
+            control={
+              <Toggle
+                label={t("settings.app.reduceMotion")}
+                onChange={changeReduce}
+                pressed={reduce}
+              />
+            }
+            hint={t("settings.app.reduceMotionSub")}
+            testid="orbit-settings-reduce-motion"
+            title={t("settings.app.reduceMotion")}
+          />
+        </div>
+        <Note>{t("settings.app.themeNote")}</Note>
+      </Surface>
+
+      <Surface aria-label={t("settings.app.system")} fill title={t("settings.app.system")}>
+        <div className="orbit-set-group">
+          <SettingRow
+            control={
+              <Toggle
+                disabled={!startup.startup.supported}
+                label={t("settings.app.startup")}
+                onChange={(next) => startup.setEnabled(next)}
+                pressed={startup.startup.enabled}
+              />
+            }
+            hint={
+              startup.startup.supported
+                ? t("settings.app.startupSub")
+                : t("settings.app.startupUnsupported")
+            }
+            testid="orbit-settings-startup"
+            title={t("settings.app.startup")}
+          />
+          <SettingRow
+            control={
+              <Toggle
+                disabled={!startup.startup.supported || !startup.startup.enabled}
+                label={t("settings.app.startupMinimised")}
+                onChange={(next) => startup.setMinimised(next)}
+                pressed={startup.startup.minimised}
+              />
+            }
+            hint={t("settings.app.startupMinimisedSub")}
+            title={t("settings.app.startupMinimised")}
+          />
+          <SettingRow
+            control={
+              <Toggle
+                label={t("settings.app.notifyUpdates")}
+                onChange={(next) => app.setNotifications({ updatesMuted: !next })}
+                pressed={!notifications.updatesMuted}
+              />
+            }
+            hint={t("settings.app.notifyUpdatesSub")}
+            title={t("settings.app.notifyUpdates")}
+          />
+          <SettingRow
+            control={
+              <Toggle
+                label={t("settings.app.notifyLauncher")}
+                onChange={(next) => app.setNotifications({ launcherMuted: !next })}
+                pressed={!notifications.launcherMuted}
+              />
+            }
+            hint={t("settings.app.notifyLauncherSub")}
+            title={t("settings.app.notifyLauncher")}
+          />
+          <SettingRow
+            control={
+              <Toggle
+                disabled={!system.status.supported}
+                label={t("settings.app.notifySystem")}
+                onChange={(next) => {
+                  if (next) system.authorize();
+                  app.setNotifications({ systemEnabled: next });
+                }}
+                pressed={Boolean(notifications.systemEnabled) && system.status.authorized}
+              />
+            }
+            hint={
+              system.status.supported
+                ? t("settings.app.notifySystemSub")
+                : t("settings.app.notifySystemUnsupported")
+            }
+            title={t("settings.app.notifySystem")}
+          />
+        </div>
+        <Note>{t("settings.app.missingNote")}</Note>
+      </Surface>
+    </div>
+  );
+}
+
+/* ═════════════════════════════════════════════════════ ACTUALIZACIONES ══ */
+
+function UpdatesSection() {
+  const { t } = useI18n();
+  const access = useAccess();
+  const updater = useUpdaterSettings();
+  const allowed = allowedUpdateChannels(access);
+
+  const info = updater.info;
+  const latest = info?.latestRelease ?? null;
+  const state = updater.loading
+    ? t("settings.upd.stateChecking")
+    : !info
+      ? t("settings.upd.stateUnknown")
+      : info.hasUpdate && info.latestVersion
+        ? formatMessage(t("settings.upd.stateAvailable"), { version: info.latestVersion })
+        : t("settings.upd.stateUpToDate");
+
+  // La versión y la fecha de cada canal salen de la lista real de releases: un
+  // canal sin publicación lo dice, no se le inventa una versión.
+  const releaseFor = (channel: Channel) => {
+    const releases = info?.releases ?? [];
+    if (channel === "stable") return releases.find((release) => !release.prerelease) ?? null;
+    return releases.find((release) => release.prerelease) ?? null;
+  };
+
+  return (
+    <>
+      <section className="orbit-set-upd" data-testid="orbit-settings-upd-hero">
+        <div className="orbit-set-upd__ver">
+          <span className="orbit-eyebrow">{t("settings.upd.installed")}</span>
+          <b data-testid="orbit-settings-version">{info?.currentVersion ?? "—"}</b>
+          <span className="orbit-set-upd__meta">
+            {formatMessage(t("settings.upd.meta"), {
+              channel: t(`settings.upd.channel.${updater.settings.channel}`),
+              state,
+            })}
+          </span>
+        </div>
+        <div className="orbit-set-upd__actions">
+          {latest && info?.hasUpdate ? (
+            <Button
+              data-testid="orbit-settings-install"
+              onClick={() => updater.install(latest)}
+              variant="primary"
+            >
+              {formatMessage(t("settings.upd.install"), { version: latest.tag_name })}
+            </Button>
+          ) : null}
+          <Button
+            data-testid="orbit-settings-check-updates"
+            disabled={updater.loading}
+            onClick={updater.refresh}
+            variant="primary"
+          >
+            {t("settings.upd.check")}
+          </Button>
+        </div>
+      </section>
+
+      <div
+        aria-label={t("settings.upd.channels")}
+        className="orbit-set-channels"
+        data-testid="orbit-settings-channels"
+        role="radiogroup"
+      >
+        {CHANNELS.map((channel) => {
+          const locked = !allowed.includes(channel);
+          const release = releaseFor(channel);
+          const active = updater.settings.channel === channel;
+          return (
+            <button
+              aria-checked={active}
+              className="orbit-set-channel"
+              data-locked={locked ? "true" : undefined}
+              data-state={active ? "on" : undefined}
+              data-testid={`orbit-settings-channel-${channel}`}
+              disabled={locked}
+              key={channel}
+              onClick={() => updater.changeChannel(channel)}
+              role="radio"
+              type="button"
+            >
+              <span className="orbit-set-channel__top">
+                <b>{t(`settings.upd.channel.${channel}`)}</b>
+                {locked ? (
+                  <span className="orbit-set-channel__lock" data-testid={`orbit-settings-lock-${channel}`}>
+                    <Icon name="i-lock" size={13} />
+                  </span>
+                ) : (
+                  <Dot variant={active ? "ok" : "ring"} />
+                )}
+              </span>
+              <span className="orbit-set-channel__copy">
+                {t(`settings.upd.channel.${channel}Copy`)}
+                {locked ? ` ${t("settings.upd.channelLocked")}.` : ""}
+              </span>
+              <span className="orbit-set-channel__meta">
+                {release
+                  ? `${release.tag_name} · ${new Date(release.published_at).toLocaleDateString()}`
+                  : t("settings.upd.channelNoRelease")}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <Surface
+        aria-label={t("settings.upd.news")}
+        className="orbit-set__news"
+        fill
+        meta={t("settings.upd.newsMeta")}
+        title={t("settings.upd.news")}
+      >
+        {RELEASE_NEWS.length > 0 ? (
+          <ul className="orbit-set-changelog" data-testid="orbit-settings-changelog">
+            {RELEASE_NEWS.map((release) => (
+              <li key={release.tag}>
+                <span className="orbit-set-changelog__ver">{release.tag}</span>
+                <span className="orbit-set-changelog__copy">
+                  <b>{release.title}</b> — {release.summary}
+                </span>
+                <span className="orbit-set-changelog__tag">{release.channel}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Note>{t("settings.upd.newsEmpty")}</Note>
+        )}
+      </Surface>
+
+      <Note>{t("settings.upd.autoNote")}</Note>
+      {updater.error ? <SubtleStatus tone="attn">{updater.error}</SubtleStatus> : null}
+
+      {updater.confirmDowngrade ? (
+        <DowngradeModal
+          currentVersion={info?.currentVersion}
+          onCancel={() => updater.setConfirmDowngrade(null)}
+          onConfirm={() => updater.startInstall(updater.confirmDowngrade!)}
+          release={updater.confirmDowngrade}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════ ATAJOS ══ */
+
+function HotkeysSection() {
+  const { t } = useI18n();
+  const app = useAppSettings();
+  const conflicts = useMemo(
+    () => conflictingHotkeys(app.appSettings.hotkeys ?? {}),
+    [app.appSettings.hotkeys],
+  );
+
+  return (
+    <>
+      <header className="orbit-set-hk__head">
+        <div>
+          <span className="orbit-eyebrow">{t("settings.hk.eyebrow")}</span>
+          <p>{t("settings.hk.lead")}</p>
+        </div>
+        <div className="orbit-set-hk__actions">
+          <Button data-testid="orbit-settings-hk-reset" onClick={app.resetHotkeys} size="sm">
+            {t("settings.hk.reset")}
+          </Button>
+          <Button
+            data-testid="orbit-settings-hk-save"
+            onClick={app.saveHotkeys}
+            size="sm"
+            variant="primary"
+          >
+            {t("settings.hk.save")}
+          </Button>
+          <span data-testid="orbit-settings-hk-status">
+            <SubtleStatus tone={conflicts.size > 0 ? "attn" : "ok"}>
+              {conflicts.size > 0
+                ? formatMessage(t("settings.hk.conflicts"), { n: conflicts.size })
+                : t("settings.hk.noConflicts")}
+            </SubtleStatus>
+          </span>
+        </div>
+      </header>
+
+      <div className="orbit-set-hk__groups">
+        {HOTKEY_GROUPS.map((group) => (
+          <Surface
+            aria-label={t(`settings.hk.group.${group.id}`)}
+            key={group.id}
+            meta={formatMessage(t("settings.hk.groupMeta"), { n: group.keys.length })}
+            title={t(`settings.hk.group.${group.id}`)}
+          >
+            <div className="orbit-set-hk__list" data-testid="orbit-settings-hotkeys">
+              {group.keys.map((key) => {
+                const keys = keycapsOf(app.appSettings.hotkeys?.[key]);
+                return (
+                  <KeycapRow
+                    className={`orbit-set-hk-row-${key}`}
+                    conflict={conflicts.has(key)}
+                    conflictLabel={t("settings.hk.conflict")}
+                    description={t(`settings.hk.desc.${key}`)}
+                    empty={keys.length === 0}
+                    emptyLabel={t("settings.hk.unassigned")}
+                    key={key}
+                    keys={keys}
+                    onRecord={() => app.startCapture(key)}
+                    recording={app.capturingKey === key}
+                    recordingLabel={t("settings.hk.recording")}
+                    title={t(`settings.hotkeys.${key}`)}
+                  />
+                );
+              })}
+            </div>
+          </Surface>
+        ))}
+      </div>
+
+      <Note>{t("settings.hk.contractNote")}</Note>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ DIAGNÓSTICO ══ */
+
+type ReportState =
+  | { kind: "idle" }
+  | { kind: "working" }
+  | { kind: "ready"; prepared: PreparedDiagnostics }
+  | { kind: "error" };
+
+function DiagnosticsSection() {
+  const { t, locale } = useI18n();
+  const app = useAppSettings();
+  const overlay = useOverlayState();
+  const storage = useStorageSettings();
+  const simStatus = useOrbitSimStatus() ?? "disconnected";
+  const [metrics, setMetrics] = useState<OpsMetrics | null>(null);
+  const [report, setReport] = useState<ReportState>({ kind: "idle" });
+  const aborted = useRef<AbortController | null>(null);
+  // Mismo transporte que `WailsDiagnosticsPanel`: la pantalla no habla con Go
+  // por su cuenta, usa el cliente de diagnóstico que ya existe.
+  const client = useMemo(
+    () =>
+      createDiagnosticsClient({
+        emit: (name, payload) => Events.Emit(name, payload),
+        on: (name, listener) => Events.On(name, listener),
+      } satisfies DiagnosticsEventTransport),
+    [],
+  );
+
+  // `ops:metrics` lo emite el backend cada pocos segundos (`internal/app/ops_bridge.go`).
+  useEffect(() => {
+    const unsub = Events.On("ops:metrics", (event: { data?: unknown }) => {
+      if (isOpsMetrics(event.data)) setMetrics(event.data);
+    });
+    return () => unsub?.();
+  }, []);
+
+  useEffect(() => () => aborted.current?.abort(), []);
+
+  const prepare = useCallback(async () => {
+    setReport({ kind: "working" });
+    const controller = new AbortController();
+    aborted.current = controller;
+    try {
+      const prepared = await client.prepare(controller.signal);
+      setReport({ kind: "ready", prepared });
+    } catch {
+      setReport({ kind: "error" });
+    }
+  }, [client]);
+
+  const none = t("settings.diag.none");
+  const dataFolder = storage.summary.locations[0] ?? null;
+
+  return (
+    <>
+      <StatRow className="orbit-set__stats">
+        <StatTile
+          label={t("settings.diag.core")}
+          sub={t(
+            simStatus === "connected"
+              ? "settings.diag.coreConnected"
+              : simStatus === "searching"
+                ? "settings.diag.coreSearching"
+                : "settings.diag.coreOffline",
+          )}
+          tone={simStatus === "connected" ? "ok" : "neutral"}
+          // El nombre real de la fuente lo trae `ops:metrics`; hasta que llega
+          // la primera muestra se dice el estado que ya publica la shell, no un
+          // guion que contradiga al subtítulo de al lado.
+          value={metrics?.source.name || t(`shell.sim.${simStatus}`)}
+        />
+        <StatTile
+          label={t("settings.diag.overlay")}
+          sub={
+            overlay.active
+              ? formatMessage(t("settings.diag.overlayProfile"), {
+                  name: overlay.active.name ?? overlay.active.id,
+                })
+              : t("settings.diag.overlayNoProfile")
+          }
+          tone={overlay.running ? "hot" : "neutral"}
+          value={
+            overlay.running ? t("settings.diag.overlayRunning") : t("settings.diag.overlayStopped")
+          }
+        />
+        <StatTile
+          label={t("settings.diag.cpu")}
+          sub={
+            metrics
+              ? formatMessage(t("settings.diag.cpuSub"), { goroutines: metrics.app.goroutines })
+              : t("settings.diag.cpuWaiting")
+          }
+          unit={metrics ? `% · ${Math.round(metrics.app.memoryMb)} MB` : undefined}
+          value={metrics ? (metrics.app.cpuPercent ?? 0).toFixed(1) : none}
+        />
+        <StatTile
+          label={t("settings.diag.storage")}
+          sub={
+            storage.loaded
+              ? formatMessage(t("settings.diag.storageSub"), {
+                  n: storage.summary.locations.length,
+                })
+              : t("settings.diag.storageWaiting")
+          }
+          value={storage.loaded ? formatBytes(storage.summary.totalBytes) : none}
+        />
+      </StatRow>
+
+      <div className="orbit-set__grid2">
+        <Surface aria-label={t("settings.diag.data")} fill title={t("settings.diag.data")}>
+          <div className="orbit-set-group">
+            <SettingRow
+              control={
+                dataFolder ? (
+                  <Button onClick={() => storage.reveal(dataFolder.key)} size="sm">
+                    {t("settings.diag.folderOpen")}
+                  </Button>
+                ) : (
+                  <span className="orbit-set-row__none">{none}</span>
+                )
+              }
+              hint={dataFolder?.path ?? t("settings.diag.folderEmpty")}
+              testid="orbit-settings-data-folder"
+              title={t("settings.diag.folder")}
+            />
+            <SettingRow
+              control={
+                <Toggle
+                  label={t("settings.diag.sampling")}
+                  onChange={app.toggleCpuSampling}
+                  pressed={app.appSettings.cpuSampling}
+                />
+              }
+              hint={t("settings.diag.samplingSub")}
+              testid="orbit-settings-cpu-sampling"
+              title={t("settings.diag.sampling")}
+            />
+            <SettingRow
+              control={
+                <Button
+                  data-testid="orbit-settings-prepare-report"
+                  disabled={report.kind === "working"}
+                  onClick={prepare}
+                  size="sm"
+                  variant="primary"
+                >
+                  {report.kind === "working"
+                    ? t("settings.diag.preparing")
+                    : t("settings.diag.prepare")}
+                </Button>
+              }
+              hint={t("settings.diag.reportSub")}
+              title={t("settings.diag.report")}
+            />
+          </div>
+          {report.kind === "ready" ? (
+            <SubtleStatus tone="ok">
+              {formatMessage(t("settings.diag.reportReady"), {
+                bytes: formatBytes(report.prepared.byteSize),
+                date: new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(
+                  new Date(report.prepared.generatedAtUtc),
+                ),
+              })}
+            </SubtleStatus>
+          ) : null}
+          {report.kind === "error" ? (
+            <SubtleStatus tone="attn">{t("settings.diag.reportError")}</SubtleStatus>
+          ) : null}
+          {storage.error ? <SubtleStatus tone="attn">{storage.error}</SubtleStatus> : null}
+        </Surface>
+
+        <Surface
+          aria-label={t("settings.diag.events")}
+          fill
+          meta={t("settings.diag.eventsMeta")}
+          title={t("settings.diag.events")}
+        >
+          <div className="orbit-set-log" data-testid="orbit-settings-log">
+            <Note>{t("settings.diag.eventsEmpty")}</Note>
+          </div>
+        </Surface>
+      </div>
+    </>
+  );
+}

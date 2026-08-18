@@ -56,6 +56,10 @@ import {
   RoadmapOrbitPage,
   ROADMAP_CONTEXT_SLOT_ID,
 } from "../../roadmap-orbit/RoadmapOrbitPage";
+import {
+  SettingsOrbitPage,
+  SETTINGS_CONTEXT_SLOT_ID,
+} from "../../settings-orbit/SettingsOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -317,6 +321,10 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id={TELEMETRY_CONTEXT_SLOT_ID} />
     ) : activeView === "roadmap" ? (
       <div className="orbit-column__slot" id={ROADMAP_CONTEXT_SLOT_ID} />
+    ) : activeView === "ajustes" ? (
+      // En Ajustes la columna es solo la navegación de secciones: los bloques
+      // persistentes ya los oculta `ContextColumn` (briefing 01).
+      <div className="orbit-column__slot" id={SETTINGS_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -490,6 +498,8 @@ function OrbitShellBody({
               <TelemetryOrbitPage />
             ) : activeView === "roadmap" ? (
               <RoadmapOrbitPage channel={testingCenterChannel ?? "stable"} />
+            ) : activeView === "ajustes" ? (
+              <SettingsOrbitPage target={navTarget} />
             ) : (
               children
             )}

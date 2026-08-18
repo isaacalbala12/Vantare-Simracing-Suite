@@ -6,6 +6,7 @@ import { launcherOrbitEs } from "./launcher-orbit/es";
 import { racesOrbitEs } from "./races-orbit/es";
 import { strategyOrbitEs } from "./strategy-orbit/es";
 import { engineerOrbitEs } from "./engineer-orbit/es";
+import { telemetryOrbitEs } from "./telemetry-orbit/es";
 import { diagnosticsEs } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEs } from "../../hub/testing-center/translations";
 
@@ -591,4 +592,5 @@ export const es: Record<string, string> = {
   ...racesOrbitEs,
   ...strategyOrbitEs,
   ...engineerOrbitEs,
+  ...telemetryOrbitEs,
 };

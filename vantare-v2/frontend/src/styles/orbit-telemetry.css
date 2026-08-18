@@ -1,0 +1,292 @@
+/* Layout propio de la vista Telemetría (`06 · Telemetría`, briefing 09).
+   El kit cubre superficie, seg, estado sutil, nota, fila de stats, `Trace` y
+   `TrackMap`; aquí solo viven la rejilla de la vista, la leyenda, la fila de
+   insight y la pila de trazas, que no son componentes del kit. */
+
+.orbit-tel {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-tel__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-tel__head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-tel__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-tel__head-copy p {
+  max-width: 74ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-tel__actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-tel__stats {
+  flex: none;
+  margin-top: 16px;
+}
+
+/* Sectores: tres siglas coloreadas por tono dentro del valor del `StatTile`. */
+.orbit-tel__sectors {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.orbit-tel__sectors b[data-tone="gain"] { color: var(--orbit-green); }
+.orbit-tel__sectors b[data-tone="loss"] { color: var(--orbit-red); }
+.orbit-tel__sectors b[data-tone="flat"] { color: var(--orbit-ink-3); }
+
+/* --------------------------------------------------------------- REJILLA */
+
+.orbit-tel__grid {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 400px 1fr;
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.orbit-tel__map {
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+}
+
+.orbit-tel__insights {
+  grid-row: 2;
+  grid-column: 1;
+  min-height: 0;
+}
+
+.orbit-tel__traces {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  min-height: 0;
+}
+
+.orbit-tel__map-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.orbit-tel__map-wrap .orbit-trackmap {
+  max-height: 220px;
+}
+
+/* --------------------------------------------------------------- LEYENDA */
+
+.orbit-tel__legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-tel__legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.orbit-tel__legend i {
+  width: 9px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--orbit-ink-3);
+}
+
+.orbit-tel__legend [data-tone="gain"] i { background: var(--orbit-green); }
+.orbit-tel__legend [data-tone="loss"] i { background: var(--orbit-red); }
+.orbit-tel__legend [data-tone="flat"] i { background: var(--orbit-ink-3); }
+.orbit-tel__legend [data-tone="mine"] i { background: var(--orbit-coral); }
+.orbit-tel__legend [data-tone="ref"] i { background: var(--orbit-cyan-soft); }
+
+.orbit-tel__legend-hint {
+  margin-left: auto;
+  color: var(--orbit-ink-muted);
+}
+
+/* -------------------------------------------------------------- INSIGHTS */
+
+.orbit-tel__insight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orbit-tel-insight {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--orbit-fast) var(--orbit-ease),
+    border-color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-tel-insight:hover,
+.orbit-tel-insight[data-on="true"] {
+  border-color: var(--orbit-line-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.orbit-tel-insight:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}
+
+.orbit-tel-insight__ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  border-radius: var(--orbit-radius-chip);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 700;
+}
+
+.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__ic { color: var(--orbit-red); }
+.orbit-tel-insight[data-tone="gain"] .orbit-tel-insight__ic { color: var(--orbit-green); }
+
+.orbit-tel-insight__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.orbit-tel-insight__copy b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 640;
+}
+
+.orbit-tel-insight__copy span {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.45;
+}
+
+.orbit-tel-insight__dv {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__dv { color: var(--orbit-red); }
+.orbit-tel-insight[data-tone="gain"] .orbit-tel-insight__dv { color: var(--orbit-green); }
+
+.orbit-tel-insight__dv small {
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------- TRAZAS */
+
+.orbit-tel__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Pulido del briefing: el rótulo del canal («Velocidad km/h») vive arriba a la
+   izquierda del SVG y la primera curva (T1, 6 % de vuelta) cae justo debajo.
+   Las etiquetas de curva de la traza bajan una línea para no solaparse; se
+   mueven todas, no solo la primera, para que la fila quede alineada. */
+.orbit-tel__stack .orbit-trace__lbl {
+  transform: translateY(13px);
+}
+
+/* --------------------------------------------------------- VACÍO Y NOTA */
+
+.orbit-tel__empty {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+.orbit-tel__note {
+  flex: none;
+  margin-top: 14px;
+}
+
+/* ------------------------------------------------------------- CONTEXTO */
+
+.orbit-tel__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.orbit-tel__context-count {
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-tel__context-hint {
+  margin: auto 0 0;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.5;
+}
+
+@media (max-width: 1360px) {
+  .orbit-tel__grid {
+    grid-template-columns: 340px 1fr;
+  }
+}

@@ -12,6 +12,7 @@ export const ORBIT_KEYS = {
   sidebar: "vantare.v03orbit.sidebar",
   rightDock: "vantare.v03orbit.rightDock",
   density: "vantare.v03orbit.density",
+  telemetryDemo: "vantare.v03orbit.telemetryDemo",
 } as const;
 
 export type OrbitStorageKey = (typeof ORBIT_KEYS)[keyof typeof ORBIT_KEYS];

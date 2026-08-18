@@ -48,6 +48,10 @@ import {
   STRATEGY_CONTEXT_SLOT_ID,
 } from "../../strategy-orbit/StrategyOrbitPage";
 import { EngineerOrbitPage } from "../../engineer-orbit/EngineerOrbitPage";
+import {
+  TelemetryOrbitPage,
+  TELEMETRY_CONTEXT_SLOT_ID,
+} from "../../telemetry-orbit/TelemetryOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -305,6 +309,8 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id={RACES_CONTEXT_SLOT_ID} />
     ) : activeView === "estrategia" ? (
       <div className="orbit-column__slot" id={STRATEGY_CONTEXT_SLOT_ID} />
+    ) : activeView === "telemetria" ? (
+      <div className="orbit-column__slot" id={TELEMETRY_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -474,6 +480,8 @@ function OrbitShellBody({
               <StrategyOrbitPage />
             ) : activeView === "ingeniero" ? (
               <EngineerOrbitPage />
+            ) : activeView === "telemetria" ? (
+              <TelemetryOrbitPage />
             ) : (
               children
             )}

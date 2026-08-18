@@ -1,4 +1,5 @@
 import { studioV3Pt } from "./studio-v3/pt";
+import { shellOrbitPt } from "./shell-orbit/pt";
 import { diagnosticsPt } from "../../hub/settings/diagnostics/translations";
 import { testingCenterPt } from "../../hub/testing-center/translations";
 
@@ -576,4 +577,6 @@ export const pt: Record<string, string> = {
   ...testingCenterPt,
   // Overlay Studio V3
   ...studioV3Pt,
+  // Command Orbit shell
+  ...shellOrbitPt,
 };

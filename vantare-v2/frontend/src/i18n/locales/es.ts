@@ -1,4 +1,5 @@
 import { studioV3Es } from "./studio-v3/es";
+import { shellOrbitEs } from "./shell-orbit/es";
 import { diagnosticsEs } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEs } from "../../hub/testing-center/translations";
 
@@ -576,4 +577,6 @@ export const es: Record<string, string> = {
   ...testingCenterEs,
   // Overlay Studio V3
   ...studioV3Es,
+  // Command Orbit shell
+  ...shellOrbitEs,
 };

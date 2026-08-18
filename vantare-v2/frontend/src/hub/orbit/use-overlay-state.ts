@@ -1,0 +1,65 @@
+import { useEffect, useState } from "react";
+import { Events } from "@wailsio/runtime";
+import type { OverlayStatus, ProfileEntry } from "../state/overlay-workbench";
+
+export interface OrbitOverlayState {
+  profiles: ProfileEntry[];
+  activeProfileId: string | null;
+  status: OverlayStatus | null;
+  running: boolean;
+  active: ProfileEntry | null;
+  /**
+   * PROVISIONAL: `ProfileEntry` no trae ninguna señal de "recomendado de
+   * Vantare", así que se toma el primer perfil no activo. Cuando el backend
+   * exponga esa marca, este campo debe leerla en vez de adivinarla.
+   */
+  recommended: ProfileEntry | null;
+}
+
+/**
+ * Estado real de los perfiles de overlay del hub. Es la misma fuente que usa
+ * `ActiveOverlayCard`: `hub:profiles`, `settings.activeOverlayProfileId` y
+ * `overlay:status`, así que la columna no inventa datos.
+ */
+export function useOverlayState(): OrbitOverlayState {
+  const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [status, setStatus] = useState<OverlayStatus | null>(null);
+
+  useEffect(() => {
+    const unsubProfiles = Events.On("hub:profiles", (event: { data?: { profiles?: ProfileEntry[] } }) => {
+      setProfiles(Array.isArray(event.data?.profiles) ? event.data.profiles : []);
+    });
+    const unsubSettings = Events.On(
+      "settings",
+      (event: { data?: { activeOverlayProfileId?: string } }) => {
+        const next = event.data?.activeOverlayProfileId;
+        setActiveProfileId(next && next.length > 0 ? next : null);
+      },
+    );
+    const unsubStatus = Events.On("overlay:status", (event: { data?: OverlayStatus }) => {
+      setStatus(event.data ?? null);
+    });
+    Events.Emit("hub:profiles:get");
+    Events.Emit("settings:get");
+    Events.Emit("overlay:status:get");
+    return () => {
+      unsubProfiles?.();
+      unsubSettings?.();
+      unsubStatus?.();
+    };
+  }, []);
+
+  const active = profiles.find((profile) => profile.id === activeProfileId) ?? null;
+  // PROVISIONAL: ver la nota de `recommended` en OrbitOverlayState.
+  const recommended = profiles.find((profile) => profile.id !== activeProfileId) ?? null;
+
+  return {
+    profiles,
+    activeProfileId,
+    status,
+    running: Boolean(status?.running),
+    active,
+    recommended,
+  };
+}

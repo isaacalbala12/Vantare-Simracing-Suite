@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { V52Shell } from './components/V52Shell';
+import { OrbitShell } from './components/orbit/OrbitShell';
+import { isOrbitEnabled } from './orbit/orbit-flag';
 import { DashboardPage } from './pages/DashboardPage';
 import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -112,6 +114,8 @@ function LicenseGate({ children }: { children: ReactNode }) {
 
 function HubShell() {
   const { result: licenseResult } = useLicense();
+  // El flag se lee una vez por montaje: `?orbit=1` lo enciende y lo persiste.
+  const [orbitEnabled] = useState(() => isOrbitEnabled());
   const [section, setSection] = useState<Section>('dashboard');
   const [version, setVersion] = useState<string | null>(null);
   const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
@@ -188,8 +192,12 @@ function HubShell() {
     setReminder(null);
   }, []);
 
+  // Feature flag `hub.orbit`: con el flag apagado (por defecto) la shell actual
+  // no cambia; con `?orbit=1` se monta la shell Orbit con las mismas páginas.
+  const Shell = orbitEnabled ? OrbitShell : V52Shell;
+
   return (
-    <V52Shell
+    <Shell
       activeSection={visibleSection}
       onNavigate={handleNavigate}
       version={version}
@@ -231,7 +239,7 @@ function HubShell() {
         />
       )}
       {visibleSection === "roadmap" && <RoadmapPage />}
-    </V52Shell>
+    </Shell>
   );
 }
 

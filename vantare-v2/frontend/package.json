@@ -27,6 +27,7 @@
     "visual:testing-center": "node scripts/testing-center-visual.mjs",
     "visual:escala-proporcional": "node scripts/escala-proporcional-visual.mjs",
     "visual:orbit-foundations": "node scripts/orbit-foundations-visual.mjs",
+    "visual:orbit-shell": "node scripts/orbit-shell-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "design-system:check": "node scripts/check-design-system.mjs"

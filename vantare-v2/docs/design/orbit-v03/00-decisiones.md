@@ -341,3 +341,6 @@ Lo que **no** cambia: el diseño, los tokens y los datos. Esto es cableado y est
 - `i-vantare-c` — chevrón + corte diagonal corto en la base interior (`M5.6 15 10.9 12.3`): la ‘A’ estilizada, el travesaño convertido en corte.
 
 Las tres se quedan en el sprite hasta que Isaac decida; `i-vantare`, que es lo que consume `RAIL_ORDER`, copia hoy la variante **b** de forma provisional. La franja de comparación vive en `orbit-tokens-harness` (`data-testid="orbit-mark-variants"`, tres variantes contra tres vecinos del catálogo, en inactivo y activo, a 23 px y a 69 px) y `scripts/orbit-foundations-visual.mjs` la guarda como evidencia de la shell en `evidence/porte/01-shell/orbit-rail-mark-variants.png`. La rejilla de iconos de fundamentos sigue teniendo 15 símbolos: las variantes se pintan en su propio panel para no tocar ese contrato.
+
+## D-97 · La marca como icono es la variante b (doble chevrón anidado)
+**Decisión.** Isaac eligió la variante **b** de D-96 («claramente b»). `i-vantare` queda con `M3 15 9 3l6 12` + `M6.5 15 9 10l2.5 5` en caja 18; los símbolos `i-vantare-a` y `i-vantare-c` (y el alias `i-vantare-b`) se retiran del sprite y de `IconName`. El panel del harness de fundamentos pasa a ser de control (marca elegida contra tres vecinos, 4 filas) y la evidencia se guarda como `evidence/porte/01-shell/orbit-rail-mark.png`.

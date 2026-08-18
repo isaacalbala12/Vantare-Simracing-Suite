@@ -119,8 +119,8 @@ try {
   const marks = page.getByTestId("orbit-mark-variants");
   await marks.waitFor();
   const markRows = await marks.evaluate((node) => node.children.length);
-  if (markRows !== 6) throw new Error(`expected 6 mark rows (3 variantes + 3 referencias), found ${markRows}`);
-  await marks.screenshot({ path: path.join(shellOutput, "orbit-rail-mark-variants.png") });
+  if (markRows !== 4) throw new Error(`expected 4 mark rows (marca + 3 referencias), found ${markRows}`);
+  await marks.screenshot({ path: path.join(shellOutput, "orbit-rail-mark.png") });
 
   await page.evaluate(() => localStorage.setItem("vantare.v03orbit.density", "compact"));
   await page.reload({ waitUntil: "networkidle" });

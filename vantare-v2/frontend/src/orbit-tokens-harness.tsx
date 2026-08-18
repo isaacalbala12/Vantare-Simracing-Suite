@@ -38,12 +38,10 @@ const icons: { name: IconName; label: string }[] = [
   { name: "i-lock", label: "Bloqueado" },
 ];
 
-/** Franja de comparación de la marca como icono (D-96): tres variantes a
- *  decidir, medidas contra tres vecinos del catálogo. */
+/** Franja de control de la marca como icono (D-96/D-97): la variante elegida
+ *  (doble chevrón anidado) medida contra tres vecinos del catálogo. */
 const markRows: { name: IconName; label: string; note: string }[] = [
-  { name: "i-vantare-a", label: "Variante a", note: "chevrón + trazo interior paralelo" },
-  { name: "i-vantare-b", label: "Variante b", note: "doble chevrón anidado" },
-  { name: "i-vantare-c", label: "Variante c", note: "‘A’ con corte diagonal en la base" },
+  { name: "i-vantare", label: "Marca", note: "doble chevrón anidado (elegida)" },
   { name: "i-studio", label: "Studio", note: "referencia de peso" },
   { name: "i-launcher", label: "Launcher", note: "referencia de peso" },
   { name: "i-carreras", label: "Carreras", note: "referencia de peso" },
@@ -116,7 +114,7 @@ export function Harness() {
           <div className="orbit-harness__panel-head">
             <div>
               <p className="orbit-harness__eyebrow">Marca · D-96</p>
-              <h2>La marca como icono · variantes</h2>
+              <h2>La marca como icono</h2>
             </div>
             <span className="orbit-harness__meta">inactivo / activo · 1× 23 px · 3× 69 px</span>
           </div>

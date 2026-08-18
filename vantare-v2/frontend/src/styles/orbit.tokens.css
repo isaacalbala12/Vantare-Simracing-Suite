@@ -29,6 +29,10 @@
   --orbit-line-strong: rgba(255,255,255,.13);
   --orbit-line-row: rgba(255,255,255,.045);
 
+  /* scrollbar fina de los contenedores desplazables del hub */
+  --orbit-scroll-thumb: rgba(255,255,255,.13);
+  --orbit-scroll-track: transparent;
+
   /* acento y semánticos */
   --orbit-carmine: #d52f49;
   --orbit-red: #f04755;

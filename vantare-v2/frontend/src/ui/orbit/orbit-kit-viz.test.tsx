@@ -61,6 +61,65 @@ describe("Orbit kit · visualización", () => {
     expect(screen.getByTestId("orbit-dial-arc").getAttribute("stroke-dashoffset")).toBe("75");
   });
 
+  it("sin `pxPerHour` la timeline se dibuja como siempre (Estrategia)", () => {
+    const { container, unmount } = render(
+      <HorizontalTimeline
+        blocks={() => []}
+        minWidth={900}
+        rowLabel={(row: { name: string }) => row.name}
+        rows={[{ name: "Isaac" }]}
+        spanMin={240}
+        start={NOW}
+        tickEveryMin={60}
+      />,
+    );
+    const inner = container.querySelector(".orbit-tl__inner")!;
+    expect(inner.getAttribute("data-px-per-hour")).toBeNull();
+    expect((inner as HTMLElement).style.minWidth).toBe("900px");
+    expect((inner as HTMLElement).style.width).toBe("");
+    unmount();
+  });
+
+  it("con `pxPerHour` el ancho del eje lo manda el zoom", () => {
+    const { container, rerender, unmount } = render(
+      <HorizontalTimeline
+        blocks={() => [
+          { id: "a", start: NOW, durationMin: 30, color: "#fff", tip: "Alfa · 12:00" },
+        ]}
+        headWidth={200}
+        pxPerHour={40}
+        rowLabel={(row: { name: string }) => row.name}
+        rows={[{ name: "Isaac" }]}
+        spanMin={1440}
+        start={NOW}
+        tickEveryMin={60}
+      />,
+    );
+    const inner = () => container.querySelector(".orbit-tl__inner") as HTMLElement;
+    // 24 h × 40 px + 200 px de rótulos.
+    expect(inner().style.width).toBe("1160px");
+    expect(inner().getAttribute("data-px-per-hour")).toBe("40");
+    // El tooltip del bloque es propio del kit, nunca `title` nativo.
+    const block = container.querySelector('[data-testid="orbit-timeline-block"]')!;
+    expect(block.getAttribute("data-tip")).toBe("Alfa · 12:00");
+    expect(block.getAttribute("title")).toBeNull();
+
+    rerender(
+      <HorizontalTimeline
+        blocks={() => []}
+        headWidth={200}
+        pxPerHour={80}
+        rowLabel={(row: { name: string }) => row.name}
+        rows={[{ name: "Isaac" }]}
+        spanMin={1440}
+        start={NOW}
+        tickEveryMin={30}
+      />,
+    );
+    expect(inner().style.width).toBe("2120px");
+    unmount();
+  });
+
   it("la timeline pinta un bloque por entrada con anchura relativa al span", () => {
     render(
       <HorizontalTimeline

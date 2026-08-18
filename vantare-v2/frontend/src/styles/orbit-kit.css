@@ -1799,6 +1799,33 @@ button.orbit-pill {
 .orbit-tl {
   overflow-x: auto;
   width: 100%;
+  /* Scrollbar fina: el eje se desplaza mucho y la nativa gruesa parte la caja. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
+  overscroll-behavior-x: contain;
+}
+
+.orbit-tl::-webkit-scrollbar {
+  height: 8px;
+}
+
+.orbit-tl::-webkit-scrollbar-track {
+  background: var(--orbit-scroll-track);
+}
+
+.orbit-tl::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--orbit-scroll-thumb);
+}
+
+/* Con arrastre activo el eje se agarra; los bloques siguen siendo botones. */
+.orbit-tl--pan {
+  cursor: grab;
+}
+
+.orbit-tl--pan[data-panning="true"] {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .orbit-tl__inner {

@@ -1,4 +1,11 @@
-import { Fragment, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 
 export interface TimelineBlock {
   id: string;
@@ -7,6 +14,8 @@ export interface TimelineBlock {
   color: string;
   label?: string;
   done?: boolean;
+  /** Tooltip propio del kit (`data-tip`): el kit nunca usa `title` nativo. */
+  tip?: string;
 }
 
 export interface HorizontalTimelineProps<Row> {
@@ -24,6 +33,21 @@ export interface HorizontalTimelineProps<Row> {
   headWidth?: number;
   label?: string;
   className?: string;
+  /**
+   * Zoom del eje en píxeles por hora. Cuando se fija, el ancho del contenido
+   * lo manda el zoom (`headWidth + spanMin/60 · pxPerHour`) y `minWidth` deja
+   * de aplicarse. Sin él el componente se comporta como antes.
+   */
+  pxPerHour?: number;
+  /** Límites del zoom para `ctrl+rueda` (el consumidor manda el rango real). */
+  minPxPerHour?: number;
+  maxPxPerHour?: number;
+  /** `ctrl+rueda`: propone el nuevo `pxPerHour` ya recortado a los límites. */
+  onZoom?(nextPxPerHour: number): void;
+  /** Ancho útil del eje (viewport − rótulos) cada vez que cambia. */
+  onAxisWidth?(px: number): void;
+  /** Habilita arrastre horizontal y `shift+rueda` sobre el eje. */
+  pan?: boolean;
 }
 
 function hhmm(date: Date): string {
@@ -33,7 +57,10 @@ function hhmm(date: Date): string {
 /**
  * Timeline horizontal (`04 · .tl-*`): rejilla `headWidth|1fr`, eje con ticks
  * mono, filas con líneas verticales y bloques absolutos en porcentaje del
- * `spanMin`. Scroll horizontal interno cuando se fija `minWidth`.
+ * `spanMin`. Scroll horizontal interno cuando se fija `minWidth` o `pxPerHour`.
+ *
+ * El zoom es opcional y retrocompatible: sin `pxPerHour` no hay ni rueda ni
+ * arrastre y el componente se dibuja exactamente como antes (Estrategia).
  */
 export function HorizontalTimeline<Row>({
   rows,
@@ -49,10 +76,16 @@ export function HorizontalTimeline<Row>({
   headWidth = 210,
   label = "Timeline",
   className,
+  pxPerHour,
+  minPxPerHour,
+  maxPxPerHour,
+  onZoom,
+  onAxisWidth,
+  pan,
 }: HorizontalTimelineProps<Row>) {
   const spanMs = spanMin * 60_000;
   const pct = (date: Date) => ((date.getTime() - start.getTime()) / spanMs) * 100;
-  const tickCount = Math.floor(spanMin / tickEveryMin);
+  const tickCount = Math.max(1, Math.floor(spanMin / tickEveryMin));
   const ticks = Array.from({ length: tickCount + 1 }, (_, index) => {
     const at = new Date(start.getTime() + index * tickEveryMin * 60_000);
     const left = (index * tickEveryMin * 100) / spanMin;
@@ -60,19 +93,104 @@ export function HorizontalTimeline<Row>({
   });
   const nowLeft = now ? pct(now) : null;
 
+  const scroller = useRef<HTMLDivElement | null>(null);
+  // Punto del cursor que el zoom debe mantener quieto: se guarda antes de
+  // pedir el nuevo `pxPerHour` y se aplica cuando el ancho ya ha cambiado.
+  const anchor = useRef<{ ratio: number; offset: number } | null>(null);
+  const axisWidth = pxPerHour ? (spanMin / 60) * pxPerHour : null;
+
+  const clamp = useCallback(
+    (value: number) =>
+      Math.min(maxPxPerHour ?? Number.POSITIVE_INFINITY, Math.max(minPxPerHour ?? 1, value)),
+    [maxPxPerHour, minPxPerHour],
+  );
+
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    const pending = anchor.current;
+    anchor.current = null;
+    if (!node || !pending || axisWidth === null) return;
+    node.scrollLeft = pending.ratio * axisWidth + headWidth - pending.offset;
+  }, [axisWidth, headWidth]);
+
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node || !onAxisWidth) return;
+    const report = () => onAxisWidth(Math.max(0, node.clientWidth - headWidth));
+    report();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(report);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [headWidth, onAxisWidth]);
+
+  // `wheel` va en nativo y no pasivo: React lo registra como pasivo y
+  // `preventDefault` no llegaría a frenar el zoom del navegador.
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node || (!onZoom && !pan)) return;
+    const onWheel = (event: WheelEvent) => {
+      if ((event.ctrlKey || event.metaKey) && onZoom && pxPerHour) {
+        event.preventDefault();
+        const offset = event.clientX - node.getBoundingClientRect().left;
+        const width = (spanMin / 60) * pxPerHour;
+        anchor.current = {
+          ratio: width > 0 ? (node.scrollLeft + offset - headWidth) / width : 0,
+          offset,
+        };
+        onZoom(clamp(pxPerHour * (event.deltaY < 0 ? 1.18 : 1 / 1.18)));
+        return;
+      }
+      if (pan && event.shiftKey && event.deltaY !== 0) {
+        event.preventDefault();
+        node.scrollLeft += event.deltaY;
+      }
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [clamp, headWidth, onZoom, pan, pxPerHour, spanMin]);
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const node = scroller.current;
+      if (!pan || !node || event.button !== 0) return;
+      if ((event.target as HTMLElement).closest("button")) return;
+      const startX = event.clientX;
+      const startLeft = node.scrollLeft;
+      node.dataset.panning = "true";
+      const move = (moved: PointerEvent) => {
+        node.scrollLeft = startLeft - (moved.clientX - startX);
+      };
+      const up = () => {
+        delete node.dataset.panning;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    },
+    [pan],
+  );
+
   return (
     <div
       aria-label={label}
-      className={["orbit-tl", className].filter(Boolean).join(" ")}
+      className={["orbit-tl", pan ? "orbit-tl--pan" : null, className]
+        .filter(Boolean)
+        .join(" ")}
       data-testid="orbit-timeline"
+      onPointerDown={pan ? onPointerDown : undefined}
+      ref={scroller}
       role="group"
     >
       <div
         className="orbit-tl__inner"
+        data-px-per-hour={pxPerHour ? String(Math.round(pxPerHour)) : undefined}
         style={
           {
             "--orbit-tl-head": `${headWidth}px`,
-            minWidth: minWidth ? `${minWidth}px` : undefined,
+            width: axisWidth !== null ? `${headWidth + axisWidth}px` : undefined,
+            minWidth: axisWidth === null && minWidth ? `${minWidth}px` : undefined,
           } as React.CSSProperties
         }
       >
@@ -117,6 +235,7 @@ export function HorizontalTimeline<Row>({
                     className="orbit-tl__block"
                     data-done={block.done ? "true" : undefined}
                     data-testid="orbit-timeline-block"
+                    data-tip={block.tip}
                     key={block.id}
                     onClick={() => onBlock(block.id)}
                     style={style}
@@ -129,6 +248,7 @@ export function HorizontalTimeline<Row>({
                     className="orbit-tl__block"
                     data-done={block.done ? "true" : undefined}
                     data-testid="orbit-timeline-block"
+                    data-tip={block.tip}
                     key={block.id}
                     style={style}
                   >

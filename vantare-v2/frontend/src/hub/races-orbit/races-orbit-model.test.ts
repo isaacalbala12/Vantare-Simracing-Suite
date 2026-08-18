@@ -3,16 +3,27 @@ import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { mockCalendar } from "../calendar-visual-mock-data";
 import {
   buildSeriesEntries,
+  clampZoom,
+  dayAnchor,
   dayRows,
+  fitZoom,
+  groupByHour,
   filterByTier,
   monthAnchor,
   monthDays,
   tierCounts,
+  pxPerHourOf,
+  readTimelinePrefs,
+  tickEveryMinFor,
   timelineRows,
   timelineStart,
   upcomingRows,
   weekAnchor,
   weekRows,
+  WEEK_SLOTS,
+  writeTimelinePrefs,
+  ZOOM_MAX,
+  ZOOM_MIN,
 } from "./races-orbit-model";
 
 function series(patch: Partial<RaceSeries> & { id: string }): RaceSeries {
@@ -190,9 +201,33 @@ describe("vistas", () => {
     const rows = weekRows(entries, monday, NOW);
     expect(rows).toHaveLength(2);
     expect(rows[0].cells).toHaveLength(7);
-    expect(rows[0].cells[0].every).toBe(15);
-    expect(rows[1].cells[0].every).toBeUndefined();
     expect(rows.every((row) => row.cells.filter((cell) => cell.today).length <= 1)).toBe(true);
+  });
+
+  it("Semana enseña horas concretas, no la cadencia", () => {
+    const monday = weekAnchor(NOW, 0);
+    const rows = weekRows(entries, monday, NOW);
+    const today = rows[0].cells.find((cell) => cell.today)!;
+
+    // Cada 15 min ⇒ 96 salidas al día: seis chips visibles y el resto en "+n".
+    expect(today.total).toBe(96);
+    expect(today.slots).toHaveLength(WEEK_SLOTS);
+    expect(today.more).toBeGreaterThan(0);
+    // En el día de hoy la primera hora visible ya es futura.
+    expect(today.slots[0].getTime()).toBeGreaterThanOrEqual(NOW.getTime());
+    expect(today.slots.map((slot) => slot.getTime())).toEqual(
+      [...today.slots].sort((a, b) => a.getTime() - b.getTime()).map((slot) => slot.getTime()),
+    );
+
+    // Un día futuro arranca en la primera salida del día, no en "ahora".
+    const future = rows[0].cells[6];
+    expect(future.slots[0].getDate()).toBe(future.day.getDate());
+  });
+
+  it("Semana marca los días ya cerrados", () => {
+    const rows = weekRows(entries, weekAnchor(NOW, 0), NOW);
+    const past = rows[0].cells.filter((cell) => cell.past);
+    expect(past.every((cell) => cell.day.getTime() < dayAnchor(NOW, 0).getTime())).toBe(true);
   });
 
   it("Mes entrega 7×6 celdas con hoy marcado una sola vez", () => {
@@ -241,5 +276,81 @@ describe("vistas", () => {
     expect(
       rows[0].starts.every((at) => at.getTime() < start.getTime() + 24 * 3_600_000),
     ).toBe(true);
+  });
+});
+
+describe("Próximas agrupadas por hora", () => {
+  const entries = buildSeriesEntries(
+    calendarOf([
+      series({ id: "a", name: "Alfa", startOffsetMinute: 0 }),
+      series({ id: "b", name: "Bravo", startOffsetMinute: 0 }),
+    ]),
+  );
+
+  it("junta las salidas de la misma hora en un grupo", () => {
+    const groups = groupByHour(upcomingRows(entries, NOW, 8));
+    expect(groups.length).toBeGreaterThan(0);
+    expect(groups.reduce((total, group) => total + group.rows.length, 0)).toBe(
+      upcomingRows(entries, NOW, 8).length,
+    );
+    for (const group of groups) {
+      expect(group.hour.getMinutes()).toBe(0);
+      expect(group.rows.every((row) => row.at.getHours() === group.hour.getHours())).toBe(true);
+    }
+    // Las cabeceras no se repiten: cada hora aparece una sola vez.
+    const hours = groups.map((group) => group.hour.getTime());
+    expect(new Set(hours).size).toBe(hours.length);
+  });
+
+  it("una lista vacía no produce grupos", () => {
+    expect(groupByHour([])).toEqual([]);
+  });
+});
+
+describe("Timeline · rango y zoom", () => {
+  const entries = buildSeriesEntries(calendarOf([series({ id: "a", startOffsetMinute: 0 })]));
+
+  it("el rango recorta las salidas del eje", () => {
+    const start = timelineStart(NOW);
+    expect(timelineRows(entries, start, 6)[0].starts).toHaveLength(24);
+    expect(timelineRows(entries, start, 12)[0].starts).toHaveLength(48);
+    expect(timelineRows(entries, start)[0].starts).toHaveLength(96);
+  });
+
+  it("el zoom vive entre 1× y 4×", () => {
+    expect(clampZoom(0.2)).toBe(ZOOM_MIN);
+    expect(clampZoom(99)).toBe(ZOOM_MAX);
+    expect(clampZoom(Number.NaN)).toBe(ZOOM_MIN);
+    expect(fitZoom(24)).toBe(1);
+    expect(fitZoom(12)).toBe(2);
+    expect(fitZoom(6)).toBe(4);
+  });
+
+  it("a zoom mínimo caben 24 h en el ancho del eje", () => {
+    expect(pxPerHourOf(1200, 1) * 24).toBe(1200);
+    expect(pxPerHourOf(1200, 4) * 6).toBe(1200);
+  });
+
+  it("las etiquetas del eje se adaptan al zoom", () => {
+    expect(tickEveryMinFor(50)).toBe(60);
+    expect(tickEveryMinFor(120)).toBe(30);
+    expect(tickEveryMinFor(240)).toBe(15);
+  });
+
+  it("el rango y el zoom persisten y los valores raros vuelven al defecto", () => {
+    const store = new Map<string, string>();
+    const fake = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+    } as unknown as Storage;
+
+    expect(readTimelinePrefs(fake)).toEqual({ range: 24, zoom: 1 });
+    writeTimelinePrefs({ range: 12, zoom: 2 }, fake);
+    expect(readTimelinePrefs(fake)).toEqual({ range: 12, zoom: 2 });
+
+    store.set("vantare.orbit.races.timeline", JSON.stringify({ range: 99, zoom: 400 }));
+    expect(readTimelinePrefs(fake)).toEqual({ range: 24, zoom: ZOOM_MAX });
+    store.set("vantare.orbit.races.timeline", "no-json");
+    expect(readTimelinePrefs(fake)).toEqual({ range: 24, zoom: 1 });
   });
 });

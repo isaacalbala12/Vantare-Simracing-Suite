@@ -176,6 +176,98 @@ describe("RacesOrbitPage", () => {
     expect(mockEmit).toHaveBeenCalledWith("calendar:schedule:refresh");
   });
 
+  it("las filas de Próximas se agrupan por hora y la seleccionada marca la barra", () => {
+    setup();
+    const next = screen.getByTestId("orbit-races-next");
+    const heads = next.querySelectorAll(".orbit-races__group-head");
+    expect(heads.length).toBeGreaterThan(0);
+    // La hora ya no se repite en cada fila: vive en la cabecera del grupo.
+    expect(heads.length).toBeLessThan(within(next).getAllByRole("option").length);
+
+    const row = within(next)
+      .getAllByRole("option")
+      .find((node) => node.textContent?.includes("Hypercar Open"))!;
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("orbit-races-detail").textContent).toContain("Hypercar Open");
+  });
+
+  it("un chip de Semana selecciona serie y hora en el detalle", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    const slot = screen.getAllByTestId("orbit-races-week-slot")[0];
+    const hour = slot.textContent!;
+    fireEvent.click(slot);
+    expect(screen.getByTestId("orbit-races-detail-at").textContent).toContain(hour);
+  });
+
+  it("la cabecera de un día de Semana abre Día en esa fecha", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    const days = screen.getAllByTestId("orbit-races-week-day");
+    fireEvent.click(days[days.length - 1]);
+    expect(screen.getByTestId("orbit-races-day")).toBeTruthy();
+  });
+
+  it("un día de Mes abre Día y una serie diaria también", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    fireEvent.click(screen.getAllByTestId("orbit-races-month-daily")[0]);
+    expect(screen.getByTestId("orbit-races-day")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    fireEvent.click(screen.getAllByTestId("orbit-races-month-day")[10]);
+    expect(screen.getByTestId("orbit-races-day")).toBeTruthy();
+  });
+
+  it("un ev-chip de Día lleva esa hora al detalle", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Día" }));
+    fireEvent.click(screen.getAllByTestId("orbit-races-ev-chip")[0]);
+    expect(screen.getByTestId("orbit-races-detail-at").textContent).toBeTruthy();
+  });
+
+  it("el Timeline cambia de rango y de zoom dentro de sus límites", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const axis = () =>
+      Number(
+        screen
+          .getByTestId("orbit-timeline")
+          .querySelector(".orbit-tl__inner")!
+          .getAttribute("data-px-per-hour"),
+      );
+
+    const base = axis();
+    fireEvent.click(
+      within(screen.getByTestId("orbit-races-tl-controls")).getByRole("button", { name: "12 h" }),
+    );
+    const wide = axis();
+    expect(wide).toBeGreaterThan(base);
+
+    fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
+    expect(axis()).toBeGreaterThan(wide);
+    fireEvent.click(screen.getByTestId("orbit-races-zoom-fit"));
+    expect(axis()).toBe(wide);
+    fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
+    expect(axis()).toBeLessThan(wide);
+
+    // El zoom nunca baja de "24 h caben" ni sube de 4×.
+    for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
+    expect(axis()).toBe(base);
+    for (let i = 0; i < 20; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
+    // 4× exacto salvo el redondeo a píxel entero de `data-px-per-hour`.
+    expect(Math.abs(axis() - base * 4)).toBeLessThanOrEqual(2);
+  });
+
+  it("el detalle salta al Timeline y al Día", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("orbit-races-see-timeline"));
+    expect(screen.getByTestId("orbit-races-timeline")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("orbit-races-see-day"));
+    expect(screen.getByTestId("orbit-races-day")).toBeTruthy();
+  });
+
   it("sin calendario no inventa salidas", () => {
     setup({ calendar: null });
     expect(screen.queryByTestId("orbit-races-detail")).toBeNull();

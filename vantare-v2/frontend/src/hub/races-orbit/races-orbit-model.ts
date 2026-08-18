@@ -144,6 +144,29 @@ export function upcomingRows(
     .filter((row) => Boolean(row.entry));
 }
 
+export interface StartGroup {
+  /** Hora en punto del grupo (`01:00`). */
+  hour: Date;
+  rows: StartRow[];
+}
+
+/**
+ * Vista 1 · Próximas agrupada por hora: la lista plana repetía la misma hora
+ * en filas consecutivas, así que la hora sube a una cabecera de grupo y la fila
+ * se queda con el nombre, el circuito y la meta.
+ */
+export function groupByHour(rows: StartRow[]): StartGroup[] {
+  const groups: StartGroup[] = [];
+  for (const row of rows) {
+    const hour = new Date(row.at);
+    hour.setMinutes(0, 0, 0);
+    const last = groups[groups.length - 1];
+    if (last && last.hour.getTime() === hour.getTime()) last.rows.push(row);
+    else groups.push({ hour, rows: [row] });
+  }
+  return groups;
+}
+
 /** Cuántas salidas hay que pedirle al motor para cubrir un día entero. */
 function dayCount(engine: Series): number {
   return engine.every ? Math.ceil(1440 / engine.every) + 1 : 8;
@@ -196,14 +219,20 @@ export function dayRows(entries: RaceSeriesEntry[], base: Date, now: Date): DayH
   }));
 }
 
+/** Cuántas horas concretas caben en una celda de Semana antes del "+n". */
+export const WEEK_SLOTS = 4;
+
 export interface WeekCell {
   day: Date;
   today: boolean;
-  /** Cadencia por intervalo: la celda rotula "cada N min" y el minuto base. */
-  every?: number;
-  offsetMinute?: number;
-  /** Cadencia semanal: los slots locales de ese día (vacío = sin salidas). */
+  /** Día ya cerrado (anterior a hoy): la celda se atenúa. */
+  past: boolean;
+  /** Horas concretas visibles de ese día (máx. `WEEK_SLOTS`). */
   slots: Date[];
+  /** Salidas del día que no caben en la celda. */
+  more: number;
+  /** Salidas del día en total (contando las ya corridas si el día es hoy). */
+  total: number;
 }
 
 export interface WeekRow {
@@ -211,7 +240,19 @@ export interface WeekRow {
   cells: WeekCell[];
 }
 
-/** Vista 3 · Semana: una fila por serie, siete celdas Lun…Dom. */
+/** Todas las salidas locales de una serie dentro de un día. */
+export function daySlots(entry: RaceSeriesEntry, day: Date): Date[] {
+  const end = new Date(day.getTime() + 86_400_000);
+  return nextStarts(entry.engine, day, dayCount(entry.engine)).filter((at) => at < end);
+}
+
+/**
+ * Vista 3 · Semana: una fila por serie, siete celdas Lun…Dom.
+ *
+ * La celda no rotula la cadencia (era el mismo texto en las 70 celdas): enseña
+ * las próximas horas concretas de ese día — desde ahora si el día es hoy, desde
+ * medianoche en el resto — y cuenta en "+n" las que no caben.
+ */
 export function weekRows(entries: RaceSeriesEntry[], monday: Date, now: Date): WeekRow[] {
   const today = dayAnchor(now, 0).getTime();
   return entries.map((entry) => ({
@@ -219,20 +260,17 @@ export function weekRows(entries: RaceSeriesEntry[], monday: Date, now: Date): W
     cells: Array.from({ length: 7 }, (_, index) => {
       const day = new Date(monday.getTime() + index * 86_400_000);
       const isToday = day.getTime() === today;
-      if (entry.engine.every !== undefined) {
-        return {
-          day,
-          today: isToday,
-          every: entry.engine.every,
-          offsetMinute: (entry.engine.offset ?? 0) % 60,
-          slots: [],
-        };
-      }
-      const end = new Date(day.getTime() + 86_400_000);
+      const all = daySlots(entry, day);
+      const upcomingSlots = isToday ? all.filter((at) => at >= now) : all;
+      // Un día ya cerrado enseña sus primeras horas, atenuadas.
+      const shown = upcomingSlots.length > 0 ? upcomingSlots : all;
       return {
         day,
         today: isToday,
-        slots: nextStarts(entry.engine, day, 12).filter((at) => at < end),
+        past: day.getTime() < today,
+        slots: shown.slice(0, WEEK_SLOTS),
+        more: Math.max(0, shown.length - WEEK_SLOTS),
+        total: all.length,
       };
     }),
   }));
@@ -309,18 +347,94 @@ export interface TimelineRow {
   blockMin: number;
 }
 
-/** Vista 5 · Timeline: una fila por serie sobre las próximas 24 h. */
-export function timelineRows(entries: RaceSeriesEntry[], start: Date): TimelineRow[] {
-  const end = new Date(start.getTime() + 24 * 3_600_000);
+/**
+ * Vista 5 · Timeline: una fila por serie sobre las próximas `spanH` horas.
+ * Por defecto 24 h, que es el rango con el que nació la vista.
+ */
+export function timelineRows(
+  entries: RaceSeriesEntry[],
+  start: Date,
+  spanH = 24,
+): TimelineRow[] {
+  const end = new Date(start.getTime() + spanH * 3_600_000);
   return entries.map((entry) => {
     const every = entry.engine.every;
     const raceMin = entry.raceMin > 0 ? entry.raceMin : (every ?? 60);
     return {
       entry,
-      starts: nextStarts(entry.engine, start, every ? Math.ceil(1440 / every) + 1 : 10).filter(
-        (at) => at < end,
-      ),
+      starts: nextStarts(
+        entry.engine,
+        start,
+        every ? Math.ceil((spanH * 60) / every) + 1 : Math.max(10, spanH),
+      ).filter((at) => at < end),
       blockMin: Math.max(1, Math.min(raceMin, (every ?? raceMin) - 3)),
     };
   });
+}
+
+// ── Timeline · rango y zoom ──────────────────────────────────────────────
+
+/** Rangos del eje del timeline, en horas (`Seg` de la cabecera). */
+export const TIMELINE_RANGES = [6, 12, 24] as const;
+export type TimelineRange = (typeof TIMELINE_RANGES)[number];
+
+/** El zoom se guarda como factor sobre el mínimo (1× = 24 h a la vista). */
+export const ZOOM_MIN = 1;
+export const ZOOM_MAX = 4;
+
+export function clampZoom(zoom: number): number {
+  if (!Number.isFinite(zoom)) return ZOOM_MIN;
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+}
+
+/** Zoom que hace caber justo `range` horas en el ancho del eje. */
+export function fitZoom(range: TimelineRange): number {
+  return clampZoom(24 / range);
+}
+
+/** Píxeles por hora para un ancho de eje y un factor de zoom. */
+export function pxPerHourOf(axisWidth: number, zoom: number): number {
+  return Math.max(1, (axisWidth / 24) * clampZoom(zoom));
+}
+
+/** Etiquetas del eje: cada hora, media hora o cuarto según el zoom. */
+export function tickEveryMinFor(pxPerHour: number): number {
+  if (pxPerHour >= 220) return 15;
+  if (pxPerHour >= 110) return 30;
+  return 60;
+}
+
+export interface TimelinePrefs {
+  range: TimelineRange;
+  zoom: number;
+}
+
+const PREFS_KEY = "vantare.orbit.races.timeline";
+const DEFAULT_PREFS: TimelinePrefs = { range: 24, zoom: ZOOM_MIN };
+
+/** Rango y zoom persistidos; los valores raros vuelven al defecto. */
+export function readTimelinePrefs(store?: Storage): TimelinePrefs {
+  const target = store ?? (typeof localStorage === "undefined" ? undefined : localStorage);
+  if (!target) return DEFAULT_PREFS;
+  try {
+    const raw = target.getItem(PREFS_KEY);
+    if (!raw) return DEFAULT_PREFS;
+    const parsed = JSON.parse(raw) as Partial<TimelinePrefs>;
+    const range = TIMELINE_RANGES.includes(parsed.range as TimelineRange)
+      ? (parsed.range as TimelineRange)
+      : DEFAULT_PREFS.range;
+    return { range, zoom: clampZoom(Number(parsed.zoom)) };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+export function writeTimelinePrefs(prefs: TimelinePrefs, store?: Storage): void {
+  const target = store ?? (typeof localStorage === "undefined" ? undefined : localStorage);
+  if (!target) return;
+  try {
+    target.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* almacenamiento no disponible: el zoom simplemente no persiste */
+  }
 }

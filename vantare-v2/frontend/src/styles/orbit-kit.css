@@ -1,0 +1,1354 @@
+/* Vantare · Command Orbit v0.3 — kit de componentes (`ui/orbit/*`)
+   Fuente: docs/design/orbit-v03/04-componentes.md (medidas), 07-motion.md (motion),
+   08-accesibilidad.md (foco) y el CSS literal del prototipo
+   `vantare-exploration-v03-orbit.html`.
+
+   Regla: cualquier valor que exista como token sale de `orbit.tokens.css`. Solo
+   quedan literales las alfas de estado (que el documento fija una a una) y las
+   medidas tipográficas que el catálogo declara y el set de tokens no cubre. */
+
+.orbit-kit-scope,
+.orbit-kit-scope *,
+.orbit-kit-scope *::before,
+.orbit-kit-scope *::after {
+  box-sizing: border-box;
+}
+
+/* ============================================================ FOCO (08) */
+
+.orbit-btn:focus-visible,
+.orbit-icon-btn:focus-visible,
+.orbit-seg__option:focus-visible,
+.orbit-toggle:focus-visible,
+.orbit-input:focus-visible,
+.orbit-select:focus-visible,
+.orbit-textarea:focus-visible,
+.orbit-row:focus-visible,
+.orbit-pill:focus-visible,
+.orbit-menu__trigger:focus-visible,
+.orbit-menu__item:focus-visible,
+.orbit-utabs__tab:focus-visible,
+.orbit-acc > summary:focus-visible,
+.orbit-featured:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}
+
+/* ============================================================ BOTÓN */
+
+.orbit-btn {
+  display: inline-flex;
+  flex: none;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  height: var(--orbit-control-h);
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--orbit-radius-control);
+  background: none;
+  color: inherit;
+  font-family: var(--orbit-font-sans);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-btn--sm {
+  height: var(--orbit-control-h-sm);
+  padding: 0 12px;
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-btn--primary {
+  background: var(--orbit-primary-bg);
+  color: var(--orbit-primary-ink);
+  font-weight: 850;
+  box-shadow: var(--orbit-shadow-primary);
+}
+
+.orbit-btn--primary:hover:not([disabled]) {
+  background: var(--orbit-ink);
+  transform: translateY(-1px);
+}
+
+.orbit-btn--primary:active:not([disabled]) {
+  transform: translateY(0) scale(0.985);
+}
+
+.orbit-btn--ghost {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--orbit-ink-3);
+}
+
+.orbit-btn--ghost:hover:not([disabled]) {
+  border-color: rgba(240, 71, 85, 0.17);
+  background: rgba(213, 47, 73, 0.055);
+  color: var(--orbit-ink-2);
+}
+
+.orbit-btn--danger {
+  color: var(--orbit-red);
+}
+
+.orbit-btn--danger:hover:not([disabled]) {
+  background: rgba(240, 71, 85, 0.08);
+}
+
+.orbit-btn:active:not([disabled]) {
+  transform: scale(0.985);
+}
+
+.orbit-btn[disabled],
+.orbit-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  transform: none;
+  cursor: default;
+}
+
+.orbit-btn__dot,
+.orbit-btn__run-dot,
+.orbit-btn__loading {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.orbit-btn__dot {
+  background: var(--orbit-red);
+  box-shadow: 0 0 12px rgba(240, 71, 85, 0.7);
+}
+
+.orbit-btn__loading {
+  background: currentColor;
+  animation: orbit-pill-pulse 1.4s var(--orbit-ease) infinite;
+}
+
+.orbit-btn--run[data-s="running"] {
+  border: 1px solid rgba(120, 214, 139, 0.28);
+  background: rgba(120, 214, 139, 0.08);
+  color: var(--orbit-green);
+  box-shadow: none;
+}
+
+.orbit-btn--run[data-s="running"]:hover {
+  background: rgba(120, 214, 139, 0.13);
+  transform: none;
+}
+
+.orbit-btn--run[data-s="running"] .orbit-btn__run-dot {
+  background: var(--orbit-green);
+  box-shadow: 0 0 12px rgba(120, 214, 139, 0.8);
+  animation: orbit-pill-pulse 2.2s var(--orbit-ease) infinite;
+}
+
+.orbit-btn--run[data-s="idle"] .orbit-btn__run-dot {
+  display: none;
+}
+
+.orbit-btn--save[data-s="saved"] {
+  color: var(--orbit-ink-4);
+}
+
+.orbit-btn__check {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  color: var(--orbit-green);
+}
+
+/* ============================================================ ICON BUTTON */
+
+.orbit-icon-btn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-4);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-icon-btn--28 {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--orbit-radius-chip);
+}
+
+.orbit-icon-btn--39 {
+  width: var(--orbit-control-h);
+  height: var(--orbit-control-h);
+  border-radius: 10px;
+}
+
+.orbit-icon-btn:hover:not([disabled]) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink);
+}
+
+.orbit-icon-btn.is-on {
+  background: rgba(213, 47, 73, 0.14);
+  color: var(--orbit-ink);
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+}
+
+.orbit-icon-btn--danger:hover:not([disabled]) {
+  background: rgba(240, 71, 85, 0.12);
+  color: var(--orbit-red);
+}
+
+.orbit-icon-btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ============================================================ SEGMENTADO */
+
+.orbit-seg {
+  display: inline-flex;
+  gap: 2.5px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.orbit-seg--wide {
+  display: flex;
+  width: 100%;
+}
+
+.orbit-seg--wide .orbit-seg__option {
+  flex: 1;
+}
+
+.orbit-seg__option {
+  height: 29px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--orbit-radius-chip);
+  background: none;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-seg__option:hover:not([disabled]) {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-seg__option[aria-pressed="true"] {
+  background: rgba(213, 47, 73, 0.16);
+  color: var(--orbit-ink);
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+}
+
+.orbit-seg__option[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ============================================================ TOGGLE */
+
+.orbit-toggle {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--orbit-ink-3);
+  /* knob: única excepción al easing global (07 · spring 220 ms). */
+  transition: transform 0.22s var(--orbit-ease-spring), background var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-toggle[aria-pressed="true"] {
+  /* `#a02339` es el segundo alto del degradado del knob encendido: el
+     prototipo lo fija literalmente y no existe como token. */
+  border-color: rgba(240, 71, 85, 0.4);
+  background: linear-gradient(135deg, var(--orbit-carmine), #a02339);
+  box-shadow: 0 0 13px rgba(213, 47, 73, 0.15);
+}
+
+.orbit-toggle[aria-pressed="true"]::after {
+  background: var(--orbit-ink);
+  transform: translateX(20px);
+}
+
+.orbit-toggle[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ============================================================ CAMPOS */
+
+.orbit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orbit-field > label {
+  color: var(--orbit-ink-4);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.orbit-field--row {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--orbit-control-h);
+}
+
+.orbit-field--row > label {
+  color: var(--orbit-ink-2);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.orbit-field__hint {
+  display: block;
+  margin-top: 2.5px;
+  color: var(--orbit-ink-4);
+  font-size: 11px;
+}
+
+.orbit-input,
+.orbit-select,
+.orbit-textarea {
+  height: var(--orbit-control-h);
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.028);
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-sans);
+  font-size: 14px;
+  transition: border-color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-input:hover,
+.orbit-select:hover,
+.orbit-textarea:hover {
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-input--num {
+  font-family: var(--orbit-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.orbit-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.orbit-input-wrap .orbit-input {
+  width: 100%;
+}
+
+.orbit-input__unit {
+  position: absolute;
+  right: 13px;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.orbit-input-wrap:has(.orbit-input__unit) .orbit-input {
+  padding-right: 42px;
+}
+
+.orbit-select {
+  /* El chevrón va en un `data:` URI y no admite `var()`: `%23918d92` es
+     `--orbit-ink-3` codificado, igual que en el prototipo. */
+  padding-right: 34px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23918d92' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.orbit-select[style*="--orbit-select-w"] {
+  width: var(--orbit-select-w);
+}
+
+.orbit-textarea {
+  min-height: 83px;
+  padding: 10px 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* ============================================================ KEYCAP */
+
+.orbit-kbd {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.orbit-kbd kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 27px;
+  height: 26px;
+  padding: 0 6.5px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-bottom-color: rgba(255, 255, 255, 0.22);
+  border-radius: 6.5px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-kbd__sep {
+  padding: 0 3px;
+  color: var(--orbit-ink-muted);
+  font-style: normal;
+}
+
+.orbit-kbd--physical kbd {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-width: 2.5px;
+  border-bottom-color: rgba(255, 255, 255, 0.22);
+  border-radius: var(--orbit-radius-key);
+  background: linear-gradient(180deg, var(--orbit-surface-3), var(--orbit-surface-2));
+  color: var(--orbit-ink-2);
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), var(--orbit-inset-glass);
+}
+
+.orbit-kbd--empty kbd {
+  border-style: dashed;
+  background: transparent;
+  color: var(--orbit-ink-3);
+  font-weight: 600;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.orbit-kbd--conflict kbd {
+  border-color: rgba(255, 155, 87, 0.5);
+  color: var(--orbit-ember);
+}
+
+/* ============================================================ PUNTO */
+
+.orbit-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-dot--ok {
+  color: var(--orbit-green);
+  box-shadow: 0 0 13px currentColor;
+}
+
+.orbit-dot--gold {
+  color: var(--orbit-ember);
+}
+
+.orbit-dot--ring {
+  border: 1.5px solid var(--orbit-ink-3);
+  background: transparent;
+  color: var(--orbit-ink-3);
+  box-shadow: none;
+}
+
+.orbit-dot--ring-gold {
+  border: 1.5px solid var(--orbit-ember);
+  background: transparent;
+  color: var(--orbit-ember);
+  box-shadow: none;
+}
+
+.orbit-dot--tier {
+  width: 7px;
+  height: 7px;
+}
+
+/* ============================================================ PILL */
+
+.orbit-pill {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  height: var(--orbit-pill-h);
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.022);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 11.5px;
+  white-space: nowrap;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+button.orbit-pill {
+  cursor: pointer;
+}
+
+.orbit-pill[data-s="connected"] {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-pill[data-s="disconnected"] {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-pill[data-s="ready"] {
+  border-color: rgba(255, 155, 87, 0.28);
+  color: var(--orbit-ember);
+}
+
+@keyframes orbit-pill-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.orbit-pill[data-s="searching"] .orbit-pill__dot,
+.orbit-pill[data-s="downloading"] .orbit-pill__dot,
+.orbit-pill--pulse .orbit-pill__dot {
+  animation: orbit-pill-pulse 1.4s var(--orbit-ease) infinite;
+}
+
+.orbit-pill__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-pill__dot--ok {
+  color: var(--orbit-green);
+  box-shadow: 0 0 13px currentColor;
+}
+
+.orbit-pill__dot--gold {
+  color: var(--orbit-ember);
+}
+
+.orbit-pill__dot--ring {
+  border: 1.5px solid var(--orbit-ink-3);
+  background: transparent;
+  box-shadow: none;
+}
+
+.orbit-pill__dot--ring-gold {
+  border: 1.5px solid var(--orbit-ember);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ============================================================ CHIP */
+
+.orbit-chip {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  height: var(--orbit-chip-h);
+  padding: 0 9px;
+  border-radius: var(--orbit-radius-chip);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.orbit-chip--case-normal {
+  font-size: 11px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.orbit-chip__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-chip--bronze {
+  background: rgba(210, 154, 108, 0.1);
+  color: var(--orbit-tier-bronze);
+}
+
+.orbit-chip--silver {
+  background: rgba(201, 201, 207, 0.09);
+  color: var(--orbit-tier-silver);
+}
+
+.orbit-chip--gold {
+  background: rgba(255, 155, 87, 0.1);
+  color: var(--orbit-tier-gold);
+}
+
+.orbit-chip--accent {
+  color: var(--orbit-coral);
+}
+
+.orbit-chip--ok {
+  color: var(--orbit-green);
+}
+
+.orbit-chip--warn {
+  color: var(--orbit-ember);
+}
+
+.orbit-chip--danger {
+  color: var(--orbit-red);
+}
+
+.orbit-chip--reference {
+  color: var(--orbit-cyan);
+}
+
+/* ============================================================ STATE CHIP */
+
+.orbit-state-chip {
+  display: inline-flex;
+  flex: none;
+  gap: 6.5px;
+  align-items: center;
+  height: 29px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(120, 214, 139, 0.08);
+  color: var(--orbit-green);
+  font-family: var(--orbit-font-sans);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbit-state-chip__dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-state-chip--draft {
+  background: rgba(255, 155, 87, 0.08);
+  color: var(--orbit-ember);
+}
+
+.orbit-state-chip--warn {
+  background: rgba(240, 71, 85, 0.08);
+  color: var(--orbit-red);
+}
+
+/* ============================================================ SUBTLE STATUS */
+
+.orbit-substatus {
+  display: inline-flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+  height: 29px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.022);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-substatus--attn {
+  border-color: rgba(255, 155, 87, 0.22);
+  color: var(--orbit-ember);
+}
+
+.orbit-substatus--ok {
+  border-color: rgba(120, 214, 139, 0.22);
+  color: var(--orbit-green);
+}
+
+/* ============================================================ TYRE CHIP */
+
+.orbit-tyre-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  width: max-content;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-family: var(--orbit-font-mono);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.orbit-tyre-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-tyre-chip--soft {
+  background: rgba(240, 71, 85, 0.14);
+  color: var(--orbit-tyre-soft);
+}
+
+.orbit-tyre-chip--medium {
+  background: rgba(255, 209, 102, 0.13);
+  color: var(--orbit-tyre-medium);
+}
+
+.orbit-tyre-chip--hard {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--orbit-tyre-hard);
+}
+
+/* ============================================================ STAT */
+
+.orbit-stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--orbit-space);
+}
+
+.orbit-stat {
+  min-width: 0;
+  padding: 14px 18px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+}
+
+.orbit-stat__k {
+  display: block;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orbit-stat__v {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin-top: 6px;
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-kpi);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.orbit-stat__v small {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 400;
+}
+
+.orbit-stat__s {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--orbit-ink-4);
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-stat--hot .orbit-stat__v {
+  color: var(--orbit-coral);
+}
+
+.orbit-stat--ok .orbit-stat__v {
+  color: var(--orbit-green);
+}
+
+/* ============================================================ NOTA */
+
+.orbit-note {
+  padding: 13px 17px;
+  border: 1px solid rgba(255, 155, 87, 0.13);
+  border-radius: 14px;
+  background: linear-gradient(110deg, rgba(255, 155, 87, 0.06), rgba(213, 47, 73, 0.02));
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-note b {
+  color: var(--orbit-tier-bronze);
+  font-weight: 750;
+}
+
+/* ============================================================ SURFACE */
+
+.orbit-surface {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  backdrop-filter: blur(var(--orbit-panel-blur));
+}
+
+.orbit-surface--fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-surface__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 60px;
+  padding: 13px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.orbit-surface__head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.orbit-surface__head-spacer {
+  flex: 1;
+}
+
+.orbit-surface__meta {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-surface__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.orbit-surface__body {
+  min-height: 0;
+  padding: var(--orbit-space);
+}
+
+.orbit-surface--fill .orbit-surface__body {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ============================================================ FEATURED */
+
+.orbit-featured {
+  display: block;
+  width: 100%;
+  padding: 22px 24px;
+  border: 1px solid transparent;
+  border-radius: var(--orbit-radius-featured);
+  background:
+    var(--orbit-featured-bg) padding-box,
+    var(--orbit-featured-border) border-box;
+  color: inherit;
+  text-align: left;
+  box-shadow: var(--orbit-shadow-featured);
+  transition: 0.18s var(--orbit-ease);
+}
+
+.orbit-featured--interactive {
+  cursor: pointer;
+}
+
+.orbit-featured--interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--orbit-shadow-featured-hover);
+}
+
+/* ============================================================ FILA */
+
+.orbit-row {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: inherit;
+  font-family: var(--orbit-font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.orbit-row:active {
+  transform: scale(0.985);
+}
+
+.orbit-row--sel {
+  background: var(--orbit-selection-bg);
+}
+
+.orbit-row--sel::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  width: 3px;
+  height: 18px;
+  border-radius: 0 4px 4px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-row__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-row__copy b {
+  display: block;
+  overflow: hidden;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-row__copy span {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-row:hover .orbit-row__copy b,
+.orbit-row--sel .orbit-row__copy b {
+  color: var(--orbit-ink);
+}
+
+.orbit-row--next .orbit-row__copy b {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 14px rgba(255, 106, 95, 0.35);
+}
+
+/* ============================================================ MONOGRAMA */
+
+.orbit-monogram {
+  display: grid;
+  flex: none;
+  place-items: center;
+  background: linear-gradient(145deg, var(--orbit-mono-g1), var(--orbit-mono-g2));
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-sans);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 16px -6px rgba(0, 0, 0, 0.7);
+  user-select: none;
+}
+
+.orbit-monogram--26 {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--orbit-radius-chip);
+  font-size: 8px;
+}
+
+.orbit-monogram--32 {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.orbit-monogram--39 {
+  width: var(--orbit-control-h);
+  height: var(--orbit-control-h);
+  border-radius: 11px;
+  font-size: 10.5px;
+}
+
+.orbit-monogram--46 {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  font-size: 11.5px;
+}
+
+.orbit-monogram--52 {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  font-size: 12.5px;
+}
+
+.orbit-monogram--60 {
+  width: 60px;
+  height: 60px;
+  border-radius: 17px;
+  font-size: 14px;
+}
+
+/* ============================================================ MENÚ */
+
+.orbit-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.orbit-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--orbit-z-menu);
+  width: 300px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: var(--orbit-surface-2);
+  box-shadow: var(--orbit-shadow-menu);
+}
+
+.orbit-menu__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font-family: var(--orbit-font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-menu__item:hover {
+  background: rgba(213, 47, 73, 0.12);
+}
+
+.orbit-menu__item b {
+  color: var(--orbit-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.orbit-menu__item span {
+  color: var(--orbit-ink-3);
+  font-size: 11.5px;
+}
+
+/* ============================================================ ACORDEÓN */
+
+.orbit-acc {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.orbit-acc:last-child {
+  border-bottom: 0;
+}
+
+.orbit-acc > summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  list-style: none;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-acc > summary::-webkit-details-marker {
+  display: none;
+}
+
+.orbit-acc > summary:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.orbit-acc__title {
+  flex: none;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 700;
+}
+
+.orbit-acc__sum {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+  text-overflow: ellipsis;
+}
+
+.orbit-acc[open] .orbit-acc__sum {
+  opacity: 0.55;
+}
+
+.orbit-acc__chev {
+  flex: none;
+  color: var(--orbit-ink-4);
+  transition: transform var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-acc[open] .orbit-acc__chev {
+  transform: rotate(180deg);
+}
+
+.orbit-acc__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 8px 16px;
+}
+
+/* ============================================================ TABS */
+
+.orbit-utabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.orbit-utabs__tab {
+  position: relative;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-body);
+  font-weight: 650;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-utabs__tab:hover {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-utabs__tab[aria-selected="true"] {
+  color: var(--orbit-ink);
+}
+
+.orbit-utabs__tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+/* ============================================================ TOAST */
+
+.orbit-toast-region {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  z-index: var(--orbit-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.orbit-toast {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: 728px;
+  min-height: 49px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: var(--orbit-surface-3);
+  box-shadow: var(--orbit-shadow-toast);
+  animation: orbit-toast-in var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-toast b {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--orbit-ink);
+  font-size: 12.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.orbit-toast b::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orbit-green);
+  box-shadow: 0 0 13px var(--orbit-green);
+}
+
+.orbit-toast span {
+  overflow: hidden;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes orbit-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(13px);
+  }
+}
+
+/* ============================================================ TOOLTIP */
+
+/* `data-tip` (nunca `title` nativo): visible con hover y con foco. El estado
+   controlado `data-tip-open` deja el mismo tooltip verificable en tests. */
+.orbit-kit-scope [data-tip] {
+  position: relative;
+}
+
+.orbit-kit-scope [data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: var(--orbit-z-tooltip);
+  padding: 7px 11px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 10px;
+  background: var(--orbit-surface-3);
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--orbit-fast) var(--orbit-ease),
+    transform var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-kit-scope [data-tip-side="right"]::after {
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translate(-6px, -50%);
+}
+
+.orbit-kit-scope [data-tip-side="top"]::after {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, 6px);
+}
+
+.orbit-kit-scope [data-tip]:hover::after,
+.orbit-kit-scope [data-tip]:focus-visible::after,
+.orbit-kit-scope [data-tip][data-tip-open="true"]::after {
+  opacity: 1;
+}
+
+.orbit-kit-scope [data-tip-side="right"]:hover::after,
+.orbit-kit-scope [data-tip-side="right"]:focus-visible::after,
+.orbit-kit-scope [data-tip-side="right"][data-tip-open="true"]::after {
+  transform: translate(0, -50%);
+}
+
+.orbit-kit-scope [data-tip-side="top"]:hover::after,
+.orbit-kit-scope [data-tip-side="top"]:focus-visible::after,
+.orbit-kit-scope [data-tip-side="top"][data-tip-open="true"]::after {
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-toast,
+  .orbit-btn__loading,
+  .orbit-pill__dot {
+    animation: none;
+  }
+}

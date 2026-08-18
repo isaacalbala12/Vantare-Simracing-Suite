@@ -1,0 +1,117 @@
+/* Estilos propios del harness del kit Orbit: solo rejilla y rótulos de banco de
+   pruebas. Ningún componente del kit se estila aquí. */
+
+.ok-page {
+  min-height: 100vh;
+  padding: 32px var(--orbit-content-gutter) 64px;
+  background: var(--orbit-canvas);
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-base);
+}
+
+.ok-head {
+  margin-bottom: var(--orbit-space);
+}
+
+.ok-eyebrow {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-eyebrow);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.ok-page h1 {
+  margin: 9px 0 0;
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.04em;
+}
+
+.ok-group {
+  margin-top: var(--orbit-space);
+  padding-top: var(--orbit-space);
+  border-top: 1px solid var(--orbit-line);
+}
+
+.ok-group h2 {
+  margin: 0 0 12px;
+  font-size: var(--orbit-fs-sect);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.ok-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ok-bench {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ok-bench__label {
+  padding-top: 9px;
+  color: var(--orbit-ink-4);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ok-bench__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.ok-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--orbit-space);
+  width: 100%;
+}
+
+.ok-rows,
+.ok-acc {
+  width: 340px;
+}
+
+.ok-stats,
+.ok-seg-wide {
+  width: 100%;
+}
+
+.ok-menu-host {
+  position: relative;
+  width: 300px;
+  height: 200px;
+}
+
+.ok-copy {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+.ok-featured-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--orbit-fs-focal);
+  font-weight: 690;
+  letter-spacing: -0.03em;
+}
+
+.ok-mono {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}

@@ -31,7 +31,10 @@ import { SideLauncher } from "./SideLauncher";
 import { SideProfile } from "./SideProfile";
 import { SideRaces } from "./SideRaces";
 import { Topbar } from "./Topbar";
+import { ToastProvider } from "../../../ui/orbit/Toast";
+import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
+import "../../../styles/orbit-kit.css";
 import "../../../styles/orbit-shell.css";
 
 const AUTO_COLLAPSE_WIDTH = 1152;
@@ -65,7 +68,17 @@ function resolveSimStatus(source: TelemetrySourceStatus | null | undefined): Sim
   return "disconnected";
 }
 
-export function OrbitShell({
+export function OrbitShell(props: OrbitShellProps) {
+  // El proveedor de toasts es del kit (`ui/orbit/Toast`): la shell solo lo monta
+  // y consume `useToast`, para que las pantallas compartan la misma región.
+  return (
+    <ToastProvider>
+      <OrbitShellBody {...props} />
+    </ToastProvider>
+  );
+}
+
+function OrbitShellBody({
   activeSection,
   onNavigate,
   version,
@@ -86,7 +99,7 @@ export function OrbitShell({
     () => orbitStore.get(ORBIT_KEYS.sidebar) !== "closed",
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [toasts, setToasts] = useState<{ id: number; title: string; message?: string }[]>([]);
+  const toastApi = useToast();
   const [update, setUpdate] = useState<UpdateState>("none");
   const [updateTag, setUpdateTag] = useState<string>("");
 
@@ -121,11 +134,10 @@ export function OrbitShell({
 
   const effectiveColumnOpen = columnOpen && !narrow;
 
-  const toast = useCallback((title: string, message?: string) => {
-    const id = Date.now() + Math.random();
-    setToasts((current) => [...current, { id, title, message }].slice(-3));
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 2600);
-  }, []);
+  const toast = useCallback(
+    (title: string, message?: string) => toastApi.show(title, message),
+    [toastApi],
+  );
 
   const toggleColumn = useCallback(() => {
     setColumnOpen((open) => {
@@ -417,15 +429,6 @@ export function OrbitShell({
         onClose={() => setPaletteOpen(false)}
         open={paletteOpen}
       />
-
-      <div aria-live="polite" className="orbit-toasts" role="status">
-        {toasts.map((item) => (
-          <div className="orbit-toast" key={item.id}>
-            <b>{item.title}</b>
-            {item.message ? <span>{item.message}</span> : null}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

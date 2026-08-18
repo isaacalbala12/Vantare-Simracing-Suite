@@ -814,38 +814,4 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   border: 0;
 }
 
-/* ============================================================ TOASTS */
-
-.orbit-toasts {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: var(--orbit-z-toast);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
-}
-
-.orbit-toast {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 260px;
-  padding: 13px 16px;
-  border: 1px solid var(--orbit-line-strong);
-  border-radius: var(--orbit-radius);
-  background: var(--orbit-surface-2);
-  box-shadow: var(--orbit-shadow-toast);
-}
-
-.orbit-toast b {
-  color: var(--orbit-ink);
-  font-size: var(--orbit-fs-body);
-  font-weight: 700;
-}
-
-.orbit-toast span {
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
-}
+/* Los toasts viven en el kit (`ui/orbit/Toast.tsx` + `orbit-kit.css`). */

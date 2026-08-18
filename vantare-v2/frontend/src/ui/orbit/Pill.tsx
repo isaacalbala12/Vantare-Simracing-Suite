@@ -5,6 +5,7 @@ export interface PillProps {
   dot?: "ok" | "gold" | "ring" | "ring-gold" | "none";
   pulse?: boolean;
   onClick?(): void;
+  /** Texto largo del estado: se expone como `aria-label`, **no** como `title`. */
   title?: string;
   className?: string;
   /** Estado semántico del pill; alimenta el color y la pulsación del punto. */
@@ -23,7 +24,7 @@ export function Pill({
   const content = (
     <>
       {dot === "none" ? null : (
-        <i className={`orbit-pill__dot orbit-pill__dot--${dot}`} aria-hidden="true" />
+        <i aria-hidden="true" className={`orbit-pill__dot orbit-pill__dot--${dot}`} />
       )}
       <span className="orbit-pill__label">{children}</span>
     </>
@@ -34,13 +35,19 @@ export function Pill({
 
   if (onClick) {
     return (
-      <button className={classes} data-s={state} onClick={onClick} title={title} type="button">
+      <button
+        aria-label={title}
+        className={classes}
+        data-s={state}
+        onClick={onClick}
+        type="button"
+      >
         {content}
       </button>
     );
   }
   return (
-    <span className={classes} data-s={state} title={title}>
+    <span aria-label={title} className={classes} data-s={state}>
       {content}
     </span>
   );

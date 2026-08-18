@@ -20,6 +20,9 @@ export type LauncherOrbitApp = {
   methodKey: string;
   state: AppCatalogState;
   isFavorite: boolean;
+  /** Los dos campos que `useAppIcon` necesita para resolver el icono real. */
+  iconUrl?: string;
+  executablePath?: string;
 };
 
 export type LauncherOrbitStep = {
@@ -31,6 +34,8 @@ export type LauncherOrbitStep = {
   /** Espera declarada del paso, en segundos. */
   delay: number;
   status: ChainStepStatus;
+  iconUrl?: string;
+  executablePath?: string;
 };
 
 /**
@@ -76,6 +81,8 @@ export function toOrbitApp(app: LauncherApp): LauncherOrbitApp {
     methodKey: `launcher.method.${app.launchMethod === "steam-uri" ? "steam" : "executable"}`,
     state: appCatalogState(app),
     isFavorite: app.isFavorite === true,
+    iconUrl: app.iconUrl,
+    executablePath: app.executablePath,
   };
 }
 
@@ -136,6 +143,8 @@ export function chainSteps(
       g2: app?.gradientTo ?? UNKNOWN_GRADIENT.g2,
       delay: step.delay,
       status: stepStatus(chain, step.appId, index),
+      iconUrl: app?.iconUrl,
+      executablePath: app?.executablePath,
     };
   });
 }

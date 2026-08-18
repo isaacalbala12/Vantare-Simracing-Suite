@@ -15,6 +15,9 @@ export interface ChainStepProps {
   status?: ChainStepStatus;
   /** Texto del estado, si el paso ya no está pendiente. */
   statusLabel?: string;
+  /** Icono real de la aplicación del paso; sin él se pinta la abreviatura. */
+  src?: string | null;
+  onSrcError?: () => void;
   className?: string;
 }
 
@@ -33,6 +36,8 @@ export function ChainStep({
   wait,
   status = "pending",
   statusLabel,
+  src,
+  onSrcError,
   className,
 }: ChainStepProps) {
   return (
@@ -41,7 +46,14 @@ export function ChainStep({
       data-s={status}
       data-testid="orbit-chain-step"
     >
-      <Monogram g1={g1} g2={g2} size={26} text={abbreviation} />
+      <Monogram
+        g1={g1}
+        g2={g2}
+        onSrcError={onSrcError}
+        size={26}
+        src={src}
+        text={abbreviation}
+      />
       <b>{name}</b>
       <span>{statusLabel ?? wait}</span>
     </li>

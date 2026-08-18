@@ -42,6 +42,9 @@
   overflow: visible;
   border-right: 1px solid var(--orbit-line);
   background: var(--orbit-rail-bg);
+  /* Sin `position` el `z-index` del rail no se aplicaba: los tooltips salían
+     al mismo nivel que la columna en vez de flotar por encima de ella. */
+  position: relative;
   z-index: var(--orbit-z-rail);
 }
 
@@ -168,11 +171,13 @@
   transform: translateY(-1px);
 }
 
-/* tooltip propio: hover Y foco, nunca `title` nativo */
+/* tooltip propio: hover Y foco, nunca `title` nativo. La separación cuenta
+   desde el botón, que está a 10px del borde del rail: con 14px el globo
+   quedaba pegado a la columna, así que se aleja hasta despegarlo. */
 [data-tip]::after {
   content: attr(data-tip);
   position: absolute;
-  left: calc(100% + 14px);
+  left: calc(100% + 22px);
   top: 50%;
   z-index: var(--orbit-z-tooltip);
   transform: translate(-6px, -50%);

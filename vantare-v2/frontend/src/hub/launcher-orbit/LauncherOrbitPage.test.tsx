@@ -1,5 +1,22 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// `useAppIcon` habla con el backend por el puente de Wails: aquí se captura lo
+// que emite para comprobar que pide el icono real de cada ejecutable.
+const { emitted, eventsOn, eventsEmit } = vi.hoisted(() => {
+  const emitted: [string, unknown][] = [];
+  return {
+    emitted,
+    eventsOn: vi.fn(() => () => undefined),
+    eventsEmit: vi.fn((name: string, payload?: unknown) => {
+      emitted.push([name, payload]);
+    }),
+  };
+});
+
+vi.mock("@wailsio/runtime", () => ({
+  Events: { On: eventsOn, Off: vi.fn(), Emit: eventsEmit },
+}));
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { LauncherApp, LauncherSnapshot } from "../launcher/launcher-contract";
 import {
@@ -12,6 +29,13 @@ import {
   LAUNCHER_CONTEXT_SLOT_ID,
   LAUNCHER_TOPBAR_SLOT_ID,
 } from "./LauncherOrbitPage";
+import { resetAppIconCache } from "../launcher/use-app-icon";
+
+beforeEach(() => {
+  emitted.length = 0;
+  eventsEmit.mockClear();
+  resetAppIconCache();
+});
 
 afterEach(() => {
   cleanup();
@@ -222,5 +246,93 @@ describe("Launcher Orbit", () => {
   it("no usa `title` nativo en ningún control de la vista", () => {
     setup(CATALOG);
     expect(screen.getByTestId("orbit-launcher").querySelectorAll("[title]").length).toBe(0);
+  });
+});
+
+describe("LauncherOrbitPage · iconos reales, creación y carga", () => {
+  it("pinta el icono real de la aplicación cuando el contrato trae `iconUrl`", () => {
+    setup({
+      ...CATALOG,
+      apps: [
+        app("lmu", { displayName: "Le Mans Ultimate", iconUrl: "/icons/lmu.png" }),
+        app("obs", { displayName: "OBS Studio" }),
+      ],
+    });
+    const list = screen.getByTestId("orbit-launcher-apps");
+    const images = list.querySelectorAll("img");
+    expect(images.length).toBe(1);
+    expect(images[0].getAttribute("src")).toBe("/icons/lmu.png");
+    // La aplicación sin icono conserva su monograma de iniciales.
+    expect(within(list).getByText("OBS")).toBeTruthy();
+  });
+
+  it("pide al backend el icono de las aplicaciones con ejecutable y sin `iconUrl`", () => {
+    setup({
+      ...CATALOG,
+      apps: [app("obs", { displayName: "OBS Studio", executablePath: "C:/obs/obs.exe" })],
+    });
+    expect(emitted).toContainEqual([
+      "launcher:app:icon",
+      { id: "obs", executablePath: "C:/obs/obs.exe" },
+    ]);
+  });
+
+  it("vuelve a las iniciales si el icono no carga", () => {
+    setup({
+      ...CATALOG,
+      apps: [app("lmu", { displayName: "Le Mans Ultimate", iconUrl: "/roto.png" })],
+    });
+    const list = screen.getByTestId("orbit-launcher-apps");
+    const image = list.querySelector("img");
+    expect(image).toBeTruthy();
+    fireEvent.error(image!);
+    expect(screen.getByTestId("orbit-launcher-apps").querySelector("img")).toBeNull();
+    expect(within(screen.getByTestId("orbit-launcher-apps")).getByText("LMU")).toBeTruthy();
+  });
+
+  it("«Crear perfil» abre el editor real en el mismo clic, sin esperar al backend", () => {
+    const { dispatchLauncherCommand } = setup(CATALOG);
+    expect(screen.queryByTestId("launcher-profile-editor")).toBeNull();
+    fireEvent.click(screen.getByTestId("orbit-launcher-create"));
+    expect(dispatchLauncherCommand).toHaveBeenCalledWith(
+      "launcher:profile:save",
+      expect.objectContaining({ profile: expect.objectContaining({ steps: [] }) }),
+    );
+    // El perfil nuevo no está en la instantánea (el backend no ha respondido) y
+    // aun así el editor está montado: antes el clic no hacía nada.
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("enseña carga y filas de relleno mientras no llega la instantánea", () => {
+    mountSlots();
+    const bridge: LauncherBridgeLike = {
+      subscribeSnapshot: () => () => undefined,
+      requestSnapshot: () => undefined,
+      dispatchLauncherCommand: vi.fn(),
+    };
+    render(
+      <I18nProvider>
+        <LauncherStoreProvider store={createLauncherStore(bridge)}>
+          <LauncherOrbitPage />
+        </LauncherStoreProvider>
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId("orbit-launcher-apps-loading")).toBeTruthy();
+    expect(screen.getAllByText("Detectando aplicaciones…").length).toBeGreaterThan(0);
+    expect(
+      document.querySelectorAll(".orbit-launcher__skeleton").length,
+    ).toBeGreaterThan(0);
+    // Nada de «el catálogo está vacío» antes de tener respuesta.
+    expect(
+      screen.queryByText("El catálogo está vacío. Ejecuta la detección para poblarlo."),
+    ).toBeNull();
+  });
+
+  it("con la instantánea vacía sí dice la verdad: catálogo vacío, sin relleno", () => {
+    setup(EMPTY);
+    expect(screen.queryByTestId("orbit-launcher-apps-loading")).toBeNull();
+    expect(
+      screen.getByText("El catálogo está vacío. Ejecuta la detección para poblarlo."),
+    ).toBeTruthy();
   });
 });

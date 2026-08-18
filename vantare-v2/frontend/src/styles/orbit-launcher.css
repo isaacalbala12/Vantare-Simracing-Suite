@@ -254,3 +254,74 @@
   font-size: 11.5px;
   line-height: 1.5;
 }
+
+/* --------------------------------------------------- CARGA DEL CATÁLOGO */
+
+/* Mientras la instantánea no ha llegado el catálogo enseña filas de relleno:
+   decir «sin aplicaciones» antes de tener respuesta sería mentir. */
+.orbit-launcher__loading {
+  margin-bottom: 10px;
+}
+
+.orbit-launcher__skeleton {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: var(--orbit-row);
+  padding: 0 4px;
+}
+
+.orbit-launcher__skeleton-ico,
+.orbit-launcher__skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.045)
+  );
+  background-size: 200% 100%;
+  animation: orbit-launcher-shimmer 1.4s linear infinite;
+}
+
+.orbit-launcher__skeleton-ico {
+  flex: none;
+  width: var(--orbit-control-h);
+  height: var(--orbit-control-h);
+  border-radius: 11px;
+}
+
+.orbit-launcher__skeleton-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.orbit-launcher__skeleton-line {
+  width: 62%;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.orbit-launcher__skeleton-line--sub {
+  width: 38%;
+  height: 8px;
+}
+
+@keyframes orbit-launcher-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-launcher__skeleton-ico,
+  .orbit-launcher__skeleton-line {
+    animation: none;
+  }
+}
+
+[data-reduce-motion="true"] .orbit-launcher__skeleton-ico,
+[data-reduce-motion="true"] .orbit-launcher__skeleton-line {
+  animation: none;
+}

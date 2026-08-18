@@ -1024,6 +1024,20 @@ button.orbit-pill {
   user-select: none;
 }
 
+/* Con icono real el degradado estorba: la caja se vuelve neutra y la imagen
+   ocupa el interior con su propio aire. */
+.orbit-monogram--icon {
+  background: var(--orbit-surface-2);
+  box-shadow: inset 0 0 0 1px var(--orbit-line);
+  overflow: hidden;
+}
+
+.orbit-monogram__img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
 .orbit-monogram--26 {
   width: 26px;
   height: 26px;

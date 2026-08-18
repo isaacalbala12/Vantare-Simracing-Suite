@@ -4,7 +4,6 @@ import { useI18n } from "../../i18n/I18nProvider";
 import {
   Button,
   Chain,
-  ChainStep,
   Chip,
   Featured,
   Input,
@@ -37,6 +36,7 @@ import {
   profileInitials,
   toOrbitApp,
 } from "./launcher-orbit-model";
+import { AppChainStep, AppMonogram } from "./AppMonogram";
 import "../../styles/orbit-launcher.css";
 
 /** Huecos que la shell reserva para el Launcher (briefing 05). */
@@ -89,6 +89,10 @@ export function LauncherOrbitPage() {
   const topbarSlot = useOrbitSlot(LAUNCHER_TOPBAR_SLOT_ID);
   const [query, setQuery] = useState("");
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  // Borrador del perfil recien creado. Sin el, «Crear perfil» no abria nada:
+  // el editor se buscaba en la instantanea del store, que solo trae el perfil
+  // cuando el backend confirma el guardado, asi que el clic se perdia.
+  const [draftProfile, setDraftProfile] = useState<LaunchProfile | null>(null);
 
   // Misma detección real que el Launcher clásico: el store la salta si el
   // último escaneo sigue fresco (TTL), así que entrar aquí no relanza el disco.
@@ -123,11 +127,15 @@ export function LauncherOrbitPage() {
     [apps],
   );
   const editingProfile = editingProfileId
-    ? profiles.find((profile) => profile.id === editingProfileId) ?? null
+    ? profiles.find((profile) => profile.id === editingProfileId) ??
+      (draftProfile?.id === editingProfileId ? draftProfile : null)
     : null;
 
   const discovery = snapshot?.discovery;
   const scanning = progress?.scanning === true || discovery?.scanning === true;
+  // Antes de que llegue la instantanea no hay catalogo que ensenar, y decir
+  // «sin aplicaciones» seria mentir: mientras se espera van filas de relleno.
+  const awaitingApps = snapshot === null || (scanning && apps.length === 0);
   const discoveryLabel = scanning
     ? t("launcher.discovery.scanning")
     : discovery?.error
@@ -154,8 +162,11 @@ export function LauncherOrbitPage() {
       description: "",
       steps: [],
     };
-    dispatchLauncherCommand("launcher:profile:save", { profile: blank });
+    // El borrador se guarda en local **antes** de despachar: el editor abre en
+    // el mismo clic y deja de depender de que el backend devuelva el perfil.
+    setDraftProfile(blank);
     setEditingProfileId(id);
+    dispatchLauncherCommand("launcher:profile:save", { profile: blank });
   };
 
   const renderProfile = (profile: LaunchProfile, isFeatured: boolean) => {
@@ -208,8 +219,13 @@ export function LauncherOrbitPage() {
             label={formatMessage(t("launcher.profile.chainLabel"), { name: profile.name })}
           >
             {steps.map((step, index) => (
-              <ChainStep
+              <AppChainStep
                 abbreviation={step.abbreviation}
+                app={{
+                  id: step.appId,
+                  executablePath: step.executablePath,
+                  iconUrl: step.iconUrl,
+                }}
                 g1={step.g1}
                 g2={step.g2}
                 key={`${step.appId}-${index}`}
@@ -400,7 +416,26 @@ export function LauncherOrbitPage() {
           title={t("launcher.catalog.title")}
         >
           <div className="orbit-list" data-testid="orbit-launcher-apps">
-            {visibleApps.length === 0 ? (
+            {awaitingApps ? (
+              <div data-testid="orbit-launcher-apps-loading">
+                <SubtleStatus className="orbit-launcher__loading" tone="attn">
+                  {t("launcher.discovery.scanning")}
+                </SubtleStatus>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div
+                    aria-hidden="true"
+                    className="orbit-launcher__skeleton"
+                    key={`skeleton-${index}`}
+                  >
+                    <span className="orbit-launcher__skeleton-ico" />
+                    <span className="orbit-launcher__skeleton-lines">
+                      <span className="orbit-launcher__skeleton-line" />
+                      <span className="orbit-launcher__skeleton-line orbit-launcher__skeleton-line--sub" />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : visibleApps.length === 0 ? (
               <p className="orbit-launcher__empty">
                 {apps.length === 0 ? t("launcher.catalog.empty") : t("launcher.searchEmpty")}
               </p>
@@ -408,7 +443,7 @@ export function LauncherOrbitPage() {
               visibleApps.map((app) => (
                 <ListRow
                   key={app.id}
-                  leading={<Monogram g1={app.g1} g2={app.g2} size={39} text={app.abbreviation} />}
+                  leading={<AppMonogram app={app} g1={app.g1} g2={app.g2} size={39} text={app.abbreviation} />}
                   subtitle={`${t(app.categoryKey)} · ${t(app.methodKey)}`}
                   title={app.name}
                   trailing={
@@ -461,10 +496,14 @@ export function LauncherOrbitPage() {
         <ProfileEditor
           apps={editorApps}
           key={editingProfile.id}
-          onClose={() => setEditingProfileId(null)}
-          onSave={(updated) =>
-            dispatchLauncherCommand("launcher:profile:save", { profile: updated })
-          }
+          onClose={() => {
+            setEditingProfileId(null);
+            setDraftProfile(null);
+          }}
+          onSave={(updated) => {
+            setDraftProfile((draft) => (draft?.id === updated.id ? updated : draft));
+            dispatchLauncherCommand("launcher:profile:save", { profile: updated });
+          }}
           open
           profile={editingProfile}
         />

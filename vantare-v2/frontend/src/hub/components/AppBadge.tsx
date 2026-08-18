@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { Events } from "@wailsio/runtime";
 import type { LauncherAppEntry } from "../launcher/launcher-state";
-import { resolveIconCandidates } from "../launcher/app-icons";
+import { useAppIcon } from "../launcher/use-app-icon";
 
 type AppBadgeProps = {
   app: LauncherAppEntry;
@@ -17,63 +15,14 @@ const CATEGORY_LABEL: Record<LauncherAppEntry["category"], string> = {
   utility: "Utilidad",
 };
 
-/**
- * Known icon URLs for apps whose icons can't be extracted from .exe AND have no
- * desktop shortcut to fall back to. Reserved for apps with a reliable, hotlink-
- * friendly asset. Currently empty: Discord, MoTeC and SimHub resolve via the
- * backend, which extracts the real icon from the executable or its desktop
- * shortcut (.lnk) — matching what Windows shows on the desktop.
- */
-const KNOWN_ICONS: Record<string, string> = {};
-
-/** Cache for resolved icon data URIs (id → data URI) */
-const iconCache = new Map<string, string>();
-
 export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
   const dim = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
   const title = `${app.displayName} · ${CATEGORY_LABEL[app.category]}`;
 
-  const [extractedIcon, setExtractedIcon] = useState<string | null>(() =>
-    iconCache.get(app.id) ?? null,
-  );
-  const iconKey = `${app.id}|${app.iconUrl ?? ""}|${app.executablePath ?? ""}`;
-  const [failedCandidateState, setFailedCandidateState] = useState({
-    key: "",
-    count: 0,
-  });
-  const failedCandidateCount =
-    failedCandidateState.key === iconKey ? failedCandidateState.count : 0;
-  const iconCandidates = [
-    ...resolveIconCandidates(app),
-    KNOWN_ICONS[app.id],
-    extractedIcon,
-  ].filter((candidate): candidate is string => Boolean(candidate));
-  const iconUrl = iconCandidates[failedCandidateCount] ?? null;
-  const appId = app.id;
-  const executablePath = app.executablePath;
-
-  // Request icon from Go backend and listen for the result in a single effect,
-  // so the listener is always registered BEFORE the emit.
-  useEffect(() => {
-    const off = Events.On(
-      "launcher:app:icon:result",
-      (event: { data?: { id?: string; iconUrl?: string } }) => {
-        const data = event.data;
-        if (!data || data.id !== appId || !data.iconUrl) return;
-        iconCache.set(appId, data.iconUrl);
-        setExtractedIcon(data.iconUrl);
-      },
-    );
-
-    if (!iconUrl && executablePath && !iconCache.has(appId)) {
-      Events.Emit("launcher:app:icon", {
-        id: appId,
-        executablePath,
-      });
-    }
-
-    return off;
-  }, [appId, app.iconUrl, executablePath, iconUrl]);
+  // Misma resolución de icono que el Launcher Orbit: activo oficial, `iconUrl`
+  // local del contrato y, si falta, el icono que el backend extrae del
+  // ejecutable. La lógica vive en `useAppIcon` para no tener dos copias.
+  const { src: iconUrl, onError } = useAppIcon(app);
 
   return (
     <span
@@ -87,17 +36,7 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
           alt=""
           loading="lazy"
           className={`${dim} rounded-lg object-contain`}
-          onError={() => {
-            // Try the next ranked candidate before falling back to the abbreviation.
-            if (extractedIcon === iconUrl) {
-              iconCache.delete(appId);
-              setExtractedIcon(null);
-            }
-            setFailedCandidateState({
-              key: iconKey,
-              count: failedCandidateCount + 1,
-            });
-          }}
+          onError={onError}
         />
       ) : (
         <span

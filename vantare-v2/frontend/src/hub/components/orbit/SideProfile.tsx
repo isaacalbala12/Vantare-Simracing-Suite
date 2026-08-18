@@ -68,7 +68,9 @@ export function SideProfile({
               </span>
             }
           />
-        ) : (
+        ) : recommended ? null : (
+          // «Sin perfiles todavía» solo cuando de verdad no hay ninguno: con un
+          // recomendado en la lista la frase contradecía a la fila de debajo.
           <p className="orbit-row__copy">{labels.empty}</p>
         )}
         {recommended ? (

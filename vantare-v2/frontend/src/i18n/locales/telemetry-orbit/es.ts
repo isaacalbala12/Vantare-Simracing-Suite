@@ -37,6 +37,7 @@ export const telemetryOrbitEs: Record<string, string> = {
   "telemetry.traces.axis": "Eje",
   "telemetry.traces.distance": "Distancia",
   "telemetry.traces.time": "Tiempo",
+  "telemetry.traces.timeDisabled": "El eje temporal necesita la marca de tiempo por muestra, que la fuente todavía no expone.",
   "telemetry.traces.speed": "Velocidad",
   "telemetry.traces.speedUnit": "km/h",
   "telemetry.traces.pedals": "Acelerador / Freno",

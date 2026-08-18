@@ -347,11 +347,15 @@ export function EngineerOrbitPage({ bridge, voices }: EngineerOrbitPageProps) {
                   <b>{t("engineer.voice.duck")}</b>
                   <span>{t("engineer.voice.duckHint")}</span>
                 </span>
+                {/* Sin control de volumen del juego no hay atenuación real:
+                    el interruptor queda deshabilitado con el motivo a la vista
+                    en vez de fingir un ajuste (auditoría D-94). */}
                 <Toggle
                   disabled
                   label={t("engineer.voice.duck")}
                   onChange={() => undefined}
                   pressed={false}
+                  title={t("engineer.voice.duckSoon")}
                 />
               </div>
 

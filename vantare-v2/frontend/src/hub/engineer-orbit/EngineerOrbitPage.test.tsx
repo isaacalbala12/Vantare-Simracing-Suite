@@ -187,3 +187,13 @@ describe("EngineerOrbitPage", () => {
     expect(speak).toHaveBeenCalledWith(expect.any(String), { voiceId: "v1", volume: 0.4 });
   });
 });
+
+describe("EngineerOrbitPage · cableado auditado", () => {
+  it("«Atenuar el juego» va deshabilitado con el motivo a la vista", () => {
+    mount(fakeBridge().bridge);
+    const duck = screen.getByRole("button", { name: "Atenuar el juego al hablar" }) as HTMLButtonElement;
+    expect(duck.disabled).toBe(true);
+    expect(duck.getAttribute("data-tip")).toBeTruthy();
+    expect(duck.getAttribute("title")).toBeNull();
+  });
+});

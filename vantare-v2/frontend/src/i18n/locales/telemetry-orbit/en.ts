@@ -37,6 +37,7 @@ export const telemetryOrbitEn: Record<string, string> = {
   "telemetry.traces.axis": "Axis",
   "telemetry.traces.distance": "Distance",
   "telemetry.traces.time": "Time",
+  "telemetry.traces.timeDisabled": "The time axis needs a timestamp per sample, which the source does not expose yet.",
   "telemetry.traces.speed": "Speed",
   "telemetry.traces.speedUnit": "km/h",
   "telemetry.traces.pedals": "Throttle / Brake",

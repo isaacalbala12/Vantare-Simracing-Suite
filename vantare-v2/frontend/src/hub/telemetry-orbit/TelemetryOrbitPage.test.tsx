@@ -104,3 +104,20 @@ describe("TelemetryOrbitPage", () => {
     expect(screen.getByTestId("orbit-telemetry").querySelectorAll("[title]")).toHaveLength(0);
   });
 });
+
+describe("TelemetryOrbitPage · cableado auditado", () => {
+  it("el eje Tiempo va deshabilitado con motivo y Distancia sigue activo", () => {
+    render(
+      <I18nProvider>
+        <TelemetryOrbitPage demo />
+      </I18nProvider>,
+    );
+    const time = screen.getByRole("button", { name: "Tiempo" }) as HTMLButtonElement;
+    expect(time.disabled).toBe(true);
+    expect(time.getAttribute("data-tip")).toBeTruthy();
+    expect(time.getAttribute("title")).toBeNull();
+    expect((screen.getByRole("button", { name: "Distancia" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+});

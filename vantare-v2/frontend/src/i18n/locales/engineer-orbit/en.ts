@@ -31,6 +31,7 @@ export const engineerOrbitEn: Record<string, string> = {
   "engineer.voice.volumeHint": "Independent from the game.",
   "engineer.voice.duck": "Duck the game while speaking",
   "engineer.voice.duckHint": "Not part of the Engineer contract yet.",
+  "engineer.voice.duckSoon": "The Engineer does not control game volume yet: ducking arrives with that contract.",
   "engineer.voice.sensitivity": "Spotter sensitivity",
   "engineer.voice.sensitivityHint": "Lateral margin of the calls.",
   "engineer.voice.conservative": "Conservative",

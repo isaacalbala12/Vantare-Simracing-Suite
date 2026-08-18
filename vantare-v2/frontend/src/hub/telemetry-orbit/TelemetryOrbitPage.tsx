@@ -65,6 +65,7 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
   const [sessionId, setSessionId] = useState<string | null>(source.sessions[0]?.id ?? null);
   const [cursor, setCursor] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [axis, setAxis] = useState<"distance" | "time">("distance");
 
   const scale = REFERENCE_SCALE[reference];
   const mine = useMemo(() => (synthetic ? demoChannels(true) : null), [synthetic]);
@@ -310,17 +311,20 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
           actions={
             <Seg<"distance" | "time">
               label={t("telemetry.traces.axis")}
-              onChange={() => undefined}
+              // El eje temporal necesita la marca de tiempo por muestra, que la
+              // fuente todavía no expone: la opción queda deshabilitada con el
+              // motivo y el manejador es real, no un `undefined` mudo (D-94).
+              onChange={setAxis}
               options={[
                 { value: "distance", label: t("telemetry.traces.distance") },
                 {
                   value: "time",
                   label: t("telemetry.traces.time"),
                   disabled: true,
-                  title: t("telemetry.traces.empty"),
+                  title: t("telemetry.traces.timeDisabled"),
                 },
               ]}
-              value="distance"
+              value={axis}
             />
           }
           aria-label={t("telemetry.traces.title")}

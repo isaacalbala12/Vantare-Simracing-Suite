@@ -37,6 +37,7 @@ export const telemetryOrbitIt: Record<string, string> = {
   "telemetry.traces.axis": "Asse",
   "telemetry.traces.distance": "Distanza",
   "telemetry.traces.time": "Tempo",
+  "telemetry.traces.timeDisabled": "L'asse temporale richiede il timestamp per campione, che la sorgente non espone ancora.",
   "telemetry.traces.speed": "Velocità",
   "telemetry.traces.speedUnit": "km/h",
   "telemetry.traces.pedals": "Acceleratore / Freno",

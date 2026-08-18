@@ -11,6 +11,7 @@ import { type Section } from "../../navigation";
 import { formatMessage } from "../../orbit/format-message";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import { applyOrbitThemeWhileMounted } from "../../orbit/orbit-theme";
+import { useAccountIdentity } from "../../orbit/use-account-identity";
 import { useCalendarStarts } from "../../orbit/use-calendar-starts";
 import { OrbitSimStatusContext } from "../../orbit/sim-status-context";
 import { useOverlayState } from "../../orbit/use-overlay-state";
@@ -125,6 +126,7 @@ function OrbitShellBody({
 
   const activeView = sectionToView(activeSection);
   const planLabel = planLabelOf(access);
+  const identity = useAccountIdentity();
 
   const [columnOpen, setColumnOpen] = useState(
     () => orbitStore.get(ORBIT_KEYS.sidebar) !== "closed",
@@ -437,7 +439,9 @@ function OrbitShellBody({
       <div className="orbit-shell" data-column={effectiveColumnOpen && columnAvailable ? "open" : "closed"}>
         <Rail
           active={activeView}
-          avatarSrc={undefined}
+          accountEmail={identity.email ?? undefined}
+          accountName={identity.displayName ?? undefined}
+          avatarSrc={identity.avatarUrl ?? undefined}
           columnAvailable={columnAvailable}
           columnOpen={effectiveColumnOpen}
           items={railItems}
@@ -458,7 +462,6 @@ function OrbitShellBody({
           onNavigate={navigate}
           onToggleColumn={toggleColumn}
           onTogglePalette={() => setPaletteOpen((open) => !open)}
-          planLabel={license?.email?.charAt(0).toUpperCase() || planLabel}
         />
 
         {effectiveColumnOpen && columnAvailable ? (

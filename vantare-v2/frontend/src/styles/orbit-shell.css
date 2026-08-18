@@ -171,6 +171,12 @@
   transform: translateY(-1px);
 }
 
+/* Foto de perfil de la cuenta dentro de la losa del avatar. */
+.orbit-rail__avatar img {
+  border-radius: 9px;
+  object-fit: cover;
+}
+
 /* tooltip propio: hover Y foco, nunca `title` nativo. La separación cuenta
    desde el botón, que está a 10px del borde del rail: con 14px el globo
    quedaba pegado a la columna, así que se aleja hasta despegarlo. */

@@ -9,6 +9,7 @@ import { LicenseProvider } from "./lib/license";
 import { LauncherStoreProvider } from "./hub/launcher/launcher-store";
 import { OrbitShell } from "./hub/components/orbit/OrbitShell";
 import { isOrbitEnabled } from "./hub/orbit/orbit-flag";
+import { seedAccountIdentity } from "./hub/orbit/use-account-identity";
 import type { Section } from "./hub/navigation";
 
 /**
@@ -22,6 +23,24 @@ import type { Section } from "./hub/navigation";
  */
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
+
+// Sin runtime ni Supabase configurado no hay sesión: se siembra una identidad de
+// prueba (con foto embebida) para que el avatar del rail se vea como en la app
+// y no salga vacío en la captura.
+seedAccountIdentity({
+  displayName: "Isaac Albalá",
+  email: "isaac@vantare.app",
+  avatarUrl:
+    "data:image/svg+xml;utf8," +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">' +
+        '<rect width="96" height="96" fill="#3a3f52"/>' +
+        '<circle cx="48" cy="38" r="17" fill="#c9cbd6"/>' +
+        '<path d="M14 96c4-22 17-32 34-32s30 10 34 32z" fill="#c9cbd6"/>' +
+      "</svg>",
+    ),
+});
+
 
 export function Harness() {
   const [section, setSection] = useState<Section>("setup");

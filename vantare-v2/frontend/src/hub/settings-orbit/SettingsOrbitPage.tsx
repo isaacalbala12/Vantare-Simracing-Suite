@@ -37,6 +37,7 @@ import {
 import { getStoredThemeId, persistThemeId, type ThemeId } from "../../lib/theme";
 import { isOpsMetrics, type OpsMetrics } from "../../lib/ops-metrics";
 import { formatMessage } from "../orbit/format-message";
+import { accountInitial, useAccountIdentity } from "../orbit/use-account-identity";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useOverlayState } from "../orbit/use-overlay-state";
 import { useOrbitSimStatus } from "../orbit/sim-status-context";
@@ -218,8 +219,12 @@ function AccountSection() {
   }));
   const included = modules.filter((module) => module.on && !module.soon).length;
 
-  const email = license?.email ?? "";
-  const name = email ? email.split("@")[0] : t("settings.account.noSession");
+  // Misma fuente de identidad que el avatar del rail: la sesión real manda y la
+  // licencia sólo cubre el correo cuando la sesión aún no ha llegado.
+  const identity = useAccountIdentity();
+  const email = identity.email ?? license?.email ?? "";
+  const name = identity.displayName ?? (email ? email.split("@")[0] : t("settings.account.noSession"));
+  const avatarUrl = identity.avatarUrl;
   const none = t("settings.diag.none");
 
   const checkAccess = useCallback(async () => {
@@ -254,7 +259,11 @@ function AccountSection() {
       <div className="orbit-set__hero" data-testid="orbit-settings-acct-hero">
         <section aria-label={t("settings.account.identity")} className="orbit-set-acct">
           <span aria-hidden="true" className="orbit-set-acct__avatar">
-            {email ? email.charAt(0).toUpperCase() : "·"}
+            {avatarUrl ? (
+              <img alt="" data-testid="orbit-settings-acct-avatar" src={avatarUrl} />
+            ) : (
+              accountInitial(identity)
+            )}
           </span>
           <div className="orbit-set-acct__copy">
             <b>{name}</b>

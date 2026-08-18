@@ -15,7 +15,7 @@ const labels = {
 };
 
 const baseItems: RailItem[] = [
-  { id: "inicio", icon: "i-inicio", label: "Inicio" },
+  { id: "inicio", icon: "i-vantare", label: "Inicio" },
   { id: "studio", icon: "i-studio", label: "Overlays Studio" },
   {
     id: "estrategia",
@@ -40,7 +40,7 @@ function renderRail(overrides: Partial<React.ComponentProps<typeof Rail>> = {}) 
       onNavigate={onNavigate}
       onToggleColumn={onToggleColumn}
       onTogglePalette={onTogglePalette}
-      planLabel="Free"
+      accountName="Isaac Albalá"
       {...overrides}
     />,
   );
@@ -113,6 +113,39 @@ describe("Rail", () => {
     expect(onNavigate).toHaveBeenCalledWith("ajustes", "account");
     fireEvent.click(screen.getByTestId("orbit-rail-ajustes"));
     expect(onNavigate).toHaveBeenCalledWith("ajustes", "application");
+  });
+
+  it("Inicio usa la marca de Vantare, no la casita", () => {
+    renderRail();
+    const use = screen.getByTestId("orbit-rail-inicio").querySelector("use");
+    expect(use?.getAttribute("href")).toMatch(/#i-vantare$/);
+  });
+
+  it("el avatar pinta la foto de la cuenta cuando la hay", () => {
+    renderRail({ avatarSrc: "https://lh3.googleusercontent.com/a/foto" });
+    const img = screen.getByTestId("orbit-rail-account-avatar") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe("https://lh3.googleusercontent.com/a/foto");
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.getAttribute("aria-label")).toBe("Isaac Albalá");
+    expect(screen.getByTestId("orbit-rail-account").textContent).toBe("");
+  });
+
+  it("sin foto cae a la inicial del nombre, nunca a la del plan", () => {
+    renderRail({ accountName: "Isaac Albalá", accountEmail: "isaac@vantare.app" });
+    expect(screen.getByTestId("orbit-rail-account").textContent).toBe("I");
+    expect(screen.queryByTestId("orbit-rail-account-avatar")).toBeNull();
+  });
+
+  it("sin nombre usa la inicial del correo", () => {
+    renderRail({ accountName: undefined, accountEmail: "piloto@vantare.app" });
+    expect(screen.getByTestId("orbit-rail-account").textContent).toBe("P");
+  });
+
+  it("si la foto no carga, vuelve a la inicial del nombre", () => {
+    renderRail({ avatarSrc: "https://lh3.googleusercontent.com/a/rota" });
+    fireEvent.error(screen.getByTestId("orbit-rail-account-avatar"));
+    expect(screen.queryByTestId("orbit-rail-account-avatar")).toBeNull();
+    expect(screen.getByTestId("orbit-rail-account").textContent).toBe("I");
   });
 
   it("la marca no usa `title` nativo: lleva el tooltip propio del rail", () => {

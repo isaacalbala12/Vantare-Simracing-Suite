@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import markUrl from "../../../assets/orbit/vantare-mark.png";
 import { Icon, type IconName } from "../../../ui/orbit/Icon";
 import { Tooltip } from "../../../ui/orbit/Tooltip";
@@ -20,8 +22,12 @@ export interface RailProps {
   onToggleColumn(): void;
   columnOpen: boolean;
   columnAvailable: boolean;
+  /** Foto de perfil de la cuenta (Google). Si falta o falla, se pinta la inicial. */
   avatarSrc?: string;
-  planLabel: string;
+  /** Nombre de la cuenta; su inicial es el respaldo del avatar. */
+  accountName?: string;
+  /** Correo de la cuenta: respaldo de la inicial cuando no hay nombre. */
+  accountEmail?: string;
   /** Copias ya traducidas: el kit no habla i18n (`12-contratos-componentes.md`). */
   labels: {
     rail: string;
@@ -46,10 +52,20 @@ export function Rail({
   columnOpen,
   columnAvailable,
   avatarSrc,
-  planLabel,
+  accountName,
+  accountEmail,
   labels,
   className,
 }: RailProps) {
+  // El avatar cae a la inicial del nombre (y si no lo hay, del correo). Nunca a
+  // la del plan: por eso salía una ‘F’ de Free en una cuenta con foto.
+  const initialSource = accountName?.trim() || accountEmail?.trim() || "";
+  const initial = initialSource ? initialSource.charAt(0).toUpperCase() : "·";
+  // Se recuerda *qué* url falló, no un booleano: si la cuenta cambia de foto la
+  // nueva vuelve a intentarse en vez de quedarse en la inicial para siempre.
+  const [brokenAvatar, setBrokenAvatar] = useState<string | null>(null);
+  const showAvatar = Boolean(avatarSrc) && brokenAvatar !== avatarSrc;
+
   const toggleLabel = columnAvailable
     ? columnOpen
       ? labels.toggleColumnHide
@@ -146,7 +162,19 @@ export function Rail({
             onClick={() => onNavigate("ajustes", "account")}
             type="button"
           >
-            {avatarSrc ? <img alt="" height={30} src={avatarSrc} width={30} /> : planLabel.charAt(0)}
+            {showAvatar ? (
+              <img
+                alt=""
+                aria-label={accountName ?? undefined}
+                data-testid="orbit-rail-account-avatar"
+                height={30}
+                onError={() => setBrokenAvatar(avatarSrc ?? null)}
+                src={avatarSrc}
+                width={30}
+              />
+            ) : (
+              initial
+            )}
           </button>
         </Tooltip>
       </div>

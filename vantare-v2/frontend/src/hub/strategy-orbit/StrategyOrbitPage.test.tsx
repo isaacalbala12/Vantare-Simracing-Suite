@@ -119,11 +119,14 @@ describe("StrategyOrbitPage · Resumen", () => {
     const hourOf = (index: number) =>
       within(screen.getByTestId(`orbit-stint-${index}`)).getAllByText(/–/)[0].textContent;
     const before = hourOf(2);
-    const select = screen.getByLabelText("Piloto del stint 2");
-    fireEvent.change(select, { target: { value: "diego" } });
+    // El `Select` del kit es un combobox propio: se abre y se elige la opción.
+    fireEvent.click(screen.getByRole("combobox", { name: "Piloto del stint 2" }));
+    fireEvent.click(screen.getByRole("option", { name: "Diego Ferrer" }));
 
     await waitFor(() => expect(screen.getAllByText("Borrador").length).toBeGreaterThan(0));
-    expect((select as HTMLSelectElement).value).toBe("diego");
+    expect(screen.getByRole("combobox", { name: "Piloto del stint 2" }).textContent).toContain(
+      "Diego Ferrer",
+    );
     // El ritmo de Diego es más lento: las horas de los stints siguientes se mueven.
     expect(hourOf(2)).not.toBe(before);
   });
@@ -153,12 +156,15 @@ describe("StrategyOrbitPage · Resumen", () => {
   it("Restablecer devuelve el estado a Al día", async () => {
     await mounted();
 
-    fireEvent.change(screen.getByLabelText("Piloto del stint 2"), { target: { value: "diego" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Piloto del stint 2" }));
+    fireEvent.click(screen.getByRole("option", { name: "Diego Ferrer" }));
     await waitFor(() => expect(screen.getAllByText("Borrador").length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByTestId("orbit-strategy-reset"));
     await waitFor(() => expect(screen.getAllByText("Al día").length).toBeGreaterThan(0));
-    expect((screen.getByLabelText("Piloto del stint 2") as HTMLSelectElement).value).toBe("sol");
+    expect(screen.getByRole("combobox", { name: "Piloto del stint 2" }).textContent).toContain(
+      "Sol Martín",
+    );
   });
 });
 
@@ -299,7 +305,8 @@ describe("StrategyOrbitPage · Disponibilidad", () => {
     // Cada piloto entra con un único tramo disponible de 13:00 a 18:30.
     expect(screen.getAllByTestId("orbit-availability-cell")).toHaveLength(3);
 
-    fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "no" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Estado" }));
+    fireEvent.click(screen.getByRole("option", { name: "No disponible" }));
     fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "15:00" } });
     fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "16:00" } });
     fireEvent.submit(screen.getByTestId("orbit-availability-form"));

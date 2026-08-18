@@ -96,7 +96,9 @@ describe("SettingsOrbitPage", () => {
   it("cambiar la densidad la aplica al instante y la persiste", () => {
     mount("application");
     const row = screen.getByTestId("orbit-settings-density");
-    fireEvent.change(within(row).getByRole("combobox"), { target: { value: "compact" } });
+    // El `Select` del kit es un combobox propio: se abre y se elige la opción.
+    fireEvent.click(within(row).getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Compacta" }));
 
     expect(document.body.dataset.density).toBe("compact");
     expect(window.localStorage.getItem("vantare.v03orbit.density")).toBe("compact");

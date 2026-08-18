@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Field, Note, Select, SubtleStatus, Surface, Textarea } from "../../ui/orbit";
+import { Button, Check, Field, Note, Select, SubtleStatus, Surface, Textarea } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import {
   TESTING_CENTER_MODULES,
@@ -408,32 +408,35 @@ export function TestingCenterOrbitPage({
           <h3 className="orbit-tc__consent-title">{t("testing.consent.title")}</h3>
           <p className="orbit-tc__consent-lead">{t("testing.consent.lead")}</p>
 
-          <label className="orbit-tc__consent-row" data-testid="orbit-testing-consent-diagnostic">
-            <input
-              checked={includeDiagnostic}
-              disabled={submitting}
-              onChange={(event) => changeDiagnosticConsent(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              <b>{t("testing.consent.diagnostic")}</b>
-              <span>{t("testing.consent.diagnosticHelp")}</span>
-            </span>
-          </label>
-          <label className="orbit-tc__consent-row" data-disabled="true">
-            <input checked={false} disabled readOnly type="checkbox" />
-            <span>
-              <b>{t("testing.consent.replay")}</b>
-              <span>{t("testing.consent.replayUnavailable")}</span>
-            </span>
-          </label>
-          <label className="orbit-tc__consent-row" data-disabled="true">
-            <input checked={false} disabled readOnly type="checkbox" />
-            <span>
-              <b>{t("testing.consent.logs")}</b>
-              <span>{t("testing.consent.logsUnavailable")}</span>
-            </span>
-          </label>
+          <Check
+            checked={includeDiagnostic}
+            className="orbit-tc__consent-row"
+            data-testid="orbit-testing-consent-diagnostic"
+            disabled={submitting}
+            label={t("testing.consent.diagnostic")}
+            onChange={changeDiagnosticConsent}
+          >
+            <b>{t("testing.consent.diagnostic")}</b>
+            <span>{t("testing.consent.diagnosticHelp")}</span>
+          </Check>
+          <Check
+            checked={false}
+            className="orbit-tc__consent-row"
+            disabled
+            label={t("testing.consent.replay")}
+          >
+            <b>{t("testing.consent.replay")}</b>
+            <span>{t("testing.consent.replayUnavailable")}</span>
+          </Check>
+          <Check
+            checked={false}
+            className="orbit-tc__consent-row"
+            disabled
+            label={t("testing.consent.logs")}
+          >
+            <b>{t("testing.consent.logs")}</b>
+            <span>{t("testing.consent.logsUnavailable")}</span>
+          </Check>
 
           {includeDiagnostic ? (
             <p className="orbit-tc__preview" data-testid="orbit-testing-preview">

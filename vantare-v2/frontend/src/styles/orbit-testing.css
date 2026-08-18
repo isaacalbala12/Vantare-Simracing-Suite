@@ -111,13 +111,8 @@
   cursor: pointer;
 }
 
-.orbit-tc__consent-row[data-disabled="true"] {
+.orbit-tc__consent-row:disabled {
   cursor: not-allowed;
-}
-
-.orbit-tc__consent-row input {
-  margin-top: 2.5px;
-  accent-color: var(--orbit-carmine);
 }
 
 .orbit-tc__consent-row b {
@@ -127,7 +122,7 @@
   font-weight: 650;
 }
 
-.orbit-tc__consent-row[data-disabled="true"] b {
+.orbit-tc__consent-row:disabled b {
   color: var(--orbit-ink-3);
 }
 

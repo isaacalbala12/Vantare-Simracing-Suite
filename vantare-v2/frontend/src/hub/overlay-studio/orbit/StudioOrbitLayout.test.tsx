@@ -172,9 +172,8 @@ describe("StudioOrbitLayout", () => {
     const before = summaries().find((text) => text.includes("fps")) ?? "";
 
     // La frecuencia es un `Select` del kit, no los chips del inspector legado.
-    fireEvent.change(screen.getByRole("combobox", { name: "Frecuencia" }), {
-      target: { value: "10" },
-    });
+    fireEvent.click(screen.getByRole("combobox", { name: "Frecuencia" }));
+    fireEvent.click(screen.getByRole("option", { name: "10" }));
 
     await waitFor(() => {
       const after = summaries().find((text) => text.includes("fps")) ?? "";

@@ -137,7 +137,8 @@ describe("TestingCenterOrbitPage", () => {
         seeded.contextText,
       );
     });
-    expect((document.getElementById("orbit-tc-module") as HTMLSelectElement).value).toBe("telemetry");
+    // El `Select` del kit es un combobox propio: el valor se lee en su etiqueta.
+    expect(document.getElementById("orbit-tc-module")?.textContent).toContain("Telemetry");
   });
 
   it("la pantalla no usa el atributo `title` nativo", async () => {

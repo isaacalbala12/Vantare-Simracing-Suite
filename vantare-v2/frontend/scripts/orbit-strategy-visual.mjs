@@ -216,7 +216,9 @@ try {
     // ── Disponibilidad: tablero + formulario con recorte.
     await page.getByRole("tab", { name: "Disponibilidad de pilotos", exact: true }).click();
     await page.getByTestId("orbit-strategy-availability").waitFor();
-    await page.getByLabel("Estado").selectOption("no");
+    // El `Select` del kit es un combobox propio: se abre y se elige la opción.
+    await page.getByRole("combobox", { name: "Estado" }).click();
+    await page.getByRole("option", { name: "No disponible" }).click();
     await page.getByLabel("Desde").fill("15:00");
     await page.getByLabel("Hasta").fill("16:00");
     await page.getByRole("button", { name: "Añadir tramo" }).click();

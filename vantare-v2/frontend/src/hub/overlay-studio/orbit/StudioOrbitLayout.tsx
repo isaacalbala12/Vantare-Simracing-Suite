@@ -6,6 +6,7 @@ import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-dia
 import type { StudioProfileEntry } from "../components/StudioHeader";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
 import { useStudioTelemetryLiveAvailable } from "../canvas/StudioTelemetryProvider";
+import { useOrbitSimStatus } from "../../orbit/sim-status-context";
 import { StudioOrbitInspector } from "./StudioOrbitInspector";
 import { StudioOrbitStage } from "./StudioOrbitStage";
 import { StudioOrbitToolbar } from "./StudioOrbitToolbar";
@@ -40,7 +41,13 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   const { t } = useI18n();
   const { document: profileDocument, activeLayout, selectedWidgetId } = useStudioDocument();
   const { preview, setPreview } = useStudioPreview();
-  const liveAvailable = useStudioTelemetryLiveAvailable();
+  // El sim tiene una sola fuente: la de la shell, que es la que pinta el Pill
+  // LMU al pie de la columna. Solo cuando el Studio se monta fuera de la shell
+  // Orbit (Studio V3 clasico, tests aislados) se cae al `liveAvailable` del
+  // proveedor de telemetria.
+  const simStatus = useOrbitSimStatus();
+  const providerLiveAvailable = useStudioTelemetryLiveAvailable();
+  const liveAvailable = simStatus === null ? providerLiveAvailable : simStatus === "connected";
   const contextSlot = useOrbitSlot(STUDIO_CONTEXT_SLOT_ID);
   const topbarSlot = useOrbitSlot(STUDIO_TOPBAR_SLOT_ID);
   const [inspectorOpen, setInspectorOpen] = useState(() => !readRightDockClosed());

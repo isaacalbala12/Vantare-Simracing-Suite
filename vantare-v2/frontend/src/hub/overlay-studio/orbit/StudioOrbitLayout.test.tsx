@@ -27,6 +27,8 @@ import { StudioProvider } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
+import { OrbitSimStatusContext } from "../../orbit/sim-status-context";
+import type { SimStatus } from "../../orbit/views";
 import { StudioOrbitLayout } from "./StudioOrbitLayout";
 import { STUDIO_CONTEXT_SLOT_ID, STUDIO_TOPBAR_SLOT_ID } from "./studio-orbit-slots";
 
@@ -59,14 +61,17 @@ function createClient(document: ProfileDocumentV3): StudioProfileClient {
   };
 }
 
-function renderStudio(document = buildDocument([widget("delta-main"), widget("standings-main")])) {
+function renderStudio(
+  document = buildDocument([widget("delta-main"), widget("standings-main")]),
+  simStatus: SimStatus | null = null,
+) {
   const context = window.document.createElement("div");
   context.id = STUDIO_CONTEXT_SLOT_ID;
   const topbar = window.document.createElement("div");
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
-  return render(
+  const tree = (
     <I18nProvider>
       <StudioProvider client={createClient(document)} initialFile="profile.json">
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
@@ -79,8 +84,22 @@ function renderStudio(document = buildDocument([widget("delta-main"), widget("st
           </StudioConfirmProvider>
         </StudioTelemetryProvider>
       </StudioProvider>
-    </I18nProvider>,
+    </I18nProvider>
   );
+
+  return render(
+    simStatus === null ? (
+      tree
+    ) : (
+      <OrbitSimStatusContext.Provider value={simStatus}>{tree}</OrbitSimStatusContext.Provider>
+    ),
+  );
+}
+
+/** Boton `Live` del selector de fuente de la toolbar. */
+function liveOption(): HTMLButtonElement {
+  const group = screen.getByRole("group", { name: "Fuente de preview" });
+  return within(group).getByRole("button", { name: "Live" }) as HTMLButtonElement;
 }
 
 afterEach(() => {
@@ -111,6 +130,18 @@ describe("StudioOrbitLayout", () => {
       "osv3-widget-frame--selected",
     );
     expect(screen.getByTestId("orbit-studio-status-selection").textContent).toContain("1");
+
+    // La fila seleccionada lleva el fondo y la barra carmín del kit, y su grip.
+    const selectedRow = within(row).getByRole("option");
+    expect(selectedRow.className).toContain("orbit-row--sel");
+    expect(selectedRow.querySelector(".orbit-studio-witem__grip")).toBeTruthy();
+  });
+
+  it("el botón de añadir widget lleva la cruz delante de la copia", async () => {
+    renderStudio();
+    const add = await screen.findByTestId("orbit-studio-widget-add");
+    expect(add.querySelector(".orbit-studio-wlist__plus")).toBeTruthy();
+    expect(add.textContent).toContain("Añadir widget");
   });
 
   it("el ojo de la lista oculta el widget y tacha su nombre", async () => {
@@ -182,6 +213,35 @@ describe("StudioOrbitLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("orbit-studio-save").getAttribute("data-s")).toBe("saved");
     });
+  });
+
+  it("habilita `Live` cuando la shell da el sim por conectado", async () => {
+    // Misma fuente que el Pill LMU de la columna: si la columna dice
+    // «LMU conectado», el selector no puede decir lo contrario.
+    renderStudio(undefined, "connected");
+    await screen.findByTestId("orbit-studio-toolbar");
+
+    const live = liveOption();
+    expect(live.disabled).toBe(false);
+    expect(live.getAttribute("data-tip")).toBeNull();
+
+    fireEvent.click(live);
+    await waitFor(() => expect(live.getAttribute("aria-pressed")).toBe("true"));
+  });
+
+  it("deshabilita `Live` con su motivo cuando el sim no está conectado", async () => {
+    renderStudio(undefined, "disconnected");
+    await screen.findByTestId("orbit-studio-toolbar");
+
+    const live = liveOption();
+    expect(live.disabled).toBe(true);
+    expect(live.getAttribute("data-tip")).toBe("Live necesita el simulador conectado");
+  });
+
+  it("busca el sim conectado sin darlo por disponible", async () => {
+    renderStudio(undefined, "searching");
+    await screen.findByTestId("orbit-studio-toolbar");
+    expect(liveOption().disabled).toBe(true);
   });
 
   it("no usa el `title` nativo en ninguno de sus controles", async () => {

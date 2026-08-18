@@ -29,6 +29,26 @@ function Grip() {
   );
 }
 
+/** Cruz del boton de anadir widget (`.dock-foot .btn` del prototipo). */
+function Plus() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="orbit-studio-wlist__plus"
+      fill="none"
+      focusable="false"
+      height={14}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth={1.6}
+      viewBox="0 0 14 14"
+      width={14}
+    >
+      <path d="M7 2.5v9M2.5 7h9" />
+    </svg>
+  );
+}
+
 function Eye({ open }: { open: boolean }) {
   return (
     <svg
@@ -171,6 +191,7 @@ export function StudioWidgetList(): React.ReactElement {
           onClick={() => setAddDialogOpen(true)}
           variant="ghost"
         >
+          <Plus />
           {t("studio.column.add")}
         </Button>
       </div>

@@ -16,6 +16,9 @@ const shots = [
   { name: "1920x900", width: 1920, height: 900, query: "" },
   { name: "1920x1080-dock-cerrado", width: 1920, height: 1080, query: "&rightDock=closed" },
   { name: "1920x1080-estres", width: 1920, height: 1080, query: "&stress=1" },
+  // Selección real: el inspector con sus tres acordeones y la etiqueta
+  // `delta · w × h` sobre el widget del lienzo.
+  { name: "1920x1080-seleccion", width: 1920, height: 1080, query: "", select: "delta" },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -92,9 +95,16 @@ try {
     await page.getByTestId("orbit-studio-widget-list").waitFor();
     await page.getByTestId("orbit-studio-topbar-controls").waitFor();
     await page.getByTestId("orbit-studio-stage").waitFor();
+    if (shot.select) {
+      const row = page.getByTestId(`orbit-studio-widget-item-${shot.select}`);
+      await row.waitFor();
+      await row.getByRole("option").click();
+      await page.getByTestId("orbit-studio-selection-tag").waitFor();
+    }
+
     await page.evaluate(async () => { await document.fonts.ready; });
 
-    const contract = await page.evaluate(() => {
+    const contract = await page.evaluate((selected) => {
       const studio = document.querySelector('[data-testid="orbit-studio"]');
       const box = (selector) => {
         const node = document.querySelector(selector);
@@ -115,8 +125,34 @@ try {
         widgetRows: document.querySelectorAll('[data-testid^="orbit-studio-widget-item-"]').length,
         nativeTitles: studio ? studio.querySelectorAll("[title]").length : -1,
         columnTitles: document.querySelectorAll('.orbit-column [title]').length,
+        // Alineación de la topbar: los controles del Studio van tras el título,
+        // no pegados a la pill de actualización del borde derecho.
+        topbarTitleRight: Math.round(
+          document.querySelector(".orbit-topbar__tt")?.getBoundingClientRect().right ?? -1,
+        ),
+        topbarControlsLeft: Math.round(
+          document
+            .querySelector('[data-testid="orbit-studio-topbar-controls"]')
+            ?.getBoundingClientRect().left ?? -1,
+        ),
+        accordions: document.querySelectorAll(
+          '[data-testid="orbit-studio-inspector"] details',
+        ).length,
+        selectionTag:
+          document.querySelector('[data-testid="orbit-studio-selection-tag"]')?.textContent?.trim() ??
+          "",
+        selectedRows: document.querySelectorAll(
+          '[data-testid^="orbit-studio-widget-item-"] .orbit-row--sel',
+        ).length,
+        selectedRowIsTarget: selected
+          ? Boolean(
+              document
+                .querySelector(`[data-testid="orbit-studio-widget-item-${selected}"] .orbit-row--sel`)
+                ?.getAttribute("aria-selected") === "true",
+            )
+          : true,
       };
-    });
+    }, shot.select ?? null);
 
     if (contract.scrollHeight > contract.innerHeight) {
       throw new Error(`${shot.name}: la página hace scroll vertical (${contract.scrollHeight} > ${contract.innerHeight})`);
@@ -143,6 +179,22 @@ try {
     }
     if (contract.nativeTitles !== 0 || contract.columnTitles !== 0) {
       throw new Error(`${shot.name}: la vista usa \`title\` nativo (${contract.nativeTitles} + ${contract.columnTitles})`);
+    }
+    if (contract.topbarControlsLeft - contract.topbarTitleRight > 40) {
+      throw new Error(
+        `${shot.name}: los controles de la topbar no siguen al título (${contract.topbarTitleRight} → ${contract.topbarControlsLeft})`,
+      );
+    }
+    if (shot.select) {
+      if (contract.accordions !== 3) {
+        throw new Error(`${shot.name}: ${contract.accordions} acordeones en el inspector, se esperaban 3`);
+      }
+      if (contract.selectedRows !== 1 || !contract.selectedRowIsTarget) {
+        throw new Error(`${shot.name}: la fila de \`${shot.select}\` no está en estado seleccionado`);
+      }
+      if (!/×/.test(contract.selectionTag)) {
+        throw new Error(`${shot.name}: la etiqueta de selección no muestra \`w × h\` (${contract.selectionTag})`);
+      }
     }
     if (problems.length) {
       throw new Error(`${shot.name}: la consola no está limpia\n${problems.join("\n")}`);

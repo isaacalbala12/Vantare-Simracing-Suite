@@ -371,6 +371,17 @@
   width: 100%;
 }
 
+/* La cruz va delante de la copia, dentro de la propia etiqueta del boton. */
+.orbit-studio-wlist__foot .orbit-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.orbit-studio-wlist__plus {
+  flex: none;
+}
+
 .orbit-studio-witem {
   position: relative;
 }
@@ -426,11 +437,17 @@
   display: contents;
 }
 
+/*
+ * Los controles del Studio van pegados al titulo, no al borde derecho: la
+ * referencia (`#view-studio`) los alinea a la izquierda justo tras el h1 y deja
+ * la derecha para la pill de actualizacion (`.orbit-topbar__right`, que ya lleva
+ * su propio `margin-left: auto`).
+ */
 .orbit-studio-topbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
+  min-width: 0;
 }
 
 .orbit-studio-topbar__profile {

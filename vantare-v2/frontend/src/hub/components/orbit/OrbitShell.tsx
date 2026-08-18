@@ -12,6 +12,7 @@ import { formatMessage } from "../../orbit/format-message";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import { applyOrbitThemeWhileMounted } from "../../orbit/orbit-theme";
 import { useCalendarStarts } from "../../orbit/use-calendar-starts";
+import { OrbitSimStatusContext } from "../../orbit/sim-status-context";
 import { useOverlayState } from "../../orbit/use-overlay-state";
 import {
   canSeeView,
@@ -356,7 +357,7 @@ function OrbitShellBody({
         ? formatMessage(t("shell.update.downloading"), { pct: 0 })
         : formatMessage(t("shell.update.available"), { v: updateTag });
 
-  return (
+  const shell = (
     <div className="orbit-root" data-testid="orbit-shell">
       <div className="orbit-shell" data-column={effectiveColumnOpen && columnAvailable ? "open" : "closed"}>
         <Rail
@@ -460,4 +461,8 @@ function OrbitShellBody({
       />
     </div>
   );
+
+  // El estado del sim se publica para toda la shell: el Pill LMU de la columna
+  // y el selector Mock/Live del Studio leen el mismo `simStatus`.
+  return <OrbitSimStatusContext.Provider value={simStatus}>{shell}</OrbitSimStatusContext.Provider>;
 }

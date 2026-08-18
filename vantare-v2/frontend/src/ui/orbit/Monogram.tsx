@@ -34,12 +34,14 @@ export function Monogram({
     .filter(Boolean)
     .join(" ");
 
+  // Sin degradado declarado no se escriben las variables: así manda el valor de
+  // reserva del kit en lugar de dejar la losa transparente.
+  const style: CSSProperties = {};
+  if (g1) (style as Record<string, string>)["--orbit-mono-g1"] = g1;
+  if (g2) (style as Record<string, string>)["--orbit-mono-g2"] = g2;
+
   return (
-    <span
-      aria-hidden="true"
-      className={classes}
-      style={{ "--orbit-mono-g1": g1, "--orbit-mono-g2": g2 } as CSSProperties}
-    >
+    <span aria-hidden="true" className={classes} style={style}>
       {src ? (
         <img alt="" className="orbit-monogram__img" loading="lazy" onError={onSrcError} src={src} />
       ) : (

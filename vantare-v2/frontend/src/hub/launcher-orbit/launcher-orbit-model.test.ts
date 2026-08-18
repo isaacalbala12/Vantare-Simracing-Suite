@@ -12,6 +12,7 @@ import {
   lastLaunchedAt,
   orderProfiles,
   policyChips,
+  profileInitials,
   toOrbitApp,
 } from "./launcher-orbit-model";
 
@@ -195,5 +196,15 @@ describe("launcher orbit · políticas y metadatos", () => {
     ]);
     expect(value?.toISOString()).toBe("2026-07-05T10:00:00.000Z");
     expect(lastLaunchedAt([{ id: "a", name: "A", steps: [] }])).toBeNull();
+  });
+});
+
+describe("profileInitials", () => {
+  it("ignora los nexos para rotular como la referencia", () => {
+    // «Creador de Contenido» es CC en la referencia, no CD.
+    expect(profileInitials("Creador de Contenido")).toBe("CC");
+    expect(profileInitials("Pro")).toBe("PRO");
+    expect(profileInitials("de la")).toBe("DL");
+    expect(profileInitials("   ")).toBe("··");
   });
 });

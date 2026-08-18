@@ -20,9 +20,11 @@ export type LauncherOrbitApp = {
   methodKey: string;
   state: AppCatalogState;
   isFavorite: boolean;
-  /** Los dos campos que `useAppIcon` necesita para resolver el icono real. */
+  /** Campos que `useAppIcon` necesita para resolver el icono real. */
   iconUrl?: string;
+  iconOverridePath?: string;
   executablePath?: string;
+  userExecutablePath?: string;
 };
 
 export type LauncherOrbitStep = {
@@ -35,15 +37,27 @@ export type LauncherOrbitStep = {
   delay: number;
   status: ChainStepStatus;
   iconUrl?: string;
+  iconOverridePath?: string;
   executablePath?: string;
+  userExecutablePath?: string;
 };
 
 /**
  * Iniciales de un perfil para su monograma: dos palabras dan sus iniciales
  * ("Creador de Contenido" da CD), una sola da sus tres primeras letras.
  */
+/**
+ * Nexos que no cuentan como palabra para las iniciales: la referencia rotula
+ * «Creador de Contenido» como CC, no como CD.
+ */
+const INITIALS_STOPWORDS = new Set([
+  "de", "del", "la", "el", "los", "las", "y", "e", "of", "the", "and", "da", "do", "di", "e’",
+]);
+
 export function profileInitials(name: string): string {
-  const words = name.trim().split(/\s+/u).filter(Boolean);
+  const all = name.trim().split(/\s+/u).filter(Boolean);
+  const strong = all.filter((word) => !INITIALS_STOPWORDS.has(word.toLowerCase()));
+  const words = strong.length > 0 ? strong : all;
   if (words.length === 0) return "··";
   if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
   return words
@@ -82,7 +96,9 @@ export function toOrbitApp(app: LauncherApp): LauncherOrbitApp {
     state: appCatalogState(app),
     isFavorite: app.isFavorite === true,
     iconUrl: app.iconUrl,
+    iconOverridePath: app.iconOverridePath,
     executablePath: app.executablePath,
+    userExecutablePath: app.userExecutablePath,
   };
 }
 
@@ -144,7 +160,9 @@ export function chainSteps(
       delay: step.delay,
       status: stepStatus(chain, step.appId, index),
       iconUrl: app?.iconUrl,
+      iconOverridePath: app?.iconOverridePath,
       executablePath: app?.executablePath,
+      userExecutablePath: app?.userExecutablePath,
     };
   });
 }

@@ -50,4 +50,26 @@ describe("launcher icon registry", () => {
       }),
     ).toEqual(["data:image/png;base64,AA=="]);
   });
+
+  it("orders the candidate chain override -> official -> iconUrl and drops duplicates", () => {
+    expect(
+      resolveIconCandidates({
+        id: "crewchief",
+        iconOverridePath: "C:/icons/crewchief.png",
+        iconUrl: "data:image/png;base64,AA==",
+      }),
+    ).toEqual(["C:/icons/crewchief.png", "data:image/png;base64,AA=="]);
+
+    // El mismo icono por dos vias no se prueba dos veces.
+    expect(
+      resolveIconCandidates({
+        id: "crewchief",
+        iconOverridePath: "data:image/png;base64,AA==",
+        iconUrl: "data:image/png;base64,AA==",
+      }),
+    ).toEqual(["data:image/png;base64,AA=="]);
+
+    // Vacios y espacios no son candidatos: dejarian la losa en blanco.
+    expect(resolveIconCandidates({ id: "crewchief", iconUrl: "   ", iconOverridePath: "" })).toEqual([]);
+  });
 });

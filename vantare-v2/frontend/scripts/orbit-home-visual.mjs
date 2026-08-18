@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/03-inicio");
@@ -133,6 +134,7 @@ try {
     if (contract.scrollWidth > contract.innerWidth) {
       throw new Error(`${viewport.name}: la página hace scroll horizontal (${contract.scrollWidth} > ${contract.innerWidth})`);
     }
+    await assertNoHorizontalOverflow(page, viewport.name);
     if (contract.compact !== viewport.compact) {
       throw new Error(`${viewport.name}: modo compacto ${contract.compact}, se esperaba ${viewport.compact}`);
     }

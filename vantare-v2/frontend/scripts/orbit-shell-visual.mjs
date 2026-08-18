@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/01-shell");
@@ -117,6 +118,7 @@ try {
     if (contract.topbarHeight !== 70) throw new Error(`${viewport.name}: topbar ${contract.topbarHeight}px, se esperaba 70px`);
     if (!contract.footVisible) throw new Error(`${viewport.name}: el pie de la columna no es visible`);
     if (!contract.railTooltips) throw new Error(`${viewport.name}: el rail usa \`title\` nativo en vez de \`data-tip\``);
+    await assertNoHorizontalOverflow(page, viewport.name);
     if (problems.length) throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
 
     await page.screenshot({ path: path.join(output, `orbit-shell-inicio-${viewport.name}.png`), fullPage: false });

@@ -40,6 +40,20 @@ export function useOverlayState(): OrbitOverlayState {
     const unsubStatus = Events.On("overlay:status", (event: { data?: OverlayStatus }) => {
       setStatus(event.data ?? null);
     });
+    // El backend **no** reemite `settings` tras `hub:set-active`: confirma con
+    // `hub:profile-activated` (es lo que escucha `StudioRoute`). Sin esto la
+    // columna decía "activado" y seguía marcando el perfil anterior hasta
+    // recargar. Se toma el id del payload y, además, se vuelve a pedir la lista
+    // y los ajustes porque una de las rutas del backend emite solo `{ok:true}`.
+    const unsubActivated = Events.On(
+      "hub:profile-activated",
+      (event: { data?: { activeProfileId?: string } }) => {
+        const next = event.data?.activeProfileId;
+        if (next && next.length > 0) setActiveProfileId(next);
+        Events.Emit("hub:list");
+        Events.Emit("settings:get");
+      },
+    );
     // `hub:list` es el nombre real del comando en el backend (`hub_service.go`,
     // y lo que emiten `ActiveOverlayCard`, `StudioRoute` y `ProfilesPage`). El
     // briefing 01 escribió `hub:profiles:get`, que nadie atiende: manda el
@@ -51,6 +65,7 @@ export function useOverlayState(): OrbitOverlayState {
       unsubProfiles?.();
       unsubSettings?.();
       unsubStatus?.();
+      unsubActivated?.();
     };
   }, []);
 

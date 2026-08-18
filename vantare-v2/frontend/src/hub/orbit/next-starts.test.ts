@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { formatCountdown, nextStarts, upcoming, type Series } from "./next-starts";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  formatCountdown,
+  formatStartTime,
+  nextStarts,
+  upcoming,
+  type Series,
+} from "./next-starts";
 
 const interval = (every: number, offset: number): Series => ({
   id: `every-${every}-${offset}`,
@@ -88,5 +94,29 @@ describe("formatCountdown", () => {
 
   it("nunca baja de cero", () => {
     expect(formatCountdown(-5000)).toBe("00:00");
+  });
+});
+
+describe("zona horaria", () => {
+  const original = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = original;
+  });
+
+  /** Cambiar `TZ` en Node reetiqueta la hora local sin mover el instante UTC. */
+  function startIn(timeZone: string): { local: string; utc: string } {
+    process.env.TZ = timeZone;
+    const at = nextStarts(interval(15, 15), new Date("2026-03-02T10:07:30Z"), 1)[0];
+    return { local: formatStartTime(at), utc: at.toISOString() };
+  }
+
+  it("mueve las horas mostradas pero no las UTC", () => {
+    const madrid = startIn("Europe/Madrid");
+    const tokyo = startIn("Asia/Tokyo");
+    expect(madrid.utc).toBe("2026-03-02T10:15:00.000Z");
+    expect(tokyo.utc).toBe(madrid.utc);
+    expect(madrid.local).toBe("11:15");
+    expect(tokyo.local).toBe("19:15");
+    expect(tokyo.local).not.toBe(madrid.local);
   });
 });

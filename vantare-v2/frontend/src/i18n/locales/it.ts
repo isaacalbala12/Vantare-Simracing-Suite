@@ -3,6 +3,7 @@ import { shellOrbitIt } from "./shell-orbit/it";
 import { homeOrbitIt } from "./home-orbit/it";
 import { studioOrbitIt } from "./studio-orbit/it";
 import { launcherOrbitIt } from "./launcher-orbit/it";
+import { racesOrbitIt } from "./races-orbit/it";
 import { diagnosticsIt } from "../../hub/settings/diagnostics/translations";
 import { testingCenterIt } from "../../hub/testing-center/translations";
 
@@ -585,4 +586,5 @@ export const it: Record<string, string> = {
   ...homeOrbitIt,
   ...studioOrbitIt,
   ...launcherOrbitIt,
+  ...racesOrbitIt,
 };

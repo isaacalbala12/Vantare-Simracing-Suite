@@ -38,6 +38,11 @@ import {
   LAUNCHER_CONTEXT_SLOT_ID,
   LAUNCHER_TOPBAR_SLOT_ID,
 } from "../../launcher-orbit/LauncherOrbitPage";
+import {
+  RacesOrbitPage,
+  RACES_CONTEXT_SLOT_ID,
+  RACES_TOPBAR_SLOT_ID,
+} from "../../races-orbit/RacesOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -107,6 +112,10 @@ function OrbitShellBody({
     () => orbitStore.get(ORBIT_KEYS.sidebar) !== "closed",
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Destino de la última navegación: la shell es quien lo despacha, así que lo
+  // guarda para que la pantalla destino lo consuma (Carreras preselecciona la
+  // serie que se abre desde el dial de Inicio o desde la columna).
+  const [navTarget, setNavTarget] = useState<string | undefined>(undefined);
   const toastApi = useToast();
   const [update, setUpdate] = useState<UpdateState>("none");
   const [updateTag, setUpdateTag] = useState<string>("");
@@ -168,6 +177,7 @@ function OrbitShellBody({
         return;
       }
       orbitStore.set(ORBIT_KEYS.view, view);
+      setNavTarget(target);
       onNavigate(viewToSection(view), target);
     },
     [access, onNavigate, planLabel, t, toast],
@@ -286,6 +296,8 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id="orbit-studio-context-slot" />
     ) : activeView === "launcher" ? (
       <div className="orbit-column__slot" id={LAUNCHER_CONTEXT_SLOT_ID} />
+    ) : activeView === "carreras" ? (
+      <div className="orbit-column__slot" id={RACES_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -428,6 +440,8 @@ function OrbitShellBody({
               <div className="orbit-topbar__slot" id="orbit-studio-topbar-slot" />
             ) : activeView === "launcher" ? (
               <div className="orbit-topbar__slot" id={LAUNCHER_TOPBAR_SLOT_ID} />
+            ) : activeView === "carreras" ? (
+              <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
           <div className="orbit-workspace">
@@ -447,6 +461,8 @@ function OrbitShellBody({
               />
             ) : activeView === "launcher" ? (
               <LauncherOrbitPage />
+            ) : activeView === "carreras" ? (
+              <RacesOrbitPage calendar={races.calendar} target={navTarget} />
             ) : (
               children
             )}

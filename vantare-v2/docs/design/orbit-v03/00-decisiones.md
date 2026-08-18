@@ -194,3 +194,20 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-55 · Las iniciales del monograma de perfil son las del código, no las del prototipo
 **Decisión.** El prototipo dibuja «CC» para «Creador de Contenido»; el algoritmo real del bloque persistente Launcher (`SideLauncher`) toma la inicial de las dos primeras palabras y da «CD». Manda el código: `profileInitials` se extrae al modelo del Launcher Orbit y `SideLauncher` pasa a importarlo, de modo que la columna y la pantalla no puedan divergir. Elegir a mano las iniciales «bonitas» de dos perfiles del prototipo no se generaliza a los perfiles que cree el usuario.
+
+## D-56 · Carreras se monta sobre el calendario real, no sobre las 10 series del prototipo
+**Decisión.** `06 § Carreras` y el prototipo describen 10 series (3 Bronce · 3 Plata · 3 Oro · 1 Semanal) con `SERIES` en línea. El fixture real (`configs/calendar-lmu.json`, espejado en `calendar-visual-mock-data`) publica 11 con cadencia calculable: nueve por intervalo y dos semanales, y una de ellas (`series-special-imola`) llega con `tier: "special"`, que `toEngineSeries` normaliza a `weekly`. Manda el código: el contador del filtro dice «Semanal 2» y no se inventa una categoría «Especial» que el motor no sabe planificar. Las series cuya recurrencia no describe ninguna cadencia se descartan enteras: sin cadencia no hay salidas que pintar en ninguna de las cinco vistas.
+**Consecuencia.** `races-orbit-model.ts` traduce `Calendar` → `RaceSeriesEntry[]` una sola vez y las cinco vistas y el detalle leen de ahí; el filtro de categoría recorta esa lista antes de calcular cada rejilla, así que afecta a las cinco a la vez sin ninguna rama propia por vista.
+
+## D-57 · El destino de la navegación lo guarda la shell
+**Decisión.** `navigate("carreras", seriesId)` sale de la shell (dial de Inicio, bloque persistente «Próximas carreras», paleta) y viaja hacia arriba por `onNavigate`, que no vuelve: `OrbitShellProps` solo recibe `activeSection`. En vez de ampliar el contrato de la shell hacia el host, la propia shell recuerda el último `target` que despachó y se lo pasa a la pantalla destino. Carreras lo consume como preselección: mientras el usuario no elija otra serie, el detalle abre la que traía la navegación.
+**Consecuencia.** El patrón queda disponible para el resto de pantallas portadas sin tocar `AppShell` ni la navegación legada, y la preselección no sobrevive a un clic del usuario (`picked` gana siempre), que es lo que espera quien llega desde el dial y luego navega el calendario.
+
+## D-58 · El detalle pide sus cuatro salidas al motor, no a `upcoming`
+**Decisión.** `upcoming` de `13.3` toma **dos** salidas por serie antes de ordenar, así que reutilizarlo para las cuatro horas del detalle daba solo dos teclas. El detalle llama a `nextStarts(serie, ahora, 4)` directamente; `upcoming` se queda para las listas multi-serie (Próximas y la lista de seguidas de la columna), que es para lo que está definido.
+
+## D-59 · El scroll horizontal del timeline ya lo pone el kit
+**Decisión.** El prototipo scrollea en `.timeline`, el contenedor de la pantalla. En el kit Orbit el scroller es el propio `HorizontalTimeline` (`.orbit-tl { overflow-x: auto }`) con su `minWidth`, así que `orbit-races.css` no vuelve a declararlo: duplicarlo dejaba dos cajas de scroll anidadas y la de fuera nunca desbordaba. El harness comprueba el desbordamiento sobre `[data-testid="orbit-timeline"]`, que es el elemento que de verdad scrollea.
+
+## D-60 · Las filas de Semana y Mes existen para la semántica, no para el layout
+**Decisión.** Las rejillas de Semana (`200px + 7`) y Mes (7×6) son una sola rejilla CSS, pero `role="grid"` exige `role="row"` intermedios (`08 · a11y`). Las filas se envuelven con `display: contents`: la semántica queda completa y el layout lo sigue poniendo la rejilla padre, sin `subgrid` (que no cubre todos los motores del rango soportado) ni celdas descolocadas.

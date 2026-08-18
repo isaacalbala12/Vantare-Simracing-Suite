@@ -1,0 +1,534 @@
+/* Layout propio de la vista Carreras (`06 · Carreras`, briefing 06).
+   El kit cubre superficie, filas, chips, kbd, timeline y notas; aquí solo
+   viven las rejillas de las cinco vistas y las piezas que no son componentes
+   (celdas de día/semana/mes, filtro de categoría, hechos del detalle). */
+
+.orbit-races {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-races__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.orbit-races__head-copy {
+  min-width: 0;
+}
+
+.orbit-races__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-races__head-copy p {
+  max-width: 74ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-races__views {
+  flex: none;
+  margin-top: 6px;
+}
+
+/* ---------------------------------------------------------------- GRID */
+
+.orbit-races__grid {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  grid-template-columns: minmax(0, 1fr) 338px;
+  min-height: 0;
+  margin-top: var(--orbit-space);
+}
+
+.orbit-races__calendar,
+.orbit-races__detail {
+  min-height: 0;
+}
+
+.orbit-races__clock {
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  color: var(--orbit-ink-3);
+}
+
+.orbit-races__nav {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.orbit-races__empty {
+  padding: 18px 12px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-body);
+}
+
+/* ------------------------------------------------------ 1 · PRÓXIMAS */
+
+.orbit-races__next {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 10px;
+}
+
+.orbit-races__row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 60px;
+  height: auto;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.orbit-races__when b {
+  display: block;
+  font-family: var(--orbit-font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--orbit-ink);
+}
+
+.orbit-races__when span {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  color: var(--orbit-ink-3);
+}
+
+.orbit-races__row.orbit-row--next .orbit-races__when b {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 16px rgba(255, 106, 95, 0.4);
+}
+
+.orbit-races__dur {
+  white-space: nowrap;
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__follow-mark {
+  margin-left: 6px;
+  color: var(--orbit-green);
+  font-size: 12px;
+}
+
+/* ----------------------------------------------------------- 2 · DÍA */
+
+.orbit-races__day {
+  display: grid;
+  padding: 8px 12px 12px;
+}
+
+.orbit-races__day-line {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.orbit-races__day-hour {
+  padding: 8px 8px 8px 0;
+  border-top: 1px solid var(--orbit-line-row);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--orbit-ink-3);
+}
+
+.orbit-races__day-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-content: flex-start;
+  min-height: 40px;
+  padding: 6px 0;
+  border-top: 1px solid var(--orbit-line-row);
+}
+
+.orbit-races__day-hour[data-now="true"],
+.orbit-races__day-cell[data-now="true"] {
+  background: linear-gradient(90deg, rgba(213, 47, 73, 0.06), transparent);
+}
+
+.orbit-races__day-hour[data-now="true"] {
+  color: var(--orbit-coral);
+}
+
+.orbit-races__chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--orbit-ink-2);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__chip b {
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--orbit-ink);
+}
+
+.orbit-races__chip:hover {
+  border-color: rgba(240, 71, 85, 0.3);
+  background: rgba(213, 47, 73, 0.08);
+}
+
+.orbit-races__chip[data-past="true"] {
+  opacity: 0.35;
+}
+
+.orbit-races__chip[data-followed="true"] {
+  border-color: rgba(120, 214, 139, 0.3);
+}
+
+/* -------------------------------------------------------- 3 · SEMANA */
+
+.orbit-races__week {
+  display: grid;
+  grid-template-columns: 200px repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin: 10px 12px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+/* Las filas solo existen para la semántica de la rejilla (`08 · a11y`): el
+   layout lo pone la rejilla padre, así que la fila no genera caja propia. */
+.orbit-races__week-row,
+.orbit-races__month-row {
+  display: contents;
+}
+
+.orbit-races__week-head,
+.orbit-races__week-series,
+.orbit-races__week-cell {
+  min-height: 40px;
+  padding: 8px 9px;
+  background: var(--orbit-surface-1);
+  font-size: 11.5px;
+}
+
+.orbit-races__week-head {
+  text-align: center;
+  font-weight: 700;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-races__week-head[data-today="true"] {
+  color: var(--orbit-coral);
+}
+
+.orbit-races__week-series {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.orbit-races__week-series b {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--orbit-ink);
+}
+
+.orbit-races__week-cell {
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__week-cell[data-today="true"] {
+  background: rgba(213, 47, 73, 0.06);
+}
+
+.orbit-races__week-cell[data-off="true"] {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-races__slot {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.orbit-races__slot[data-followed="true"] {
+  background: rgba(120, 214, 139, 0.1);
+  color: #9bd3a6;
+}
+
+/* ----------------------------------------------------------- 4 · MES */
+
+.orbit-races__month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  margin: 10px 12px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.orbit-races__month-head {
+  padding: 8px;
+  background: var(--orbit-surface-1);
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-races__month-day {
+  position: relative;
+  min-height: 78px;
+  padding: 8px;
+  background: var(--orbit-surface-1);
+  font-size: 11.5px;
+}
+
+.orbit-races__month-num {
+  font-family: var(--orbit-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-races__month-day[data-other="true"],
+.orbit-races__month-day[data-other="true"] .orbit-races__month-num {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-races__month-day[data-today="true"] .orbit-races__month-num {
+  margin-left: -6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--orbit-carmine);
+  box-shadow: 0 0 12px rgba(213, 47, 73, 0.5);
+  color: #fff;
+}
+
+.orbit-races__mev {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-2);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-races__mev[data-kind="daily"] {
+  background: none;
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__mev[data-kind="weekly"] {
+  background: rgba(92, 203, 213, 0.1);
+  color: var(--orbit-cyan-soft);
+}
+
+.orbit-races__mev[data-kind="special"] {
+  background: rgba(255, 155, 87, 0.12);
+  color: var(--orbit-ember);
+}
+
+/* ------------------------------------------------------ 5 · TIMELINE */
+
+/* El scroll horizontal lo pone `.orbit-tl` del kit; aquí solo el respiro. */
+.orbit-races__timeline {
+  padding: 10px 0 12px;
+}
+
+.orbit-races__tl-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-races__tl-copy b {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--orbit-ink);
+}
+
+.orbit-races__tl-copy span {
+  display: block;
+  margin-top: 1px;
+  color: var(--orbit-ink-3);
+  font-size: 10.5px;
+}
+
+/* -------------------------------------------------------------- DETALLE */
+
+.orbit-races__detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 8px;
+}
+
+.orbit-races__detail-body h3 {
+  margin: 4px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-sect);
+  font-weight: 690;
+  letter-spacing: -0.03em;
+}
+
+.orbit-races__detail-body > div > p {
+  margin: 4px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-races__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-races__facts > div {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--orbit-line-row);
+}
+
+.orbit-races__facts dt {
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__facts dd {
+  margin: 0;
+  text-align: right;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-races__starts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbit-races__start--first kbd {
+  border-color: rgba(240, 71, 85, 0.3);
+  color: var(--orbit-coral);
+}
+
+.orbit-races__note {
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- COLUMNA */
+
+.orbit-races__context {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.orbit-races__count {
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__filters {
+  display: grid;
+  gap: 2.5px;
+  padding: 4px 0;
+}
+
+.orbit-races__filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: none;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__filter > span:first-child {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.orbit-races__filter:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--orbit-ink);
+}
+
+.orbit-races__filter[aria-pressed="true"] {
+  background: rgba(213, 47, 73, 0.105);
+  color: #fff;
+}
+
+.orbit-races__filter > span:last-child {
+  font-family: var(--orbit-font-mono);
+  font-size: 10px;
+  color: var(--orbit-ink-4);
+}
+
+@media (max-width: 1440px) {
+  .orbit-races__grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .orbit-races__week {
+    grid-template-columns: 160px repeat(7, minmax(0, 1fr));
+  }
+}

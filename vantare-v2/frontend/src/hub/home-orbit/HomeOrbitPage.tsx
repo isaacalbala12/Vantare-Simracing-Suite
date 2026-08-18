@@ -265,7 +265,12 @@ export function HomeOrbitPage({
 
         <Surface
           actions={
-            <button className="orbit-link" onClick={() => onNavigate("studio")} type="button">
+            <button
+              className="orbit-link"
+              data-testid="orbit-home-profiles-manage"
+              onClick={() => onNavigate("studio", "profiles")}
+              type="button"
+            >
               {t("home.profiles.manage")}
             </button>
           }

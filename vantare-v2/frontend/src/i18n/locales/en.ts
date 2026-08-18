@@ -3,6 +3,7 @@ import { shellOrbitEn } from "./shell-orbit/en";
 import { homeOrbitEn } from "./home-orbit/en";
 import { studioOrbitEn } from "./studio-orbit/en";
 import { launcherOrbitEn } from "./launcher-orbit/en";
+import { profilesOrbitEn } from "./profiles-orbit/en";
 import { racesOrbitEn } from "./races-orbit/en";
 import { strategyOrbitEn } from "./strategy-orbit/en";
 import { engineerOrbitEn } from "./engineer-orbit/en";
@@ -592,6 +593,7 @@ export const en: Record<string, string> = {
   ...homeOrbitEn,
   ...studioOrbitEn,
   ...launcherOrbitEn,
+  ...profilesOrbitEn,
   ...racesOrbitEn,
   ...strategyOrbitEn,
   ...engineerOrbitEn,

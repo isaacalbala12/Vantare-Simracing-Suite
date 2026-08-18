@@ -172,7 +172,8 @@ describe("HomeOrbitPage · navegación y acciones", () => {
   it("«Gestionar» navega al Studio", () => {
     const { onNavigate } = renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Gestionar" }));
-    expect(onNavigate).toHaveBeenCalledWith("studio");
+    // «Gestionar» abre «Mis perfiles», no el editor: por eso lleva destino.
+    expect(onNavigate).toHaveBeenCalledWith("studio", "profiles");
   });
 
   it("la superficie de comando abre la paleta", () => {

@@ -127,6 +127,9 @@ function HubShell() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
+  // Destino de la última navegación de la shell Orbit (`navigate(view, target)`):
+  // la pantalla destino lo consume, hoy el Studio para abrir «Mis perfiles».
+  const [navTarget, setNavTarget] = useState<string | undefined>(undefined);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
   const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
 
@@ -175,9 +178,10 @@ function HubShell() {
     };
   }, []);
 
-  const handleNavigate = useCallback((id: string) => {
+  const handleNavigate = useCallback((id: string, target?: string) => {
     if (isSection(id) && (id !== "testing-center" || testingCenterChannel)) {
       setSection(id);
+      setNavTarget(target);
     }
   }, [testingCenterChannel]);
 
@@ -229,6 +233,7 @@ function HubShell() {
         <OverlaysStudioPage
           pendingRecommendedAutoStart={pendingRecommendedAutoStart}
           onAutoStartHandled={handleAutoStartHandled}
+          target={navTarget}
         />
       )}
       {visibleSection === "launcher" && <LauncherPage />}

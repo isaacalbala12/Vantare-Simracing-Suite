@@ -19,6 +19,16 @@ const shots = [
   // Selección real: el inspector con sus tres acordeones y la etiqueta
   // `delta · w × h` sobre el widget del lienzo.
   { name: "1920x1080-seleccion", width: 1920, height: 1080, query: "", select: "delta" },
+  // Studio > Mis perfiles con la piel Orbit: mismo destino que usa la shell
+  // real (`navigate("studio", "profiles")`).
+  {
+    name: "perfiles-1920x1080",
+    file: "orbit-perfiles-1920x1080.png",
+    width: 1920,
+    height: 1080,
+    query: "&studio=profiles",
+    profiles: true,
+  },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -91,6 +101,59 @@ try {
     });
 
     await page.goto(url(shot.query), { waitUntil: "networkidle" });
+
+    if (shot.profiles) {
+      await page.getByTestId("orbit-profiles").waitFor();
+      await page.getByTestId("orbit-profiles-grid").waitFor();
+      await page.evaluate(async () => { await document.fonts.ready; });
+
+      const own = await page.evaluate(() => {
+        const root = document.querySelector('[data-testid="orbit-profiles"]');
+        const grid = document.querySelector('[data-testid="orbit-profiles-grid"]');
+        return {
+          scrollHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          cards: document.querySelectorAll('[data-testid^="orbit-profiles-card-"]').length,
+          gridOverflows: grid ? grid.scrollHeight > grid.clientHeight + 1 : false,
+          nativeTitles: root ? root.querySelectorAll("[title]").length : -1,
+          heading: root?.querySelector("h2")?.textContent?.trim() ?? "",
+          back: Boolean(document.querySelector('[data-testid="orbit-profiles-back"]')),
+          create: Boolean(document.querySelector('[data-testid="orbit-profiles-create"]')),
+        };
+      });
+
+      if (own.scrollHeight > own.innerHeight) {
+        throw new Error(`${shot.name}: la pagina hace scroll vertical (${own.scrollHeight} > ${own.innerHeight})`);
+      }
+      if (own.scrollWidth > own.innerWidth) {
+        throw new Error(`${shot.name}: la pagina hace scroll horizontal`);
+      }
+      if (own.cards < 1) {
+        throw new Error(`${shot.name}: no hay tarjetas de perfil`);
+      }
+      if (own.gridOverflows) {
+        throw new Error(`${shot.name}: la rejilla desborda con ${own.cards} perfiles`);
+      }
+      if (own.nativeTitles !== 0) {
+        throw new Error(`${shot.name}: la vista usa title nativo (${own.nativeTitles})`);
+      }
+      if (!own.back || !own.create) {
+        throw new Error(`${shot.name}: falta el enlace de volver o el boton de nuevo perfil`);
+      }
+      if (!own.heading) {
+        throw new Error(`${shot.name}: la cabecera no tiene h2`);
+      }
+      if (problems.length) {
+        throw new Error(`${shot.name}: la consola no esta limpia\n${problems.join("\n")}`);
+      }
+
+      await page.screenshot({ path: path.join(output, shot.file), fullPage: false });
+      await page.close();
+      continue;
+    }
+
     await page.getByTestId("orbit-studio").waitFor();
     await page.getByTestId("orbit-studio-widget-list").waitFor();
     await page.getByTestId("orbit-studio-topbar-controls").waitFor();
@@ -200,7 +263,7 @@ try {
       throw new Error(`${shot.name}: la consola no está limpia\n${problems.join("\n")}`);
     }
 
-    await page.screenshot({ path: path.join(output, `orbit-studio-${shot.name}.png`), fullPage: false });
+    await page.screenshot({ path: path.join(output, shot.file ?? `orbit-studio-${shot.name}.png`), fullPage: false });
     await page.close();
   }
 

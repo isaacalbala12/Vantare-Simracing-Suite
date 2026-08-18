@@ -80,6 +80,9 @@ if (!("error" in created)) {
 export function Harness() {
   const [section, setSection] = useState<Section>("profiles");
   isOrbitEnabled();
+  // `?studio=profiles` abre «Mis perfiles» por el mismo destino que usa la
+  // shell real (`navigate("studio", "profiles")`), no por un estado inventado.
+  const studioTarget = new URLSearchParams(window.location.search).get("studio") ?? undefined;
 
   return (
     <LicenseProvider>
@@ -93,7 +96,7 @@ export function Harness() {
               testingCenterChannel={null}
               version="v0.3.9"
             >
-              <StudioRoute liveAvailable={false} />
+              <StudioRoute liveAvailable={false} target={studioTarget} />
             </OrbitShell>
           </LauncherStoreProvider>
         </ChainRunnerProvider>

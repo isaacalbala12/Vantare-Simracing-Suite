@@ -146,3 +146,28 @@
   gap: 8px;
   margin-top: auto;
 }
+
+/* ------------------------------------------------------------- CONTEXTO */
+/* Mismos tokens que la columna de Telemetría/Roadmap: la auditoría de
+   cableado solo rellena el hueco, no introduce estilo nuevo. */
+
+.orbit-profiles__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.orbit-profiles__context-count {
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-profiles__context-hint {
+  margin: auto 0 0;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.5;
+}

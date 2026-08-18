@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ProfilesOrbitPage } from "./ProfilesOrbitPage";
 import type { ProfileEntry } from "../state/overlay-workbench";
@@ -100,5 +100,19 @@ describe("ProfilesOrbitPage", () => {
     renderPage({ profiles: [] });
     expect(screen.getByTestId("orbit-profiles-empty")).toBeTruthy();
     expect(screen.queryByTestId("orbit-profiles-grid")).toBeNull();
+  });
+
+  it("rellena la columna de Studio con la lista de perfiles y abre el editor", () => {
+    cleanup();
+    const slot = document.createElement("div");
+    slot.id = "orbit-studio-context-slot";
+    document.body.appendChild(slot);
+    const props = renderPage({ activeProfileId: "p1" });
+    const list = screen.getByTestId("orbit-profiles-context");
+    expect(list.textContent).toContain("Endurance");
+    expect(list.textContent).toContain("Sprint");
+    fireEvent.click(within(list).getByText("Sprint"));
+    expect(props.onOpenProfile).toHaveBeenCalledWith(profiles[1]);
+    slot.remove();
   });
 });

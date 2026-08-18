@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { SideProfile } from "./SideProfile";
 import type { ProfileEntry } from "../../state/overlay-workbench";
 
@@ -55,5 +55,13 @@ describe("SideProfile", () => {
     expect(within(list).queryByText("Sin perfiles todavía")).toBeNull();
     expect(within(list).getByText("Mi overlay")).toBeTruthy();
     expect(within(list).getByTestId("orbit-side-profile-toggle")).toBeTruthy();
+  });
+
+  it("«Activar» del recomendado entrega el perfil, no solo abre el Studio", () => {
+    const onActivate = vi.fn();
+    const recommended = profile("rec", "Vantare Endurance");
+    const list = renderBlock({ onActivate, recommended });
+    fireEvent.click(within(list).getByText("Vantare Endurance"));
+    expect(onActivate).toHaveBeenCalledWith(recommended);
   });
 });

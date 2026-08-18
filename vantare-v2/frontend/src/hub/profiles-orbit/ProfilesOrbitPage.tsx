@@ -1,5 +1,8 @@
+import { createPortal } from "react-dom";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Chip, Surface } from "../../ui/orbit";
+import { Button, Chip, ListRow, Surface } from "../../ui/orbit";
+import { useOrbitSlot } from "../orbit/use-orbit-slot";
+import { STUDIO_CONTEXT_SLOT_ID } from "../overlay-studio/orbit/studio-orbit-slots";
 import { formatMessage } from "../orbit/format-message";
 import { HomeMiniStage } from "../home-orbit/HomeMiniStage";
 import {
@@ -45,10 +48,51 @@ export function ProfilesOrbitPage({
   onBack,
 }: ProfilesOrbitPageProps) {
   const { t } = useI18n();
+  // La columna de Studio se queda vacía en modo «Mis perfiles» si nadie la
+  // rellena: aquí se porta la misma lista, con el activo marcado y el clic
+  // abriendo el editor de layout (auditoría de cableado, D-94).
+  const contextSlot = useOrbitSlot(STUDIO_CONTEXT_SLOT_ID);
   const activeExists = activeProfileId !== null && profiles.some((p) => p.id === activeProfileId);
 
   return (
     <div className="orbit-profiles" data-testid="orbit-profiles">
+      {contextSlot
+        ? createPortal(
+            <div className="orbit-profiles__context">
+              <section aria-label={t("profiles.context.title")} className="orbit-block">
+                <div className="orbit-block__head">
+                  <span className="orbit-eyebrow">{t("profiles.context.title")}</span>
+                  <span className="orbit-profiles__context-count">{profiles.length}</span>
+                </div>
+                <div className="orbit-list" data-testid="orbit-profiles-context">
+                  {profiles.length === 0 ? (
+                    <p className="orbit-row__copy">{t("profiles.context.empty")}</p>
+                  ) : (
+                    profiles.map((profile) => (
+                      <ListRow
+                        key={profile.file}
+                        onClick={() => onOpenProfile(profile)}
+                        selected={isActiveProfile(profile, activeProfileId)}
+                        subtitle={formatMessage(t("profiles.context.widgets"), {
+                          n: profile.widgets ?? 0,
+                        })}
+                        title={profileLabel(profile)}
+                        trailing={
+                          isActiveProfile(profile, activeProfileId) ? (
+                            <Chip tone="ok">{t("profiles.chip.active")}</Chip>
+                          ) : undefined
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+              <p className="orbit-profiles__context-hint">{t("profiles.context.hint")}</p>
+            </div>,
+            contextSlot,
+          )
+        : null}
+
       <header className="orbit-profiles__head">
         <div className="orbit-profiles__head-copy">
           <Button

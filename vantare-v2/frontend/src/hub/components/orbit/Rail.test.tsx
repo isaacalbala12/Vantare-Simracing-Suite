@@ -114,4 +114,11 @@ describe("Rail", () => {
     fireEvent.click(screen.getByTestId("orbit-rail-ajustes"));
     expect(onNavigate).toHaveBeenCalledWith("ajustes", "application");
   });
+
+  it("la marca no usa `title` nativo: lleva el tooltip propio del rail", () => {
+    renderRail();
+    const brand = screen.getByTestId("orbit-rail-brand");
+    expect(brand.getAttribute("title")).toBeNull();
+    expect(brand.getAttribute("data-tip")).toBe(labels.brand);
+  });
 });

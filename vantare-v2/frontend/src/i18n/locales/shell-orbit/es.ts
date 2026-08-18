@@ -34,6 +34,8 @@ export const shellOrbitEs: Record<string, string> = {
   "shell.column.steps": "{{n}} pasos",
   "shell.column.in": "en {{time}}",
   "shell.column.noProfiles": "Sin perfiles todavía",
+  "shell.column.activated": "Perfil activado",
+  "shell.column.activatedHint": "{{name}} es ahora el perfil de overlay activo.",
   "shell.column.noRaces": "Sin salidas próximas",
 
   "shell.title.inicio": "Centro operativo",

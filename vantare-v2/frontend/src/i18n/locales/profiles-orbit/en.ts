@@ -18,5 +18,9 @@ export const profilesOrbitEn: Record<string, string> = {
   "profiles.openOverlay": "Open overlay",
   "profiles.startAria": "Open the overlay for {{name}}",
   "profiles.stop": "Stop overlay",
+  "profiles.context.title": "Profiles",
+  "profiles.context.hint": "Pick a profile to edit its layout.",
+  "profiles.context.empty": "No profiles yet",
+  "profiles.context.widgets": "{{n}} widgets",
   "profiles.stopAria": "Stop the overlay for {{name}}",
 };

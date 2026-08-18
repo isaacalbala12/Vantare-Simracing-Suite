@@ -34,6 +34,8 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.column.steps": "{{n}} passaggi",
   "shell.column.in": "tra {{time}}",
   "shell.column.noProfiles": "Ancora nessun profilo",
+  "shell.column.activated": "Profilo attivato",
+  "shell.column.activatedHint": "{{name}} è ora il profilo di overlay attivo.",
   "shell.column.noRaces": "Nessuna partenza in arrivo",
 
   "shell.title.inicio": "Centro operativo",

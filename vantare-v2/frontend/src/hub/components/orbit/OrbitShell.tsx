@@ -6,7 +6,7 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import type { TelemetrySourceStatus } from "../../../telemetry-transport/source-status";
 import type { TestingCenterChannel } from "../../testing-center/contracts";
 import { useLauncherSnapshot } from "../../launcher/launcher-store";
-import { profileTarget } from "../../state/overlay-workbench";
+import { profileLabel, profileTarget, type ProfileEntry } from "../../state/overlay-workbench";
 import { type Section } from "../../navigation";
 import { formatMessage } from "../../orbit/format-message";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
@@ -247,6 +247,20 @@ function OrbitShellBody({
     Events.Emit("overlay:start-active");
   }, [overlay.active, overlay.running]);
 
+  // «Activar» del recomendado activa de verdad el perfil (mismo evento que usa
+  // Inicio y `ActiveOverlayCard`): antes solo abría el Studio, así que la fila
+  // prometía una acción que no ocurría.
+  const activateProfile = useCallback(
+    (profile: ProfileEntry) => {
+      Events.Emit("hub:set-active", { id: profile.id, file: profile.file });
+      toast(
+        t("shell.column.activated"),
+        formatMessage(t("shell.column.activatedHint"), { name: profileLabel(profile) }),
+      );
+    },
+    [t, toast],
+  );
+
   const launcherProfiles = useMemo(() => {
     const all = [...(launcher?.userProfiles ?? []), ...(launcher?.vantareProfiles ?? [])];
     return all.map((profile) => ({
@@ -290,7 +304,7 @@ function OrbitShellBody({
               recommended: t("shell.column.recommended"),
               empty: t("shell.column.noProfiles"),
             }}
-            onActivate={() => navigate("studio")}
+            onActivate={activateProfile}
             onOpenStudio={() => navigate("studio")}
             onToggleOverlay={toggleOverlay}
             recommended={overlay.recommended}
@@ -316,7 +330,7 @@ function OrbitShellBody({
         ),
       },
     ],
-    [launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, races.starts, t, toggleOverlay],
+    [activateProfile, launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, races.starts, t, toggleOverlay],
   );
 
   // El contexto por sección lo rellena cada briefing de pantalla. Inicio no
@@ -472,7 +486,9 @@ function OrbitShellBody({
         <div className="orbit-main">
           <Topbar
             eyebrow={t(`shell.topbar.eyebrow.${activeView}`)}
-            onUpdate={() => Events.Emit("updater:install")}
+            // El pill no instala a ciegas: lleva a Ajustes › Actualizaciones, que es
+            // donde vive el estado real, el canal y el botón de instalar (briefing 11).
+            onUpdate={() => navigate("ajustes", "updates")}
             title={t(RAIL_LABEL_KEY[activeView])}
             update={update}
             updateLabel={updateLabel}

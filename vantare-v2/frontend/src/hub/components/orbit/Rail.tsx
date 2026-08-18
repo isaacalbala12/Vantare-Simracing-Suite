@@ -58,7 +58,16 @@ export function Rail({
 
   return (
     <aside aria-label={labels.rail} className={["orbit-rail", className].filter(Boolean).join(" ")}>
-      <div className="orbit-rail__brand" data-testid="orbit-rail-brand" title={labels.brand}>
+      {/* Sin `title` nativo (briefing 01): la marca lleva el mismo tooltip
+          propio que el resto del rail, visible con hover y con foco. */}
+      <div
+        aria-label={labels.brand}
+        className="orbit-rail__brand"
+        data-testid="orbit-rail-brand"
+        data-tip={labels.brand}
+        data-tip-side="right"
+        role="img"
+      >
         <img alt="" draggable={false} height={26} src={markUrl} width={26} />
       </div>
 

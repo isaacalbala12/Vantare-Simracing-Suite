@@ -334,3 +334,13 @@ describe("StrategyOrbitPage · estado vacío", () => {
     expect(screen.queryByTestId("orbit-strategy-overview")).toBeNull();
   });
 });
+
+describe("StrategyOrbitPage · cableado auditado", () => {
+  it("«Editar» del piloto queda deshabilitado con el motivo, sin toast que finja", async () => {
+    await mounted();
+    const button = screen.getAllByRole("button", { name: "Editar" })[0] as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("data-tip")).toBeTruthy();
+    expect(button.getAttribute("title")).toBeNull();
+  });
+});

@@ -573,6 +573,18 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             otherEvents.map((start) => (
               <ListRow
                 key={`${start.seriesId}-${start.at.getTime()}`}
+                // `ListRow` es un botón: dejarla sin `onClick` era un control
+                // muerto. El puente publica un único evento activo, así que la
+                // fila explica por qué todavía no se abre (auditoría D-94).
+                onClick={() =>
+                  toast.show(
+                    t("strategy.context.otherTitle"),
+                    formatMessage(t("strategy.context.otherHint"), {
+                      event: roster?.event.name ?? t("strategy.context.noEvent"),
+                      name: start.name,
+                    }),
+                  )
+                }
                 subtitle={start.track}
                 title={start.name}
                 trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
@@ -851,7 +863,13 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                   </dl>
                   <div className="orbit-strat-card__acts">
                     {variant.id === active.id ? (
-                      <Button disabled size="sm" variant="ghost">
+                      <Button
+                        data-tip={t("strategy.cards.activeTip")}
+                        data-tip-side="top"
+                        disabled
+                        size="sm"
+                        variant="ghost"
+                      >
                         {t("strategy.cards.active")}
                       </Button>
                     ) : (
@@ -1395,8 +1413,13 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                           </div>
                         ))}
                       </div>
+                      {/* Sin flujo real de edición de pilotos: en vez de un
+                          toast que finge, el botón queda deshabilitado con el
+                          motivo a la vista (auditoría D-94). */}
                       <Button
-                        onClick={() => toast.show(t("strategy.drivers.edit"), driver.name)}
+                        data-tip={t("strategy.drivers.editTip")}
+                        data-tip-side="top"
+                        disabled
                         size="sm"
                         variant="ghost"
                       >

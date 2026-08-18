@@ -154,6 +154,10 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.context.noEvent": "No active event",
   "strategy.context.others": "Other events",
   "strategy.context.noOthers": "You do not follow any other series with an upcoming start.",
+  "strategy.context.otherTitle": "One event at a time",
+  "strategy.context.otherHint": "Vantare only prepares strategies for the event the hub publishes ({{event}}). Once {{name}} is the active event, its strategies will show up here.",
+  "strategy.drivers.editTip": "Driver pace is published by the hub; it cannot be edited from here yet.",
+  "strategy.cards.activeTip": "This strategy is already the active one.",
 
   "strategy.empty.title": "Pick an event and drivers",
   "strategy.empty.lead":

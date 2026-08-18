@@ -154,6 +154,10 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.context.noEvent": "Nessun evento attivo",
   "strategy.context.others": "Altri eventi",
   "strategy.context.noOthers": "Non segui altre serie con una partenza imminente.",
+  "strategy.context.otherTitle": "Un evento alla volta",
+  "strategy.context.otherHint": "Vantare prepara strategie solo per l'evento pubblicato dall'hub ({{event}}). Quando {{name}} sarà l'evento attivo, le sue strategie compariranno qui.",
+  "strategy.drivers.editTip": "I ritmi dei piloti li pubblica l'hub; non si modificano ancora da qui.",
+  "strategy.cards.activeTip": "Questa strategia è già quella attiva.",
 
   "strategy.empty.title": "Scegli evento e piloti",
   "strategy.empty.lead":

@@ -19,11 +19,14 @@
   display: flex;
   flex: none;
   gap: var(--orbit-space);
-  align-items: flex-start;
+  /* El `Seg` de vistas se apoya en la línea base del lead, no en el eyebrow:
+     misma fila que el h2 (referencia `.module-head { align-items: flex-end }`). */
+  align-items: flex-end;
   justify-content: space-between;
 }
 
 .orbit-races__head-copy {
+  flex: 1;
   min-width: 0;
 }
 
@@ -45,7 +48,18 @@
 
 .orbit-races__views {
   flex: none;
-  margin-top: 6px;
+  padding-bottom: 4px;
+}
+
+/* -------------------------------------------------------------- TOPBAR */
+
+/* Igual que el buscador del Launcher: la acción se pega a la derecha, justo
+   antes de la pill de actualización (que ya lleva su propio `margin-left`). */
+.orbit-races__topbar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
 }
 
 /* ---------------------------------------------------------------- GRID */

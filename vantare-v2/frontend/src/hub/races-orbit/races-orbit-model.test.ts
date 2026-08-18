@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
+import { mockCalendar } from "../calendar-visual-mock-data";
 import {
   buildSeriesEntries,
   dayRows,
@@ -94,6 +95,37 @@ describe("buildSeriesEntries", () => {
       ]),
     );
     expect(entries[0].sessions).toBe("P 3 · Q 8 · R 20");
+  });
+
+  it("rotula el warmup y respeta las marcadas estimadas", () => {
+    const entries = buildSeriesEntries(
+      calendarOf([
+        series({
+          id: "s",
+          sessions: [
+            { name: "practice", durationMin: 3, estimated: true },
+            { name: "warmup", durationMin: 5, estimated: true },
+            { name: "race", durationMin: 40, estimated: false },
+          ],
+        }),
+      ]),
+    );
+    expect(entries[0].sessions).toBe("P 3 · W 5 · R 40");
+  });
+
+  it("sin sesiones publicadas deja la etiqueta vacía para que el detalle pinte «—»", () => {
+    const entries = buildSeriesEntries(calendarOf([series({ id: "s" })]));
+    expect(entries[0].sessions).toBe("");
+  });
+
+  // El calendario simulado alimenta el harness visual: si pierde las sesiones
+  // reales el detalle vuelve a capturar «—» aunque el modelo esté bien.
+  it("el calendario simulado trae las sesiones reales del fixture LMU", () => {
+    const entries = buildSeriesEntries(mockCalendar);
+    const lmgt3 = entries.find((entry) => entry.id === "beginner-lmgt3-fixed");
+    expect(lmgt3?.sessions).toBe("P 3 · Q 8 · R 20");
+    const weekly = entries.find((entry) => entry.id === "weekly-wec-weekly");
+    expect(weekly?.sessions).toBe("P 3 · Q 8 · R 100");
   });
 });
 

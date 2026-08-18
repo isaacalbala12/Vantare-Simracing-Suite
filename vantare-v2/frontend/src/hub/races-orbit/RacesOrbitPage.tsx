@@ -231,9 +231,11 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
     <div className="orbit-races" data-testid="orbit-races">
       {topbarSlot
         ? createPortal(
-            <Button data-testid="orbit-races-refresh" onClick={refresh}>
-              {t("races.refresh")}
-            </Button>,
+            <div className="orbit-races__topbar">
+              <Button data-testid="orbit-races-refresh" onClick={refresh}>
+                {t("races.refresh")}
+              </Button>
+            </div>,
             topbarSlot,
           )
         : null}

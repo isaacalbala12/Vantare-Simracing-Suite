@@ -19,9 +19,26 @@ vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
 }));
 
+/** Salidas del calendario real que ve la pantalla; cada prueba pone las suyas. */
+const starts: unknown[] = [];
+
 vi.mock("../orbit/use-calendar-starts", () => ({
-  useCalendarStarts: () => ({ calendar: null, starts: [], target: null }),
+  useCalendarStarts: () => ({ calendar: null, starts, target: null }),
 }));
+
+const SPA_START = {
+  seriesId: "gt3-sprint",
+  name: "GT3 Sprint Series",
+  track: "Spa-Francorchamps",
+  tier: "advanced",
+  licenseLabel: "",
+  note: "",
+  intervalMin: 30,
+  vehicleClass: "GT3",
+  durationMin: 45,
+  at: new Date("2030-01-01T14:00:00Z"),
+  followed: true,
+};
 
 /** Cliente en memoria del editor real: mismos comandos, sin backend. */
 function memoryRuntime() {
@@ -94,6 +111,7 @@ async function mounted() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  starts.length = 0;
 });
 
 afterEach(() => {
@@ -332,22 +350,146 @@ describe("StrategyOrbitPage · Disponibilidad", () => {
   });
 });
 
-describe("StrategyOrbitPage · estado vacío", () => {
-  it("sin evento muestra «Elige evento y pilotos»", async () => {
+describe("StrategyOrbitPage · estado inicial", () => {
+  it("sin evento ofrece los dos caminos, no una lista muerta", async () => {
     mount(null);
 
     const empty = await screen.findByTestId("orbit-strategy-empty");
-    expect(empty.textContent).toContain("Elige evento y pilotos");
+    expect(empty.textContent).toContain("Empieza tu estrategia");
+    expect(screen.getByTestId("orbit-strategy-path-own")).toBeTruthy();
+    expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
     expect(screen.queryByTestId("orbit-strategy-overview")).toBeNull();
+    // Las series solo se listan cuando el usuario elige ese camino.
+    expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
+  });
+
+  it("«Crear mi estrategia» crea el evento propio y entra en el Resumen", async () => {
+    mount(null);
+    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+
+    const form = await screen.findByTestId("orbit-strategy-form");
+    fireEvent.change(within(form).getByLabelText("Nombre del evento"), {
+      target: { value: "Enduro de casa" },
+    });
+    fireEvent.change(within(form).getByLabelText("Circuito"), { target: { value: "Motorland" } });
+    fireEvent.change(within(form).getByLabelText("Duración en minutos"), {
+      target: { value: "120" },
+    });
+    fireEvent.click(within(form).getByTestId("orbit-strategy-form-add-driver"));
+    fireEvent.change(within(form).getByLabelText("Nombre del piloto 2"), {
+      target: { value: "Sol Martín" },
+    });
+    fireEvent.click(within(form).getByTestId("orbit-strategy-form-submit"));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Enduro de casa");
+    expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #1");
+    // Dos pilotos ⇒ al menos dos stints en el reparto de partida.
+    expect(screen.getAllByTestId(/^orbit-stint-\d+$/).length).toBeGreaterThanOrEqual(2);
+    // Y el evento queda listado en la columna contextual.
+    expect(
+      within(screen.getByTestId("orbit-strategy-events")).getByText("Enduro de casa"),
+    ).toBeTruthy();
+  });
+
+  it("«Desde un evento» toma la salida, la duración y la clase de la serie", async () => {
+    starts.push(SPA_START);
+    mount(null);
+
+    fireEvent.click(await screen.findByTestId("orbit-strategy-path-series"));
+    const list = await screen.findByTestId("orbit-strategy-series");
+    expect(list.textContent).toContain("GT3");
+    expect(list.textContent).toContain("45 min");
+    fireEvent.click(within(list).getByText("GT3 Sprint Series"));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("GT3 Sprint Series");
+    expect(screen.getAllByText("GT3").length).toBeGreaterThan(0);
+    expect(screen.getByText(/45 min/)).toBeTruthy();
+  });
+
+  it("el evento se guarda y vuelve al recargar la pantalla", async () => {
+    mount(null);
+    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+    fireEvent.change(screen.getByLabelText("Nombre del evento"), {
+      target: { value: "Enduro de casa" },
+    });
+    fireEvent.click(screen.getByTestId("orbit-strategy-form-submit"));
+    await screen.findByTestId("orbit-strategy-overview");
+
+    cleanup();
+    document.body.replaceChildren();
+    mount(null);
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Enduro de casa");
   });
 });
 
-describe("StrategyOrbitPage · cableado auditado", () => {
-  it("«Editar» del piloto queda deshabilitado con el motivo, sin toast que finja", async () => {
+describe("StrategyOrbitPage · varios eventos", () => {
+  it("la columna lista todos los eventos y el clic cambia el panel", async () => {
     await mounted();
-    const button = screen.getAllByRole("button", { name: "Editar" })[0] as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute("data-tip")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("4 Horas de Imola");
+
+    // Un segundo evento, propio.
+    fireEvent.click(screen.getByTestId("orbit-strategy-new-event"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+    fireEvent.change(screen.getByLabelText("Nombre del evento"), {
+      target: { value: "Enduro de casa" },
+    });
+    fireEvent.click(screen.getByTestId("orbit-strategy-form-submit"));
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Enduro de casa");
+
+    const column = screen.getByTestId("orbit-strategy-events");
+    expect(within(column).getAllByRole("button")).toHaveLength(2);
+
+    fireEvent.click(within(column).getByText("4 Horas de Imola"));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("4 Horas de Imola"),
+    );
+    // Las estrategias que se ven son las del evento activo.
+    expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #1");
+  });
+
+  it("⚙ › Información del evento abre el formulario en edición", async () => {
+    await mounted();
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-settings"));
+    fireEvent.click(await screen.findByText("Información del evento"));
+
+    const form = await screen.findByTestId("orbit-strategy-form");
+    expect((within(form).getByLabelText("Nombre del evento") as HTMLInputElement).value).toBe(
+      "4 Horas de Imola",
+    );
+    fireEvent.change(within(form).getByLabelText("Depósito"), { target: { value: "60" } });
+    fireEvent.click(within(form).getByTestId("orbit-strategy-form-submit"));
+
+    await waitFor(() => expect(screen.queryByTestId("orbit-strategy-form")).toBeNull());
+    expect(screen.getByText("60 L")).toBeTruthy();
+  });
+});
+
+describe("StrategyOrbitPage · pilotos del evento", () => {
+  it("«Editar» abre los ritmos del piloto y el plan se recalcula", async () => {
+    await mounted();
+
+    const button = screen.getByTestId("orbit-driver-edit-isaac") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
     expect(button.getAttribute("title")).toBeNull();
+
+    const laps = () =>
+      screen
+        .getAllByTestId(/^orbit-stint-\d+$/)
+        .map((card) => Number(card.getAttribute("data-laps")))
+        .reduce((sum, value) => sum + value, 0);
+    const before = laps();
+
+    fireEvent.click(button);
+    const editor = await screen.findByTestId("orbit-driver-editor-isaac");
+    fireEvent.change(within(editor).getByLabelText("Ritmo Seco"), { target: { value: "120" } });
+
+    // Un ritmo más lento ⇒ menos vueltas en el mismo tiempo de carrera.
+    await waitFor(() => expect(laps()).toBeLessThan(before));
   });
 });

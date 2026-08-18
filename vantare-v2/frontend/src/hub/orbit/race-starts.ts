@@ -27,6 +27,10 @@ export interface RaceStart {
   note: string;
   /** Ventana del dial en minutos (`13.4`: cadencia, o 180 si no hay). */
   intervalMin: number;
+  /** Clase de coche de la serie, cuando el calendario la publica. */
+  vehicleClass: string;
+  /** Duración de carrera en minutos, cuando el calendario la publica. */
+  durationMin: number;
   at: Date;
   followed: boolean;
 }
@@ -145,6 +149,8 @@ export function buildRaceStarts(
         licenseLabel: series.safetyRating || series.licenseLabel || "",
         note: preview?.scheduleLabel ?? "",
         intervalMin: intervalMinutesOf(series),
+        vehicleClass: series.vehicleClass ?? "",
+        durationMin: series.raceDurationMin ?? series.durationMin ?? 0,
         at,
         followed: followed.has(series.id),
       });

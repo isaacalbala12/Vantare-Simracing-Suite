@@ -15,6 +15,7 @@ import {
   Chip,
   CornerSlot,
   Donut,
+  Featured,
   Field,
   HorizontalTimeline,
   Input,
@@ -40,6 +41,7 @@ import { formatMessage } from "../orbit/format-message";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { formatStartTime } from "../orbit/next-starts";
+import type { RaceStart } from "../orbit/race-starts";
 import {
   createWailsStrategyEditorRuntime,
   openOrCreateStrategyEditor,
@@ -51,6 +53,24 @@ import {
   subscribeToStrategyRoster,
   type StrategyRoster,
 } from "./strategy-orbit-bridge";
+import {
+  activeEventOf,
+  createCustomEvent,
+  createEventFromSeries,
+  eventFromRoster,
+  initialsOf,
+  newDriver,
+  patchEvent,
+  readLegacyStrategyState,
+  readStrategyEvents,
+  rosterEventId,
+  toStrategyEvent,
+  upsertEvent,
+  writeStrategyEvents,
+  DRIVER_COLORS,
+  type StrategyEventRecord,
+  type StrategyEventsState,
+} from "./strategy-events-store";
 import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
   addAvailability,
@@ -83,10 +103,9 @@ import "../../styles/orbit-strategy.css";
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 
-/** Clave local del reparto de pilotos y neumáticos (ver `00-decisiones.md`). */
-const STORAGE_KEY = "vantare.v03orbit.strategy";
-
 type StrategyTab = "overview" | "strategies" | "availability";
+/** Camino elegido en el estado inicial (`00-decisiones.md`, D-W4-2). */
+type PickerPath = "none" | "series";
 type SidePanel = "drivers" | "tyres";
 type DonutMode = "laps" | "time";
 
@@ -116,34 +135,53 @@ function defaultTyres(stints: number, tyres: readonly StrategyTyre[]): TyreAssig
   return map;
 }
 
-/** Lo que la pantalla guarda en local: estrategias y disponibilidad juntas. */
-interface StoredStrategyState {
-  variants: Record<string, Partial<StrategyVariant>>;
-  availability?: Record<string, AvailabilitySegment[]>;
+/** Formulario del evento: todo texto, se valida al enviar. */
+interface EventForm {
+  name: string;
+  track: string;
+  cls: string;
+  durationMin: string;
+  /** `YYYY-MM-DDTHH:mm` del `datetime-local`. */
+  startAt: string;
+  tankL: string;
+  pitLossSec: string;
+  team: string;
+  drivers: StrategyDriver[];
 }
 
-function readStored(): StoredStrategyState {
-  try {
-    const raw = window.localStorage?.getItem(STORAGE_KEY);
-    if (!raw) return { variants: {} };
-    const parsed = JSON.parse(raw) as StoredStrategyState | Record<string, Partial<StrategyVariant>>;
-    // La parte A guardaba el mapa de estrategias en la raíz de la clave.
-    if (parsed && typeof parsed === "object" && "variants" in parsed) {
-      return parsed as StoredStrategyState;
-    }
-    return { variants: (parsed ?? {}) as Record<string, Partial<StrategyVariant>> };
-  } catch {
-    return { variants: {} };
-  }
+/** Duraciones de un clic (`Seg`); el resto se escribe en el campo de minutos. */
+const DURATION_PRESETS = [60, 120, 240, 360] as const;
+
+/** `Date` → valor de un `input[type=datetime-local]` en hora local. */
+function toLocalInput(at: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
 }
 
-function writeStored(patch: Partial<StoredStrategyState>): void {
-  try {
-    const current = readStored();
-    window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...patch }));
-  } catch {
-    // Sin almacenamiento el reparto solo vive en memoria.
-  }
+/** Valor de un `datetime-local` → ISO; hoy a esa hora si el texto no vale. */
+function fromLocalInput(value: string): string {
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? new Date().toISOString() : at.toISOString();
+}
+
+function formOf(record: StrategyEventRecord): EventForm {
+  return {
+    name: record.name,
+    track: record.track,
+    cls: record.cls,
+    durationMin: String(record.durationMin),
+    startAt: toLocalInput(new Date(record.startAt)),
+    tankL: String(record.tankL),
+    pitLossSec: String(record.pitLossSec),
+    team: record.team ?? "",
+    drivers: record.drivers,
+  };
+}
+
+/** Número positivo del formulario, o el valor por defecto. */
+function positive(raw: string, fallback: number): number {
+  const value = Number(raw.replace(",", "."));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 /** Sin dato declarado, un piloto está disponible de punta a punta del eje. */
@@ -174,7 +212,7 @@ export interface StrategyOrbitPageProps {
  * `strategy-orbit-model.ts` con los casos a–d de `13.5`.
  */
 export function StrategyOrbitPage({ runtimeFactory, roster: injected }: StrategyOrbitPageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const toast = useToast();
   const contextSlot = useOrbitSlot(STRATEGY_CONTEXT_SLOT_ID);
   const calendar = useCalendarStarts();
@@ -209,64 +247,104 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const document_: StrategyEditorDocument | undefined = snapshot.draft?.payload;
   const inventory = useMemo(() => document_?.tyres ?? [], [document_]);
 
-  // ── estrategias (reparto, overrides y neumáticos) ───────────────────────
-  const [variants, setVariants] = useState<Record<string, StrategyVariant>>({});
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const seeded = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!roster || inventory.length === 0) return;
-    const key = `${roster.event.name}|${roster.strategies.map((item) => item.id).join(",")}`;
-    if (seeded.current === key) return;
-    seeded.current = key;
-    const stored = readStored().variants;
-    const next: Record<string, StrategyVariant> = {};
-    for (const item of roster.strategies) {
-      const plan = buildPlan(roster.event, Object.fromEntries(roster.drivers.map((d) => [d.id, d])), {
-        mode: item.mode,
-        order: item.order,
-        overrides: {},
-      });
-      const saved = stored[item.id];
-      next[item.id] = {
-        ...item,
-        state: (saved?.state as StrategyVariant["state"]) ?? "ok",
-        overrides: saved?.overrides ?? {},
-        order: saved?.order ?? item.order,
-        tyres: saved?.tyres ?? defaultTyres(plan.stints.length, inventory),
-      };
-    }
-    setVariants((current) => ({ ...next, ...current }));
-    setActiveId((current) => (current ?? roster.strategies[0]?.id ?? null));
-  }, [inventory, roster]);
-
-  const active = activeId ? variants[activeId] : undefined;
-
-  const update = useCallback(
-    (change: (variant: StrategyVariant) => StrategyVariant, dirty = true) => {
-      setVariants((current) => {
-        if (!activeId || !current[activeId]) return current;
-        const patched = change(current[activeId]);
-        const next = {
-          ...current,
-          [activeId]: dirty ? { ...patched, state: "draft" as const } : patched,
-        };
-        writeStored({ variants: next });
+  // ── eventos locales ─────────────────────────────────────────────────────
+  const [store, setStore] = useState<StrategyEventsState>(() => readStrategyEvents());
+  const commit = useCallback(
+    (change: (current: StrategyEventsState) => StrategyEventsState) => {
+      setStore((current) => {
+        const next = change(current);
+        if (next === current) return current;
+        writeStrategyEvents(next);
         return next;
       });
     },
-    [activeId],
+    [],
+  );
+
+  // El roster del puente entra como un evento más y ya no manda sobre la vista.
+  const imported = useRef<string | null>(null);
+  useEffect(() => {
+    if (!roster) return;
+    const id = rosterEventId(roster);
+    if (imported.current === id) return;
+    imported.current = id;
+    commit((current) => {
+      if (current.events.some((event) => event.id === id)) return current;
+      const next = upsertEvent(current, eventFromRoster(roster, readLegacyStrategyState()));
+      return { ...next, activeId: current.activeId ?? id };
+    });
+  }, [commit, roster]);
+
+  const eventRecord = activeEventOf(store);
+  const strategyEvent = useMemo(
+    () => (eventRecord ? toStrategyEvent(eventRecord, locale) : null),
+    [eventRecord, locale],
+  );
+
+  const driversById = useMemo(
+    () => Object.fromEntries((eventRecord?.drivers ?? []).map((driver) => [driver.id, driver])),
+    [eventRecord],
+  );
+
+  // ── estrategias (reparto, overrides y neumáticos) ───────────────────────
+  // El inventario llega después del evento: mientras una estrategia no tenga
+  // reparto propio se le calcula el de partida al vuelo, sin persistir nada
+  // (se guarda en cuanto el usuario toca una esquina).
+  const variants = useMemo<Record<string, StrategyVariant>>(() => {
+    const list = eventRecord?.strategies ?? [];
+    return Object.fromEntries(
+      list.map((item) => {
+        if (Object.keys(item.tyres).length > 0 || !strategyEvent || inventory.length === 0) {
+          return [item.id, item];
+        }
+        const stints = buildPlan(strategyEvent, driversById, item).stints.length;
+        return [item.id, { ...item, tyres: defaultTyres(stints, inventory) }];
+      }),
+    );
+  }, [driversById, eventRecord, inventory, strategyEvent]);
+  const activeId = eventRecord
+    ? (eventRecord.activeStrategyId && variants[eventRecord.activeStrategyId]
+        ? eventRecord.activeStrategyId
+        : (eventRecord.strategies[0]?.id ?? null))
+    : null;
+  const active = activeId ? variants[activeId] : undefined;
+
+  const eventId = eventRecord?.id ?? null;
+  const patchStrategies = useCallback(
+    (change: (list: StrategyVariant[]) => StrategyVariant[], nextActive?: string) => {
+      if (!eventId) return;
+      commit((current) =>
+        patchEvent(current, eventId, (event) => ({
+          ...event,
+          strategies: change(event.strategies),
+          activeStrategyId: nextActive ?? event.activeStrategyId,
+        })),
+      );
+    },
+    [commit, eventId],
+  );
+
+  const update = useCallback(
+    (change: (variant: StrategyVariant) => StrategyVariant, dirty = true) => {
+      if (!activeId) return;
+      patchStrategies((list) =>
+        list.map((item) => {
+          if (item.id !== activeId) return item;
+          // El reparto de neumáticos de partida se calcula al vuelo: al
+          // escribir hay que partir de la estrategia efectiva, no de la guardada.
+          const patched = change(variants[item.id] ?? item);
+          return dirty ? { ...patched, state: "draft" as const } : patched;
+        }),
+      );
+    },
+    [activeId, patchStrategies, variants],
   );
 
   // ── plan derivado ───────────────────────────────────────────────────────
-  const driversById = useMemo(
-    () => Object.fromEntries((roster?.drivers ?? []).map((driver) => [driver.id, driver])),
-    [roster],
-  );
   const plan = useMemo(() => {
-    if (!roster || !active) return null;
-    return buildPlan(roster.event, driversById, active);
-  }, [active, driversById, roster]);
+    if (!strategyEvent || !active) return null;
+    return buildPlan(strategyEvent, driversById, active);
+  }, [active, driversById, strategyEvent]);
 
   // ── interacción ─────────────────────────────────────────────────────────
   const [tab, setTab] = useState<StrategyTab>("overview");
@@ -280,7 +358,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   // ── estrategias: activar, duplicar, crear ───────────────────────────────
   const activate = useCallback(
     (id: string, silent = false) => {
-      setActiveId(id);
+      patchStrategies((list) => list, id);
       setEditing(-1);
       setSelected(-1);
       if (silent) return;
@@ -290,7 +368,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         formatMessage(t("strategy.cards.activatedHint"), { name }),
       );
     },
-    [t, toast, variants],
+    [patchStrategies, t, toast, variants],
   );
 
   const duplicate = useCallback(
@@ -299,52 +377,45 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       if (!source) return;
       const copyId = freeId(variants, "local");
       const name = formatMessage(t("strategy.cards.copyName"), { name: source.name });
-      setVariants((current) => {
-        const next = {
-          ...current,
-          [copyId]: { ...source, id: copyId, name, state: "draft" as const },
-        };
-        writeStored({ variants: next });
-        return next;
-      });
+      patchStrategies((list) => [...list, { ...source, id: copyId, name, state: "draft" as const }]);
       toast.show(t("strategy.cards.duplicated"), formatMessage(t("strategy.cards.duplicatedHint"), { name }));
     },
-    [t, toast, variants],
+    [patchStrategies, t, toast, variants],
   );
 
   /** La tarjeta «+ Nueva estrategia» avisa; la de la columna no (briefing 07). */
   const createStrategy = useCallback(
     (silent = false) => {
-      if (!roster) return;
+      if (!eventRecord || !strategyEvent) return;
       const newId = freeId(variants, "local");
-      const base = roster.strategies[0]?.order ?? roster.drivers.map((driver) => driver.id);
+      const base = eventRecord.strategies[0]?.order ?? eventRecord.drivers.map((driver) => driver.id);
       const name = formatMessage(t("strategy.cards.newName"), {
         n: Object.keys(variants).length + 1,
       });
-      const fresh = buildPlan(roster.event, driversById, { mode: "dry", order: base, overrides: {} });
-      setVariants((current) => {
-        const next: Record<string, StrategyVariant> = {
-          ...current,
-          [newId]: {
+      const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order: base, overrides: {} });
+      patchStrategies(
+        (list) => [
+          ...list,
+          {
             id: newId,
             name,
             note: t("strategy.cards.newNote"),
-            mode: "dry",
+            mode: "dry" as const,
             order: base,
-            state: "draft",
+            state: "draft" as const,
             overrides: {},
             tyres: defaultTyres(fresh.stints.length, inventory),
           },
-        };
-        writeStored({ variants: next });
-        return next;
-      });
-      activate(newId, true);
+        ],
+        newId,
+      );
+      setEditing(-1);
+      setSelected(-1);
       if (!silent) {
         toast.show(t("strategy.cards.created"), formatMessage(t("strategy.cards.createdHint"), { name }));
       }
     },
-    [activate, driversById, inventory, roster, t, toast, variants],
+    [driversById, eventRecord, inventory, patchStrategies, strategyEvent, t, toast, variants],
   );
 
   // ── comparación ─────────────────────────────────────────────────────────
@@ -353,9 +424,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   // ── disponibilidad ──────────────────────────────────────────────────────
   // Sin dato real de disponibilidad, cada piloto entra disponible de punta a
   // punta: la pantalla no inventa ausencias que nadie ha declarado.
-  const [availability, setAvailability] = useState<Record<string, AvailabilitySegment[]>>(
-    () => readStored().availability ?? {},
-  );
+  const availability = eventRecord?.availability ?? {};
   const [avDriver, setAvDriver] = useState("");
   const [avState, setAvState] = useState<AvailabilityState>("ok");
   const [avFrom, setAvFrom] = useState("14:00");
@@ -369,18 +438,20 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         toast.show(t("strategy.availability.invalidTitle"), t("strategy.availability.invalid"));
         return;
       }
-      setAvailability((current) => {
-        const next = {
-          ...current,
-          [driverId]: addAvailability(current[driverId] ?? FULL_AVAILABILITY, {
-            state,
-            from: a,
-            to: b,
-          }),
-        };
-        writeStored({ availability: next });
-        return next;
-      });
+      if (!eventId) return;
+      commit((current) =>
+        patchEvent(current, eventId, (event) => ({
+          ...event,
+          availability: {
+            ...(event.availability ?? {}),
+            [driverId]: addAvailability(event.availability?.[driverId] ?? FULL_AVAILABILITY, {
+              state,
+              from: a,
+              to: b,
+            }),
+          },
+        })),
+      );
       toast.show(
         t("strategy.availability.added"),
         formatMessage(t("strategy.availability.addedHint"), {
@@ -390,7 +461,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         }),
       );
     },
-    [driversById, t, toast],
+    [commit, driversById, eventId, t, toast],
   );
 
   // ── ⚙ Ajustes ───────────────────────────────────────────────────────────
@@ -470,15 +541,30 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [update],
   );
 
+  /**
+   * Orden de partida de una estrategia: el que publicó el puente si el evento
+   * viene del roster, y si no el de los pilotos del evento local.
+   */
+  const baseOrder = useCallback(
+    (id: string): string[] => {
+      const fromRoster =
+        eventRecord?.source === "roster"
+          ? roster?.strategies.find((item) => item.id === id)?.order
+          : undefined;
+      return fromRoster ?? eventRecord?.drivers.map((driver) => driver.id) ?? [];
+    },
+    [eventRecord, roster],
+  );
+
   const reset = useCallback(() => {
-    if (!roster || !activeId) return;
-    const base = roster.strategies.find((item) => item.id === activeId);
-    if (!base) return;
-    const fresh = buildPlan(roster.event, driversById, { ...base, overrides: {} });
+    if (!strategyEvent || !activeId) return;
+    const order = baseOrder(activeId);
+    if (order.length === 0) return;
+    const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order, overrides: {} });
     update(
       (variant) => ({
         ...variant,
-        order: base.order,
+        order,
         overrides: {},
         tyres: defaultTyres(fresh.stints.length, inventory),
         state: "ok",
@@ -488,13 +574,14 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     setEditing(-1);
     setPicked(null);
     toast.show(t("strategy.reset"), t("strategy.resetHint"));
-  }, [activeId, driversById, inventory, roster, t, toast, update]);
+  }, [activeId, baseOrder, driversById, inventory, strategyEvent, t, toast, update]);
 
   const spread = useCallback(() => {
-    if (!roster || !plan || !activeId) return;
-    const base = roster.strategies.find((item) => item.id === activeId)?.order ?? [];
-    update((variant) => ({ ...variant, order: rotateOrder(base, plan.stints.length) }));
-  }, [activeId, plan, roster, update]);
+    if (!plan || !activeId) return;
+    const order = baseOrder(activeId);
+    if (order.length === 0) return;
+    update((variant) => ({ ...variant, order: rotateOrder(order, plan.stints.length) }));
+  }, [activeId, baseOrder, plan, update]);
 
   const setDriver = useCallback(
     (index: number, driverId: string) => {
@@ -531,17 +618,220 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [update],
   );
 
-  // ── columna contextual ──────────────────────────────────────────────────
-  const otherEvents = useMemo(
-    () => calendar.starts.filter((start) => start.followed).slice(0, 6),
-    [calendar.starts],
+  // ── eventos: dos caminos, formulario y edición ──────────────────────────
+  const [path, setPath] = useState<PickerPath>("none");
+  const [form, setForm] = useState<{ mode: "create" | "edit"; draft: EventForm } | null>(null);
+
+  /**
+   * El piloto por defecto de un evento nuevo es quien lo crea. El nombre real
+   * lo pone el usuario en el formulario: la pantalla no depende del proveedor
+   * de licencia solo para rellenar una fila (D-W4-4).
+   */
+  const me = useCallback((): StrategyDriver => {
+    const name = t("strategy.form.me");
+    return { ...newDriver(name, 0), ini: initialsOf(name) };
+  }, [t]);
+
+  const openCreate = useCallback(() => {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    setForm({
+      mode: "create",
+      draft: {
+        name: "",
+        track: "",
+        cls: "",
+        durationMin: "120",
+        startAt: toLocalInput(start),
+        tankL: "90",
+        pitLossSec: "60",
+        team: "",
+        drivers: [me()],
+      },
+    });
+  }, [me]);
+
+  const openEdit = useCallback(() => {
+    if (!eventRecord) return;
+    setForm({ mode: "edit", draft: formOf(eventRecord) });
+  }, [eventRecord]);
+
+  const patchForm = useCallback((change: Partial<EventForm>) => {
+    setForm((current) => (current ? { ...current, draft: { ...current.draft, ...change } } : current));
+  }, []);
+
+  const patchFormDriver = useCallback(
+    (index: number, change: Partial<StrategyDriver>) => {
+      setForm((current) => {
+        if (!current) return current;
+        const drivers = current.draft.drivers.map((driver, i) =>
+          i === index ? { ...driver, ...change } : driver,
+        );
+        return { ...current, draft: { ...current.draft, drivers } };
+      });
+    },
+    [],
   );
+
+  const submitForm = useCallback(() => {
+    const draft = form?.draft;
+    if (!draft) return;
+    const name = draft.name.trim();
+    if (!name || draft.drivers.length === 0) {
+      toast.show(t("strategy.form.invalidTitle"), t("strategy.form.invalid"));
+      return;
+    }
+    const shared = {
+      name,
+      track: draft.track.trim(),
+      cls: draft.cls.trim(),
+      durationMin: Math.round(positive(draft.durationMin, 120)),
+      startAt: fromLocalInput(draft.startAt),
+      tankL: positive(draft.tankL, 90),
+      pitLossSec: positive(draft.pitLossSec, 60),
+      team: draft.team.trim(),
+      drivers: draft.drivers,
+    };
+    if (form.mode === "edit" && eventId) {
+      commit((current) =>
+        patchEvent(current, eventId, (event) => ({
+          ...event,
+          ...shared,
+          team: shared.team || undefined,
+          // Si un piloto desaparece, las estrategias que lo usaban se rehacen.
+          strategies: event.strategies.map((item) => {
+            const order = item.order.filter((id) => shared.drivers.some((d) => d.id === id));
+            return order.length > 0
+              ? item
+              : { ...item, order: shared.drivers.map((d) => d.id), state: "draft" as const };
+          }),
+        })),
+      );
+      setForm(null);
+      toast.show(t("strategy.form.savedTitle"), formatMessage(t("strategy.form.savedHint"), { name }));
+      return;
+    }
+    const created = createCustomEvent(store.events, shared, {
+      strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+      strategyNote: t("strategy.cards.newNote"),
+    });
+    commit((current) => ({ ...upsertEvent(current, created), activeId: created.id }));
+    setForm(null);
+    setPath("none");
+    setTab("overview");
+    toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
+  }, [commit, eventId, form, store.events, t, toast]);
+
+  const createFromSeries = useCallback(
+    (start: RaceStart) => {
+      const created = createEventFromSeries(store.events, start, me(), {
+        strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+        strategyNote: t("strategy.cards.newNote"),
+      });
+      commit((current) => ({ ...upsertEvent(current, created), activeId: created.id }));
+      setPath("none");
+      setTab("overview");
+      toast.show(
+        t("strategy.form.createdTitle"),
+        formatMessage(t("strategy.form.createdHint"), { name: created.name }),
+      );
+    },
+    [commit, me, store.events, t, toast],
+  );
+
+  const selectEvent = useCallback(
+    (id: string) => {
+      commit((current) => ({ ...current, activeId: id }));
+      setForm(null);
+      setPath("none");
+      setEditing(-1);
+      setSelected(-1);
+      setCompareId(null);
+      setTab("overview");
+    },
+    [commit],
+  );
+
+  /** «Nuevo evento» vuelve al selector de dos caminos. */
+  const newEvent = useCallback(() => {
+    commit((current) => ({ ...current, activeId: null }));
+    setForm(null);
+    setPath("none");
+  }, [commit]);
+
+  // ── pilotos del evento (editables) ──────────────────────────────────────
+  const [editDriver, setEditDriver] = useState<string | null>(null);
+
+  const patchDriver = useCallback(
+    (driverId: string, change: (driver: StrategyDriver) => StrategyDriver) => {
+      if (!eventId) return;
+      commit((current) =>
+        patchEvent(current, eventId, (event) => ({
+          ...event,
+          drivers: event.drivers.map((driver) => (driver.id === driverId ? change(driver) : driver)),
+        })),
+      );
+    },
+    [commit, eventId],
+  );
+
+  const setDriverPace = useCallback(
+    (driverId: string, mode: "dry" | "wet" | "eco", slot: 0 | 1, raw: string) => {
+      const value = Number(raw.replace(",", "."));
+      if (!Number.isFinite(value) || value <= 0) return;
+      patchDriver(driverId, (driver) => {
+        const pace: [number, number] = [driver[mode][0], driver[mode][1]];
+        pace[slot] = value;
+        return { ...driver, [mode]: pace };
+      });
+    },
+    [patchDriver],
+  );
+
+  // ── columna contextual ──────────────────────────────────────────────────
+  /** Series del calendario: primero las seguidas, luego el resto. */
+  const seriesOptions = useMemo(() => {
+    const followed = calendar.starts.filter((start) => start.followed);
+    const rest = calendar.starts.filter((start) => !start.followed);
+    return [...followed, ...rest].slice(0, 10);
+  }, [calendar.starts]);
 
   const context = (
     <div className="orbit-strategy__context">
-      <section aria-label={t("strategy.context.strategies")} className="orbit-block">
+      <section aria-label={t("strategy.context.events")} className="orbit-block">
         <div className="orbit-block__head">
-          <span className="orbit-eyebrow">{roster?.event.name ?? t("strategy.context.noEvent")}</span>
+          <span className="orbit-eyebrow">{t("strategy.context.events")}</span>
+        </div>
+        <div className="orbit-list" data-testid="orbit-strategy-events">
+          {store.events.length === 0 ? (
+            <p className="orbit-row__copy">{t("strategy.context.noEvents")}</p>
+          ) : (
+            store.events.map((item) => (
+              <ListRow
+                ariaSelected={item.id === store.activeId}
+                key={item.id}
+                onClick={() => selectEvent(item.id)}
+                selected={item.id === store.activeId}
+                subtitle={item.track || item.cls}
+                title={item.name}
+                trailing={
+                  <span className="orbit-when">{formatStartTime(new Date(item.startAt))}</span>
+                }
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Las estrategias son del evento activo: sin evento no hay bloque vacío. */}
+      <section
+        aria-label={t("strategy.context.strategies")}
+        className="orbit-block"
+        hidden={!eventRecord}
+      >
+        <div className="orbit-block__head">
+          <span className="orbit-eyebrow">{eventRecord?.name ?? t("strategy.context.noEvent")}</span>
         </div>
         <div className="orbit-list" data-testid="orbit-strategy-variants">
           {Object.values(variants).map((variant) => (
@@ -562,81 +852,330 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         </div>
       </section>
 
-      <section aria-label={t("strategy.context.others")} className="orbit-block">
-        <div className="orbit-block__head">
-          <span className="orbit-eyebrow">{t("strategy.context.others")}</span>
-        </div>
-        <div className="orbit-list" data-testid="orbit-strategy-others">
-          {otherEvents.length === 0 ? (
-            <p className="orbit-row__copy">{t("strategy.context.noOthers")}</p>
-          ) : (
-            otherEvents.map((start) => (
-              <ListRow
-                key={`${start.seriesId}-${start.at.getTime()}`}
-                // `ListRow` es un botón: dejarla sin `onClick` era un control
-                // muerto. El puente publica un único evento activo, así que la
-                // fila explica por qué todavía no se abre (auditoría D-94).
-                onClick={() =>
-                  toast.show(
-                    t("strategy.context.otherTitle"),
-                    formatMessage(t("strategy.context.otherHint"), {
-                      event: roster?.event.name ?? t("strategy.context.noEvent"),
-                      name: start.name,
-                    }),
-                  )
-                }
-                subtitle={start.track}
-                title={start.name}
-                trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
-              />
-            ))
-          )}
-        </div>
-      </section>
-
-      <Button
-        className="orbit-strategy__new"
-        data-testid="orbit-strategy-new-column"
-        onClick={() => createStrategy(true)}
-        variant="ghost"
-      >
-        {t("strategy.new")}
-      </Button>
+      <div className="orbit-strategy__context-acts">
+        <Button
+          className="orbit-strategy__new"
+          data-testid="orbit-strategy-new-column"
+          disabled={!eventRecord}
+          onClick={() => createStrategy(true)}
+          variant="ghost"
+        >
+          {t("strategy.new")}
+        </Button>
+        <Button
+          className="orbit-strategy__new"
+          data-testid="orbit-strategy-new-event"
+          onClick={newEvent}
+          variant="ghost"
+        >
+          {t("strategy.context.newEvent")}
+        </Button>
+      </div>
     </div>
   );
 
-  // ── estado vacío ────────────────────────────────────────────────────────
-  if (!roster || !active || !plan) {
+  // ── formulario del evento (crear · editar) ──────────────────────────────
+  const durationPreset = form
+    ? (DURATION_PRESETS.map(String) as string[]).includes(form.draft.durationMin)
+      ? form.draft.durationMin
+      : "custom"
+    : "custom";
+
+  const eventForm = form ? (
+    <Surface
+      aria-label={form.mode === "edit" ? t("strategy.form.editTitle") : t("strategy.form.title")}
+      data-testid="orbit-strategy-form"
+      fill
+      meta={t("strategy.form.meta")}
+      title={form.mode === "edit" ? t("strategy.form.editTitle") : t("strategy.form.title")}
+    >
+      <form
+        className="orbit-event-form"
+        onSubmit={(formEvent) => {
+          formEvent.preventDefault();
+          submitForm();
+        }}
+      >
+        <div className="orbit-event-form__grid">
+          <Field htmlFor="orbit-ev-name" label={t("strategy.form.name")}>
+            <Input
+              id="orbit-ev-name"
+              onChange={(changed) => patchForm({ name: changed.currentTarget.value })}
+              placeholder={t("strategy.form.namePlaceholder")}
+              value={form.draft.name}
+            />
+          </Field>
+          <Field htmlFor="orbit-ev-track" label={t("strategy.form.track")}>
+            <Input
+              id="orbit-ev-track"
+              onChange={(changed) => patchForm({ track: changed.currentTarget.value })}
+              value={form.draft.track}
+            />
+          </Field>
+          <Field htmlFor="orbit-ev-cls" label={t("strategy.form.cls")}>
+            <Input
+              id="orbit-ev-cls"
+              list="orbit-ev-cls-options"
+              onChange={(changed) => patchForm({ cls: changed.currentTarget.value })}
+              value={form.draft.cls}
+            />
+          </Field>
+          <datalist id="orbit-ev-cls-options">
+            {["GT3", "LMGT3", "LMP2", "Hypercar", "GTE", "TCR"].map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+          <Field htmlFor="orbit-ev-start" label={t("strategy.form.start")}>
+            <Input
+              id="orbit-ev-start"
+              onChange={(changed) => patchForm({ startAt: changed.currentTarget.value })}
+              type="datetime-local"
+              value={form.draft.startAt}
+            />
+          </Field>
+          <Field htmlFor="orbit-ev-duration" label={t("strategy.form.duration")}>
+            <div className="orbit-event-form__duration">
+              <Seg
+                label={t("strategy.form.duration")}
+                onChange={(value) => {
+                  if (value !== "custom") patchForm({ durationMin: value });
+                }}
+                options={[
+                  ...DURATION_PRESETS.map((min) => ({
+                    value: String(min),
+                    label: formatMessage(t("strategy.form.durationPreset"), { h: min / 60 }),
+                  })),
+                  { value: "custom", label: t("strategy.form.durationCustom") },
+                ]}
+                value={durationPreset}
+              />
+              <Input
+                aria-label={t("strategy.form.durationMin")}
+                id="orbit-ev-duration"
+                inputMode="numeric"
+                numeric
+                onChange={(changed) => patchForm({ durationMin: changed.currentTarget.value })}
+                unit="min"
+                value={form.draft.durationMin}
+              />
+            </div>
+          </Field>
+          <Field htmlFor="orbit-ev-tank" label={t("strategy.form.tank")}>
+            <Input
+              id="orbit-ev-tank"
+              inputMode="decimal"
+              numeric
+              onChange={(changed) => patchForm({ tankL: changed.currentTarget.value })}
+              unit="L"
+              value={form.draft.tankL}
+            />
+          </Field>
+          <Field htmlFor="orbit-ev-pit" label={t("strategy.form.pit")}>
+            <Input
+              id="orbit-ev-pit"
+              inputMode="decimal"
+              numeric
+              onChange={(changed) => patchForm({ pitLossSec: changed.currentTarget.value })}
+              unit="s"
+              value={form.draft.pitLossSec}
+            />
+          </Field>
+          <Field htmlFor="orbit-ev-team" label={t("strategy.form.team")}>
+            <Input
+              id="orbit-ev-team"
+              onChange={(changed) => patchForm({ team: changed.currentTarget.value })}
+              value={form.draft.team}
+            />
+          </Field>
+        </div>
+
+        <section aria-label={t("strategy.form.drivers")} className="orbit-event-form__drivers">
+          <div className="orbit-event-form__drivers-head">
+            <h4>{t("strategy.form.drivers")}</h4>
+            <Button
+              data-testid="orbit-strategy-form-add-driver"
+              onClick={() =>
+                setForm((current) =>
+                  current
+                    ? {
+                        ...current,
+                        draft: {
+                          ...current.draft,
+                          drivers: [
+                            ...current.draft.drivers,
+                            newDriver(
+                              formatMessage(t("strategy.form.driverN"), {
+                                n: current.draft.drivers.length + 1,
+                              }),
+                              current.draft.drivers.length,
+                            ),
+                          ],
+                        },
+                      }
+                    : current,
+                )
+              }
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              {t("strategy.form.addDriver")}
+            </Button>
+          </div>
+          {form.draft.drivers.map((driver, index) => (
+            <div className="orbit-event-form__driver" key={driver.id}>
+              <Input
+                aria-label={formatMessage(t("strategy.form.driverName"), { n: index + 1 })}
+                onChange={(changed) =>
+                  patchFormDriver(index, {
+                    name: changed.currentTarget.value,
+                    ini: initialsOf(changed.currentTarget.value),
+                  })
+                }
+                value={driver.name}
+              />
+              <Input
+                aria-label={formatMessage(t("strategy.form.driverIni"), { n: index + 1 })}
+                maxLength={3}
+                onChange={(changed) => patchFormDriver(index, { ini: changed.currentTarget.value })}
+                value={driver.ini}
+              />
+              <Select
+                label={formatMessage(t("strategy.form.driverColor"), { n: index + 1 })}
+                onChange={(value) => patchFormDriver(index, { color: value })}
+                options={DRIVER_COLORS.map((color, k) => ({
+                  value: color,
+                  label: formatMessage(t("strategy.form.colorN"), { n: k + 1 }),
+                }))}
+                value={driver.color}
+              />
+              <Input
+                aria-label={formatMessage(t("strategy.form.driverPace"), { n: index + 1 })}
+                inputMode="decimal"
+                numeric
+                onChange={(changed) =>
+                  patchFormDriver(index, {
+                    dry: [Number(changed.currentTarget.value) || driver.dry[0], driver.dry[1]],
+                  })
+                }
+                unit="s"
+                value={String(driver.dry[0])}
+              />
+              <Input
+                aria-label={formatMessage(t("strategy.form.driverFuel"), { n: index + 1 })}
+                inputMode="decimal"
+                numeric
+                onChange={(changed) =>
+                  patchFormDriver(index, {
+                    dry: [driver.dry[0], Number(changed.currentTarget.value) || driver.dry[1]],
+                  })
+                }
+                unit="L/v"
+                value={String(driver.dry[1])}
+              />
+              <Button
+                aria-label={formatMessage(t("strategy.form.removeDriver"), { n: index + 1 })}
+                disabled={form.draft.drivers.length <= 1}
+                onClick={() =>
+                  setForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          draft: {
+                            ...current.draft,
+                            drivers: current.draft.drivers.filter((_, i) => i !== index),
+                          },
+                        }
+                      : current,
+                  )
+                }
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+        </section>
+
+        <div className="orbit-event-form__acts">
+          <Button data-testid="orbit-strategy-form-submit" type="submit" variant="primary">
+            {form.mode === "edit" ? t("strategy.form.save") : t("strategy.form.submit")}
+          </Button>
+          <Button onClick={() => setForm(null)} type="button" variant="ghost">
+            {t("strategy.form.cancel")}
+          </Button>
+        </div>
+      </form>
+    </Surface>
+  ) : null;
+
+  // ── estado inicial: dos caminos ─────────────────────────────────────────
+  if (!eventRecord || !strategyEvent || !active || !plan) {
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        {form ? eventForm : (
         <Surface
-          aria-label={t("strategy.empty.title")}
+          aria-label={t("strategy.picker.title")}
           data-testid="orbit-strategy-empty"
-          title={t("strategy.empty.title")}
+          fill
+          meta={t("strategy.picker.meta")}
+          title={t("strategy.picker.title")}
         >
-          <p className="orbit-strategy__empty-lead">{t("strategy.empty.lead")}</p>
-          <div className="orbit-list">
-            {otherEvents.length === 0 ? (
-              <Note title={t("strategy.empty.noneTitle")}>{t("strategy.empty.none")}</Note>
-            ) : (
-              otherEvents.map((start) => (
-                <ListRow
-                  key={`${start.seriesId}-${start.at.getTime()}`}
-                  subtitle={start.track}
-                  title={start.name}
-                  trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
-                />
-              ))
-            )}
+          <p className="orbit-strategy__empty-lead">{t("strategy.picker.lead")}</p>
+          <div className="orbit-strategy__paths" data-testid="orbit-strategy-paths">
+            <Featured
+              data-testid="orbit-strategy-path-own"
+              interactive
+              onClick={openCreate}
+            >
+              <span className="orbit-path__k">{t("strategy.picker.own")}</span>
+              <span className="orbit-path__d">{t("strategy.picker.ownHint")}</span>
+            </Featured>
+            <Featured
+              data-testid="orbit-strategy-path-series"
+              interactive
+              onClick={() => {
+                setForm(null);
+                setPath("series");
+              }}
+            >
+              <span className="orbit-path__k">{t("strategy.picker.series")}</span>
+              <span className="orbit-path__d">{t("strategy.picker.seriesHint")}</span>
+            </Featured>
           </div>
+
+          {path === "series" ? (
+            <div className="orbit-list" data-testid="orbit-strategy-series">
+              {seriesOptions.length === 0 ? (
+                <Note title={t("strategy.empty.noneTitle")}>{t("strategy.empty.none")}</Note>
+              ) : (
+                seriesOptions.map((start) => (
+                  <ListRow
+                    key={`${start.seriesId}-${start.at.getTime()}`}
+                    onClick={() => createFromSeries(start)}
+                    subtitle={[start.track, start.vehicleClass, start.durationMin
+                      ? formatMessage(t("strategy.chip.duration"), { min: start.durationMin })
+                      : ""]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    title={start.name}
+                    trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
+                  />
+                ))
+              )}
+            </div>
+          ) : null}
         </Surface>
+        )}
       </div>
     );
   }
 
-  const event = roster.event;
-  const drivers = roster.drivers;
+  const event = strategyEvent;
+  const drivers = eventRecord.drivers;
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
@@ -794,7 +1333,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                 id: "info",
                 title: t("strategy.menu.info"),
                 description: t("strategy.menu.infoHint"),
-                onSelect: () => toast.show(t("strategy.menu.info"), t("strategy.menu.soon")),
+                onSelect: openEdit,
               },
               {
                 id: "export",
@@ -828,7 +1367,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         value={tab}
       />
 
-      {tab === "strategies" ? (
+      {form ? eventForm : tab === "strategies" ? (
         <div className="orbit-strategy__pane" data-testid="orbit-strategy-strategies">
           <div className="orbit-strats-grid">
             {cards.map((variant) => {
@@ -1413,18 +1952,82 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                           </div>
                         ))}
                       </div>
-                      {/* Sin flujo real de edición de pilotos: en vez de un
-                          toast que finge, el botón queda deshabilitado con el
-                          motivo a la vista (auditoría D-94). */}
+                      {/* Los pilotos son del evento local: sus ritmos y su
+                          consumo se editan aquí y el plan se recalcula
+                          (D-W4-3, sustituye al botón muerto de D-94). */}
                       <Button
-                        data-tip={t("strategy.drivers.editTip")}
-                        data-tip-side="top"
-                        disabled
+                        aria-expanded={editDriver === driver.id}
+                        data-testid={`orbit-driver-edit-${driver.id}`}
+                        onClick={() =>
+                          setEditDriver((current) => (current === driver.id ? null : driver.id))
+                        }
                         size="sm"
                         variant="ghost"
                       >
                         {t("strategy.drivers.edit")}
                       </Button>
+                      {editDriver === driver.id ? (
+                        <div
+                          className="orbit-driver__editor"
+                          data-testid={`orbit-driver-editor-${driver.id}`}
+                        >
+                          <label className="orbit-driver__field">
+                            <span>{t("strategy.drivers.name")}</span>
+                            <Input
+                              aria-label={t("strategy.drivers.name")}
+                              onChange={(changed) =>
+                                patchDriver(driver.id, (item) => ({
+                                  ...item,
+                                  name: changed.currentTarget.value,
+                                }))
+                              }
+                              value={driver.name}
+                            />
+                          </label>
+                          {(["dry", "wet", "eco"] as const).map((mode) => (
+                            <div className="orbit-driver__field-row" key={mode}>
+                              <label className="orbit-driver__field">
+                                <span>
+                                  {formatMessage(t("strategy.drivers.paceOf"), {
+                                    mode: t(`strategy.drivers.${mode}`),
+                                  })}
+                                </span>
+                                <Input
+                                  aria-label={formatMessage(t("strategy.drivers.paceOf"), {
+                                    mode: t(`strategy.drivers.${mode}`),
+                                  })}
+                                  inputMode="decimal"
+                                  numeric
+                                  onChange={(changed) =>
+                                    setDriverPace(driver.id, mode, 0, changed.currentTarget.value)
+                                  }
+                                  unit="s"
+                                  value={String(driver[mode][0])}
+                                />
+                              </label>
+                              <label className="orbit-driver__field">
+                                <span>
+                                  {formatMessage(t("strategy.drivers.fuelOf"), {
+                                    mode: t(`strategy.drivers.${mode}`),
+                                  })}
+                                </span>
+                                <Input
+                                  aria-label={formatMessage(t("strategy.drivers.fuelOf"), {
+                                    mode: t(`strategy.drivers.${mode}`),
+                                  })}
+                                  inputMode="decimal"
+                                  numeric
+                                  onChange={(changed) =>
+                                    setDriverPace(driver.id, mode, 1, changed.currentTarget.value)
+                                  }
+                                  unit="L/v"
+                                  value={String(driver[mode][1])}
+                                />
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </article>
                   ))}
                 </div>

@@ -642,6 +642,126 @@
   line-height: 1.55;
 }
 
+/* Sin evento activo el bloque de estrategias no deja un hueco fantasma. */
+.orbit-strategy__context .orbit-block[hidden] {
+  display: none;
+}
+
+.orbit-strategy__context-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Los dos caminos del estado inicial (briefing 07, parte B). */
+
+.orbit-strategy__paths {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-strategy__paths .orbit-featured {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  text-align: left;
+}
+
+.orbit-path__k {
+  color: var(--orbit-ink-1);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 600;
+}
+
+.orbit-path__d {
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------- FORMULARIO DEL EVENTO */
+
+.orbit-event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.orbit-event-form__grid {
+  display: grid;
+  gap: 14px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-event-form__duration {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.orbit-event-form__drivers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orbit-event-form__drivers-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orbit-event-form__drivers-head h4 {
+  margin: 0;
+  color: var(--orbit-ink-1);
+  font-size: var(--orbit-fs-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbit-event-form__driver {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  grid-template-columns: minmax(0, 2fr) 72px minmax(0, 1fr) 96px 96px auto;
+}
+
+.orbit-event-form__acts {
+  display: flex;
+  gap: 10px;
+}
+
+/* Editor de un piloto del evento (`Editar` de la ficha). */
+
+.orbit-driver__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-driver__field-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-driver__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
 @keyframes orbit-strategy-in {
   from {
     opacity: 0;

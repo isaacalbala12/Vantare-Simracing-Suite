@@ -9,7 +9,7 @@ vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
 }));
 
-// La columna necesita al menos una serie seguida para pintar «Otros eventos».
+// El selector de series se alimenta del calendario real.
 vi.mock("../orbit/use-calendar-starts", () => ({
   useCalendarStarts: () => ({
     calendar: null,
@@ -20,7 +20,9 @@ vi.mock("../orbit/use-calendar-starts", () => ({
         name: "GT3 Sprint Series",
         track: "Spa-Francorchamps",
         at: new Date("2030-01-01T14:00:00Z"),
-        tier: "gold",
+        tier: "advanced",
+        vehicleClass: "GT3",
+        durationMin: 45,
         followed: true,
       },
     ],
@@ -76,10 +78,16 @@ afterEach(() => {
 });
 
 describe("StrategyOrbitPage · cableado auditado", () => {
-  it("una fila de «Otros eventos» ya no es un botón mudo: explica el evento único", async () => {
+  it("la columna «Eventos» lista el evento del puente y ya no explica un límite", async () => {
+    window.localStorage.clear();
     mount();
-    const others = await screen.findByTestId("orbit-strategy-others");
-    fireEvent.click(within(others).getByText("GT3 Sprint Series"));
-    expect(await screen.findByText("Un evento por vez")).toBeTruthy();
+    const events = await screen.findByTestId("orbit-strategy-events");
+    // El roster entra como un evento más, no como el único posible.
+    expect(within(events).getByText("4 Horas de Imola")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-strategy-others")).toBeNull();
+
+    // Y «Nuevo evento» devuelve al selector de dos caminos.
+    fireEvent.click(screen.getByTestId("orbit-strategy-new-event"));
+    expect(await screen.findByTestId("orbit-strategy-paths")).toBeTruthy();
   });
 });

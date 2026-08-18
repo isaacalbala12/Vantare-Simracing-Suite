@@ -42,3 +42,35 @@ export {
   type ToastEntry,
 } from "./toast-context";
 export { Tooltip, type TooltipProps } from "./Tooltip";
+
+// visualización
+export { CountdownDial, type CountdownDialProps } from "./CountdownDial";
+export { MiniStage, type MiniStageProps } from "./MiniStage";
+export {
+  HorizontalTimeline,
+  type HorizontalTimelineProps,
+  type TimelineBlock,
+} from "./HorizontalTimeline";
+export { Donut, type DonutProps, type DonutSlice } from "./Donut";
+export { Trace, type TraceProps, type TraceBand, type TraceChannel } from "./Trace";
+export { TrackMap, type TrackMapProps, type TrackSegment } from "./TrackMap";
+export { CornerSlot, type CornerSlotProps } from "./CornerSlot";
+export { TyreItem, type TyreItemProps } from "./TyreItem";
+export { AvailabilityBoard, type AvailabilityBoardProps } from "./AvailabilityBoard";
+export { KeycapRow, type KeycapRowProps } from "./KeycapRow";
+export { Fader, type FaderProps } from "./Fader";
+export {
+  dialFraction,
+  formatCountdown,
+  formatHour,
+  segmentTone,
+  MINI_STAGE_HEIGHT,
+  MINI_STAGE_WIDTH,
+  TYRE_WARN_USES,
+  type AvailRange,
+  type AvailState,
+  type DriverView,
+  type TyreCompound,
+  type TyreView,
+  type WidgetDoc,
+} from "./viz-types";

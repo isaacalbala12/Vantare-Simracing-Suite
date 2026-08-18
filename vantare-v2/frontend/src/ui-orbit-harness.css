@@ -115,3 +115,68 @@
   font-family: var(--orbit-font-mono);
   font-size: var(--orbit-fs-secondary);
 }
+
+.ok-stage {
+  width: 640px;
+}
+
+.ok-viz-split {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--orbit-space);
+  align-items: start;
+  width: 100%;
+}
+
+.ok-traces {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ok-map {
+  width: 420px;
+}
+
+.ok-corners {
+  display: grid;
+  grid-template-columns: repeat(2, 190px);
+  gap: 10px;
+}
+
+.ok-tyres,
+.ok-hk {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 320px;
+}
+
+.ok-hk {
+  width: 420px;
+}
+
+.ok-avail {
+  width: 720px;
+}
+
+.ok-tl-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ok-tl-head i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ok-bench__row > .orbit-tl {
+  flex: 1 1 100%;
+  min-width: 0;
+}

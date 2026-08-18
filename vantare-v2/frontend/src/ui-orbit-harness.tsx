@@ -7,16 +7,24 @@ import { applyTheme, type VantareTheme } from "./lib/theme";
 import orbitThemeJson from "./themes/vantare-orbit.json";
 import {
   Accordion,
+  AvailabilityBoard,
   Button,
   Chip,
+  CornerSlot,
+  CountdownDial,
+  Donut,
   Dot,
+  Fader,
   Featured,
   Field,
+  HorizontalTimeline,
   IconButton,
   Input,
   Kbd,
+  KeycapRow,
   ListRow,
   Menu,
+  MiniStage,
   Monogram,
   Note,
   Pill,
@@ -31,17 +39,39 @@ import {
   ToastProvider,
   Toggle,
   Tooltip,
+  Trace,
+  TrackMap,
   TyreChip,
+  TyreItem,
   UnderlineTabs,
   useToast,
+  type TyreView,
 } from "./ui/orbit";
+import {
+  HARNESS_BANDS,
+  HARNESS_CORNERS,
+  HARNESS_DELTA,
+  HARNESS_DRIVERS,
+  HARNESS_MINE,
+  HARNESS_RANGES,
+  HARNESS_REF,
+  HARNESS_SEGMENTS,
+  HARNESS_TRACK,
+  HARNESS_TYRES,
+  HARNESS_WIDGETS,
+} from "./ui-orbit-harness-fixtures";
+import { buildMockTelemetry } from "./overlay/core/mock-scenarios";
+import type { WidgetType } from "./overlay/core/profile-document";
+import { widgetTypeRegistry } from "./overlay/core/widget-registry";
+import { WidgetVisualHost } from "./overlay/core/WidgetVisualHost";
+import { WidgetVisualViewport } from "./overlay/core/WidgetVisualViewport";
 
 /**
- * Harness visual del kit Orbit (briefing 02, parte A).
+ * Harness visual del kit Orbit (briefing 02, partes A y B).
  *
- * Muestra cada componente de los grupos 1 (primitivos), 2 (estado) y 3
- * (contenedores) en todos los estados que pide el criterio de aceptación. El
- * grupo 4 (visualización) lo añade la parte B.
+ * Muestra cada componente de los cuatro grupos del briefing (primitivos,
+ * estado, contenedores y visualización) en todos los estados que pide el
+ * criterio de aceptación.
  */
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
@@ -358,24 +388,279 @@ function Containers() {
   );
 }
 
+/** Reloj fijo del banco: las capturas del dial y de la timeline no pueden
+ *  cambiar entre ejecuciones. */
+const BENCH_NOW = new Date("2026-08-18T14:00:00");
+const BENCH_TARGET = new Date(BENCH_NOW.getTime() + 90 * 60_000);
+
+const STINT_ROWS = [
+  {
+    id: "isaac",
+    name: "Isaac",
+    color: "#f04755",
+    blocks: [
+      { id: "s1", start: BENCH_NOW, durationMin: 55, color: "#f04755", label: "S1", done: true },
+      {
+        id: "s3",
+        start: new Date(BENCH_NOW.getTime() + 115 * 60_000),
+        durationMin: 60,
+        color: "#f04755",
+        label: "S3",
+      },
+    ],
+  },
+  {
+    id: "sol",
+    name: "Sol",
+    color: "#5ccbd5",
+    blocks: [
+      {
+        id: "s2",
+        start: new Date(BENCH_NOW.getTime() + 55 * 60_000),
+        durationMin: 60,
+        color: "#5ccbd5",
+        label: "S2",
+      },
+      {
+        id: "s4",
+        start: new Date(BENCH_NOW.getTime() + 175 * 60_000),
+        durationMin: 45,
+        color: "#5ccbd5",
+        label: "S4",
+      },
+    ],
+  },
+];
+
+/** Instantánea fija para el mini-lienzo: los widgets reales del sistema V3 se
+ *  pintan en modo preview (`renderMode: "harness"`), sin interacción. */
+const STAGE_SNAPSHOT = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+
+function renderStageWidget(doc: { id: string; w: number; h: number }) {
+  const type = doc.id as WidgetType;
+  const definition = widgetTypeRegistry.get(type);
+  const widget = definition.createDefault(doc.id);
+  const layout = { ...widget.layout, w: doc.w, h: doc.h };
+  return (
+    <WidgetVisualViewport layout={layout} testId={`ok-stage-${doc.id}`} widgetType={type}>
+      <WidgetVisualHost
+        renderMode="harness"
+        snapshot={STAGE_SNAPSHOT}
+        widget={{ ...widget, layout }}
+      />
+    </WidgetVisualViewport>
+  );
+}
+
+function Visualization() {
+  const [stint, setStint] = useState("s2");
+  const [corner, setCorner] = useState("T7");
+  const [slots, setSlots] = useState<Record<string, TyreView | undefined>>({
+    FL: HARNESS_TYRES[0],
+    FR: undefined,
+    RL: undefined,
+    RR: undefined,
+  });
+  const [picked, setPicked] = useState("SET-02");
+
+  const assign = (key: string) => (id: string) => {
+    const tyre = HARNESS_TYRES.find((item) => item.id === id);
+    setSlots((current) => ({ ...current, [key]: tyre }));
+  };
+
+  return (
+    <section aria-label="4 · Visualización" className="ok-group" data-group="visualizacion">
+      <h2>4 · Visualización</h2>
+      <div className="ok-group__body" data-shot="visualizacion-a">
+        <Bench label="Dial y mini-lienzo">
+          <CountdownDial
+            intervalMin={180}
+            meta="Spa · 6 h · 24 inscritos"
+            now={BENCH_NOW}
+            onOpen={() => {}}
+            target={BENCH_TARGET}
+            title="Próxima salida"
+          />
+          <div className="ok-stage">
+            <MiniStage renderWidget={renderStageWidget} system="crystal" widgets={HARNESS_WIDGETS} />
+          </div>
+        </Bench>
+        <Bench label="Timeline (2 filas)">
+          <HorizontalTimeline
+            blocks={(row) => row.blocks}
+            headWidth={150}
+            label="Plan de stints"
+            now={new Date(BENCH_NOW.getTime() + 95 * 60_000)}
+            onBlock={setStint}
+            rowLabel={(row) => (
+              <span className="ok-tl-head">
+                <i aria-hidden="true" style={{ background: row.color }} />
+                {row.name}
+              </span>
+            )}
+            rows={STINT_ROWS}
+            selected={stint}
+            spanMin={240}
+            start={BENCH_NOW}
+            tickEveryMin={30}
+          />
+        </Bench>
+        <Bench label="Donut y trazas">
+          <div className="ok-viz-split">
+            <Donut
+              centerLabel="Reparto"
+              centerValue="4 h 00"
+              slices={[
+                { id: "isaac", label: "Isaac", value: 95, color: "#f04755" },
+                { id: "sol", label: "Sol", value: 70, color: "#5ccbd5" },
+                { id: "fable", label: "Fable", value: 55, color: "#78d68b" },
+                { id: "pit", label: "Boxes", value: 20, color: "#ff9b57" },
+              ]}
+            />
+            <div className="ok-traces">
+              <Trace
+                bands={HARNESS_BANDS}
+                channel="speed"
+                cursor={0.38}
+                height={150}
+                mine={HARNESS_MINE.speed}
+                reference={HARNESS_REF.speed}
+                title="Velocidad"
+                unit="km/h"
+              />
+              <Trace
+                bands={HARNESS_BANDS}
+                channel="pedals"
+                extra={HARNESS_MINE.brake}
+                height={100}
+                mine={HARNESS_MINE.throttle}
+                title="Acelerador / Freno"
+                unit="%"
+              />
+              <Trace
+                bands={HARNESS_BANDS}
+                channel="steer"
+                height={80}
+                mine={HARNESS_MINE.steer}
+                reference={HARNESS_REF.steer}
+                title="Volante"
+                unit="°"
+              />
+              <Trace
+                bands={HARNESS_BANDS}
+                channel="delta"
+                height={110}
+                mine={HARNESS_DELTA}
+                title="Delta"
+                unit="s"
+              />
+            </div>
+          </div>
+        </Bench>
+      </div>
+      <div className="ok-group__body" data-shot="visualizacion-b">
+        <Bench label="Mapa de circuito">
+          <div className="ok-map">
+            <TrackMap
+              cursor={HARNESS_CORNERS.find((item) => item.name === corner)?.pos ?? 0}
+              onSegment={setCorner}
+              path={HARNESS_TRACK}
+              segments={HARNESS_SEGMENTS}
+              selected={corner}
+            />
+          </div>
+        </Bench>
+        <Bench label="Esquinas e inventario">
+          <div className="ok-corners">
+            <CornerSlot
+              corner="FL"
+              onClear={() => setSlots((current) => ({ ...current, FL: undefined }))}
+              onDrop={assign("FL")}
+              tyre={slots.FL}
+            />
+            <CornerSlot
+              corner="FR"
+              onClear={() => setSlots((current) => ({ ...current, FR: undefined }))}
+              onDrop={assign("FR")}
+              picked
+              tyre={slots.FR}
+            />
+            <CornerSlot
+              corner="RL"
+              onClear={() => setSlots((current) => ({ ...current, RL: undefined }))}
+              onDrop={assign("RL")}
+              tyre={slots.RL}
+            />
+            <CornerSlot
+              corner="RR"
+              onClear={() => setSlots((current) => ({ ...current, RR: undefined }))}
+              onDrop={assign("RR")}
+              tyre={slots.RR}
+            />
+          </div>
+          <div className="ok-tyres">
+            <TyreItem onPick={() => setPicked("SET-01")} tyre={HARNESS_TYRES[0]} used={[]} />
+            <TyreItem
+              onPick={() => setPicked("SET-02")}
+              picked={picked === "SET-02"}
+              tyre={HARNESS_TYRES[1]}
+              used={[{ stint: 1, corner: "FL" }]}
+            />
+            <TyreItem
+              onPick={() => setPicked("SET-03")}
+              tyre={HARNESS_TYRES[2]}
+              used={[
+                { stint: 1, corner: "FR" },
+                { stint: 2, corner: "RL" },
+                { stint: 3, corner: "RR" },
+              ]}
+            />
+          </div>
+        </Bench>
+        <Bench label="Disponibilidad">
+          <div className="ok-avail">
+            <AvailabilityBoard
+              drivers={HARNESS_DRIVERS}
+              from={13}
+              ranges={HARNESS_RANGES}
+              to={18.5}
+            />
+          </div>
+        </Bench>
+        <Bench label="Atajos y fader">
+          <div className="ok-hk">
+            <KeycapRow
+              description="Muestra u oculta todos los overlays"
+              keys={["Ctrl", "Shift", "O"]}
+              title="Alternar overlays"
+            />
+            <KeycapRow description="Sin atajo asignado" empty keys={[]} title="Capturar vuelta" />
+            <KeycapRow
+              conflict
+              description="Choca con «Guardar perfil»"
+              keys={["Ctrl", "S"]}
+              title="Marcar stint"
+            />
+          </div>
+          <Fader value={0.62} />
+        </Bench>
+      </div>
+    </section>
+  );
+}
+
 export function Harness() {
   return (
     <ToastProvider>
       <main className="orbit-kit-scope ok-page" data-testid="orbit-kit-harness">
         <header className="ok-head">
           <span className="ok-eyebrow">Command Orbit v0.3</span>
-          <h1>Kit de componentes · parte A</h1>
+          <h1>Kit de componentes</h1>
         </header>
         <Primitives />
         <StateGroup />
         <Containers />
-        {/* grupo 4: visualización (parte B) */}
-        <section aria-label="4 · Visualización" className="ok-group" data-group="visualizacion">
-          <h2>4 · Visualización</h2>
-          <div className="ok-group__body">
-            <p className="ok-copy">Pendiente: lo porta la parte B del briefing 02.</p>
-          </div>
-        </section>
+        <Visualization />
       </main>
     </ToastProvider>
   );

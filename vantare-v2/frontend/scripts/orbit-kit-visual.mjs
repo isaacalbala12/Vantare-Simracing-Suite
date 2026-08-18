@@ -12,9 +12,13 @@ const url = `http://127.0.0.1:${port}/ui-orbit-harness.html`;
 const viewport = { width: 1920, height: 1080 };
 // Una captura por grupo del briefing: el kit completo no cabe en 1080 px.
 const groups = [
-  { id: "primitivos", file: "orbit-kit-1-primitivos" },
-  { id: "estado", file: "orbit-kit-2-estado" },
-  { id: "contenedores", file: "orbit-kit-3-contenedores" },
+  { id: "primitivos", selector: '[data-group="primitivos"]', file: "orbit-kit-1-primitivos" },
+  { id: "estado", selector: '[data-group="estado"]', file: "orbit-kit-2-estado" },
+  { id: "contenedores", selector: '[data-group="contenedores"]', file: "orbit-kit-3-contenedores" },
+  // El grupo 4 no cabe en 1080 px: se parte en las dos mitades que el harness
+  // marca con `data-shot`.
+  { id: "visualizacion-a", selector: '[data-shot="visualizacion-a"]', file: "orbit-kit-4a-visualizacion" },
+  { id: "visualizacion-b", selector: '[data-shot="visualizacion-b"]', file: "orbit-kit-4b-visualizacion" },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -109,8 +113,38 @@ try {
   // Los 3 toasts apilados forman parte del criterio: se disparan antes de la
   // captura del grupo 3 y se capturan dentro de su ventana de 2,6 s.
   for (const group of groups) {
-    const section = page.locator(`[data-group="${group.id}"]`);
+    const section = page.locator(group.selector);
     await section.waitFor();
+    if (group.id.startsWith("visualizacion")) {
+      // Los toasts del grupo 3 se cierran solos: se esperan para que no tapen
+      // las trazas del grupo 4.
+      await page.waitForFunction(() => document.querySelectorAll(".orbit-toast").length === 0, undefined, {
+        timeout: 6000,
+      });
+    }
+    if (group.id === "visualizacion-b") {
+      // `over` y `pulse` de las esquinas son estados de arrastre: se provocan
+      // con eventos reales justo antes de la captura (el pulso dura 500 ms).
+      const transfer = await page.evaluateHandle(() => {
+        const data = new DataTransfer();
+        data.setData("text/plain", "SET-03");
+        return data;
+      });
+      await page.dispatchEvent('[data-testid="orbit-corner-slot-RL"]', "dragover", {
+        dataTransfer: transfer,
+      });
+      await page.dispatchEvent('[data-testid="orbit-corner-slot-RR"]', "drop", {
+        dataTransfer: transfer,
+      });
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector('[data-testid="orbit-corner-slot-RR"]')
+            ?.getAttribute("data-pulse") === "true",
+        undefined,
+        { timeout: 2000 },
+      );
+    }
     if (group.id === "contenedores") {
       await page.getByRole("button", { name: "Lanzar 3 toasts" }).click();
       await page.waitForFunction(

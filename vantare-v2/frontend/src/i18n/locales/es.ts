@@ -9,6 +9,7 @@ import { engineerOrbitEs } from "./engineer-orbit/es";
 import { telemetryOrbitEs } from "./telemetry-orbit/es";
 import { roadmapOrbitEs } from "./roadmap-orbit/es";
 import { settingsOrbitEs } from "./settings-orbit/es";
+import { testingOrbitEs } from "./testing-orbit/es";
 import { diagnosticsEs } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEs } from "../../hub/testing-center/translations";
 
@@ -597,4 +598,5 @@ export const es: Record<string, string> = {
   ...telemetryOrbitEs,
   ...roadmapOrbitEs,
   ...settingsOrbitEs,
+  ...testingOrbitEs,
 };

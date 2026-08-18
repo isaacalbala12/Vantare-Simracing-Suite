@@ -60,6 +60,7 @@ import {
   SettingsOrbitPage,
   SETTINGS_CONTEXT_SLOT_ID,
 } from "../../settings-orbit/SettingsOrbitPage";
+import { TestingCenterOrbitPage } from "../../testing-center-orbit/TestingCenterOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -181,8 +182,22 @@ function OrbitShellBody({
     });
   }, []);
 
+  // Testing Center solo existe con canal testers/nightly (briefing 12): sin
+  // canal el botón no está en el rail y llegar por URL devuelve a Inicio con
+  // un toast, en vez de dejar la vista en blanco.
+  useEffect(() => {
+    if (activeView !== "testing" || testingCenterChannel) return;
+    toast(t("testing.unavailable"));
+    orbitStore.set(ORBIT_KEYS.view, "inicio");
+    onNavigate(viewToSection("inicio"));
+  }, [activeView, onNavigate, t, testingCenterChannel, toast]);
+
   const navigate = useCallback(
     (view: ViewId, target?: string) => {
+      if (view === "testing" && !testingCenterChannel) {
+        toast(t("testing.unavailable"));
+        return;
+      }
       if (!canSeeView(access, view)) {
         toast(
           t("shell.access.unavailable"),
@@ -197,7 +212,7 @@ function OrbitShellBody({
       setNavTarget(target);
       onNavigate(viewToSection(view), target);
     },
-    [access, onNavigate, planLabel, t, toast],
+    [access, onNavigate, planLabel, t, testingCenterChannel, toast],
   );
 
   const railItems: RailItem[] = useMemo(
@@ -500,6 +515,8 @@ function OrbitShellBody({
               <RoadmapOrbitPage channel={testingCenterChannel ?? "stable"} />
             ) : activeView === "ajustes" ? (
               <SettingsOrbitPage target={navTarget} />
+            ) : activeView === "testing" && testingCenterChannel ? (
+              <TestingCenterOrbitPage channel={testingCenterChannel} version={version} />
             ) : (
               children
             )}

@@ -1,0 +1,208 @@
+/* Layout propio de Testing Center (`06 · Testing Center`, briefing 12).
+   El kit cubre superficie, campo, select, textarea, botón, nota y estado
+   sutil; aquí solo viven la cabecera, la rejilla y las filas de consentimiento. */
+
+.orbit-tc {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-tc__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-tc__head-copy {
+  flex: 1;
+  min-width: 0;
+  animation: orbit-tc-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
+}
+
+.orbit-tc__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-tc__head-copy p {
+  max-width: 84ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------- REJILLA */
+
+.orbit-tc__layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--orbit-space);
+  align-items: start;
+  min-height: 0;
+  margin-top: 18px;
+  overflow-y: auto;
+  animation: orbit-tc-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
+}
+
+/* ----------------------------------------------------------- FORMULARIO */
+
+.orbit-tc__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-content: start;
+}
+
+.orbit-tc__field--wide {
+  grid-column: 1 / -1;
+}
+
+.orbit-tc__select {
+  width: 100%;
+}
+
+.orbit-tc__fields .orbit-textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.orbit-tc__error {
+  margin-top: 6px;
+  color: var(--orbit-red);
+  font-size: var(--orbit-fs-secondary);
+}
+
+/* -------------------------------------------------------- CONSENTIMIENTO */
+
+.orbit-tc__consent-title {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 660;
+}
+
+.orbit-tc__consent-lead {
+  margin: 7px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-tc__consent-row {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--orbit-line-row);
+  cursor: pointer;
+}
+
+.orbit-tc__consent-row[data-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.orbit-tc__consent-row input {
+  margin-top: 2.5px;
+  accent-color: var(--orbit-carmine);
+}
+
+.orbit-tc__consent-row b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 650;
+}
+
+.orbit-tc__consent-row[data-disabled="true"] b {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-tc__consent-row span span {
+  display: block;
+  margin-top: 2.5px;
+  color: var(--orbit-ink-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.orbit-tc__preview,
+.orbit-tc__retry {
+  margin: 12px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.orbit-tc__note {
+  margin-top: 12px;
+}
+
+.orbit-tc__sent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(120, 214, 139, 0.28);
+  border-radius: var(--orbit-radius-chip);
+  background: rgba(120, 214, 139, 0.07);
+}
+
+.orbit-tc__sent b {
+  color: var(--orbit-green);
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-tc__sent span {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+}
+
+.orbit-tc__sent code {
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------- BOTONES */
+
+.orbit-tc__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 21px;
+}
+
+.orbit-tc__send,
+.orbit-tc__discard {
+  justify-content: center;
+  width: 100%;
+}
+
+@media (width <= 1440px) {
+  .orbit-tc__layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+
+/* `tab-in` del catálogo de motion (`07-motion.md`): 0→1 con 6px de subida. */
+@keyframes orbit-tc-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

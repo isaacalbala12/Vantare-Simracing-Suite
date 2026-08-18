@@ -7,10 +7,14 @@ import { chromium } from "playwright";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/00-fundamentos");
+// La franja de variantes de la marca (D-96) es evidencia de la shell, no de
+// fundamentos: vive en el harness de tokens pero se guarda con el rail.
+const shellOutput = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/01-shell");
 const port = 5193;
 const url = `http://127.0.0.1:${port}/orbit-tokens-harness.html`;
 
 fs.mkdirSync(output, { recursive: true });
+fs.mkdirSync(shellOutput, { recursive: true });
 
 function portOwners() {
   if (process.platform !== "win32") return [];
@@ -111,6 +115,12 @@ try {
   if (browserProblems.length) throw new Error(`browser console not clean\n${browserProblems.join("\n")}`);
 
   await page.screenshot({ path: path.join(output, "orbit-foundations-1920x1080.png"), fullPage: false });
+
+  const marks = page.getByTestId("orbit-mark-variants");
+  await marks.waitFor();
+  const markRows = await marks.evaluate((node) => node.children.length);
+  if (markRows !== 6) throw new Error(`expected 6 mark rows (3 variantes + 3 referencias), found ${markRows}`);
+  await marks.screenshot({ path: path.join(shellOutput, "orbit-rail-mark-variants.png") });
 
   await page.evaluate(() => localStorage.setItem("vantare.v03orbit.density", "compact"));
   await page.reload({ waitUntil: "networkidle" });

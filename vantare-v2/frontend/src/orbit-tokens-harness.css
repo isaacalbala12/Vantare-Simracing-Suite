@@ -265,3 +265,62 @@
 .orbit-harness__density-row code {
   margin-left: auto;
 }
+
+/* ---- Marca como icono · variantes (D-96) --------------------------------
+   Los tiles copian el botón del rail (52 px, radio 14, ink-4; activo con el
+   degradado carmín) para juzgar las variantes en su contexto real. */
+
+.orbit-harness__marks {
+  display: grid;
+  gap: calc(var(--orbit-space) * .4);
+}
+
+.orbit-harness__mark {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(2, 52px) repeat(2, 92px);
+  align-items: center;
+  gap: calc(var(--orbit-space) * .5);
+  padding: calc(var(--orbit-space) * .3) 0;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-harness__mark-name {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--orbit-space) * .35);
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-harness__mark-name strong {
+  color: var(--orbit-ink);
+}
+
+.orbit-harness__mark-name em {
+  color: var(--orbit-ink-4);
+  font-style: normal;
+}
+
+.orbit-harness__mark-tile {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--orbit-ink-4);
+  background: transparent;
+}
+
+.orbit-harness__mark-tile--xl {
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+}
+
+.orbit-harness__mark-tile--active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(213, 47, 73, .24), rgba(255, 106, 95, .07));
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, .22);
+}

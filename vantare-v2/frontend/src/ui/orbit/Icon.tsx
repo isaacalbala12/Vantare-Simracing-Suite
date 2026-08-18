@@ -2,6 +2,9 @@ import spriteUrl from "../../assets/orbit-icons.svg?no-inline";
 
 export type IconName =
   | "i-vantare"
+  | "i-vantare-a"
+  | "i-vantare-b"
+  | "i-vantare-c"
   | "i-inicio"
   | "i-studio"
   | "i-launcher"

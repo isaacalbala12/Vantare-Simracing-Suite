@@ -5,6 +5,9 @@ import { Events } from '@wailsio/runtime';
 import { V52Shell } from './components/V52Shell';
 import { OrbitShell } from './components/orbit/OrbitShell';
 import { isOrbitEnabled } from './orbit/orbit-flag';
+import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
+import { initialSection } from './orbit/initial-view';
+import { viewToSection } from './orbit/views';
 import { DashboardPage } from './pages/DashboardPage';
 import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -116,7 +119,7 @@ function HubShell() {
   const { result: licenseResult } = useLicense();
   // El flag se lee una vez por montaje: `?orbit=1` lo enciende y lo persiste.
   const [orbitEnabled] = useState(() => isOrbitEnabled());
-  const [section, setSection] = useState<Section>('dashboard');
+  const [section, setSection] = useState<Section>(() => initialSection(orbitEnabled));
   const [version, setVersion] = useState<string | null>(null);
   const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
@@ -146,6 +149,12 @@ function HubShell() {
       const completed = event.data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
       setSettingsLoaded(true);
+      // Primer arranque: la bienvenida se monta sobre Inicio, nunca sobre otra
+      // pantalla que hubiese quedado guardada por una sesión de pruebas.
+      if (!completed) {
+        orbitStore.set(ORBIT_KEYS.view, 'inicio');
+        setSection(viewToSection('inicio'));
+      }
     });
     const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
       setReminder(event.data ?? null);
@@ -196,7 +205,12 @@ function HubShell() {
   // no cambia; con `?orbit=1` se monta la shell Orbit con las mismas páginas.
   const Shell = orbitEnabled ? OrbitShell : V52Shell;
 
+  // La bienvenida y el aviso de carrera son capas `fixed` sobre toda la app, no
+  // contenido de una pantalla. Vivían dentro de `children`, y como la shell
+  // Orbit solo pinta `children` en la rama de respaldo (Studio), el onboarding
+  // acababa apareciendo en Overlays Studio en vez de encima de Inicio.
   return (
+    <>
     <Shell
       activeSection={visibleSection}
       onNavigate={handleNavigate}
@@ -204,12 +218,6 @@ function HubShell() {
       sourceStatus={sourceStatus}
       testingCenterChannel={testingCenterChannel}
     >
-      {settingsLoaded && showBetaWelcome && (
-        <BetaWelcome onComplete={handleBetaWelcomeClose} />
-      )}
-      {reminder && (
-        <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
-      )}
       {visibleSection === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
@@ -240,6 +248,13 @@ function HubShell() {
       )}
       {visibleSection === "roadmap" && <RoadmapPage />}
     </Shell>
+    {settingsLoaded && showBetaWelcome && (
+      <BetaWelcome onComplete={handleBetaWelcomeClose} />
+    )}
+    {reminder && (
+      <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
+    )}
+    </>
   );
 }
 

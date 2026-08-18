@@ -1,0 +1,76 @@
+/** Catalogo `launcher.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const launcherOrbitIt: Record<string, string> = {
+  "launcher.eyebrow": "Applicazioni e catene",
+  "launcher.pageTitle": "Launcher",
+  "launcher.lead":
+    "Rileva le applicazioni compatibili, organizza i profili ed esegue i loro passi in ordine.",
+  "launcher.search": "Cerca applicazioni",
+  "launcher.searchEmpty": "Nessuna applicazione corrisponde alla ricerca.",
+
+  "launcher.discovery.notRun": "Rilevamento non eseguito",
+  "launcher.discovery.scanning": "Rilevamento in corso…",
+  "launcher.discovery.done": "Rilevamento eseguito {{when}}",
+  "launcher.discovery.error": "Rilevamento non riuscito",
+
+  "launcher.stats.apps": "Applicazioni",
+  "launcher.stats.inCatalog": "in catalogo",
+  "launcher.stats.detected": "{{n}} rilevate",
+  "launcher.stats.runScan": "esegui la ricerca",
+  "launcher.stats.profiles": "Profili",
+  "launcher.stats.chains": "catene",
+  "launcher.stats.profilesSub": "{{favorites}} preferiti",
+  "launcher.stats.lastRun": "Ultima esecuzione",
+  "launcher.stats.lastRunNone": "nessuna esecuzione registrata",
+  "launcher.stats.hotkey": "Scorciatoia globale",
+  "launcher.stats.hotkeyHint": "avvia il profilo in evidenza",
+  "launcher.stats.hotkeyNone": "nessuna scorciatoia assegnata",
+
+  "launcher.catalog.title": "Applicazioni",
+  "launcher.catalog.count": "{{n}} in catalogo",
+  "launcher.catalog.neutral":
+    "il catalogo proviene dal repository; nessuna applicazione risulta installata finché non si esegue il rilevamento.",
+  "launcher.catalog.neutralTitle": "Stato neutro:",
+  "launcher.catalog.empty": "Il catalogo è vuoto. Esegui il rilevamento per popolarlo.",
+
+  "launcher.state.catalog": "Catalogo",
+  "launcher.state.detected": "Rilevata",
+  "launcher.state.installed": "Installata",
+
+  "launcher.method.steam": "Steam",
+  "launcher.method.executable": "eseguibile",
+
+  "launcher.profiles.label": "Profili di avvio",
+  "launcher.profile.featuredEyebrow": "Profilo in evidenza · preferito",
+  "launcher.profile.eyebrow": "Profilo",
+  "launcher.profile.launch": "▶ Avvia",
+  "launcher.profile.editAria": "Modifica il profilo {{name}}",
+  "launcher.profile.chainLabel": "Ordine di {{name}}",
+  "launcher.profile.noSteps": "Nessun passo: modifica il profilo e aggiungi applicazioni.",
+  "launcher.profile.noWait": "senza attesa",
+  "launcher.profile.delay": "+{{s}} s",
+  "launcher.profile.create": "Crea profilo",
+  "launcher.profile.createHint": "Scegli applicazioni, ordine, attese e criteri di errore.",
+  "launcher.profile.empty": "Ancora nessun profilo. Creane uno per avviare la catena.",
+
+  "launcher.profile.policy.reuse": "Già aperta · riutilizza",
+  "launcher.profile.policy.restart": "Già aperta · riavvia",
+  "launcher.profile.policy.retry": "Errore · riprova ×{{n}}",
+  "launcher.profile.policy.stop": "Errore · interrompi",
+  "launcher.profile.policy.leave": "All'uscita · lascia aperte",
+  "launcher.profile.policy.closeStarted": "All'uscita · chiudi le avviate",
+
+  "launcher.step.status.launching": "apertura",
+  "launcher.step.status.ready": "pronta",
+  "launcher.step.status.failed": "errore",
+
+  "launcher.context.profiles": "Profili ({{n}})",
+  "launcher.context.catalog": "Catalogo ({{n}} · {{detected}} rilevate)",
+  "launcher.context.hint": "Il rilevamento cerca nel registro, in Steam e nei collegamenti.",
+  "launcher.context.run": "Avvia {{name}}",
+  "launcher.context.steps": "{{n}} passi",
+  "launcher.context.noProfiles": "Nessun profilo",
+  "launcher.stats.profilesSubOne": "{{favorites}} preferito",
+  "launcher.context.profilesTitle": "Profili",
+  "launcher.context.catalogTitle": "Catalogo",
+  "launcher.context.catalogCount": "{{n}} · {{detected}} rilevate",
+};

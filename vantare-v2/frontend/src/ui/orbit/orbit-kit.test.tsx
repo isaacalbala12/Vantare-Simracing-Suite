@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   Accordion,
   Button,
+  Chain,
+  ChainStep,
   Kbd,
   Menu,
   Seg,
@@ -177,5 +179,49 @@ describe("Orbit kit · toasts", () => {
       vi.advanceTimersByTime(2600);
     });
     expect(region.querySelectorAll(".orbit-toast")).toHaveLength(0);
+  });
+});
+
+describe("Orbit kit · cadena de pasos", () => {
+  it("pinta el monograma con el degradado del paso y su espera", () => {
+    const { container } = render(
+      <Chain label="Orden de Creador de Contenido">
+        <ChainStep
+          abbreviation="LMU"
+          g1="#f04755"
+          g2="#77162c"
+          name="Le Mans Ultimate"
+          wait="sin espera"
+        />
+      </Chain>,
+    );
+    const chain = within(container).getByRole("list", {
+      name: "Orden de Creador de Contenido",
+    });
+    const step = within(chain).getByTestId("orbit-chain-step");
+    expect(step.getAttribute("data-s")).toBe("pending");
+    expect(within(step).getByText("LMU").getAttribute("style")).toContain("#f04755");
+    expect(within(step).getByText("Le Mans Ultimate")).toBeTruthy();
+    expect(within(step).getByText("sin espera")).toBeTruthy();
+  });
+
+  it("cambia de estado y sustituye la espera por la etiqueta del estado", () => {
+    const { container } = render(
+      <Chain label="Orden">
+        <ChainStep
+          abbreviation="OBS"
+          g1="#4a4f5c"
+          g2="#1f2229"
+          name="OBS Studio"
+          status="failed"
+          statusLabel="fallo"
+          wait="+2 s"
+        />
+      </Chain>,
+    );
+    const step = within(container).getByTestId("orbit-chain-step");
+    expect(step.getAttribute("data-s")).toBe("failed");
+    expect(step.textContent).toContain("fallo");
+    expect(step.textContent).not.toContain("+2 s");
   });
 });

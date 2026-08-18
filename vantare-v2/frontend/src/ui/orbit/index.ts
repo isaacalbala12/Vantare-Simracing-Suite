@@ -30,6 +30,13 @@ export { Surface, type SurfaceProps } from "./Surface";
 export { Featured, type FeaturedProps } from "./Featured";
 export { ListRow, type ListRowProps } from "./ListRow";
 export { Monogram, type MonogramProps } from "./Monogram";
+export {
+  Chain,
+  ChainStep,
+  type ChainProps,
+  type ChainStepProps,
+  type ChainStepStatus,
+} from "./ChainStep";
 export { Menu, type MenuProps, type MenuItem } from "./Menu";
 export { Accordion, type AccordionProps } from "./Accordion";
 export { UnderlineTabs, type UnderlineTabsProps } from "./UnderlineTabs";

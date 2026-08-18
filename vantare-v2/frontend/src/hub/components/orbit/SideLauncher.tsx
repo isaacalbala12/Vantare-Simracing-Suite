@@ -1,5 +1,6 @@
 import { ListRow } from "../../../ui/orbit/ListRow";
 import { formatMessage } from "../../orbit/format-message";
+import { profileInitials } from "../../launcher-orbit/launcher-orbit-model";
 
 export interface SideLauncherProfile {
   id: string;
@@ -13,13 +14,6 @@ export interface SideLauncherProps {
   onRun(profileId: string): void;
   labels: { title: string; manage: string; steps: string; empty: string };
   className?: string;
-}
-
-function monogram(name: string): string {
-  const words = name.trim().split(/\s+/u).filter(Boolean);
-  if (words.length === 0) return "··";
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join("");
 }
 
 /** Bloque persistente "Launcher": los 2 primeros perfiles con ▶. */
@@ -44,7 +38,7 @@ export function SideLauncher({ profiles, onManage, onRun, labels, className }: S
               key={profile.id}
               leading={
                 <span aria-hidden="true" className="orbit-mono">
-                  {monogram(profile.name)}
+                  {profileInitials(profile.name)}
                 </span>
               }
               onClick={() => onRun(profile.id)}

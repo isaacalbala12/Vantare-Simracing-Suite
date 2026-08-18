@@ -666,6 +666,19 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   overflow: auto;
 }
 
+/* Huecos que la shell reserva para que la pantalla activa porte contenido a la
+   columna contextual y a la topbar (briefings 04 y 05). */
+.orbit-column__slot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-topbar__slot {
+  display: contents;
+}
+
 /* ============================================================ PALETA */
 
 .orbit-palette-backdrop {

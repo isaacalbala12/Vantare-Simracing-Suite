@@ -33,6 +33,11 @@ import { SideProfile } from "./SideProfile";
 import { SideRaces } from "./SideRaces";
 import { Topbar } from "./Topbar";
 import { HomeOrbitPage } from "../../home-orbit/HomeOrbitPage";
+import {
+  LauncherOrbitPage,
+  LAUNCHER_CONTEXT_SLOT_ID,
+  LAUNCHER_TOPBAR_SLOT_ID,
+} from "../../launcher-orbit/LauncherOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -279,6 +284,8 @@ function OrbitShellBody({
   const contextNode: ReactNode =
     activeView === "studio" ? (
       <div className="orbit-column__slot" id="orbit-studio-context-slot" />
+    ) : activeView === "launcher" ? (
+      <div className="orbit-column__slot" id={LAUNCHER_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -419,6 +426,8 @@ function OrbitShellBody({
           >
             {activeView === "studio" ? (
               <div className="orbit-topbar__slot" id="orbit-studio-topbar-slot" />
+            ) : activeView === "launcher" ? (
+              <div className="orbit-topbar__slot" id={LAUNCHER_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
           <div className="orbit-workspace">
@@ -436,6 +445,8 @@ function OrbitShellBody({
                 target={races.target}
                 userName={license?.email?.split("@")[0]}
               />
+            ) : activeView === "launcher" ? (
+              <LauncherOrbitPage />
             ) : (
               children
             )}

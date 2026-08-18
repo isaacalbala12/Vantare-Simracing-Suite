@@ -1,0 +1,76 @@
+/** `launcher.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const launcherOrbitEs: Record<string, string> = {
+  "launcher.eyebrow": "Aplicaciones y cadenas",
+  "launcher.pageTitle": "Launcher",
+  "launcher.lead":
+    "Detecta aplicaciones compatibles, organiza perfiles y ejecuta sus pasos en orden.",
+  "launcher.search": "Buscar aplicaciones",
+  "launcher.searchEmpty": "Ninguna aplicación coincide con la búsqueda.",
+
+  "launcher.discovery.notRun": "Detección no ejecutada",
+  "launcher.discovery.scanning": "Detectando aplicaciones…",
+  "launcher.discovery.done": "Detección ejecutada {{when}}",
+  "launcher.discovery.error": "La detección falló",
+
+  "launcher.stats.apps": "Aplicaciones",
+  "launcher.stats.inCatalog": "en catálogo",
+  "launcher.stats.detected": "{{n}} detectadas",
+  "launcher.stats.runScan": "ejecuta la búsqueda",
+  "launcher.stats.profiles": "Perfiles",
+  "launcher.stats.chains": "cadenas",
+  "launcher.stats.profilesSub": "{{favorites}} favoritos",
+  "launcher.stats.lastRun": "Última ejecución",
+  "launcher.stats.lastRunNone": "sin ejecuciones registradas",
+  "launcher.stats.hotkey": "Atajo global",
+  "launcher.stats.hotkeyHint": "lanza el perfil destacado",
+  "launcher.stats.hotkeyNone": "sin atajo asignado",
+
+  "launcher.catalog.title": "Aplicaciones",
+  "launcher.catalog.count": "{{n}} en catálogo",
+  "launcher.catalog.neutral":
+    "el catálogo procede del repositorio; ninguna aplicación se presenta como instalada hasta ejecutar la detección.",
+  "launcher.catalog.neutralTitle": "Estado neutral:",
+  "launcher.catalog.empty": "El catálogo está vacío. Ejecuta la detección para poblarlo.",
+
+  "launcher.state.catalog": "Catálogo",
+  "launcher.state.detected": "Detectada",
+  "launcher.state.installed": "Instalada",
+
+  "launcher.method.steam": "Steam",
+  "launcher.method.executable": "ejecutable",
+
+  "launcher.profiles.label": "Perfiles de lanzamiento",
+  "launcher.profile.featuredEyebrow": "Perfil destacado · favorito",
+  "launcher.profile.eyebrow": "Perfil",
+  "launcher.profile.launch": "▶ Lanzar",
+  "launcher.profile.editAria": "Editar el perfil {{name}}",
+  "launcher.profile.chainLabel": "Orden de {{name}}",
+  "launcher.profile.noSteps": "Sin pasos: edita el perfil y añade aplicaciones.",
+  "launcher.profile.noWait": "sin espera",
+  "launcher.profile.delay": "+{{s}} s",
+  "launcher.profile.create": "Crear perfil",
+  "launcher.profile.createHint": "Elige aplicaciones, orden, esperas y políticas de error.",
+  "launcher.profile.empty": "Todavía no hay perfiles. Crea uno para lanzar tu cadena.",
+
+  "launcher.profile.policy.reuse": "Ya abierta · reutilizar",
+  "launcher.profile.policy.restart": "Ya abierta · reiniciar",
+  "launcher.profile.policy.retry": "Fallo · reintentar ×{{n}}",
+  "launcher.profile.policy.stop": "Fallo · detener",
+  "launcher.profile.policy.leave": "Al salir · dejar abiertas",
+  "launcher.profile.policy.closeStarted": "Al salir · cerrar lanzadas",
+
+  "launcher.step.status.launching": "abriendo",
+  "launcher.step.status.ready": "listo",
+  "launcher.step.status.failed": "fallo",
+
+  "launcher.context.profiles": "Perfiles ({{n}})",
+  "launcher.context.catalog": "Catálogo ({{n}} · {{detected}} detectadas)",
+  "launcher.context.hint": "La detección busca en el registro, Steam y los accesos directos.",
+  "launcher.context.run": "Lanzar {{name}}",
+  "launcher.context.steps": "{{n}} pasos",
+  "launcher.context.noProfiles": "Sin perfiles",
+  "launcher.stats.profilesSubOne": "{{favorites}} favorito",
+  "launcher.context.profilesTitle": "Perfiles",
+  "launcher.context.catalogTitle": "Catálogo",
+  "launcher.context.catalogCount": "{{n}} · {{detected}} detectadas",
+};

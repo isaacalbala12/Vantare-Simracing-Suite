@@ -417,13 +417,6 @@
 
 /* ============================================================ COLUMNA */
 
-.orbit-column__slot {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
 .orbit-studio-wlist {
   display: flex;
   flex: 1;
@@ -539,10 +532,6 @@
 }
 
 /* ============================================================ TOPBAR */
-
-.orbit-topbar__slot {
-  display: contents;
-}
 
 /*
  * Los controles del Studio van pegados al titulo, no al borde derecho: la

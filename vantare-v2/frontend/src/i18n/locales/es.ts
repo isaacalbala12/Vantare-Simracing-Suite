@@ -2,6 +2,7 @@ import { studioV3Es } from "./studio-v3/es";
 import { shellOrbitEs } from "./shell-orbit/es";
 import { homeOrbitEs } from "./home-orbit/es";
 import { studioOrbitEs } from "./studio-orbit/es";
+import { launcherOrbitEs } from "./launcher-orbit/es";
 import { diagnosticsEs } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEs } from "../../hub/testing-center/translations";
 
@@ -583,4 +584,5 @@ export const es: Record<string, string> = {
   ...shellOrbitEs,
   ...homeOrbitEs,
   ...studioOrbitEs,
+  ...launcherOrbitEs,
 };

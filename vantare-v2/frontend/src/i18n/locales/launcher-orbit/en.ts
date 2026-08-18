@@ -1,0 +1,76 @@
+/** `launcher.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const launcherOrbitEn: Record<string, string> = {
+  "launcher.eyebrow": "Apps and chains",
+  "launcher.pageTitle": "Launcher",
+  "launcher.lead":
+    "Detects compatible apps, organises profiles and runs their steps in order.",
+  "launcher.search": "Search apps",
+  "launcher.searchEmpty": "No app matches the search.",
+
+  "launcher.discovery.notRun": "Detection not run",
+  "launcher.discovery.scanning": "Detecting apps…",
+  "launcher.discovery.done": "Detection run {{when}}",
+  "launcher.discovery.error": "Detection failed",
+
+  "launcher.stats.apps": "Apps",
+  "launcher.stats.inCatalog": "in catalogue",
+  "launcher.stats.detected": "{{n}} detected",
+  "launcher.stats.runScan": "run the search",
+  "launcher.stats.profiles": "Profiles",
+  "launcher.stats.chains": "chains",
+  "launcher.stats.profilesSub": "{{favorites}} favourites",
+  "launcher.stats.lastRun": "Last run",
+  "launcher.stats.lastRunNone": "no runs recorded",
+  "launcher.stats.hotkey": "Global shortcut",
+  "launcher.stats.hotkeyHint": "runs the featured profile",
+  "launcher.stats.hotkeyNone": "no shortcut assigned",
+
+  "launcher.catalog.title": "Apps",
+  "launcher.catalog.count": "{{n}} in catalogue",
+  "launcher.catalog.neutral":
+    "the catalogue comes from the repository; no app is shown as installed until detection runs.",
+  "launcher.catalog.neutralTitle": "Neutral state:",
+  "launcher.catalog.empty": "The catalogue is empty. Run detection to populate it.",
+
+  "launcher.state.catalog": "Catalogue",
+  "launcher.state.detected": "Detected",
+  "launcher.state.installed": "Installed",
+
+  "launcher.method.steam": "Steam",
+  "launcher.method.executable": "executable",
+
+  "launcher.profiles.label": "Launch profiles",
+  "launcher.profile.featuredEyebrow": "Featured profile · favourite",
+  "launcher.profile.eyebrow": "Profile",
+  "launcher.profile.launch": "▶ Launch",
+  "launcher.profile.editAria": "Edit the {{name}} profile",
+  "launcher.profile.chainLabel": "Order of {{name}}",
+  "launcher.profile.noSteps": "No steps: edit the profile and add apps.",
+  "launcher.profile.noWait": "no wait",
+  "launcher.profile.delay": "+{{s}} s",
+  "launcher.profile.create": "Create profile",
+  "launcher.profile.createHint": "Pick apps, order, waits and failure policies.",
+  "launcher.profile.empty": "No profiles yet. Create one to launch your chain.",
+
+  "launcher.profile.policy.reuse": "Already open · reuse",
+  "launcher.profile.policy.restart": "Already open · restart",
+  "launcher.profile.policy.retry": "Failure · retry ×{{n}}",
+  "launcher.profile.policy.stop": "Failure · stop",
+  "launcher.profile.policy.leave": "On exit · leave open",
+  "launcher.profile.policy.closeStarted": "On exit · close started",
+
+  "launcher.step.status.launching": "opening",
+  "launcher.step.status.ready": "ready",
+  "launcher.step.status.failed": "failed",
+
+  "launcher.context.profiles": "Profiles ({{n}})",
+  "launcher.context.catalog": "Catalogue ({{n}} · {{detected}} detected)",
+  "launcher.context.hint": "Detection searches the registry, Steam and shortcuts.",
+  "launcher.context.run": "Launch {{name}}",
+  "launcher.context.steps": "{{n}} steps",
+  "launcher.context.noProfiles": "No profiles",
+  "launcher.stats.profilesSubOne": "{{favorites}} favourite",
+  "launcher.context.profilesTitle": "Profiles",
+  "launcher.context.catalogTitle": "Catalogue",
+  "launcher.context.catalogCount": "{{n}} · {{detected}} detected",
+};

@@ -31,6 +31,7 @@
     "visual:orbit-kit": "node scripts/orbit-kit-visual.mjs",
     "visual:orbit-home": "node scripts/orbit-home-visual.mjs",
     "visual:orbit-studio": "node scripts/orbit-studio-visual.mjs",
+    "visual:orbit-launcher": "node scripts/orbit-launcher-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "design-system:check": "node scripts/check-design-system.mjs"

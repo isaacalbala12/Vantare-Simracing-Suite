@@ -12,6 +12,7 @@ import { DesignSection } from "../inspector/DesignSection";
 import { LayoutSection } from "../inspector/LayoutSection";
 import { WidgetPropertyInspectorView } from "../inspector/WidgetPropertyInspectorView";
 import { resolveInspectorSections } from "../inspector/inspector-sections";
+import { InspectorSkinProvider } from "../inspector/inspector-skin";
 import { useStudioDocument } from "../state/studio-store";
 import {
   behaviorSummary,
@@ -214,6 +215,7 @@ export function StudioOrbitInspector(): React.ReactElement {
   };
 
   return (
+    <InspectorSkinProvider skin="orbit">
     <div
       aria-label={t("studio.inspector.aria")}
       className="orbit-studio-inspector"
@@ -322,5 +324,6 @@ export function StudioOrbitInspector(): React.ReactElement {
         ))}
       </div>
     </div>
+    </InspectorSkinProvider>
   );
 }

@@ -322,6 +322,9 @@
 
 .orbit-field--row {
   display: flex;
+  /* `.orbit-field` es una columna: la variante en fila tiene que revertirlo o
+     el par etiqueta–control se apila y se centra. */
+  flex-direction: row;
   gap: 13px;
   align-items: center;
   justify-content: space-between;

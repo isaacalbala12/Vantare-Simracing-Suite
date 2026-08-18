@@ -7,7 +7,7 @@ import "../../styles/orbit-kit.css";
 export { Icon, type IconName, type IconProps } from "./Icon";
 export { Button, type ButtonProps, type Size, type Tone } from "./Button";
 export { IconButton, type IconButtonProps } from "./IconButton";
-export { Seg, type SegProps, type SegOption } from "./Seg";
+export { Seg, SegMulti, type SegProps, type SegMultiProps, type SegOption } from "./Seg";
 export { Toggle, type ToggleProps } from "./Toggle";
 export { Field, type FieldProps } from "./Field";
 export { Input, type InputProps } from "./Input";

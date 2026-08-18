@@ -308,6 +308,113 @@
   min-height: 46px;
 }
 
+/* Cuerpo de cada seccion real dentro del acordeon: la pila de 14 px del
+   prototipo (`.ins-sec-body`). */
+.orbit-studio-ins__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 2px;
+}
+
+.orbit-studio-ins__body + .orbit-studio-ins__body {
+  padding-top: 14px;
+}
+
+.orbit-studio-ins__grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orbit-studio-ins__grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orbit-studio-ins__num {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.orbit-studio-ins__num > span {
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.orbit-studio-ins__num .orbit-input {
+  width: 100%;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.orbit-studio-ins__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbit-studio-ins__hint {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.orbit-studio-ins__error {
+  margin: 0;
+  color: var(--orbit-red, #f04755);
+  font-size: 11.5px;
+}
+
+.orbit-studio-ins__color {
+  width: 100%;
+  padding: 2px 4px;
+}
+
+/* Los campos del kit ya traen su hueco; dentro del acordeon no llevan margen. */
+.orbit-studio-ins__field {
+  margin: 0;
+}
+
+/* El dock es estrecho: nada dentro del inspector puede crecer por su tamano
+   intrinseco, o el `select` mas largo empujaria la columna entera. */
+.orbit-studio-inspector__body,
+.orbit-studio-ins__body,
+.orbit-studio-ins__body .orbit-field {
+  min-width: 0;
+}
+
+.orbit-studio-ins__body .orbit-select,
+.orbit-studio-ins__body .orbit-input,
+.orbit-studio-ins__body .orbit-textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.orbit-studio-ins__body .orbit-field--row > label {
+  min-width: 0;
+}
+
+/* Las sesiones reales son cinco: el `Seg` ancho reparte en dos filas antes
+   que desbordar el dock. */
+.orbit-studio-ins__body .orbit-seg--wide {
+  flex-wrap: wrap;
+}
+
+.orbit-studio-ins__body .orbit-seg--wide .orbit-seg__option {
+  flex: 1 0 auto;
+  padding: 0 9px;
+}
+
+.orbit-studio-ins__body .orbit-note {
+  overflow-wrap: anywhere;
+}
+
 /* ============================================================ COLUMNA */
 
 .orbit-column__slot {

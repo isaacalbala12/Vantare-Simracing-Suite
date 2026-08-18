@@ -171,12 +171,80 @@ describe("StudioOrbitLayout", () => {
     await waitFor(() => expect(summaries().join(" ")).toContain("fps"));
     const before = summaries().find((text) => text.includes("fps")) ?? "";
 
-    fireEvent.click(screen.getByTestId("studio-behavior-hz-10"));
+    // La frecuencia es un `Select` del kit, no los chips del inspector legado.
+    fireEvent.change(screen.getByRole("combobox", { name: "Frecuencia" }), {
+      target: { value: "10" },
+    });
 
     await waitFor(() => {
       const after = summaries().find((text) => text.includes("fps")) ?? "";
       expect(after).not.toBe(before);
       expect(after).toContain("10");
+    });
+  });
+
+  it("pinta los campos del inspector con los controles del kit y rótulos humanos", async () => {
+    renderStudio();
+    fireEvent.click(
+      within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
+    );
+    const inspector = await screen.findByTestId("orbit-studio-inspector");
+
+    // Diseño: dos `Select` del kit y los dos botones ghost del prototipo.
+    expect(screen.getByRole("combobox", { name: "Sistema" }).className).toContain("orbit-select");
+    expect(screen.getByRole("combobox", { name: "Diseño" })).toBeTruthy();
+    expect(screen.getByTestId("studio-design-save-open").textContent).toContain(
+      "Guardar como diseño",
+    );
+
+    // Comportamiento: sesiones como `Seg` multi-selección con nombres reales.
+    const sessions = screen.getByRole("group", { name: "Sesiones visibles" });
+    expect(within(sessions).getByRole("button", { name: "Carrera" })).toBeTruthy();
+    expect(within(sessions).getByRole("button", { name: "Clasificación" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Visible en boxes" })).toBeTruthy();
+
+    // Layout: cuatro numéricos en fila y el toggle de proporción.
+    for (const name of ["Posición X", "Posición Y", "Ancho", "Alto"]) {
+      expect(screen.getByRole("textbox", { name })).toBeTruthy();
+    }
+    expect(screen.getByRole("button", { name: "Bloquear proporción" })).toBeTruthy();
+
+    // Ni checkboxes ni claves crudas dentro del inspector.
+    expect(inspector.querySelectorAll("input[type='checkbox']").length).toBe(0);
+    expect(inspector.textContent).not.toContain("SHOW-");
+    expect(inspector.textContent).not.toMatch(/studio\.v3\./);
+  });
+
+  it("las sesiones visibles se marcan y desmarcan desde el Seg", async () => {
+    renderStudio();
+    fireEvent.click(
+      within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
+    );
+    const sessions = await screen.findByRole("group", { name: "Sesiones visibles" });
+    const race = within(sessions).getByRole("button", { name: "Carrera" });
+
+    expect(race.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(race);
+    await waitFor(() => expect(race.getAttribute("aria-pressed")).toBe("true"));
+    fireEvent.click(race);
+    await waitFor(() => expect(race.getAttribute("aria-pressed")).toBe("false"));
+  });
+
+  it("los numéricos de layout escriben X/Y/W/H al confirmar", async () => {
+    renderStudio();
+    fireEvent.click(
+      within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
+    );
+    const x = await screen.findByRole("textbox", { name: "Posición X" });
+    fireEvent.change(x, { target: { value: "420" } });
+    fireEvent.blur(x);
+
+    const inspector = screen.getByTestId("orbit-studio-inspector");
+    await waitFor(() => {
+      const summaries = [...inspector.querySelectorAll(".orbit-acc__sum")].map(
+        (node) => node.textContent ?? "",
+      );
+      expect(summaries.join(" ")).toContain("420");
     });
   });
 

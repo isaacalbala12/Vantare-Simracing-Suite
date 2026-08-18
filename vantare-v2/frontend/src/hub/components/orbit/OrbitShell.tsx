@@ -273,7 +273,12 @@ function OrbitShellBody({
 
   // El contexto por sección lo rellena cada briefing de pantalla. Inicio no
   // lleva slot propio (la referencia deja los bloques pegados a la cabecera).
-  const contextNode: ReactNode = null;
+  // Studio sí: la shell reserva el hueco y la propia pantalla porta ahí su
+  // lista de widgets, que necesita el store del Studio (briefing 04).
+  const contextNode: ReactNode =
+    activeView === "studio" ? (
+      <div className="orbit-column__slot" id="orbit-studio-context-slot" />
+    ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
       ? 0
@@ -410,7 +415,11 @@ function OrbitShellBody({
             update={update}
             updateLabel={updateLabel}
             view={activeView}
-          />
+          >
+            {activeView === "studio" ? (
+              <div className="orbit-topbar__slot" id="orbit-studio-topbar-slot" />
+            ) : null}
+          </Topbar>
           <div className="orbit-workspace">
             {activeView === "inicio" ? (
               <HomeOrbitPage

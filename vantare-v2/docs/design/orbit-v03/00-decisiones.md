@@ -147,3 +147,23 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-41 · El mock de Wails adjunta `previewDocument` a `hub:list`
 **Decisión.** El backend real ya incluye `previewDocument` en cada entrada de `hub:list` (`hub_service.go`), que es lo que permite pintar widgets reales en las miniaturas. El mock de harness no lo hacía, así que el mini-lienzo de Inicio no tendría con qué pintar. Se alinea el mock con el contrato real en vez de inventarle una ruta de carga aparte al harness.
+
+## D-42 · El Studio se porta con portales a huecos que reserva la shell
+**Decisión.** La lista de widgets y los controles de la topbar necesitan el store del Studio (`useStudioDocument`), que vive por debajo de la shell en el árbol. En vez de subir ese estado a `OrbitShell`, la shell reserva dos huecos vacíos cuando la vista es `studio` (`#orbit-studio-context-slot` en la columna, `#orbit-studio-topbar-slot` en el slot `children` de `Topbar`) y `StudioOrbitLayout` los rellena con `createPortal`. Los hijos del portal siguen dentro del árbol React del Studio: conservan store, proveedor de confirmación y telemetría, y se pintan donde manda `06`.
+**Consecuencia.** `columnAvailable` de la shell pasa a ser verdadero en Studio por el propio hueco, sin que la shell sepa nada del Studio.
+
+## D-43 · Tres acordeones sobre las seis secciones reales del inspector
+**Decisión.** Se cumple el mapeo que pide el briefing: **Diseño** = `design` + `appearance`, **Comportamiento** = `behavior` + `content`, **Layout** = `layout` + `actions`. `resolveInspectorSections` sigue siendo la autoridad: un grupo solo se pinta si el widget tiene alguna de sus secciones, y el caso "sistema visual no compatible" mantiene su aviso en vez de abrir acordeones vacíos. El a11y no se resiente porque `Accordion` es `<details>/<summary>` nativo.
+**Consecuencia.** `StudioInspector` (rail de seis iconos) sigue intacto para el Studio con el flag apagado; la capa Orbit no lo modifica.
+
+## D-44 · El ojo de la lista va al lado del `ListRow`, no dentro
+**Decisión.** `ListRow` del kit renderiza un `<button>`. Meter el ojo en su `trailing` habría anidado un botón dentro de otro, que no es navegable con teclado ni válido en HTML. La fila se envuelve en un contenedor con el `ListRow` como control de selección y el ojo como hermano posicionado sobre su borde derecho, con `aria-pressed` y `data-tip` propios.
+
+## D-45 · El modo estrés es siembra del harness, no una función del Studio
+**Decisión.** `?stress=1` reescribe el documento del perfil simulado con veinte widgets de nombre largo desde `orbit-studio-harness.tsx`. Es un dato de prueba, no una capacidad del producto: no entra en el código de producción. `delta` aparece una sola vez porque el documento V3 solo admite uno por layout.
+
+## D-46 · El fondo por defecto sigue siendo el degradado del código
+**Decisión.** El prototipo abre con la rejilla seleccionada; `DEFAULT_PREVIEW_STATE` del Studio abre con el degradado, con una razón escrita en el código (se parece más a lo que hay detrás de un overlay en carrera). Manda el código: la toolbar Orbit refleja el estado real del store en vez de forzar la rejilla al montar.
+
+## D-47 · Los iconos que el sprite Orbit no tiene se dibujan en la vista
+**Decisión.** Área segura, zoom −/+, ojo, duplicar y eliminar no existen en `ui/orbit/Icon`. En vez de ampliar el sprite con glifos de una sola pantalla, la vista pinta el trazo del prototipo dentro de un botón con las clases del kit (`orbit-icon-btn`) y su mismo contrato de tooltip (`data-tip`/`aria-label`, nunca `title`). El resto —fondo, fuente, plegar inspector, guardar, overlay, selector de perfil— sí sale del kit tal cual.

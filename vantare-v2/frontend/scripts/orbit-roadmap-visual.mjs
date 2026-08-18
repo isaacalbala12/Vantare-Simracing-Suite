@@ -174,6 +174,80 @@ try {
     await page.close();
   }
 
+  // ── Direcciones de rework (bloque W5). Son una fase de DISEÑO: se piden con
+  // `?roadmapDir=a|b` y conviven con la vista actual, que es la de arriba.
+  for (const direction of ["a", "b"]) {
+    for (const shot of shots) {
+      const page = await browser.newPage({
+        viewport: { width: shot.width, height: shot.height },
+        deviceScaleFactor: 1,
+        timezoneId: "Europe/Madrid",
+      });
+      const problems = [];
+      page.on("pageerror", (error) => {
+        if (!(error.stack ?? "").includes("wailsio_runtime")) {
+          problems.push(`pageerror: ${error.message}`);
+        }
+      });
+
+      const label = `direction-${direction}`;
+      await page.goto(`${url}&roadmapDir=${direction}`, { waitUntil: "networkidle" });
+      await page.getByTestId(`orbit-roadmap-direction-${direction}`).waitFor();
+      await page.evaluate(async () => { await document.fonts.ready; });
+
+      const summary = await page.evaluate((dir) => {
+        const root = document.querySelector(`[data-testid="orbit-roadmap-direction-${dir}"]`);
+        const context = document.querySelector(".orbit-rmd__context");
+        return {
+          scrollHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          innerWidth: window.innerWidth,
+          // La vista actual no debe pintarse a la vez que una dirección.
+          current: document.querySelectorAll('[data-testid="orbit-roadmap"]').length,
+          status: document.querySelector('[data-testid="orbit-roadmap-status"]')?.textContent ?? "",
+          areas: document.querySelectorAll(`[data-testid^="orbit-rmd-${dir}-area-"]`).length,
+          milestones:
+            dir === "a"
+              ? document.querySelectorAll('[data-testid^="orbit-rmd-a-stop-"]').length
+              : document.querySelectorAll('[data-testid^="orbit-rmd-b-milestone-"]').length,
+          nativeTitles: [root, context]
+            .filter(Boolean)
+            .reduce((total, node) => total + node.querySelectorAll("[title]").length, 0),
+        };
+      }, direction);
+
+      if (summary.current !== 0) throw new Error(`${label}: la vista actual sigue montada`);
+      if (summary.areas === 0) throw new Error(`${label}: no pinta ninguna área`);
+      if (summary.milestones === 0) throw new Error(`${label}: no pinta ningún hito`);
+      if (summary.nativeTitles !== 0) {
+        throw new Error(`${label}: usa \`title\` nativo (${summary.nativeTitles})`);
+      }
+      if (!summary.status.trim()) {
+        throw new Error(`${label}: la cabecera no dice el estado de la fuente`);
+      }
+      if (summary.scrollHeight > summary.innerHeight) {
+        throw new Error(
+          `${label} ${shot.name}: la página hace scroll vertical (${summary.scrollHeight} > ${summary.innerHeight})`,
+        );
+      }
+      if (summary.scrollWidth > summary.innerWidth) {
+        throw new Error(`${label} ${shot.name}: la página hace scroll horizontal`);
+      }
+
+      const suffix = shot.name === "1920x1080" ? "" : `-${shot.name}`;
+      await page.screenshot({
+        path: path.join(output, `${label}${suffix}.png`),
+        fullPage: false,
+      });
+
+      if (problems.length) {
+        throw new Error(`${label} ${shot.name}: la consola no está limpia\n${problems.join("\n")}`);
+      }
+      await page.close();
+    }
+  }
+
   console.log(`Orbit roadmap visual PASS. Captures: ${output}`);
 } finally {
   await browser?.close();

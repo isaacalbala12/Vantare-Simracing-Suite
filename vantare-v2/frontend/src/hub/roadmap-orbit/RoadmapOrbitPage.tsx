@@ -20,6 +20,12 @@ import {
   visualState,
   type RoadmapSourceState,
 } from "./roadmap-orbit-model";
+import { RoadmapDirectionA } from "./directions/RoadmapDirectionA";
+import { RoadmapDirectionB } from "./directions/RoadmapDirectionB";
+import {
+  readRoadmapDirection,
+  type RoadmapDirection,
+} from "./directions/roadmap-direction-model";
 import "../../styles/orbit-roadmap.css";
 
 export const ROADMAP_CONTEXT_SLOT_ID = "orbit-roadmap-context-slot";
@@ -35,6 +41,11 @@ export interface RoadmapOrbitPageProps {
   /** Semilla para tests y harness: evita esperar a la red. */
   dataset?: RoadmapDataset;
   sourceState?: RoadmapSourceState;
+  /**
+   * Dirección de rework a pintar (bloque W5). Sin valor —y sin `?roadmapDir`
+   * en la URL— se pinta la vista actual, que es la que sigue en producción.
+   */
+  direction?: RoadmapDirection | null;
 }
 
 /**
@@ -46,7 +57,12 @@ export interface RoadmapOrbitPageProps {
  * rótulos (`roadmap.*`). Si la fuente remota no está disponible, la cabecera
  * lo dice en vez de presentar la copia empaquetada como la fuente.
  */
-export function RoadmapOrbitPage({ channel = "stable", dataset, sourceState }: RoadmapOrbitPageProps) {
+export function RoadmapOrbitPage({
+  channel = "stable",
+  dataset,
+  sourceState,
+  direction,
+}: RoadmapOrbitPageProps) {
   const { t, locale } = useI18n();
   const contextSlot = useOrbitSlot(ROADMAP_CONTEXT_SLOT_ID);
   const phasesRef = useRef<HTMLDivElement | null>(null);
@@ -62,6 +78,11 @@ export function RoadmapOrbitPage({ channel = "stable", dataset, sourceState }: R
     { done: number; total: number }
   > | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  // Solo lectura del query, una vez: la selección de dirección es una fase de
+  // diseño, no un estado de la aplicación.
+  const [queryDirection] = useState<RoadmapDirection | null>(() =>
+    typeof window === "undefined" ? null : readRoadmapDirection(window.location.search),
+  );
 
   useEffect(() => {
     if (seeded) return;
@@ -122,6 +143,18 @@ export function RoadmapOrbitPage({ channel = "stable", dataset, sourceState }: R
   };
 
   const none = t("roadmap.kpi.none");
+
+  const active = direction ?? queryDirection;
+  if (active) {
+    const props = {
+      channel,
+      contextSlot,
+      data,
+      projects,
+      sourceState: state,
+    };
+    return active === "a" ? <RoadmapDirectionA {...props} /> : <RoadmapDirectionB {...props} />;
+  }
 
   return (
     <div className="orbit-rm" data-source={state} data-testid="orbit-roadmap">

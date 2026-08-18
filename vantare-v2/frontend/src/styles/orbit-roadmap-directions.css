@@ -1,0 +1,905 @@
+/* Layout de las DOS direcciones de rework del Roadmap (bloque W5).
+   Fase de diseño: se eligen con `?roadmapDir=a|b` y no sustituyen todavía a la
+   vista actual (`orbit-roadmap.css`). Solo tokens de `orbit.tokens.css`; los
+   componentes (Surface, Featured, Seg, Pill, Chip, ListRow) los pone el kit. */
+
+.orbit-rmd {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 22px 0 18px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-rmd__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-rmd__head-copy h2 {
+  margin: 5px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-rmd__head-side {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+}
+
+.orbit-rmd__empty {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.5;
+}
+
+/* Colores de estado compartidos por las dos direcciones. Se acotan a la vista
+   y a su columna: `[data-state]` es un atributo que usa medio hub. */
+.orbit-rmd,
+.orbit-rmd__context {
+  --rmd-tone: var(--orbit-ink-3);
+}
+
+.orbit-rmd [data-state="done"],
+.orbit-rmd__context [data-state="done"] {
+  --rmd-tone: var(--orbit-green);
+}
+
+.orbit-rmd [data-state="active"],
+.orbit-rmd__context [data-state="active"] {
+  --rmd-tone: var(--orbit-red);
+}
+
+.orbit-rmd [data-state="planned"],
+.orbit-rmd__context [data-state="planned"] {
+  --rmd-tone: var(--orbit-cyan);
+}
+
+.orbit-rmd [data-state="future"],
+.orbit-rmd__context [data-state="future"] {
+  --rmd-tone: var(--orbit-ink-muted);
+}
+
+/* =====================================================  A · TRAYECTO  === */
+
+.orbit-rmd__rail-card {
+  flex: none;
+}
+
+.orbit-rmd-rail {
+  position: relative;
+  padding: 4px 0 2px;
+}
+
+/* ── Paradas (hitos) sobre la vía */
+
+.orbit-rmd-rail__stops {
+  position: relative;
+  height: 52px;
+}
+
+.orbit-rmd-stop {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  padding: 0;
+  color: var(--orbit-ink-2);
+  background: none;
+  border: 0;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.orbit-rmd-stop b {
+  max-width: 15ch;
+  overflow: hidden;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 620;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  transition: color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rmd-stop__dot {
+  width: 9px;
+  height: 9px;
+  background: var(--rmd-tone);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--orbit-surface-1);
+}
+
+.orbit-rmd-stop__stem {
+  width: 1px;
+  height: 10px;
+  background: linear-gradient(var(--rmd-tone), transparent);
+  opacity: 0.55;
+}
+
+.orbit-rmd-stop__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.orbit-rmd-stop:hover b,
+.orbit-rmd-stop:focus-visible b {
+  color: var(--orbit-ink);
+}
+
+.orbit-rmd-stop:focus-visible {
+  outline: 2px solid var(--orbit-red);
+  outline-offset: 4px;
+  border-radius: var(--orbit-radius-chip);
+}
+
+/* ── La vía */
+
+.orbit-rmd-rail__line {
+  display: grid;
+  grid-template-columns: repeat(var(--rmd-stations, 4), minmax(0, 1fr));
+  gap: 10px;
+  margin: 2px 0 14px;
+}
+
+.orbit-rmd-rail__line span {
+  height: 3px;
+  overflow: hidden;
+  background: var(--orbit-line-strong);
+  border-radius: 2px;
+}
+
+.orbit-rmd-rail__line span i {
+  display: block;
+  height: 100%;
+  background: var(--rmd-tone);
+  border-radius: 2px;
+}
+
+/* ── Estaciones (fases) */
+
+.orbit-rmd-rail__stations {
+  display: grid;
+  grid-template-columns: repeat(var(--rmd-stations, 4), minmax(0, 1fr));
+  gap: 10px;
+}
+
+.orbit-rmd-station {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--orbit-surface-1);
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  cursor: pointer;
+  transition:
+    border-color var(--orbit-fast) var(--orbit-ease),
+    background var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rmd-station:hover,
+.orbit-rmd-station:focus-visible {
+  background: var(--orbit-surface-2);
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-rmd-station:focus-visible {
+  outline: 2px solid var(--orbit-red);
+  outline-offset: 2px;
+}
+
+.orbit-rmd-station[data-focus="true"] {
+  border-color: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-rmd-station__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.orbit-rmd-station__copy b {
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-rmd-station__copy span {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-rmd-station__copy em {
+  color: var(--rmd-tone);
+  font-size: var(--orbit-fs-secondary);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ── Dial de la estación */
+
+.orbit-rmd-dial {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+}
+
+.orbit-rmd-dial svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.orbit-rmd-dial__track {
+  fill: none;
+  stroke: var(--orbit-line-strong);
+  stroke-width: 4;
+}
+
+.orbit-rmd-dial__value {
+  fill: none;
+  stroke: var(--rmd-tone);
+  stroke-linecap: round;
+  stroke-width: 4;
+}
+
+.orbit-rmd-dial b {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 620;
+}
+
+/* ── Tres columnas */
+
+.orbit-rmd__cols {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.orbit-rmd__col {
+  min-height: 0;
+}
+
+.orbit-rmd-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.orbit-rmd-focus strong {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-sect);
+  font-weight: 660;
+  letter-spacing: -0.02em;
+}
+
+.orbit-rmd-focus p {
+  margin: 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.5;
+}
+
+.orbit-rmd-focus__bar {
+  height: 5px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+  background: var(--orbit-line-strong);
+  border-radius: 3px;
+}
+
+.orbit-rmd-focus__bar i {
+  display: block;
+  height: 100%;
+  background: var(--rmd-tone);
+  border-radius: 3px;
+}
+
+.orbit-rmd-check {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rmd-check li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.45;
+}
+
+.orbit-rmd-check li i {
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border: 1.5px solid var(--rmd-tone);
+  border-radius: 50%;
+}
+
+/* ── Hitos anclados a la fase de la columna */
+
+.orbit-rmd-focus__stops {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-rmd-focus__stops .orbit-eyebrow {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.orbit-rmd-focus__stops ul {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rmd-focus__stops li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 2px 9px;
+  align-items: center;
+}
+
+.orbit-rmd-focus__stops li > i {
+  width: 7px;
+  height: 7px;
+  background: var(--rmd-tone);
+  border-radius: 50%;
+}
+
+.orbit-rmd-focus__stops li b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 600;
+}
+
+.orbit-rmd-focus__stops li em {
+  grid-column: 2;
+  color: var(--rmd-tone);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Marca «derivado»: lo que la fuente no declara se dice que se ha deducido. */
+.orbit-rmd-focus__stops .orbit-eyebrow i,
+.orbit-rmd-b__fronts-label i,
+.orbit-rmd-b-area__step-tag i {
+  padding: 1px 5px;
+  color: var(--orbit-ember);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.04em;
+  border: 1px solid rgb(255 155 87 / 30%);
+  border-radius: var(--orbit-radius-chip);
+  text-transform: lowercase;
+}
+
+.orbit-rmd-b__fronts-label[data-derived="true"] {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 6px;
+}
+
+/* ── Barras de área (columna 3 de A) */
+
+.orbit-rmd-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.orbit-rmd-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+}
+
+.orbit-rmd-bar b {
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-rmd-bar__pct {
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  text-align: right;
+}
+
+.orbit-rmd-bar__track {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  background: var(--orbit-line-strong);
+  border-radius: 2px;
+}
+
+.orbit-rmd-bar__track i {
+  display: block;
+  height: 100%;
+  background: var(--rmd-tone);
+  border-radius: 2px;
+}
+
+.orbit-rmd-bar em {
+  grid-column: 1 / -1;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* =====================================================  B · TABLERO  ==== */
+
+.orbit-rmd-b__grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.orbit-rmd-b__main {
+  grid-column: span 8;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.orbit-rmd-b__stops-card {
+  grid-column: span 4;
+  grid-row: 1 / span 2;
+  min-height: 0;
+}
+
+.orbit-rmd-b__rest {
+  display: flex;
+  grid-column: span 8;
+  grid-row: 2;
+  min-height: 0;
+}
+
+.orbit-rmd-b__rest > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Featured de la fase actual */
+
+.orbit-rmd-b__featured {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 20px;
+  align-items: start;
+  padding: 18px 20px;
+}
+
+.orbit-rmd-b__featured-copy h3 {
+  margin: 5px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-event);
+  font-weight: 670;
+  letter-spacing: -0.028em;
+}
+
+.orbit-rmd-b__featured-copy p {
+  margin: 6px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.5;
+}
+
+.orbit-rmd-b__fronts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 11px;
+}
+
+.orbit-rmd-b__fronts-label {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-rmd-b__highlights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rmd-b__highlights li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.4;
+}
+
+.orbit-rmd-b__highlights li i {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 50%;
+}
+
+.orbit-rmd-b__dial {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 130px;
+  height: 130px;
+  margin-left: auto;
+}
+
+.orbit-rmd-b__dial svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.orbit-rmd-b__dial .orbit-rmd-dial__track,
+.orbit-rmd-b__dial .orbit-rmd-dial__value {
+  stroke-width: 8;
+}
+
+.orbit-rmd-b__dial .orbit-rmd-dial__value {
+  stroke: var(--orbit-red);
+}
+
+.orbit-rmd-b__dial b {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-kpi);
+  font-weight: 640;
+}
+
+.orbit-rmd-b__dial span {
+  position: absolute;
+  bottom: 30px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.06em;
+}
+
+.orbit-rmd-b__featured-empty {
+  min-height: 120px;
+}
+
+/* ── Hitos como línea vertical */
+
+.orbit-rmd-b__stops {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 0;
+  padding: 0 0 0 3px;
+  list-style: none;
+}
+
+.orbit-rmd-b__stops li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 0 19px;
+}
+
+.orbit-rmd-b__stops li::before {
+  position: absolute;
+  top: 15px;
+  bottom: -17px;
+  left: 4px;
+  width: 1px;
+  background: var(--orbit-line-strong);
+  content: "";
+}
+
+.orbit-rmd-b__stops li:last-child::before {
+  display: none;
+}
+
+.orbit-rmd-b__stops li > i {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  background: var(--rmd-tone);
+  border-radius: 50%;
+}
+
+.orbit-rmd-b__stops li b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 620;
+}
+
+.orbit-rmd-b__stops li span {
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.45;
+}
+
+.orbit-rmd-b__stops li em {
+  color: var(--rmd-tone);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Tarjetas de área */
+
+.orbit-rmd-b__areas-card {
+  min-height: 0;
+}
+
+.orbit-rmd-b__areas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.orbit-rmd-b-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 13px;
+  background: var(--orbit-surface-1);
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+}
+
+.orbit-rmd-b-area header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.orbit-rmd-b-area header b {
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 630;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-rmd-b-area__pct {
+  flex: none;
+  color: var(--rmd-tone);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-rmd-b-area em {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-rmd-b-area__step {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 2px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.4;
+}
+
+.orbit-rmd-b-area__step[data-empty="true"] {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-rmd-b-area__step-tag {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-rmd-b-area__step-tag i {
+  padding: 1px 5px;
+  color: var(--orbit-ember);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+  letter-spacing: 0.04em;
+  border: 1px solid rgb(255 155 87 / 30%);
+  border-radius: var(--orbit-radius-chip);
+  text-transform: lowercase;
+}
+
+/* ======================================================  COLUMNA  ======= */
+
+.orbit-rmd__context {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.orbit-rmd__context-count {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-rmd__context-pct {
+  color: var(--rmd-tone);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-rmd__context-pct[data-tone="done"] {
+  color: var(--orbit-green);
+}
+
+.orbit-rmd__context-pct[data-tone="active"] {
+  color: var(--orbit-red);
+}
+
+.orbit-rmd__context-pct[data-tone="planned"] {
+  color: var(--orbit-cyan);
+}
+
+.orbit-rmd__context-pct[data-tone="future"] {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-rmd__context-hint {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.45;
+}
+
+.orbit-rmd-b__phase-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rmd-b__phase-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 8px;
+  padding: 8px 10px;
+  background: var(--orbit-surface-1);
+  border-left: 2px solid var(--rmd-tone);
+  border-radius: var(--orbit-radius-chip);
+}
+
+.orbit-rmd-b__phase-list li b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 620;
+}
+
+.orbit-rmd-b__phase-list li span {
+  grid-column: 1;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.orbit-rmd-b__phase-list li em {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--rmd-tone);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-style: normal;
+}
+
+/* Menos alto disponible (1920×900): la vía se compacta y las columnas
+   deslizan por dentro; la página no hace scroll. */
+@media (height <= 940px) {
+  .orbit-rmd {
+    gap: 12px;
+    padding: 16px 0 14px;
+  }
+
+  .orbit-rmd-rail__stops {
+    height: 44px;
+  }
+
+  .orbit-rmd-b__highlights {
+    gap: 6px 16px;
+  }
+
+  .orbit-rmd-b__dial {
+    width: 112px;
+    height: 112px;
+  }
+}

@@ -14,7 +14,8 @@ export type IconName =
   | "i-comando"
   | "i-panel"
   | "i-flask"
-  | "i-lock";
+  | "i-lock"
+  | "i-chevron";
 
 export interface IconProps {
   name: IconName;

@@ -19,12 +19,16 @@ describe("Orbit kit · visualización", () => {
   it("el dial traduce la fracción a stroke-dashoffset y al giro del punto", () => {
     // 90 min restantes sobre una ventana de 180 → frac 0.5 → dashoffset 50.
     const target = new Date(NOW.getTime() + 90 * 60_000);
+    const onOpen = vi.fn();
     const { rerender } = render(
       <CountdownDial
+        eyebrow="Próxima serie"
         intervalMin={180}
         meta="Spa"
         now={NOW}
-        onOpen={() => {}}
+        onOpen={onOpen}
+        openLabel="Abrir la serie en Carreras"
+        prefix="en"
         target={target}
         title="Próxima salida"
       />,
@@ -34,13 +38,22 @@ describe("Orbit kit · visualización", () => {
       "rotate(180.00 160 160)",
     );
 
+    // La tarjeta muestra antetítulo, reloj con prefijo y el botón circular.
+    expect(screen.getByText("Próxima serie")).toBeTruthy();
+    expect(screen.getByText("en 1 h 30 m")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Carreras" }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
     // Un cuarto de ventana → frac 0.25 → dashoffset 75.
     rerender(
       <CountdownDial
+        eyebrow="Próxima serie"
         intervalMin={180}
         meta="Spa"
         now={NOW}
-        onOpen={() => {}}
+        onOpen={onOpen}
+        openLabel="Abrir la serie en Carreras"
+        prefix="en"
         target={new Date(NOW.getTime() + 45 * 60_000)}
         title="Próxima salida"
       />,

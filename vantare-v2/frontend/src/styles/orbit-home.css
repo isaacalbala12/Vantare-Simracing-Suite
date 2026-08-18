@@ -311,37 +311,6 @@
   text-align: center;
 }
 
-/* ------------------------------------------- CONTEXTO DE LA COLUMNA */
-
-.orbit-home__context {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 0;
-}
-
-.orbit-home__context dt {
-  color: var(--orbit-ink-4);
-  font-size: var(--orbit-fs-micro);
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.orbit-home__context dd {
-  margin: 2px 0 0;
-  color: var(--orbit-ink);
-  font-family: var(--orbit-font-mono);
-  font-size: var(--orbit-fs-kpi);
-  font-weight: 700;
-}
-
-.orbit-home__context-note {
-  margin: 10px 0 8px;
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-micro);
-}
-
 /* ------------------------------------------------- MODO COMPACTO (≤940px) */
 
 .orbit-home[data-compact="true"] {

@@ -474,10 +474,13 @@ function Visualization() {
       <div className="ok-group__body" data-shot="visualizacion-a">
         <Bench label="Dial y mini-lienzo">
           <CountdownDial
+            eyebrow="Próxima serie"
             intervalMin={180}
             meta="Spa · 6 h · 24 inscritos"
             now={BENCH_NOW}
             onOpen={() => {}}
+            openLabel="Abrir la serie en Carreras"
+            prefix="en"
             target={BENCH_TARGET}
             title="Próxima salida"
           />

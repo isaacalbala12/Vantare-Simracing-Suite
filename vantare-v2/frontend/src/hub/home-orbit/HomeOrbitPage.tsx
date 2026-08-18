@@ -157,9 +157,12 @@ export function HomeOrbitPage({
         <div className="orbit-home__hero-side">
           {target ? (
             <CountdownDial
+              eyebrow={t("home.next.eyebrow")}
               intervalMin={target.intervalMin}
               meta={[target.note, target.licenseLabel].filter(Boolean).join(" · ")}
               onOpen={() => onNavigate("carreras", target.seriesId)}
+              openLabel={t("home.next.open")}
+              prefix={t("home.next.prefix")}
               size={compact ? 200 : 236}
               target={target.at}
               title={[target.name, target.track].filter(Boolean).join(" · ")}

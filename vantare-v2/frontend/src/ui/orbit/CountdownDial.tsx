@@ -1,13 +1,21 @@
 import { useEffect, useId, useState } from "react";
+import { Dot } from "./Dot";
+import { IconButton } from "./IconButton";
 import { dialFraction, formatCountdown } from "./viz-types";
 
 export interface CountdownDialProps {
   target: Date;
   /** Ventana completa del dial en minutos (`13`: 180 por defecto). */
   intervalMin: number;
+  /** Antetítulo con punto (`.focus-top`), p. ej. «Próxima serie». */
+  eyebrow: string;
   title: string;
   meta: string;
+  /** Prefijo del reloj (`04 · .timer`): «en 06:36». */
+  prefix?: string;
   onOpen(): void;
+  /** `aria-label` del botón circular que abre la serie. */
+  openLabel: string;
   size?: 236 | 200;
   /** Reloj inyectable: sin él el dial usa `Date.now()` y refresca cada segundo. */
   now?: Date;
@@ -16,15 +24,19 @@ export interface CountdownDialProps {
 
 /**
  * Dial de cuenta atrás (`04 · .dial`): SVG 320 rotado −90°, track, ticks, arco
- * con `pathLength=100` y punto coral que gira con la fracción. La tarjeta
- * interior es el disparador accesible.
+ * con `pathLength=100` y punto coral que gira con la fracción. Dentro va la
+ * tarjeta vino `.next-race`: antetítulo con punto, nombre · circuito, reloj con
+ * prefijo, línea de cadencia y el botón circular que abre la serie.
  */
 export function CountdownDial({
   target,
   intervalMin,
+  eyebrow,
   title,
   meta,
+  prefix,
   onOpen,
+  openLabel,
   size = 236,
   now,
   className,
@@ -41,6 +53,7 @@ export function CountdownDial({
   const clock = now ?? tick;
   const frac = dialFraction(target, intervalMin, clock);
   const label = formatCountdown(target, clock);
+  const clockLabel = prefix ? `${prefix} ${label}` : label;
 
   return (
     <div
@@ -82,11 +95,26 @@ export function CountdownDial({
           transform={`rotate(${(frac * 360).toFixed(2)} 160 160)`}
         />
       </svg>
-      <button className="orbit-dial__card" onClick={onOpen} type="button">
-        <span className="orbit-dial__title">{title}</span>
-        <span className="orbit-dial__time">{label}</span>
-        <span className="orbit-dial__meta">{meta}</span>
-      </button>
+      <article className="orbit-dial__card" data-testid="orbit-dial-card">
+        <span className="orbit-dial__eyebrow">
+          <Dot />
+          {eyebrow}
+        </span>
+        <strong className="orbit-dial__title">{title}</strong>
+        <div className="orbit-dial__foot">
+          <span className="orbit-dial__clock">
+            <span className="orbit-dial__time">{clockLabel}</span>
+            <small className="orbit-dial__meta">{meta}</small>
+          </span>
+          <IconButton
+            className="orbit-dial__open"
+            icon="i-chevron"
+            label={openLabel}
+            onClick={onOpen}
+            size={28}
+          />
+        </div>
+      </article>
     </div>
   );
 }

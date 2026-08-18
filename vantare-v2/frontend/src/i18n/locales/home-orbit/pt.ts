@@ -16,6 +16,8 @@ export const homeOrbitPt: Record<string, string> = {
   "home.quick.launch": "Lançar perfil",
 
   "home.next.eyebrow": "Próxima série",
+  "home.next.prefix": "em",
+  "home.next.open": "Abrir a série em Corridas",
   "home.next.empty": "Sem partidas próximas no calendário",
 
   "home.focal.eyebrow": "Perfil ativo",
@@ -45,9 +47,4 @@ export const homeOrbitPt: Record<string, string> = {
 
   "home.activity.title": "Atividade recente",
   "home.activity.empty": "Sem atividade disponível",
-
-  "home.context.title": "Num relance",
-  "home.context.profiles": "Perfis",
-  "home.context.starts": "Partidas",
-  "home.context.followed": "{{n}} de séries que segues",
 };

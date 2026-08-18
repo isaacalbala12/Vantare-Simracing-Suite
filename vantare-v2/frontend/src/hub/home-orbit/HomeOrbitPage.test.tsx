@@ -105,6 +105,18 @@ describe("HomeOrbitPage con datos", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Buenos días, Isaac.");
   });
 
+  it("el dial muestra antetítulo, reloj con prefijo y abre la serie en Carreras", () => {
+    const { onNavigate } = renderPage();
+    const card = screen.getByTestId("orbit-dial-card");
+    expect(card.textContent).toContain("Próxima serie");
+    expect(card.textContent).toContain("LMGT3 Fixed · Sebring (School)");
+    // El reloj del dial corre con la hora real: basta con el prefijo y el formato.
+    expect(card.textContent).toMatch(/en \d/);
+    expect(card.textContent).toContain("Cada 15 min · Bronze SR");
+    fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Carreras" }));
+    expect(onNavigate).toHaveBeenCalledWith("carreras", "a");
+  });
+
   it("muestra el perfil activo con sus widgets y el estado del overlay", () => {
     renderPage();
     const focal = screen.getByTestId("orbit-home-focal");

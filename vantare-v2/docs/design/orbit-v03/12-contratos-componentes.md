@@ -71,7 +71,7 @@ export interface CommandPaletteProps { open: boolean; onClose(): void; destinati
 export interface PaletteItem { id: string; label: string; meta?: string; icon: IconName; locked?: string; run(): void; }
 
 // ── datos y visualización ──────────────────────────────────
-export interface CountdownDialProps { target: Date; intervalMin: number; title: string; meta: string; onOpen(): void; size?: 236 | 200; }
+export interface CountdownDialProps { target: Date; intervalMin: number; eyebrow: string; title: string; meta: string; prefix?: string; onOpen(): void; openLabel: string; size?: 236 | 200; }
 export interface MiniStageProps { widgets: WidgetDoc[]; system: "crystal" | "original" | "endurance"; }  // container-query, sin interacción
 export interface HorizontalTimelineProps<Row> {
   rows: Row[]; rowLabel(r: Row): React.ReactNode; start: Date; spanMin: number; tickEveryMin: number;
@@ -87,4 +87,4 @@ export interface AvailabilityBoardProps { drivers: DriverView[]; ranges: Record<
 export interface KeycapRowProps { title: string; description: string; keys: string[]; conflict?: boolean; empty?: boolean; }
 ```
 
-Reglas: `IconName` es la unión de ids del sprite (`"i-inicio" | … | "i-lock"`). `ViewId` = `"inicio"|"studio"|"launcher"|"carreras"|"estrategia"|"ingeniero"|"telemetria"|"roadmap"|"ajustes"|"testing"`. Los tipos de datos (`WidgetDoc`, `TyreView`, `DriverView`, `AvailRange`, `SimStatus`, `UpdateState`) están en `13-modelo-y-algoritmos.md`.
+Reglas: `IconName` es la unión de ids del sprite (`"i-inicio" | … | "i-lock" | "i-chevron"`). `ViewId` = `"inicio"|"studio"|"launcher"|"carreras"|"estrategia"|"ingeniero"|"telemetria"|"roadmap"|"ajustes"|"testing"`. Los tipos de datos (`WidgetDoc`, `TyreView`, `DriverView`, `AvailRange`, `SimStatus`, `UpdateState`) están en `13-modelo-y-algoritmos.md`.

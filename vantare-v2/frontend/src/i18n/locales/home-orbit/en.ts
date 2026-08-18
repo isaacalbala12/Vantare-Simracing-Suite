@@ -16,6 +16,8 @@ export const homeOrbitEn: Record<string, string> = {
   "home.quick.launch": "Run profile",
 
   "home.next.eyebrow": "Next series",
+  "home.next.prefix": "in",
+  "home.next.open": "Open the series in Races",
   "home.next.empty": "No upcoming starts in the calendar",
 
   "home.focal.eyebrow": "Active profile",
@@ -45,9 +47,4 @@ export const homeOrbitEn: Record<string, string> = {
 
   "home.activity.title": "Recent activity",
   "home.activity.empty": "No activity available",
-
-  "home.context.title": "At a glance",
-  "home.context.profiles": "Profiles",
-  "home.context.starts": "Starts",
-  "home.context.followed": "{{n}} from series you follow",
 };

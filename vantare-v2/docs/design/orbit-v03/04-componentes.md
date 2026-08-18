@@ -98,7 +98,7 @@ Backdrop `rgba(3,3,5,.61)` blur 8; caja `min(832px,70vw)`, radio 23, `#18181c`; 
 `aspect-ratio 16/9; container-type: inline-size`, rejilla 6.25cqw, radio 14; hijos `.cw.glass` reales con `pointer-events:none`.
 
 ### Dial de cuenta atrás (`.dial`)
-SVG 320 viewBox → 236px (200 compacto), rotado -90°; track `.07` 2px, ticks `rgba(240,71,85,.22)` 6px dasharray `1 21.4`, arco `url(#dialGrad)` 3px round con `pathLength=100` (dashoffset = 100 − fracción·100), punto coral 5px con glow que rota. Tarjeta `.next-race` 196px dentro (fondo vino).
+SVG 320 viewBox → 236px (200 compacto), rotado -90°; track `.07` 2px, ticks `rgba(240,71,85,.22)` 6px dasharray `1 21.4`, arco `url(#dialGrad)` 3px round con `pathLength=100` (dashoffset = 100 − fracción·100), punto coral 5px con glow que rota. Tarjeta `.next-race` 196px dentro (fondo vino): antetítulo con punto, nombre · circuito, reloj mono 20px con prefijo («en 06:36»), línea `Cada N min · Tier` y botón circular › que abre la serie en Carreras.
 
 ### Timeline horizontal (Carreras `.tl-*`, Estrategia `.race-tl`)
 Rejilla `210px|1fr` (Carreras) o `150px|1fr` (Estrategia); eje con ticks mono 11px; filas 48/34px con líneas verticales por hora; bloques `position:absolute` (radio 6–7, color por tier/piloto, inset highlight, hover eleva) y línea "ahora"/marcas PIT. Scroll horizontal interno en Carreras (`min-width 1400px`).

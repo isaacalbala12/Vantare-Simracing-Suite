@@ -31,7 +31,6 @@ import { SideLauncher } from "./SideLauncher";
 import { SideProfile } from "./SideProfile";
 import { SideRaces } from "./SideRaces";
 import { Topbar } from "./Topbar";
-import { HomeContext } from "../../home-orbit/HomeContext";
 import { HomeOrbitPage } from "../../home-orbit/HomeOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
@@ -272,12 +271,9 @@ function OrbitShellBody({
     [launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, races.starts, t, toggleOverlay],
   );
 
-  // El contexto por sección lo rellena cada briefing de pantalla. Inicio
-  // (briefing 03) ya lo tiene; el resto sigue sin panel propio.
-  const contextNode: ReactNode =
-    activeView === "inicio" ? (
-      <HomeContext onNavigate={navigate} overlay={overlay} races={races.starts} />
-    ) : null;
+  // El contexto por sección lo rellena cada briefing de pantalla. Inicio no
+  // lleva slot propio (la referencia deja los bloques pegados a la cabecera).
+  const contextNode: ReactNode = null;
   const visibleBlockCount =
     activeView === "ajustes"
       ? 0

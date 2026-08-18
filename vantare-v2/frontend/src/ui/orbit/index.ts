@@ -9,9 +9,10 @@ export { Button, type ButtonProps, type Size, type Tone } from "./Button";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Seg, SegMulti, type SegProps, type SegMultiProps, type SegOption } from "./Seg";
 export { Toggle, type ToggleProps } from "./Toggle";
+export { Check, type CheckProps } from "./Check";
 export { Field, type FieldProps } from "./Field";
 export { Input, type InputProps } from "./Input";
-export { Select, type SelectProps } from "./Select";
+export { Select, type SelectProps, type SelectOption } from "./Select";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { Kbd, type KbdProps } from "./Kbd";
 

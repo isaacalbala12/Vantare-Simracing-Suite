@@ -9,6 +9,7 @@ import {
   Accordion,
   AvailabilityBoard,
   Button,
+  Check,
   Chip,
   CornerSlot,
   CountdownDial,
@@ -102,6 +103,7 @@ function Primitives() {
   const [text, setText] = useState("Vantare");
   const [num, setNum] = useState("42");
   const [sel, setSel] = useState("crystal");
+  const [check, setCheck] = useState(true);
   const [area, setArea] = useState("Notas del ingeniero.");
 
   return (
@@ -173,6 +175,16 @@ function Primitives() {
         <Toggle label="Modo depuración" onChange={setOff} pressed={off} />
         <Toggle disabled label="Bloqueado" onChange={() => {}} pressed={false} />
       </Bench>
+      <Bench label="Casillas">
+        <Check checked={check} label="Adjuntar diagnóstico" onChange={setCheck}>
+          <b>Adjuntar diagnóstico</b>
+          <span>Versión, canal y estado del simulador</span>
+        </Check>
+        <Check checked={false} disabled label="Adjuntar replay">
+          <b>Adjuntar replay</b>
+          <span>No disponible todavía</span>
+        </Check>
+      </Bench>
       <Bench label="Campos">
         <Field htmlFor="ok-input" label="Nombre del perfil">
           <Input id="ok-input" onChange={(event) => setText(event.target.value)} value={text} />
@@ -192,9 +204,11 @@ function Primitives() {
             label="Sistema"
             onChange={setSel}
             options={[
-              { value: "crystal", label: "Crystal" },
-              { value: "original", label: "Original" },
-              { value: "endurance", label: "Endurance" },
+              { value: "crystal", label: "Crystal", group: "Vantare" },
+              { value: "original", label: "Original", group: "Vantare" },
+              { value: "endurance", label: "Endurance", group: "Vantare" },
+              { value: "neo", label: "Neo", group: "Míos" },
+              { value: "carbon", label: "Carbon", disabled: true, group: "Míos" },
             ]}
             value={sel}
             width={195}

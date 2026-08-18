@@ -159,6 +159,19 @@ try {
     }
     await section.scrollIntoViewIfNeeded();
     await page.waitForTimeout(120);
+    if (group.id === "primitivos") {
+      // El desplegable del `Select` es del kit, no del sistema operativo: entra
+      // en el criterio y se abre tras el scroll porque flota en coordenadas de
+      // viewport (portal a `body`).
+      await page.getByRole("combobox", { name: "Sistema" }).click();
+      const list = page.getByRole("listbox", { name: "Sistema" });
+      await list.waitFor();
+      const rows = await list.getByRole("option").count();
+      if (rows !== 5) throw new Error(`el desplegable pinta ${rows} opciones, se esperaban 5`);
+      const nativeSelects = await page.evaluate(() => document.querySelectorAll("select").length);
+      if (nativeSelects > 0) throw new Error(`el kit todavia usa ${nativeSelects} \`select\` nativos`);
+      await page.waitForTimeout(120);
+    }
     await page.screenshot({ path: path.join(output, `${group.file}-1920x1080.png`), fullPage: false });
   }
 

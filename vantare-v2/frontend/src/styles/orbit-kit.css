@@ -22,6 +22,7 @@
 .orbit-toggle:focus-visible,
 .orbit-input:focus-visible,
 .orbit-select:focus-visible,
+.orbit-check:focus-visible,
 .orbit-textarea:focus-visible,
 .orbit-row:focus-visible,
 .orbit-pill:focus-visible,
@@ -408,6 +409,105 @@
 
 .orbit-select[style*="--orbit-select-w"] {
   width: var(--orbit-select-w);
+}
+
+/* Trigger del combobox propio: mismo aspecto que el `<select>` nativo, pero es
+   un `button` y necesita alinear su contenido a mano. */
+button.orbit-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  font-weight: 500;
+  line-height: 1;
+  text-align: left;
+}
+
+button.orbit-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.orbit-select[data-open="true"] {
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-select__lead {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* Lista flotante (portal a `body`): superficie oscura del kit, nunca la del SO. */
+.orbit-select__list {
+  position: fixed;
+  z-index: var(--orbit-z-menu);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: var(--orbit-radius-control);
+  background: var(--orbit-surface-2);
+  box-shadow: var(--orbit-shadow-menu);
+  overscroll-behavior: contain;
+}
+
+.orbit-select__group {
+  padding: 8px 10px 4px;
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-select__option {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: var(--orbit-radius-chip);
+  color: var(--orbit-ink-2);
+  font-size: 13.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.orbit-select__option[data-active="true"] {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--orbit-ink);
+}
+
+.orbit-select__option[aria-selected="true"] {
+  color: var(--orbit-ink);
+  font-weight: 650;
+}
+
+.orbit-select__option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.orbit-select__option .orbit-select__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.orbit-select__tick {
+  flex: none;
+  width: 12px;
+  color: var(--orbit-coral);
+  font-size: 12px;
 }
 
 .orbit-textarea {
@@ -2404,4 +2504,72 @@ button.orbit-pill {
   .orbit-corner-slot[data-pulse="true"] {
     animation: none;
   }
+}
+
+/* ============================================================ CASILLA */
+
+.orbit-check {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.orbit-check:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.orbit-check__box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: transparent;
+  transition: background var(--orbit-fast) var(--orbit-ease),
+    border-color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-check:hover:not(:disabled) .orbit-check__box {
+  border-color: var(--orbit-ink-4);
+}
+
+.orbit-check[aria-checked="true"] .orbit-check__box {
+  border-color: var(--orbit-carmine);
+  background: var(--orbit-carmine);
+  color: #fff;
+}
+
+.orbit-check__copy {
+  min-width: 0;
+}
+
+.orbit-check__copy b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 650;
+}
+
+.orbit-check:disabled .orbit-check__copy b {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-check__copy span {
+  display: block;
+  margin-top: 2.5px;
+  color: var(--orbit-ink-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }

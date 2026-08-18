@@ -27,8 +27,8 @@ const viewports = [
   { name: "1920x900", width: 1920, height: 900, all: false },
 ];
 
-/** El viewport corto solo repite Próximas y Timeline (criterio del briefing). */
-const SHORT_VIEWS = ["next", "timeline"];
+/** El alto corto es donde aparecía el scroll de página: se comprueban las cinco. */
+const SHORT_VIEWS = ["next", "day", "week", "month", "timeline"];
 
 fs.mkdirSync(output, { recursive: true });
 
@@ -124,7 +124,24 @@ try {
         const tlRect = timeline?.getBoundingClientRect();
         const row = document.querySelector('[data-testid="orbit-timeline-row"]');
         const rowRect = row?.getBoundingClientRect();
+        // El scroll que veía Isaac era el del workspace de la shell, no el del
+        // documento: la página es 100vh y quien crecía era la pantalla.
+        const workspace = document.querySelector(".orbit-workspace");
+        const view = document.querySelector(`[data-testid="${testId}"]`);
+        const body = document.querySelector(".orbit-races__calendar .orbit-surface__body");
         return {
+          workspaceOverflow: workspace
+            ? workspace.scrollHeight - workspace.clientHeight
+            : -1,
+          racesOverflow: root ? root.scrollHeight - root.clientHeight : -1,
+          // La vista o el cuerpo de la Surface son quienes desplazan por dentro.
+          innerScroller:
+            (view && view.scrollHeight > view.clientHeight + 0.5) ||
+            (body && body.scrollHeight > body.clientHeight + 0.5) ||
+            (view && view.scrollHeight <= view.clientHeight + 0.5),
+          pxPerHour: document
+            .querySelector(".orbit-tl__inner")
+            ?.getAttribute("data-px-per-hour") ?? null,
           view: testId,
           scrollHeight: document.documentElement.scrollHeight,
           innerHeight: window.innerHeight,
@@ -148,6 +165,15 @@ try {
         };
       }, view.testId);
 
+      if (contract.workspaceOverflow > 1) {
+        throw new Error(`${viewport.name}/${view.id}: el workspace hace scroll (${contract.workspaceOverflow}px de más)`);
+      }
+      if (contract.racesOverflow > 1) {
+        throw new Error(`${viewport.name}/${view.id}: la pantalla desborda su alto (${contract.racesOverflow}px)`);
+      }
+      if (contract.innerScroller !== true) {
+        throw new Error(`${viewport.name}/${view.id}: la vista no desplaza por dentro`);
+      }
       if (contract.scrollHeight > contract.innerHeight) {
         throw new Error(`${viewport.name}/${view.id}: la página hace scroll vertical (${contract.scrollHeight} > ${contract.innerHeight})`);
       }
@@ -188,6 +214,24 @@ try {
         path: path.join(output, `orbit-carreras-${view.id}-${viewport.name}.png`),
         fullPage: false,
       });
+
+      // Timeline con zoom: el Seg de rango 12 h debe ensanchar el eje.
+      if (view.id === "timeline" && viewport.all) {
+        const before = Number(contract.pxPerHour);
+        await page.getByTestId("orbit-races-tl-controls").getByRole("button", { name: "12 h" }).click();
+        await page.clock.setFixedTime(FROZEN_CLOCK);
+        const after = await page.evaluate(() =>
+          Number(document.querySelector(".orbit-tl__inner")?.getAttribute("data-px-per-hour")),
+        );
+        if (!(after > before)) {
+          throw new Error(`${viewport.name}: el rango 12 h no acerca el eje (${before} → ${after})`);
+        }
+        await page.screenshot({
+          path: path.join(output, `orbit-carreras-timeline-zoom12-${viewport.name}.png`),
+          fullPage: false,
+        });
+        await page.getByTestId("orbit-races-tl-controls").getByRole("button", { name: "24 h" }).click();
+      }
     }
 
     await page.close();

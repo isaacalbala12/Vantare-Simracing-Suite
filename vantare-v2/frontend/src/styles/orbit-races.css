@@ -8,9 +8,46 @@
   flex-direction: column;
   width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
   height: 100%;
+  /* El alto lo manda la shell: la pagina nunca crece, cada vista desplaza
+     dentro de su Surface (feedback de la build real). */
+  overflow: hidden;
   margin: 0 auto;
   padding: 24px 0 20px;
   font-family: var(--orbit-font-sans);
+}
+
+/* Scrollbar fina en todo lo que se desplaza dentro de Carreras: la nativa
+   gruesa partia la caja del calendario y del detalle. */
+.orbit-races .orbit-surface__body,
+.orbit-races__next,
+.orbit-races__day,
+.orbit-races__week,
+.orbit-races__detail-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
+}
+
+.orbit-races .orbit-surface__body::-webkit-scrollbar,
+.orbit-races__next::-webkit-scrollbar,
+.orbit-races__day::-webkit-scrollbar,
+.orbit-races__week::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.orbit-races .orbit-surface__body::-webkit-scrollbar-thumb,
+.orbit-races__next::-webkit-scrollbar-thumb,
+.orbit-races__day::-webkit-scrollbar-thumb,
+.orbit-races__week::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--orbit-scroll-thumb);
+}
+
+.orbit-races .orbit-surface__body::-webkit-scrollbar-track,
+.orbit-races__next::-webkit-scrollbar-track,
+.orbit-races__day::-webkit-scrollbar-track,
+.orbit-races__week::-webkit-scrollbar-track {
+  background: var(--orbit-scroll-track);
 }
 
 /* ------------------------------------------------------------- CABECERA */
@@ -76,6 +113,13 @@
 .orbit-races__calendar,
 .orbit-races__detail {
   min-height: 0;
+  height: 100%;
+}
+
+/* El cuerpo del calendario no reparte padding propio: cada vista pone el suyo
+   y asi el desplazamiento interno llega hasta el borde de la Surface. */
+.orbit-races__calendar > .orbit-surface__body {
+  padding: 0;
 }
 
 .orbit-races__clock {
@@ -101,41 +145,131 @@
 .orbit-races__next {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px 10px;
+  min-height: 100%;
+  padding: 0 10px 12px;
 }
 
-.orbit-races__row {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) auto auto;
-  gap: 14px;
+.orbit-races__group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* La hora sube a la cabecera del grupo y se queda pegada al desplazarse. */
+.orbit-races__group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
   align-items: center;
-  min-height: 60px;
-  height: auto;
-  padding: 8px 12px;
-  text-align: left;
+  padding: 12px 12px 7px;
+  background: linear-gradient(180deg, var(--orbit-surface-1) 72%, transparent);
+  backdrop-filter: blur(8px);
 }
 
-.orbit-races__when b {
-  display: block;
+.orbit-races__group-head b {
   font-family: var(--orbit-font-mono);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-races__group-head b[data-first="true"] {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 16px rgba(255, 106, 95, 0.35);
+}
+
+.orbit-races__group-head > span {
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  color: var(--orbit-ink-4);
+}
+
+.orbit-races__group-head i {
+  flex: 1;
+  height: 1px;
+  background: var(--orbit-line-row);
+}
+
+.orbit-races__group-count {
+  font-family: var(--orbit-font-mono);
+  font-size: 10px;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-races__nrow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  height: 52px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__nrow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.orbit-races__nrow:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: -2px;
+}
+
+/* Fila elegida: barra carmin a la izquierda, sin mover el resto de la rejilla. */
+.orbit-races__nrow[aria-selected="true"] {
+  background: rgba(213, 47, 73, 0.09);
+}
+
+.orbit-races__nrow[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--orbit-carmine);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-races__nrow-copy {
+  min-width: 0;
+}
+
+.orbit-races__nrow-copy b {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--orbit-ink);
 }
 
-.orbit-races__when span {
+.orbit-races__nrow-copy > span {
   display: block;
+  overflow: hidden;
   margin-top: 2px;
-  font-family: var(--orbit-font-mono);
-  font-size: 11px;
-  color: var(--orbit-ink-3);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--orbit-ink-2);
 }
 
-.orbit-races__row.orbit-row--next .orbit-races__when b {
-  color: var(--orbit-coral);
-  text-shadow: 0 0 16px rgba(255, 106, 95, 0.4);
+.orbit-races__nrow-at {
+  font-family: var(--orbit-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orbit-ink-2);
 }
 
 .orbit-races__dur {
@@ -155,6 +289,8 @@
 
 .orbit-races__day {
   display: grid;
+  align-content: start;
+  min-height: 100%;
   padding: 8px 12px 12px;
 }
 
@@ -233,14 +369,14 @@
   display: grid;
   grid-template-columns: 200px repeat(7, minmax(0, 1fr));
   gap: 1px;
+  align-content: start;
   margin: 10px 12px 12px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
-  overflow: hidden;
 }
 
-/* Las filas solo existen para la semántica de la rejilla (`08 · a11y`): el
-   layout lo pone la rejilla padre, así que la fila no genera caja propia. */
+/* Las filas solo existen para la semantica de la rejilla (`08 · a11y`): el
+   layout lo pone la rejilla padre, asi que la fila no genera caja propia. */
 .orbit-races__week-row,
 .orbit-races__month-row {
   display: contents;
@@ -250,18 +386,65 @@
 .orbit-races__week-series,
 .orbit-races__week-cell {
   min-height: 40px;
-  padding: 8px 9px;
+  padding: 7px 8px;
   background: var(--orbit-surface-1);
   font-size: 11.5px;
 }
 
+/* La cabecera de dias y la columna de series se quedan fijas al desplazar. */
 .orbit-races__week-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 4px;
   text-align: center;
-  font-weight: 700;
-  color: var(--orbit-ink-2);
 }
 
-.orbit-races__week-head[data-today="true"] {
+.orbit-races__week-head:first-child,
+.orbit-races__week-series {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.orbit-races__week-day {
+  display: flex;
+  gap: 2px;
+  align-items: baseline;
+  justify-content: center;
+  width: 100%;
+  padding: 5px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--orbit-ink-2);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__week-day > span {
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.orbit-races__week-day b {
+  font-family: var(--orbit-font-mono);
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--orbit-ink);
+}
+
+.orbit-races__week-day:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.orbit-races__week-day:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: -2px;
+}
+
+.orbit-races__week-day[data-today="true"],
+.orbit-races__week-day[data-today="true"] b {
   color: var(--orbit-coral);
 }
 
@@ -270,6 +453,7 @@
   gap: 8px;
   align-items: center;
   min-width: 0;
+  border: 0;
   text-align: left;
   cursor: pointer;
 }
@@ -283,26 +467,54 @@
 }
 
 .orbit-races__week-cell {
-  font-family: var(--orbit-font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--orbit-ink-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-content: flex-start;
+  /* La celda nunca desborda su fila: el resto del día vive tras el "+n". */
+  overflow: hidden;
 }
 
 .orbit-races__week-cell[data-today="true"] {
   background: rgba(213, 47, 73, 0.06);
 }
 
+.orbit-races__week-cell[data-past="true"],
 .orbit-races__week-cell[data-off="true"] {
+  opacity: 0.5;
+}
+
+.orbit-races__week-none {
   color: var(--orbit-ink-muted);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
 }
 
 .orbit-races__slot {
-  display: inline-block;
-  margin: 1px 4px 1px 0;
-  padding: 0 5px;
-  border-radius: 4px;
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__slot:hover {
+  border-color: rgba(240, 71, 85, 0.3);
+  background: rgba(213, 47, 73, 0.12);
+  color: var(--orbit-ink);
+}
+
+.orbit-races__slot:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 1px;
+}
+
+.orbit-races__slot[data-past="true"] {
+  opacity: 0.45;
 }
 
 .orbit-races__slot[data-followed="true"] {
@@ -310,16 +522,34 @@
   color: #9bd3a6;
 }
 
+.orbit-races__slot--more {
+  background: none;
+  color: var(--orbit-ink-4);
+}
+
 /* ----------------------------------------------------------- 4 · MES */
 
 .orbit-races__month {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(84px, auto);
   gap: 1px;
+  align-content: start;
   margin: 10px 12px 12px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
-  overflow: hidden;
+}
+
+/* La cabecera de dias no reparte alto con las seis semanas. */
+.orbit-races__month > .orbit-races__month-row:first-child {
+  display: contents;
+}
+
+.orbit-races__month-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  grid-row: 1;
 }
 
 .orbit-races__month-head {
@@ -333,17 +563,43 @@
 
 .orbit-races__month-day {
   position: relative;
-  min-height: 78px;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 68px;
+  padding: 6px;
   background: var(--orbit-surface-1);
   font-size: 11.5px;
 }
 
+/* Sin esto los hijos del flex encogen y el dia se lee amontonado. */
+.orbit-races__month-day > * {
+  flex: none;
+}
+
 .orbit-races__month-num {
+  align-self: flex-start;
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
   font-family: var(--orbit-font-mono);
   font-size: 12px;
   font-weight: 700;
   color: var(--orbit-ink-2);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__month-num:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--orbit-ink);
+}
+
+.orbit-races__month-num:focus-visible,
+.orbit-races__mev:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 1px;
 }
 
 .orbit-races__month-day[data-other="true"],
@@ -352,7 +608,6 @@
 }
 
 .orbit-races__month-day[data-today="true"] .orbit-races__month-num {
-  margin-left: -6px;
   padding: 1px 6px;
   border-radius: 6px;
   background: var(--orbit-carmine);
@@ -363,14 +618,22 @@
 .orbit-races__mev {
   display: block;
   overflow: hidden;
-  margin-top: 4px;
+  width: 100%;
   padding: 2px 6px;
+  border: 0;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--orbit-ink-2);
   font-size: 10.5px;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-races__mev:hover {
+  filter: brightness(1.35);
 }
 
 .orbit-races__mev[data-kind="daily"] {
@@ -383,6 +646,11 @@
   color: var(--orbit-cyan-soft);
 }
 
+.orbit-races__mev[data-kind="more"] {
+  background: none;
+  color: var(--orbit-ink-4);
+}
+
 .orbit-races__mev[data-kind="special"] {
   background: rgba(255, 155, 87, 0.12);
   color: var(--orbit-ember);
@@ -390,9 +658,24 @@
 
 /* ------------------------------------------------------ 5 · TIMELINE */
 
-/* El scroll horizontal lo pone `.orbit-tl` del kit; aquí solo el respiro. */
+/* El scroll horizontal lo pone `.orbit-tl` del kit; aquí solo el respiro y el
+   alto: la vista ocupa la Surface y desplaza dentro, nunca la página. */
 .orbit-races__timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   padding: 10px 0 12px;
+}
+
+/* Controles de rango y zoom en la cabecera de la Surface. */
+.orbit-races__tl-controls {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.orbit-races__tl-range {
+  flex: none;
 }
 
 .orbit-races__tl-copy {
@@ -423,6 +706,11 @@
   flex-direction: column;
   gap: 14px;
   padding: 4px 2px 8px;
+}
+
+/* El detalle desplaza dentro de su Surface si el contenido no cabe. */
+.orbit-races__detail > .orbit-surface__body {
+  overflow-y: auto;
 }
 
 .orbit-races__detail-body h3 {
@@ -466,6 +754,12 @@
 }
 
 .orbit-races__starts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbit-races__detail-links {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

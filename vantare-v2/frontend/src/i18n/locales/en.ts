@@ -4,6 +4,7 @@ import { homeOrbitEn } from "./home-orbit/en";
 import { studioOrbitEn } from "./studio-orbit/en";
 import { launcherOrbitEn } from "./launcher-orbit/en";
 import { racesOrbitEn } from "./races-orbit/en";
+import { strategyOrbitEn } from "./strategy-orbit/en";
 import { diagnosticsEn } from "../../hub/settings/diagnostics/translations";
 import { testingCenterEn } from "../../hub/testing-center/translations";
 
@@ -587,4 +588,5 @@ export const en: Record<string, string> = {
   ...studioOrbitEn,
   ...launcherOrbitEn,
   ...racesOrbitEn,
+  ...strategyOrbitEn,
 };

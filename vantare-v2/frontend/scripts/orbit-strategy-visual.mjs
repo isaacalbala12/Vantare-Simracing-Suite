@@ -1,0 +1,184 @@
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/07-estrategia");
+const port = 5199;
+const url = `http://127.0.0.1:${port}/orbit-strategy-harness.html?orbit=1&view=estrategia`;
+
+// Reloj congelado: la columna calcula las próximas salidas del calendario real.
+const FROZEN_CLOCK = new Date("2026-07-07T18:07:30Z");
+
+const viewports = [
+  { name: "1920x1080", width: 1920, height: 1080, editor: true },
+  { name: "1920x900", width: 1920, height: 900, editor: false },
+];
+
+fs.mkdirSync(output, { recursive: true });
+
+function portOwners() {
+  if (process.platform !== "win32") return [];
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    `(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique) -join ','`,
+  ], { encoding: "utf8", windowsHide: true });
+  return result.stdout.trim().split(",").map((value) => value.trim()).filter(Boolean);
+}
+
+const owners = portOwners();
+if (owners.length) throw new Error(`port ${port} already owned by ${owners.join(", ")}`);
+
+const server = spawn(process.execPath, [
+  path.join(frontend, "node_modules", "vite", "bin", "vite.js"),
+  "--host", "127.0.0.1", "--port", String(port), "--strictPort",
+], {
+  cwd: frontend,
+  // El runtime simulado publica el evento activo (`strategy:roster`) y atiende
+  // los comandos del editor real, que es de donde sale el inventario.
+  env: { ...process.env, VITE_RUNTIME_MOCK: "mock" },
+  stdio: ["ignore", "pipe", "pipe"],
+  windowsHide: true,
+  detached: process.platform !== "win32",
+});
+
+let serverOutput = "";
+server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
+server.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+
+function stopServer() {
+  if (!server.pid) return;
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+  } else {
+    try { process.kill(-server.pid, "SIGTERM"); } catch { /* already stopped */ }
+  }
+}
+
+async function waitForServer() {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const ready = await new Promise((resolve) => {
+      const request = http.get(url, (response) => { response.resume(); resolve(response.statusCode === 200); });
+      request.on("error", () => resolve(false));
+      request.setTimeout(1000, () => { request.destroy(); resolve(false); });
+    });
+    if (ready) return;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error(`Orbit strategy harness did not start.\n${serverOutput}`);
+}
+
+function contractOf() {
+  const root = document.querySelector(".orbit-strategy");
+  const list = document.querySelector('[data-testid="orbit-strategy-list"]');
+  return {
+    scrollHeight: document.documentElement.scrollHeight,
+    innerHeight: window.innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+    stints: document.querySelectorAll('[data-testid^="orbit-stint-"]').length,
+    listScrollY: list ? list.scrollHeight > list.clientHeight + 0.5 : null,
+    nativeTitles: root ? root.querySelectorAll("[title]").length : -1,
+  };
+}
+
+let browser;
+try {
+  await waitForServer();
+  browser = await chromium.launch({ headless: true });
+
+  for (const viewport of viewports) {
+    const page = await browser.newPage({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: 1,
+      timezoneId: "Europe/Madrid",
+    });
+    const problems = [];
+    const isWailsRuntimeNoise = (error) => (error.stack ?? "").includes("wailsio_runtime");
+    page.on("pageerror", (error) => {
+      if (!isWailsRuntimeNoise(error)) problems.push(`pageerror: ${error.message}`);
+    });
+
+    await page.clock.install({ time: FROZEN_CLOCK });
+    await page.goto(url, { waitUntil: "networkidle" });
+    await page.getByTestId("orbit-strategy").waitFor();
+    await page.getByTestId("orbit-strategy-overview").waitFor();
+    await page.getByTestId("orbit-stint-0").waitFor();
+    await page.evaluate(async () => { await document.fonts.ready; });
+
+    const summary = await page.evaluate(contractOf);
+    if (summary.scrollHeight > summary.innerHeight) {
+      throw new Error(`${viewport.name}: la página hace scroll vertical (${summary.scrollHeight} > ${summary.innerHeight})`);
+    }
+    if (summary.scrollWidth > summary.innerWidth) {
+      throw new Error(`${viewport.name}: la página hace scroll horizontal (${summary.scrollWidth} > ${summary.innerWidth})`);
+    }
+    if (summary.stints < 3) {
+      throw new Error(`${viewport.name}: solo ${summary.stints} stints en la lista`);
+    }
+    if (summary.listScrollY !== true) {
+      throw new Error(`${viewport.name}: la lista de stints no tiene scroll interno`);
+    }
+    if (summary.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: la vista usa \`title\` nativo (${summary.nativeTitles})`);
+    }
+
+    await page.screenshot({
+      path: path.join(output, `orbit-estrategia-resumen-${viewport.name}.png`),
+      fullPage: false,
+    });
+
+    if (viewport.editor) {
+      // Neumáticos → elegir un juego → abrir el stint 1 → soltarlo en FL.
+      await page.getByRole("button", { name: "Neumáticos", exact: true }).click();
+      await page.getByTestId("orbit-strategy-tyres").waitFor();
+      const tyre = page.locator('[data-testid^="orbit-tyre-item-"]').last();
+      const tyreId = await tyre.getAttribute("data-testid");
+      await tyre.click();
+
+      await page.getByTestId("orbit-stint-edit-0").click();
+      const slot = page.getByTestId("orbit-corner-slot-FL");
+      await slot.waitFor();
+      await slot.press("Enter");
+
+      const mounted = await page.evaluate(() => {
+        const node = document.querySelector('[data-testid="orbit-corner-slot-FL"]');
+        return {
+          state: node?.getAttribute("data-state") ?? null,
+          text: node?.textContent ?? "",
+          editorVisible: document.querySelectorAll('[data-testid="orbit-stint-editor-0"]').length,
+          nativeTitles: document.querySelector(".orbit-strategy")?.querySelectorAll("[title]").length ?? -1,
+        };
+      });
+      const wanted = (tyreId ?? "").replace("orbit-tyre-item-", "");
+      if (mounted.editorVisible !== 1) {
+        throw new Error(`${viewport.name}: el editor del stint 1 no está montado`);
+      }
+      if (mounted.state !== "filled" || !mounted.text.includes(wanted)) {
+        throw new Error(`${viewport.name}: FL no recibió ${wanted} (estado ${mounted.state})`);
+      }
+      if (mounted.nativeTitles !== 0) {
+        throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
+      }
+
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-editor-neumaticos-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
+    if (problems.length) {
+      throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
+    }
+
+    await page.close();
+  }
+
+  console.log(`Orbit strategy visual PASS. Captures: ${output}`);
+} finally {
+  await browser?.close();
+  stopServer();
+}

@@ -8,6 +8,12 @@ export interface CornerSlotProps {
   onDrop(id: string): void;
   onClear(): void;
   picked?: boolean;
+  /**
+   * Neumático elegido con «tocar-y-tocar». Con él, `Enter`/`Espacio` lo montan
+   * en la esquina; sin él, vacían la esquina. Es la vía de teclado que pide
+   * `08 · accesibilidad`, porque arrastrar no la tiene.
+   */
+  pickedId?: string;
   className?: string;
 }
 
@@ -25,7 +31,7 @@ const PULSE_MS = 500;
  * Esquina del esquema del coche (`04 · .corner-slot`): 64px punteado vacío,
  * sólido cuando está lleno, borde coral en `over`/foco y pulso al soltar.
  */
-export function CornerSlot({ corner, tyre, onDrop, onClear, picked, className }: CornerSlotProps) {
+export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, className }: CornerSlotProps) {
   const [over, setOver] = useState(false);
   const [pulse, setPulse] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,6 +55,10 @@ export function CornerSlot({ corner, tyre, onDrop, onClear, picked, className }:
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
+    if (pickedId) {
+      commit(pickedId);
+      return;
+    }
     if (tyre) onClear();
   };
 

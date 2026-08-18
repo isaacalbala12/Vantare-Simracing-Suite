@@ -43,6 +43,10 @@ import {
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
 } from "../../races-orbit/RacesOrbitPage";
+import {
+  StrategyOrbitPage,
+  STRATEGY_CONTEXT_SLOT_ID,
+} from "../../strategy-orbit/StrategyOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -298,6 +302,8 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id={LAUNCHER_CONTEXT_SLOT_ID} />
     ) : activeView === "carreras" ? (
       <div className="orbit-column__slot" id={RACES_CONTEXT_SLOT_ID} />
+    ) : activeView === "estrategia" ? (
+      <div className="orbit-column__slot" id={STRATEGY_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -463,6 +469,8 @@ function OrbitShellBody({
               <LauncherOrbitPage />
             ) : activeView === "carreras" ? (
               <RacesOrbitPage calendar={races.calendar} target={navTarget} />
+            ) : activeView === "estrategia" ? (
+              <StrategyOrbitPage />
             ) : (
               children
             )}

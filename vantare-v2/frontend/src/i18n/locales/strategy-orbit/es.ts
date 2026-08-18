@@ -1,0 +1,105 @@
+/** Catálogo `strategy.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const strategyOrbitEs: Record<string, string> = {
+  "strategy.crumb": "Estrategia",
+  "strategy.upToDate": "Al día",
+  "strategy.draft": "Borrador",
+  "strategy.settings": "Ajustes",
+  "strategy.reset": "↺ Restablecer",
+  "strategy.resetHint": "Vuelven el orden de pilotos, las vueltas y los neumáticos por defecto.",
+  "strategy.new": "+ Nueva estrategia",
+  "strategy.newHint": "Mismo evento y pilotos · elige criterio y orden",
+
+  "strategy.chip.when": "{{day}} · {{from}} → {{to}}",
+  "strategy.chip.duration": "{{min}} min",
+
+  "strategy.tabs.label": "Secciones de la estrategia",
+  "strategy.tabs.overview": "Resumen",
+  "strategy.tabs.strategies": "Estrategias",
+  "strategy.tabs.availability": "Disponibilidad de pilotos",
+
+  "strategy.pending.title": "En preparación",
+  "strategy.pending.lead":
+    "Las tarjetas de estrategias, la comparación y el tablero de disponibilidad llegan en la siguiente entrega del briefing 07.",
+
+  "strategy.kpi.duration": "Duración de carrera",
+  "strategy.kpi.durationHint": "{{from}} → {{to}} · bandera al cumplir el tiempo",
+  "strategy.kpi.tank": "Depósito",
+  "strategy.kpi.tankHint": "{{laps}} vueltas máx. a {{l}} L",
+  "strategy.kpi.pit": "Tiempo de parada",
+  "strategy.kpi.pitHint": "pit lane + repostaje + neumáticos",
+  "strategy.kpi.stops": "Paradas",
+  "strategy.kpi.stopsHint": "{{stints}} stints · {{laps}} vueltas",
+
+  "strategy.timeline.title": "Línea de carrera",
+  "strategy.timeline.hint": "un bloque por stint · color por piloto",
+  "strategy.distribution.title": "Distribución",
+  "strategy.distribution.laps": "Vueltas",
+  "strategy.distribution.time": "Tiempo",
+  "strategy.distribution.total": "Total",
+  "strategy.distribution.lapsValue": "{{n}} vueltas",
+
+  "strategy.stints.title": "Stints",
+  "strategy.stints.hint": "Cambia el piloto de un stint y la línea se recalcula",
+  "strategy.stints.autoAssign": "Repartir pilotos",
+  "strategy.stints.start": "Salida {{time}} · {{fuel}} L iniciales",
+  "strategy.stints.end": "Bandera a las {{flag}} · última vuelta termina {{end}} · {{laps}} vueltas",
+  "strategy.stints.driver": "Piloto",
+  "strategy.stints.driverOf": "Piloto del stint {{n}}",
+  "strategy.stints.time": "Hora",
+  "strategy.stints.laps": "Vueltas",
+  "strategy.stints.fuel": "Combustible",
+  "strategy.stints.pitWindow": "Ventana de boxes",
+  "strategy.stints.setup": "Setup",
+  "strategy.stints.dry": "Seco",
+  "strategy.stints.wet": "Lluvia",
+  "strategy.stints.eco": "Seco · eco",
+  "strategy.stints.edit": "Editar stint {{n}}",
+  "strategy.stints.manual": "Valores manuales",
+  "strategy.stints.over": "Excede el depósito",
+
+  "strategy.pit.label": "PIT",
+  "strategy.pit.duration": "Duración",
+  "strategy.pit.fuel": "Combustible",
+  "strategy.pit.inTank": "{{tank}} L en depósito",
+  "strategy.pit.added": "({{l}} L añadidos)",
+  "strategy.pit.lap": "Vuelta",
+  "strategy.pit.tyres": "Neumáticos",
+  "strategy.pit.newSet": "4 nuevos",
+
+  "strategy.editor.laps": "Vueltas",
+  "strategy.editor.fuel": "Combustible",
+  "strategy.editor.pace": "Ritmo",
+  "strategy.editor.ofDriver": "del piloto",
+  "strategy.editor.auto": "Volver a automático",
+  "strategy.editor.front": "delante",
+  "strategy.editor.rear": "detrás",
+  "strategy.editor.hint":
+    "Arrastra desde Neumáticos (panel derecho) o toca uno y luego una esquina. Un neumático puede repetirse en varios stints: la condición baja con cada uso.",
+
+  "strategy.drivers.title": "Pilotos",
+  "strategy.drivers.tyres": "Neumáticos",
+  "strategy.drivers.dry": "Seco",
+  "strategy.drivers.wet": "Lluvia",
+  "strategy.drivers.eco": "Eco",
+  "strategy.drivers.edit": "Editar",
+  "strategy.drivers.inUse": "{{n}} · {{used}} en uso",
+  "strategy.drivers.hint":
+    "Arrastra un neumático a una esquina del stint abierto (FL · FR · RL · RR), o tócalo y luego toca la esquina.",
+  "strategy.drivers.picked": "Neumático elegido",
+  "strategy.drivers.pickedHint": "Abre un stint (lápiz) y toca la esquina donde va.",
+
+  "strategy.tyres.free": "libre",
+  "strategy.tyres.rejected": "Neumático no válido aquí",
+
+  "strategy.context.strategies": "Estrategias del evento",
+  "strategy.context.noEvent": "Sin evento activo",
+  "strategy.context.others": "Otros eventos",
+  "strategy.context.noOthers": "No sigues ninguna otra serie con salida próxima.",
+
+  "strategy.empty.title": "Elige evento y pilotos",
+  "strategy.empty.lead":
+    "Todavía no hay un evento activo con pilotos. Elige uno de tus eventos próximos para empezar a planificar.",
+  "strategy.empty.noneTitle": "Sin eventos seguidos",
+  "strategy.empty.none":
+    "Sigue una serie en Carreras y aparecerá aquí con sus próximas salidas.",
+};

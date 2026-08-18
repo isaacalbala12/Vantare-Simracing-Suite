@@ -50,6 +50,36 @@ type HarnessStrategyRepository = {
   drafts: Record<string, Record<string, unknown>>;
 };
 
+
+/**
+ * Evento activo de Estrategia para los harnesses (briefing 07). El backend real
+ * publicará este mismo payload por `strategy:roster`; aquí solo se siembra para
+ * que la captura tenga un evento de 4 h con tres pilotos.
+ */
+const harnessStrategyRoster = {
+  event: {
+    startMin: 14 * 60,
+    durationMin: 240,
+    tankL: 90,
+    pitS: 64,
+    name: "4 Horas de Imola",
+    subtitle: "ELMS · Imola · horario de muestra",
+    monogram: "4H",
+    vehicleClass: "LMGT3",
+    team: "Vantare Racing · #58",
+    dayLabel: "Sáb 12",
+  },
+  drivers: [
+    { id: "isaac", name: "Isaac Albalá", ini: "IA", color: "#ff6a5f", cls: "Gold SR · 4.12", dry: [104.0, 2.75], wet: [112.4, 2.4], eco: [105.1, 2.55] },
+    { id: "sol", name: "Sol Martín", ini: "SM", color: "#78d68b", cls: "Gold SR · 3.88", dry: [104.6, 2.72], wet: [113.0, 2.38], eco: [105.7, 2.52] },
+    { id: "diego", name: "Diego Ferrer", ini: "DF", color: "#5ccbd5", cls: "Silver SR · 3.40", dry: [105.3, 2.8], wet: [114.2, 2.44], eco: [106.4, 2.58] },
+  ],
+  strategies: [
+    { id: "s1", name: "Estrategia #1", note: "Mínimo tiempo · un set nuevo por stint", mode: "dry", order: ["isaac", "sol", "diego"] },
+    { id: "s2", name: "Estrategia #2", note: "Economía · una parada menos", mode: "eco", order: ["isaac", "sol", "diego"] },
+  ],
+};
+
 function createHarnessDesignId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -266,6 +296,11 @@ export const Events = {
 
     if (name === "strategy:application:command") {
       setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      return;
+    }
+
+    if (name === "strategy:roster:get") {
+      setTimeout(() => broadcast("strategy:roster", harnessStrategyRoster), 30);
       return;
     }
 

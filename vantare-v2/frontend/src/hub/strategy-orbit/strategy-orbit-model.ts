@@ -269,6 +269,129 @@ export function distribution(plan: StrategyPlan, drivers: StrategyDriver[]): Dis
     .filter((slice) => slice.laps > 0);
 }
 
+// ────────────────────────────────────────────────────────── COMPARACIÓN
+//
+// `13.5`: en carrera a tiempo gana quien completa **más vueltas**. El texto
+// explica el intercambio: el ahorro son las paradas que se quitan por el
+// tiempo de parada, el coste son los segundos de ritmo que se pierden en
+// pista a lo largo de las vueltas de la alternativa.
+
+export interface StrategyComparison {
+  /** Id de la estrategia que completa más vueltas (empate → la activa). */
+  winnerId: string;
+  loserId: string;
+  winnerLaps: number;
+  loserLaps: number;
+  /** Diferencia de vueltas (0 en empate). */
+  diff: number;
+  /** Paradas que la alternativa ahorra frente a la activa (0 o menos = ninguna). */
+  savedStops: number;
+  /** Segundos de boxes ahorrados. */
+  savedS: number;
+  /** Segundos de ritmo perdidos en pista. */
+  costS: number;
+  /** El ahorro supera al coste. */
+  pays: boolean;
+  /** Ninguna de las dos para menos que la otra. */
+  sameStops: boolean;
+  /** Stints de la estrategia activa. */
+  stints: number;
+  driverCount: number;
+  /** Nombres (primer nombre) de quien dobla turno en la activa. */
+  doubles: string[];
+}
+
+export interface ComparisonSide {
+  id: string;
+  plan: StrategyPlan;
+}
+
+/**
+ * `13.5 · Comparación`. `a` es la estrategia activa y `b` la alternativa; el
+ * ahorro y el coste se miden siempre de `a` hacia `b`, como en el prototipo.
+ */
+export function compareStrategies(
+  a: ComparisonSide,
+  b: ComparisonSide,
+  pitS: number,
+  drivers: StrategyDriver[],
+): StrategyComparison {
+  const winnerIsA = a.plan.totalLaps >= b.plan.totalLaps;
+  const savedStops = a.plan.stops - b.plan.stops;
+  const savedS = savedStops * pitS;
+  const costS = (b.plan.avgPace - a.plan.avgPace) * b.plan.totalLaps;
+  const doubles = drivers
+    .filter((driver) => a.plan.stints.filter((stint) => stint.d === driver.id).length > 1)
+    .map((driver) => driver.name.split(" ")[0]);
+
+  return {
+    winnerId: winnerIsA ? a.id : b.id,
+    loserId: winnerIsA ? b.id : a.id,
+    winnerLaps: Math.max(a.plan.totalLaps, b.plan.totalLaps),
+    loserLaps: Math.min(a.plan.totalLaps, b.plan.totalLaps),
+    diff: Math.abs(a.plan.totalLaps - b.plan.totalLaps),
+    savedStops,
+    savedS,
+    costS,
+    pays: savedS > costS,
+    sameStops: savedStops <= 0,
+    stints: a.plan.stints.length,
+    driverCount: drivers.length,
+    doubles,
+  };
+}
+
+// ───────────────────────────────────────────────────────── DISPONIBILIDAD
+
+export type AvailabilityState = "ok" | "maybe" | "no";
+
+/** Tramo de disponibilidad en minutos absolutos del día. */
+export interface AvailabilitySegment {
+  state: AvailabilityState;
+  from: number;
+  to: number;
+}
+
+/** Eje del tablero (`06 · Estrategia`): 13:00 → 18:30, hora local. */
+export const AVAILABILITY_FROM = 13 * 60;
+export const AVAILABILITY_TO = 18 * 60 + 30;
+
+/**
+ * `13.5 · Disponibilidad`: el tramo nuevo **recorta** los que solapa (las
+ * partes anterior y posterior se conservan) y la lista queda ordenada por
+ * inicio. Un tramo vacío tras el recorte desaparece.
+ */
+export function addAvailability(
+  list: readonly AvailabilitySegment[],
+  entry: AvailabilitySegment,
+): AvailabilitySegment[] {
+  const from = Math.max(AVAILABILITY_FROM, Math.min(entry.from, entry.to));
+  const to = Math.min(AVAILABILITY_TO, Math.max(entry.from, entry.to));
+  if (to <= from) return list.slice().sort((x, y) => x.from - y.from);
+
+  const cut: AvailabilitySegment[] = [];
+  for (const segment of list) {
+    if (segment.to <= from || segment.from >= to) {
+      cut.push({ ...segment });
+      continue;
+    }
+    if (segment.from < from) cut.push({ state: segment.state, from: segment.from, to: from });
+    if (segment.to > to) cut.push({ state: segment.state, from: to, to: segment.to });
+  }
+  cut.push({ state: entry.state, from, to });
+  return cut.sort((x, y) => x.from - y.from);
+}
+
+/** `hh:mm` → minutos absolutos; `null` si el texto no es una hora. */
+export function parseHhmm(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 /** `hh:mm` a partir de un minuto absoluto. */
 export function hhmm(minute: number): string {
   const hours = Math.floor(minute / 60) % 24;

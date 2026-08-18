@@ -221,3 +221,16 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-63 · `CornerSlot` monta con teclado cuando hay un juego elegido
 **Decisión.** El `CornerSlot` del kit solo vaciaba la esquina con `Enter`/`Espacio`, así que la vía de teclado de `08 · a11y` no podía **montar** nada. Se añade `pickedId`: con un juego elegido, `Enter`/`Espacio` lo montan (y disparan el mismo pulso verde que el drop); sin él, la tecla sigue vaciando. Es aditivo y no cambia ninguna llamada existente.
+
+## D-64 · «Exportar plan» exporta de verdad; el resto del menú ⚙ dice que aún no
+**Decisión.** El menú de Ajustes del evento (briefing 07) tiene cuatro entradas y solo una tiene dominio detrás: `strategy-transfer.ts` ya sabe empaquetar un plan (`exportStrategyPackage`, que va por el servicio de aplicación y no persiste ni transmite nada). «Exportar plan» la llama con el `planId`/`variantId` del borrador abierto y el aviso dice el nombre del paquete y su tamaño real. Telemetría de la sesión, Modelo de combustible e Información del evento no tienen modelo todavía y lo dicen con esas palabras («aún no está conectado a datos reales»), en vez de fingir un panel.
+**Consecuencia.** El paquete se devuelve en memoria: quien lo guarde en disco será el diálogo nativo cuando exista, no esta pantalla.
+
+## D-65 · Sin disponibilidad declarada, todos disponibles
+**Decisión.** El prototipo trae un fixture de ausencias por piloto. El puente `strategy:roster` no publica disponibilidad, así que la pantalla no la inventa: cada piloto entra con un único tramo `ok` de 13:00 a 18:30 y las ausencias aparecen solo cuando alguien las añade con el formulario. El recorte de solapes de `13.5` (`addAvailability`) parte el tramo anterior y conserva lo que queda fuera; el resultado se guarda junto a las estrategias en `vantare.v03orbit.strategy`, que pasa a tener la forma `{ variants, availability }` (la forma plana de la parte A se sigue leyendo).
+
+## D-66 · Las estrategias nuevas y las copias viven en local, con ids `local-n`
+**Decisión.** `strategy:roster` publica las estrategias del evento; duplicar o crear una no puede escribir en ese canal, así que las variantes nuevas se quedan en el estado de la pantalla con ids `local-1`, `local-2`… y se persisten en la misma clave local. La siembra del puente ya no pisa lo que hay en memoria (`{ ...delPuente, ...actual }`), para que una copia no desaparezca cuando el evento se vuelve a publicar. La tarjeta «+ Nueva estrategia» avisa con un toast; el botón de la columna no, porque el cambio se ve en la propia lista.
+
+## D-67 · El asa ⋮⋮ del stint es decorativa
+**Decisión.** El prototipo dibuja un asa a la izquierda del `#n` de cada stint, pero el orden de pilotos se cambia con el `Select` de la tarjeta y con «Repartir pilotos», no arrastrando. El asa se porta como `aria-hidden`, sin `draggable` ni foco: prometer un arrastre que no existe sería peor que no dibujarla.

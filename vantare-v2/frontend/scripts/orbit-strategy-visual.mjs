@@ -170,6 +170,74 @@ try {
       });
     }
 
+    // ── ⚙ Ajustes: abre con el botón y cierra con Esc (briefing 07 · parte B).
+    await page.getByTestId("orbit-strategy-settings").click();
+    await page.getByRole("menu").waitFor();
+    await page.keyboard.press("Escape");
+    await page.getByRole("menu").waitFor({ state: "detached" });
+    if ((await page.getByTestId("orbit-strategy-settings").getAttribute("aria-expanded")) !== "false") {
+      throw new Error(`${viewport.name}: el menú ⚙ no cerró con Esc`);
+    }
+
+    // ── Estrategias: tarjetas + comparación con veredicto visible.
+    await page.getByRole("tab", { name: "Estrategias", exact: true }).click();
+    await page.getByTestId("orbit-strategy-strategies").waitFor();
+    const verdict = page.getByTestId("orbit-strategy-verdict");
+    await verdict.waitFor();
+    const verdictText = (await verdict.textContent()) ?? "";
+    if (!verdictText.includes("dobla turno")) {
+      throw new Error(`${viewport.name}: la comparación no muestra veredicto (${verdictText})`);
+    }
+    const stratsScroll = await page.evaluate(contractOf);
+    if (stratsScroll.scrollHeight > stratsScroll.innerHeight) {
+      throw new Error(`${viewport.name}: Estrategias hace scroll de página`);
+    }
+    if (stratsScroll.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: Estrategias usa \`title\` nativo`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-estrategias-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
+    // La tarjeta «+ Nueva estrategia» crea y activa (después de la captura).
+    const before = await page.locator('[data-testid^="orbit-strat-local"]').count();
+    await page.getByTestId("orbit-strategy-new-card").click();
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('[data-testid^="orbit-strat-local"]').length > n,
+      before,
+    );
+    if ((await page.getByTestId("orbit-strategy-name").textContent()) !== "Estrategia #3") {
+      throw new Error(`${viewport.name}: la estrategia nueva no quedó activa`);
+    }
+
+    // ── Disponibilidad: tablero + formulario con recorte.
+    await page.getByRole("tab", { name: "Disponibilidad de pilotos", exact: true }).click();
+    await page.getByTestId("orbit-strategy-availability").waitFor();
+    await page.getByLabel("Estado").selectOption("no");
+    await page.getByLabel("Desde").fill("15:00");
+    await page.getByLabel("Hasta").fill("16:00");
+    await page.getByRole("button", { name: "Añadir tramo" }).click();
+    const cells = await page.getByTestId("orbit-availability-cell").count();
+    if (cells < 5) {
+      throw new Error(`${viewport.name}: el recorte no partió el tramo (${cells} segmentos)`);
+    }
+    const availScroll = await page.evaluate(contractOf);
+    if (availScroll.scrollHeight > availScroll.innerHeight) {
+      throw new Error(`${viewport.name}: Disponibilidad hace scroll de página`);
+    }
+    if (availScroll.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: Disponibilidad usa \`title\` nativo`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-disponibilidad-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
     if (problems.length) {
       throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
     }

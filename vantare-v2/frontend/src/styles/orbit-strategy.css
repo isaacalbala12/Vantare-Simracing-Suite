@@ -187,7 +187,15 @@
   border-radius: 14px;
   background: var(--orbit-surface-1);
   transition: var(--orbit-fast) var(--orbit-ease);
-  grid-template-columns: 44px minmax(150px, 1.2fr) 1fr 0.8fr 0.8fr 1fr 0.8fr auto;
+  grid-template-columns: 16px 30px minmax(150px, 1.2fr) 1fr 0.8fr 0.8fr 1fr 0.8fr auto;
+}
+
+.orbit-stint__grip {
+  color: var(--orbit-ink-4);
+  font-size: 13px;
+  letter-spacing: -2px;
+  line-height: 1;
+  user-select: none;
 }
 
 .orbit-stint:hover,
@@ -482,6 +490,132 @@
   gap: 4px;
   padding: 4px 10px 12px;
   overflow-y: auto;
+}
+
+/* --------------------------------------------- ESTRATEGIAS Y COMPARACIÓN */
+
+.orbit-strategy__pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  margin-top: 16px;
+  overflow-y: auto;
+}
+
+.orbit-strats-grid {
+  display: grid;
+  flex: none;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.orbit-strat-card {
+  position: relative;
+  padding: 16px 18px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-surface-1);
+  text-align: left;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-strat-card:hover {
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-strat-card[data-active="true"] {
+  border-color: var(--orbit-carmine);
+  box-shadow: 0 0 30px rgb(213 47 73 / 8%);
+}
+
+.orbit-strat-card h4 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.orbit-strat-card p {
+  margin: 4px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strat-card dl {
+  display: grid;
+  gap: 5px 12px;
+  margin: 12px 0 0;
+  font-size: var(--orbit-fs-secondary);
+  grid-template-columns: 1fr auto;
+}
+
+.orbit-strat-card dt {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-strat-card dd {
+  margin: 0;
+  color: var(--orbit-ink-2);
+  font: 650 12px var(--orbit-font-mono);
+  text-align: right;
+}
+
+.orbit-strat-card__acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.orbit-strat-card--new {
+  display: grid;
+  min-height: 200px;
+  border-style: dashed;
+  background: transparent;
+  cursor: pointer;
+  place-content: center;
+  text-align: center;
+}
+
+.orbit-strat-card--new:hover {
+  border-color: var(--orbit-carmine);
+}
+
+.orbit-strat-card--new b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 14px;
+}
+
+.orbit-strat-card--new span {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strategy__verdict {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--orbit-surface-2);
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------- DISPONIBILIDAD */
+
+.orbit-avail-form {
+  display: grid;
+  gap: 14px;
+  align-items: end;
+  padding: 4px 0 6px;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
 }
 
 /* ------------------------------------------------------ COLUMNA Y VACÍO */

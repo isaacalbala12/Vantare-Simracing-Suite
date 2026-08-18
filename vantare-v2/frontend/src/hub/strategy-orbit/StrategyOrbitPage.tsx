@@ -10,14 +10,16 @@ import {
 import { createPortal } from "react-dom";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
+  AvailabilityBoard,
   Button,
   Chip,
   CornerSlot,
   Donut,
+  Field,
   HorizontalTimeline,
-  IconButton,
   Input,
   ListRow,
+  Menu,
   Monogram,
   Note,
   Seg,
@@ -29,6 +31,7 @@ import {
   TyreItem,
   UnderlineTabs,
   useToast,
+  type AvailRange,
   type DonutSlice,
   type TimelineBlock,
   type TyreView,
@@ -48,21 +51,30 @@ import {
   subscribeToStrategyRoster,
   type StrategyRoster,
 } from "./strategy-orbit-bridge";
+import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
+  addAvailability,
+  AVAILABILITY_FROM,
+  AVAILABILITY_TO,
   buildPlan,
   clockTime,
+  compareStrategies,
   distribution,
   hhmm,
   lapTime,
   ORBIT_CORNERS,
+  parseHhmm,
   pitWindowClock,
   pitWindowLap,
   rotateOrder,
   stintClock,
   tyreCondition,
   tyreUses,
+  type AvailabilitySegment,
+  type AvailabilityState,
   type OrbitCorner,
   type StrategyDriver,
+  type StrategyPlan,
   type StrategyVariant,
   type TyreAssignments,
 } from "./strategy-orbit-model";
@@ -104,21 +116,46 @@ function defaultTyres(stints: number, tyres: readonly StrategyTyre[]): TyreAssig
   return map;
 }
 
-function readStored(): Record<string, Partial<StrategyVariant>> {
+/** Lo que la pantalla guarda en local: estrategias y disponibilidad juntas. */
+interface StoredStrategyState {
+  variants: Record<string, Partial<StrategyVariant>>;
+  availability?: Record<string, AvailabilitySegment[]>;
+}
+
+function readStored(): StoredStrategyState {
   try {
     const raw = window.localStorage?.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Partial<StrategyVariant>>) : {};
+    if (!raw) return { variants: {} };
+    const parsed = JSON.parse(raw) as StoredStrategyState | Record<string, Partial<StrategyVariant>>;
+    // La parte A guardaba el mapa de estrategias en la raíz de la clave.
+    if (parsed && typeof parsed === "object" && "variants" in parsed) {
+      return parsed as StoredStrategyState;
+    }
+    return { variants: (parsed ?? {}) as Record<string, Partial<StrategyVariant>> };
   } catch {
-    return {};
+    return { variants: {} };
   }
 }
 
-function writeStored(value: Record<string, Partial<StrategyVariant>>): void {
+function writeStored(patch: Partial<StoredStrategyState>): void {
   try {
-    window.localStorage?.setItem(STORAGE_KEY, JSON.stringify(value));
+    const current = readStored();
+    window.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...patch }));
   } catch {
     // Sin almacenamiento el reparto solo vive en memoria.
   }
+}
+
+/** Sin dato declarado, un piloto está disponible de punta a punta del eje. */
+const FULL_AVAILABILITY: AvailabilitySegment[] = [
+  { state: "ok", from: AVAILABILITY_FROM, to: AVAILABILITY_TO },
+];
+
+/** Primer id libre de la serie `local-n` (los duplicados y las nuevas). */
+function freeId(taken: Readonly<Record<string, unknown>>, prefix: string): string {
+  let n = 1;
+  while (taken[`${prefix}-${n}`]) n += 1;
+  return `${prefix}-${n}`;
 }
 
 export interface StrategyOrbitPageProps {
@@ -182,7 +219,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     const key = `${roster.event.name}|${roster.strategies.map((item) => item.id).join(",")}`;
     if (seeded.current === key) return;
     seeded.current = key;
-    const stored = readStored();
+    const stored = readStored().variants;
     const next: Record<string, StrategyVariant> = {};
     for (const item of roster.strategies) {
       const plan = buildPlan(roster.event, Object.fromEntries(roster.drivers.map((d) => [d.id, d])), {
@@ -199,8 +236,8 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         tyres: saved?.tyres ?? defaultTyres(plan.stints.length, inventory),
       };
     }
-    setVariants(next);
-    setActiveId((current) => (current && next[current] ? current : (roster.strategies[0]?.id ?? null)));
+    setVariants((current) => ({ ...next, ...current }));
+    setActiveId((current) => (current ?? roster.strategies[0]?.id ?? null));
   }, [inventory, roster]);
 
   const active = activeId ? variants[activeId] : undefined;
@@ -214,7 +251,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           ...current,
           [activeId]: dirty ? { ...patched, state: "draft" as const } : patched,
         };
-        writeStored(next);
+        writeStored({ variants: next });
         return next;
       });
     },
@@ -239,6 +276,155 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const [editing, setEditing] = useState(-1);
   const [picked, setPicked] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // ── estrategias: activar, duplicar, crear ───────────────────────────────
+  const activate = useCallback(
+    (id: string, silent = false) => {
+      setActiveId(id);
+      setEditing(-1);
+      setSelected(-1);
+      if (silent) return;
+      const name = variants[id]?.name ?? "";
+      toast.show(
+        t("strategy.cards.activated"),
+        formatMessage(t("strategy.cards.activatedHint"), { name }),
+      );
+    },
+    [t, toast, variants],
+  );
+
+  const duplicate = useCallback(
+    (id: string) => {
+      const source = variants[id];
+      if (!source) return;
+      const copyId = freeId(variants, "local");
+      const name = formatMessage(t("strategy.cards.copyName"), { name: source.name });
+      setVariants((current) => {
+        const next = {
+          ...current,
+          [copyId]: { ...source, id: copyId, name, state: "draft" as const },
+        };
+        writeStored({ variants: next });
+        return next;
+      });
+      toast.show(t("strategy.cards.duplicated"), formatMessage(t("strategy.cards.duplicatedHint"), { name }));
+    },
+    [t, toast, variants],
+  );
+
+  /** La tarjeta «+ Nueva estrategia» avisa; la de la columna no (briefing 07). */
+  const createStrategy = useCallback(
+    (silent = false) => {
+      if (!roster) return;
+      const newId = freeId(variants, "local");
+      const base = roster.strategies[0]?.order ?? roster.drivers.map((driver) => driver.id);
+      const name = formatMessage(t("strategy.cards.newName"), {
+        n: Object.keys(variants).length + 1,
+      });
+      const fresh = buildPlan(roster.event, driversById, { mode: "dry", order: base, overrides: {} });
+      setVariants((current) => {
+        const next: Record<string, StrategyVariant> = {
+          ...current,
+          [newId]: {
+            id: newId,
+            name,
+            note: t("strategy.cards.newNote"),
+            mode: "dry",
+            order: base,
+            state: "draft",
+            overrides: {},
+            tyres: defaultTyres(fresh.stints.length, inventory),
+          },
+        };
+        writeStored({ variants: next });
+        return next;
+      });
+      activate(newId, true);
+      if (!silent) {
+        toast.show(t("strategy.cards.created"), formatMessage(t("strategy.cards.createdHint"), { name }));
+      }
+    },
+    [activate, driversById, inventory, roster, t, toast, variants],
+  );
+
+  // ── comparación ─────────────────────────────────────────────────────────
+  const [compareId, setCompareId] = useState<string | null>(null);
+
+  // ── disponibilidad ──────────────────────────────────────────────────────
+  // Sin dato real de disponibilidad, cada piloto entra disponible de punta a
+  // punta: la pantalla no inventa ausencias que nadie ha declarado.
+  const [availability, setAvailability] = useState<Record<string, AvailabilitySegment[]>>(
+    () => readStored().availability ?? {},
+  );
+  const [avDriver, setAvDriver] = useState("");
+  const [avState, setAvState] = useState<AvailabilityState>("ok");
+  const [avFrom, setAvFrom] = useState("14:00");
+  const [avTo, setAvTo] = useState("16:00");
+
+  const addSlot = useCallback(
+    (driverId: string, state: AvailabilityState, from: string, to: string) => {
+      const a = parseHhmm(from);
+      const b = parseHhmm(to);
+      if (a === null || b === null || b <= a) {
+        toast.show(t("strategy.availability.invalidTitle"), t("strategy.availability.invalid"));
+        return;
+      }
+      setAvailability((current) => {
+        const next = {
+          ...current,
+          [driverId]: addAvailability(current[driverId] ?? FULL_AVAILABILITY, {
+            state,
+            from: a,
+            to: b,
+          }),
+        };
+        writeStored({ availability: next });
+        return next;
+      });
+      toast.show(
+        t("strategy.availability.added"),
+        formatMessage(t("strategy.availability.addedHint"), {
+          driver: driversById[driverId]?.name ?? driverId,
+          from,
+          to,
+        }),
+      );
+    },
+    [driversById, t, toast],
+  );
+
+  // ── ⚙ Ajustes ───────────────────────────────────────────────────────────
+  const exportPlan = useCallback(async () => {
+    const draft = snapshot.draft;
+    if (!draft) {
+      toast.show(t("strategy.menu.exportFailed"), t("strategy.menu.soon"));
+      return;
+    }
+    try {
+      // Exportación real del dominio (`strategy-transfer.ts`): el paquete lo
+      // arma el servicio, esta pantalla solo dice qué plan y cuánto pesa.
+      const pack = await exportStrategyPackage(runtime.client, `orbit-export-${draft.draftId}`, {
+        plans: [{ planId: draft.planId, variantId: draft.variantId }],
+        provenance: {
+          application: "Vantare",
+          applicationVersion: "orbit-v0.3",
+          exportedAt: new Date().toISOString(),
+        },
+      });
+      toast.show(
+        t("strategy.menu.exportDone"),
+        formatMessage(t("strategy.menu.exportDoneHint"), {
+          file: pack.suggestedFileName,
+          kb: (pack.bytes.length / 1024).toFixed(1),
+        }),
+      );
+    } catch (error) {
+      toast.show(
+        t("strategy.menu.exportFailed"),
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }, [runtime, snapshot.draft, t, toast]);
 
   const scrollToStint = useCallback((index: number) => {
     window.requestAnimationFrame(() => {
@@ -362,11 +548,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             <ListRow
               ariaSelected={variant.id === activeId}
               key={variant.id}
-              onClick={() => {
-                setActiveId(variant.id);
-                setEditing(-1);
-                setSelected(-1);
-              }}
+              onClick={() => activate(variant.id, true)}
               selected={variant.id === activeId}
               subtitle={variant.note}
               title={variant.name}
@@ -402,7 +584,8 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
       <Button
         className="orbit-strategy__new"
-        onClick={() => toast.show(t("strategy.new"), t("strategy.newHint"))}
+        data-testid="orbit-strategy-new-column"
+        onClick={() => createStrategy(true)}
         variant="ghost"
       >
         {t("strategy.new")}
@@ -442,6 +625,52 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
   const event = roster.event;
   const drivers = roster.drivers;
+
+  // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
+  const cards = Object.values(variants);
+  const plansById: Record<string, StrategyPlan> = Object.fromEntries(
+    cards.map((variant) => [variant.id, buildPlan(event, driversById, variant)]),
+  );
+  const others = cards.filter((variant) => variant.id !== active.id);
+  const compare = others.find((variant) => variant.id === compareId) ?? others[0];
+  const verdict = compare
+    ? compareStrategies(
+        { id: active.id, plan },
+        { id: compare.id, plan: plansById[compare.id] },
+        event.pitS,
+        drivers,
+      )
+    : null;
+  const verdictText = verdict
+    ? formatMessage(t("strategy.cards.verdict"), {
+        winner: variants[verdict.winnerId]?.name ?? "",
+        a: verdict.winnerLaps,
+        b: verdict.loserLaps,
+        diff: verdict.diff === 0 ? t("strategy.cards.tie") : `+${verdict.diff}`,
+        reason: verdict.sameStops
+          ? t("strategy.cards.same")
+          : formatMessage(t("strategy.cards.saves"), {
+              n: verdict.savedStops,
+              s: verdict.savedS.toFixed(0),
+              cost: verdict.costS.toFixed(0),
+            }) + (verdict.pays ? t("strategy.cards.pays") : t("strategy.cards.noPays")),
+        stints: verdict.stints,
+        drivers: verdict.driverCount,
+        doubles: verdict.doubles.join(", ") || t("strategy.cards.nobody"),
+      })
+    : null;
+
+  const availRanges: Record<string, AvailRange[]> = Object.fromEntries(
+    drivers.map((driver) => [
+      driver.id,
+      (availability[driver.id] ?? FULL_AVAILABILITY).map((segment) => ({
+        from: segment.from / 60,
+        to: segment.to / 60,
+        state: segment.state,
+      })),
+    ]),
+  );
+  const avDriverId = avDriver || drivers[0]?.id || "";
   const timelineStart = event.startISO
     ? new Date(event.startISO)
     : (() => {
@@ -535,13 +764,39 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           </div>
         </div>
         <div className="orbit-strategy__actions">
-          {/* El menú ⚙ (Telemetría · Combustible · Información · Exportar) llega
-              en la parte B del briefing; aquí queda el disparador montado. */}
-          <IconButton
-            data-testid="orbit-strategy-settings"
-            disabled
-            icon="i-ajustes"
-            label={t("strategy.settings")}
+          <Menu
+            items={[
+              {
+                id: "telemetry",
+                title: t("strategy.menu.telemetry"),
+                description: t("strategy.menu.telemetryHint"),
+                onSelect: () => toast.show(t("strategy.menu.telemetry"), t("strategy.menu.soon")),
+              },
+              {
+                id: "fuel",
+                title: t("strategy.menu.fuel"),
+                description: t("strategy.menu.fuelHint"),
+                onSelect: () => toast.show(t("strategy.menu.fuel"), t("strategy.menu.soon")),
+              },
+              {
+                id: "info",
+                title: t("strategy.menu.info"),
+                description: t("strategy.menu.infoHint"),
+                onSelect: () => toast.show(t("strategy.menu.info"), t("strategy.menu.soon")),
+              },
+              {
+                id: "export",
+                title: t("strategy.menu.export"),
+                description: t("strategy.menu.exportHint"),
+                onSelect: () => void exportPlan(),
+              },
+            ]}
+            label={t("strategy.menu.label")}
+            trigger={
+              <Button data-testid="orbit-strategy-settings" icon="i-ajustes" variant="ghost">
+                {t("strategy.settings")}
+              </Button>
+            }
           />
           <Button data-testid="orbit-strategy-reset" onClick={reset} variant="ghost">
             {t("strategy.reset")}
@@ -561,9 +816,182 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         value={tab}
       />
 
-      {tab !== "overview" ? (
-        <div className="orbit-strategy__pending" data-testid="orbit-strategy-pending">
-          <Note title={t("strategy.pending.title")}>{t("strategy.pending.lead")}</Note>
+      {tab === "strategies" ? (
+        <div className="orbit-strategy__pane" data-testid="orbit-strategy-strategies">
+          <div className="orbit-strats-grid">
+            {cards.map((variant) => {
+              const q = plansById[variant.id];
+              return (
+                <article
+                  className="orbit-strat-card"
+                  data-active={variant.id === active.id ? "true" : undefined}
+                  data-testid={`orbit-strat-${variant.id}`}
+                  key={variant.id}
+                >
+                  <h4>
+                    {variant.name}
+                    <StateChip state={variant.state === "ok" ? "ok" : "draft"}>
+                      {variant.state === "ok" ? t("strategy.upToDate") : t("strategy.draft")}
+                    </StateChip>
+                  </h4>
+                  <p>{variant.note}</p>
+                  <dl>
+                    <dt>{t("strategy.cards.stintsStops")}</dt>
+                    <dd>
+                      {q.stints.length} · {q.stops}
+                    </dd>
+                    <dt>{t("strategy.cards.laps")}</dt>
+                    <dd>{q.totalLaps}</dd>
+                    <dt>{t("strategy.cards.avgPace")}</dt>
+                    <dd>{lapTime(q.avgPace)}</dd>
+                    <dt>{t("strategy.cards.avgFuel")}</dt>
+                    <dd>{q.avgFuel.toFixed(2)} L/v</dd>
+                    <dt>{t("strategy.cards.total")}</dt>
+                    <dd>{clockTime(q.total)}</dd>
+                  </dl>
+                  <div className="orbit-strat-card__acts">
+                    {variant.id === active.id ? (
+                      <Button disabled size="sm" variant="ghost">
+                        {t("strategy.cards.active")}
+                      </Button>
+                    ) : (
+                      <Button
+                        data-testid={`orbit-strat-activate-${variant.id}`}
+                        onClick={() => activate(variant.id)}
+                        size="sm"
+                        variant="primary"
+                      >
+                        {t("strategy.cards.activate")}
+                      </Button>
+                    )}
+                    <Button
+                      data-testid={`orbit-strat-duplicate-${variant.id}`}
+                      onClick={() => duplicate(variant.id)}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      {t("strategy.cards.duplicate")}
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+            <button
+              className="orbit-strat-card orbit-strat-card--new"
+              data-testid="orbit-strategy-new-card"
+              onClick={() => createStrategy()}
+              type="button"
+            >
+              <b>{t("strategy.new")}</b>
+              <span>{t("strategy.cards.newNote")}</span>
+            </button>
+          </div>
+
+          <Surface
+            actions={
+              others.length > 1 && compare ? (
+                <Select
+                  label={t("strategy.cards.compare")}
+                  onChange={setCompareId}
+                  options={others.map((variant) => ({ value: variant.id, label: variant.name }))}
+                  value={compare.id}
+                />
+              ) : undefined
+            }
+            aria-label={t("strategy.cards.compare")}
+            meta={t("strategy.cards.compareMeta")}
+            title={t("strategy.cards.compare")}
+          >
+            <p className="orbit-strategy__verdict" data-testid="orbit-strategy-verdict">
+              {verdictText ?? t("strategy.cards.compareNone")}
+            </p>
+          </Surface>
+        </div>
+      ) : tab === "availability" ? (
+        <div className="orbit-strategy__pane" data-testid="orbit-strategy-availability">
+          <Surface
+            aria-label={t("strategy.availability.title")}
+            meta={formatMessage(t("strategy.availability.range"), {
+              from: hhmm(AVAILABILITY_FROM),
+              to: hhmm(AVAILABILITY_TO),
+            })}
+            title={t("strategy.availability.title")}
+          >
+            <AvailabilityBoard
+              drivers={drivers.map((driver) => ({
+                id: driver.id,
+                name: driver.name,
+                color: driver.color,
+              }))}
+              from={AVAILABILITY_FROM / 60}
+              label={t("strategy.availability.title")}
+              ranges={availRanges}
+              to={AVAILABILITY_TO / 60}
+            />
+          </Surface>
+
+          <Surface
+            aria-label={t("strategy.availability.add")}
+            meta={t("strategy.availability.addHint")}
+            title={t("strategy.availability.add")}
+          >
+            <form
+              className="orbit-avail-form"
+              data-testid="orbit-availability-form"
+              onSubmit={(formEvent) => {
+                formEvent.preventDefault();
+                addSlot(avDriverId, avState, avFrom, avTo);
+              }}
+            >
+              <Field htmlFor="orbit-av-driver" label={t("strategy.availability.driver")}>
+                <Select
+                  id="orbit-av-driver"
+                  label={t("strategy.availability.driver")}
+                  onChange={setAvDriver}
+                  options={drivers.map((driver) => ({ value: driver.id, label: driver.name }))}
+                  value={avDriverId}
+                />
+              </Field>
+              <Field htmlFor="orbit-av-state" label={t("strategy.availability.status")}>
+                <Select<AvailabilityState>
+                  id="orbit-av-state"
+                  label={t("strategy.availability.status")}
+                  onChange={setAvState}
+                  options={[
+                    { value: "ok", label: t("strategy.availability.ok") },
+                    { value: "maybe", label: t("strategy.availability.maybe") },
+                    { value: "no", label: t("strategy.availability.no") },
+                  ]}
+                  value={avState}
+                />
+              </Field>
+              <Field htmlFor="orbit-av-from" label={t("strategy.availability.from")}>
+                <Input
+                  aria-label={t("strategy.availability.from")}
+                  id="orbit-av-from"
+                  numeric
+                  onChange={(changed) => setAvFrom(changed.currentTarget.value)}
+                  step={300}
+                  type="time"
+                  value={avFrom}
+                />
+              </Field>
+              <Field htmlFor="orbit-av-to" label={t("strategy.availability.to")}>
+                <Input
+                  aria-label={t("strategy.availability.to")}
+                  id="orbit-av-to"
+                  numeric
+                  onChange={(changed) => setAvTo(changed.currentTarget.value)}
+                  step={300}
+                  type="time"
+                  value={avTo}
+                />
+              </Field>
+              <Button type="submit" variant="primary">
+                {t("strategy.availability.submit")}
+              </Button>
+            </form>
+          </Surface>
         </div>
       ) : (
         <div className="orbit-strategy__overview" data-testid="orbit-strategy-overview">
@@ -684,6 +1112,11 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                         data-stint={stint.i}
                         data-testid={`orbit-stint-${stint.i}`}
                       >
+                        {/* Asa visual del prototipo: el orden se cambia con el
+                            Select de piloto, no arrastrando la tarjeta. */}
+                        <span aria-hidden="true" className="orbit-stint__grip">
+                          ⋮⋮
+                        </span>
                         <span className="orbit-stint__n">#{index + 1}</span>
                         <span className="orbit-stint__cell">
                           <span className="orbit-stint__k">{t("strategy.stints.driver")}</span>

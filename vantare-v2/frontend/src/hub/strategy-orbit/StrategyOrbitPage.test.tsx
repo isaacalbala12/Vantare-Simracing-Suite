@@ -212,6 +212,119 @@ describe("StrategyOrbitPage · neumáticos", () => {
   });
 });
 
+describe("StrategyOrbitPage · ⚙ Ajustes", () => {
+  it("el menú abre con el botón y cierra con Esc", async () => {
+    await mounted();
+
+    const trigger = screen.getByTestId("orbit-strategy-settings");
+    expect(trigger.textContent).toContain("Ajustes");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(trigger);
+    const menu = await screen.findByRole("menu", { name: "Ajustes del evento" });
+    expect(within(menu).getByText("Exportar plan")).toBeTruthy();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("StrategyOrbitPage · Estrategias", () => {
+  async function strategiesTab() {
+    await mounted();
+    fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));
+    return screen.findByTestId("orbit-strategy-strategies");
+  }
+
+  it("con una sola estrategia no hay nada que comparar", async () => {
+    await strategiesTab();
+
+    expect(screen.getByTestId("orbit-strat-s1")).toBeTruthy();
+    expect(screen.getByTestId("orbit-strategy-verdict").textContent).toContain(
+      "no hay nada que comparar",
+    );
+  });
+
+  it("duplicar crea un borrador y el veredicto compara vueltas", async () => {
+    await strategiesTab();
+
+    fireEvent.click(screen.getByTestId("orbit-strat-duplicate-s1"));
+    const copy = await screen.findByTestId("orbit-strat-local-1");
+    expect(copy.textContent).toContain("Estrategia #1 (copia)");
+    expect(within(copy).getByText("Borrador")).toBeTruthy();
+
+    // Mismo modo y mismo orden: empatan en vueltas y nadie ahorra paradas.
+    const verdict = screen.getByTestId("orbit-strategy-verdict").textContent ?? "";
+    expect(verdict).toContain("completa");
+    expect(verdict).toContain("vueltas frente a");
+    expect(verdict).toContain("empate");
+    expect(verdict).toContain("dobla turno");
+  });
+
+  it("Activar cambia la estrategia del panel y del crumb", async () => {
+    await strategiesTab();
+
+    fireEvent.click(screen.getByTestId("orbit-strat-duplicate-s1"));
+    fireEvent.click(await screen.findByTestId("orbit-strat-activate-local-1"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #1 (copia)"),
+    );
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("orbit-strat-s1").getAttribute("data-active")).toBeNull();
+    // La activa ya no ofrece Activar, y la anterior sí.
+    expect(screen.getByTestId("orbit-strat-activate-s1")).toBeTruthy();
+  });
+
+  it("«+ Nueva estrategia» la crea y la deja activa", async () => {
+    await strategiesTab();
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-new-card"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #2"),
+    );
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+  });
+});
+
+describe("StrategyOrbitPage · Disponibilidad", () => {
+  it("añade un tramo y recorta el que solapaba", async () => {
+    await mounted();
+    fireEvent.click(screen.getByRole("tab", { name: "Disponibilidad de pilotos" }));
+    await screen.findByTestId("orbit-strategy-availability");
+
+    // Cada piloto entra con un único tramo disponible de 13:00 a 18:30.
+    expect(screen.getAllByTestId("orbit-availability-cell")).toHaveLength(3);
+
+    fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "no" } });
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "15:00" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "16:00" } });
+    fireEvent.submit(screen.getByTestId("orbit-availability-form"));
+
+    // El tramo interior parte el de Isaac en tres (`13.5`).
+    await waitFor(() => expect(screen.getAllByTestId("orbit-availability-cell")).toHaveLength(5));
+    expect(
+      screen.getByLabelText("Isaac Albalá · 15:00–16:00 · no disponible"),
+    ).toBeTruthy();
+  });
+
+  it("una hora final anterior a la inicial no cambia el tablero", async () => {
+    await mounted();
+    fireEvent.click(screen.getByRole("tab", { name: "Disponibilidad de pilotos" }));
+    await screen.findByTestId("orbit-strategy-availability");
+
+    fireEvent.change(screen.getByLabelText("Desde"), { target: { value: "16:00" } });
+    fireEvent.change(screen.getByLabelText("Hasta"), { target: { value: "15:00" } });
+    fireEvent.submit(screen.getByTestId("orbit-availability-form"));
+
+    expect(await screen.findByText("Tramo no válido")).toBeTruthy();
+    expect(screen.getAllByTestId("orbit-availability-cell")).toHaveLength(3);
+  });
+});
+
 describe("StrategyOrbitPage · estado vacío", () => {
   it("sin evento muestra «Elige evento y pilotos»", async () => {
     mount(null);

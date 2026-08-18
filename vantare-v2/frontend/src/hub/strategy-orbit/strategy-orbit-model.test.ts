@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  addAvailability,
+  AVAILABILITY_FROM,
+  AVAILABILITY_TO,
   buildPlan,
+  compareStrategies,
   distribution,
+  parseHhmm,
   pitWindowLap,
   rotateOrder,
   tyreCondition,
   tyreUses,
+  type AvailabilitySegment,
   type StrategyDriver,
   type StrategyEvent,
 } from "./strategy-orbit-model";
@@ -169,5 +175,90 @@ describe("neumáticos", () => {
       { stint: 1, corner: "FL" },
     ]);
     expect(uses["M-02"]).toHaveLength(1);
+  });
+});
+
+describe("compareStrategies (13.5 · veredicto)", () => {
+  const active = buildPlan(EVENT, ROSTER, { mode: "dry", order: ORDER, overrides: {} });
+  const eco = buildPlan(EVENT, ROSTER, { mode: "eco", order: ORDER, overrides: {} });
+
+  it("gana quien completa más vueltas y el empate se queda en la activa", () => {
+    const verdict = compareStrategies({ id: "s1", plan: active }, { id: "s2", plan: eco }, EVENT.pitS, FOUR);
+
+    expect(active.totalLaps).toBeGreaterThan(eco.totalLaps);
+    expect(verdict.winnerId).toBe("s1");
+    expect(verdict.loserId).toBe("s2");
+    expect(verdict.winnerLaps).toBe(active.totalLaps);
+    expect(verdict.loserLaps).toBe(eco.totalLaps);
+    expect(verdict.diff).toBe(active.totalLaps - eco.totalLaps);
+
+    const tie = compareStrategies({ id: "s1", plan: active }, { id: "s2", plan: active }, EVENT.pitS, FOUR);
+    expect(tie.winnerId).toBe("s1");
+    expect(tie.diff).toBe(0);
+  });
+
+  it("explica el ahorro de boxes frente al coste de ritmo", () => {
+    const verdict = compareStrategies({ id: "s1", plan: active }, { id: "s2", plan: eco }, EVENT.pitS, FOUR);
+
+    expect(verdict.savedStops).toBe(active.stops - eco.stops);
+    expect(verdict.savedS).toBe((active.stops - eco.stops) * EVENT.pitS);
+    expect(verdict.costS).toBeCloseTo((eco.avgPace - active.avgPace) * eco.totalLaps, 6);
+    expect(verdict.pays).toBe(verdict.savedS > verdict.costS);
+    // El eco de este caso no quita ninguna parada: `sameStops` y el texto lo dicen.
+    expect(verdict.sameStops).toBe(verdict.savedStops <= 0);
+  });
+
+  it("señala quién dobla turno en la activa", () => {
+    const verdict = compareStrategies({ id: "s1", plan: active }, { id: "s2", plan: eco }, EVENT.pitS, FOUR);
+
+    // 5 stints y 4 pilotos: solo el primero repite.
+    expect(verdict.doubles).toEqual(["isaac"]);
+    expect(verdict.stints).toBe(5);
+    expect(verdict.driverCount).toBe(4);
+  });
+});
+
+describe("addAvailability (13.5 · recorte de tramos)", () => {
+  const full: AvailabilitySegment[] = [
+    { state: "ok", from: AVAILABILITY_FROM, to: AVAILABILITY_TO },
+  ];
+
+  it("un tramo interior parte el existente en tres", () => {
+    const next = addAvailability(full, { state: "no", from: 15 * 60, to: 16 * 60 });
+
+    expect(next).toEqual([
+      { state: "ok", from: AVAILABILITY_FROM, to: 15 * 60 },
+      { state: "no", from: 15 * 60, to: 16 * 60 },
+      { state: "ok", from: 16 * 60, to: AVAILABILITY_TO },
+    ]);
+  });
+
+  it("recorta el solape y conserva lo que queda fuera", () => {
+    const base = addAvailability(full, { state: "no", from: 15 * 60, to: 16 * 60 });
+    const next = addAvailability(base, { state: "maybe", from: 15 * 60 + 30, to: 17 * 60 });
+
+    expect(next).toEqual([
+      { state: "ok", from: AVAILABILITY_FROM, to: 15 * 60 },
+      { state: "no", from: 15 * 60, to: 15 * 60 + 30 },
+      { state: "maybe", from: 15 * 60 + 30, to: 17 * 60 },
+      { state: "ok", from: 17 * 60, to: AVAILABILITY_TO },
+    ]);
+  });
+
+  it("un tramo que cubre todo deja uno solo, y el eje recorta los extremos", () => {
+    const next = addAvailability(full, { state: "no", from: 8 * 60, to: 23 * 60 });
+
+    expect(next).toEqual([{ state: "no", from: AVAILABILITY_FROM, to: AVAILABILITY_TO }]);
+  });
+
+  it("un tramo sin duración no cambia nada", () => {
+    expect(addAvailability(full, { state: "no", from: 15 * 60, to: 15 * 60 })).toEqual(full);
+  });
+
+  it("parseHhmm acepta horas válidas y rechaza el resto", () => {
+    expect(parseHhmm("14:30")).toBe(870);
+    expect(parseHhmm("9:05")).toBe(545);
+    expect(parseHhmm("25:00")).toBeNull();
+    expect(parseHhmm("")).toBeNull();
   });
 });

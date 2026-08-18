@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/04-studio");
@@ -139,6 +140,7 @@ try {
       if (own.nativeTitles !== 0) {
         throw new Error(`${shot.name}: la vista usa title nativo (${own.nativeTitles})`);
       }
+      await assertNoHorizontalOverflow(page, shot.name);
       if (!own.back || !own.create) {
         throw new Error(`${shot.name}: falta el enlace de volver o el boton de nuevo perfil`);
       }
@@ -188,6 +190,23 @@ try {
         widgetRows: document.querySelectorAll('[data-testid^="orbit-studio-widget-item-"]').length,
         nativeTitles: studio ? studio.querySelectorAll("[title]").length : -1,
         columnTitles: document.querySelectorAll('.orbit-column [title]').length,
+        // La columna del Studio es solo la lista de widgets: ni carreras, ni
+        // perfil de overlay, ni launcher (briefing 04).
+        columnBlocks: document.querySelectorAll('[data-testid="orbit-column-blocks"] [data-block]').length,
+        // La lista ocupa la altura disponible y el pie "Anadir widget" queda
+        // abajo, siempre visible.
+        listFillsColumn: (() => {
+          const items = document.querySelector('.orbit-studio-wlist__items');
+          const slot = document.querySelector('#orbit-studio-context-slot');
+          if (!items || !slot) return false;
+          return items.getBoundingClientRect().height > slot.getBoundingClientRect().height * 0.5;
+        })(),
+        addFootVisible: (() => {
+          const foot = document.querySelector('.orbit-studio-wlist__foot');
+          if (!foot) return false;
+          const rect = foot.getBoundingClientRect();
+          return rect.height > 0 && rect.bottom <= window.innerHeight + 0.5;
+        })(),
         // Alineación de la topbar: los controles del Studio van tras el título,
         // no pegados a la pill de actualización del borde derecho.
         topbarTitleRight: Math.round(
@@ -223,6 +242,7 @@ try {
     if (contract.scrollWidth > contract.innerWidth) {
       throw new Error(`${shot.name}: la página hace scroll horizontal (${contract.scrollWidth} > ${contract.innerWidth})`);
     }
+    await assertNoHorizontalOverflow(page, shot.name);
     if (contract.toolbar !== 60) {
       throw new Error(`${shot.name}: toolbar de ${contract.toolbar}px, se esperaban 60`);
     }
@@ -239,6 +259,15 @@ try {
     const expectedRows = shot.query.includes("stress=1") ? 20 : 3;
     if (contract.widgetRows !== expectedRows) {
       throw new Error(`${shot.name}: ${contract.widgetRows} filas de widgets, se esperaban ${expectedRows}`);
+    }
+    if (contract.columnBlocks !== 0) {
+      throw new Error(`${shot.name}: la columna del Studio pinta ${contract.columnBlocks} bloques persistentes, se esperaban 0`);
+    }
+    if (!contract.listFillsColumn) {
+      throw new Error(`${shot.name}: la lista de widgets no ocupa la altura de la columna`);
+    }
+    if (!contract.addFootVisible) {
+      throw new Error(`${shot.name}: el pie "Anadir widget" no queda visible abajo`);
     }
     if (contract.nativeTitles !== 0 || contract.columnTitles !== 0) {
       throw new Error(`${shot.name}: la vista usa \`title\` nativo (${contract.nativeTitles} + ${contract.columnTitles})`);

@@ -451,6 +451,9 @@
   flex-direction: column;
   gap: 2.5px;
   min-height: 0;
+  /* Ver la nota de `.orbit-column__context`: sin `hidden` el eje X pasa a
+     `auto` y los nombres largos sacan barra horizontal. */
+  overflow-x: hidden;
   overflow-y: auto;
 }
 

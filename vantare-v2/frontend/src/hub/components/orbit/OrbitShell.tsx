@@ -276,7 +276,9 @@ function OrbitShellBody({
     () => [
       {
         id: "races",
-        hiddenFor: ["carreras"],
+        // En el Studio la columna es solo la lista de widgets (briefing 04):
+        // ni carreras ni launcher compiten por su altura.
+        hiddenFor: ["carreras", "studio"],
         content: (
           <SideRaces
             labels={{
@@ -316,7 +318,7 @@ function OrbitShellBody({
       },
       {
         id: "launcher",
-        hiddenFor: ["launcher"],
+        hiddenFor: ["launcher", "studio"],
         content: (
           <SideLauncher
             labels={{

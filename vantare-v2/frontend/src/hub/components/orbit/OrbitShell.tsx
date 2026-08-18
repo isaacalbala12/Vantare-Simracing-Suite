@@ -47,6 +47,7 @@ import {
   StrategyOrbitPage,
   STRATEGY_CONTEXT_SLOT_ID,
 } from "../../strategy-orbit/StrategyOrbitPage";
+import { EngineerOrbitPage } from "../../engineer-orbit/EngineerOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -471,6 +472,8 @@ function OrbitShellBody({
               <RacesOrbitPage calendar={races.calendar} target={navTarget} />
             ) : activeView === "estrategia" ? (
               <StrategyOrbitPage />
+            ) : activeView === "ingeniero" ? (
+              <EngineerOrbitPage />
             ) : (
               children
             )}

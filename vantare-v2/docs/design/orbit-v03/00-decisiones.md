@@ -234,3 +234,16 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-67 · El asa ⋮⋮ del stint es decorativa
 **Decisión.** El prototipo dibuja un asa a la izquierda del `#n` de cada stint, pero el orden de pilotos se cambia con el `Select` de la tarjeta y con «Repartir pilotos», no arrastrando. El asa se porta como `aria-hidden`, sin `draggable` ni foco: prometer un arrastre que no existe sería peor que no dibujarla.
+
+## D-68 · La voz y el volumen son locales porque el contrato del Ingeniero no los tiene
+**Decisión.** `EngineerStatus` (`internal/engineer/service`) publica módulos (`enabled`, `spotterEnabled`, `subtitlesEnabled`), sensibilidad y salidas por categoría, y nada más: no hay voz, ni volumen, ni atenuación del juego. Ingeniero Orbit escribe en lo real por los mismos eventos que `EngineerPage` (`engineer:enabled|spotter|subtitles|sensitivity|output:set`) y, para la fila de Voz, usa el motor **del sistema** (`speechSynthesis`): el `Select` lista las voces instaladas de verdad y «Probar voz» habla con la voz y el volumen elegidos. Voz y volumen se guardan en `vantare.v03orbit.engineer.voice` y la superficie lo dice en su meta («ajuste local»).
+**Consecuencia.** «Atenuar el juego al hablar» se porta como `Toggle` **deshabilitado** con el motivo escrito («Aún no está en el contrato del Ingeniero»), igual que «Estrategia en vivo · Próximamente»: prometer un ducking que nadie implementa sería peor que dibujarlo apagado. Cuando el servicio publique voz, volumen y atenuación, esta capa local se retira.
+
+## D-69 · El estado de la cabecera es el del sim de la shell, sin inventar los Hz
+**Decisión.** El briefing pide `SubtleStatus ok` «LMU · 15 Hz». `TelemetrySourceStatus` publica `kind`, `name`, `live`, `available` y `state`, pero **no** la frecuencia, y `EngineerStatus.connected` es otra verdad distinta. La cabecera lee el mismo `simStatus` que la shell calcula y pinta en el Pill LMU de la columna (`sim-status-context`, D-4x del Studio), con tres textos honestos: «LMU · en directo», «LMU · buscando sesión» y «LMU · sin fuente». Los Hz llegarán cuando la fuente los publique.
+
+## D-70 · La radio no se exporta todavía, y lo dice
+**Decisión.** El runtime de Telemetry Core no expone ninguna exportación del registro de radio (a diferencia de Estrategia, que sí tiene `strategy-transfer.ts`, D-64). El botón «Exportar» del pie del feed avisa con el motivo real («el runtime aún no expone una exportación de radio; llega con el registro de sesión») en vez de descargar un JSON inventado por la pantalla.
+
+## D-71 · El feed es el scroller, y el harness siembra veinte mensajes
+**Decisión.** `Surface fill` deja el scroll en el cuerpo; aquí el cuerpo se vuelve columna sin scroll y el `ol` del feed es el único scroller, para que el pie con la nota y «Exportar» quede fijo abajo como en la referencia (`.rf-foot`). El harness siembra **veinte** mensajes en vez de los ~12 del briefing: con doce el feed no llega a desbordar a 1080 y el criterio «el feed se desplaza dentro» no se podía comprobar. `visual:engineer-radio` no se toca: mide el widget de radio del overlay, no esta pantalla, y sigue verde.

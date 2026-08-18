@@ -5,6 +5,7 @@ import { studioOrbitPt } from "./studio-orbit/pt";
 import { launcherOrbitPt } from "./launcher-orbit/pt";
 import { racesOrbitPt } from "./races-orbit/pt";
 import { strategyOrbitPt } from "./strategy-orbit/pt";
+import { engineerOrbitPt } from "./engineer-orbit/pt";
 import { diagnosticsPt } from "../../hub/settings/diagnostics/translations";
 import { testingCenterPt } from "../../hub/testing-center/translations";
 
@@ -589,4 +590,5 @@ export const pt: Record<string, string> = {
   ...launcherOrbitPt,
   ...racesOrbitPt,
   ...strategyOrbitPt,
+  ...engineerOrbitPt,
 };

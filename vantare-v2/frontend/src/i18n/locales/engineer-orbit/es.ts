@@ -1,0 +1,82 @@
+/** Catálogo `engineer.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const engineerOrbitEs: Record<string, string> = {
+  "engineer.eyebrow": "Telemetry Core · en directo",
+  "engineer.title": "Ingeniero Vantare",
+  "engineer.lead":
+    "Avisos de pista, spotter y radio: qué te dice, cuándo y por dónde. Reglas locales primero; voz y perfiles avanzados después.",
+  "engineer.testVoice": "Probar voz",
+
+  "engineer.source.live": "LMU · en directo",
+  "engineer.source.searching": "LMU · buscando sesión",
+  "engineer.source.offline": "LMU · sin fuente",
+
+  "engineer.modules.engineer": "Ingeniero de pista",
+  "engineer.modules.engineerHint":
+    "Combustible, paradas, banderas y penalizaciones con contexto de sesión.",
+  "engineer.modules.spotter": "Spotter",
+  "engineer.modules.spotterHint":
+    "Coches alrededor por geometría real: izquierda, derecha, dos de ancho.",
+  "engineer.modules.subtitles": "Subtítulos",
+  "engineer.modules.subtitlesHint":
+    "El mensaje también en pantalla, sin depender del widget de radio.",
+  "engineer.modules.liveStrategy": "Estrategia en vivo",
+  "engineer.modules.liveStrategyHint":
+    "Ventana de boxes y objetivo de consumo desde el plan activo.",
+  "engineer.modules.soon": "Próximamente",
+
+  "engineer.voice.title": "Voz",
+  "engineer.voice.meta": "{{n}} voces del sistema · ajuste local",
+  "engineer.voice.noneMeta": "sin motor de voz",
+  "engineer.voice.voice": "Voz",
+  "engineer.voice.voiceHint": "Motor del sistema; sin envío de datos.",
+  "engineer.voice.none": "Sin voces instaladas",
+  "engineer.voice.default": "voz del sistema",
+  "engineer.voice.volume": "Volumen",
+  "engineer.voice.volumeHint": "Independiente del juego.",
+  "engineer.voice.duck": "Atenuar el juego al hablar",
+  "engineer.voice.duckHint": "Aún no está en el contrato del Ingeniero.",
+  "engineer.voice.sensitivity": "Sensibilidad del spotter",
+  "engineer.voice.sensitivityHint": "Margen lateral de los avisos.",
+  "engineer.voice.conservative": "Conservadora",
+  "engineer.voice.normal": "Normal",
+  "engineer.voice.aggressive": "Agresiva",
+  "engineer.voice.sample": "Coche a la izquierda, dos de ancho.",
+  "engineer.voice.playing": "{{voice}} al {{volume}} %",
+  "engineer.voice.noEngine": "El sistema no expone ningún motor de voz.",
+  "engineer.voice.localTitle": "Voz y volumen son locales.",
+  "engineer.voice.local":
+    "El servicio del Ingeniero publica módulos, sensibilidad y salidas; la voz, el volumen y la atenuación aún no. Aquí solo afectan a «Probar voz».",
+
+  "engineer.outputs.title": "Salidas por categoría",
+  "engineer.outputs.meta": "audio · visual · ambos · off",
+  "engineer.outputs.spotter": "Spotter",
+  "engineer.outputs.fuel": "Combustible",
+  "engineer.outputs.penalties": "Penalizaciones",
+  "engineer.outputs.laps": "Vueltas",
+  "engineer.outputs.gaps": "Diferencias",
+  "engineer.outputs.pits": "Boxes",
+  "engineer.outputs.av": "A+V",
+  "engineer.outputs.v": "V",
+  "engineer.outputs.a": "A",
+  "engineer.outputs.off": "Off",
+  "engineer.outputs.bothHint": "Audio y visual",
+  "engineer.outputs.visualHint": "Solo visual",
+  "engineer.outputs.audioHint": "Solo audio",
+  "engineer.outputs.disabledHint": "Desactivado",
+
+  "engineer.radio.title": "Radio",
+  "engineer.radio.filter": "Filtro por origen",
+  "engineer.radio.all": "Todo",
+  "engineer.radio.spotter": "Spotter",
+  "engineer.radio.engineer": "Ingeniero",
+  "engineer.radio.iniS": "S",
+  "engineer.radio.iniI": "I",
+  "engineer.radio.detail": "{{category}} · {{key}}",
+  "engineer.radio.session": "sesión · {{source}}",
+  "engineer.radio.noSession": "sin sesión",
+  "engineer.radio.empty": "Sin mensajes de sesión · aparecerán cuando el runtime emita",
+  "engineer.radio.source": "Los mensajes proceden del runtime real de Telemetry Core.",
+  "engineer.radio.export": "Exportar",
+  "engineer.radio.exportSoon":
+    "El runtime aún no expone una exportación de radio; llega con el registro de sesión.",
+};

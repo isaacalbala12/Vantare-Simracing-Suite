@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AvailabilityBoard,
@@ -169,6 +169,52 @@ describe("Orbit kit · visualización", () => {
     expect(blocks[1].style.left).toBe("50%");
     // 120/240 = 50 %.
     expect(blocks[2].style.width).toBe("50%");
+  });
+
+  it("el rótulo del bloque va en su caja recortable y marca la tinta", () => {
+    const { container } = render(
+      <HorizontalTimeline
+        blocks={(row) => row.blocks}
+        rowLabel={(row) => row.name}
+        rows={[
+          {
+            name: "Isaac",
+            blocks: [
+              // Con sitio: el consumidor pasa `label` y el bloque lo rotula.
+              { id: "a", start: NOW, durationMin: 60, color: "#5ccbd5", label: "WEC Weekly" },
+              // Sin sitio: el consumidor no pasa `label`, solo queda el tip.
+              {
+                id: "b",
+                start: new Date(NOW.getTime() + 120 * 60_000),
+                durationMin: 10,
+                color: "#d52f49",
+                ink: "light" as const,
+                tip: "LMP3 Fixed · 02:15",
+              },
+            ],
+          },
+        ]}
+        spanMin={240}
+        start={NOW}
+        tickEveryMin={60}
+      />,
+    );
+
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-testid="orbit-timeline-block"]'),
+    );
+    // Ancho: el rótulo se pinta y se recorta dentro del bloque, nunca fuera.
+    expect(blocks[0].getAttribute("data-label")).toBe("true");
+    const label = within(blocks[0]).getByTestId("orbit-timeline-block-label");
+    expect(label.className).toBe("orbit-tl__block-label");
+    expect(label.textContent).toBe("WEC Weekly");
+    expect(blocks[0].getAttribute("data-ink")).toBe("dark");
+
+    // Estrecho: sin rótulo a medias; el nombre completo vive en el `data-tip`.
+    expect(blocks[1].getAttribute("data-label")).toBeNull();
+    expect(container.querySelectorAll(".orbit-tl__block-label")).toHaveLength(1);
+    expect(blocks[1].getAttribute("data-tip")).toBe("LMP3 Fixed · 02:15");
+    expect(blocks[1].getAttribute("data-ink")).toBe("light");
   });
 
   it("el donut pinta un arco por porción", () => {

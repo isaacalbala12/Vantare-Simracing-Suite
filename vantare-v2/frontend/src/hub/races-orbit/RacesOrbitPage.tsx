@@ -35,6 +35,7 @@ import {
   tickEveryMinFor,
   TIER_COLOR,
   TIER_FILTERS,
+  TIER_INK,
   tierCounts,
   timelineRows,
   timelineStart,
@@ -73,7 +74,12 @@ const AXIS_FALLBACK = 1100;
 /** Cuántos eventos con nombre caben en una celda de Mes antes del +n. */
 const MONTH_CHIPS = 2;
 
-/** Un bloque solo rotula su serie si tiene sitio para leerse. */
+/**
+ * Un bloque solo rotula su serie si tiene sitio para leerse; el seleccionado
+ * rotula siempre. Lo que no cabe se recorta con elipsis dentro del bloque
+ * (nunca se pinta por encima del vecino) y el nombre completo sigue en el
+ * `data-tip`.
+ */
 const BLOCK_LABEL_PX = 58;
 
 /** Cuenta atrás a un segundo; listas de la columna cada 30 s (briefing 06). */
@@ -304,6 +310,9 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   /** Salida que manda en el detalle: la elegida a mano o la próxima. */
   const detailAt = pickedAt ?? detailStarts[0] ?? null;
+  /** Bloque marcado en el timeline: rotula siempre, aunque no le quepa. */
+  const selectedBlockId =
+    selected && detailAt ? `${selected.id}-${detailAt.getTime()}` : undefined;
 
   const tierLabel = (value: TierFilter) =>
     value === "all" ? t("races.context.all") : t(`races.tier.${value}`);
@@ -784,18 +793,20 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
             <div className="orbit-races__timeline" data-testid="orbit-races-timeline">
               <HorizontalTimeline
                 blocks={(row): TimelineBlock[] =>
-                  row.starts.map((at) => ({
-                    id: `${row.entry.id}-${at.getTime()}`,
-                    start: at,
-                    durationMin: row.blockMin,
-                    color: TIER_COLOR[row.entry.tier],
-                    done: row.entry.followed,
-                    label:
-                      (row.blockMin / 60) * pxPerHour >= BLOCK_LABEL_PX
-                        ? row.entry.name
-                        : undefined,
-                    tip: `${row.entry.name} · ${formatStartTime(at)}`,
-                  }))
+                  row.starts.map((at) => {
+                    const id = `${row.entry.id}-${at.getTime()}`;
+                    const fits = (row.blockMin / 60) * pxPerHour >= BLOCK_LABEL_PX;
+                    return {
+                      id,
+                      start: at,
+                      durationMin: row.blockMin,
+                      color: TIER_COLOR[row.entry.tier],
+                      done: row.entry.followed,
+                      ink: TIER_INK[row.entry.tier],
+                      label: fits || id === selectedBlockId ? row.entry.name : undefined,
+                      tip: `${row.entry.name} · ${formatStartTime(at)}`,
+                    };
+                  })
                 }
                 headWidth={210}
                 label={t("races.timelineTitle")}
@@ -827,9 +838,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                   </>
                 )}
                 rows={tlRows}
-                selected={
-                  selected && detailAt ? `${selected.id}-${detailAt.getTime()}` : undefined
-                }
+                selected={selectedBlockId}
                 spanMin={TIMELINE_SPAN_MIN}
                 start={tlStart}
                 tickEveryMin={tickEveryMin}

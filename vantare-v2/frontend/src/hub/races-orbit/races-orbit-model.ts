@@ -35,6 +35,20 @@ export const TIER_COLOR: Record<SeriesTier, string> = {
   weekly: "var(--orbit-cyan)",
 };
 
+/**
+ * Tinta del rótulo sobre cada `TIER_COLOR`. Los cuatro colores de categoría
+ * son claros (bronce #d29a6c, plata #c9c9cf, oro #ff9b57, cian #5ccbd5), así
+ * que el texto va oscuro: contraste ≥ 7:1 contra `--orbit-primary-ink`,
+ * muy por encima del 4.5:1 de AA. Si algún día un tier pasa a carmín, aquí
+ * se cambia a `light` y el kit pinta `--orbit-ink`.
+ */
+export const TIER_INK: Record<SeriesTier, "dark" | "light"> = {
+  beginner: "dark",
+  intermediate: "dark",
+  advanced: "dark",
+  weekly: "dark",
+};
+
 /** Una serie del calendario ya resuelta para la pantalla. */
 export interface RaceSeriesEntry {
   id: string;

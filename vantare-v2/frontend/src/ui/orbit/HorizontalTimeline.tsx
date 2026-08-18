@@ -14,6 +14,12 @@ export interface TimelineBlock {
   color: string;
   label?: string;
   done?: boolean;
+  /**
+   * Tinta del rótulo sobre `color`. `dark` (defecto) para fondos claros
+   * (cian, ámbar, gris) y `light` para fondos oscuros (carmín): así el texto
+   * mantiene contraste AA sin depender del color de cada consumidor.
+   */
+  ink?: "dark" | "light";
   /** Tooltip propio del kit (`data-tip`): el kit nunca usa `title` nativo. */
   tip?: string;
 }
@@ -218,12 +224,26 @@ export function HorizontalTimeline<Row>({
               {blocks(row).map((block) => {
                 const left = pct(block.start);
                 const width = (block.durationMin / spanMin) * 100;
+                // El rótulo va en su propia caja recortable: sin ella el texto
+                // se salía del bloque y los bloques vecinos lo tapaban a medias.
                 const content = (
                   <>
-                    {block.label}
+                    {block.label ? (
+                      <span
+                        className="orbit-tl__block-label"
+                        data-testid="orbit-timeline-block-label"
+                      >
+                        {block.label}
+                      </span>
+                    ) : null}
                     {block.done ? <i aria-hidden="true">✓</i> : null}
                   </>
                 );
+                const flags = {
+                  "data-done": block.done ? "true" : undefined,
+                  "data-ink": block.ink ?? "dark",
+                  "data-label": block.label ? "true" : undefined,
+                };
                 const style = {
                   left: `${left}%`,
                   width: `${width}%`,
@@ -233,7 +253,7 @@ export function HorizontalTimeline<Row>({
                   <button
                     aria-pressed={selected === block.id}
                     className="orbit-tl__block"
-                    data-done={block.done ? "true" : undefined}
+                    {...flags}
                     data-testid="orbit-timeline-block"
                     data-tip={block.tip}
                     key={block.id}
@@ -246,7 +266,7 @@ export function HorizontalTimeline<Row>({
                 ) : (
                   <span
                     className="orbit-tl__block"
-                    data-done={block.done ? "true" : undefined}
+                    {...flags}
                     data-testid="orbit-timeline-block"
                     data-tip={block.tip}
                     key={block.id}

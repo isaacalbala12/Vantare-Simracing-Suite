@@ -260,6 +260,25 @@ describe("RacesOrbitPage", () => {
     expect(Math.abs(axis() - base * 4)).toBeLessThanOrEqual(2);
   });
 
+  it("el bloque marcado del Timeline rotula y queda por delante", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const blocks = screen.getAllByTestId("orbit-timeline-block");
+    // Todos llevan el nombre completo en el tip aunque no lo rotulen.
+    expect(blocks.every((block) => block.getAttribute("data-tip"))).toBe(true);
+    // Tinta oscura sobre los colores claros de categoría (AA).
+    expect(blocks.every((block) => block.getAttribute("data-ink") === "dark")).toBe(true);
+
+    fireEvent.click(blocks[0]);
+    const marked = screen
+      .getAllByTestId("orbit-timeline-block")
+      .find((block) => block.getAttribute("aria-pressed") === "true")!;
+    expect(marked).toBeTruthy();
+    // El seleccionado rotula siempre, le quepa o no: el CSS lo sube de capa.
+    expect(marked.getAttribute("data-label")).toBe("true");
+    expect(within(marked).getByTestId("orbit-timeline-block-label").textContent).toBeTruthy();
+  });
+
   it("el detalle salta al Timeline y al Día", () => {
     setup();
     fireEvent.click(screen.getByTestId("orbit-races-see-timeline"));

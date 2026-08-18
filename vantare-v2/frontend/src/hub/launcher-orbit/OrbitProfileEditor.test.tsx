@@ -115,9 +115,12 @@ describe("OrbitProfileEditor", () => {
     setup({ ...PROFILE, steps: [{ appId: "lmu", delay: 0 }, { appId: "obs", delay: 2 }] });
     fireEvent.click(screen.getByTestId("orbit-editor-step-down-0"));
     fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
-    const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
-    expect(selects[0].value).toBe("obs");
-    expect(selects[1].value).toBe("lmu");
+    // El `Select` del kit es un combobox propio: el valor se lee del rótulo del trigger.
+    const values = screen
+      .getAllByRole("combobox")
+      .map((node) => node.querySelector(".orbit-select__value")?.textContent ?? "");
+    expect(values[0]).toBe("OBS Studio");
+    expect(values[1]).toBe("Le Mans Ultimate");
   });
 
   it("graba la combinación real del atajo global", () => {

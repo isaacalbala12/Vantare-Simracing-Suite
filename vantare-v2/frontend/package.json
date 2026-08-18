@@ -36,6 +36,7 @@
     "visual:orbit-strategy": "node scripts/orbit-strategy-visual.mjs",
     "visual:orbit-engineer": "node scripts/orbit-engineer-visual.mjs",
     "visual:orbit-telemetry": "node scripts/orbit-telemetry-visual.mjs",
+    "visual:orbit-roadmap": "node scripts/orbit-roadmap-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "design-system:check": "node scripts/check-design-system.mjs"

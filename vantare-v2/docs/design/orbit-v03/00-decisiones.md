@@ -260,3 +260,18 @@ Formato: **Decisión** · Contexto · Alternativas descartadas · Consecuencias.
 
 ## D-75 · Las etiquetas de curva de las trazas bajan una línea, no se mueve el rótulo del canal
 **Decisión.** El rótulo del canal (`.orbit-trace__k`, «Velocidad km/h») vive arriba a la izquierda del SVG y la primera curva del circuito de demostración cae al 6 % de vuelta, justo debajo: se solapaban. En vez de desplazar el rótulo —que es el ancla de lectura de las cuatro trazas y debe quedar alineado— se bajan **todas** las etiquetas `Tn` una línea (`transform: translateY(13px)` en `orbit-telemetry.css`, acotado a `.orbit-tel__stack`). Se mueven todas y no solo la primera para que la fila de etiquetas quede a la misma altura en las cuatro trazas.
+
+## D-76 · La cabecera dice de dónde salió la fuente, no siempre «disponible»
+**Decisión.** `fetchRoadmapDataset` nunca lanza: cuando la red falla devuelve exactamente `ROADMAP_FALLBACK`, la copia empaquetada del JSON. Anunciar «Fuente disponible · vX» en ese caso sería mentir sobre la frescura de lo que se lee, así que `loadRoadmapSource` compara la identidad del objeto y la vista distingue tres estados: «Cargando la fuente…» (neutral), «Fuente disponible · vX» (ok) y «Fuente empaquetada · vX» (attn). La versión no sale de un campo del JSON sino del `target` de la fase en curso, que es el dato que la fuente sí declara.
+
+## D-77 · El estado del hito se deriva del `type`, porque no hay otro dato
+**Decisión.** La referencia pinta los hitos con puntos `done`/`active`/`planned`, pero `docs/roadmap-source.json` no declara estado de hito: declara `type` (`release`, `feature`, `fix`, `plan`) y una `label` traducida. Se deriva lo único derivable —una release publicada está hecha, un plan está por planear, lo demás está en curso— y la `label` del JSON se pinta tal cual bajo cada hito, sin reescribirla.
+
+## D-78 · Las tarjetas de área enseñan el porcentaje real, no una descripción inventada
+**Decisión.** Las siete tarjetas de la referencia llevan un subtítulo editorial («Studio V3 · catálogos · inspector») que no existe en la fuente. En vez de escribirlo en la pantalla, el subtítulo es el porcentaje del área, contado desde el snapshot de proyectos cuando el área está enlazada (`resolveAreaProgress`, igual que la página v5.2) y desde el número declarado cuando no lo está. El rótulo lateral («en curso», «planificada») sí viene del estado declarado.
+
+## D-79 · El eyebrow de fase no repite el estado cuando el objetivo es el mismo texto
+**Decisión.** El briefing pide «Estado · versión · %». La fuente escribe el objetivo a mano y en las fases sin versión repite el propio estado («Por planear», «Futuro»), así que el eyebrow salía como «Por planear · Por planear · 25 %». Cuando objetivo y estado coinciden se dice una sola vez (`roadmap.phases.eyebrowShort`); con una versión de verdad se mantienen los tres campos.
+
+## D-80 · El canal lo pone la shell, que es la única que lo sabe
+**Decisión.** El `StatRow` pide «Canal actual» y el frontend no tiene un servicio de canal de actualización expuesto a la vista: lo más cercano es el canal de Testing Center que `OrbitShell` ya resuelve (build + capacidades de la licencia). La pantalla recibe ese canal como prop y cae en `stable` cuando no hay ninguno, en vez de inventar un selector o leer un ajuste que no existe.

@@ -52,6 +52,10 @@ import {
   TelemetryOrbitPage,
   TELEMETRY_CONTEXT_SLOT_ID,
 } from "../../telemetry-orbit/TelemetryOrbitPage";
+import {
+  RoadmapOrbitPage,
+  ROADMAP_CONTEXT_SLOT_ID,
+} from "../../roadmap-orbit/RoadmapOrbitPage";
 import { ToastProvider } from "../../../ui/orbit/Toast";
 import { useToast } from "../../../ui/orbit/toast-context";
 import "../../../styles/orbit.tokens.css";
@@ -311,6 +315,8 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id={STRATEGY_CONTEXT_SLOT_ID} />
     ) : activeView === "telemetria" ? (
       <div className="orbit-column__slot" id={TELEMETRY_CONTEXT_SLOT_ID} />
+    ) : activeView === "roadmap" ? (
+      <div className="orbit-column__slot" id={ROADMAP_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
     activeView === "ajustes"
@@ -482,6 +488,8 @@ function OrbitShellBody({
               <EngineerOrbitPage />
             ) : activeView === "telemetria" ? (
               <TelemetryOrbitPage />
+            ) : activeView === "roadmap" ? (
+              <RoadmapOrbitPage channel={testingCenterChannel ?? "stable"} />
             ) : (
               children
             )}

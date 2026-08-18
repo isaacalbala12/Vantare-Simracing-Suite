@@ -1,0 +1,49 @@
+/** Catálogo `roadmap.*` do Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const roadmapOrbitPt: Record<string, string> = {
+  "roadmap.eyebrow": "Direção do produto",
+  "roadmap.title": "Roadmap",
+  "roadmap.lead":
+    "Fases, áreas e marcos declarados em docs/roadmap-source.json. Progresso na escala 0/10/25/50/75/100; sem datas públicas.",
+
+  "roadmap.source.loading": "A carregar a fonte…",
+  "roadmap.source.ok": "Fonte disponível · {{version}}",
+  "roadmap.source.fallback": "Cópia empacotada · {{version}}",
+
+  "roadmap.kpi.phase": "Fase atual",
+  "roadmap.kpi.phaseSub": "{{target}} · {{progress}} % · {{fronts}} frentes abertas",
+  "roadmap.kpi.phaseNoneSub": "a fonte não declara nenhuma fase em curso",
+  "roadmap.kpi.areas": "Áreas",
+  "roadmap.kpi.areasSub": "{{active}} em curso · {{planned}} planeadas",
+  "roadmap.kpi.milestones": "Marcos",
+  "roadmap.kpi.milestonesNoneSub": "a fonte não declara marcos",
+  "roadmap.kpi.channel": "Canal",
+  "roadmap.kpi.channelSub": "testers e nightly recebem cada marco primeiro",
+  "roadmap.kpi.none": "—",
+
+  "roadmap.channel.stable": "Stable",
+  "roadmap.channel.testers": "Testers",
+  "roadmap.channel.nightly": "Nightly",
+
+  "roadmap.phases.title": "Fases",
+  "roadmap.phases.meta": "{{n}} fases · progresso declarado",
+  "roadmap.phases.eyebrowLine": "{{state}} · {{target}} · {{progress}} %",
+  "roadmap.phases.eyebrowShort": "{{state}} · {{progress}} %",
+
+  "roadmap.state.done": "Concluída",
+  "roadmap.state.active": "Em curso",
+  "roadmap.state.planned": "Por planear",
+  "roadmap.state.future": "Futuro",
+
+  "roadmap.areas.title": "Áreas",
+  "roadmap.areas.progress": "{{progress}} % da área",
+  "roadmap.areaState.done": "concluída",
+  "roadmap.areaState.active": "em curso",
+  "roadmap.areaState.planned": "planeada",
+  "roadmap.areaState.future": "futuro",
+
+  "roadmap.milestones.title": "Marcos",
+  "roadmap.milestones.meta": "ordem declarada",
+
+  "roadmap.context.title": "Fases",
+  "roadmap.context.hint": "Toca numa fase para saltar para a sua coluna.",
+};

@@ -39,6 +39,7 @@ export {
   type ChainStepStatus,
 } from "./ChainStep";
 export { Menu, type MenuProps, type MenuItem } from "./Menu";
+export { Drawer, type DrawerProps } from "./Drawer";
 export { Accordion, type AccordionProps } from "./Accordion";
 export { UnderlineTabs, type UnderlineTabsProps } from "./UnderlineTabs";
 export { ToastProvider, ToastRegion } from "./Toast";

@@ -971,6 +971,11 @@ button.orbit-pill {
   flex: 1;
   min-width: 0;
   margin: 0;
+  /* El meta va a la derecha con `flex: none`: sin recortar el título, uno
+     largo se le montaba encima en lugar de ceder. */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--orbit-ink);
   font-size: var(--orbit-fs-panel);
   font-weight: 700;
@@ -1115,7 +1120,9 @@ button.orbit-pill {
   display: grid;
   flex: none;
   place-items: center;
-  background: linear-gradient(145deg, var(--orbit-mono-g1), var(--orbit-mono-g2));
+  /* Degradado de reserva: una app añadida a mano puede no traer el suyo y sin
+     estos valores la losa quedaría transparente (parecería vacía). */
+  background: linear-gradient(145deg, var(--orbit-mono-g1, #6b676d), var(--orbit-mono-g2, #3a373c));
   color: var(--orbit-ink);
   font-family: var(--orbit-font-sans);
   font-weight: 800;
@@ -1132,10 +1139,16 @@ button.orbit-pill {
   overflow: hidden;
 }
 
+/* El icono ocupa la losa entera menos su aire, como el `AppBadge` legado: con
+   una caja del 78 % un icono ancho se quedaba pequeño y descentrado dentro de
+   los 39 px de la fila. */
 .orbit-monogram__img {
-  width: 78%;
-  height: 78%;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 13%;
   object-fit: contain;
+  object-position: center;
 }
 
 .orbit-monogram--26 {
@@ -2572,4 +2585,98 @@ button.orbit-pill {
   color: var(--orbit-ink-muted);
   font-size: 11px;
   line-height: 1.45;
+
+/* ================================================================ CAJÓN */
+
+/* Panel lateral derecho de 480 px sobre un velo oscurecido (`04 · cajón`).
+   Vive en un portal al final del `body`, por encima de la shell. */
+.orbit-drawer-layer {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+}
+
+.orbit-drawer__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  animation: orbit-drawer-fade 0.14s var(--orbit-ease);
+}
+
+.orbit-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 100vw);
+  border-left: 1px solid var(--orbit-line);
+  background: var(--orbit-surface-1);
+  box-shadow: -28px 0 60px -30px rgba(0, 0, 0, 0.9);
+  animation: orbit-drawer-in 0.28s var(--orbit-ease);
+}
+
+.orbit-drawer:focus-visible {
+  outline: none;
+}
+
+.orbit-drawer__head {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--orbit-line);
+}
+
+.orbit-drawer__head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-size: 16px;
+  font-weight: 690;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-drawer__body {
+  flex: 1;
+  min-height: 0;
+  padding: 18px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.orbit-drawer__foot {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 14px 20px;
+  border-top: 1px solid var(--orbit-line);
+  background: var(--orbit-surface-2);
+}
+
+@keyframes orbit-drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes orbit-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-drawer,
+  .orbit-drawer__scrim {
+    animation-duration: 0s;
+  }
 }

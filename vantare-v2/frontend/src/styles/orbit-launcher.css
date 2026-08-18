@@ -172,21 +172,31 @@
   flex: none;
   gap: 16px;
   align-items: center;
+  /* Misma altura mínima que una tarjeta de perfil plegada (20 + 46 + 20): sin
+     ella la tarjeta quedaba como una tira aplastada al final de la columna. */
+  min-height: 86px;
   padding: 18px 22px;
-  border: 1px dashed var(--orbit-line-strong);
+  border: 1px dashed var(--orbit-ink-3);
   border-radius: var(--orbit-radius);
-  background: rgba(255, 255, 255, 0.01);
+  background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
   transition: border-color var(--orbit-fast) var(--orbit-ease),
-    background var(--orbit-fast) var(--orbit-ease);
+    background var(--orbit-fast) var(--orbit-ease),
+    box-shadow var(--orbit-fast) var(--orbit-ease);
 }
 
-.orbit-launcher__create:hover,
+.orbit-launcher__create:hover {
+  border-color: rgba(240, 71, 85, 0.42);
+  background: rgba(213, 47, 73, 0.045);
+  box-shadow: 0 0 0 1px rgba(240, 71, 85, 0.08) inset;
+}
+
 .orbit-launcher__create:focus-visible {
-  border-color: rgba(240, 71, 85, 0.25);
-  background: rgba(213, 47, 73, 0.04);
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+  border-color: rgba(240, 71, 85, 0.42);
 }
 
 .orbit-launcher__create-ico {
@@ -195,25 +205,41 @@
   place-items: center;
   width: 46px;
   height: 46px;
-  border: 1.5px dashed var(--orbit-line-strong);
+  border: 1.5px dashed var(--orbit-ink-3);
   border-radius: 13px;
   color: var(--orbit-ink-3);
   font-size: 20px;
   font-weight: 500;
+  line-height: 1;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-launcher__create:hover .orbit-launcher__create-ico,
+.orbit-launcher__create:focus-visible .orbit-launcher__create-ico {
+  border-color: rgba(240, 71, 85, 0.45);
+  color: var(--orbit-coral);
+}
+
+.orbit-launcher__create-copy {
+  min-width: 0;
 }
 
 .orbit-launcher__create-copy b {
   display: block;
   color: var(--orbit-ink);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .orbit-launcher__create-copy > span {
   display: block;
-  margin-top: 3px;
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
+  max-width: 60ch;
+  margin-top: 4px;
+  color: var(--orbit-ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
 /* -------------------------------------------------------------- TOPBAR */
@@ -324,4 +350,124 @@
 [data-reduce-motion="true"] .orbit-launcher__skeleton-ico,
 [data-reduce-motion="true"] .orbit-launcher__skeleton-line {
   animation: none;
+}
+
+/* ------------------------------------------------- EDITOR DE PERFIL */
+
+/* El editor vive dentro del `Drawer` del kit: aquí solo va la disposición del
+   formulario (los controles ya los pinta el kit). */
+.orbit-profile-editor .orbit-field + .orbit-field {
+  margin-top: 14px;
+}
+
+.orbit-profile-editor__steps {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-profile-editor__steps-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orbit-profile-editor__mode {
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-profile-editor__mode:hover,
+.orbit-profile-editor__mode:focus-visible {
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__step {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.orbit-profile-editor__step-app {
+  flex: 1;
+  min-width: 140px;
+}
+
+.orbit-profile-editor__step-delay {
+  width: 68px;
+  flex: none;
+}
+
+.orbit-profile-editor__step-args {
+  width: 118px;
+  flex: none;
+}
+
+.orbit-profile-editor__step-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+}
+
+.orbit-profile-editor__add {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px dashed var(--orbit-ink-3);
+  border-radius: var(--orbit-radius-control);
+  background: transparent;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-sans);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-profile-editor__add:hover,
+.orbit-profile-editor__add:focus-visible {
+  border-color: rgba(240, 71, 85, 0.42);
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__error {
+  margin: 10px 0 0;
+  color: var(--orbit-red);
+  font-size: 12px;
+}
+
+.orbit-profile-editor__hotkey {
+  margin-top: 20px;
+}
+
+.orbit-profile-editor__hotkey-clear {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.orbit-profile-editor__hotkey-clear:hover,
+.orbit-profile-editor__hotkey-clear:focus-visible {
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__autostart {
+  margin-top: 18px;
 }

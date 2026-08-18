@@ -335,4 +335,23 @@ describe("LauncherOrbitPage · iconos reales, creación y carga", () => {
       screen.getByText("El catálogo está vacío. Ejecuta la detección para poblarlo."),
     ).toBeTruthy();
   });
+
+  it("la nota de estado neutral solo vive hasta la primera detección", () => {
+    const { publish } = setup(CATALOG);
+    // Sin `lastScanAt` la nota explica por qué nada aparece como instalado.
+    expect(
+      screen.getByText(/ninguna aplicación se presenta como instalada/),
+    ).toBeTruthy();
+
+    publish({
+      ...CATALOG,
+      discovery: { scanning: false, lastScanAt: "2026-07-07T17:40:00Z", error: null },
+    });
+
+    expect(screen.queryByText(/ninguna aplicación se presenta como instalada/)).toBeNull();
+    // En su lugar, la cabecera del catálogo fecha el escaneo y cuenta lo hallado.
+    expect(
+      document.querySelector(".orbit-launcher__apps .orbit-surface__meta")?.textContent,
+    ).toMatch(/· 2 detectadas$/);
+  });
 });

@@ -18,7 +18,7 @@ import {
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
-import { ProfileEditor } from "../launcher/ProfileEditor";
+import { OrbitProfileEditor } from "./OrbitProfileEditor";
 import type { LaunchProfile } from "../launcher/launcher-contract";
 import { appSortOrder, newProfileId, type LauncherAppEntry } from "../launcher/launcher-state";
 import {
@@ -147,6 +147,17 @@ export function LauncherOrbitPage() {
         : t("launcher.discovery.notRun");
   const discoveryTone = scanning ? "attn" : discovery?.error ? "attn" : discovery?.lastScanAt ? "ok" : "neutral";
 
+  // La nota de «estado neutral» explica por qué nada aparece como instalado
+  // *antes* de la primera detección. Una vez ejecutada deja de ser cierta y
+  // estorba: en su lugar la cabecera del catálogo fecha el último escaneo.
+  const detectionRan = Boolean(discovery?.lastScanAt);
+  const catalogMeta = detectionRan
+    ? formatMessage(t("launcher.catalog.detectionMeta"), {
+        when: formatMoment(new Date(discovery!.lastScanAt as string)),
+        n: detected,
+      })
+    : formatMessage(t("launcher.catalog.count"), { n: apps.length });
+
   const lastRun = lastLaunchedAt(profiles);
   const featured = profiles[0] ?? null;
   const keys = hotkeyKeys(featured?.hotkey);
@@ -224,6 +235,8 @@ export function LauncherOrbitPage() {
                 app={{
                   id: step.appId,
                   executablePath: step.executablePath,
+                  userExecutablePath: step.userExecutablePath,
+                  iconOverridePath: step.iconOverridePath,
                   iconUrl: step.iconUrl,
                 }}
                 g1={step.g1}
@@ -324,8 +337,10 @@ export function LauncherOrbitPage() {
                         }
                         onClick={() => launch(profile.id)}
                         subtitle={
+                          // La referencia encadena nombres completos, no
+                          // abreviaturas: «LMU → OBS → Spotify».
                           chainSteps(profile, apps)
-                            .map((step) => step.abbreviation)
+                            .map((step) => step.name)
                             .join(" → ") ||
                           formatMessage(t("launcher.context.steps"), { n: 0 })
                         }
@@ -412,7 +427,7 @@ export function LauncherOrbitPage() {
           aria-label={t("launcher.catalog.title")}
           className="orbit-launcher__apps"
           fill
-          meta={formatMessage(t("launcher.catalog.count"), { n: apps.length })}
+          meta={catalogMeta}
           title={t("launcher.catalog.title")}
         >
           <div className="orbit-list" data-testid="orbit-launcher-apps">
@@ -458,9 +473,11 @@ export function LauncherOrbitPage() {
               ))
             )}
           </div>
-          <Note className="orbit-launcher__note" title={t("launcher.catalog.neutralTitle")}>
-            {t("launcher.catalog.neutral")}
-          </Note>
+          {detectionRan ? null : (
+            <Note className="orbit-launcher__note" title={t("launcher.catalog.neutralTitle")}>
+              {t("launcher.catalog.neutral")}
+            </Note>
+          )}
         </Surface>
 
         <section
@@ -490,10 +507,10 @@ export function LauncherOrbitPage() {
         </section>
       </div>
 
-      {/* El editor de perfiles sigue siendo el diálogo legado del Launcher V3:
-          es el flujo real de edición y creación, sin duplicar en Orbit. */}
+      {/* Mismo flujo real de edición y creación que el Launcher V3 (mismos
+          handlers y las mismas reglas), servido por el cajón del kit. */}
       {editingProfile ? (
-        <ProfileEditor
+        <OrbitProfileEditor
           apps={editorApps}
           key={editingProfile.id}
           onClose={() => {

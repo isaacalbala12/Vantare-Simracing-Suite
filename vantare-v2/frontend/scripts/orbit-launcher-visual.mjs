@@ -151,6 +151,39 @@ try {
     }
 
     await page.screenshot({ path: path.join(output, `orbit-launcher-${viewport.name}.png`), fullPage: false });
+
+    // Dos estados que solo se ven interactuando: la tarjeta punteada bajo el
+    // puntero y el cajon del editor de perfil abierto sobre la vista.
+    if (!viewport.profilesScroll) {
+      await page.getByTestId("orbit-launcher-create").hover();
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: path.join(output, `orbit-launcher-crear-hover-${viewport.name}.png`), fullPage: false });
+
+      await page.getByTestId("orbit-launcher-profile-creator").getByRole("button", { name: /Editar el perfil/ }).click();
+      await page.getByTestId("orbit-profile-editor").waitFor();
+      await page.waitForTimeout(320);
+      const drawer = await page.evaluate(() => {
+        const panel = document.querySelector(".orbit-drawer");
+        const body = document.querySelector(".orbit-drawer__body");
+        return {
+          width: panel ? Math.round(panel.getBoundingClientRect().width) : -1,
+          dialog: document.querySelectorAll('[role="dialog"][aria-modal="true"]').length,
+          focusInside: panel ? panel.contains(document.activeElement) : false,
+          bodyScrolls: body ? body.scrollHeight > body.clientHeight - 0.5 : false,
+          nativeTitles: panel ? panel.querySelectorAll("[title]").length : -1,
+        };
+      });
+      if (drawer.width !== 480) throw new Error(`${viewport.name}: el cajon mide ${drawer.width}px, se esperaban 480`);
+      if (drawer.dialog !== 1) throw new Error(`${viewport.name}: ${drawer.dialog} dialogos modales abiertos`);
+      if (!drawer.focusInside) throw new Error(`${viewport.name}: el foco no entro en el cajon`);
+      if (drawer.nativeTitles !== 0) throw new Error(`${viewport.name}: el cajon usa title nativo`);
+      await page.screenshot({ path: path.join(output, `orbit-launcher-editor-${viewport.name}.png`), fullPage: false });
+      await page.keyboard.press("Escape");
+    }
+
+    if (problems.length) {
+      throw new Error(`${viewport.name}: la consola no esta limpia tras interactuar: ${problems.join(" | ")}`);
+    }
     await page.close();
   }
 

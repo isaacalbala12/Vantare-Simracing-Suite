@@ -240,6 +240,82 @@ try {
       });
     }
 
+    // ── Eventos: los dos caminos, el formulario y el Resumen recién creado.
+    await page.getByTestId("orbit-strategy-new-event").click();
+    await page.getByTestId("orbit-strategy-paths").waitFor();
+    const pathsScroll = await page.evaluate(contractOf);
+    if (pathsScroll.scrollHeight > pathsScroll.innerHeight) {
+      throw new Error(`${viewport.name}: el selector de eventos hace scroll de página`);
+    }
+    if (pathsScroll.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: el selector usa \`title\` nativo`);
+    }
+    // El camino «Desde un evento» lista las series reales del calendario.
+    await page.getByTestId("orbit-strategy-path-series").click();
+    await page.getByTestId("orbit-strategy-series").waitFor();
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-selector-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
+    await page.getByTestId("orbit-strategy-path-own").click();
+    await page.getByTestId("orbit-strategy-form").waitFor();
+    await page.getByLabel("Nombre del evento").fill("Enduro de casa");
+    await page.getByLabel("Circuito").fill("Motorland Aragón");
+    await page.getByLabel("Clase").fill("GT3");
+    await page.getByRole("button", { name: "2 h", exact: true }).click();
+    await page.getByTestId("orbit-strategy-form-add-driver").click();
+    await page.getByLabel("Nombre del piloto 2").fill("Sol Martín");
+    const formScroll = await page.evaluate(contractOf);
+    if (formScroll.scrollWidth > formScroll.innerWidth) {
+      throw new Error(`${viewport.name}: el formulario hace scroll horizontal`);
+    }
+    if (formScroll.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: el formulario usa \`title\` nativo`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-formulario-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
+    await page.getByTestId("orbit-strategy-form-submit").click();
+    await page.getByTestId("orbit-strategy-overview").waitFor();
+    await page.getByTestId("orbit-stint-0").waitFor();
+    const created = await page.evaluate(() => ({
+      ...(() => {
+        const root = document.querySelector(".orbit-strategy");
+        return {
+          nativeTitles: root ? root.querySelectorAll("[title]").length : -1,
+          scrollHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+        };
+      })(),
+      title: document.querySelector(".orbit-strategy__copy h2")?.textContent ?? "",
+      events: document.querySelectorAll('[data-testid="orbit-strategy-events"] button').length,
+    }));
+    if (created.title !== "Enduro de casa") {
+      throw new Error(`${viewport.name}: el evento propio no quedó activo (${created.title})`);
+    }
+    if (created.events < 2) {
+      throw new Error(`${viewport.name}: la columna no lista los dos eventos (${created.events})`);
+    }
+    if (created.scrollHeight > created.innerHeight) {
+      throw new Error(`${viewport.name}: el Resumen del evento propio hace scroll de página`);
+    }
+    if (created.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: el Resumen del evento propio usa \`title\` nativo`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-evento-propio-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
     if (problems.length) {
       throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
     }

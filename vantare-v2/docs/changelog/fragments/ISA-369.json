@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-369",
+  "type": "feature",
+  "summary": "Nueva shell del Hub «Command Orbit»: rail lateral, columna contextual, paleta de comando (Ctrl K) y todas las secciones rediseñadas.",
+  "technicalNotes": [
+    "Shell Orbit con rail de 81 px, columna contextual plegable de 296 px, topbar con controles por vista y paleta de comando con destinos y acciones.",
+    "Kit de componentes ui/orbit (Select con desplegable propio, Drawer, Toggle, Seg, Accordion, HorizontalTimeline con zoom, TrackMap, Trace) estilado solo con tokens de orbit.tokens.css.",
+    "Secciones portadas sobre la lógica real existente: Inicio, Overlays Studio (inspector por acordeones, marcos ceñidos al widget), Mis perfiles, Launcher (iconos a máxima resolución, editor en cajón), Carreras (Próximas, Día, Semana, Mes y Timeline clicables), Estrategia (eventos propios o desde serie, stints, neumáticos con arrastre, comparación, disponibilidad), Ingeniero, Telemetría (vacío honesto y demo sintético bajo flag), Roadmap «Qué viene», Ajustes (canal real, atajos con grabación) y Testing Center (Reportar, Validar y Mis reportes).",
+    "Escalado proporcional por debajo de 1180×790 px útiles y tope de anchura centrado en ultrapanorámicas; redimensionado medido a 60 Hz en WebView2.",
+    "El flag hub.orbit va activo por defecto en builds nightly/testers (VITE_ORBIT_DEFAULT); en públicas sigue la shell anterior hasta promover la dirección. Puede desactivarse con ?orbit=0."
+  ],
+  "testing": [
+    "Abrir el Hub: debe arrancar en Inicio con el rail Orbit a la izquierda y la columna contextual; Ctrl K abre la paleta y Esc la cierra.",
+    "Recorrer cada sección del rail y comprobar que no hay scroll de página a 1920×1080 ni 1920×900 y que no aparece ningún desplegable nativo del sistema.",
+    "Reducir la ventana a unos 900×700: la UI se escala sin recortar paneles; ampliar a 21:9 o 32:9: el contenido queda centrado con tope.",
+    "Overlays Studio: seleccionar un widget y comprobar que el marco y la etiqueta se ciñen al widget, que el inspector muestra el diseño aplicado y que ocultar/mostrar funciona desde la lista, el inspector y el lienzo.",
+    "Ajustes › Actualizaciones: cambiar a Testers o Nightly y comprobar que el canal se guarda y aparece el botón del Testing Center en el rail.",
+    "Launcher: comprobar iconos reales de las apps detectadas, crear o editar un perfil desde el cajón y lanzar una cadena.",
+    "Carreras: cambiar entre las cinco vistas, hacer clic en celdas de Semana, Mes y Día y usar el zoom del Timeline."
+  ],
+  "knownLimitations": [
+    "Telemetría muestra estado vacío honesto hasta que exista la fuente de sesiones (ADR 0005); el modo demo sintético solo se activa con el flag telemetryDemo.",
+    "Los eventos de Estrategia se guardan localmente; el backend publica un único evento activo.",
+    "Ajustes › Diagnóstico no lista registros ni últimos eventos porque el backend no expone ubicación de logs ni canal de eventos."
+  ]
+}

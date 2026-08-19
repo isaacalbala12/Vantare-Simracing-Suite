@@ -78,6 +78,12 @@ type TelemetryCoreMetrics struct {
 	EngineerObservations         uint64
 	EngineerFacts                uint64
 	EngineerDeliveryFailures     uint64
+	FramesDropped                map[string]uint64
+	PublishFailures              map[string]uint64
+	ConsumerPanics               map[string]uint64
+	FailStops                    uint64
+	PayloadBytes                 map[string]TelemetryPayloadPercentiles
+	LifecycleTransitions         map[string]uint64
 	Transport                    telemetrytransport.HubMetrics
 	StrategyTransport            telemetrytransport.HubMetrics
 }
@@ -93,6 +99,7 @@ type telemetryCoreCounters struct {
 	engineerObservations      atomic.Uint64
 	engineerFacts             atomic.Uint64
 	engineerFailures          atomic.Uint64
+	failStops                 atomic.Uint64
 }
 
 // TelemetryCoreRuntime owns the canonical LMU pipeline and publishes only
@@ -135,6 +142,7 @@ type TelemetryCoreRuntime struct {
 	engineerErr       error
 	engineerStatusErr error
 	counters          telemetryCoreCounters
+	metricStore       telemetryCoreMetricStore
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -226,6 +234,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 	if runtime == nil {
 		return TelemetryCoreMetrics{}
 	}
+	details := runtime.metricStore.snapshot()
 	return TelemetryCoreMetrics{
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
 		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
@@ -237,6 +246,12 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		EngineerObservations:         runtime.counters.engineerObservations.Load(),
 		EngineerFacts:                runtime.counters.engineerFacts.Load(),
 		EngineerDeliveryFailures:     runtime.counters.engineerFailures.Load(),
+		FramesDropped:                details.framesDropped,
+		PublishFailures:              details.publishFailures,
+		ConsumerPanics:               details.consumerPanics,
+		FailStops:                    runtime.counters.failStops.Load(),
+		PayloadBytes:                 details.payloadBytes,
+		LifecycleTransitions:         details.lifecycleTransitions,
 		Transport:                    runtime.hub.Metrics(),
 		StrategyTransport:            runtime.strategyHub.Metrics(),
 	}
@@ -302,7 +317,7 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 		return telemetrycore.ErrManagerAlreadyStarted
 	}
 	ctx, cancel := context.WithCancel(parent)
-	runtime.lifecycle = telemetryRuntimeStarting
+	runtime.transitionLifecycleLocked(telemetryRuntimeStarting)
 	runtime.cancel = cancel
 	runtime.startDone = make(chan struct{})
 	runtime.initialStatusDelivery = engineerInitialStatusPending
@@ -317,7 +332,7 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 	}
 	runtime.lifecycleMu.Lock()
 	if runtime.lifecycle == telemetryRuntimeStarting {
-		runtime.lifecycle = telemetryRuntimeRunning
+		runtime.transitionLifecycleLocked(telemetryRuntimeRunning)
 	}
 	terminal := runtime.lifecycle == telemetryRuntimeTerminal
 	runtime.finishStartLocked()
@@ -371,7 +386,7 @@ func (runtime *TelemetryCoreRuntime) Stop(ctx context.Context) error {
 		}
 	}
 	previous := runtime.lifecycle
-	runtime.lifecycle = telemetryRuntimeTerminal
+	runtime.transitionLifecycleLocked(telemetryRuntimeTerminal)
 	runtime.cleanupDone = make(chan struct{})
 	done := runtime.cleanupDone
 	cancel := runtime.cancel
@@ -433,9 +448,18 @@ func (runtime *TelemetryCoreRuntime) finishStartLocked() {
 	runtime.startDone = nil
 }
 
+func (runtime *TelemetryCoreRuntime) transitionLifecycleLocked(next telemetryRuntimeLifecycle) {
+	previous := runtime.lifecycle
+	if previous == next {
+		return
+	}
+	runtime.lifecycle = next
+	runtime.metricStore.lifecycleTransition(previous, next)
+}
+
 func (runtime *TelemetryCoreRuntime) abortStart(startErr error) error {
 	runtime.lifecycleMu.Lock()
-	runtime.lifecycle = telemetryRuntimeTerminal
+	runtime.transitionLifecycleLocked(telemetryRuntimeTerminal)
 	cancel := runtime.cancel
 	runtime.cancel = nil
 	runtime.managerStarted = false
@@ -778,6 +802,7 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 	if err != nil {
 		return fmt.Errorf("build Overlay telemetry projection: %w", err)
 	}
+	runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
 	strategyFrame, err := telemetrytransport.NewStrategyFull(
 		strategyProjected.Metadata,
 		runtime.statusRev,
@@ -786,6 +811,7 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 	if err != nil {
 		return fmt.Errorf("build Strategy telemetry projection: %w", err)
 	}
+	runtime.metricStore.observePayload(productName(telemetrytransport.ProductStrategy), uint64(len(strategyFrame.Payload)))
 	if err := runtime.hub.PublishSnapshot(overlayFrame, nil); err != nil {
 		return fmt.Errorf("publish Overlay telemetry projection: %w", err)
 	}
@@ -847,8 +873,9 @@ func (runtime *TelemetryCoreRuntime) failStop(err error) {
 	if err == nil {
 		return
 	}
+	runtime.counters.failStops.Add(1)
 	runtime.lifecycleMu.Lock()
-	runtime.lifecycle = telemetryRuntimeTerminal
+	runtime.transitionLifecycleLocked(telemetryRuntimeTerminal)
 	cancel := runtime.cancel
 	if runtime.initialStatusDelivery == engineerInitialStatusPending {
 		runtime.initialStatusDelivery = engineerInitialStatusSkipped

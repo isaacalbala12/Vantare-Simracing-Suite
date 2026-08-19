@@ -1,0 +1,161 @@
+package app
+
+import "sync"
+
+const telemetryPayloadOverflowBucket = ^uint64(0)
+
+var telemetryPayloadBucketBounds = [...]uint64{
+	1 * 1024,
+	4 * 1024,
+	16 * 1024,
+	64 * 1024,
+	128 * 1024,
+	256 * 1024,
+	512 * 1024,
+	telemetryPayloadOverflowBucket,
+}
+
+type TelemetryPayloadPercentiles struct {
+	Count uint64
+	P50   uint64
+	P95   uint64
+	P99   uint64
+}
+
+type telemetryPayloadHistogram struct {
+	count   uint64
+	buckets [len(telemetryPayloadBucketBounds)]uint64
+}
+
+func (histogram *telemetryPayloadHistogram) observe(value uint64) {
+	histogram.count++
+	for index, upper := range telemetryPayloadBucketBounds {
+		if value <= upper {
+			histogram.buckets[index]++
+			return
+		}
+	}
+}
+
+func (histogram telemetryPayloadHistogram) snapshot() TelemetryPayloadPercentiles {
+	return TelemetryPayloadPercentiles{
+		Count: histogram.count,
+		P50:   histogram.percentile(50),
+		P95:   histogram.percentile(95),
+		P99:   histogram.percentile(99),
+	}
+}
+
+func (histogram telemetryPayloadHistogram) percentile(percent uint64) uint64 {
+	if histogram.count == 0 {
+		return 0
+	}
+	target := (histogram.count*percent + 99) / 100
+	var cumulative uint64
+	for index, count := range histogram.buckets {
+		cumulative += count
+		if cumulative >= target {
+			return telemetryPayloadBucketBounds[index]
+		}
+	}
+	return telemetryPayloadOverflowBucket
+}
+
+type telemetryCoreMetricStore struct {
+	mu                   sync.Mutex
+	framesDropped        map[string]uint64
+	publishFailures      map[string]uint64
+	consumerPanics       map[string]uint64
+	payloadBytes         map[string]*telemetryPayloadHistogram
+	lifecycleTransitions map[string]uint64
+}
+
+func (store *telemetryCoreMetricStore) increment(target *map[string]uint64, label string) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if *target == nil {
+		*target = make(map[string]uint64)
+	}
+	(*target)[label]++
+}
+
+func (store *telemetryCoreMetricStore) dropFrame(reason string) {
+	store.increment(&store.framesDropped, reason)
+}
+
+func (store *telemetryCoreMetricStore) publishFailure(product string) {
+	store.increment(&store.publishFailures, product)
+}
+
+func (store *telemetryCoreMetricStore) consumerPanic(boundary string) {
+	store.increment(&store.consumerPanics, boundary)
+}
+
+func (store *telemetryCoreMetricStore) observePayload(product string, size uint64) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.payloadBytes == nil {
+		store.payloadBytes = make(map[string]*telemetryPayloadHistogram)
+	}
+	histogram := store.payloadBytes[product]
+	if histogram == nil {
+		histogram = &telemetryPayloadHistogram{}
+		store.payloadBytes[product] = histogram
+	}
+	histogram.observe(size)
+}
+
+func (store *telemetryCoreMetricStore) lifecycleTransition(from, to telemetryRuntimeLifecycle) {
+	store.increment(&store.lifecycleTransitions, lifecycleTransitionLabel(from, to))
+}
+
+func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	payloadBytes := make(map[string]TelemetryPayloadPercentiles, len(store.payloadBytes))
+	for product, histogram := range store.payloadBytes {
+		payloadBytes[product] = histogram.snapshot()
+	}
+	return telemetryCoreMetricSnapshot{
+		framesDropped:        cloneMetricMap(store.framesDropped),
+		publishFailures:      cloneMetricMap(store.publishFailures),
+		consumerPanics:       cloneMetricMap(store.consumerPanics),
+		payloadBytes:         payloadBytes,
+		lifecycleTransitions: cloneMetricMap(store.lifecycleTransitions),
+	}
+}
+
+type telemetryCoreMetricSnapshot struct {
+	framesDropped        map[string]uint64
+	publishFailures      map[string]uint64
+	consumerPanics       map[string]uint64
+	payloadBytes         map[string]TelemetryPayloadPercentiles
+	lifecycleTransitions map[string]uint64
+}
+
+func cloneMetricMap(source map[string]uint64) map[string]uint64 {
+	clone := make(map[string]uint64, len(source))
+	for label, value := range source {
+		clone[label] = value
+	}
+	return clone
+}
+
+func lifecycleTransitionLabel(from, to telemetryRuntimeLifecycle) string {
+	return telemetryRuntimeLifecycleName(from) + "->" + telemetryRuntimeLifecycleName(to)
+}
+
+func telemetryRuntimeLifecycleName(value telemetryRuntimeLifecycle) string {
+	switch value {
+	case telemetryRuntimeNew:
+		return "new"
+	case telemetryRuntimeStarting:
+		return "starting"
+	case telemetryRuntimeRunning:
+		return "running"
+	case telemetryRuntimeTerminal:
+		return "terminal"
+	default:
+		return "unknown"
+	}
+}

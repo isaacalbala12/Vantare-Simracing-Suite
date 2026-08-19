@@ -24,17 +24,38 @@ Item {
 
     RelativeTokens { id: tokens }
 
-    Rectangle {
+    Item {
         id: bar
         anchors.fill: parent
-        radius: 2
-        color: tokens.accent
-        opacity: 1
+        opacity: root.reducedMotion ? 1 : 0
         transform: Scale {
             id: revealScale
             origin.x: 0
             origin.y: bar.height / 2
             xScale: root.reducedMotion ? 1 : 0
+        }
+
+        Rectangle {
+            objectName: "approachGlow"
+            anchors.fill: parent
+            anchors.topMargin: -3
+            anchors.bottomMargin: -3
+            radius: 4
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "#80c1121f" }
+                GradientStop { position: 1; color: "#80ff4d5c" }
+            }
+        }
+        Rectangle {
+            objectName: "approachCore"
+            anchors.fill: parent
+            radius: 2
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "#c1121f" }
+                GradientStop { position: 1; color: "#ff4d5c" }
+            }
         }
     }
 
@@ -45,14 +66,24 @@ Item {
         }
     }
 
-    NumberAnimation {
+    ParallelAnimation {
         id: enterAnimation
-        target: revealScale
-        property: "xScale"
-        from: 0
-        to: 1
-        duration: root.reducedMotion ? 0 : tokens.approachEnterMs
-        easing.type: Easing.OutCubic
+        NumberAnimation {
+            target: revealScale
+            property: "xScale"
+            from: 0
+            to: 1
+            duration: root.reducedMotion ? 0 : tokens.approachEnterMs
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: bar
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: root.reducedMotion ? 0 : tokens.approachEnterMs
+            easing.type: Easing.OutCubic
+        }
     }
 
     Component.onCompleted: {
@@ -64,7 +95,10 @@ Item {
             enterAnimation.restart()
     }
     onReducedMotionChanged: {
-        if (reducedMotion)
+        if (reducedMotion) {
+            enterAnimation.stop()
             revealScale.xScale = 1
+            bar.opacity = 1
+        }
     }
 }

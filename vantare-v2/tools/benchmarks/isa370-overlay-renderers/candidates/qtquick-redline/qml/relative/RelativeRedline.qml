@@ -15,8 +15,10 @@ Item {
     property string playerClass: ""
     property string playerRowId: ""
     property int playerIndex: -1
+    property bool transitionsArmed: false
     readonly property bool modelReady: rowsModel !== null
                                        && String(rowsModel.status || "") === "ready"
+    readonly property bool motionReady: modelReady && transitionsArmed
 
     width: tokens.panelWidth
     implicitWidth: tokens.panelWidth
@@ -36,6 +38,27 @@ Item {
         playerRowId = rowId
         playerClass = vehicleClass
         playerIndex = index
+    }
+
+    function armAfterCurrentApply() {
+        if (modelReady)
+            readinessArm.restart()
+    }
+
+    Timer {
+        id: readinessArm
+        interval: 17
+        onTriggered: root.transitionsArmed = root.modelReady
+    }
+
+    Component.onCompleted: armAfterCurrentApply()
+    onModelReadyChanged: {
+        if (!modelReady) {
+            readinessArm.stop()
+            transitionsArmed = false
+        } else {
+            armAfterCurrentApply()
+        }
     }
 
     Common.Panel {
@@ -152,7 +175,7 @@ Item {
             rowsModel: root.rowsModel
             playerClass: root.playerClass
             playerIndex: root.playerIndex
-            modelReady: root.modelReady
+            modelReady: root.motionReady
             reducedMotion: root.reducedMotion
         }
     }
@@ -163,7 +186,7 @@ Item {
             rowsModel: root.rowsModel
             playerIndex: root.playerIndex
             playerClass: root.playerClass
-            modelReady: root.modelReady
+            modelReady: root.motionReady
             reducedMotion: root.reducedMotion
         }
     }
@@ -173,7 +196,7 @@ Item {
             width: variantLoader.width
             rowsModel: root.rowsModel
             playerClass: root.playerClass
-            modelReady: root.modelReady
+            modelReady: root.motionReady
             reducedMotion: root.reducedMotion
         }
     }

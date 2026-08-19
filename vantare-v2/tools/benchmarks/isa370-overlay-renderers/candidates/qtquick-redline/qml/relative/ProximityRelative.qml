@@ -60,30 +60,52 @@ Item {
                 width: parent.width
                 height: proximityDelegate.showSeam ? 6 : 0
                 visible: height > 0
-                Rectangle {
+                Item {
                     objectName: "proximitySeam"
                     x: 12
                     width: parent.width - 24
-                    height: 1.5
+                    height: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    color: tokens.accentHot
-                    opacity: 0.85
+                    Rectangle {
+                        objectName: "proximitySeamGlow"
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: "#00ff4d5c" }
+                            GradientStop { position: 0.28; color: "#8cff4d5c" }
+                            GradientStop { position: 0.72; color: "#8cff4d5c" }
+                            GradientStop { position: 1; color: "#00ff4d5c" }
+                        }
+                    }
+                    Rectangle {
+                        objectName: "proximitySeamCore"
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 1.5
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: "#00ff4d5c" }
+                            GradientStop { position: 0.28; color: "#d9ff4d5c" }
+                            GradientStop { position: 0.72; color: "#d9ff4d5c" }
+                            GradientStop { position: 1; color: "#00ff4d5c" }
+                        }
+                    }
                 }
             }
         }
 
         add: Transition {
-            NumberAnimation {
-                properties: "opacity"; from: 0; to: 1
-                duration: root.reducedMotion ? 0 : tokens.enterMs
-                easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier
+            ParallelAnimation {
+                NumberAnimation { properties: "transitionOpacity"; from: 0; to: 1; duration: !root.modelReady || root.reducedMotion ? 0 : tokens.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier }
+                NumberAnimation { properties: "enterScaleY"; from: 0.1; to: 1; duration: !root.modelReady || root.reducedMotion ? 0 : tokens.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier }
             }
         }
         move: Transition {
             NumberAnimation {
                 id: moveAnimation
                 properties: "x,y"
-                duration: root.reducedMotion ? 0 : Math.min(
+                duration: !root.modelReady || root.reducedMotion ? 0 : Math.min(
                     tokens.flipMaxMs,
                     tokens.flipBaseMs + Math.abs(moveAnimation.to - moveAnimation.from)
                         / tokens.rowStride * tokens.flipPerRowMs)
@@ -94,7 +116,7 @@ Item {
             NumberAnimation {
                 id: displacedAnimation
                 properties: "x,y"
-                duration: root.reducedMotion ? 0 : Math.min(
+                duration: !root.modelReady || root.reducedMotion ? 0 : Math.min(
                     tokens.flipMaxMs,
                     tokens.flipBaseMs + Math.abs(displacedAnimation.to - displacedAnimation.from)
                         / tokens.rowStride * tokens.flipPerRowMs)

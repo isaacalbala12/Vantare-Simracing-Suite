@@ -133,17 +133,16 @@ Item {
         }
 
         add: Transition {
-            NumberAnimation {
-                properties: "opacity"; from: 0; to: 1
-                duration: root.reducedMotion ? 0 : tokens.enterMs
-                easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier
+            ParallelAnimation {
+                NumberAnimation { properties: "transitionOpacity"; from: 0; to: 1; duration: !root.modelReady || root.reducedMotion ? 0 : tokens.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier }
+                NumberAnimation { properties: "enterScaleY"; from: 0.1; to: 1; duration: !root.modelReady || root.reducedMotion ? 0 : tokens.enterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier }
             }
         }
         move: Transition {
             NumberAnimation {
                 id: moveAnimation
                 properties: "x,y"
-                duration: root.reducedMotion ? 0 : Math.min(
+                duration: !root.modelReady || root.reducedMotion ? 0 : Math.min(
                     tokens.flipMaxMs,
                     tokens.flipBaseMs + Math.abs(moveAnimation.to - moveAnimation.from)
                         / tokens.rowStride * tokens.flipPerRowMs)
@@ -154,7 +153,7 @@ Item {
             NumberAnimation {
                 id: displacedAnimation
                 properties: "x,y"
-                duration: root.reducedMotion ? 0 : Math.min(
+                duration: !root.modelReady || root.reducedMotion ? 0 : Math.min(
                     tokens.flipMaxMs,
                     tokens.flipBaseMs + Math.abs(displacedAnimation.to - displacedAnimation.from)
                         / tokens.rowStride * tokens.flipPerRowMs)

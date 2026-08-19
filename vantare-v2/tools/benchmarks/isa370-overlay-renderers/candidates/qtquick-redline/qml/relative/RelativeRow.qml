@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Shapes
 
 Item {
     id: root
@@ -99,9 +100,51 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: 7
-        color: root.isPlayer ? "#52c1121f"
-             : Number(root.rowData.visualIndex || 0) % 2 && root.variant !== "mirror" ? "#09e8e8e8"
+        color: Number(root.rowData.visualIndex || 0) % 2 && root.variant !== "mirror" ? "#09e8e8e8"
              : "transparent"
+    }
+
+    Item {
+        id: playerRadialMaterial
+        objectName: root.isPlayer ? "playerRadialMaterial" : ""
+        anchors.fill: parent
+        visible: root.isPlayer
+        clip: true
+
+        readonly property real radialScaleY: (1.5 * root.height) / (0.35 * root.width)
+
+        Shape {
+            id: playerRadialShape
+            width: root.width
+            height: root.height / playerRadialMaterial.radialScaleY
+            anchors.centerIn: parent
+            preferredRendererType: Shape.CurveRenderer
+            transform: Scale {
+                origin.x: playerRadialShape.width / 2
+                origin.y: playerRadialShape.height / 2
+                yScale: playerRadialMaterial.radialScaleY
+            }
+
+            ShapePath {
+                strokeWidth: -1
+                startX: 0
+                startY: 0
+                fillGradient: RadialGradient {
+                    centerX: playerRadialShape.width / 2
+                    centerY: playerRadialShape.height / 2
+                    centerRadius: root.width * 0.35
+                    focalX: playerRadialShape.width / 2
+                    focalY: playerRadialShape.height / 2
+                    GradientStop { position: 0; color: "#66c1121f" }
+                    GradientStop { position: 0.6; color: "#1fc1121f" }
+                    GradientStop { position: 0.9; color: "#00c1121f" }
+                }
+                PathLine { x: playerRadialShape.width; y: 0 }
+                PathLine { x: playerRadialShape.width; y: playerRadialShape.height }
+                PathLine { x: 0; y: playerRadialShape.height }
+                PathLine { x: 0; y: 0 }
+            }
+        }
     }
 
     Rectangle {

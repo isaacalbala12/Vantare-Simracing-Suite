@@ -20,6 +20,9 @@ Item {
     property bool reducedMotion: false
     property bool modelReady: false
     readonly property bool removalRunning: removalAnimation.running
+    property real enterScaleY: 1
+    property real transitionOpacity: 1
+    readonly property real visualEnterScaleY: reducedMotion ? 1 : enterScaleY
     property string crossDirection: ""
     property string previousSide: ""
     readonly property bool matches: mode === "all"
@@ -41,8 +44,14 @@ Item {
 
     width: parent ? parent.width : 404
     height: root.matches ? 30 : 0
+    opacity: root.reducedMotion ? 1 : root.transitionOpacity
     visible: root.matches
     ListView.delayRemove: removalAnimation.running
+    transform: Scale {
+        origin.x: root.width / 2
+        origin.y: root.height / 2
+        yScale: root.visualEnterScaleY
+    }
 
     RelativeTokens { id: tokens }
 
@@ -60,17 +69,31 @@ Item {
         onTriggered: root.crossDirection = ""
     }
 
-    ListView.onRemove: removalAnimation.start()
+    onReducedMotionChanged: {
+        if (reducedMotion && removalAnimation.running) {
+            removalAnimation.stop()
+            root.transitionOpacity = 0
+            root.height = 0
+        }
+    }
+    ListView.onRemove: {
+        if (root.modelReady && !root.isPlayer && !root.reducedMotion)
+            removalAnimation.start()
+        else {
+            root.transitionOpacity = 0
+            root.height = 0
+        }
+    }
     ParallelAnimation {
         id: removalAnimation
         NumberAnimation {
-            target: root; property: "opacity"; to: 0
-            duration: root.reducedMotion ? 0 : tokens.ghostMs
+            target: root; property: "transitionOpacity"; to: 0
+            duration: !root.modelReady || root.reducedMotion ? 0 : tokens.ghostMs
             easing.type: Easing.InCubic
         }
         NumberAnimation {
             target: root; property: "height"; to: 0
-            duration: root.reducedMotion ? 0 : tokens.ghostMs
+            duration: !root.modelReady || root.reducedMotion ? 0 : tokens.ghostMs
             easing.type: Easing.InCubic
         }
     }

@@ -67,9 +67,14 @@ class RelativeQmlContractTest(unittest.TestCase):
             self.assertIn("move: Transition", source)
         adapter = self.source("qml/relative/RelativeModelRow.qml")
         self.assertIn("ListView.delayRemove: removalAnimation.running", adapter)
-        self.assertIn("ListView.onRemove: removalAnimation.start()", adapter)
+        self.assertIn("ListView.onRemove", adapter)
+        self.assertIn("!root.isPlayer", adapter)
         row = self.source("qml/relative/RelativeRow.qml")
         self.assertNotIn("Component.onCompleted: enterAnimation", row)
+        root = self.source("qml/relative/RelativeRedline.qml")
+        self.assertIn("property bool transitionsArmed: false", root)
+        self.assertIn("readonly property bool motionReady: modelReady && transitionsArmed", root)
+        self.assertIn("interval: 17", root)
 
     def test_variant_semantics_are_not_collapsed_into_one_generic_list(self) -> None:
         mirror = self.source("qml/relative/MirrorRelative.qml")
@@ -98,6 +103,15 @@ class RelativeQmlContractTest(unittest.TestCase):
             self.assertIn(alias, tokens)
         for color in ("#0f0f10", "#4b9fff", "#cfe4ff"):
             self.assertIn(color, tokens)
+        row = self.source("qml/relative/RelativeRow.qml")
+        self.assertIn("RadialGradient", row)
+        self.assertIn('objectName: root.isPlayer ? "playerRadialMaterial"', row)
+        axis = self.source("qml/relative/RelativeAxis.qml")
+        self.assertIn('objectName: "relativeAxisGlow"', axis)
+        proximity = self.source("qml/relative/ProximityRelative.qml")
+        self.assertIn('objectName: "proximitySeamGlow"', proximity)
+        approach = self.source("qml/relative/ApproachIndicator.qml")
+        self.assertIn('objectName: "approachGlow"', approach)
 
     def test_root_reuses_canonical_panel_and_status(self) -> None:
         source = self.source("qml/relative/RelativeRedline.qml")

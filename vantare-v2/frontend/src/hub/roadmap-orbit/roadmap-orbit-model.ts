@@ -1,17 +1,17 @@
 /**
- * Modelo de la vista Roadmap de Command Orbit (briefing 10).
+ * Modelo de la vista Roadmap de Command Orbit (briefing 10, rework «Qué viene»).
  *
  * La pantalla no tiene datos propios: todo sale de `docs/roadmap-source.json`
  * por el cargador que ya usaba `RoadmapPage` (`hub/roadmap/roadmap-data.ts`).
- * Aquí solo viven las derivaciones de presentación —estado visual, recuentos y
- * el estado honesto de la fuente— para que la página se limite a pintar.
+ * Aquí solo viven las derivaciones de presentación —el reparto en AHORA /
+ * PRÓXIMO / HECHO y el estado honesto de la fuente— para que la página se
+ * limite a pintar. Nada de lo que se deriva se presenta como declarado: la
+ * pantalla marca «derivado» lo que sale de una regla y no del JSON.
  */
 
 import {
   fetchRoadmapDataset,
   ROADMAP_FALLBACK,
-  resolveAreaProgress,
-  type RoadmapArea,
   type RoadmapDataset,
   type RoadmapMilestone,
   type RoadmapPhase,
@@ -50,7 +50,8 @@ export function visualState(status: RoadmapStatus): RoadmapVisualState {
 /**
  * Estado del hito. El JSON no declara uno: declara un `type`, y ése es el
  * único dato real disponible. Una release ya publicada está hecha, un plan
- * está por planear y lo demás está en curso.
+ * está por planear y lo demás está en curso. Es una **derivación**, y la
+ * pantalla la marca como tal.
  */
 export function milestoneState(milestone: RoadmapMilestone): RoadmapVisualState {
   if (milestone.type === "release") return "done";
@@ -58,31 +59,58 @@ export function milestoneState(milestone: RoadmapMilestone): RoadmapVisualState 
   return "active";
 }
 
-export interface AreaCounts {
+/** Las tres secciones de la columna narrativa, en orden de lectura. */
+export type RoadmapSection = "now" | "next" | "done";
+
+export const ROADMAP_SECTIONS: ReadonlyArray<RoadmapSection> = ["now", "next", "done"];
+
+export interface RoadmapNarrative {
+  /** Fase en curso declarada por la fuente. `null` si no hay ninguna. */
+  now: RoadmapPhase | null;
+  /** Posición 1-based de la fase en curso dentro del orden declarado; 0 si no hay. */
+  nowIndex: number;
+  /** Total de fases declaradas. */
   total: number;
-  active: number;
-  planned: number;
+  /** Fases por planear y futuras, en el orden que declara la fuente. */
+  next: ReadonlyArray<RoadmapPhase>;
+  /** Fases completadas, en el orden que declara la fuente. */
+  done: ReadonlyArray<RoadmapPhase>;
+  /** Hitos en curso (`feature`/`fix`). DERIVADO del tipo. */
+  nowMilestones: ReadonlyArray<RoadmapMilestone>;
+  /** Hitos de tipo `plan`. DERIVADO del tipo. */
+  nextMilestones: ReadonlyArray<RoadmapMilestone>;
+  /** Hitos ya publicados (`release`). DERIVADO del tipo. */
+  doneMilestones: ReadonlyArray<RoadmapMilestone>;
 }
 
-export function countAreas(areas: ReadonlyArray<RoadmapArea>): AreaCounts {
-  let active = 0;
-  let planned = 0;
-  for (const area of areas) {
-    if (area.status === "in-progress") active += 1;
-    if (area.status === "planned") planned += 1;
-  }
-  return { total: areas.length, active, planned };
+/**
+ * Reparte fases e hitos en las tres secciones de la vista.
+ *
+ * Las fases se reparten por su `status`, que la fuente sí declara. Los hitos
+ * no dicen a qué fase pertenecen ni en qué estado están: lo único declarado es
+ * su `type`, así que su sección sale de `milestoneState` y la pantalla lo
+ * anuncia como derivado en lugar de fingir una relación que el JSON no tiene.
+ */
+export function buildNarrative(data: RoadmapDataset): RoadmapNarrative {
+  const phases = data.phases;
+  const index = phases.findIndex((phase) => phase.status === "in-progress");
+  const milestones = data.milestones;
+
+  return {
+    now: index >= 0 ? phases[index] : null,
+    nowIndex: index >= 0 ? index + 1 : 0,
+    total: phases.length,
+    next: phases.filter((phase) => phase.status === "planned" || phase.status === "future"),
+    done: phases.filter((phase) => phase.status === "done"),
+    nowMilestones: milestones.filter((m) => milestoneState(m) === "active"),
+    nextMilestones: milestones.filter((m) => milestoneState(m) === "planned"),
+    doneMilestones: milestones.filter((m) => milestoneState(m) === "done"),
+  };
 }
 
-/** Porcentaje del área, contado desde los proyectos cuando estén enlazados. */
-export function areaProgress(
-  area: RoadmapArea,
-  projects: ReadonlyMap<string, { done: number; total: number }> | null,
-): number {
-  return resolveAreaProgress(area, projects);
-}
-
-/** Frentes abiertos de la fase: los highlights que declara la propia fuente. */
-export function phaseFronts(phase: RoadmapPhase): number {
-  return phase.highlights.length;
+/** Recuento visible en la columna contextual de cada sección. */
+export function sectionCount(narrative: RoadmapNarrative, section: RoadmapSection): number {
+  if (section === "now") return narrative.now ? 1 : 0;
+  if (section === "next") return narrative.next.length;
+  return narrative.done.length;
 }

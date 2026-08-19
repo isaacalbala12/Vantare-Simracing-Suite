@@ -1,70 +1,47 @@
-/** Catalogo `roadmap.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+/** Catalogo `roadmap.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
+    Vista «Cosa arriva» (D-R3-F-1): una colonna narrativa ORA / PROSSIMO / FATTO.
+    Solo etichette: fasi e traguardi vengono da `docs/roadmap-source.json`. */
 export const roadmapOrbitIt: Record<string, string> = {
   "roadmap.eyebrow": "Direzione del prodotto",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "Fasi, aree e traguardi dichiarati in docs/roadmap-source.json. Progresso sulla scala 0/10/25/50/75/100; senza date pubbliche.",
+    "Ciò su cui si sta lavorando ora, ciò che arriva dopo e ciò che è già pubblicato, così come lo dichiara docs/roadmap-source.json.",
 
   "roadmap.source.loading": "Caricamento della fonte…",
   "roadmap.source.ok": "Fonte disponibile · {{version}}",
   "roadmap.source.fallback": "Copia inclusa · {{version}}",
 
-  "roadmap.kpi.phase": "Fase attuale",
-  "roadmap.kpi.phaseSub": "{{target}} · {{progress}} % · {{fronts}} fronti aperti",
-  "roadmap.kpi.phaseNoneSub": "la fonte non dichiara nessuna fase in corso",
-  "roadmap.kpi.areas": "Aree",
-  "roadmap.kpi.areasSub": "{{active}} in corso · {{planned}} pianificate",
-  "roadmap.kpi.milestones": "Traguardi",
-  "roadmap.kpi.milestonesNoneSub": "la fonte non dichiara traguardi",
-  "roadmap.kpi.channel": "Canale",
-  "roadmap.kpi.channelSub": "tester e nightly ricevono prima ogni traguardo",
-  "roadmap.kpi.none": "—",
-
   "roadmap.channel.stable": "Stable",
   "roadmap.channel.testers": "Testers",
   "roadmap.channel.nightly": "Nightly",
-
-  "roadmap.phases.title": "Fasi",
-  "roadmap.phases.meta": "{{n}} fasi · progresso dichiarato",
-  "roadmap.phases.eyebrowLine": "{{state}} · {{target}} · {{progress}} %",
-  "roadmap.phases.eyebrowShort": "{{state}} · {{progress}} %",
 
   "roadmap.state.done": "Completata",
   "roadmap.state.active": "In corso",
   "roadmap.state.planned": "Da pianificare",
   "roadmap.state.future": "Futuro",
 
-  "roadmap.areas.title": "Aree",
-  "roadmap.areas.progress": "{{progress}} % dell'area",
-  "roadmap.areaState.done": "completata",
-  "roadmap.areaState.active": "in corso",
-  "roadmap.areaState.planned": "pianificata",
-  "roadmap.areaState.future": "futuro",
+  "roadmap.now.title": "Ora",
+  "roadmap.now.position": "Fase {{n}} di {{total}}",
+  "roadmap.now.none": "La fonte non dichiara nessuna fase in corso.",
+  "roadmap.now.anchored": "Traguardi di questa fase",
 
-  "roadmap.milestones.title": "Traguardi",
-  "roadmap.milestones.meta": "ordine dichiarato",
+  "roadmap.next.title": "Prossimo",
+  "roadmap.next.none": "La fonte non dichiara nessuna fase da pianificare.",
+  "roadmap.next.plans": "Piani dichiarati",
 
-  "roadmap.context.title": "Fasi",
-  "roadmap.context.hint": "Tocca una fase per saltare alla sua colonna.",
-/* --- Direzioni di rework (W5, selezionabili con ?roadmapDir=a|b) --- */
-  "roadmap.dir.railTitle": "Tracciato",
-  "roadmap.dir.railMeta": "{{n}} fasi · {{done}} completate · {{active}} in corso",
-  "roadmap.dir.railHint": "Tocca una fase o un traguardo per mettere a fuoco la sua stazione.",
-  "roadmap.dir.noPhases": "La fonte non dichiara nessuna fase.",
-  "roadmap.dir.now": "Adesso",
-  "roadmap.dir.nowNone": "La fonte non dichiara nessuna fase in corso.",
-  "roadmap.dir.next": "Successiva",
-  "roadmap.dir.nextNone": "La fonte non dichiara nessuna fase da pianificare.",
-  "roadmap.dir.phaseMeta": "{{progress}} % · {{n}} fronti",
-  "roadmap.dir.featuredEyebrow": "{{label}} · {{state}}",
-  "roadmap.dir.fronts": "{{n}} fronti aperti",
-  "roadmap.dir.stopMeta": "{{label}} · ancorato a {{phase}}",
-  "roadmap.dir.orderLabel": "Ordine del tabellone",
-  "roadmap.dir.byPhase": "Per fase",
-  "roadmap.dir.byArea": "Per area",
-  "roadmap.dir.nextStep": "Prossimo passo",
-  "roadmap.dir.derived": "derivato",
-  "roadmap.dir.nextStepNone": "La fonte non dichiara nessun passo per quest'area.",
-  "roadmap.dir.boardHint": "Il segmentato riordina il tabellone; i dati non cambiano.",
-  "roadmap.dir.areasInvolved": "Aree coinvolte",
+  "roadmap.done.title": "Fatto",
+  "roadmap.done.accordion": "Fasi completate e traguardi pubblicati",
+  "roadmap.done.summary": "{{phases}} fasi · {{releases}} pubblicati",
+  "roadmap.done.none": "La fonte non dichiara nessuna fase completata.",
+  "roadmap.done.released": "Pubblicato",
+
+  "roadmap.derived": "derivato",
+  "roadmap.derivedNote":
+    "La fonte non dice a quale fase appartiene ogni traguardo: la ripartizione viene dal suo tipo.",
+
+  "roadmap.context.title": "Roadmap",
+  "roadmap.context.nowSub": "la fase in corso",
+  "roadmap.context.nextSub": "da pianificare e future",
+  "roadmap.context.doneSub": "completate e pubblicate",
+  "roadmap.context.hint": "Tocca una sezione per saltarci.",
 };

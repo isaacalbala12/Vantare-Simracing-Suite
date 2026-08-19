@@ -1,70 +1,47 @@
-/** `roadmap.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+/** `roadmap.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
+    "What's next" view (D-R3-F-1): a single narrative column NOW / NEXT / DONE.
+    Labels only: phases and milestones come from `docs/roadmap-source.json`. */
 export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.eyebrow": "Product direction",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "Phases, areas and milestones declared in docs/roadmap-source.json. Progress on a 0/10/25/50/75/100 scale; no public dates.",
+    "What is being worked on now, what comes next and what already shipped, exactly as docs/roadmap-source.json declares it.",
 
   "roadmap.source.loading": "Loading the source…",
   "roadmap.source.ok": "Source available · {{version}}",
   "roadmap.source.fallback": "Bundled copy · {{version}}",
 
-  "roadmap.kpi.phase": "Current phase",
-  "roadmap.kpi.phaseSub": "{{target}} · {{progress}} % · {{fronts}} open fronts",
-  "roadmap.kpi.phaseNoneSub": "the source declares no phase in progress",
-  "roadmap.kpi.areas": "Areas",
-  "roadmap.kpi.areasSub": "{{active}} in progress · {{planned}} planned",
-  "roadmap.kpi.milestones": "Milestones",
-  "roadmap.kpi.milestonesNoneSub": "the source declares no milestones",
-  "roadmap.kpi.channel": "Channel",
-  "roadmap.kpi.channelSub": "testers and nightly get every milestone first",
-  "roadmap.kpi.none": "—",
-
   "roadmap.channel.stable": "Stable",
   "roadmap.channel.testers": "Testers",
   "roadmap.channel.nightly": "Nightly",
-
-  "roadmap.phases.title": "Phases",
-  "roadmap.phases.meta": "{{n}} phases · declared progress",
-  "roadmap.phases.eyebrowLine": "{{state}} · {{target}} · {{progress}} %",
-  "roadmap.phases.eyebrowShort": "{{state}} · {{progress}} %",
 
   "roadmap.state.done": "Completed",
   "roadmap.state.active": "In progress",
   "roadmap.state.planned": "To plan",
   "roadmap.state.future": "Future",
 
-  "roadmap.areas.title": "Areas",
-  "roadmap.areas.progress": "{{progress}} % of the area",
-  "roadmap.areaState.done": "completed",
-  "roadmap.areaState.active": "in progress",
-  "roadmap.areaState.planned": "planned",
-  "roadmap.areaState.future": "future",
+  "roadmap.now.title": "Now",
+  "roadmap.now.position": "Phase {{n}} of {{total}}",
+  "roadmap.now.none": "The source declares no phase in progress.",
+  "roadmap.now.anchored": "Milestones in this phase",
 
-  "roadmap.milestones.title": "Milestones",
-  "roadmap.milestones.meta": "declared order",
+  "roadmap.next.title": "Next",
+  "roadmap.next.none": "The source declares no phase left to plan.",
+  "roadmap.next.plans": "Declared plans",
 
-  "roadmap.context.title": "Phases",
-  "roadmap.context.hint": "Click a phase to jump to its column.",
-/* --- Rework directions (W5, selected with ?roadmapDir=a|b) --- */
-  "roadmap.dir.railTitle": "Track",
-  "roadmap.dir.railMeta": "{{n}} phases · {{done}} done · {{active}} in progress",
-  "roadmap.dir.railHint": "Click a phase or a milestone to focus its station on the track.",
-  "roadmap.dir.noPhases": "The source declares no phases.",
-  "roadmap.dir.now": "Now",
-  "roadmap.dir.nowNone": "The source declares no phase in progress.",
-  "roadmap.dir.next": "Next",
-  "roadmap.dir.nextNone": "The source declares no planned phase.",
-  "roadmap.dir.phaseMeta": "{{progress}} % · {{n}} fronts",
-  "roadmap.dir.featuredEyebrow": "{{label}} · {{state}}",
-  "roadmap.dir.fronts": "{{n}} open fronts",
-  "roadmap.dir.stopMeta": "{{label}} · anchored to {{phase}}",
-  "roadmap.dir.orderLabel": "Board order",
-  "roadmap.dir.byPhase": "By phase",
-  "roadmap.dir.byArea": "By area",
-  "roadmap.dir.nextStep": "Next step",
-  "roadmap.dir.derived": "derived",
-  "roadmap.dir.nextStepNone": "The source declares no step for this area.",
-  "roadmap.dir.boardHint": "The segmented control reorders the board; the data does not change.",
-  "roadmap.dir.areasInvolved": "Areas involved",
+  "roadmap.done.title": "Done",
+  "roadmap.done.accordion": "Completed phases and shipped milestones",
+  "roadmap.done.summary": "{{phases}} phases · {{releases}} shipped",
+  "roadmap.done.none": "The source declares no completed phase.",
+  "roadmap.done.released": "Shipped",
+
+  "roadmap.derived": "derived",
+  "roadmap.derivedNote":
+    "The source does not say which phase a milestone belongs to: the grouping comes from its type.",
+
+  "roadmap.context.title": "Roadmap",
+  "roadmap.context.nowSub": "the phase in progress",
+  "roadmap.context.nextSub": "to plan and future",
+  "roadmap.context.doneSub": "completed and shipped",
+  "roadmap.context.hint": "Click a section to jump to it.",
 };

@@ -53,7 +53,7 @@ export function buildUserDesignFromWidget(
   };
 }
 
-export function isActiveDesign(widget: WidgetInstanceV3, design: WidgetDesignV1): boolean {
+function isActiveDesign(widget: WidgetInstanceV3, design: WidgetDesignV1): boolean {
   return widget.visual.provenance?.designId === design.id;
 }
 
@@ -112,7 +112,7 @@ export function migrateRetiredDesigns(document: ProfileDocumentV3): ProfileDocum
   return changed ? { ...document, layouts } : document;
 }
 
-export function migrateRetiredWidgetDesign(widget: WidgetInstanceV3): WidgetInstanceV3 {
+function migrateRetiredWidgetDesign(widget: WidgetInstanceV3): WidgetInstanceV3 {
   const current = widget.visual.provenance?.designId;
   if (!current) return widget;
   const replacementId = migrateRetiredDesignId(current);

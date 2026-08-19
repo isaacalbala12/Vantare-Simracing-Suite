@@ -117,7 +117,7 @@ export function contentBoxIsFullFrame(
 }
 
 /** Rectangulos de lo que el widget pinta dentro del marco. */
-export function readWidgetContentRects(frame: HTMLElement): Rect[] {
+function readWidgetContentRects(frame: HTMLElement): Rect[] {
   const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
   if (!viewport) return [];
   const rects: Rect[] = [];

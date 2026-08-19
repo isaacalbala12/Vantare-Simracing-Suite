@@ -40,7 +40,7 @@ function defaultDeps(): StudioCatalogDeps {
   };
 }
 
-export function resolveCompatibleSystems(
+function resolveCompatibleSystems(
   widgetType: WidgetType,
   registry: DesignSystemRegistry,
 ): CompatibleSystemRef[] {

@@ -291,7 +291,7 @@ export function executeWidgetAction(input: {
   return true;
 }
 
-export function describeWidgets(
+function describeWidgets(
   widgets: readonly WidgetInstanceV3[],
   widgetIds: readonly string[],
 ): string[] {

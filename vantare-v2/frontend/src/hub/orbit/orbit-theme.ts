@@ -14,10 +14,6 @@ const THEMES: Record<ThemeId, VantareTheme> = {
   "vantare-orbit": vantareOrbit as unknown as VantareTheme,
 };
 
-export function themeById(id: ThemeId): VantareTheme {
-  return THEMES[id];
-}
-
 /**
  * Aplica el tema Orbit **sin** tocar la preferencia guardada y devuelve la
  * función que restaura el tema que el usuario tuviera.

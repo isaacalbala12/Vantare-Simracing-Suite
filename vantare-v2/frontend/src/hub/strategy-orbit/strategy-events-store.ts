@@ -205,7 +205,7 @@ export function toStrategyEvent(record: StrategyEventRecord, locale = "es"): Str
 /** Ritmos por defecto de un piloto nuevo: honestos, no optimistas. */
 export const DEFAULT_DRY: StrategyDriver["dry"] = [105, 2.8];
 
-export function defaultDriverPaces(): Pick<StrategyDriver, "dry" | "wet" | "eco"> {
+function defaultDriverPaces(): Pick<StrategyDriver, "dry" | "wet" | "eco"> {
   return {
     dry: DEFAULT_DRY,
     wet: [DEFAULT_DRY[0] + 8, Number((DEFAULT_DRY[1] - 0.35).toFixed(2))],
@@ -243,7 +243,7 @@ export function newDriver(name: string, index: number): StrategyDriver {
 }
 
 /** Primera estrategia de un evento nuevo: todos los pilotos en orden. */
-export function firstStrategy(drivers: StrategyDriver[], name: string, note: string): StrategyVariant {
+function firstStrategy(drivers: StrategyDriver[], name: string, note: string): StrategyVariant {
   return {
     id: "s1",
     name,
@@ -392,7 +392,7 @@ export function eventFromRoster(
 }
 
 /** Instante de hoy a la hora indicada, en ISO (el roster antiguo solo traía minutos). */
-export function isoFromStartMinute(startMin: number, now = new Date()): string {
+function isoFromStartMinute(startMin: number, now = new Date()): string {
   const at = new Date(now);
   at.setHours(Math.floor(startMin / 60), Math.round(startMin % 60), 0, 0);
   return at.toISOString();

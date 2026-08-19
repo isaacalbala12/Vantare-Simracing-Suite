@@ -119,13 +119,6 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.design.system.original": "Vantare Original",
   "studio.v3.design.system.crystal": "Vantare Crystal",
   "studio.v3.design.system.endurance": "Vantare Endurance",
-  "studio.v3.inspector.sections.design": "Design",
-  "studio.v3.inspector.sections.appearance": "Aparência",
-  "studio.v3.inspector.sections.content": "Conteúdo",
-  "studio.v3.inspector.sections.behavior": "Comportamento",
-  "studio.v3.inspector.sections.layout": "Layout",
-  "studio.v3.inspector.sections.actions": "Ações",
-  "studio.v3.inspector.sections.unsupported": "Não compatível",
   "studio.v3.design.lock.generic": "Não tens acesso para aplicar este design.",
   "studio.v3.design.loadFailed": "Não foi possível carregar os designs guardados.",
   "studio.v3.design.applyAll.confirm":

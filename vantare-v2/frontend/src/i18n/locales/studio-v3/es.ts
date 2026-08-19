@@ -119,13 +119,6 @@ export const studioV3Es: Record<string, string> = {
   "studio.v3.design.system.original": "Vantare Original",
   "studio.v3.design.system.crystal": "Vantare Crystal",
   "studio.v3.design.system.endurance": "Vantare Endurance",
-  "studio.v3.inspector.sections.design": "Diseño",
-  "studio.v3.inspector.sections.appearance": "Apariencia",
-  "studio.v3.inspector.sections.content": "Contenido",
-  "studio.v3.inspector.sections.behavior": "Comportamiento",
-  "studio.v3.inspector.sections.layout": "Layout",
-  "studio.v3.inspector.sections.actions": "Acciones",
-  "studio.v3.inspector.sections.unsupported": "No compatible",
   "studio.v3.design.lock.generic": "No tienes acceso para aplicar este diseño.",
   "studio.v3.design.loadFailed": "No se pudieron cargar los diseños guardados.",
   "studio.v3.design.applyAll.confirm":

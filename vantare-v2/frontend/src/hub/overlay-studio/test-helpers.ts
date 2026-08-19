@@ -1,4 +1,3 @@
-import { expect } from "vitest";
 import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
 import {
   createTelemetryRateCoordinator,
@@ -53,12 +52,4 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
     buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
   );
   return flushing;
-}
-
-export function expectDisabled(element: Element): void {
-  expect((element as HTMLButtonElement).disabled).toBe(true);
-}
-
-export function expectEnabled(element: Element): void {
-  expect((element as HTMLButtonElement).disabled).toBe(false);
 }

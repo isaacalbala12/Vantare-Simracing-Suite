@@ -493,3 +493,28 @@ Ahora: un canal cerrado deja de estar `disabled` y pasa a `aria-disabled` —sig
 **Decisión.** `HubApp` resolvía `testingCenterChannel` a partir de `buildChannel`, que llega en `app:version` y describe con qué rama se compiló el ejecutable: un dato que solo cambia reinstalando. Con eso, elegir «Nightly» en Ajustes no movía el rail ni el eyebrow del Testing Center, y la pantalla decía una cosa y la shell otra.
 
 Ajustes emite ahora `hub:updater-channel` (evento de frontend, sin handler Go) al confirmar el canal y al releerlo del backend; `HubApp` lo escucha —y escucha también `updater:settings` directamente, porque Ajustes puede no haberse abierto nunca— y usa el canal preferido por delante de `buildChannel`. La licencia sigue decidiendo: `resolveTestingCenterChannel` es la misma función y las mismas capacidades, así que elegir un canal que no te corresponde no abre nada.
+## D-R3-C-1 · Los iconos no venían pequeños del extractor: llegaban pequeños dentro de un lienzo grande
+**Decisión.** El feedback («los logos no están a máxima resolución») no era el extractor pidiendo 32 px: `getIconHighRes` ya pedía `SHIL_JUMBO` y devolvía PNG de 256 px. Eran tres cosas encadenadas, y las tres estaban en el backend.
+
+1. **El lienzo jumbo con el icono en la esquina.** Cuando el ejecutable no trae un icono de 256 px, la lista de imágenes del shell no lo amplía: coloca el de 32 px en la esquina superior izquierda de un lienzo de 256 y deja el resto transparente. El PNG «medía» 256, pasaba cualquier control de tamaño, y al pintarlo con `object-fit: contain` en una losa de 39 px el logotipo quedaba en unos 5 px. `trimIconCanvasPadding` recorta al contenido cuando está pegado al origen y ocupa menos de media caja; un icono de borde a borde —lo normal— se devuelve intacto.
+2. **La caché de disco servía iconos borrosos para siempre.** Solo se invalidaba por mtime del ejecutable, así que las entradas escritas por versiones que sí caían en las rutas de 32 px (`SHGFI_LARGEICON`, `ExtractIconExW`) sobrevivían aunque el extractor ya supiera sacar 256. La caché pasa a `icons-cache-v2.json` y la v1 se borra en el primer arranque.
+3. **La primera ruta que respondía ganaba, aunque trajera 32 px.** Las rutas de extracción están ordenadas por fidelidad, no por resolución. Ahora `iconPick` acepta en cuanto una llega a 64 px y, si ninguna llega, devuelve la mayor vista en vez de la primera.
+
+En el front no había resolución que subir: se declara `image-rendering: auto` en la losa para que ningún valor heredado la convierta en un reescalado dentado, y el `<img>` pasa de `loading="lazy"` a `decoding="async"` porque la losa está siempre en pantalla y diferirla solo provocaba un parpadeo de iniciales.
+
+**De regalo, un fallo que mataba el escaneo en una instalación nueva.** Sin fichero de caché, `loadIconDiskCacheLocked` devolvía la estructura con los mapas a `nil` y el primer `saveIconToDisk` reventaba con «assignment to entry in nil map» dentro de la goroutine de extracción. Con caché ya escrita no se notaba; en un equipo limpio, sí.
+
+## D-R3-C-2 · Discord no salía porque el ejecutable registrado no es Discord
+**Decisión.** El catálogo detecta `…\Discord\Update.exe`, el arrancador de Squirrel, que no lleva icono propio: el shell devolvía el icono genérico de aplicación de Windows —una ventana gris— y en la losa parecía que Discord no salía. El logotipo real está al lado, en el `app.ico` del instalador o en el ejecutable de la versión instalada (`app-<versión>\Discord.exe`).
+
+`resolveSquirrelIconSource` corrige **de dónde se lee la imagen**, no qué se lanza: `Update.exe` sigue siendo el ejecutable de arranque, que es el correcto. Se resuelve antes que ninguna otra ruta porque el stub sí devuelve un icono (el genérico) y ganaría por orden de llegada. Vale para cualquier aplicación empaquetada con Squirrel, no solo Discord.
+
+## D-R3-C-3 · MoTeC es la única app con activo dibujado, y se dice que es una reconstrucción
+**Decisión.** La app «MoTeC» del catálogo resuelve `…\MoTeC\app.exe`, que es el visor **i2**: su icono son los dos círculos cian y ámbar, así que la losa mostraba i2 donde ponía MoTeC. La instalación no trae el logotipo corporativo por ningún lado —`MoTeC.Extract.exe` lleva la marca del producto M1 y `MoTeC.Discovery.exe` un icono de 32 px—, así que no hay fichero local del que sacarlo.
+
+`OFFICIAL_ICON_ASSETS` deja de estar vacío para esta única entrada: un SVG en `data:` URI (`brand-assets.ts`) con el wordmark en cursiva pesada sobre negro, que es como la marca se presenta. **Es una reconstrucción, no el fichero oficial**; si aparece el activo aprobado se sustituye la constante y no cambia nada más.
+
+El resto del catálogo se queda a `undefined` a propósito. La regla es que el icono instalado gana: es el logotipo real de la aplicación, a máxima resolución y sin redibujar. Una entrada de la tabla solo se rellena cuando el icono instalado **no** identifica a la marca del catálogo y no hay ningún fichero local mejor, porque solo entonces la losa engaña. El orden de candidatos no cambia: la elección manual del usuario sigue mandando sobre el activo de marca.
+
+## D-R3-C-4 · El contrato «sin ampliar» se comprueba en la captura, a DPR 2
+**Decisión.** El harness visual gana un tercer viewport a `deviceScaleFactor: 2`, que es donde se nota el problema: las losas de 39 px y los pasos de 26 son 78 y 52 px físicos, así que un origen de 32 px se vería ampliado. Antes de capturar comprueba en la página que el ancho natural de cada `<img>` de losa cubra su caja física, y falla nombrando el icono culpable. Un SVG queda exento: no tiene resolución natural.

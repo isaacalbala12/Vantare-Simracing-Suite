@@ -17,6 +17,11 @@ const FROZEN_CLOCK = new Date("2026-07-07T18:07:30Z");
 const viewports = [
   { name: "1920x1080", width: 1920, height: 1080, profilesScroll: false },
   { name: "1920x900", width: 1920, height: 900, profilesScroll: true },
+  // DPR 2: es donde se nota si un icono llega a la losa por debajo de su
+  // tamaño. Las losas del catálogo miden 39 px y los pasos de cadena 26, o sea
+  // 78 y 52 px físicos, así que un icono de 32 px se vería ampliado y borroso.
+  // Solo se captura el catálogo y la cadena; el resto ya lo cubre DPR 1.
+  { name: "1920x1080@2x", width: 1920, height: 1080, profilesScroll: false, dpr: 2, iconsOnly: true },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -77,7 +82,7 @@ try {
   for (const viewport of viewports) {
     const page = await browser.newPage({
       viewport: { width: viewport.width, height: viewport.height },
-      deviceScaleFactor: 1,
+      deviceScaleFactor: viewport.dpr ?? 1,
     });
     const problems = [];
     const isWailsRuntimeNoise = (error) => (error.stack ?? "").includes("wailsio_runtime");
@@ -151,6 +156,33 @@ try {
     }
 
     await page.screenshot({ path: path.join(output, `orbit-launcher-${viewport.name}.png`), fullPage: false });
+
+    if (viewport.iconsOnly) {
+      // Contrato del icono: la losa nunca amplia la imagen. Con `object-fit:
+      // contain` un origen menor que la caja fisica se ve borroso, asi que se
+      // comprueba que el ancho natural cubra la losa a este DPR.
+      const upscaled = await page.evaluate((dpr) => {
+        const offenders = [];
+        for (const img of document.querySelectorAll(".orbit-monogram__img")) {
+          const box = img.getBoundingClientRect();
+          const needed = Math.round(Math.max(box.width, box.height) * dpr);
+          // Un SVG no tiene resolucion natural: escala solo.
+          const natural = img.currentSrc.startsWith("data:image/svg+xml")
+            ? Number.POSITIVE_INFINITY
+            : img.naturalWidth;
+          if (natural && natural < needed) offenders.push(`${needed}px pedidos, origen de ${natural}px`);
+        }
+        return offenders;
+      }, viewport.dpr ?? 1);
+      if (upscaled.length) {
+        throw new Error(`${viewport.name}: iconos ampliados en la losa\n${upscaled.join("\n")}`);
+      }
+      await page.getByTestId("orbit-launcher-apps").screenshot({
+        path: path.join(output, `orbit-launcher-catalogo-iconos-${viewport.name}.png`),
+      });
+      await page.close();
+      continue;
+    }
 
     // Dos estados que solo se ven interactuando: la tarjeta punteada bajo el
     // puntero y el cajon del editor de perfil abierto sobre la vista.

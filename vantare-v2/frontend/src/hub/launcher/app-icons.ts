@@ -1,3 +1,4 @@
+import { MOTEC_BRAND_ICON } from "./brand-assets";
 import type { LauncherAppEntry } from "./launcher-state";
 
 export type OfficialIconId =
@@ -10,9 +11,20 @@ export type OfficialIconId =
   | "simhub";
 
 /**
- * Official assets are intentionally empty until the user supplies the seven
- * approved files. Keeping the registry typed makes the omission explicit and
- * prevents a network URL or an invented logo from entering the UI.
+ * Activos de marca del repositorio, por aplicación del catálogo.
+ *
+ * La regla es que el icono instalado gana: es el logotipo real de la aplicación,
+ * a máxima resolución y sin redibujar. Una entrada aquí solo se rellena cuando
+ * el icono instalado **no** identifica a la marca del catálogo y no hay ningún
+ * fichero local mejor, porque entonces la losa engaña.
+ *
+ * - `motec`: el ejecutable detectado es el visor i2 y pinta el logotipo de i2,
+ *   no el de MoTeC (ver `brand-assets.ts`).
+ * - El resto queda a `undefined` a propósito: Discord, CrewChief, OBS, Spotify,
+ *   SimHub y LMU ya resuelven su logotipo correcto desde la instalación.
+ *
+ * Mantener la tabla tipada deja la omisión explícita e impide que entre una URL
+ * de red en la UI.
  */
 export const OFFICIAL_ICON_ASSETS: Record<OfficialIconId, string | undefined> = {
   lmu: undefined,
@@ -20,7 +32,7 @@ export const OFFICIAL_ICON_ASSETS: Record<OfficialIconId, string | undefined> = 
   crewchief: undefined,
   discord: undefined,
   spotify: undefined,
-  motec: undefined,
+  motec: MOTEC_BRAND_ICON,
   simhub: undefined,
 };
 

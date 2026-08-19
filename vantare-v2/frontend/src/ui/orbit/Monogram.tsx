@@ -43,7 +43,18 @@ export function Monogram({
   return (
     <span aria-hidden="true" className={classes} style={style}>
       {src ? (
-        <img alt="" className="orbit-monogram__img" loading="lazy" onError={onSrcError} src={src} />
+        // `decoding="async"` en vez de `loading="lazy"`: la losa está siempre en
+        // pantalla (catálogo y cadena), así que diferir la carga solo provocaba
+        // un parpadeo de iniciales antes del icono. `draggable` apagado porque
+        // arrastrar el icono fuera de la fila no significa nada aquí.
+        <img
+          alt=""
+          className="orbit-monogram__img"
+          decoding="async"
+          draggable={false}
+          onError={onSrcError}
+          src={src}
+        />
       ) : (
         text
       )}

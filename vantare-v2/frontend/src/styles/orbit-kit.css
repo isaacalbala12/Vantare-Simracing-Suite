@@ -1275,6 +1275,11 @@ button.orbit-pill {
   padding: 13%;
   object-fit: contain;
   object-position: center;
+  /* El origen es un PNG de 256 px (o un SVG) reducido a 26-39 px: se declara el
+     filtro suave a proposito para que ningun `image-rendering` heredado lo
+     convierta en un reescalado por vecino mas proximo, que a DPR 2 deja el
+     icono dentado. */
+  image-rendering: auto;
 }
 
 .orbit-monogram--26 {

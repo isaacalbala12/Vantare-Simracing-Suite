@@ -31,10 +31,13 @@ export function AppBadge({ app, size = "md", onFavorite }: AppBadgeProps) {
       data-testid={`app-badge-${app.id}`}
     >
       {iconUrl ? (
+        // Mismo criterio que el monograma Orbit: la fila esta siempre en
+        // pantalla, asi que diferir la carga solo provoca un parpadeo.
         <img
           src={iconUrl}
           alt=""
-          loading="lazy"
+          decoding="async"
+          draggable={false}
           className={`${dim} rounded-lg object-contain`}
           onError={onError}
         />

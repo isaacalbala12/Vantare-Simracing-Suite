@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
+import { formatMessage } from "../../hub/orbit/format-message";
 import { TyreChip } from "./TyreChip";
 import type { TyreView } from "./viz-types";
 
@@ -17,11 +19,11 @@ export interface CornerSlotProps {
   className?: string;
 }
 
-const CORNER_LABEL: Record<CornerSlotProps["corner"], string> = {
-  FL: "delantera izquierda",
-  FR: "delantera derecha",
-  RL: "trasera izquierda",
-  RR: "trasera derecha",
+const CORNER_LABEL_KEY: Record<CornerSlotProps["corner"], string> = {
+  FL: "orbit.corner.FL",
+  FR: "orbit.corner.FR",
+  RL: "orbit.corner.RL",
+  RR: "orbit.corner.RR",
 };
 
 /** `07`: el halo verde de confirmación dura 500 ms. */
@@ -32,6 +34,8 @@ const PULSE_MS = 500;
  * sólido cuando está lleno, borde coral en `over`/foco y pulso al soltar.
  */
 export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, className }: CornerSlotProps) {
+  const { t } = useI18n();
+  const cornerLabel = t(CORNER_LABEL_KEY[corner]);
   const [over, setOver] = useState(false);
   const [pulse, setPulse] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,7 +70,9 @@ export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, cl
 
   return (
     <div
-      aria-label={`Esquina ${CORNER_LABEL[corner]}${tyre ? `: ${tyre.id}` : ": vacía"}`}
+      aria-label={`${formatMessage(t("orbit.corner.slotAria"), { corner: cornerLabel })}${
+        tyre ? `: ${tyre.id}` : `: ${t("orbit.corner.emptyState")}`
+      }`}
       className={["orbit-corner-slot", className].filter(Boolean).join(" ")}
       data-over={over ? "true" : undefined}
       data-picked={picked ? "true" : undefined}
@@ -87,7 +93,7 @@ export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, cl
           <span className="orbit-corner-slot__id">{tyre.id}</span>
           <span className="orbit-corner-slot__cond">{tyre.condition} %</span>
           <button
-            aria-label={`Quitar el neumático de ${CORNER_LABEL[corner]}`}
+            aria-label={formatMessage(t("orbit.corner.remove"), { corner: cornerLabel })}
             className="orbit-corner-slot__x"
             onClick={(event) => { event.stopPropagation(); onClear(); }}
             type="button"
@@ -96,7 +102,7 @@ export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, cl
           </button>
         </>
       ) : (
-        <span className="orbit-corner-slot__empty">Arrastra un juego</span>
+        <span className="orbit-corner-slot__empty">{t("orbit.corner.dragHint")}</span>
       )}
     </div>
   );

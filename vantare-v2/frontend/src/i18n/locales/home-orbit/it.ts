@@ -45,6 +45,4 @@ export const homeOrbitIt: Record<string, string> = {
   "home.profiles.activate": "Attiva",
   "home.profiles.empty": "Ancora nessun profilo",
 
-  "home.activity.title": "Attività recente",
-  "home.activity.empty": "Nessuna attività disponibile",
 };

@@ -664,8 +664,8 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
           setLastSuccessId(id);
           setNotice(null);
         },
-        onError: (message) => {
-          setNotice(message);
+        onError: (messageKey) => {
+          setNotice(t(messageKey));
         },
       });
       return;

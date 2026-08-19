@@ -63,13 +63,6 @@ export const shellOrbitPt: Record<string, string> = {
   "shell.topbar.eyebrow.roadmap": "Fonte versionada",
   "shell.topbar.eyebrow.ajustes": "Preferências locais",
   "shell.topbar.eyebrow.testing": "Qualidade",
-  "shell.topbar.activeProfile": "Perfil ativo",
-  "shell.topbar.openOverlay": "Abrir overlay",
-  "shell.topbar.stopOverlay": "Parar overlay",
-  "shell.topbar.save": "Guardar",
-  "shell.topbar.saved": "Guardado",
-  "shell.topbar.unsaved": "Alterações por guardar",
-  "shell.topbar.noChanges": "Sem alterações",
 
   "shell.palette.title": "Comando da Vantare",
   "shell.palette.placeholder": "Procura uma secção ou uma ação…",
@@ -86,10 +79,8 @@ export const shellOrbitPt: Record<string, string> = {
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "A descarregar… {{pct}}%",
   "shell.update.ready": "Instalar atualização",
-  "shell.update.none": "Não há atualizações pendentes.",
 
   "shell.access.unavailable": "Acesso não disponível",
   "shell.access.requiresPlan": "Requer o plano {{plan}} · plano atual {{current}}",
   "shell.access.requiresPlanShort": "Requer {{plan}}",
-  "shell.access.soon": "A Telemetria chegará em breve.",
 };

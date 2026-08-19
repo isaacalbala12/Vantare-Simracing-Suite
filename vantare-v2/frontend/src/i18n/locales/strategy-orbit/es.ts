@@ -7,7 +7,6 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.reset": "↺ Restablecer",
   "strategy.resetHint": "Vuelven el orden de pilotos, las vueltas y los neumáticos por defecto.",
   "strategy.new": "+ Nueva estrategia",
-  "strategy.newHint": "Mismo evento y pilotos · elige criterio y orden",
 
   "strategy.chip.when": "{{day}} · {{from}} → {{to}}",
   "strategy.chip.duration": "{{min}} min",
@@ -101,7 +100,6 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.tyres.free": "libre",
   "strategy.tyres.rejected": "Neumático no válido aquí",
 
-  "strategy.cards.title": "Estrategias del evento",
   "strategy.cards.active": "Activa",
   "strategy.cards.activate": "Activar",
   "strategy.cards.activated": "Estrategia activa",

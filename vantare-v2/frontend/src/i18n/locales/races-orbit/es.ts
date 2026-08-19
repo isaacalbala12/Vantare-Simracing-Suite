@@ -24,7 +24,6 @@ export const racesOrbitEs: Record<string, string> = {
   "races.nextTitle": "Próximas salidas",
   "races.timelineTitle": "Próximas 24 horas · una fila por serie",
   "races.today": "hoy",
-  "races.now": "ahora",
   "races.nav.previous": "Anterior",
   "races.nav.today": "Hoy",
   "races.nav.next": "Siguiente",

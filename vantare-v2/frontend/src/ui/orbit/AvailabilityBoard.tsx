@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/I18nProvider";
 import { formatHour, type AvailRange, type AvailState, type DriverView } from "./viz-types";
 
 export interface AvailabilityBoardProps {
@@ -6,14 +7,15 @@ export interface AvailabilityBoardProps {
   /** Extremos del eje en horas decimales (13 → 18.5). */
   from: number;
   to: number;
+  /** Etiqueta accesible; por defecto sale del catálogo i18n. */
   label?: string;
   className?: string;
 }
 
-const STATE_LABEL: Record<AvailState, string> = {
-  ok: "disponible",
-  maybe: "quizá",
-  no: "no disponible",
+const STATE_LABEL_KEY: Record<AvailState, string> = {
+  ok: "orbit.avail.state.ok",
+  maybe: "orbit.avail.state.maybe",
+  no: "orbit.avail.state.no",
 };
 
 /**
@@ -25,16 +27,18 @@ export function AvailabilityBoard({
   ranges,
   from,
   to,
-  label = "Disponibilidad de pilotos",
+  label,
   className,
 }: AvailabilityBoardProps) {
+  const { t } = useI18n();
+  const boardLabel = label ?? t("orbit.avail.label");
   const span = to - from || 1;
   const ticks: number[] = [];
   for (let hour = Math.ceil(from); hour <= to; hour += 1) ticks.push(hour);
 
   return (
     <div
-      aria-label={label}
+      aria-label={boardLabel}
       className={["orbit-avail", className].filter(Boolean).join(" ")}
       data-testid="orbit-availability-board"
       role="group"
@@ -56,7 +60,7 @@ export function AvailabilityBoard({
           <span className="orbit-avail__lane">
             {(ranges[driver.id] ?? []).map((range) => (
               <span
-                aria-label={`${driver.name} · ${formatHour(range.from)}–${formatHour(range.to)} · ${STATE_LABEL[range.state]}`}
+                aria-label={`${driver.name} · ${formatHour(range.from)}–${formatHour(range.to)} · ${t(STATE_LABEL_KEY[range.state])}`}
                 className="orbit-avail__seg"
                 data-state={range.state}
                 data-testid="orbit-availability-cell"
@@ -75,7 +79,7 @@ export function AvailabilityBoard({
         {(["ok", "maybe", "no"] as AvailState[]).map((state) => (
           <li key={state}>
             <i aria-hidden="true" data-state={state} />
-            {STATE_LABEL[state]}
+            {t(STATE_LABEL_KEY[state])}
           </li>
         ))}
       </ul>

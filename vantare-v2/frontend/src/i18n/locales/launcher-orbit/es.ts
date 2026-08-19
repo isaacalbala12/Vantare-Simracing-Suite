@@ -66,7 +66,6 @@ export const launcherOrbitEs: Record<string, string> = {
   "launcher.context.profiles": "Perfiles ({{n}})",
   "launcher.context.catalog": "Catálogo ({{n}} · {{detected}} detectadas)",
   "launcher.context.hint": "La detección busca en el registro, Steam y los accesos directos.",
-  "launcher.context.run": "Lanzar {{name}}",
   "launcher.context.steps": "{{n}} pasos",
   "launcher.context.noProfiles": "Sin perfiles",
   "launcher.stats.profilesSubOne": "{{favorites}} favorito",

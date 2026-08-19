@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
+import { formatMessage } from "../orbit/format-message";
 import { Events } from "@wailsio/runtime";
 import { isDowngrade } from "../../lib/version-compare";
 import { findInstallerAsset, type Channel, type Release, type UpdateInfo, type UpdaterSettings } from "./settings-contract";
@@ -20,6 +22,10 @@ export type UpdaterSettingsOptions = {
  */
 export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
   const allowed = options?.allowed;
+  const { t } = useI18n();
+  // Los mensajes se traducen dentro de la suscripcion, que se monta una sola
+  // vez: la ref evita volver a suscribirse cada vez que cambia el idioma.
+  const tRef = useRef(t);
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: "stable" });
   // Ultimo canal que el backend confirmo: si el guardado falla se vuelve a el
   // en lugar de dejar el radio marcando algo que no esta en disco.
@@ -33,6 +39,10 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDowngrade, setConfirmDowngrade] = useState<Release | null>(null);
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   useEffect(() => {
     const handlers: (() => void)[] = [];
@@ -52,7 +62,11 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
         setLoading(false);
         if (event.data.info) {
           setInfo(event.data.info);
-          setStatus(`Versión instalada: ${event.data.info.currentVersion}`);
+          setStatus(
+            formatMessage(tRef.current("updater.status.installedVersion"), {
+              version: event.data.info.currentVersion,
+            }),
+          );
         }
       }),
     );
@@ -60,7 +74,11 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     handlers.push(
       Events.On("updater:progress", (event: { data: { percent?: number } }) => {
         setProgress(event.data.percent ?? null);
-        setStatus(`Descargando... ${event.data.percent ?? 0}%`);
+        setStatus(
+          formatMessage(tRef.current("updater.status.downloading"), {
+            percent: event.data.percent ?? 0,
+          }),
+        );
       }),
     );
 
@@ -68,20 +86,24 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
       Events.On("updater:installed", () => {
         setInstallingTag(null);
         setProgress(null);
-        setStatus("Instalador lanzado. La app se cerrará para completar la actualización.");
+        setStatus(tRef.current("updater.status.installerLaunched"));
       }),
     );
 
     handlers.push(
       Events.On("updater:ignored", (event: { data: { version?: string } }) => {
-        setStatus(`Versión ${event.data.version ?? ""} ignorada.`);
+        setStatus(
+          formatMessage(tRef.current("updater.status.versionIgnored"), {
+            version: event.data.version ?? "",
+          }),
+        );
         Events.Emit("updater:check");
       }),
     );
 
     handlers.push(
       Events.On("updater:settings-saved", () => {
-        setStatus("Preferencias guardadas.");
+        setStatus(tRef.current("updater.status.prefsSaved"));
         // El backend confirma con un `ok` pelado: sin volver a pedir los ajustes
         // nadie sabia si lo que se ve es lo que quedo guardado. Ahora se relee.
         Events.Emit("updater:settings:get");
@@ -95,7 +117,7 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
         setLoading(false);
         setInstallingTag(null);
         setProgress(null);
-        setError(event.data.message ?? "Error desconocido");
+        setError(event.data.message ?? tRef.current("updater.error.unknown"));
         // Un guardado que falla no puede dejar el radio en el canal nuevo.
         setSettings(confirmedRef.current);
       }),
@@ -129,13 +151,15 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
   function startInstall(release: Release) {
     const asset = findInstallerAsset(release);
     if (!asset) {
-      setError("No se encontró el instalador para esta versión.");
+      setError(t("updater.error.installerNotFound"));
       return;
     }
     setConfirmDowngrade(null);
     setInstallingTag(release.tag_name);
     setError(null);
-    setStatus(`Preparando instalación de ${release.tag_name}...`);
+    setStatus(
+      formatMessage(t("updater.status.preparingInstall"), { tag: release.tag_name }),
+    );
     Events.Emit("updater:install:verified", release);
   }
 

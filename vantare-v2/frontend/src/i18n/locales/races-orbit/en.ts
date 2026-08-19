@@ -24,7 +24,6 @@ export const racesOrbitEn: Record<string, string> = {
   "races.nextTitle": "Upcoming starts",
   "races.timelineTitle": "Next 24 hours · one row per series",
   "races.today": "today",
-  "races.now": "now",
   "races.nav.previous": "Previous",
   "races.nav.today": "Today",
   "races.nav.next": "Next",

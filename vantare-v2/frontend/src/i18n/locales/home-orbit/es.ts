@@ -45,6 +45,4 @@ export const homeOrbitEs: Record<string, string> = {
   "home.profiles.activate": "Activar",
   "home.profiles.empty": "Sin perfiles todavía",
 
-  "home.activity.title": "Actividad reciente",
-  "home.activity.empty": "Sin actividad disponible",
 };

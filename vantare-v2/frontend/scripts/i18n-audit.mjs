@@ -7,6 +7,7 @@ const root = process.cwd();
 const srcRoot = path.join(root, "src");
 const localeRoot = path.join(srcRoot, "i18n", "locales");
 const fix = process.argv.includes("--fix");
+const list = process.argv.includes("--list");
 const localeNames = ["es", "en", "pt", "it"];
 
 function walk(directory, predicate) {
@@ -138,7 +139,9 @@ if (fix && !parityErrors && !missingUsed) {
   console.log(`Claves usadas ausentes: ${missingUsed}`);
   console.log(`Claves huérfanas conservadoras: ${unusedCount}`);
   for (const [group, keys] of unusedByGroup) {
-    if (keys.length) console.log(`  ${group}: ${keys.length}`);
+    if (!keys.length) continue;
+    console.log(`  ${group}: ${keys.length}`);
+    if (list) for (const key of keys) console.log(`    ${key}`);
   }
 }
 

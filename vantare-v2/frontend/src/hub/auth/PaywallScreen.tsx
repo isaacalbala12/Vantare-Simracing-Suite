@@ -258,12 +258,12 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
               {plan.price}
             </p>
             <ul className="my-3 space-y-1">
-              {plan.features.map((f) => (
+              {plan.featureKeys.map((featureKey) => (
                 <li
-                  key={f}
+                  key={featureKey}
                   className="font-mono text-[10px] text-vantare-textMuted"
                 >
-                  {f}
+                  {t(featureKey)}
                 </li>
               ))}
             </ul>
@@ -291,7 +291,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
       {!BILLING_ENABLED ? (
         <details className="mt-8 w-full max-w-3xl text-vantare-textMuted">
           <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest">
-            {t("paywall.founderTiers")} (histórico)
+            {t("paywall.founderTiers")} {t("paywall.historical")}
           </summary>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {FOUNDER_PLANS.map((plan) => (
@@ -304,12 +304,12 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
                   {plan.price}
                 </p>
                 <ul className="mt-2 space-y-1">
-                  {plan.features.map((f) => (
+                  {plan.featureKeys.map((featureKey) => (
                     <li
-                      key={f}
+                      key={featureKey}
                       className="font-mono text-[10px] text-vantare-textDim"
                     >
-                      {f}
+                      {t(featureKey)}
                     </li>
                   ))}
                 </ul>

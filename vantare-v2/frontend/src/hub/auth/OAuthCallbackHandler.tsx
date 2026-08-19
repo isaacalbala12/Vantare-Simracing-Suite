@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Events } from "@wailsio/runtime";
+import { useI18n } from "../../i18n/I18nProvider";
 
 function parseOAuthToken(): string | null {
   // Supabase may return the token either in the URL fragment or as a query
@@ -19,6 +20,8 @@ function parseOAuthToken(): string | null {
 }
 
 export function OAuthCallbackHandler() {
+  const { t } = useI18n();
+
   useEffect(() => {
     const token = parseOAuthToken();
     if (token) {
@@ -32,7 +35,7 @@ export function OAuthCallbackHandler() {
   return (
     <div className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white">
       <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
-        Finalizando inicio de sesión...
+        {t("auth.finishingSignIn")}
       </p>
     </div>
   );

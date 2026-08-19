@@ -8,20 +8,21 @@ export type RunRecommendedFirstUseParams = {
   emit: Emit;
   resolveFile: (id: string) => Promise<string | null>;
   onSuccess?: (id: string) => void;
-  onError?: (message: string) => void;
+  /** Recibe una clave i18n del catálogo `hub-shared`, no una cadena literal. */
+  onError?: (messageKey: string) => void;
 };
 
 export async function runRecommendedFirstUse(params: RunRecommendedFirstUseParams): Promise<void> {
   const { profile, name, emit, resolveFile, onSuccess, onError } = params;
   const trimmed = name.trim();
   if (!trimmed) {
-    onError?.("El nombre del perfil no puede estar vacío.");
+    onError?.("overlays.firstUse.emptyName");
     return;
   }
 
   const cloned = cloneRecommendedProfile(profile, trimmed);
   if (!cloned.id) {
-    onError?.("El perfil clonado no tiene un identificador válido.");
+    onError?.("overlays.firstUse.invalidClone");
     return;
   }
   const clonedId = cloned.id;
@@ -30,7 +31,7 @@ export async function runRecommendedFirstUse(params: RunRecommendedFirstUseParam
 
   const file = await resolveFile(clonedId);
   if (!file) {
-    onError?.("No se encontró el archivo del perfil recién creado.");
+    onError?.("overlays.firstUse.fileNotFound");
     return;
   }
 

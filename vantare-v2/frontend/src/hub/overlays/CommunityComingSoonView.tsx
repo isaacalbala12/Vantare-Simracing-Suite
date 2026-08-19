@@ -1,8 +1,12 @@
+import { useI18n } from "../../i18n/I18nProvider";
+
 type CommunityComingSoonViewProps = {
   onBack: () => void;
 };
 
 export function CommunityComingSoonView({ onBack }: CommunityComingSoonViewProps) {
+  const { t } = useI18n();
+
   return (
     <div className="flex flex-col gap-5">
       <header className="opacity-0 animate-fade-in-up">
@@ -11,11 +15,13 @@ export function CommunityComingSoonView({ onBack }: CommunityComingSoonViewProps
           onClick={onBack}
           className="mb-3 w-fit text-xs font-bold uppercase tracking-wider text-vantare-textMuted hover:text-white cursor-pointer"
         >
-          ← Volver a Overlays Studio
+          {t("overlays.back")}
         </button>
-        <h1 className="font-bold text-3xl text-white tracking-tight">Comunidad de overlays</h1>
+        <h1 className="font-bold text-3xl text-white tracking-tight">
+          {t("overlays.community.title")}
+        </h1>
         <p className="text-sm text-vantare-textMuted mt-2 leading-relaxed max-w-3xl">
-          Descubre, comparte y vota overlays de la comunidad
+          {t("overlays.community.lead")}
         </p>
       </header>
 
@@ -24,7 +30,7 @@ export function CommunityComingSoonView({ onBack }: CommunityComingSoonViewProps
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[480px] h-[480px] bg-white/[.03] blur-3xl rounded-full pointer-events-none"></div>
 
         <div className="relative z-10 px-6">
-          <span className="hub-eyebrow">Comunidad</span>
+          <span className="hub-eyebrow">{t("overlays.community.eyebrow")}</span>
 
           <div className="mt-6 mb-6 inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
             <svg className="w-10 h-10 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,29 +39,29 @@ export function CommunityComingSoonView({ onBack }: CommunityComingSoonViewProps
           </div>
 
           <h2 className="font-bold text-5xl text-white tracking-tight leading-none">
-            Próximamente
+            {t("overlays.community.soon")}
           </h2>
           <p className="text-base text-white/55 mt-4 max-w-md mx-auto leading-relaxed">
-            En el futuro podrás descubrir overlays de otros usuarios, compartir tus propios diseños y votar los mejores.
+            {t("overlays.community.body")}
           </p>
 
           <ul className="mt-8 flex flex-col gap-2 max-w-xs mx-auto text-left">
-            <li className="flex items-start gap-2 text-sm text-white/50">
-              <span className="text-vantare-red-400 mt-0.5 shrink-0">·</span>
-              Explorar galería de overlays de la comunidad
-            </li>
-            <li className="flex items-start gap-2 text-sm text-white/50">
-              <span className="text-vantare-red-400 mt-0.5 shrink-0">·</span>
-              Compartir perfiles y diseños con otros usuarios
-            </li>
-            <li className="flex items-start gap-2 text-sm text-white/50">
-              <span className="text-vantare-red-400 mt-0.5 shrink-0">·</span>
-              Votar y comentar overlays de la comunidad
-            </li>
+            {(
+              [
+                "overlays.community.bullet1",
+                "overlays.community.bullet2",
+                "overlays.community.bullet3",
+              ] as const
+            ).map((key) => (
+              <li className="flex items-start gap-2 text-sm text-white/50" key={key}>
+                <span className="text-vantare-red-400 mt-0.5 shrink-0">·</span>
+                {t(key)}
+              </li>
+            ))}
           </ul>
 
           <span className="inline-block mt-8 text-[10px] font-mono font-bold text-white/40 uppercase tracking-[.28em]">
-            En desarrollo · Marketplace y comunidad en beta futura
+            {t("overlays.community.footer")}
           </span>
         </div>
       </section>

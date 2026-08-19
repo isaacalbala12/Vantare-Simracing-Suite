@@ -14,7 +14,6 @@ export const testingOrbitPt: Record<string, string> = {
   "testing.draft.error": "Não foi possível guardar o rascunho",
 
   "testing.form.title": "Relatório",
-  "testing.form.privacy": "Só é enviado o que escreves aqui e o que marcares em Consentimento.",
   "testing.field.module": "Módulo",
   "testing.field.didWhat": "O que fizeste",
   "testing.field.expected": "O que esperavas",

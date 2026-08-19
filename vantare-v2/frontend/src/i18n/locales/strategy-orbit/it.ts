@@ -7,7 +7,6 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.reset": "↺ Ripristina",
   "strategy.resetHint": "Ordine dei piloti, giri e gomme tornano ai valori predefiniti.",
   "strategy.new": "+ Nuova strategia",
-  "strategy.newHint": "Stesso evento e piloti · scegli criterio e ordine",
 
   "strategy.chip.when": "{{day}} · {{from}} → {{to}}",
   "strategy.chip.duration": "{{min}} min",
@@ -101,7 +100,6 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.tyres.free": "libera",
   "strategy.tyres.rejected": "Questa gomma non può andare qui",
 
-  "strategy.cards.title": "Strategie dell'evento",
   "strategy.cards.active": "Attiva",
   "strategy.cards.activate": "Attiva",
   "strategy.cards.activated": "Strategia attiva",

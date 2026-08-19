@@ -1,5 +1,7 @@
 import type { RecommendedProfile } from "./recommended-profiles";
 import { ProfilePreview } from "./ProfilePreview";
+import { useI18n } from "../../i18n/I18nProvider";
+import { formatMessage } from "../orbit/format-message";
 
 type RecommendedProfilesViewProps = {
   profiles: RecommendedProfile[];
@@ -14,7 +16,10 @@ export function RecommendedProfilesView({
   onBack,
   autoActivateAndStart = false,
 }: RecommendedProfilesViewProps) {
-  const ctaLabel = autoActivateAndStart ? "Guardar como overlay propio" : "Guardar como perfil propio";
+  const { t } = useI18n();
+  const ctaLabel = autoActivateAndStart
+    ? t("overlays.recommended.saveAsOverlay")
+    : t("overlays.recommended.saveAsProfile");
   const ctaTestId = autoActivateAndStart ? "recommended-save-as-own" : undefined;
 
   return (
@@ -25,11 +30,13 @@ export function RecommendedProfilesView({
           onClick={onBack}
           className="mb-3 text-xs font-bold uppercase tracking-wider text-vantare-textMuted hover:text-white cursor-pointer"
         >
-          ← Volver a Overlays Studio
+          {t("overlays.back")}
         </button>
-        <h1 className="font-display text-3xl font-bold text-white">Recomendados por Vantare</h1>
+        <h1 className="font-display text-3xl font-bold text-white">
+          {t("overlays.recommended.title")}
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-vantare-textMuted">
-          Presets oficiales listos para usar. Guárdalos como perfil propio para poder editarlos.
+          {t("overlays.recommended.lead")}
         </p>
       </div>
 
@@ -39,18 +46,24 @@ export function RecommendedProfilesView({
             <ProfilePreview profile={profile.profile} />
             <div className="mt-4">
               <p className="font-mono text-[10px] uppercase tracking-wider text-vantare-red-300">
-                {profile.tag} · preset oficial
+                {profile.tag} · {t("overlays.recommended.presetTag")}
               </p>
               <h2 className="mt-2 font-display text-xl font-semibold text-white">{profile.name}</h2>
-              <p className="mt-2 text-sm leading-6 text-vantare-textMuted">{profile.description}</p>
+              <p className="mt-2 text-sm leading-6 text-vantare-textMuted">
+                {t(profile.descriptionKey)}
+              </p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-vantare-textDim">
-                {profile.profile.widgets.length} widgets incluidos
+                {formatMessage(t("overlays.recommended.widgetsIncluded"), {
+                  count: profile.profile.widgets.length,
+                })}
               </p>
             </div>
             <button
               type="button"
               data-testid={ctaTestId}
-              aria-label={`Guardar ${profile.name} como perfil propio`}
+              aria-label={formatMessage(t("overlays.recommended.saveAria"), {
+                name: profile.name,
+              })}
               onClick={() => onSaveRecommended(profile)}
               className="btn-primary mt-4 w-full rounded-lg px-4 py-2 text-xs font-bold text-white"
             >

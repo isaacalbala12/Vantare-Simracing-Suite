@@ -61,7 +61,6 @@ export const telemetryOrbitIt: Record<string, string> = {
   "telemetry.insights.flat": "{{corner}} · neutro",
   "telemetry.insights.empty": "Ancora nessuna curva da analizzare.",
 
-  "telemetry.empty.title": "Nessuna sessione disponibile",
   "telemetry.empty.body":
     "Nessuna sessione disponibile · importa i file locali di LMU quando il flusso sarà disponibile.",
 

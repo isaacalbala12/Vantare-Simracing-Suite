@@ -63,13 +63,6 @@ export const shellOrbitEs: Record<string, string> = {
   "shell.topbar.eyebrow.roadmap": "Fuente versionada",
   "shell.topbar.eyebrow.ajustes": "Preferencias locales",
   "shell.topbar.eyebrow.testing": "Calidad",
-  "shell.topbar.activeProfile": "Perfil activo",
-  "shell.topbar.openOverlay": "Abrir overlay",
-  "shell.topbar.stopOverlay": "Detener overlay",
-  "shell.topbar.save": "Guardar",
-  "shell.topbar.saved": "Guardado",
-  "shell.topbar.unsaved": "Cambios sin guardar",
-  "shell.topbar.noChanges": "Sin cambios",
 
   "shell.palette.title": "Comando de Vantare",
   "shell.palette.placeholder": "Busca una sección o una acción…",
@@ -86,10 +79,8 @@ export const shellOrbitEs: Record<string, string> = {
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "Descargando… {{pct}}%",
   "shell.update.ready": "Instalar actualización",
-  "shell.update.none": "No hay actualizaciones pendientes.",
 
   "shell.access.unavailable": "Acceso no disponible",
   "shell.access.requiresPlan": "Requiere el plan {{plan}} · plan actual {{current}}",
   "shell.access.requiresPlanShort": "Requiere {{plan}}",
-  "shell.access.soon": "Telemetría llegará próximamente.",
 };

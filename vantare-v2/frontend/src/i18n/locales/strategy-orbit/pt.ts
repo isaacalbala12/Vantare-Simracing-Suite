@@ -7,7 +7,6 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.reset": "↺ Repor",
   "strategy.resetHint": "A ordem dos pilotos, as voltas e os pneus voltam aos valores por omissão.",
   "strategy.new": "+ Nova estratégia",
-  "strategy.newHint": "Mesmo evento e pilotos · escolhe critério e ordem",
 
   "strategy.chip.when": "{{day}} · {{from}} → {{to}}",
   "strategy.chip.duration": "{{min}} min",
@@ -101,7 +100,6 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.tyres.free": "livre",
   "strategy.tyres.rejected": "Esse pneu não pode ir aqui",
 
-  "strategy.cards.title": "Estratégias do evento",
   "strategy.cards.active": "Ativa",
   "strategy.cards.activate": "Ativar",
   "strategy.cards.activated": "Estratégia ativa",

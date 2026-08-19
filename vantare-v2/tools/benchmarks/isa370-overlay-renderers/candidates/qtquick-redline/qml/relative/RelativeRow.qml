@@ -10,10 +10,8 @@ Item {
     property bool showProximityCell: false
     property bool showApproach: false
     property bool reducedMotion: false
-    property real flipOffset: Number(rowData.flipOffset || 0)
     property string crossDirection: String(rowData.crossDirection || "")
     property int crossIndex: Number(rowData.crossIndex || 0)
-    property bool ghost: Boolean(rowData.ghost)
     property bool fasterClass: Boolean(rowData.isFasterClass)
 
     property int positionColumnWidth: 22
@@ -22,19 +20,15 @@ Item {
     property int classRailWidth: root.variant === "traffic" ? 4 : 0
     readonly property int columnGap: 8
     readonly property bool isPlayer: Boolean(rowData.isPlayer)
+    readonly property bool crossRunning: crossAnimation.running
     readonly property string side: String(rowData.side || (Number(rowData.gapSeconds || 0) >= 0 ? "ahead" : "behind"))
     readonly property color semanticGapColor: isPlayer ? tokens.accentHot
                                                 : side === "ahead" ? tokens.positive
                                                 : tokens.accentHot
 
     width: parent ? parent.width : tokens.panelWidth - tokens.panelPadding * 2
-    height: ghost ? 0 : tokens.rowHeight
-    opacity: ghost ? 0 : 1
-    clip: ghost
-    transform: [
-        Translate { id: flipTranslate; y: 0 },
-        Scale { id: enterScale; origin.y: root.height / 2; yScale: 1 }
-    ]
+    height: tokens.rowHeight
+    opacity: 1
 
     RelativeTokens { id: tokens }
 
@@ -90,28 +84,6 @@ Item {
         return Math.max(0, Math.min(1, 1 - Math.abs(Number(rowData.gapSeconds)) / 5))
     }
 
-    function playFlip(offset) {
-        flipTranslate.y = offset
-        const moved = Math.abs(offset) / tokens.rowStride
-        flipAnimation.duration = reducedMotion ? 0 : Math.min(
-            tokens.flipMaxMs,
-            tokens.flipBaseMs + moved * tokens.flipPerRowMs
-        )
-        flipAnimation.restart()
-    }
-
-    Component.onCompleted: {
-        if (reducedMotion) {
-            root.opacity = ghost ? 0 : 1
-            enterScale.yScale = 1
-        } else {
-            enterAnimation.start()
-        }
-    }
-    onFlipOffsetChanged: {
-        if (flipOffset !== 0)
-            playFlip(flipOffset)
-    }
     onCrossDirectionChanged: {
         if (!reducedMotion && crossDirection.length > 0
                 && crossIndex >= 0 && crossIndex < tokens.crossMaxConcurrent)
@@ -119,44 +91,9 @@ Item {
     }
     onReducedMotionChanged: {
         if (reducedMotion) {
-            enterAnimation.stop()
-            flipAnimation.stop()
             crossAnimation.stop()
-            enterScale.yScale = 1
-            flipTranslate.y = 0
             crossWash.opacity = 0
         }
-    }
-
-    Behavior on height {
-        NumberAnimation { duration: root.reducedMotion ? 0 : tokens.ghostMs; easing.type: Easing.InCubic }
-    }
-    Behavior on opacity {
-        NumberAnimation { duration: root.reducedMotion ? 0 : tokens.ghostMs; easing.type: Easing.InCubic }
-    }
-
-    ParallelAnimation {
-        id: enterAnimation
-        NumberAnimation {
-            target: root; property: "opacity"; from: 0; to: 1
-            duration: root.reducedMotion ? 0 : tokens.enterMs
-        }
-        NumberAnimation {
-            target: enterScale; property: "yScale"; from: 0.1; to: 1
-            duration: root.reducedMotion ? 0 : tokens.enterMs
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: tokens.flipBezier
-        }
-    }
-
-    NumberAnimation {
-        id: flipAnimation
-        target: flipTranslate
-        property: "y"
-        to: 0
-        duration: root.reducedMotion ? 0 : tokens.flipBaseMs
-        easing.type: Easing.BezierSpline
-        easing.bezierCurve: tokens.flipBezier
     }
 
     Rectangle {
@@ -177,7 +114,9 @@ Item {
 
     SequentialAnimation {
         id: crossAnimation
-        PauseAnimation { duration: root.reducedMotion ? 0 : root.crossIndex * tokens.crossStaggerMs }
+        PauseAnimation {
+            duration: root.reducedMotion ? 0 : Math.max(0, root.crossIndex) * tokens.crossStaggerMs
+        }
         NumberAnimation {
             target: crossWash; property: "opacity"; from: 0; to: 1
             duration: root.reducedMotion ? 0 : tokens.crossMs * 0.22
@@ -313,7 +252,7 @@ Item {
     ApproachIndicator {
         anchors.left: parent.left
         anchors.right: parent.right
-        gapSeconds: Number(root.rowData.gapSeconds || 0)
+        gapSeconds: root.rowData.gapSeconds
         ahead: root.side === "ahead"
         active: root.showApproach && !root.isPlayer
         reducedMotion: root.reducedMotion

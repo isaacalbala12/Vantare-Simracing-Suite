@@ -25,7 +25,7 @@ class RelativeQmlContractTest(unittest.TestCase):
         self.assertIn("property int classColumnWidth: 46", source)
         self.assertIn("property int gapColumnWidth: root.variant === \"traffic\" ? 58 : 62", source)
         self.assertIn("property int classRailWidth: root.variant === \"traffic\" ? 4 : 0", source)
-        self.assertIn("height: ghost ? 0 : tokens.rowHeight", source)
+        self.assertIn("height: tokens.rowHeight", source)
 
     def test_motion_contract_is_explicit_and_reduced_motion_is_fail_closed(self) -> None:
         tokens = self.source("qml/relative/RelativeTokens.qml")
@@ -50,6 +50,26 @@ class RelativeQmlContractTest(unittest.TestCase):
         approach = self.source("qml/relative/ApproachIndicator.qml")
         self.assertIn("duration: root.reducedMotion ? 0 : tokens.approachEnterMs", approach)
         self.assertIn("duration: root.reducedMotion ? 0 : tokens.approachTrackMs", approach)
+
+    def test_missing_gap_is_not_coerced_to_side_by_side(self) -> None:
+        approach = self.source("qml/relative/ApproachIndicator.qml")
+        self.assertIn("property var gapSeconds: null", approach)
+        self.assertIn("readonly property bool hasGap", approach)
+        self.assertIn("readonly property bool imminent: hasGap", approach)
+        row = self.source("qml/relative/RelativeRow.qml")
+        self.assertIn("gapSeconds: root.rowData.gapSeconds", row)
+
+    def test_motion_is_driven_by_real_model_transitions(self) -> None:
+        for name in ("MirrorRelative.qml", "ProximityRelative.qml", "TrafficRelative.qml"):
+            source = self.source(f"qml/relative/{name}")
+            self.assertIn("ListView", source)
+            self.assertIn("add: Transition", source)
+            self.assertIn("move: Transition", source)
+        adapter = self.source("qml/relative/RelativeModelRow.qml")
+        self.assertIn("ListView.delayRemove: removalAnimation.running", adapter)
+        self.assertIn("ListView.onRemove: removalAnimation.start()", adapter)
+        row = self.source("qml/relative/RelativeRow.qml")
+        self.assertNotIn("Component.onCompleted: enterAnimation", row)
 
     def test_variant_semantics_are_not_collapsed_into_one_generic_list(self) -> None:
         mirror = self.source("qml/relative/MirrorRelative.qml")
@@ -78,6 +98,13 @@ class RelativeQmlContractTest(unittest.TestCase):
             self.assertIn(alias, tokens)
         for color in ("#0f0f10", "#4b9fff", "#cfe4ff"):
             self.assertIn(color, tokens)
+
+    def test_root_reuses_canonical_panel_and_status(self) -> None:
+        source = self.source("qml/relative/RelativeRedline.qml")
+        self.assertIn('import "../common" as Common', source)
+        self.assertIn("Common.Panel", source)
+        self.assertIn("Common.Status", source)
+        self.assertNotIn("gradient: Gradient", source)
 
 
 if __name__ == "__main__":

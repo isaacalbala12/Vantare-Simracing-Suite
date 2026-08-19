@@ -16,7 +16,9 @@ describe("attachProjectionTransport", () => {
         };
       },
     };
-    const store = createProjectionTransportStore("overlay");
+    const store = createProjectionTransportStore("overlay", {
+      now: () => Date.parse("2026-07-30T00:00:00Z"),
+    });
     const onError = vi.fn();
     const detach = attachProjectionTransport(store, source, onError);
     expect([...listeners.keys()]).toEqual(subscribedEventNames("overlay"));

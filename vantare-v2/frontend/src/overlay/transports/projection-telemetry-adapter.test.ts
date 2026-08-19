@@ -1,12 +1,21 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eventName, type JSONObject, type ProjectionEnvelope } from "../../telemetry-transport/contracts";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { createWailsProjectionTelemetryAdapter } from "./projection-telemetry-adapter";
 
 describe("canonical projection telemetry adapter", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T09:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("publishes canonical mapped, stale and disconnected snapshots", () => {
     const handlers = new Map<string, (data: unknown) => void>();
     const snapshots: TelemetrySnapshot[] = [];

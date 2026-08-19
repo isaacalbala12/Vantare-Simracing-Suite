@@ -7,6 +7,10 @@ import {
   type StatusEnvelope,
   TransportContractError,
 } from "./contracts";
+import {
+  createFreshnessWatchdog,
+  type FreshnessWatchdogOptions,
+} from "./freshness-watchdog";
 
 export type DiagnosticCode =
   | "status-gap"
@@ -29,6 +33,7 @@ export type TransportDiagnostic = {
 
 export type ProjectionState = {
   product: ProductID;
+  ageMs: number;
   status?: StatusEnvelope;
   snapshot?: ProjectionEnvelope & { payload: JSONObject };
   facts: readonly FactEnvelope[];
@@ -50,18 +55,49 @@ const MAX_FACTS = 256;
 
 export function createProjectionTransportStore(
   product: ProductID,
+  watchdogOptions: FreshnessWatchdogOptions = {},
 ): ProjectionTransportStore {
   let state: ProjectionState = freezeState(initialState(product));
   let disposed = false;
   let factCursor = 0;
   let lastSnapshot: ProjectionState["snapshot"];
+  let wireStatus: StatusEnvelope | undefined;
   const listeners = new Set<() => void>();
+  const freshnessWatchdog = createFreshnessWatchdog(
+    refreshFreshness,
+    watchdogOptions,
+  );
 
   function publish(next: ProjectionState): void {
-    state = freezeState(next);
+    state = freezeState(withFreshness(next));
     for (const listener of listeners) {
       listener();
     }
+  }
+
+  function refreshFreshness(): void {
+    if (!disposed && (state.status || state.snapshot)) {
+      publish(state);
+    }
+  }
+
+  function withFreshness(next: ProjectionState): ProjectionState {
+    const capturedAt = next.snapshot?.capturedAt ?? wireStatus?.capturedAt;
+    if (!capturedAt) {
+      return { ...next, ageMs: 0, status: wireStatus };
+    }
+    const measurement = freshnessWatchdog.measure(capturedAt);
+    const stale =
+      measurement.stale &&
+      (wireStatus?.payload.state === "live" ||
+        wireStatus?.payload.state === "degraded");
+    const status = stale && wireStatus
+      ? {
+          ...wireStatus,
+          payload: { ...wireStatus.payload, state: "stale" as const },
+        }
+      : wireStatus;
+    return { ...next, ageMs: measurement.ageMs, status };
   }
 
   function addDiagnostic(
@@ -75,7 +111,7 @@ export function createProjectionTransportStore(
   }
 
   function applyStatus(status: StatusEnvelope): void {
-    const current = state.status;
+    const current = wireStatus;
     if (current && status.statusRevision < current.statusRevision) {
       throw contractFailure("status-gap");
     }
@@ -85,16 +121,14 @@ export function createProjectionTransportStore(
       }
       return;
     }
-    if (current && status.statusRevision !== current.statusRevision + 1) {
-      throw contractFailure("status-gap");
-    }
+    wireStatus = status;
     let next: ProjectionState = { ...state, status };
     if (
       state.snapshot &&
       state.snapshot.statusRevision !== status.statusRevision
     ) {
       next = addDiagnostic(
-        { ...next, snapshot: undefined },
+        next,
         {
           code: "status-advanced",
           product,
@@ -200,8 +234,14 @@ export function createProjectionTransportStore(
         throw contractFailure("disposed");
       }
       listeners.add(listener);
+      if (listeners.size === 1) {
+        freshnessWatchdog.start();
+      }
       return () => {
         listeners.delete(listener);
+        if (listeners.size === 0) {
+          freshnessWatchdog.stop();
+        }
       };
     },
     ingest(name, data) {
@@ -244,6 +284,7 @@ export function createProjectionTransportStore(
         return;
       }
       disposed = true;
+      freshnessWatchdog.stop();
       listeners.clear();
       state = freezeState(
         addDiagnostic(state, { code: "disposed", product }),
@@ -255,6 +296,7 @@ export function createProjectionTransportStore(
 function initialState(product: ProductID): ProjectionState {
   return {
     product,
+    ageMs: 0,
     facts: [],
     needsFactResync: false,
     diagnostics: [],

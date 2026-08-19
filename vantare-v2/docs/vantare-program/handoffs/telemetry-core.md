@@ -15,6 +15,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F7 está implementada localmente sobre `tc-integration@f65f485f` en
+  `vantareapp/isa-372-tc-f7-aislamiento-consumidores`. Engineer usa un puerto
+  asíncrono default-on: snapshots latest-wins cap 1 con timeout/recover y facts
+  ordenados por un canal separado con cursor/resync. El test F0 de Engineer
+  lento bajó de 92,9868 ms síncrono a 1,5167 ms tras F7.1 (0,5007 ms en una
+  repetición focal final). Strategy conserva builder y consumidor in-process,
+  pero su transporte público queda default-off con rollback explícito.
+  Recording registra rango de gap y `Incomplete` al saturarse sin bloquear,
+  aunque sigue desconectado hasta F12. Suite Go aplicable, build, contract-gen,
+  wiring guard y diff-check pasan; vet conserva sólo tres `unsafe.Pointer`
+  heredados. El resync automático del consumidor Engineer y la sesión LMU real
+  quedan pendientes. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f7-consumer-isolation.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
 - ISA-372/F6 está implementada localmente sobre `tc-integration@bafe94d5` en
   `vantareapp/isa-372-tc-f6-overlay-frame-v2-slice`. OverlayFrame v2 fija el
   contrato compacto completo y puebla solo player/session/capabilities; el

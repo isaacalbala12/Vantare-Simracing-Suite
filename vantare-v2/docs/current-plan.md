@@ -1,3 +1,21 @@
+Nota ISA-372/F7 (2026-08-19, implementada localmente, sin promoción):
+- Engineer sale del bucle del sink mediante puerto asíncrono default-on:
+  snapshots latest-wins cap 1, timeout/recover y facts ordenados por otro canal
+  con cursor, retención acotada y resync explícito.
+- La regresión F0 con Engineer de 50 ms está activa: el intervalo local bajó de
+  92,9868 ms síncrono a 1,5167 ms tras F7.1 (0,5007 ms en repetición final),
+  siempre bajo el límite de 20 ms.
+- Strategy conserva builder/consumidor in-process, pero Hub/Wails/SSE quedan
+  default-off con flag temporal de rollback. Recording declara gap con rango e
+  `Incomplete` al rechazar sin bloqueo; sigue desconectado hasta F12.
+- Gates Go aplicables, contract-gen, wiring guard y diff-check pasan; vet sólo
+  conserva tres `unsafe.Pointer` heredados. Pendientes: sesión LMU real de
+  Engineer y callback de resync del consumidor. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f7-consumer-isolation.md`.
+- Rama `vantareapp/isa-372-tc-f7-aislamiento-consumidores` sobre
+  `tc-integration@f65f485f`; sin push, PR, CI remoto, merge, promoción ni
+  release.
+
 Nota ISA-372/F6 (2026-08-19, implementada localmente, sin promoción):
 - OverlayFrame v2 define el contrato compacto completo; este vertical slice
   puebla player/session/capabilities y deja el resto explícitamente vacío.

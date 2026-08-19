@@ -44,6 +44,25 @@
   line-height: 1.55;
 }
 
+/* ---------------------------------------------------------------- PESTAÑAS */
+
+.orbit-tc__tabs {
+  flex: none;
+  margin-top: 16px;
+}
+
+/* Validar y Mis reportes: una columna con su propio scroll, como la rejilla. */
+.orbit-tc__pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-height: 0;
+  margin-top: 18px;
+  overflow-y: auto;
+  animation: orbit-tc-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
+}
+
 /* --------------------------------------------------------------- REJILLA */
 
 .orbit-tc__layout {
@@ -173,6 +192,186 @@
   font-family: var(--orbit-font-mono);
   font-size: 11px;
   word-break: break-all;
+}
+
+/* --------------------------------------------- VISTA PREVIA DEL DIAGNÓSTICO */
+
+.orbit-tc__preview-card {
+  grid-column: 1 / 2;
+}
+
+.orbit-tc__preview-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 10px 0 0;
+  font-size: 11px;
+}
+
+.orbit-tc__preview-facts dt {
+  color: var(--orbit-ink-2);
+  font-weight: 600;
+}
+
+.orbit-tc__preview-facts dd {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  word-break: break-all;
+}
+
+.orbit-tc__preview-payload {
+  max-height: 260px;
+  margin: 12px 0 0;
+  padding: 11px 12px;
+  overflow: auto;
+  border: 1px solid var(--orbit-line-row);
+  border-radius: var(--orbit-radius-chip);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ------------------------------------------------------------- VALIDAR */
+
+.orbit-tc__validate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space);
+}
+
+.orbit-tc__validate-lead,
+.orbit-tc__validate-state {
+  max-width: 84ch;
+  margin: 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-tc__validate-state {
+  margin-top: 12px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-tc__candidates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.orbit-tc__candidate {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--orbit-line-row);
+  border-radius: var(--orbit-radius-card, 14px);
+  background: var(--orbit-surface-2, rgb(255 255 255 / 2%));
+}
+
+.orbit-tc__candidate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.orbit-tc__candidate-meta code {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+}
+
+.orbit-tc__candidate h4 {
+  margin: 11px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 650;
+  word-break: break-word;
+}
+
+.orbit-tc__candidate h5 {
+  margin: 13px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 640;
+}
+
+.orbit-tc__candidate-summary {
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.orbit-tc__candidate-criteria {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-tc__candidate-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 15px;
+}
+
+/* --------------------------------------------------- FORMULARIO DE RECHAZO */
+
+.orbit-tc__reject {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.orbit-tc__reject-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-content: start;
+}
+
+.orbit-tc__reject-grid .orbit-textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.orbit-tc__reject-opts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.orbit-tc__reject-opts legend {
+  padding: 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 640;
+}
+
+.orbit-tc__reject-acts {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------------------ MIS REPORTES */
+
+.orbit-tc__mine {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* ---------------------------------------------------------------- BOTONES */

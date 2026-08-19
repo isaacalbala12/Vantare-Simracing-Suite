@@ -6,6 +6,11 @@ import { LauncherStoreProvider } from "../launcher/launcher-store";
 import { OrbitShell } from "../components/orbit/OrbitShell";
 import type { ReportDraft, ReportDraftFields, SubmittedReport } from "../testing-center/contracts";
 import type { TestingCenterClient } from "../testing-center/testing-center-client";
+import type { TestingCenterFeedbackClient } from "../testing-center/candidate-feedback-client";
+import type {
+  CandidateFeedbackResult,
+  CandidateReview,
+} from "../testing-center/candidate-feedback-contracts";
 import { TestingCenterOrbitPage } from "./TestingCenterOrbitPage";
 
 function draftOf(fields: ReportDraftFields): ReportDraft {
@@ -32,15 +37,57 @@ function stubClient(overrides: Partial<TestingCenterClient> = {}) {
   };
 }
 
-function mount(client: TestingCenterClient, submitReport = vi.fn(async () => submitted)) {
+function mount(
+  client: TestingCenterClient,
+  submitReport = vi.fn(async () => submitted),
+  feedbackClient: TestingCenterFeedbackClient = stubFeedbackClient().client,
+) {
   const view = render(
     <LicenseProvider>
       <I18nProvider>
-        <TestingCenterOrbitPage channel="nightly" client={client} submitReport={submitReport} version="v0.3.10" />
+        <TestingCenterOrbitPage
+          channel="nightly"
+          client={client}
+          feedbackClient={feedbackClient}
+          submitReport={submitReport}
+          version="v0.3.10"
+        />
       </I18nProvider>
     </LicenseProvider>,
   );
   return { ...view, submitReport };
+}
+
+const CANDIDATE: CandidateReview = {
+  issueId: "ISA-000369",
+  candidateId: "cand-1",
+  channel: "nightly",
+  appVersion: "v0.3.10",
+  candidateSha: "abcdef1234567890",
+  module: "launcher",
+  summary: "El launcher ya no se queda colgado al primer escaneo.",
+  criteria: ["Abrir el launcher dos veces seguidas"],
+  knownFailure: "Se quedaba en «Buscando…»",
+  state: "pending",
+  canValidate: true,
+};
+
+const FEEDBACK_RESULT: CandidateFeedbackResult = {
+  validationId: "val-1",
+  decision: "accepted",
+  flowState: "validated",
+  candidateState: "accepted",
+  idempotent: false,
+};
+
+function stubFeedbackClient(overrides: Partial<TestingCenterFeedbackClient> = {}) {
+  const listCandidates = vi.fn(async () => [] as CandidateReview[]);
+  const submitFeedback = vi.fn(async () => FEEDBACK_RESULT);
+  return {
+    client: { listCandidates, submitFeedback, ...overrides } as TestingCenterFeedbackClient,
+    listCandidates,
+    submitFeedback,
+  };
 }
 
 const submitted: SubmittedReport = {
@@ -146,6 +193,122 @@ describe("TestingCenterOrbitPage", () => {
     const { container } = mount(client);
     await screen.findByTestId("orbit-testing");
     expect(container.querySelectorAll("[title]")).toHaveLength(0);
+  });
+});
+
+describe("TestingCenterOrbitPage · pestañas", () => {
+  async function openTab(label: string, feedback?: TestingCenterFeedbackClient) {
+    const { client } = stubClient();
+    mount(client, vi.fn(async () => submitted), feedback ?? stubFeedbackClient().client);
+    await screen.findByTestId("orbit-testing");
+    fireEvent.click(screen.getByRole("tab", { name: label }));
+  }
+
+  it("arranca en Reportar y cambia a Validar y a Mis reportes", async () => {
+    const { client } = stubClient();
+    mount(client);
+    await screen.findByTestId("orbit-testing");
+
+    // Reportar es la pestaña de partida: el formulario está montado.
+    expect(document.getElementById("orbit-tc-action")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-testing-validate")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Validar" }));
+    expect(await screen.findByTestId("orbit-testing-validate")).toBeTruthy();
+    expect(document.getElementById("orbit-tc-action")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Mis reportes" }));
+    expect(await screen.findByTestId("orbit-testing-mine")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-testing-validate")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Reportar" }));
+    await waitFor(() => expect(document.getElementById("orbit-tc-action")).toBeTruthy());
+  });
+
+  it("Validar lista los candidatos del servicio real y envía el veredicto", async () => {
+    const feedback = stubFeedbackClient({
+      listCandidates: vi.fn(async () => [CANDIDATE]),
+    });
+    await openTab("Validar", feedback.client);
+
+    const card = await screen.findByTestId("orbit-testing-candidate-cand-1");
+    expect(feedback.client.listCandidates).toHaveBeenCalledWith("nightly");
+    expect(card.textContent).toContain("Qué debes comprobar");
+    expect(card.textContent).toContain("Abrir el launcher dos veces seguidas");
+
+    fireEvent.click(screen.getByTestId("orbit-testing-accept-cand-1"));
+
+    await waitFor(() => expect(feedback.submitFeedback).toHaveBeenCalledTimes(1));
+    expect(feedback.submitFeedback.mock.calls[0][0]).toMatchObject({
+      candidateId: "cand-1",
+      candidateSha: "abcdef1234567890",
+      decision: "accepted",
+    });
+    // El candidato validado sale de la lista y el resultado se anuncia.
+    expect(await screen.findByTestId("orbit-testing-validate-result")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-testing-candidate-cand-1")).toBeNull();
+  });
+
+  it("«Necesita cambios» exige los cuatro textos antes de llamar al servicio", async () => {
+    const feedback = stubFeedbackClient({
+      listCandidates: vi.fn(async () => [CANDIDATE]),
+    });
+    await openTab("Validar", feedback.client);
+    await screen.findByTestId("orbit-testing-candidate-cand-1");
+
+    fireEvent.click(screen.getByTestId("orbit-testing-reject-cand-1"));
+    const form = await screen.findByTestId("orbit-testing-rejection");
+    fireEvent.click(screen.getByTestId("orbit-testing-reject-submit"));
+
+    expect(await screen.findByTestId("orbit-testing-reject-error")).toBeTruthy();
+    expect(feedback.submitFeedback).not.toHaveBeenCalled();
+
+    for (const field of ["description", "steps", "expected", "observed"]) {
+      fireEvent.change(document.getElementById(`orbit-tc-reject-${field}`) as HTMLTextAreaElement, {
+        target: { value: `texto de ${field}` },
+      });
+    }
+    fireEvent.submit(form.querySelector("form") as HTMLFormElement);
+
+    await waitFor(() => expect(feedback.submitFeedback).toHaveBeenCalledTimes(1));
+    const input = feedback.submitFeedback.mock.calls[0][0];
+    expect(input.decision).toBe("rejected");
+    expect(input.details?.description).toBe("texto de description");
+    expect(input.details?.category).toBe("issue_persists");
+  });
+
+  it("si el servicio de validación falla lo dice y no inventa candidatos", async () => {
+    const feedback = stubFeedbackClient({
+      listCandidates: vi.fn(async () => {
+        throw new Error("feedback_unavailable");
+      }),
+    });
+    await openTab("Validar", feedback.client);
+
+    expect(await screen.findByTestId("orbit-testing-validate-error")).toBeTruthy();
+  });
+
+  it("Mis reportes reconoce que el servicio no expone historial", async () => {
+    await openTab("Mis reportes");
+
+    const pane = await screen.findByTestId("orbit-testing-mine");
+    expect(pane.textContent).toContain("Sin historial");
+    expect(pane.textContent).toContain("no publica el historial de reportes");
+    expect(screen.queryByTestId("orbit-testing-mine-list")).toBeNull();
+  });
+
+  it("lo enviado en esta sesión aparece en Mis reportes", async () => {
+    const { client } = stubClient();
+    mount(client);
+    await screen.findByTestId("orbit-testing");
+
+    fill();
+    fireEvent.submit(document.getElementById("orbit-testing-form") as HTMLFormElement);
+    await screen.findByTestId("orbit-testing-sent");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Mis reportes" }));
+    const list = await screen.findByTestId("orbit-testing-mine-list");
+    expect(list.textContent).toContain("rep_123");
   });
 });
 

@@ -82,6 +82,9 @@ function contractOf() {
     selects: document.querySelectorAll(".orbit-tc__fields .orbit-select").length,
     consentRows: document.querySelectorAll(".orbit-tc__consent-row").length,
     errors: document.querySelectorAll(".orbit-tc__error").length,
+    tabs: [...document.querySelectorAll(".orbit-tc__tabs [role='tab']")].map(
+      (tab) => tab.textContent.trim(),
+    ),
     // El `title` nativo está prohibido en la vista (`08 · a11y`). Se mide sobre
     // la pantalla, no sobre la shell, que es de otro briefing.
     nativeTitles: root ? root.querySelectorAll("[title]").length : 0,
@@ -121,6 +124,9 @@ try {
     if (summary.consentRows !== 3) {
       throw new Error(`${label}: el consentimiento pinta ${summary.consentRows} filas (esperadas 3)`);
     }
+    if (summary.tabs.join("·") !== "Reportar·Validar·Mis reportes") {
+      throw new Error(`${label}: las pestañas son «${summary.tabs.join("·")}»`);
+    }
     if (!summary.channel.trim()) {
       throw new Error(`${label}: la cabecera no dice el canal`);
     }
@@ -159,6 +165,64 @@ try {
         path: path.join(output, `orbit-testing-validacion-${label}.png`),
         fullPage: false,
       });
+
+      // ── Consentimiento de diagnóstico: la vista previa aparece plegada.
+      await page.getByTestId("orbit-testing-consent-diagnostic").click();
+      await page.getByTestId("orbit-testing-preview-card").waitFor();
+      const preview = await page.evaluate(contractOf);
+      if (preview.nativeTitles !== 0) {
+        throw new Error(`${label}: la vista previa usa \`title\` nativo`);
+      }
+      if (preview.scrollHeight > preview.innerHeight) {
+        throw new Error(`${label}: la vista previa hace scroll de página`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-testing-diagnostico-${label}.png`),
+        fullPage: false,
+      });
+      await page.getByTestId("orbit-testing-consent-diagnostic").click();
+
+      // ── Pestaña Validar: sin backend de validaciones la vista lo dice.
+      await page.getByRole("tab", { name: "Validar" }).click();
+      await page.getByTestId("orbit-testing-validate").waitFor();
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll(
+            '[data-testid="orbit-testing-validate-error"], .orbit-tc__candidate, .orbit-note',
+          ).length > 0,
+      );
+      const validate = await page.evaluate(contractOf);
+      if (validate.nativeTitles !== 0) {
+        throw new Error(`${label}: Validar usa \`title\` nativo`);
+      }
+      if (validate.scrollHeight > validate.innerHeight) {
+        throw new Error(`${label}: Validar hace scroll de página`);
+      }
+      if (validate.scrollWidth > validate.innerWidth) {
+        throw new Error(`${label}: Validar hace scroll horizontal`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-testing-validar-${label}.png`),
+        fullPage: false,
+      });
+
+      // ── Pestaña Mis reportes: estado vacío honesto (no hay historial).
+      await page.getByRole("tab", { name: "Mis reportes" }).click();
+      await page.getByTestId("orbit-testing-mine").waitFor();
+      const mine = await page.evaluate(contractOf);
+      if (mine.nativeTitles !== 0) {
+        throw new Error(`${label}: Mis reportes usa \`title\` nativo`);
+      }
+      if (mine.scrollHeight > mine.innerHeight) {
+        throw new Error(`${label}: Mis reportes hace scroll de página`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-testing-mis-reportes-${label}.png`),
+        fullPage: false,
+      });
+
+      await page.getByRole("tab", { name: "Reportar" }).click();
+      await page.waitForSelector("#orbit-tc-action");
     }
 
     if (problems.length) {

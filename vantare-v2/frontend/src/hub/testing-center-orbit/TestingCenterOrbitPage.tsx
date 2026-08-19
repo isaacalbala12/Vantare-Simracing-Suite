@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Check, Field, Note, Select, SubtleStatus, Surface, Textarea } from "../../ui/orbit";
+import {
+  Accordion,
+  Button,
+  Check,
+  Field,
+  Note,
+  Select,
+  SubtleStatus,
+  Surface,
+  Textarea,
+  UnderlineTabs,
+} from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import {
   TESTING_CENTER_MODULES,
@@ -25,10 +36,18 @@ import {
   validateReportFields,
   type ReportFieldErrors,
 } from "../testing-center/validation";
+import {
+  testingCenterFeedbackClient,
+  type TestingCenterFeedbackClient,
+} from "../testing-center/candidate-feedback-client";
+import { ValidateOrbitPanel } from "./ValidateOrbitPanel";
 import "../../styles/orbit-testing.css";
 
 /** Canal que la shell resuelve; `stable` no llega nunca a esta pantalla. */
 export type TestingOrbitChannel = TestingCenterChannel;
+
+/** Las tres cosas que un tester hace aquí (briefing 12 ampliado, D-R3-E-3). */
+type TestingTab = "report" | "validate" | "mine";
 
 const FORM_ID = "orbit-testing-form";
 
@@ -77,6 +96,8 @@ export interface TestingCenterOrbitPageProps {
   /** Mismo cliente y mismo servicio que la pantalla v5.2: aquí solo cambia la piel. */
   client?: TestingCenterClient;
   submitReport?: (input: SubmitReportInput) => Promise<SubmittedReport>;
+  /** Mismo servicio de validación que la pantalla v5.2 (`testing-center-feedback`). */
+  feedbackClient?: TestingCenterFeedbackClient;
 }
 
 /**
@@ -93,9 +114,11 @@ export function TestingCenterOrbitPage({
   version = null,
   client = wailsTestingCenterClient,
   submitReport = submitTestingCenterReport,
+  feedbackClient = testingCenterFeedbackClient,
 }: TestingCenterOrbitPageProps) {
   const { t } = useI18n();
 
+  const [tab, setTab] = useState<TestingTab>("report");
   const [fields, setFields] = useState<ReportDraftFields>(EMPTY_FIELDS);
   const [fieldErrors, setFieldErrors] = useState<ReportFieldErrors>({});
   const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -109,6 +132,13 @@ export function TestingCenterOrbitPage({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState<SubmittedReport | null>(null);
+  /**
+   * Lo enviado en esta sesión. El servicio no publica ninguna operación de
+   * historial (`testing-center-client` solo abre, guarda y descarta el
+   * borrador), así que «Mis reportes» no puede leer lo de días anteriores: se
+   * queda con lo de esta sesión y lo dice sin disimulo (D-R3-E-4).
+   */
+  const [sent, setSent] = useState<SubmittedReport[]>([]);
   const [discardWarning, setDiscardWarning] = useState(false);
 
   const edited = useRef(false);
@@ -285,6 +315,7 @@ export function TestingCenterOrbitPage({
           setDiscardWarning(true);
         }
         setSubmitted(result);
+        setSent((current) => [result, ...current]);
       } catch (error) {
         const code = error instanceof TestingCenterClientError ? error.code : "submission_failed";
         setSubmitError(userMessage(code, t));
@@ -339,6 +370,47 @@ export function TestingCenterOrbitPage({
         </span>
       </header>
 
+      <UnderlineTabs<TestingTab>
+        className="orbit-tc__tabs"
+        label={t("testing.tabs.label")}
+        onChange={setTab}
+        tabs={[
+          { id: "report", label: t("testing.tabs.report") },
+          { id: "validate", label: t("testing.tabs.validate") },
+          { id: "mine", label: t("testing.tabs.mine") },
+        ]}
+        value={tab}
+      />
+
+      {tab === "validate" ? (
+        <div className="orbit-tc__pane">
+          <ValidateOrbitPanel channel={channel} client={feedbackClient} />
+        </div>
+      ) : tab === "mine" ? (
+        <div className="orbit-tc__pane" data-testid="orbit-testing-mine">
+          <Surface
+            aria-label={t("testing.mine.title")}
+            meta={t("testing.mine.meta")}
+            title={t("testing.mine.title")}
+          >
+            {/* El servicio no expone historial: lo honesto es decirlo. */}
+            <Note className="orbit-tc__note" title={t("testing.mine.emptyTitle")}>
+              {t("testing.mine.empty")}
+            </Note>
+            {sent.length > 0 ? (
+              <div className="orbit-tc__mine" data-testid="orbit-testing-mine-list">
+                {sent.map((report) => (
+                  <p className="orbit-tc__sent" key={report.reportId}>
+                    <b>{t("testing.success.title")}</b>
+                    <span>{report.reportState}</span>
+                    <code>{report.reportId}</code>
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </Surface>
+        </div>
+      ) : (
       <div className="orbit-tc__layout">
         <Surface aria-label={t("testing.form.title")} className="orbit-tc__form">
           <form id={FORM_ID} className="orbit-tc__fields" noValidate onSubmit={onSubmit}>
@@ -493,7 +565,49 @@ export function TestingCenterOrbitPage({
             <p className="orbit-tc__retry">{t("testing.retry.safe")}</p>
           ) : null}
         </Surface>
+
+        {/* Vista previa del diagnóstico: los bytes exactos que se enviarán,
+            plegados para no empujar el formulario (briefing 12 ampliado). */}
+        {includeDiagnostic ? (
+          <Surface
+            aria-label={t("testing.preview.title")}
+            className="orbit-tc__preview-card"
+            data-testid="orbit-testing-preview-card"
+          >
+            <Accordion
+              summary={
+                diagnostic ? `${diagnostic.preview.byteSize} B · ${diagnostic.preview.sha256.slice(0, 12)}` : undefined
+              }
+              title={t("testing.preview.title")}
+            >
+              <p className="orbit-tc__preview">{t("testing.preview.description")}</p>
+              {diagnosticState === "error" ? (
+                <Note className="orbit-tc__note">{t("testing.preview.error")}</Note>
+              ) : diagnostic ? (
+                <>
+                  <dl className="orbit-tc__preview-facts">
+                    <dt>SHA-256</dt>
+                    <dd>{diagnostic.preview.sha256}</dd>
+                    <dt>Bytes</dt>
+                    <dd>{diagnostic.preview.byteSize}</dd>
+                    <dt>Logs</dt>
+                    <dd>{diagnostic.environment.availableLogCount}</dd>
+                  </dl>
+                  <pre
+                    className="orbit-tc__preview-payload"
+                    data-testid="orbit-testing-preview-payload"
+                  >
+                    {diagnostic.preview.payload}
+                  </pre>
+                </>
+              ) : (
+                <p className="orbit-tc__preview">{t("testing.preview.loading")}</p>
+              )}
+            </Accordion>
+          </Surface>
+        ) : null}
       </div>
+      )}
     </div>
   );
 }

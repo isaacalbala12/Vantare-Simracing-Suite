@@ -540,3 +540,13 @@ Cada fila lleva circuito, clase (o serie), duración y hora, y un botón «Plani
 
 Sin especiales ni semanales la lista no se rellena con nada: una `Note` dice que el calendario no trae ninguna de las dos y remite a crear el evento propio. Para que la lista de series del camino «Desde un evento» no empuje la recomendación fuera de la pantalla, esa lista gana un tope de altura con scroll propio; la página sigue sin hacer el suyo.
 
+## D-R3-E-2 · Testing Center no estrena columna contextual
+**Decisión.** Las tres pestañas viven en la propia vista (`UnderlineTabs`), no en la columna. El briefing 12 no reserva hueco contextual para Testing Center y la shell no declara ningún `TESTING_CONTEXT_SLOT_ID`: abrirlo obligaría a tocar `OrbitShell.tsx`, que es archivo compartido con el resto de bloques en paralelo, para duplicar en la columna una navegación de tres elementos que ya se lee entera sobre el contenido. Cuando la vista crezca (filtros de candidatos, canales), la columna se planteará con su propio briefing.
+
+## D-R3-E-3 · La pestaña Validar es un porte de piel, no una reimplementación
+**Decisión.** `ValidateOrbitPanel` usa el mismo cliente (`candidate-feedback-client`, función `testing-center-feedback`), el mismo contrato de rechazo y la misma regla de validez —3–2048 bytes UTF-8 en los cuatro textos— que `CandidateFeedbackPanel` de la pantalla v5.2. Lo único que cambia es el kit: `Surface`, `Field`, `Select`, `Textarea`, `Check`, `Button` y `Note` en lugar de las utilidades de Tailwind. El cliente entra por prop (`feedbackClient`) para que los tests usen el servicio real con doble y no un atajo.
+
+La vista previa del diagnóstico deja de ser un panel siempre desplegado y pasa a `Accordion` dentro de una `Surface` en la pestaña **Reportar**: los bytes exactos siguen a un clic de distancia, pero no empujan el formulario.
+
+## D-R3-E-4 · «Mis reportes» dice que no hay historial en vez de fingirlo
+**Decisión.** El servicio de Testing Center no publica ninguna operación de historial: `testing-center-client` solo abre, guarda y descarta **el borrador en curso**, y el envío devuelve un `SubmittedReport` suelto. La pestaña lo dice con esas palabras y lista lo enviado durante la sesión actual, que es lo único que la pantalla conoce de verdad. Cuando el backend publique un listado por tester, la pestaña lo consumirá sin cambiar de sitio.

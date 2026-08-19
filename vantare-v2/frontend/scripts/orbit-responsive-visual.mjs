@@ -379,6 +379,88 @@ try {
     await page.close();
   }
 
+  // Extra: coste del reescalado continuo (D-R4-4). Isaac reporto que arrastrar
+  // el borde de la ventana en la app de escritorio tardaba ~2 s en reaccionar y
+  // luego iba a muy pocos fps. Aqui se mide con las metricas reales del motor:
+  // se recorre 1920x1080 -> 900x700 en 20 pasos y se mira cuanto suma por paso
+  // el trabajo de hilo principal atribuible al reescalado (script + estilo +
+  // layout), via `Performance.getMetrics` del CDP.
+  {
+    const steps = 20;
+    const from = { width: 1920, height: 1080 };
+    const to = { width: 900, height: 700 };
+    const page = await browser.newPage({ viewport: { ...from }, deviceScaleFactor: 1 });
+    page.on("pageerror", () => {});
+    await page.goto(sceneUrl(inicioScene), { waitUntil: "networkidle" });
+    await page.getByTestId("orbit-shell").waitFor();
+    await page.evaluate(async () => { await document.fonts.ready; });
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Performance.enable");
+    // Segundos acumulados de hilo principal desde que arranco la pagina.
+    const sampleWork = async () => {
+      const { metrics } = await cdp.send("Performance.getMetrics");
+      const value = (name) => metrics.find((metric) => metric.name === name)?.value ?? 0;
+      return value("ScriptDuration") + value("RecalcStyleDuration") + value("LayoutDuration");
+    };
+
+    const perStep = [];
+    let previous = await sampleWork();
+    for (let step = 1; step <= steps; step += 1) {
+      const ratio = step / steps;
+      await page.setViewportSize({
+        width: Math.round(from.width + (to.width - from.width) * ratio),
+        height: Math.round(from.height + (to.height - from.height) * ratio),
+      });
+      const current = await sampleWork();
+      perStep.push((current - previous) * 1000);
+      previous = current;
+    }
+    // El primer paso arrastra trabajo pendiente del arranque de la escena: se
+    // reporta aparte, porque la queja es sobre el arrastre sostenido.
+    const measured = perStep.slice(1);
+    const mean = measured.reduce((total, value) => total + value, 0) / measured.length;
+    const worst = Math.max(...measured);
+
+    // Reposo: el valor final queda aplicado (trailing) y el modo
+    // "redimensionando" se levanta, no se queda congelado a medias.
+    await page
+      .waitForFunction(() => !document.documentElement.dataset.orbitResizing, undefined, {
+        timeout: 2000,
+      })
+      .catch(() => failures.push("resize: `data-orbit-resizing` no se levanta al terminar"));
+    const settled = await page.evaluate(() => ({
+      zoom: Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--orbit-zoom") || "1",
+      ),
+      rootWidth: Math.round(document.querySelector(".orbit-root").getBoundingClientRect().width),
+    }));
+    const expectedFinal = expectedZoom(to.width, to.height);
+    if (Math.abs(settled.zoom - expectedFinal) > 0.005) {
+      failures.push(
+        `resize: al soltar queda el factor ${settled.zoom.toFixed(4)}, se esperaba ${expectedFinal.toFixed(4)}`,
+      );
+    }
+    if (Math.abs(settled.rootWidth - to.width) > 2) {
+      failures.push(`resize: al soltar la shell mide ${settled.rootWidth}px, se esperaban ${to.width}px`);
+    }
+
+    console.log(
+      `resize 1920x1080 -> 900x700 en ${steps} pasos: media ${mean.toFixed(1)} ms/paso, ` +
+        `peor ${worst.toFixed(1)} ms, primer paso ${perStep[0].toFixed(1)} ms`,
+    );
+    fs.writeFileSync(
+      path.join(output, "orbit-responsive-resize-cost.json"),
+      `${JSON.stringify({ steps, from, to, perStep, mean, worst }, null, 2)}\n`,
+    );
+    // Umbral de contrato: por encima de 80 ms/paso el arrastre deja de leerse
+    // como continuo (objetivo de trabajo: < 50 ms).
+    if (mean > 80) {
+      failures.push(`resize: ${mean.toFixed(1)} ms/paso de media, el tope del contrato es 80 ms`);
+    }
+    await page.close();
+  }
+
   // Extra: por debajo del suelo la shell desplaza internamente en vez de
   // recortar, y la página sigue sin sacar barras.
   {

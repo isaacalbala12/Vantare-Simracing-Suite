@@ -822,6 +822,25 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   .orbit-root { --orbit-content-max: 1760px; }
 }
 
+/* Redimensionado continuo (D-R4-4). Mientras el usuario arrastra el borde de la
+   ventana, `useOrbitResponsiveZoom` marca la raíz y la shell congela lo caro:
+   transiciones y animaciones (que se re-disparaban en cada paso del factor) y
+   los `backdrop-filter`, que obligan a repintar la banda desenfocada entera en
+   cada frame. Al soltar, el atributo desaparece y todo vuelve. Acotado a
+   `.orbit-root`: fuera de la shell no hay nada que congelar. */
+:root[data-orbit-resizing] .orbit-root,
+:root[data-orbit-resizing] .orbit-root *,
+:root[data-orbit-resizing] .orbit-root *::before,
+:root[data-orbit-resizing] .orbit-root *::after {
+  transition: none !important;
+  animation-play-state: paused !important;
+}
+
+:root[data-orbit-resizing] .orbit-topbar,
+:root[data-orbit-resizing] .orbit-studio-toolbar {
+  backdrop-filter: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orbit-shell,
   .orbit-rail__button,

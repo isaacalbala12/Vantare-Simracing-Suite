@@ -1021,13 +1021,15 @@ func main() {
 	// DevTools del WebView2 para poder perfilar la app real (tracing, metricas de
 	// frame) desde fuera. Wails limpia WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS al
 	// crear el entorno, asi que la variable de entorno estandar no basta y hay
-	// que pasar el argumento por las opciones. Sin la variable no cambia nada.
-	if port := strings.TrimSpace(os.Getenv("VANTARE_WEBVIEW_DEBUG_PORT")); port != "" {
+	// que pasar el argumento por las opciones. El gancho solo se compila en
+	// builds sin `-tags production` (ver webview_debug.go); en release devuelve
+	// vacio y nunca se abre el puerto de depuracion remota.
+	if arg := webviewDebugArgs(); arg != "" {
 		appOptions.Windows.AdditionalBrowserArgs = append(
 			appOptions.Windows.AdditionalBrowserArgs,
-			"--remote-debugging-port="+port,
+			arg,
 		)
-		log.Printf("webview: remote debugging enabled on port %s", port)
+		log.Printf("webview: remote debugging enabled via %s", arg)
 	}
 
 	wailsApp := application.New(appOptions)

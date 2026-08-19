@@ -12,6 +12,9 @@ import {
   type FreshnessWatchdogOptions,
 } from "./freshness-watchdog";
 
+export type ProjectionTransportStoreOptions = FreshnessWatchdogOptions &
+  Readonly<{ telemetryWatchdogEnabled?: boolean }>;
+
 export type DiagnosticCode =
   | "status-gap"
   | "status-advanced"
@@ -56,7 +59,7 @@ const MAX_FACTS = 256;
 
 export function createProjectionTransportStore(
   product: ProductID,
-  watchdogOptions: FreshnessWatchdogOptions = {},
+  watchdogOptions: ProjectionTransportStoreOptions = {},
 ): ProjectionTransportStore {
   let state: ProjectionState = freezeState(initialState(product));
   let disposed = false;
@@ -64,6 +67,7 @@ export function createProjectionTransportStore(
   let lastSnapshot: ProjectionState["snapshot"];
   let wireStatus: StatusEnvelope | undefined;
   let watchdogDiagnosticActive = false;
+  const watchdogEnabled = watchdogOptions.telemetryWatchdogEnabled !== false;
   const listeners = new Set<() => void>();
   const freshnessWatchdog = createFreshnessWatchdog(
     refreshFreshness,
@@ -100,6 +104,9 @@ export function createProjectionTransportStore(
   }
 
   function withFreshness(next: ProjectionState): ProjectionState {
+    if (!watchdogEnabled) {
+      return { ...next, ageMs: 0, status: wireStatus };
+    }
     const capturedAt = next.snapshot?.capturedAt ?? wireStatus?.capturedAt;
     if (!capturedAt) {
       return { ...next, ageMs: 0, status: wireStatus };
@@ -252,7 +259,7 @@ export function createProjectionTransportStore(
         throw contractFailure("disposed");
       }
       listeners.add(listener);
-      if (listeners.size === 1) {
+      if (watchdogEnabled && listeners.size === 1) {
         freshnessWatchdog.start();
       }
       return () => {

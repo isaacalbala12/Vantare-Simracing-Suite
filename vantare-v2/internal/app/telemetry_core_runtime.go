@@ -65,6 +65,9 @@ type TelemetryCoreRuntimeConfig struct {
 	// WatchdogTimeout is the maximum age of the last accepted frame before a
 	// live source is published as stale. Values <= 0 use the one-second default.
 	WatchdogTimeout time.Duration
+	// TelemetryWatchdogEnabled defaults to on when nil. Point it to false for
+	// one-cycle rollback to the previous frozen-fresh behavior.
+	TelemetryWatchdogEnabled *bool
 	// TelemetryFailurePolicyV2 defaults to on when nil. Point it to false for
 	// one-cycle rollback to the legacy fail-stop consumer policy.
 	TelemetryFailurePolicyV2 *bool
@@ -144,12 +147,13 @@ type TelemetryCoreRuntime struct {
 	engineer                 EngineerProjectionConsumer
 	engineerManifest         engineerprojection.Manifest
 
-	statusState   driver.State
-	statusAttempt int
-	now           func() time.Time
-	watchdogDelay time.Duration
-	lastFrameAt   time.Time
-	watchdogStale bool
+	statusState     driver.State
+	statusAttempt   int
+	now             func() time.Time
+	watchdogDelay   time.Duration
+	watchdogEnabled bool
+	lastFrameAt     time.Time
+	watchdogStale   bool
 	// Solo lo toca la goroutine monitor; sirve para no repetir la misma linea
 	// de error terminal en cada tick.
 	lastTerminalErr error
@@ -174,6 +178,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	watchdogDelay := config.WatchdogTimeout
 	if watchdogDelay <= 0 {
 		watchdogDelay = defaultTelemetryWatchdogDelay
+	}
+	watchdogEnabled := true
+	if config.TelemetryWatchdogEnabled != nil {
+		watchdogEnabled = *config.TelemetryWatchdogEnabled
 	}
 	failurePolicyV2 := true
 	if config.TelemetryFailurePolicyV2 != nil {
@@ -250,6 +258,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		engineerManifest: engineerManifest,
 		now:              now,
 		watchdogDelay:    watchdogDelay,
+		watchdogEnabled:  watchdogEnabled,
 	}, nil
 }
 
@@ -1041,6 +1050,9 @@ func (runtime *TelemetryCoreRuntime) recordFrameArrival() {
 func (runtime *TelemetryCoreRuntime) watchdogAdjustedState(state driver.State) driver.State {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if !runtime.watchdogEnabled {
+		return state
+	}
 	if runtime.watchdogStale && (state == driver.StateLive || state == driver.StateDegraded) {
 		return driver.StateStale
 	}
@@ -1050,6 +1062,9 @@ func (runtime *TelemetryCoreRuntime) watchdogAdjustedState(state driver.State) d
 func (runtime *TelemetryCoreRuntime) evaluateWatchdog() error {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
+	if !runtime.watchdogEnabled {
+		return nil
+	}
 	if runtime.lastFrameAt.IsZero() ||
 		(runtime.statusState != driver.StateLive && runtime.statusState != driver.StateDegraded) {
 		return nil

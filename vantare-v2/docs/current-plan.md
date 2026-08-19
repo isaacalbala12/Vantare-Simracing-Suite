@@ -1,3 +1,19 @@
+Nota ISA-372 / F2 (2026-08-19, implementada localmente, sin promoción):
+- Telemetry Core y el store frontend degradan a stale por edad con reloj
+  inyectable y recuperan live al volver frames, sin reiniciar el runtime.
+- `statusRevision` acepta saltos mayores por el coalescing del transporte; el
+  último full permanece disponible, pero no se adapta bajo una revisión de
+  status incoherente.
+- Métricas `LastFrameAgeMs`/`WatchdogDegradations`, diagnóstico
+  `snapshot-stale-watchdog` y rollback default-on quedan cubiertos.
+- Gates locales: frontend 390 archivos/2.866 tests, Go, builds, lint focal y
+  Playwright de estados PASS; vet conserva tres `unsafe.Pointer` heredados y
+  launcher sigue excluido por su panic preexistente. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f2-watchdog.md`.
+- Rama `vantareapp/isa-372-tc-f2-watchdog-stale` sobre
+  `tc-integration@98c3e2f2`; sin push, PR, CI remoto, merge, promoción ni
+  release. LMU/Wails/OBS real pendiente.
+
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel
   flotante que permite editar contenido, apariencia y comportamiento del

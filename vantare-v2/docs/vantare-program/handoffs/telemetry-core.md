@@ -15,6 +15,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F2 está implementada localmente sobre
+  `tc-integration@98c3e2f2` en la rama
+  `vantareapp/isa-372-tc-f2-watchdog-stale`. Backend y store degradan a stale
+  por edad con reloj inyectable, recuperan al volver frames, aceptan revisiones
+  de status mayores no contiguas y conservan el último full sin inventar
+  valores. Métricas, diagnóstico, rollback default-on y escenarios de
+  reconnect/late join quedan cubiertos. Frontend 390/2.866, Go focal/global,
+  builds, lint focal y Playwright de estados pasan con las deudas heredadas
+  citadas en `docs/telemetry-core/evidence/isa-372-f2-watchdog.md`. Sin push,
+  PR, CI remoto, merge, promoción ni release.
 - ISA-372/F4 está implementada localmente sobre `isa-373@3e9c77ed` en la rama
   `vantareapp/isa-372-tc-f4-guard-wiring-y-borrado`, pendiente de promoción.
   El guard AST de wiring queda activo; `core.Fanout`, RFC 7396 Go/TS, seal
@@ -431,11 +441,12 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Siguiente acción exacta
 
-El orquestador debe revisar los nueve commits F1 y actualizar Linear cuando la
-issue propia exista. Isaac debe ejecutar la sesión LMU real de 60 minutos y
-decidir si acepta la entrega aislada. No hacer push, PR, merge o promoción
-desde este worker. F6 sigue siendo el dueño del payload compacto de 104
-vehículos; F3 sigue siendo el dueño de la transacción única del engine.
+El orquestador debe revisar los cinco commits F2, actualizar Linear cuando la
+issue propia exista y decidir el siguiente corte de integración. Isaac debe
+ejecutar la verificación LMU/Wails/OBS descrita en la evidencia. No hacer push,
+PR, merge o promoción desde este worker. F6 sigue siendo el dueño del payload
+compacto de 104 vehículos; F3 sigue siendo el dueño de la transacción única
+del engine.
 
 ## Gate final
 
@@ -444,6 +455,12 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-19, ISA-372/F2: watchdog backend y frontend implementado con reloj
+inyectable, stale/recovery, revisión no contigua, métricas, diagnóstico,
+rollback y tests de reconnect/late join. Gates locales y Playwright de estados
+pasan; runtime LMU/Wails/OBS real pendiente. Cinco commits locales, sin push,
+PR, CI remoto, merge, promoción ni release.
 
 2026-08-19, ISA-372/F1: política v2 no terminal implementada localmente sobre
 `isa-373@3e9c77ed`, con rollback legacy, métricas, recover por consumidor,

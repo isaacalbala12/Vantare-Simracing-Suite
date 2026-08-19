@@ -48,3 +48,24 @@ test("un frame de hace 3 s se pinta como stale aunque el backend calle", () => {
   unsubscribe();
   expect(vi.getTimerCount()).toBe(0);
 });
+
+test("el flag off conserva el comportamiento anterior y no crea un timer", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-08-19T12:00:00Z"));
+  const store = createProjectionTransportStore("overlay", {
+    telemetryWatchdogEnabled: false,
+  });
+  const unsubscribe = store.subscribe(() => undefined);
+  store.ingest(eventName("overlay", "status"), {
+    product: "overlay",
+    statusRevision: 1,
+    capturedAt: "2026-08-19T12:00:00Z",
+    payload: { state: "live", reconnectAttempt: 0 },
+  });
+
+  vi.advanceTimersByTime(3_000);
+
+  expect(store.getSnapshot().status?.payload.state).toBe("live");
+  expect(vi.getTimerCount()).toBe(0);
+  unsubscribe();
+});

@@ -7,6 +7,16 @@ import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types
 import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
 import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import type { PedalsTelemetryContent } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
+import {
+  buildPedalsTelemetryViewModel,
+  type PedalsTelemetryViewModel,
+} from "../widget-types/pedals-telemetry/pedals-telemetry-view-model";
+import {
+  buildPedalsTelemetryViewModelV2,
+  pedalsTelemetryDisplayedValues,
+} from "../widget-types/pedals-telemetry/pedals-telemetry-view-model-v2";
 import type { DeltaViewModel } from "../widget-types/delta/delta-view-model";
 import type { DeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
 import type { DeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
@@ -93,6 +103,93 @@ export type OverlayShadowReport = Readonly<{
   widgets: readonly OverlayShadowWidgetResult[];
   truncated: boolean;
 }>;
+
+export const OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES = Object.freeze({
+  throttle: 1e-9,
+  brake: 1e-9,
+  clutch: 1e-9,
+  speedKph: 3.6e-6,
+  rpm: 1e-6,
+  gear: 0,
+});
+
+export type OverlayV2PlayerInstrumentComparison = Readonly<{
+  equal: boolean;
+  mismatches: readonly string[];
+  legacyDisplayed: Readonly<Record<string, string>>;
+  overlayV2Displayed: Readonly<Record<string, string>>;
+}>;
+
+export type OverlayV2ShadowSessionSummary = Readonly<{
+  frames: number;
+  mismatches: number;
+  metrics: Readonly<Record<string, number>>;
+}>;
+
+export type OverlayV2PlayerInstrumentsComparator = Readonly<{
+  compare(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: PedalsTelemetryContent;
+  }>): OverlayV2PlayerInstrumentComparison;
+  sessionSummary(): OverlayV2ShadowSessionSummary;
+}>;
+
+export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
+  let frames = 0;
+  let mismatches = 0;
+  const byField = new Map<string, number>();
+  return {
+    compare(input) {
+      const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
+      const fields = comparePlayerInstrumentModels(legacy, overlayV2);
+      frames += 1;
+      mismatches += fields.length;
+      for (const field of fields) byField.set(field, (byField.get(field) ?? 0) + 1);
+      return Object.freeze({
+        equal: fields.length === 0,
+        mismatches: Object.freeze(fields),
+        legacyDisplayed: pedalsTelemetryDisplayedValues(legacy),
+        overlayV2Displayed: pedalsTelemetryDisplayedValues(overlayV2),
+      });
+    },
+    sessionSummary() {
+      return Object.freeze({
+        frames,
+        mismatches,
+        metrics: Object.freeze(Object.fromEntries(
+          [...byField.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([field, value]) => [
+            `overlay_shadow_mismatches_total{field="${field}"}`,
+            value,
+          ]),
+        )),
+      });
+    },
+  };
+}
+
+function comparePlayerInstrumentModels(
+  legacy: PedalsTelemetryViewModel,
+  overlayV2: PedalsTelemetryViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  for (const field of Object.keys(OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES) as (keyof typeof OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES)[]) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES[field])) mismatch.add(field);
+  }
+  const legacyDisplayed = pedalsTelemetryDisplayedValues(legacy);
+  const overlayV2Displayed = pedalsTelemetryDisplayedValues(overlayV2);
+  for (const field of Object.keys(legacyDisplayed)) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  return [...mismatch].sort();
+}
+
+function numbersWithin(left: number | undefined, right: number | undefined, tolerance: number): boolean {
+  if (left === undefined || right === undefined) return left === right;
+  return Math.abs(left - right) <= tolerance;
+}
 
 type ShadowScalar = string | number | boolean | null | undefined;
 type ViewModelReader = (model: WidgetViewModelBase) => ShadowScalar;

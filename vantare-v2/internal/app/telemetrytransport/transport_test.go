@@ -69,15 +69,13 @@ func TestInvalidOversizedAndDeltaPayloadsAreRejectedAtomically(t *testing.T) {
 
 	invalid := valid
 	invalid.Sequence = 2
-	invalid.Payload = json.RawMessage(`{"raw":{"secret":1}}`)
-	invalid.seal = envelopeSeal(invalid)
+	invalid.Payload = json.RawMessage(`{"speed":`)
 	if err := hub.PublishSnapshot(invalid, nil); !errors.Is(err, ErrInvalidPayload) {
 		t.Fatalf("invalid payload error = %v", err)
 	}
 	oversized := valid
 	oversized.Sequence = 2
 	oversized.Payload = json.RawMessage(`{"value":"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"}`)
-	oversized.seal = envelopeSeal(oversized)
 	if err := hub.PublishSnapshot(oversized, nil); !errors.Is(err, ErrPayloadTooLarge) {
 		t.Fatalf("oversized payload error = %v", err)
 	}
@@ -94,19 +92,18 @@ func TestInvalidOversizedAndDeltaPayloadsAreRejectedAtomically(t *testing.T) {
 	assertSnapshot(t, mustNext(t, subscription), Full, 2)
 }
 
-func TestPayloadKeyScannerRejectsNestedCanonicalDataWithoutRejectingValues(t *testing.T) {
+func TestPayloadValidationRequiresJSONObject(t *testing.T) {
 	for _, payload := range []json.RawMessage{
-		json.RawMessage(`{"vehicles":[{"nested":{"source":"private"}}]}`),
-		json.RawMessage(`{"items":[[{"canonicalVersion":1}]]}`),
-		json.RawMessage(`{"derived":{"speed":1}}`),
-		json.RawMessage(`{"r\u0061w":{"speed":1}}`),
+		json.RawMessage(`{"value":`),
+		json.RawMessage(`[]`),
+		json.RawMessage(`null`),
 	} {
 		if err := validatePayload(payload, MaxPayloadBytes); !errors.Is(err, ErrInvalidPayload) {
 			t.Fatalf("payload %s error = %v", payload, err)
 		}
 	}
 	for _, payload := range []json.RawMessage{
-		json.RawMessage(`{"label":"source","values":["raw","derived"]}`),
+		json.RawMessage(`{"raw":{"source":"typed-constructor-owned"}}`),
 		json.RawMessage(`{"vehicles":[{"driverName":"Private Driver"}]}`),
 		json.RawMessage(`{}`),
 	} {
@@ -148,7 +145,6 @@ func TestUnknownProjectionVersionIsRejected(t *testing.T) {
 	}
 	future := mustSnapshot(t, 1, 1, Full, 1, map[string]any{"speed": 1})
 	future.ProjectionVersion = 3
-	future.seal = envelopeSeal(future)
 	if err := hub.PublishSnapshot(future, nil); !errors.Is(err, projection.ErrUnknownProjectionVersion) {
 		t.Fatalf("future version error = %v", err)
 	}
@@ -235,25 +231,12 @@ func TestExportedSnapshotConstructorsAreProductTyped(t *testing.T) {
 	}
 }
 
-func TestTypedSnapshotCannotBeRetargetedToCanonicalPayload(t *testing.T) {
-	status, err := NewStatus(
-		ProductOverlay,
-		1,
-		time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC),
-		StatusPayload{State: "live"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hub := NewHub(HubConfig{Product: ProductOverlay})
-	if err := hub.PublishStatus(status); err != nil {
-		t.Fatal(err)
-	}
-	frame, err := NewOverlayFull(
+func TestTypedSnapshotConstructorRejectsInvalidMetadata(t *testing.T) {
+	_, err := NewOverlayFull(
 		projection.Metadata{
 			ProjectionVersion: overlay.VersionV1,
 			Epoch:             1,
-			Sequence:          1,
+			Sequence:          0,
 			CapturedAt:        "2026-07-29T10:00:00Z",
 		},
 		1,
@@ -262,12 +245,8 @@ func TestTypedSnapshotCannotBeRetargetedToCanonicalPayload(t *testing.T) {
 			Vehicles:     []overlay.VehicleV1{},
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	frame.Payload = json.RawMessage(`{"observed":{},"derived":{}}`)
-	if err := hub.PublishSnapshot(frame, nil); !errors.Is(err, ErrInvalidEnvelope) {
-		t.Fatalf("retargeted payload error = %v", err)
+	if !errors.Is(err, ErrInvalidEnvelope) {
+		t.Fatalf("constructor error = %v, want %v", err, ErrInvalidEnvelope)
 	}
 }
 
@@ -679,7 +658,6 @@ func FuzzTransportEnvelopeValidationNeverPanics(f *testing.F) {
 			StatusRevision:    1,
 			Payload:           append(json.RawMessage(nil), payload...),
 		}
-		frame.seal = envelopeSeal(frame)
 		if err := validateEnvelope(frame, MaxPayloadBytes); err == nil {
 			if !json.Valid(payload) || len(payload) > MaxPayloadBytes {
 				t.Fatalf("accepted invalid payload of %d bytes", len(payload))
@@ -746,7 +724,6 @@ func mustProductSnapshot(
 		StatusRevision:    statusRevision,
 		Payload:           encoded,
 	}
-	result.seal = envelopeSeal(result)
 	return result
 }
 
@@ -762,7 +739,6 @@ func mustStatus(t testingTB, revision uint64, payload any) StatusEnvelope {
 		CapturedAt:     "2026-07-29T10:00:00Z",
 		Payload:        encoded,
 	}
-	result.seal = statusSeal(result)
 	return result
 }
 
@@ -770,7 +746,6 @@ func mustProductStatus(t testingTB, product ProductID, revision uint64) StatusEn
 	t.Helper()
 	result := mustStatus(t, revision, map[string]any{"state": "live"})
 	result.Product = product
-	result.seal = statusSeal(result)
 	return result
 }
 

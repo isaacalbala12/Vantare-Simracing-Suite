@@ -208,7 +208,7 @@ func SSEFactsHandler(product ProductID, source FactSource) http.Handler {
 }
 
 func validateFact(fact FactEnvelope, maximum int) error {
-	if fact.seal != factSeal(fact) || !knownProduct(fact.Product) ||
+	if !knownProduct(fact.Product) ||
 		fact.ProjectionVersion == 0 || fact.Epoch == 0 ||
 		fact.Sequence == 0 || fact.FactSequence == 0 || fact.StatusRevision == 0 {
 		return ErrInvalidEnvelope

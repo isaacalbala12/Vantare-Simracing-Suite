@@ -6,15 +6,10 @@ package telemetrytransport
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash"
 	"log"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -81,7 +76,6 @@ type Envelope struct {
 	CapturedAt        string             `json:"capturedAt"`
 	StatusRevision    uint64             `json:"statusRevision"`
 	Payload           json.RawMessage    `json:"payload"`
-	seal              [sha256.Size]byte
 }
 
 type StatusPayload struct {
@@ -95,7 +89,6 @@ type StatusEnvelope struct {
 	StatusRevision uint64          `json:"statusRevision"`
 	CapturedAt     string          `json:"capturedAt"`
 	Payload        json.RawMessage `json:"payload"`
-	seal           [sha256.Size]byte
 }
 
 // FactEnvelope keeps the ordered fact cursor independent from snapshot and
@@ -109,7 +102,6 @@ type FactEnvelope struct {
 	CapturedAt        string             `json:"capturedAt"`
 	StatusRevision    uint64             `json:"statusRevision"`
 	Payload           json.RawMessage    `json:"payload"`
-	seal              [sha256.Size]byte
 }
 
 type Event struct {
@@ -243,7 +235,6 @@ func newFull(
 		StatusRevision:    statusRevision,
 		Payload:           encoded,
 	}
-	result.seal = envelopeSeal(result)
 	if err := validateEnvelope(result, DefaultMaxPayloadBytes); err != nil {
 		return Envelope{}, err
 	}
@@ -266,7 +257,6 @@ func NewStatus(
 		CapturedAt:     capturedAt.Round(0).UTC().Format(time.RFC3339Nano),
 		Payload:        encoded,
 	}
-	result.seal = statusSeal(result)
 	if err := validateStatus(result, DefaultMaxPayloadBytes); err != nil {
 		return StatusEnvelope{}, err
 	}
@@ -305,7 +295,6 @@ func newFact(
 		StatusRevision:    full.StatusRevision,
 		Payload:           full.Payload,
 	}
-	result.seal = factSeal(result)
 	return result, nil
 }
 
@@ -553,8 +542,7 @@ func (hub *Hub) snapshotFor(_ *pendingSubscriber) Envelope {
 }
 
 func validateEnvelope(frame Envelope, maximum int) error {
-	if frame.seal != envelopeSeal(frame) ||
-		!knownProduct(frame.Product) ||
+	if !knownProduct(frame.Product) ||
 		frame.ProjectionVersion == 0 || frame.Epoch == 0 || frame.Sequence == 0 ||
 		frame.StatusRevision == 0 || frame.Kind != Full {
 		return ErrInvalidEnvelope
@@ -566,7 +554,7 @@ func validateEnvelope(frame Envelope, maximum int) error {
 }
 
 func validateStatus(status StatusEnvelope, maximum int) error {
-	if status.seal != statusSeal(status) || !knownProduct(status.Product) ||
+	if !knownProduct(status.Product) ||
 		status.StatusRevision == 0 {
 		return ErrStatusRevision
 	}
@@ -606,79 +594,12 @@ func validatePayload(payload json.RawMessage, maximum int) error {
 	if len(payload) > maximum {
 		return ErrPayloadTooLarge
 	}
-	validObject, forbidden := inspectPayloadKeys(payload)
-	if !validObject || forbidden {
-		return ErrInvalidPayload
-	}
-	return nil
-}
-
-// inspectPayloadKeys validates one top-level JSON object, then scans only JSON
-// member names. json.Valid owns structural validation; this avoids decoding a
-// high-frequency projection merely to enforce forbidden internal keys.
-func inspectPayloadKeys(payload json.RawMessage) (validObject bool, forbidden bool) {
 	trimmed := bytes.TrimSpace(payload)
 	if len(trimmed) < 2 || trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' ||
 		!json.Valid(trimmed) {
-		return false, false
+		return ErrInvalidPayload
 	}
-	for index := 0; index < len(trimmed); index++ {
-		if trimmed[index] != '"' {
-			continue
-		}
-		start := index + 1
-		escaped := false
-		for index++; index < len(trimmed); index++ {
-			switch trimmed[index] {
-			case '\\':
-				escaped = true
-				index++
-			case '"':
-				end := index
-				next := index + 1
-				for next < len(trimmed) && isJSONSpace(trimmed[next]) {
-					next++
-				}
-				if next < len(trimmed) && trimmed[next] == ':' &&
-					forbiddenPayloadKeyBytes(trimmed[start:end], escaped) {
-					return true, true
-				}
-				goto nextToken
-			}
-		}
-	nextToken:
-	}
-	return true, false
-}
-
-func isJSONSpace(value byte) bool {
-	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
-}
-
-func forbiddenPayloadKeyBytes(raw []byte, escaped bool) bool {
-	if !escaped {
-		for _, forbidden := range [...][]byte{
-			[]byte("raw"), []byte("source"), []byte("clock"), []byte("observed"),
-			[]byte("derived"), []byte("finalstate"), []byte("canonicalversion"),
-		} {
-			if bytes.EqualFold(raw, forbidden) {
-				return true
-			}
-		}
-		return false
-	}
-	decoded, err := strconv.Unquote(`"` + string(raw) + `"`)
-	return err == nil && forbiddenPayloadKey(decoded)
-}
-
-func forbiddenPayloadKey(key string) bool {
-	switch strings.ToLower(key) {
-	case "raw", "source", "clock", "observed", "derived", "finalstate",
-		"canonicalversion":
-		return true
-	default:
-		return false
-	}
+	return nil
 }
 
 func cursorRelation(previous, next Envelope) (contiguous bool, valid bool) {
@@ -724,62 +645,6 @@ func cloneEnvelope(frame Envelope) Envelope {
 func cloneStatus(status StatusEnvelope) StatusEnvelope {
 	status.Payload = append(json.RawMessage{}, status.Payload...)
 	return status
-}
-
-func envelopeSeal(frame Envelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(frame.Product))
-	sealUint64(digest, uint64(frame.ProjectionVersion))
-	sealUint64(digest, uint64(frame.Epoch))
-	sealUint64(digest, uint64(frame.Sequence))
-	sealString(digest, string(frame.Kind))
-	sealString(digest, frame.CapturedAt)
-	sealUint64(digest, frame.StatusRevision)
-	sealBytes(digest, frame.Payload)
-	return sealSum(digest)
-}
-
-func statusSeal(status StatusEnvelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(status.Product))
-	sealUint64(digest, status.StatusRevision)
-	sealString(digest, status.CapturedAt)
-	sealBytes(digest, status.Payload)
-	return sealSum(digest)
-}
-
-func factSeal(fact FactEnvelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(fact.Product))
-	sealUint64(digest, uint64(fact.ProjectionVersion))
-	sealUint64(digest, uint64(fact.Epoch))
-	sealUint64(digest, uint64(fact.Sequence))
-	sealUint64(digest, fact.FactSequence)
-	sealString(digest, fact.CapturedAt)
-	sealUint64(digest, fact.StatusRevision)
-	sealBytes(digest, fact.Payload)
-	return sealSum(digest)
-}
-
-func sealString(digest hash.Hash, value string) {
-	sealBytes(digest, []byte(value))
-}
-
-func sealUint64(digest hash.Hash, value uint64) {
-	var encoded [8]byte
-	binary.BigEndian.PutUint64(encoded[:], value)
-	sealBytes(digest, encoded[:])
-}
-
-func sealBytes(digest hash.Hash, value []byte) {
-	digest.Write(value)
-	digest.Write([]byte{0})
-}
-
-func sealSum(digest hash.Hash) [sha256.Size]byte {
-	var result [sha256.Size]byte
-	digest.Sum(result[:0])
-	return result
 }
 
 func bounded(value, fallback, maximum int) int {

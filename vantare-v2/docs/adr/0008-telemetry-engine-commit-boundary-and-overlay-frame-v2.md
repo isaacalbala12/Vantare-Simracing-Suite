@@ -2,7 +2,7 @@
 
 ## Estado
 
-Propuesto (2026-08-19). Pendiente de aceptación por Isaac. Bloquea la primera fase que cambia una frontera (F1 del plan ISA-372). Enmienda parcialmente ADR 0004; no modifica ADR 0005 (SQLite/MCAP y DuckDB post-sesión) ni el contrato de capabilities de Engineer (ADR 0005-engineer), cuya entrega pasa a ser asíncrona.
+Aceptado por Isaac el 2026-08-19 (junto con SPECIFY/PLAN/TASKS de ISA-372). Desbloquea la primera fase que cambia una frontera (F1 del plan ISA-372). Enmienda parcialmente ADR 0004; no modifica ADR 0005 (SQLite/MCAP y DuckDB post-sesión) ni el contrato de capabilities de Engineer (ADR 0005-engineer), cuya entrega pasa a ser asíncrona.
 
 ## Fecha
 

@@ -3,7 +3,7 @@
 Fecha: 2026-08-19. Issue: ISA-372 (TC-ARCH-02). Rama: `vantareapp/isa-372-tc-arch-02-sdd-y-plan-de-migracion-go-first-en-shadow`. Base: `origin/nightly@7a92241d`.
 Autores: Isaac (decisión), Fable (redacción, orquestación), Sol 5.6 (borrador SPECIFY previo, contrastado en `docs/research/telemetry-architecture-2026/13-contraste-sol-isa372.md`).
 Fuente de evidencia: ISA-371 — `docs/research/telemetry-architecture-2026/00..13` (rama `isa-371`, commit `9be5bf5b`).
-Estado SDD: **SPECIFY redactado → PLAN redactado → TASKS redactadas (primera ola)**. Aprobación humana pendiente por gate (ver §14).
+Estado SDD: **SPECIFY, PLAN y TASKS (primera ola) aprobados por Isaac el 2026-08-19; ADR 0008 Aceptado.** IMPLEMENT autorizado por fases con issue propia.
 
 ---
 
@@ -290,7 +290,7 @@ No se crea `utils`, bus genérico, plugins runtime, microservicios, event sourci
 
 ## 14. Gates y criterios de éxito
 
-**Gate SDD:** [x] SPECIFY · [ ] aprobación Isaac · [x] PLAN redactado · [ ] aprobación PLAN · [x] TASKS primera ola · [ ] aprobación TASKS · [ ] IMPLEMENT por fases con issue propia.
+**Gate SDD:** [x] SPECIFY · [x] aprobación Isaac (2026-08-19) · [x] PLAN redactado · [x] aprobación PLAN · [x] TASKS primera ola · [x] aprobación TASKS · [x] IMPLEMENT autorizado por fases con issue propia (F0 hecho en ISA-373; F1/F4 en curso).
 
 **Gate de paridad (antes de F9):** fixtures 1/20/44/104; escenarios de §10; cero divergencias P0/P1 sin explicar; tolerancias documentadas; paridad visual en widgets representativos; prueba real LMU; benchmark + soak sin crecimiento; rollback probado.
 

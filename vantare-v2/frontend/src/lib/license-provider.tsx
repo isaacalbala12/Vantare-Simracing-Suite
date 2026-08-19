@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -10,6 +8,7 @@ import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import type { LicenseResult } from "./license-types";
 import { licenseDebug } from "./license-debug";
+import { LicenseContext, type LicenseContextValue } from "./license-context";
 
 
 const ANONYMOUS_LICENSE: LicenseResult = {
@@ -19,15 +18,6 @@ const ANONYMOUS_LICENSE: LicenseResult = {
   email: "",
   deviceOK: false,
 };
-
-type LicenseContextValue = {
-  result: LicenseResult | null;
-  loading: boolean;
-  refresh: () => void;
-  clearLicense: () => void;
-};
-
-const LicenseContext = createContext<LicenseContextValue | null>(null);
 
 /**
  * LicenseResult declares entitlements as a plain array, so nothing downstream
@@ -171,13 +161,4 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   return (
     <LicenseContext.Provider value={value}>{children}</LicenseContext.Provider>
   );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useLicense(): LicenseContextValue {
-  const ctx = useContext(LicenseContext);
-  if (!ctx) {
-    throw new Error("useLicense must be used inside LicenseProvider");
-  }
-  return ctx;
 }

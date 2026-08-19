@@ -1,12 +1,16 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildHarnessTelemetry, buildHarnessViewModel, buildHarnessWidget } from "./harness-fixtures";
 import {
+  buildHarnessTelemetry,
+  buildHarnessViewModel,
+  buildHarnessWidget,
   HARNESS_WIDGETS,
+} from "./harness-fixtures";
+import {
   OverlayParityHarness,
   OverlayParityHarnessPage,
-  parseHarnessQuery,
 } from "./OverlayParityHarness";
+import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
 
 afterEach(() => cleanup());

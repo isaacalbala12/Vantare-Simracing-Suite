@@ -101,14 +101,14 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     enabled: fitSelectionToContent && selected,
     frameRef,
     selectionRef,
-    deps: [
+    dependencyKey: JSON.stringify([
       widget.id,
       widget.visual,
       widget.content,
       frameGeometry.w,
       frameGeometry.h,
       previewActive,
-    ],
+    ]),
   });
 
   const frameStyle: CSSProperties = {

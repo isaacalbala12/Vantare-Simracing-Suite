@@ -29,6 +29,7 @@ describe("entitlements parity: TS vs Go suite-granting rules", () => {
     } catch (err) {
       throw new Error(
         `Failed to read Go source for parity test at ${goSourcePath}: ${err}`,
+        { cause: err },
       );
     }
 
@@ -75,6 +76,7 @@ describe("entitlements parity: TS vs Go suite-granting rules", () => {
     } catch (err) {
       throw new Error(
         `Failed to read types.go for parity test at ${typesSourcePath}: ${err}`,
+        { cause: err },
       );
     }
 

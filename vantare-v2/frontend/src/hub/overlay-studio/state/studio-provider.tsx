@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -14,9 +12,7 @@ import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
-  SessionLayoutV3,
 } from "../../../overlay/core/profile-document";
-import type { MockLocationScenario, MockSessionScenario } from "../../../overlay/core/mock-scenarios";
 import {
   assertCommandAccess,
   StudioAccessError,
@@ -37,17 +33,14 @@ import { resolveSessionLayout } from "./session-layouts";
 import { StudioCommandError, type StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
 import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
-
-export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
-
-export type StudioPreviewState = {
-  source: "mock" | "live";
-  mockSession: MockSessionScenario;
-  mockLocation: MockLocationScenario;
-  zoom: "fit" | 50 | 75 | 100 | 125 | 150;
-  backgroundId: string;
-  safeArea: boolean;
-};
+import {
+  StudioDocumentContext,
+  StudioPreviewContext,
+  type StudioDocumentContextValue,
+  type StudioPreviewContextValue,
+  type StudioPreviewState,
+  type StudioSaveState,
+} from "./studio-context";
 
 const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   source: "mock",
@@ -60,42 +53,6 @@ const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   backgroundId: "gradient",
   safeArea: false,
 };
-
-type StudioDocumentContextValue = {
-  access: AccessContext;
-  document: ProfileDocumentV3 | null;
-  savedDocument: ProfileDocumentV3 | null;
-  revision: string;
-  activeLayout: SessionLayoutV3 | null;
-  activeSession: SessionLayoutType;
-  selectedWidgetId: string | null;
-  dirty: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
-  saveState: StudioSaveState;
-  /** Fatal profile load failure only — do not use for access or save errors. */
-  lastError: string | null;
-  accessNotice: string | null;
-  visuallyMigratedWidgetIds: readonly string[];
-  dispatch(command: StudioCommand): boolean;
-  selectWidget(id: string | null): void;
-  selectSession(type: SessionLayoutType): void;
-  save(): Promise<StudioSaveResult>;
-  undo(): boolean;
-  redo(): boolean;
-  discardAll(): void;
-  acceptRecovery(recoveredDocument: ProfileDocumentV3): void;
-  dismissAccessNotice(): void;
-  notifyAccessDenied(message: string): void;
-};
-
-type StudioPreviewContextValue = {
-  preview: StudioPreviewState;
-  setPreview(patch: Partial<StudioPreviewState>): void;
-};
-
-const StudioDocumentContext = createContext<StudioDocumentContextValue | null>(null);
-const StudioPreviewContext = createContext<StudioPreviewContextValue | null>(null);
 
 function buildInitialHistory(loadedDocument: ProfileDocumentV3): {
   history: StudioHistory;
@@ -433,26 +390,6 @@ export function StudioProvider(props: {
       <StudioPreviewContext.Provider value={previewValue}>{children}</StudioPreviewContext.Provider>
     </StudioDocumentContext.Provider>
   );
-}
-
-// The provider and its hooks intentionally share this module so every consumer
-// observes the same context values. Fast Refresh cannot infer that arrangement.
-// eslint-disable-next-line react-refresh/only-export-components
-export function useStudioDocument(): StudioDocumentContextValue {
-  const context = useContext(StudioDocumentContext);
-  if (!context) {
-    throw new Error("useStudioDocument must be used inside StudioProvider");
-  }
-  return context;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useStudioPreview(): StudioPreviewContextValue {
-  const context = useContext(StudioPreviewContext);
-  if (!context) {
-    throw new Error("useStudioPreview must be used inside StudioProvider");
-  }
-  return context;
 }
 
 export function ConnectedStudioProvider(props: {

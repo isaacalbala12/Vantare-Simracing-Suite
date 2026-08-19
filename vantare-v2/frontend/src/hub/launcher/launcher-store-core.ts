@@ -1,10 +1,6 @@
-/* eslint-disable react-refresh/only-export-components */
 import {
-  createContext,
   useContext,
-  useEffect,
   useSyncExternalStore,
-  type ReactNode,
 } from "react";
 import {
   dispatchLauncherCommand as bridgeDispatchLauncherCommand,
@@ -14,6 +10,7 @@ import {
   type LauncherBridgeLike,
 } from "./launcher-bridge";
 import type { LauncherDiscoveryProgress, LauncherSnapshot } from "./launcher-contract";
+import { LauncherStoreContext } from "./launcher-context";
 
 export type { LauncherBridgeLike } from "./launcher-bridge";
 
@@ -111,28 +108,6 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
 export function useLauncherDiscoveryProgress(): LauncherDiscoveryProgress | null {
   const store = useLauncherStore();
   return useSyncExternalStore(store.subscribeDiscoveryProgress, store.getDiscoveryProgress, store.getDiscoveryProgress);
-}
-
-const defaultStore = createLauncherStore();
-const LauncherStoreContext = createContext<LauncherStore | null>(null);
-
-export function LauncherStoreProvider({
-  children,
-  store = defaultStore,
-}: {
-  children: ReactNode;
-  store?: LauncherStore;
-}) {
-  useEffect(() => {
-    store.start();
-    return () => store.stop();
-  }, [store]);
-
-  return (
-    <LauncherStoreContext.Provider value={store}>
-      {children}
-    </LauncherStoreContext.Provider>
-  );
 }
 
 export function useLauncherStore(): LauncherStore {

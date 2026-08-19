@@ -1,17 +1,9 @@
-/* eslint-disable react-refresh/only-export-components */
 import {
-  createContext,
   useContext,
-  useEffect,
   useCallback,
-  useRef,
-  useState,
   useSyncExternalStore,
-  type ReactNode,
 } from "react";
-import { Events } from "@wailsio/runtime";
-import { HubToast, type HubToastVariant } from "./HubToast";
-import { useNotificationPreferences } from "../settings/notification-preferences";
+import { ChainRunnerContext, type ChainRunnerStore } from "./chain-context";
 
 export type ChainStepStatus = "pending" | "launching" | "done" | "failed";
 export type ChainStepState = {
@@ -248,106 +240,6 @@ export function createChainStore() {
       subscribers.clear();
     },
   };
-}
-
-type ChainRunnerStore = ReturnType<typeof createChainStore>;
-
-const ChainRunnerContext = createContext<ChainRunnerStore | null>(null);
-
-export function ChainRunnerProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(createChainStore);
-  const notifications = useNotificationPreferences();
-  // Read through a ref so the subscription below does not tear down and
-  // resubscribe every time a preference changes mid-launch. A passive effect is
-  // enough here: the reader runs when the backend reports a finished chain,
-  // never in the same commit as a settings change.
-  const notificationsRef = useRef(notifications);
-  useEffect(() => {
-    notificationsRef.current = notifications;
-  }, [notifications]);
-
-  const [toastInfo, setToastInfo] = useState<{
-    variant: HubToastVariant;
-    message: string;
-    profileId: string;
-  } | null>(null);
-
-  useEffect(() => {
-    store.startWatchdog();
-
-    const offStep = Events.On("launcher:chain:step", (event: unknown) => {
-      store.handleStep((event as { data: ChainStepEvent }).data);
-    });
-    const offDone = Events.On("launcher:chain:done", (event: unknown) => {
-      const data = (event as { data: { profileId: string; success: boolean } })
-        .data;
-      store.handleDone(data.profileId, data.success);
-
-      // Show HubToast fallback with the result details
-      const chain = store.getChain(data.profileId);
-      const result = store.getLastResult(data.profileId);
-      if (chain && result) {
-        const total = chain.steps.length;
-        const doneSteps = chain.steps.filter(
-          (s) => s.status === "done",
-        ).length;
-        const failedSteps = chain.steps.filter(
-          (s) => s.status === "failed",
-        );
-        const failedNames = failedSteps.map((s) => s.appId).join(", ");
-
-        let message: string;
-        if (result === "success") {
-          message = `Perfil ${data.profileId} · ${doneSteps}/${total} apps lanzadas`;
-        } else if (result === "partial") {
-          message = `Perfil ${data.profileId} · ${doneSteps}/${total} apps listas, falló ${failedNames}`;
-        } else {
-          message = `Perfil ${data.profileId} · no se pudo iniciar`;
-        }
-
-        if (!notificationsRef.current.launcherMuted) {
-          setToastInfo({ variant: result, message, profileId: data.profileId });
-        }
-      }
-    });
-    const offError = Events.On("launcher:chain:error", (event: unknown) => {
-      const data = (event as { data: { profileId: string } }).data;
-      store.handleError(data.profileId);
-    });
-
-    return () => {
-      offStep();
-      offDone();
-      offError();
-      store.shutdown();
-    };
-  }, [store]);
-
-  const handleRetry = useCallback((profileId: string) => {
-    Events.Emit("launcher:profile:retry:failed", { id: profileId });
-    setToastInfo(null);
-  }, []);
-
-  const handleCloseToast = useCallback(() => {
-    setToastInfo(null);
-  }, []);
-
-  return (
-    <>
-      <ChainRunnerContext.Provider value={store}>
-        {children}
-      </ChainRunnerContext.Provider>
-      {toastInfo && (
-        <HubToast
-          variant={toastInfo.variant}
-          message={toastInfo.message}
-          profileId={toastInfo.profileId}
-          onRetry={handleRetry}
-          onClose={handleCloseToast}
-        />
-      )}
-    </>
-  );
 }
 
 function useChainRunnerStore(): ChainRunnerStore {

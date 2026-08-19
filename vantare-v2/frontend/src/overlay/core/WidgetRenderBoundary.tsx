@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 export type WidgetRenderBoundaryProps = {
   widgetId: string;
@@ -22,7 +22,7 @@ export class WidgetRenderBoundary extends Component<
     return { error };
   }
 
-  componentDidCatch(error: Error, _info: ErrorInfo): void {
+  componentDidCatch(error: Error): void {
     this.props.onError?.(error);
   }
 

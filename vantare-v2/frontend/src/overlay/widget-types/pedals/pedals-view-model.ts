@@ -42,8 +42,9 @@ function buildUnavailableModel(
 
 export function buildPedalsViewModel(
   snapshot: TelemetrySnapshot,
-  _content: PedalsContent,
+  content: PedalsContent,
 ): PedalsViewModel {
+  void content;
   if (snapshot.status === "disconnected") {
     return buildUnavailableModel("disconnected");
   }

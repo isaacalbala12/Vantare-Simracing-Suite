@@ -34,7 +34,7 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
     const next = createTelemetryRateCoordinator();
     next.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     return next;
-  }, [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout]);
+  }, []);
 
   return (
     <ConnectedStudioProvider

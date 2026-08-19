@@ -75,6 +75,12 @@ type TelemetryCoreRuntimeConfig struct {
 	// TelemetryEngineApply defaults to on when nil. Point it to false for
 	// one-cycle rollback to the previous explicit stage orchestration.
 	TelemetryEngineApply *bool
+	// TelemetryShadowEvery controls semantic comparison sampling while the
+	// engine flag is on. Zero uses one comparison every 30 accepted batches.
+	TelemetryShadowEvery uint64
+	// TelemetryShadowBudget bounds one isolated legacy shadow application.
+	// Values <= 0 use two milliseconds; overruns disable only the shadow.
+	TelemetryShadowBudget time.Duration
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
@@ -107,6 +113,8 @@ type TelemetryCoreMetrics struct {
 	LifecycleTransitions         map[string]uint64
 	Transport                    telemetrytransport.HubMetrics
 	StrategyTransport            telemetrytransport.HubMetrics
+	ShadowMismatches             map[string]uint64
+	ShadowDisabled               bool
 }
 
 type telemetryCoreCounters struct {
@@ -150,6 +158,7 @@ type TelemetryCoreRuntime struct {
 	coord                    *telemetrycore.SessionCoordinator
 	derive                   *derive.Pipeline
 	engine                   *telemetryengine.TelemetryEngine
+	shadow                   *telemetryShadow
 	engineer                 EngineerProjectionConsumer
 	engineerManifest         engineerprojection.Manifest
 
@@ -242,7 +251,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
 	reducer := telemetrycore.NewReducer()
-	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{})
+	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: now})
 	pipeline := derive.NewPipeline(derive.Config{})
 	return &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
@@ -269,6 +278,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		coord:            coordinator,
 		derive:           pipeline,
 		engine:           telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:           newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
 		engineer:         config.Engineer,
 		engineerManifest: engineerManifest,
 		now:              now,
@@ -298,6 +308,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		return TelemetryCoreMetrics{}
 	}
 	details := runtime.metricStore.snapshot()
+	shadow := runtime.shadow.metrics()
 	return TelemetryCoreMetrics{
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
 		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
@@ -319,6 +330,8 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		LifecycleTransitions:         details.lifecycleTransitions,
 		Transport:                    runtime.hub.Metrics(),
 		StrategyTransport:            runtime.strategyHub.Metrics(),
+		ShadowMismatches:             shadow.mismatches,
+		ShadowDisabled:               shadow.disabled,
 	}
 }
 
@@ -738,20 +751,22 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 		}
 		final = result.State
 		factValues = result.Facts
+		sink.runtime.shadow.observe(ctx, batch, result)
 	} else {
 		observed, err := sink.runtime.reducer.Apply(batch)
 		if err != nil {
 			return err
 		}
-		facts := &collectTelemetryFacts{}
-		if err := sink.runtime.coord.Apply(ctx, observed, facts); err != nil {
-			return err
-		}
-		final, err = sink.runtime.derive.Apply(ctx, observed)
+		coordinated, err := sink.runtime.coord.Prepare(ctx, observed)
 		if err != nil {
 			return err
 		}
-		factValues = facts.values
+		factValues = coordinated.Facts()
+		sink.runtime.coord.Commit(coordinated)
+		final, err = sink.runtime.derive.Apply(ctx, coordinated.Snapshot())
+		if err != nil {
+			return err
+		}
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
@@ -845,15 +860,6 @@ func (runtime *TelemetryCoreRuntime) handlePostCommitFailure(
 			return statusErr
 		}
 	}
-	return nil
-}
-
-type collectTelemetryFacts struct {
-	values []envelope.Fact[telemetrycore.SessionFact]
-}
-
-func (sink *collectTelemetryFacts) WriteFacts(_ context.Context, values []envelope.Fact[telemetrycore.SessionFact]) error {
-	sink.values = append(sink.values, values...)
 	return nil
 }
 

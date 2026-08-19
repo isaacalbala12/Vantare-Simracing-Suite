@@ -145,9 +145,12 @@ func TestValidateImport(t *testing.T) {
 		{name: "concrete driver rejects another simulator", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/drivers/iracing"}, wantErr: true},
 		{name: "core may use schema", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/schema"}},
 		{name: "core may use neutral driver contracts", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/driver"}},
+		{name: "core may use identity policy", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/identity"}},
 		{name: "core rejects catalog", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/catalog"}, wantErr: true},
 		{name: "derive may use core", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "derive rejects driver contracts", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
+		{name: "identity policy may use schema", edge: importEdge{Package: "internal/telemetry/identity", Import: modulePath + "/internal/telemetry/schema"}},
+		{name: "identity policy rejects core", edge: importEdge{Package: "internal/telemetry/identity", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
 		{name: "engine may use core", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "engine may use derive", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/derive"}},
 		{name: "engine rejects concrete driver", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/drivers/lmu"}, wantErr: true},
@@ -462,8 +465,9 @@ func validateImport(edge importEdge) error {
 		if unexpectedTelemetryImport(edge.Import,
 			modulePath+"/internal/telemetry/schema",
 			modulePath+"/internal/telemetry/driver",
+			modulePath+"/internal/telemetry/identity",
 		) {
-			return fmt.Errorf("core may only import schema and neutral driver contracts within telemetry, not %s", edge.Import)
+			return fmt.Errorf("core may only import schema, identity policy, and neutral driver contracts within telemetry, not %s", edge.Import)
 		}
 	}
 
@@ -485,6 +489,15 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/engine",
 		) {
 			return fmt.Errorf("engine may only import schema, core, derive, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/identity" || strings.HasPrefix(edge.Package, "internal/telemetry/identity/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/identity",
+		) {
+			return fmt.Errorf("identity policy may only import schema and its own tree within telemetry, not %s", edge.Import)
 		}
 	}
 

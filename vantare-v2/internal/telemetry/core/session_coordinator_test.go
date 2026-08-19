@@ -276,11 +276,11 @@ func TestSessionCoordinatorActiveVehicleChangePreservesRivalsAndBaselinesNewRun(
 }
 
 func TestSessionCoordinatorVehicleHistoryBudgetIsAtomicAndRetryable(t *testing.T) {
-	if MaxSessionVehicleHistory != 104 {
-		t.Fatalf("canonical history budget = %d, want 104 scoring slots", MaxSessionVehicleHistory)
+	if got := NewSessionCoordinator(SessionCoordinatorConfig{}).maxVehicles; got != 512 {
+		t.Fatalf("default identity history budget = %d, want 512", got)
 	}
-	if got := NewSessionCoordinator(SessionCoordinatorConfig{MaxVehicleHistory: 105}).maxVehicles; got != MaxSessionVehicleHistory {
-		t.Fatalf("configured history budget widened to %d", got)
+	if got := NewSessionCoordinator(SessionCoordinatorConfig{MaxVehicleHistory: 105}).maxVehicles; got != 105 {
+		t.Fatalf("configured identity history budget = %d, want 105", got)
 	}
 	coordinator := NewSessionCoordinator(SessionCoordinatorConfig{MaxVehicleHistory: 2})
 	sink := &factSink{}

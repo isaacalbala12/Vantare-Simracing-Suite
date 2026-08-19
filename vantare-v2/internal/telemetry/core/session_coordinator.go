@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	identityeviction "github.com/vantare/overlays/v2/internal/telemetry/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -24,8 +25,8 @@ var (
 	ErrVehicleHistoryOverflow = errors.New("telemetry session vehicle history exceeds configured limit")
 )
 
-// MaxSessionVehicleHistory matches the demonstrated LMU VehicleScoring slot
-// budget. A session never evicts history silently to admit another vehicle.
+// MaxSessionVehicleHistory remains the LMU scoring-slot budget used by the
+// recording mapper. SessionCoordinator history uses a separate bounded LRU.
 const MaxSessionVehicleHistory = 104
 
 type FactKind uint8
@@ -127,8 +128,8 @@ func NewSessionCoordinator(config SessionCoordinatorConfig) *SessionCoordinator 
 		maxFacts = 256
 	}
 	maxVehicles := config.MaxVehicleHistory
-	if maxVehicles <= 0 || maxVehicles > MaxSessionVehicleHistory {
-		maxVehicles = MaxSessionVehicleHistory
+	if maxVehicles <= 0 {
+		maxVehicles = identityeviction.DefaultHistoryLimit
 	}
 	return &SessionCoordinator{now: now, maxFacts: maxFacts, maxVehicles: maxVehicles}
 }
@@ -148,6 +149,12 @@ func (coordinator *SessionCoordinator) Apply(
 	if sink == nil {
 		return fmt.Errorf("write session facts: %w", ErrClosed)
 	}
+	coordinator.mu.RLock()
+	if err := validateBatchHeader(coordinator.state.header, coordinator.state.initialized, snapshot.Header()); err != nil {
+		coordinator.mu.RUnlock()
+		return err
+	}
+	coordinator.mu.RUnlock()
 
 	candidate, err := coordinator.Prepare(ctx, snapshot)
 	if err != nil {
@@ -180,10 +187,6 @@ func (coordinator *SessionCoordinator) Prepare(
 		return CoordinatorCandidate{}, err
 	}
 	coordinator.mu.RLock()
-	if err := validateBatchHeader(coordinator.state.header, coordinator.state.initialized, header); err != nil {
-		coordinator.mu.RUnlock()
-		return CoordinatorCandidate{}, err
-	}
 	next := cloneCoordinatorState(coordinator.state)
 	coordinator.mu.RUnlock()
 	drafts, err := coordinator.applySnapshot(&next, header, value)
@@ -383,13 +386,28 @@ func (coordinator *SessionCoordinator) applySnapshot(
 	if updatedVehicles == nil {
 		updatedVehicles = make(map[identity.VehicleID]coordinatorVehicle, len(state.Vehicles))
 	}
+	activeVehicles := make(map[identity.VehicleID]struct{}, len(state.Vehicles))
+	for _, vehicle := range state.Vehicles {
+		activeVehicles[vehicle.Identity.Vehicle] = struct{}{}
+	}
 	trackedVehicles := len(updatedVehicles)
 	for _, vehicle := range state.Vehicles {
 		if _, exists := updatedVehicles[vehicle.Identity.Vehicle]; !exists {
 			trackedVehicles++
-			if trackedVehicles > coordinator.maxVehicles {
-				return nil, ErrVehicleHistoryOverflow
-			}
+		}
+	}
+	if overflow := trackedVehicles - coordinator.maxVehicles; overflow > 0 {
+		entries := make([]identityeviction.EvictionEntry, 0, len(updatedVehicles))
+		for vehicleID, vehicle := range updatedVehicles {
+			_, active := activeVehicles[vehicleID]
+			entries = append(entries, identityeviction.EvictionEntry{Vehicle: vehicleID, LastSeen: vehicle.lastSeen, Active: active})
+		}
+		victims := identityeviction.OldestUnseen(entries, overflow)
+		for _, vehicleID := range victims {
+			delete(updatedVehicles, vehicleID)
+		}
+		if trackedVehicles-len(victims) > coordinator.maxVehicles {
+			return nil, ErrVehicleHistoryOverflow
 		}
 	}
 	for _, vehicle := range state.Vehicles {

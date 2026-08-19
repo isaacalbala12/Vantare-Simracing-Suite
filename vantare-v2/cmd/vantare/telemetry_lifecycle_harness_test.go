@@ -133,9 +133,10 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	t.Logf("after Engineer: handles=%d", processHandleCount(t))
 
 	telemetryRuntime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
-		Enabled:  false,
-		Emitter:  emitter,
-		Engineer: engineer,
+		Enabled:                 false,
+		Emitter:                 emitter,
+		Engineer:                engineer,
+		StrategyPublicTransport: true,
 	})
 	if err != nil {
 		t.Fatalf("NewTelemetryCoreRuntime() error = %v", err)
@@ -165,11 +166,12 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	}
 
 	httpServer := server.New(server.ServerConfig{
-		Addr:               "127.0.0.1:0",
-		EngineerSvc:        engineer,
-		Emitter:            emitter,
-		OverlayProjection:  telemetryRuntime.Hub(),
-		StrategyProjection: telemetryRuntime.StrategyHub(),
+		Addr:                    "127.0.0.1:0",
+		EngineerSvc:             engineer,
+		Emitter:                 emitter,
+		OverlayProjection:       telemetryRuntime.Hub(),
+		StrategyProjection:      telemetryRuntime.StrategyHub(),
+		StrategyPublicTransport: true,
 	})
 	httpServer.Start()
 	if httpServer.Addr() == "" {
@@ -325,8 +327,8 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 	}
 
 	replayEvents := emitter.snapshot()
-	if len(replayEvents) != 2 {
-		t.Fatalf("status replay event count = %d, want 2: %#v", len(replayEvents), replayEvents)
+	if len(replayEvents) != 1 {
+		t.Fatalf("status replay event count = %d, want 1: %#v", len(replayEvents), replayEvents)
 	}
 	counts := make(map[string]int, 2)
 	for _, event := range replayEvents {
@@ -341,10 +343,7 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 			t.Fatalf("crossed replay event name=%q product=%q", event.name, envelope.Product)
 		}
 	}
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
+	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductOverlay} {
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if counts[name] != 1 {
 			t.Fatalf("%s replay count = %d, want 1; all=%v", product, counts[name], counts)

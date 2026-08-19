@@ -11,8 +11,11 @@ ISA-39 define los payloads v1 en
 producto, calidad/presencia explícitas y versiones canonical/projection/
 recording independientes. El wiring productivo existe desde TC-07C: el único
 camino live entra por `internal/app/telemetry_core_runtime.go`, publica Overlay
-y Strategy mediante hubs separados y entrega Engineer in-process. Analysis
-live y los transportes de facts desconectados se retiraron en ISA-372/F4.
+y entrega Engineer in-process. Desde ISA-372/F7, Strategy conserva su builder y
+consumidor in-process, pero su Hub, Wails y SSE están desactivados por defecto;
+`-strategy-public-transport` los restaura sólo durante el ciclo de rollback.
+Analysis live y los transportes de facts desconectados se retiraron en
+ISA-372/F4.
 
 ISA-101 auditó el histórico y TC-06B / ISA-102 implementa en rama de issue el
 adaptador privado SQLite modernc, todavía sin wiring productivo. MCAP queda

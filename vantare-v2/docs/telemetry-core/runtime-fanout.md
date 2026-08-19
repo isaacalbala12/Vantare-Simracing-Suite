@@ -4,8 +4,11 @@ Estado: retirado en ISA-372/F4 por la decisión 7 del ADR 0008 aceptado el
 2026-08-19.
 
 `internal/telemetry/core.Fanout` nunca tuvo wiring productivo. El runtime real
-publica Overlay y Strategy mediante sus hubs y entrega Engineer in-process
-desde `internal/app/telemetry_core_runtime.go`; no pasa por un fan-out genérico.
+publica Overlay y entrega Engineer in-process desde
+`internal/app/telemetry_core_runtime.go`; no pasa por un fan-out genérico.
+Strategy conserva su proyección y consumidor in-process, pero desde F7 no
+instancia Hub ni expone Wails/SSE salvo rollback explícito con
+`-strategy-public-transport`.
 
 El contrato tipado `FactResyncRequiredError`, la retención acotada de facts y
 la referencia al patrón latest-wins de canal cap-1 se conservan en

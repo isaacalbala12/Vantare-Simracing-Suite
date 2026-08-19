@@ -524,6 +524,9 @@ func registerTelemetryStatusReplayHandlers(
 	}
 	unsubscribes := make([]func(), 0, len(registrations))
 	for _, registration := range registrations {
+		if registration.hub == nil {
+			continue
+		}
 		unsubscribe := events.On(
 			telemetrytransport.StatusRequestEventName(registration.product),
 			func(_ *application.CustomEvent) {
@@ -1003,6 +1006,7 @@ func main() {
 	}
 
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
+	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
@@ -1621,9 +1625,10 @@ func main() {
 	engBridge.Start()
 
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
-		Enabled:  *live,
-		Emitter:  emitter,
-		Engineer: engSvc,
+		Enabled:                 *live,
+		Emitter:                 emitter,
+		Engineer:                engSvc,
+		StrategyPublicTransport: *strategyPublicTransport,
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
@@ -1675,11 +1680,12 @@ func main() {
 			return telemetryCoreRuntime.Hub()
 		}(),
 		StrategyProjection: func() *telemetrytransport.Hub {
-			if telemetryCoreRuntime == nil {
+			if telemetryCoreRuntime == nil || !*strategyPublicTransport {
 				return nil
 			}
 			return telemetryCoreRuntime.StrategyHub()
 		}(),
+		StrategyPublicTransport: *strategyPublicTransport,
 		OverlayV2Publishers: func() *telemetrytransport.PublisherRegistry {
 			if telemetryCoreRuntime == nil {
 				return nil

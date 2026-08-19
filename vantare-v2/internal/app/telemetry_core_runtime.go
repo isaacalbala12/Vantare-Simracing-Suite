@@ -89,6 +89,9 @@ type TelemetryCoreRuntimeConfig struct {
 	// EngineerFactQueueCapacity bounds the ordered facts channel and retained
 	// resync window. Values <= 0 use 64 facts.
 	EngineerFactQueueCapacity int
+	// StrategyPublicTransport restores the previous Strategy Hub, Wails and
+	// SSE publication for one rollback cycle. It is off by default.
+	StrategyPublicTransport bool
 	// TelemetryShadowEvery controls semantic comparison sampling while the
 	// engine flag is on. Zero uses one comparison every 30 accepted batches.
 	TelemetryShadowEvery uint64
@@ -304,6 +307,16 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	reducer := telemetrycore.NewReducer()
 	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: now})
 	pipeline := derive.NewPipeline(derive.Config{})
+	var strategyHub *telemetrytransport.Hub
+	if config.StrategyPublicTransport {
+		strategyHub = telemetrytransport.NewHub(telemetrytransport.HubConfig{
+			Product: telemetrytransport.ProductStrategy,
+			Versions: projection.VersionPolicy{
+				Current:          strategyprojection.CurrentVersion,
+				MinimumSupported: strategyprojection.MinimumSupportedVersion,
+			},
+		})
+	}
 	runtime := &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
@@ -318,13 +331,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				MinimumSupported: overlayprojection.MinimumSupportedVersion,
 			},
 		}),
-		strategyHub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
-			Product: telemetrytransport.ProductStrategy,
-			Versions: projection.VersionPolicy{
-				Current:          strategyprojection.CurrentVersion,
-				MinimumSupported: strategyprojection.MinimumSupportedVersion,
-			},
-		}),
+		strategyHub:         strategyHub,
 		overlayV2Publishers: overlayV2Publishers,
 		manager:             manager,
 		mapper:              lmu.NewBatchMapper(),
@@ -399,7 +406,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
 		Transport:                    runtime.hub.Metrics(),
-		StrategyTransport:            runtime.strategyHub.Metrics(),
+		StrategyTransport:            strategyHubMetrics(runtime.strategyHub),
 		ShadowMismatches:             shadow.mismatches,
 		ShadowDisabled:               shadow.disabled,
 		EngineSequence:               runtime.counters.engineSequence.Load(),
@@ -419,6 +426,13 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		EngineerFactQueueDepth:   details.engineerFactQueueDepth,
 		EngineerFactsDropped:     details.engineerFactsDropped,
 	}
+}
+
+func strategyHubMetrics(hub *telemetrytransport.Hub) telemetrytransport.HubMetrics {
+	if hub == nil {
+		return telemetrytransport.HubMetrics{}
+	}
+	return hub.Metrics()
 }
 
 // SourceStatus returns the canonical runtime's closed connection summary.
@@ -529,10 +543,13 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 		go runtime.monitor(ctx)
 	}
 	if runtime.emitter != nil {
-		runtime.wg.Add(3)
+		runtime.wg.Add(2)
 		go runtime.serveWails(ctx, telemetrytransport.ProductOverlay, runtime.hub)
-		go runtime.serveWails(ctx, telemetrytransport.ProductStrategy, runtime.strategyHub)
 		go runtime.serveWailsOverlayV2(ctx)
+		if runtime.strategyHub != nil {
+			runtime.wg.Add(1)
+			go runtime.serveWails(ctx, telemetrytransport.ProductStrategy, runtime.strategyHub)
+		}
 	}
 	runtime.lifecycleMu.Unlock()
 	return nil
@@ -670,8 +687,10 @@ func (runtime *TelemetryCoreRuntime) closeProductHubs() error {
 	if err := runtime.hub.Close(); err != nil {
 		result = errors.Join(result, fmt.Errorf("close Overlay telemetry hub: %w", err))
 	}
-	if err := runtime.strategyHub.Close(); err != nil {
-		result = errors.Join(result, fmt.Errorf("close Strategy telemetry hub: %w", err))
+	if runtime.strategyHub != nil {
+		if err := runtime.strategyHub.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("close Strategy telemetry hub: %w", err))
+		}
 	}
 	return result
 }
@@ -981,7 +1000,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	if err := sink.runtime.publishOverlayV2(final, status.State, status.ReconnectAttempt); err != nil {
 		sink.runtime.handleOverlayV2Failure(err)
 	}
-	if publication.overlayPublished && publication.strategyPublished {
+	if publication.overlayPublished && (sink.runtime.strategyHub == nil || publication.strategyPublished) {
 		sink.runtime.counters.projectionsPublished.Add(1)
 	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
@@ -1291,7 +1310,7 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 			}
 		}
 	}
-	if strategyReady {
+	if strategyReady && runtime.strategyHub != nil {
 		strategyFrame, err := telemetrytransport.NewStrategyFull(
 			strategyProjected.Metadata,
 			runtime.statusRev,
@@ -1339,20 +1358,22 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	if err != nil {
 		return fmt.Errorf("build Overlay telemetry status: %w", err)
 	}
-	strategyStatus, err := telemetrytransport.NewStatus(
-		telemetrytransport.ProductStrategy,
-		nextRevision,
-		capturedAt,
-		payload,
-	)
-	if err != nil {
-		return fmt.Errorf("build Strategy telemetry status: %w", err)
-	}
 	if err := runtime.hub.PublishStatus(overlayStatus); err != nil {
 		return fmt.Errorf("publish Overlay telemetry status: %w", err)
 	}
-	if err := runtime.strategyHub.PublishStatus(strategyStatus); err != nil {
-		return fmt.Errorf("publish Strategy telemetry status: %w", err)
+	if runtime.strategyHub != nil {
+		strategyStatus, err := telemetrytransport.NewStatus(
+			telemetrytransport.ProductStrategy,
+			nextRevision,
+			capturedAt,
+			payload,
+		)
+		if err != nil {
+			return fmt.Errorf("build Strategy telemetry status: %w", err)
+		}
+		if err := runtime.strategyHub.PublishStatus(strategyStatus); err != nil {
+			return fmt.Errorf("publish Strategy telemetry status: %w", err)
+		}
 	}
 	runtime.statusRev = nextRevision
 	runtime.statusState = state

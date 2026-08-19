@@ -194,14 +194,15 @@ type Server struct {
 }
 
 type ServerConfig struct {
-	Addr                string
-	DistFS              fs.FS
-	CfgDir              string
-	EngineerSvc         *engineerservice.EngineerService
-	Emitter             EventEmitter
-	OverlayProjection   *telemetrytransport.Hub
-	StrategyProjection  *telemetrytransport.Hub
-	OverlayV2Publishers *telemetrytransport.PublisherRegistry
+	Addr                    string
+	DistFS                  fs.FS
+	CfgDir                  string
+	EngineerSvc             *engineerservice.EngineerService
+	Emitter                 EventEmitter
+	OverlayProjection       *telemetrytransport.Hub
+	StrategyProjection      *telemetrytransport.Hub
+	StrategyPublicTransport bool
+	OverlayV2Publishers     *telemetrytransport.PublisherRegistry
 }
 
 func New(cfg ServerConfig) *Server {
@@ -228,7 +229,7 @@ func New(cfg ServerConfig) *Server {
 			telemetrytransport.SSEHandler(cfg.OverlayProjection),
 		)
 	}
-	if cfg.StrategyProjection != nil {
+	if cfg.StrategyPublicTransport && cfg.StrategyProjection != nil {
 		mux.Handle(
 			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),
 			telemetrytransport.SSEHandler(cfg.StrategyProjection),

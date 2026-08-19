@@ -2,17 +2,18 @@ pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
 
-Column {
+Item {
     id: root
     objectName: "proximityRelative"
 
     property var rowsModel: null
     property int playerIndex: -1
     property string playerClass: ""
+    property bool modelReady: false
     property bool reducedMotion: false
 
     width: parent ? parent.width : 404
-    spacing: 0
+    implicitHeight: list.height
 
     RelativeTokens { id: tokens }
 
@@ -24,11 +25,19 @@ Column {
         return ranks[key] === undefined ? 99 : ranks[key]
     }
 
-    Repeater {
+    ListView {
+        id: list
+        objectName: "proximityList"
+        width: parent.width
+        height: Math.max(1, count * 30 + (root.playerIndex < 0 ? 0 : root.playerIndex === 0 ? 6 : 12))
+        interactive: false
+        clip: false
+        cacheBuffer: 1000
         model: root.rowsModel
         delegate: RelativeModelRow {
             id: proximityDelegate
             mode: "all"
+            modelReady: root.modelReady
             reducedMotion: root.reducedMotion
             property bool showSeam: root.playerIndex >= 0
                                     && (index === root.playerIndex - 1 || index === root.playerIndex)
@@ -60,6 +69,36 @@ Column {
                     color: tokens.accentHot
                     opacity: 0.85
                 }
+            }
+        }
+
+        add: Transition {
+            NumberAnimation {
+                properties: "opacity"; from: 0; to: 1
+                duration: root.reducedMotion ? 0 : tokens.enterMs
+                easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier
+            }
+        }
+        move: Transition {
+            NumberAnimation {
+                id: moveAnimation
+                properties: "x,y"
+                duration: root.reducedMotion ? 0 : Math.min(
+                    tokens.flipMaxMs,
+                    tokens.flipBaseMs + Math.abs(moveAnimation.to - moveAnimation.from)
+                        / tokens.rowStride * tokens.flipPerRowMs)
+                easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier
+            }
+        }
+        moveDisplaced: Transition {
+            NumberAnimation {
+                id: displacedAnimation
+                properties: "x,y"
+                duration: root.reducedMotion ? 0 : Math.min(
+                    tokens.flipMaxMs,
+                    tokens.flipBaseMs + Math.abs(displacedAnimation.to - displacedAnimation.from)
+                        / tokens.rowStride * tokens.flipPerRowMs)
+                easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.flipBezier
             }
         }
     }

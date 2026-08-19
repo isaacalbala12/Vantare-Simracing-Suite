@@ -18,6 +18,8 @@ Item {
 
     property string mode: "all"
     property bool reducedMotion: false
+    property bool modelReady: false
+    readonly property bool removalRunning: removalAnimation.running
     property string crossDirection: ""
     property string previousSide: ""
     readonly property bool matches: mode === "all"
@@ -40,26 +42,13 @@ Item {
     width: parent ? parent.width : 404
     height: root.matches ? 30 : 0
     visible: root.matches
+    ListView.delayRemove: removalAnimation.running
 
     RelativeTokens { id: tokens }
 
-    Behavior on y {
-        NumberAnimation {
-            id: flipAnimation
-            duration: root.reducedMotion ? 0 : Math.min(
-                tokens.flipMaxMs,
-                tokens.flipBaseMs
-                    + Math.abs(flipAnimation.to - flipAnimation.from)
-                    / tokens.rowStride * tokens.flipPerRowMs
-            )
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: tokens.flipBezier
-        }
-    }
-
     Component.onCompleted: previousSide = side
     onSideChanged: {
-        if (previousSide.length > 0 && previousSide !== side && !isPlayer) {
+        if (modelReady && previousSide.length > 0 && previousSide !== side && !isPlayer) {
             crossDirection = side === "ahead" ? "lost" : "gained"
             crossReset.restart()
         }
@@ -69,5 +58,20 @@ Item {
         id: crossReset
         interval: tokens.crossMs + tokens.crossStaggerMs * 2
         onTriggered: root.crossDirection = ""
+    }
+
+    ListView.onRemove: removalAnimation.start()
+    ParallelAnimation {
+        id: removalAnimation
+        NumberAnimation {
+            target: root; property: "opacity"; to: 0
+            duration: root.reducedMotion ? 0 : tokens.ghostMs
+            easing.type: Easing.InCubic
+        }
+        NumberAnimation {
+            target: root; property: "height"; to: 0
+            duration: root.reducedMotion ? 0 : tokens.ghostMs
+            easing.type: Easing.InCubic
+        }
     }
 }

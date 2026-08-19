@@ -4,12 +4,15 @@ Item {
     id: root
     objectName: "approachIndicator"
 
-    property real gapSeconds: 0
+    property var gapSeconds: null
     property bool ahead: true
     property bool active: false
     property bool reducedMotion: false
-    readonly property bool imminent: Math.abs(gapSeconds) <= 1
-    readonly property real proximity: Math.max(0, Math.min(1, 1 - Math.abs(gapSeconds)))
+    readonly property bool hasGap: typeof gapSeconds === "number" && isFinite(gapSeconds)
+    readonly property bool imminent: hasGap && Math.abs(gapSeconds) <= 1
+    readonly property real proximity: hasGap
+                                      ? Math.max(0, Math.min(1, 1 - Math.abs(gapSeconds)))
+                                      : 0
     readonly property real rightRatio: (Math.round((1 - proximity) * 55 + 20)) / 100
     readonly property real targetWidth: Math.max(0, parent ? parent.width - 8 - parent.width * rightRatio : 0)
 

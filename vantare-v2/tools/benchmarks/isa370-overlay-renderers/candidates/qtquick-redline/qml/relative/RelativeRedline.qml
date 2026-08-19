@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
+import "../common" as Common
 
 Item {
     id: root
@@ -12,11 +13,15 @@ Item {
     property bool reducedMotion: false
     property string statusMessage: ""
     property string playerClass: ""
+    property string playerRowId: ""
     property int playerIndex: -1
+    readonly property bool modelReady: rowsModel !== null
+                                       && String(rowsModel.status || "") === "ready"
 
     width: tokens.panelWidth
     implicitWidth: tokens.panelWidth
     implicitHeight: panel.height + (statusMessage.length > 0 ? status.height + 8 : 0)
+    height: implicitHeight
 
     RelativeTokens { id: tokens }
 
@@ -25,25 +30,23 @@ Item {
         return name === "HYPERCAR" ? "HY" : name === "LMGT3" ? "GT3" : name
     }
 
-    Rectangle {
+    function syncPlayer(rowId, vehicleClass, index, isPlayer) {
+        if (!isPlayer)
+            return
+        playerRowId = rowId
+        playerClass = vehicleClass
+        playerIndex = index
+    }
+
+    Common.Panel {
         id: panel
         objectName: "relativePanel"
         width: parent.width
-        height: content.height + tokens.panelPadding * 2
-        radius: tokens.panelRadius
-        border.width: 1
-        border.color: tokens.panelBorder
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: tokens.panelTop }
-            GradientStop { position: 0.30; color: tokens.panelMiddle }
-            GradientStop { position: 1.0; color: tokens.panelBottom }
-        }
+        height: implicitHeight
 
         Column {
             id: content
-            x: tokens.panelPadding
-            y: tokens.panelPadding
-            width: parent.width - tokens.panelPadding * 2
+            width: panel.contentItem.width
             spacing: 0
 
             Item {
@@ -59,16 +62,20 @@ Item {
                         width: content.width
                         height: matches ? 34 : 0
 
-                        Component.onCompleted: {
-                            if (isPlayer) {
-                                root.playerClass = vehicleClass
-                                root.playerIndex = index
+                        function sync() {
+                            root.syncPlayer(rowId, vehicleClass, index, isPlayer)
+                        }
+                        Component.onCompleted: sync()
+                        Component.onDestruction: {
+                            if (root.playerRowId === rowId) {
+                                root.playerRowId = ""
+                                root.playerClass = ""
+                                root.playerIndex = -1
                             }
                         }
-                        onVehicleClassChanged: {
-                            if (isPlayer)
-                                root.playerClass = vehicleClass
-                        }
+                        onVehicleClassChanged: sync()
+                        onIndexChanged: sync()
+                        onIsPlayerChanged: sync()
 
                         Row {
                             anchors.left: parent.left
@@ -128,28 +135,14 @@ Item {
         }
     }
 
-    Rectangle {
+    Common.Status {
         id: status
         anchors.top: panel.bottom
         anchors.topMargin: 8
         width: parent.width
-        height: 34
-        visible: root.statusMessage.length > 0
-        radius: 7
-        color: "#1f1f22"
-        border.width: 1
-        border.color: tokens.panelBorder
-        Text {
-            anchors.fill: parent
-            anchors.margins: 8
-            text: root.statusMessage
-            color: tokens.textDim
-            font.family: tokens.fontFamily
-            font.pixelSize: 11
-            font.weight: Font.DemiBold
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignVCenter
-        }
+        height: implicitHeight
+        message: root.statusMessage
+        kind: root.modelReady ? "unavailable" : "error"
     }
 
     Component {
@@ -158,6 +151,8 @@ Item {
             width: variantLoader.width
             rowsModel: root.rowsModel
             playerClass: root.playerClass
+            playerIndex: root.playerIndex
+            modelReady: root.modelReady
             reducedMotion: root.reducedMotion
         }
     }
@@ -168,6 +163,7 @@ Item {
             rowsModel: root.rowsModel
             playerIndex: root.playerIndex
             playerClass: root.playerClass
+            modelReady: root.modelReady
             reducedMotion: root.reducedMotion
         }
     }
@@ -177,6 +173,7 @@ Item {
             width: variantLoader.width
             rowsModel: root.rowsModel
             playerClass: root.playerClass
+            modelReady: root.modelReady
             reducedMotion: root.reducedMotion
         }
     }

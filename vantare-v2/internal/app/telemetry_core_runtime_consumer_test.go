@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -165,6 +166,65 @@ func TestEngineerAsyncPortFlagCanRollbackToSynchronousDelivery(t *testing.T) {
 	}
 }
 
+func TestEngineerFactsAreOrderedAndNeverDropped(t *testing.T) {
+	consumer := newFactRecordingEngineerConsumer(false)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer, EngineerFactQueueCapacity: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.engineerPort.Start()
+	defer func() {
+		if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	for sequence := telemetrycore.FactSequence(1); sequence <= 2; sequence++ {
+		if _, err := runtime.engineerPort.EnqueueFact(engineerFact(1, sequence)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitForEngineerFactSequences(t, consumer, []uint64{1, 2})
+	_, err = runtime.engineerPort.EnqueueFact(engineerFact(1, 4))
+	if !errors.Is(err, engineerprojection.ErrFactResyncRequired) {
+		t.Fatalf("fact gap error = %v, want ErrFactResyncRequired", err)
+	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerFactResync != 1 || metrics.EngineerFactsDropped != 0 {
+		t.Fatalf("fact gap metrics = %+v", metrics)
+	}
+}
+
+func TestFactQueueOverflowDeclaresResync(t *testing.T) {
+	consumer := newFactRecordingEngineerConsumer(true)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer, EngineerFactQueueCapacity: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.engineerPort.Start()
+	if _, err := runtime.engineerPort.EnqueueFact(engineerFact(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	<-consumer.started
+	if _, err := runtime.engineerPort.EnqueueFact(engineerFact(1, 2)); err != nil {
+		t.Fatal(err)
+	}
+	_, overflowErr := runtime.engineerPort.EnqueueFact(engineerFact(1, 3))
+	if !errors.Is(overflowErr, engineerprojection.ErrFactResyncRequired) {
+		t.Fatalf("overflow error = %v, want ErrFactResyncRequired", overflowErr)
+	}
+	if _, err := runtime.engineerPort.ResyncFacts(1); !errors.Is(err, engineerprojection.ErrFactResyncRequired) {
+		t.Fatalf("ResyncFacts after overflow = %v, want ErrFactResyncRequired", err)
+	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerFactResync != 1 || metrics.EngineerFactsDropped != 2 || metrics.EngineerFactQueueDepth != 0 {
+		t.Fatalf("overflow metrics = %+v", metrics)
+	}
+	close(consumer.release)
+	if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func projectionMetadata(sequence uint64) telemetryprojection.Metadata {
 	return telemetryprojection.Metadata{Sequence: schema.Sequence(sequence)}
 }
@@ -260,5 +320,67 @@ func waitForEngineerSequences(t *testing.T, consumer *blockingEngineerConsumer, 
 		if got[index] != want[index] {
 			t.Fatalf("Engineer sequences = %v, want %v", got, want)
 		}
+	}
+}
+
+type factRecordingEngineerConsumer struct {
+	block    bool
+	started  chan struct{}
+	release  chan struct{}
+	start    sync.Once
+	mu       sync.Mutex
+	sequence []uint64
+}
+
+func newFactRecordingEngineerConsumer(block bool) *factRecordingEngineerConsumer {
+	return &factRecordingEngineerConsumer{block: block, started: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (*factRecordingEngineerConsumer) ConsumeSourceStatus(engineerprojection.SourceStatusV1) error {
+	return nil
+}
+
+func (*factRecordingEngineerConsumer) ConsumeObservation(engineerprojection.ObservationSnapshotV1) error {
+	return nil
+}
+
+func (consumer *factRecordingEngineerConsumer) ConsumeFact(value engineerprojection.FactEnvelopeV1) error {
+	consumer.mu.Lock()
+	consumer.sequence = append(consumer.sequence, uint64(value.Fact.Sequence))
+	consumer.mu.Unlock()
+	consumer.start.Do(func() { close(consumer.started) })
+	if consumer.block {
+		<-consumer.release
+	}
+	return nil
+}
+
+func (consumer *factRecordingEngineerConsumer) sequences() []uint64 {
+	consumer.mu.Lock()
+	defer consumer.mu.Unlock()
+	return append([]uint64(nil), consumer.sequence...)
+}
+
+func waitForEngineerFactSequences(t *testing.T, consumer *factRecordingEngineerConsumer, want []uint64) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for len(consumer.sequences()) < len(want) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	got := consumer.sequences()
+	if len(got) != len(want) {
+		t.Fatalf("Engineer fact sequences = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("Engineer fact sequences = %v, want %v", got, want)
+		}
+	}
+}
+
+func engineerFact(epoch schema.Epoch, sequence telemetrycore.FactSequence) engineerprojection.FactEnvelopeV1 {
+	return engineerprojection.FactEnvelopeV1{
+		Metadata: telemetryprojection.Metadata{Epoch: epoch},
+		Fact:     engineerprojection.FactV1{Sequence: sequence},
 	}
 }

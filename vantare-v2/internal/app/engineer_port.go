@@ -7,10 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
 const defaultEngineerConsumeTimeout = 250 * time.Millisecond
+const defaultEngineerFactQueueCapacity = 64
 
 type engineerPort struct {
 	runtime  *TelemetryCoreRuntime
@@ -19,6 +21,7 @@ type engineerPort struct {
 
 	observations chan engineerprojection.ObservationSnapshotV1
 	statuses     chan engineerStatusDelivery
+	facts        chan engineerprojection.FactEnvelopeV1
 	stop         chan struct{}
 	done         chan struct{}
 
@@ -26,6 +29,11 @@ type engineerPort struct {
 	start   sync.Once
 	close   sync.Once
 	enqueue sync.Mutex
+	factMu  sync.Mutex
+
+	factCursor            *engineerprojection.FactCursor
+	factBoundary          error
+	factDeliveredSequence telemetrycore.FactSequence
 }
 
 type engineerStatusDelivery struct {
@@ -33,12 +41,15 @@ type engineerStatusDelivery struct {
 	done  chan struct{}
 }
 
-func newEngineerPort(runtime *TelemetryCoreRuntime, consumer EngineerProjectionConsumer, timeout time.Duration) *engineerPort {
+func newEngineerPort(runtime *TelemetryCoreRuntime, consumer EngineerProjectionConsumer, timeout time.Duration, factCapacity int) *engineerPort {
 	if runtime == nil || consumer == nil {
 		return nil
 	}
 	if timeout <= 0 {
 		timeout = defaultEngineerConsumeTimeout
+	}
+	if factCapacity < 1 {
+		factCapacity = defaultEngineerFactQueueCapacity
 	}
 	return &engineerPort{
 		runtime:      runtime,
@@ -46,8 +57,10 @@ func newEngineerPort(runtime *TelemetryCoreRuntime, consumer EngineerProjectionC
 		timeout:      timeout,
 		observations: make(chan engineerprojection.ObservationSnapshotV1, 1),
 		statuses:     make(chan engineerStatusDelivery, 1),
+		facts:        make(chan engineerprojection.FactEnvelopeV1, factCapacity),
 		stop:         make(chan struct{}),
 		done:         make(chan struct{}),
+		factCursor:   engineerprojection.NewFactCursor(factCapacity),
 	}
 }
 
@@ -83,6 +96,67 @@ func (port *engineerPort) RequestStop() {
 
 func fmtEngineerPortStop(err error) error {
 	return errors.Join(errors.New("stop Engineer asynchronous port"), err)
+}
+
+func (port *engineerPort) EnqueueFact(value engineerprojection.FactEnvelopeV1) (bool, error) {
+	if port == nil || !port.started.Load() {
+		return false, nil
+	}
+	port.factMu.Lock()
+	defer port.factMu.Unlock()
+	currentEpoch, _ := port.factCursor.Current()
+	if port.factBoundary != nil && value.Epoch <= currentEpoch {
+		return true, port.factBoundary
+	}
+	if err := port.factCursor.Append(value); err != nil {
+		port.factBoundary = err
+		port.runtime.metricStore.incrementEngineerFactResync()
+		port.runtime.recordEngineerFactBoundary(err)
+		return true, err
+	}
+	if value.Epoch > currentEpoch {
+		port.factBoundary = nil
+		port.factDeliveredSequence = 0
+	}
+	select {
+	case port.facts <- value:
+		port.runtime.metricStore.setEngineerFactQueueDepth(uint64(len(port.facts)))
+		return true, nil
+	default:
+		boundary := &engineerprojection.FactResyncRequiredError{
+			Previous: port.factDeliveredSequence,
+			Next:     value.Fact.Sequence,
+		}
+		port.factBoundary = boundary
+		port.runtime.metricStore.engineerFactDropped()
+		for {
+			select {
+			case <-port.facts:
+				port.runtime.metricStore.engineerFactDropped()
+			default:
+				port.runtime.metricStore.setEngineerFactQueueDepth(0)
+				goto factsDrained
+			}
+		}
+	factsDrained:
+		port.runtime.metricStore.incrementEngineerFactResync()
+		port.runtime.recordEngineerFactBoundary(boundary)
+		return true, boundary
+	}
+}
+
+func (port *engineerPort) ResyncFacts(from telemetrycore.FactSequence) ([]engineerprojection.FactEnvelopeV1, error) {
+	if port == nil {
+		return nil, &engineerprojection.FactResyncRequiredError{Previous: from}
+	}
+	port.factMu.Lock()
+	defer port.factMu.Unlock()
+	facts, err := port.factCursor.ResyncFacts(from)
+	if err != nil {
+		return nil, err
+	}
+	port.factBoundary = nil
+	return facts, nil
 }
 
 func (port *engineerPort) EnqueueObservation(value engineerprojection.ObservationSnapshotV1) bool {
@@ -161,8 +235,30 @@ func (port *engineerPort) run() {
 			port.deliverStatus(status)
 		case observation := <-port.observations:
 			port.consumeObservation(observation)
+		case fact := <-port.facts:
+			port.runtime.metricStore.setEngineerFactQueueDepth(uint64(len(port.facts)))
+			port.consumeFact(fact)
 		}
 	}
+}
+
+func (port *engineerPort) consumeFact(value engineerprojection.FactEnvelopeV1) {
+	port.factMu.Lock()
+	boundary := port.factBoundary
+	port.factMu.Unlock()
+	if boundary != nil {
+		port.runtime.metricStore.engineerFactDropped()
+		return
+	}
+	err := newTelemetryConsumerError("engineer.fact", port.runtime.guardConsumer("engineer.fact", func() error {
+		return port.consumer.ConsumeFact(value)
+	}))
+	if err == nil {
+		port.factMu.Lock()
+		port.factDeliveredSequence = value.Fact.Sequence
+		port.factMu.Unlock()
+	}
+	port.runtime.recordEngineerFactResult(err)
 }
 
 func (port *engineerPort) deliverLastStatus() {

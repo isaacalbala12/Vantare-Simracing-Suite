@@ -86,6 +86,9 @@ type TelemetryCoreRuntimeConfig struct {
 	// EngineerConsumeTimeout bounds each asynchronous observation callback.
 	// Values <= 0 use 250 milliseconds.
 	EngineerConsumeTimeout time.Duration
+	// EngineerFactQueueCapacity bounds the ordered facts channel and retained
+	// resync window. Values <= 0 use 64 facts.
+	EngineerFactQueueCapacity int
 	// TelemetryShadowEvery controls semantic comparison sampling while the
 	// engine flag is on. Zero uses one comparison every 30 accepted batches.
 	TelemetryShadowEvery uint64
@@ -139,6 +142,9 @@ type TelemetryCoreMetrics struct {
 	EngineerConsumeLatencyMs     TelemetryDurationPercentiles
 	EngineerStatesDropped        uint64
 	EngineerTimeouts             uint64
+	EngineerFactResync           uint64
+	EngineerFactQueueDepth       uint64
+	EngineerFactsDropped         uint64
 }
 
 type telemetryCoreCounters struct {
@@ -335,7 +341,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		overlayV2Project:    overlayv2.ProjectV2,
 	}
 	if engineerAsyncPort {
-		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout)
+		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
 	}
 	return runtime, nil
 }
@@ -409,6 +415,9 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		EngineerConsumeLatencyMs: details.engineerConsumeLatencyMs,
 		EngineerStatesDropped:    details.engineerStatesDropped,
 		EngineerTimeouts:         details.engineerTimeouts,
+		EngineerFactResync:       details.engineerFactResync,
+		EngineerFactQueueDepth:   details.engineerFactQueueDepth,
+		EngineerFactsDropped:     details.engineerFactsDropped,
 	}
 }
 
@@ -1099,11 +1108,16 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 			err = errors.Join(err, projectErr)
 			continue
 		}
-		consumeErr := newTelemetryConsumerError("engineer.fact", runtime.guardConsumer("engineer.fact", func() error {
-			return runtime.engineer.ConsumeFact(projected)
-		}))
-		if consumeErr == nil {
-			runtime.counters.engineerFacts.Add(1)
+		var consumeErr error
+		if enqueued, enqueueErr := runtime.engineerPort.EnqueueFact(projected); enqueued {
+			consumeErr = enqueueErr
+		} else {
+			consumeErr = newTelemetryConsumerError("engineer.fact", runtime.guardConsumer("engineer.fact", func() error {
+				return runtime.engineer.ConsumeFact(projected)
+			}))
+			if consumeErr == nil {
+				runtime.counters.engineerFacts.Add(1)
+			}
 		}
 		err = errors.Join(err, consumeErr)
 	}
@@ -1156,6 +1170,27 @@ func (runtime *TelemetryCoreRuntime) recordEngineerObservationResult(err error) 
 	} else {
 		runtime.counters.engineerFailures.Add(1)
 	}
+	runtime.mu.Lock()
+	runtime.engineerErr = err
+	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) recordEngineerFactResult(err error) {
+	if err == nil {
+		runtime.counters.engineerFacts.Add(1)
+	} else {
+		runtime.counters.engineerFailures.Add(1)
+	}
+	runtime.mu.Lock()
+	runtime.engineerErr = err
+	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) recordEngineerFactBoundary(err error) {
+	if err == nil {
+		return
+	}
+	runtime.counters.engineerFailures.Add(1)
 	runtime.mu.Lock()
 	runtime.engineerErr = err
 	runtime.mu.Unlock()

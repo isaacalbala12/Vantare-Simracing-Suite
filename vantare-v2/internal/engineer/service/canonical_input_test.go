@@ -147,6 +147,10 @@ func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	if err := svc.ConsumeFact(fact); err == nil {
 		t.Fatal("duplicate fact cursor must fail closed")
 	}
+	fact.Fact.Sequence = telemetrycore.FactSequence(3)
+	if err := svc.ConsumeFact(fact); !errors.Is(err, engineerprojection.ErrFactResyncRequired) {
+		t.Fatalf("fact gap error = %v, want ErrFactResyncRequired", err)
+	}
 }
 
 func TestEngineerServiceSourceStatusDisconnectsAndRequiresFreshLiveObservation(t *testing.T) {

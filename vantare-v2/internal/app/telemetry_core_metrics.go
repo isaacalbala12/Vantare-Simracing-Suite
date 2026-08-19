@@ -174,6 +174,9 @@ type telemetryCoreMetricStore struct {
 	engineerConsumeLatencyMs engineerConsumeLatencyHistogram
 	engineerStatesDropped    uint64
 	engineerTimeouts         uint64
+	engineerFactResync       uint64
+	engineerFactQueueDepth   uint64
+	engineerFactsDropped     uint64
 }
 
 func (store *telemetryCoreMetricStore) increment(target *map[string]uint64, label string) {
@@ -259,6 +262,24 @@ func (store *telemetryCoreMetricStore) engineerTimeout() {
 	store.mu.Unlock()
 }
 
+func (store *telemetryCoreMetricStore) incrementEngineerFactResync() {
+	store.mu.Lock()
+	store.engineerFactResync++
+	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) setEngineerFactQueueDepth(depth uint64) {
+	store.mu.Lock()
+	store.engineerFactQueueDepth = depth
+	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) engineerFactDropped() {
+	store.mu.Lock()
+	store.engineerFactsDropped++
+	store.mu.Unlock()
+}
+
 func (store *telemetryCoreMetricStore) observePayload(product string, size uint64) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -309,6 +330,9 @@ func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
 		engineerConsumeLatencyMs: store.engineerConsumeLatencyMs.snapshot(),
 		engineerStatesDropped:    store.engineerStatesDropped,
 		engineerTimeouts:         store.engineerTimeouts,
+		engineerFactResync:       store.engineerFactResync,
+		engineerFactQueueDepth:   store.engineerFactQueueDepth,
+		engineerFactsDropped:     store.engineerFactsDropped,
 	}
 }
 
@@ -327,6 +351,9 @@ type telemetryCoreMetricSnapshot struct {
 	engineerConsumeLatencyMs TelemetryDurationPercentiles
 	engineerStatesDropped    uint64
 	engineerTimeouts         uint64
+	engineerFactResync       uint64
+	engineerFactQueueDepth   uint64
+	engineerFactsDropped     uint64
 }
 
 func cloneMetricMap(source map[string]uint64) map[string]uint64 {

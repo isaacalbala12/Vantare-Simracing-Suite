@@ -52,6 +52,22 @@ func (retention *boundedFactRetention) append(fact FactEnvelopeV1) {
 	retention.head = (retention.head + 1) % len(retention.facts)
 }
 
+func (retention *boundedFactRetention) reset() {
+	retention.head = 0
+	retention.len = 0
+}
+
+func (retention *boundedFactRetention) after(previous core.FactSequence) []FactEnvelopeV1 {
+	result := make([]FactEnvelopeV1, 0, retention.len)
+	for offset := 0; offset < retention.len; offset++ {
+		fact := retention.facts[(retention.head+offset)%len(retention.facts)]
+		if fact.Fact.Sequence > previous {
+			result = append(result, fact)
+		}
+	}
+	return result
+}
+
 func (retention *boundedFactRetention) requireResyncAfter(previous core.FactSequence) error {
 	if retention.len == 0 {
 		return nil

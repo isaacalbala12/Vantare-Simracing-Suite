@@ -28,13 +28,41 @@ Item {
             font.weight: Font.ExtraBold
             font.letterSpacing: 1.35
         }
-        Rectangle {
+        Item {
+            objectName: "relativeAxisMaterial"
             width: Math.max(0, parent.width - axisLabelA.width - axisLabelB.width - parent.spacing)
-            height: 1.5
+            height: 10
             anchors.verticalCenter: parent.verticalCenter
-            radius: 1
-            color: tokens.accentHot
-            opacity: 0.85
+
+            Rectangle {
+                objectName: "relativeAxisGlow"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: 8
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: "#00ff4d5c" }
+                    GradientStop { position: 0.3; color: "#8cff4d5c" }
+                    GradientStop { position: 0.7; color: "#8cff4d5c" }
+                    GradientStop { position: 1; color: "#00ff4d5c" }
+                }
+            }
+            Rectangle {
+                objectName: "relativeAxisCore"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: 1.5
+                radius: 1
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: "#00ff4d5c" }
+                    GradientStop { position: 0.3; color: "#d9ff4d5c" }
+                    GradientStop { position: 0.7; color: "#d9ff4d5c" }
+                    GradientStop { position: 1; color: "#00ff4d5c" }
+                }
+            }
         }
         Text {
             id: axisLabelA

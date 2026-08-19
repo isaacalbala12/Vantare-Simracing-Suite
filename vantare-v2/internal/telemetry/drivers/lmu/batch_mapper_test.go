@@ -323,6 +323,8 @@ func testVacatedSlotGeneration(t *testing.T) {
 	writeMapped(t, mapper, reappeared, sink)
 	batch := sink.last(t)
 	assertCursor(t, batch, 1, 3)
+	// Este test fija el comportamiento actual. F3 lo sustituirá por una ventana
+	// de gracia que conserve la identidad tras una única ausencia.
 	assertVehicleID(t, batch, 7, "lmu-slot-7-generation-2")
 }
 

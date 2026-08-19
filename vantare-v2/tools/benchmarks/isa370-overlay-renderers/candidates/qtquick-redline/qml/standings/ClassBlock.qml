@@ -111,6 +111,7 @@ Item {
                         id: classLabel; anchors.centerIn: parent
                         text: root.vehicleClass.toUpperCase()
                         color: tokens.text; font.pixelSize: 10; font.weight: Font.ExtraBold
+                        font.letterSpacing: 1.4
                     }
                 }
                 Text {

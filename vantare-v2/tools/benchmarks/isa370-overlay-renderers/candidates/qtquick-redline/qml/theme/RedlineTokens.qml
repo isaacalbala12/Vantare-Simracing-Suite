@@ -5,6 +5,7 @@ QtObject {
     readonly property int panelRadius: 12
     readonly property int panelPadding: 8
     readonly property int rowHeight: 30
+    readonly property int bestCellHeight: 27
     readonly property int rowStride: 30
     readonly property int rowHorizontalPadding: 8
     readonly property int rowGap: 8
@@ -60,6 +61,8 @@ QtObject {
     readonly property color positive: "#35c77b"
     readonly property color pit: "#d8af0f"
     readonly property color fastest: "#b18cff"
+    readonly property color fastestWave: "#47b18cff"
+    readonly property color chargeEnd: "#ff4d5c"
     readonly property color leaderTop: "#dfdfe3"
     readonly property color leaderBottom: "#c8c8cd"
 }

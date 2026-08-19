@@ -21,6 +21,8 @@ Item {
     property string crownToRowId: ""
     property string lastOvertakeGainer: ""
     property string lastOvertakeLoser: ""
+    property real lastCrownFromY: 0
+    property real lastCrownToY: 0
     property string statusMessage: ""
     property string statusKind: "unavailable"
     property bool showSessionHeader: true
@@ -77,6 +79,8 @@ Item {
     }
 
     function deriveBattle(rows) {
+        if (String(sessionLabel).trim().toUpperCase() !== "RACE")
+            return null
         var playerIndex = -1
         for (var p = 0; p < rows.length; p++) {
             if (rows[p].isPlayer) {
@@ -119,7 +123,12 @@ Item {
                 (String(classes[classIndex].vehicleClass || "").length > 0 ? 30 : 0)
             for (var index = 0; index < rows.length; index++) {
                 if (String(rows[index].id) === rowId)
-                    return { x: 262, y: y + 8 + headerHeight + index * tokens.rowStride + 8 }
+                    return {
+                        x: 262,
+                        y: y + 8 + headerHeight + index * tokens.rowStride +
+                            (tokens.rowHeight - tokens.bestCellHeight) / 2 +
+                            tokens.bestCellHeight / 2 - crownFly.height / 2
+                    }
             }
             y += 16 + headerHeight + rows.length * tokens.rowStride + 10
         }
@@ -303,6 +312,8 @@ Item {
         if (crownFromRowId && crownToRowId) {
             var from = rowPoint(prevClasses, crownFromRowId)
             var to = rowPoint(nextClasses, crownToRowId)
+            lastCrownFromY = from.y
+            lastCrownToY = to.y
             crownFly.fly(from.x, from.y, to.x, to.y)
         }
     }

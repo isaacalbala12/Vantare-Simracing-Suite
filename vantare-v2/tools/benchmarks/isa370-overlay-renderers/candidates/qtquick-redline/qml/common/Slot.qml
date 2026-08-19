@@ -22,18 +22,21 @@ Item {
         Text {
             id: labelText
             objectName: "slotLabel"
+            readonly property real cssPixelSize: 9.5
             text: root.label
             color: root.accent ? tokens.accent : tokens.textDim
-            font.pixelSize: 10
+            font.pointSize: cssPixelSize * 0.75
+            font.letterSpacing: 1.33
             font.weight: Font.Bold
             font.capitalization: Font.AllUppercase
         }
         Text {
             id: valueText
             objectName: "slotValue"
+            readonly property real cssPixelSize: 12.5
             text: root.value
             color: root.alert ? tokens.accentHot : tokens.text
-            font.pixelSize: 13
+            font.pointSize: cssPixelSize * 0.75
             font.weight: Font.ExtraBold
         }
     }

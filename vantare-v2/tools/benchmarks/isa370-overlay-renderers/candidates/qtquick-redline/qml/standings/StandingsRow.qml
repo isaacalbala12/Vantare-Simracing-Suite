@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Effects
 import "../theme" as Theme
 
 Item {
@@ -220,12 +221,22 @@ Item {
 
     Rectangle {
         id: hotWave
+        objectName: "hotWave"
+        property string gradientStart: "#00000000"
+        property string gradientMiddle: "#47b18cff"
+        property string gradientEnd: "#00000000"
         visible: root.hotActive
         x: -width
         width: root.width * 0.45
         height: root.height
         radius: 7
-        color: "#47b18cff"
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.0; color: hotWave.gradientStart }
+            GradientStop { position: 0.5; color: hotWave.gradientMiddle }
+            GradientStop { position: 1.0; color: hotWave.gradientEnd }
+        }
         opacity: 0.9
     }
 
@@ -261,11 +272,12 @@ Item {
 
     Text {
         objectName: "positionCell"
+        readonly property real cssPixelSize: 13.5
         x: 8; width: 24; anchors.verticalCenter: parent.verticalCenter
         text: root.classPosition > 0 ? root.classPosition : "—"
         horizontalAlignment: Text.AlignHCenter
         color: root.isClassLeader ? tokens.accentDark : tokens.accent
-        font.pixelSize: 14; font.weight: Font.Bold
+        font.pointSize: cssPixelSize * 0.75; font.weight: Font.ExtraBold
     }
 
     Item {
@@ -290,6 +302,9 @@ Item {
         Item {
             id: tire
             objectName: "tireBadge"
+            readonly property real enterOvershootScale: 1.15
+            readonly property real enterOvershootRotation: 8
+            readonly property real enterOvershootProgress: 0.55
             anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
             width: root.tireCompound.length > 0 ? 15 : 0; height: 15
             opacity: root.tireCompound.length > 0 ? 1 : 0
@@ -314,11 +329,17 @@ Item {
                 color: "transparent"; border.width: 1; border.color: tire.compoundColor
                 opacity: 0
             }
-            ParallelAnimation {
+            SequentialAnimation {
                 id: tireEnter
-                NumberAnimation { target: tire; property: "scale"; from: 0.2; to: 1; duration: tokens.tireEnterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
-                NumberAnimation { target: tire; property: "rotation"; from: -160; to: 0; duration: tokens.tireEnterMs; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
-                NumberAnimation { target: tire; property: "opacity"; from: 0; to: 1; duration: tokens.tireEnterMs }
+                ParallelAnimation {
+                    NumberAnimation { target: tire; property: "scale"; from: 0.2; to: tire.enterOvershootScale; duration: tokens.tireEnterMs * tire.enterOvershootProgress; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
+                    NumberAnimation { target: tire; property: "rotation"; from: -160; to: tire.enterOvershootRotation; duration: tokens.tireEnterMs * tire.enterOvershootProgress; easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
+                    NumberAnimation { target: tire; property: "opacity"; from: 0; to: 1; duration: tokens.tireEnterMs * tire.enterOvershootProgress }
+                }
+                ParallelAnimation {
+                    NumberAnimation { target: tire; property: "scale"; to: 1; duration: tokens.tireEnterMs * (1 - tire.enterOvershootProgress); easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
+                    NumberAnimation { target: tire; property: "rotation"; to: 0; duration: tokens.tireEnterMs * (1 - tire.enterOvershootProgress); easing.type: Easing.BezierSpline; easing.bezierCurve: tokens.tireEnterBezier }
+                }
             }
             ParallelAnimation {
                 id: tireExit
@@ -366,6 +387,7 @@ Item {
             font.pixelSize: 11; font.weight: root.isSessionBest ? Font.Bold : Font.DemiBold
         }
         FastestGlyph {
+            objectName: "residentFastestGlyph"
             anchors.left: parent.left; anchors.leftMargin: -2
             anchors.verticalCenter: parent.verticalCenter
             visible: root.isSessionBest
@@ -382,10 +404,31 @@ Item {
 
         Rectangle {
             id: chargeFill
+            objectName: "chargeFill"
+            property string gradientStart: "#ffc1121f"
+            property string gradientEnd: "#ffff4d5c"
+            readonly property real glowRadius: 12
+            property string glowColor: "#8cff4d5c"
             visible: root.battleCharge >= 0 || root.displayedCharge > 0
             width: parent.width * root.displayedCharge
             height: parent.height
             color: tokens.accentDark
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: chargeFill.gradientStart }
+                GradientStop { position: 1.0; color: chargeFill.gradientEnd }
+            }
+        }
+        MultiEffect {
+            anchors.fill: chargeFill
+            source: chargeFill
+            visible: chargeFill.visible
+            shadowEnabled: true
+            shadowBlur: chargeFill.glowRadius / 32
+            shadowColor: chargeFill.glowColor
+            shadowVerticalOffset: 0
+            shadowHorizontalOffset: 0
+            z: -1
         }
         Text {
             anchors.fill: parent; anchors.rightMargin: 5

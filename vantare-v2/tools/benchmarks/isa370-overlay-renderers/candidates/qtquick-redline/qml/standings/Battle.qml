@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Effects
 import "../theme" as Theme
 
 Item {
@@ -24,12 +25,18 @@ Item {
     Rectangle {
         id: box
         objectName: "battleWrapper"
+        readonly property real shadowVerticalOffset: 4
+        readonly property real shadowRadius: 16
+        property string shadowColor: "#80000000"
+        readonly property real glowRadius: 14
+        property string glowColor: "#2ec1121f"
         x: 0
         y: root.visualStage === "box" ? 3 : 0
         width: parent.width
         height: root.visualStage === "box" ? 78 : 65
         radius: 10
-        color: root.visualStage === "box" ? "#d9170c0e" : "transparent"
+        color: root.visualStage === "box" ? "#ff170c0e" : "transparent"
+        gradient: root.visualStage === "box" ? battleGradient : null
         border.width: 1
         border.color: root.visualStage === "box" ? "#80e63946" : "transparent"
         opacity: root.visualStage === "dissolve" ? 0 : 1
@@ -37,6 +44,32 @@ Item {
         Behavior on color { ColorAnimation { duration: tokens.battleDissolveMs } }
         Behavior on border.color { ColorAnimation { duration: tokens.battleDissolveMs } }
         Behavior on opacity { NumberAnimation { duration: tokens.battleDissolveMs } }
+    }
+
+    Gradient {
+        id: battleGradient
+        GradientStop { position: 0.0; color: "#ff221114" }
+        GradientStop { position: 1.0; color: "#ff170c0e" }
+    }
+
+    MultiEffect {
+        anchors.fill: box
+        source: box
+        visible: root.visualStage === "box"
+        shadowEnabled: true
+        shadowBlur: box.shadowRadius / 32
+        shadowColor: box.shadowColor
+        shadowVerticalOffset: box.shadowVerticalOffset
+        z: -2
+    }
+    MultiEffect {
+        anchors.fill: box
+        source: box
+        visible: root.visualStage === "box"
+        shadowEnabled: true
+        shadowBlur: box.glowRadius / 32
+        shadowColor: box.glowColor
+        z: -1
     }
 
     StandingsRow {
@@ -75,13 +108,36 @@ Item {
         height: root.seamHeight
 
         Rectangle {
+            id: seamLine
+            objectName: "seamLine"
+            property string gradientStart: "#00000000"
+            property string gradientMiddle: "#d9ff4d5c"
+            property string gradientEnd: "#00000000"
+            readonly property real glowRadius: 9
+            property string glowColor: "#8cff4d5c"
             anchors.left: parent.left; anchors.leftMargin: 12
             anchors.right: parent.right; anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             height: 1.5
-            color: tokens.accentHot
+            color: "transparent"
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: seamLine.gradientStart }
+                GradientStop { position: 0.28; color: seamLine.gradientMiddle }
+                GradientStop { position: 0.72; color: seamLine.gradientMiddle }
+                GradientStop { position: 1.0; color: seamLine.gradientEnd }
+            }
             opacity: root.visualStage === "dissolve" ? 0 : 0.85
             Behavior on opacity { NumberAnimation { duration: tokens.battleDissolveMs } }
+        }
+        MultiEffect {
+            anchors.fill: seamLine
+            source: seamLine
+            shadowEnabled: true
+            shadowBlur: seamLine.glowRadius / 32
+            shadowColor: seamLine.glowColor
+            visible: seamLine.opacity > 0
+            z: -1
         }
         Rectangle {
             anchors.centerIn: parent

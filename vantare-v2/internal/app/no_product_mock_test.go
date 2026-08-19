@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -51,7 +52,7 @@ func TestProductionEngineerIsWiredOnlyThroughTelemetryCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(mainSource), "Engineer: engSvc") {
+	if !regexp.MustCompile(`Engineer:\s+engSvc`).Match(mainSource) {
 		t.Fatal("composition root does not inject Engineer into TelemetryCoreRuntime")
 	}
 	bridgeSource, err := os.ReadFile(filepath.Join(repoRoot, "internal", "app", "engineer_bridge.go"))

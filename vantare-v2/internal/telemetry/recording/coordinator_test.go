@@ -141,7 +141,7 @@ func (w *fakeWriter) Close() error {
 	return nil
 }
 
-func TestCoordinatorNeverBlocksLiveAndFailsClosedOnFullQueue(t *testing.T) {
+func TestRecordingNeverBlocksCore(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
 	startedAppend := make(chan struct{}, 1)
@@ -175,6 +175,52 @@ func TestCoordinatorNeverBlocksLiveAndFailsClosedOnFullQueue(t *testing.T) {
 		status.AcceptedBatches != 2 || status.RejectedBatches != 1 {
 		t.Fatalf("status = %#v", status)
 	}
+}
+
+func TestRecordingWritesGapMarkerOnBackpressure(t *testing.T) {
+	t.Parallel()
+	block := make(chan struct{})
+	startedAppend := make(chan struct{}, 1)
+	writer := &fakeWriter{appendBlock: block, appendStarted: startedAppend}
+	coordinator := newTestCoordinator(t, writer, CoordinatorConfig{QueueCapacity: 1})
+	if err := coordinator.Start(context.Background()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	if err := coordinator.TryAccept(validBatch(1)); err != nil {
+		t.Fatalf("TryAccept(first) error = %v", err)
+	}
+	select {
+	case <-startedAppend:
+	case <-time.After(2 * time.Second):
+		t.Fatal("writer did not start")
+	}
+	if err := coordinator.TryAccept(validBatch(2)); err != nil {
+		t.Fatalf("TryAccept(second) error = %v", err)
+	}
+	if err := coordinator.TryAccept(validBatch(3)); !errors.Is(err, ErrQueueFull) {
+		t.Fatalf("TryAccept(full) error = %v", err)
+	}
+
+	status := coordinator.Status()
+	if status.State != StateIncomplete || status.Failure != FailureQueue || status.GapMarkers != 1 {
+		t.Fatalf("status immediately after rejection = %#v", status)
+	}
+	markers := coordinator.GapMarkers()
+	want := GapMarker{
+		First:  Cursor{Epoch: 1, Sequence: 3},
+		Last:   Cursor{Epoch: 1, Sequence: 3},
+		Reason: IncompleteQueueFull,
+	}
+	if len(markers) != 1 || markers[0] != want {
+		t.Fatalf("gap markers = %#v, want %#v", markers, []GapMarker{want})
+	}
+	markers[0].First.Sequence = 99
+	if got := coordinator.GapMarkers()[0]; got != want {
+		t.Fatalf("GapMarkers exposed mutable state: %#v", got)
+	}
+
+	close(block)
+	waitDone(t, coordinator.done)
 }
 
 func TestCoordinatorPeriodicCheckpointAndCleanDoubleStop(t *testing.T) {

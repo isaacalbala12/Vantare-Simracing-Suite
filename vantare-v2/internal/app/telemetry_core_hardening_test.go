@@ -32,7 +32,7 @@ const (
 
 func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	consumer := &countingEngineerConsumer{}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,9 @@ func TestTelemetryCoreMetricsCountRejectedObservationWithoutPayload(t *testing.T
 }
 
 func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: &countingEngineerConsumer{}})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Engineer: &countingEngineerConsumer{}, StrategyPublicTransport: true,
+	})
 	if err != nil {
 		b.Fatal(err)
 	}

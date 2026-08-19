@@ -89,7 +89,7 @@ func TestServerExposesCanonicalStrategyProjectionSSE(t *testing.T) {
 	).WithContext(ctx)
 	request.RemoteAddr = "127.0.0.1:45678"
 	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 2}
-	srv := server.New(server.ServerConfig{StrategyProjection: hub})
+	srv := server.New(server.ServerConfig{StrategyProjection: hub, StrategyPublicTransport: true})
 	srv.Handler().ServeHTTP(writer, request)
 
 	if got := writer.header.Get("Content-Type"); got != "text/event-stream" {
@@ -166,6 +166,13 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 			wantStatus: http.StatusNotFound,
 		},
 		{
+			name:       "hub without public flag stays disabled",
+			server:     server.New(server.ServerConfig{StrategyProjection: strategyHub}),
+			route:      strategyRoute,
+			remoteAddr: "127.0.0.1:45678",
+			wantStatus: http.StatusNotFound,
+		},
+		{
 			name: "overlay does not enable strategy",
 			server: server.New(server.ServerConfig{
 				OverlayProjection: overlayHub,
@@ -177,7 +184,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "strategy does not enable overlay",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: strategyHub,
+				StrategyProjection:      strategyHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      overlayRoute,
 			remoteAddr: "127.0.0.1:45678",
@@ -186,7 +194,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "cross product hub",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: overlayHub,
+				StrategyProjection:      overlayHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      strategyRoute,
 			remoteAddr: "127.0.0.1:45678",
@@ -195,7 +204,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "non loopback",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: strategyHub,
+				StrategyProjection:      strategyHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      strategyRoute,
 			remoteAddr: "203.0.113.10:45678",

@@ -74,6 +74,7 @@ func (engine *TelemetryEngine) Apply(ctx context.Context, batch core.Batch) (Eng
 	if err != nil {
 		return EngineResult{}, err
 	}
+	observed = coordinatorCandidate.Snapshot()
 	pipelineCandidate, err := engine.derive.Prepare(ctx, observed)
 	if err != nil {
 		return EngineResult{}, err

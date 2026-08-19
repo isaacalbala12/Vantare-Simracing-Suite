@@ -195,7 +195,10 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 		state.hasSourceTime = true
 	}
 	sessionBoundary := !first && clockChange == ClockReset
-	if !sessionBoundary && !first && freshSignature && state.hasFresh && signature != state.lastFresh {
+	// A usable but stale P->Q signature is not authority to merge Q into P.
+	// Open a boundary when it disagrees with the last fresh signature; only a
+	// fresh signature becomes the new baseline.
+	if !sessionBoundary && !first && state.hasFresh && signature != state.lastFresh {
 		sessionBoundary = true
 	}
 	epochBoundary := sessionBoundary || (!first && clockChange == ClockWrap)
@@ -322,8 +325,9 @@ func validateMapperObservation(observation Observation) (sessionSignature, bool,
 }
 
 func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID identity.SessionID) telemetrycore.VehicleState {
+	driverName, _ := usableField(source.DriverName)
 	return telemetrycore.VehicleState{
-		Identity:         identity.RunIdentity{Event: batchEventID, Session: sessionID, Vehicle: id},
+		Identity:         identity.RunIdentity{Event: batchEventID, Session: sessionID, Vehicle: id, Driver: identity.DriverID(driverName)},
 		DriverName:       source.DriverName,
 		Name:             source.VehicleName,
 		VehicleClass:     source.VehicleClass,

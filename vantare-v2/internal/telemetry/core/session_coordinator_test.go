@@ -337,6 +337,7 @@ func TestSessionCoordinatorFactHeadersMatchOccurrenceIdentityCursorAndClock(t *t
 	rivalIdentity := secondState.Vehicles[1].Identity
 	rivalIdentity.Team = "rival-team"
 	rivalIdentity.Driver = "rival-driver"
+	rivalIdentity.Stint = identity.NewStintID(rivalIdentity.Session, rivalIdentity.Vehicle, 2)
 	secondState.Vehicles[1].Identity = rivalIdentity
 	secondState.Vehicles[1].CompletedLaps = present(standings.CompletedLaps(5))
 	secondState.Vehicles[1].InPit = present(pit.InPit(true))
@@ -903,6 +904,7 @@ type oracleVehicle struct {
 	inPit         pit.InPit
 	hasPit        bool
 	lastSeen      schema.Cursor
+	stintSequence uint64
 }
 
 type sessionOracle struct {
@@ -957,6 +959,25 @@ func (model *sessionOracle) apply(
 	drafts := make([]sessionFactDraft, 0, 4)
 	previousHeader := model.header
 	previousVehicles := model.vehicles
+	stintHistory := previousVehicles
+	if !model.initialized || !model.sessionActive || !previousHeader.Identity.SameSession(header.Identity) {
+		stintHistory = nil
+	}
+	state = cloneObservedState(state)
+	for index := range state.Vehicles {
+		currentIdentity := state.Vehicles[index].Identity
+		previous, exists := stintHistory[currentIdentity.Vehicle]
+		generation := uint64(1)
+		if exists {
+			generation = previous.stintSequence
+			if previous.identity.Driver != currentIdentity.Driver || previous.identity.Team != currentIdentity.Team {
+				generation++
+			}
+		}
+		currentIdentity.Stint = identity.NewStintID(currentIdentity.Session, currentIdentity.Vehicle, generation)
+		state.Vehicles[index].Identity = currentIdentity
+	}
+	header = coordinatorHeader(header, state)
 	if !model.initialized || !model.sessionActive {
 		drafts = append(drafts, oracleDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: occurred}))
 		previousVehicles = nil
@@ -987,6 +1008,11 @@ func (model *sessionOracle) apply(
 		previous, exists := previousVehicles[observed.Identity.Vehicle]
 		current := previous
 		current.identity = observed.Identity
+		if current.stintSequence == 0 {
+			current.stintSequence = 1
+		} else if exists && previous.identity.Stint != observed.Identity.Stint {
+			current.stintSequence++
+		}
 		continuous := exists && previous.lastSeen == previousHeader.Cursor
 		if exists && (previous.identity.Driver != observed.Identity.Driver || previous.identity.Team != observed.Identity.Team) {
 			drafts = append(drafts, oracleDraft(header, observed.Identity, SessionFact{
@@ -1041,6 +1067,7 @@ func (model *sessionOracle) apply(
 func oracleDraft(header envelope.Header, factIdentity identity.RunIdentity, value SessionFact) sessionFactDraft {
 	header.Identity = factIdentity
 	value.Identity = factIdentity
+	value.StintID = factIdentity.Stint
 	return sessionFactDraft{header: header, value: value}
 }
 

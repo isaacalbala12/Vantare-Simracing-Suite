@@ -58,6 +58,7 @@ type SessionFact struct {
 	Identity         identity.RunIdentity
 	PreviousIdentity identity.RunIdentity
 	Lap              session.LapNumber
+	StintID          identity.StintID
 }
 
 // FactBatchSink either accepts the complete ordered batch or returns an error.
@@ -81,6 +82,7 @@ type coordinatorVehicle struct {
 	inPit         pit.InPit
 	hasPit        bool
 	lastSeen      schema.Cursor
+	stintSequence uint64
 }
 
 type sessionFactDraft struct {
@@ -116,6 +118,7 @@ type CoordinatorCandidate struct {
 	coordinator *SessionCoordinator
 	next        coordinatorState
 	facts       []envelope.Fact[SessionFact]
+	observed    envelope.Snapshot[ObservedState]
 }
 
 func NewSessionCoordinator(config SessionCoordinatorConfig) *SessionCoordinator {
@@ -182,14 +185,13 @@ func (coordinator *SessionCoordinator) Prepare(
 	if !ok {
 		return CoordinatorCandidate{}, envelope.ErrCloneRequired
 	}
-	header = coordinatorHeader(header, value)
 	if err := validateObservedState(header.Identity, value); err != nil {
 		return CoordinatorCandidate{}, err
 	}
 	coordinator.mu.RLock()
 	next := cloneCoordinatorState(coordinator.state)
 	coordinator.mu.RUnlock()
-	drafts, err := coordinator.applySnapshot(&next, header, value)
+	drafts, err := coordinator.applySnapshot(&next, &header, &value)
 	if err != nil {
 		return CoordinatorCandidate{}, err
 	}
@@ -197,12 +199,21 @@ func (coordinator *SessionCoordinator) Prepare(
 	if err != nil {
 		return CoordinatorCandidate{}, err
 	}
-	return CoordinatorCandidate{coordinator: coordinator, next: next, facts: facts}, nil
+	observed, err := envelope.NewSnapshot(header, value, cloneObservedState)
+	if err != nil {
+		return CoordinatorCandidate{}, err
+	}
+	return CoordinatorCandidate{coordinator: coordinator, next: next, facts: facts, observed: observed}, nil
 }
 
 // Facts returns an owned copy of the facts prepared for this commit.
 func (candidate CoordinatorCandidate) Facts() []envelope.Fact[SessionFact] {
 	return append([]envelope.Fact[SessionFact](nil), candidate.facts...)
+}
+
+// Snapshot returns the observed state enriched with coordinator-owned stint identity.
+func (candidate CoordinatorCandidate) Snapshot() envelope.Snapshot[ObservedState] {
+	return candidate.observed
 }
 
 // Commit publishes a candidate prepared by this coordinator.
@@ -359,21 +370,39 @@ func (coordinator *SessionCoordinator) Current() (envelope.Header, FactSequence,
 
 func (coordinator *SessionCoordinator) applySnapshot(
 	next *coordinatorState,
-	header envelope.Header,
-	state ObservedState,
+	header *envelope.Header,
+	state *ObservedState,
 ) ([]sessionFactDraft, error) {
 	now := coordinator.now().Round(0).UTC()
 	facts := make([]sessionFactDraft, 0, 4)
 	previousHeader := next.header
 	previousVehicles := next.vehicles
+	stintHistory := previousVehicles
+	if !next.initialized || !next.sessionActive || !previousHeader.Identity.SameSession(header.Identity) {
+		stintHistory = nil
+	}
+	for index := range state.Vehicles {
+		currentIdentity := state.Vehicles[index].Identity
+		previous, exists := stintHistory[currentIdentity.Vehicle]
+		generation := uint64(1)
+		if exists {
+			generation = previous.stintSequence
+			if previous.identity.Driver != currentIdentity.Driver || previous.identity.Team != currentIdentity.Team {
+				generation++
+			}
+		}
+		currentIdentity.Stint = identity.NewStintID(currentIdentity.Session, currentIdentity.Vehicle, generation)
+		state.Vehicles[index].Identity = currentIdentity
+	}
+	*header = coordinatorHeader(*header, *state)
 
 	if !next.initialized || !next.sessionActive {
-		facts = append(facts, newFactDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now}))
+		facts = append(facts, newFactDraft(*header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now}))
 		previousVehicles = nil
 	} else if !previousHeader.Identity.SameSession(header.Identity) {
 		facts = append(facts,
 			newFactDraft(previousHeader, previousHeader.Identity, SessionFact{Kind: FactSessionEnded, OccurredUTC: now}),
-			newFactDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, PreviousIdentity: previousHeader.Identity}),
+			newFactDraft(*header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, PreviousIdentity: previousHeader.Identity}),
 		)
 		previousVehicles = nil
 	} else if !previousHeader.Identity.SameRun(header.Identity) {
@@ -414,10 +443,15 @@ func (coordinator *SessionCoordinator) applySnapshot(
 		previous, exists := previousVehicles[vehicle.Identity.Vehicle]
 		current := previous
 		current.identity = vehicle.Identity
+		if current.stintSequence == 0 {
+			current.stintSequence = 1
+		} else if exists && previous.identity.Stint != vehicle.Identity.Stint {
+			current.stintSequence++
+		}
 		continuousPresence := exists && previous.lastSeen == previousHeader.Cursor
 
 		if exists && (previous.identity.Driver != vehicle.Identity.Driver || previous.identity.Team != vehicle.Identity.Team) {
-			facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
+			facts = append(facts, newFactDraft(*header, vehicle.Identity, SessionFact{
 				Kind:             FactDriverChanged,
 				OccurredUTC:      now,
 				PreviousIdentity: previous.identity,
@@ -433,7 +467,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 					current.completedLaps = previous.completedLaps
 				} else if laps > previous.completedLaps {
 					for completed := previous.completedLaps + 1; ; completed++ {
-						facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
+						facts = append(facts, newFactDraft(*header, vehicle.Identity, SessionFact{
 							Kind:        FactLapCompleted,
 							OccurredUTC: now,
 							Lap:         session.LapNumber(completed),
@@ -458,7 +492,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 				if inPit {
 					kind = FactPitEntered
 				}
-				facts = append(facts, newFactDraft(header, vehicle.Identity, SessionFact{
+				facts = append(facts, newFactDraft(*header, vehicle.Identity, SessionFact{
 					Kind:             kind,
 					OccurredUTC:      now,
 					PreviousIdentity: previous.identity,
@@ -476,7 +510,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 
 	next.initialized = true
 	next.sessionActive = true
-	next.header = header
+	next.header = *header
 	next.vehicles = updatedVehicles
 	if !next.connectionKnown {
 		next.connectionKnown = true
@@ -502,6 +536,7 @@ func coordinatorHeader(header envelope.Header, state ObservedState) envelope.Hea
 func newFactDraft(header envelope.Header, factIdentity identity.RunIdentity, value SessionFact) sessionFactDraft {
 	header.Identity = factIdentity
 	value.Identity = factIdentity
+	value.StintID = factIdentity.Stint
 	return sessionFactDraft{header: header, value: value}
 }
 

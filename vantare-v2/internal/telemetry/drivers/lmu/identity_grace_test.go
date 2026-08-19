@@ -7,6 +7,7 @@ import (
 
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -65,7 +66,6 @@ func TestSlotReusedByAnotherCarGetsNewIdentity(t *testing.T) {
 }
 
 func TestSessionSignatureStaleDoesNotMergeSessions(t *testing.T) {
-	t.Skip("ISA-371 06§13#11: activar en F3")
 	mapper, sink := NewBatchMapper(), new(batchCollector)
 	first := trackObservation(7)
 	writeMapped(t, mapper, first, sink)
@@ -80,6 +80,48 @@ func TestSessionSignatureStaleDoesNotMergeSessions(t *testing.T) {
 	}
 	if got := sink.last(t).Header.Identity.Session; got == firstSession {
 		t.Fatalf("stale P→Q→R signature merged into session %q", got)
+	}
+}
+
+func TestDriverChangeEmitsFactAndOpensNewStint(t *testing.T) {
+	mapper := NewBatchMapper()
+	engine := telemetryengine.New(
+		telemetrycore.NewReducer(),
+		telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{}),
+		derive.NewPipeline(derive.Config{}),
+	)
+	var results []telemetryengine.EngineResult
+	sink := telemetrycore.BatchSinkFunc(func(ctx context.Context, batch telemetrycore.Batch) error {
+		result, err := engine.Apply(ctx, batch)
+		if err == nil {
+			results = append(results, result)
+		}
+		return err
+	})
+
+	first := trackObservation(7)
+	first.Vehicles[0].DriverName = observed(identity.DriverName("Driver A"))
+	first.Vehicles[0].VehicleClass = observed(standings.VehicleClass("Hypercar"))
+	writeMapped(t, mapper, first, sink)
+	second := trackObservation(7)
+	second.SourceTime = observed(2 * time.Second)
+	second.Vehicles[0].DriverName = observed(identity.DriverName("Driver B"))
+	second.Vehicles[0].VehicleClass = observed(standings.VehicleClass("Hypercar"))
+	writeMapped(t, mapper, second, sink)
+
+	if len(results) != 2 || len(results[1].Facts) != 1 {
+		t.Fatalf("engine results/facts = %d/%d", len(results), len(results[1].Facts))
+	}
+	fact := results[1].Facts[0].Value()
+	if fact.Kind != telemetrycore.FactDriverChanged || fact.StintID == "" || fact.StintID == results[0].Facts[0].Value().StintID {
+		t.Fatalf("driver change fact = %+v, initial = %+v", fact, results[0].Facts[0].Value())
+	}
+	if results[1].Cursor.Epoch != results[0].Cursor.Epoch {
+		t.Fatalf("driver change epoch = %d, want %d", results[1].Cursor.Epoch, results[0].Cursor.Epoch)
+	}
+	state, _ := results[1].State.Value()
+	if state.Observed.Vehicles[0].Identity.Stint != fact.StintID {
+		t.Fatalf("final stint = %q, fact = %q", state.Observed.Vehicles[0].Identity.Stint, fact.StintID)
 	}
 }
 

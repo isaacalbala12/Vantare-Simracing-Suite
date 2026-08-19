@@ -41,6 +41,18 @@ function emitValidate() {
   if (cb) cb({ data: {} });
 }
 
+/**
+ * El provider emite `license:validate` desde un `setTimeout` de 500 ms. En vez
+ * de sondear con `vi.waitFor` (que mezcla espera real con temporizadores
+ * falsos y hacia el test flaky), se adelanta el reloj de forma explicita y se
+ * vacian las microtareas dentro de `act`.
+ */
+async function flushInitialValidate(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(600);
+  });
+}
+
 describe("license module", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -62,9 +74,8 @@ describe("license module", () => {
         "license:changed",
         expect.any(Function),
       );
-      await vi.waitFor(() => {
-        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
-      });
+      await flushInitialValidate();
+      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
     });
 
     it("exposes loading state until license:changed is received", () => {
@@ -193,9 +204,8 @@ describe("license module", () => {
     it("ignores license:validate changes for unrelated events", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
       // Wait for the 500ms setTimeout in LicenseProvider to fire and emit license:validate
-      await vi.waitFor(() => {
-        expect(eventsEmit).toHaveBeenCalled();
-      });
+      await flushInitialValidate();
+      expect(eventsEmit).toHaveBeenCalled();
       act(() => emitValidate());
       // No assertion on state, just ensure no crash
     });
@@ -250,16 +260,14 @@ describe("license module", () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
       // Standalone mode skips the Supabase session lookup entirely; the
       // provider emits an empty payload (no sessionToken) after its timer.
-      await vi.waitFor(() => {
-        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
-      });
+      await flushInitialValidate();
+      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
     });
 
     it("emits license:validate with an empty payload in standalone mode", async () => {
       renderHook(() => useLicense(), { wrapper: LicenseProvider });
-      await vi.waitFor(() => {
-        expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
-      });
+      await flushInitialValidate();
+      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {});
     });
   });
 

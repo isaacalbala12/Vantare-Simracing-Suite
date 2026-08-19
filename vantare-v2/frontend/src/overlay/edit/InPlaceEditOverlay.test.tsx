@@ -143,8 +143,21 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   globalThis.ResizeObserver = originalResizeObserver;
 });
+
+/**
+ * Aserciones negativas ("no se guardo nada"): en vez de dormir 50 ms reales,
+ * se adelanta el reloj falso muy por encima de cualquier debounce y se vacian
+ * las microtareas. Determinista y sin espera real.
+ */
+async function settleWithoutSaves(): Promise<void> {
+  vi.useFakeTimers();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+}
 
 describe("InPlaceEditOverlay", () => {
   it("renders edit frames with chrome for every widget of the active layout", async () => {
@@ -181,7 +194,7 @@ describe("InPlaceEditOverlay", () => {
     fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
     fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await settleWithoutSaves();
     expect(saveCalls()).toHaveLength(0);
   });
 

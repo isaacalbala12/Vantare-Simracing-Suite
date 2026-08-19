@@ -385,6 +385,38 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Integrada en Nightly | ISA-160 / TC-10A en `nightly@8880a88` |
 | PR draft / CI verde en corte publicado | ISA-161 / TC-10B, PR draft [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) OPEN/CLEAN/MERGEABLE a `nightly@b6df494`; [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366) SUCCESS para `19dddea`; Linear pendiente, sin integración |
 
+## Arquitectura objetivo (ISA-371 / ISA-372, 2026-08-19)
+
+- ISA-371 (TC-ARCH-01) concluyó con evidencia medida: **arquitectura híbrida
+  Go-first (Opción C, 88/100), confianza alta**. Informes 00–13 y benchmarks
+  en `docs/research/telemetry-architecture-2026/` (rama `isa-371`,
+  commit `9be5bf5b`). Defectos verificados en código: D-01 (cinco cursores
+  sin transacción → `ErrStaleBatch` terminal), D-08 (104 coches superan el
+  límite de 256 KiB → `failStop`; rechazo medido desde 103 Overlay / 85
+  Engineer), D-02 (`failStop` irreversible), D-03/D-04 (slot gap → identidad
+  nueva; tope 104), D-06/D-07 (frescura congelada; `statusRevision`
+  contiguo), Engineer síncrono bajo mutex de la UI, código desconectado
+  (`core.Fanout`, RFC 7396, seal, `recording.Coordinator`,
+  `NewStrategyLiveRuntime`, Analysis live), adapter legacy TS que destruye
+  la calidad por campo.
+- ISA-372 (TC-ARCH-02) entrega el SDD: spec
+  `docs/superpowers/specs/2026-08-19-isa-372-telemetry-go-first-hybrid-spec.md`,
+  plan `docs/superpowers/plans/2026-08-19-isa-372-telemetry-go-first-hybrid-plan.md`,
+  tasks primera ola
+  `docs/superpowers/plans/2026-08-19-isa-372-telemetry-go-first-hybrid-tasks.md`
+  y `docs/adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md`
+  (Propuesto). Contraste con el borrador de Sol en
+  `docs/research/telemetry-architecture-2026/13-contraste-sol-isa372.md`.
+- Orden de arranque: **P0 (promocionar o archivar el diff local de delta
+  nativo; ADR 0008 aceptado) → F0 (tests rojos D-01…D-08) → F1 (fallo no
+  terminal) → F3 ∥ F2 ∥ F4 → F5 → F6 (vertical slice `OverlayFrame v2` medido
+  en WebView2 y OBS) → F7 ∥ F8 → F9 → F10 ∥ F11 ∥ F12 → F13.** Camino crítico
+  P0 → F0 → F3 → F6 → F8 → F9. Carriles por worktree con propietario único
+  de `internal/app/telemetry_core_runtime.go` (carril A).
+- Gates: aprobación de Isaac de SPECIFY/PLAN/TASKS y de ADR 0008 antes de F1;
+  gate de paridad + gate de estabilidad (2 Nightly, 3 sesiones reales)
+  antes de F9. Nada de esto está implementado ni promocionado.
+
 ## Siguiente acción exacta
 
 Actualizar Linear tras reautenticar y solicitar review de Isaac sobre el PR
@@ -402,6 +434,8 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-19, ISA-371/ISA-372: investigación cerrada (híbrida Go-first) y SDD redactado (spec, plan, tasks primera ola, ADR 0008 Propuesto); pendiente aprobación de Isaac y P0 antes de abrir F0. Sin cambios de producto.
 
 2026-08-12, ISA-161: ISA-160 ya está integrada en `nightly@8880a88` e ISA-161
 surgió originalmente de esa base. El primer rebase fue sobre `234794d`; la base

@@ -21,7 +21,10 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
-const telemetryCoreStatusInterval = 100 * time.Millisecond
+const (
+	telemetryCoreStatusInterval   = 100 * time.Millisecond
+	defaultTelemetryWatchdogDelay = time.Second
+)
 
 type telemetryRuntimeLifecycle uint8
 
@@ -56,6 +59,15 @@ type EngineerProjectionConsumer interface {
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
+	// Now is injectable for deterministic freshness tests. It defaults to
+	// time.Now and must preserve the monotonic component in production.
+	Now func() time.Time
+	// WatchdogTimeout is the maximum age of the last accepted frame before a
+	// live source is published as stale. Values <= 0 use the one-second default.
+	WatchdogTimeout time.Duration
+	// TelemetryWatchdogEnabled defaults to on when nil. Point it to false for
+	// one-cycle rollback to the previous frozen-fresh behavior.
+	TelemetryWatchdogEnabled *bool
 	// TelemetryFailurePolicyV2 defaults to on when nil. Point it to false for
 	// one-cycle rollback to the legacy fail-stop consumer policy.
 	TelemetryFailurePolicyV2 *bool
@@ -85,6 +97,8 @@ type TelemetryCoreMetrics struct {
 	PublishFailures              map[string]uint64
 	ConsumerPanics               map[string]uint64
 	FailStops                    uint64
+	LastFrameAgeMs               uint64
+	WatchdogDegradations         uint64
 	PayloadBytes                 map[string]TelemetryPayloadPercentiles
 	LifecycleTransitions         map[string]uint64
 	Transport                    telemetrytransport.HubMetrics
@@ -133,8 +147,13 @@ type TelemetryCoreRuntime struct {
 	engineer                 EngineerProjectionConsumer
 	engineerManifest         engineerprojection.Manifest
 
-	statusState   driver.State
-	statusAttempt int
+	statusState     driver.State
+	statusAttempt   int
+	now             func() time.Time
+	watchdogDelay   time.Duration
+	watchdogEnabled bool
+	lastFrameAt     time.Time
+	watchdogStale   bool
 	// Solo lo toca la goroutine monitor; sirve para no repetir la misma linea
 	// de error terminal en cada tick.
 	lastTerminalErr error
@@ -152,6 +171,18 @@ type TelemetryCoreRuntime struct {
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
 // the LMU mapping lifecycle.
 func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
+	now := config.Now
+	if now == nil {
+		now = time.Now
+	}
+	watchdogDelay := config.WatchdogTimeout
+	if watchdogDelay <= 0 {
+		watchdogDelay = defaultTelemetryWatchdogDelay
+	}
+	watchdogEnabled := true
+	if config.TelemetryWatchdogEnabled != nil {
+		watchdogEnabled = *config.TelemetryWatchdogEnabled
+	}
 	failurePolicyV2 := true
 	if config.TelemetryFailurePolicyV2 != nil {
 		failurePolicyV2 = *config.TelemetryFailurePolicyV2
@@ -225,6 +256,9 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		derive:           derive.NewPipeline(derive.Config{}),
 		engineer:         config.Engineer,
 		engineerManifest: engineerManifest,
+		now:              now,
+		watchdogDelay:    watchdogDelay,
+		watchdogEnabled:  watchdogEnabled,
 	}, nil
 }
 
@@ -264,6 +298,8 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		PublishFailures:              details.publishFailures,
 		ConsumerPanics:               details.consumerPanics,
 		FailStops:                    runtime.counters.failStops.Load(),
+		LastFrameAgeMs:               runtime.lastFrameAgeMilliseconds(),
+		WatchdogDegradations:         details.watchdogDegradations,
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
 		Transport:                    runtime.hub.Metrics(),
@@ -636,11 +672,18 @@ func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 					log.Printf("telemetry driver terminal error (attempt=%d): %v", status.ReconnectAttempt, status.Err)
 				}
 			}
-			if err := runtime.setStatus(status.State, status.ReconnectAttempt); err != nil {
+			if err := runtime.setStatus(runtime.watchdogAdjustedState(status.State), status.ReconnectAttempt); err != nil {
 				runtime.failStop(err)
 				return
 			}
-			runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
+			if err := runtime.evaluateWatchdog(); err != nil {
+				runtime.failStop(err)
+				return
+			}
+			runtime.mu.Lock()
+			publishedState := runtime.statusState
+			runtime.mu.Unlock()
+			runtime.deliverEngineerStatus(publishedState, status.ReconnectAttempt)
 		}
 	}
 }
@@ -675,6 +718,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	if err != nil {
 		return err
 	}
+	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
 	facts := &collectTelemetryFacts{}
 	if err := sink.runtime.coord.Apply(ctx, observed, facts); err != nil {
@@ -964,7 +1008,7 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 		return nil
 	}
 	nextRevision := runtime.statusRev + 1
-	capturedAt := time.Now().UTC()
+	capturedAt := runtime.now().UTC()
 	payload := telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt}
 	overlayStatus, err := telemetrytransport.NewStatus(
 		telemetrytransport.ProductOverlay,
@@ -994,6 +1038,59 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	runtime.statusState = state
 	runtime.statusAttempt = attempt
 	return nil
+}
+
+func (runtime *TelemetryCoreRuntime) recordFrameArrival() {
+	runtime.mu.Lock()
+	runtime.lastFrameAt = runtime.now()
+	runtime.watchdogStale = false
+	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) watchdogAdjustedState(state driver.State) driver.State {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if !runtime.watchdogEnabled {
+		return state
+	}
+	if runtime.watchdogStale && (state == driver.StateLive || state == driver.StateDegraded) {
+		return driver.StateStale
+	}
+	return state
+}
+
+func (runtime *TelemetryCoreRuntime) evaluateWatchdog() error {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if !runtime.watchdogEnabled {
+		return nil
+	}
+	if runtime.lastFrameAt.IsZero() ||
+		(runtime.statusState != driver.StateLive && runtime.statusState != driver.StateDegraded) {
+		return nil
+	}
+	if runtime.now().Sub(runtime.lastFrameAt) < runtime.watchdogDelay {
+		return nil
+	}
+	if err := runtime.setStatusLocked(driver.StateStale, runtime.statusAttempt); err != nil {
+		return fmt.Errorf("publish telemetry watchdog status: %w", err)
+	}
+	runtime.watchdogStale = true
+	runtime.metricStore.watchdogDegradation()
+	return nil
+}
+
+func (runtime *TelemetryCoreRuntime) lastFrameAgeMilliseconds() uint64 {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if runtime.lastFrameAt.IsZero() {
+		return 0
+	}
+	age := runtime.now().Sub(runtime.lastFrameAt)
+	if age <= 0 {
+		return 0
+	}
+	return uint64(age / time.Millisecond)
 }
 
 func (runtime *TelemetryCoreRuntime) failStop(err error) {

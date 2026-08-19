@@ -6,7 +6,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test.skip("ISA-371 D-06: degrada a stale cuando capturedAt supera el umbral", () => {
+test("degrada a stale cuando capturedAt supera el umbral", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-08-19T12:00:00Z"));
   const store = createProjectionTransportStore("overlay");
@@ -17,4 +17,5 @@ test.skip("ISA-371 D-06: degrada a stale cuando capturedAt supera el umbral", ()
     payload: { state: "live", reconnectAttempt: 0 },
   });
   expect(store.getSnapshot().status?.payload.state).toBe("stale");
+  expect(store.getSnapshot().ageMs).toBe(2_000);
 });

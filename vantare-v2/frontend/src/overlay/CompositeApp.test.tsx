@@ -118,6 +118,7 @@ describe("CompositeApp", () => {
     runtimeMock.onCalls = [];
     runtimeMock.emit.mockReset();
     vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T09:00:00Z"));
     desktopOutput = { width: 1920, height: 1080 };
     installResizeObserver();
   });

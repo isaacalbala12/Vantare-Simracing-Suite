@@ -6,12 +6,17 @@ const product: ProductID = "engineer";
 const capturedAt = "2026-07-30T00:00:00Z";
 
 describe("projection transport store", () => {
-  test.skip("ISA-371 D-07: acepta una revisión de status mayor no contigua", () => {
+  test("acepta una revisión de status mayor no contigua", () => {
     const store = readyStore();
+    store.ingest(
+      eventName(product, "projection"),
+      projection("full", 1, 1, { value: 1 }),
+    );
     expect(() =>
       store.ingest(eventName(product, "status"), status(4, "degraded")),
     ).not.toThrow();
     expect(store.getSnapshot().status?.statusRevision).toBe(4);
+    expect(store.getSnapshot().snapshot?.sequence).toBe(1);
   });
 
   it("rejects retired delta envelopes with a clear contract error", () => {
@@ -59,22 +64,19 @@ describe("projection transport store", () => {
     ).toThrow("snapshot-regression");
   });
 
-  it("never exposes a status with a snapshot from another revision", () => {
+  it("retains the last snapshot while status advances", () => {
     const store = readyStore();
     store.ingest(
       eventName(product, "projection"),
       projection("full", 1, 1, { value: 1 }),
     );
     store.ingest(eventName(product, "status"), status(2, "degraded"));
-    expect(store.getSnapshot().snapshot).toBeUndefined();
+    expect(store.getSnapshot().snapshot?.sequence).toBe(1);
     expect(() =>
       store.ingest(
         eventName(product, "projection"),
         { ...projection("full", 1, 2, { value: 2 }), statusRevision: 1 },
       ),
-    ).toThrow("status-gap");
-    expect(() =>
-      store.ingest(eventName(product, "status"), status(4, "degraded")),
     ).toThrow("status-gap");
     store.ingest(
       eventName(product, "projection"),
@@ -83,14 +85,14 @@ describe("projection transport store", () => {
     expect(store.getSnapshot().snapshot?.sequence).toBe(2);
   });
 
-  it("keeps the hidden cursor when status advances", () => {
+  it("keeps the retained cursor when status advances", () => {
     const store = readyStore();
     store.ingest(
       eventName(product, "projection"),
       projection("full", 2, 5, { value: 5 }),
     );
     store.ingest(eventName(product, "status"), status(2, "degraded"));
-    expect(store.getSnapshot().snapshot).toBeUndefined();
+    expect(store.getSnapshot().snapshot?.sequence).toBe(5);
     expect(() =>
       store.ingest(eventName(product, "projection"), {
         ...projection("full", 1, 1, { value: 1 }),
@@ -99,14 +101,14 @@ describe("projection transport store", () => {
     ).toThrow("snapshot-regression");
   });
 
-  it("reexposes an identical cursor under the new coherent status revision", () => {
+  it("updates an identical cursor under the new coherent status revision", () => {
     const store = readyStore();
     store.ingest(
       eventName(product, "projection"),
       projection("full", 1, 1, { value: 1 }),
     );
     store.ingest(eventName(product, "status"), status(2, "degraded"));
-    expect(store.getSnapshot().snapshot).toBeUndefined();
+    expect(store.getSnapshot().snapshot?.statusRevision).toBe(1);
     store.ingest(eventName(product, "projection"), {
       ...projection("full", 1, 1, { value: 1 }),
       statusRevision: 2,

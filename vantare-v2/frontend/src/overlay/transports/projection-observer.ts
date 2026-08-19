@@ -86,7 +86,11 @@ export function createProjectionObserver(
   const observe = () => {
     const state = store.getSnapshot();
     const status = state.status?.payload.state;
-    if (!state.snapshot || !status) {
+    if (
+      !state.snapshot ||
+      !status ||
+      state.snapshot.statusRevision !== state.status?.statusRevision
+    ) {
       options.onObservation?.({ status });
       publish({ runtime: options.runtime, status, result: "waiting" });
       return;

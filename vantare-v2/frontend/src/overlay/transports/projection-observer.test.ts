@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eventName, type JSONObject, type ProjectionEnvelope } from "../../telemetry-transport/contracts";
 import {
   createSseProjectionObserver,
@@ -9,6 +9,15 @@ import {
 } from "./projection-observer";
 
 describe("projection observers", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-19T20:21:22Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("observes identical authoritative Wails and SSE projection state", () => {
     const handlers = new Map<string, (data: unknown) => void>();
     const wails = createWailsProjectionObserver({

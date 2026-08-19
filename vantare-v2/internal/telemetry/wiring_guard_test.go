@@ -257,15 +257,10 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
 		return true
 	}
-	// 2026-08-19: F6 defines the complete Overlay v2 contract while only the
-	// player slice is connected. ProjectV2 is wired by F6.5; the remaining
-	// authority/mode values become production inputs in the feature builders of F8.
-	if symbol.packagePath == "internal/telemetry/projection/overlayv2" {
-		switch symbol.name {
-		case "ProjectV2", "AuthorityNative", "AuthorityDerived", "AuthorityEstimated",
-			"ModeOfficial", "ModeReconstructed", "ModeEstimated":
-			return true
-		}
+	// 2026-08-19: F6.3 generates every Overlay v2 wire type from Go, while
+	// ProjectV2 itself remains intentionally disconnected until runtime F6.5.
+	if symbol.packagePath == "internal/telemetry/projection/overlayv2" && symbol.name == "ProjectV2" {
+		return true
 	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.

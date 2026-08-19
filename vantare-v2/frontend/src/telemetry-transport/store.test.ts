@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 import { eventName, type ProductID } from "./contracts";
 import { createProjectionTransportStore } from "./store";
 
@@ -6,6 +6,14 @@ const product: ProductID = "engineer";
 const capturedAt = "2026-07-30T00:00:00Z";
 
 describe("projection transport store", () => {
+  test.skip("ISA-371 D-07: acepta una revisión de status mayor no contigua", () => {
+    const store = readyStore();
+    expect(() =>
+      store.ingest(eventName(product, "status"), status(4, "degraded")),
+    ).not.toThrow();
+    expect(store.getSnapshot().status?.statusRevision).toBe(4);
+  });
+
   it("applies a verified-shape merge patch after a full", () => {
     const store = readyStore();
     store.ingest(

@@ -29,6 +29,10 @@ func PublisherEventName(product PublisherProduct, kind PublisherEventKind) strin
 	return "telemetry:" + string(product) + ":" + string(kind)
 }
 
+func PublisherSnapshotRequestEventName(product PublisherProduct) string {
+	return PublisherEventName(product, PublisherEventSnapshot) + ":get"
+}
+
 type EventEmitter interface {
 	Emit(name string, data any)
 }

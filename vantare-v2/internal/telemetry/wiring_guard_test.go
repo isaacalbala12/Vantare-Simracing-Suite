@@ -257,13 +257,6 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
 		return true
 	}
-	// 2026-08-19: F6.4 delivers explicit replay; F6.6 wires the frontend request.
-	if symbol.packagePath == "internal/app/telemetrytransport" {
-		switch symbol.name {
-		case "ReplaySnapshot":
-			return true
-		}
-	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.
 	_, allowed := wiringGuardExistingContractBaseline[symbol.packagePath+"."+symbol.name]

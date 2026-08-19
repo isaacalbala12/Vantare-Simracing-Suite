@@ -384,6 +384,36 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 	cleanup()
 }
 
+func TestTelemetryReplayHandlerServesOverlayV2LateJoin(t *testing.T) {
+	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if err := publisher.PublishSnapshot(7, map[string]any{
+		"revision": 7, "source": map[string]any{"state": "live"}, "frame": nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events := newSynchronousTelemetryEvents()
+	emitter := &countingTelemetryEmitter{}
+	cleanup := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
+	defer cleanup()
+
+	events.Emit(telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2))
+
+	replayed := emitter.snapshot()
+	if len(replayed) != 1 || replayed[0].name != telemetrytransport.PublisherEventName(
+		telemetrytransport.ProductOverlayV2, telemetrytransport.PublisherEventSnapshot,
+	) {
+		t.Fatalf("Overlay v2 replay = %#v", replayed)
+	}
+}
+
 type countingTelemetryEmitter struct {
 	mu     sync.Mutex
 	events []sseEvent

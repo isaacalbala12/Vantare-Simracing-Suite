@@ -160,7 +160,7 @@ func TestStrategySignalAuditLedgerMatchesClosedV1Golden(t *testing.T) {
 	}
 }
 
-func TestStrategySignalAuditTracksCanonicalVehicleGeneration(t *testing.T) {
+func TestStrategySignalAuditTracksCanonicalVehicleGrace(t *testing.T) {
 	mapper, sink := NewBatchMapper(), new(batchCollector)
 	writeMapped(t, mapper, trackObservation(7), sink)
 	first := sink.last(t)
@@ -174,9 +174,9 @@ func TestStrategySignalAuditTracksCanonicalVehicleGeneration(t *testing.T) {
 	reappeared := trackObservation(7)
 	reappeared.SourceTime = observed(3 * time.Second)
 	writeMapped(t, mapper, reappeared, sink)
-	secondGeneration := sink.last(t)
-	if secondGeneration.Header.Identity.Session != "lmu-session-1" || secondGeneration.Header.Identity.Vehicle != "lmu-slot-7-generation-2" {
-		t.Fatalf("identity after disappearance/reappearance = %+v", secondGeneration.Header.Identity)
+	reopened := sink.last(t)
+	if reopened.Header.Identity.Session != "lmu-session-1" || reopened.Header.Identity.Vehicle != "lmu-slot-7-generation-1" {
+		t.Fatalf("identity after disappearance/reappearance = %+v", reopened.Header.Identity)
 	}
 
 	reset := trackObservation(7)

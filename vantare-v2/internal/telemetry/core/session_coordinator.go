@@ -376,7 +376,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 			newFactDraft(header, header.Identity, SessionFact{Kind: FactSessionStarted, OccurredUTC: now, PreviousIdentity: previousHeader.Identity}),
 		)
 		previousVehicles = nil
-	} else if previousHeader.Identity.Vehicle != header.Identity.Vehicle {
+	} else if !previousHeader.Identity.SameRun(header.Identity) {
 		// A car/run reset starts a new baseline only for the newly active run.
 		// Stable rivals keep their same-session high-water and pit history.
 		delete(previousVehicles, header.Identity.Vehicle)

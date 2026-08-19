@@ -16,7 +16,6 @@ import (
 )
 
 func TestSlotMissingOneFrameKeepsVehicleIdentity(t *testing.T) {
-	t.Skip("ISA-371 D-03: activar en F3; el epoch nuevo también borra ControlsHistory y delta")
 	for _, test := range []struct {
 		name       string
 		first      Observation
@@ -43,7 +42,6 @@ func TestSlotMissingOneFrameKeepsVehicleIdentity(t *testing.T) {
 }
 
 func TestSlotReusedByAnotherCarGetsNewIdentity(t *testing.T) {
-	t.Skip("ISA-371 escenario 17: activar en F3")
 	mapper, sink := NewBatchMapper(), new(batchCollector)
 	first := trackObservation(7, 8)
 	first.Vehicles[1].DriverName = observed(identity.DriverName("Driver A"))
@@ -85,14 +83,15 @@ func TestSessionSignatureStaleDoesNotMergeSessions(t *testing.T) {
 	}
 }
 
-func TestSlotMissingOneFrameKeepsControlsHistory(t *testing.T) {
-	t.Skip("ISA-371 D-03: activar en F3; la misma transición borra la referencia de delta")
+func TestPlayerReappearanceKeepsControlsHistoryAndDeltaReference(t *testing.T) {
 	mapper := NewBatchMapper()
 	sink := &identityDeriveSink{reducer: telemetrycore.NewReducer(), pipeline: derive.NewPipeline(derive.Config{})}
 	first := trackObservation(7)
 	first.Vehicles[0].Throttle = observed(schema.Ratio(0.4))
 	first.Vehicles[0].Brake = observed(schema.Ratio(0))
 	first.Vehicles[0].Clutch = observed(schema.Ratio(0))
+	first.Vehicles[0].DeltaBest = observed(session.DeltaSeconds(0.2))
+	first.Vehicles[0].LapDistance = observed(standings.LapDistance(100))
 	writeMapped(t, mapper, first, sink)
 
 	missing := trackObservation()
@@ -103,6 +102,8 @@ func TestSlotMissingOneFrameKeepsControlsHistory(t *testing.T) {
 	reappeared.Vehicles[0].Throttle = observed(schema.Ratio(0.6))
 	reappeared.Vehicles[0].Brake = observed(schema.Ratio(0))
 	reappeared.Vehicles[0].Clutch = observed(schema.Ratio(0))
+	reappeared.Vehicles[0].DeltaBest = observed(session.DeltaSeconds(0.1))
+	reappeared.Vehicles[0].LapDistance = observed(standings.LapDistance(120))
 	writeMapped(t, mapper, reappeared, sink)
 	final, ok := sink.final.Value()
 	if !ok {
@@ -110,6 +111,26 @@ func TestSlotMissingOneFrameKeepsControlsHistory(t *testing.T) {
 	}
 	if len(final.Derived.ControlsHistory.Samples) < 2 {
 		t.Fatalf("controls history samples = %d, want history from before and after one-frame gap", len(final.Derived.ControlsHistory.Samples))
+	}
+	if len(final.Derived.Delta.History) < 2 {
+		t.Fatalf("delta history samples = %d, want reference history from before and after one-frame gap", len(final.Derived.Delta.History))
+	}
+}
+
+func TestGraceWindowExpiryReleasesSlot(t *testing.T) {
+	mapper, sink := NewBatchMapper(BatchMapperConfig{SlotGraceFrames: 1}), new(batchCollector)
+	writeMapped(t, mapper, trackObservation(7), sink)
+	firstID := vehicleIDForSlot(t, sink.last(t), 7)
+	for sequence := 2; sequence <= 3; sequence++ {
+		missing := trackObservation()
+		missing.SourceTime = observed(time.Duration(sequence) * time.Second)
+		writeMapped(t, mapper, missing, sink)
+	}
+	reappeared := trackObservation(7)
+	reappeared.SourceTime = observed(4 * time.Second)
+	writeMapped(t, mapper, reappeared, sink)
+	if got := vehicleIDForSlot(t, sink.last(t), 7); got == firstID {
+		t.Fatalf("expired slot retained identity %q", got)
 	}
 }
 

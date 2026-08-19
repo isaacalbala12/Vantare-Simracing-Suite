@@ -190,12 +190,8 @@ func validateBatchHeader(current envelope.Header, initialized bool, next envelop
 		if !current.Identity.SameSession(next.Identity) {
 			return ErrRunIdentityChanged
 		}
-		// Losing the active player is not a new session or epoch. Clearing the
-		// vehicle prevents consumers from treating a stale row as the player;
-		// assigning a different non-empty vehicle still requires a new epoch.
-		if next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle {
-			return ErrRunIdentityChanged
-		}
+		// Player assignment is domain identity, not stream continuity. Slot
+		// policy and stint identity own changes within the same session.
 	}
 	return nil
 }

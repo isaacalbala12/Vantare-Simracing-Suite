@@ -143,7 +143,7 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 }
 
 func (tracker *selfDeltaTracker) applySelf(header envelope.Header, observed core.ObservedState) SelfDelta {
-	if tracker.initialized && (tracker.epoch != header.Cursor.Epoch || tracker.session != header.Identity.Session || tracker.player != header.Identity.Vehicle) {
+	if tracker.initialized && (tracker.epoch != header.Cursor.Epoch || tracker.session != header.Identity.Session) {
 		limit := tracker.limit
 		*tracker = *newSelfDeltaTracker(limit)
 	}
@@ -153,6 +153,7 @@ func (tracker *selfDeltaTracker) applySelf(header envelope.Header, observed core
 		tracker.session = header.Identity.Session
 		tracker.player = header.Identity.Vehicle
 	}
+	tracker.player = header.Identity.Vehicle
 	if header.Identity.Vehicle == "" {
 		tracker.invalidateCurrentLap()
 		return tracker.output(schema.FreshnessMissing, schema.MissingField[session.DeltaSeconds]())

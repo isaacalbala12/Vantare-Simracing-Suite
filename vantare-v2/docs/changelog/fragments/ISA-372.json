@@ -2,21 +2,24 @@
   "schemaVersion": 1,
   "issue": "ISA-372",
   "type": "change",
-  "summary": "Telemetry Core: los overlays dejan de presentar como actuales datos congelados (watchdog) y el contrato TypeScript de telemetría se genera desde los tipos wire Go.",
+  "summary": "Telemetry Core: los overlays dejan de presentar datos congelados como actuales, el contrato TypeScript se genera desde Go y una ausencia breve ya no cambia la identidad del coche.",
   "technicalNotes": [
     "Backend y frontend degradan a stale cuando el último frame supera el presupuesto de frescura.",
     "Los saltos válidos de revisión de status ya no congelan el store cuando el transporte agrupa eventos.",
     "El último snapshot se conserva sin sustituir señales ausentes por ceros o placeholders.",
     "Overlay, Engineer, Strategy, Analysis y los sobres de transporte comparten un archivo generado determinista con cabecera DO NOT EDIT.",
     "Los contratos públicos existentes se conservan mediante reexports y no cambia ningún payload ni golden de red.",
-    "Los gates locales y de CI regeneran el contrato y fallan si el archivo versionado queda desactualizado."
+    "Los gates locales y de CI regeneran el contrato y fallan si el archivo versionado queda desactualizado.",
+    "Una fila LMU que desaparece hasta 30 frames conserva su VehicleID al volver si coinciden slot, piloto y clase; un slot reutilizado o una ausencia mayor abre una generación nueva.",
+    "La ausencia y reaparición del player ya no crea un epoch ni borra el historial de controles o la referencia de delta."
   ],
   "testing": [
     "Abrir Vantare antes que LMU, entrar en pista y confirmar que el estado pasa a live al llegar telemetría.",
     "Interrumpir temporalmente la fuente y comprobar que los widgets pasan a stale alrededor de un segundo sin cambiar sus valores.",
     "Reanudar la fuente y comprobar que los widgets vuelven a live sin reiniciar Vantare.",
     "Ejecutar task telemetry:contract:check y confirmar que termina sin diff.",
-    "Ejecutar los tests frontend y comprobar que los cuatro goldens Go se decodifican con los tipos generados."
+    "Ejecutar los tests frontend y comprobar que los cuatro goldens Go se decodifican con los tipos generados.",
+    "En una sesión con una caída breve de una fila, confirmar que el coche reaparece con la misma identidad; reutilizar el slot con otro piloto o clase y confirmar una identidad nueva."
   ],
   "knownLimitations": [
     "La validación local usa relojes inyectados y fixtures; queda pendiente una sesión LMU real y una build Wails/OBS instalada.",

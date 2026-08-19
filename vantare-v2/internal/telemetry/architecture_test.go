@@ -140,6 +140,7 @@ func TestValidateImport(t *testing.T) {
 		{name: "driver contract rejects core", edge: importEdge{Package: "internal/telemetry/driver", Import: modulePath + "/internal/telemetry/core"}, wantErr: true},
 		{name: "concrete driver may use core port", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "concrete driver may use neutral driver contract", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/driver"}},
+		{name: "concrete driver may use identity policy", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/identity"}},
 		{name: "concrete driver may use own subpackage", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/drivers/lmu/sharedmemory"}},
 		{name: "concrete driver rejects projection", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/projection/overlay"}, wantErr: true},
 		{name: "concrete driver rejects another simulator", edge: importEdge{Package: "internal/telemetry/drivers/lmu", Import: modulePath + "/internal/telemetry/drivers/iracing"}, wantErr: true},
@@ -455,6 +456,7 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/driver",
 			modulePath+"/internal/telemetry/core",
 			modulePath+"/internal/telemetry/catalog",
+			modulePath+"/internal/telemetry/identity",
 			ownDriverRoot,
 		) {
 			return fmt.Errorf("concrete driver may only import schema, core ports, neutral driver contracts, and its own tree within telemetry, not %s", edge.Import)

@@ -414,8 +414,7 @@ func validateInput(current envelope.Header, initialized bool, next envelope.Head
 		if next.Cursor.Sequence != current.Cursor.Sequence+1 {
 			return ErrSequenceGap
 		}
-		if !current.Identity.SameSession(next.Identity) ||
-			(next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle) {
+		if !current.Identity.SameSession(next.Identity) {
 			return ErrIdentityChanged
 		}
 		return nil
@@ -431,9 +430,7 @@ func validateInput(current envelope.Header, initialized bool, next envelope.Head
 
 func mustReset(previous, next envelope.Header) bool {
 	return previous.Cursor.Epoch != next.Cursor.Epoch ||
-		!previous.Identity.SameSession(next.Identity) ||
-		!previous.Identity.SameRun(next.Identity) ||
-		previous.Identity.Vehicle != next.Identity.Vehicle
+		!previous.Identity.SameSession(next.Identity)
 }
 
 func cloneObserved(state core.ObservedState) core.ObservedState {

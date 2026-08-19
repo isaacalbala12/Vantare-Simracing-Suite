@@ -1,25 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
-import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
-import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
-import type { TelemetryAdapter } from "../../../overlay/transports/telemetry-adapter";
-import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
-import { useStudioPreview } from "../state/studio-store";
-
-const INSPECTOR_TELEMETRY_HZ = 30;
-
-type StudioTelemetryContextValue = {
-  coordinator: TelemetryRateCoordinator;
-  liveAvailable: boolean;
-};
-
-const StudioTelemetryContext = createContext<StudioTelemetryContextValue | null>(null);
+import { useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { buildMockTelemetry } from '../../../overlay/core/mock-scenarios';
+import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-rate-coordinator';
+import type { TelemetryAdapter } from '../../../overlay/transports/telemetry-adapter';
+import { useStudioPreview } from '../state/studio-store';
+import { StudioTelemetryContext, type StudioTelemetryContextValue } from './studio-telemetry';
 
 export type StudioTelemetryProviderProps = {
   coordinator: TelemetryRateCoordinator;
@@ -41,16 +25,16 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   // render with correct telemetry data on first paint. Mock data is generated
   // synchronously, so publishing before paint ensures the first frame has data.
   useLayoutEffect(() => {
-    if (preview.source === "mock") {
+    if (preview.source === 'mock') {
       // Publish mock snapshot when in mock mode
       coordinator.publish(
         buildMockTelemetry({
           session: preview.mockSession,
           location: preview.mockLocation,
-          state: "ready",
+          state: 'ready',
         }),
       );
-    } else if (preview.source === "live" && liveAvailable && telemetryAdapter) {
+    } else if (preview.source === 'live' && liveAvailable && telemetryAdapter) {
       // Start live adapter when in live mode
       telemetryAdapter.start();
       // Cleanup stops adapter when source changes or component unmounts
@@ -75,27 +59,6 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   return (
     <StudioTelemetryContext.Provider value={value}>{children}</StudioTelemetryContext.Provider>
   );
-}
-
-export function useStudioTelemetryCoordinator(): TelemetryRateCoordinator {
-  const context = useContext(StudioTelemetryContext);
-  if (!context) {
-    throw new Error("useStudioTelemetryCoordinator must be used inside StudioTelemetryProvider");
-  }
-  return context.coordinator;
-}
-
-export function useStudioTelemetryLiveAvailable(): boolean {
-  const context = useContext(StudioTelemetryContext);
-  if (!context) {
-    throw new Error("useStudioTelemetryLiveAvailable must be used inside StudioTelemetryProvider");
-  }
-  return context.liveAvailable;
-}
-
-export function useStudioTelemetrySnapshot(hz = INSPECTOR_TELEMETRY_HZ): TelemetrySnapshot {
-  const coordinator = useStudioTelemetryCoordinator();
-  return useRateLimitedTelemetry(coordinator, hz);
 }
 
 export function ConnectedStudioTelemetryProvider(props: {

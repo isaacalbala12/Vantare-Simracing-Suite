@@ -1,40 +1,39 @@
-import { useMemo, useState } from "react";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
-import type { InspectorSectionId } from "../../../overlay/core/widget-definition";
-import { Accordion } from "../../../ui/orbit";
-import { executeWidgetAction } from "../canvas/widget-actions";
-import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
-import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
-import { createWailsWidgetDesignClient } from "../designs/widget-design-client";
-import { ActionsSection } from "../inspector/ActionsSection";
-import { DesignSection } from "../inspector/DesignSection";
-import { LayoutSection } from "../inspector/LayoutSection";
-import { WidgetPropertyInspectorView } from "../inspector/WidgetPropertyInspectorView";
-import { resolveInspectorSections } from "../inspector/inspector-sections";
-import { InspectorSkinProvider } from "../inspector/inspector-skin";
-import { useStudioDocument } from "../state/studio-store";
+import { useMemo, useState } from 'react';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
+import type { InspectorSectionId } from '../../../overlay/core/widget-definition';
+import { Accordion } from '../../../ui/orbit';
+import { executeWidgetAction } from '../canvas/widget-actions';
+import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useDeleteWidgetConfirm } from '../components/studio-confirm';
+import { createWailsWidgetDesignClient } from '../designs/widget-design-client';
+import { ActionsSection } from '../inspector/ActionsSection';
+import { DesignSection } from '../inspector/DesignSection';
+import { LayoutSection } from '../inspector/LayoutSection';
+import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspectorView';
+import { resolveInspectorSections } from '../inspector/inspector-sections';
+import { useStudioDocument } from '../state/studio-store';
 import {
   behaviorSummary,
   designSummary,
   inspectorMeta,
   layoutSummary,
   widgetLabel,
-} from "./studio-orbit-model";
+} from './studio-orbit-model';
 
 /** Grupos Orbit ↔ secciones reales de `inspector-sections.ts` (decision D-43). */
 const GROUPS: readonly {
-  id: "design" | "behavior" | "layout";
+  id: 'design' | 'behavior' | 'layout';
   titleKey: string;
   members: readonly InspectorSectionId[];
 }[] = [
-  { id: "design", titleKey: "studio.inspector.section.design", members: ["design", "appearance"] },
+  { id: 'design', titleKey: 'studio.inspector.section.design', members: ['design', 'appearance'] },
   {
-    id: "behavior",
-    titleKey: "studio.inspector.section.behavior",
-    members: ["behavior", "content"],
+    id: 'behavior',
+    titleKey: 'studio.inspector.section.behavior',
+    members: ['behavior', 'content'],
   },
-  { id: "layout", titleKey: "studio.inspector.section.layout", members: ["layout", "actions"] },
+  { id: 'layout', titleKey: 'studio.inspector.section.layout', members: ['layout', 'actions'] },
 ];
 
 function HeaderAction(props: {
@@ -50,9 +49,9 @@ function HeaderAction(props: {
     <button
       aria-label={label}
       aria-pressed={pressed}
-      className={["orbit-icon-btn", "orbit-icon-btn--28", danger ? "orbit-icon-btn--danger" : null]
+      className={['orbit-icon-btn', 'orbit-icon-btn--28', danger ? 'orbit-icon-btn--danger' : null]
         .filter(Boolean)
-        .join(" ")}
+        .join(' ')}
       data-testid={testId}
       data-tip={label}
       data-tip-side="top"
@@ -98,19 +97,19 @@ export function StudioOrbitInspector(): React.ReactElement {
   if (!widget || !activeLayout) {
     return (
       <p className="orbit-studio-inspector__empty" data-testid="orbit-studio-inspector-empty">
-        {t("studio.inspector.empty")}
+        {t('studio.inspector.empty')}
       </p>
     );
   }
 
   const unsupported = sections.some(
-    (section) => section.labelKey === "overlay.studio.inspector.sections.unsupported",
+    (section) => section.labelKey === 'overlay.studio.inspector.sections.unsupported',
   );
   const has = (id: InspectorSectionId) =>
     !unsupported && sections.some((section) => section.id === id);
   const layoutViewport = resolveLayoutViewport(document ?? {});
 
-  const runAction = (actionId: "duplicate" | "delete") => {
+  const runAction = (actionId: 'duplicate' | 'delete') => {
     if (!savedDocument) return;
     executeWidgetAction({
       actionId,
@@ -123,7 +122,7 @@ export function StudioOrbitInspector(): React.ReactElement {
       selectWidget,
       confirmDelete: (message) => window.confirm(message),
       requestDeleteConfirm: deleteConfirm?.request,
-      deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
+      deleteMessage: t('studio.v3.widgetActions.deleteConfirm'),
     });
   };
 
@@ -133,11 +132,11 @@ export function StudioOrbitInspector(): React.ReactElement {
     layout: layoutSummary(widget, t),
   };
 
-  const body = (id: "design" | "behavior" | "layout") => {
-    if (id === "design") {
+  const body = (id: 'design' | 'behavior' | 'layout') => {
+    if (id === 'design') {
       return (
         <>
-          {has("design") ? (
+          {has('design') ? (
             <DesignSection
               access={access}
               designClient={designClient}
@@ -147,7 +146,7 @@ export function StudioOrbitInspector(): React.ReactElement {
               widgets={activeLayout.widgets}
             />
           ) : null}
-          {has("appearance") ? (
+          {has('appearance') ? (
             <WidgetPropertyInspectorView
               access={access}
               dispatch={dispatch}
@@ -160,10 +159,10 @@ export function StudioOrbitInspector(): React.ReactElement {
         </>
       );
     }
-    if (id === "behavior") {
+    if (id === 'behavior') {
       return (
         <>
-          {has("behavior") ? (
+          {has('behavior') ? (
             <WidgetPropertyInspectorView
               access={access}
               dispatch={dispatch}
@@ -173,7 +172,7 @@ export function StudioOrbitInspector(): React.ReactElement {
               widget={widget}
             />
           ) : null}
-          {has("content") ? (
+          {has('content') ? (
             <WidgetPropertyInspectorView
               access={access}
               dispatch={dispatch}
@@ -188,7 +187,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     }
     return (
       <>
-        {has("layout") && savedDocument ? (
+        {has('layout') && savedDocument ? (
           <LayoutSection
             dispatch={dispatch}
             layoutViewport={layoutViewport}
@@ -199,7 +198,7 @@ export function StudioOrbitInspector(): React.ReactElement {
             widgets={activeLayout.widgets}
           />
         ) : null}
-        {has("actions") && savedDocument ? (
+        {has('actions') && savedDocument ? (
           <ActionsSection
             discardAll={discardAll}
             dispatch={dispatch}
@@ -215,27 +214,26 @@ export function StudioOrbitInspector(): React.ReactElement {
   };
 
   return (
-    <InspectorSkinProvider skin="orbit">
     <div
-      aria-label={t("studio.inspector.aria")}
+      aria-label={t('studio.inspector.aria')}
       className="orbit-studio-inspector"
       data-testid="orbit-studio-inspector"
       data-widget-id={widget.id}
     >
       <header className="orbit-studio-inspector__head">
         <div className="orbit-studio-inspector__id">
-          <span className="orbit-eyebrow">{t("studio.inspector.kind")}</span>
+          <span className="orbit-eyebrow">{t('studio.inspector.kind')}</span>
           <h2 data-testid="orbit-studio-inspector-name">{widgetLabel(widget)}</h2>
           <p data-testid="orbit-studio-inspector-meta">{inspectorMeta(widget, t)}</p>
         </div>
         <div className="orbit-studio-inspector__actions">
           <HeaderAction
             label={
-              widget.behavior.enabled ? t("studio.inspector.hide") : t("studio.inspector.show")
+              widget.behavior.enabled ? t('studio.inspector.hide') : t('studio.inspector.show')
             }
             onClick={() =>
               dispatch({
-                type: "widget/behavior",
+                type: 'widget/behavior',
                 session: activeSession,
                 widgetIds: [widget.id],
                 patch: { enabled: !widget.behavior.enabled },
@@ -262,8 +260,8 @@ export function StudioOrbitInspector(): React.ReactElement {
             </svg>
           </HeaderAction>
           <HeaderAction
-            label={t("studio.inspector.duplicate")}
-            onClick={() => runAction("duplicate")}
+            label={t('studio.inspector.duplicate')}
+            onClick={() => runAction('duplicate')}
             testId="orbit-studio-inspector-duplicate"
           >
             <svg
@@ -283,8 +281,8 @@ export function StudioOrbitInspector(): React.ReactElement {
           </HeaderAction>
           <HeaderAction
             danger
-            label={t("studio.inspector.delete")}
-            onClick={() => runAction("delete")}
+            label={t('studio.inspector.delete')}
+            onClick={() => runAction('delete')}
             testId="orbit-studio-inspector-delete"
           >
             <svg
@@ -307,7 +305,7 @@ export function StudioOrbitInspector(): React.ReactElement {
       <div className="orbit-studio-inspector__body">
         {unsupported ? (
           <p className="orbit-studio-inspector__empty" role="alert">
-            {t("studio.inspector.unsupported")}
+            {t('studio.inspector.unsupported')}
           </p>
         ) : null}
         {GROUPS.filter((group) => group.members.some((member) => has(member))).map((group) => (
@@ -324,6 +322,5 @@ export function StudioOrbitInspector(): React.ReactElement {
         ))}
       </div>
     </div>
-    </InspectorSkinProvider>
   );
 }

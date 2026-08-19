@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 export type ProfileNameDialogProps = {
   open: boolean;
@@ -19,28 +19,30 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
     open,
     title,
     description,
-    defaultName = "",
-    confirmLabel = "Guardar",
-    placeholder = "Mi overlay",
+    defaultName = '',
+    confirmLabel = 'Guardar',
+    placeholder = 'Mi overlay',
     saving = false,
     errorMessage,
-    dialogTestId = "studio-profile-name-dialog",
+    dialogTestId = 'studio-profile-name-dialog',
     onClose,
     onConfirm,
   } = props;
 
   const [name, setName] = useState(defaultName);
+  const [renderedDefaults, setRenderedDefaults] = useState({ open, defaultName });
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) {
-      setName(defaultName);
-      return;
-    }
+  if (renderedDefaults.open !== open || renderedDefaults.defaultName !== defaultName) {
+    setRenderedDefaults({ open, defaultName });
     setName(defaultName);
+  }
+
+  useEffect(() => {
+    if (!open) return;
     const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
-  }, [defaultName, open]);
+  }, [open]);
 
   if (!open) {
     return null;
@@ -61,9 +63,7 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
         <h2 id={`${dialogTestId}-title`} className="osv3-dialog-panel__title">
           {title}
         </h2>
-        {description ? (
-          <p className="osv3-dialog-panel__body">{description}</p>
-        ) : null}
+        {description ? <p className="osv3-dialog-panel__body">{description}</p> : null}
         <label className="osv3-design-dialog__field">
           <span className="osv3-design-dialog__label">Nombre</span>
           <input
@@ -72,11 +72,11 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
             value={name}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && canConfirm) {
+              if (event.key === 'Enter' && canConfirm) {
                 event.preventDefault();
                 onConfirm(trimmedName);
               }
-              if (event.key === "Escape" && !saving) {
+              if (event.key === 'Escape' && !saving) {
                 event.preventDefault();
                 onClose();
               }
@@ -88,7 +88,11 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
           />
         </label>
         {errorMessage ? (
-          <p data-testid={`${dialogTestId}-error`} className="osv3-dialog-panel__error" role="alert">
+          <p
+            data-testid={`${dialogTestId}-error`}
+            className="osv3-dialog-panel__error"
+            role="alert"
+          >
             {errorMessage}
           </p>
         ) : null}
@@ -109,7 +113,7 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
             disabled={!canConfirm}
             onClick={() => onConfirm(trimmedName)}
           >
-            {saving ? "Guardando..." : confirmLabel}
+            {saving ? 'Guardando...' : confirmLabel}
           </button>
         </div>
       </div>

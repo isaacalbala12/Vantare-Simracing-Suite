@@ -1,34 +1,31 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
-import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
-import { canMutateWidget } from "../access/studio-access";
-import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from "../studio-v3-i18n";
-import { getStudioHotkey } from "../state/studio-hotkeys";
-import {
-  listStudioMonitors,
-  type StudioMonitor,
-} from "../state/studio-monitor-client";
-import { useStudioDocument, useStudioPreview } from "../state/studio-store";
-import { clientToLogical, resolveCanvasScale } from "./canvas-geometry";
-import { resolveCanvasBackground, safeAreaInsets } from "./canvas-backgrounds";
-import { CanvasActionBar } from "./CanvasActionBar";
-import { CanvasToolbar } from "./CanvasToolbar";
-import { PreviewSourceControls } from "./PreviewSourceControls";
-import { CanvasGuides } from "./CanvasGuides";
-import { StudioWidgetFrame } from "./StudioWidgetFrame";
-import { useStudioTelemetryLiveAvailable, useStudioTelemetrySnapshot } from "./StudioTelemetryProvider";
-import { useCanvasInteraction } from "./useCanvasInteraction";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { WidgetInstanceV3 } from '../../../overlay/core/profile-document';
+import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
+import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
+import { canMutateWidget } from '../access/studio-access';
+import { useDeleteWidgetConfirm } from '../components/studio-confirm';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
+import { getStudioHotkey } from '../state/studio-hotkeys';
+import { listStudioMonitors, type StudioMonitor } from '../state/studio-monitor-client';
+import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { clientToLogical, resolveCanvasScale } from './canvas-geometry';
+import { resolveCanvasBackground, safeAreaInsets } from './canvas-backgrounds';
+import { CanvasActionBar } from './CanvasActionBar';
+import { CanvasToolbar } from './CanvasToolbar';
+import { PreviewSourceControls } from './PreviewSourceControls';
+import { CanvasGuides } from './CanvasGuides';
+import { StudioWidgetFrame } from './StudioWidgetFrame';
+import { useStudioTelemetryLiveAvailable, useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useCanvasInteraction } from './useCanvasInteraction';
 import {
   buildWidgetAction,
   buildWidgetMoveCommand,
   executeWidgetAction,
   findWidgetsAtPoint,
   mapHotkeyToWidgetAction,
-} from "./widget-actions";
-import { WidgetContextMenu, type WidgetContextMenuState } from "./WidgetContextMenu";
+} from './widget-actions';
+import { WidgetContextMenu, type WidgetContextMenuState } from './WidgetContextMenu';
 
 function sortWidgetsByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
@@ -57,7 +54,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const { preview, setPreview } = useStudioPreview();
   const liveAvailable = useStudioTelemetryLiveAvailable();
   const liveSnapshot = useStudioTelemetrySnapshot();
-  const snapshotDuringInteractionRef = useRef(liveSnapshot);
+  const [snapshotDuringInteraction, setSnapshotDuringInteraction] = useState(liveSnapshot);
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -67,24 +64,26 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   // margin:auto del contenedor, lo visible era su parte central. De ahi que los
   // widgets aparecieran centrados un instante y luego saltaran a su sitio
   // cambiando de tamano.
-  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
   const [monitorState, setMonitorState] = useState<{
-    status: "loading" | "ready" | "unavailable";
+    status: 'loading' | 'ready' | 'unavailable';
     monitors: StudioMonitor[];
-  }>({ status: "loading", monitors: [] });
+  }>({ status: 'loading', monitors: [] });
 
   useEffect(() => {
     let cancelled = false;
     void listMonitors().then(
       (monitors) => {
         if (!cancelled) {
-          setMonitorState({ status: "ready", monitors });
+          setMonitorState({ status: 'ready', monitors });
         }
       },
       () => {
         if (!cancelled) {
-          setMonitorState({ status: "unavailable", monitors: [] });
+          setMonitorState({ status: 'unavailable', monitors: [] });
         }
       },
     );
@@ -119,9 +118,9 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     };
     updateSize();
 
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateSize);
-      return () => window.removeEventListener("resize", updateSize);
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateSize);
+      return () => window.removeEventListener('resize', updateSize);
     }
 
     const observer = new ResizeObserver(updateSize);
@@ -175,15 +174,15 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     onLayoutBlocked,
   });
 
-  const isCanvasInteracting = interaction.interaction.kind !== "idle";
+  const isCanvasInteracting = interaction.interaction.kind !== 'idle';
 
   useEffect(() => {
-    if (!isCanvasInteracting) {
-      snapshotDuringInteractionRef.current = liveSnapshot;
-    }
+    if (isCanvasInteracting) return;
+    const timer = window.setTimeout(() => setSnapshotDuringInteraction(liveSnapshot), 0);
+    return () => window.clearTimeout(timer);
   }, [isCanvasInteracting, liveSnapshot]);
 
-  const snapshotOverride = isCanvasInteracting ? snapshotDuringInteractionRef.current : undefined;
+  const snapshotOverride = isCanvasInteracting ? snapshotDuringInteraction : undefined;
 
   const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
@@ -192,125 +191,131 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     event.stopPropagation();
   }, []);
 
-  const runHotkeyAction = useCallback((event: KeyboardEvent) => {
-    if (!selectedWidgetId || !savedDocument || interaction.interaction.kind !== "idle") {
-      return;
-    }
-
-    const hotkey = getStudioHotkey(event);
-    if (!hotkey) {
-      return;
-    }
-
-    const mapped = mapHotkeyToWidgetAction(hotkey);
-    if (mapped === "keyboard-move") {
-      if (
-        hotkey !== "move-up"
-        && hotkey !== "move-down"
-        && hotkey !== "move-left"
-        && hotkey !== "move-right"
-      ) {
+  const runHotkeyAction = useCallback(
+    (event: KeyboardEvent) => {
+      if (!selectedWidgetId || !savedDocument || interaction.interaction.kind !== 'idle') {
         return;
       }
-      const command = buildWidgetMoveCommand({
+
+      const hotkey = getStudioHotkey(event);
+      if (!hotkey) {
+        return;
+      }
+
+      const mapped = mapHotkeyToWidgetAction(hotkey);
+      if (mapped === 'keyboard-move') {
+        if (
+          hotkey !== 'move-up' &&
+          hotkey !== 'move-down' &&
+          hotkey !== 'move-left' &&
+          hotkey !== 'move-right'
+        ) {
+          return;
+        }
+        const command = buildWidgetMoveCommand({
+          session: activeSession,
+          widgetIds: [selectedWidgetId],
+          hotkey,
+          shiftKey: event.shiftKey,
+          widgets,
+        });
+        if (command) {
+          event.preventDefault();
+          dispatch(command);
+        }
+        return;
+      }
+
+      if (!mapped) {
+        return;
+      }
+
+      const built = buildWidgetAction({
+        actionId: mapped,
         session: activeSession,
         widgetIds: [selectedWidgetId],
-        hotkey,
-        shiftKey: event.shiftKey,
         widgets,
+        savedDocument,
+        layoutViewport,
       });
-      if (command) {
-        event.preventDefault();
-        dispatch(command);
+      if (!built.command) {
+        return;
       }
-      return;
-    }
 
-    if (!mapped) {
-      return;
-    }
-
-    const built = buildWidgetAction({
-      actionId: mapped,
-      session: activeSession,
-      widgetIds: [selectedWidgetId],
-      widgets,
-      savedDocument,
-      layoutViewport,
-    });
-    if (!built.command) {
-      return;
-    }
-
-    event.preventDefault();
-    executeWidgetAction({
-      actionId: mapped,
-      session: activeSession,
-      widgetIds: [selectedWidgetId],
-      widgets,
-      savedDocument,
-      layoutViewport,
-      dispatch,
-      selectWidget,
+      event.preventDefault();
+      executeWidgetAction({
+        actionId: mapped,
+        session: activeSession,
+        widgetIds: [selectedWidgetId],
+        widgets,
+        savedDocument,
+        layoutViewport,
+        dispatch,
+        selectWidget,
+        confirmDelete,
+        requestDeleteConfirm: deleteConfirm?.request,
+        deleteMessage: t('studio.v3.widgetActions.deleteConfirm'),
+      });
+    },
+    [
+      activeSession,
       confirmDelete,
-      requestDeleteConfirm: deleteConfirm?.request,
-      deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
-    });
-  }, [
-    activeSession,
-    confirmDelete,
-    deleteConfirm?.request,
-    t,
-    dispatch,
-    interaction.interaction.kind,
-    savedDocument,
-    layoutViewport,
-    selectWidget,
-    selectedWidgetId,
-    widgets,
-  ]);
+      deleteConfirm?.request,
+      t,
+      dispatch,
+      interaction.interaction.kind,
+      savedDocument,
+      layoutViewport,
+      selectWidget,
+      selectedWidgetId,
+      widgets,
+    ],
+  );
 
   useEffect(() => {
-    window.addEventListener("keydown", runHotkeyAction);
-    return () => window.removeEventListener("keydown", runHotkeyAction);
+    window.addEventListener('keydown', runHotkeyAction);
+    return () => window.removeEventListener('keydown', runHotkeyAction);
   }, [runHotkeyAction]);
 
-  const handleSceneContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!savedDocument) {
-      return;
-    }
-    const rect = sceneRef.current?.getBoundingClientRect();
-    if (!rect) {
-      return;
-    }
+  const handleSceneContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!savedDocument) {
+        return;
+      }
+      const rect = sceneRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
 
-    event.preventDefault();
-    const logical = clientToLogical({ x: event.clientX, y: event.clientY }, rect, scale);
-    const hits = findWidgetsAtPoint(widgets, logical);
-    if (hits.length === 0) {
-      setContextMenu(null);
-      return;
-    }
+      event.preventDefault();
+      const logical = clientToLogical({ x: event.clientX, y: event.clientY }, rect, scale);
+      const hits = findWidgetsAtPoint(widgets, logical);
+      if (hits.length === 0) {
+        setContextMenu(null);
+        return;
+      }
 
-    const target = hits[0];
-    selectWidget(target.id);
-    setContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      widgetId: target.id,
-      layerWidgetIds: hits.map((widget) => widget.id),
-    });
-  }, [savedDocument, scale, selectWidget, widgets]);
+      const target = hits[0];
+      selectWidget(target.id);
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        widgetId: target.id,
+        layerWidgetIds: hits.map((widget) => widget.id),
+      });
+    },
+    [savedDocument, scale, selectWidget, widgets],
+  );
 
   return (
     <div
       ref={viewportRef}
       data-testid="studio-canvas-viewport"
       className="osv3-canvas-viewport"
-      data-selected-widget-id={selectedWidgetId ?? ""}
+      data-selected-widget-id={selectedWidgetId ?? ''}
       data-interaction={interaction.interaction.kind}
       onPointerDown={() => {
-        if (interaction.interaction.kind === "idle") {
+        if (interaction.interaction.kind === 'idle') {
           selectWidget(null);
           setContextMenu(null);
         }
@@ -325,11 +330,11 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
           monitorIndex={document?.monitorIndex ?? null}
           onPreviewChange={setPreview}
           onLayoutViewportChange={(viewport) =>
-            dispatch({ type: "document/layout-viewport", viewport })
+            dispatch({ type: 'document/layout-viewport', viewport })
           }
           onMonitorChange={(monitor) =>
             dispatch({
-              type: "document/monitor",
+              type: 'document/monitor',
               monitorIndex: monitor.index,
               viewport: monitor.bounds,
             })
@@ -372,11 +377,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
       {/* El stage es espacio de trabajo neutral. El fondo seleccionado pertenece
           al rectangulo documental para que sus limites sigan visibles con
           cualquier proporcion. */}
-      <div
-        ref={stageRef}
-        data-testid="studio-canvas-stage"
-        className="osv3-canvas-stage"
-      >
+      <div ref={stageRef} data-testid="studio-canvas-stage" className="osv3-canvas-stage">
         <div
           className="osv3-canvas-scene-stage"
           style={{
@@ -385,7 +386,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
             // Oculto hasta estar listo: se mantiene en el DOM para no alterar
             // el flujo, pero no llega a pintarse a una escala inventada ni sin
             // los widgets del perfil.
-            visibility: ready ? undefined : "hidden",
+            visibility: ready ? undefined : 'hidden',
           }}
         >
           <div
@@ -398,7 +399,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
               width: `${layoutViewport.width}px`,
               height: `${layoutViewport.height}px`,
               transform: `scale(${scale})`,
-              transformOrigin: "top left",
+              transformOrigin: 'top left',
             }}
             onContextMenu={handleSceneContextMenu}
           >

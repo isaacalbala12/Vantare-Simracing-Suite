@@ -1,29 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
-import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
-import type { StudioProfileEntry } from "../components/StudioHeader";
-import { useStudioDocument, useStudioPreview } from "../state/studio-store";
-import { useStudioTelemetryLiveAvailable } from "../canvas/StudioTelemetryProvider";
-import { useOrbitSimStatus } from "../../orbit/sim-status-context";
-import { StudioOrbitInspector } from "./StudioOrbitInspector";
-import { StudioOrbitStage } from "./StudioOrbitStage";
-import { StudioOrbitToolbar } from "./StudioOrbitToolbar";
-import { StudioTopbarControls } from "./StudioTopbarControls";
-import { StudioWidgetList } from "./StudioWidgetList";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
+import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
+import type { StudioProfileEntry } from '../studio-profile-entry';
+import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioTelemetryLiveAvailable } from '../canvas/studio-telemetry';
+import { useOrbitSimStatus } from '../../orbit/sim-status-context';
+import { StudioOrbitInspector } from './StudioOrbitInspector';
+import { StudioOrbitStage } from './StudioOrbitStage';
+import { StudioOrbitToolbar } from './StudioOrbitToolbar';
+import { StudioTopbarControls } from './StudioTopbarControls';
+import { StudioWidgetList } from './StudioWidgetList';
 import {
   fill,
   readRightDockClosed,
   STUDIO_AUTO_FOLD_INSPECTOR_WIDTH,
   writeRightDockClosed,
-} from "./studio-orbit-model";
-import {
-  STUDIO_CONTEXT_SLOT_ID,
-  STUDIO_TOPBAR_SLOT_ID,
-  useOrbitSlot,
-} from "./studio-orbit-slots";
-import "../../../styles/orbit-studio.css";
+} from './studio-orbit-model';
+import { STUDIO_CONTEXT_SLOT_ID, STUDIO_TOPBAR_SLOT_ID, useOrbitSlot } from './studio-orbit-slots';
+import '../../../styles/orbit-studio.css';
 
 export type StudioOrbitLayoutProps = {
   profiles: StudioProfileEntry[];
@@ -52,7 +48,7 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   // proveedor de telemetria.
   const simStatus = useOrbitSimStatus();
   const providerLiveAvailable = useStudioTelemetryLiveAvailable();
-  const liveAvailable = simStatus === null ? providerLiveAvailable : simStatus === "connected";
+  const liveAvailable = simStatus === null ? providerLiveAvailable : simStatus === 'connected';
   const contextSlot = useOrbitSlot(STUDIO_CONTEXT_SLOT_ID);
   const topbarSlot = useOrbitSlot(STUDIO_TOPBAR_SLOT_ID);
   const [inspectorWanted, setInspectorWanted] = useState(() => !readRightDockClosed());
@@ -63,15 +59,13 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   // auto-plegado de la columna contextual de la shell: bajo `zoom` las media
   // queries y el JS deben ver lo mismo.
   const [tooNarrow, setTooNarrow] = useState(
-    () =>
-      typeof window !== "undefined" && window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH,
+    () => typeof window !== 'undefined' && window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH,
   );
   useEffect(() => {
-    const onResize = () =>
-      setTooNarrow(window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH);
+    const onResize = () => setTooNarrow(window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH);
     onResize();
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const inspectorOpen = inspectorWanted && !tooNarrow;
@@ -86,7 +80,7 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   // Sin fuente en vivo el selector no puede quedarse en "live": el propio
   // Studio ya obliga a mock cuando el sim no esta conectado.
   useEffect(() => {
-    if (!liveAvailable && preview.source === "live") setPreview({ source: "mock" });
+    if (!liveAvailable && preview.source === 'live') setPreview({ source: 'mock' });
   }, [liveAvailable, preview.source, setPreview]);
 
   const layoutViewport = resolveLayoutViewport(profileDocument ?? {});
@@ -94,13 +88,13 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
 
   const status = useMemo(
     () => ({
-      coords: pointer ? `${pointer.x} · ${pointer.y}` : "",
-      canvas: fill(t("studio.status.canvas"), {
+      coords: pointer ? `${pointer.x} · ${pointer.y}` : '',
+      canvas: fill(t('studio.status.canvas'), {
         w: layoutViewport.width,
         h: layoutViewport.height,
       }),
-      selection: `${fill(t("studio.status.widgets"), { n: widgetCount })} · ${fill(
-        t("studio.status.selected"),
+      selection: `${fill(t('studio.status.widgets'), { n: widgetCount })} · ${fill(
+        t('studio.status.selected'),
         { n: selectedWidgetId ? 1 : 0 },
       )}`,
     }),
@@ -110,7 +104,7 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   return (
     <div
       className="orbit-studio"
-      data-right-dock={inspectorOpen ? "open" : "closed"}
+      data-right-dock={inspectorOpen ? 'open' : 'closed'}
       data-testid="orbit-studio"
     >
       <div className="orbit-studio__canvas">
@@ -132,10 +126,13 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
               className="orbit-studio__statusbar-note"
               data-testid="orbit-studio-status-inspector-locked"
             >
-              {t("studio.status.inspectorLocked")}
+              {t('studio.status.inspectorLocked')}
             </span>
           ) : null}
-          <span className="orbit-studio__statusbar-right" data-testid="orbit-studio-status-selection">
+          <span
+            className="orbit-studio__statusbar-right"
+            data-testid="orbit-studio-status-selection"
+          >
             {status.selection}
           </span>
         </div>

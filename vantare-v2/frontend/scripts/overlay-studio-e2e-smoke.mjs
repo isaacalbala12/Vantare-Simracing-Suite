@@ -68,7 +68,7 @@ async function waitForProfilesBoot(page) {
 
 async function assertEditorLoaded(page, testName) {
   await page.waitForSelector("[data-testid='overlay-studio-v3']", { timeout: LOAD_TIMEOUT_MS });
-  await page.waitForSelector("[data-testid='studio-widget-row-standings']", { timeout: LOAD_TIMEOUT_MS });
+  await page.waitForSelector("[data-testid='orbit-studio-widget-item-standings']", { timeout: LOAD_TIMEOUT_MS });
 
   const stuckLoading = await page.locator("[data-testid='studio-route-loading']").filter({
     hasText: "Cargando perfil...",

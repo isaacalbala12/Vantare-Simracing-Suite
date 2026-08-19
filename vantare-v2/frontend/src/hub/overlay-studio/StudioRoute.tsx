@@ -1,45 +1,47 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Events } from "@wailsio/runtime";
-import { useI18n } from "../../i18n/I18nProvider";
-import { createTelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
-import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
-import { createWailsProjectionTelemetryAdapter } from "../../overlay/transports/projection-telemetry-adapter";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Events } from '@wailsio/runtime';
+import { useI18n } from '../../i18n/I18nProvider';
+import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
+import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
-} from "../../telemetry-transport/source-status";
-import { statusRequestEventName } from "../../telemetry-transport/contracts";
-import { OwnProfilesView } from "../overlays/OwnProfilesView";
-import { ProfilesOrbitPage } from "../profiles-orbit/ProfilesOrbitPage";
-import { isOrbitEnabled } from "../orbit/orbit-flag";
-import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
-import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
-import { ObsOverlaySetupView } from "../overlays/ObsOverlaySetupView";
-import { RecommendedSuccessBanner } from "../overlays/RecommendedSuccessBanner";
-import { RECOMMENDED_PROFILES, cloneRecommendedProfile, type RecommendedProfile } from "../overlays/recommended-profiles";
-import { runRecommendedFirstUse } from "../overlays/recommended-first-use";
+} from '../../telemetry-transport/source-status';
+import { statusRequestEventName } from '../../telemetry-transport/contracts';
+import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
+import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
+import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
+import { ObsOverlaySetupView } from '../overlays/ObsOverlaySetupView';
+import { RecommendedSuccessBanner } from '../overlays/RecommendedSuccessBanner';
+import {
+  RECOMMENDED_PROFILES,
+  cloneRecommendedProfile,
+  type RecommendedProfile,
+} from '../overlays/recommended-profiles';
+import { runRecommendedFirstUse } from '../overlays/recommended-first-use';
 import {
   isRunningProfile,
   profileTarget,
   type OverlayStatus,
   type ProfileEntry,
-} from "../state/overlay-workbench";
-import type { AppSettings } from "../pages/SettingsPage";
-import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
-import { ProfileNameDialog } from "./components/ProfileNameDialog";
-import { NoActiveProfileState } from "./NoActiveProfileState";
-import { OverlayStudioV3 } from "./OverlayStudioV3";
+} from '../state/overlay-workbench';
+import type { AppSettings } from '../settings/settings-contract';
+import { DirtyChangesDialog } from './components/DirtyChangesDialog';
+import { ProfileNameDialog } from './components/ProfileNameDialog';
+import { NoActiveProfileState } from './NoActiveProfileState';
+import { OverlayStudioV3 } from './OverlayStudioV3';
 
 import {
   createStudioProfileClient,
   createWailsStudioEventTransport,
   type StudioProfileClient,
-} from "./state/studio-profile-client";
-import { ConnectedStudioProvider, useStudioDocument } from "./state/studio-store";
-import type { StudioProfileEntry } from "./components/StudioHeader";
+} from './state/studio-profile-client';
+import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import type { StudioProfileEntry } from './studio-profile-entry';
 
-import { modeFromTarget, type StudioRouteMode } from "./studio-route-target";
+import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -52,7 +54,7 @@ export type StudioRouteProps = {
   telemetryAdapter?: TelemetryAdapter | null;
   coordinator?: ReturnType<typeof createTelemetryRateCoordinator>;
   liveAvailable?: boolean;
-  pendingRecommendedAutoStart?: "recommended-auto" | null;
+  pendingRecommendedAutoStart?: 'recommended-auto' | null;
   onAutoStartHandled?: () => void;
   /** Destino que manda la shell: con "profiles" se abre Mis perfiles. */
   target?: string;
@@ -75,17 +77,20 @@ function resolveFileById(id: string, timeoutMs = 3000): Promise<string | null> {
       resolve(value);
     };
     const timer = setTimeout(() => finish(null), timeoutMs);
-    const unsub = Events.On("hub:profiles", (event: { data?: ProfilesListPayload }) => {
+    const unsub = Events.On('hub:profiles', (event: { data?: ProfilesListPayload }) => {
       const match = event.data?.profiles?.find((profile) => profile.id === id);
       if (match) {
         finish(match.file);
       }
     });
-    Events.Emit("hub:list");
+    Events.Emit('hub:list');
   });
 }
 
-function resolveActiveFile(activeProfileId: string | null, profiles: ProfileEntry[]): string | null {
+function resolveActiveFile(
+  activeProfileId: string | null,
+  profiles: ProfileEntry[],
+): string | null {
   if (!activeProfileId) {
     return null;
   }
@@ -98,7 +103,8 @@ function findProfileByName(profiles: ProfileEntry[], name: string): ProfileEntry
     return null;
   }
   return (
-    profiles.find((profile) => (profile.name?.trim() || profile.id).toLowerCase() === normalized) ?? null
+    profiles.find((profile) => (profile.name?.trim() || profile.id).toLowerCase() === normalized) ??
+    null
   );
 }
 
@@ -127,7 +133,6 @@ type StudioRouteEditorProps = {
   navigationSaving: boolean;
   navigationError: string | null;
   onRequestProfileChange(file: string): void;
-  onOpenManagement(mode: Exclude<StudioRouteMode, "editor">): void;
   onSetMode(mode: StudioRouteMode): void;
   onCreateProfile(): void;
   onStartOverlay(profile: ProfileEntry): void;
@@ -160,7 +165,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     navigationSaving,
     navigationError,
     onRequestProfileChange,
-    onOpenManagement,
     onSetMode,
     onCreateProfile,
     onStartOverlay,
@@ -175,10 +179,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
-  // Igual que OverlayStudioV3: el flag se lee una vez por montaje. Con Orbit
-  // encendido Mis perfiles usa la capa Orbit; apagado no cambia nada.
-  const [orbitEnabled] = useState(() => isOrbitEnabled());
-
   const { document, lastError } = useStudioDocument();
 
   if (!document) {
@@ -188,7 +188,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
       >
         <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-          {t("studio.v3.route.loadingProfile")}
+          {t('studio.v3.route.loadingProfile')}
         </div>
       </div>
     );
@@ -207,8 +207,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     );
   }
 
-  if (mode === "ownProfiles") {
-    const ProfilesView = orbitEnabled ? ProfilesOrbitPage : OwnProfilesView;
+  if (mode === 'ownProfiles') {
     return (
       <>
         <DirtyChangesDialog
@@ -219,7 +218,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           onDiscard={onNavigationDiscard}
           onCancel={onNavigationCancel}
         />
-        <ProfilesView
+        <ProfilesOrbitPage
           profiles={profileEntries}
           overlayStatus={overlayStatus}
           activeProfileId={activeProfileId}
@@ -229,13 +228,13 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           onCreateProfile={onCreateProfile}
           onSetActiveProfile={onSetActiveProfile}
           onOpenActiveOverlay={onOpenActiveOverlay}
-          onBack={() => onSetMode("editor")}
+          onBack={() => onSetMode('editor')}
         />
       </>
     );
   }
 
-  if (mode === "recommended") {
+  if (mode === 'recommended') {
     return (
       <>
         <DirtyChangesDialog
@@ -249,7 +248,10 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         <div>
           {lastSuccessId ? (
             <div className="mx-auto mt-4 max-w-[1800px] px-6">
-              <RecommendedSuccessBanner profileId={lastSuccessId} onGoToDashboard={onDismissSuccess} />
+              <RecommendedSuccessBanner
+                profileId={lastSuccessId}
+                onGoToDashboard={onDismissSuccess}
+              />
             </div>
           ) : null}
           {notice ? (
@@ -265,7 +267,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           <RecommendedProfilesView
             profiles={RECOMMENDED_PROFILES}
             onSaveRecommended={onSaveRecommended}
-            onBack={() => onSetMode("editor")}
+            onBack={() => onSetMode('editor')}
             autoActivateAndStart={autoActivateAndStart}
           />
         </div>
@@ -273,7 +275,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     );
   }
 
-  if (mode === "community") {
+  if (mode === 'community') {
     return (
       <>
         <DirtyChangesDialog
@@ -284,12 +286,12 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           onDiscard={onNavigationDiscard}
           onCancel={onNavigationCancel}
         />
-        <CommunityComingSoonView onBack={() => onSetMode("editor")} />
+        <CommunityComingSoonView onBack={() => onSetMode('editor')} />
       </>
     );
   }
 
-  if (mode === "obs") {
+  if (mode === 'obs') {
     const obsProfileRef = activeProfileId ?? editorFile;
     const obsUrl = `${window.location.origin}/overlay?profile=${encodeURIComponent(obsProfileRef)}`;
     return (
@@ -302,7 +304,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           onDiscard={onNavigationDiscard}
           onCancel={onNavigationCancel}
         />
-        <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode("editor")} />
+        <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode('editor')} />
       </>
     );
   }
@@ -324,10 +326,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         telemetryAdapter={telemetryAdapter}
         liveAvailable={liveAvailable}
         onRequestProfileChange={onRequestProfileChange}
-        onOpenManageProfiles={() => onOpenManagement("ownProfiles")}
-        onOpenRecommended={() => onOpenManagement("recommended")}
-        onOpenCommunity={() => onOpenManagement("community")}
-        onOpenObs={() => onOpenManagement("obs")}
       />
     </>
   );
@@ -336,7 +334,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
 type StudioRouteNavigationBridgeProps = {
   onDirtyChange(dirty: boolean): void;
   onBindActions(actions: {
-    save(): ReturnType<ReturnType<typeof useStudioDocument>["save"]>;
+    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
     discardAll(): void;
   }): void;
 };
@@ -386,20 +384,19 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     };
     return createWailsProjectionTelemetryAdapter({
       coordinator,
-      runtime: "studio",
+      runtime: 'studio',
       subscribe,
       // Igual que en los overlays: la preview tampoco recibe estado si entra
       // entre dos transiciones, y sin estado no pinta.
-      requestStatus: () => Events.Emit(statusRequestEventName("overlay")),
+      requestStatus: () => Events.Emit(statusRequestEventName('overlay')),
     });
   }, [coordinator, telemetryAdapterProp]);
 
-  const [orbitEnabled] = useState(() => isOrbitEnabled());
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [editorFile, setEditorFile] = useState<string | null>(null);
-  const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? "editor");
+  const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? 'editor');
   // La shell puede pedir Mis perfiles sin desmontar la ruta: navigate a studio
   // con destino profiles desde Inicio o desde la columna. Es el patron de
   // ajustar estado durante el render de React: un destino nuevo manda, y el
@@ -411,7 +408,8 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     if (requested && requested !== mode) setMode(requested);
   }
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
-  const [liveAvailable, setLiveAvailable] = useState(liveAvailableProp ?? false);
+  const [reportedLiveAvailable, setReportedLiveAvailable] = useState(false);
+  const liveAvailable = liveAvailableProp ?? reportedLiveAvailable;
   const [notice, setNotice] = useState<string | null>(null);
   const [lastSuccessId, setLastSuccessId] = useState<string | null>(null);
   const [navigationDialogOpen, setNavigationDialogOpen] = useState(false);
@@ -420,68 +418,72 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createDialogSaving, setCreateDialogSaving] = useState(false);
   const [createDialogError, setCreateDialogError] = useState<string | null>(null);
-  const [recommendedCopyTarget, setRecommendedCopyTarget] = useState<RecommendedProfile | null>(null);
+  const [recommendedCopyTarget, setRecommendedCopyTarget] = useState<RecommendedProfile | null>(
+    null,
+  );
 
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
-    save(): ReturnType<ReturnType<typeof useStudioDocument>["save"]>;
+    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
     discardAll(): void;
   } | null>(null);
-  const navigationResolverRef = useRef<((decision: "save" | "discard" | "cancel") => void) | null>(null);
+  const navigationResolverRef = useRef<((decision: 'save' | 'discard' | 'cancel') => void) | null>(
+    null,
+  );
 
-  const isAutoStart = pendingRecommendedAutoStart === "recommended-auto";
-  const effectiveMode: StudioRouteMode = isAutoStart && mode === "editor" ? "recommended" : mode;
+  const isAutoStart = pendingRecommendedAutoStart === 'recommended-auto';
+  const effectiveMode: StudioRouteMode = isAutoStart && mode === 'editor' ? 'recommended' : mode;
   const autoActivateAndStart = isAutoStart;
   const studioProfiles = useMemo(() => toStudioProfiles(profiles), [profiles]);
 
   useEffect(() => {
-    if (liveAvailableProp !== undefined) {
-      setLiveAvailable(liveAvailableProp);
-      return;
-    }
-    const unsub = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
-      setLiveAvailable(Boolean(event.data?.live && event.data?.available));
-    });
+    if (liveAvailableProp !== undefined) return;
+    const unsub = Events.On(
+      telemetrySourceStatusEvent,
+      (event: { data: TelemetrySourceStatus }) => {
+        setReportedLiveAvailable(Boolean(event.data?.live && event.data?.available));
+      },
+    );
     Events.Emit(telemetrySourceStatusRequestEvent);
     return () => unsub?.();
   }, [liveAvailableProp]);
 
   useEffect(() => {
-    const unsubProfiles = Events.On("hub:profiles", (event: { data: unknown }) => {
+    const unsubProfiles = Events.On('hub:profiles', (event: { data: unknown }) => {
       const data = getPayload<ProfilesListPayload>(event);
       setProfiles(data?.profiles ?? []);
       setProfilesLoaded(true);
     });
-    const unsubCreated = Events.On("hub:profile-created", () => {
-      Events.Emit("hub:list");
+    const unsubCreated = Events.On('hub:profile-created', () => {
+      Events.Emit('hub:list');
     });
-    const unsubOverlayStatus = Events.On("overlay:status", (event: { data: unknown }) => {
+    const unsubOverlayStatus = Events.On('overlay:status', (event: { data: unknown }) => {
       setOverlayStatus(event.data as OverlayStatus);
     });
-    const unsubSettings = Events.On("settings", (event: { data: AppSettings }) => {
+    const unsubSettings = Events.On('settings', (event: { data: AppSettings }) => {
       if (event.data?.activeOverlayProfileId) {
         setActiveProfileId(event.data.activeOverlayProfileId);
       }
     });
-    const unsubActivated = Events.On("hub:profile-activated", (event: { data: unknown }) => {
+    const unsubActivated = Events.On('hub:profile-activated', (event: { data: unknown }) => {
       const payload = getPayload<{ activeProfileId?: string }>(event);
       if (payload?.activeProfileId) {
         setActiveProfileId(payload.activeProfileId);
       }
     });
-    const unsubError = Events.On("hub:error", (event: { data: unknown }) => {
+    const unsubError = Events.On('hub:error', (event: { data: unknown }) => {
       const payload = getPayload<{ message?: string }>(event);
       if (!pendingCreateNameRef.current) {
         return;
       }
       pendingCreateNameRef.current = null;
       setCreateDialogSaving(false);
-      setCreateDialogError(payload?.message ?? t("studio.v3.profile.createFailed"));
+      setCreateDialogError(payload?.message ?? t('studio.v3.profile.createFailed'));
     });
 
-    Events.Emit("hub:list");
-    Events.Emit("settings:get");
+    Events.Emit('hub:list');
+    Events.Emit('settings:get');
 
     return () => {
       unsubProfiles();
@@ -506,10 +508,10 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     setCreateDialogSaving(false);
     setCreateDialogOpen(false);
     setCreateDialogError(null);
-    Events.Emit("hub:set-active", { id: created.id, file: created.file });
+    Events.Emit('hub:set-active', { id: created.id, file: created.file });
     setActiveProfileId(created.id);
     setEditorFile(created.file);
-    setMode("editor");
+    setMode('editor');
   }, [profiles, profilesLoaded]);
 
   useEffect(() => {
@@ -520,22 +522,19 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }, [coordinator, telemetryAdapter]);
 
   useEffect(() => {
-    if (!profilesLoaded || !activeProfileId) {
-      if (!activeProfileId) {
-        setEditorFile(null);
+    const timer = window.setTimeout(() => {
+      if (!profilesLoaded || !activeProfileId) {
+        if (!activeProfileId) setEditorFile(null);
+        return;
       }
-      return;
-    }
-    const resolved = resolveActiveFile(activeProfileId, profiles);
-    if (!resolved) {
-      setEditorFile(null);
-      return;
-    }
-    setEditorFile((current) => current ?? resolved);
+      const resolved = resolveActiveFile(activeProfileId, profiles);
+      setEditorFile((current) => current ?? resolved);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [activeProfileId, profiles, profilesLoaded]);
 
   const continueNavigation = useCallback((target: RouteNavigationTarget) => {
-    if (target.endsWith(".json")) {
+    if (target.endsWith('.json')) {
       setEditorFile(target);
     } else {
       setMode(target as StudioRouteMode);
@@ -545,70 +544,75 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     setNavigationError(null);
   }, []);
 
-  const guardedNavigate = useCallback(async (target: RouteNavigationTarget) => {
-    const actions = studioActionsRef.current;
-    if (!actions || !dirtyRef.current) {
-      continueNavigation(target);
-      return;
-    }
+  const guardedNavigate = useCallback(
+    async (target: RouteNavigationTarget) => {
+      const actions = studioActionsRef.current;
+      if (!actions || !dirtyRef.current) {
+        continueNavigation(target);
+        return;
+      }
 
-    const decision = await new Promise<"save" | "discard" | "cancel">((resolve) => {
-      navigationResolverRef.current = resolve;
-      setNavigationDialogOpen(true);
-      setNavigationError(null);
-    });
+      const decision = await new Promise<'save' | 'discard' | 'cancel'>((resolve) => {
+        navigationResolverRef.current = resolve;
+        setNavigationDialogOpen(true);
+        setNavigationError(null);
+      });
 
-    if (decision === "cancel") {
-      setNavigationDialogOpen(false);
+      if (decision === 'cancel') {
+        setNavigationDialogOpen(false);
+        setNavigationSaving(false);
+        return;
+      }
+      if (decision === 'discard') {
+        actions.discardAll();
+        continueNavigation(target);
+        return;
+      }
+
+      setNavigationSaving(true);
+      const saveResult = await actions.save();
       setNavigationSaving(false);
-      return;
-    }
-    if (decision === "discard") {
-      actions.discardAll();
-      continueNavigation(target);
-      return;
-    }
+      if (saveResult.status === 'saved') {
+        continueNavigation(target);
+        return;
+      }
+      setNavigationError(
+        saveResult.status === 'conflict' || saveResult.status === 'error'
+          ? saveResult.message
+          : t('studio.v3.profile.saveFailed'),
+      );
+    },
+    [continueNavigation, t],
+  );
 
-    setNavigationSaving(true);
-    const saveResult = await actions.save();
-    setNavigationSaving(false);
-    if (saveResult.status === "saved") {
-      continueNavigation(target);
-      return;
-    }
-    setNavigationError(
-      saveResult.status === "conflict" || saveResult.status === "error"
-        ? saveResult.message
-        : t("studio.v3.profile.saveFailed"),
-    );
-  }, [continueNavigation, t]);
+  const onRequestProfileChange = useCallback(
+    (file: string) => {
+      void guardedNavigate(file);
+    },
+    [guardedNavigate],
+  );
 
-  const onOpenManagement = useCallback((nextMode: Exclude<StudioRouteMode, "editor">) => {
-    void guardedNavigate(nextMode);
-  }, [guardedNavigate]);
-
-  const onRequestProfileChange = useCallback((file: string) => {
-    void guardedNavigate(file);
-  }, [guardedNavigate]);
-
-  const onSetMode = useCallback((nextMode: StudioRouteMode) => {
-    void guardedNavigate(nextMode);
-  }, [guardedNavigate]);
+  const onSetMode = useCallback(
+    (nextMode: StudioRouteMode) => {
+      void guardedNavigate(nextMode);
+    },
+    [guardedNavigate],
+  );
 
   const onNavigationSave = useCallback(() => {
     setNavigationSaving(true);
     setNavigationError(null);
-    navigationResolverRef.current?.("save");
+    navigationResolverRef.current?.('save');
     navigationResolverRef.current = null;
   }, []);
 
   const onNavigationDiscard = useCallback(() => {
-    navigationResolverRef.current?.("discard");
+    navigationResolverRef.current?.('discard');
     navigationResolverRef.current = null;
   }, []);
 
   const onNavigationCancel = useCallback(() => {
-    navigationResolverRef.current?.("cancel");
+    navigationResolverRef.current?.('cancel');
     navigationResolverRef.current = null;
   }, []);
 
@@ -621,7 +625,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     setCreateDialogError(null);
     setCreateDialogSaving(true);
     pendingCreateNameRef.current = name;
-    Events.Emit("hub:create", { name });
+    Events.Emit('hub:create', { name });
   }
 
   function closeCreateDialog() {
@@ -634,9 +638,9 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }
 
   function openProfile(profile: ProfileEntry) {
-    Events.Emit("hub:set-active", { id: profile.id, file: profile.file });
+    Events.Emit('hub:set-active', { id: profile.id, file: profile.file });
     setEditorFile(profile.file);
-    setMode("editor");
+    setMode('editor');
   }
 
   function saveRecommended(profile: RecommendedProfile) {
@@ -667,33 +671,33 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       return;
     }
 
-    Events.Emit("hub:save-own-copy", { profile: cloneRecommendedProfile(profile, name) });
+    Events.Emit('hub:save-own-copy', { profile: cloneRecommendedProfile(profile, name) });
   }
 
   function startOverlay(profile: ProfileEntry) {
-    Events.Emit("overlay:start", profileTarget(profile));
+    Events.Emit('overlay:start', profileTarget(profile));
   }
 
   function stopOverlay() {
-    Events.Emit("overlay:stop");
+    Events.Emit('overlay:stop');
   }
 
   function setActiveProfile(profile: ProfileEntry) {
-    Events.Emit("hub:set-active", { id: profile.id, file: profile.file });
+    Events.Emit('hub:set-active', { id: profile.id, file: profile.file });
   }
 
   function openActiveOverlay() {
-    Events.Emit("overlay:start-active");
+    Events.Emit('overlay:start-active');
   }
 
   const profileDialogs = (
     <>
       <ProfileNameDialog
         open={createDialogOpen}
-        title={t("studio.v3.profile.create.title")}
-        description={t("studio.v3.profile.create.description")}
-        confirmLabel={t("studio.v3.profile.create.confirm")}
-        placeholder={t("studio.v3.profile.create.placeholder")}
+        title={t('studio.v3.profile.create.title')}
+        description={t('studio.v3.profile.create.description')}
+        confirmLabel={t('studio.v3.profile.create.confirm')}
+        placeholder={t('studio.v3.profile.create.placeholder')}
         saving={createDialogSaving}
         errorMessage={createDialogError}
         dialogTestId="studio-create-profile-dialog"
@@ -702,11 +706,11 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       />
       <ProfileNameDialog
         open={recommendedCopyTarget !== null}
-        title={t("studio.v3.profile.saveRecommended.title")}
-        description={t("studio.v3.profile.saveRecommended.description")}
-        defaultName={recommendedCopyTarget ? `${recommendedCopyTarget.name} (copia)` : ""}
-        confirmLabel={t("studio.v3.profile.saveRecommended.confirm")}
-        placeholder={t("studio.v3.profile.saveRecommended.placeholder")}
+        title={t('studio.v3.profile.saveRecommended.title')}
+        description={t('studio.v3.profile.saveRecommended.description')}
+        defaultName={recommendedCopyTarget ? `${recommendedCopyTarget.name} (copia)` : ''}
+        confirmLabel={t('studio.v3.profile.saveRecommended.confirm')}
+        placeholder={t('studio.v3.profile.saveRecommended.placeholder')}
         dialogTestId="studio-save-recommended-dialog"
         onClose={() => setRecommendedCopyTarget(null)}
         onConfirm={confirmRecommendedCopy}
@@ -722,7 +726,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
           className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
         >
           <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-            {t("studio.v3.route.loadingProfiles")}
+            {t('studio.v3.route.loadingProfiles')}
           </div>
         </div>
         {profileDialogs}
@@ -731,7 +735,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }
 
   if (!activeProfileId || !editorFile) {
-    if (effectiveMode === "recommended") {
+    if (effectiveMode === 'recommended') {
       return (
         <>
           <div>
@@ -749,7 +753,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
               profiles={RECOMMENDED_PROFILES}
               onSaveRecommended={saveRecommended}
               onBack={() => {
-                setMode("editor");
+                setMode('editor');
                 onAutoStartHandled?.();
               }}
               autoActivateAndStart={autoActivateAndStart}
@@ -759,11 +763,10 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
         </>
       );
     }
-    if (mode === "ownProfiles") {
-      const ProfilesView = orbitEnabled ? ProfilesOrbitPage : OwnProfilesView;
+    if (mode === 'ownProfiles') {
       return (
         <>
-          <ProfilesView
+          <ProfilesOrbitPage
             profiles={profiles}
             overlayStatus={overlayStatus}
             activeProfileId={activeProfileId}
@@ -773,13 +776,13 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
             onCreateProfile={createProfile}
             onSetActiveProfile={setActiveProfile}
             onOpenActiveOverlay={openActiveOverlay}
-            onBack={() => setMode("editor")}
+            onBack={() => setMode('editor')}
           />
           {profileDialogs}
         </>
       );
     }
-    if (mode === "recommended") {
+    if (mode === 'recommended') {
       return (
         <>
           <div>
@@ -796,7 +799,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
             <RecommendedProfilesView
               profiles={RECOMMENDED_PROFILES}
               onSaveRecommended={saveRecommended}
-              onBack={() => setMode("editor")}
+              onBack={() => setMode('editor')}
               autoActivateAndStart={autoActivateAndStart}
             />
           </div>
@@ -808,8 +811,8 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       <>
         <NoActiveProfileState
           onCreateProfile={createProfile}
-          onSelectProfile={() => setMode("ownProfiles")}
-          onOpenRecommended={() => setMode("recommended")}
+          onSelectProfile={() => setMode('ownProfiles')}
+          onOpenRecommended={() => setMode('recommended')}
         />
         {profileDialogs}
       </>
@@ -817,61 +820,62 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   }
 
   const activeEntry = profiles.find((profile) => profile.id === activeProfileId) ?? null;
-  const activeOverlayRunning = activeEntry ? isRunningProfile(activeEntry, overlayStatus) : Boolean(overlayStatus?.running);
+  const activeOverlayRunning = activeEntry
+    ? isRunningProfile(activeEntry, overlayStatus)
+    : Boolean(overlayStatus?.running);
 
   return (
     <>
-    <ConnectedStudioProvider key={editorFile} client={client} initialFile={editorFile}>
-      <StudioRouteNavigationBridge
-        onDirtyChange={(dirty) => {
-          dirtyRef.current = dirty;
-        }}
-        onBindActions={(actions) => {
-          studioActionsRef.current = actions;
-        }}
-      />
-      <StudioRouteEditor
-        profiles={studioProfiles}
-        editorFile={editorFile}
-        coordinator={coordinator}
-        telemetryAdapter={telemetryAdapter}
-        liveAvailable={liveAvailable}
-        mode={effectiveMode}
-        overlayStatus={overlayStatus}
-        activeProfileId={activeProfileId}
-        profileEntries={profiles}
-        notice={notice}
-        lastSuccessId={lastSuccessId}
-        autoActivateAndStart={autoActivateAndStart}
-        navigationDialogOpen={navigationDialogOpen}
-        navigationSaving={navigationSaving}
-        navigationError={navigationError}
-        onRequestProfileChange={onRequestProfileChange}
-        onOpenManagement={onOpenManagement}
-        onSetMode={onSetMode}
-        onCreateProfile={createProfile}
-        onStartOverlay={startOverlay}
-        onStopOverlay={stopOverlay}
-        onOpenProfile={openProfile}
-        onSetActiveProfile={setActiveProfile}
-        onOpenActiveOverlay={openActiveOverlay}
-        onSaveRecommended={saveRecommended}
-        onDismissSuccess={() => {
-          setLastSuccessId(null);
-          setMode("editor");
-          onAutoStartHandled?.();
-        }}
-        onNavigationSave={onNavigationSave}
-        onNavigationDiscard={onNavigationDiscard}
-        onNavigationCancel={onNavigationCancel}
-      />
-      {activeOverlayRunning ? (
-        <span data-testid="studio-route-overlay-running" hidden>
-          running
-        </span>
-      ) : null}
-    </ConnectedStudioProvider>
-    {profileDialogs}
+      <ConnectedStudioProvider key={editorFile} client={client} initialFile={editorFile}>
+        <StudioRouteNavigationBridge
+          onDirtyChange={(dirty) => {
+            dirtyRef.current = dirty;
+          }}
+          onBindActions={(actions) => {
+            studioActionsRef.current = actions;
+          }}
+        />
+        <StudioRouteEditor
+          profiles={studioProfiles}
+          editorFile={editorFile}
+          coordinator={coordinator}
+          telemetryAdapter={telemetryAdapter}
+          liveAvailable={liveAvailable}
+          mode={effectiveMode}
+          overlayStatus={overlayStatus}
+          activeProfileId={activeProfileId}
+          profileEntries={profiles}
+          notice={notice}
+          lastSuccessId={lastSuccessId}
+          autoActivateAndStart={autoActivateAndStart}
+          navigationDialogOpen={navigationDialogOpen}
+          navigationSaving={navigationSaving}
+          navigationError={navigationError}
+          onRequestProfileChange={onRequestProfileChange}
+          onSetMode={onSetMode}
+          onCreateProfile={createProfile}
+          onStartOverlay={startOverlay}
+          onStopOverlay={stopOverlay}
+          onOpenProfile={openProfile}
+          onSetActiveProfile={setActiveProfile}
+          onOpenActiveOverlay={openActiveOverlay}
+          onSaveRecommended={saveRecommended}
+          onDismissSuccess={() => {
+            setLastSuccessId(null);
+            setMode('editor');
+            onAutoStartHandled?.();
+          }}
+          onNavigationSave={onNavigationSave}
+          onNavigationDiscard={onNavigationDiscard}
+          onNavigationCancel={onNavigationCancel}
+        />
+        {activeOverlayRunning ? (
+          <span data-testid="studio-route-overlay-running" hidden>
+            running
+          </span>
+        ) : null}
+      </ConnectedStudioProvider>
+      {profileDialogs}
     </>
   );
 }

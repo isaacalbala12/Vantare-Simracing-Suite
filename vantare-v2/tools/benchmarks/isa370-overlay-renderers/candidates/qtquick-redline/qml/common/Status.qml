@@ -9,6 +9,7 @@ Item {
 
     visible: message.length > 0
     implicitHeight: visible ? 34 : 0
+    height: implicitHeight
 
     Theme.RedlineTokens { id: tokens }
 

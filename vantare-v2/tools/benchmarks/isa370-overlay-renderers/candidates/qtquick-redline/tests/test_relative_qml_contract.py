@@ -65,6 +65,9 @@ class RelativeQmlContractTest(unittest.TestCase):
             self.assertIn("ListView", source)
             self.assertIn("add: Transition", source)
             self.assertIn("move: Transition", source)
+            self.assertIn("crossIndex:", source)
+            self.assertIn("crossSlot", source)
+            self.assertNotIn("index < 3", source)
         adapter = self.source("qml/relative/RelativeModelRow.qml")
         self.assertIn("ListView.delayRemove: removalAnimation.running", adapter)
         self.assertIn("ListView.onRemove", adapter)
@@ -75,6 +78,9 @@ class RelativeQmlContractTest(unittest.TestCase):
         self.assertIn("property bool transitionsArmed: false", root)
         self.assertIn("readonly property bool motionReady: modelReady && transitionsArmed", root)
         self.assertIn("interval: 17", root)
+        budget = self.source("qml/relative/CrossingBudget.qml")
+        self.assertIn("reservations += 1", budget)
+        self.assertIn("slot < tokens.crossMaxConcurrent", budget)
 
     def test_variant_semantics_are_not_collapsed_into_one_generic_list(self) -> None:
         mirror = self.source("qml/relative/MirrorRelative.qml")
@@ -118,6 +124,7 @@ class RelativeQmlContractTest(unittest.TestCase):
         self.assertIn('import "../common" as Common', source)
         self.assertIn("Common.Panel", source)
         self.assertIn("Common.Status", source)
+        self.assertIn("rowsModel.statusMessage", source)
         self.assertNotIn("gradient: Gradient", source)
 
 

@@ -47,7 +47,7 @@ describe("TelemetryOrbitPage", () => {
   it("el flag se lee de la query y por defecto está apagado", () => {
     expect(readTelemetryDemoFromSearch("?telemetryDemo=1")).toBe(true);
     expect(readTelemetryDemoFromSearch("?telemetryDemo=0")).toBe(false);
-    expect(readTelemetryDemoFromSearch("?orbit=1")).toBeNull();
+    expect(readTelemetryDemoFromSearch("?view=telemetria")).toBeNull();
     // Sin fuente real y sin demo no se inventa ninguna sesión.
     expect(resolveTelemetrySessions(false)).toEqual({ sessions: [], synthetic: false });
     expect(resolveTelemetrySessions(true).synthetic).toBe(true);

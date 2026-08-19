@@ -8,7 +8,7 @@
     "Kit de componentes ui/orbit (Select con desplegable propio, Drawer, Toggle, Seg, Accordion, HorizontalTimeline con zoom, TrackMap, Trace) estilado solo con tokens de orbit.tokens.css.",
     "Secciones portadas sobre la lógica real existente: Inicio, Overlays Studio (inspector por acordeones, marcos ceñidos al widget), Mis perfiles, Launcher (iconos a máxima resolución, editor en cajón), Carreras (Próximas, Día, Semana, Mes y Timeline clicables), Estrategia (eventos propios o desde serie, stints, neumáticos con arrastre, comparación, disponibilidad), Ingeniero, Telemetría (vacío honesto y demo sintético bajo flag), Roadmap «Qué viene», Ajustes (canal real, atajos con grabación) y Testing Center (Reportar, Validar y Mis reportes).",
     "Escalado proporcional por debajo de 1180×790 px útiles y tope de anchura centrado en ultrapanorámicas; redimensionado medido a 60 Hz en WebView2.",
-    "El flag hub.orbit va activo por defecto en builds nightly/testers (VITE_ORBIT_DEFAULT); en públicas sigue la shell anterior hasta promover la dirección. Puede desactivarse con ?orbit=0."
+    "Orbit es la única shell del Hub en todos los canales; se retiraron la shell V52 y su flag de build/runtime."
   ],
   "testing": [
     "Abrir el Hub: debe arrancar en Inicio con el rail Orbit a la izquierda y la columna contextual; Ctrl K abre la paleta y Esc la cierra.",

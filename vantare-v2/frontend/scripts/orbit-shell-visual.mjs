@@ -9,7 +9,7 @@ import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/01-shell");
 const port = 5194;
-const url = `http://127.0.0.1:${port}/orbit-shell-harness.html?orbit=1`;
+const url = `http://127.0.0.1:${port}/orbit-shell-harness.html`;
 const viewports = [
   { name: "1920x1080", width: 1920, height: 1080 },
   { name: "1920x900", width: 1920, height: 900 },

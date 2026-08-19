@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/07-estrategia");
 const port = 5199;
-const url = `http://127.0.0.1:${port}/orbit-strategy-harness.html?orbit=1&view=estrategia`;
+const url = `http://127.0.0.1:${port}/orbit-strategy-harness.html?view=estrategia`;
 
 // Reloj congelado: la columna calcula las próximas salidas del calendario real.
 const FROZEN_CLOCK = new Date("2026-07-07T18:07:30Z");

@@ -9,7 +9,7 @@ import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/03-inicio");
 const port = 5195;
-const url = `http://127.0.0.1:${port}/orbit-home-harness.html?orbit=1&view=inicio`;
+const url = `http://127.0.0.1:${port}/orbit-home-harness.html?view=inicio`;
 
 // Reloj congelado: las previsiones del calendario simulado están fechadas ese
 // día, así que sin fijar la hora el harness fotografiaría un calendario vacío

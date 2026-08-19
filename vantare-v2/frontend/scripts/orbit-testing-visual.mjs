@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/12-testing-center");
 const port = 5202;
-const base = `http://127.0.0.1:${port}/orbit-testing-harness.html?orbit=1&view=testing`;
+const base = `http://127.0.0.1:${port}/orbit-testing-harness.html?view=testing`;
 const url = `${base}&channel=nightly`;
 const stableUrl = `${base}&channel=stable`;
 

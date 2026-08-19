@@ -652,4 +652,16 @@ La premisa de D-R4-4 —que la escritura de `zoom` costaba 6.0 ms de mediana— 
 
 **Verificación.** Medido antes y después en las mismas condiciones y con el mismo binario recién compilado. Escalones aplicados en el gesto **4 → 8-11**; frames con el contenido descuadrado **18-19 → 7-10**; retardo en cuadrar tras soltar **50-82 ms → 16-17 ms**, es decir un frame, el límite físico de `resize` → siguiente `rAF`. p95 de frame sin cambios (16.8 ms) y **cero long tasks** antes y después. El coste es ~85 ms más de layout acumulado en 4.6 s (117 → 203 ms) por tener el doble o el triple de escalones reales: sigue siendo ~4 % del presupuesto. El objetivo del briefing —arrastre de 700 ms con ≥ 30 frames pintados y sin long tasks > 50 ms repetidas— se cumple con holgura: a 60 Hz sostenidos el gesto pinta ~42 frames.
 
-**Herramientas que quedan en el árbol.** `frontend/scripts/orbit-real-resize.ps1` (gesto real, dos modos), `frontend/scripts/orbit-real-resize-profile.mjs` (captura por CDP y tablas), `scripts/rebuild-orbit-test-binary.ps1` (Método C), y el gancho `VANTARE_WEBVIEW_DEBUG_PORT`. Sin esa variable el binario no cambia en nada.
+**Herramientas del diagnóstico.** El protocolo y sus resultados quedan preservados como evidencia histórica. Los helpers temporales `frontend/scripts/orbit-real-resize.ps1` y `frontend/scripts/orbit-real-resize-profile.mjs` se retiraron en D-F8-1 al cerrar el porte; el gancho `VANTARE_WEBVIEW_DEBUG_PORT` sigue disponible para diagnósticos del WebView.
+
+---
+
+## D-F8-1 · V52 retirada; Orbit única shell
+
+**Decisión.** Orbit es la única interfaz del Hub en todos los canales. Se eliminan `V52Shell`, el flag `hub.orbit`, `VITE_ORBIT_DEFAULT`, la bifurcación por query/build y el zoom responsivo exclusivo de V52. `HubApp` monta siempre `OrbitShell`; `BetaWelcome` y `CalendarReminderBanner` continúan como hermanos de la shell sobre Inicio.
+
+**Superficie retirada.** Desaparecen la shell y componentes visuales V52 (topbar, sidebar, dock, subnav, banners, tarjetas y estados), las páginas legadas de Dashboard, Launcher, Calendar, Engineer, Telemetry, Roadmap, Settings y Profiles, los frontends legados de Strategy Planner y Testing Center, y la disposición V3 legada de Studio (header, lista, rail/inspector y perfiles propios). Los contratos, stores, servicios, canvas, catálogo, diseños, acceso y browser view que consume Orbit se conservan; `useFeatureGate` se extrae a un módulo sin JSX legado.
+
+**Studio y evidencia visual.** `OverlayStudioV3` deja de aceptar `orbitLayout` y renderiza directamente `StudioOrbitLayout`. El inspector deja de tener skin/provider y cada sección usa únicamente controles Orbit. El smoke `e2e:overlay-studio` se migra al selector Orbit. El capturador `overlay-studio-visual.mjs`, sus 59 baselines V3 y los scripts strict ligados a V52 se retiran porque `visual:orbit-studio` cubre la disposición canónica; `visual:orbit-shell` y el resto de `visual:orbit-*` ya no necesitan `?orbit=1`.
+
+**Tema.** `vantare-orbit` pasa a ser el tema predeterminado del Hub. `vantare-v5` y `vantare-lite` se conservan para las superficies de overlay y sus previews, que todavía aceptan esas preferencias.

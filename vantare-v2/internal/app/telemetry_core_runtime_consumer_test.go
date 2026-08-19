@@ -12,6 +12,7 @@ import (
 	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
 func TestFailurePolicyFlagRestoresLegacyBehaviour(t *testing.T) {
@@ -220,6 +221,43 @@ func TestFactQueueOverflowDeclaresResync(t *testing.T) {
 		t.Fatalf("overflow metrics = %+v", metrics)
 	}
 	close(consumer.release)
+	if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFactProjectionFailureIsBoundaryNotSkip(t *testing.T) {
+	consumer := newFactRecordingEngineerConsumer(false)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := runtime.engine.Apply(context.Background(), hardeningBatch(1, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	header := result.Facts[0].Header()
+	invalid := envelope.NewFact(header, telemetrycore.SessionFact{
+		Sequence: 1,
+		Kind:     telemetrycore.FactKind(255),
+	})
+	validAfterGap := envelope.NewFact(header, telemetrycore.SessionFact{
+		Sequence: 2,
+		Kind:     telemetrycore.FactSessionEnded,
+	})
+	runtime.engineerPort.Start()
+	runtime.deliverEngineer(result.State, []envelope.Fact[telemetrycore.SessionFact]{invalid, validAfterGap})
+	if err := runtime.EngineerError(); !errors.Is(err, engineerprojection.ErrFactResyncRequired) {
+		t.Fatalf("EngineerError() = %v, want ErrFactResyncRequired", err)
+	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerFactResync != 1 || metrics.FramesDropped["engineer-fact-projection"] != 1 ||
+		metrics.PublishFailures["engineer"] != 1 {
+		t.Fatalf("fact projection boundary metrics = %+v", metrics)
+	}
+	if got := consumer.sequences(); len(got) != 0 {
+		t.Fatalf("facts after projection boundary = %v, want none", got)
+	}
 	if err := runtime.engineerPort.Stop(context.Background()); err != nil {
 		t.Fatal(err)
 	}

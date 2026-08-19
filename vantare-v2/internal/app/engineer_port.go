@@ -159,6 +159,15 @@ func (port *engineerPort) ResyncFacts(from telemetrycore.FactSequence) ([]engine
 	return facts, nil
 }
 
+func (port *engineerPort) DeclareFactBoundary(err error) {
+	if port == nil || err == nil {
+		return
+	}
+	port.factMu.Lock()
+	port.factBoundary = err
+	port.factMu.Unlock()
+}
+
 func (port *engineerPort) EnqueueObservation(value engineerprojection.ObservationSnapshotV1) bool {
 	if port == nil || !port.started.Load() {
 		return false

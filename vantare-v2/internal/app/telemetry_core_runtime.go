@@ -1105,8 +1105,21 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 	for _, fact := range facts {
 		projected, projectErr := engineerprojection.ProjectFactV1(fact)
 		if projectErr != nil {
-			err = errors.Join(err, projectErr)
-			continue
+			sequence := fact.Value().Sequence
+			var previous telemetrycore.FactSequence
+			if sequence > 0 {
+				previous = sequence - 1
+			}
+			boundary := &engineerprojection.FactResyncRequiredError{Previous: previous, Next: sequence}
+			runtime.engineerPort.DeclareFactBoundary(boundary)
+			runtime.metricStore.incrementEngineerFactResync()
+			_ = runtime.handlePostCommitFailure(
+				telemetrytransport.ProductEngineer,
+				"fact-projection",
+				fmt.Errorf("project Engineer fact: %w", projectErr),
+			)
+			err = errors.Join(err, projectErr, boundary)
+			break
 		}
 		var consumeErr error
 		if enqueued, enqueueErr := runtime.engineerPort.EnqueueFact(projected); enqueued {

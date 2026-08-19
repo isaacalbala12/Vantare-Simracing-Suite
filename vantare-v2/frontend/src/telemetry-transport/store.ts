@@ -16,6 +16,7 @@ export type DiagnosticCode =
   | "status-gap"
   | "status-advanced"
   | "snapshot-resync"
+  | "snapshot-stale-watchdog"
   | "snapshot-regression"
   | "fact-gap"
   | "fact-regression"
@@ -62,6 +63,7 @@ export function createProjectionTransportStore(
   let factCursor = 0;
   let lastSnapshot: ProjectionState["snapshot"];
   let wireStatus: StatusEnvelope | undefined;
+  let watchdogDiagnosticActive = false;
   const listeners = new Set<() => void>();
   const freshnessWatchdog = createFreshnessWatchdog(
     refreshFreshness,
@@ -69,7 +71,23 @@ export function createProjectionTransportStore(
   );
 
   function publish(next: ProjectionState): void {
-    state = freezeState(withFreshness(next));
+    let refreshed = withFreshness(next);
+    const watchdogStale =
+      refreshed.snapshot !== undefined &&
+      refreshed.status?.payload.state === "stale" &&
+      (wireStatus?.payload.state === "live" ||
+        wireStatus?.payload.state === "degraded");
+    if (watchdogStale && !watchdogDiagnosticActive) {
+      refreshed = addDiagnostic(refreshed, {
+        code: "snapshot-stale-watchdog",
+        product,
+        epoch: refreshed.snapshot?.epoch,
+        sequence: refreshed.snapshot?.sequence,
+        statusRevision: refreshed.status?.statusRevision,
+      });
+    }
+    watchdogDiagnosticActive = watchdogStale;
+    state = freezeState(refreshed);
     for (const listener of listeners) {
       listener();
     }

@@ -124,6 +124,29 @@ describe("canonical projection telemetry adapter", () => {
     expect(snapshots.at(-1)?.status).toBe("disconnected");
     adapter.stop();
   });
+
+  it("propagates watchdog stale without inventing snapshot values", () => {
+    const handlers = new Map<string, (data: unknown) => void>();
+    const snapshots: TelemetrySnapshot[] = [];
+    const adapter = createWailsProjectionTelemetryAdapter({
+      coordinator: coordinator(snapshots),
+      runtime: "desktop",
+      subscribe: (name, listener) => {
+        handlers.set(name, listener);
+        return () => handlers.delete(name);
+      },
+    });
+    adapter.start();
+    const projection = readGoldenEnvelope();
+    emitStatus(handlers, 1, "live");
+    handlers.get(eventName("overlay", "projection"))?.(projection);
+    const ready = snapshots.at(-1)!;
+
+    vi.advanceTimersByTime(1_000);
+
+    expect(snapshots.at(-1)).toEqual({ ...ready, status: "stale" });
+    adapter.stop();
+  });
 });
 
 function coordinator(snapshots: TelemetrySnapshot[]): TelemetryRateCoordinator {

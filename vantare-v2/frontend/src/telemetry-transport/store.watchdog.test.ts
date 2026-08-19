@@ -39,6 +39,11 @@ test("un frame de hace 3 s se pinta como stale aunque el backend calle", () => {
       snapshot: expect.objectContaining({ payload: { speedKph: 220 } }),
     }),
   );
+  expect(
+    store.getSnapshot().diagnostics.filter(
+      ({ code }) => code === "snapshot-stale-watchdog",
+    ),
+  ).toHaveLength(1);
 
   unsubscribe();
   expect(vi.getTimerCount()).toBe(0);

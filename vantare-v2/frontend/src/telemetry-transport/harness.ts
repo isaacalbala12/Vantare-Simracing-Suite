@@ -25,12 +25,14 @@ export type TelemetryTransportHarness = {
 export function createTelemetryTransportHarness(
   product: ProductID,
 ): TelemetryTransportHarness {
-  const store = createProjectionTransportStore(product);
+  const capturedAt = "2026-07-30T00:00:00Z";
+  const store = createProjectionTransportStore(product, {
+    now: () => Date.parse(capturedAt),
+  });
   let statusRevision = 0;
   const epoch = 1;
   let sequence = 0;
   let factSequence = 0;
-  const capturedAt = "2026-07-30T00:00:00Z";
   let retainedStatus: StatusEnvelope | undefined;
   let retainedFull: ProjectionEnvelope | undefined;
 

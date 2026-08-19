@@ -7,15 +7,12 @@ import {
   type StatusEnvelope,
   TransportContractError,
 } from "./contracts";
-import { applyMergePatch } from "./merge-patch";
 
 export type DiagnosticCode =
   | "status-gap"
   | "status-advanced"
-  | "snapshot-gap"
   | "snapshot-resync"
   | "snapshot-regression"
-  | "delta-without-base"
   | "fact-gap"
   | "fact-regression"
   | "reconnect"
@@ -33,7 +30,7 @@ export type TransportDiagnostic = {
 export type ProjectionState = {
   product: ProductID;
   status?: StatusEnvelope;
-  snapshot?: ProjectionEnvelope & { kind: "full"; payload: JSONObject };
+  snapshot?: ProjectionEnvelope & { payload: JSONObject };
   facts: readonly FactEnvelope[];
   needsFactResync: boolean;
   diagnostics: readonly TransportDiagnostic[];
@@ -114,10 +111,7 @@ export function createProjectionTransportStore(
     }
     const previous = lastSnapshot;
     if (!previous) {
-      if (frame.kind !== "full") {
-        throw contractFailure("delta-without-base");
-      }
-      lastSnapshot = asFull(frame);
+      lastSnapshot = frame;
       publish({
         ...state,
         snapshot: lastSnapshot,
@@ -132,7 +126,6 @@ export function createProjectionTransportStore(
       frame.sequence === previous.sequence
     ) {
       if (
-        frame.kind !== "full" ||
         frame.projectionVersion !== previous.projectionVersion ||
         frame.capturedAt !== previous.capturedAt ||
         !semanticEqual(frame.payload, previous.payload)
@@ -140,7 +133,7 @@ export function createProjectionTransportStore(
         throw contractFailure("snapshot-regression");
       }
       if (frame.statusRevision !== previous.statusRevision) {
-        lastSnapshot = asFull(frame);
+        lastSnapshot = frame;
         publish({ ...state, snapshot: lastSnapshot });
       }
       return;
@@ -152,26 +145,12 @@ export function createProjectionTransportStore(
       throw contractFailure("snapshot-regression");
     }
     const epochChanged = frame.epoch > previous.epoch;
-    if (epochChanged && (frame.sequence !== 1 || frame.kind !== "full")) {
+    if (epochChanged && frame.sequence !== 1) {
       throw contractFailure("snapshot-regression");
     }
     const contiguous =
       !epochChanged && frame.sequence === previous.sequence + 1;
-    if (frame.kind === "delta" && !contiguous) {
-      throw contractFailure("snapshot-gap");
-    }
-    if (frame.kind === "delta") {
-      lastSnapshot = asFull({
-        ...frame,
-        payload: applyMergePatch(previous.payload, frame.payload),
-      });
-      publish({
-        ...state,
-        snapshot: lastSnapshot,
-      });
-      return;
-    }
-    lastSnapshot = asFull(frame);
+    lastSnapshot = frame;
     let next: ProjectionState = { ...state, snapshot: lastSnapshot };
     if (!epochChanged && !contiguous) {
       next = addDiagnostic(next, {
@@ -280,12 +259,6 @@ function initialState(product: ProductID): ProjectionState {
     needsFactResync: false,
     diagnostics: [],
   };
-}
-
-function asFull(
-  frame: ProjectionEnvelope,
-): ProjectionEnvelope & { kind: "full" } {
-  return { ...frame, kind: "full" };
 }
 
 function freezeState(state: ProjectionState): ProjectionState {

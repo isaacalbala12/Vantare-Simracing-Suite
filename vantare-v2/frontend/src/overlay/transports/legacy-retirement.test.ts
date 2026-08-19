@@ -30,6 +30,9 @@ describe("telemetry frontend retirement", () => {
       "createWailsTelemetryAdapter",
       "createSseTelemetryAdapter",
       "createShadowedTelemetryAdapter",
+      "mergePatch",
+      "applyMergePatch",
+      "merge-patch",
     ]) {
       expect(source, forbidden).not.toContain(forbidden);
     }

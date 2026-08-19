@@ -32,7 +32,7 @@ var (
 	ErrInvalidEnvelope     = errors.New("invalid telemetry projection transport envelope")
 	ErrInvalidPayload      = errors.New("invalid telemetry projection transport payload")
 	ErrPayloadTooLarge     = errors.New("telemetry projection transport payload exceeds limit")
-	ErrDeltaMismatch       = errors.New("telemetry projection delta does not reconstruct full payload")
+	ErrDeltaUnsupported    = errors.New("telemetry projection deltas are unsupported")
 	ErrSequenceGap         = errors.New("telemetry projection publication sequence gap")
 	ErrStatusRevision      = errors.New("invalid telemetry projection status revision")
 	ErrFactSequence        = errors.New("invalid telemetry projection fact sequence")
@@ -59,8 +59,7 @@ const (
 )
 
 const (
-	Full  SnapshotKind = "full"
-	Delta SnapshotKind = "delta"
+	Full SnapshotKind = "full"
 )
 
 type EventKind string
@@ -136,7 +135,9 @@ type HubMetrics struct {
 	StatusPublications   uint64
 	SnapshotPublications uint64
 	SnapshotReplacements uint64
-	DeltasRetained       uint64
+	// Deprecated: RFC 7396 was retired in ISA-372/F4; this remains zero until
+	// F1 releases the runtime metrics compatibility check.
+	DeltasRetained uint64
 }
 
 type pendingSubscriber struct {
@@ -149,9 +150,7 @@ type pendingSubscriber struct {
 }
 
 type publication struct {
-	full      Envelope
-	delta     *Envelope
-	deltaBase schema.Cursor
+	full Envelope
 }
 
 // Hub is bounded and starts no goroutines. Snapshot publications are
@@ -339,9 +338,12 @@ func (hub *Hub) PublishStatus(status StatusEnvelope) error {
 	return nil
 }
 
-// PublishSnapshot atomically retains a mandatory full and an optional RFC 7396
-// merge patch. The patch is accepted only when it reconstructs the full.
+// PublishSnapshot atomically retains a mandatory full. The delta parameter is
+// kept only until F1 releases its runtime callers; non-nil values fail closed.
 func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
+	if delta != nil {
+		return ErrDeltaUnsupported
+	}
 	if err := validateEnvelope(full, hub.maxPayload); err != nil {
 		return err
 	}
@@ -364,10 +366,8 @@ func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
 		return fmt.Errorf("%w: snapshot references %d, current is %d",
 			ErrStatusRevision, full.StatusRevision, hub.status.StatusRevision)
 	}
-	contiguous := false
 	if hub.hasSnapshot {
-		var valid bool
-		contiguous, valid = cursorRelation(hub.latest.full, full)
+		_, valid := cursorRelation(hub.latest.full, full)
 		if !valid {
 			return fmt.Errorf("%w: got %d/%d after %d/%d", ErrSequenceGap,
 				full.Epoch, full.Sequence, hub.latest.full.Epoch, hub.latest.full.Sequence)
@@ -375,23 +375,6 @@ func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
 	}
 
 	next := publication{full: cloneEnvelope(full)}
-	if len(delta) > 0 && contiguous {
-		if validatePayload(delta, hub.maxPayload) == nil {
-			reconstructed, err := ApplyMergePatch(hub.latest.full.Payload, delta)
-			if err == nil && semanticJSONEqual(reconstructed, full.Payload) {
-				deltaFrame := cloneEnvelope(full)
-				deltaFrame.Kind = Delta
-				deltaFrame.Payload = append(json.RawMessage{}, delta...)
-				deltaFrame.seal = envelopeSeal(deltaFrame)
-				next.delta = &deltaFrame
-				next.deltaBase = schema.Cursor{
-					Epoch:    hub.latest.full.Epoch,
-					Sequence: hub.latest.full.Sequence,
-				}
-				hub.metrics.DeltasRetained++
-			}
-		}
-	}
 
 	if hub.hasSnapshot {
 		hub.metrics.SnapshotReplacements++
@@ -565,21 +548,15 @@ func (subscription *Subscription) Close() error {
 	return nil
 }
 
-func (hub *Hub) snapshotFor(subscriber *pendingSubscriber) Envelope {
-	if !subscriber.deliveredAny || hub.latest.delta == nil {
-		return cloneEnvelope(hub.latest.full)
-	}
-	if subscriber.delivered != hub.latest.deltaBase {
-		return cloneEnvelope(hub.latest.full)
-	}
-	return cloneEnvelope(*hub.latest.delta)
+func (hub *Hub) snapshotFor(_ *pendingSubscriber) Envelope {
+	return cloneEnvelope(hub.latest.full)
 }
 
 func validateEnvelope(frame Envelope, maximum int) error {
 	if frame.seal != envelopeSeal(frame) ||
 		!knownProduct(frame.Product) ||
 		frame.ProjectionVersion == 0 || frame.Epoch == 0 || frame.Sequence == 0 ||
-		frame.StatusRevision == 0 || frame.Kind != Full && frame.Kind != Delta {
+		frame.StatusRevision == 0 || frame.Kind != Full {
 		return ErrInvalidEnvelope
 	}
 	if err := validateTimestamp(frame.CapturedAt); err != nil {

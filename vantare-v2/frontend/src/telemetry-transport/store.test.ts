@@ -14,29 +14,18 @@ describe("projection transport store", () => {
     expect(store.getSnapshot().status?.statusRevision).toBe(4);
   });
 
-  it("applies a verified-shape merge patch after a full", () => {
-    const store = readyStore();
-    store.ingest(
-      eventName(product, "projection"),
-      projection("full", 1, 1, { player: { speed: 10, gear: 2 } }),
-    );
-    store.ingest(
-      eventName(product, "projection"),
-      projection("delta", 1, 2, { player: { speed: 11, gear: null } }),
-    );
-    expect(store.getSnapshot().snapshot?.payload).toEqual({
-      player: { speed: 11 },
-    });
-  });
-
-  it("requires a full for first delivery and after an epoch change", () => {
+  it("rejects retired delta envelopes with a clear contract error", () => {
     const store = readyStore();
     expect(() =>
       store.ingest(
         eventName(product, "projection"),
         projection("delta", 1, 1, { value: 1 }),
       ),
-    ).toThrow("delta-without-base");
+    ).toThrow("delta-unsupported");
+  });
+
+  it("requires sequence one after an epoch change", () => {
+    const store = readyStore();
     store.ingest(
       eventName(product, "projection"),
       projection("full", 1, 1, { value: 1 }),
@@ -44,7 +33,7 @@ describe("projection transport store", () => {
     expect(() =>
       store.ingest(
         eventName(product, "projection"),
-        projection("delta", 2, 1, { value: 2 }),
+        projection("full", 2, 2, { value: 2 }),
       ),
     ).toThrow("snapshot-regression");
   });
@@ -242,7 +231,7 @@ function status(
 }
 
 function projection(
-  kind: "full" | "delta",
+  kind: string,
   epoch: number,
   sequence: number,
   payload: Record<string, unknown>,

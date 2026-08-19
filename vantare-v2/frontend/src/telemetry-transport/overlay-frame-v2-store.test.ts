@@ -85,6 +85,7 @@ describe("OverlayFrame v2 store", () => {
     expect(order).toEqual([OVERLAY_V2_STATUS_EVENT, OVERLAY_V2_SNAPSHOT_EVENT, "replay"]);
     listeners.get(OVERLAY_V2_SNAPSHOT_EVENT)?.(JSON.stringify(golden()));
     expect(store.getSnapshot().frame?.contract).toBe(2);
+    expect(store.getDiagnostics().overlay_v2_parse_duration.count).toBe(1);
     detach();
     expect(listeners.size).toBe(0);
   });

@@ -19,10 +19,12 @@ describe("canonical projection telemetry adapter", () => {
   it("publishes canonical mapped, stale and disconnected snapshots", () => {
     const handlers = new Map<string, (data: unknown) => void>();
     const snapshots: TelemetrySnapshot[] = [];
+    const onMappedSnapshot = vi.fn();
     const adapter = createWailsProjectionTelemetryAdapter({
       coordinator: coordinator(snapshots),
       runtime: "desktop",
       now: () => 1_000,
+      onMappedSnapshot,
       subscribe: (name, listener) => {
         handlers.set(name, listener);
         return () => handlers.delete(name);
@@ -36,6 +38,7 @@ describe("canonical projection telemetry adapter", () => {
       status: "ready",
       player: { inPit: false, speedKph: 0 },
     });
+    expect(onMappedSnapshot).toHaveBeenCalledWith(projection.epoch, projection.sequence, snapshots.at(-1));
     emitStatus(handlers, 2, "stale");
     expect(snapshots.at(-1)?.status).toBe("stale");
     emitStatus(handlers, 3, "stopped");

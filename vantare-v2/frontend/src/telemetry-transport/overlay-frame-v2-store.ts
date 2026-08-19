@@ -28,7 +28,12 @@ export type OverlayFrameV2Store = Readonly<{
   getSnapshot(): OverlayFrameV2State;
   subscribe(listener: () => void): () => void;
   ingest(name: string, input: unknown): void;
+  getDiagnostics(): OverlayFrameV2StoreDiagnostics;
   dispose(): void;
+}>;
+
+export type OverlayFrameV2StoreDiagnostics = Readonly<{
+  overlay_v2_parse_duration: Readonly<{ count: number; p50: number; p99: number }>;
 }>;
 
 export type OverlayFrameV2EventSource = Readonly<{
@@ -51,6 +56,7 @@ export function createOverlayFrameV2Store(
   let state: OverlayFrameV2State = Object.freeze({ revision: 0, ageMs: 0 });
   let disposed = false;
   const listeners = new Set<() => void>();
+  const parseDurations: number[] = [];
   const watchdog = createFreshnessWatchdog(refreshAge, options);
 
   function publish(next: OverlayFrameV2State): void {
@@ -90,7 +96,10 @@ export function createOverlayFrameV2Store(
       if (name !== OVERLAY_V2_SNAPSHOT_EVENT && name !== OVERLAY_V2_STATUS_EVENT) {
         throw new OverlayFrameV2ContractError("event");
       }
+      const started = performance.now();
       const update = decodeOverlayUpdateV2(input);
+      parseDurations.push(performance.now() - started);
+      if (parseDurations.length > 512) parseDurations.shift();
       if (update.revision <= state.revision) {
         throw new OverlayFrameV2ContractError("revision");
       }
@@ -104,6 +113,16 @@ export function createOverlayFrameV2Store(
       const ageMs = frame ? watchdog.measure(frame.generatedAt).ageMs : update.source.ageMs ?? 0;
       publish({ revision: update.revision, source: update.source, frame, ageMs });
     },
+    getDiagnostics() {
+      const sorted = [...parseDurations].sort((left, right) => left - right);
+      return Object.freeze({
+        overlay_v2_parse_duration: Object.freeze({
+          count: sorted.length,
+          p50: percentile(sorted, 0.5),
+          p99: percentile(sorted, 0.99),
+        }),
+      });
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -111,6 +130,11 @@ export function createOverlayFrameV2Store(
       listeners.clear();
     },
   };
+}
+
+function percentile(sorted: readonly number[], fraction: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.ceil(sorted.length * fraction) - 1] ?? 0;
 }
 
 export function attachOverlayFrameV2Transport(
@@ -178,7 +202,7 @@ export function decodeOverlayUpdateV2(input: unknown): OverlayUpdateV2 {
   positiveInteger(value.revision, "revision");
   sourceStatus(value.source, "source");
   if (value.frame !== null) frame(value.frame, "frame");
-  return deepFreeze(value) as unknown as OverlayUpdateV2;
+  return Object.freeze(value) as unknown as OverlayUpdateV2;
 }
 
 function sourceStatus(value: unknown, path: string): void {
@@ -187,6 +211,7 @@ function sourceStatus(value: unknown, path: string): void {
   optionalNonNegativeInteger(value.retry, `${path}.retry`);
   optionalNonNegativeInteger(value.ageMs, `${path}.ageMs`);
   optionalString(value.reason, `${path}.reason`);
+  Object.freeze(value);
 }
 
 function frame(value: unknown, path: string): void {
@@ -203,12 +228,13 @@ function frame(value: unknown, path: string): void {
   units(value.units, `${path}.units`);
   session(value.session, `${path}.session`);
   player(value.player, `${path}.player`);
-  array(value.standings, `${path}.standings`, standing);
-  array(value.relative, `${path}.relative`, relative);
+  rowArray(value.standings, `${path}.standings`, validStanding);
+  rowArray(value.relative, `${path}.relative`, validRelative);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
   capabilities(value.capabilities, `${path}.capabilities`);
+  Object.freeze(value);
 }
 
 function units(value: unknown, path: string): void {
@@ -217,6 +243,7 @@ function units(value: unknown, path: string): void {
   enumValue(value.temperature, `${path}.temperature`, ["celsius", "fahrenheit"]);
   enumValue(value.pressure, `${path}.pressure`, ["kpa", "psi"]);
   enumValue(value.fuel, `${path}.fuel`, ["liters", "gallons-us"]);
+  Object.freeze(value);
 }
 
 function session(value: unknown, path: string): void {
@@ -226,6 +253,7 @@ function session(value: unknown, path: string): void {
   qvalue(value.flag, `${path}.flag`, "string");
   qvalue(value.remaining, `${path}.remaining`, "number");
   qvalue(value.maxLaps, `${path}.maxLaps`, "number");
+  Object.freeze(value);
 }
 
 function player(value: unknown, path: string): void {
@@ -234,26 +262,28 @@ function player(value: unknown, path: string): void {
   for (const key of ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"] as const) {
     qvalue(value[key], `${path}.${key}`, "number");
   }
+  Object.freeze(value);
 }
 
-function standing(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["id", "position", "classPosition", "gap", "lastLap"], ["classId", "driver", "number", "gapLaps", "pit", "laps"]);
-  nonEmptyString(value.id, `${path}.id`);
-  integer(value.position, `${path}.position`);
-  integer(value.classPosition, `${path}.classPosition`);
-  qvalue(value.gap, `${path}.gap`, "number");
-  qvalue(value.lastLap, `${path}.lastLap`, "number");
-  for (const key of ["classId", "driver", "number", "pit"] as const) optionalString(value[key], `${path}.${key}`);
-  for (const key of ["gapLaps", "laps"] as const) optionalInteger(value[key], `${path}.${key}`);
+function validStanding(value: unknown): boolean {
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  const valid = typeof value.id === "string" && value.id.length > 0 &&
+    Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
+    validQValue(value.gap, "number") && validQValue(value.lastLap, "number") &&
+    [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
+    [value.gapLaps, value.laps].every(optionalIntegerValue);
+  if (valid) Object.freeze(value);
+  return valid;
 }
 
-function relative(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["id", "gap", "side", "authority"], ["name"]);
-  nonEmptyString(value.id, `${path}.id`);
-  qvalue(value.gap, `${path}.gap`, "number");
-  nonEmptyString(value.side, `${path}.side`);
-  enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
-  optionalString(value.name, `${path}.name`);
+function validRelative(value: unknown): boolean {
+  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name"])) return false;
+  const valid = typeof value.id === "string" && value.id.length > 0 &&
+    validQValue(value.gap, "number") && typeof value.side === "string" && value.side.length > 0 &&
+    ["native", "derived", "estimated"].includes(value.authority as string) &&
+    optionalStringValue(value.name);
+  if (valid) Object.freeze(value);
+  return valid;
 }
 
 function delta(value: unknown, path: string): void {
@@ -262,11 +292,13 @@ function delta(value: unknown, path: string): void {
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  Object.freeze(value);
 }
 
 function fuel(value: unknown, path: string): void {
   objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"]);
   for (const key of ["remaining", "capacity", "perLap", "estimatedLaps"] as const) qvalue(value[key], `${path}.${key}`, "number");
+  Object.freeze(value);
 }
 
 function spotter(value: unknown, path: string): void {
@@ -274,6 +306,7 @@ function spotter(value: unknown, path: string): void {
   enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated"]);
   qvalue(value.left, `${path}.left`, "boolean");
   qvalue(value.right, `${path}.right`, "boolean");
+  Object.freeze(value);
 }
 
 function capabilities(value: unknown, path: string): void {
@@ -285,13 +318,21 @@ function capabilities(value: unknown, path: string): void {
   array(value.modes.delta, `${path}.modes.delta`, nonEmptyString);
   enumValue<OverlayModeV2>(value.modes.standings, `${path}.modes.standings`, ["none", "official", "reconstructed", "estimated"]);
   enumValue<OverlayModeV2>(value.modes.gaps, `${path}.modes.gaps`, ["none", "official", "reconstructed", "estimated"]);
+  Object.freeze(value.modes);
+  Object.freeze(value);
 }
 
 function qvalue(value: unknown, path: string, kind: "number" | "string" | "boolean"): asserts value is OverlayQValue<unknown> {
-  objectWithKeys(value, path, ["q"], ["v"]);
-  quality(value.q, `${path}.q`);
-  if (value.v !== undefined && (typeof value.v !== kind || (kind === "number" && !Number.isFinite(value.v)))) invalid(`${path}.v`);
-  if (value.q === "missing" && value.v !== undefined) invalid(`${path}.v`);
+  if (!validQValue(value, kind)) invalid(path);
+}
+
+function validQValue(value: unknown, kind: "number" | "string" | "boolean"): value is OverlayQValue<unknown> {
+  if (!objectHasKeys(value, ["q"], ["v"])) return false;
+  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) return false;
+  if (value.v !== undefined && (typeof value.v !== kind || (kind === "number" && !Number.isFinite(value.v)))) return false;
+  if (value.q === "missing" && value.v !== undefined) return false;
+  Object.freeze(value);
+  return true;
 }
 
 function quality(value: unknown, path: string): asserts value is OverlayQualityV2 {
@@ -314,9 +355,13 @@ function cloneJSONInput(input: unknown): JSONObject {
 }
 
 function objectWithKeys(value: unknown, path: string, required: readonly string[], optional: readonly string[] = []): asserts value is JSONObject {
-  if (!plainObject(value)) invalid(path);
-  const allowed = new Set([...required, ...optional]);
-  if (required.some((key) => !(key in value)) || Object.keys(value).some((key) => !allowed.has(key))) invalid(path);
+  if (!objectHasKeys(value, required, optional)) invalid(path);
+}
+
+function objectHasKeys(value: unknown, required: readonly string[], optional: readonly string[] = []): value is JSONObject {
+  return plainObject(value) &&
+    !required.some((key) => !(key in value)) &&
+    !Object.keys(value).some((key) => !required.includes(key) && !optional.includes(key));
 }
 
 function plainObject(value: unknown): value is JSONObject {
@@ -326,11 +371,21 @@ function plainObject(value: unknown): value is JSONObject {
 function array(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {
   if (!Array.isArray(value)) invalid(path);
   value.forEach((entry, index) => validate(entry, `${path}[${index}]`));
+  Object.freeze(value);
+}
+
+function rowArray(value: unknown, path: string, validate: (value: unknown) => boolean): void {
+  if (!Array.isArray(value)) invalid(path);
+  for (let index = 0; index < value.length; index += 1) {
+    if (!validate(value[index])) invalid(`${path}[${index}]`);
+  }
+  Object.freeze(value);
 }
 
 function record(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {
   if (!plainObject(value)) invalid(path);
   for (const [key, entry] of Object.entries(value)) validate(entry, `${path}.${key}`);
+  Object.freeze(value);
 }
 
 function enumValue<T extends string>(value: unknown, path: string, allowed: readonly T[]): asserts value is T {
@@ -341,12 +396,8 @@ function positiveInteger(value: unknown, path: string): void {
   if (!Number.isSafeInteger(value) || (value as number) <= 0) invalid(path);
 }
 
-function integer(value: unknown, path: string): void {
-  if (!Number.isSafeInteger(value)) invalid(path);
-}
-
-function optionalInteger(value: unknown, path: string): void {
-  if (value !== undefined) integer(value, path);
+function optionalIntegerValue(value: unknown): boolean {
+  return value === undefined || Number.isSafeInteger(value);
 }
 
 function optionalNonNegativeInteger(value: unknown, path: string): void {
@@ -361,14 +412,12 @@ function optionalString(value: unknown, path: string): void {
   if (value !== undefined && typeof value !== "string") invalid(path);
 }
 
-function utcTimestamp(value: unknown, path: string): void {
-  if (typeof value !== "string" || !value.endsWith("Z") || !Number.isFinite(Date.parse(value))) invalid(path);
+function optionalStringValue(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
 }
 
-function deepFreeze<T>(value: T): T {
-  if (value === null || typeof value !== "object" || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) deepFreeze(child);
-  return Object.freeze(value);
+function utcTimestamp(value: unknown, path: string): void {
+  if (typeof value !== "string" || !value.endsWith("Z") || !Number.isFinite(Date.parse(value))) invalid(path);
 }
 
 function cleanup(removers: readonly (() => void)[]): void {

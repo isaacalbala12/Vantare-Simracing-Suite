@@ -73,10 +73,10 @@ describe("StudioTelemetryProvider - single merged effect", () => {
       publish: vi.fn((snapshot) => {
         publishHistory.push(snapshot);
       }),
-      getLatestSnapshot: vi.fn(() => publishHistory[publishHistory.length - 1] || null),
-      getSnapshot: vi.fn(() => publishHistory[publishHistory.length - 1] || null),
+      getSnapshot: vi.fn(() => publishHistory[publishHistory.length - 1]),
       subscribe: vi.fn(() => () => {}),
-    } as any;
+      dispose: vi.fn(),
+    };
 
     mockAdapter = {
       coordinator: mockCoordinator,
@@ -87,8 +87,11 @@ describe("StudioTelemetryProvider - single merged effect", () => {
         adapterStarted = false;
         mockCoordinator.publish({
           status: "disconnected",
-          timestamp: Date.now(),
-        } as any);
+          capturedAt: Date.now(),
+          session: { type: "race" },
+          player: { inPit: false },
+          scoring: [],
+        });
       }),
     };
   });
@@ -129,7 +132,6 @@ describe("StudioTelemetryProvider - single merged effect", () => {
   });
 
   it("should restore mock snapshot when switching from live back to mock (no race condition)", async () => {
-    const mockSetPreview = vi.fn();
     let previewState = {
       source: "mock" as const,
       mockSession: "practice" as const,
@@ -197,7 +199,6 @@ describe("StudioTelemetryProvider - single merged effect", () => {
   });
 
   it("should handle repeated toggling without leaking subscriptions", async () => {
-    const mockSetPreview = vi.fn();
     let previewState = {
       source: "mock" as const,
       mockSession: "practice" as const,
@@ -248,7 +249,6 @@ describe("StudioTelemetryProvider - single merged effect", () => {
   });
 
   it("should not publish after unmount", async () => {
-    const mockSetPreview = vi.fn();
     let previewState = {
       source: "live" as const,
       mockSession: "practice" as const,
@@ -265,7 +265,7 @@ describe("StudioTelemetryProvider - single merged effect", () => {
       },
     }));
 
-    const { unmount, rerender } = render(
+    const { unmount } = render(
       <StudioTelemetryProvider
         coordinator={mockCoordinator}
         liveAvailable={true}
@@ -294,7 +294,6 @@ describe("StudioTelemetryProvider - single merged effect", () => {
   });
 
   it("should not publish mock if source changes to live before effect cleanup", async () => {
-    const mockSetPreview = vi.fn();
     let previewState = {
       source: "live" as const,
       mockSession: "practice" as const,

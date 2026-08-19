@@ -35,6 +35,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategylive "github.com/vantare/overlays/v2/internal/strategy/live"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
@@ -211,6 +212,59 @@ func strategyRepositoryRoot(cfgDir string) (string, error) {
 		return "", fmt.Errorf("configs directory must be absolute")
 	}
 	return filepath.Join(filepath.Dir(filepath.Clean(cfgDir)), "data", "strategy"), nil
+}
+
+var errStrategyLiveRepositoryUnavailable = errors.New("Strategy live repository is unavailable")
+
+func loadStrategyLiveEngine(
+	ctx context.Context,
+	repository *strategyrepository.Repository[json.RawMessage],
+) (*strategylive.Engine, error) {
+	if repository == nil {
+		return nil, errStrategyLiveRepositoryUnavailable
+	}
+	snapshot, err := repository.Snapshot(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot Strategy repository: %w", err)
+	}
+	return resolveStrategyLiveEngine(snapshot)
+}
+
+func resolveStrategyLiveEngine(
+	snapshot strategyrepository.Snapshot[json.RawMessage],
+) (*strategylive.Engine, error) {
+	plan, err := strategylive.ResolveActivePlan(snapshot.ActivePlan, snapshot.Revisions)
+	if err != nil {
+		return nil, fmt.Errorf("resolve active Strategy revision: %w", err)
+	}
+	engine, err := strategylive.NewEngine(plan)
+	if err != nil {
+		return nil, fmt.Errorf("build Strategy live engine: %w", err)
+	}
+	return engine, nil
+}
+
+func strategyLiveUnavailableReason(err error) string {
+	switch {
+	case errors.Is(err, strategylive.ErrNoActivePlan):
+		return "no active plan"
+	case errors.Is(err, strategylive.ErrActiveRevisionNotFound):
+		return "active revision is missing"
+	case errors.Is(err, strategylive.ErrActiveRevisionMismatch):
+		return "active revision failed integrity validation"
+	case errors.Is(err, strategylive.ErrUnsupportedEditorVersion):
+		return "active revision uses an unsupported editor version"
+	case errors.Is(err, strategylive.ErrInvalidActivePlan),
+		errors.Is(err, strategylive.ErrInvalidEditorDocument),
+		errors.Is(err, strategylive.ErrInvalidPlan):
+		return "active revision is incompatible"
+	case errors.Is(err, strategyrepository.ErrCorruptRepository),
+		errors.Is(err, strategyrepository.ErrUnsupportedRepositoryVersion),
+		errors.Is(err, strategyrepository.ErrLimitExceeded):
+		return "repository snapshot is unavailable"
+	default:
+		return "initialization failed"
+	}
 }
 
 type strategyCommandExecutor interface {
@@ -1151,12 +1205,20 @@ func main() {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
 	var strategyBridge strategyCommandExecutor
+	var strategyLiveConsumer app.StrategyLiveConsumer
 	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
 		log.Printf("warning: Strategy repository is unavailable")
 	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
-		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+		log.Printf("warning: Strategy repository could not be opened")
 	} else {
 		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
+		engine, liveErr := loadStrategyLiveEngine(ctx, repo)
+		if liveErr != nil {
+			log.Printf("warning: Strategy live execution disabled: %s", strategyLiveUnavailableReason(liveErr))
+		} else {
+			strategyLiveConsumer = engine
+			log.Printf("Strategy live execution enabled from the persisted active revision")
+		}
 	}
 	wailsApp.Event.On("strategy:application:command", func(event *application.CustomEvent) {
 		if strategyBridge == nil {
@@ -1620,11 +1682,13 @@ func main() {
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
 
-	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+	telemetryConfig := app.TelemetryCoreRuntimeConfig{
 		Enabled:  *live,
 		Emitter:  emitter,
 		Engineer: engSvc,
-	})
+	}
+	telemetryConfig.StrategyLiveConsumer = strategyLiveConsumer
+	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(telemetryConfig)
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil

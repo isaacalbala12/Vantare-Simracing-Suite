@@ -35,3 +35,20 @@ func TestProductionImportsOnlyPublicStrategyProjectionAndDomain(t *testing.T) {
 		}
 	}
 }
+
+func TestActiveRevisionResolverImportsOnlyContractAndStandardLibrary(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "active_revision.go", nil, parser.ImportsOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, imported := range file.Imports {
+		path, err := strconv.Unquote(imported.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path == "github.com/vantare/overlays/v2/internal/strategy/contract" || !strings.Contains(path, ".") {
+			continue
+		}
+		t.Fatalf("active_revision.go imports dependency outside contract/standard library %q", path)
+	}
+}

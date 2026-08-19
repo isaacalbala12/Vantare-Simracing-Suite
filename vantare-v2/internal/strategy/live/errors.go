@@ -6,13 +6,19 @@ import (
 )
 
 var (
-	ErrInvalidPlan        = errors.New("strategy live plan is invalid")
-	ErrInvalidProjection  = errors.New("strategy live projection is invalid")
-	ErrCapabilityConflict = errors.New("strategy live projection capabilities contradict its payload")
-	ErrCursorConflict     = errors.New("strategy live projection cursor conflicts with prior content")
-	ErrOutOfOrder         = errors.New("strategy live update is out of order")
-	ErrInvalidSource      = errors.New("strategy live source status is invalid")
-	ErrSourceConflict     = errors.New("strategy live source revision conflicts with prior content")
+	ErrInvalidPlan              = errors.New("strategy live plan is invalid")
+	ErrNoActivePlan             = errors.New("strategy live active plan is unavailable")
+	ErrInvalidActivePlan        = errors.New("strategy live active plan is invalid")
+	ErrActiveRevisionNotFound   = errors.New("strategy live active revision was not found")
+	ErrActiveRevisionMismatch   = errors.New("strategy live active revision identity does not match")
+	ErrUnsupportedEditorVersion = errors.New("strategy live editor version is unsupported")
+	ErrInvalidEditorDocument    = errors.New("strategy live editor document is invalid")
+	ErrInvalidProjection        = errors.New("strategy live projection is invalid")
+	ErrCapabilityConflict       = errors.New("strategy live projection capabilities contradict its payload")
+	ErrCursorConflict           = errors.New("strategy live projection cursor conflicts with prior content")
+	ErrOutOfOrder               = errors.New("strategy live update is out of order")
+	ErrInvalidSource            = errors.New("strategy live source status is invalid")
+	ErrSourceConflict           = errors.New("strategy live source revision conflicts with prior content")
 )
 
 // Error keeps failures machine-inspectable without exposing telemetry internals.

@@ -262,6 +262,15 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 	if symbol.packagePath == "internal/telemetry/projection/overlayv2" && symbol.name == "ProjectV2" {
 		return true
 	}
+	// 2026-08-19: F6.4 delivers the bounded Publisher before F6.5 gives the
+	// runtime ownership of its registry, Wails bridge and explicit late-join
+	// replay. Keep this exception exact and remove each name when wired.
+	if symbol.packagePath == "internal/app/telemetrytransport" {
+		switch symbol.name {
+		case "NewPublisherRegistry", "Lookup", "ServeWailsPublisher", "ReplaySnapshot":
+			return true
+		}
+	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.
 	_, allowed := wiringGuardExistingContractBaseline[symbol.packagePath+"."+symbol.name]

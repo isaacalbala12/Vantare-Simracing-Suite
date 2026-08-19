@@ -194,13 +194,14 @@ type Server struct {
 }
 
 type ServerConfig struct {
-	Addr               string
-	DistFS             fs.FS
-	CfgDir             string
-	EngineerSvc        *engineerservice.EngineerService
-	Emitter            EventEmitter
-	OverlayProjection  *telemetrytransport.Hub
-	StrategyProjection *telemetrytransport.Hub
+	Addr                string
+	DistFS              fs.FS
+	CfgDir              string
+	EngineerSvc         *engineerservice.EngineerService
+	Emitter             EventEmitter
+	OverlayProjection   *telemetrytransport.Hub
+	StrategyProjection  *telemetrytransport.Hub
+	OverlayV2Publishers *telemetrytransport.PublisherRegistry
 }
 
 func New(cfg ServerConfig) *Server {
@@ -231,6 +232,12 @@ func New(cfg ServerConfig) *Server {
 		mux.Handle(
 			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),
 			telemetrytransport.SSEHandler(cfg.StrategyProjection),
+		)
+	}
+	if cfg.OverlayV2Publishers != nil {
+		mux.Handle(
+			"GET "+telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
+			telemetrytransport.PublisherSSEHandler(cfg.OverlayV2Publishers, telemetrytransport.ProductOverlayV2),
 		)
 	}
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)

@@ -69,10 +69,8 @@ func classifyTelemetryError(err error) failureClass {
 		errors.Is(err, telemetrytransport.ErrClosed) ||
 		errors.Is(err, telemetrytransport.ErrInvalidPayload) ||
 		errors.Is(err, telemetrytransport.ErrPayloadTooLarge) ||
-		errors.Is(err, telemetrytransport.ErrDeltaMismatch) ||
 		errors.Is(err, telemetrytransport.ErrSequenceGap) ||
 		errors.Is(err, telemetrytransport.ErrStatusRevision) ||
-		errors.Is(err, telemetrytransport.ErrFactSequence) ||
 		errors.Is(err, telemetrytransport.ErrUnsupportedProtocol) ||
 		errors.Is(err, projection.ErrUnknownProjectionVersion) ||
 		errors.Is(err, engineerprojection.ErrInvalidProjectionEpoch) ||

@@ -13,7 +13,6 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
-	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
@@ -289,17 +288,6 @@ func TestStrategySignalAuditSupportedRowsMatchProductionContracts(t *testing.T) 
 	)
 	if remaining.Source != wantRemainingSource || remaining.Authority != "canonical Derive pipeline only; no raw remaining-time field" {
 		t.Fatalf("remaining-time source/authority = %+v", remaining)
-	}
-	foundRemainingDerivation := false
-	for _, definition := range derive.Registry() {
-		if definition.ID != derive.DerivationSessionRemaining {
-			continue
-		}
-		foundRemainingDerivation = reflect.DeepEqual(definition.Inputs, []derive.SignalID{derive.SignalObservedSourceTime, derive.SignalObservedEndTime}) &&
-			reflect.DeepEqual(definition.Outputs, []derive.SignalID{derive.SignalSessionRemaining})
-	}
-	if !foundRemainingDerivation {
-		t.Fatal("canonical Derive registry no longer proves session.remaining_time from source/end time")
 	}
 }
 

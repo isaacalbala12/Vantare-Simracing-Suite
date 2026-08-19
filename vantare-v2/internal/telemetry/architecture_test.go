@@ -112,6 +112,23 @@ func TestReducerRunLoopStaysRemoved(t *testing.T) {
 	}
 }
 
+func TestDeriveRegistryStaysRemoved(t *testing.T) {
+	t.Parallel()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("resolve architecture test path")
+	}
+	contents, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "derive", "pipeline.go"))
+	if err != nil {
+		t.Fatalf("read derive pipeline: %v", err)
+	}
+	for _, deadAPI := range []string{"type Definition struct", "func Registry(", "func ValidateDefinitions("} {
+		if bytes.Contains(contents, []byte(deadAPI)) {
+			t.Fatalf("dead derive DAG registry API returned: %q", deadAPI)
+		}
+	}
+}
+
 func TestValidateImport(t *testing.T) {
 	t.Parallel()
 

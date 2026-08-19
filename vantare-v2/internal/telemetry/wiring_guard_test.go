@@ -274,8 +274,6 @@ var wiringGuardExistingContractBaseline = map[string]struct{}{
 	"internal/telemetry/core.SetConnected":                       {},
 	"internal/telemetry/core.SetPreferred":                       {},
 	"internal/telemetry/derive.Availability":                     {},
-	"internal/telemetry/derive.Registry":                         {},
-	"internal/telemetry/derive.ValidateDefinitions":              {},
 	"internal/telemetry/drivers/lmu.AttemptCount":                {},
 	"internal/telemetry/drivers/lmu.AuthorityMatrix":             {},
 	"internal/telemetry/drivers/lmu.CaptureDeltaTrace":           {},

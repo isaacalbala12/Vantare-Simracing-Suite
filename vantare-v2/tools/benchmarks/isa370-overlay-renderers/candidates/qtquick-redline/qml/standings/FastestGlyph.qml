@@ -12,8 +12,8 @@ Item {
     property real toY: 0
     readonly property int flightDurationMs: tokens.fastestMs
     readonly property var flightBezier: tokens.crownBezier
-    width: 12
-    height: 14
+    width: 10
+    height: 12
 
     Theme.RedlineTokens { id: tokens }
 
@@ -44,13 +44,13 @@ Item {
             ctx.strokeStyle = tokens.fastest
             ctx.fillStyle = tokens.fastest
             ctx.lineWidth = 1.6
-            ctx.fillRect(4.5, 0, 3, 2)
+            ctx.fillRect(3.5, 0, 3, 2)
             ctx.beginPath()
-            ctx.arc(6, 8, 5, 0, Math.PI * 2)
+            ctx.arc(5, 7, 4, 0, Math.PI * 2)
             ctx.stroke()
             ctx.beginPath()
-            ctx.moveTo(6, 8)
-            ctx.lineTo(8.4, 5.6)
+            ctx.moveTo(5, 7)
+            ctx.lineTo(7.2, 4.8)
             ctx.stroke()
         }
     }

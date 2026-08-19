@@ -13,6 +13,7 @@ QtObject {
     readonly property int deltaWidth: 44
     readonly property int bestWidth: 74
     readonly property int gapWidth: 58
+    readonly property int fastestGlyphHeight: 12
 
     readonly property int flipBaseMs: 320
     readonly property int flipPerRowMs: 60

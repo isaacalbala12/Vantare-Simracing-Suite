@@ -220,6 +220,7 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
 
     def test_prev_to_next_derives_flip_overtake_retirement_tire_and_crown(self):
         root = self.component("standings/StandingsRedline.qml")
+        self.assertEqual("StandingsModel.visualClasses", root.property("snapshotContract"))
         self.apply_snapshot(root, visual_classes([ROW_1, ROW_2, ROW_3]))
         next_rows = [
             {**ROW_2, "pitText": "", "tireCompound": "H", "bestLapText": "1:47.9", "isLeader": True},
@@ -243,7 +244,7 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
         self.assertTrue(by_id["2"]["isSessionBest"])
         self.assertFalse(by_id["1"]["isSessionBest"])
         self.assertTrue(self.child(root, "flyingCrown").property("flightActive"))
-        self.assertEqual((10.0, 12.0), (
+        self.assertEqual((12.0, 14.0), (
             self.child(root, "flyingCrown").width(), self.child(root, "flyingCrown").height(),
         ))
         self.assertEqual((77.0, 77.0), (

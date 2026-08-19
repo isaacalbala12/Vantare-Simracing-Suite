@@ -1011,12 +1011,26 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	wailsApp := application.New(application.Options{
+	appOptions := application.Options{
 		Name: "Vantare Simracing Suite",
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(distFS),
 		},
-	})
+	}
+	// Gancho de diagnostico: `VANTARE_WEBVIEW_DEBUG_PORT=9222` abre el protocolo
+	// DevTools del WebView2 para poder perfilar la app real (tracing, metricas de
+	// frame) desde fuera. Wails limpia WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS al
+	// crear el entorno, asi que la variable de entorno estandar no basta y hay
+	// que pasar el argumento por las opciones. Sin la variable no cambia nada.
+	if port := strings.TrimSpace(os.Getenv("VANTARE_WEBVIEW_DEBUG_PORT")); port != "" {
+		appOptions.Windows.AdditionalBrowserArgs = append(
+			appOptions.Windows.AdditionalBrowserArgs,
+			"--remote-debugging-port="+port,
+		)
+		log.Printf("webview: remote debugging enabled on port %s", port)
+	}
+
+	wailsApp := application.New(appOptions)
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	var cleanup sync.Once

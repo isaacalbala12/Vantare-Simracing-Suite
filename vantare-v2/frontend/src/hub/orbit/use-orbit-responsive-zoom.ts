@@ -1,21 +1,13 @@
 import { useEffect } from "react";
+import { ORBIT_KEYS, orbitStore } from "./orbit-store";
 import { isOrbitZoomFloored, resolveOrbitZoom } from "./orbit-zoom";
 
 /**
- * Cadencia con la que se reescribe el factor mientras el usuario arrastra el
- * borde de la ventana. Escribir `zoom` en `<html>` invalida el layout **y** el
- * estilo del documento entero: a 60 Hz eso son ~14 ms de CPU por frame solo en
- * reescalar, y en WebView2 el arrastre se atasca varios segundos (D-R4-4).
- * A 120 ms el reescalado sigue leyéndose como continuo y el coste cae a ~1/7.
+ * Reposo tras el último `resize`: aquí se levanta el modo «redimensionando».
+ * No retrasa el escalado (que ya va por frame): solo evita que las
+ * transiciones vuelvan a dispararse entre dos pasos del mismo gesto.
  */
-const ORBIT_ZOOM_THROTTLE_MS = 120;
-
-/**
- * Reposo tras el último `resize`: aquí se escribe el valor final (trailing) y
- * se levanta el modo «redimensionando». Debe ser mayor que el throttle para no
- * cortar la ráfaga por la mitad.
- */
-const ORBIT_ZOOM_SETTLE_MS = 180;
+const ORBIT_RESIZE_SETTLE_MS = 120;
 
 /**
  * Aplica el escalado proporcional de Orbit mientras la shell está montada.
@@ -30,26 +22,35 @@ const ORBIT_ZOOM_SETTLE_MS = 180;
  * (`100vh` bajo `zoom` se resuelve en px reales y luego se escala, así que la
  * shell pide `100vh / var(--orbit-zoom)` para acabar midiendo la ventana).
  *
- * Rendimiento (D-R4-4): el `resize` continuo no se atiende por frame sino con
- * throttling **leading + trailing**, y mientras dura la ráfaga se marca
- * `documentElement[data-orbit-resizing]` para que la CSS congele transiciones,
- * animaciones y `backdrop-filter` —los tres repintados caros de la shell—.
+ * Rendimiento (D-R4-5): el factor se escribe **una vez por frame**, coalescido
+ * con `requestAnimationFrame`. La medición en la app real (Wails/WebView2,
+ * arrastre por el bucle modal de Windows, doc `real-resize-profile.md`) mostró
+ * que el coste no está aquí: durante un gesto de 700 ms el hilo principal se
+ * mantiene a 60 Hz clavados (p95 16.8 ms, cero long tasks) y layout+estilo
+ * suman ~250 ms repartidos en 4,6 s. Lo que se percibía como «va lento» era el
+ * throttling de 120 ms de D-R4-4: aplicaba solo **4** escalones para 38-40
+ * eventos de `resize`, dejando el contenido descuadrado respecto al marco unos
+ * 19 frames y cuadrándolo 50-99 ms *después* de soltar. Escribir por frame
+ * elimina el desfase sin acercarse al presupuesto de frame.
+ *
+ * `data-orbit-resizing` se mantiene: congela transiciones y `backdrop-filter`
+ * durante la ráfaga, que si no se re-disparan en cada escalón.
  */
 export function useOrbitResponsiveZoom(): void {
   useEffect(() => {
+    // Interruptor de diagnostico (`vantare.v03orbit.zoomOff=1`): permite medir
+    // el redimensionado real de la app con y sin escalado sin recompilar.
+    if (orbitStore.get(ORBIT_KEYS.zoomOff) === "1") return;
     const root = document.documentElement;
     const style = root.style as CSSStyleDeclaration & { zoom?: string };
     let lastFactor = Number.NaN;
-    let lastWriteAt = Number.NEGATIVE_INFINITY;
-    let throttleTimer = 0;
+    let scheduled = false;
+    let frame = 0;
     let settleTimer = 0;
     let resizing = false;
 
-    const now = () =>
-      typeof performance !== "undefined" ? performance.now() : Date.now();
-
     const write = () => {
-      lastWriteAt = now();
+      scheduled = false;
       const viewport = { width: window.innerWidth, height: window.innerHeight };
       // Cuantizado a milésimas: por debajo de 0.001 el cambio no se ve y solo
       // sirve para invalidar el estilo del árbol entero en cada paso.
@@ -69,16 +70,8 @@ export function useOrbitResponsiveZoom(): void {
       }
     };
 
-    const clearThrottle = () => {
-      if (!throttleTimer) return;
-      window.clearTimeout(throttleTimer);
-      throttleTimer = 0;
-    };
-
     const settle = () => {
       settleTimer = 0;
-      clearThrottle();
-      write();
       resizing = false;
       delete root.dataset.orbitResizing;
     };
@@ -88,24 +81,23 @@ export function useOrbitResponsiveZoom(): void {
         resizing = true;
         root.dataset.orbitResizing = "true";
       }
-      const elapsed = now() - lastWriteAt;
-      if (elapsed >= ORBIT_ZOOM_THROTTLE_MS) {
-        clearThrottle();
-        write();
-      } else if (!throttleTimer) {
-        throttleTimer = window.setTimeout(() => {
-          throttleTimer = 0;
-          write();
-        }, ORBIT_ZOOM_THROTTLE_MS - elapsed);
+      // Un solo escalado por frame: varios `resize` dentro del mismo frame se
+      // funden en la escritura que ya está encolada.
+      if (!scheduled) {
+        // `scheduled` se marca *antes* de encolar: si el frame se ejecutase de
+        // forma sincrona, la bandera ya estaria puesta y el propio `write` la
+        // devolveria a false sin dejar el gesto colgado.
+        scheduled = true;
+        frame = window.requestAnimationFrame(write);
       }
       if (settleTimer) window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(settle, ORBIT_ZOOM_SETTLE_MS);
+      settleTimer = window.setTimeout(settle, ORBIT_RESIZE_SETTLE_MS);
     };
 
     write();
     window.addEventListener("resize", onResize, { passive: true });
     return () => {
-      clearThrottle();
+      if (frame) window.cancelAnimationFrame(frame);
       if (settleTimer) window.clearTimeout(settleTimer);
       window.removeEventListener("resize", onResize);
       style.zoom = "";

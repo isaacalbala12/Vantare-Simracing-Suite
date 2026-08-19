@@ -40,6 +40,7 @@
     "visual:orbit-settings": "node scripts/orbit-settings-visual.mjs",
     "visual:orbit-testing": "node scripts/orbit-testing-visual.mjs",
     "visual:orbit-responsive": "node scripts/orbit-responsive-visual.mjs",
+    "profile:orbit-real-resize": "node scripts/orbit-real-resize-profile.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "design-system:check": "node scripts/check-design-system.mjs"

@@ -167,10 +167,15 @@ func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		// 'self' es imprescindible: la pagina /overlay (OBS browser source)
+		// carga el bundle y estilos del propio servidor (/assets/*); sin
+		// 'self' cualquier navegador conforme bloquea el SPA y el overlay
+		// queda en blanco fuera de la WebView de la app (ISA-372/F6).
 		w.Header().Set("Content-Security-Policy",
-			"default-src 'none'; script-src 'unsafe-inline'; "+
-				"connect-src http://127.0.0.1:39261 http://localhost:39261; "+
-				"style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'")
+			"default-src 'none'; script-src 'self' 'unsafe-inline'; "+
+				"connect-src 'self' http://127.0.0.1:39261 http://localhost:39261; "+
+				"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
+				"font-src 'self'; base-uri 'none'; form-action 'none'")
 		next.ServeHTTP(w, r)
 	})
 }

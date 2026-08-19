@@ -20,6 +20,27 @@ const shots = [
   // Selección real: el inspector con sus tres acordeones y la etiqueta
   // `delta · w × h` sobre el widget del lienzo.
   { name: "1920x1080-seleccion", width: 1920, height: 1080, query: "", select: "delta" },
+  // Standings seleccionado con el acordeón de contenido abierto: es la "zona
+  // fea" del feedback (A5) y a la vez el caso donde el marco no se ceñía al
+  // widget (A1) y la etiqueta se iba de paseo (A2).
+  {
+    name: "1920x1080-standings-contenido",
+    width: 1920,
+    height: 1080,
+    query: "",
+    select: "standings",
+    revealContent: true,
+  },
+  // Widget oculto (A4): la fila sigue legible y con el ojo accionable, y en el
+  // lienzo la etiqueta lo marca y ofrece "Mostrar".
+  {
+    name: "1920x1080-oculto",
+    width: 1920,
+    height: 1080,
+    query: "",
+    hide: "relative",
+    select: "relative",
+  },
   // Studio > Mis perfiles con la piel Orbit: mismo destino que usa la shell
   // real (`navigate("studio", "profiles")`).
   {
@@ -160,11 +181,22 @@ try {
     await page.getByTestId("orbit-studio-widget-list").waitFor();
     await page.getByTestId("orbit-studio-topbar-controls").waitFor();
     await page.getByTestId("orbit-studio-stage").waitFor();
+    if (shot.hide) {
+      await page.getByTestId(`orbit-studio-widget-eye-${shot.hide}`).click();
+      await page
+        .locator(`[data-testid="orbit-studio-widget-item-${shot.hide}"][data-enabled="false"]`)
+        .waitFor();
+    }
     if (shot.select) {
       const row = page.getByTestId(`orbit-studio-widget-item-${shot.select}`);
       await row.waitFor();
       await row.getByRole("option").click();
       await page.getByTestId("orbit-studio-selection-tag").waitFor();
+    }
+    if (shot.revealContent) {
+      const columns = page.getByTestId("studio-standings-columns");
+      await columns.waitFor();
+      await columns.scrollIntoViewIfNeeded();
     }
 
     await page.evaluate(async () => { await document.fonts.ready; });
@@ -233,6 +265,29 @@ try {
                 ?.getAttribute("aria-selected") === "true",
             )
           : true,
+        // A1/A2: el envoltorio de selección se ciñe a lo pintado y la etiqueta
+        // se ancla a él, dentro del lienzo.
+        selection: (() => {
+          if (!selected) return null;
+          const frame = document.querySelector(`[data-testid="studio-widget-frame-${selected}"]`);
+          const box = frame?.querySelector("[data-widget-selection]");
+          const tag = document.querySelector('[data-testid="orbit-studio-selection-tag"]');
+          const stage = document.querySelector('[data-testid="orbit-studio-stage"]');
+          if (!frame || !box || !tag || !stage) return null;
+          const r = (node) => {
+            const rect = node.getBoundingClientRect();
+            return { l: rect.left, t: rect.top, r: rect.right, b: rect.bottom, w: rect.width, h: rect.height };
+          };
+          const visual = frame.querySelector("[data-widget-visual-viewport]");
+          const painted = visual ? r(visual.firstElementChild ?? visual) : null;
+          return { frame: r(frame), box: r(box), tag: r(tag), stage: r(stage), painted, fitted: box.getAttribute("data-fitted") === "true" };
+        })(),
+        // A5: la sección de contenido no puede tener un control nativo.
+        contentNative: (() => {
+          const section = document.querySelector('[data-testid="studio-inspector-section-content"]');
+          if (!section) return -1;
+          return section.querySelectorAll('select, input[type="checkbox"], input[type="radio"]').length;
+        })(),
       };
     }, shot.select ?? null);
 
@@ -287,6 +342,84 @@ try {
       if (!/×/.test(contract.selectionTag)) {
         throw new Error(`${shot.name}: la etiqueta de selección no muestra \`w × h\` (${contract.selectionTag})`);
       }
+
+      const sel = contract.selection;
+      if (!sel) {
+        throw new Error(`${shot.name}: no se pudo medir el envoltorio de selección de \`${shot.select}\``);
+      }
+      // A1: la caja de selección nunca es mayor que el marco y, cuando el
+      // widget pinta menos, se ciñe a lo pintado (± 2 px de redondeo).
+      if (sel.box.w > sel.frame.w + 2 || sel.box.h > sel.frame.h + 2) {
+        throw new Error(
+          `${shot.name}: el marco de selección (${Math.round(sel.box.w)}×${Math.round(sel.box.h)}) desborda el widget (${Math.round(sel.frame.w)}×${Math.round(sel.frame.h)})`,
+        );
+      }
+      if (sel.painted && sel.painted.h > 4) {
+        const slack = sel.box.h - sel.painted.h;
+        if (slack > 6) {
+          throw new Error(
+            `${shot.name}: el marco sobra ${Math.round(slack)}px respecto a lo que pinta el widget (A1)`,
+          );
+        }
+      }
+      // A2: la etiqueta se pega al marco y no se sale del lienzo.
+      const gapAbove = sel.box.t - sel.tag.b;
+      const gapBelow = sel.tag.t - sel.box.b;
+      const attached = (gapAbove >= -1 && gapAbove <= 14) || (gapBelow >= -1 && gapBelow <= 14);
+      if (!attached) {
+        throw new Error(
+          `${shot.name}: la etiqueta no está pegada al widget (hueco arriba ${Math.round(gapAbove)}px, abajo ${Math.round(gapBelow)}px)`,
+        );
+      }
+      const tagCenter = (sel.tag.l + sel.tag.r) / 2;
+      const boxCenter = (sel.box.l + sel.box.r) / 2;
+      if (Math.abs(tagCenter - boxCenter) > Math.max(8, sel.stage.w / 2 - sel.tag.w / 2)) {
+        throw new Error(`${shot.name}: la etiqueta no sigue al widget en el eje X`);
+      }
+      if (
+        sel.tag.l < sel.stage.l - 1
+        || sel.tag.r > sel.stage.r + 1
+        || sel.tag.t < sel.stage.t - 1
+        || sel.tag.b > sel.stage.b + 1
+      ) {
+        throw new Error(`${shot.name}: la etiqueta se sale del lienzo`);
+      }
+    }
+    if (shot.hide) {
+      const hidden = await page.evaluate((id) => {
+        const eye = document.querySelector(`[data-testid="orbit-studio-widget-eye-${id}"]`);
+        const tag = document.querySelector('[data-testid="orbit-studio-selection-tag"]');
+        const rect = eye?.getBoundingClientRect();
+        const style = eye ? getComputedStyle(eye) : null;
+        return {
+          eyeVisible: Boolean(rect && rect.width > 0 && rect.height > 0 && style?.visibility !== "hidden" && Number(style?.opacity) > 0.4),
+          eyeTip: eye?.getAttribute("data-tip") ?? "",
+          eyeDisabled: eye?.hasAttribute("disabled") ?? true,
+          tagHidden: tag?.getAttribute("data-hidden") === "true",
+          tagCopy: tag?.textContent?.trim() ?? "",
+          showAction: Boolean(document.querySelector('[data-testid="orbit-studio-selection-show"]')),
+          rowSelectable: Boolean(
+            document.querySelector(`[data-testid="orbit-studio-widget-item-${id}"] .orbit-row--sel`),
+          ),
+        };
+      }, shot.hide);
+      if (!hidden.eyeVisible || hidden.eyeDisabled) {
+        throw new Error(`${shot.name}: el ojo del widget oculto no es visible ni accionable (A4)`);
+      }
+      if (!/Mostrar/.test(hidden.eyeTip)) {
+        throw new Error(`${shot.name}: el ojo del widget oculto no dice "Mostrar" (${hidden.eyeTip})`);
+      }
+      if (!hidden.rowSelectable) {
+        throw new Error(`${shot.name}: la fila oculta no se puede seleccionar (A4)`);
+      }
+      if (!hidden.tagHidden || !/oculto/.test(hidden.tagCopy) || !hidden.showAction) {
+        throw new Error(`${shot.name}: la etiqueta no marca "oculto" ni ofrece "Mostrar" (${hidden.tagCopy})`);
+      }
+    }
+    if (shot.revealContent && contract.contentNative !== 0) {
+      throw new Error(
+        `${shot.name}: la sección de contenido usa ${contract.contentNative} controles nativos (A5)`,
+      );
     }
     if (problems.length) {
       throw new Error(`${shot.name}: la consola no está limpia\n${problems.join("\n")}`);

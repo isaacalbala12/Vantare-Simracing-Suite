@@ -433,3 +433,44 @@ Se eligen con `?roadmapDir=a|b`. `RoadmapOrbitPage` **solo lee** ese query una v
 - la vía no finge una escala temporal: reparte las fases en tramos iguales porque la fuente declara un orden, no fechas, y cada tramo se rellena con el progreso declarado en vez de un degradado decorativo.
 
 **Recomendación de la porteadora: A.** B es la más vistosa y la que mejor se lee de un vistazo, pero repite la forma de Inicio (una focal grande con tarjetas debajo) y deja el orden de las fases fuera de la pantalla, en la columna. A es la única de las dos que responde a las tres preguntas de un roadmap —dónde estamos, qué viene, cómo va cada área— sin hacer scroll, y la única que hace del *orden* el elemento principal, que es justo lo que la vista actual no conseguía: hoy las cuatro fases son cuatro columnas sueltas y no se lee que sean un recorrido. La vía lo lee de izquierda a derecha en un segundo. Si se elige A, lo que conviene traer de B es la marca `derivado` y el «próximo paso» de las áreas.
+
+## D-R3-A-1 · El marco de selección se ciñe a lo que el widget pinta, no a `layout.w × layout.h`
+**Decisión.** El marco, los ocho tiradores y el ancla de la etiqueta dejan de colgar del `.osv3-widget-frame` (la caja del documento) y pasan a colgar de un envoltorio nuevo, `.osv3-widget-frame__selection`, que por defecto vale `inset: 0` —comportamiento histórico intacto— y que en la piel Orbit se ciñe a la caja **realmente pintada**.
+
+**Causa raíz.** `WidgetVisualViewport` escala un plano de ancho base al ancho del widget y le da de alto `h / escala`, así que el viewport siempre mide lo que dice el documento; pero lo que el widget pinta dentro puede ser mucho menor —un standings de 380×540 con cinco filas pinta ~380×200— y `__visual` lo recorta con `overflow: hidden` sin que nadie mida nada. El marco heredaba la caja del documento y quedaba flotando alrededor de aire.
+
+**Cómo se mide.** `computeContentBox` (puro, con test) toma el rectángulo de pantalla del marco, su tamaño sin escalar y los rectángulos de lo que pinta dentro, y devuelve la unión en coordenadas locales del marco. Se mide en `getBoundingClientRect` porque es lo único que ya lleva dentro todas las escalas en juego —la del `scene`, la del zoom y la del propio viewport— sin tener que reconstruirlas. La caja se recorta al marco (lo que sobresale ya no se ve) y, si no se puede medir con confianza, se cae a la caja del documento. `useSelectionFit` la reaplica con `ResizeObserver` sobre el marco y sobre lo que pinta, porque el contenido cambia con la telemetría y con el diseño aplicado, no solo con el layout.
+
+**Por qué es opt-in.** `StudioWidgetFrame` lo comparten la piel Orbit y el lienzo V3 clásico. La prop `fitSelectionToContent` la enciende solo `StudioOrbitStage`: el V3 no cambia ni un píxel.
+
+## D-R3-A-2 · La etiqueta de selección vive en el lienzo, no dentro de la escena escalada
+**Decisión.** `.orbit-studio-scene__tag` desaparece y en su lugar hay `.orbit-studio-stage__tag`, hija del `stage` y posicionada en píxeles de pantalla.
+
+**Causa raíz.** La etiqueta se pintaba dentro del `scene`, que va escalado, y se compensaba con `transform: translateY(-100%) scale(1/scale)` sobre `transform-origin: left bottom`. Ese `-100%` se resuelve contra la caja **sin escalar** del elemento, así que el desplazamiento vertical no acompañaba a la escala y la etiqueta se despegaba del widget. Además se anclaba a `layout.x/y` —la esquina del documento, no la del widget pintado—, no se recortaba contra los bordes del lienzo, y no seguía al widget al arrastrarlo: `resolveLayout` devuelve el layout comprometido y el arrastre mueve el marco por estilo en línea, sin repintar React.
+
+**Cómo se coloca.** El ancla es el rectángulo del envoltorio de selección de D-R3-A-1 leído del DOM en coordenadas del `stage`; leerlo del DOM es lo único que sigue al widget durante un arrastre, y por eso se remide por frame mientras la interacción está viva. `placeSelectionTag` (puro, con test) centra la etiqueta sobre el borde superior del widget, la baja debajo si no cabe arriba, y la recorta contra los cuatro bordes del lienzo.
+
+## D-R3-A-3 · «Sin diseño aplicado» era falso: un widget sin procedencia sí lleva diseño
+**Decisión.** El `Select` «Diseño» resuelve su valor con `resolveEffectiveDesign(widget, catálogo)` en vez de con `isActiveDesign` a secas.
+
+**Causa raíz.** `isActiveDesign` compara contra `visual.provenance.designId`, y esa procedencia **solo** se escribe al aplicar un diseño a mano: `createDefault` deja `baseSettings: {}` y ninguna procedencia. Un widget recién añadido se pinta con el diseño por defecto de su sistema visual —Original Base— pero el `Select`, al no encontrar procedencia, caía en la opción vacía y anunciaba «Sin diseño aplicado» sobre un widget que sí llevaba uno.
+
+**Regla.** Gana siempre el diseño con procedencia. Solo cuando **no hay** procedencia se cae al diseño marcado `isDefault` del sistema del widget, y solo si el catálogo consultado es el de **su** sistema: si el usuario está hojeando otro sistema en el desplegable, ahí no hay nada aplicado y la opción vacía vuelve a ser la respuesta honesta.
+
+## D-R3-A-4 · Un widget oculto se ve, se selecciona y se puede desocultar desde donde está
+**Decisión.** El estado oculto deja de ser un callejón sin salida en las tres superficies donde aparece.
+
+- **Lista.** La opacidad baja va en `.orbit-studio-witem__row`, no en su padre: así la fila se apaga y se tacha pero el ojo —que es hermano, no hijo— se queda a plena vista, y además se tiñe de carmín para que se lea como la acción que es. Sigue siendo pulsable, con `data-tip` «Mostrar», y la fila apagada se sigue seleccionando.
+- **Cabecera del inspector.** Ya reflejaba el estado con `aria-pressed`; se mantiene y queda cubierta por test.
+- **Lienzo.** Un widget oculto se pinta al 12 %, que no da asidero. Su etiqueta de selección añade «· oculto» y un botón **Mostrar** que despacha el mismo `widget/behavior` que el ojo. La etiqueta es el único elemento del lienzo que siempre está donde está el widget, así que es donde tiene sentido poner la salida.
+
+## D-R3-A-5 · El contenido de standings se porta a Orbit dentro de «Comportamiento»
+**Decisión.** `StandingsContentInspector` gana rama `orbit` con `useIsOrbitSkin()`: misma lógica, mismos handlers, mismo `parseStandingsContent`, solo otro JSX. Se queda en el acordeón **Comportamiento** —donde el mapeo de D-43 ya coloca la sección `content`— y no se abre un acordeón «Contenido» nuevo: la sección real sigue siendo la misma, y partirla habría creado un grupo Orbit sin sección propia detrás.
+
+**Causa raíz.** La sección se pintaba con los controles legados dentro de la piel Orbit —`input[type=checkbox]` nativos, dos `<select>` por columna, botones `↑`/`↓` sin estilo— porque el inspector de contenido es propiedad del tipo de widget (`definition.inspector.CustomContentInspector`) y nunca se le había dado forma de elegir piel.
+
+**Lo que cambia de forma.** FILAS pasa a `Seg`; cada columna es una fila con `Check` del kit para visible, dos botones de orden con las clases `orbit-icon-btn` del kit (el `IconButton` solo acepta nombres del sprite Orbit y ahí no hay flechas), un `Seg` SM/MD/LG para el ancho y otro IZQ./DER. para la alineación. Cero controles nativos, cero `title`.
+
+**Lo que se pierde a propósito.** El ancho ofrecía cinco presets (`xs`…`auto`) y la alineación tres; en un dock de 395 px un `Seg` de cinco pasos es ilegible. La piel Orbit ofrece los tres pasos y las dos alineaciones que se usan, y respeta el valor guardado si viene de fuera de esa lista. La piel V3 conserva las cinco y las tres.
+
+**Dónde vive la piel.** El contexto se mueve a `overlay/core/inspector-skin.tsx` y `hub/overlay-studio/inspector/inspector-skin.tsx` pasa a re-exportarlo. Los inspectores de contenido son de `overlay/`: hacerles importar del Hub habría invertido las capas. La superficie pública no cambia, así que ningún otro fichero del Studio se toca.

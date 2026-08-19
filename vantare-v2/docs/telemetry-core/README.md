@@ -9,8 +9,10 @@ Este directorio reúne la evidencia y las decisiones operativas de Telemetry Cor
 ISA-39 define los payloads v1 en
 [`runtime-projections.md`](runtime-projections.md): contratos pequeños por
 producto, calidad/presencia explícitas y versiones canonical/projection/
-recording independientes. TC-05B/TC-05C ya aportan transporte y consumo
-aislados en harness, pero todavía no existe wiring productivo global.
+recording independientes. El wiring productivo existe desde TC-07C: el único
+camino live entra por `internal/app/telemetry_core_runtime.go`, publica Overlay
+y Strategy mediante hubs separados y entrega Engineer in-process. Analysis
+live y los transportes de facts desconectados se retiraron en ISA-372/F4.
 
 ISA-101 auditó el histórico y TC-06B / ISA-102 implementa en rama de issue el
 adaptador privado SQLite modernc, todavía sin wiring productivo. MCAP queda
@@ -59,7 +61,7 @@ Si dos documentos contradicen evidencia más reciente, prevalece la evidencia ac
 
 | Área | Responsabilidad | Puede depender de | No puede poseer |
 |---|---|---|---|
-| Telemetry Core | lectura, fusión, identidad, tiempo, calidad, capabilities, lifecycle y fan-out | Shared Memory y REST local LMU | UI, persistencia de planes o decisiones del Engineer |
+| Telemetry Core | lectura, fusión, identidad, tiempo, calidad, capabilities, lifecycle y publicación a consumidores reales | Shared Memory y REST local LMU | UI, persistencia de planes o decisiones del Engineer |
 | Overlay | proyección visual y transporte a Studio/Desktop/OBS | snapshot/proyección canónica | readers LMU, polling REST o reglas de fusión |
 | Engineer/Spotter | monitores, eventos, prioridad, audio y comandos preservados | proyección canónica y capabilities | servicio live paralelo o fallback sintético productivo |
 | Strategy Planner | importación histórica, cálculo y planes de carrera | API pública estable o almacenamiento derivado futuro | lifecycle live del Core |
@@ -89,7 +91,7 @@ Los planes anteriores se conservan como historia, marcados `SUPERSEDED`. No debe
 - [Reducer single-writer](runtime-reducer.md)
 - [SessionCoordinator y hechos](session-coordinator.md)
 - [Derivaciones ordenadas](runtime-derivations.md)
-- [Fan-out y backpressure](runtime-fanout.md)
+- [Nota de retirada del fan-out desconectado](runtime-fanout.md)
 - [Benchmark de almacenamiento ISA-101](storage-benchmark-isa-101.md)
 - [Esquema histórico y contrato TC-06B](historical-storage-schema.md)
 - [RecordingSink SQLite ISA-102](recording-sink-sqlite-isa-102.md)

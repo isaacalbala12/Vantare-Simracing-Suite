@@ -6,21 +6,14 @@ package telemetrytransport
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash"
 	"log"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -32,10 +25,9 @@ var (
 	ErrInvalidEnvelope     = errors.New("invalid telemetry projection transport envelope")
 	ErrInvalidPayload      = errors.New("invalid telemetry projection transport payload")
 	ErrPayloadTooLarge     = errors.New("telemetry projection transport payload exceeds limit")
-	ErrDeltaMismatch       = errors.New("telemetry projection delta does not reconstruct full payload")
+	ErrDeltaUnsupported    = errors.New("telemetry projection deltas are unsupported")
 	ErrSequenceGap         = errors.New("telemetry projection publication sequence gap")
 	ErrStatusRevision      = errors.New("invalid telemetry projection status revision")
-	ErrFactSequence        = errors.New("invalid telemetry projection fact sequence")
 	ErrProductMismatch     = errors.New("telemetry projection product mismatch")
 	ErrUnsupportedProtocol = errors.New("telemetry projection streaming unsupported")
 )
@@ -59,8 +51,7 @@ const (
 )
 
 const (
-	Full  SnapshotKind = "full"
-	Delta SnapshotKind = "delta"
+	Full SnapshotKind = "full"
 )
 
 type EventKind string
@@ -68,8 +59,11 @@ type EventKind string
 const (
 	EventSnapshot EventKind = "projection"
 	EventStatus   EventKind = "status"
-	EventFact     EventKind = "fact"
 )
+
+// Deprecated: reserved contract name for the F7 Engineer facts port; there is
+// no live fact transport in F4.
+const EventFact EventKind = "fact"
 
 // Envelope wraps one product payload. Payload contains only the projection's
 // local JSON contract; canonical/core/derive state is never accepted.
@@ -82,7 +76,6 @@ type Envelope struct {
 	CapturedAt        string             `json:"capturedAt"`
 	StatusRevision    uint64             `json:"statusRevision"`
 	Payload           json.RawMessage    `json:"payload"`
-	seal              [sha256.Size]byte
 }
 
 type StatusPayload struct {
@@ -96,21 +89,6 @@ type StatusEnvelope struct {
 	StatusRevision uint64          `json:"statusRevision"`
 	CapturedAt     string          `json:"capturedAt"`
 	Payload        json.RawMessage `json:"payload"`
-	seal           [sha256.Size]byte
-}
-
-// FactEnvelope keeps the ordered fact cursor independent from snapshot and
-// status cursors. Facts are not coalesced by Hub.
-type FactEnvelope struct {
-	Product           ProductID          `json:"product"`
-	ProjectionVersion projection.Version `json:"projectionVersion"`
-	Epoch             schema.Epoch       `json:"epoch"`
-	Sequence          schema.Sequence    `json:"sequence"`
-	FactSequence      uint64             `json:"factSequence"`
-	CapturedAt        string             `json:"capturedAt"`
-	StatusRevision    uint64             `json:"statusRevision"`
-	Payload           json.RawMessage    `json:"payload"`
-	seal              [sha256.Size]byte
 }
 
 type Event struct {
@@ -136,7 +114,9 @@ type HubMetrics struct {
 	StatusPublications   uint64
 	SnapshotPublications uint64
 	SnapshotReplacements uint64
-	DeltasRetained       uint64
+	// Deprecated: RFC 7396 was retired in ISA-372/F4; this remains zero until
+	// F1 releases the runtime metrics compatibility check.
+	DeltasRetained uint64
 }
 
 type pendingSubscriber struct {
@@ -150,9 +130,7 @@ type pendingSubscriber struct {
 }
 
 type publication struct {
-	full      Envelope
-	delta     *Envelope
-	deltaBase schema.Cursor
+	full Envelope
 }
 
 // Hub is bounded and starts no goroutines. Snapshot publications are
@@ -201,28 +179,12 @@ func NewOverlayFull(
 	return newFull(ProductOverlay, metadata, statusRevision, payload)
 }
 
-func NewEngineerFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload engineer.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductEngineer, metadata, statusRevision, payload)
-}
-
 func NewStrategyFull(
 	metadata projection.Metadata,
 	statusRevision uint64,
 	payload strategy.PayloadV1,
 ) (Envelope, error) {
 	return newFull(ProductStrategy, metadata, statusRevision, payload)
-}
-
-func NewAnalysisFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload analysis.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductAnalysis, metadata, statusRevision, payload)
 }
 
 func newFull(
@@ -245,7 +207,6 @@ func newFull(
 		StatusRevision:    statusRevision,
 		Payload:           encoded,
 	}
-	result.seal = envelopeSeal(result)
 	if err := validateEnvelope(result, DefaultMaxPayloadBytes); err != nil {
 		return Envelope{}, err
 	}
@@ -268,46 +229,9 @@ func NewStatus(
 		CapturedAt:     capturedAt.Round(0).UTC().Format(time.RFC3339Nano),
 		Payload:        encoded,
 	}
-	result.seal = statusSeal(result)
 	if err := validateStatus(result, DefaultMaxPayloadBytes); err != nil {
 		return StatusEnvelope{}, err
 	}
-	return result, nil
-}
-
-func NewEngineerFact(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload engineer.FactV1,
-) (FactEnvelope, error) {
-	return newFact(ProductEngineer, metadata, uint64(payload.Sequence), statusRevision, payload)
-}
-
-func newFact(
-	product ProductID,
-	metadata projection.Metadata,
-	factSequence uint64,
-	statusRevision uint64,
-	payload any,
-) (FactEnvelope, error) {
-	if factSequence == 0 {
-		return FactEnvelope{}, ErrFactSequence
-	}
-	full, err := newFull(product, metadata, statusRevision, payload)
-	if err != nil {
-		return FactEnvelope{}, err
-	}
-	result := FactEnvelope{
-		Product:           product,
-		ProjectionVersion: full.ProjectionVersion,
-		Epoch:             full.Epoch,
-		Sequence:          full.Sequence,
-		FactSequence:      factSequence,
-		CapturedAt:        full.CapturedAt,
-		StatusRevision:    full.StatusRevision,
-		Payload:           full.Payload,
-	}
-	result.seal = factSeal(result)
 	return result, nil
 }
 
@@ -340,9 +264,12 @@ func (hub *Hub) PublishStatus(status StatusEnvelope) error {
 	return nil
 }
 
-// PublishSnapshot atomically retains a mandatory full and an optional RFC 7396
-// merge patch. The patch is accepted only when it reconstructs the full.
+// PublishSnapshot atomically retains a mandatory full. The delta parameter is
+// kept only until F1 releases its runtime callers; non-nil values fail closed.
 func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
+	if delta != nil {
+		return ErrDeltaUnsupported
+	}
 	if err := validateEnvelope(full, hub.maxPayload); err != nil {
 		return err
 	}
@@ -365,10 +292,8 @@ func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
 		return fmt.Errorf("%w: snapshot references %d, current is %d",
 			ErrStatusRevision, full.StatusRevision, hub.status.StatusRevision)
 	}
-	contiguous := false
 	if hub.hasSnapshot {
-		var valid bool
-		contiguous, valid = cursorRelation(hub.latest.full, full)
+		_, valid := cursorRelation(hub.latest.full, full)
 		if !valid {
 			return fmt.Errorf("%w: got %d/%d after %d/%d", ErrSequenceGap,
 				full.Epoch, full.Sequence, hub.latest.full.Epoch, hub.latest.full.Sequence)
@@ -376,23 +301,6 @@ func (hub *Hub) PublishSnapshot(full Envelope, delta json.RawMessage) error {
 	}
 
 	next := publication{full: cloneEnvelope(full)}
-	if len(delta) > 0 && contiguous {
-		if validatePayload(delta, hub.maxPayload) == nil {
-			reconstructed, err := ApplyMergePatch(hub.latest.full.Payload, delta)
-			if err == nil && semanticJSONEqual(reconstructed, full.Payload) {
-				deltaFrame := cloneEnvelope(full)
-				deltaFrame.Kind = Delta
-				deltaFrame.Payload = append(json.RawMessage{}, delta...)
-				deltaFrame.seal = envelopeSeal(deltaFrame)
-				next.delta = &deltaFrame
-				next.deltaBase = schema.Cursor{
-					Epoch:    hub.latest.full.Epoch,
-					Sequence: hub.latest.full.Sequence,
-				}
-				hub.metrics.DeltasRetained++
-			}
-		}
-	}
 
 	if hub.hasSnapshot {
 		hub.metrics.SnapshotReplacements++
@@ -576,21 +484,14 @@ func (subscription *Subscription) Close() error {
 	return nil
 }
 
-func (hub *Hub) snapshotFor(subscriber *pendingSubscriber) Envelope {
-	if !subscriber.deliveredAny || hub.latest.delta == nil {
-		return cloneEnvelope(hub.latest.full)
-	}
-	if subscriber.delivered != hub.latest.deltaBase {
-		return cloneEnvelope(hub.latest.full)
-	}
-	return cloneEnvelope(*hub.latest.delta)
+func (hub *Hub) snapshotFor(_ *pendingSubscriber) Envelope {
+	return cloneEnvelope(hub.latest.full)
 }
 
 func validateEnvelope(frame Envelope, maximum int) error {
-	if frame.seal != envelopeSeal(frame) ||
-		!knownProduct(frame.Product) ||
+	if !knownProduct(frame.Product) ||
 		frame.ProjectionVersion == 0 || frame.Epoch == 0 || frame.Sequence == 0 ||
-		frame.StatusRevision == 0 || frame.Kind != Full && frame.Kind != Delta {
+		frame.StatusRevision == 0 || frame.Kind != Full {
 		return ErrInvalidEnvelope
 	}
 	if err := validateTimestamp(frame.CapturedAt); err != nil {
@@ -600,7 +501,7 @@ func validateEnvelope(frame Envelope, maximum int) error {
 }
 
 func validateStatus(status StatusEnvelope, maximum int) error {
-	if status.seal != statusSeal(status) || !knownProduct(status.Product) ||
+	if !knownProduct(status.Product) ||
 		status.StatusRevision == 0 {
 		return ErrStatusRevision
 	}
@@ -640,79 +541,12 @@ func validatePayload(payload json.RawMessage, maximum int) error {
 	if len(payload) > maximum {
 		return ErrPayloadTooLarge
 	}
-	validObject, forbidden := inspectPayloadKeys(payload)
-	if !validObject || forbidden {
-		return ErrInvalidPayload
-	}
-	return nil
-}
-
-// inspectPayloadKeys validates one top-level JSON object, then scans only JSON
-// member names. json.Valid owns structural validation; this avoids decoding a
-// high-frequency projection merely to enforce forbidden internal keys.
-func inspectPayloadKeys(payload json.RawMessage) (validObject bool, forbidden bool) {
 	trimmed := bytes.TrimSpace(payload)
 	if len(trimmed) < 2 || trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' ||
 		!json.Valid(trimmed) {
-		return false, false
+		return ErrInvalidPayload
 	}
-	for index := 0; index < len(trimmed); index++ {
-		if trimmed[index] != '"' {
-			continue
-		}
-		start := index + 1
-		escaped := false
-		for index++; index < len(trimmed); index++ {
-			switch trimmed[index] {
-			case '\\':
-				escaped = true
-				index++
-			case '"':
-				end := index
-				next := index + 1
-				for next < len(trimmed) && isJSONSpace(trimmed[next]) {
-					next++
-				}
-				if next < len(trimmed) && trimmed[next] == ':' &&
-					forbiddenPayloadKeyBytes(trimmed[start:end], escaped) {
-					return true, true
-				}
-				goto nextToken
-			}
-		}
-	nextToken:
-	}
-	return true, false
-}
-
-func isJSONSpace(value byte) bool {
-	return value == ' ' || value == '\t' || value == '\n' || value == '\r'
-}
-
-func forbiddenPayloadKeyBytes(raw []byte, escaped bool) bool {
-	if !escaped {
-		for _, forbidden := range [...][]byte{
-			[]byte("raw"), []byte("source"), []byte("clock"), []byte("observed"),
-			[]byte("derived"), []byte("finalstate"), []byte("canonicalversion"),
-		} {
-			if bytes.EqualFold(raw, forbidden) {
-				return true
-			}
-		}
-		return false
-	}
-	decoded, err := strconv.Unquote(`"` + string(raw) + `"`)
-	return err == nil && forbiddenPayloadKey(decoded)
-}
-
-func forbiddenPayloadKey(key string) bool {
-	switch strings.ToLower(key) {
-	case "raw", "source", "clock", "observed", "derived", "finalstate",
-		"canonicalversion":
-		return true
-	default:
-		return false
-	}
+	return nil
 }
 
 func cursorRelation(previous, next Envelope) (contiguous bool, valid bool) {
@@ -758,62 +592,6 @@ func cloneEnvelope(frame Envelope) Envelope {
 func cloneStatus(status StatusEnvelope) StatusEnvelope {
 	status.Payload = append(json.RawMessage{}, status.Payload...)
 	return status
-}
-
-func envelopeSeal(frame Envelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(frame.Product))
-	sealUint64(digest, uint64(frame.ProjectionVersion))
-	sealUint64(digest, uint64(frame.Epoch))
-	sealUint64(digest, uint64(frame.Sequence))
-	sealString(digest, string(frame.Kind))
-	sealString(digest, frame.CapturedAt)
-	sealUint64(digest, frame.StatusRevision)
-	sealBytes(digest, frame.Payload)
-	return sealSum(digest)
-}
-
-func statusSeal(status StatusEnvelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(status.Product))
-	sealUint64(digest, status.StatusRevision)
-	sealString(digest, status.CapturedAt)
-	sealBytes(digest, status.Payload)
-	return sealSum(digest)
-}
-
-func factSeal(fact FactEnvelope) [sha256.Size]byte {
-	digest := sha256.New()
-	sealString(digest, string(fact.Product))
-	sealUint64(digest, uint64(fact.ProjectionVersion))
-	sealUint64(digest, uint64(fact.Epoch))
-	sealUint64(digest, uint64(fact.Sequence))
-	sealUint64(digest, fact.FactSequence)
-	sealString(digest, fact.CapturedAt)
-	sealUint64(digest, fact.StatusRevision)
-	sealBytes(digest, fact.Payload)
-	return sealSum(digest)
-}
-
-func sealString(digest hash.Hash, value string) {
-	sealBytes(digest, []byte(value))
-}
-
-func sealUint64(digest hash.Hash, value uint64) {
-	var encoded [8]byte
-	binary.BigEndian.PutUint64(encoded[:], value)
-	sealBytes(digest, encoded[:])
-}
-
-func sealBytes(digest hash.Hash, value []byte) {
-	digest.Write(value)
-	digest.Write([]byte{0})
-}
-
-func sealSum(digest hash.Hash) [sha256.Size]byte {
-	var result [sha256.Size]byte
-	digest.Sum(result[:0])
-	return result
 }
 
 func bounded(value, fallback, maximum int) int {

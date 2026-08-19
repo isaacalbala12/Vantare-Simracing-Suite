@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -39,8 +37,7 @@ func TestLateJoinReconnectAndGapAlwaysStartWithFull(t *testing.T) {
 	}
 
 	second := mustSnapshot(t, 1, 2, Full, 1, map[string]any{"speed": 11, "gear": 2})
-	patch := json.RawMessage(`{"speed":11}`)
-	if err := hub.PublishSnapshot(second, patch); err != nil {
+	if err := hub.PublishSnapshot(second, nil); err != nil {
 		t.Fatal(err)
 	}
 	reconnected := mustSubscribe(t, hub)
@@ -48,61 +45,17 @@ func TestLateJoinReconnectAndGapAlwaysStartWithFull(t *testing.T) {
 	assertSnapshot(t, mustNext(t, reconnected), Full, 2)
 
 	third := mustSnapshot(t, 1, 3, Full, 1, map[string]any{"speed": 12, "gear": 3})
-	if err := hub.PublishSnapshot(third, json.RawMessage(`{"speed":12,"gear":3}`)); err != nil {
+	if err := hub.PublishSnapshot(third, nil); err != nil {
 		t.Fatal(err)
 	}
 	fourth := mustSnapshot(t, 1, 4, Full, 1, map[string]any{"speed": 13, "gear": 3})
-	if err := hub.PublishSnapshot(fourth, json.RawMessage(`{"speed":13}`)); err != nil {
+	if err := hub.PublishSnapshot(fourth, nil); err != nil {
 		t.Fatal(err)
 	}
 	assertSnapshot(t, mustNext(t, reconnected), Full, 4)
 }
 
-func TestContinuousSubscriberReceivesEquivalentDelta(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
-	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
-		t.Fatal(err)
-	}
-	first := mustSnapshot(t, 4, 7, Full, 1, map[string]any{
-		"speed":  10,
-		"nested": map[string]any{"gear": 2, "rpm": 5000},
-	})
-	if err := hub.PublishSnapshot(first, nil); err != nil {
-		t.Fatal(err)
-	}
-	subscription := mustSubscribe(t, hub)
-	_ = mustNext(t, subscription)
-	fullEvent := mustNext(t, subscription)
-
-	second := mustSnapshot(t, 4, 8, Full, 1, map[string]any{
-		"speed":  11,
-		"nested": map[string]any{"gear": 3, "rpm": 5000},
-	})
-	patch := json.RawMessage(`{"speed":11,"nested":{"gear":3}}`)
-	if err := hub.PublishSnapshot(second, patch); err != nil {
-		t.Fatal(err)
-	}
-	deltaEvent := mustNext(t, subscription)
-	assertSnapshot(t, deltaEvent, Delta, 8)
-
-	var full Envelope
-	if err := json.Unmarshal(fullEvent.Data, &full); err != nil {
-		t.Fatal(err)
-	}
-	var delta Envelope
-	if err := json.Unmarshal(deltaEvent.Data, &delta); err != nil {
-		t.Fatal(err)
-	}
-	reconstructed, err := ApplyMergePatch(full.Payload, delta.Payload)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !jsonEqual(reconstructed, second.Payload) {
-		t.Fatalf("delta reconstruction = %s, want %s", reconstructed, second.Payload)
-	}
-}
-
-func TestInvalidOrOversizedPayloadAndUnequalDeltaAreRejectedAtomically(t *testing.T) {
+func TestInvalidOversizedAndDeltaPayloadsAreRejectedAtomically(t *testing.T) {
 	hub := NewHub(HubConfig{Product: ProductOverlay, MaxPayloadBytes: 32})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
@@ -114,21 +67,22 @@ func TestInvalidOrOversizedPayloadAndUnequalDeltaAreRejectedAtomically(t *testin
 
 	invalid := valid
 	invalid.Sequence = 2
-	invalid.Payload = json.RawMessage(`{"raw":{"secret":1}}`)
-	invalid.seal = envelopeSeal(invalid)
+	invalid.Payload = json.RawMessage(`{"speed":`)
 	if err := hub.PublishSnapshot(invalid, nil); !errors.Is(err, ErrInvalidPayload) {
 		t.Fatalf("invalid payload error = %v", err)
 	}
 	oversized := valid
 	oversized.Sequence = 2
 	oversized.Payload = json.RawMessage(`{"value":"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"}`)
-	oversized.seal = envelopeSeal(oversized)
 	if err := hub.PublishSnapshot(oversized, nil); !errors.Is(err, ErrPayloadTooLarge) {
 		t.Fatalf("oversized payload error = %v", err)
 	}
 	next := mustSnapshot(t, 1, 2, Full, 1, map[string]any{"speed": 2})
-	if err := hub.PublishSnapshot(next, json.RawMessage(`{"speed":999}`)); err != nil {
-		t.Fatalf("mismatched optional delta blocked full: %v", err)
+	if err := hub.PublishSnapshot(next, json.RawMessage(`{"speed":2}`)); !errors.Is(err, ErrDeltaUnsupported) {
+		t.Fatalf("delta error = %v, want %v", err, ErrDeltaUnsupported)
+	}
+	if err := hub.PublishSnapshot(next, nil); err != nil {
+		t.Fatalf("full after rejected delta: %v", err)
 	}
 
 	subscription := mustSubscribe(t, hub)
@@ -136,19 +90,18 @@ func TestInvalidOrOversizedPayloadAndUnequalDeltaAreRejectedAtomically(t *testin
 	assertSnapshot(t, mustNext(t, subscription), Full, 2)
 }
 
-func TestPayloadKeyScannerRejectsNestedCanonicalDataWithoutRejectingValues(t *testing.T) {
+func TestPayloadValidationRequiresJSONObject(t *testing.T) {
 	for _, payload := range []json.RawMessage{
-		json.RawMessage(`{"vehicles":[{"nested":{"source":"private"}}]}`),
-		json.RawMessage(`{"items":[[{"canonicalVersion":1}]]}`),
-		json.RawMessage(`{"derived":{"speed":1}}`),
-		json.RawMessage(`{"r\u0061w":{"speed":1}}`),
+		json.RawMessage(`{"value":`),
+		json.RawMessage(`[]`),
+		json.RawMessage(`null`),
 	} {
 		if err := validatePayload(payload, MaxPayloadBytes); !errors.Is(err, ErrInvalidPayload) {
 			t.Fatalf("payload %s error = %v", payload, err)
 		}
 	}
 	for _, payload := range []json.RawMessage{
-		json.RawMessage(`{"label":"source","values":["raw","derived"]}`),
+		json.RawMessage(`{"raw":{"source":"typed-constructor-owned"}}`),
 		json.RawMessage(`{"vehicles":[{"driverName":"Private Driver"}]}`),
 		json.RawMessage(`{}`),
 	} {
@@ -158,7 +111,7 @@ func TestPayloadKeyScannerRejectsNestedCanonicalDataWithoutRejectingValues(t *te
 	}
 }
 
-func TestPublisherGapAcceptsFullAndDropsDelta(t *testing.T) {
+func TestPublisherGapAcceptsFull(t *testing.T) {
 	hub := NewHub(HubConfig{Product: ProductOverlay})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
@@ -171,7 +124,7 @@ func TestPublisherGapAcceptsFullAndDropsDelta(t *testing.T) {
 	}
 	if err := hub.PublishSnapshot(
 		mustSnapshot(t, 1, 4, Full, 1, map[string]any{"speed": 4}),
-		json.RawMessage(`{"speed":4}`),
+		nil,
 	); err != nil {
 		t.Fatalf("full after publisher gap: %v", err)
 	}
@@ -190,7 +143,6 @@ func TestUnknownProjectionVersionIsRejected(t *testing.T) {
 	}
 	future := mustSnapshot(t, 1, 1, Full, 1, map[string]any{"speed": 1})
 	future.ProjectionVersion = 3
-	future.seal = envelopeSeal(future)
 	if err := hub.PublishSnapshot(future, nil); !errors.Is(err, projection.ErrUnknownProjectionVersion) {
 		t.Fatalf("future version error = %v", err)
 	}
@@ -217,11 +169,11 @@ func TestStatusIsLowRateAndIndependentFromSnapshotSequence(t *testing.T) {
 	assertEventKind(t, mustNext(t, subscription), EventStatus)
 	if err := hub.PublishSnapshot(
 		mustSnapshot(t, 2, 11, Full, 2, map[string]any{"speed": 2}),
-		json.RawMessage(`{"speed":2}`),
+		nil,
 	); err != nil {
 		t.Fatal(err)
 	}
-	assertSnapshot(t, mustNext(t, subscription), Delta, 11)
+	assertSnapshot(t, mustNext(t, subscription), Full, 11)
 }
 
 func TestLateJoinNeverPairsNewStatusWithOldSnapshot(t *testing.T) {
@@ -249,7 +201,7 @@ func TestLateJoinNeverPairsNewStatusWithOldSnapshot(t *testing.T) {
 
 	if err := hub.PublishSnapshot(
 		mustSnapshot(t, 2, 11, Full, 2, map[string]any{"speed": 2}),
-		json.RawMessage(`{"speed":2}`),
+		nil,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -263,9 +215,7 @@ func TestExportedSnapshotConstructorsAreProductTyped(t *testing.T) {
 		payload     reflect.Type
 	}{
 		{name: "overlay", constructor: NewOverlayFull, payload: reflect.TypeFor[overlay.PayloadV1]()},
-		{name: "engineer", constructor: NewEngineerFull, payload: reflect.TypeFor[engineer.PayloadV1]()},
 		{name: "strategy", constructor: NewStrategyFull, payload: reflect.TypeFor[strategy.PayloadV1]()},
-		{name: "analysis", constructor: NewAnalysisFull, payload: reflect.TypeFor[analysis.PayloadV1]()},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -277,25 +227,12 @@ func TestExportedSnapshotConstructorsAreProductTyped(t *testing.T) {
 	}
 }
 
-func TestTypedSnapshotCannotBeRetargetedToCanonicalPayload(t *testing.T) {
-	status, err := NewStatus(
-		ProductOverlay,
-		1,
-		time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC),
-		StatusPayload{State: "live"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hub := NewHub(HubConfig{Product: ProductOverlay})
-	if err := hub.PublishStatus(status); err != nil {
-		t.Fatal(err)
-	}
-	frame, err := NewOverlayFull(
+func TestTypedSnapshotConstructorRejectsInvalidMetadata(t *testing.T) {
+	_, err := NewOverlayFull(
 		projection.Metadata{
 			ProjectionVersion: overlay.VersionV1,
 			Epoch:             1,
-			Sequence:          1,
+			Sequence:          0,
 			CapturedAt:        "2026-07-29T10:00:00Z",
 		},
 		1,
@@ -304,12 +241,8 @@ func TestTypedSnapshotCannotBeRetargetedToCanonicalPayload(t *testing.T) {
 			Vehicles:     []overlay.VehicleV1{},
 		},
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	frame.Payload = json.RawMessage(`{"observed":{},"derived":{}}`)
-	if err := hub.PublishSnapshot(frame, nil); !errors.Is(err, ErrInvalidEnvelope) {
-		t.Fatalf("retargeted payload error = %v", err)
+	if !errors.Is(err, ErrInvalidEnvelope) {
+		t.Fatalf("constructor error = %v, want %v", err, ErrInvalidEnvelope)
 	}
 }
 
@@ -394,150 +327,6 @@ func TestEpochMustAdvanceAndRestartAtSequenceOne(t *testing.T) {
 	}
 }
 
-func TestRetainedDeltaHasValidSeal(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
-	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
-		t.Fatal(err)
-	}
-	if err := hub.PublishSnapshot(
-		mustSnapshot(t, 1, 1, Full, 1, map[string]any{"value": 1}),
-		nil,
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := hub.PublishSnapshot(
-		mustSnapshot(t, 1, 2, Full, 1, map[string]any{"value": 2}),
-		json.RawMessage(`{"value":2}`),
-	); err != nil {
-		t.Fatal(err)
-	}
-	if hub.latest.delta == nil {
-		t.Fatal("equivalent delta was not retained")
-	}
-	if err := validateEnvelope(*hub.latest.delta, MaxPayloadBytes); err != nil {
-		t.Fatalf("retained delta: %v", err)
-	}
-}
-
-func TestFactEnvelopeUsesIndependentSequence(t *testing.T) {
-	fact, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             8,
-			Sequence:          90,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		7,
-		3,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fact.Sequence != 90 || fact.FactSequence != 7 || fact.StatusRevision != 3 {
-		t.Fatalf("fact cursors = snapshot %d fact %d status %d", fact.Sequence, fact.FactSequence, fact.StatusRevision)
-	}
-}
-
-func TestFactAdaptersRejectGapDuplicateAndRegression(t *testing.T) {
-	tests := []struct {
-		name      string
-		after     uint64
-		sequences []uint64
-	}{
-		{name: "gap", after: 6, sequences: []uint64{7, 9}},
-		{name: "duplicate", after: 6, sequences: []uint64{7, 7}},
-		{name: "regression", after: 6, sequences: []uint64{7, 5}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			facts := make([]FactEnvelope, 0, len(test.sequences))
-			for _, sequence := range test.sequences {
-				facts = append(facts, mustFact(t, sequence))
-			}
-			source := &fakeFactSource{facts: facts}
-			emitter := &captureEmitter{events: make(chan capturedEvent, len(facts))}
-			err := ServeWailsFacts(
-				context.Background(),
-				ProductEngineer,
-				source,
-				test.after,
-				emitter,
-			)
-			if !errors.Is(err, ErrSequenceGap) {
-				t.Fatalf("error = %v, want sequence gap", err)
-			}
-		})
-	}
-
-	request := httptest.NewRequest(
-		http.MethodGet,
-		FactsRoute(ProductEngineer)+"?after=6",
-		nil,
-	)
-	request.RemoteAddr = "127.0.0.1:45678"
-	recorder := httptest.NewRecorder()
-	SSEFactsHandler(
-		ProductEngineer,
-		&fakeFactSource{facts: []FactEnvelope{mustFact(t, 8)}},
-	).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusConflict {
-		t.Fatalf("SSE first fact gap status = %d, want 409", recorder.Code)
-	}
-}
-
-func TestFactAdaptersPreserveOrderedCursorAndRequireResyncOnGap(t *testing.T) {
-	fact, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             8,
-			Sequence:          90,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		7,
-		3,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	source := &fakeFactSource{facts: []FactEnvelope{fact}}
-	emitter := &captureEmitter{events: make(chan capturedEvent, 1)}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- ServeWailsFacts(ctx, ProductEngineer, source, 6, emitter) }()
-	event := <-emitter.events
-	if event.name != EventName(ProductEngineer, EventFact) {
-		t.Fatalf("fact event name = %q", event.name)
-	}
-	var emitted FactEnvelope
-	if err := json.Unmarshal(event.data, &emitted); err != nil {
-		t.Fatal(err)
-	}
-	if emitted.FactSequence != 7 || source.after != 6 {
-		t.Fatalf("fact sequence = %d after = %d", emitted.FactSequence, source.after)
-	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("ServeWailsFacts error = %v", err)
-	}
-
-	gap := &fakeFactSource{subscribeErr: ErrSequenceGap}
-	request := httptest.NewRequest(
-		http.MethodGet,
-		FactsRoute(ProductEngineer)+"?after=3",
-		nil,
-	)
-	request.RemoteAddr = "127.0.0.1:45678"
-	recorder := httptest.NewRecorder()
-	SSEFactsHandler(ProductEngineer, gap).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusConflict || gap.after != 3 {
-		t.Fatalf("gap response = %d after=%d, want 409 after=3", recorder.Code, gap.after)
-	}
-}
-
 func TestSlowWailsConsumerDoesNotBlockPublisherAndResyncsFull(t *testing.T) {
 	hub := NewHub(HubConfig{Product: ProductOverlay})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
@@ -557,7 +346,7 @@ func TestSlowWailsConsumerDoesNotBlockPublisherAndResyncsFull(t *testing.T) {
 
 	for sequence := schema.Sequence(2); sequence <= 100; sequence++ {
 		full := mustSnapshot(t, 1, sequence, Full, 1, map[string]any{"v": sequence})
-		if err := hub.PublishSnapshot(full, json.RawMessage([]byte(`{"v":`+jsonNumber(sequence)+`}`))); err != nil {
+		if err := hub.PublishSnapshot(full, nil); err != nil {
 			t.Fatalf("publish %d: %v", sequence, err)
 		}
 	}
@@ -705,7 +494,7 @@ func TestHubMetricsStayBoundedAndContainNoPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := mustSnapshot(t, 1, 2, Full, 1, map[string]any{"driverName": "Private Driver"})
-	if err := hub.PublishSnapshot(second, json.RawMessage(`{"driverName":"Private Driver"}`)); err != nil {
+	if err := hub.PublishSnapshot(second, nil); err != nil {
 		t.Fatal(err)
 	}
 	subscription := mustSubscribe(t, hub)
@@ -713,8 +502,7 @@ func TestHubMetricsStayBoundedAndContainNoPayload(t *testing.T) {
 	metrics := hub.Metrics()
 	if metrics.CurrentSubscribers != 1 || metrics.MaxSubscribers != 6 ||
 		metrics.MaxPayloadBytes != 1024 || metrics.StatusPublications != 1 ||
-		metrics.SnapshotPublications != 2 || metrics.SnapshotReplacements != 1 ||
-		metrics.DeltasRetained != 1 {
+		metrics.SnapshotPublications != 2 || metrics.SnapshotReplacements != 1 {
 		t.Fatalf("metrics = %#v", metrics)
 	}
 	encoded, err := json.Marshal(metrics)
@@ -747,7 +535,6 @@ func FuzzTransportEnvelopeValidationNeverPanics(f *testing.F) {
 			StatusRevision:    1,
 			Payload:           append(json.RawMessage(nil), payload...),
 		}
-		frame.seal = envelopeSeal(frame)
 		if err := validateEnvelope(frame, MaxPayloadBytes); err == nil {
 			if !json.Valid(payload) || len(payload) > MaxPayloadBytes {
 				t.Fatalf("accepted invalid payload of %d bytes", len(payload))
@@ -814,7 +601,6 @@ func mustProductSnapshot(
 		StatusRevision:    statusRevision,
 		Payload:           encoded,
 	}
-	result.seal = envelopeSeal(result)
 	return result
 }
 
@@ -830,7 +616,6 @@ func mustStatus(t testingTB, revision uint64, payload any) StatusEnvelope {
 		CapturedAt:     "2026-07-29T10:00:00Z",
 		Payload:        encoded,
 	}
-	result.seal = statusSeal(result)
 	return result
 }
 
@@ -838,27 +623,6 @@ func mustProductStatus(t testingTB, product ProductID, revision uint64) StatusEn
 	t.Helper()
 	result := mustStatus(t, revision, map[string]any{"state": "live"})
 	result.Product = product
-	result.seal = statusSeal(result)
-	return result
-}
-
-func mustFact(t testingTB, factSequence uint64) FactEnvelope {
-	t.Helper()
-	result, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             1,
-			Sequence:          1,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		factSequence,
-		1,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
 	return result
 }
 
@@ -913,49 +677,10 @@ func jsonValuesEqual(left, right any) bool {
 	return bytes.Equal(leftJSON, rightJSON)
 }
 
-func jsonNumber(value schema.Sequence) string {
-	encoded, _ := json.Marshal(value)
-	return string(encoded)
-}
-
 type capturedEvent struct {
 	name string
 	data []byte
 }
-
-type fakeFactSource struct {
-	after        uint64
-	facts        []FactEnvelope
-	subscribeErr error
-}
-
-func (source *fakeFactSource) SubscribeFacts(
-	_ context.Context,
-	after uint64,
-) (FactSubscription, error) {
-	source.after = after
-	if source.subscribeErr != nil {
-		return nil, source.subscribeErr
-	}
-	return &fakeFactSubscription{facts: source.facts}, nil
-}
-
-type fakeFactSubscription struct {
-	facts []FactEnvelope
-	index int
-}
-
-func (subscription *fakeFactSubscription) Next(ctx context.Context) (FactEnvelope, error) {
-	if subscription.index < len(subscription.facts) {
-		result := subscription.facts[subscription.index]
-		subscription.index++
-		return result, nil
-	}
-	<-ctx.Done()
-	return FactEnvelope{}, ctx.Err()
-}
-
-func (*fakeFactSubscription) Close() error { return nil }
 
 type captureEmitter struct {
 	events chan capturedEvent

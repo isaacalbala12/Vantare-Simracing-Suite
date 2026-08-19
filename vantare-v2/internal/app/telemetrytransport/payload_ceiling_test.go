@@ -8,7 +8,6 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
@@ -35,25 +34,6 @@ func TestOverlayPayloadStaysUnderTransportLimit(t *testing.T) {
 			}
 			if got := len(frame.Payload); got > MaxPayloadBytes {
 				t.Fatalf("overlay payload = %d bytes, limit = %d", got, MaxPayloadBytes)
-			}
-		})
-	}
-}
-
-func TestEngineerPayloadStaysUnderTransportLimit(t *testing.T) {
-	t.Skip("ISA-371 D-08: activar en F1; rechazo medido desde 85 vehículos")
-	for _, count := range []int{1, 20, 44, 104} {
-		t.Run(fmt.Sprintf("vehicles=%d", count), func(t *testing.T) {
-			projected, err := engineer.ProjectV1(payloadCeilingFinalState(t, count))
-			if err != nil {
-				t.Fatal(err)
-			}
-			frame, err := NewEngineerFull(projected.Metadata, 1, projected.PayloadV1)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := len(frame.Payload); got > MaxPayloadBytes {
-				t.Fatalf("engineer payload = %d bytes, limit = %d", got, MaxPayloadBytes)
 			}
 		})
 	}

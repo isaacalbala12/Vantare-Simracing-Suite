@@ -15,6 +15,14 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F4 está implementada localmente sobre `isa-373@3e9c77ed` en la rama
+  `vantareapp/isa-372-tc-f4-guard-wiring-y-borrado`, pendiente de promoción.
+  El guard AST de wiring queda activo; `core.Fanout`, RFC 7396 Go/TS, seal
+  SHA-256, transporte live de Analysis/facts y `telemetry-store.ts` quedaron
+  retirados tras demostrar cero llamadores productivos. El contrato de resync
+  y retención acotada de facts vive ahora en el puerto Engineer para F7. El
+  benchmark mediano del Hub bajó de 44.718 a 38.502 ns/op. No hubo push, PR,
+  merge, promoción ni release; Linear queda a cargo del orquestador.
 - ISA-160 / TC-10A está integrada en
   `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`. ISA-161 / TC-10B se
   construyó originalmente desde esa base. Su primer rebase local fue sobre

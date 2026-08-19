@@ -6,7 +6,7 @@ export const TELEMETRY_PRODUCTS = [
 ] as const;
 
 export type ProductID = (typeof TELEMETRY_PRODUCTS)[number];
-export type SnapshotKind = "full" | "delta";
+export type SnapshotKind = "full";
 export type EventKind = "projection" | "status" | "fact";
 export type JSONValue =
   | null
@@ -76,6 +76,7 @@ export type TransportErrorCode =
   | "invalid-envelope"
   | "payload-too-large"
   | "forbidden-payload"
+  | "delta-unsupported"
   | "unsupported-version";
 
 export class TransportContractError extends Error {
@@ -181,7 +182,10 @@ function decodeProjection(
   }
   const projectionVersion = requireVersion(object.projectionVersion);
   const kind = object.kind;
-  if (kind !== "full" && kind !== "delta") {
+  if (kind === "delta") {
+    throw new TransportContractError("delta-unsupported");
+  }
+  if (kind !== "full") {
     invalid();
   }
   return {

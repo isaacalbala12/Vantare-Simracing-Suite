@@ -16,7 +16,6 @@ export type TelemetryTransportHarness = {
   store: ProjectionTransportStore;
   status(state?: StatusEnvelope["payload"]["state"]): void;
   full(payload: JSONObject, sequence?: number): void;
-  delta(patch: JSONObject): void;
   gap(payload: JSONObject): void;
   fact(payload: JSONObject, factSequence?: number): void;
   reconnect(): void;
@@ -51,13 +50,6 @@ export function createTelemetryTransportHarness(
       sequence = requestedSequence ?? sequence + 1;
       retainedFull = projection(product, "full", epoch, sequence, statusRevision, payload);
       store.ingest(eventName(product, "projection"), retainedFull);
-    },
-    delta(patch) {
-      sequence += 1;
-      store.ingest(
-        eventName(product, "projection"),
-        projection(product, "delta", epoch, sequence, statusRevision, patch),
-      );
     },
     gap(payload) {
       sequence += 2;

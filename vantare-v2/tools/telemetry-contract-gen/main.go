@@ -92,8 +92,15 @@ func generate() ([]byte, error) {
 	// EventFact remains a reserved Go wire kind after F4. This compatibility
 	// envelope keeps the existing frontend API compiling until F7 owns facts.
 	body.WriteString("/** @deprecated Reserved for the F7 Engineer facts port; no live fact transport exists in F5. */\n")
-	body.WriteString("export interface FactEnvelope extends Omit<ProjectionEnvelope, \"kind\"> {\n")
+	body.WriteString("export interface FactEnvelope {\n")
+	body.WriteString("  readonly capturedAt: string;\n")
+	body.WriteString("  readonly epoch: number;\n")
 	body.WriteString("  readonly factSequence: number;\n")
+	body.WriteString("  readonly payload: JSONObject;\n")
+	body.WriteString("  readonly product: ProductID;\n")
+	body.WriteString("  readonly projectionVersion: number;\n")
+	body.WriteString("  readonly sequence: number;\n")
+	body.WriteString("  readonly statusRevision: number;\n")
 	body.WriteString("}\n\n")
 	body.WriteString("export type TransportEvent =\n")
 	body.WriteString("  | { readonly kind: \"projection\"; readonly value: ProjectionEnvelope }\n")

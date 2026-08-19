@@ -12,28 +12,22 @@ const blocks: ContextColumnBlock[] = [
 const labels = {
   column: "Panel contextual",
   collapse: "Plegar la columna lateral",
-  sim: "LMU conectado",
-  simTitle: "Fuente de telemetría: LMU conectado · en directo",
 };
 
 function renderColumn(activeView: ViewId, overrides: Partial<React.ComponentProps<typeof ContextColumn>> = {}) {
   const onCollapse = vi.fn();
-  const onOpenAccount = vi.fn();
-  render(
+  const view = render(
     <ContextColumn
       activeView={activeView}
       blocks={blocks}
       labels={labels}
       onCollapse={onCollapse}
-      onOpenAccount={onOpenAccount}
-      planLabel="Suite"
-      simStatus="connected"
       title="Vantare Suite"
       version="v0.3.9"
       {...overrides}
     />,
   );
-  return { onCollapse, onOpenAccount };
+  return { ...view, onCollapse };
 }
 
 afterEach(() => {
@@ -64,11 +58,14 @@ describe("ContextColumn", () => {
     expect(screen.getByText("Secciones de Ajustes")).toBeTruthy();
   });
 
-  it("el pie es la única fuente textual del estado del sim y lleva el plan a Cuenta", () => {
-    const { onOpenAccount } = renderColumn("inicio");
-    expect(screen.getByText("LMU conectado")).toBeTruthy();
-    fireEvent.click(screen.getByText("Suite"));
-    expect(onOpenAccount).toHaveBeenCalled();
+  // D-R3-B-1: la columna ya no tiene pie. Ni el estado del sim ni el plan se
+  // repiten aquí; viven en el saludo de Inicio, en Ajustes › Diagnóstico y en
+  // la fila de cuenta del rail.
+  it("no pinta pie: ni estado del sim ni plan", () => {
+    const { container } = renderColumn("inicio");
+    expect(container.querySelector(".orbit-column__foot")).toBeNull();
+    expect(screen.queryByText("LMU conectado")).toBeNull();
+    expect(screen.queryByText("Suite")).toBeNull();
   });
 
   it("el botón ‹ pliega la columna", () => {

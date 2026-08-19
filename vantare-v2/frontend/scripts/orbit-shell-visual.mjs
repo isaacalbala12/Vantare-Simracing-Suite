@@ -88,11 +88,11 @@ try {
     const contract = await page.evaluate(() => {
       const shell = document.querySelector(".orbit-shell");
       const column = document.querySelector(".orbit-column");
-      const foot = document.querySelector(".orbit-column__foot");
       const rail = document.querySelector(".orbit-rail");
       const topbar = document.querySelector(".orbit-topbar");
-      const footRect = foot?.getBoundingClientRect();
       const columnRect = column?.getBoundingClientRect();
+      const blocks = document.querySelector(".orbit-column__blocks");
+      const blocksRect = blocks?.getBoundingClientRect();
       return {
         scrollHeight: document.documentElement.scrollHeight,
         innerHeight: window.innerHeight,
@@ -102,7 +102,13 @@ try {
         columnWidth: column ? Math.round(columnRect.width) : 0,
         topbarHeight: topbar ? Math.round(topbar.getBoundingClientRect().height) : 0,
         gridColumns: shell ? getComputedStyle(shell).gridTemplateColumns : "",
-        footVisible: Boolean(footRect) && footRect.bottom <= window.innerHeight + 0.5 && footRect.height > 0,
+        // D-R3-B-1: la columna ya no lleva pie. Lo que se comprueba ahora es
+        // que su contenido cabe entero, que era lo que el pie garantizaba.
+        hasFoot: Boolean(document.querySelector(".orbit-column__foot")),
+        blocksFit:
+          Boolean(blocksRect) &&
+          blocksRect.height > 0 &&
+          blocksRect.bottom <= window.innerHeight + 0.5,
         railTooltips: [...document.querySelectorAll(".orbit-rail__button")].every(
           (node) => node.hasAttribute("data-tip") && !node.hasAttribute("title"),
         ),
@@ -116,7 +122,8 @@ try {
     if (contract.railWidth !== 81) throw new Error(`${viewport.name}: rail ${contract.railWidth}px, se esperaba 81px`);
     if (contract.columnWidth !== 296) throw new Error(`${viewport.name}: columna ${contract.columnWidth}px, se esperaba 296px`);
     if (contract.topbarHeight !== 70) throw new Error(`${viewport.name}: topbar ${contract.topbarHeight}px, se esperaba 70px`);
-    if (!contract.footVisible) throw new Error(`${viewport.name}: el pie de la columna no es visible`);
+    if (contract.hasFoot) throw new Error(`${viewport.name}: la columna sigue pintando pie (D-R3-B-1 lo elimina)`);
+    if (!contract.blocksFit) throw new Error(`${viewport.name}: los bloques de la columna se recortan`);
     if (!contract.railTooltips) throw new Error(`${viewport.name}: el rail usa \`title\` nativo en vez de \`data-tip\``);
     await assertNoHorizontalOverflow(page, viewport.name);
     if (problems.length) throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);

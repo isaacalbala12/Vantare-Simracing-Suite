@@ -473,13 +473,8 @@ function OrbitShellBody({
             labels={{
               column: t("shell.column.label"),
               collapse: t("shell.column.collapse"),
-              sim: t(`shell.sim.${simStatus}`),
-              simTitle: simStatus === "connected" ? t("shell.sim.connectedTitle") : undefined,
             }}
             onCollapse={toggleColumn}
-            onOpenAccount={() => navigate("ajustes", "account")}
-            planLabel={planLabel}
-            simStatus={simStatus}
             title={t(`shell.title.${activeView}`)}
             version={version ?? ""}
           />

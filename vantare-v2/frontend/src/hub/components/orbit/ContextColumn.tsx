@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { Pill } from "../../../ui/orbit/Pill";
-import type { SimStatus, ViewId } from "../../orbit/views";
+import type { ViewId } from "../../orbit/views";
 
 export interface ContextColumnBlock {
   id: "races" | "profile" | "launcher";
@@ -9,6 +8,12 @@ export interface ContextColumnBlock {
   content: ReactNode;
 }
 
+/**
+ * La columna no lleva pie (D-R3-B-1): el «LMU conectado / Free» de abajo era
+ * ruido permanente en todas las vistas. El estado del sim se lee donde ya se
+ * estaba mirando —el punto de color del saludo de Inicio y el pill de
+ * Ajustes › Diagnóstico— y el plan se abre desde la fila de cuenta del rail.
+ */
 export interface ContextColumnProps {
   title: string;
   version: string;
@@ -16,10 +21,7 @@ export interface ContextColumnProps {
   context?: ReactNode;
   blocks: ContextColumnBlock[];
   activeView: ViewId;
-  simStatus: SimStatus;
-  planLabel: string;
-  onOpenAccount(): void;
-  labels: { column: string; collapse: string; sim: string; simTitle?: string };
+  labels: { column: string; collapse: string };
   className?: string;
 }
 
@@ -30,9 +32,6 @@ export function ContextColumn({
   context,
   blocks,
   activeView,
-  simStatus,
-  planLabel,
-  onOpenAccount,
   labels,
   className,
 }: ContextColumnProps) {
@@ -81,18 +80,6 @@ export function ContextColumn({
           ))}
         </div>
       ) : null}
-
-      <div className="orbit-column__foot">
-        <Pill
-          dot={simStatus === "connected" ? "ok" : simStatus === "searching" ? "ring-gold" : "ring"}
-          pulse={simStatus === "searching"}
-          state={simStatus}
-          title={labels.simTitle}
-        >
-          {labels.sim}
-        </Pill>
-        <Pill onClick={onOpenAccount}>{planLabel}</Pill>
-      </div>
     </aside>
   );
 }

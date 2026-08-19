@@ -671,30 +671,91 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 		return err
 	}
 	overlayProjected, err := overlayprojection.ProjectV1(final)
+	overlayReady := err == nil
 	if err != nil {
-		err = fmt.Errorf("project Overlay telemetry: %w", err)
-		sink.runtime.failStop(err)
-		return err
+		if failureErr := sink.runtime.handlePostCommitFailure(
+			telemetrytransport.ProductOverlay,
+			"projection",
+			fmt.Errorf("project Overlay telemetry: %w", err),
+		); failureErr != nil {
+			return failureErr
+		}
 	}
 	strategyProjected, err := strategyprojection.ProjectV1(final)
+	strategyReady := err == nil
 	if err != nil {
-		err = fmt.Errorf("project Strategy telemetry: %w", err)
-		sink.runtime.failStop(err)
-		return err
+		if failureErr := sink.runtime.handlePostCommitFailure(
+			telemetrytransport.ProductStrategy,
+			"projection",
+			fmt.Errorf("project Strategy telemetry: %w", err),
+		); failureErr != nil {
+			return failureErr
+		}
 	}
 	status := sink.runtime.manager.Status()
-	if err := sink.runtime.publishProjections(
+	publication := sink.runtime.publishProjections(
 		overlayProjected,
+		overlayReady,
 		strategyProjected,
+		strategyReady,
 		status.State,
 		status.ReconnectAttempt,
-	); err != nil {
-		sink.runtime.failStop(err)
-		return err
+	)
+	if publication.statusErr != nil {
+		if failureErr := sink.runtime.handlePostCommitFailure("", "status", publication.statusErr); failureErr != nil {
+			return failureErr
+		}
 	}
-	sink.runtime.counters.projectionsPublished.Add(1)
+	if publication.overlayErr != nil {
+		if failureErr := sink.runtime.handlePostCommitFailure(
+			telemetrytransport.ProductOverlay, "publish", publication.overlayErr,
+		); failureErr != nil {
+			return failureErr
+		}
+	}
+	if publication.strategyErr != nil {
+		if failureErr := sink.runtime.handlePostCommitFailure(
+			telemetrytransport.ProductStrategy, "publish", publication.strategyErr,
+		); failureErr != nil {
+			return failureErr
+		}
+	}
+	if publication.overlayPublished && publication.strategyPublished {
+		sink.runtime.counters.projectionsPublished.Add(1)
+	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, facts.values)
+	return nil
+}
+
+func (runtime *TelemetryCoreRuntime) handlePostCommitFailure(
+	product telemetrytransport.ProductID,
+	stage string,
+	err error,
+) error {
+	if err == nil {
+		return nil
+	}
+	if classifyTelemetryError(err) == failureProgramming {
+		runtime.failStop(err)
+		return err
+	}
+	productLabel := string(product)
+	reason := stage
+	if productLabel != "" {
+		reason = productLabel + "-" + stage
+		runtime.metricStore.publishFailure(productLabel)
+	}
+	runtime.metricStore.dropFrame(reason)
+	log.Printf("telemetry %s failure is non-terminal: %v", reason, err)
+	status := runtime.manager.Status()
+	if statusErr := runtime.setStatus(driver.StateDegraded, status.ReconnectAttempt); statusErr != nil {
+		log.Printf("telemetry degraded status could not be published after %s failure: %v", reason, statusErr)
+		if classifyTelemetryError(statusErr) == failureProgramming {
+			runtime.failStop(statusErr)
+			return statusErr
+		}
+	}
 	return nil
 }
 
@@ -783,44 +844,65 @@ func engineerSourceState(state driver.State) engineerprojection.SourceState {
 	}
 }
 
+type projectionPublication struct {
+	overlayPublished  bool
+	strategyPublished bool
+	statusErr         error
+	overlayErr        error
+	strategyErr       error
+}
+
 func (runtime *TelemetryCoreRuntime) publishProjections(
 	overlayProjected overlayprojection.SnapshotV1,
+	overlayReady bool,
 	strategyProjected strategyprojection.SnapshotV1,
+	strategyReady bool,
 	state driver.State,
 	attempt int,
-) error {
+) projectionPublication {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 	if err := runtime.setStatusLocked(state, attempt); err != nil {
-		return err
+		return projectionPublication{statusErr: err}
 	}
-	overlayFrame, err := telemetrytransport.NewOverlayFull(
-		overlayProjected.Metadata,
-		runtime.statusRev,
-		overlayProjected.PayloadV1,
-	)
-	if err != nil {
-		return fmt.Errorf("build Overlay telemetry projection: %w", err)
+	result := projectionPublication{}
+	if overlayReady {
+		overlayFrame, err := telemetrytransport.NewOverlayFull(
+			overlayProjected.Metadata,
+			runtime.statusRev,
+			overlayProjected.PayloadV1,
+		)
+		if err != nil {
+			result.overlayErr = fmt.Errorf("build Overlay telemetry projection: %w", err)
+		} else {
+			runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
+			if err := runtime.hub.PublishSnapshot(overlayFrame, nil); err != nil {
+				result.overlayErr = fmt.Errorf("publish Overlay telemetry projection: %w", err)
+			} else {
+				result.overlayPublished = true
+				runtime.counters.overlayProjections.Add(1)
+			}
+		}
 	}
-	runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
-	strategyFrame, err := telemetrytransport.NewStrategyFull(
-		strategyProjected.Metadata,
-		runtime.statusRev,
-		strategyProjected.PayloadV1,
-	)
-	if err != nil {
-		return fmt.Errorf("build Strategy telemetry projection: %w", err)
+	if strategyReady {
+		strategyFrame, err := telemetrytransport.NewStrategyFull(
+			strategyProjected.Metadata,
+			runtime.statusRev,
+			strategyProjected.PayloadV1,
+		)
+		if err != nil {
+			result.strategyErr = fmt.Errorf("build Strategy telemetry projection: %w", err)
+		} else {
+			runtime.metricStore.observePayload(productName(telemetrytransport.ProductStrategy), uint64(len(strategyFrame.Payload)))
+			if err := runtime.strategyHub.PublishSnapshot(strategyFrame, nil); err != nil {
+				result.strategyErr = fmt.Errorf("publish Strategy telemetry projection: %w", err)
+			} else {
+				result.strategyPublished = true
+				runtime.counters.strategyProjections.Add(1)
+			}
+		}
 	}
-	runtime.metricStore.observePayload(productName(telemetrytransport.ProductStrategy), uint64(len(strategyFrame.Payload)))
-	if err := runtime.hub.PublishSnapshot(overlayFrame, nil); err != nil {
-		return fmt.Errorf("publish Overlay telemetry projection: %w", err)
-	}
-	runtime.counters.overlayProjections.Add(1)
-	if err := runtime.strategyHub.PublishSnapshot(strategyFrame, nil); err != nil {
-		return fmt.Errorf("publish Strategy telemetry projection: %w", err)
-	}
-	runtime.counters.strategyProjections.Add(1)
-	return nil
+	return result
 }
 
 func (runtime *TelemetryCoreRuntime) setStatus(state driver.State, attempt int) error {

@@ -258,7 +258,7 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromBothProductHubs(t *testi
 	}
 }
 
-func TestTelemetryCoreRuntimeReportsStrategyTransportFailure(t *testing.T) {
+func TestTelemetryCoreRuntimeIsolatesStrategyTransportFailure(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -273,25 +273,23 @@ func TestTelemetryCoreRuntimeReportsStrategyTransportFailure(t *testing.T) {
 	}
 
 	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch())
-	if err == nil || !strings.Contains(err.Error(), "publish Strategy telemetry projection") ||
-		!errors.Is(err, telemetrytransport.ErrClosed) {
-		t.Fatalf("Strategy transport error = %v", err)
+	if err != nil {
+		t.Fatalf("Strategy transport failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
 	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 1 ||
 		metrics.StrategyProjectionsPublished != 0 || metrics.Transport.SnapshotPublications != 1 ||
-		metrics.StrategyTransport.SnapshotPublications != 0 {
+		metrics.StrategyTransport.SnapshotPublications != 0 ||
+		metrics.PublishFailures["strategy"] != 1 || metrics.FramesDropped["strategy-publish"] != 1 ||
+		metrics.FailStops != 0 {
 		t.Fatalf("failed cycle metrics = %#v", metrics)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
+	subscription, err := runtime.Hub().Subscribe(context.Background())
+	if err != nil {
+		t.Fatalf("Overlay hub closed by Strategy failure: %v", err)
+	}
+	defer subscription.Close()
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
-	if err := runtime.Start(context.Background()); !errors.Is(err, telemetrytransport.ErrClosed) {
-		t.Fatalf("Start() after partial publication error = %v, want %v", err, telemetrytransport.ErrClosed)
-	}
-	if err := runtime.Stop(context.Background()); err == nil ||
-		!strings.Contains(err.Error(), "publish Strategy telemetry projection") {
-		t.Fatalf("Stop() audit error = %v", err)
-	}
 }
 
 func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingEitherProduct(t *testing.T) {

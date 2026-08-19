@@ -10,7 +10,6 @@ import (
 )
 
 func TestPublishFailureIsNotTerminal(t *testing.T) {
-	t.Skip("ISA-371 D-02: activar en F1; falta además un contador de fallos de publicación")
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -21,6 +20,10 @@ func TestPublishFailureIsNotTerminal(t *testing.T) {
 	}
 	if runtime.lifecycle != telemetryRuntimeRunning {
 		t.Fatalf("lifecycle = %d, want running", runtime.lifecycle)
+	}
+	metrics := runtime.Metrics()
+	if metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 {
+		t.Fatalf("publish failure metrics = %+v", metrics)
 	}
 }
 

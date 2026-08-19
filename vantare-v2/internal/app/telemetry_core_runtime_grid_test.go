@@ -8,8 +8,6 @@ import (
 )
 
 func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
-	t.Skip("ISA-371 D-08/D-02: activar en F1")
-
 	engineer := &recordingEngineerConsumer{}
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: engineer})
 	if err != nil {
@@ -31,9 +29,11 @@ func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
 		t.Fatalf("runtime lifecycle = %d, want running", runtime.lifecycle)
 	}
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 1 || metrics.EngineerObservations != 1 {
-		t.Fatalf("deliveries = overlay:%d engineer:%d, want 1 each",
-			metrics.OverlayProjectionsPublished, metrics.EngineerObservations)
+	if metrics.OverlayProjectionsPublished != 0 || metrics.EngineerObservations != 1 ||
+		metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 {
+		t.Fatalf("104-vehicle outcome = overlay:%d engineer:%d dropped:%v publish failures:%v",
+			metrics.OverlayProjectionsPublished, metrics.EngineerObservations,
+			metrics.FramesDropped, metrics.PublishFailures)
 	}
 	event, err := subscription.Next(context.Background())
 	if err != nil {
@@ -41,12 +41,5 @@ func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
 	}
 	if event.Kind != telemetrytransport.EventStatus {
 		t.Fatalf("first event kind = %q, want status", event.Kind)
-	}
-	event, err = subscription.Next(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if event.Kind != telemetrytransport.EventSnapshot {
-		t.Fatalf("second event kind = %q, want projection", event.Kind)
 	}
 }

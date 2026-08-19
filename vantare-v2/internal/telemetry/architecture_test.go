@@ -133,6 +133,9 @@ func TestValidateImport(t *testing.T) {
 		{name: "core rejects catalog", edge: importEdge{Package: "internal/telemetry/core", Import: modulePath + "/internal/telemetry/catalog"}, wantErr: true},
 		{name: "derive may use core", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "derive rejects driver contracts", edge: importEdge{Package: "internal/telemetry/derive", Import: modulePath + "/internal/telemetry/driver"}, wantErr: true},
+		{name: "engine may use core", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/core"}},
+		{name: "engine may use derive", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/derive"}},
+		{name: "engine rejects concrete driver", edge: importEdge{Package: "internal/telemetry/engine", Import: modulePath + "/internal/telemetry/drivers/lmu"}, wantErr: true},
 		{name: "projection root may use core", edge: importEdge{Package: "internal/telemetry/projection", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "projection may use core", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/core"}},
 		{name: "projection may use final derive state", edge: importEdge{Package: "internal/telemetry/projection/overlay", Import: modulePath + "/internal/telemetry/derive"}},
@@ -456,6 +459,17 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/derive",
 		) {
 			return fmt.Errorf("derive may only import schema, core, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/engine" || strings.HasPrefix(edge.Package, "internal/telemetry/engine/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/core",
+			modulePath+"/internal/telemetry/derive",
+			modulePath+"/internal/telemetry/engine",
+		) {
+			return fmt.Errorf("engine may only import schema, core, derive, and its own tree within telemetry, not %s", edge.Import)
 		}
 	}
 

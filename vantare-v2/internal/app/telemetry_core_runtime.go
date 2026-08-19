@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
+	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
@@ -71,6 +72,9 @@ type TelemetryCoreRuntimeConfig struct {
 	// TelemetryFailurePolicyV2 defaults to on when nil. Point it to false for
 	// one-cycle rollback to the legacy fail-stop consumer policy.
 	TelemetryFailurePolicyV2 *bool
+	// TelemetryEngineApply defaults to on when nil. Point it to false for
+	// one-cycle rollback to the previous explicit stage orchestration.
+	TelemetryEngineApply *bool
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
@@ -136,6 +140,7 @@ type TelemetryCoreRuntime struct {
 
 	enabled                  bool
 	telemetryFailurePolicyV2 bool
+	telemetryEngineApply     bool
 	emitter                  telemetrytransport.EventEmitter
 	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
@@ -144,6 +149,7 @@ type TelemetryCoreRuntime struct {
 	reducer                  *telemetrycore.Reducer
 	coord                    *telemetrycore.SessionCoordinator
 	derive                   *derive.Pipeline
+	engine                   *telemetryengine.TelemetryEngine
 	engineer                 EngineerProjectionConsumer
 	engineerManifest         engineerprojection.Manifest
 
@@ -186,6 +192,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	failurePolicyV2 := true
 	if config.TelemetryFailurePolicyV2 != nil {
 		failurePolicyV2 = *config.TelemetryFailurePolicyV2
+	}
+	engineApply := true
+	if config.TelemetryEngineApply != nil {
+		engineApply = *config.TelemetryEngineApply
 	}
 	manager, err := telemetrycore.NewDriverManager(
 		[]telemetrycore.DriverCandidate[lmu.Observation]{
@@ -231,9 +241,13 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
+	reducer := telemetrycore.NewReducer()
+	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{})
+	pipeline := derive.NewPipeline(derive.Config{})
 	return &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
+		telemetryEngineApply:     engineApply,
 		emitter:                  config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
 			Product: telemetrytransport.ProductOverlay,
@@ -251,9 +265,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		}),
 		manager:          manager,
 		mapper:           lmu.NewBatchMapper(),
-		reducer:          telemetrycore.NewReducer(),
-		coord:            telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{}),
-		derive:           derive.NewPipeline(derive.Config{}),
+		reducer:          reducer,
+		coord:            coordinator,
+		derive:           pipeline,
+		engine:           telemetryengine.New(reducer, coordinator, pipeline),
 		engineer:         config.Engineer,
 		engineerManifest: engineerManifest,
 		now:              now,
@@ -714,20 +729,32 @@ func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observa
 type runtimeBatchSink struct{ runtime *TelemetryCoreRuntime }
 
 func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore.Batch) error {
-	observed, err := sink.runtime.reducer.Apply(batch)
-	if err != nil {
-		return err
+	var final envelope.Snapshot[derive.FinalState]
+	var factValues []envelope.Fact[telemetrycore.SessionFact]
+	if sink.runtime.telemetryEngineApply {
+		result, err := sink.runtime.engine.Apply(ctx, batch)
+		if err != nil {
+			return err
+		}
+		final = result.State
+		factValues = result.Facts
+	} else {
+		observed, err := sink.runtime.reducer.Apply(batch)
+		if err != nil {
+			return err
+		}
+		facts := &collectTelemetryFacts{}
+		if err := sink.runtime.coord.Apply(ctx, observed, facts); err != nil {
+			return err
+		}
+		final, err = sink.runtime.derive.Apply(ctx, observed)
+		if err != nil {
+			return err
+		}
+		factValues = facts.values
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
-	facts := &collectTelemetryFacts{}
-	if err := sink.runtime.coord.Apply(ctx, observed, facts); err != nil {
-		return err
-	}
-	final, err := sink.runtime.derive.Apply(ctx, observed)
-	if err != nil {
-		return err
-	}
 	overlayProjected, err := overlayprojection.ProjectV1(final)
 	overlayReady := err == nil
 	if err != nil {
@@ -782,7 +809,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 		sink.runtime.counters.projectionsPublished.Add(1)
 	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
-	sink.runtime.deliverEngineer(final, facts.values)
+	sink.runtime.deliverEngineer(final, factValues)
 	return nil
 }
 

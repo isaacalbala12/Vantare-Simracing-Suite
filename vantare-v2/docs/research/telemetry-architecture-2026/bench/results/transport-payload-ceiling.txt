@@ -1,0 +1,28 @@
+limite de payload del transporte: 262144 bytes (256 KiB)
+
+vehiculos      overlay v1    engineer v1    overlay   engineer
+1                    4293           6889         OK         OK
+2                    6863           9960         OK         OK
+3                    9412          13010         OK         OK
+10                  27232          34314         OK         OK
+20                  52818          64920         OK         OK
+30                  78404          95414         OK         OK
+40                 103819         125819         OK         OK
+50                 129221         156241         OK         OK
+60                 154635         186685         OK         OK
+70                 180047         217127         OK         OK
+80                 205576         247686         OK         OK
+85                 218297         262922         OK  RECHAZADO
+90                 231099         278187         OK  RECHAZADO
+100                256549         308538         OK  RECHAZADO
+103                264170         317629  RECHAZADO  RECHAZADO
+104                266707         320656  RECHAZADO  RECHAZADO
+
+techo overlay v1  : 102 vehiculos
+techo engineer v1 : 84 vehiculos
+
+prueba end-to-end contra el Hub real:
+   20 vehiculos -> publicado (52818 bytes)
+   60 vehiculos -> publicado (154635 bytes)
+   90 vehiculos -> publicado (231099 bytes)
+  104 vehiculos -> NewOverlayFull ERROR: telemetry projection transport payload exceeds limit

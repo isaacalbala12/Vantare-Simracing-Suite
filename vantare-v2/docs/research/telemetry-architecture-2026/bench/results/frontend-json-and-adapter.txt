@@ -1,0 +1,23 @@
+node v24.14.1
+2000 iteraciones por caso, 200 de calentamiento
+
+JSON.parse overlay v1 x1 (7221 B)                   36.7 us media       34.6 p50       42.7 p95      104.0 p99
+decodeOverlayProjectionV1 overlay v1 x1             35.3 us media       30.0 p50       47.2 p95      146.0 p99
+adapt->TelemetrySnapshot overlay v1 x1              25.8 us media       22.4 p50       31.9 p95      133.5 p99
+parse+decode+adapt overlay v1 x1                   102.2 us media       89.3 p50      163.1 p95      270.4 p99
+
+JSON.parse overlay v1 x20 (55757 B)                282.3 us media      269.2 p50      376.0 p95      438.5 p99
+decodeOverlayProjectionV1 overlay v1 x20           323.9 us media      293.9 p50      474.4 p95      630.9 p99
+adapt->TelemetrySnapshot overlay v1 x20            255.8 us media      233.9 p50      392.2 p95      553.4 p99
+parse+decode+adapt overlay v1 x20                 1006.4 us media      925.0 p50     1328.3 p95     1505.4 p99
+
+JSON.parse overlay v1 x104 (269573 B)             1838.5 us media     2074.5 p50     2170.9 p95     2292.4 p99
+decodeOverlayProjectionV1 overlay v1 x104         2075.8 us media     2126.1 p50     2540.5 p95     2785.8 p99
+adapt->TelemetrySnapshot overlay v1 x104          1675.4 us media     1758.1 p50     2134.6 p95     2539.4 p99
+parse+decode+adapt overlay v1 x104                5885.6 us media     6327.3 p50     6948.2 p95     7942.9 p99
+
+JSON.parse compacto array x1 (760 B)                 6.0 us media        6.1 p50        8.4 p95       10.1 p99
+JSON.parse compacto array x20 (7104 B)              45.3 us media       47.0 p50       54.9 p95       66.7 p99
+JSON.parse compacto array x104 (35209 B)           211.1 us media      234.4 p50      254.4 p95      276.0 p99
+JSON.parse compacto mapa x104 (36249 B)            222.0 us media      239.2 p50      265.6 p95      305.6 p99
+JSON.parse canonical x104 (298482 B)              2082.0 us media     2065.4 p50     2529.4 p95     2617.4 p99

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.10",
+  "channel": "nightly",
+  "title": "Vantare — el Hub estrena Command Orbit",
+  "summary": "Esta Nightly sustituye la shell del Hub por Command Orbit: rail lateral, columna contextual y paleta de comando, con Inicio, Overlays Studio, Launcher, Carreras, Estrategia, Ingeniero, Telemetría, Roadmap, Ajustes y Testing Center rediseñados sobre la lógica real, escalado proporcional en ventanas pequeñas y tope en ultrapanorámicas.",
+  "issues": [
+    "ISA-369"
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "revision": 44,
+  "source": {
+    "state": "live"
+  },
+  "frame": {
+    "contract": 2,
+    "algorithm": 1,
+    "epoch": 3,
+    "sequence": 2,
+    "sessionId": "f6-session",
+    "generatedAt": "2026-08-19T12:00:02Z",
+    "units": {
+      "speed": "mps",
+      "temperature": "celsius",
+      "pressure": "kpa",
+      "fuel": "liters"
+    },
+    "session": {
+      "track": {
+        "v": "Sebring",
+        "q": "fresh"
+      },
+      "phase": {
+        "v": "race",
+        "q": "fresh"
+      },
+      "flag": {
+        "q": "missing"
+      },
+      "remaining": {
+        "v": 7198,
+        "q": "fresh"
+      },
+      "maxLaps": {
+        "q": "fresh"
+      }
+    },
+    "player": {
+      "id": "vehicle-000",
+      "speed": {
+        "v": 50,
+        "q": "fresh"
+      },
+      "rpm": {
+        "v": 7200,
+        "q": "fresh"
+      },
+      "gear": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "throttle": {
+        "v": 0.75,
+        "q": "fresh"
+      },
+      "brake": {
+        "v": 0.125,
+        "q": "fresh"
+      },
+      "clutch": {
+        "q": "fresh"
+      },
+      "steering": {
+        "q": "missing"
+      }
+    },
+    "standings": [],
+    "relative": [],
+    "delta": {
+      "seconds": {
+        "q": "missing"
+      },
+      "available": []
+    },
+    "fuel": {
+      "remaining": {
+        "q": "missing"
+      },
+      "capacity": {
+        "q": "missing"
+      },
+      "perLap": {
+        "q": "missing"
+      },
+      "estimatedLaps": {
+        "q": "missing"
+      }
+    },
+    "spotter": {
+      "mode": "none",
+      "left": {
+        "q": "missing"
+      },
+      "right": {
+        "q": "missing"
+      }
+    },
+    "capabilities": {
+      "supported": [
+        "controls",
+        "delta",
+        "fuel",
+        "gaps",
+        "session",
+        "spatial.lateral",
+        "spatial.longitudinal",
+        "spotter",
+        "standings"
+      ],
+      "available": {
+        "controls": "fresh",
+        "delta": "missing",
+        "fuel": "fresh",
+        "gaps": "missing",
+        "session": "fresh",
+        "spatial.lateral": "fresh",
+        "spatial.longitudinal": "fresh",
+        "spotter": "fresh",
+        "standings": "fresh"
+      },
+      "modes": {
+        "spatial": [],
+        "delta": [],
+        "standings": "none",
+        "gaps": "none"
+      }
+    }
+  }
+}

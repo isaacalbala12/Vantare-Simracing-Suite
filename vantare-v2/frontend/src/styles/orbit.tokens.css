@@ -110,7 +110,7 @@
   --orbit-move: .35s;
 
   /* z-index */
-  --orbit-z-rail: 20; --orbit-z-topbar: 15; --orbit-z-menu: 30; --orbit-z-tooltip: 40; --orbit-z-palette: 100; --orbit-z-toast: 120;
+  --orbit-z-rail: 20; --orbit-z-topbar: 15; --orbit-z-menu: 30; --orbit-z-tooltip: 40; --orbit-z-drawer: 70; --orbit-z-palette: 100; --orbit-z-toast: 120;
 }
 [data-density="compact"] { --orbit-row: 42px; --orbit-space: 16px; --orbit-radius: 14px; }
 [data-density="comfortable"] { --orbit-row: 57px; --orbit-space: 26px; --orbit-radius: 22px; }

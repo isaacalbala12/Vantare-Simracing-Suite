@@ -657,7 +657,7 @@ button.orbit-select[data-open="true"] {
   min-width: 27px;
   height: 26px;
   padding: 0 6.5px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid var(--orbit-line-strong);
   border-bottom-color: rgba(255, 255, 255, 0.22);
   border-radius: 6.5px;
   background: rgba(255, 255, 255, 0.025);
@@ -2715,7 +2715,7 @@ button.orbit-pill {
    Vive en un portal al final del `body`, por encima de la shell. */
 .orbit-drawer-layer {
   position: fixed;
-  z-index: 70;
+  z-index: var(--orbit-z-drawer);
   inset: 0;
 }
 

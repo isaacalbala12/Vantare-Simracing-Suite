@@ -87,7 +87,7 @@
 
 .orbit-rail__button:hover {
   color: var(--orbit-ink);
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--orbit-line-row);
 }
 
 .orbit-rail__button[aria-current="page"] {
@@ -360,50 +360,6 @@
   transition: var(--orbit-fast) var(--orbit-ease);
 }
 
-.orbit-row:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.orbit-row--sel {
-  background: var(--orbit-selection-bg);
-}
-
-.orbit-row--sel::before {
-  content: "";
-  position: absolute;
-  left: -13px;
-  width: 3px;
-  height: 18px;
-  border-radius: 0 4px 4px 0;
-  background: var(--orbit-red);
-  box-shadow: var(--orbit-glow-active);
-}
-
-.orbit-row__copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.orbit-row__copy b {
-  display: block;
-  overflow: hidden;
-  color: var(--orbit-ink-2);
-  font-size: 13px;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.orbit-row__copy span {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--orbit-ink-3);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .orbit-row:hover .orbit-row__copy b,
 .orbit-row--sel .orbit-row__copy b {
   color: #fff;
@@ -512,10 +468,8 @@
   transition: var(--orbit-fast) var(--orbit-ease);
 }
 
-button.orbit-pill { cursor: pointer; }
 button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 
-.orbit-pill[data-s="connected"] { color: var(--orbit-ink-2); }
 .orbit-pill[data-s="disconnected"] { color: var(--orbit-ink-4); }
 
 .orbit-pill__dot {
@@ -527,7 +481,6 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 .orbit-pill__dot--ok { color: var(--orbit-green); }
-.orbit-pill__dot--gold { color: var(--orbit-ember); }
 .orbit-pill__dot--ring,
 .orbit-pill__dot--ring-gold {
   background: transparent;
@@ -832,6 +785,8 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 :root[data-orbit-resizing] .orbit-root *,
 :root[data-orbit-resizing] .orbit-root *::before,
 :root[data-orbit-resizing] .orbit-root *::after {
+  /* `!important` imprescindible: el congelado durante el redimensionado tiene
+     que ganar a la transicion declarada en cada componente de la shell. */
   transition: none !important;
   animation-play-state: paused !important;
 }

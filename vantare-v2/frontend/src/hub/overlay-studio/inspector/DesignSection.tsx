@@ -14,6 +14,7 @@ import {
   isActiveDesign,
   isDesignCompatibleWithWidget,
   partitionApplyAllTargets,
+  resolveEffectiveDesign,
 } from "../designs/design-utils";
 import type { WidgetDesignClient } from "../designs/widget-design-client";
 import type { StudioCommand } from "../state/studio-command";
@@ -339,7 +340,10 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     );
     const lockedCount =
       officialDesigns.length + compatibleUserDesigns.length - catalogue.length;
-    const activeDesign = catalogue.find((design) => isActiveDesign(widget, design)) ?? null;
+    // El valor del `Select` es el diseno que el widget lleva puesto, no solo el
+    // que alguien aplico a mano: sin procedencia el widget se pinta con el
+    // diseno por defecto de su sistema y eso es lo que hay que mostrar.
+    const activeDesign = resolveEffectiveDesign(widget, catalogue);
     const applyAllTargets = activeDesign
       ? partitionApplyAllTargets(widgets, activeDesign).compatibleIds.length
       : 0;

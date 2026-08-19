@@ -57,6 +57,37 @@ export function isActiveDesign(widget: WidgetInstanceV3, design: WidgetDesignV1)
   return widget.visual.provenance?.designId === design.id;
 }
 
+/**
+ * Diseno que el widget lleva puesto de verdad (`briefing 04 · A3`).
+ *
+ * `isActiveDesign` mira `visual.provenance.designId`, que solo se escribe al
+ * aplicar un diseno a mano. Un widget recien anadido no tiene procedencia
+ * —`createDefault` deja `baseSettings: {}`— pero se pinta con algo: el diseno
+ * por defecto de su sistema visual. Decir "Sin diseno aplicado" ahi es falso,
+ * y es lo que veia el `Select` de la piel Orbit.
+ *
+ * Solo se cae al por defecto cuando el widget no tiene procedencia Y el
+ * catalogo que se consulta es el de SU sistema: si el usuario esta hojeando
+ * otro sistema en el desplegable, ahi no hay nada aplicado.
+ */
+export function resolveEffectiveDesign(
+  widget: WidgetInstanceV3,
+  catalogue: readonly WidgetDesignV1[],
+): WidgetDesignV1 | null {
+  const applied = catalogue.find((design) => isActiveDesign(widget, design));
+  if (applied) {
+    return applied;
+  }
+  if (widget.visual.provenance?.designId) {
+    return null;
+  }
+  return (
+    catalogue.find(
+      (design) => design.isDefault === true && design.systemId === widget.visual.systemId,
+    ) ?? null
+  );
+}
+
 // Reescribe un widget cuyo diseno haya sido retirado al sustituto vigente.
 //
 // No basta con cambiar la procedencia: lo que se renderiza sale de baseSettings

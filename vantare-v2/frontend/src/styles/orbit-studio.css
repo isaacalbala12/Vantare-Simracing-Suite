@@ -193,9 +193,14 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(240, 71, 85, 0.35);
 }
 
-.orbit-studio-scene__tag {
+/* Etiqueta de seleccion: vive en el `stage`, no en el `scene` escalado, para
+   medir en pixeles reales y poder recortarse contra los bordes del lienzo. */
+.orbit-studio-stage__tag {
   position: absolute;
   z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 10px;
   border-radius: 8px;
   background: rgba(213, 47, 73, 0.92);
@@ -205,6 +210,35 @@
   white-space: nowrap;
   box-shadow: 0 8px 23px rgba(213, 47, 73, 0.35);
   pointer-events: none;
+}
+
+/* Un widget oculto se marca en la propia etiqueta y ofrece ahi mismo la salida:
+   en el lienzo esta al 12 % y no hay otro asidero (`briefing 04 · A4`). */
+.orbit-studio-stage__tag[data-hidden="true"] {
+  background: rgba(28, 26, 30, 0.95);
+  color: var(--orbit-ink-2, #cfc9d0);
+  box-shadow: 0 8px 23px rgba(0, 0, 0, 0.45);
+}
+
+.orbit-studio-stage__tag-action {
+  padding: 2px 8px;
+  border: 1px solid rgba(213, 47, 73, 0.9);
+  border-radius: 6px;
+  background: rgba(213, 47, 73, 0.18);
+  color: #fff;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.orbit-studio-stage__tag-action:hover {
+  background: rgba(213, 47, 73, 0.4);
+}
+
+.orbit-studio-stage__tag-action:focus-visible {
+  outline: 2px solid var(--orbit-carmine);
+  outline-offset: 2px;
 }
 
 /* ============================================================ STATUSBAR */
@@ -528,10 +562,111 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* Widget oculto: la fila se apaga y se tacha, pero sigue siendo pulsable —el
+   widget se selecciona igual— y el ojo NO se apaga con ella: es la unica
+   salida del estado oculto (`briefing 04 · A4`). Por eso la opacidad va en la
+   fila y no en el `.orbit-studio-witem`, que es su padre comun con el ojo. */
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__row {
+  opacity: 0.55;
+}
+
 .orbit-studio-witem[data-enabled="false"] .orbit-row__copy b {
   color: var(--orbit-ink-4);
   text-decoration: line-through;
   text-decoration-color: rgba(122, 118, 123, 0.5);
+}
+
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__eye {
+  color: var(--orbit-carmine);
+  background: rgba(213, 47, 73, 0.12);
+}
+
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__eye:hover {
+  color: #fff;
+  background: rgba(213, 47, 73, 0.34);
+}
+
+.orbit-studio-witem__eye:focus-visible {
+  outline: 2px solid var(--orbit-carmine);
+  outline-offset: 2px;
+}
+
+/* El ojo se pinta por encima de la fila seleccionada: sin esto el fondo de
+   `orbit-row--sel` se lo come visualmente en el estado oculto. */
+.orbit-studio-witem__eye {
+  z-index: 1;
+}
+
+/* ================================================= CONTENIDO (COLUMNAS) */
+
+/* Lista de columnas de standings en piel Orbit (`briefing 04 · A5`): una fila
+   por columna, con Check del kit para visible, botones de orden y dos `Seg`
+   —ancho y alineacion—. Ni un control nativo. */
+.orbit-studio-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-studio-cols__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-chip, 8px);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.orbit-studio-cols__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.orbit-studio-cols__head .orbit-check {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.orbit-studio-cols__head .orbit-check__copy {
+  overflow: hidden;
+  font-size: var(--orbit-fs-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-studio-cols__order {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.orbit-studio-cols__controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  min-width: 0;
+}
+
+.orbit-studio-cols__controls:has(> * + *) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-studio-cols__seg {
+  min-width: 0;
+}
+
+.orbit-studio-cols__seg .orbit-seg__option {
+  padding-inline: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* ============================================================ TOPBAR */

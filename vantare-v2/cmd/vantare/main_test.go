@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/license"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/window"
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -36,6 +39,112 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 	if got := resolveLicensePublicKeys("", "development-key"); got != "development-key" {
 		t.Fatalf("development key = %q, want local opt-in", got)
 	}
+}
+
+func TestResolveStrategyCatalogConfigurationEmbeddedWins(t *testing.T) {
+	embeddedKeys := strategyCatalogTrustDocument("release-key")
+	developmentKeys := strategyCatalogTrustDocument("development-key")
+
+	configuration, err := resolveStrategyCatalogConfiguration(
+		false,
+		"https://catalog.vantare.example/release.json",
+		embeddedKeys,
+		"https://attacker.invalid/catalog.json",
+		developmentKeys,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configuration.endpoint != "https://catalog.vantare.example/release.json" {
+		t.Fatalf("endpoint = %q, want embedded endpoint", configuration.endpoint)
+	}
+	if len(configuration.trustedKeys.Keys) != 1 || configuration.trustedKeys.Keys[0].ID != "release-key" {
+		t.Fatalf("trusted keys = %#v, want embedded release key", configuration.trustedKeys.Keys)
+	}
+}
+
+func TestResolveStrategyCatalogConfigurationAllowsDevelopmentOverrideWithoutEmbeddedConfiguration(t *testing.T) {
+	configuration, err := resolveStrategyCatalogConfiguration(
+		true,
+		"",
+		"",
+		"https://catalog.dev.vantare.example/catalog.json",
+		strategyCatalogTrustDocument("development-key"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configuration.endpoint != "https://catalog.dev.vantare.example/catalog.json" {
+		t.Fatalf("endpoint = %q, want development endpoint", configuration.endpoint)
+	}
+	if len(configuration.trustedKeys.Keys) != 1 || configuration.trustedKeys.Keys[0].ID != "development-key" {
+		t.Fatalf("trusted keys = %#v, want development key", configuration.trustedKeys.Keys)
+	}
+}
+
+func TestResolveStrategyCatalogConfigurationRejectsDevelopmentEnvironmentInPackagedBuild(t *testing.T) {
+	if _, err := resolveStrategyCatalogConfiguration(
+		false,
+		"",
+		"",
+		"https://catalog.dev.vantare.example/catalog.json",
+		strategyCatalogTrustDocument("development-key"),
+	); err == nil {
+		t.Fatal("packaged build trusted Strategy catalog configuration from process environment")
+	}
+}
+
+func TestResolveStrategyCatalogConfigurationFailsClosed(t *testing.T) {
+	validDevelopmentKeys := strategyCatalogTrustDocument("development-key")
+	tests := []struct {
+		name                   string
+		developmentAllowed     bool
+		embeddedEndpoint       string
+		embeddedKeys           string
+		developmentEndpoint    string
+		developmentTrustedKeys string
+	}{
+		{name: "missing configuration", developmentAllowed: true},
+		{
+			name:                   "partial embedded configuration cannot borrow development trust",
+			developmentAllowed:     true,
+			embeddedEndpoint:       "https://catalog.vantare.example/catalog.json",
+			developmentEndpoint:    "https://catalog.dev.vantare.example/catalog.json",
+			developmentTrustedKeys: validDevelopmentKeys,
+		},
+		{
+			name:                   "invalid embedded trust cannot fall back to development",
+			developmentAllowed:     true,
+			embeddedEndpoint:       "https://catalog.vantare.example/catalog.json",
+			embeddedKeys:           `{}`,
+			developmentEndpoint:    "https://catalog.dev.vantare.example/catalog.json",
+			developmentTrustedKeys: validDevelopmentKeys,
+		},
+		{
+			name:                   "non HTTPS development endpoint",
+			developmentAllowed:     true,
+			developmentEndpoint:    "http://catalog.dev.vantare.example/catalog.json",
+			developmentTrustedKeys: validDevelopmentKeys,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := resolveStrategyCatalogConfiguration(
+				test.developmentAllowed,
+				test.embeddedEndpoint,
+				test.embeddedKeys,
+				test.developmentEndpoint,
+				test.developmentTrustedKeys,
+			); err == nil {
+				t.Fatal("invalid catalog configuration was accepted")
+			}
+		})
+	}
+}
+
+func strategyCatalogTrustDocument(keyID string) string {
+	publicKey := base64.RawURLEncoding.EncodeToString(make([]byte, ed25519.PublicKeySize))
+	return `{"trustVersion":"strategy.official-catalog.trust.v1","version":1,"keys":[{"id":"` + keyID + `","algorithm":"Ed25519","publicKey":"` + publicKey + `","notBeforeSequence":1}]}`
 }
 
 func TestProtectedStoreTargetsIsolateInternalChannelsByBackend(t *testing.T) {
@@ -93,6 +202,86 @@ func TestStrategyRepositoryRoot(t *testing.T) {
 		if _, err := strategyRepositoryRoot(invalid); err == nil {
 			t.Fatalf("strategyRepositoryRoot(%q) did not reject invalid path", invalid)
 		}
+	}
+}
+
+func TestStrategyCatalogRootStaysInsideStrategyDataRoot(t *testing.T) {
+	strategyRoot := filepath.Join(t.TempDir(), "data", "strategy")
+	got, err := strategyCatalogRoot(strategyRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(strategyRoot, "official-catalog")
+	if got != want {
+		t.Fatalf("catalog root = %q, want %q", got, want)
+	}
+	relative, err := filepath.Rel(strategyRoot, got)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		t.Fatalf("catalog root escaped Strategy root: relative=%q err=%v", relative, err)
+	}
+	for _, invalid := range []string{"", filepath.Join("relative", "strategy")} {
+		if _, err := strategyCatalogRoot(invalid); err == nil {
+			t.Fatalf("strategyCatalogRoot(%q) did not reject invalid path", invalid)
+		}
+	}
+}
+
+func TestExecuteStrategyCatalogCommandPreservesCorrelationAndSanitizesErrors(t *testing.T) {
+	result, failure := executeStrategyCatalogCommand(context.Background(), nil, map[string]any{
+		"version":   strategycatalog.CommandVersionV1,
+		"requestId": "catalog-request-42",
+		"operation": "load",
+	})
+	if result != nil {
+		t.Fatalf("result = %#v, want nil", result)
+	}
+	if failure["requestId"] != "catalog-request-42" || failure["errorCode"] != string(strategycatalog.ErrorUnavailable) {
+		t.Fatalf("failure lost correlation or public code: %#v", failure)
+	}
+	message, _ := failure["message"].(string)
+	if message == "" || strings.Contains(message, `C:\\`) || strings.Contains(message, "secret") {
+		t.Fatalf("failure was not sanitized: %#v", failure)
+	}
+}
+
+func TestExecuteStrategyCatalogCommandReturnsDecodedResult(t *testing.T) {
+	result, failure := executeStrategyCatalogJSONCommand(context.Background(), map[string]any{
+		"version":   strategycatalog.CommandVersionV1,
+		"requestId": "catalog-success-7",
+		"operation": "load",
+	}, func(context.Context, []byte) []byte {
+		return []byte(`{"version":"strategy.official-catalog.result.v1","requestId":"catalog-success-7","ok":true,"result":{"status":"ready"}}`)
+	})
+	if failure != nil {
+		t.Fatalf("failure = %#v", failure)
+	}
+	decoded, ok := result.(map[string]any)
+	if !ok || decoded["requestId"] != "catalog-success-7" || decoded["ok"] != true {
+		t.Fatalf("result = %#v", result)
+	}
+	nested, ok := decoded["result"].(map[string]any)
+	if !ok || nested["status"] != "ready" {
+		t.Fatalf("decoded result = %#v", decoded["result"])
+	}
+}
+
+func TestExecuteStrategyCatalogCommandSanitizesCorruptInternalResponseAndPreservesCorrelation(t *testing.T) {
+	result, failure := executeStrategyCatalogJSONCommand(context.Background(), map[string]any{
+		"version":   strategycatalog.CommandVersionV1,
+		"requestId": "catalog-corrupt-9",
+		"operation": "refresh",
+	}, func(context.Context, []byte) []byte {
+		return []byte(`C:\Users\private\catalog.json token=secret-value`)
+	})
+	if result != nil {
+		t.Fatalf("result = %#v, want nil", result)
+	}
+	if failure["requestId"] != "catalog-corrupt-9" || failure["errorCode"] != string(strategycatalog.ErrorUnavailable) {
+		t.Fatalf("failure lost correlation or public code: %#v", failure)
+	}
+	message, _ := failure["message"].(string)
+	if strings.Contains(message, "Users") || strings.Contains(message, "secret-value") {
+		t.Fatalf("failure leaked internal response: %#v", failure)
 	}
 }
 

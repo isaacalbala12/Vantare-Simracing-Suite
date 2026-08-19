@@ -234,6 +234,11 @@ jobs:
       # Versioned Ed25519 public keys only (key-id:base64url-public-key). The
       # private signing key exists exclusively in the Supabase function env.
       VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
+      # Optional public Strategy catalog endpoint and verification keyset. The
+      # generated Go source still marks the build as packaged when these are
+      # absent, so runtime environment values cannot become a trust root.
+      VANTARE_STRATEGY_CATALOG_URL: ${{ vars.VANTARE_STRATEGY_CATALOG_URL }}
+      VANTARE_STRATEGY_CATALOG_TRUSTED_KEYS: ${{ vars.VANTARE_STRATEGY_CATALOG_TRUSTED_KEYS }}
       # Branch builds identify their actual channel inside the binary. Tagged
       # public builds are always master; the source job already proves the tag
       # belongs to master.

@@ -27,6 +27,12 @@ import {
   type StrategyEditorRuntime,
 } from "../../strategy/strategy-editor-store";
 import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
+import {
+  createWailsStrategyCatalogClient,
+  type StrategyCatalogClient,
+  type StrategyCatalogEntryV1,
+  type StrategyCatalogResultV1,
+} from "../../strategy/strategy-catalog-client";
 import type { StrategyStore } from "../../strategy/strategy-store";
 import {
   describePlan,
@@ -75,6 +81,12 @@ import "./strategy-planner.css";
 type PlannerScreen = "gallery" | "entry" | "review" | "workspace";
 type GalleryState = "ready" | "loading" | "empty" | "error";
 type WorkspacePanel = "plans" | "stints" | "inventory";
+type CatalogViewState = {
+  result: StrategyCatalogResultV1 | null;
+  error: string;
+  loading: boolean;
+  refreshing: boolean;
+};
 
 /**
  * Where an export or import currently is. Reading, previewing and importing
@@ -85,7 +97,7 @@ type TransferState =
   | { stage: "idle" }
   | { stage: "exporting"; planId: string }
   | { stage: "reading"; fileName: string }
-  | { stage: "previewed"; fileName: string; bytes: Uint8Array; preview: StrategyImportPreviewV1 }
+  | { stage: "previewed"; source: "file" | "official"; fileName: string; bytes: Uint8Array; preview: StrategyImportPreviewV1 }
   | { stage: "importing"; fileName: string }
   | { stage: "error"; error: string };
 
@@ -121,6 +133,8 @@ type StrategyPlannerPageProps = {
   manualClient?: StrategyManualClient;
   /** Reads "My plans" through the application service. */
   libraryClient?: StrategyApplicationClient<StrategyEditorDocument>;
+  /** Reads the signed official catalog without mixing it into the private library. */
+  catalogClient?: StrategyCatalogClient;
   /**
    * Stamped into the provenance of every exported package. It defaults to the
    * build-time value; "dev" means the build did not stamp one, which is the
@@ -176,6 +190,7 @@ export function StrategyPlannerPage({
   runtimeFactory = createWailsStrategyEditorRuntime,
   manualClient,
   libraryClient,
+  catalogClient,
   appVersion = DEFAULT_APP_VERSION,
   onSavePackage = downloadPackage,
   tyreClient,
@@ -192,6 +207,11 @@ export function StrategyPlannerPage({
   const calculationClient = manualClient ?? ownedManualClient;
   if (!calculationClient) throw new Error("Strategy manual calculation client is required");
   const ownedManualClientMountedRef = useRef(false);
+  const [ownedCatalogClient] = useState<StrategyCatalogClient | null>(() => (
+    catalogClient ? null : createWailsStrategyCatalogClient()
+  ));
+  const officialCatalogClient = catalogClient ?? ownedCatalogClient;
+  const ownedCatalogClientMountedRef = useRef(false);
   const [ownedTyreClient] = useState<StrategyTyreClient | null>(() => (
     tyreClient ? null : createWailsStrategyTyreClient()
   ));
@@ -235,8 +255,16 @@ export function StrategyPlannerPage({
    * against the version it previewed, so a change underneath is refused rather
    * than applied blind.
    */
-  const [libraryVersion, setLibraryVersion] = useState(0);
+  const [libraryVersion, setLibraryVersion] = useState<number | null>(null);
   const [transfer, setTransfer] = useState<TransferState>({ stage: "idle" });
+  const [catalog, setCatalog] = useState<CatalogViewState>({
+    result: null,
+    error: "",
+    loading: true,
+    refreshing: false,
+  });
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const catalogRequestGenerationRef = useRef(0);
   const [solvedVariants, setSolvedVariants] = useState<{
     draft: NonNullable<typeof storeSnapshot.draft>;
     variants: readonly StrategyVariant[];
@@ -276,11 +304,59 @@ export function StrategyPlannerPage({
   }, [ownedManualClient]);
 
   useEffect(() => {
+    ownedCatalogClientMountedRef.current = true;
+    return () => {
+      ownedCatalogClientMountedRef.current = false;
+      if (!ownedCatalogClient) return;
+      queueMicrotask(() => {
+        if (!ownedCatalogClientMountedRef.current) ownedCatalogClient.dispose();
+      });
+    };
+  }, [ownedCatalogClient]);
+
+  useEffect(() => {
+    if (screen !== "gallery" || !officialCatalogClient) return;
+    let active = true;
+    const generation = ++catalogRequestGenerationRef.current;
+    const requestId = `catalog-load-${catalogAttempt}-${Date.now()}`;
+    queueMicrotask(() => {
+      if (!active) return;
+      setCatalog((current) => ({ ...current, loading: !current.result, error: "" }));
+      void officialCatalogClient.load(requestId).then(
+        (result) => {
+          if (!active || generation !== catalogRequestGenerationRef.current) return;
+          setCatalog({
+            result,
+            error: "",
+            loading: false,
+            refreshing: false,
+          });
+        },
+        (error: unknown) => {
+          if (!active || generation !== catalogRequestGenerationRef.current) return;
+          setCatalog((current) => ({
+            ...current,
+            error: messageOf(error, "No hay un catálogo oficial verificado disponible."),
+            loading: false,
+            refreshing: false,
+          }));
+        },
+      );
+    });
+    return () => {
+      active = false;
+      catalogRequestGenerationRef.current += 1;
+      officialCatalogClient.cancel(requestId);
+    };
+  }, [catalogAttempt, officialCatalogClient, screen]);
+
+  useEffect(() => {
     const client = libraryClient ?? ownedRuntime?.client;
     if (screen !== "gallery" || !client) return;
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
+      setLibraryVersion(null);
       setLibrary((current) => ({ ...current, state: "loading", error: "" }));
       void loadStrategyLibrary(client, `list-${libraryAttempt}-${Date.now()}`).then(
         (result) => {
@@ -294,6 +370,7 @@ export function StrategyPlannerPage({
         },
         (error: unknown) => {
           if (!active) return;
+          setLibraryVersion(null);
           setLibrary({
             state: "error",
             plans: [],
@@ -351,7 +428,7 @@ export function StrategyPlannerPage({
           .then((preview) => ({ bytes, preview }));
       })
       .then(
-        ({ bytes, preview }) => setTransfer({ stage: "previewed", fileName: file.name, bytes, preview }),
+        ({ bytes, preview }) => setTransfer({ stage: "previewed", source: "file", fileName: file.name, bytes, preview }),
         (error: unknown) => setTransfer({
           stage: "error",
           error: messageOf(error, "El paquete no se pudo leer o no es de confianza."),
@@ -359,15 +436,38 @@ export function StrategyPlannerPage({
       );
   }, [transferClient]);
 
+  const previewOfficial = useCallback((entry: StrategyCatalogEntryV1) => {
+    if (!transferClient || libraryVersion === null) return;
+    setTransfer({ stage: "reading", fileName: entry.title });
+    void previewStrategyImport(
+      transferClient,
+      `official-preview-${Date.now()}`,
+      entry.packageBytes,
+    ).then(
+      (preview) => setTransfer({
+        stage: "previewed",
+        source: "official",
+        fileName: entry.title,
+        bytes: entry.packageBytes,
+        preview,
+      }),
+      (error: unknown) => setTransfer({
+        stage: "error",
+        error: messageOf(error, "No se pudo comprobar el plan oficial; no se guardó nada."),
+      }),
+    );
+  }, [libraryVersion, transferClient]);
+
   /** Applies a previewed package. It lands whole or not at all. */
   const confirmImport = useCallback(() => {
-    if (!transferClient || transfer.stage !== "previewed") return;
+    if (!transferClient || transfer.stage !== "previewed" || libraryVersion === null) return;
     const { bytes, fileName } = transfer;
     setTransfer({ stage: "importing", fileName });
     void commitStrategyImport(transferClient, `import-${Date.now()}`, bytes, libraryVersion).then(
       (outcome) => {
         setTransfer({ stage: "idle" });
         setSaveMessage(`Importado desde ${fileName}: ${summariseImport(outcome.preview)}.`);
+        setLibraryVersion(null);
         setLibraryAttempt((attempt) => attempt + 1);
       },
       (error: unknown) => setTransfer({
@@ -376,6 +476,27 @@ export function StrategyPlannerPage({
       }),
     );
   }, [libraryVersion, transfer, transferClient]);
+
+  const refreshCatalog = useCallback(() => {
+    if (!officialCatalogClient || catalog.loading || catalog.refreshing) return;
+    const generation = ++catalogRequestGenerationRef.current;
+    const requestId = `catalog-refresh-${Date.now()}`;
+    setCatalog((current) => ({ ...current, refreshing: true, error: "" }));
+    void officialCatalogClient.refresh(requestId).then(
+      (result) => {
+        if (!ownedCatalogClientMountedRef.current || generation !== catalogRequestGenerationRef.current) return;
+        setCatalog({ result, error: "", loading: false, refreshing: false });
+      },
+      () => {
+        if (!ownedCatalogClientMountedRef.current || generation !== catalogRequestGenerationRef.current) return;
+        setCatalog((current) => ({
+          ...current,
+          error: "No se pudo actualizar; se mantiene el último catálogo verificado.",
+          refreshing: false,
+        }));
+      },
+    );
+  }, [catalog.loading, catalog.refreshing, officialCatalogClient]);
 
   useEffect(() => {
     ownedSolverClientMountedRef.current = true;
@@ -610,6 +731,11 @@ export function StrategyPlannerPage({
           onPickPackage={previewImport}
           onConfirmImport={confirmImport}
           onCancelTransfer={() => setTransfer({ stage: "idle" })}
+          catalog={catalog}
+          libraryVersionReliable={libraryVersion !== null}
+          onReloadCatalog={() => setCatalogAttempt((attempt) => attempt + 1)}
+          onRefreshCatalog={refreshCatalog}
+          onPreviewOfficial={previewOfficial}
         />
       )}
 
@@ -730,6 +856,11 @@ function Gallery({
   onPickPackage,
   onConfirmImport,
   onCancelTransfer,
+  catalog,
+  libraryVersionReliable,
+  onReloadCatalog,
+  onRefreshCatalog,
+  onPreviewOfficial,
 }: {
   titleId: string;
   state: GalleryState;
@@ -743,12 +874,22 @@ function Gallery({
   onPickPackage: (file: File) => void;
   onConfirmImport: () => void;
   onCancelTransfer: () => void;
+  catalog: CatalogViewState;
+  libraryVersionReliable: boolean;
+  onReloadCatalog: () => void;
+  onRefreshCatalog: () => void;
+  onPreviewOfficial: (entry: StrategyCatalogEntryV1) => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"official" | "mine">("mine");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<StrategyLibrarySort>("recent");
   const [scope, setScope] = useState<"all" | "unsaved" | "saved">("all");
   const searchId = useId();
   const importId = useId();
+  const officialTabId = useId();
+  const mineTabId = useId();
+  const officialPanelId = useId();
+  const minePanelId = useId();
 
   const visible = sortPlans(
     filterPlans(plans, {
@@ -759,15 +900,35 @@ function Gallery({
     sort,
   );
 
+  function selectGalleryTab(tab: "official" | "mine") {
+    setActiveTab(tab);
+    requestAnimationFrame(() => document.getElementById(tab === "official" ? officialTabId : mineTabId)?.focus());
+  }
+
+  function handleGalleryTabKey(event: KeyboardEvent<HTMLButtonElement>, tab: "official" | "mine") {
+    const next = event.key === "ArrowRight" || event.key === "ArrowLeft"
+      ? (tab === "official" ? "mine" : "official")
+      : event.key === "Home"
+        ? "official"
+        : event.key === "End"
+          ? "mine"
+          : null;
+    if (!next) return;
+    event.preventDefault();
+    selectGalleryTab(next);
+  }
+
   return (
     <div className="strategy-screen strategy-gallery">
       <header className="strategy-page-header">
         <div>
           <p className="strategy-eyebrow">Strategy Planner</p>
-          <h1 id={titleId}>Mis planes</h1>
-          <p>Tus planes son privados y viven solo en este equipo.</p>
+          <h1 id={titleId}>{activeTab === "mine" ? "Mis planes" : "Planes de Vantare"}</h1>
+          <p>{activeTab === "mine"
+            ? "Tus planes son privados y viven solo en este equipo."
+            : "Planes oficiales distribuidos mediante un catálogo firmado y verificado."}</p>
         </div>
-        <div className="strategy-page-header__actions">
+        {activeTab === "mine" ? <div className="strategy-page-header__actions">
           <label className="strategy-button strategy-button--secondary" htmlFor={importId}>
             Importar plan
             <input
@@ -787,31 +948,69 @@ function Gallery({
           <button className="strategy-button strategy-button--primary" type="button" onClick={onCreate}>
             <span aria-hidden="true">＋</span> Crear plan
           </button>
-        </div>
+        </div> : (
+          <button
+            className="strategy-button strategy-button--secondary"
+            type="button"
+            onClick={onRefreshCatalog}
+            disabled={catalog.loading || catalog.refreshing}
+          >{catalog.refreshing ? "Actualizando…" : "Actualizar catálogo"}</button>
+        )}
       </header>
 
-      {transfer.stage === "reading" && (
-        <div className="strategy-state" role="status">Leyendo {transfer.fileName}…</div>
-      )}
-      {transfer.stage === "importing" && (
-        <div className="strategy-state" role="status">Importando {transfer.fileName}…</div>
-      )}
-      {transfer.stage === "error" && (
-        <div className="strategy-state strategy-state--error" role="alert" data-testid="strategy-transfer-error">
-          <p>{transfer.error}</p>
-          <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancelTransfer}>
-            Entendido
-          </button>
-        </div>
-      )}
-      {transfer.stage === "previewed" && (
-        <ImportPreview
-          fileName={transfer.fileName}
-          preview={transfer.preview}
-          onConfirm={onConfirmImport}
-          onCancel={onCancelTransfer}
-        />
-      )}
+      <div className="strategy-gallery-tabs" role="tablist" aria-label="Bibliotecas de planes">
+        <button
+          id={officialTabId}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "official"}
+          aria-controls={officialPanelId}
+          tabIndex={activeTab === "official" ? 0 : -1}
+          onClick={() => setActiveTab("official")}
+          onKeyDown={(event) => handleGalleryTabKey(event, "official")}
+        >Planes de Vantare</button>
+        <button
+          id={mineTabId}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "mine"}
+          aria-controls={minePanelId}
+          tabIndex={activeTab === "mine" ? 0 : -1}
+          onClick={() => setActiveTab("mine")}
+          onKeyDown={(event) => handleGalleryTabKey(event, "mine")}
+        >Mis planes</button>
+      </div>
+
+      <div
+        id={officialPanelId}
+        role="tabpanel"
+        aria-labelledby={officialTabId}
+        hidden={activeTab !== "official"}
+        className="strategy-gallery__panel"
+      >
+        {activeTab === "official" && (
+          <>
+            <TransferFeedback transfer={transfer} onConfirm={onConfirmImport} onCancel={onCancelTransfer} compact />
+            <OfficialCatalog
+              catalog={catalog}
+              libraryVersionReliable={libraryVersionReliable}
+              transfer={transfer}
+              onReload={onReloadCatalog}
+              onPreview={onPreviewOfficial}
+            />
+          </>
+        )}
+      </div>
+
+      <div
+        id={minePanelId}
+        role="tabpanel"
+        aria-labelledby={mineTabId}
+        hidden={activeTab !== "mine"}
+        className="strategy-gallery__panel"
+      >
+      {activeTab === "mine" && <>
+      <TransferFeedback transfer={transfer} onConfirm={onConfirmImport} onCancel={onCancelTransfer} />
 
       {state === "ready" && plans.length > 0 && (
         <div className="strategy-gallery__tools">
@@ -910,7 +1109,135 @@ function Gallery({
           </button>
         </div>
       )}
+      </>}
+      </div>
     </div>
+  );
+}
+
+function TransferFeedback({
+  transfer,
+  onConfirm,
+  onCancel,
+  compact = false,
+}: {
+  transfer: TransferState;
+  onConfirm: () => void;
+  onCancel: () => void;
+  compact?: boolean;
+}) {
+  const compactClass = compact ? " strategy-state--compact" : "";
+  if (transfer.stage === "reading" || transfer.stage === "importing") {
+    return (
+      <div className={`strategy-state${compactClass}`} role="status">
+        {transfer.stage === "reading" ? "Comprobando" : "Guardando"} {transfer.fileName}…
+      </div>
+    );
+  }
+  if (transfer.stage === "error") {
+    return (
+      <div className={`strategy-state strategy-state--error${compactClass}`} role="alert" data-testid="strategy-transfer-error">
+        <p>{transfer.error}</p>
+        <button className="strategy-button strategy-button--secondary" type="button" onClick={onCancel}>Entendido</button>
+      </div>
+    );
+  }
+  if (transfer.stage !== "previewed") return null;
+  return (
+    <ImportPreview
+      fileName={transfer.fileName}
+      preview={transfer.preview}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+      confirmLabel={transfer.source === "official" ? "Guardar en Mis planes" : "Importar"}
+    />
+  );
+}
+
+function OfficialCatalog({
+  catalog,
+  libraryVersionReliable,
+  transfer,
+  onReload,
+  onPreview,
+}: {
+  catalog: CatalogViewState;
+  libraryVersionReliable: boolean;
+  transfer: TransferState;
+  onReload: () => void;
+  onPreview: (entry: StrategyCatalogEntryV1) => void;
+}) {
+  if (catalog.loading && !catalog.result) {
+    return <div className="strategy-state" role="status">Cargando catálogo oficial…</div>;
+  }
+  if (catalog.error && !catalog.result) {
+    return (
+      <div className="strategy-state strategy-state--error" role="alert">
+        <p>{catalog.error || "No hay un catálogo oficial verificado disponible."}</p>
+        <button className="strategy-button strategy-button--secondary" type="button" onClick={onReload}>Reintentar</button>
+      </div>
+    );
+  }
+  const result = catalog.result;
+  if (!result) return null;
+  const isLastKnownGood = result.status !== "ready";
+  const busy = transfer.stage === "reading" || transfer.stage === "previewed" || transfer.stage === "importing";
+  return (
+    <>
+      <section className="strategy-catalog-proof" aria-label="Verificación del catálogo">
+        <div>
+          <strong>Firma verificada</strong>
+          {isLastKnownGood && <span>Último catálogo verificado · {result.status}</span>}
+        </div>
+        <dl>
+          <div><dt>Key ID</dt><dd>{result.catalog.keyId}</dd></div>
+          <div><dt>Sequence</dt><dd>{result.catalog.sequence}</dd></div>
+          <div><dt>Trust version</dt><dd>{result.catalog.trustVersion}</dd></div>
+          <div><dt>Publicado</dt><dd>{result.catalog.publishedAt}</dd></div>
+        </dl>
+        {isLastKnownGood && (
+          <p role="status">{result.warning ?? "Se muestra el último catálogo verificado recuperado localmente."}</p>
+        )}
+        {catalog.error && <p className="strategy-catalog-proof__error" role="alert">{catalog.error}</p>}
+      </section>
+      {result.catalog.entries.length === 0 ? (
+        <div className="strategy-state strategy-state--empty">
+          <span className="strategy-state__icon" aria-hidden="true">◇</span>
+          <h2>El catálogo verificado no contiene planes</h2>
+          <p>No se muestran ejemplos ni cifras hasta que Vantare publique contenido oficial aprobado.</p>
+        </div>
+      ) : (
+        <div className="strategy-gallery__grid" data-testid="strategy-official-grid">
+          {result.catalog.entries.map((entry) => (
+            <article
+              className="strategy-plan-tile strategy-plan-tile--official"
+              key={entry.id}
+              data-testid={`strategy-official-plan-${entry.id}`}
+            >
+              <div className="strategy-plan-tile__body">
+                <div className="strategy-plan-tile__meta"><span>VANTARE · VERIFICADO</span><span>{entry.id}</span></div>
+                <h2>{entry.title}</h2>
+                <p>{entry.summary}</p>
+                <dl className="strategy-plan-tile__compatibility">
+                  <div><dt>Simulador</dt><dd>{entry.compatibility.simulator}</dd></div>
+                  <div><dt>Circuito</dt><dd>{entry.compatibility.circuit}</dd></div>
+                  <div><dt>Coche</dt><dd>{entry.compatibility.car}</dd></div>
+                  <div><dt>Evento</dt><dd>{entry.compatibility.event}</dd></div>
+                </dl>
+                <button
+                  className="strategy-button strategy-button--primary"
+                  type="button"
+                  onClick={() => onPreview(entry)}
+                  disabled={!libraryVersionReliable || busy}
+                  aria-label={`Guardar ${entry.title} en Mis planes`}
+                  title={libraryVersionReliable ? undefined : "Espera a que Mis planes termine de cargar"}
+                >Guardar en Mis planes</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -923,11 +1250,13 @@ function ImportPreview({
   preview,
   onConfirm,
   onCancel,
+  confirmLabel = "Importar",
 }: {
   fileName: string;
   preview: StrategyImportPreviewV1;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmLabel?: string;
 }) {
   const nothingToDo = preview.entries.every((entry) => entry.disposition === "unchanged");
   return (
@@ -967,7 +1296,7 @@ function ImportPreview({
               : "Este paquete choca con revisiones que ya tienes guardadas"
           }
         >
-          Importar
+          {confirmLabel}
         </button>
       </footer>
     </section>

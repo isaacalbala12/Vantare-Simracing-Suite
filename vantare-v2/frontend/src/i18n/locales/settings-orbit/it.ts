@@ -102,6 +102,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.upd.install": "Installa {{version}}",
   "settings.upd.channels": "Canale di aggiornamento",
   "settings.upd.channelLocked": "Richiede invito",
+  "settings.upd.channelDeniedReason": "Il canale {{channel}} richiede un invito: la tua licenza attuale consente solo Stabile.",
   "settings.upd.channel.stable": "Stable",
   "settings.upd.channel.stableCopy": "Versioni testate per tutti.",
   "settings.upd.channel.testers": "Testers",

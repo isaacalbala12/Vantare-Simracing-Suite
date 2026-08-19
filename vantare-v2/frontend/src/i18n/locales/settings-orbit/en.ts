@@ -102,6 +102,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.upd.install": "Install {{version}}",
   "settings.upd.channels": "Update channel",
   "settings.upd.channelLocked": "Invitation required",
+  "settings.upd.channelDeniedReason": "The {{channel}} channel needs an invitation: your current licence only allows Stable.",
   "settings.upd.channel.stable": "Stable",
   "settings.upd.channel.stableCopy": "Tested releases for everyone.",
   "settings.upd.channel.testers": "Testers",

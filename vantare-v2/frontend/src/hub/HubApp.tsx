@@ -19,6 +19,7 @@ import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { TestingCenterPage } from './testing-center/TestingCenterPage';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
+import { UPDATER_CHANNEL_EVENT, buildChannelOf, type UpdaterChannelEvent } from './settings/updater-channel';
 import { submitTestingCenterReport } from './testing-center/report-submission-client';
 import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
 import { testingCenterFeedbackClient } from './testing-center/candidate-feedback-client';
@@ -122,6 +123,11 @@ function HubShell() {
   const [section, setSection] = useState<Section>(() => initialSection(orbitEnabled));
   const [version, setVersion] = useState<string | null>(null);
   const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
+  // Canal elegido en Ajustes > Actualizaciones. Manda sobre el canal con el que
+  // se compilo el binario: si no, cambiarlo no movia nada hasta reinstalar y el
+  // Testing Center seguia apareciendo (o faltando) contra lo que dice la
+  // pantalla. La licencia sigue decidiendo (`resolveTestingCenterChannel`).
+  const [preferredChannel, setPreferredChannel] = useState<VantareBuildChannel | null>(null);
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -131,7 +137,10 @@ function HubShell() {
   // la pantalla destino lo consume, hoy el Studio para abrir «Mis perfiles».
   const [navTarget, setNavTarget] = useState<string | undefined>(undefined);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
-  const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
+  const testingCenterChannel = resolveTestingCenterChannel(
+    preferredChannel ?? buildChannel,
+    licenseResult?.capabilities,
+  );
 
   const visibleSection: Section = section === "testing-center" && !testingCenterChannel
     ? "dashboard"
@@ -159,6 +168,20 @@ function HubShell() {
         setSection(viewToSection('inicio'));
       }
     });
+    // Ajustes emite este evento al confirmar el canal (y al releerlo del
+    // backend): la shell se entera sin recargar.
+    const unsubChannel = Events.On(UPDATER_CHANNEL_EVENT, (event: { data: UpdaterChannelEvent }) => {
+      const channel = event.data?.channel;
+      setPreferredChannel(channel ? buildChannelOf(channel) : null);
+    });
+    // Y al arrancar, directo del backend: Ajustes puede no haberse abierto nunca.
+    const unsubUpdaterSettings = Events.On(
+      'updater:settings',
+      (event: { data: { settings?: { channel?: UpdaterChannelEvent['channel'] } } }) => {
+        const channel = event.data?.settings?.channel;
+        if (channel) setPreferredChannel(buildChannelOf(channel));
+      },
+    );
     const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
       setReminder(event.data ?? null);
     });
@@ -168,11 +191,14 @@ function HubShell() {
     Events.Emit('app:version:get');
     Events.Emit(telemetrySourceStatusRequestEvent);
     Events.Emit('settings:get');
+    Events.Emit('updater:settings:get');
     return () => {
       document.body.classList.remove('hub');
       unsub?.();
       unsubSource?.();
       unsubSettings?.();
+      unsubChannel?.();
+      unsubUpdaterSettings?.();
       unsubReminder?.();
       unsubOverlayStudio?.();
     };

@@ -483,7 +483,7 @@
   animation: orbit-tab-in var(--orbit-enter, 0.28s) var(--orbit-ease) both;
 }
 
-.orbit-set-channel:hover:not(:disabled) {
+.orbit-set-channel:hover:not([aria-disabled="true"]) {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
@@ -493,7 +493,9 @@
   box-shadow: 0 0 28px rgba(213, 47, 73, 0.08);
 }
 
-.orbit-set-channel:disabled {
+/* Bloqueado por licencia: se ve apagado y el cursor lo dice, pero sigue siendo
+   un boton real (recibe foco y clic) para poder explicar el motivo. */
+.orbit-set-channel[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.72;
 }

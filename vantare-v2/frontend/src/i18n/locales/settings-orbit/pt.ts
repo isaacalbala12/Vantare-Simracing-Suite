@@ -102,6 +102,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.upd.install": "Instalar {{version}}",
   "settings.upd.channels": "Canal de atualização",
   "settings.upd.channelLocked": "Requer convite",
+  "settings.upd.channelDeniedReason": "O canal {{channel}} precisa de convite: a tua licença atual só permite Estável.",
   "settings.upd.channel.stable": "Stable",
   "settings.upd.channel.stableCopy": "Versões testadas para toda a gente.",
   "settings.upd.channel.testers": "Testers",

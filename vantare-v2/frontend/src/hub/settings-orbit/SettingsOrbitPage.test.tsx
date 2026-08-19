@@ -5,6 +5,7 @@ import { I18nProvider } from "../../i18n/I18nProvider";
 import { LicenseProvider } from "../../lib/license";
 import { SETTINGS_CONTEXT_SLOT_ID, SettingsOrbitPage } from "./SettingsOrbitPage";
 import { conflictingHotkeys, keycapsOf, maskEmail, resolveSettingsSection } from "./settings-orbit-model";
+import { UPDATER_CHANNEL_EVENT } from "../settings/updater-channel";
 
 /** La shell reserva el hueco de la columna; en los tests lo monta el propio test. */
 function mount(target?: string) {
@@ -27,6 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.history.replaceState({}, "", "/");
   document.querySelectorAll(`#${SETTINGS_CONTEXT_SLOT_ID}`).forEach((node) => node.remove());
   delete document.body.dataset.density;
   delete document.body.dataset.reduceMotion;
@@ -115,13 +117,26 @@ describe("SettingsOrbitPage", () => {
 
   it("con licencia anónima los canales de testers y nightly llevan candado", () => {
     mount("updates");
-    expect(screen.getByTestId("orbit-settings-channel-stable").hasAttribute("disabled")).toBe(false);
+    expect(screen.getByTestId("orbit-settings-channel-stable").getAttribute("aria-disabled")).toBeNull();
     for (const channel of ["testers", "nightly"]) {
       const card = screen.getByTestId(`orbit-settings-channel-${channel}`);
       expect(card.dataset.locked).toBe("true");
-      expect(card.hasAttribute("disabled")).toBe(true);
+      // El candado se anuncia con `aria-disabled`, no con `disabled`: un botón
+      // desactivado no recibe foco ni clic, así que el motivo no se podía leer.
+      expect(card.getAttribute("aria-disabled")).toBe("true");
+      expect(card.hasAttribute("disabled")).toBe(false);
       expect(screen.getByTestId(`orbit-settings-lock-${channel}`)).toBeTruthy();
     }
+  });
+
+  it("un canal bloqueado no se guarda y explica el motivo", () => {
+    const emit = vi.spyOn(Events, "Emit");
+    mount("updates");
+    emit.mockClear();
+    fireEvent.click(screen.getByTestId("orbit-settings-channel-nightly"));
+    expect(emit.mock.calls.some(([name]) => name === "updater:settings:save")).toBe(false);
+    expect(screen.getByTestId("orbit-settings-channel-denied").textContent).toContain("Nightly");
+    expect(screen.getByTestId("orbit-settings-channel-stable").dataset.state).toBe("on");
   });
 
   it("seleccionar un canal permitido dispara el flujo real del actualizador", () => {
@@ -130,6 +145,47 @@ describe("SettingsOrbitPage", () => {
     emit.mockClear();
     fireEvent.click(screen.getByTestId("orbit-settings-channel-stable"));
     expect(emit.mock.calls.some(([name]) => name === "updater:settings:save")).toBe(true);
+    // La shell se entera del canal por el mismo gesto, sin recargar (B4).
+    expect(emit.mock.calls.some(([name]) => name === UPDATER_CHANNEL_EVENT)).toBe(true);
+  });
+
+  it("ida y vuelta del canal contra el bridge: se guarda, se relee y se refleja", async () => {
+    // El bridge simulado hace el viaje entero de la app: `save` responde
+    // `settings-saved`, eso dispara un `get` y el `get` devuelve lo guardado.
+    const saved: unknown[] = [];
+    const handlers = new Map<string, (event: { data: unknown }) => void>();
+    vi.spyOn(Events, "On").mockImplementation(((name: string, cb: unknown) => {
+      handlers.set(name, cb as (event: { data: unknown }) => void);
+      return () => handlers.delete(name);
+    }) as never);
+    vi.spyOn(Events, "Emit").mockImplementation(((name: string, data: unknown) => {
+      if (name === "updater:settings:save") {
+        saved.push(data);
+        handlers.get("updater:settings-saved")?.({ data: { ok: true } });
+      }
+      if (name === "updater:settings:get") {
+        handlers
+          .get("updater:settings")
+          ?.({ data: { settings: saved[saved.length - 1] ?? { channel: "stable" } } });
+      }
+      return Promise.resolve(true);
+    }) as never);
+
+    // `?access=power-tester` es la licencia con nightly: el candado desaparece.
+    window.history.replaceState({}, "", "/?access=power-tester");
+    mount("updates");
+
+    const card = screen.getByTestId("orbit-settings-channel-nightly");
+    expect(card.getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(card);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-settings-channel-nightly").dataset.state).toBe("on");
+    });
+    expect(saved).toEqual([{ channel: "nightly" }]);
+    expect(screen.getByTestId("orbit-settings-channel-stable").dataset.state).toBeUndefined();
+    // El hero deja de decir «Stable» y pasa a decir el canal elegido.
+    expect(screen.getByTestId("orbit-settings-upd-hero").textContent).toContain("Nightly");
   });
 
   it("grabar una combinación la muestra en keycaps", async () => {

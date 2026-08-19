@@ -1,15 +1,30 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { isDowngrade } from "../../lib/version-compare";
 import { findInstallerAsset, type Channel, type Release, type UpdateInfo, type UpdaterSettings } from "./settings-contract";
+import { UPDATER_CHANNEL_EVENT } from "./updater-channel";
+
+export type UpdaterSettingsOptions = {
+  /**
+   * Canales que la licencia permite. Elegir uno fuera de la lista no se guarda:
+   * se devuelve en `channelDenied` para que la tarjeta diga el motivo en vez de
+   * quedarse muda, que es como lo vivia Isaac (clic sin efecto ni razon).
+   */
+  allowed?: readonly Channel[];
+};
 
 /**
  * Everything the updates section needs: the channel, the release list, and the
  * download lifecycle. Lifted out of SettingsPage so the page renders sections
  * instead of also owning nine pieces of updater state and seven subscriptions.
  */
-export function useUpdaterSettings() {
+export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
+  const allowed = options?.allowed;
   const [settings, setSettings] = useState<UpdaterSettings>({ channel: "stable" });
+  // Ultimo canal que el backend confirmo: si el guardado falla se vuelve a el
+  // en lugar de dejar el radio marcando algo que no esta en disco.
+  const confirmedRef = useRef<UpdaterSettings>({ channel: "stable" });
+  const [channelDenied, setChannelDenied] = useState<Channel | null>(null);
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [installingTag, setInstallingTag] = useState<string | null>(null);
@@ -24,7 +39,11 @@ export function useUpdaterSettings() {
 
     handlers.push(
       Events.On("updater:settings", (event: { data: { settings?: UpdaterSettings } }) => {
-        if (event.data.settings) setSettings(event.data.settings);
+        if (!event.data.settings) return;
+        confirmedRef.current = event.data.settings;
+        setSettings(event.data.settings);
+        // El resto de la app (shell, rail, Testing Center) se entera por aqui.
+        Events.Emit(UPDATER_CHANNEL_EVENT, { channel: event.data.settings.channel });
       }),
     );
 
@@ -63,6 +82,9 @@ export function useUpdaterSettings() {
     handlers.push(
       Events.On("updater:settings-saved", () => {
         setStatus("Preferencias guardadas.");
+        // El backend confirma con un `ok` pelado: sin volver a pedir los ajustes
+        // nadie sabia si lo que se ve es lo que quedo guardado. Ahora se relee.
+        Events.Emit("updater:settings:get");
         Events.Emit("updater:check");
         setLoading(true);
       }),
@@ -74,6 +96,8 @@ export function useUpdaterSettings() {
         setInstallingTag(null);
         setProgress(null);
         setError(event.data.message ?? "Error desconocido");
+        // Un guardado que falla no puede dejar el radio en el canal nuevo.
+        setSettings(confirmedRef.current);
       }),
     );
 
@@ -85,11 +109,22 @@ export function useUpdaterSettings() {
     };
   }, []);
 
-  function changeChannel(channel: Channel) {
-    const next = { ...settings, channel };
-    setSettings(next);
-    Events.Emit("updater:settings:save", next);
-  }
+  const changeChannel = useCallback(
+    (channel: Channel) => {
+      if (allowed && !allowed.includes(channel)) {
+        setChannelDenied(channel);
+        return;
+      }
+      setChannelDenied(null);
+      const next = { ...settings, channel };
+      // Se refleja al instante (radio, hero y eyebrow leen `settings.channel`) y
+      // el guardado real lo confirma o lo revierte desde los eventos de arriba.
+      setSettings(next);
+      Events.Emit("updater:settings:save", next);
+      Events.Emit(UPDATER_CHANNEL_EVENT, { channel });
+    },
+    [allowed, settings],
+  );
 
   function startInstall(release: Release) {
     const asset = findInstallerAsset(release);
@@ -126,6 +161,7 @@ export function useUpdaterSettings() {
 
   return {
     settings,
+    channelDenied,
     info,
     loading,
     installingTag,

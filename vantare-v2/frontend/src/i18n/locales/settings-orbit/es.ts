@@ -110,6 +110,7 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.upd.install": "Instalar {{version}}",
   "settings.upd.channels": "Canal de actualización",
   "settings.upd.channelLocked": "Requiere invitación",
+  "settings.upd.channelDeniedReason": "El canal {{channel}} necesita una invitación: tu licencia actual solo permite Estable.",
   "settings.upd.channel.stable": "Stable",
   "settings.upd.channel.stableCopy": "Versiones probadas para todo el mundo.",
   "settings.upd.channel.testers": "Testers",

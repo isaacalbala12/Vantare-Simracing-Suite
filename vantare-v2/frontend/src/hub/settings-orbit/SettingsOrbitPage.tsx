@@ -625,8 +625,10 @@ function ApplicationSection({
 function UpdatesSection() {
   const { t } = useI18n();
   const access = useAccess();
-  const updater = useUpdaterSettings();
-  const allowed = allowedUpdateChannels(access);
+  // El hook necesita saber que canales permite la licencia: elegir uno cerrado
+  // no puede acabar en `updater:settings:save`.
+  const allowed = useMemo(() => allowedUpdateChannels(access), [access]);
+  const updater = useUpdaterSettings({ allowed });
 
   const info = updater.info;
   const latest = info?.latestRelease ?? null;
@@ -697,8 +699,12 @@ function UpdatesSection() {
               data-locked={locked ? "true" : undefined}
               data-state={active ? "on" : undefined}
               data-testid={`orbit-settings-channel-${channel}`}
-              disabled={locked}
               key={channel}
+              // Un canal cerrado no se desactiva: un boton `disabled` no recibe
+              // el clic ni el foco, asi que el candado no se podia ni leer y la
+              // tarjeta parecia rota. Sigue sin cambiar el canal, pero ahora
+              // responde y explica por que.
+              aria-disabled={locked || undefined}
               onClick={() => updater.changeChannel(channel)}
               role="radio"
               type="button"
@@ -726,6 +732,16 @@ function UpdatesSection() {
           );
         })}
       </div>
+
+      {updater.channelDenied ? (
+        <span data-testid="orbit-settings-channel-denied" role="status">
+          <SubtleStatus tone="attn">
+            {formatMessage(t("settings.upd.channelDeniedReason"), {
+              channel: t(`settings.upd.channel.${updater.channelDenied}`),
+            })}
+          </SubtleStatus>
+        </span>
+      ) : null}
 
       <Surface
         aria-label={t("settings.upd.news")}

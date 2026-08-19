@@ -385,6 +385,27 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Integrada en Nightly | ISA-160 / TC-10A en `nightly@8880a88` |
 | PR draft / CI verde en corte publicado | ISA-161 / TC-10B, PR draft [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) OPEN/CLEAN/MERGEABLE a `nightly@b6df494`; [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366) SUCCESS para `19dddea`; Linear pendiente, sin integración |
 
+## Arquitectura objetivo (ISA-371 / ISA-372)
+
+- ISA-373 / F0 deja la red de seguridad ejecutable sin modificar producción.
+  Los tests rojos permanecen saltados con el defecto y la fase que los activa:
+  techo de payload y grid 104 (D-08/D-02), commit mapper/reducer (D-01),
+  publicación terminal, panic y consumidor lento (D-02 y riesgos 7/13), gracia
+  de identidad, historial y firma stale (D-03 y riesgo 11), historial de 300
+  vehículos (D-04), watchdog/orden del status terminal (D-06) y store frontend
+  con edad/revisión no contigua (D-06/D-07).
+- Sin `Skip`, los tests fallan por la causa prevista. La reutilización real de
+  un slot por otro coche ya asigna una identidad nueva y se conserva como
+  comportamiento correcto a migrar literalmente. El runtime no ofrece todavía
+  inyección de driver ni reloj; F0 usa el sink real post-driver y documenta el
+  reloj faltante sin añadir hooks de producción.
+- Baseline versionada en
+  `docs/telemetry-core/evidence/baseline-2026-08/`: mediana de proyección Overlay
+  + JSON para 1/20/44/104 vehículos, con salida cruda. A 104 son 1.593.117 ns/op,
+  1.160.221 B/op, 29 allocs/op y 277.119 payload bytes.
+- Estado: diez commits locales sobre `origin/nightly@7a92241d`; sin push, PR,
+  merge, promoción ni release. Linear queda a cargo del orquestador.
+
 ## Siguiente acción exacta
 
 Actualizar Linear tras reautenticar y solicitar review de Isaac sobre el PR

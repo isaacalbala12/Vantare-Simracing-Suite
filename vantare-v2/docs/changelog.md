@@ -38,6 +38,7 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 **Plataforma y CI (interno, sin efecto visible para testers)**
 
 - Autofix con política fail-closed v2, máquina de estados para jobs de agentes con jaulas de seguridad, triage DeepSeek de solo lectura y dispatch GitHub App en cloud, y TDD cloud con diff gate y revisión Opus. (ISA-319, ISA-320, ISA-321, ISA-323)
+- Red de seguridad de Telemetry Core: tests rojos saltados para D-01…D-08 y baseline de proyección para grids de 1/20/44/104 vehículos; no cambia el runtime. (ISA-373, pendiente de promoción)
 
 **Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
 

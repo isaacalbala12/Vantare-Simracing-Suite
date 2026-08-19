@@ -290,7 +290,9 @@ function HubShell() {
 }
 
 export function HubApp() {
-  useHubResponsiveZoom();
+  // Con Orbit el escalado lo lleva la propia shell (D-R4-3): el zoom de V52 se
+  // apaga para que no se pisen sobre `documentElement.style.zoom`.
+  useHubResponsiveZoom({ enabled: !isOrbitEnabled() });
   return (
     <LicenseProvider>
       <I18nProvider>

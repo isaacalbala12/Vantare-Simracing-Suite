@@ -15,6 +15,7 @@ import { useAccountIdentity } from "../../orbit/use-account-identity";
 import { useCalendarStarts } from "../../orbit/use-calendar-starts";
 import { OrbitSimStatusContext } from "../../orbit/sim-status-context";
 import { useOverlayState } from "../../orbit/use-overlay-state";
+import { useOrbitResponsiveZoom } from "../../orbit/use-orbit-responsive-zoom";
 import {
   canSeeView,
   planLabelOf,
@@ -139,6 +140,11 @@ function OrbitShellBody({
   const toastApi = useToast();
   const [update, setUpdate] = useState<UpdateState>("none");
   const [updateTag, setUpdateTag] = useState<string>("");
+
+  // Escalado proporcional en ventanas por debajo del mínimo de diseño
+  // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
+  // escala. Como el tema, vive y muere con la shell.
+  useOrbitResponsiveZoom();
 
   // El tema Orbit solo se aplica mientras la shell está montada y **no** se
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.

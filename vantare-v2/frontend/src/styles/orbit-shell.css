@@ -5,12 +5,29 @@
 
 .orbit-root {
   --orbit-shell-column: var(--orbit-column-w);
-  min-width: 1180px;
-  height: 100vh;
+  /* El escalado proporcional (D-R4-3) pone `zoom` en `<html>`; bajo `zoom` las
+     unidades de viewport se resuelven en px reales y *después* se escalan, así
+     que la shell pide `100v* / factor` para acabar midiendo la ventana exacta.
+     Sin escalado (`--orbit-zoom: 1`) el cálculo es la identidad. */
+  width: calc(100vw / var(--orbit-zoom, 1));
+  height: calc(100vh / var(--orbit-zoom, 1));
   overflow: hidden;
   color: var(--orbit-ink);
   font-family: var(--orbit-font-sans);
   font-size: var(--orbit-fs-base);
+}
+
+/* Por debajo del suelo del factor (ventana absurdamente pequeña) la shell ya no
+   cabe ni escalada: desplaza dentro de su propio contenedor en vez de recortar,
+   y sigue sin sacar barras en la página. */
+:root[data-orbit-zoom-floored="true"] .orbit-root {
+  overflow: auto;
+}
+
+/* El suelo de 1180 px vive en la rejilla, no en `.orbit-root`: así el
+   contenedor mide siempre la ventana y es él quien desplaza cuando no llega. */
+.orbit-shell {
+  min-width: 1180px;
 }
 
 .orbit-root *,
@@ -22,7 +39,10 @@
 .orbit-shell {
   display: grid;
   grid-template-columns: var(--orbit-rail-w) var(--orbit-shell-column) minmax(0, 1fr);
-  height: 100vh;
+  /* Antes `100vh`: ahora hereda el alto ya compensado de `.orbit-root`, que es
+     el único sitio donde se corrige el `zoom`. */
+  height: 100%;
+  min-height: 790px;
   background: var(--orbit-canvas);
   transition: grid-template-columns var(--orbit-move) var(--orbit-ease);
 }
@@ -788,6 +808,18 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 
 @media (max-width: 1500px) {
   .orbit-topbar__right .orbit-hide-1500 { display: none; }
+}
+
+/* Ultrapanorámicas (21:9 y 32:9). El contenido de las vistas ya iba topado y
+   centrado a `--orbit-content-max` (1508 px, doc 03 § 3.5): a 3440 o 5120 px no
+   hay rejillas de 3000 px, hay márgenes. A partir de 2200 px reales el tope
+   sube a 1760 px —el mayor escalón que mantiene la longitud de línea legible y
+   las proporciones calibradas de las rejillas— para no desperdiciar el ancho.
+   El fondo del workspace sigue ocupando la ventana entera y las vistas con
+   `height: 100%` siguen llenando el alto. El Studio queda exento a propósito:
+   su lienzo 16:9 sí gana con todo el ancho disponible (D-R4-3). */
+@media (min-width: 2200px) {
+  .orbit-root { --orbit-content-max: 1760px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

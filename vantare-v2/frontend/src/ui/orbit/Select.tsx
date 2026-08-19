@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { layoutViewport, orbitZoomFactor, toLayoutPx } from "./layout-scale";
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -115,13 +116,25 @@ export function Select<T extends string>({
   const measure = useCallback(() => {
     const node = triggerRef.current;
     if (!node) return;
-    const rect = node.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom - GAP - 8;
+    // La lista se portala a `document.body` y se posiciona con `fixed`: cuando
+    // la shell está escalada (D-R4-3) el rect medido viene en px reales y el
+    // `top/left` se interpreta en px de maquetación. Sin convertir, la lista
+    // aparecía desplazada del disparador.
+    const factor = orbitZoomFactor();
+    const measured = node.getBoundingClientRect();
+    const rect = {
+      top: toLayoutPx(measured.top, factor),
+      bottom: toLayoutPx(measured.bottom, factor),
+      left: toLayoutPx(measured.left, factor),
+      width: toLayoutPx(measured.width, factor),
+    };
+    const viewport = layoutViewport(factor);
+    const below = viewport.height - rect.bottom - GAP - 8;
     const above = rect.top - GAP - 8;
     const up = below < Math.min(wanted, 160) && above > below;
     const maxHeight = Math.max(120, Math.min(wanted, up ? above : below));
     const next: Placement = {
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
+      left: Math.max(8, Math.min(rect.left, viewport.width - rect.width - 8)),
       top: up ? rect.top - GAP - maxHeight : rect.bottom + GAP,
       width: rect.width,
       up,

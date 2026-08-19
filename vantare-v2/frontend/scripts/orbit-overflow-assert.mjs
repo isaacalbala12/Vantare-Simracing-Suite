@@ -35,10 +35,18 @@ export async function assertNoHorizontalOverflow(page, name) {
       if (classes.some((entry) => allowed.includes(entry))) continue;
       offenders.push(`${node.tagName.toLowerCase()}.${classes.join(".")} ${node.scrollWidth}>${node.clientWidth}`);
     }
+    // Con el escalado de Orbit (D-R4-3) `<html>` lleva `zoom`: su propia caja
+    // sigue midiendo el viewport real, pero todo lo que cuelga de ella se mide
+    // en px de maquetación (a 870 px de ventana, `body.clientWidth` es 1180).
+    // Comparar ambos contra `window.innerWidth` mezclaba los dos espacios y
+    // daba falsos positivos. Cada elemento se compara contra **su propia** caja
+    // de cliente, que es lo que de verdad significa «esto saca barra»; sin zoom
+    // los números son los mismos que antes.
     const page = {
       scrollWidth: document.documentElement.scrollWidth,
-      innerWidth: window.innerWidth,
+      innerWidth: document.documentElement.clientWidth,
       bodyScrollWidth: body.scrollWidth,
+      bodyClientWidth: body.clientWidth,
     };
     if (!hadHub) body.classList.remove("hub");
     return { offenders, page };
@@ -49,9 +57,9 @@ export async function assertNoHorizontalOverflow(page, name) {
       `${name}: la página hace scroll horizontal (${report.page.scrollWidth} > ${report.page.innerWidth})`,
     );
   }
-  if (report.page.bodyScrollWidth > report.page.innerWidth) {
+  if (report.page.bodyScrollWidth > report.page.bodyClientWidth + 1) {
     throw new Error(
-      `${name}: el body hace scroll horizontal (${report.page.bodyScrollWidth} > ${report.page.innerWidth})`,
+      `${name}: el body hace scroll horizontal (${report.page.bodyScrollWidth} > ${report.page.bodyClientWidth})`,
     );
   }
   if (report.offenders.length > 0) {

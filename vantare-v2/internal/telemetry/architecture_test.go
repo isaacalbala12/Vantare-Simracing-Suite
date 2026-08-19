@@ -97,6 +97,21 @@ func TestLMUOverlayRuntimeChainHasNoLegacyMockOrProductUICoupling(t *testing.T) 
 	}
 }
 
+func TestReducerRunLoopStaysRemoved(t *testing.T) {
+	t.Parallel()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate architecture test")
+	}
+	contents, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "core", "reducer.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(contents, []byte("func (reducer *Reducer) Run(")) {
+		t.Fatal("Reducer.Run reintroduced a second orchestration loop")
+	}
+}
+
 func TestValidateImport(t *testing.T) {
 	t.Parallel()
 

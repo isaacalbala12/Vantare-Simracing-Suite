@@ -1,16 +1,12 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
-	"runtime"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -387,132 +383,6 @@ func TestReducerIsDeterministic(t *testing.T) {
 	}
 }
 
-func TestReducerRunLifecycleAndCancellation(t *testing.T) {
-	reducer := NewReducer()
-	batches := make(chan Batch)
-	snapshots := make(chan envelope.Snapshot[ObservedState])
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() {
-		done <- reducer.Run(ctx, batches, snapshots)
-	}()
-
-	batches <- testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)
-	select {
-	case snapshot := <-snapshots:
-		if snapshot.Header().Cursor.Sequence != 1 {
-			t.Fatalf("published sequence = %d, want 1", snapshot.Header().Cursor.Sequence)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("Run() did not publish accepted batch")
-	}
-
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("Run() error = %v, want context canceled", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("Run() did not stop after cancellation")
-	}
-
-	closed := make(chan Batch)
-	close(closed)
-	if err := reducer.Run(context.Background(), closed, snapshots); err != nil {
-		t.Fatalf("Run() after completed lifecycle = %v", err)
-	}
-}
-
-func TestReducerDoesNotApplyBufferedBatchWhenAlreadyCancelled(t *testing.T) {
-	reducer := NewReducer()
-	batches := make(chan Batch, 1)
-	batches <- testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	if err := reducer.Run(ctx, batches, make(chan envelope.Snapshot[ObservedState])); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() error = %v, want context canceled", err)
-	}
-	if _, ok := reducer.Current(); ok {
-		t.Fatal("cancelled Run() accepted a buffered batch")
-	}
-}
-
-func TestReducerRechecksCancellationAfterReceiveBeforeApply(t *testing.T) {
-	reducer := NewReducer()
-	ctx := newCancelOnSecondErrContext()
-	batch := testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)
-	batches := make(chan Batch, 1)
-	batches <- batch
-	snapshots := make(chan envelope.Snapshot[ObservedState], 1)
-
-	if err := reducer.Run(ctx, batches, snapshots); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Run() error = %v, want context canceled", err)
-	}
-	if _, ok := reducer.Current(); ok {
-		t.Fatal("Run() mutated state after cancellation won the receive boundary")
-	}
-	if len(snapshots) != 0 {
-		t.Fatalf("Run() published %d snapshots after cancellation, want 0", len(snapshots))
-	}
-
-	retryBatches := make(chan Batch, 1)
-	retryBatches <- batch
-	close(retryBatches)
-	retrySnapshots := make(chan envelope.Snapshot[ObservedState], 1)
-	if err := reducer.Run(context.Background(), retryBatches, retrySnapshots); err != nil {
-		t.Fatalf("Run() retry: %v", err)
-	}
-	if len(retrySnapshots) != 1 {
-		t.Fatalf("Run() retry published %d snapshots, want 1", len(retrySnapshots))
-	}
-	retried := <-retrySnapshots
-	if retried.Header().Cursor != batch.Header.Cursor {
-		t.Fatalf("retry cursor = %+v, want %+v", retried.Header().Cursor, batch.Header.Cursor)
-	}
-}
-
-func TestReducerRejectsConcurrentRun(t *testing.T) {
-	reducer := NewReducer()
-	ctx, cancel := context.WithCancel(context.Background())
-	batches := make(chan Batch)
-	snapshots := make(chan envelope.Snapshot[ObservedState])
-	done := make(chan error, 1)
-	go func() {
-		done <- reducer.Run(ctx, batches, snapshots)
-	}()
-
-	deadline := time.Now().Add(time.Second)
-	for !reducer.Running() && time.Now().Before(deadline) {
-		runtime.Gosched()
-	}
-	if !reducer.Running() {
-		cancel()
-		select {
-		case err := <-done:
-			t.Fatalf("first Run() never acquired ownership and returned %v", err)
-		case <-time.After(time.Second):
-			t.Fatal("first Run() never acquired ownership and did not stop after cancellation")
-		}
-	}
-	if err := reducer.Run(context.Background(), batches, snapshots); !errors.Is(err, ErrReducerRunning) {
-		t.Fatalf("second Run() error = %v, want %v", err, ErrReducerRunning)
-	}
-	if _, err := reducer.Apply(testBatch(schema.Cursor{Epoch: 1, Sequence: 1}, "spa", 1)); !errors.Is(err, ErrReducerRunning) {
-		t.Fatalf("Apply() during Run error = %v, want %v", err, ErrReducerRunning)
-	}
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("first Run() error = %v, want context canceled", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("first Run() did not stop after cancellation")
-	}
-}
-
 func FuzzReducerCursorValidation(f *testing.F) {
 	f.Add(uint64(1), uint64(1), uint64(1), uint64(2))
 	f.Add(uint64(2), uint64(1), uint64(3), uint64(1))
@@ -608,28 +478,6 @@ func assertReducerMatchesModel(t *testing.T, reducer *Reducer, model reducerMode
 	if snapshot.Header() != model.header || !reflect.DeepEqual(value, model.state) {
 		t.Fatalf("Current() = (%+v, %+v), want (%+v, %+v)", snapshot.Header(), value, model.header, model.state)
 	}
-}
-
-type cancelOnSecondErrContext struct {
-	done  chan struct{}
-	calls atomic.Int32
-	once  sync.Once
-}
-
-func newCancelOnSecondErrContext() *cancelOnSecondErrContext {
-	return &cancelOnSecondErrContext{done: make(chan struct{})}
-}
-
-func (ctx *cancelOnSecondErrContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (ctx *cancelOnSecondErrContext) Done() <-chan struct{}       { return ctx.done }
-func (ctx *cancelOnSecondErrContext) Value(any) any               { return nil }
-
-func (ctx *cancelOnSecondErrContext) Err() error {
-	if ctx.calls.Add(1) < 2 {
-		return nil
-	}
-	ctx.once.Do(func() { close(ctx.done) })
-	return context.Canceled
 }
 
 func BenchmarkReducerApply64Vehicles(b *testing.B) {

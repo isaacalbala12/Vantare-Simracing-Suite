@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -178,51 +177,6 @@ func (reducer *Reducer) Current() (envelope.Snapshot[ObservedState], bool) {
 		return envelope.Snapshot[ObservedState]{}, false
 	}
 	return snapshot, true
-}
-
-// Run synchronously owns the reducer until input closes, cancellation, or the
-// first rejected batch. It does not close caller-owned channels.
-func (reducer *Reducer) Run(
-	ctx context.Context,
-	batches <-chan Batch,
-	snapshots chan<- envelope.Snapshot[ObservedState],
-) error {
-	if !reducer.running.CompareAndSwap(false, true) {
-		return ErrReducerRunning
-	}
-	defer reducer.running.Store(false)
-
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case batch, ok := <-batches:
-			if !ok {
-				return nil
-			}
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			candidate, err := reducer.Prepare(batch)
-			if err != nil {
-				return fmt.Errorf("apply telemetry batch: %w", err)
-			}
-			reducer.Commit(candidate)
-			snapshot := candidate.Snapshot()
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case snapshots <- snapshot:
-			}
-		}
-	}
-}
-
-func (reducer *Reducer) Running() bool {
-	return reducer.running.Load()
 }
 
 func validateBatchHeader(current envelope.Header, initialized bool, next envelope.Header) error {

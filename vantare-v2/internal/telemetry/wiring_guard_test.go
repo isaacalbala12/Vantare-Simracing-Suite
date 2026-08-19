@@ -257,6 +257,11 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		strings.HasPrefix(symbol.packagePath, "internal/telemetry/recording/sqlite") {
 		return true
 	}
+	// 2026-08-19: the Engineer facts port is rescued now and connected in F7.
+	if symbol.packagePath == "internal/telemetry/projection/engineer" &&
+		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
+		return true
+	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.
 	_, allowed := wiringGuardExistingContractBaseline[symbol.packagePath+"."+symbol.name]

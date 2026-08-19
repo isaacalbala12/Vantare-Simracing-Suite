@@ -81,23 +81,22 @@ type factSubscriber struct {
 	exhausted bool
 	signal    chan struct{}
 	done      chan struct{}
-	resync    *FactResyncRequiredError
+	resync    *factResyncRequiredError
 }
 
-// FactResyncRequiredError is the explicit loss strategy for a subscriber that
-// fell behind bounded retention. Previous is the last fact it accepted; Next
-// is the first still retained fact. The consumer must fetch a full snapshot.
-type FactResyncRequiredError struct {
+// factResyncRequiredError keeps the disconnected Fanout compiling until F4.3
+// removes it. The exported contract now belongs to projection/engineer.
+type factResyncRequiredError struct {
 	Previous FactSequence
 	Next     FactSequence
 }
 
-func (err *FactResyncRequiredError) Error() string {
+func (err *factResyncRequiredError) Error() string {
 	return fmt.Sprintf("%v: fact %d followed by retained fact %d",
 		ErrFactResyncRequired, err.Previous, err.Next)
 }
 
-func (err *FactResyncRequiredError) Unwrap() error { return ErrFactResyncRequired }
+func (err *factResyncRequiredError) Unwrap() error { return ErrFactResyncRequired }
 
 // Fanout owns only bounded in-memory delivery state. It starts no goroutines;
 // publishers never wait for consumers, and every subscription has one explicit
@@ -313,7 +312,7 @@ func (fanout *Fanout[S]) WriteFacts(
 	oldest := fanout.oldestFactSequence()
 	for _, subscriber := range fanout.factReaders {
 		if subscriber.resync == nil && subscriber.next < oldest {
-			subscriber.resync = &FactResyncRequiredError{
+			subscriber.resync = &factResyncRequiredError{
 				Previous: subscriber.next - 1,
 				Next:     oldest,
 			}
@@ -355,7 +354,7 @@ func (fanout *Fanout[S]) SubscribeFacts(
 	oldest := fanout.oldestFactSequence()
 	if fanout.factLen > 0 && next < oldest {
 		fanout.metrics.ResyncsRequired++
-		return nil, &FactResyncRequiredError{Previous: after, Next: oldest}
+		return nil, &factResyncRequiredError{Previous: after, Next: oldest}
 	}
 
 	state := &factSubscriber{

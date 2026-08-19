@@ -273,7 +273,7 @@ func TestFanoutSlowFactSubscriberRequiresFullSnapshotResync(t *testing.T) {
 	if !errors.Is(err, ErrFactResyncRequired) {
 		t.Fatalf("Next() error = %v, want %v", err, ErrFactResyncRequired)
 	}
-	var gap *FactResyncRequiredError
+	var gap *factResyncRequiredError
 	if !errors.As(err, &gap) || gap.Previous != 0 || gap.Next != 2 {
 		t.Fatalf("typed gap = %#v", gap)
 	}

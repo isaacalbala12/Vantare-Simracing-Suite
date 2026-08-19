@@ -12,24 +12,100 @@ import (
 )
 
 func TestFrozenPipelineStopsReportingFresh(t *testing.T) {
-	t.Skip("ISA-371 D-06: activar en F2; TelemetryCoreRuntimeConfig no expone reloj inyectable")
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: true})
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Enabled: true,
+		Now:     func() time.Time { return now },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	capturedAt := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
-	status, err := telemetrytransport.NewStatus(telemetrytransport.ProductOverlay, 1, capturedAt,
-		telemetrytransport.StatusPayload{State: driver.StateLive.String()})
-	if err != nil {
+	if err := runtime.setStatus(driver.StateLive, 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.hub.PublishStatus(status); err != nil {
+	runtime.recordFrameArrival()
+	now = now.Add(time.Second)
+	if err := runtime.evaluateWatchdog(); err != nil {
 		t.Fatal(err)
 	}
-	runtime.statusState = driver.StateLive
-	// At capturedAt+1s no frame or watchdog has updated the runtime.
 	if got := runtime.SourceStatus().State; got != driver.StateStale.String() {
 		t.Fatalf("status one second after last frame = %q, want stale", got)
+	}
+}
+
+func TestWatchdogDegradesWithinOneSecond(t *testing.T) {
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Enabled:         true,
+		Now:             func() time.Time { return now },
+		WatchdogTimeout: 900 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.setStatus(driver.StateLive, 0); err != nil {
+		t.Fatal(err)
+	}
+	runtime.recordFrameArrival()
+
+	now = now.Add(899 * time.Millisecond)
+	if err := runtime.evaluateWatchdog(); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.SourceStatus().State; got != driver.StateLive.String() {
+		t.Fatalf("status before watchdog threshold = %q, want live", got)
+	}
+
+	now = now.Add(time.Millisecond)
+	if err := runtime.evaluateWatchdog(); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.SourceStatus().State; got != driver.StateStale.String() {
+		t.Fatalf("status at watchdog threshold = %q, want stale", got)
+	}
+	metrics := runtime.Metrics()
+	if metrics.LastFrameAgeMs != 900 || metrics.WatchdogDegradations != 1 {
+		t.Fatalf("watchdog metrics = age %d ms, degradations %d", metrics.LastFrameAgeMs, metrics.WatchdogDegradations)
+	}
+	if err := runtime.setStatus(runtime.watchdogAdjustedState(driver.StateLive), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.evaluateWatchdog(); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.Metrics().WatchdogDegradations; got != 1 {
+		t.Fatalf("watchdog degradations after another monitor tick = %d, want 1", got)
+	}
+}
+
+func TestWatchdogRecoversWhenFramesResume(t *testing.T) {
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Enabled: true,
+		Now:     func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.setStatus(driver.StateLive, 2); err != nil {
+		t.Fatal(err)
+	}
+	runtime.recordFrameArrival()
+	now = now.Add(time.Second)
+	if err := runtime.evaluateWatchdog(); err != nil {
+		t.Fatal(err)
+	}
+
+	now = now.Add(100 * time.Millisecond)
+	runtime.recordFrameArrival()
+	if err := runtime.setStatus(driver.StateLive, 2); err != nil {
+		t.Fatal(err)
+	}
+	if got := runtime.SourceStatus().State; got != driver.StateLive.String() {
+		t.Fatalf("status after frames resume = %q, want live", got)
+	}
+	if got := runtime.Metrics().LastFrameAgeMs; got != 0 {
+		t.Fatalf("last frame age after recovery = %d ms, want 0", got)
 	}
 }
 

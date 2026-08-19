@@ -68,6 +68,7 @@ type telemetryCoreMetricStore struct {
 	consumerPanics       map[string]uint64
 	payloadBytes         map[string]*telemetryPayloadHistogram
 	lifecycleTransitions map[string]uint64
+	watchdogDegradations uint64
 }
 
 func (store *telemetryCoreMetricStore) increment(target *map[string]uint64, label string) {
@@ -109,6 +110,12 @@ func (store *telemetryCoreMetricStore) lifecycleTransition(from, to telemetryRun
 	store.increment(&store.lifecycleTransitions, lifecycleTransitionLabel(from, to))
 }
 
+func (store *telemetryCoreMetricStore) watchdogDegradation() {
+	store.mu.Lock()
+	store.watchdogDegradations++
+	store.mu.Unlock()
+}
+
 func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -122,6 +129,7 @@ func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
 		consumerPanics:       cloneMetricMap(store.consumerPanics),
 		payloadBytes:         payloadBytes,
 		lifecycleTransitions: cloneMetricMap(store.lifecycleTransitions),
+		watchdogDegradations: store.watchdogDegradations,
 	}
 }
 
@@ -131,6 +139,7 @@ type telemetryCoreMetricSnapshot struct {
 	consumerPanics       map[string]uint64
 	payloadBytes         map[string]TelemetryPayloadPercentiles
 	lifecycleTransitions map[string]uint64
+	watchdogDegradations uint64
 }
 
 func cloneMetricMap(source map[string]uint64) map[string]uint64 {

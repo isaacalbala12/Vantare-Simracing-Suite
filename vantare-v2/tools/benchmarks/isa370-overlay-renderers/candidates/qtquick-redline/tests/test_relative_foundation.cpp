@@ -63,13 +63,14 @@ QObject *named(QObject *root, const QString &name)
     return nullptr;
 }
 
-std::unique_ptr<QQuickView> viewFor(RelativeModel &model, const bool reducedMotion = false)
+std::unique_ptr<QQuickView> viewFor(RelativeModel &model, const bool reducedMotion = false,
+                                    const QString &variant = QStringLiteral("mirror"))
 {
     auto view = std::make_unique<QQuickView>();
     view->setResizeMode(QQuickView::SizeRootObjectToView);
     view->resize(420, 440);
     view->setInitialProperties({{QStringLiteral("rowsModel"), QVariant::fromValue(static_cast<QObject *>(&model))},
-                                {QStringLiteral("variant"), QStringLiteral("mirror")},
+                                {QStringLiteral("variant"), variant},
                                 {QStringLiteral("reducedMotion"), reducedMotion}});
     view->setSource(QUrl::fromLocalFile(QStringLiteral(RELATIVE_QML_PATH)));
     if (view->status() != QQuickView::Ready) {
@@ -265,8 +266,7 @@ void RelativeFoundationTest::crossingBudgetFollowsEventOrderInEveryVariant()
                             row(QStringLiteral("stable-2"), 3, false, QStringLiteral("ahead"), 0.5),
                             row(QStringLiteral("stable-3"), 4, false, QStringLiteral("ahead"), 0.6),
                             row(QStringLiteral("only-cross"), 5, false, QStringLiteral("ahead"), 0.7)}));
-        auto view = viewFor(model);
-        view->rootObject()->setProperty("variant", variant);
+        auto view = viewFor(model, false, variant);
         QTRY_VERIFY_WITH_TIMEOUT(view->rootObject()->property("motionReady").toBool(), 250);
         const QString visualName = variant == QStringLiteral("mirror")
             ? QStringLiteral("relativeRow-only-cross-mirror")
@@ -298,8 +298,7 @@ void RelativeFoundationTest::crossingBudgetFollowsEventOrderInEveryVariant()
                             row(QStringLiteral("cross-2"), 3, false, QStringLiteral("ahead"), 0.5),
                             row(QStringLiteral("cross-3"), 4, false, QStringLiteral("ahead"), 0.6),
                             row(QStringLiteral("cross-4"), 5, false, QStringLiteral("ahead"), 0.7)}));
-        auto view = viewFor(model);
-        view->rootObject()->setProperty("variant", variant);
+        auto view = viewFor(model, false, variant);
         QTRY_VERIFY_WITH_TIMEOUT(view->rootObject()->property("motionReady").toBool(), 250);
 
         const auto visualName = [&variant](const QString &id) {
@@ -338,8 +337,7 @@ void RelativeFoundationTest::trafficThreatFollowsTheFoundation()
     auto threat = row(QStringLiteral("threat"), 2, false, QStringLiteral("behind"), -0.7);
     threat.insert(QStringLiteral("vehicleClass"), QStringLiteral("HYPERCAR"));
     model.apply(record(QStringLiteral("ready"), {player, threat}));
-    auto view = viewFor(model);
-    view->rootObject()->setProperty("variant", QStringLiteral("traffic"));
+    auto view = viewFor(model, false, QStringLiteral("traffic"));
 
     QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), QStringLiteral("trafficRelative")), 250);
     QObject *traffic = named(view->rootObject(), QStringLiteral("trafficRelative"));

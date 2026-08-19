@@ -5,11 +5,7 @@ Item {
 
     property int reservations: 0
 
-    width: 0
-    height: 0
-    visible: false
-
-    function reserve() {
+    function reserveCrossSlot() {
         const slot = reservations
         reservations += 1
         resetBatch.restart()

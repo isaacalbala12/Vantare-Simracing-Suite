@@ -13,6 +13,7 @@ import { clientToLogical } from "../canvas/canvas-geometry";
 import { useCanvasInteraction } from "../canvas/useCanvasInteraction";
 import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
 import { useStudioDocument, useStudioPreview } from "../state/studio-store";
+import { placeSelectionTag, type TagAnchor } from "./selection-tag-placement";
 import { fill, widgetLabel } from "./studio-orbit-model";
 
 /** Area segura del prototipo: 4.5 % del lado corto (`.safe-area { inset: 4.5% }`). */
@@ -53,6 +54,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState(0);
+  // El alto medido lo necesita la etiqueta de seleccion para decidir si cabe
+  // arriba del widget; el ancho ya mandaba la escala del plano logico.
+  const [stageHeight, setStageHeight] = useState(0);
 
   const layoutViewport = resolveLayoutViewport(document ?? {});
 
@@ -61,6 +65,8 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     if (!node) return;
     const update = () => {
       const width = node.clientWidth;
+      const height = node.clientHeight;
+      if (height > 0) setStageHeight((current) => (current === height ? current : height));
       if (width > 0) setStageWidth((current) => (current === width ? current : width));
     };
     update();
@@ -123,6 +129,104 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
 
   const selected = widgets.find((widget) => widget.id === selectedWidgetId) ?? null;
   const selectedLayout = selected ? interaction.resolveLayout(selected) : null;
+
+  // ---------------------------------------------------------------- etiqueta
+  // La etiqueta se ancla a la caja de seleccion REAL del widget (la que
+  // `useSelectionFit` cine a lo pintado), leida del DOM en coordenadas del
+  // `stage`. Leerla del DOM es lo unico que sigue al widget durante un
+  // arrastre: `resolveLayout` devuelve el layout comprometido y el marco se
+  // mueve por estilo en linea, sin repintar React.
+  const [anchor, setAnchor] = useState<TagAnchor | null>(null);
+  const [tagSize, setTagSize] = useState({ width: 0, height: 0 });
+  const tagRef = useRef<HTMLDivElement>(null);
+
+  const measureAnchor = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage || !selectedWidgetId) {
+      setAnchor((current) => (current === null ? current : null));
+      return;
+    }
+    const frame = stage.querySelector<HTMLElement>(
+      `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
+    );
+    const box = frame?.querySelector<HTMLElement>("[data-widget-selection]") ?? frame;
+    if (!box) {
+      setAnchor((current) => (current === null ? current : null));
+      return;
+    }
+    const stageRect = stage.getBoundingClientRect();
+    const rect = box.getBoundingClientRect();
+    const next: TagAnchor = {
+      left: rect.left - stageRect.left,
+      top: rect.top - stageRect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    setAnchor((current) =>
+      current
+      && Math.abs(current.left - next.left) < 0.5
+      && Math.abs(current.top - next.top) < 0.5
+      && Math.abs(current.width - next.width) < 0.5
+      && Math.abs(current.height - next.height) < 0.5
+        ? current
+        : next,
+    );
+  }, [selectedWidgetId]);
+
+  useLayoutEffect(() => {
+    measureAnchor();
+  }, [measureAnchor, selectedLayout, scale, stageWidth, preview.zoom]);
+
+  // Durante el arrastre/redimensionado el marco se mueve por estilo en linea:
+  // la unica forma de que la etiqueta lo siga es remedir por frame.
+  useEffect(() => {
+    if (!interacting || typeof requestAnimationFrame !== "function") return;
+    let raf = 0;
+    const tick = () => {
+      measureAnchor();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [interacting, measureAnchor]);
+
+  // La etiqueta se mide a si misma: su ancho depende del nombre del widget y
+  // de si lleva el boton "Mostrar", y el recorte contra los bordes lo necesita.
+  const measureTag = useCallback(() => {
+    const node = tagRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    setTagSize((current) =>
+      Math.abs(current.width - rect.width) < 0.5 && Math.abs(current.height - rect.height) < 0.5
+        ? current
+        : { width: rect.width, height: rect.height },
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    measureTag();
+  }, [measureTag, selectedWidgetId, selectedLayout, selected?.behavior.enabled, selected?.name]);
+
+  const tagPlacement =
+    anchor && stageWidth > 0 && stageHeight > 0
+      ? placeSelectionTag({
+          anchor,
+          tag: tagSize,
+          stage: { width: stageWidth, height: stageHeight },
+        })
+      : null;
+
+  // Sin `useCallback`: solo la usa la etiqueta, que no esta memoizada, y
+  // memoizarla sobre un widget de la lista rompe el compilador de React.
+  const showWidget = () => {
+    if (!selected) return;
+    dispatch({
+      type: "widget/behavior",
+      session: activeSession,
+      widgetIds: [selected.id],
+      patch: { enabled: true },
+    });
+  };
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -195,24 +299,45 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
               selected={selectedWidgetId === widget.id}
               snapshotOverride={snapshotOverride}
               widget={widget}
+              fitSelectionToContent
             />
           ))}
-          {selected && selectedLayout ? (
-            <span
-              className="orbit-studio-scene__tag"
-              data-testid="orbit-studio-selection-tag"
-              style={{
-                left: `${selectedLayout.x}px`,
-                top: `${selectedLayout.y}px`,
-                transform: `translateY(-100%) scale(${scale > 0 ? 1 / scale : 1})`,
-                transformOrigin: "left bottom",
-              }}
-            >
+        </div>
+
+        {/* Fuera del `scene`: la etiqueta se mide y se coloca en pixeles del
+            lienzo, se cine al marco real del widget y se recorta contra los
+            bordes (`selection-tag-placement.ts`). */}
+        {selected && selectedLayout ? (
+          <div
+            className="orbit-studio-stage__tag"
+            data-hidden={selected.behavior.enabled ? undefined : "true"}
+            data-place={tagPlacement?.side ?? "above"}
+            data-testid="orbit-studio-selection-tag"
+            ref={tagRef}
+            style={{
+              left: `${tagPlacement?.left ?? 0}px`,
+              top: `${tagPlacement?.top ?? 0}px`,
+              visibility: tagPlacement ? undefined : "hidden",
+            }}
+          >
+            <span data-testid="orbit-studio-selection-tag-copy">
               {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{" "}
               {Math.round(selectedLayout.h)}
+              {selected.behavior.enabled ? "" : ` · ${t("studio.stage.hiddenSuffix")}`}
             </span>
-          ) : null}
-        </div>
+            {selected.behavior.enabled ? null : (
+              <button
+                className="orbit-studio-stage__tag-action"
+                data-testid="orbit-studio-selection-show"
+                onClick={showWidget}
+                onPointerDown={(event) => event.stopPropagation()}
+                type="button"
+              >
+                {t("studio.stage.show")}
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );

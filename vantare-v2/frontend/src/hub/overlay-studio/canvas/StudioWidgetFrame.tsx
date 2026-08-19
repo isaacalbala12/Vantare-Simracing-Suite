@@ -14,6 +14,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { useRateLimitedTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { ResizeHandle } from "./canvas-resize";
+import { useSelectionFit } from "./useSelectionFit";
 import { useStudioTelemetryCoordinator } from "./StudioTelemetryProvider";
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
@@ -46,6 +47,12 @@ export type StudioWidgetFrameProps = {
   ): void;
   onLostPointerCapture?(event: PointerEvent): void;
   diagnostics?: WidgetDiagnosticCollector;
+  /**
+   * Cine el marco de seleccion y los tiradores a la caja realmente pintada por
+   * el widget en vez de a la del documento (`briefing 04 · A1`). Lo activa la
+   * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
+   */
+  fitSelectionToContent?: boolean;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -60,12 +67,14 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onResizePointerDown,
     onLostPointerCapture,
     diagnostics,
+    fitSelectionToContent = false,
   } = props;
   const { t } = useI18n();
   const coordinator = useStudioTelemetryCoordinator();
   const rateLimitedSnapshot = useRateLimitedTelemetry(coordinator, widget.behavior.updateHz);
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
+  const selectionRef = useRef<HTMLDivElement>(null);
   const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
   const resizeHandles = widgetTypeRegistry.get(widget.type).capabilities.resizeMode === "horizontal-only"
     ? (["e", "w"] as const)
@@ -85,6 +94,20 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       return;
     }
     applyStudioFrameLayoutPreview(widget.id, previewLayout);
+  });
+
+  useSelectionFit({
+    enabled: fitSelectionToContent && selected,
+    frameRef,
+    selectionRef,
+    deps: [
+      widget.id,
+      widget.visual,
+      widget.content,
+      frameGeometry.w,
+      frameGeometry.h,
+      previewActive,
+    ],
   });
 
   const frameStyle: CSSProperties = {
@@ -130,27 +153,38 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         }
       }}
     >
+      {/* Envoltorio de seleccion: `inset: 0` por defecto —la caja del
+          documento, como siempre— y cenido a la caja pintada cuando la piel lo
+          pide. Marco, tiradores y ancla de la etiqueta cuelgan de el, asi que
+          los tres se mueven juntos por construccion. */}
       {selected ? (
-        <div data-testid={`studio-widget-frame-chrome-${widget.id}`} className="osv3-widget-frame__chrome" />
+        <div
+          ref={selectionRef}
+          data-testid={`studio-widget-selection-${widget.id}`}
+          data-widget-selection="true"
+          className="osv3-widget-frame__selection"
+        >
+          <div data-testid={`studio-widget-frame-chrome-${widget.id}`} className="osv3-widget-frame__chrome" />
+          {onResizePointerDown
+            ? resizeHandles.map((handle) => (
+                <button
+                  key={handle}
+                  type="button"
+                  data-testid={`studio-resize-handle-${handle}-${widget.id}`}
+                  className={`osv3-resize-handle osv3-resize-handle--${handle}`}
+                  aria-label={t("studio.v3.canvas.resizeHandleAria").replace("{handle}", handle)}
+                  onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}
+                  onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
+                />
+              ))
+            : null}
+        </div>
       ) : null}
       {!widget.behavior.enabled ? (
         <span data-testid={`studio-widget-hidden-badge-${widget.id}`} className="osv3-widget-frame__hidden-badge">
           {t("studio.v3.canvas.widgetHidden")}
         </span>
       ) : null}
-      {selected && onResizePointerDown
-        ? resizeHandles.map((handle) => (
-            <button
-              key={handle}
-              type="button"
-              data-testid={`studio-resize-handle-${handle}-${widget.id}`}
-              className={`osv3-resize-handle osv3-resize-handle--${handle}`}
-              aria-label={t("studio.v3.canvas.resizeHandleAria").replace("{handle}", handle)}
-              onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}
-              onLostPointerCapture={(event) => onLostPointerCapture?.(event.nativeEvent)}
-            />
-          ))
-        : null}
       <div data-testid={`studio-widget-visual-${widget.id}`} className="osv3-widget-frame__visual">
         <WidgetVisualViewport
           widgetType={widget.type}
@@ -181,5 +215,6 @@ export const StudioWidgetFrame = memo(
     && previous.onFramePointerDown === next.onFramePointerDown
     && previous.onResizePointerDown === next.onResizePointerDown
     && previous.onLostPointerCapture === next.onLostPointerCapture
-    && previous.diagnostics === next.diagnostics,
+    && previous.diagnostics === next.diagnostics
+    && previous.fitSelectionToContent === next.fitSelectionToContent,
 );

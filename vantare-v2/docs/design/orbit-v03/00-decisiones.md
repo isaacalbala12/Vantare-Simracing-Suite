@@ -597,3 +597,36 @@ Sin degradado al pie: un velo permanente mentiria cuando la lista no desborda, y
 | 3440×1440 | 21:9 | 1 | desplegada | tope 1760 centrado |
 | 5120×1440 | 32:9 | 1 | desplegada | tope 1760 centrado |
 | 640×420 | — | 0.6 (suelo) | plegada | la shell desplaza dentro de su contenedor |
+
+## D-R4-4 · El reescalado se aplica a ráfagas y la toolbar del Studio nunca pisa al inspector
+**Contexto.** Con D-R4-3 en la app de escritorio (Wails/WebView2) Isaac reportó dos cosas: que arrastrar el borde de la ventana tardaba ~2 s en empezar a reducirse y luego iba a muy pocos fps —antes era fluido—, y que en el Studio a ancho reducido los controles de la toolbar se pintaban encima del inspector («Ajustar» bajo «Selecciona un widget…»).
+
+### Rendimiento: throttling de la ráfaga y congelación de lo caro
+
+**Diagnóstico medido.** Escribir `zoom` en `<html>` invalida el estilo y la maquetación del documento **entero**. Medido en la shell real a 1920×1080 (30 escrituras, cada una con lectura forzada de layout): **6.0 ms de mediana y 13.7 ms en el p90 por escritura**. El `requestAnimationFrame` de D-R4-3 pagaba ese coste una vez por frame durante todo el arrastre: entre el 36 % y el 82 % del presupuesto de 16.7 ms consumido solo en reescalar, antes de que corrieran los `ResizeObserver` del lienzo, del MiniStage y de la selección, que el propio cambio de factor vuelve a disparar. De ahí los pocos fps y el atasco inicial.
+
+**Decisión.**
+
+1. **Se aplica a ráfagas, no por frame.** `useOrbitResponsiveZoom` deja el `rAF` y pasa a un throttling *leading + trailing* de 120 ms: la primera escritura sale inmediata (no hay retardo al empezar a arrastrar), durante la ráfaga se reescribe como mucho cada 120 ms, y 180 ms después del último `resize` se escribe el **valor final**, que es el que el usuario ve al soltar. El factor se cuantiza a milésimas y no se reescribe si no cambia: por debajo de 0.001 el cambio no se ve y solo sirve para invalidar el árbol entero.
+2. **Mientras dura la ráfaga, la raíz lleva `data-orbit-resizing`** y la CSS congela lo caro **acotado a `.orbit-root`**: transiciones y animaciones (que el cambio de factor volvía a disparar en cada paso) y los `backdrop-filter` de la topbar y de la toolbar del Studio, que obligan a repintar la banda desenfocada completa. Medido: la misma escritura de `zoom` baja de 6.0/13.7 ms a **3.4 ms de mediana y 4.1 ms en el p90** (−43 % en mediana, −70 % en el p90).
+3. **Se mantiene `zoom`; no se cambia a `transform: scale()`.** Evaluado con los datos de arriba: el coste que quedaba tras (1) y (2) —3.4 ms de mediana, ~8 escrituras por segundo en vez de ~60— cabe de sobra en el presupuesto, y `transform` no sale gratis. Escalar `.orbit-root` deja fuera las capas portaladas a `document.body` (`Select`, `Drawer`, toasts), que hoy escalan solas y cuyo anclaje afirma el harness; obligaría a una segunda capa escalada y a rehacer la conversión de coordenadas de `ui/orbit/layout-scale.ts`. Además crea una capa compositada del tamaño de la shell que hay que rasterizar de nuevo en cada cambio de factor, justo el caso que nos ocupa. La ganancia no compensa el riesgo estructural.
+4. **Ningún manejador nuevo hace trabajo síncrono caro.** Los `resize` de la shell y del Studio solo leen `window.innerWidth/Height` y llaman a `setState` con el mismo valor, que React descarta; los `ResizeObserver` del lienzo miden dentro del callback, que corre después de la maquetación. `useHubResponsiveZoom` (el zoom de V52) sigue apagado con Orbit activo, así que no hay dos escritores de `documentElement.style.zoom`.
+
+**Verificación.** `visual:orbit-responsive` añade una medición real: recorre 1920×1080 → 900×700 en 20 pasos y suma por paso `ScriptDuration + RecalcStyleDuration + LayoutDuration` de `Performance.getMetrics` (CDP). **Antes: 7.7 ms/paso de media, 26.5 ms el peor. Después: 3.9–4.6 ms/paso, 12.7–18.8 ms el peor.** El contrato falla por encima de 80 ms/paso. El harness afirma además que al soltar queda aplicado el factor final y que `data-orbit-resizing` se levanta. Los números por paso quedan en `evidence/porte/01-shell/responsive/orbit-responsive-resize-cost.json`. La cadencia y el ciclo de la marca los cubre `use-orbit-responsive-zoom.test.tsx` con temporizadores falsos.
+
+### Visual: la toolbar del Studio cede antes de invadir el inspector
+
+**Diagnóstico medido** (px de maquetación, del propio harness): los controles de la toolbar ocupan 648 px con el rótulo de Browser View y 509 px sin él, más 24 px de padding y ~48 px de huecos; el rail y la columna contextual se llevan 377 px. El hueco de la banda es `ancho de maquetación − 377 − inspector`. A 1280×720 reales el factor es 0.911, o sea 1405 px de maquetación: con el inspector a 395 px la banda se quedaba en 542 px para 581 px de controles, y como la toolbar es `nowrap` los 39 px sobrantes se pintaban **encima** del inspector.
+
+**Decisión.** El inspector nunca se superpone —ocupa su columna de la rejilla— y quien cede es la toolbar, por escalones:
+
+| Ancho real | Inspector | Toolbar |
+|---|---|---|
+| > 1560 px | 395 px | completa |
+| ≤ 1560 px | 320 px | completa |
+| ≤ 1500 px | 320 px | sin rótulo «Browser View», huecos comprimidos (−139 px) |
+| < 1400 px | plegado automático | completa, con toda la columna |
+
+El escalón de 1560 px devuelve 75 px al lienzo justo donde la columna del lienzo baja de 790 px: por debajo pesa más el lienzo 16:9 que el ancho del inspector. Por debajo de **1400 px reales** (`STUDIO_AUTO_FOLD_INSPECTOR_WIDTH`) el inspector se pliega solo: el conmutador queda deshabilitado diciendo por qué y la statusbar lo avisa. El plegado automático **no** toca la preferencia guardada (`rightDock`): al ensanchar la ventana el inspector vuelve como estaba. Se lee el viewport **real**, igual que el resto de reglas de plegado (D-R4-3), para que CSS y JS no se contradigan.
+
+**Verificación.** `visual:orbit-studio` añade dos escenarios —1440×900 (inspector desplegado a 320, sin rótulo) y 1280×720 (inspector auto-plegado con aviso)— y un contrato nuevo que se comprueba en **todos**: ningún control de la toolbar puede intersectar horizontalmente la columna del inspector. De paso, las alturas del briefing (60 px de toolbar, 39 de statusbar) y el chequeo de scroll pasan a medirse en px de maquetación (`offsetHeight`, `clientWidth/Height`), porque bajo `zoom` los rects van en px reales y a 1280×720 daban 55 px falsos.

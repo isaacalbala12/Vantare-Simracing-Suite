@@ -43,6 +43,11 @@ export type StudioOrbitToolbarProps = {
   preview: StudioPreviewState;
   liveAvailable: boolean;
   inspectorOpen: boolean;
+  /**
+   * El inspector esta plegado a la fuerza porque la ventana es estrecha
+   * (D-R4-4): el conmutador no puede desplegarlo y lo dice.
+   */
+  inspectorLocked?: boolean;
   onPreviewChange(patch: Partial<StudioPreviewState>): void;
   onToggleInspector(): void;
   onOpenBrowserView?(): void;
@@ -54,6 +59,7 @@ export function StudioOrbitToolbar(props: StudioOrbitToolbarProps): React.ReactE
     preview,
     liveAvailable,
     inspectorOpen,
+    inspectorLocked = false,
     onPreviewChange,
     onToggleInspector,
     onOpenBrowserView,
@@ -144,9 +150,14 @@ export function StudioOrbitToolbar(props: StudioOrbitToolbarProps): React.ReactE
         aria-expanded={inspectorOpen}
         className="orbit-studio-toolbar__dock"
         data-testid="orbit-studio-dock-toggle"
+        disabled={inspectorLocked}
         icon="i-panel"
         label={
-          inspectorOpen ? t("studio.toolbar.collapseInspector") : t("studio.toolbar.expandInspector")
+          inspectorLocked
+            ? t("studio.toolbar.inspectorLocked")
+            : inspectorOpen
+              ? t("studio.toolbar.collapseInspector")
+              : t("studio.toolbar.expandInspector")
         }
         on={inspectorOpen}
         onClick={onToggleInspector}

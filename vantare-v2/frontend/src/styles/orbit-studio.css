@@ -78,10 +78,60 @@
   text-align: center;
 }
 
+/*
+ * Reduccion de la toolbar a ancho corto (D-R4-4).
+ *
+ * La toolbar vive en la columna del lienzo y es `nowrap`: si sus controles no
+ * caben no aparece barra, se salen por la derecha y se pintan **encima** del
+ * inspector (el «Ajustar» bajo «Selecciona un widget...» que reporto Isaac).
+ *
+ * Medido en el harness (`visual:orbit-studio`, px de maquetacion):
+ *
+ *   controles con rotulo Browser View ... 648 px  (+ 24 de padding y ~48 de gaps)
+ *   controles sin rotulo ............... 509 px
+ *   rail + columna contextual .......... 377 px
+ *
+ * El hueco de la banda es `anchoDeMaquetacion - 377 - inspector`. A 1280x720
+ * reales el factor es 0.911, o sea 1405 px de maquetacion: con el inspector a
+ * 395 px la banda se queda en 542 px para 581 px de controles y de ahi salia el
+ * solape de ~39 px. Escalones:
+ *
+ *   > 1560 px  inspector 395 (calibrado a 1920)
+ *   <= 1560 px inspector 320: por debajo la columna del lienzo baja de 790 px
+ *              y el lienzo 16:9 pesa mas que los 75 px del inspector
+ *   <= 1500 px rotulo Browser View oculto y gaps comprimidos (-139 px)
+ *   < 1400 px  inspector auto-plegado desde JS (`STUDIO_AUTO_FOLD_INSPECTOR_WIDTH`)
+ *
+ * Por debajo de 1152 px la columna contextual se pliega sola y sobra sitio.
+ */
+@media (max-width: 1560px) {
+  .orbit-studio {
+    --orbit-inspector-w: 320px;
+  }
+}
+
 @media (max-width: 1500px) {
   .orbit-studio-toolbar__bv-label {
     display: none;
   }
+
+  .orbit-studio-toolbar {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+}
+
+/* La toolbar no puede crecer por su contenido: si un control largo entra en el
+   futuro, que encoja lo encogible antes de invadir la columna del inspector.
+   (No lleva `overflow`: recortaría los tooltips `data-tip`, que salen fuera de
+   la banda. La garantía de no solape la da el assert del harness.) */
+.orbit-studio-toolbar {
+  min-width: 0;
+}
+
+/* Aviso de la statusbar cuando el inspector se pliega solo por falta de ancho. */
+.orbit-studio__statusbar-note {
+  color: var(--orbit-ink-4);
 }
 
 /* ============================================================ STAGE */

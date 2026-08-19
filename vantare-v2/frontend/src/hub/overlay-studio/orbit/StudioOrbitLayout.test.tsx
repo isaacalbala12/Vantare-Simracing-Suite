@@ -110,6 +110,9 @@ afterEach(() => {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // Ventana ancha: por debajo de `STUDIO_AUTO_FOLD_INSPECTOR_WIDTH` el
+  // inspector se pliega solo (D-R4-4) y estas pruebas van sobre el desplegado.
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1920 });
 });
 
 describe("StudioOrbitLayout", () => {
@@ -260,6 +263,26 @@ describe("StudioOrbitLayout", () => {
       expect(screen.getByTestId("orbit-studio").getAttribute("data-right-dock")).toBe("open");
     });
     expect(orbitStore.get(ORBIT_KEYS.rightDock)).toBe("open");
+  });
+
+  it("pliega el inspector solo cuando la ventana es estrecha y lo avisa", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+    renderStudio();
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-studio").getAttribute("data-right-dock")).toBe("closed");
+    });
+    // El conmutador no puede desplegarlo y la statusbar dice por que.
+    expect(screen.getByTestId("orbit-studio-dock-toggle").hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("orbit-studio-status-inspector-locked")).toBeTruthy();
+    // Y no se ha tocado la preferencia guardada.
+    expect(orbitStore.get(ORBIT_KEYS.rightDock)).toBeFalsy();
+
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1920 });
+    fireEvent(window, new Event("resize"));
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-studio").getAttribute("data-right-dock")).toBe("open");
+    });
+    expect(screen.queryByTestId("orbit-studio-status-inspector-locked")).toBeNull();
   });
 
   it("la topbar refleja el estado real de guardado", async () => {

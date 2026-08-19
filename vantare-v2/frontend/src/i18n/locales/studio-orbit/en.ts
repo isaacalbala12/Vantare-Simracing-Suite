@@ -28,6 +28,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.toolbar.zoomOut": "Zoom out",
   "studio.toolbar.zoomIn": "Zoom in",
   "studio.toolbar.zoomFit": "Fit",
+  "studio.toolbar.inspectorLocked": "Inspector folded: the window is too narrow",
 
   "studio.stage.label": "{{w}} × {{h}}",
   "studio.stage.safeArea": "Safe area 5%",
@@ -38,6 +39,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.status.canvas": "Canvas · {{w}}×{{h}}",
   "studio.status.widgets": "{{n}} widgets",
   "studio.status.selected": "{{n}} selected",
+  "studio.status.inspectorLocked": "Inspector folded · narrow window",
 
   "studio.inspector.aria": "Widget inspector",
   "studio.inspector.kind": "widget",

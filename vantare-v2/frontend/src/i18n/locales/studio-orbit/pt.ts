@@ -29,6 +29,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.toolbar.zoomOut": "Reduzir zoom",
   "studio.toolbar.zoomIn": "Aumentar zoom",
   "studio.toolbar.zoomFit": "Ajustar",
+  "studio.toolbar.inspectorLocked": "Inspetor recolhido: a janela é demasiado estreita",
 
   "studio.stage.label": "{{w}} × {{h}}",
   "studio.stage.safeArea": "Área segura 5%",
@@ -39,6 +40,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.status.canvas": "Tela · {{w}}×{{h}}",
   "studio.status.widgets": "{{n}} widgets",
   "studio.status.selected": "{{n}} selecionado",
+  "studio.status.inspectorLocked": "Inspetor recolhido · janela estreita",
 
   "studio.inspector.aria": "Inspetor do widget",
   "studio.inspector.kind": "widget",

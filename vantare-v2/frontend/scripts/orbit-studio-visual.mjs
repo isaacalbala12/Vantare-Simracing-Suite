@@ -41,6 +41,25 @@ const shots = [
     hide: "relative",
     select: "relative",
   },
+  // Ancho reducido (D-R4-4). Son los dos escalones del solape que reporto
+  // Isaac: a 1440 el inspector sigue desplegado pero estrecho y la toolbar
+  // pierde el rotulo de Browser View; a 1280 el inspector se pliega solo y la
+  // statusbar lo avisa. En ambos ningun control de la toolbar puede pisar la
+  // columna del inspector.
+  {
+    name: "1440x900-estrecho",
+    width: 1440,
+    height: 900,
+    query: "",
+    expectDockWidth: 320,
+  },
+  {
+    name: "1280x720-inspector-plegado",
+    width: 1280,
+    height: 720,
+    query: "",
+    expectDockClosed: true,
+  },
   // Studio > Mis perfiles con la piel Orbit: mismo destino que usa la shell
   // real (`navigate("studio", "profiles")`).
   {
@@ -203,16 +222,22 @@ try {
 
     const contract = await page.evaluate((selected) => {
       const studio = document.querySelector('[data-testid="orbit-studio"]');
+      // `offsetHeight` y no `getBoundingClientRect()`: bajo el `zoom` de la
+      // shell (ventanas por debajo de 1180x790) el rect va en px reales y las
+      // alturas del briefing —60 de toolbar, 39 de statusbar— son de
+      // maquetación.
       const box = (selector) => {
         const node = document.querySelector(selector);
-        return node ? Math.round(node.getBoundingClientRect().height) : -1;
+        return node ? node.offsetHeight : -1;
       };
       const dock = document.querySelector('[data-testid="orbit-studio-dock"]');
       return {
         scrollHeight: document.documentElement.scrollHeight,
-        innerHeight: window.innerHeight,
+        // El viewport comparable con `scrollWidth/Height` es el de maquetación:
+        // bajo `zoom` `innerWidth/Height` van en px reales y no coinciden.
+        innerHeight: document.documentElement.clientHeight,
         scrollWidth: document.documentElement.scrollWidth,
-        innerWidth: window.innerWidth,
+        innerWidth: document.documentElement.clientWidth,
         toolbar: box('[data-testid="orbit-studio-toolbar"]'),
         statusbar: box('[data-testid="orbit-studio-statusbar"]'),
         dockOpen: studio?.getAttribute("data-right-dock") === "open",
@@ -282,6 +307,34 @@ try {
           const painted = visual ? r(visual.firstElementChild ?? visual) : null;
           return { frame: r(frame), box: r(box), tag: r(tag), stage: r(stage), painted, fitted: box.getAttribute("data-fitted") === "true" };
         })(),
+        // D-R4-4: ningun control de la toolbar puede intersectar la columna
+        // del inspector. Se miden los controles reales (no la banda, que es
+        // `width: 100%` de la columna del lienzo por diseno).
+        toolbarOverlap: (() => {
+          const dockNode = document.querySelector('[data-testid="orbit-studio-dock"]');
+          if (!dockNode || dockNode.hasAttribute("hidden")) return [];
+          const dockRect = dockNode.getBoundingClientRect();
+          if (dockRect.width <= 0) return [];
+          const bar = document.querySelector('[data-testid="orbit-studio-toolbar"]');
+          if (!bar) return [];
+          const hits = [];
+          for (const node of bar.querySelectorAll("button, .orbit-seg, .orbit-studio-toolbar__zoom")) {
+            const rect = node.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) continue;
+            // Solo el nivel exterior: los hijos repiten el mismo solape.
+            if (node.parentElement?.closest(".orbit-seg, .orbit-studio-toolbar__zoom")) continue;
+            if (rect.right > dockRect.left + 0.5 && rect.left < dockRect.right - 0.5) {
+              hits.push(
+                `${node.getAttribute("data-testid") ?? node.className} right=${Math.round(rect.right)} > dock=${Math.round(dockRect.left)}`,
+              );
+            }
+          }
+          return hits;
+        })(),
+        // Aviso de la statusbar cuando el inspector se pliega por falta de ancho.
+        inspectorLockedNote: Boolean(
+          document.querySelector('[data-testid="orbit-studio-status-inspector-locked"]'),
+        ),
         // A5: la sección de contenido no puede tener un control nativo.
         contentNative: (() => {
           const section = document.querySelector('[data-testid="studio-inspector-section-content"]');
@@ -304,12 +357,26 @@ try {
     if (contract.statusbar !== 39) {
       throw new Error(`${shot.name}: statusbar de ${contract.statusbar}px, se esperaban 39`);
     }
-    const dockClosed = shot.query.includes("rightDock=closed");
+    const dockClosed = shot.query.includes("rightDock=closed") || shot.expectDockClosed === true;
     if (contract.dockOpen === dockClosed) {
       throw new Error(`${shot.name}: el inspector está ${contract.dockOpen ? "abierto" : "cerrado"} y se esperaba lo contrario`);
     }
-    if (!dockClosed && contract.dockWidth !== 395) {
-      throw new Error(`${shot.name}: inspector de ${contract.dockWidth}px, se esperaban 395`);
+    const expectedDockWidth = shot.expectDockWidth ?? 395;
+    if (!dockClosed && contract.dockWidth !== expectedDockWidth) {
+      throw new Error(`${shot.name}: inspector de ${contract.dockWidth}px, se esperaban ${expectedDockWidth}`);
+    }
+    // D-R4-4: la toolbar nunca se pinta encima del inspector.
+    if (contract.toolbarOverlap.length) {
+      throw new Error(
+        `${shot.name}: la toolbar se solapa con el inspector\n  ${contract.toolbarOverlap.join("\n  ")}`,
+      );
+    }
+    // El plegado automático se anuncia; el manual (`rightDock=closed`) no.
+    const expectsLockedNote = shot.expectDockClosed === true;
+    if (contract.inspectorLockedNote !== expectsLockedNote) {
+      throw new Error(
+        `${shot.name}: el aviso de inspector plegado ${contract.inspectorLockedNote ? "aparece" : "falta"} y se esperaba lo contrario`,
+      );
     }
     const expectedRows = shot.query.includes("stress=1") ? 20 : 3;
     if (contract.widgetRows !== expectedRows) {

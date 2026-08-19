@@ -12,7 +12,12 @@ import { StudioOrbitStage } from "./StudioOrbitStage";
 import { StudioOrbitToolbar } from "./StudioOrbitToolbar";
 import { StudioTopbarControls } from "./StudioTopbarControls";
 import { StudioWidgetList } from "./StudioWidgetList";
-import { fill, readRightDockClosed, writeRightDockClosed } from "./studio-orbit-model";
+import {
+  fill,
+  readRightDockClosed,
+  STUDIO_AUTO_FOLD_INSPECTOR_WIDTH,
+  writeRightDockClosed,
+} from "./studio-orbit-model";
 import {
   STUDIO_CONTEXT_SLOT_ID,
   STUDIO_TOPBAR_SLOT_ID,
@@ -50,11 +55,29 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
   const liveAvailable = simStatus === null ? providerLiveAvailable : simStatus === "connected";
   const contextSlot = useOrbitSlot(STUDIO_CONTEXT_SLOT_ID);
   const topbarSlot = useOrbitSlot(STUDIO_TOPBAR_SLOT_ID);
-  const [inspectorOpen, setInspectorOpen] = useState(() => !readRightDockClosed());
+  const [inspectorWanted, setInspectorWanted] = useState(() => !readRightDockClosed());
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
+  // Ventana estrecha: el inspector se pliega solo para que la toolbar quepa en
+  // la columna del lienzo (D-R4-4). Se lee el viewport **real**, igual que el
+  // auto-plegado de la columna contextual de la shell: bajo `zoom` las media
+  // queries y el JS deben ver lo mismo.
+  const [tooNarrow, setTooNarrow] = useState(
+    () =>
+      typeof window !== "undefined" && window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH,
+  );
+  useEffect(() => {
+    const onResize = () =>
+      setTooNarrow(window.innerWidth < STUDIO_AUTO_FOLD_INSPECTOR_WIDTH);
+    onResize();
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const inspectorOpen = inspectorWanted && !tooNarrow;
+
   const toggleInspector = useCallback(() => {
-    setInspectorOpen((open) => {
+    setInspectorWanted((open) => {
       writeRightDockClosed(open);
       return !open;
     });
@@ -92,6 +115,7 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
     >
       <div className="orbit-studio__canvas">
         <StudioOrbitToolbar
+          inspectorLocked={tooNarrow}
           inspectorOpen={inspectorOpen}
           liveAvailable={liveAvailable}
           onOpenBrowserView={onOpenBrowserView}
@@ -103,6 +127,14 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
         <div className="orbit-studio__statusbar" data-testid="orbit-studio-statusbar">
           <span data-testid="orbit-studio-status-coords">{status.coords}</span>
           <span>{status.canvas}</span>
+          {tooNarrow ? (
+            <span
+              className="orbit-studio__statusbar-note"
+              data-testid="orbit-studio-status-inspector-locked"
+            >
+              {t("studio.status.inspectorLocked")}
+            </span>
+          ) : null}
           <span className="orbit-studio__statusbar-right" data-testid="orbit-studio-status-selection">
             {status.selection}
           </span>

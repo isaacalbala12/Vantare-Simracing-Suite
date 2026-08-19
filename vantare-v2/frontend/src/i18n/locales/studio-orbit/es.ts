@@ -29,6 +29,7 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.toolbar.zoomOut": "Reducir zoom",
   "studio.toolbar.zoomIn": "Aumentar zoom",
   "studio.toolbar.zoomFit": "Ajustar",
+  "studio.toolbar.inspectorLocked": "Inspector plegado: la ventana es demasiado estrecha",
 
   "studio.stage.label": "{{w}} × {{h}}",
   "studio.stage.safeArea": "Área segura 5%",
@@ -39,6 +40,7 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.status.canvas": "Lienzo · {{w}}×{{h}}",
   "studio.status.widgets": "{{n}} widgets",
   "studio.status.selected": "{{n}} seleccionado",
+  "studio.status.inspectorLocked": "Inspector plegado · ventana estrecha",
 
   "studio.inspector.aria": "Inspector del widget",
   "studio.inspector.kind": "widget",

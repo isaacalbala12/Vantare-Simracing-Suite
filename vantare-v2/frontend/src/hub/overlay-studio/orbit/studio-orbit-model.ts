@@ -95,6 +95,22 @@ export function writeRightDockClosed(closed: boolean): void {
   orbitStore.set(ORBIT_KEYS.rightDock, closed ? "closed" : "open");
 }
 
+/**
+ * Ancho **real** de ventana por debajo del cual el inspector se pliega solo
+ * (D-R4-4). A 1280x720 el factor de escala es 0.911, o sea 1405 px de
+ * maquetacion: descontados el rail y la columna contextual (377 px) y un
+ * inspector de 395 px, a la toolbar le quedaban 542 px para 581 px de
+ * controles, y lo que sobraba se pintaba encima del inspector.
+ *
+ * Se lee el viewport real y no el de maquetacion porque es lo que ven tambien
+ * las media queries de `orbit-studio.css` (Chromium no las ajusta al `zoom`) y
+ * el auto-plegado de la columna de la shell: CSS y JS no pueden contradecirse.
+ *
+ * El plegado automatico **no** toca la preferencia guardada: al ensanchar la
+ * ventana el inspector vuelve como estaba.
+ */
+export const STUDIO_AUTO_FOLD_INSPECTOR_WIDTH = 1400;
+
 /** Fondos del prototipo mapeados a los ids reales de `canvas-backgrounds`. */
 export const ORBIT_BACKGROUND_OPTIONS = [
   { value: "grid", labelKey: "studio.toolbar.background.grid" },

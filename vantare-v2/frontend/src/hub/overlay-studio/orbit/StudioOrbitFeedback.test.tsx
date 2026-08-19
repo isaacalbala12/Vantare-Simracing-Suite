@@ -92,6 +92,9 @@ afterEach(() => {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // Ventana ancha: por debajo de `STUDIO_AUTO_FOLD_INSPECTOR_WIDTH` el
+  // inspector se pliega solo (D-R4-4) y estas pruebas van sobre el desplegado.
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1920 });
 });
 
 /** A1 — el marco, los tiradores y el ancla de la etiqueta cuelgan de una sola caja. */

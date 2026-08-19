@@ -29,6 +29,7 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.toolbar.zoomOut": "Riduci zoom",
   "studio.toolbar.zoomIn": "Aumenta zoom",
   "studio.toolbar.zoomFit": "Adatta",
+  "studio.toolbar.inspectorLocked": "Ispettore ripiegato: la finestra è troppo stretta",
 
   "studio.stage.label": "{{w}} × {{h}}",
   "studio.stage.safeArea": "Area sicura 5%",
@@ -39,6 +40,7 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.status.canvas": "Tela · {{w}}×{{h}}",
   "studio.status.widgets": "{{n}} widget",
   "studio.status.selected": "{{n}} selezionato",
+  "studio.status.inspectorLocked": "Ispettore ripiegato · finestra stretta",
 
   "studio.inspector.aria": "Ispettore del widget",
   "studio.inspector.kind": "widget",

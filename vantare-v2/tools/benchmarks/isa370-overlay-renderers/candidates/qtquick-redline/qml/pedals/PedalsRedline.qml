@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import "../common" as Common
 import "../theme" as Theme
 
 Item {
@@ -10,12 +11,14 @@ Item {
     property string clutchText: Math.round(clutch * 100) + "%"
     property string brakeText: Math.round(brake * 100) + "%"
     property string throttleText: Math.round(throttle * 100) + "%"
-    property color clutchColor: "#4b9fff"
-    property color brakeColor: "#e63946"
-    property color throttleColor: "#35c77b"
+    property color clutchColor: "#3498db"
+    property color brakeColor: "#e74c3c"
+    property color throttleColor: "#2ecc71"
     property bool reducedMotion: false
+    property string statusKind: "unavailable"
     property string statusMessage: ""
 
+    readonly property int readyHeight: 160
     readonly property int railCount: 3
     readonly property string railOrder: "clutch,brake,throttle"
     readonly property bool clutchEngaged: clutch > 0.02
@@ -28,15 +31,27 @@ Item {
     readonly property int haloDuration: reducedMotion ? 0 : 160
     readonly property int peakPositionDuration: reducedMotion ? 0 : 120
     readonly property int peakOpacityDuration: reducedMotion ? 0 : 220
+    readonly property real throttleVisualScale: throttleRail.visualScale
+    readonly property bool throttleFillMoving: throttleRail.fillMoving
+    readonly property real throttleFillHeight: throttleRail.fillHeight
+    readonly property real throttleWellHeight: throttleRail.wellHeight
+    property alias statusVisible: statusView.visible
+    property alias renderedStatusMessage: statusView.message
+    property alias renderedStatusHeight: statusView.implicitHeight
 
     property real brakePeak: 0.0
     property bool brakePeakVisible: false
     property bool peakReady: false
 
     width: 120
-    height: 160
+    height: readyHeight + (statusMessage.length > 0 ? 42 : 0)
 
     Theme.RedlineTokens { id: tokens }
+    onStatusMessageChanged: {
+        statusView.message = statusMessage
+        statusView.visible = statusMessage.length > 0
+    }
+    onStatusKindChanged: statusView.kind = statusKind
 
     onBrakeChanged: {
         if (!peakReady)
@@ -53,28 +68,18 @@ Item {
     Component.onCompleted: {
         brakePeak = brake > 0.02 ? brake : 0.0
         brakePeakVisible = false
+        statusView.message = statusMessage
+        statusView.kind = statusKind
+        statusView.visible = statusMessage.length > 0
         peakReady = true
     }
 
-    Rectangle {
-        anchors.fill: parent
-        radius: 6
-        border.width: 1
-        border.color: "#1ae8e8e8"
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#17171a" }
-            GradientStop { position: 0.40; color: "#101012" }
-            GradientStop { position: 1.0; color: "#0c0c0d" }
-        }
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            height: 1
-            radius: 6
-            color: "#2ee8e8e8"
-        }
+    Common.Panel {
+        id: panel
+        objectName: "pedalsPanel"
+        anchors.top: parent.top
+        width: root.width
+        height: root.readyHeight
 
         Row {
             anchors.fill: parent
@@ -82,6 +87,7 @@ Item {
             spacing: 6
 
             PedalRail {
+                id: clutchRail
                 objectName: "clutchRail"
                 width: (parent.width - parent.spacing * 2) / 3
                 height: parent.height
@@ -93,6 +99,7 @@ Item {
             }
 
             PedalRail {
+                id: brakeRail
                 objectName: "brakeRail"
                 width: (parent.width - parent.spacing * 2) / 3
                 height: parent.height
@@ -107,6 +114,7 @@ Item {
             }
 
             PedalRail {
+                id: throttleRail
                 objectName: "throttleRail"
                 width: (parent.width - parent.spacing * 2) / 3
                 height: parent.height
@@ -117,5 +125,15 @@ Item {
                 reducedMotion: root.reducedMotion
             }
         }
+    }
+
+    Common.Status {
+        id: statusView
+        objectName: "pedalsStatus"
+        anchors.top: panel.bottom
+        anchors.topMargin: visible ? 8 : 0
+        width: root.width
+        message: ""
+        kind: "unavailable"
     }
 }

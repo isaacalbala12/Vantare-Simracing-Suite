@@ -1,4 +1,4 @@
-export type ThemeId = "vantare-v5" | "vantare-lite";
+export type ThemeId = "vantare-v5" | "vantare-lite" | "vantare-orbit";
 
 export type ThemeColors = {
   bg: string;
@@ -20,6 +20,13 @@ export type ThemeColors = {
   blood: string;
   success: string;
   warning: string;
+  coral?: string;
+  ember?: string;
+  cyan?: string;
+  line?: string;
+  lineStrong?: string;
+  primaryBg?: string;
+  primaryInk?: string;
 };
 
 export type ThemeEffects = {
@@ -28,6 +35,13 @@ export type ThemeEffects = {
   cardShadow: string;
   hoverTranslateY: string;
   motionScale: string;
+  radius?: string;
+  row?: string;
+  space?: string;
+  railWidth?: string;
+  columnWidth?: string;
+  topbarHeight?: string;
+  ease?: string;
 };
 
 export type ThemeFonts = {
@@ -48,8 +62,30 @@ export type VantareTheme = {
 export const DEFAULT_THEME_ID: ThemeId = "vantare-v5";
 const THEME_STORAGE_KEY = "vantare.theme";
 
+const ORBIT_COLOR_DEFAULTS = {
+  coral: "#ff6a5f",
+  ember: "#ff9b57",
+  cyan: "#5ccbd5",
+  line: "rgba(255,255,255,0.075)",
+  lineStrong: "rgba(255,255,255,0.13)",
+  primaryBg: "#f3eeee",
+  primaryInk: "#1c1719",
+} as const;
+
+const ORBIT_EFFECT_DEFAULTS = {
+  radius: "18px",
+  row: "49px",
+  space: "21px",
+  railWidth: "81px",
+  columnWidth: "296px",
+  topbarHeight: "70px",
+  ease: "cubic-bezier(.2,.8,.2,1)",
+} as const;
+
 export function normalizeThemeId(value: string | null): ThemeId {
-  return value === "vantare-lite" ? "vantare-lite" : DEFAULT_THEME_ID;
+  return value === "vantare-lite" || value === "vantare-orbit"
+    ? value
+    : DEFAULT_THEME_ID;
 }
 
 export function cssVarsFromTheme(theme: VantareTheme): Record<string, string> {
@@ -73,11 +109,25 @@ export function cssVarsFromTheme(theme: VantareTheme): Record<string, string> {
     "--v-blood": theme.colors.blood,
     "--v-success": theme.colors.success,
     "--v-warning": theme.colors.warning,
+    "--v-coral": theme.colors.coral ?? ORBIT_COLOR_DEFAULTS.coral,
+    "--v-ember": theme.colors.ember ?? ORBIT_COLOR_DEFAULTS.ember,
+    "--v-cyan": theme.colors.cyan ?? ORBIT_COLOR_DEFAULTS.cyan,
+    "--v-line": theme.colors.line ?? ORBIT_COLOR_DEFAULTS.line,
+    "--v-line-strong": theme.colors.lineStrong ?? ORBIT_COLOR_DEFAULTS.lineStrong,
+    "--v-primary-bg": theme.colors.primaryBg ?? ORBIT_COLOR_DEFAULTS.primaryBg,
+    "--v-primary-ink": theme.colors.primaryInk ?? ORBIT_COLOR_DEFAULTS.primaryInk,
     "--v-glass-alpha": theme.effects.glassAlpha,
     "--v-glass-blur": theme.effects.glassBlur,
     "--v-card-shadow": theme.effects.cardShadow,
     "--v-hover-translate-y": theme.effects.hoverTranslateY,
     "--v-motion-scale": theme.effects.motionScale,
+    "--v-radius": theme.effects.radius ?? ORBIT_EFFECT_DEFAULTS.radius,
+    "--v-row": theme.effects.row ?? ORBIT_EFFECT_DEFAULTS.row,
+    "--v-space": theme.effects.space ?? ORBIT_EFFECT_DEFAULTS.space,
+    "--v-rail-width": theme.effects.railWidth ?? ORBIT_EFFECT_DEFAULTS.railWidth,
+    "--v-column-width": theme.effects.columnWidth ?? ORBIT_EFFECT_DEFAULTS.columnWidth,
+    "--v-topbar-height": theme.effects.topbarHeight ?? ORBIT_EFFECT_DEFAULTS.topbarHeight,
+    "--v-ease": theme.effects.ease ?? ORBIT_EFFECT_DEFAULTS.ease,
     "--v-font-sans": theme.fonts.sans,
     "--v-font-display": theme.fonts.display,
     "--v-font-mono": theme.fonts.mono,

@@ -3,6 +3,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { V52Shell } from './components/V52Shell';
+import { OrbitShell } from './components/orbit/OrbitShell';
+import { isOrbitEnabled } from './orbit/orbit-flag';
+import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
+import { initialSection } from './orbit/initial-view';
+import { viewToSection } from './orbit/views';
 import { DashboardPage } from './pages/DashboardPage';
 import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -14,6 +19,7 @@ import { RoadmapPage } from './pages/RoadmapPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { TestingCenterPage } from './testing-center/TestingCenterPage';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
+import { UPDATER_CHANNEL_EVENT, buildChannelOf, type UpdaterChannelEvent } from './settings/updater-channel';
 import { submitTestingCenterReport } from './testing-center/report-submission-client';
 import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
 import { testingCenterFeedbackClient } from './testing-center/candidate-feedback-client';
@@ -112,16 +118,29 @@ function LicenseGate({ children }: { children: ReactNode }) {
 
 function HubShell() {
   const { result: licenseResult } = useLicense();
-  const [section, setSection] = useState<Section>('dashboard');
+  // El flag se lee una vez por montaje: `?orbit=1` lo enciende y lo persiste.
+  const [orbitEnabled] = useState(() => isOrbitEnabled());
+  const [section, setSection] = useState<Section>(() => initialSection(orbitEnabled));
   const [version, setVersion] = useState<string | null>(null);
   const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
+  // Canal elegido en Ajustes > Actualizaciones. Manda sobre el canal con el que
+  // se compilo el binario: si no, cambiarlo no movia nada hasta reinstalar y el
+  // Testing Center seguia apareciendo (o faltando) contra lo que dice la
+  // pantalla. La licencia sigue decidiendo (`resolveTestingCenterChannel`).
+  const [preferredChannel, setPreferredChannel] = useState<VantareBuildChannel | null>(null);
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
+  // Destino de la última navegación de la shell Orbit (`navigate(view, target)`):
+  // la pantalla destino lo consume, hoy el Studio para abrir «Mis perfiles».
+  const [navTarget, setNavTarget] = useState<string | undefined>(undefined);
   const settingsRef = useRef<Record<string, unknown> | null>(null);
-  const testingCenterChannel = resolveTestingCenterChannel(buildChannel, licenseResult?.capabilities);
+  const testingCenterChannel = resolveTestingCenterChannel(
+    preferredChannel ?? buildChannel,
+    licenseResult?.capabilities,
+  );
 
   const visibleSection: Section = section === "testing-center" && !testingCenterChannel
     ? "dashboard"
@@ -142,7 +161,27 @@ function HubShell() {
       const completed = event.data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
       setSettingsLoaded(true);
+      // Primer arranque: la bienvenida se monta sobre Inicio, nunca sobre otra
+      // pantalla que hubiese quedado guardada por una sesión de pruebas.
+      if (!completed) {
+        orbitStore.set(ORBIT_KEYS.view, 'inicio');
+        setSection(viewToSection('inicio'));
+      }
     });
+    // Ajustes emite este evento al confirmar el canal (y al releerlo del
+    // backend): la shell se entera sin recargar.
+    const unsubChannel = Events.On(UPDATER_CHANNEL_EVENT, (event: { data: UpdaterChannelEvent }) => {
+      const channel = event.data?.channel;
+      setPreferredChannel(channel ? buildChannelOf(channel) : null);
+    });
+    // Y al arrancar, directo del backend: Ajustes puede no haberse abierto nunca.
+    const unsubUpdaterSettings = Events.On(
+      'updater:settings',
+      (event: { data: { settings?: { channel?: UpdaterChannelEvent['channel'] } } }) => {
+        const channel = event.data?.settings?.channel;
+        if (channel) setPreferredChannel(buildChannelOf(channel));
+      },
+    );
     const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
       setReminder(event.data ?? null);
     });
@@ -152,19 +191,23 @@ function HubShell() {
     Events.Emit('app:version:get');
     Events.Emit(telemetrySourceStatusRequestEvent);
     Events.Emit('settings:get');
+    Events.Emit('updater:settings:get');
     return () => {
       document.body.classList.remove('hub');
       unsub?.();
       unsubSource?.();
       unsubSettings?.();
+      unsubChannel?.();
+      unsubUpdaterSettings?.();
       unsubReminder?.();
       unsubOverlayStudio?.();
     };
   }, []);
 
-  const handleNavigate = useCallback((id: string) => {
+  const handleNavigate = useCallback((id: string, target?: string) => {
     if (isSection(id) && (id !== "testing-center" || testingCenterChannel)) {
       setSection(id);
+      setNavTarget(target);
     }
   }, [testingCenterChannel]);
 
@@ -188,20 +231,23 @@ function HubShell() {
     setReminder(null);
   }, []);
 
+  // Feature flag `hub.orbit`: con el flag apagado (por defecto) la shell actual
+  // no cambia; con `?orbit=1` se monta la shell Orbit con las mismas páginas.
+  const Shell = orbitEnabled ? OrbitShell : V52Shell;
+
+  // La bienvenida y el aviso de carrera son capas `fixed` sobre toda la app, no
+  // contenido de una pantalla. Vivían dentro de `children`, y como la shell
+  // Orbit solo pinta `children` en la rama de respaldo (Studio), el onboarding
+  // acababa apareciendo en Overlays Studio en vez de encima de Inicio.
   return (
-    <V52Shell
+    <>
+    <Shell
       activeSection={visibleSection}
       onNavigate={handleNavigate}
       version={version}
       sourceStatus={sourceStatus}
       testingCenterChannel={testingCenterChannel}
     >
-      {settingsLoaded && showBetaWelcome && (
-        <BetaWelcome onComplete={handleBetaWelcomeClose} />
-      )}
-      {reminder && (
-        <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
-      )}
       {visibleSection === "dashboard" && (
         <DashboardPage
           onNavigate={handleNavigate}
@@ -213,6 +259,7 @@ function HubShell() {
         <OverlaysStudioPage
           pendingRecommendedAutoStart={pendingRecommendedAutoStart}
           onAutoStartHandled={handleAutoStartHandled}
+          target={navTarget}
         />
       )}
       {visibleSection === "launcher" && <LauncherPage />}
@@ -231,12 +278,21 @@ function HubShell() {
         />
       )}
       {visibleSection === "roadmap" && <RoadmapPage />}
-    </V52Shell>
+    </Shell>
+    {settingsLoaded && showBetaWelcome && (
+      <BetaWelcome onComplete={handleBetaWelcomeClose} />
+    )}
+    {reminder && (
+      <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
+    )}
+    </>
   );
 }
 
 export function HubApp() {
-  useHubResponsiveZoom();
+  // Con Orbit el escalado lo lleva la propia shell (D-R4-3): el zoom de V52 se
+  // apaga para que no se pisen sobre `documentElement.style.zoom`.
+  useHubResponsiveZoom({ enabled: !isOrbitEnabled() });
   return (
     <LicenseProvider>
       <I18nProvider>

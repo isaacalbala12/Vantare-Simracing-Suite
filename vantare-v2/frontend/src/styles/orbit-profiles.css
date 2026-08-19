@@ -1,0 +1,173 @@
+/* Layout de «Mis perfiles» (Overlays Studio › Perfiles).
+   El kit cubre superficie, botones, chips y mini-lienzo; aquí solo vive la
+   rejilla de la pantalla y la composición de la tarjeta de perfil. */
+
+.orbit-profiles {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-profiles__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-profiles__head-copy {
+  min-width: 0;
+}
+
+/* `display: flex` (no `inline-flex`) para que el enlace ocupe su propia línea
+   por encima del eyebrow, en vez de quedar pegado a él. */
+.orbit-profiles__back {
+  display: flex;
+  width: fit-content;
+  margin: 0 0 12px -10px;
+}
+
+.orbit-profiles__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-profiles__head-copy p {
+  max-width: 74ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-profiles__head-actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+
+/* --------------------------------------------------------------- REJILLA */
+
+/* La rejilla es la que hace scroll, no la página: a 1080 con seis perfiles
+   entra entera y con más aparece la barra interna (`03 · 3.6`). */
+.orbit-profiles__grid {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  grid-auto-rows: min-content;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  margin-top: var(--orbit-space);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+@media (max-width: 1360px) {
+  .orbit-profiles__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .orbit-profiles__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.orbit-profiles__empty {
+  flex: none;
+  margin-top: var(--orbit-space);
+  padding: 26px;
+  border: 1px dashed var(--orbit-line-strong);
+  border-radius: var(--orbit-radius);
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-body);
+}
+
+/* --------------------------------------------------------------- TARJETA */
+
+.orbit-profiles__card > .orbit-surface__body {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.orbit-profiles__stage {
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  overflow: hidden;
+}
+
+.orbit-profiles__copy {
+  min-width: 0;
+}
+
+.orbit-profiles__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.orbit-profiles__title h3 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-sect);
+  font-weight: 660;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-profiles__meta {
+  margin: 5px 0 0;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-profiles__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* ------------------------------------------------------------- CONTEXTO */
+/* Mismos tokens que la columna de Telemetría/Roadmap: la auditoría de
+   cableado solo rellena el hueco, no introduce estilo nuevo. */
+
+.orbit-profiles__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.orbit-profiles__context-count {
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-profiles__context-hint {
+  margin: auto 0 0;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.5;
+}

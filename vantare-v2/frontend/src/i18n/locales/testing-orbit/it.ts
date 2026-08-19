@@ -1,0 +1,123 @@
+/** Catalogo `testing.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const testingOrbitIt: Record<string, string> = {
+  "testing.title": "Testing Center",
+  "testing.lead": "Segnala un comportamento riproducibile o convalida una correzione assegnata.",
+  "testing.unavailable": "Testing Center non è disponibile su Stable",
+
+  "testing.channel.nightly": "Nightly",
+  "testing.channel.testers": "Testers",
+  "testing.channel.stable": "Stable",
+
+  "testing.draft.local": "Bozza locale",
+  "testing.draft.saving": "Salvataggio della bozza…",
+  "testing.draft.saved": "Bozza salvata",
+  "testing.draft.error": "Non è stato possibile salvare la bozza",
+
+  "testing.form.title": "Segnalazione",
+  "testing.form.privacy": "Viene inviato solo ciò che scrivi qui e ciò che selezioni in Consenso.",
+  "testing.field.module": "Modulo",
+  "testing.field.didWhat": "Cosa hai fatto",
+  "testing.field.expected": "Cosa ti aspettavi",
+  "testing.field.observed": "Cosa è successo",
+  "testing.field.context": "Contesto aggiuntivo · facoltativo",
+  "testing.module.unknown": "Non determinato",
+
+  "testing.consent.eyebrow": "Consenso",
+  "testing.consent.title": "Dati allegati",
+  "testing.consent.lead": "Nulla viene allegato senza una scelta esplicita e un'anteprima.",
+  "testing.consent.diagnostic": "Diagnostica preparata",
+  "testing.consent.diagnosticHelp": "Genera un'anteprima prima dell'invio.",
+  "testing.consent.replay": "Replay di telemetria",
+  "testing.consent.replayUnavailable": "Non disponibile in questo flusso.",
+  "testing.consent.logs": "Log di prodotto",
+  "testing.consent.logsUnavailable": "Non c'è un buffer di log disponibile.",
+
+  "testing.preview.loading": "Preparazione della diagnostica…",
+  "testing.preview.ready": "Anteprima pronta · {{bytes}} B · {{digest}}",
+  "testing.preview.error": "Non è stato possibile preparare la diagnostica; la segnalazione verrà inviata senza.",
+
+  "testing.send": "Invia segnalazione",
+  "testing.sending": "Invio…",
+  "testing.discard": "Scarta la bozza",
+  "testing.discard.warning": "Non è stato possibile eliminare la bozza dal disco.",
+  "testing.retry.safe": "Riprovare è sicuro: la segnalazione non viene duplicata.",
+  "testing.offline": "Offline: l'invio riprende al ritorno della connessione.",
+
+  "testing.validation.required": "Servono almeno tre caratteri.",
+  "testing.validation.too_long": "Il testo è troppo lungo.",
+
+  "testing.success.title": "Segnalazione inviata",
+  "testing.success.description": "Conserva l'identificatore per eventuali verifiche.",
+
+  "testing.error.permission": "Il tuo account non può inviare segnalazioni.",
+  "testing.error.auth": "Accedi di nuovo per inviare la segnalazione.",
+  "testing.error.conflict": "Quella segnalazione era già stata inviata.",
+  "testing.error.generic": "Non è stato possibile inviare la segnalazione.",
+
+  "testing.tabs.label": "Viste del Testing Center",
+  "testing.tabs.report": "Segnala",
+  "testing.tabs.validate": "Valida",
+  "testing.tabs.mine": "Le mie segnalazioni",
+
+  "testing.preview.title": "Anteprima diagnostica",
+  "testing.preview.description":
+    "Questo è il contenuto esatto che verrà inviato. Lo SHA-256 identifica gli stessi byte.",
+
+  "testing.validate.title": "Correzioni in attesa",
+  "testing.validate.meta": "una validazione per candidato",
+  "testing.validate.lead":
+    "Prova una correzione disponibile per il tuo canale e registra un risultato verificabile.",
+  "testing.validate.refresh": "Aggiorna",
+  "testing.validate.loading": "Ricerca delle correzioni disponibili…",
+  "testing.validate.unavailable": "Impossibile caricare o salvare le validazioni. Riprova.",
+  "testing.validate.emptyTitle": "Niente da validare",
+  "testing.validate.empty": "Non ci sono correzioni in attesa da validare in questa build.",
+  "testing.validate.criteria": "Cosa verificare",
+  "testing.validate.knownFailure": "Errore segnalato",
+  "testing.validate.notAllowed":
+    "Puoi vedere questa correzione, ma questo account non può validarla.",
+  "testing.validate.accept": "Funziona",
+  "testing.validate.reject": "Richiede modifiche",
+  "testing.validate.cannotVerify": "Non posso verificare",
+  "testing.validate.state.pending": "In attesa",
+  "testing.validate.state.accepted": "Accettata",
+  "testing.validate.result.accepted": "Correzione accettata",
+  "testing.validate.result.rejected": "Modifiche richieste",
+  "testing.validate.result.cannot_verify": "Validazione non conclusiva",
+  "testing.validate.result.correction":
+    "Il problema torna al flusso di correzione per la revisione umana.",
+  "testing.validate.result.saved": "Il risultato è stato registrato correttamente.",
+
+  "testing.reject.title": "Spiega cosa deve cambiare",
+  "testing.reject.help": "compila i quattro testi perché si riproduca senza supposizioni",
+  "testing.reject.category": "Tipo di problema",
+  "testing.reject.frequency": "Frequenza",
+  "testing.reject.description": "Descrizione breve",
+  "testing.reject.steps": "Passaggi per riprodurlo",
+  "testing.reject.expected": "Risultato previsto",
+  "testing.reject.observed": "Risultato osservato",
+  "testing.reject.options": "Impatto e dati opzionali",
+  "testing.reject.blocking": "Questo problema blocca la validazione",
+  "testing.reject.diagnostics": "Autorizzo l'allegato della diagnostica tecnica disponibile",
+  "testing.reject.logsUnavailable": "Allega log (non ancora disponibile)",
+  "testing.reject.incomplete": "Completa i quattro campi di testo con almeno 3 caratteri.",
+  "testing.reject.submitError":
+    "Impossibile salvare la validazione. Controlla la connessione e riprova.",
+  "testing.reject.submit": "Richiedi modifiche",
+  "testing.reject.sending": "Invio…",
+  "testing.reject.cancel": "Annulla",
+  "testing.reject.value.issue_persists": "L'errore originale persiste",
+  "testing.reject.value.new_regression": "Nuova regressione",
+  "testing.reject.value.crash": "Arresto o blocco",
+  "testing.reject.value.different_behavior": "Comportamento diverso",
+  "testing.reject.value.other": "Altro",
+  "testing.reject.value.always": "Sempre",
+  "testing.reject.value.frequent": "Frequente",
+  "testing.reject.value.once": "Una volta",
+
+  "testing.mine.title": "Le mie segnalazioni",
+  "testing.mine.meta": "solo questa sessione",
+  "testing.mine.emptyTitle": "Nessuno storico",
+  "testing.mine.empty":
+    "Il servizio del Testing Center non pubblica lo storico delle segnalazioni: apre, salva e scarta soltanto la bozza in corso. Qui compare quello che invii durante questa sessione.",
+};

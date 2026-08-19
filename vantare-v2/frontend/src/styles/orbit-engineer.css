@@ -1,0 +1,436 @@
+/* Layout propio de la vista Ingeniero (`06 · Ingeniero`, briefing 08).
+   El kit cubre superficie, seg, toggle, select, fader, nota, botón y estado
+   sutil; aquí solo viven la rejilla de la vista, la tarjeta de módulo, la
+   fila de salidas y el feed de radio, que no son componentes del kit. */
+
+.orbit-engineer {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-engineer__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-engineer__head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-engineer__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-engineer__head-copy p {
+  max-width: 74ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-engineer__actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+
+/* El botón del kit mete los hijos en un `span` de etiqueta: el icono se
+   alinea ahí dentro en vez de pedir una ranura propia. */
+.orbit-engineer__actions .orbit-btn__label {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.orbit-engineer__btn-ico {
+  flex: none;
+}
+
+/* -------------------------------------------------------------- MÓDULOS */
+
+.orbit-engineer__modules {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--orbit-space);
+  margin-top: 14px;
+}
+
+.orbit-eng-mod {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  transition: border-color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-eng-mod[data-on="true"] {
+  border-color: rgba(240, 71, 85, 0.2);
+  background: linear-gradient(135deg, rgba(213, 47, 73, 0.08), var(--orbit-panel-bg));
+}
+
+.orbit-eng-mod:hover {
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-eng-mod__ico {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-2);
+  place-items: center;
+}
+
+/* Módulo apagado: el icono queda atenuado y sin degradado de marca. */
+.orbit-eng-mod[data-on="false"] .orbit-eng-mod__ico {
+  opacity: 0.55;
+}
+
+.orbit-eng-mod[data-on="true"] .orbit-eng-mod__ico {
+  background: var(--orbit-brand-gradient);
+  box-shadow:
+    0 8px 20px -6px rgba(213, 47, 73, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+  opacity: 1;
+}
+
+.orbit-eng-mod__copy b {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.orbit-eng-mod__copy > span {
+  display: block;
+  margin-top: 3px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-eng-mod__copy em {
+  color: var(--orbit-ember);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.orbit-eng-mod__toggle {
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------- REJILLA */
+
+.orbit-engineer__grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 460px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--orbit-space);
+  align-items: stretch;
+  min-height: 0;
+  margin-top: var(--orbit-space);
+}
+
+.orbit-engineer__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Voz mide lo que ocupa; Salidas se come el resto y scrollea por dentro. */
+.orbit-engineer__left > .orbit-surface:first-child {
+  flex: none;
+}
+
+.orbit-engineer__outputs {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Padding de la referencia (`.settings-group`, `.out-grid`): las filas ya
+   traen su propio alto de 50 px, el cuerpo no necesita el aire del kit. */
+.orbit-engineer__left .orbit-surface__body {
+  padding: 4px 20px 8px;
+}
+
+/* ------------------------------------------------------------------- VOZ */
+
+.orbit-eng-settings {
+  display: flex;
+  flex-direction: column;
+}
+
+.orbit-eng-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--orbit-line-row);
+}
+
+.orbit-eng-row:last-child {
+  border-bottom: 0;
+}
+
+.orbit-eng-row__copy {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+/* El control de la fila nunca empuja al texto: mide lo suyo y ahí se queda. */
+.orbit-eng-row > :not(.orbit-eng-row__copy) {
+  flex: none;
+  max-width: 60%;
+}
+
+.orbit-eng-row__copy b {
+  display: block;
+  font-size: var(--orbit-fs-body);
+  font-weight: 650;
+}
+
+.orbit-eng-row__copy > span {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-eng-row__none {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+/* El `Fader` del kit es decorativo: el control real es el range de encima. */
+.orbit-eng-volume {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  width: 150px;
+  height: 24px;
+}
+
+.orbit-eng-volume__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.orbit-eng-volume__input:focus-visible {
+  outline: 2px solid var(--orbit-red);
+  outline-offset: 3px;
+  opacity: 0.001;
+}
+
+/* -------------------------------------------------------------- SALIDAS */
+
+.orbit-eng-outputs {
+  display: flex;
+  flex-direction: column;
+}
+
+.orbit-eng-out {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  border-bottom: 1px solid var(--orbit-line-row);
+}
+
+.orbit-eng-out:last-child {
+  border-bottom: 0;
+}
+
+.orbit-eng-out__k {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-eng-out__k i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.orbit-eng-out__seg .orbit-seg__option {
+  min-width: 44px;
+  padding: 0 8px;
+  font-family: var(--orbit-font-mono);
+}
+
+/* ---------------------------------------------------------------- RADIO */
+
+.orbit-engineer__radio {
+  min-height: 0;
+}
+
+/* El scroller es el feed, no el cuerpo de la superficie: así el pie con la
+   nota y Exportar queda fijo abajo (`04 · rf-foot`). */
+.orbit-engineer__radio .orbit-surface__body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 6px 10px 12px;
+}
+
+.orbit-eng-feed {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.orbit-rf {
+  display: grid;
+  grid-template-columns: 66px 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 12px;
+  transition: background var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rf:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.orbit-rf__t {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.orbit-rf__ico {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--orbit-cyan-soft);
+  color: #101114;
+  font-size: 11px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.orbit-rf[data-role="spotter"] .orbit-rf__ico {
+  background: var(--orbit-coral);
+}
+
+.orbit-rf[data-warn="true"] .orbit-rf__ico {
+  background: var(--orbit-ember);
+}
+
+.orbit-rf__copy {
+  min-width: 0;
+}
+
+.orbit-rf__copy b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.orbit-rf__copy > span {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-rf__out {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.orbit-eng-feed__empty {
+  flex: 1;
+  margin: 0;
+  padding: 28px 10px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-body);
+  text-align: center;
+}
+
+.orbit-eng-feed__foot {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--orbit-line-row);
+}
+
+.orbit-eng-feed__meta {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+@media (max-width: 1500px) {
+  .orbit-engineer__grid {
+    grid-template-columns: 403px minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-eng-mod,
+  .orbit-rf {
+    transition: none;
+  }
+}

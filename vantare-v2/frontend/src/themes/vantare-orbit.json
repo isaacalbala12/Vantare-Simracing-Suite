@@ -1,0 +1,52 @@
+{
+  "id": "vantare-orbit",
+  "name": "Vantare Command Orbit",
+  "mode": "full",
+  "colors": {
+    "bg": "#08090b",
+    "surface": "#0f1013",
+    "panel": "#121316",
+    "border": "#1e1f24",
+    "borderHover": "#2b2c33",
+    "text": "#f5f3f2",
+    "textMuted": "#8a858b",
+    "textDim": "#57545a",
+    "red400": "#ff6a5f",
+    "red500": "#f04755",
+    "red600": "#d52f49",
+    "red700": "#a02339",
+    "red900": "#641526",
+    "red950": "#2a0d13",
+    "wine": "#641526",
+    "burgundy": "#4a0e16",
+    "blood": "#77162c",
+    "success": "#78d68b",
+    "warning": "#ff9b57",
+    "coral": "#ff6a5f",
+    "ember": "#ff9b57",
+    "cyan": "#5ccbd5",
+    "line": "rgba(255,255,255,0.075)",
+    "lineStrong": "rgba(255,255,255,0.13)",
+    "primaryBg": "#f3eeee",
+    "primaryInk": "#1c1719"
+  },
+  "effects": {
+    "glassAlpha": "0.79",
+    "glassBlur": "16px",
+    "cardShadow": "0 32px 91px rgba(0,0,0,0.42), 0 0 42px rgba(213,47,73,0.04)",
+    "hoverTranslateY": "-1px",
+    "motionScale": "1",
+    "radius": "18px",
+    "row": "49px",
+    "space": "21px",
+    "railWidth": "81px",
+    "columnWidth": "296px",
+    "topbarHeight": "70px",
+    "ease": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "fonts": {
+    "sans": "Inter, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
+    "display": "Inter, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif",
+    "mono": "'Cascadia Code', 'SFMono-Regular', ui-monospace, monospace"
+  }
+}

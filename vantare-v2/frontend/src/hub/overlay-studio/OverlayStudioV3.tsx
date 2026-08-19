@@ -17,6 +17,8 @@ import { StudioHeader, type StudioHeaderProps } from "./components/StudioHeader"
 import { WidgetListPanel } from "./components/WidgetListPanel";
 import { createStudioRecoveryStore, type StudioRecoveryRecord } from "./state/studio-recovery";
 import { useStudioDocument } from "./state/studio-store";
+import { isOrbitEnabled } from "../orbit/orbit-flag";
+import { StudioOrbitLayout } from "./orbit/StudioOrbitLayout";
 
 export type OverlayStudioV3Props = StudioHeaderProps & {
   coordinator: TelemetryRateCoordinator;
@@ -25,6 +27,11 @@ export type OverlayStudioV3Props = StudioHeaderProps & {
   viewportWidth?: number;
   recoveryStorage?: Storage | null;
   browserViewStudioPreview?: boolean;
+  /**
+   * Disposicion Orbit (briefing 04). Por defecto la decide el flag `hub.orbit`:
+   * con el flag apagado el Studio se pinta exactamente igual que antes.
+   */
+  orbitLayout?: boolean;
 };
 
 type RecoveryPromptState = {
@@ -40,10 +47,13 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     viewportWidth: viewportWidthProp,
     recoveryStorage: recoveryStorageProp,
     browserViewStudioPreview = false,
+    orbitLayout: orbitLayoutProp,
     onRequestProfileChange,
     activeFile,
     ...headerProps
   } = props;
+  const [orbitLayoutFlag] = useState(() => isOrbitEnabled());
+  const orbitLayout = orbitLayoutProp ?? orbitLayoutFlag;
   const { t } = useI18n();
   const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
   const [windowViewportWidth, setWindowViewportWidth] = useState(
@@ -231,12 +241,18 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   }, []);
 
   return (
-    <div data-testid="overlay-studio-v3" className="osv3-workbench">
-      <StudioHeader
-        {...headerProps}
-        activeFile={activeFile}
-        onRequestProfileChange={guardedProfileChange}
-      />
+    <div
+      data-testid="overlay-studio-v3"
+      className={orbitLayout ? "osv3-workbench osv3-workbench--orbit" : "osv3-workbench"}
+      data-orbit={orbitLayout ? "true" : undefined}
+    >
+      {orbitLayout ? null : (
+        <StudioHeader
+          {...headerProps}
+          activeFile={activeFile}
+          onRequestProfileChange={guardedProfileChange}
+        />
+      )}
       {accessNotice ? (
         <div
           data-testid="studio-access-notice"
@@ -254,6 +270,17 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         </div>
       ) : null}
       <StudioConfirmProvider>
+        {orbitLayout ? (
+          <StudioTelemetryProvider {...telemetryProps}>
+            <StudioOrbitLayout
+              activeFile={activeFile}
+              diagnostics={diagnostics}
+              onOpenBrowserView={() => void handleOpenBrowserView()}
+              onRequestProfileChange={guardedProfileChange}
+              profiles={headerProps.profiles}
+            />
+          </StudioTelemetryProvider>
+        ) : (
         <ResponsivePanelControls
           viewportWidth={viewportWidth}
           selectedWidgetId={selectedWidgetId}
@@ -269,6 +296,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
             </StudioTelemetryProvider>
           }
         />
+        )}
       </StudioConfirmProvider>
       <DirtyChangesDialog
         open={dirtyDialogOpen}

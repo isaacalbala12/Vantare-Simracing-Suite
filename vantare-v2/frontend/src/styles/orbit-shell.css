@@ -1,0 +1,868 @@
+/* Vantare · Command Orbit v0.3 — shell (rail, columna contextual, topbar, paleta)
+   Fuente: docs/design/orbit-v03/03-shell-y-layout.md, 04-componentes.md, 07-motion.md.
+   Todos los valores salen de orbit.tokens.css: aquí no hay colores ni medidas sueltas
+   salvo las opacidades/alfas de estado que el documento fija literalmente. */
+
+.orbit-root {
+  --orbit-shell-column: var(--orbit-column-w);
+  /* El escalado proporcional (D-R4-3) pone `zoom` en `<html>`; bajo `zoom` las
+     unidades de viewport se resuelven en px reales y *después* se escalan, así
+     que la shell pide `100v* / factor` para acabar midiendo la ventana exacta.
+     Sin escalado (`--orbit-zoom: 1`) el cálculo es la identidad. */
+  width: calc(100vw / var(--orbit-zoom, 1));
+  height: calc(100vh / var(--orbit-zoom, 1));
+  overflow: hidden;
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-base);
+}
+
+/* Por debajo del suelo del factor (ventana absurdamente pequeña) la shell ya no
+   cabe ni escalada: desplaza dentro de su propio contenedor en vez de recortar,
+   y sigue sin sacar barras en la página. */
+:root[data-orbit-zoom-floored="true"] .orbit-root {
+  overflow: auto;
+}
+
+/* El suelo de 1180 px vive en la rejilla, no en `.orbit-root`: así el
+   contenedor mide siempre la ventana y es él quien desplaza cuando no llega. */
+.orbit-shell {
+  min-width: 1180px;
+}
+
+.orbit-root *,
+.orbit-root *::before,
+.orbit-root *::after {
+  box-sizing: border-box;
+}
+
+.orbit-shell {
+  display: grid;
+  grid-template-columns: var(--orbit-rail-w) var(--orbit-shell-column) minmax(0, 1fr);
+  /* Antes `100vh`: ahora hereda el alto ya compensado de `.orbit-root`, que es
+     el único sitio donde se corrige el `zoom`. */
+  height: 100%;
+  min-height: 790px;
+  background: var(--orbit-canvas);
+  transition: grid-template-columns var(--orbit-move) var(--orbit-ease);
+}
+
+.orbit-shell[data-column="closed"] {
+  --orbit-shell-column: 0px;
+}
+
+/* ============================================================ RAIL */
+
+.orbit-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  /* Sin losa de marca (D-96): el primer botón (52 px) queda centrado en la
+     banda de la topbar (70 px) → (70 − 52) / 2 = 9 px de padding superior. */
+  padding: 9px 10px 16px;
+  overflow: visible;
+  border-right: 1px solid var(--orbit-line);
+  background: var(--orbit-rail-bg);
+  /* Sin `position` el `z-index` del rail no se aplicaba: los tooltips salían
+     al mismo nivel que la columna en vez de flotar por encima de ella. */
+  position: relative;
+  z-index: var(--orbit-z-rail);
+}
+
+.orbit-rail__button {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--orbit-ink-4);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rail__button:hover {
+  color: var(--orbit-ink);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.orbit-rail__button[aria-current="page"] {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(213, 47, 73, 0.24), rgba(255, 106, 95, 0.07));
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+}
+
+/* barra izquierda 3×19 del estado activo */
+.orbit-rail__button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  width: 3px;
+  height: 19px;
+  border-radius: 0 5px 5px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-rail__button--locked {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-rail__button--locked:hover {
+  color: var(--orbit-ink-4);
+}
+
+.orbit-rail__button[disabled] {
+  color: var(--orbit-ink-muted);
+  cursor: default;
+}
+
+.orbit-rail__button[disabled]:hover {
+  background: none;
+}
+
+.orbit-rail__lock {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  display: grid;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-rail__soon {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  width: 6.5px;
+  height: 6.5px;
+  border: 1.5px solid var(--orbit-ember);
+  border-radius: 50%;
+  opacity: 0.75;
+}
+
+.orbit-rail__bottom {
+  display: grid;
+  gap: 9px;
+  place-items: center;
+  margin-top: auto;
+}
+
+.orbit-rail__avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--orbit-surface-3);
+  box-shadow: 0 9px 23px rgba(0, 0, 0, 0.35), var(--orbit-inset-glass);
+  color: #fff;
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 850;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rail__avatar:hover {
+  transform: translateY(-1px);
+}
+
+/* Foto de perfil de la cuenta dentro de la losa del avatar. */
+.orbit-rail__avatar img {
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+/* tooltip propio: hover Y foco, nunca `title` nativo. La separación cuenta
+   desde el botón, que está a 10px del borde del rail: con 14px el globo
+   quedaba pegado a la columna, así que se aleja hasta despegarlo. */
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 22px);
+  top: 50%;
+  z-index: var(--orbit-z-tooltip);
+  transform: translate(-6px, -50%);
+  padding: 7px 11px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 10px;
+  background: var(--orbit-surface-3);
+  color: var(--orbit-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--orbit-shadow-menu);
+  transition: opacity var(--orbit-fast) var(--orbit-ease),
+    transform var(--orbit-fast) var(--orbit-ease);
+}
+
+[data-tip]:hover::after,
+[data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* ============================================================ COLUMNA */
+
+.orbit-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 14px 16px;
+  overflow: hidden;
+  border-right: 1px solid var(--orbit-line);
+  background: var(--orbit-column-bg);
+}
+
+.orbit-column__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 49px;
+  padding: 0 9px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.orbit-column__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-column__version {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orbit-ink-4);
+  font: 11px var(--orbit-font-mono);
+}
+
+.orbit-column__version i {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: var(--orbit-green);
+  box-shadow: 0 0 10px currentColor;
+  color: var(--orbit-green);
+}
+
+.orbit-column__collapse {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--orbit-radius-chip);
+  background: transparent;
+  color: var(--orbit-ink-3);
+  cursor: pointer;
+}
+
+.orbit-column__collapse:hover {
+  color: var(--orbit-ink);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.orbit-column__context {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 160px;
+  padding-top: 13px;
+  /* `overflow-y: auto` a solas convierte el eje X en `auto` por especificación:
+     sin este `hidden` cualquier fila larga saca una barra horizontal bajo la
+     columna (lista de widgets del Studio). */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.orbit-column__blocks {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding-top: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.orbit-block {
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.orbit-block__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2.5px 9px 11px;
+}
+
+.orbit-eyebrow {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.orbit-link {
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.orbit-link:hover {
+  color: var(--orbit-ink);
+}
+
+.orbit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+/* ============================================================ FILAS */
+
+.orbit-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.orbit-row--sel {
+  background: var(--orbit-selection-bg);
+}
+
+.orbit-row--sel::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  width: 3px;
+  height: 18px;
+  border-radius: 0 4px 4px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-row__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-row__copy b {
+  display: block;
+  overflow: hidden;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-row__copy span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-row:hover .orbit-row__copy b,
+.orbit-row--sel .orbit-row__copy b {
+  color: #fff;
+}
+
+.orbit-when {
+  flex: none;
+  text-align: right;
+}
+
+.orbit-when b {
+  display: block;
+  color: var(--orbit-ink-2);
+  font: 650 13px var(--orbit-font-mono);
+}
+
+.orbit-when span {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-row--next .orbit-when b {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 14px rgba(255, 106, 95, 0.35);
+}
+
+.orbit-tier-dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orbit-ink-4);
+}
+
+.orbit-tier-dot[data-tier="beginner"] { background: var(--orbit-tier-bronze); }
+.orbit-tier-dot[data-tier="intermediate"] { background: var(--orbit-tier-silver); }
+.orbit-tier-dot[data-tier="advanced"],
+.orbit-tier-dot[data-tier="weekly"] { background: var(--orbit-tier-gold); }
+
+.orbit-mono {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--orbit-surface-3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font: 800 10px var(--orbit-font-sans);
+}
+
+.orbit-play {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--orbit-radius-chip);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--orbit-ink-3);
+  font-size: 9px;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-row:hover .orbit-play,
+.orbit-play:hover {
+  color: #fff;
+  background: rgba(213, 47, 73, 0.2);
+}
+
+.orbit-state-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--orbit-ink-3);
+  font: 750 var(--orbit-fs-micro) var(--orbit-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-state-chip[data-s="running"] {
+  color: var(--orbit-green);
+  background: rgba(120, 214, 139, 0.1);
+}
+
+/* ============================================================ PILL / BUTTON */
+
+.orbit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.022);
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  white-space: nowrap;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+button.orbit-pill { cursor: pointer; }
+button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
+
+.orbit-pill[data-s="connected"] { color: var(--orbit-ink-2); }
+.orbit-pill[data-s="disconnected"] { color: var(--orbit-ink-4); }
+
+.orbit-pill__dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.orbit-pill__dot--ok { color: var(--orbit-green); }
+.orbit-pill__dot--gold { color: var(--orbit-ember); }
+.orbit-pill__dot--ring,
+.orbit-pill__dot--ring-gold {
+  background: transparent;
+  border: 1.5px solid currentColor;
+  box-shadow: none;
+}
+.orbit-pill__dot--ring-gold { color: var(--orbit-ember); }
+
+@keyframes orbit-pill-pulse { 50% { opacity: 0.35; } }
+.orbit-pill--pulse .orbit-pill__dot {
+  animation: orbit-pill-pulse 1.4s var(--orbit-ease) infinite;
+}
+
+.orbit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--orbit-control-h);
+  padding: 0 14px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-btn--sm { height: var(--orbit-control-h-sm); }
+.orbit-btn:hover:not([disabled]) { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.orbit-btn[disabled] { cursor: default; opacity: 0.55; }
+
+.orbit-btn--primary {
+  background: var(--orbit-primary-bg);
+  border-color: transparent;
+  color: var(--orbit-primary-ink);
+  box-shadow: var(--orbit-shadow-primary);
+}
+.orbit-btn--primary:hover:not([disabled]) { color: var(--orbit-primary-ink); background: #fff; }
+
+.orbit-btn--danger { color: var(--orbit-red); border-color: rgba(240, 71, 85, 0.3); }
+
+.orbit-btn__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-btn__run-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-btn--run[data-s="running"] {
+  background: rgba(120, 214, 139, 0.14);
+  border-color: rgba(120, 214, 139, 0.35);
+  color: var(--orbit-green);
+  box-shadow: none;
+}
+
+@keyframes orbit-btn-loading { 50% { opacity: 0.3; } }
+.orbit-btn__loading {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: orbit-btn-loading 1s var(--orbit-ease) infinite;
+}
+
+/* ============================================================ TOPBAR */
+
+.orbit-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.orbit-topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  height: var(--orbit-topbar-h);
+  padding: 0 26px;
+  z-index: var(--orbit-z-topbar);
+  border-bottom: 1px solid var(--orbit-line);
+  background: var(--orbit-topbar-bg);
+  backdrop-filter: blur(23px);
+}
+
+.orbit-topbar__tt {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.orbit-topbar__eyebrow {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.orbit-topbar__eyebrow::after {
+  content: "/";
+  margin-left: 10px;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-topbar__tt h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.orbit-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.orbit-workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  /* El espacio de trabajo nunca hace scroll horizontal: la rejilla ya cabe y lo
+     único que sobresalía era el halo decorativo del hero de Inicio, que sacaba
+     una barra al pie de la ventana. Lo que sí deba desplazarse en X lo declara
+     su propio contenedor (`.orbit-tl`, `.orbit-studio-stage-wrap`). */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Huecos que la shell reserva para que la pantalla activa porte contenido a la
+   columna contextual y a la topbar (briefings 04 y 05). */
+.orbit-column__slot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-topbar__slot {
+  display: contents;
+}
+
+/* ============================================================ PALETA */
+
+.orbit-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--orbit-z-palette);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgba(4, 4, 6, 0.62);
+  backdrop-filter: blur(6px);
+  animation: orbit-fade var(--orbit-fast) var(--orbit-ease);
+}
+
+@keyframes orbit-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.orbit-palette {
+  width: min(640px, calc(100vw - 80px));
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: var(--orbit-radius-featured);
+  background: var(--orbit-surface-1);
+  box-shadow: var(--orbit-shadow-palette);
+  overflow: hidden;
+}
+
+.orbit-palette__search {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 75px;
+  padding: 0 21px;
+  border-bottom: 1px solid var(--orbit-line);
+  color: var(--orbit-ink-4);
+}
+
+.orbit-palette__search input {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--orbit-ink);
+  font-size: 17px;
+}
+
+.orbit-palette__body {
+  max-height: 46vh;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.orbit-palette__label {
+  padding: 9px 12px;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.orbit-palette__item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: var(--orbit-radius-control);
+  background: transparent;
+  color: var(--orbit-ink-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.orbit-palette__item:hover,
+.orbit-palette__item[data-selected="true"] {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(213, 47, 73, 0.14), rgba(213, 47, 73, 0.025));
+}
+
+.orbit-palette__item--locked { color: var(--orbit-ink-4); }
+
+.orbit-palette__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(213, 47, 73, 0.09);
+  color: var(--orbit-coral);
+}
+
+.orbit-palette__item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-palette__item-meta {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-palette__foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 44px;
+  padding: 0 17px;
+  border-top: 1px solid var(--orbit-line);
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-micro);
+}
+
+/* ============================================================ RESPONSIVE */
+
+@media (max-width: 1500px) {
+  .orbit-topbar__right .orbit-hide-1500 { display: none; }
+}
+
+/* Ultrapanorámicas (21:9 y 32:9). El contenido de las vistas ya iba topado y
+   centrado a `--orbit-content-max` (1508 px, doc 03 § 3.5): a 3440 o 5120 px no
+   hay rejillas de 3000 px, hay márgenes. A partir de 2200 px reales el tope
+   sube a 1760 px —el mayor escalón que mantiene la longitud de línea legible y
+   las proporciones calibradas de las rejillas— para no desperdiciar el ancho.
+   El fondo del workspace sigue ocupando la ventana entera y las vistas con
+   `height: 100%` siguen llenando el alto. El Studio queda exento a propósito:
+   su lienzo 16:9 sí gana con todo el ancho disponible (D-R4-3). */
+@media (min-width: 2200px) {
+  .orbit-root { --orbit-content-max: 1760px; }
+}
+
+/* Redimensionado continuo (D-R4-4). Mientras el usuario arrastra el borde de la
+   ventana, `useOrbitResponsiveZoom` marca la raíz y la shell congela lo caro:
+   transiciones y animaciones (que se re-disparaban en cada paso del factor) y
+   los `backdrop-filter`, que obligan a repintar la banda desenfocada entera en
+   cada frame. Al soltar, el atributo desaparece y todo vuelve. Acotado a
+   `.orbit-root`: fuera de la shell no hay nada que congelar. */
+:root[data-orbit-resizing] .orbit-root,
+:root[data-orbit-resizing] .orbit-root *,
+:root[data-orbit-resizing] .orbit-root *::before,
+:root[data-orbit-resizing] .orbit-root *::after {
+  transition: none !important;
+  animation-play-state: paused !important;
+}
+
+:root[data-orbit-resizing] .orbit-topbar,
+:root[data-orbit-resizing] .orbit-studio-toolbar {
+  backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-shell,
+  .orbit-rail__button,
+  .orbit-row,
+  .orbit-pill,
+  .orbit-btn,
+  [data-tip]::after {
+    transition: none;
+  }
+  .orbit-palette-backdrop { animation: none; }
+}
+
+.orbit-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Los toasts viven en el kit (`ui/orbit/Toast.tsx` + `orbit-kit.css`). */

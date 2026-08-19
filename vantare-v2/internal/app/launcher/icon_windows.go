@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/draw"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -122,9 +123,19 @@ var appIconCache = struct {
 var iconDiskCacheFileOverride string
 
 const (
-	iconDiskCacheVersion   = 1
+	// v2: las entradas de la v1 se escribieron cuando la resolución podía caer
+	// en las rutas de 32 px (`SHGFI_LARGEICON`, `ExtractIconExW`). Como la
+	// caché solo se invalida por mtime del ejecutable, esos iconos borrosos
+	// sobrevivían indefinidamente aunque el extractor ya sabía sacar 256 px.
+	// Subir la versión los tira de una vez.
+	iconDiskCacheVersion   = 2
 	iconDiskCacheMaxIcons  = 50
 	iconDiskIndexFreshness = 15 * time.Minute
+
+	// Lado mínimo aceptable de un icono. Por debajo de esto la losa de 39 px a
+	// DPR 2 (78 px físicos) tendría que ampliar la imagen y se ve borrosa, así
+	// que se sigue buscando en las rutas siguientes antes de conformarse.
+	iconMinPreferredSize = 64
 )
 
 type iconDiskEntry struct {
@@ -160,7 +171,7 @@ func iconDiskCachePath() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(base, "vantare", "launcher", "icons-cache-v1.json")
+	return filepath.Join(base, "vantare", "launcher", "icons-cache-v2.json")
 }
 
 func loadIconDiskCache() *iconDiskCache {
@@ -175,9 +186,24 @@ func loadIconDiskCacheLocked() *iconDiskCache {
 		return &iconDiskData
 	}
 	iconDiskLoaded = true
+	// Los mapas se crean antes de cualquier salida temprana: sin fichero (una
+	// instalación nueva) `loadIconDiskCacheLocked` devolvía la estructura con
+	// los mapas a nil y el primer `saveIconToDisk` reventaba con «assignment to
+	// entry in nil map», matando la goroutine de extracción durante el escaneo.
+	if iconDiskData.Icons == nil {
+		iconDiskData.Icons = map[string]iconDiskEntry{}
+	}
+	if iconDiskData.Shortcuts == nil {
+		iconDiskData.Shortcuts = map[string]shortcutDiskEntry{}
+	}
 	path := iconDiskCachePath()
 	if path == "" {
 		return &iconDiskData
+	}
+	// El fichero de la v1 ya no lo lee nadie: se borra en el primer arranque
+	// para no dejar megas de iconos de 32 px ocupando la caché del usuario.
+	if iconDiskCacheFileOverride == "" {
+		_ = os.Remove(filepath.Join(filepath.Dir(path), "icons-cache-v1.json"))
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -906,10 +932,76 @@ func getIconHighRes(path string) ([]byte, error) {
 				continue
 			}
 			defer procDestroyIcon.Call(hIcon)
-			return hIconToPNG(hIcon)
+			b, err := hIconToPNG(hIcon)
+			if err != nil {
+				continue
+			}
+			return trimIconCanvasPadding(b), nil
 		}
 	}
 	return nil, fmt.Errorf("no high-res icon for %s", path)
+}
+
+// trimIconCanvasPadding recorta el relleno transparente de la esquina cuando
+// SHIL_JUMBO devuelve un lienzo de 256 px con un icono pequeño dentro.
+//
+// Cuando el ejecutable no trae un icono de 256 px, la lista de imágenes del
+// shell no lo amplía: coloca el de 32 px en la esquina superior izquierda de un
+// lienzo de 256 y deja el resto transparente. El PNG resultante "mide" 256, así
+// que pasaba todos los controles de resolución, pero al pintarlo con
+// `object-fit: contain` en una losa de 39 px el logotipo real quedaba reducido
+// a unos 5 px en una esquina: exactamente el "no están a máxima resolución" que
+// se reportó. Aquí se recorta al contenido para que la losa lo reciba entero.
+//
+// Solo se recorta el caso claro (contenido pegado al origen y por debajo de la
+// mitad del lienzo). Un icono con fondo opaco de borde a borde —lo normal— tiene
+// la caja igual al lienzo y se devuelve intacto.
+func trimIconCanvasPadding(data []byte) []byte {
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return data
+	}
+	bounds := img.Bounds()
+	size := bounds.Dx()
+	if size != bounds.Dy() || size == 0 {
+		return data
+	}
+
+	maxX, maxY := -1, -1
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			if _, _, _, alpha := img.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA(); alpha == 0 {
+				continue
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+	}
+	if maxX < 0 || maxY < 0 {
+		return data
+	}
+
+	// Lado del contenido, cuadrado: el icono original lo era y recortar por el
+	// lado mayor evita deformarlo.
+	content := maxX + 1
+	if maxY+1 > content {
+		content = maxY + 1
+	}
+	if content*2 > size {
+		return data
+	}
+
+	cropped := image.NewRGBA(image.Rect(0, 0, content, content))
+	draw.Draw(cropped, cropped.Bounds(), img, bounds.Min, draw.Src)
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, cropped); err != nil {
+		return data
+	}
+	return buf.Bytes()
 }
 
 // GetAppIconForApp extracts an app icon at the best available resolution.
@@ -954,11 +1046,105 @@ func GetAppIconForApp(id, exePath string) []byte {
 	return icon
 }
 
+// pngWidth devuelve el lado de un PNG leyendo solo la cabecera IHDR (offset 16,
+// big endian). Decodificar la imagen entera solo para medirla costaría más que
+// la propia extracción.
+func pngWidth(data []byte) int {
+	if len(data) < 24 || string(data[12:16]) != "IHDR" {
+		return 0
+	}
+	return int(uint32(data[16])<<24 | uint32(data[17])<<16 | uint32(data[18])<<8 | uint32(data[19]))
+}
+
+// iconPick acumula el mejor icono visto mientras se recorren las rutas de
+// extracción. Las rutas están ordenadas por fidelidad (el icono que el atajo
+// declara manda sobre el genérico del ejecutable), pero varias de ellas solo
+// saben devolver 32 px: aceptar la primera que responda dejaba iconos borrosos
+// cuando una posterior tenía 256 px. Se acepta en cuanto una llega a
+// `iconMinPreferredSize` y, si ninguna llega, se devuelve la mayor.
+type iconPick struct {
+	data  []byte
+	width int
+}
+
+func (p *iconPick) offer(data []byte, err error) bool {
+	if err != nil || len(data) == 0 {
+		return false
+	}
+	width := pngWidth(data)
+	if width > p.width {
+		p.data, p.width = data, width
+	}
+	return p.width >= iconMinPreferredSize
+}
+
+// resolveSquirrelIconSource devuelve el fichero del que sacar el icono cuando
+// el ejecutable detectado es el arrancador de Squirrel (`Update.exe`), o "".
+//
+// Discord (y cualquier app empaquetada con Squirrel) se registra con
+// `…\Discord\Update.exe`: ese stub no lleva icono propio, así que el shell
+// devolvía el icono genérico de aplicación de Windows y en la losa parecía que
+// Discord "no salía". El icono de verdad está al lado, en el `app.ico` del
+// instalador o en el ejecutable real de la versión instalada
+// (`app-<version>\Discord.exe`). `Update.exe` sigue siendo el que se lanza: aquí
+// solo se corrige de dónde se lee la imagen.
+func resolveSquirrelIconSource(exePath string) string {
+	if !strings.EqualFold(filepath.Base(exePath), "Update.exe") {
+		return ""
+	}
+	root := filepath.Dir(exePath)
+	if ico := filepath.Join(root, "app.ico"); fileExists(ico) {
+		return ico
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return ""
+	}
+	// La carpeta `app-<version>` más alta por orden alfabético es la instalada;
+	// Squirrel deja las anteriores hasta que las limpia.
+	newest := ""
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(strings.ToLower(entry.Name()), "app-") {
+			continue
+		}
+		if entry.Name() > newest {
+			newest = entry.Name()
+		}
+	}
+	if newest == "" {
+		return ""
+	}
+	dir := filepath.Join(root, newest)
+	if ico := filepath.Join(dir, "app.ico"); fileExists(ico) {
+		return ico
+	}
+	// El ejecutable real toma el nombre de la carpeta raíz (…\Discord\ ->
+	// Discord.exe), que es como Squirrel nombra el paquete.
+	if exe := filepath.Join(dir, filepath.Base(root)+".exe"); fileExists(exe) {
+		return exe
+	}
+	return ""
+}
+
 func resolveAppIcon(id, exePath string) []byte {
 	target := exePath
 	shortcut := ""
 	if known, ok := KnownAppsByID[id]; ok {
 		shortcut = findDesktopShortcut(known.ExecutableNames)
+	}
+
+	var pick iconPick
+
+	// Antes que nada: si el ejecutable es un stub de Squirrel, su icono real
+	// está en la carpeta de la versión instalada. Va primero porque el stub sí
+	// devuelve icono (el genérico de Windows) y ganaría por orden de llegada.
+	if source := resolveSquirrelIconSource(target); source != "" {
+		if pick.offer(getIconHighRes(source)) {
+			return pick.data
+		}
+		if pick.offer(extractIconAsPNG(source)) {
+			return pick.data
+		}
 	}
 
 	if shortcut != "" {
@@ -970,15 +1156,15 @@ func resolveAppIcon(id, exePath string) []byte {
 				iconPath = filepath.Join(filepath.Dir(shortcut), iconPath)
 			}
 			if iconIndex == 0 {
-				if b, err := getIconHighRes(iconPath); err == nil && b != nil {
-					return b
+				if pick.offer(getIconHighRes(iconPath)) {
+					return pick.data
 				}
-				if b, err := getIconViaSHGetFileInfo(iconPath); err == nil && b != nil {
-					return b
+				if pick.offer(getIconViaSHGetFileInfo(iconPath)) {
+					return pick.data
 				}
 			}
-			if b, err := extractIconAsPNGAtIndex(iconPath, iconIndex); err == nil && b != nil {
-				return b
+			if pick.offer(extractIconAsPNGAtIndex(iconPath, iconIndex)) {
+				return pick.data
 			}
 		}
 	}
@@ -991,17 +1177,17 @@ func resolveAppIcon(id, exePath string) []byte {
 		}
 	}
 	if target != "" {
-		if b, err := getIconHighRes(target); err == nil && b != nil {
-			return b
+		if pick.offer(getIconHighRes(target)) {
+			return pick.data
 		}
-		if b, err := getIconViaSHGetFileInfo(target); err == nil && b != nil {
-			return b
+		if pick.offer(getIconViaSHGetFileInfo(target)) {
+			return pick.data
 		}
-		if b, err := extractIconAsPNG(target); err == nil && b != nil {
-			return b
+		if pick.offer(extractIconAsPNG(target)) {
+			return pick.data
 		}
 	}
-	return nil
+	return pick.data
 }
 
 // GetAppIconForAppBase64 returns the app icon as a base64 data URI, or "".

@@ -11,6 +11,8 @@ import {
 } from "../../telemetry-transport/source-status";
 import { statusRequestEventName } from "../../telemetry-transport/contracts";
 import { OwnProfilesView } from "../overlays/OwnProfilesView";
+import { ProfilesOrbitPage } from "../profiles-orbit/ProfilesOrbitPage";
+import { isOrbitEnabled } from "../orbit/orbit-flag";
 import { RecommendedProfilesView } from "../overlays/RecommendedProfilesView";
 import { CommunityComingSoonView } from "../overlays/CommunityComingSoonView";
 import { ObsOverlaySetupView } from "../overlays/ObsOverlaySetupView";
@@ -37,7 +39,7 @@ import {
 import { ConnectedStudioProvider, useStudioDocument } from "./state/studio-store";
 import type { StudioProfileEntry } from "./components/StudioHeader";
 
-type StudioRouteMode = "editor" | "ownProfiles" | "recommended" | "community" | "obs";
+import { modeFromTarget, type StudioRouteMode } from "./studio-route-target";
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -52,6 +54,8 @@ export type StudioRouteProps = {
   liveAvailable?: boolean;
   pendingRecommendedAutoStart?: "recommended-auto" | null;
   onAutoStartHandled?: () => void;
+  /** Destino que manda la shell: con "profiles" se abre Mis perfiles. */
+  target?: string;
 };
 
 function getPayload<T>(event: { data: unknown }): T {
@@ -171,6 +175,9 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
+  // Igual que OverlayStudioV3: el flag se lee una vez por montaje. Con Orbit
+  // encendido Mis perfiles usa la capa Orbit; apagado no cambia nada.
+  const [orbitEnabled] = useState(() => isOrbitEnabled());
 
   const { document, lastError } = useStudioDocument();
 
@@ -201,6 +208,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
   }
 
   if (mode === "ownProfiles") {
+    const ProfilesView = orbitEnabled ? ProfilesOrbitPage : OwnProfilesView;
     return (
       <>
         <DirtyChangesDialog
@@ -211,7 +219,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           onDiscard={onNavigationDiscard}
           onCancel={onNavigationCancel}
         />
-        <OwnProfilesView
+        <ProfilesView
           profiles={profileEntries}
           overlayStatus={overlayStatus}
           activeProfileId={activeProfileId}
@@ -356,6 +364,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     liveAvailable: liveAvailableProp,
     pendingRecommendedAutoStart = null,
     onAutoStartHandled,
+    target,
   } = props;
   const { t } = useI18n();
 
@@ -385,11 +394,22 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
     });
   }, [coordinator, telemetryAdapterProp]);
 
+  const [orbitEnabled] = useState(() => isOrbitEnabled());
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [editorFile, setEditorFile] = useState<string | null>(null);
-  const [mode, setMode] = useState<StudioRouteMode>("editor");
+  const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? "editor");
+  // La shell puede pedir Mis perfiles sin desmontar la ruta: navigate a studio
+  // con destino profiles desde Inicio o desde la columna. Es el patron de
+  // ajustar estado durante el render de React: un destino nuevo manda, y el
+  // boton Volver sigue pudiendo cambiar el modo porque el destino no se repite.
+  const [lastTarget, setLastTarget] = useState(target);
+  if (target !== lastTarget) {
+    setLastTarget(target);
+    const requested = modeFromTarget(target);
+    if (requested && requested !== mode) setMode(requested);
+  }
   const [overlayStatus, setOverlayStatus] = useState<OverlayStatus | null>(null);
   const [liveAvailable, setLiveAvailable] = useState(liveAvailableProp ?? false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -740,9 +760,10 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       );
     }
     if (mode === "ownProfiles") {
+      const ProfilesView = orbitEnabled ? ProfilesOrbitPage : OwnProfilesView;
       return (
         <>
-          <OwnProfilesView
+          <ProfilesView
             profiles={profiles}
             overlayStatus={overlayStatus}
             activeProfileId={activeProfileId}

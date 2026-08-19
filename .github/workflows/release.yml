@@ -238,6 +238,10 @@ jobs:
       # public builds are always master; the source job already proves the tag
       # belongs to master.
       VANTARE_BUILD_CHANNEL: ${{ (inputs.publish_channel == 'nightly' || inputs.publish_channel == 'testers') && inputs.publish_channel || (github.ref_type == 'branch' && github.ref_name || 'master') }}
+      # Command Orbit shell (ISA-368/369): ON by default only in internal channel
+      # builds (nightly/testers). Public builds keep the current shell until the
+      # direction is promoted; users can still flip it with ?orbit=1 / localStorage.
+      VITE_ORBIT_DEFAULT: ${{ (inputs.publish_channel == 'nightly' || inputs.publish_channel == 'testers') && '1' || '' }}
     defaults:
       run:
         shell: powershell

@@ -4,6 +4,8 @@ import "./index.css";
 import { applyTheme, getStoredThemeId, type VantareTheme } from "./lib/theme";
 import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
+import vantareOrbit from "./themes/vantare-orbit.json";
+import { initializeDensity } from "./lib/density";
 import { AppBootFallback } from "./AppBootFallback";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
@@ -12,9 +14,17 @@ const AppRuntime = lazy(async () => ({ default: (await import("./AppShell")).App
 
 const v5Theme = vantareV5 as unknown as VantareTheme;
 const liteTheme = vantareLite as unknown as VantareTheme;
+const orbitTheme = vantareOrbit as unknown as VantareTheme;
 
 const themeId = getStoredThemeId();
-applyTheme(themeId === "vantare-lite" ? liteTheme : v5Theme);
+applyTheme(
+  themeId === "vantare-lite"
+    ? liteTheme
+    : themeId === "vantare-orbit"
+      ? orbitTheme
+      : v5Theme,
+);
+initializeDensity();
 
 export function App() {
   const path = window.location.pathname;

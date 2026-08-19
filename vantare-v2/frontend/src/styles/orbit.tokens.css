@@ -1,0 +1,118 @@
+/* Vantare · Command Orbit v0.3 — tokens (fuente: docs/design/orbit-v03/02-tokens.md)
+   Cárgalo después del tema (`applyTheme`) o mapea estas variables desde `vantare-orbit.theme.json`. */
+:root {
+  color-scheme: dark;
+
+  /* fondos y superficies */
+  --orbit-canvas: #08090b;
+  --orbit-surface-0: #0d0e11;
+  --orbit-surface-1: #121316;
+  --orbit-surface-2: #18191e;
+  --orbit-surface-3: #202127;
+  --orbit-rail-bg: #0b0c0e;
+  --orbit-column-bg: #0f1013;
+  --orbit-panel-bg: rgba(16,17,20,.79);
+  --orbit-panel-blur: 16px;
+  --orbit-topbar-bg: rgba(8,9,11,.82);
+  --orbit-featured-bg: linear-gradient(rgba(25,25,30,.98), rgba(19,19,23,.99));
+  --orbit-featured-border: linear-gradient(115deg, rgba(240,71,85,.62), rgba(255,106,95,.2), rgba(255,255,255,.06));
+
+  /* tinta */
+  --orbit-ink: #f5f3f2;
+  --orbit-ink-2: #b7b2b2;
+  --orbit-ink-3: #8a858b;
+  --orbit-ink-4: #787379;
+  --orbit-ink-muted: #57545a;
+
+  /* líneas */
+  --orbit-line: rgba(255,255,255,.075);
+  --orbit-line-strong: rgba(255,255,255,.13);
+  --orbit-line-row: rgba(255,255,255,.045);
+
+  /* scrollbar fina de los contenedores desplazables del hub */
+  --orbit-scroll-thumb: rgba(255,255,255,.13);
+  --orbit-scroll-thumb-hover: rgba(255,255,255,.24);
+  --orbit-scroll-thumb-idle: transparent;
+  --orbit-scroll-track: transparent;
+  --orbit-scroll-size: 6px;
+
+  /* acento y semánticos */
+  --orbit-carmine: #d52f49;
+  --orbit-red: #f04755;
+  --orbit-coral: #ff6a5f;
+  --orbit-ember: #ff9b57;
+  --orbit-wine: #641526;
+  --orbit-green: #78d68b;
+  --orbit-cyan: #5ccbd5;
+  --orbit-cyan-soft: #8fd6dd;
+  --orbit-tier-bronze: #d29a6c;
+  --orbit-tier-silver: #c9c9cf;
+  --orbit-tier-gold: #ff9b57;
+  --orbit-tyre-soft: #ff8b8b;
+  --orbit-tyre-medium: #ffd166;
+  --orbit-tyre-hard: #e6e2e2;
+  --orbit-brand-gradient: linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine));
+  --orbit-selection-bg: linear-gradient(90deg, rgba(213,47,73,.11), rgba(213,47,73,.02));
+  --orbit-primary-bg: #f3eeee;
+  --orbit-primary-ink: #1c1719;
+
+  /* tipografía */
+  --orbit-font-sans: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --orbit-font-mono: "Cascadia Code", "SFMono-Regular", ui-monospace, monospace;
+  --orbit-fs-base: 16px;
+  --orbit-fs-greet: 39px;
+  --orbit-fs-page: 34px;
+  --orbit-fs-focal: 28px;
+  --orbit-fs-event: 26px;
+  --orbit-fs-kpi: 22px;
+  --orbit-fs-sect: 20px;
+  --orbit-fs-panel: 15px;
+  --orbit-fs-body: 13.5px;
+  --orbit-fs-secondary: 12px;
+  --orbit-fs-eyebrow: 12px;
+  --orbit-fs-micro: 10.5px;
+
+  /* espaciado y forma (densidad equilibrada) */
+  --orbit-row: 49px;
+  --orbit-space: 21px;
+  --orbit-radius: 18px;
+  --orbit-radius-featured: 25px;
+  --orbit-radius-control: 12px;
+  --orbit-radius-chip: 8px;
+  --orbit-radius-key: 7px;
+  --orbit-rail-w: 81px;
+  --orbit-column-w: 296px;
+  --orbit-inspector-w: 395px;
+  --orbit-topbar-h: 70px;
+  --orbit-control-h: 39px;
+  --orbit-control-h-sm: 34px;
+  --orbit-pill-h: 30px;
+  --orbit-chip-h: 26px;
+  --orbit-content-max: 1508px;
+  --orbit-content-gutter: 62px;
+
+  /* sombras */
+  --orbit-shadow-featured: 0 32px 91px rgba(0,0,0,.42), 0 0 42px rgba(213,47,73,.04);
+  --orbit-shadow-featured-hover: 0 39px 110px rgba(0,0,0,.5), 0 0 62px rgba(213,47,73,.07);
+  --orbit-shadow-primary: 0 13px 34px rgba(0,0,0,.35);
+  --orbit-shadow-toast: 0 23px 78px rgba(0,0,0,.5);
+  --orbit-shadow-palette: 0 44px 143px rgba(0,0,0,.66), 0 0 58px rgba(213,47,73,.05);
+  --orbit-shadow-menu: 0 24px 70px rgba(0,0,0,.6);
+  --orbit-glow-active: 0 0 13px rgba(240,71,85,.6);
+  --orbit-inset-glass: inset 0 1px 0 rgba(255,255,255,.08);
+
+  /* motion */
+  --orbit-ease: cubic-bezier(.2,.8,.2,1);
+  --orbit-ease-spring: cubic-bezier(.34,1.4,.64,1);
+  --orbit-fast: .13s;
+  --orbit-med: .2s;
+  --orbit-enter: .3s;
+  --orbit-move: .35s;
+
+  /* z-index */
+  --orbit-z-rail: 20; --orbit-z-topbar: 15; --orbit-z-menu: 30; --orbit-z-tooltip: 40; --orbit-z-palette: 100; --orbit-z-toast: 120;
+}
+[data-density="compact"] { --orbit-row: 42px; --orbit-space: 16px; --orbit-radius: 14px; }
+[data-density="comfortable"] { --orbit-row: 57px; --orbit-space: 26px; --orbit-radius: 22px; }
+@media (max-width: 1152px) { :root { --orbit-column-w: 216px; } }
+@media (prefers-reduced-motion: reduce) { :root { --orbit-fast: 0s; --orbit-med: 0s; --orbit-enter: 0s; --orbit-move: 0s; } }

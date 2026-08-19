@@ -50,6 +50,36 @@ type HarnessStrategyRepository = {
   drafts: Record<string, Record<string, unknown>>;
 };
 
+
+/**
+ * Evento activo de Estrategia para los harnesses (briefing 07). El backend real
+ * publicará este mismo payload por `strategy:roster`; aquí solo se siembra para
+ * que la captura tenga un evento de 4 h con tres pilotos.
+ */
+const harnessStrategyRoster = {
+  event: {
+    startMin: 14 * 60,
+    durationMin: 240,
+    tankL: 90,
+    pitS: 64,
+    name: "4 Horas de Imola",
+    subtitle: "ELMS · Imola · horario de muestra",
+    monogram: "4H",
+    vehicleClass: "LMGT3",
+    team: "Vantare Racing · #58",
+    dayLabel: "Sáb 12",
+  },
+  drivers: [
+    { id: "isaac", name: "Isaac Albalá", ini: "IA", color: "#ff6a5f", cls: "Gold SR · 4.12", dry: [104.0, 2.75], wet: [112.4, 2.4], eco: [105.1, 2.55] },
+    { id: "sol", name: "Sol Martín", ini: "SM", color: "#78d68b", cls: "Gold SR · 3.88", dry: [104.6, 2.72], wet: [113.0, 2.38], eco: [105.7, 2.52] },
+    { id: "diego", name: "Diego Ferrer", ini: "DF", color: "#5ccbd5", cls: "Silver SR · 3.40", dry: [105.3, 2.8], wet: [114.2, 2.44], eco: [106.4, 2.58] },
+  ],
+  strategies: [
+    { id: "s1", name: "Estrategia #1", note: "Mínimo tiempo · un set nuevo por stint", mode: "dry", order: ["isaac", "sol", "diego"] },
+    { id: "s2", name: "Estrategia #2", note: "Economía · una parada menos", mode: "eco", order: ["isaac", "sol", "diego"] },
+  ],
+};
+
 function createHarnessDesignId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -243,6 +273,86 @@ function handleHarnessStrategyManual(command: Record<string, unknown>) {
   });
 }
 
+
+/**
+ * Configuracion y radio del Ingeniero para los harnesses (briefing 08). El
+ * servicio real publica exactamente este `engineer:status`; aqui solo se
+ * siembra para que la captura tenga una sesion con mensajes.
+ */
+const harnessEngineerMessages = [
+  ["Coche a la izquierda", "spotter", "spotter.car_left", "critical", 12],
+  ["Ventana de boxes abierta", "engineer", "pitstops.window_open", "info", 44],
+  ["Consumo por encima del objetivo", "engineer", "fuel.over_target", "warning", 137],
+  ["Libre", "spotter", "spotter.clear", "info", 149],
+  ["Aviso de limites de pista", "engineer", "penalties.track_limits", "warning", 233],
+  ["Vuelta 1:29.455", "engineer", "laps.personal_best", "info", 320],
+  ["Coche a la derecha", "spotter", "spotter.car_right", "critical", 335],
+  ["Diferencia con el coche de delante", "engineer", "timings.gap_ahead", "info", 401],
+  ["Dos de ancho", "spotter", "spotter.two_wide", "critical", 448],
+  ["Quedan 6 vueltas de combustible", "engineer", "fuel.remaining", "info", 512],
+  ["Bandera azul en el sector 2", "engineer", "penalties.blue_flag", "warning", 588],
+  ["Coche detras, mas rapido", "spotter", "spotter.car_behind", "info", 640],
+  ["Entrada a boxes en dos vueltas", "engineer", "pitstops.box_soon", "info", 702],
+  ["Coche a la izquierda", "spotter", "spotter.car_left", "critical", 744],
+  ["Sector 2 mejorado", "engineer", "laps.sector_gain", "info", 803],
+  ["Libre", "spotter", "spotter.clear", "info", 826],
+  ["Penalizacion de 5 s aplicada", "engineer", "penalties.applied", "warning", 889],
+  ["Diferencia con el coche de detras", "engineer", "timings.gap_behind", "info", 941],
+  ["Coche a la derecha", "spotter", "spotter.car_right", "critical", 998],
+  ["Objetivo de consumo alcanzado", "engineer", "fuel.on_target", "info", 1054],
+] as const;
+
+const harnessEngineerBase = Date.parse("2026-07-07T18:44:12Z");
+
+const harnessEngineerStatus = {
+  enabled: true,
+  connected: true,
+  source: "telemetry-core",
+  presentationLifecycle: 3,
+  spotterEnabled: true,
+  sensitivity: "normal",
+  ttsCacheCount: 0,
+  subtitlesEnabled: true,
+  outputModes: {
+    spotter: "both",
+    fuel: "both",
+    penalties: "both",
+    laps: "visual",
+    timings: "audio",
+    pitstops: "both",
+  } as Record<string, string>,
+  recentMessages: harnessEngineerMessages.map(([text, role, textKey, severity, ago], index) => ({
+    version: 1,
+    id: `harness-radio-${index}`,
+    category: textKey.split(".")[0],
+    severity,
+    textKey,
+    text,
+    voiceText: text,
+    locale: "es",
+    role,
+    channel: role,
+    priority: role === "spotter" ? 100 : 40,
+    createdAt: harnessEngineerBase - ago * 1000,
+    expiresAt: harnessEngineerBase - ago * 1000 + 600000,
+    source: "telemetry-core",
+  })),
+};
+
+function applyHarnessEngineerSetting(name: string, data: unknown) {
+  const value = Array.isArray(data) ? data[0] : data;
+  if (name === "engineer:enabled:set") harnessEngineerStatus.enabled = Boolean(value);
+  if (name === "engineer:spotter:set") harnessEngineerStatus.spotterEnabled = Boolean(value);
+  if (name === "engineer:subtitles:set") harnessEngineerStatus.subtitlesEnabled = Boolean(value);
+  if (name === "engineer:sensitivity:set" && typeof value === "string") {
+    harnessEngineerStatus.sensitivity = value;
+  }
+  if (name === "engineer:output:set" && value && typeof value === "object") {
+    const { category, mode } = value as { category?: string; mode?: string };
+    if (category && mode) harnessEngineerStatus.outputModes[category] = mode;
+  }
+}
+
 function broadcast(name: string, data: unknown) {
 
   setTimeout(() => {
@@ -266,6 +376,28 @@ export const Events = {
 
     if (name === "strategy:application:command") {
       setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      return;
+    }
+
+    if (name === "engineer:status:get") {
+      setTimeout(() => broadcast("engineer:status", harnessEngineerStatus), 30);
+      return;
+    }
+
+    if (
+      name === "engineer:output:set" ||
+      name === "engineer:enabled:set" ||
+      name === "engineer:spotter:set" ||
+      name === "engineer:subtitles:set" ||
+      name === "engineer:sensitivity:set"
+    ) {
+      applyHarnessEngineerSetting(name, data);
+      setTimeout(() => broadcast("engineer:status", { ...harnessEngineerStatus }), 0);
+      return;
+    }
+
+    if (name === "strategy:roster:get") {
+      setTimeout(() => broadcast("strategy:roster", harnessStrategyRoster), 30);
       return;
     }
 

@@ -1103,6 +1103,23 @@
   will-change: left, top, width, height, transform;
 }
 
+/* Envoltorio de seleccion: por defecto es la caja del marco (comportamiento
+   historico). `useSelectionFit` le escribe left/top/width/height cuando la
+   piel pide cenirse a lo realmente pintado. */
+.osv3-widget-frame__selection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.osv3-widget-frame__selection > * {
+  pointer-events: auto;
+}
+
+.osv3-widget-frame__selection[data-fitted="true"] {
+  inset: auto;
+}
+
 .osv3-widget-frame__chrome {
   position: absolute;
   inset: 0;

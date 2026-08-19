@@ -1,0 +1,26 @@
+/** `profiles.*` de Command Orbit v0.3 (Overlays Studio › Mis perfiles). */
+export const profilesOrbitEs: Record<string, string> = {
+  "profiles.back": "‹ Volver a Overlays Studio",
+  "profiles.eyebrow": "Overlays Studio",
+  "profiles.pageTitle": "Mis perfiles",
+  "profiles.lead":
+    "Elige un perfil propio para editar la colocación, el tamaño y el layout de sus widgets.",
+  "profiles.create": "Nuevo perfil",
+  "profiles.empty": "No hay perfiles propios todavía. Crea uno o guarda un recomendado como propio.",
+  "profiles.meta": "{{mode}} · {{n}} widgets",
+  "profiles.chip.active": "Activo",
+  "profiles.chip.running": "En pista",
+  "profiles.edit": "Editar layout",
+  "profiles.editAria": "Editar el layout de {{name}}",
+  "profiles.activate": "Activar",
+  "profiles.activateAria": "Activar {{name}}",
+  "profiles.activated": "Activo",
+  "profiles.openOverlay": "Abrir overlay",
+  "profiles.startAria": "Abrir overlay para {{name}}",
+  "profiles.stop": "Detener overlay",
+  "profiles.context.title": "Perfiles",
+  "profiles.context.hint": "Elige un perfil para editar su layout.",
+  "profiles.context.empty": "Sin perfiles todavía",
+  "profiles.context.widgets": "{{n}} widgets",
+  "profiles.stopAria": "Detener el overlay de {{name}}",
+};

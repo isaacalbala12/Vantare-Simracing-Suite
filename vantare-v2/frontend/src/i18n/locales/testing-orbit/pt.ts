@@ -1,0 +1,123 @@
+/** Catálogo `testing.*` do Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
+export const testingOrbitPt: Record<string, string> = {
+  "testing.title": "Testing Center",
+  "testing.lead": "Reporta um comportamento reproduzível ou valida uma correção atribuída.",
+  "testing.unavailable": "O Testing Center não está disponível no Stable",
+
+  "testing.channel.nightly": "Nightly",
+  "testing.channel.testers": "Testers",
+  "testing.channel.stable": "Stable",
+
+  "testing.draft.local": "Rascunho local",
+  "testing.draft.saving": "A guardar o rascunho…",
+  "testing.draft.saved": "Rascunho guardado",
+  "testing.draft.error": "Não foi possível guardar o rascunho",
+
+  "testing.form.title": "Relatório",
+  "testing.form.privacy": "Só é enviado o que escreves aqui e o que marcares em Consentimento.",
+  "testing.field.module": "Módulo",
+  "testing.field.didWhat": "O que fizeste",
+  "testing.field.expected": "O que esperavas",
+  "testing.field.observed": "O que aconteceu",
+  "testing.field.context": "Contexto adicional · opcional",
+  "testing.module.unknown": "Por determinar",
+
+  "testing.consent.eyebrow": "Consentimento",
+  "testing.consent.title": "Dados anexados",
+  "testing.consent.lead": "Nada é anexado sem uma escolha explícita e uma pré-visualização.",
+  "testing.consent.diagnostic": "Diagnóstico preparado",
+  "testing.consent.diagnosticHelp": "Gera uma pré-visualização antes de enviar.",
+  "testing.consent.replay": "Replay de telemetria",
+  "testing.consent.replayUnavailable": "Não disponível neste fluxo.",
+  "testing.consent.logs": "Registos do produto",
+  "testing.consent.logsUnavailable": "Não há buffer de registos disponível.",
+
+  "testing.preview.loading": "A preparar o diagnóstico…",
+  "testing.preview.ready": "Pré-visualização pronta · {{bytes}} B · {{digest}}",
+  "testing.preview.error": "Não foi possível preparar o diagnóstico; o relatório será enviado sem ele.",
+
+  "testing.send": "Enviar relatório",
+  "testing.sending": "A enviar…",
+  "testing.discard": "Descartar rascunho",
+  "testing.discard.warning": "Não foi possível apagar o rascunho do disco.",
+  "testing.retry.safe": "Repetir é seguro: o relatório não é duplicado.",
+  "testing.offline": "Sem ligação: o envio recomeça quando voltar.",
+
+  "testing.validation.required": "São precisos pelo menos três caracteres.",
+  "testing.validation.too_long": "O texto é demasiado longo.",
+
+  "testing.success.title": "Relatório enviado",
+  "testing.success.description": "Guarda o identificador caso seja preciso acompanhá-lo.",
+
+  "testing.error.permission": "A tua conta não pode enviar relatórios.",
+  "testing.error.auth": "Inicia sessão outra vez para enviar o relatório.",
+  "testing.error.conflict": "Esse relatório já tinha sido enviado.",
+  "testing.error.generic": "Não foi possível enviar o relatório.",
+
+  "testing.tabs.label": "Vistas do Testing Center",
+  "testing.tabs.report": "Reportar",
+  "testing.tabs.validate": "Validar",
+  "testing.tabs.mine": "Os meus reportes",
+
+  "testing.preview.title": "Prévia do diagnóstico",
+  "testing.preview.description":
+    "Este é o conteúdo exato que será enviado. O SHA-256 identifica os mesmos bytes.",
+
+  "testing.validate.title": "Correções pendentes",
+  "testing.validate.meta": "uma validação por candidato",
+  "testing.validate.lead":
+    "Testa uma correção disponível para o teu canal e regista um resultado verificável.",
+  "testing.validate.refresh": "Atualizar",
+  "testing.validate.loading": "A procurar correções disponíveis…",
+  "testing.validate.unavailable":
+    "Não foi possível carregar ou guardar as validações. Tenta novamente.",
+  "testing.validate.emptyTitle": "Nada para validar",
+  "testing.validate.empty": "Não há correções pendentes para validar nesta build.",
+  "testing.validate.criteria": "O que verificar",
+  "testing.validate.knownFailure": "Falha relatada",
+  "testing.validate.notAllowed": "Podes consultar esta correção, mas esta conta não pode validá-la.",
+  "testing.validate.accept": "Funciona",
+  "testing.validate.reject": "Precisa de alterações",
+  "testing.validate.cannotVerify": "Não consigo verificar",
+  "testing.validate.state.pending": "Pendente",
+  "testing.validate.state.accepted": "Aceite",
+  "testing.validate.result.accepted": "Correção aceite",
+  "testing.validate.result.rejected": "Alterações solicitadas",
+  "testing.validate.result.cannot_verify": "Validação inconclusiva",
+  "testing.validate.result.correction":
+    "O problema volta ao fluxo de correção para revisão humana.",
+  "testing.validate.result.saved": "O teu resultado foi registado corretamente.",
+
+  "testing.reject.title": "Explica o que precisa de mudar",
+  "testing.reject.help": "preenche os quatro textos para que se reproduza sem suposições",
+  "testing.reject.category": "Tipo de problema",
+  "testing.reject.frequency": "Frequência",
+  "testing.reject.description": "Descrição breve",
+  "testing.reject.steps": "Passos para reproduzir",
+  "testing.reject.expected": "Resultado esperado",
+  "testing.reject.observed": "Resultado observado",
+  "testing.reject.options": "Impacto e dados opcionais",
+  "testing.reject.blocking": "Este problema bloqueia a validação",
+  "testing.reject.diagnostics": "Autorizo anexar o diagnóstico técnico disponível",
+  "testing.reject.logsUnavailable": "Anexar logs (ainda não disponível)",
+  "testing.reject.incomplete": "Preenche os quatro campos de texto com pelo menos 3 caracteres.",
+  "testing.reject.submitError":
+    "Não foi possível guardar a validação. Verifica a ligação e tenta novamente.",
+  "testing.reject.submit": "Solicitar alterações",
+  "testing.reject.sending": "A enviar…",
+  "testing.reject.cancel": "Cancelar",
+  "testing.reject.value.issue_persists": "A falha original continua",
+  "testing.reject.value.new_regression": "Nova regressão",
+  "testing.reject.value.crash": "Fecho ou bloqueio",
+  "testing.reject.value.different_behavior": "Comportamento diferente",
+  "testing.reject.value.other": "Outro",
+  "testing.reject.value.always": "Sempre",
+  "testing.reject.value.frequent": "Frequente",
+  "testing.reject.value.once": "Uma vez",
+
+  "testing.mine.title": "Os meus reportes",
+  "testing.mine.meta": "apenas esta sessão",
+  "testing.mine.emptyTitle": "Sem histórico",
+  "testing.mine.empty":
+    "O serviço do Testing Center não publica o histórico de reportes: só abre, guarda e descarta o rascunho em curso. Aqui aparece o que enviares durante esta sessão.",
+};

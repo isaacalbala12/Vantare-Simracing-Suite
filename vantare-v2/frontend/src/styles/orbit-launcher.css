@@ -1,0 +1,473 @@
+/* Layout propio de la vista Launcher (`06 · Launcher`, briefing 05).
+   El kit cubre superficie, filas, monogramas, chips, stats, notas y cadena;
+   aquí solo vive la rejilla de la pantalla y las piezas que no son
+   componentes (tarjeta de perfil, tarjeta punteada de creación, contexto). */
+
+.orbit-launcher {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-launcher__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.orbit-launcher__head-copy {
+  min-width: 0;
+}
+
+.orbit-launcher__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-launcher__head-copy p {
+  max-width: 74ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-launcher__stats {
+  flex: none;
+  margin-top: var(--orbit-space);
+}
+
+/* ---------------------------------------------------------------- GRID */
+
+.orbit-launcher__grid {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  grid-template-columns: 390px minmax(0, 1fr);
+  min-height: 0;
+  margin-top: var(--orbit-space);
+}
+
+@media (max-width: 1440px) {
+  .orbit-launcher__grid {
+    grid-template-columns: 338px minmax(0, 1fr);
+  }
+}
+
+.orbit-launcher__apps {
+  min-height: 0;
+}
+
+.orbit-launcher__note {
+  flex: none;
+  margin-top: 8px;
+}
+
+/* La lista de perfiles crece: a 900 se desplaza dentro y la página no. */
+.orbit-launcher__profiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-width: 0;
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+}
+
+.orbit-launcher__empty {
+  margin: 0;
+  padding: 10px 2px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+/* -------------------------------------------------------- PERFIL (04) */
+
+.orbit-launcher__profile {
+  position: relative;
+  flex: none;
+  padding: 20px 22px;
+  overflow: hidden;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  text-align: left;
+}
+
+.orbit-launcher__profile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(#6b676d, #3a373c);
+}
+
+.orbit-launcher__profile--featured::before {
+  background: linear-gradient(var(--orbit-coral), var(--orbit-carmine));
+  box-shadow: 0 0 18px rgba(240, 71, 85, 0.5);
+}
+
+.orbit-launcher__profile-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.orbit-launcher__profile-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-launcher__profile-copy h4 {
+  margin: 5px 0 0;
+  color: var(--orbit-ink);
+  font-size: 18px;
+  font-weight: 690;
+  letter-spacing: -0.02em;
+}
+
+.orbit-launcher__profile-copy p {
+  max-width: 60ch;
+  margin: 5px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.orbit-launcher__profile-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+}
+
+.orbit-launcher__chain {
+  margin-top: 18px;
+}
+
+.orbit-launcher__policies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+/* --------------------------------------------------------- CREAR PERFIL */
+
+.orbit-launcher__create {
+  display: flex;
+  flex: none;
+  gap: 16px;
+  align-items: center;
+  /* Misma altura mínima que una tarjeta de perfil plegada (20 + 46 + 20): sin
+     ella la tarjeta quedaba como una tira aplastada al final de la columna. */
+  min-height: 86px;
+  padding: 18px 22px;
+  border: 1px dashed var(--orbit-ink-3);
+  border-radius: var(--orbit-radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    background var(--orbit-fast) var(--orbit-ease),
+    box-shadow var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-launcher__create:hover {
+  border-color: rgba(240, 71, 85, 0.42);
+  background: rgba(213, 47, 73, 0.045);
+  box-shadow: 0 0 0 1px rgba(240, 71, 85, 0.08) inset;
+}
+
+.orbit-launcher__create:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+  border-color: rgba(240, 71, 85, 0.42);
+}
+
+.orbit-launcher__create-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1.5px dashed var(--orbit-ink-3);
+  border-radius: 13px;
+  color: var(--orbit-ink-3);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-launcher__create:hover .orbit-launcher__create-ico,
+.orbit-launcher__create:focus-visible .orbit-launcher__create-ico {
+  border-color: rgba(240, 71, 85, 0.45);
+  color: var(--orbit-coral);
+}
+
+.orbit-launcher__create-copy {
+  min-width: 0;
+}
+
+.orbit-launcher__create-copy b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.orbit-launcher__create-copy > span {
+  display: block;
+  max-width: 60ch;
+  margin-top: 4px;
+  color: var(--orbit-ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------- TOPBAR */
+
+/* La referencia deja la acción de búsqueda pegada a la derecha, antes de la
+   pill de actualización (que ya lleva su propio `margin-left: auto`). */
+.orbit-launcher__search {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.orbit-launcher__search .orbit-input {
+  width: 260px;
+}
+
+/* ------------------------------------------------------------- COLUMNA */
+
+.orbit-launcher__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.orbit-launcher__context-count {
+  margin-left: auto;
+  color: var(--orbit-ink-3);
+  font: var(--orbit-fs-micro) / 1 var(--orbit-font-mono);
+}
+
+.orbit-launcher__context-hint {
+  margin: 6px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------- CARGA DEL CATÁLOGO */
+
+/* Mientras la instantánea no ha llegado el catálogo enseña filas de relleno:
+   decir «sin aplicaciones» antes de tener respuesta sería mentir. */
+.orbit-launcher__loading {
+  margin-bottom: 10px;
+}
+
+.orbit-launcher__skeleton {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: var(--orbit-row);
+  padding: 0 4px;
+}
+
+.orbit-launcher__skeleton-ico,
+.orbit-launcher__skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.09),
+    rgba(255, 255, 255, 0.045)
+  );
+  background-size: 200% 100%;
+  animation: orbit-launcher-shimmer 1.4s linear infinite;
+}
+
+.orbit-launcher__skeleton-ico {
+  flex: none;
+  width: var(--orbit-control-h);
+  height: var(--orbit-control-h);
+  border-radius: 11px;
+}
+
+.orbit-launcher__skeleton-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.orbit-launcher__skeleton-line {
+  width: 62%;
+  height: 10px;
+  border-radius: 5px;
+}
+
+.orbit-launcher__skeleton-line--sub {
+  width: 38%;
+  height: 8px;
+}
+
+@keyframes orbit-launcher-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-launcher__skeleton-ico,
+  .orbit-launcher__skeleton-line {
+    animation: none;
+  }
+}
+
+[data-reduce-motion="true"] .orbit-launcher__skeleton-ico,
+[data-reduce-motion="true"] .orbit-launcher__skeleton-line {
+  animation: none;
+}
+
+/* ------------------------------------------------- EDITOR DE PERFIL */
+
+/* El editor vive dentro del `Drawer` del kit: aquí solo va la disposición del
+   formulario (los controles ya los pinta el kit). */
+.orbit-profile-editor .orbit-field + .orbit-field {
+  margin-top: 14px;
+}
+
+.orbit-profile-editor__steps {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-profile-editor__steps-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orbit-profile-editor__mode {
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-profile-editor__mode:hover,
+.orbit-profile-editor__mode:focus-visible {
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__step {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.orbit-profile-editor__step-app {
+  flex: 1;
+  min-width: 140px;
+}
+
+.orbit-profile-editor__step-delay {
+  width: 68px;
+  flex: none;
+}
+
+.orbit-profile-editor__step-args {
+  width: 118px;
+  flex: none;
+}
+
+.orbit-profile-editor__step-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+}
+
+.orbit-profile-editor__add {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 1px dashed var(--orbit-ink-3);
+  border-radius: var(--orbit-radius-control);
+  background: transparent;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-sans);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-profile-editor__add:hover,
+.orbit-profile-editor__add:focus-visible {
+  border-color: rgba(240, 71, 85, 0.42);
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__error {
+  margin: 10px 0 0;
+  color: var(--orbit-red);
+  font-size: 12px;
+}
+
+.orbit-profile-editor__hotkey {
+  margin-top: 20px;
+}
+
+.orbit-profile-editor__hotkey-clear {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-sans);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.orbit-profile-editor__hotkey-clear:hover,
+.orbit-profile-editor__hotkey-clear:focus-visible {
+  color: var(--orbit-ink);
+}
+
+.orbit-profile-editor__autostart {
+  margin-top: 18px;
+}

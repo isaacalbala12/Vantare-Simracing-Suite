@@ -1,0 +1,840 @@
+/* Layout propio de la vista Estrategia (`06 · Estrategia`, briefing 07).
+   El kit cubre monograma, chips, pestañas, superficies, timeline, donut,
+   esquinas y neumáticos; aquí solo viven la rejilla del panel de evento, la
+   tarjeta de stint, la fila PIT, el editor y la ficha de piloto. */
+
+.orbit-strategy {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 18px 0 16px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------- CABECERA EVENTO */
+
+.orbit-strategy__head {
+  display: flex;
+  flex: none;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.orbit-strategy__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-strategy__crumb {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strategy__crumb i {
+  color: var(--orbit-ink-4);
+  font-style: normal;
+}
+
+.orbit-strategy__crumb b {
+  color: var(--orbit-ink-2);
+  font-weight: 700;
+}
+
+.orbit-strategy__copy h2 {
+  margin: 4px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-event);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.orbit-strategy__copy p {
+  margin: 4px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-strategy__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.orbit-strategy__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.orbit-strategy__tabs {
+  flex: none;
+  margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------- RESUMEN */
+
+.orbit-strategy__overview {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-strategy__pending {
+  flex: none;
+  margin-top: 16px;
+}
+
+.orbit-strategy__kpis {
+  flex: none;
+  margin-top: 14px;
+}
+
+.orbit-strategy__grid {
+  display: grid;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: stretch;
+  margin-top: 14px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.orbit-strategy__grid2 {
+  display: grid;
+  flex: 1;
+  gap: var(--orbit-space);
+  align-items: stretch;
+  min-height: 0;
+  margin-top: 14px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.orbit-strategy__tl-driver {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strategy__tl-driver i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ------------------------------------------------------------------ STINTS */
+
+.orbit-strategy__stints {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-strategy__stints-head {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+  padding: 2px 4px 8px;
+}
+
+.orbit-strategy__stints-head h3 {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
+}
+
+.orbit-strategy__meta {
+  flex: 1;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-strategy__edge {
+  flex: none;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strategy__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+}
+
+.orbit-stint {
+  display: grid;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 14px;
+  background: var(--orbit-surface-1);
+  transition: var(--orbit-fast) var(--orbit-ease);
+  grid-template-columns: 16px 30px minmax(150px, 1.2fr) 1fr 0.8fr 0.8fr 1fr 0.8fr auto;
+}
+
+.orbit-stint__grip {
+  color: var(--orbit-ink-4);
+  font-size: 13px;
+  letter-spacing: -2px;
+  line-height: 1;
+  user-select: none;
+}
+
+.orbit-stint:hover,
+.orbit-stint[data-selected="true"] {
+  border-color: var(--orbit-carmine);
+}
+
+.orbit-stint__n {
+  font: 800 14px var(--orbit-font-mono);
+}
+
+.orbit-stint__cell {
+  min-width: 0;
+}
+
+.orbit-stint__k {
+  display: block;
+  color: var(--orbit-ink-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orbit-stint__v {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-stint__v--num {
+  font-family: var(--orbit-font-mono);
+}
+
+.orbit-stint__v small {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-stint__v[data-warn="true"] {
+  color: var(--orbit-ember);
+}
+
+.orbit-stint__driver {
+  position: relative;
+  display: block;
+  margin-top: 2px;
+}
+
+.orbit-stint__driver i {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 4px;
+  background: var(--orbit-driver, var(--orbit-coral));
+  pointer-events: none;
+}
+
+.orbit-stint__driver .orbit-select {
+  width: 100%;
+  padding-left: 30px;
+}
+
+.orbit-stint__acts {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.orbit-stint__flag {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.orbit-stint__flag--manual {
+  color: var(--orbit-cyan);
+}
+
+.orbit-stint__flag--over {
+  color: var(--orbit-ember);
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------------- PIT */
+
+.orbit-pit {
+  display: grid;
+  gap: 14px;
+  align-items: center;
+  padding: 6px 14px;
+  grid-template-columns: 44px auto 1fr;
+}
+
+.orbit-pit__line {
+  width: 1px;
+  height: 30px;
+  margin: 0 auto;
+  background: var(--orbit-line);
+}
+
+.orbit-pit__label {
+  color: var(--orbit-ember);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 700;
+}
+
+.orbit-pit__detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-pit__detail b {
+  color: var(--orbit-ink);
+  font-weight: 650;
+}
+
+/* -------------------------------------------------------- EDITOR DE STINT */
+
+.orbit-stint-editor {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--orbit-line);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  background: var(--orbit-surface-0);
+  animation: orbit-strategy-in 0.26s var(--orbit-ease) both;
+}
+
+.orbit-stint-editor__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.orbit-stint-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-stint-editor__field em {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  font-style: normal;
+}
+
+.orbit-stint-editor__corners {
+  display: grid;
+  gap: 18px;
+  align-items: center;
+  margin-top: 14px;
+  grid-template-columns: 420px minmax(0, 1fr);
+}
+
+.orbit-stint-editor__car {
+  display: grid;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 14px;
+  background: var(--orbit-surface-0);
+  grid-template-columns: 56px 1fr 1fr;
+}
+
+.orbit-stint-editor__axle {
+  color: var(--orbit-ink-3);
+  font: 750 10px var(--orbit-font-mono);
+  letter-spacing: 0.1em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.orbit-stint-editor__hint {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------- PILOTOS Y NEUMÁTICOS */
+
+.orbit-strategy__side {
+  min-height: 0;
+}
+
+.orbit-strategy__drivers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 12px;
+}
+
+.orbit-driver {
+  padding: 12px 14px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 12px;
+  background: var(--orbit-surface-2);
+  animation: orbit-strategy-in 0.28s var(--orbit-ease) both;
+}
+
+.orbit-driver__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-driver__avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--orbit-driver, var(--orbit-coral));
+  color: var(--orbit-canvas);
+  font: 800 12px var(--orbit-font-sans);
+}
+
+.orbit-driver__name b {
+  display: block;
+  font-size: var(--orbit-fs-body);
+  font-weight: 700;
+}
+
+.orbit-driver__paces {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.orbit-driver__pace {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  grid-template-columns: 78px 1fr auto;
+}
+
+.orbit-driver__pace i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.orbit-driver__pace b {
+  color: var(--orbit-ink);
+  font: 650 12px var(--orbit-font-mono);
+}
+
+.orbit-driver__pace em {
+  color: var(--orbit-ink-3);
+  font: 11px var(--orbit-font-mono);
+  font-style: normal;
+}
+
+.orbit-driver .orbit-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.orbit-strategy__tyres {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-strategy__tyre-hint {
+  margin: 0;
+  padding: 8px 14px 6px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.5;
+}
+
+.orbit-strategy__tyre-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 10px 12px;
+  overflow-y: auto;
+}
+
+/* --------------------------------------------- ESTRATEGIAS Y COMPARACIÓN */
+
+.orbit-strategy__pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  margin-top: 16px;
+  overflow-y: auto;
+}
+
+.orbit-strats-grid {
+  display: grid;
+  flex: none;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.orbit-strat-card {
+  position: relative;
+  padding: 16px 18px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-surface-1);
+  text-align: left;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-strat-card:hover {
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-strat-card[data-active="true"] {
+  border-color: var(--orbit-carmine);
+  box-shadow: 0 0 30px rgb(213 47 73 / 8%);
+}
+
+.orbit-strat-card h4 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.orbit-strat-card p {
+  margin: 4px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strat-card dl {
+  display: grid;
+  gap: 5px 12px;
+  margin: 12px 0 0;
+  font-size: var(--orbit-fs-secondary);
+  grid-template-columns: 1fr auto;
+}
+
+.orbit-strat-card dt {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-strat-card dd {
+  margin: 0;
+  color: var(--orbit-ink-2);
+  font: 650 12px var(--orbit-font-mono);
+  text-align: right;
+}
+
+.orbit-strat-card__acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.orbit-strat-card--new {
+  display: grid;
+  min-height: 200px;
+  border-style: dashed;
+  background: transparent;
+  cursor: pointer;
+  place-content: center;
+  text-align: center;
+}
+
+.orbit-strat-card--new:hover {
+  border-color: var(--orbit-carmine);
+}
+
+.orbit-strat-card--new b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 14px;
+}
+
+.orbit-strat-card--new span {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-strategy__verdict {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--orbit-surface-2);
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------- DISPONIBILIDAD */
+
+.orbit-avail-form {
+  display: grid;
+  gap: 14px;
+  align-items: end;
+  padding: 4px 0 6px;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+}
+
+/* ------------------------------------------------------ COLUMNA Y VACÍO */
+
+.orbit-strategy__context {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.orbit-strategy__new {
+  width: 100%;
+}
+
+.orbit-strategy--empty {
+  justify-content: flex-start;
+  padding-top: 32px;
+}
+
+.orbit-strategy__empty-lead {
+  margin: 0 0 12px;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+/* Sin evento activo el bloque de estrategias no deja un hueco fantasma. */
+.orbit-strategy__context .orbit-block[hidden] {
+  display: none;
+}
+
+.orbit-strategy__context-acts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Los dos caminos del estado inicial (briefing 07, parte B). */
+
+.orbit-strategy__paths {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-strategy__paths .orbit-featured {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  text-align: left;
+}
+
+.orbit-path__k {
+  color: var(--orbit-ink-1);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 600;
+}
+
+.orbit-path__d {
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+/* Selector + eventos recomendados: el selector mide lo que ocupa y la lista se
+   queda el resto con su propio scroll, así la página nunca hace el suyo. */
+
+.orbit-strategy__empty-stack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-height: 0;
+}
+
+.orbit-strategy__empty-stack > .orbit-surface:first-child {
+  flex: none;
+}
+
+/* Diez series no pueden empujar la lista recomendada fuera de la pantalla. */
+.orbit-strategy__series-list {
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.orbit-strategy__rec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+/* La fila entera planifica; el botón repite la acción con nombre explícito. */
+.orbit-strategy__rec-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-strategy__rec-row > .orbit-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-strategy__rec-row > .orbit-btn {
+  flex: none;
+}
+
+/* ------------------------------------------------- FORMULARIO DEL EVENTO */
+
+.orbit-event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.orbit-event-form__grid {
+  display: grid;
+  gap: 14px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-event-form__duration {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.orbit-event-form__drivers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orbit-event-form__drivers-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orbit-event-form__drivers-head h4 {
+  margin: 0;
+  color: var(--orbit-ink-1);
+  font-size: var(--orbit-fs-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbit-event-form__driver {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  grid-template-columns: minmax(0, 2fr) 72px minmax(0, 1fr) 96px 96px auto;
+}
+
+.orbit-event-form__acts {
+  display: flex;
+  gap: 10px;
+}
+
+/* Editor de un piloto del evento (`Editar` de la ficha). */
+
+.orbit-driver__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-driver__field-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-driver__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+@keyframes orbit-strategy-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-stint-editor,
+  .orbit-driver {
+    animation: none;
+  }
+}
+
+@media (width <= 1400px) {
+  .orbit-strategy__grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .orbit-strategy__grid2 {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .orbit-stint-editor__corners {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

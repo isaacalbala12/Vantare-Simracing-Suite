@@ -1,0 +1,710 @@
+/* Layout propio de la vista Ajustes (`06 · Ajustes`, briefing 11).
+   El kit cubre superficie, stats, toggle, seg, select, keycap, chip y nota;
+   aquí solo viven las piezas que no son del kit: la cabecera de identidad, la
+   tarjeta de plan, la rejilla de canales, el changelog y las filas de ajuste. */
+
+.orbit-set {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-set__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-set__head-copy {
+  flex: 1;
+  min-width: 0;
+  animation: orbit-tab-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
+}
+
+.orbit-set__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-set__head-copy p {
+  max-width: 84ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- PANEL */
+
+.orbit-set__panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-height: 0;
+  margin-top: 18px;
+  padding-bottom: 4px;
+  overflow-y: auto;
+  /* `tab-in` del catálogo de motion (`07-motion.md`): 0→1 con 6px de subida. */
+  animation: orbit-tab-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
+}
+
+@keyframes orbit-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.orbit-set__grid2 {
+  display: grid;
+  gap: var(--orbit-space);
+  align-items: start;
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-set__stats,
+.orbit-set__news {
+  flex: none;
+}
+
+/* ------------------------------------------------------- CUENTA · HERO */
+
+.orbit-set__hero {
+  display: grid;
+  flex: none;
+  gap: var(--orbit-space);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+
+.orbit-set-acct {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: rgba(16, 17, 20, 0.79);
+}
+
+.orbit-set-acct__avatar {
+  display: grid;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #2a2a30, #17171b);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 12px 30px -10px rgba(0, 0, 0, 0.8);
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-display, var(--orbit-font-sans));
+  font-size: 26px;
+  font-weight: 750;
+  place-items: center;
+  overflow: hidden;
+}
+
+.orbit-set-acct__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.orbit-set-acct__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-set-acct__copy b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 18px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+
+.orbit-set-acct__copy > span {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: 12.5px;
+}
+
+.orbit-set-acct__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.orbit-set-acct__actions {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------- CUENTA · PLAN */
+
+.orbit-set-plan {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 22px;
+  border: 1px solid rgba(240, 71, 85, 0.2);
+  border-radius: var(--orbit-radius);
+  background: linear-gradient(135deg, rgba(213, 47, 73, 0.14), rgba(255, 155, 87, 0.04));
+}
+
+.orbit-set-plan::after {
+  content: "";
+  position: absolute;
+  top: -70px;
+  right: -60px;
+  width: 150px;
+  height: 150px;
+  border: 22px solid rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+}
+
+.orbit-set-plan__name {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.orbit-set-plan__sub {
+  display: block;
+  margin-top: 3px;
+  color: #c9c4c6;
+  font-size: 12px;
+}
+
+.orbit-set-plan__modules {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px 14px;
+  margin-top: 14px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-set-plan__module {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #d9d5d5;
+  font-size: 12.5px;
+}
+
+.orbit-set-plan__module i {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(120, 214, 139, 0.18);
+}
+
+.orbit-set-plan__module[data-state="on"] i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--orbit-green);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.orbit-set-plan__module[data-state="off"] {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-set-plan__module[data-state="off"] i {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.orbit-set-plan__module[data-state="soon"] {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-set-plan__module[data-state="soon"] i {
+  border: 1.5px solid rgba(255, 155, 87, 0.5);
+  background: rgba(255, 155, 87, 0.14);
+}
+
+/* --------------------------------------------------- CUENTA · SESIÓN/KV */
+
+.orbit-set-kv {
+  display: grid;
+  margin: 0;
+  padding: 2px 2px 4px;
+}
+
+.orbit-set-kv > div {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  border-bottom: 1px solid var(--orbit-line-row);
+  font-size: 12.5px;
+  grid-template-columns: 150px 1fr;
+}
+
+.orbit-set-kv > div:last-child {
+  border-bottom: 0;
+}
+
+.orbit-set-kv dt {
+  margin: 0;
+  color: var(--orbit-ink-3);
+}
+
+.orbit-set-kv dd {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: #d9d5d5;
+}
+
+.orbit-set-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.orbit-set-device {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.orbit-set-device[data-state="on"] {
+  border-color: rgba(120, 214, 139, 0.2);
+}
+
+.orbit-set-device__ico {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c9c4c6;
+  font-size: 10px;
+  font-weight: 800;
+  place-items: center;
+}
+
+.orbit-set-device__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-set-device__copy b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 13px;
+}
+
+.orbit-set-device__copy span {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: 11.5px;
+}
+
+/* ------------------------------------------------ APLICACIÓN · AJUSTES */
+
+.orbit-set-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.orbit-set-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--orbit-line-row);
+}
+
+.orbit-set-row:last-child {
+  border-bottom: 0;
+}
+
+.orbit-set-row__copy {
+  min-width: 0;
+}
+
+.orbit-set-row__copy b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.orbit-set-row__copy span {
+  display: block;
+  margin-top: 2.5px;
+  color: var(--orbit-ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.orbit-set-row__none {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font-size: 12px;
+}
+
+.orbit-set-themes {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+.orbit-set-theme {
+  width: 34px;
+  height: 34px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-set-theme i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+}
+
+.orbit-set-theme[aria-pressed="true"] {
+  border-color: rgba(240, 71, 85, 0.6);
+  box-shadow: 0 0 0 2px rgba(240, 71, 85, 0.15);
+}
+
+/* -------------------------------------------- ACTUALIZACIONES · CANALES */
+
+.orbit-set-upd {
+  display: flex;
+  flex: none;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: rgba(16, 17, 20, 0.79);
+}
+
+.orbit-set-upd__ver {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-set-upd__ver b {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono, ui-monospace, monospace);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+}
+
+.orbit-set-upd__meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: 12.5px;
+}
+
+.orbit-set-upd__actions {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+}
+
+.orbit-set-channels {
+  display: grid;
+  flex: none;
+  gap: var(--orbit-space);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.orbit-set-channel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: rgba(16, 17, 20, 0.79);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--orbit-fast) var(--orbit-ease);
+  animation: orbit-tab-in var(--orbit-enter, 0.28s) var(--orbit-ease) both;
+}
+
+.orbit-set-channel:hover:not([aria-disabled="true"]) {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.orbit-set-channel[data-state="on"] {
+  border-color: rgba(240, 71, 85, 0.35);
+  background: linear-gradient(135deg, rgba(213, 47, 73, 0.09), rgba(16, 17, 20, 0.79));
+  box-shadow: 0 0 28px rgba(213, 47, 73, 0.08);
+}
+
+/* Bloqueado por licencia: se ve apagado y el cursor lo dice, pero sigue siendo
+   un boton real (recibe foco y clic) para poder explicar el motivo. */
+.orbit-set-channel[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.orbit-set-channel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orbit-set-channel__top b {
+  color: var(--orbit-ink);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.orbit-set-channel__lock {
+  display: grid;
+  color: #8e898e;
+  place-items: center;
+}
+
+.orbit-set-channel__copy {
+  color: #9a9598;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.orbit-set-channel__meta {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ----------------------------------------- ACTUALIZACIONES · NOVEDADES */
+
+.orbit-set-changelog {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-set-changelog li {
+  display: grid;
+  gap: 14px;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid var(--orbit-line-row);
+  font-size: 12.5px;
+  grid-template-columns: 96px 1fr auto;
+}
+
+.orbit-set-changelog li:last-child {
+  border-bottom: 0;
+}
+
+.orbit-set-changelog__ver {
+  color: var(--orbit-coral);
+  font-family: var(--orbit-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.orbit-set-changelog__copy {
+  color: #c9c4c6;
+}
+
+.orbit-set-changelog__copy b {
+  color: var(--orbit-ink);
+}
+
+.orbit-set-changelog__tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- ATAJOS */
+
+.orbit-set-hk__head {
+  display: flex;
+  flex: none;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.orbit-set-hk__head p {
+  max-width: 64ch;
+  margin: 6px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-set-hk__actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-set-hk__groups {
+  display: grid;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: start;
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-set-hk__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fila de atajo grabable: el kit ya pinta `.orbit-hk-row`; aquí solo se
+   neutraliza el aspecto de botón y se marca la fila que está escuchando. */
+.orbit-hk-row--action {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--orbit-line-row);
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.orbit-hk-row--action:last-child {
+  border-bottom: 0;
+}
+
+.orbit-hk-row--action:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.orbit-hk-row[data-recording="true"] {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.45);
+}
+
+.orbit-hk-row__recording {
+  flex: none;
+  color: var(--orbit-coral);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.orbit-hk-row__conflict {
+  flex: none;
+  color: var(--orbit-ember);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ----------------------------------------------------------- DIAGNÓSTICO */
+
+.orbit-set-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--orbit-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------- COLUMNA */
+
+.orbit-set__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-set__context .orbit-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 0;
+}
+
+/* ------------------------------------------------- MOVIMIENTO REDUCIDO */
+
+/* La preferencia local de Ajustes (`data-reduce-motion`) apaga el mismo
+   conjunto de duraciones que apaga `prefers-reduced-motion` en los tokens. */
+body[data-reduce-motion="true"] {
+  --orbit-fast: 0s;
+  --orbit-med: 0s;
+  --orbit-enter: 0s;
+  --orbit-move: 0s;
+}
+
+body[data-reduce-motion="true"] * {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+@media (max-width: 1360px) {
+  .orbit-set__hero,
+  .orbit-set__grid2,
+  .orbit-set-hk__groups {
+    grid-template-columns: 1fr;
+  }
+}

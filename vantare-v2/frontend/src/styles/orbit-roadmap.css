@@ -1,0 +1,404 @@
+/* Layout propio de la vista Roadmap — «Qué viene» (`06 · Roadmap`, D-R3-F-1).
+   El kit cubre superficie, destacado, plegable, chip de estado y estado sutil;
+   aquí solo vive la columna narrativa: los rótulos con línea, el bloque de la
+   fase en curso, la lista de lo próximo y la de hitos, que no son componentes
+   del kit. Sin barras de progreso ni porcentajes: la fuente los estima a mano
+   y pintarlos los vendía como medida. */
+
+.orbit-rm {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  height: 100%;
+  margin: 0 auto;
+  padding: 24px 0 20px;
+  font-family: var(--orbit-font-sans);
+}
+
+/* ------------------------------------------------------------- CABECERA */
+
+.orbit-rm__head {
+  display: flex;
+  flex: none;
+  gap: var(--orbit-space);
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.orbit-rm__head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-rm__head-copy h2 {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-page);
+  font-weight: 690;
+  letter-spacing: -0.035em;
+}
+
+.orbit-rm__head-copy p {
+  max-width: 84ch;
+  margin: 7px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+.orbit-rm__actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ------------------------------------------------------ COLUMNA DE LECTURA */
+
+/* Una sola superficie a lo ancho; dentro, la columna de lectura centrada. El
+   scroll vive aquí, no en la página (`03 · shell`). */
+.orbit-rm__reader {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--orbit-space);
+}
+
+.orbit-rm__reader .orbit-surface__body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
+}
+
+.orbit-rm__reader .orbit-surface__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.orbit-rm__reader .orbit-surface__body::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: var(--orbit-scroll-thumb);
+}
+
+.orbit-rm__column {
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: 4px 0 40px;
+}
+
+.orbit-rm__section {
+  scroll-margin-top: 8px;
+  border-radius: var(--orbit-radius-control);
+  transition: background var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-rm__section + .orbit-rm__section {
+  margin-top: 34px;
+}
+
+/* Resaltado al saltar desde la columna (`07 · motion`): un lavado carmín muy
+   suave, sin desplazamiento ni parpadeo. */
+.orbit-rm__section[data-focus="true"] {
+  background: color-mix(in srgb, var(--orbit-carmine) 7%, transparent);
+}
+
+/* Rótulo grande con línea: es lo que separa las tres secciones. */
+.orbit-rm__rule {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 16px;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.orbit-rm__rule::after {
+  flex: 1;
+  height: 1px;
+  background: var(--orbit-line);
+  content: "";
+}
+
+.orbit-rm__empty {
+  margin: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- AHORA */
+
+.orbit-rm__now-head {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.orbit-rm__position {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font: 700 var(--orbit-fs-secondary) var(--orbit-font-mono);
+}
+
+.orbit-rm__now-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.orbit-rm__now-title b {
+  color: var(--orbit-ink);
+  font-size: 22px;
+  font-weight: 690;
+  letter-spacing: -0.025em;
+}
+
+.orbit-rm__now-summary {
+  max-width: 72ch;
+  margin: 10px 0 0;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.6;
+}
+
+/* Checklist de la fase en curso. La fuente NO distingue highlights hechos de
+   pendientes —solo declara una lista—, así que la fila lleva viñeta carmín y
+   no una casilla marcada, que afirmaría algo que el JSON no dice. */
+.orbit-rm__checklist {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__check {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.5;
+}
+
+.orbit-rm__check:first-child {
+  border-top: 0;
+}
+
+.orbit-rm__check i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orbit-carmine);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--orbit-carmine) 65%, transparent);
+}
+
+/* -------------------------------------------------------------- PRÓXIMO */
+
+.orbit-rm__next {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__next > li {
+  padding: 14px 2px 16px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-rm__next > li:first-child {
+  border-top: 0;
+}
+
+.orbit-rm__next-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-rm__next-head b {
+  color: var(--orbit-ink);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.orbit-rm__target {
+  color: var(--orbit-ink-3);
+  font: 600 var(--orbit-fs-secondary) var(--orbit-font-mono);
+}
+
+.orbit-rm__bullets {
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__bullets li {
+  position: relative;
+  padding: 2px 0 2px 14px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
+}
+
+.orbit-rm__bullets li::before {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orbit-ink-muted);
+  content: "";
+}
+
+/* ---------------------------------------------------------------- HECHO */
+
+.orbit-rm__done {
+  border-bottom: 0;
+}
+
+.orbit-rm__done > summary {
+  border: 1px solid var(--orbit-line);
+}
+
+.orbit-rm__next--done > li:first-child {
+  padding-top: 6px;
+}
+
+/* ------------------------------------------- HITOS Y MARCA DE DERIVACIÓN */
+
+.orbit-rm__anchored {
+  margin-top: 22px;
+}
+
+.orbit-rm__anchored-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Todo lo que no declara la fuente se marca. El anclaje de un hito sale de su
+   `type`, no de una relación escrita en el JSON. */
+.orbit-rm__derived {
+  padding: 2px 7px;
+  border: 1px dashed var(--orbit-line-strong, rgba(255, 255, 255, 0.16));
+  border-radius: 999px;
+  color: var(--orbit-ink-muted);
+  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbit-rm__note {
+  margin: 7px 0 0;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-rm__stones {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__stones li {
+  position: relative;
+  margin-left: 6px;
+  padding: 8px 0 9px 26px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.orbit-rm__stones li::before {
+  position: absolute;
+  top: 15px;
+  left: -6px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--orbit-rm-tone, var(--orbit-ink-muted));
+  border-radius: 50%;
+  background: var(--orbit-column-bg);
+  content: "";
+}
+
+.orbit-rm__stones li[data-state="done"] {
+  --orbit-rm-tone: var(--orbit-green);
+}
+
+.orbit-rm__stones li[data-state="done"]::before {
+  background: var(--orbit-green);
+}
+
+.orbit-rm__stones li[data-state="active"] {
+  --orbit-rm-tone: var(--orbit-red);
+}
+
+.orbit-rm__stones li[data-state="active"]::before {
+  box-shadow: 0 0 10px rgba(240, 71, 85, 0.7);
+}
+
+.orbit-rm__stones li[data-state="planned"] {
+  --orbit-rm-tone: var(--orbit-ember);
+}
+
+.orbit-rm__stones b {
+  display: block;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-body);
+  font-weight: 700;
+}
+
+.orbit-rm__stones span {
+  display: block;
+  margin-top: 3px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+.orbit-rm__stones em {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--orbit-rm-tone, var(--orbit-ink-muted));
+  font: 750 var(--orbit-fs-micro) var(--orbit-font-mono);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- CONTEXTO */
+
+.orbit-rm__context {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orbit-rm__context-count {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font: 700 var(--orbit-fs-secondary) var(--orbit-font-mono);
+}
+
+.orbit-rm__context-hint {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-rm__section {
+    transition: none;
+  }
+}

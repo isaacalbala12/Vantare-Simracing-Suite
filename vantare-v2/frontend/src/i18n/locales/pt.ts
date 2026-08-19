@@ -1,4 +1,16 @@
 import { studioV3Pt } from "./studio-v3/pt";
+import { shellOrbitPt } from "./shell-orbit/pt";
+import { homeOrbitPt } from "./home-orbit/pt";
+import { studioOrbitPt } from "./studio-orbit/pt";
+import { launcherOrbitPt } from "./launcher-orbit/pt";
+import { profilesOrbitPt } from "./profiles-orbit/pt";
+import { racesOrbitPt } from "./races-orbit/pt";
+import { strategyOrbitPt } from "./strategy-orbit/pt";
+import { engineerOrbitPt } from "./engineer-orbit/pt";
+import { telemetryOrbitPt } from "./telemetry-orbit/pt";
+import { roadmapOrbitPt } from "./roadmap-orbit/pt";
+import { settingsOrbitPt } from "./settings-orbit/pt";
+import { testingOrbitPt } from "./testing-orbit/pt";
 import { diagnosticsPt } from "../../hub/settings/diagnostics/translations";
 import { testingCenterPt } from "../../hub/testing-center/translations";
 
@@ -576,4 +588,17 @@ export const pt: Record<string, string> = {
   ...testingCenterPt,
   // Overlay Studio V3
   ...studioV3Pt,
+  // Command Orbit shell
+  ...shellOrbitPt,
+  ...homeOrbitPt,
+  ...studioOrbitPt,
+  ...launcherOrbitPt,
+  ...profilesOrbitPt,
+  ...racesOrbitPt,
+  ...strategyOrbitPt,
+  ...engineerOrbitPt,
+  ...telemetryOrbitPt,
+  ...roadmapOrbitPt,
+  ...settingsOrbitPt,
+  ...testingOrbitPt,
 };

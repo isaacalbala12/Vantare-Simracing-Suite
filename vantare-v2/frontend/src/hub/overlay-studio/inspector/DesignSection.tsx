@@ -14,9 +14,12 @@ import {
   isActiveDesign,
   isDesignCompatibleWithWidget,
   partitionApplyAllTargets,
+  resolveEffectiveDesign,
 } from "../designs/design-utils";
 import type { WidgetDesignClient } from "../designs/widget-design-client";
 import type { StudioCommand } from "../state/studio-command";
+import { Button, Field, Select } from "../../../ui/orbit";
+import { useIsOrbitSkin } from "./inspector-skin";
 
 export type DesignSectionProps = {
   widget: WidgetInstanceV3;
@@ -56,6 +59,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     promptRename,
   } = props;
   const { t } = useI18n();
+  const orbit = useIsOrbitSkin();
   const studioConfirm = useStudioConfirm();
   const requestRename = promptRename ?? ((currentName: string) => window.prompt(t("studio.v3.design.renamePrompt"), currentName));
 
@@ -327,6 +331,118 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
       </li>
     );
   };
+
+  if (orbit) {
+    // Catalogo plano (oficiales + del usuario) sin los bloqueados por plan: el
+    // `Select` no puede ofrecer algo que el gate va a rechazar.
+    const catalogue = [...officialDesigns, ...compatibleUserDesigns].filter(
+      (design) => getStudioMutationGate({ access, mutation: "apply-design", widget, design }).allowed,
+    );
+    const lockedCount =
+      officialDesigns.length + compatibleUserDesigns.length - catalogue.length;
+    // El valor del `Select` es el diseno que el widget lleva puesto, no solo el
+    // que alguien aplico a mano: sin procedencia el widget se pinta con el
+    // diseno por defecto de su sistema y eso es lo que hay que mostrar.
+    const activeDesign = resolveEffectiveDesign(widget, catalogue);
+    const applyAllTargets = activeDesign
+      ? partitionApplyAllTargets(widgets, activeDesign).compatibleIds.length
+      : 0;
+
+    return (
+      <div
+        className="orbit-studio-ins__body"
+        data-testid="studio-inspector-section-design"
+        data-widget-id={widget.id}
+      >
+        {!canApply ? (
+          <p className="orbit-studio-ins__hint" data-testid="studio-design-access-lock">
+            {t("studio.v3.design.accessLock")}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="orbit-studio-ins__error" data-testid="studio-design-error">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="orbit-studio-ins__grid2">
+          <Field htmlFor="orbit-design-system" label={t("studio.inspector.design.system")}>
+            <Select
+              disabled={!canApply}
+              id="orbit-design-system"
+              label={t("studio.inspector.design.system")}
+              onChange={(next) => selectSystem(next as DesignSystemId)}
+              options={VISUAL_SYSTEM_OPTIONS.map((option) => ({
+                value: option.id,
+                label: t(option.labelKey),
+              }))}
+              value={selectedSystemId}
+            />
+          </Field>
+          <Field htmlFor="orbit-design-variant" label={t("studio.inspector.design.variant")}>
+            <Select
+              disabled={!canApply || catalogue.length === 0}
+              id="orbit-design-variant"
+              label={t("studio.inspector.design.variant")}
+              onChange={(next) => {
+                const design = catalogue.find((entry) => entry.id === next);
+                if (design) handleApply(design);
+              }}
+              options={[
+                ...(activeDesign
+                  ? []
+                  : [{ value: "", label: t("studio.inspector.design.none") }]),
+                ...catalogue.map((design) => ({ value: design.id, label: design.name })),
+              ]}
+              value={activeDesign?.id ?? ""}
+            />
+          </Field>
+        </div>
+
+        {loading ? (
+          <p className="orbit-studio-ins__hint" data-testid="studio-design-user-loading">
+            {t("studio.v3.design.userSection.loading")}
+          </p>
+        ) : null}
+        {lockedCount > 0 ? (
+          <p className="orbit-studio-ins__hint" data-testid="studio-design-locked-hint">
+            {t("studio.v3.design.lock.generic")}
+          </p>
+        ) : null}
+
+        <div className="orbit-studio-ins__row">
+          <Button
+            data-testid="studio-design-apply-all"
+            disabled={
+              !canApplyAll || !activeDesign || applyAllTargets <= 1 || busyDesignId !== null
+            }
+            onClick={() => {
+              if (activeDesign) handleApplyAllRequest(activeDesign);
+            }}
+            size="sm"
+            variant="ghost"
+          >
+            {t("studio.inspector.design.applyAll")}
+          </Button>
+          <Button
+            data-testid="studio-design-save-open"
+            disabled={!canSave || busyDesignId !== null}
+            onClick={() => setSaveOpen(true)}
+            size="sm"
+            variant="ghost"
+          >
+            {t("studio.inspector.design.saveAs")}
+          </Button>
+        </div>
+
+        <SaveDesignDialog
+          onClose={() => setSaveOpen(false)}
+          onSave={(input) => void handleSaveDesign(input)}
+          open={saveOpen}
+        />
+      </div>
+    );
+  }
 
   return (
     <div data-testid="studio-inspector-section-design" data-widget-id={widget.id}>

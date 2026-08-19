@@ -1,10 +1,26 @@
 @import "./fonts.css";
 @import "tailwindcss";
+@import "./styles/orbit.tokens.css";
 
 @theme {
   --font-sans: var(--v-font-sans);
   --font-display: var(--v-font-display);
   --font-mono: var(--v-font-mono);
+  --font-orbit-sans: var(--orbit-font-sans);
+  --font-orbit-mono: var(--orbit-font-mono);
+
+  --radius-orbit: var(--orbit-radius);
+
+  --color-orbit-canvas: var(--orbit-canvas);
+  --color-orbit-ink: var(--orbit-ink);
+  --color-orbit-ink-2: var(--orbit-ink-2);
+  --color-orbit-ink-3: var(--orbit-ink-3);
+  --color-orbit-line: var(--orbit-line);
+  --color-orbit-carmine: var(--orbit-carmine);
+  --color-orbit-red: var(--orbit-red);
+  --color-orbit-coral: var(--orbit-coral);
+  --color-orbit-ember: var(--orbit-ember);
+  --color-orbit-green: var(--orbit-green);
 
   --color-vantare-bg: var(--v-bg);
   --color-vantare-surface: var(--v-surface);
@@ -30,6 +46,12 @@
   --color-vantare-blood: var(--v-blood);
 
   --animate-fade-in-up: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-density] {
+  --v-row: var(--orbit-row);
+  --v-space: var(--orbit-space);
+  --v-radius: var(--orbit-radius);
 }
 
 :root {

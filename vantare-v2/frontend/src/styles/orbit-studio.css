@@ -1,0 +1,739 @@
+/* Vantare · Command Orbit v0.3 — Overlays Studio (briefing 04).
+   Solo el layout de la vista: toolbar, stage, statusbar, inspector y la lista
+   de la columna. Los controles son del kit (`orbit-kit.css`) y todos los
+   valores salen de `orbit.tokens.css` salvo las alfas que el prototipo fija
+   literalmente (`vantare-exploration-v03-orbit.html`, sección `#view-studio`). */
+
+.orbit-studio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--orbit-inspector-w);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--orbit-canvas);
+  transition: grid-template-columns var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-studio[data-right-dock="closed"] {
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.orbit-studio__canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ============================================================ TOOLBAR */
+
+.orbit-studio-toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--orbit-line);
+  background: var(--orbit-topbar-bg);
+  backdrop-filter: blur(16px);
+}
+
+.orbit-studio-toolbar .orbit-seg__option {
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.orbit-studio-toolbar__spacer {
+  flex: 1;
+}
+
+.orbit-studio-toolbar__bv {
+  flex: none;
+  height: 31px;
+  padding: 0 10px;
+}
+
+.orbit-studio-toolbar__bv-label {
+  white-space: nowrap;
+}
+
+.orbit-studio-toolbar__dock[aria-expanded="false"] {
+  color: var(--orbit-coral);
+  background: rgba(213, 47, 73, 0.1);
+}
+
+.orbit-studio-toolbar__zoom {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2.5px;
+}
+
+.orbit-studio-toolbar__zoom-label {
+  min-width: 60px;
+  color: var(--orbit-ink-3);
+  font: 12px var(--orbit-font-mono);
+  text-align: center;
+}
+
+/*
+ * Reduccion de la toolbar a ancho corto (D-R4-4).
+ *
+ * La toolbar vive en la columna del lienzo y es `nowrap`: si sus controles no
+ * caben no aparece barra, se salen por la derecha y se pintan **encima** del
+ * inspector (el «Ajustar» bajo «Selecciona un widget...» que reporto Isaac).
+ *
+ * Medido en el harness (`visual:orbit-studio`, px de maquetacion):
+ *
+ *   controles con rotulo Browser View ... 648 px  (+ 24 de padding y ~48 de gaps)
+ *   controles sin rotulo ............... 509 px
+ *   rail + columna contextual .......... 377 px
+ *
+ * El hueco de la banda es `anchoDeMaquetacion - 377 - inspector`. A 1280x720
+ * reales el factor es 0.911, o sea 1405 px de maquetacion: con el inspector a
+ * 395 px la banda se queda en 542 px para 581 px de controles y de ahi salia el
+ * solape de ~39 px. Escalones:
+ *
+ *   > 1560 px  inspector 395 (calibrado a 1920)
+ *   <= 1560 px inspector 320: por debajo la columna del lienzo baja de 790 px
+ *              y el lienzo 16:9 pesa mas que los 75 px del inspector
+ *   <= 1500 px rotulo Browser View oculto y gaps comprimidos (-139 px)
+ *   < 1400 px  inspector auto-plegado desde JS (`STUDIO_AUTO_FOLD_INSPECTOR_WIDTH`)
+ *
+ * Por debajo de 1152 px la columna contextual se pliega sola y sobra sitio.
+ */
+@media (max-width: 1560px) {
+  .orbit-studio {
+    --orbit-inspector-w: 320px;
+  }
+}
+
+@media (max-width: 1500px) {
+  .orbit-studio-toolbar__bv-label {
+    display: none;
+  }
+
+  .orbit-studio-toolbar {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+}
+
+/* La toolbar no puede crecer por su contenido: si un control largo entra en el
+   futuro, que encoja lo encogible antes de invadir la columna del inspector.
+   (No lleva `overflow`: recortaría los tooltips `data-tip`, que salen fuera de
+   la banda. La garantía de no solape la da el assert del harness.) */
+.orbit-studio-toolbar {
+  min-width: 0;
+}
+
+/* Aviso de la statusbar cuando el inspector se pliega solo por falta de ancho. */
+.orbit-studio__statusbar-note {
+  color: var(--orbit-ink-4);
+}
+
+/* ============================================================ STAGE */
+
+.orbit-studio-stage-wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: var(--orbit-space);
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(213, 47, 73, 0.1), transparent 40%),
+    var(--orbit-canvas);
+}
+
+.orbit-studio-stage {
+  position: relative;
+  flex: none;
+  width: 100%;
+  max-height: 100%;
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 16px;
+  background: #0a0b0d;
+  box-shadow: 0 39px 117px rgba(0, 0, 0, 0.55);
+  container-type: inline-size;
+}
+
+/* Con zoom explícito el lienzo deja de encogerse para caber: crece y el
+   `stage-wrap` scrollea, que es lo que pide el criterio de zoom. */
+.orbit-studio-stage:not([data-zoom="fit"]) {
+  max-height: none;
+}
+
+.orbit-studio-stage.osv3-bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 1.25cqw 1.25cqw, 1.25cqw 1.25cqw, 6.25cqw 6.25cqw, 6.25cqw 6.25cqw;
+}
+
+.orbit-studio-stage.osv3-bg-gradient {
+  background-image: radial-gradient(120% 130% at 50% -10%, rgba(50, 52, 66, 0.9), rgba(13, 14, 17, 1) 70%);
+}
+
+.orbit-studio-stage.osv3-bg-black {
+  background: #060708;
+}
+
+.orbit-studio-stage__label {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  z-index: 5;
+  padding: 4px 9px;
+  border-radius: 6.5px;
+  background: rgba(8, 9, 11, 0.8);
+  color: var(--orbit-ink-muted);
+  font: 10px var(--orbit-font-mono);
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.orbit-studio-stage__safe {
+  position: absolute;
+  z-index: 4;
+  border: 1px dashed rgba(255, 155, 87, 0.3);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.orbit-studio-stage__safe span {
+  position: absolute;
+  bottom: 6.5px;
+  left: 10px;
+  color: rgba(255, 155, 87, 0.5);
+  font: 9px var(--orbit-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.orbit-studio-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Widget oculto: el prototipo lo deja al 12 % en el lienzo. La marca es el
+   badge que ya pinta `StudioWidgetFrame`, así no hace falta tocarlo. */
+.orbit-studio-scene .osv3-widget-frame:has(> .osv3-widget-frame__hidden-badge) {
+  opacity: 0.12;
+}
+
+.orbit-studio-scene .osv3-widget-frame--selected .osv3-widget-frame__chrome {
+  inset: -6px;
+  border: 1px dashed rgba(240, 71, 85, 0.8);
+  border-radius: 10px;
+}
+
+.orbit-studio-scene .osv3-resize-handle {
+  width: 9px;
+  height: 9px;
+  border: 1px solid #2a2228;
+  border-radius: 2.5px;
+  background: #f8f6f6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(240, 71, 85, 0.35);
+}
+
+/* Etiqueta de seleccion: vive en el `stage`, no en el `scene` escalado, para
+   medir en pixeles reales y poder recortarse contra los bordes del lienzo. */
+.orbit-studio-stage__tag {
+  position: absolute;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(213, 47, 73, 0.92);
+  color: #fff;
+  font: 11px var(--orbit-font-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  box-shadow: 0 8px 23px rgba(213, 47, 73, 0.35);
+  pointer-events: none;
+}
+
+/* Un widget oculto se marca en la propia etiqueta y ofrece ahi mismo la salida:
+   en el lienzo esta al 12 % y no hay otro asidero (`briefing 04 · A4`). */
+.orbit-studio-stage__tag[data-hidden="true"] {
+  background: rgba(28, 26, 30, 0.95);
+  color: var(--orbit-ink-2, #cfc9d0);
+  box-shadow: 0 8px 23px rgba(0, 0, 0, 0.45);
+}
+
+.orbit-studio-stage__tag-action {
+  padding: 2px 8px;
+  border: 1px solid rgba(213, 47, 73, 0.9);
+  border-radius: 6px;
+  background: rgba(213, 47, 73, 0.18);
+  color: #fff;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.orbit-studio-stage__tag-action:hover {
+  background: rgba(213, 47, 73, 0.4);
+}
+
+.orbit-studio-stage__tag-action:focus-visible {
+  outline: 2px solid var(--orbit-carmine);
+  outline-offset: 2px;
+}
+
+/* ============================================================ STATUSBAR */
+
+.orbit-studio__statusbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 23px;
+  min-height: 39px;
+  padding: 0 18px;
+  border-top: 1px solid var(--orbit-line);
+  color: var(--orbit-ink-muted);
+  font: 11px var(--orbit-font-mono);
+  letter-spacing: 0.06em;
+}
+
+.orbit-studio__statusbar-right {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================ INSPECTOR */
+
+.orbit-studio__dock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--orbit-line);
+  background: var(--orbit-column-bg);
+}
+
+.orbit-studio__dock[hidden] {
+  display: none;
+}
+
+.orbit-studio-inspector {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-studio-inspector__head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 16px 12px 18px;
+  border-bottom: 1px solid var(--orbit-line);
+}
+
+.orbit-studio-inspector__id {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-studio-inspector__id h2 {
+  margin: 4px 0 0;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-studio-inspector__id p {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--orbit-ink-4);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-studio-inspector__actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.orbit-studio-inspector__body {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 10px 14px;
+  overflow-y: auto;
+}
+
+.orbit-studio-inspector__empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-studio-acc > summary {
+  min-height: 46px;
+}
+
+/* Cuerpo de cada seccion real dentro del acordeon: la pila de 14 px del
+   prototipo (`.ins-sec-body`). */
+.orbit-studio-ins__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 2px;
+}
+
+.orbit-studio-ins__body + .orbit-studio-ins__body {
+  padding-top: 14px;
+}
+
+.orbit-studio-ins__grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orbit-studio-ins__grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orbit-studio-ins__num {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.orbit-studio-ins__num > span {
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.orbit-studio-ins__num .orbit-input {
+  width: 100%;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.orbit-studio-ins__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbit-studio-ins__hint {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.orbit-studio-ins__error {
+  margin: 0;
+  color: var(--orbit-red, #f04755);
+  font-size: 11.5px;
+}
+
+.orbit-studio-ins__color {
+  width: 100%;
+  padding: 2px 4px;
+}
+
+/* Los campos del kit ya traen su hueco; dentro del acordeon no llevan margen. */
+.orbit-studio-ins__field {
+  margin: 0;
+}
+
+/* El dock es estrecho: nada dentro del inspector puede crecer por su tamano
+   intrinseco, o el `select` mas largo empujaria la columna entera. */
+.orbit-studio-inspector__body,
+.orbit-studio-ins__body,
+.orbit-studio-ins__body .orbit-field {
+  min-width: 0;
+}
+
+.orbit-studio-ins__body .orbit-select,
+.orbit-studio-ins__body .orbit-input,
+.orbit-studio-ins__body .orbit-textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.orbit-studio-ins__body .orbit-field--row > label {
+  min-width: 0;
+}
+
+/* Las sesiones reales son cinco: el `Seg` ancho reparte en dos filas antes
+   que desbordar el dock. */
+.orbit-studio-ins__body .orbit-seg--wide {
+  flex-wrap: wrap;
+}
+
+.orbit-studio-ins__body .orbit-seg--wide .orbit-seg__option {
+  flex: 1 0 auto;
+  padding: 0 9px;
+}
+
+.orbit-studio-ins__body .orbit-note {
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================ COLUMNA */
+
+.orbit-studio-wlist {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orbit-studio-wlist__head {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+
+.orbit-studio-wlist__count {
+  color: var(--orbit-ink-4);
+  font: 12px var(--orbit-font-mono);
+}
+
+.orbit-studio-wlist__search {
+  flex: none;
+  width: 100%;
+  height: 28px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+
+.orbit-studio-wlist__items {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2.5px;
+  min-height: 0;
+  /* Ver la nota de `.orbit-column__context`: sin `hidden` el eje X pasa a
+     `auto` y los nombres largos sacan barra horizontal. */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.orbit-studio-wlist__empty {
+  margin: 0;
+  padding: 12px 4px;
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-studio-wlist__foot {
+  flex: none;
+  padding-top: 13px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-studio-wlist__foot .orbit-btn {
+  width: 100%;
+}
+
+/* La cruz va delante de la copia, dentro de la propia etiqueta del boton. */
+.orbit-studio-wlist__foot .orbit-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.orbit-studio-wlist__plus {
+  flex: none;
+}
+
+.orbit-studio-witem {
+  position: relative;
+}
+
+.orbit-studio-witem__row {
+  width: 100%;
+  padding-right: 38px;
+}
+
+.orbit-studio-witem__grip {
+  flex: none;
+  color: var(--orbit-ink-muted);
+  opacity: 0;
+  transition: opacity var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-studio-witem:hover .orbit-studio-witem__grip,
+.orbit-studio-witem__row.orbit-row--sel .orbit-studio-witem__grip {
+  opacity: 0.9;
+}
+
+.orbit-studio-witem__eye {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border: 0;
+  border-radius: var(--orbit-radius-chip);
+  background: transparent;
+  color: var(--orbit-ink-3);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-studio-witem__eye:hover {
+  color: var(--orbit-ink);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Widget oculto: la fila se apaga y se tacha, pero sigue siendo pulsable —el
+   widget se selecciona igual— y el ojo NO se apaga con ella: es la unica
+   salida del estado oculto (`briefing 04 · A4`). Por eso la opacidad va en la
+   fila y no en el `.orbit-studio-witem`, que es su padre comun con el ojo. */
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__row {
+  opacity: 0.55;
+}
+
+.orbit-studio-witem[data-enabled="false"] .orbit-row__copy b {
+  color: var(--orbit-ink-4);
+  text-decoration: line-through;
+  text-decoration-color: rgba(122, 118, 123, 0.5);
+}
+
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__eye {
+  color: var(--orbit-carmine);
+  background: rgba(213, 47, 73, 0.12);
+}
+
+.orbit-studio-witem[data-enabled="false"] .orbit-studio-witem__eye:hover {
+  color: #fff;
+  background: rgba(213, 47, 73, 0.34);
+}
+
+.orbit-studio-witem__eye:focus-visible {
+  outline: 2px solid var(--orbit-carmine);
+  outline-offset: 2px;
+}
+
+/* El ojo se pinta por encima de la fila seleccionada: sin esto el fondo de
+   `orbit-row--sel` se lo come visualmente en el estado oculto. */
+.orbit-studio-witem__eye {
+  z-index: 1;
+}
+
+/* ================================================= CONTENIDO (COLUMNAS) */
+
+/* Lista de columnas de standings en piel Orbit (`briefing 04 · A5`): una fila
+   por columna, con Check del kit para visible, botones de orden y dos `Seg`
+   —ancho y alineacion—. Ni un control nativo. */
+.orbit-studio-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-studio-cols__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-chip, 8px);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.orbit-studio-cols__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.orbit-studio-cols__head .orbit-check {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.orbit-studio-cols__head .orbit-check__copy {
+  overflow: hidden;
+  font-size: var(--orbit-fs-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-studio-cols__order {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.orbit-studio-cols__controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  min-width: 0;
+}
+
+.orbit-studio-cols__controls:has(> * + *) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.orbit-studio-cols__seg {
+  min-width: 0;
+}
+
+.orbit-studio-cols__seg .orbit-seg__option {
+  padding-inline: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ============================================================ TOPBAR */
+
+/*
+ * Los controles del Studio van pegados al titulo, no al borde derecho: la
+ * referencia (`#view-studio`) los alinea a la izquierda justo tras el h1 y deja
+ * la derecha para la pill de actualizacion (`.orbit-topbar__right`, que ya lleva
+ * su propio `margin-left: auto`).
+ */
+.orbit-studio-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.orbit-studio-topbar__profile {
+  flex: none;
+}

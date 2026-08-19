@@ -105,16 +105,22 @@ describe("HomeOrbitPage con datos", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Buenos días, Isaac.");
   });
 
-  it("el dial muestra antetítulo, reloj con prefijo y abre la serie en Carreras", () => {
+  it("la tarjeta de próxima serie muestra antetítulo, reloj con prefijo y abre la serie", () => {
     const { onNavigate } = renderPage();
-    const card = screen.getByTestId("orbit-dial-card");
+    const card = screen.getByTestId("orbit-next-race");
     expect(card.textContent).toContain("Próxima serie");
     expect(card.textContent).toContain("LMGT3 Fixed · Sebring (School)");
-    // El reloj del dial corre con la hora real: basta con el prefijo y el formato.
+    // El reloj corre con la hora real: basta con el prefijo y el formato.
     expect(card.textContent).toMatch(/en \d/);
     expect(card.textContent).toContain("Cada 15 min · Bronze SR");
     fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Carreras" }));
     expect(onNavigate).toHaveBeenCalledWith("carreras", "a");
+  });
+
+  it("el hero ya no lleva anillo de cuenta atrás alrededor de la tarjeta", () => {
+    renderPage();
+    expect(document.querySelector(".orbit-dial")).toBeNull();
+    expect(document.querySelector('[data-testid="orbit-dial-arc"]')).toBeNull();
   });
 
   it("las listas de la rejilla se desplazan dentro de su panel", () => {
@@ -213,7 +219,7 @@ describe("HomeOrbitPage · navegación y acciones", () => {
 describe("HomeOrbitPage vacía", () => {
   it("sin perfiles, sin carreras y sin objetivo mantiene la estructura con estados honestos", () => {
     renderPage({ overlay: EMPTY_OVERLAY, races: [], target: null });
-    expect(screen.getByTestId("orbit-home-no-dial").textContent).toContain(
+    expect(screen.getByTestId("orbit-home-no-next").textContent).toContain(
       "Sin salidas próximas en el calendario",
     );
     expect(screen.getByText("Sin salidas próximas")).toBeTruthy();

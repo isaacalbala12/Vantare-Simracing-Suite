@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AvailabilityBoard,
   CornerSlot,
-  CountdownDial,
   Donut,
   HorizontalTimeline,
   KeycapRow,
+  NextRaceCard,
   Trace,
   TrackMap,
   TyreItem,
@@ -16,14 +16,12 @@ import {
 const NOW = new Date("2026-08-18T12:00:00Z");
 
 describe("Orbit kit · visualización", () => {
-  it("el dial traduce la fracción a stroke-dashoffset y al giro del punto", () => {
-    // 90 min restantes sobre una ventana de 180 → frac 0.5 → dashoffset 50.
+  it("la tarjeta de próxima serie muestra antetítulo, reloj con prefijo y abre la serie", () => {
     const target = new Date(NOW.getTime() + 90 * 60_000);
     const onOpen = vi.fn();
-    const { rerender } = render(
-      <CountdownDial
+    const { container, rerender } = render(
+      <NextRaceCard
         eyebrow="Próxima serie"
-        intervalMin={180}
         meta="Spa"
         now={NOW}
         onOpen={onOpen}
@@ -33,22 +31,18 @@ describe("Orbit kit · visualización", () => {
         title="Próxima salida"
       />,
     );
-    expect(screen.getByTestId("orbit-dial-arc").getAttribute("stroke-dashoffset")).toBe("50");
-    expect(screen.getByTestId("orbit-dial-dot").getAttribute("transform")).toBe(
-      "rotate(180.00 160 160)",
-    );
 
-    // La tarjeta muestra antetítulo, reloj con prefijo y el botón circular.
+    // Ya no hay anillo ni arco alrededor: solo la tarjeta (D-R4-9).
+    expect(container.querySelector("svg circle")).toBeNull();
+    expect(screen.getByTestId("orbit-next-race")).toBeTruthy();
     expect(screen.getByText("Próxima serie")).toBeTruthy();
     expect(screen.getByText("en 1 h 30 m")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Carreras" }));
     expect(onOpen).toHaveBeenCalledTimes(1);
 
-    // Un cuarto de ventana → frac 0.25 → dashoffset 75.
     rerender(
-      <CountdownDial
+      <NextRaceCard
         eyebrow="Próxima serie"
-        intervalMin={180}
         meta="Spa"
         now={NOW}
         onOpen={onOpen}
@@ -58,7 +52,7 @@ describe("Orbit kit · visualización", () => {
         title="Próxima salida"
       />,
     );
-    expect(screen.getByTestId("orbit-dial-arc").getAttribute("stroke-dashoffset")).toBe("75");
+    expect(screen.getByText("en 45:00")).toBeTruthy();
   });
 
   it("sin `pxPerHour` la timeline se dibuja como siempre (Estrategia)", () => {

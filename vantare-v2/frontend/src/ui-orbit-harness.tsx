@@ -12,7 +12,7 @@ import {
   Check,
   Chip,
   CornerSlot,
-  CountdownDial,
+  NextRaceCard,
   Donut,
   Dot,
   Fader,
@@ -517,18 +517,19 @@ function Visualization() {
     <section aria-label="4 · Visualización" className="ok-group" data-group="visualizacion">
       <h2>4 · Visualización</h2>
       <div className="ok-group__body" data-shot="visualizacion-a">
-        <Bench label="Dial y mini-lienzo">
-          <CountdownDial
-            eyebrow="Próxima serie"
-            intervalMin={180}
-            meta="Spa · 6 h · 24 inscritos"
-            now={BENCH_NOW}
-            onOpen={() => {}}
-            openLabel="Abrir la serie en Carreras"
-            prefix="en"
-            target={BENCH_TARGET}
-            title="Próxima salida"
-          />
+        <Bench label="Próxima serie y mini-lienzo">
+          <div className="ok-next-race">
+            <NextRaceCard
+              eyebrow="Próxima serie"
+              meta="Spa · 6 h · 24 inscritos"
+              now={BENCH_NOW}
+              onOpen={() => {}}
+              openLabel="Abrir la serie en Carreras"
+              prefix="en"
+              target={BENCH_TARGET}
+              title="Próxima salida"
+            />
+          </div>
           <div className="ok-stage">
             <MiniStage renderWidget={renderStageWidget} system="crystal" widgets={HARNESS_WIDGETS} />
           </div>

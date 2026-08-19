@@ -62,14 +62,6 @@ export const MINI_STAGE_HEIGHT = 1080;
 /** `04`: la condición del neumático pasa a ámbar por encima de dos usos. */
 export const TYRE_WARN_USES = 2;
 
-/** `13`: `frac = clamp(restante / ventana)`; el arco usa `pathLength 100`. */
-export function dialFraction(target: Date, intervalMin: number, now: Date): number {
-  const window = (intervalMin || 180) * 60_000;
-  if (window <= 0) return 0;
-  const remaining = target.getTime() - now.getTime();
-  return Math.min(1, Math.max(0, remaining / window));
-}
-
 /** `mm:ss`, o `h m` cuando queda una hora o más (`13`). */
 export function formatCountdown(target: Date, now: Date): string {
   const remaining = Math.max(0, target.getTime() - now.getTime());

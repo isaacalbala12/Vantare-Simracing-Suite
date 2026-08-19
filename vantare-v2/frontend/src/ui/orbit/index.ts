@@ -53,7 +53,7 @@ export {
 export { Tooltip, type TooltipProps } from "./Tooltip";
 
 // visualización
-export { CountdownDial, type CountdownDialProps } from "./CountdownDial";
+export { NextRaceCard, type NextRaceCardProps } from "./NextRaceCard";
 export { MiniStage, type MiniStageProps } from "./MiniStage";
 export {
   HorizontalTimeline,
@@ -69,7 +69,6 @@ export { AvailabilityBoard, type AvailabilityBoardProps } from "./AvailabilityBo
 export { KeycapRow, type KeycapRowProps } from "./KeycapRow";
 export { Fader, type FaderProps } from "./Fader";
 export {
-  dialFraction,
   formatCountdown,
   formatHour,
   segmentTone,

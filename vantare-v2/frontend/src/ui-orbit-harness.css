@@ -120,6 +120,11 @@
   width: 640px;
 }
 
+/* La tarjeta «Próxima serie» ocupa la columna de 300 px del hero de Inicio. */
+.ok-next-race {
+  width: 300px;
+}
+
 .ok-viz-split {
   flex: 1 1 100%;
   min-width: 0;

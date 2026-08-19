@@ -139,26 +139,19 @@
   outline-offset: 2px;
 }
 
+/* Columna derecha del hero (300px): solo la tarjeta «Próxima serie», sin
+   anillo ni trazos alrededor (D-R4-2). La altura la fija su contenido y el
+   conjunto se centra con el bloque saludo + superficie de comando. */
 .orbit-home__hero-side {
   position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 236px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
-.orbit-home__hero-side::before {
-  content: "";
-  position: absolute;
-  inset: -20% -16%;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    rgba(213, 47, 73, 0.14),
-    rgba(213, 47, 73, 0.03) 40%,
-    transparent 68%
-  );
-  filter: blur(12px);
-  pointer-events: none;
+.orbit-home__hero-side .orbit-home__empty {
+  padding: 22px 0;
 }
 
 /* -------------------------------------------------------------- REJILLA */
@@ -349,8 +342,23 @@
   min-height: 72px;
 }
 
-.orbit-home[data-compact="true"] .orbit-home__hero-side {
-  min-height: 200px;
+/* Compacto: la tarjeta se aprieta un punto, sin cambiar de tamaño discreto. */
+.orbit-home[data-compact="true"] .orbit-next-race {
+  padding: 14px 16px 13px;
+}
+
+.orbit-home[data-compact="true"] .orbit-next-race__title {
+  margin-top: 8px;
+}
+
+.orbit-home[data-compact="true"] .orbit-next-race__foot {
+  margin-top: 10px;
+}
+
+.orbit-home[data-compact="true"] .orbit-home__races .orbit-surface__body,
+.orbit-home[data-compact="true"] .orbit-home__profiles .orbit-surface__body {
+  padding-bottom: 12px;
+  scroll-padding-bottom: 12px;
 }
 
 .orbit-home[data-compact="true"] .orbit-home__grid {
@@ -379,18 +387,12 @@
   height: var(--orbit-control-h-sm);
 }
 
-.orbit-home[data-compact="true"] .orbit-home__races .orbit-surface__body,
-.orbit-home[data-compact="true"] .orbit-home__profiles .orbit-surface__body {
-  padding-bottom: 12px;
-  scroll-padding-bottom: 12px;
-}
-
 .orbit-home[data-compact="true"] .orbit-surface__head {
   min-height: 50px;
   padding: 8px 20px;
 }
 
-/* ≤1152px de ancho: el hero pasa a una columna y pierde el dial (`03 · 3.7`). */
+/* ≤1152px de ancho: el hero pasa a una columna y pierde la tarjeta (`03 · 3.7`). */
 @media (max-width: 1152px) {
   .orbit-home__hero {
     grid-template-columns: minmax(0, 1fr);

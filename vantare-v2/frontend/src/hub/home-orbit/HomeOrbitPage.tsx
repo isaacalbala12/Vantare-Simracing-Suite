@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Chip, CountdownDial, Featured, Icon, Kbd, ListRow, Surface } from "../../ui/orbit";
+import { Button, Chip, Featured, Icon, Kbd, ListRow, NextRaceCard, Surface } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import { formatStartTime } from "../orbit/next-starts";
 import type { RaceStart } from "../orbit/race-starts";
@@ -14,8 +14,7 @@ import "../../styles/orbit-home.css";
 /** `06 · Inicio`: la lista inferior muestra cuatro salidas. */
 const RACE_ROWS = 4;
 
-/** Alto compacto (`03 · 3.6`). Se resuelve en JS porque el dial es un tamaño,
- *  no una regla CSS: el kit expone 236 y 200 como variantes discretas. */
+/** Alto compacto (`03 · 3.6`): densidad del hero y de la rejilla. */
 const COMPACT_HEIGHT = 940;
 
 export interface HomeOrbitPageProps {
@@ -73,7 +72,7 @@ function useCompact(forced?: boolean): boolean {
 /**
  * Inicio de Command Orbit (`15-briefings/03-inicio.md`).
  *
- * Hero de comando + dial de la próxima salida, focal del perfil activo con sus
+ * Hero de comando + tarjeta de la próxima salida, focal del perfil activo con sus
  * widgets reales y rejilla de 12 con próximas carreras y perfiles. Todo el
  * estado de overlay viene de `use-overlay-state` y todas las salidas de
  * `use-calendar-starts`: la página no tiene fuentes propias.
@@ -156,19 +155,17 @@ export function HomeOrbitPage({
 
         <div className="orbit-home__hero-side">
           {target ? (
-            <CountdownDial
+            <NextRaceCard
               eyebrow={t("home.next.eyebrow")}
-              intervalMin={target.intervalMin}
               meta={[target.note, target.licenseLabel].filter(Boolean).join(" · ")}
               onOpen={() => onNavigate("carreras", target.seriesId)}
               openLabel={t("home.next.open")}
               prefix={t("home.next.prefix")}
-              size={compact ? 200 : 236}
               target={target.at}
               title={[target.name, target.track].filter(Boolean).join(" · ")}
             />
           ) : (
-            <p className="orbit-home__empty" data-testid="orbit-home-no-dial">
+            <p className="orbit-home__empty" data-testid="orbit-home-no-next">
               {t("home.next.empty")}
             </p>
           )}

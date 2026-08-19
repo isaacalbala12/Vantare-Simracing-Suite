@@ -108,7 +108,6 @@ try {
         return rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5;
       });
       const stage = document.querySelector('[data-testid="orbit-mini-stage"]');
-      const dial = document.querySelector(".orbit-dial");
 
       // Cada lista de la rejilla debe poder llegar al final sin recortar la
       // última fila: se lleva su contenedor al máximo de scroll y se compara
@@ -155,6 +154,8 @@ try {
         lists: [listOverflow("orbit-home-races"), listOverflow("orbit-home-profiles")].filter(
           Boolean,
         ),
+        nextRace: document.querySelectorAll('[data-testid="orbit-next-race"]').length,
+        dials: document.querySelectorAll(".orbit-dial").length,
         scrollHeight: document.documentElement.scrollHeight,
         innerHeight: window.innerHeight,
         scrollWidth: document.documentElement.scrollWidth,
@@ -162,7 +163,6 @@ try {
         compact: home?.getAttribute("data-compact") === "true",
         raceRows: rows.length,
         visibleRaceRows: visibleRows.length,
-        dialSize: dial ? Math.round(dial.getBoundingClientRect().width) : 0,
         // Widgets reales: los pinta el host V3 a través de su viewport, no una
         // caja de relleno del kit (`.orbit-mini-stage__ghost`).
         hostWidgets: stage
@@ -189,8 +189,11 @@ try {
     if (contract.visibleRaceRows !== 4) {
       throw new Error(`${viewport.name}: solo ${contract.visibleRaceRows} de 4 carreras quedan a la vista`);
     }
-    if (contract.dialSize !== (viewport.compact ? 200 : 236)) {
-      throw new Error(`${viewport.name}: dial de ${contract.dialSize}px, se esperaba ${viewport.compact ? 200 : 236}px`);
+    if (contract.nextRace !== 1) {
+      throw new Error(`${viewport.name}: ${contract.nextRace} tarjetas «Próxima serie», se esperaba 1`);
+    }
+    if (contract.dials !== 0) {
+      throw new Error(`${viewport.name}: el hero sigue pintando el dial (${contract.dials})`);
     }
     for (const list of contract.lists) {
       if (list.error) {

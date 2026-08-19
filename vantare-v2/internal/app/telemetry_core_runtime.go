@@ -170,7 +170,12 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		// is also restored by RetryPolicy.StableRun after any run that lasted,
 		// so an evening of sessions no longer spends it down towards a
 		// permanent death.
-		telemetrycore.ManagerConfig{Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000}},
+		telemetrycore.ManagerConfig{
+			Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000},
+			TerminalRunError: func(err error) bool {
+				return classifyTelemetryError(err) == failureProgramming
+			},
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("build telemetry core manager: %w", err)
@@ -980,6 +985,8 @@ func (runtime *TelemetryCoreRuntime) failStop(err error) {
 		return
 	}
 	runtime.counters.failStops.Add(1)
+	status := runtime.manager.Status()
+	statusErr := runtime.setStatus(driver.StateError, status.ReconnectAttempt)
 	runtime.lifecycleMu.Lock()
 	runtime.transitionLifecycleLocked(telemetryRuntimeTerminal)
 	cancel := runtime.cancel
@@ -990,7 +997,7 @@ func (runtime *TelemetryCoreRuntime) failStop(err error) {
 	if cancel != nil {
 		cancel()
 	}
-	err = errors.Join(err, runtime.closeProductHubs())
+	err = errors.Join(err, statusErr, runtime.closeProductHubs())
 	runtime.mu.Lock()
 	runtime.statusState = driver.StateError
 	runtime.runErr = errors.Join(runtime.runErr, err)

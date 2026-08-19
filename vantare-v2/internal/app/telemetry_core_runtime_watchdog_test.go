@@ -34,7 +34,6 @@ func TestFrozenPipelineStopsReportingFresh(t *testing.T) {
 }
 
 func TestStatusErrorReachesSubscribersBeforeHubsClose(t *testing.T) {
-	t.Skip("ISA-371 D-06: activar en F1")
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)

@@ -144,6 +144,7 @@ type pendingSubscriber struct {
 	done            chan struct{}
 	pendingStatus   bool
 	pendingSnapshot bool
+	terminalStatus  *StatusEnvelope
 	delivered       schema.Cursor
 	deliveredAny    bool
 }
@@ -450,6 +451,10 @@ func (hub *Hub) Close() error {
 	}
 	hub.closed = true
 	for subscription, subscriber := range hub.subscribers {
+		if subscriber.pendingStatus {
+			status := cloneStatus(hub.status)
+			subscriber.terminalStatus = &status
+		}
 		close(subscriber.done)
 		delete(hub.subscribers, subscription)
 	}
@@ -480,6 +485,12 @@ func (subscription *Subscription) Next(ctx context.Context) (Event, error) {
 	}
 	for {
 		subscription.hub.mu.Lock()
+		if subscription.state.terminalStatus != nil {
+			status := cloneStatus(*subscription.state.terminalStatus)
+			subscription.state.terminalStatus = nil
+			subscription.hub.mu.Unlock()
+			return marshalEvent(subscription.hub.product, EventStatus, status)
+		}
 		if _, exists := subscription.hub.subscribers[subscription]; !exists {
 			subscription.hub.mu.Unlock()
 			return Event{}, ErrClosed

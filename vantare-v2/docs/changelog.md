@@ -42,6 +42,12 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 
 **Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
 
+- **Telemetry Core**: un payload demasiado grande o un fallo de Overlay,
+  Strategy o Engineer ya no detiene la adquisición completa; el producto
+  afectado pasa a degradado, el descarte queda contado y los panics de sus
+  fronteras se recuperan. El límite de 256 KiB se conserva y el payload
+  compacto para 104 vehículos sigue pendiente de una fase posterior.
+  (ISA-372/F1)
 - **Perfiles**: guardar perfiles ya acepta los perfiles oficiales Vantare Endurance (antes los rechazaba). (ISA-335)
 - **Studio**: el blade de Input Telemetry vuelve a respetar su proporción. (ISA-336)
 - **Widget nuevo Track Map (TM-01)**: primer corte con la geometría estática del circuito y silueta en Vantare Endurance, sin posicionar vehículos todavía. (ISA-344)

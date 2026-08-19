@@ -387,6 +387,21 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Arquitectura objetivo (ISA-371 / ISA-372)
 
+- ISA-372 / F1 implementa la política de fallo no terminal sobre
+  `isa-373@3e9c77ed`: errores de producto, payload y consumidor descartan y
+  cuentan el frame, publican `degraded` y no cierran adquisición; solo errores
+  de programación llaman `failStop`. Overlay y Strategy quedan aislados entre
+  sí, las cinco fronteras de consumidor recuperan panics y el status terminal
+  se entrega antes de `ErrClosed`.
+- `TelemetryFailurePolicyV2` queda on por defecto con rollback explícito a
+  legacy. El límite sigue en 256 KiB: 104 vehículos todavía descartan Overlay
+  v1 hasta F6, pero no matan el runtime. Métricas nuevas: frames descartados,
+  fallos por producto, panics por boundary, fail-stops, percentiles de payload
+  y transiciones de lifecycle. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f1-failure-policy.md`.
+- Los cuatro tests F0 de F1 están activos y la suite local pasa con las deudas
+  citadas. La sesión LMU real de 60 minutos queda pendiente de Isaac. Estado:
+  nueve commits locales, sin push, PR, CI remoto, merge, promoción ni release.
 - ISA-373 / F0 deja la red de seguridad ejecutable sin modificar producción.
   Los tests rojos permanecen saltados con el defecto y la fase que los activa:
   techo de payload y grid 104 (D-08/D-02), commit mapper/reducer (D-01),
@@ -408,13 +423,11 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Siguiente acción exacta
 
-Actualizar Linear tras reautenticar y solicitar review de Isaac sobre el PR
-draft #212; el estado final y los checks del HEAD vigente se consultan en ese
-PR. La validación LMU con jugador/Fuel en pista no se ejecutó y no debe
-atribuirse al smoke sanitizado. No mergear sin autorización nueva. ISA-152 /
-STR-17 permanece bloqueada hasta que la promoción de ISA-161 a `nightly` sea
-aceptada. VE, tyres, weather, facts y el motor live Strategy siguen fuera de
-este corte.
+El orquestador debe revisar los nueve commits F1 y actualizar Linear cuando la
+issue propia exista. Isaac debe ejecutar la sesión LMU real de 60 minutos y
+decidir si acepta la entrega aislada. No hacer push, PR, merge o promoción
+desde este worker. F6 sigue siendo el dueño del payload compacto de 104
+vehículos; F3 sigue siendo el dueño de la transacción única del engine.
 
 ## Gate final
 
@@ -423,6 +436,12 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-19, ISA-372/F1: política v2 no terminal implementada localmente sobre
+`isa-373@3e9c77ed`, con rollback legacy, métricas, recover por consumidor,
+status terminal entregable y cuatro tests F0 activados. Gates locales pasan
+con las excepciones preexistentes documentadas; sesión LMU de 60 minutos
+pendiente de Isaac. Sin push, PR, CI remoto, merge, promoción ni release.
 
 2026-08-12, ISA-161: ISA-160 ya está integrada en `nightly@8880a88` e ISA-161
 surgió originalmente de esa base. El primer rebase fue sobre `234794d`; la base

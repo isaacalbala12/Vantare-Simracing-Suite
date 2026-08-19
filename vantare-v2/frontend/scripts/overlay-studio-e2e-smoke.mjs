@@ -16,8 +16,12 @@ const LOAD_TIMEOUT_MS = 15_000;
 
 async function startHarnessServer() {
   const { createServer } = await import("vite");
+  process.env.VITE_RUNTIME_MOCK = "mock";
   const server = await createServer({
-    configFile: path.join(FRONTEND_ROOT, "vite.overlay-studio-harness.config.ts"),
+    // El smoke ya no necesita el plugin del harness V3: la ruta Orbit siembra
+    // su estado desde `?seed=`. Usa la config principal y el mismo mock que los
+    // protocolos visuales Orbit, compatible con el cargador de Vite 8.
+    configFile: path.join(FRONTEND_ROOT, "vite.config.ts"),
     server: {
       host: "127.0.0.1",
       port: PREFERRED_PORT,

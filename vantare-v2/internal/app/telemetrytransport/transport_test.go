@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -217,9 +215,7 @@ func TestExportedSnapshotConstructorsAreProductTyped(t *testing.T) {
 		payload     reflect.Type
 	}{
 		{name: "overlay", constructor: NewOverlayFull, payload: reflect.TypeFor[overlay.PayloadV1]()},
-		{name: "engineer", constructor: NewEngineerFull, payload: reflect.TypeFor[engineer.PayloadV1]()},
 		{name: "strategy", constructor: NewStrategyFull, payload: reflect.TypeFor[strategy.PayloadV1]()},
-		{name: "analysis", constructor: NewAnalysisFull, payload: reflect.TypeFor[analysis.PayloadV1]()},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -328,125 +324,6 @@ func TestEpochMustAdvanceAndRestartAtSequenceOne(t *testing.T) {
 		nil,
 	); err != nil {
 		t.Fatalf("higher epoch sequence one: %v", err)
-	}
-}
-
-func TestFactEnvelopeUsesIndependentSequence(t *testing.T) {
-	fact, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             8,
-			Sequence:          90,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		7,
-		3,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fact.Sequence != 90 || fact.FactSequence != 7 || fact.StatusRevision != 3 {
-		t.Fatalf("fact cursors = snapshot %d fact %d status %d", fact.Sequence, fact.FactSequence, fact.StatusRevision)
-	}
-}
-
-func TestFactAdaptersRejectGapDuplicateAndRegression(t *testing.T) {
-	tests := []struct {
-		name      string
-		after     uint64
-		sequences []uint64
-	}{
-		{name: "gap", after: 6, sequences: []uint64{7, 9}},
-		{name: "duplicate", after: 6, sequences: []uint64{7, 7}},
-		{name: "regression", after: 6, sequences: []uint64{7, 5}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			facts := make([]FactEnvelope, 0, len(test.sequences))
-			for _, sequence := range test.sequences {
-				facts = append(facts, mustFact(t, sequence))
-			}
-			source := &fakeFactSource{facts: facts}
-			emitter := &captureEmitter{events: make(chan capturedEvent, len(facts))}
-			err := ServeWailsFacts(
-				context.Background(),
-				ProductEngineer,
-				source,
-				test.after,
-				emitter,
-			)
-			if !errors.Is(err, ErrSequenceGap) {
-				t.Fatalf("error = %v, want sequence gap", err)
-			}
-		})
-	}
-
-	request := httptest.NewRequest(
-		http.MethodGet,
-		FactsRoute(ProductEngineer)+"?after=6",
-		nil,
-	)
-	request.RemoteAddr = "127.0.0.1:45678"
-	recorder := httptest.NewRecorder()
-	SSEFactsHandler(
-		ProductEngineer,
-		&fakeFactSource{facts: []FactEnvelope{mustFact(t, 8)}},
-	).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusConflict {
-		t.Fatalf("SSE first fact gap status = %d, want 409", recorder.Code)
-	}
-}
-
-func TestFactAdaptersPreserveOrderedCursorAndRequireResyncOnGap(t *testing.T) {
-	fact, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             8,
-			Sequence:          90,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		7,
-		3,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	source := &fakeFactSource{facts: []FactEnvelope{fact}}
-	emitter := &captureEmitter{events: make(chan capturedEvent, 1)}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- ServeWailsFacts(ctx, ProductEngineer, source, 6, emitter) }()
-	event := <-emitter.events
-	if event.name != EventName(ProductEngineer, EventFact) {
-		t.Fatalf("fact event name = %q", event.name)
-	}
-	var emitted FactEnvelope
-	if err := json.Unmarshal(event.data, &emitted); err != nil {
-		t.Fatal(err)
-	}
-	if emitted.FactSequence != 7 || source.after != 6 {
-		t.Fatalf("fact sequence = %d after = %d", emitted.FactSequence, source.after)
-	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("ServeWailsFacts error = %v", err)
-	}
-
-	gap := &fakeFactSource{subscribeErr: ErrSequenceGap}
-	request := httptest.NewRequest(
-		http.MethodGet,
-		FactsRoute(ProductEngineer)+"?after=3",
-		nil,
-	)
-	request.RemoteAddr = "127.0.0.1:45678"
-	recorder := httptest.NewRecorder()
-	SSEFactsHandler(ProductEngineer, gap).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusConflict || gap.after != 3 {
-		t.Fatalf("gap response = %d after=%d, want 409 after=3", recorder.Code, gap.after)
 	}
 }
 
@@ -749,26 +626,6 @@ func mustProductStatus(t testingTB, product ProductID, revision uint64) StatusEn
 	return result
 }
 
-func mustFact(t testingTB, factSequence uint64) FactEnvelope {
-	t.Helper()
-	result, err := newFact(
-		ProductEngineer,
-		projection.Metadata{
-			ProjectionVersion: 1,
-			Epoch:             1,
-			Sequence:          1,
-			CapturedAt:        "2026-07-29T10:00:00Z",
-		},
-		factSequence,
-		1,
-		map[string]any{"kind": "lap.completed"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return result
-}
-
 func mustSubscribe(t testingTB, hub *Hub) *Subscription {
 	t.Helper()
 	subscription, err := hub.Subscribe(context.Background())
@@ -824,40 +681,6 @@ type capturedEvent struct {
 	name string
 	data []byte
 }
-
-type fakeFactSource struct {
-	after        uint64
-	facts        []FactEnvelope
-	subscribeErr error
-}
-
-func (source *fakeFactSource) SubscribeFacts(
-	_ context.Context,
-	after uint64,
-) (FactSubscription, error) {
-	source.after = after
-	if source.subscribeErr != nil {
-		return nil, source.subscribeErr
-	}
-	return &fakeFactSubscription{facts: source.facts}, nil
-}
-
-type fakeFactSubscription struct {
-	facts []FactEnvelope
-	index int
-}
-
-func (subscription *fakeFactSubscription) Next(ctx context.Context) (FactEnvelope, error) {
-	if subscription.index < len(subscription.facts) {
-		result := subscription.facts[subscription.index]
-		subscription.index++
-		return result, nil
-	}
-	<-ctx.Done()
-	return FactEnvelope{}, ctx.Err()
-}
-
-func (*fakeFactSubscription) Close() error { return nil }
 
 type captureEmitter struct {
 	events chan capturedEvent

@@ -24,11 +24,6 @@ type exportedSymbol struct {
 }
 
 func TestExportedSymbolsHaveProductionCaller(t *testing.T) {
-	// F4.1 intentionally records the disconnected surface before F4 removes it.
-	if os.Getenv("VANTARE_F4_WIRING_GUARD") != "1" {
-		t.Skip("F4: se activa al terminar los borrados")
-	}
-
 	repositoryRoot := wiringGuardRepositoryRoot(t)
 	symbols, references, err := scanExportedProductionSymbols(repositoryRoot)
 	if err != nil {

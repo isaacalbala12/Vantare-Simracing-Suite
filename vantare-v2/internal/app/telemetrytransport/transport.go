@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -30,7 +28,6 @@ var (
 	ErrDeltaUnsupported    = errors.New("telemetry projection deltas are unsupported")
 	ErrSequenceGap         = errors.New("telemetry projection publication sequence gap")
 	ErrStatusRevision      = errors.New("invalid telemetry projection status revision")
-	ErrFactSequence        = errors.New("invalid telemetry projection fact sequence")
 	ErrProductMismatch     = errors.New("telemetry projection product mismatch")
 	ErrUnsupportedProtocol = errors.New("telemetry projection streaming unsupported")
 )
@@ -62,8 +59,11 @@ type EventKind string
 const (
 	EventSnapshot EventKind = "projection"
 	EventStatus   EventKind = "status"
-	EventFact     EventKind = "fact"
 )
+
+// Deprecated: reserved contract name for the F7 Engineer facts port; there is
+// no live fact transport in F4.
+const EventFact EventKind = "fact"
 
 // Envelope wraps one product payload. Payload contains only the projection's
 // local JSON contract; canonical/core/derive state is never accepted.
@@ -89,19 +89,6 @@ type StatusEnvelope struct {
 	StatusRevision uint64          `json:"statusRevision"`
 	CapturedAt     string          `json:"capturedAt"`
 	Payload        json.RawMessage `json:"payload"`
-}
-
-// FactEnvelope keeps the ordered fact cursor independent from snapshot and
-// status cursors. Facts are not coalesced by Hub.
-type FactEnvelope struct {
-	Product           ProductID          `json:"product"`
-	ProjectionVersion projection.Version `json:"projectionVersion"`
-	Epoch             schema.Epoch       `json:"epoch"`
-	Sequence          schema.Sequence    `json:"sequence"`
-	FactSequence      uint64             `json:"factSequence"`
-	CapturedAt        string             `json:"capturedAt"`
-	StatusRevision    uint64             `json:"statusRevision"`
-	Payload           json.RawMessage    `json:"payload"`
 }
 
 type Event struct {
@@ -191,28 +178,12 @@ func NewOverlayFull(
 	return newFull(ProductOverlay, metadata, statusRevision, payload)
 }
 
-func NewEngineerFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload engineer.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductEngineer, metadata, statusRevision, payload)
-}
-
 func NewStrategyFull(
 	metadata projection.Metadata,
 	statusRevision uint64,
 	payload strategy.PayloadV1,
 ) (Envelope, error) {
 	return newFull(ProductStrategy, metadata, statusRevision, payload)
-}
-
-func NewAnalysisFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload analysis.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductAnalysis, metadata, statusRevision, payload)
 }
 
 func newFull(
@@ -259,41 +230,6 @@ func NewStatus(
 	}
 	if err := validateStatus(result, DefaultMaxPayloadBytes); err != nil {
 		return StatusEnvelope{}, err
-	}
-	return result, nil
-}
-
-func NewEngineerFact(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload engineer.FactV1,
-) (FactEnvelope, error) {
-	return newFact(ProductEngineer, metadata, uint64(payload.Sequence), statusRevision, payload)
-}
-
-func newFact(
-	product ProductID,
-	metadata projection.Metadata,
-	factSequence uint64,
-	statusRevision uint64,
-	payload any,
-) (FactEnvelope, error) {
-	if factSequence == 0 {
-		return FactEnvelope{}, ErrFactSequence
-	}
-	full, err := newFull(product, metadata, statusRevision, payload)
-	if err != nil {
-		return FactEnvelope{}, err
-	}
-	result := FactEnvelope{
-		Product:           product,
-		ProjectionVersion: full.ProjectionVersion,
-		Epoch:             full.Epoch,
-		Sequence:          full.Sequence,
-		FactSequence:      factSequence,
-		CapturedAt:        full.CapturedAt,
-		StatusRevision:    full.StatusRevision,
-		Payload:           full.Payload,
 	}
 	return result, nil
 }

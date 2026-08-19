@@ -14,6 +14,7 @@ describe("telemetry frontend retirement", () => {
       "src/telemetry-shadow-runtime-harness/main.ts",
       "telemetry-shadow-runtime-harness.html",
       "scripts/telemetry-shadow-runtimes.playwright.mjs",
+      "src/overlay/core/telemetry-store.ts",
     ]) {
       expect(existsSync(path.join(frontendRoot, relative)), relative).toBe(false);
     }

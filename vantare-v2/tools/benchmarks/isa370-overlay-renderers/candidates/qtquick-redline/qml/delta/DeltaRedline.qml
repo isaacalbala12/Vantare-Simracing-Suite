@@ -38,7 +38,26 @@ Item {
     readonly property real gainTargetOpacity: progress < 0 ? 0.3 + clampedMagnitude * 0.55 : 0
     property alias statusVisible: statusView.visible
     property alias renderedStatusMessage: statusView.message
-    property alias renderedStatusHeight: statusView.implicitHeight
+    property alias renderedStatusHeight: statusView.height
+    property alias statusCard: statusView.card
+    property alias statusHorizontalPadding: statusView.horizontalPadding
+    property alias statusVerticalPadding: statusView.verticalPadding
+    property alias panelPadding: panel.panelPadding
+    property alias panelRadius: panel.panelRadius
+    property alias gradientTop: panel.gradientTop
+    property alias gradientMiddle: panel.gradientMiddle
+    property alias gradientBottom: panel.gradientBottom
+    property alias gradientMiddlePosition: panel.gradientMiddlePosition
+    property alias shadowEnabled: panel.shadowEnabled
+    property alias shadowBlurRadius: panel.shadowBlurRadius
+    property alias shadowVerticalOffset: panel.shadowVerticalOffset
+    property alias shadowOpacity: panel.shadowOpacity
+    readonly property real innerWidth: panel.contentItem.width
+    readonly property real innerHeight: panel.contentItem.height
+    readonly property real barWidth: bar.width
+    readonly property real panelY: panel.y
+    readonly property real statusY: statusView.y
+    readonly property real statusBlockHeight: statusMessage.length > 0 ? 25.2 : 0
 
     property string previousStatus: "ready"
     property string previousTone: "neutral"
@@ -48,7 +67,7 @@ Item {
     property bool fillReady: false
 
     width: 280
-    height: readyHeight + (statusMessage.length > 0 ? 42 : 0)
+    height: readyHeight + statusBlockHeight
 
     Theme.RedlineTokens { id: tokens }
     function isSide(value) {
@@ -153,8 +172,19 @@ Item {
         id: panel
         objectName: "deltaPanel"
         anchors.top: parent.top
+        anchors.topMargin: root.statusBlockHeight
         width: root.width
         height: root.readyHeight
+        panelPadding: 7
+        panelRadius: 6
+        gradientTop: "#17171a"
+        gradientMiddle: "#101012"
+        gradientBottom: "#0c0c0d"
+        gradientMiddlePosition: 0.40
+        shadowEnabled: true
+        shadowBlurRadius: 24
+        shadowVerticalOffset: 8
+        shadowOpacity: 0.55
 
         Rectangle {
             id: bar
@@ -288,11 +318,15 @@ Item {
     Common.Status {
         id: statusView
         objectName: "deltaStatus"
-        anchors.top: panel.bottom
-        anchors.topMargin: visible ? 8 : 0
+        anchors.top: parent.top
         width: root.width
+        height: root.statusBlockHeight
+        visible: root.statusMessage.length > 0
         message: ""
         kind: "unavailable"
+        card: false
+        horizontalPadding: 8
+        verticalPadding: 6
     }
 
     ParallelAnimation {

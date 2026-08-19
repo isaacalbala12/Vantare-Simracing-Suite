@@ -37,14 +37,33 @@ Item {
     readonly property real throttleWellHeight: throttleRail.wellHeight
     property alias statusVisible: statusView.visible
     property alias renderedStatusMessage: statusView.message
-    property alias renderedStatusHeight: statusView.implicitHeight
+    property alias renderedStatusHeight: statusView.height
+    property alias statusCard: statusView.card
+    property alias statusHorizontalPadding: statusView.horizontalPadding
+    property alias statusVerticalPadding: statusView.verticalPadding
+    property alias panelPadding: panel.panelPadding
+    property alias panelRadius: panel.panelRadius
+    property alias gradientTop: panel.gradientTop
+    property alias gradientMiddle: panel.gradientMiddle
+    property alias gradientBottom: panel.gradientBottom
+    property alias gradientMiddlePosition: panel.gradientMiddlePosition
+    property alias shadowEnabled: panel.shadowEnabled
+    property alias shadowBlurRadius: panel.shadowBlurRadius
+    property alias shadowVerticalOffset: panel.shadowVerticalOffset
+    property alias shadowOpacity: panel.shadowOpacity
+    readonly property real innerWidth: panel.contentItem.width
+    readonly property real innerHeight: panel.contentItem.height
+    readonly property real railWidth: throttleRail.width
+    readonly property real panelY: panel.y
+    readonly property real statusY: statusView.y
+    readonly property real statusBlockHeight: statusMessage.length > 0 ? 25.2 : 0
 
     property real brakePeak: 0.0
     property bool brakePeakVisible: false
     property bool peakReady: false
 
     width: 120
-    height: readyHeight + (statusMessage.length > 0 ? 42 : 0)
+    height: readyHeight + statusBlockHeight
 
     Theme.RedlineTokens { id: tokens }
     onStatusMessageChanged: {
@@ -78,12 +97,22 @@ Item {
         id: panel
         objectName: "pedalsPanel"
         anchors.top: parent.top
+        anchors.topMargin: root.statusBlockHeight
         width: root.width
         height: root.readyHeight
+        panelPadding: 7
+        panelRadius: 6
+        gradientTop: "#17171a"
+        gradientMiddle: "#101012"
+        gradientBottom: "#0c0c0d"
+        gradientMiddlePosition: 0.40
+        shadowEnabled: true
+        shadowBlurRadius: 24
+        shadowVerticalOffset: 8
+        shadowOpacity: 0.55
 
         Row {
             anchors.fill: parent
-            anchors.margins: 7
             spacing: 6
 
             PedalRail {
@@ -130,10 +159,14 @@ Item {
     Common.Status {
         id: statusView
         objectName: "pedalsStatus"
-        anchors.top: panel.bottom
-        anchors.topMargin: visible ? 8 : 0
+        anchors.top: parent.top
         width: root.width
+        height: root.statusBlockHeight
+        visible: root.statusMessage.length > 0
         message: ""
         kind: "unavailable"
+        card: false
+        horizontalPadding: 8
+        verticalPadding: 6
     }
 }

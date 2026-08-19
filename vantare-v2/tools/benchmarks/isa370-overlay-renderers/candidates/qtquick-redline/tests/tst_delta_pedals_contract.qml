@@ -43,8 +43,25 @@ TestCase {
         compare(item.fillDuration, 220)
         compare(item.crossDuration, 700)
         compare(item.bestDuration, 1100)
+        compare(item.panelPadding, 7)
+        compare(item.panelRadius, 6)
+        compare(item.gradientTop, Qt.color("#17171a"))
+        compare(item.gradientMiddle, Qt.color("#101012"))
+        compare(item.gradientBottom, Qt.color("#0c0c0d"))
+        compare(item.gradientMiddlePosition, 0.40)
+        compare(item.shadowEnabled, true)
+        compare(item.shadowBlurRadius, 24)
+        compare(item.shadowVerticalOffset, 8)
+        fuzzyCompare(item.shadowOpacity, 0.55, 0.001)
+        compare(item.innerWidth, 266)
+        compare(item.innerHeight, 82)
+        compare(item.barWidth, 266)
+        compare(item.panelY, 0)
         verify(findChild(item, "deltaPanel") !== null)
         verify(findChild(item, "deltaStatus") !== null)
+        compare(item.statusCard, false)
+        compare(item.statusHorizontalPadding, 8)
+        compare(item.statusVerticalPadding, 6)
 
         item.status = "stale"
         item.statusKind = "unavailable"
@@ -52,7 +69,11 @@ TestCase {
         wait(0)
         compare(item.statusMessage, "Telemetry unavailable")
         compare(item.renderedStatusMessage, "Telemetry unavailable")
-        compare(item.height, 138)
+        fuzzyCompare(item.renderedStatusHeight, 25.2, 0.001)
+        compare(item.height, item.readyHeight + item.renderedStatusHeight)
+        compare(item.statusY, 0)
+        compare(item.panelY, item.renderedStatusHeight)
+        verify(item.panelY > item.statusY)
     }
 
     function test_delta_fill_and_readiness_are_causal() {
@@ -124,6 +145,20 @@ TestCase {
         compare(item.width, 120)
         compare(item.readyHeight, 160)
         compare(item.railOrder, "clutch,brake,throttle")
+        compare(item.panelPadding, 7)
+        compare(item.panelRadius, 6)
+        compare(item.gradientTop, Qt.color("#17171a"))
+        compare(item.gradientMiddle, Qt.color("#101012"))
+        compare(item.gradientBottom, Qt.color("#0c0c0d"))
+        compare(item.gradientMiddlePosition, 0.40)
+        compare(item.shadowEnabled, true)
+        compare(item.shadowBlurRadius, 24)
+        compare(item.shadowVerticalOffset, 8)
+        fuzzyCompare(item.shadowOpacity, 0.55, 0.001)
+        compare(item.innerWidth, 106)
+        compare(item.innerHeight, 146)
+        fuzzyCompare(item.railWidth, 94 / 3, 0.001)
+        compare(item.panelY, 0)
         // Colour channels are asserted separately below to avoid QVariant
         // string-format differences between Qt patch releases.
         fuzzyCompare(item.throttleColor.r, 46 / 255, 0.001)
@@ -131,6 +166,9 @@ TestCase {
         fuzzyCompare(item.clutchColor.b, 219 / 255, 0.001)
         verify(findChild(item, "pedalsPanel") !== null)
         verify(findChild(item, "pedalsStatus") !== null)
+        compare(item.statusCard, false)
+        compare(item.statusHorizontalPadding, 8)
+        compare(item.statusVerticalPadding, 6)
 
         item.throttleColor = "#ff00ff"
         compare(item.throttleColor, Qt.color("#ff00ff"))
@@ -138,7 +176,11 @@ TestCase {
         item.statusMessage = "Telemetry unavailable"
         wait(0)
         compare(item.renderedStatusMessage, "Telemetry unavailable")
-        compare(item.height, 202)
+        fuzzyCompare(item.renderedStatusHeight, 25.2, 0.001)
+        compare(item.height, item.readyHeight + item.renderedStatusHeight)
+        compare(item.statusY, 0)
+        compare(item.panelY, item.renderedStatusHeight)
+        verify(item.panelY > item.statusY)
     }
 
     function test_pedals_transform_only_fill_and_reduced_motion_snap() {

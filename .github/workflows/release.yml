@@ -303,6 +303,12 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build
 
+      - name: Gate - Telemetry TypeScript contract
+        working-directory: ${{ env.VANTARE_DIR }}
+        run: |
+          go run ./tools/telemetry-contract-gen -check
+          git diff --exit-code -- frontend/src/generated/
+
       - name: Gate - Go tests
         env:
           INTERNAL_BUILD: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}

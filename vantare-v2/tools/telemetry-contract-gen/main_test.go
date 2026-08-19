@@ -116,6 +116,28 @@ func TestGenerateIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestCheckGeneratedRejectsStaleOutput(t *testing.T) {
+	t.Parallel()
+
+	generated, err := generate()
+	if err != nil {
+		t.Fatalf("generate contract: %v", err)
+	}
+	output := filepath.Join(t.TempDir(), "telemetry.ts")
+	if err := os.WriteFile(output, generated, 0o644); err != nil {
+		t.Fatalf("write current contract: %v", err)
+	}
+	if err := checkGenerated(output, generated); err != nil {
+		t.Fatalf("current generated contract rejected: %v", err)
+	}
+	if err := os.WriteFile(output, append(generated, []byte("// stale\n")...), 0o644); err != nil {
+		t.Fatalf("write stale contract: %v", err)
+	}
+	if err := checkGenerated(output, generated); err == nil {
+		t.Fatal("stale generated contract was accepted")
+	}
+}
+
 func readRepositoryFile(t *testing.T, pathParts ...string) string {
 	t.Helper()
 	path := filepath.Join(append([]string{"..", ".."}, pathParts...)...)

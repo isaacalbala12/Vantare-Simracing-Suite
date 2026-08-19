@@ -28,3 +28,6 @@ Cuando se añade un tipo wire, se incorpora como raíz con `addStruct` o
 `addEnum`, se especifican sus valores literales y se actualizan los tests de
 estructura. No se añade una raíz canónica para evitar convertir el contrato de
 dominio en un contrato de transporte accidental.
+
+`go run ./tools/telemetry-contract-gen -check` genera primero en un archivo
+temporal y compara sus bytes con el archivo versionado. No modifica el árbol.

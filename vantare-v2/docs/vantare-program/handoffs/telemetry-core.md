@@ -395,6 +395,15 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Arquitectura objetivo (ISA-371 / ISA-372)
 
+- ISA-372 / F5 genera el contrato TypeScript wire desde raíces Go explícitas
+  de las cuatro proyecciones y telemetrytransport, sin generar el canonical.
+  `contracts.ts` reexporta el resultado, los cuatro goldens quedan intactos y
+  CI regenera/compara. El conteo histórico de 28 campos estaba obsoleto:
+  Overlay Vehicle v1 tiene 30 y Go/TS ya coincidían. El espejo vive realmente
+  en `overlay/projection/overlay-projection-v1.ts`, fuera del alcance editable
+  F5; queda pendiente un corte que sustituya allí los aliases por imports del
+  generado. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f5-contract-gen.md`.
 - ISA-372 / F1 implementa la política de fallo no terminal sobre
   `isa-373@3e9c77ed`: errores de producto, payload y consumidor descartan y
   cuentan el frame, publican `degraded` y no cierran adquisición; solo errores
@@ -431,11 +440,12 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Siguiente acción exacta
 
-El orquestador debe revisar los nueve commits F1 y actualizar Linear cuando la
-issue propia exista. Isaac debe ejecutar la sesión LMU real de 60 minutos y
-decidir si acepta la entrega aislada. No hacer push, PR, merge o promoción
-desde este worker. F6 sigue siendo el dueño del payload compacto de 104
-vehículos; F3 sigue siendo el dueño de la transacción única del engine.
+El orquestador debe revisar los commits F1 y los cuatro commits F5, integrar el
+carril F2 sin sobrescribir sus archivos reservados y actualizar Linear cuando
+las issues propias existan. Isaac debe ejecutar la sesión LMU real de 60
+minutos y decidir si acepta la entrega aislada. No hacer push, PR, merge o
+promoción desde este worker. F6 sigue siendo el dueño del payload compacto de
+104 vehículos; F3 sigue siendo el dueño de la transacción única del engine.
 
 ## Gate final
 
@@ -444,6 +454,12 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-19, ISA-372/F5: contrato TypeScript wire generado localmente desde Go,
+reexports en frontend, goldens compartidos y gate de regeneración local/CI.
+Hallazgo documentado: Overlay Vehicle v1 tiene 30 campos y el espejo ya era
+paritario. Sin cambios de red o canonical; sin push, PR, CI remoto, merge,
+promoción ni release. Integración F2 pendiente del orquestador.
 
 2026-08-19, ISA-372/F1: política v2 no terminal implementada localmente sobre
 `isa-373@3e9c77ed`, con rollback legacy, métricas, recover por consumidor,

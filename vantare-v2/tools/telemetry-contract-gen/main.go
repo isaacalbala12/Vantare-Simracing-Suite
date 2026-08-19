@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -45,12 +46,20 @@ type generator struct {
 
 func main() {
 	output := flag.String("out", defaultOutput, "generated TypeScript output path")
+	check := flag.Bool("check", false, "compare a temporary generation with the committed output")
 	flag.Parse()
 
 	generated, err := generate()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if *check {
+		if err := checkGenerated(*output, generated); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 	if err := os.MkdirAll(filepath.Dir(*output), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "create output directory: %v\n", err)
@@ -60,6 +69,53 @@ func main() {
 		fmt.Fprintf(os.Stderr, "write generated contract: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func checkGenerated(output string, generated []byte) error {
+	temporary, err := os.CreateTemp("", "vantare-telemetry-contract-*.ts")
+	if err != nil {
+		return fmt.Errorf("create temporary contract: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if _, err := temporary.Write(generated); err != nil {
+		temporary.Close()
+		return fmt.Errorf("write temporary contract: %w", err)
+	}
+	if err := temporary.Close(); err != nil {
+		return fmt.Errorf("close temporary contract: %w", err)
+	}
+
+	committed, err := os.Open(output)
+	if err != nil {
+		return fmt.Errorf("open committed contract: %w", err)
+	}
+	defer committed.Close()
+	temporary, err = os.Open(temporaryPath)
+	if err != nil {
+		return fmt.Errorf("open temporary contract: %w", err)
+	}
+	defer temporary.Close()
+	equal, err := sameBytes(committed, temporary)
+	if err != nil {
+		return fmt.Errorf("compare generated contract: %w", err)
+	}
+	if !equal {
+		return fmt.Errorf("%s is stale; regenerate with `task telemetry:contract`", output)
+	}
+	return nil
+}
+
+func sameBytes(left, right io.Reader) (bool, error) {
+	leftBytes, err := io.ReadAll(left)
+	if err != nil {
+		return false, err
+	}
+	rightBytes, err := io.ReadAll(right)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(leftBytes, rightBytes), nil
 }
 
 func generate() ([]byte, error) {

@@ -1,10 +1,14 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick 2.15
+import QtQuick.Effects
 import "../theme" as Theme
 
 Item {
     id: root
 
     property string label: ""
+    property string pedalKey: ""
     property string reading: "0%"
     property real value: 0.0
     property color fillColor: "#e8e8e8"
@@ -26,6 +30,7 @@ Item {
     readonly property real wellHeight: well.height
 
     property bool visualReady: false
+    property real saturationGlowOpacity: 0.0
 
     Theme.RedlineTokens { id: tokens }
 
@@ -39,7 +44,7 @@ Item {
         peakPositionAnimation.stop()
         peakOpacityAnimation.stop()
         fillScale.yScale = clampedValue
-        halo.opacity = saturated ? 1.0 : 0.0
+        saturationGlowOpacity = saturated ? 1.0 : 0.0
         peak.y = peakTargetY()
         peak.opacity = peakVisible ? 1.0 : 0.0
     }
@@ -56,7 +61,7 @@ Item {
         fillAnimation.to = clampedValue
         fillAnimation.restart()
         haloAnimation.stop()
-        haloAnimation.from = halo.opacity
+        haloAnimation.from = saturationGlowOpacity
         haloAnimation.to = saturated ? 1.0 : 0.0
         haloAnimation.restart()
     }
@@ -127,15 +132,56 @@ Item {
             }
         }
 
-        Rectangle {
-            id: halo
+        Item {
+            id: insetGlow
+            objectName: root.pedalKey + "SaturationInsetGlow"
+            property real blurRadius: 12
+            property real glowOpacity: 0.16
             anchors.fill: parent
-            anchors.margins: 1
-            radius: 3
-            color: "transparent"
-            border.width: 1
-            border.color: "#52e8e8e8"
-            opacity: 0.0
+            opacity: root.saturationGlowOpacity
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: insetGlow.blurRadius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(232 / 255, 232 / 255, 232 / 255, insetGlow.glowOpacity) }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: insetGlow.blurRadius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Qt.rgba(232 / 255, 232 / 255, 232 / 255, insetGlow.glowOpacity) }
+                }
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: insetGlow.blurRadius
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: Qt.rgba(232 / 255, 232 / 255, 232 / 255, insetGlow.glowOpacity) }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+            Rectangle {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: insetGlow.blurRadius
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Qt.rgba(232 / 255, 232 / 255, 232 / 255, insetGlow.glowOpacity) }
+                }
+            }
         }
 
         Rectangle {
@@ -149,6 +195,34 @@ Item {
             radius: 1
             color: "#8ce8e8e8"
             opacity: 0.0
+            layer.enabled: root.peakEnabled
+            layer.effect: MultiEffect {
+                objectName: root.pedalKey === "brake" ? "brakePeakGlow" : root.pedalKey + "PeakGlow"
+                shadowEnabled: true
+                shadowBlur: 5 / 32
+                blurMax: 32
+                shadowColor: Qt.rgba(232 / 255, 232 / 255, 232 / 255, 0.28)
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 0
+            }
+        }
+    }
+
+    Rectangle {
+        id: outerGlowSource
+        anchors.fill: well
+        radius: 4
+        color: "#0de8e8e8"
+        opacity: root.saturationGlowOpacity
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            objectName: root.pedalKey + "SaturationOuterGlow"
+            shadowEnabled: true
+            shadowBlur: 10 / 32
+            blurMax: 32
+            shadowColor: Qt.rgba(232 / 255, 232 / 255, 232 / 255, 0.10)
+            shadowHorizontalOffset: 0
+            shadowVerticalOffset: 0
         }
     }
 
@@ -182,7 +256,7 @@ Item {
     }
 
     NumberAnimation { id: fillAnimation; target: fillScale; property: "yScale"; duration: root.fillDuration; easing.type: Easing.Linear }
-    NumberAnimation { id: haloAnimation; target: halo; property: "opacity"; duration: root.haloDuration; easing.type: Easing.OutQuad }
+    NumberAnimation { id: haloAnimation; target: root; property: "saturationGlowOpacity"; duration: root.haloDuration; easing.type: Easing.OutQuad }
     NumberAnimation { id: peakPositionAnimation; target: peak; property: "y"; duration: root.peakPositionDuration; easing.type: Easing.Linear }
     NumberAnimation { id: peakOpacityAnimation; target: peak; property: "opacity"; duration: root.peakOpacityDuration; easing.type: Easing.OutQuad }
 }

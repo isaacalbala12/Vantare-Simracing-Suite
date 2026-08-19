@@ -42,8 +42,12 @@ Item {
     property alias statusCard: statusView.card
     property alias statusHorizontalPadding: statusView.horizontalPadding
     property alias statusVerticalPadding: statusView.verticalPadding
+    property alias statusTextColor: statusView.textColor
     property alias panelPadding: panel.panelPadding
     property alias panelRadius: panel.panelRadius
+    property alias panelBorderWidth: panel.panelBorderWidth
+    property alias panelBorderColor: panel.panelBorderColor
+    property alias panelTopBorderColor: panel.panelTopBorderColor
     property alias gradientTop: panel.gradientTop
     property alias gradientMiddle: panel.gradientMiddle
     property alias gradientBottom: panel.gradientBottom
@@ -177,6 +181,9 @@ Item {
         height: root.readyHeight
         panelPadding: 7
         panelRadius: 6
+        panelBorderWidth: 1
+        panelBorderColor: "#1ae8e8e8"
+        panelTopBorderColor: "#2ee8e8e8"
         gradientTop: "#17171a"
         gradientMiddle: "#101012"
         gradientBottom: "#0c0c0d"
@@ -327,6 +334,7 @@ Item {
         card: false
         horizontalPadding: 8
         verticalPadding: 6
+        textColor: "#7a7a7a"
     }
 
     ParallelAnimation {

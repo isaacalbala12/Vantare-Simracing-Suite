@@ -45,6 +45,9 @@ TestCase {
         compare(item.bestDuration, 1100)
         compare(item.panelPadding, 7)
         compare(item.panelRadius, 6)
+        compare(item.panelBorderWidth, 1)
+        compare(item.panelBorderColor, Qt.color("#1ae8e8e8"))
+        compare(item.panelTopBorderColor, Qt.color("#2ee8e8e8"))
         compare(item.gradientTop, Qt.color("#17171a"))
         compare(item.gradientMiddle, Qt.color("#101012"))
         compare(item.gradientBottom, Qt.color("#0c0c0d"))
@@ -53,15 +56,16 @@ TestCase {
         compare(item.shadowBlurRadius, 24)
         compare(item.shadowVerticalOffset, 8)
         fuzzyCompare(item.shadowOpacity, 0.55, 0.001)
-        compare(item.innerWidth, 266)
-        compare(item.innerHeight, 82)
-        compare(item.barWidth, 266)
+        compare(item.innerWidth, 264)
+        compare(item.innerHeight, 80)
+        compare(item.barWidth, 264)
         compare(item.panelY, 0)
         verify(findChild(item, "deltaPanel") !== null)
         verify(findChild(item, "deltaStatus") !== null)
         compare(item.statusCard, false)
         compare(item.statusHorizontalPadding, 8)
         compare(item.statusVerticalPadding, 6)
+        compare(item.statusTextColor, Qt.color("#7a7a7a"))
 
         item.status = "stale"
         item.statusKind = "unavailable"
@@ -147,6 +151,9 @@ TestCase {
         compare(item.railOrder, "clutch,brake,throttle")
         compare(item.panelPadding, 7)
         compare(item.panelRadius, 6)
+        compare(item.panelBorderWidth, 1)
+        compare(item.panelBorderColor, Qt.color("#1ae8e8e8"))
+        compare(item.panelTopBorderColor, Qt.color("#2ee8e8e8"))
         compare(item.gradientTop, Qt.color("#17171a"))
         compare(item.gradientMiddle, Qt.color("#101012"))
         compare(item.gradientBottom, Qt.color("#0c0c0d"))
@@ -155,9 +162,9 @@ TestCase {
         compare(item.shadowBlurRadius, 24)
         compare(item.shadowVerticalOffset, 8)
         fuzzyCompare(item.shadowOpacity, 0.55, 0.001)
-        compare(item.innerWidth, 106)
-        compare(item.innerHeight, 146)
-        fuzzyCompare(item.railWidth, 94 / 3, 0.001)
+        compare(item.innerWidth, 104)
+        compare(item.innerHeight, 144)
+        fuzzyCompare(item.railWidth, 92 / 3, 0.001)
         compare(item.panelY, 0)
         // Colour channels are asserted separately below to avoid QVariant
         // string-format differences between Qt patch releases.
@@ -169,6 +176,7 @@ TestCase {
         compare(item.statusCard, false)
         compare(item.statusHorizontalPadding, 8)
         compare(item.statusVerticalPadding, 6)
+        compare(item.statusTextColor, Qt.color("#7a7a7a"))
 
         item.throttleColor = "#ff00ff"
         compare(item.throttleColor, Qt.color("#ff00ff"))
@@ -188,6 +196,20 @@ TestCase {
         item.throttle = 1.0
         tryVerify(function() { return item.throttleFillMoving }, 100)
         compare(item.throttleFillHeight, item.throttleWellHeight)
+        const saturationGlow = findChild(item, "throttleSaturationOuterGlow")
+        verify(saturationGlow !== null)
+        verify(saturationGlow.shadowEnabled)
+        fuzzyCompare(saturationGlow.shadowBlur, 10 / 32, 0.001)
+        fuzzyCompare(saturationGlow.shadowColor.a, 0.10, 0.001)
+        const insetGlow = findChild(item, "throttleSaturationInsetGlow")
+        verify(insetGlow !== null)
+        compare(insetGlow.blurRadius, 12)
+        fuzzyCompare(insetGlow.glowOpacity, 0.16, 0.001)
+        const peakGlow = findChild(item, "brakePeakGlow")
+        verify(peakGlow !== null)
+        verify(peakGlow.shadowEnabled)
+        fuzzyCompare(peakGlow.shadowBlur, 5 / 32, 0.001)
+        fuzzyCompare(peakGlow.shadowColor.a, 0.28, 0.001)
 
         item.reducedMotion = true
         wait(0)

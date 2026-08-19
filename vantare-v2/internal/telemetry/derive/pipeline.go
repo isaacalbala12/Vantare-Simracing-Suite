@@ -232,6 +232,15 @@ type Pipeline struct {
 	delta       *selfDeltaTracker
 }
 
+// PipelineCandidate owns a fully derived next state without publishing it.
+type PipelineCandidate struct {
+	pipeline *Pipeline
+	header   envelope.Header
+	state    FinalState
+	delta    *selfDeltaTracker
+	snapshot envelope.Snapshot[FinalState]
+}
+
 func NewPipeline(config Config) *Pipeline {
 	limit := config.MaxControlsHistory
 	if limit <= 0 || limit > MaxControlsHistory {
@@ -246,23 +255,36 @@ func (pipeline *Pipeline) Apply(
 	ctx context.Context,
 	observed envelope.Snapshot[core.ObservedState],
 ) (envelope.Snapshot[FinalState], error) {
-	if err := ctx.Err(); err != nil {
+	candidate, err := pipeline.Prepare(ctx, observed)
+	if err != nil {
 		return envelope.Snapshot[FinalState]{}, err
+	}
+	pipeline.Commit(candidate)
+	return candidate.Snapshot(), nil
+}
+
+// Prepare runs the fixed derivation chain without advancing pipeline state.
+func (pipeline *Pipeline) Prepare(
+	ctx context.Context,
+	observed envelope.Snapshot[core.ObservedState],
+) (PipelineCandidate, error) {
+	if err := ctx.Err(); err != nil {
+		return PipelineCandidate{}, err
 	}
 	observedState, ok := observed.Value()
 	if !ok {
-		return envelope.Snapshot[FinalState]{}, fmt.Errorf("%w: observed snapshot has no owned value", ErrInvalidDefinition)
+		return PipelineCandidate{}, fmt.Errorf("%w: observed snapshot has no owned value", ErrInvalidDefinition)
 	}
 
-	pipeline.mu.Lock()
-	defer pipeline.mu.Unlock()
+	pipeline.mu.RLock()
+	defer pipeline.mu.RUnlock()
 
 	header := observed.Header()
 	if err := validateInput(pipeline.header, pipeline.initialized, header); err != nil {
-		return envelope.Snapshot[FinalState]{}, err
+		return PipelineCandidate{}, err
 	}
 	if err := ctx.Err(); err != nil {
-		return envelope.Snapshot[FinalState]{}, err
+		return PipelineCandidate{}, err
 	}
 
 	history := slices.Clone(pipeline.state.Derived.ControlsHistory.Samples)
@@ -282,18 +304,31 @@ func (pipeline *Pipeline) Apply(
 		},
 	}
 	if err := ctx.Err(); err != nil {
-		return envelope.Snapshot[FinalState]{}, err
+		return PipelineCandidate{}, err
 	}
 	snapshot, err := envelope.NewSnapshot(header, next, cloneFinal)
 	if err != nil {
-		return envelope.Snapshot[FinalState]{}, fmt.Errorf("create final derived snapshot: %w", err)
+		return PipelineCandidate{}, fmt.Errorf("create final derived snapshot: %w", err)
 	}
+	return PipelineCandidate{pipeline: pipeline, header: header, state: next, delta: deltaTracker, snapshot: snapshot}, nil
+}
 
-	pipeline.header = header
-	pipeline.state = cloneFinal(next)
-	pipeline.delta = deltaTracker
+// Snapshot returns the fully owned final state prepared by this candidate.
+func (candidate PipelineCandidate) Snapshot() envelope.Snapshot[FinalState] {
+	return candidate.snapshot
+}
+
+// Commit publishes a candidate prepared by this pipeline.
+func (pipeline *Pipeline) Commit(candidate PipelineCandidate) {
+	if candidate.pipeline != pipeline {
+		return
+	}
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.header = candidate.header
+	pipeline.state = cloneFinal(candidate.state)
+	pipeline.delta = candidate.delta
 	pipeline.initialized = true
-	return snapshot, nil
 }
 
 func (pipeline *Pipeline) Current() (envelope.Snapshot[FinalState], bool) {

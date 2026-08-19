@@ -4,6 +4,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -12,15 +13,18 @@ import (
 )
 
 type observationReducer interface {
-	Apply(core.Batch) (envelope.Snapshot[core.ObservedState], error)
+	Prepare(core.Batch) (core.ReducerCandidate, error)
+	Commit(core.ReducerCandidate)
 }
 
 type sessionCoordinator interface {
-	Apply(context.Context, envelope.Snapshot[core.ObservedState], core.FactBatchSink) error
+	Prepare(context.Context, envelope.Snapshot[core.ObservedState]) (core.CoordinatorCandidate, error)
+	Commit(core.CoordinatorCandidate)
 }
 
 type derivationPipeline interface {
-	Apply(context.Context, envelope.Snapshot[core.ObservedState]) (envelope.Snapshot[derive.FinalState], error)
+	Prepare(context.Context, envelope.Snapshot[core.ObservedState]) (derive.PipelineCandidate, error)
+	Commit(derive.PipelineCandidate)
 }
 
 // EngineResult is the complete output of one accepted canonical batch.
@@ -35,6 +39,7 @@ type EngineResult struct {
 // and deterministic derivation chain. F3 moves their commits behind this
 // boundary incrementally; this first cut preserves their existing semantics.
 type TelemetryEngine struct {
+	mu          sync.Mutex
 	reducer     observationReducer
 	coordinator sessionCoordinator
 	derive      derivationPipeline
@@ -42,6 +47,10 @@ type TelemetryEngine struct {
 
 // New builds an engine around the existing canonical stages.
 func New(reducer *core.Reducer, coordinator *core.SessionCoordinator, pipeline *derive.Pipeline) *TelemetryEngine {
+	return newWithStages(reducer, coordinator, pipeline)
+}
+
+func newWithStages(reducer observationReducer, coordinator sessionCoordinator, pipeline derivationPipeline) *TelemetryEngine {
 	return &TelemetryEngine{reducer: reducer, coordinator: coordinator, derive: pipeline}
 }
 
@@ -53,18 +62,28 @@ func (engine *TelemetryEngine) Apply(ctx context.Context, batch core.Batch) (Eng
 	if err := ctx.Err(); err != nil {
 		return EngineResult{}, err
 	}
+	engine.mu.Lock()
+	defer engine.mu.Unlock()
 
-	observed, err := engine.reducer.Apply(batch)
+	reducerCandidate, err := engine.reducer.Prepare(batch)
 	if err != nil {
 		return EngineResult{}, err
 	}
-	facts := &factCollector{}
-	if err := engine.coordinator.Apply(ctx, observed, facts); err != nil {
-		return EngineResult{}, err
-	}
-	final, err := engine.derive.Apply(ctx, observed)
+	observed := reducerCandidate.Snapshot()
+	coordinatorCandidate, err := engine.coordinator.Prepare(ctx, observed)
 	if err != nil {
 		return EngineResult{}, err
 	}
-	return newEngineResult(final, facts.values), nil
+	pipelineCandidate, err := engine.derive.Prepare(ctx, observed)
+	if err != nil {
+		return EngineResult{}, err
+	}
+
+	// Every fallible stage has won. These commits are in-memory pointer/value
+	// replacements and cannot reject, so no partially committed error path
+	// exists after the first mutation.
+	engine.reducer.Commit(reducerCandidate)
+	engine.coordinator.Commit(coordinatorCandidate)
+	engine.derive.Commit(pipelineCandidate)
+	return newEngineResult(pipelineCandidate.Snapshot(), coordinatorCandidate.Facts()), nil
 }

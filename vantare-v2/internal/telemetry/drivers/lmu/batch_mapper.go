@@ -63,6 +63,11 @@ type BatchMapper struct {
 	state batchMapperState
 }
 
+type preparedObservation struct {
+	candidate batchMapperState
+	batch     telemetrycore.Batch
+}
+
 // ObservationBatchSink binds the long-lived mapper to the canonical batch
 // consumer. DriverManager can reuse this same adapter when it recreates a
 // transient Driver, so driver lifetimes never reset canonical identity.
@@ -137,17 +142,32 @@ func (mapper *BatchMapper) WriteObservation(ctx context.Context, observation Obs
 		return err
 	}
 
-	candidate := cloneBatchMapperState(mapper.state)
-	batch, err := candidate.mapObservation(observation)
+	prepared, err := mapper.prepareObservation(observation)
 	if err != nil {
 		return err
 	}
-	batch.State.Vehicles = append([]telemetrycore.VehicleState(nil), batch.State.Vehicles...)
-	if err := sink.WriteBatch(ctx, batch); err != nil {
+	if err := sink.WriteBatch(ctx, prepared.batch); err != nil {
 		return fmt.Errorf("write mapped LMU batch: %w", err)
 	}
-	mapper.state = candidate
+	mapper.commit(prepared)
 	return nil
+}
+
+// prepareObservation builds an owned candidate. In particular, advancing the
+// candidate cursor does not advance the mapper cursor visible to the next
+// observation; commit happens only after the complete engine apply succeeds.
+func (mapper *BatchMapper) prepareObservation(observation Observation) (preparedObservation, error) {
+	candidate := cloneBatchMapperState(mapper.state)
+	batch, err := candidate.mapObservation(observation)
+	if err != nil {
+		return preparedObservation{}, err
+	}
+	batch.State.Vehicles = append([]telemetrycore.VehicleState(nil), batch.State.Vehicles...)
+	return preparedObservation{candidate: candidate, batch: batch}, nil
+}
+
+func (mapper *BatchMapper) commit(prepared preparedObservation) {
+	mapper.state = prepared.candidate
 }
 
 func (state *batchMapperState) mapObservation(observation Observation) (telemetrycore.Batch, error) {

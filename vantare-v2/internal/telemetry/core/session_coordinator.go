@@ -109,6 +109,14 @@ type SessionCoordinator struct {
 	state       coordinatorState
 }
 
+// CoordinatorCandidate owns the next lifecycle state and ordered fact batch
+// without making either visible.
+type CoordinatorCandidate struct {
+	coordinator *SessionCoordinator
+	next        coordinatorState
+	facts       []envelope.Fact[SessionFact]
+}
+
 func NewSessionCoordinator(config SessionCoordinatorConfig) *SessionCoordinator {
 	now := config.Now
 	if now == nil {
@@ -141,34 +149,116 @@ func (coordinator *SessionCoordinator) Apply(
 		return fmt.Errorf("write session facts: %w", ErrClosed)
 	}
 
-	header := snapshot.Header()
-	value, ok := snapshot.Value()
-	if !ok {
-		return envelope.ErrCloneRequired
-	}
-	header = coordinatorHeader(header, value)
-	if err := validateObservedState(header.Identity, value); err != nil {
-		return err
-	}
-
-	coordinator.mu.RLock()
-	if err := validateBatchHeader(coordinator.state.header, coordinator.state.initialized, header); err != nil {
-		coordinator.mu.RUnlock()
-		return err
-	}
-	next := cloneCoordinatorState(coordinator.state)
-	coordinator.mu.RUnlock()
-
-	facts, err := coordinator.applySnapshot(&next, header, value)
+	candidate, err := coordinator.Prepare(ctx, snapshot)
 	if err != nil {
 		return err
 	}
-	if err := coordinator.publish(ctx, sink, &next, facts); err != nil {
-		return err
+	if facts := candidate.Facts(); len(facts) != 0 {
+		if err := sink.WriteFacts(ctx, facts); err != nil {
+			return fmt.Errorf("write ordered telemetry facts: %w", err)
+		}
+	}
+	coordinator.Commit(candidate)
+	return nil
+}
+
+// Prepare computes lifecycle state and ordered facts without committing them.
+func (coordinator *SessionCoordinator) Prepare(
+	ctx context.Context,
+	snapshot envelope.Snapshot[ObservedState],
+) (CoordinatorCandidate, error) {
+	if err := ctx.Err(); err != nil {
+		return CoordinatorCandidate{}, err
+	}
+	header := snapshot.Header()
+	value, ok := snapshot.Value()
+	if !ok {
+		return CoordinatorCandidate{}, envelope.ErrCloneRequired
+	}
+	header = coordinatorHeader(header, value)
+	if err := validateObservedState(header.Identity, value); err != nil {
+		return CoordinatorCandidate{}, err
+	}
+	coordinator.mu.RLock()
+	if err := validateBatchHeader(coordinator.state.header, coordinator.state.initialized, header); err != nil {
+		coordinator.mu.RUnlock()
+		return CoordinatorCandidate{}, err
+	}
+	next := cloneCoordinatorState(coordinator.state)
+	coordinator.mu.RUnlock()
+	drafts, err := coordinator.applySnapshot(&next, header, value)
+	if err != nil {
+		return CoordinatorCandidate{}, err
+	}
+	facts, err := coordinator.materializeFacts(ctx, &next, drafts)
+	if err != nil {
+		return CoordinatorCandidate{}, err
+	}
+	return CoordinatorCandidate{coordinator: coordinator, next: next, facts: facts}, nil
+}
+
+// Facts returns an owned copy of the facts prepared for this commit.
+func (candidate CoordinatorCandidate) Facts() []envelope.Fact[SessionFact] {
+	return append([]envelope.Fact[SessionFact](nil), candidate.facts...)
+}
+
+// Commit publishes a candidate prepared by this coordinator.
+func (coordinator *SessionCoordinator) Commit(candidate CoordinatorCandidate) {
+	if candidate.coordinator != coordinator {
+		return
 	}
 	coordinator.mu.Lock()
-	coordinator.state = next
+	coordinator.state = cloneCoordinatorState(candidate.next)
 	coordinator.mu.Unlock()
+}
+
+func (coordinator *SessionCoordinator) materializeFacts(
+	ctx context.Context,
+	next *coordinatorState,
+	drafts []sessionFactDraft,
+) ([]envelope.Fact[SessionFact], error) {
+	if len(drafts) == 0 {
+		return nil, nil
+	}
+	if len(drafts) > coordinator.maxFacts {
+		return nil, ErrFactBatchOverflow
+	}
+	if uint64(next.factSequence) > math.MaxUint64-uint64(len(drafts)) {
+		return nil, ErrFactSequenceExhausted
+	}
+	facts := make([]envelope.Fact[SessionFact], len(drafts))
+	for index := range drafts {
+		drafts[index].value.Sequence = next.factSequence + FactSequence(index) + 1
+		facts[index] = envelope.NewFact(drafts[index].header, drafts[index].value)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	next.factSequence += FactSequence(len(drafts))
+	return facts, nil
+}
+
+/*
+	The remaining lifecycle methods still use the loss-intolerant fact port
+	directly. F3.4 moves their state under the engine boundary.
+*/
+
+func (coordinator *SessionCoordinator) publish(
+	ctx context.Context,
+	sink FactBatchSink,
+	next *coordinatorState,
+	drafts []sessionFactDraft,
+) error {
+	facts, err := coordinator.materializeFacts(ctx, next, drafts)
+	if err != nil {
+		return err
+	}
+	if len(facts) == 0 {
+		return nil
+	}
+	if err := sink.WriteFacts(ctx, facts); err != nil {
+		return fmt.Errorf("write ordered telemetry facts: %w", err)
+	}
 	return nil
 }
 
@@ -395,36 +485,6 @@ func newFactDraft(header envelope.Header, factIdentity identity.RunIdentity, val
 	header.Identity = factIdentity
 	value.Identity = factIdentity
 	return sessionFactDraft{header: header, value: value}
-}
-
-func (coordinator *SessionCoordinator) publish(
-	ctx context.Context,
-	sink FactBatchSink,
-	next *coordinatorState,
-	drafts []sessionFactDraft,
-) error {
-	if len(drafts) == 0 {
-		return nil
-	}
-	if len(drafts) > coordinator.maxFacts {
-		return ErrFactBatchOverflow
-	}
-	if uint64(next.factSequence) > math.MaxUint64-uint64(len(drafts)) {
-		return ErrFactSequenceExhausted
-	}
-	facts := make([]envelope.Fact[SessionFact], len(drafts))
-	for index := range drafts {
-		drafts[index].value.Sequence = next.factSequence + FactSequence(index) + 1
-		facts[index] = envelope.NewFact(drafts[index].header, drafts[index].value)
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := sink.WriteFacts(ctx, facts); err != nil {
-		return fmt.Errorf("write ordered telemetry facts: %w", err)
-	}
-	next.factSequence += FactSequence(len(drafts))
-	return nil
 }
 
 func cloneCoordinatorState(state coordinatorState) coordinatorState {

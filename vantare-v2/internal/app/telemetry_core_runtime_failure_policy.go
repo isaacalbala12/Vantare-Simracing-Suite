@@ -44,7 +44,9 @@ func newTelemetryConsumerError(boundary string, err error) error {
 // treated as a programming failure and logged instead of being silently made
 // recoverable. Errors rejected by lmu.IsUnmappableFrame describe incomplete
 // product input and are transient. Reducer cursor errors such as ErrStaleBatch
-// are programming errors until F3 owns mapper and reducer in one atomic commit.
+// remain programming errors for malformed external batches; the engine's
+// prepare/commit boundary prevents a post-reducer stage failure from creating
+// one during normal LMU ingestion.
 // Sink backpressure/closure belongs to the consumer boundary and must not stop
 // acquisition (06-reliability-review section 13).
 func classifyTelemetryError(err error) failureClass {

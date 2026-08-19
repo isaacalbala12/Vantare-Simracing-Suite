@@ -103,6 +103,14 @@ type Reducer struct {
 	state       ObservedState
 }
 
+// ReducerCandidate owns a validated next reducer state without publishing it.
+type ReducerCandidate struct {
+	reducer  *Reducer
+	header   envelope.Header
+	state    ObservedState
+	snapshot envelope.Snapshot[ObservedState]
+}
+
 func NewReducer() *Reducer {
 	return &Reducer{}
 }
@@ -114,30 +122,48 @@ func (reducer *Reducer) Apply(batch Batch) (envelope.Snapshot[ObservedState], er
 		return envelope.Snapshot[ObservedState]{}, ErrReducerRunning
 	}
 	defer reducer.running.Store(false)
-	return reducer.apply(batch)
-}
-
-func (reducer *Reducer) apply(batch Batch) (envelope.Snapshot[ObservedState], error) {
-	reducer.mu.Lock()
-	defer reducer.mu.Unlock()
-
-	if err := validateBatchHeader(reducer.header, reducer.initialized, batch.Header); err != nil {
+	candidate, err := reducer.Prepare(batch)
+	if err != nil {
 		return envelope.Snapshot[ObservedState]{}, err
 	}
+	reducer.Commit(candidate)
+	return candidate.Snapshot(), nil
+}
+
+// Prepare validates and owns a batch without advancing reducer state.
+func (reducer *Reducer) Prepare(batch Batch) (ReducerCandidate, error) {
+	reducer.mu.RLock()
+	defer reducer.mu.RUnlock()
+	if err := validateBatchHeader(reducer.header, reducer.initialized, batch.Header); err != nil {
+		return ReducerCandidate{}, err
+	}
 	if err := validateObservedState(batch.Header.Identity, batch.State); err != nil {
-		return envelope.Snapshot[ObservedState]{}, err
+		return ReducerCandidate{}, err
 	}
 
 	owned := cloneObservedState(batch.State)
 	snapshot, err := envelope.NewSnapshot(batch.Header, owned, cloneObservedState)
 	if err != nil {
-		return envelope.Snapshot[ObservedState]{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
+		return ReducerCandidate{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
 	}
+	return ReducerCandidate{reducer: reducer, header: batch.Header, state: owned, snapshot: snapshot}, nil
+}
 
-	reducer.header = batch.Header
-	reducer.state = owned
+// Snapshot returns the owned observed state prepared by this candidate.
+func (candidate ReducerCandidate) Snapshot() envelope.Snapshot[ObservedState] {
+	return candidate.snapshot
+}
+
+// Commit publishes a candidate prepared by this reducer.
+func (reducer *Reducer) Commit(candidate ReducerCandidate) {
+	if candidate.reducer != reducer {
+		return
+	}
+	reducer.mu.Lock()
+	defer reducer.mu.Unlock()
+	reducer.header = candidate.header
+	reducer.state = cloneObservedState(candidate.state)
 	reducer.initialized = true
-	return snapshot, nil
 }
 
 // Current returns an owned copy of the latest accepted snapshot.
@@ -180,10 +206,12 @@ func (reducer *Reducer) Run(
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			snapshot, err := reducer.apply(batch)
+			candidate, err := reducer.Prepare(batch)
 			if err != nil {
 				return fmt.Errorf("apply telemetry batch: %w", err)
 			}
+			reducer.Commit(candidate)
+			snapshot := candidate.Snapshot()
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

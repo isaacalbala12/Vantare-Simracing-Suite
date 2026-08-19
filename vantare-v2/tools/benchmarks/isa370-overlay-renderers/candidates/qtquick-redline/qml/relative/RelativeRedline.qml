@@ -11,7 +11,9 @@ Item {
     property string variant: "mirror"
     property bool showHeader: true
     property bool reducedMotion: false
-    property string statusMessage: ""
+    property string statusMessage: rowsModel !== null
+                                   && rowsModel.statusMessage !== undefined
+                                   ? String(rowsModel.statusMessage || "") : ""
     property string playerClass: ""
     property string playerRowId: ""
     property int playerIndex: -1

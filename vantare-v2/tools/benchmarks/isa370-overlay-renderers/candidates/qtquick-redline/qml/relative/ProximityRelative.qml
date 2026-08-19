@@ -16,6 +16,7 @@ Item {
     implicitHeight: list.height
 
     RelativeTokens { id: tokens }
+    CrossingBudget { id: crossingBudget }
 
     function classRank(vehicleClass) {
         const ranks = ({"HYPERCAR": 0, "LMH": 0, "LMDH": 0, "GTP": 0,
@@ -39,6 +40,7 @@ Item {
             mode: "all"
             modelReady: root.modelReady
             reducedMotion: root.reducedMotion
+            crossBudget: crossingBudget
             property bool showSeam: root.playerIndex >= 0
                                     && (index === root.playerIndex - 1 || index === root.playerIndex)
             height: 30 + (showSeam ? 6 : 0)
@@ -52,7 +54,7 @@ Item {
                 fasterClass: root.playerClass.length > 0
                              && root.classRank(rowData.vehicleClass) < root.classRank(root.playerClass)
                 crossDirection: proximityDelegate.crossDirection
-                crossIndex: proximityDelegate.index < 3 ? proximityDelegate.index : -1
+                crossIndex: proximityDelegate.crossSlot
                 reducedMotion: root.reducedMotion
             }
             Item {

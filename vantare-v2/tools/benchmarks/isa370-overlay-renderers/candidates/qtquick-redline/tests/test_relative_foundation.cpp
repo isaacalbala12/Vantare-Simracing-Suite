@@ -1,6 +1,7 @@
 #include "../replaymodels.h"
 
 #include <QJsonArray>
+#include <QGuiApplication>
 #include <QQuickItem>
 #include <QQuickView>
 #include <QSignalSpy>
@@ -85,11 +86,19 @@ class RelativeFoundationTest final : public QObject
     Q_OBJECT
 
 private slots:
+    void initTestCase();
     void realFoundationSignalsDriveStableReadyMotion();
     void missingStatusAndPlayerRemovalNeverGhost();
     void reducedMotionCancelsAnInflightTransition();
     void missingGapDoesNotBecomeImminent();
+    void crossingBudgetFollowsEventOrderInEveryVariant();
+    void trafficThreatFollowsTheFoundation();
 };
+
+void RelativeFoundationTest::initTestCase()
+{
+    QCOMPARE(QGuiApplication::platformName(), QStringLiteral("offscreen"));
+}
 
 void RelativeFoundationTest::realFoundationSignalsDriveStableReadyMotion()
 {
@@ -244,5 +253,111 @@ void RelativeFoundationTest::missingGapDoesNotBecomeImminent()
     QVERIFY(!approach->property("imminent").toBool());
 }
 
-QTEST_MAIN(RelativeFoundationTest)
+void RelativeFoundationTest::crossingBudgetFollowsEventOrderInEveryVariant()
+{
+    const QStringList variants{QStringLiteral("mirror"), QStringLiteral("proximity"),
+                               QStringLiteral("traffic")};
+    for (const QString &variant : variants) {
+        RelativeModel model;
+        model.apply(record(QStringLiteral("ready"),
+                           {row(QStringLiteral("player"), 1, true, QStringLiteral("player"), 0.0),
+                            row(QStringLiteral("stable-1"), 2, false, QStringLiteral("ahead"), 0.4),
+                            row(QStringLiteral("stable-2"), 3, false, QStringLiteral("ahead"), 0.5),
+                            row(QStringLiteral("stable-3"), 4, false, QStringLiteral("ahead"), 0.6),
+                            row(QStringLiteral("only-cross"), 5, false, QStringLiteral("ahead"), 0.7)}));
+        auto view = viewFor(model);
+        view->rootObject()->setProperty("variant", variant);
+        QTRY_VERIFY_WITH_TIMEOUT(view->rootObject()->property("motionReady").toBool(), 250);
+        const QString visualName = variant == QStringLiteral("mirror")
+            ? QStringLiteral("relativeRow-only-cross-mirror")
+            : QStringLiteral("relativeRow-only-cross");
+        QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), visualName), 250);
+
+        model.apply(record(QStringLiteral("ready"),
+                           {row(QStringLiteral("player"), 1, true, QStringLiteral("player"), 0.0),
+                            row(QStringLiteral("stable-1"), 2, false, QStringLiteral("ahead"), 0.4),
+                            row(QStringLiteral("stable-2"), 3, false, QStringLiteral("ahead"), 0.5),
+                            row(QStringLiteral("stable-3"), 4, false, QStringLiteral("ahead"), 0.6),
+                            row(QStringLiteral("only-cross"), 5, false, QStringLiteral("behind"), -0.7)}));
+        QObject *visual = named(view->rootObject(), visualName);
+        QObject *wrapper = named(view->rootObject(), QStringLiteral("modelRow-only-cross-all"));
+        QVERIFY2(wrapper && wrapper->property("crossSlot").toInt() == 0,
+                 qPrintable(QStringLiteral("%1 slot=%2 direction=%3 ready=%4")
+                                .arg(variant)
+                                .arg(wrapper ? wrapper->property("crossSlot").toInt() : -99)
+                                .arg(wrapper ? wrapper->property("crossDirection").toString() : QString())
+                                .arg(wrapper ? wrapper->property("modelReady").toBool() : false)));
+        QTRY_VERIFY_WITH_TIMEOUT(visual->property("crossRunning").toBool(), 100);
+    }
+
+    for (const QString &variant : variants) {
+        RelativeModel model;
+        model.apply(record(QStringLiteral("ready"),
+                           {row(QStringLiteral("player"), 1, true, QStringLiteral("player"), 0.0),
+                            row(QStringLiteral("cross-1"), 2, false, QStringLiteral("ahead"), 0.4),
+                            row(QStringLiteral("cross-2"), 3, false, QStringLiteral("ahead"), 0.5),
+                            row(QStringLiteral("cross-3"), 4, false, QStringLiteral("ahead"), 0.6),
+                            row(QStringLiteral("cross-4"), 5, false, QStringLiteral("ahead"), 0.7)}));
+        auto view = viewFor(model);
+        view->rootObject()->setProperty("variant", variant);
+        QTRY_VERIFY_WITH_TIMEOUT(view->rootObject()->property("motionReady").toBool(), 250);
+
+        const auto visualName = [&variant](const QString &id) {
+            return variant == QStringLiteral("mirror")
+                ? QStringLiteral("relativeRow-%1-mirror").arg(id)
+                : QStringLiteral("relativeRow-%1").arg(id);
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), visualName(QStringLiteral("cross-4"))), 250);
+
+        model.apply(record(QStringLiteral("ready"),
+                           {row(QStringLiteral("player"), 1, true, QStringLiteral("player"), 0.0),
+                            row(QStringLiteral("cross-1"), 2, false, QStringLiteral("behind"), -0.4),
+                            row(QStringLiteral("cross-2"), 3, false, QStringLiteral("behind"), -0.5),
+                            row(QStringLiteral("cross-3"), 4, false, QStringLiteral("behind"), -0.6),
+                            row(QStringLiteral("cross-4"), 5, false, QStringLiteral("behind"), -0.7)}));
+
+        QTest::qWait(20);
+
+        int running = 0;
+        for (int index = 1; index <= 4; ++index) {
+            QObject *visual = named(view->rootObject(), visualName(QStringLiteral("cross-%1").arg(index)));
+            QVERIFY2(visual, qPrintable(variant + QStringLiteral(" missing crossing row")));
+            if (visual->property("crossRunning").toBool())
+                ++running;
+        }
+        QCOMPARE(running, 3);
+        QVERIFY(named(view->rootObject(), visualName(QStringLiteral("cross-3")))
+                    ->property("crossRunning").toBool());
+    }
+}
+
+void RelativeFoundationTest::trafficThreatFollowsTheFoundation()
+{
+    RelativeModel model;
+    auto player = row(QStringLiteral("player"), 1, true, QStringLiteral("player"), 0.0);
+    auto threat = row(QStringLiteral("threat"), 2, false, QStringLiteral("behind"), -0.7);
+    threat.insert(QStringLiteral("vehicleClass"), QStringLiteral("HYPERCAR"));
+    model.apply(record(QStringLiteral("ready"), {player, threat}));
+    auto view = viewFor(model);
+    view->rootObject()->setProperty("variant", QStringLiteral("traffic"));
+
+    QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), QStringLiteral("trafficRelative")), 250);
+    QObject *traffic = named(view->rootObject(), QStringLiteral("trafficRelative"));
+    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QStringLiteral("threat"), 250);
+    QVERIFY(named(traffic, QStringLiteral("lapNote")));
+
+    threat.insert(QStringLiteral("gapSeconds"), 0.2);
+    model.apply(record(QStringLiteral("ready"), {player, threat}));
+    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QString(), 250);
+}
+
+int main(int argc, char **argv)
+{
+    qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
+    qputenv("QT_QUICK_BACKEND", QByteArrayLiteral("software"));
+    QGuiApplication application(argc, argv);
+    RelativeFoundationTest test;
+    return QTest::qExec(&test, argc, argv);
+}
+
 #include "test_relative_foundation.moc"

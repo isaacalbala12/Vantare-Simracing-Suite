@@ -17,6 +17,7 @@ Item {
     implicitHeight: list.height
 
     RelativeTokens { id: tokens }
+    CrossingBudget { id: crossingBudget }
 
     function classRank(vehicleClass) {
         const ranks = ({"HYPERCAR": 0, "LMH": 0, "LMDH": 0, "GTP": 0,
@@ -79,6 +80,7 @@ Item {
             mode: "all"
             modelReady: root.modelReady
             reducedMotion: root.reducedMotion
+            crossBudget: crossingBudget
             readonly property bool isThreat: rowId === root.threatId
             height: 30 + (isThreat ? 20 : 0)
 
@@ -127,7 +129,7 @@ Item {
                 fasterClass: root.playerClass.length > 0
                              && root.classRank(rowData.vehicleClass) < root.classRank(root.playerClass)
                 crossDirection: trafficDelegate.crossDirection
-                crossIndex: trafficDelegate.index < 3 ? trafficDelegate.index : -1
+                crossIndex: trafficDelegate.crossSlot
                 reducedMotion: root.reducedMotion
             }
         }

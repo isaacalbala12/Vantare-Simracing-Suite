@@ -23,6 +23,8 @@ Item {
     property real enterScaleY: 1
     property real transitionOpacity: 1
     readonly property real visualEnterScaleY: reducedMotion ? 1 : enterScaleY
+    property CrossingBudget crossBudget: null
+    property int crossSlot: -1
     property string crossDirection: ""
     property string previousSide: ""
     readonly property bool matches: mode === "all"
@@ -58,8 +60,13 @@ Item {
     Component.onCompleted: previousSide = side
     onSideChanged: {
         if (modelReady && previousSide.length > 0 && previousSide !== side && !isPlayer) {
-            crossDirection = side === "ahead" ? "lost" : "gained"
-            crossReset.restart()
+            crossSlot = crossBudget !== null ? crossBudget.reserve() : -1
+            if (crossSlot >= 0) {
+                crossDirection = side === "ahead" ? "lost" : "gained"
+                crossReset.restart()
+            } else {
+                crossDirection = ""
+            }
         }
         previousSide = side
     }

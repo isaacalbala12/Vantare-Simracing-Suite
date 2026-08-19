@@ -10,6 +10,17 @@
 
 ## Estado
 
+- **Hub: porte Command Orbit completo en Nightly (2026-08-19).** El hub de
+  escritorio migró a la shell **Command Orbit v0.3** (`docs/design/orbit-v03/`):
+  integrado en `nightly` con el commit `af2c90d1` (PR #279) en la release
+  **v0.1.0.7-nightly.10**. Shell Orbit (rail lateral, columna contextual,
+  topbar, paleta `Ctrl K`), kit `frontend/src/ui/orbit/`, tema
+  `vantare-orbit.json`, `orbit.tokens.css` y harnesses `visual:orbit-*`.
+  **Fase 8 en curso (ISA-368):** retirada del sistema v5 del hub
+  (`card-sleek`, `glass-panel`, uppercase de chrome, `ProSidebar`/`V52Shell`) y
+  del flag `hub.orbit`; los overlays mantienen su sistema V3. Próximos pasos:
+  code review/limpieza del porte y decisión de promoción a `testers`.
+
 - **Fase 2 — inspector flotante in-place (2026-08-16, implementada en rama):**
   extensión del modo edición del overlay con un panel flotante para editar
   content/appearance/behavior del widget seleccionado con datos live.

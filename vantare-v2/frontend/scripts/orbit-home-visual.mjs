@@ -109,7 +109,52 @@ try {
       });
       const stage = document.querySelector('[data-testid="orbit-mini-stage"]');
       const dial = document.querySelector(".orbit-dial");
+
+      // Cada lista de la rejilla debe poder llegar al final sin recortar la
+      // última fila: se lleva su contenedor al máximo de scroll y se compara
+      // el borde inferior de la última fila con el del contenedor.
+      const listOverflow = (testId) => {
+        const list = document.querySelector(`[data-testid="${testId}"]`);
+        if (!list) return null;
+        const scroller = list.closest(".orbit-surface__body");
+        if (!scroller) return { testId, error: "sin contenedor de scroll" };
+        const style = getComputedStyle(scroller);
+        const rows = [...list.querySelectorAll(".orbit-row")];
+        if (rows.length === 0) return { testId, rows: 0, clipped: 0 };
+
+        // El calendario simulado no siempre desborda el panel: se clonan filas
+        // hasta forzar el scroll, se mide y se retiran antes de capturar.
+        const clones = [];
+        while (scroller.scrollHeight <= scroller.clientHeight + 1 && clones.length < 24) {
+          const clone = rows[rows.length - 1].cloneNode(true);
+          clone.dataset.probe = "true";
+          list.appendChild(clone);
+          clones.push(clone);
+        }
+        scroller.scrollTop = scroller.scrollHeight;
+        const all = [...list.querySelectorAll(".orbit-row")];
+        const last = all[all.length - 1];
+        const box = scroller.getBoundingClientRect();
+        const rect = last.getBoundingClientRect();
+        const clipped = Math.max(0, rect.bottom - box.bottom) + Math.max(0, box.top - rect.top);
+        const scrolls = scroller.scrollHeight > scroller.clientHeight + 1;
+        scroller.scrollTop = 0;
+        for (const clone of clones) clone.remove();
+        return {
+          testId,
+          rows: rows.length,
+          probes: clones.length,
+          clipped: Math.round(clipped * 100) / 100,
+          scrolls,
+          overflowY: style.overflowY,
+          padBottom: style.paddingBottom,
+        };
+      };
+
       return {
+        lists: [listOverflow("orbit-home-races"), listOverflow("orbit-home-profiles")].filter(
+          Boolean,
+        ),
         scrollHeight: document.documentElement.scrollHeight,
         innerHeight: window.innerHeight,
         scrollWidth: document.documentElement.scrollWidth,
@@ -146,6 +191,23 @@ try {
     }
     if (contract.dialSize !== (viewport.compact ? 200 : 236)) {
       throw new Error(`${viewport.name}: dial de ${contract.dialSize}px, se esperaba ${viewport.compact ? 200 : 236}px`);
+    }
+    for (const list of contract.lists) {
+      if (list.error) {
+        throw new Error(`${viewport.name}: ${list.testId} ${list.error}`);
+      }
+      if (!list.scrolls) {
+        throw new Error(`${viewport.name}: ${list.testId} no llega a desplazarse ni con ${list.probes} filas de sonda`);
+      }
+      if (list.overflowY !== "auto" && list.overflowY !== "scroll") {
+        throw new Error(`${viewport.name}: ${list.testId} no desplaza dentro del panel (overflow-y: ${list.overflowY})`);
+      }
+      if (parseFloat(list.padBottom) < 8) {
+        throw new Error(`${viewport.name}: ${list.testId} sin hueco al pie (padding-bottom: ${list.padBottom})`);
+      }
+      if (list.clipped > 0.5) {
+        throw new Error(`${viewport.name}: ${list.testId} recorta la última fila ${list.clipped}px tras el scroll máximo`);
+      }
     }
     if (contract.hostWidgets !== 3) {
       throw new Error(`${viewport.name}: el mini-lienzo pinta ${contract.hostWidgets} widgets del host V3, se esperaban 3`);

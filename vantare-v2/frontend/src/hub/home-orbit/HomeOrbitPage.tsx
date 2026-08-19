@@ -243,7 +243,7 @@ export function HomeOrbitPage({
           {rows.length === 0 ? (
             <p className="orbit-home__empty">{t("home.races.empty")}</p>
           ) : (
-            <div className="orbit-list" data-testid="orbit-home-races">
+            <div className="orbit-list orbit-home__scroll" data-testid="orbit-home-races">
               {rows.map((row, index) => (
                 <ListRow
                   key={`${row.seriesId}-${row.at.getTime()}`}
@@ -282,7 +282,7 @@ export function HomeOrbitPage({
           {overlay.profiles.length === 0 ? (
             <p className="orbit-home__empty">{t("home.profiles.empty")}</p>
           ) : (
-            <div className="orbit-list" data-testid="orbit-home-profiles">
+            <div className="orbit-list orbit-home__scroll" data-testid="orbit-home-profiles">
               {overlay.profiles.map((profile) => {
                 const isActive = profile.id === overlay.activeProfileId;
                 return (

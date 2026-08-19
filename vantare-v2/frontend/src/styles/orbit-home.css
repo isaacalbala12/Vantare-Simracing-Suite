@@ -267,6 +267,26 @@
 
 /* --------------------------------------------------- LISTAS DE LA REJILLA */
 
+/* El cuerpo del panel es el contenedor de scroll: `min-height: 0` para que la
+   rejilla pueda encogerlo y hueco al pie para que la última fila se vea
+   entera al llegar al final (`D-R4-1`). Scrollbars finas del kit. */
+.orbit-home__races .orbit-surface__body,
+.orbit-home__profiles .orbit-surface__body {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 14px;
+  scroll-padding-bottom: 14px;
+  overscroll-behavior: contain;
+}
+
+.orbit-home__scroll {
+  flex: none;
+  padding-bottom: 4px;
+}
+
 .orbit-home__time {
   flex: none;
   width: 54px;
@@ -357,6 +377,12 @@
 
 .orbit-home[data-compact="true"] .orbit-home__actions .orbit-btn {
   height: var(--orbit-control-h-sm);
+}
+
+.orbit-home[data-compact="true"] .orbit-home__races .orbit-surface__body,
+.orbit-home[data-compact="true"] .orbit-home__profiles .orbit-surface__body {
+  padding-bottom: 12px;
+  scroll-padding-bottom: 12px;
 }
 
 .orbit-home[data-compact="true"] .orbit-surface__head {

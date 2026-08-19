@@ -117,6 +117,13 @@ describe("HomeOrbitPage con datos", () => {
     expect(onNavigate).toHaveBeenCalledWith("carreras", "a");
   });
 
+  it("las listas de la rejilla se desplazan dentro de su panel", () => {
+    renderPage();
+    for (const testId of ["orbit-home-races", "orbit-home-profiles"]) {
+      expect(screen.getByTestId(testId).classList.contains("orbit-home__scroll")).toBe(true);
+    }
+  });
+
   it("muestra el perfil activo con sus widgets y el estado del overlay", () => {
     renderPage();
     const focal = screen.getByTestId("orbit-home-focal");

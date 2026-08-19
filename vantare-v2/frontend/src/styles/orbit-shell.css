@@ -344,21 +344,10 @@
 
 /* ============================================================ FILAS */
 
-.orbit-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 46px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: var(--orbit-fast) var(--orbit-ease);
-}
+/* La caja de `.orbit-row` (y todos sus estados) vive en el kit. Aqui no se
+   repite: el bloque base que habia era identico salvo por un
+   `background: transparent` que, al cargarse la shell despues del kit,
+   empataba en especificidad con `.orbit-row--sel` y borraba la seleccion. */
 
 .orbit-row:hover .orbit-row__copy b,
 .orbit-row--sel .orbit-row__copy b {

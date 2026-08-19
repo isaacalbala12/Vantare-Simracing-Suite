@@ -27,6 +27,17 @@ includes:
   android: ./build/android/Taskfile.yml
 
 tasks:
+  telemetry:contract:
+    summary: Regenerates the TypeScript telemetry wire contract from Go
+    cmds:
+      - go run ./tools/telemetry-contract-gen
+
+  telemetry:contract:check:
+    summary: Verifies the committed TypeScript telemetry wire contract
+    cmds:
+      - go run ./tools/telemetry-contract-gen -check
+      - git diff --exit-code -- frontend/src/generated/
+
   build:
     summary: Builds the application
     cmds:

@@ -1,3 +1,16 @@
+Nota ISA-372/F5 (2026-08-19, implementada en rama, sin promoción):
+- El contrato TypeScript wire se genera de forma determinista desde raíces Go
+  explícitas de Overlay, Engineer, Strategy, Analysis y telemetrytransport; el
+  canonical permanece fuera por ADR 0008.
+- `contracts.ts` reexporta sobres y enums generados. Los cuatro goldens Go se
+  decodifican sin cambios y un test caracteriza la paridad del espejo anterior.
+- Hallazgo: `OverlayVehicleV1` tiene hoy 30 campos, no los 28 citados por el
+  expediente histórico; Go y el espejo TS ya coincidían.
+- Gate local/CI: regeneración temporal, comparación byte a byte y
+  `git diff --exit-code` sobre `frontend/src/generated/`. Pendiente revisión e
+  integración por el orquestador junto al carril F2. Sin push, PR, merge,
+  promoción ni release.
+
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel
   flotante que permite editar contenido, apariencia y comportamiento del

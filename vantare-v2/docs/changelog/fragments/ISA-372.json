@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-372",
+  "type": "change",
+  "summary": "El contrato TypeScript de telemetría se genera ahora desde los tipos wire Go para impedir que ambos lados diverjan.",
+  "technicalNotes": [
+    "Overlay, Engineer, Strategy, Analysis y los sobres de transporte comparten un archivo generado determinista con cabecera DO NOT EDIT.",
+    "Los contratos públicos existentes se conservan mediante reexports y no cambia ningún payload ni golden de red.",
+    "Los gates locales y de CI regeneran el contrato y fallan si el archivo versionado queda desactualizado."
+  ],
+  "testing": [
+    "Ejecutar task telemetry:contract:check y confirmar que termina sin diff.",
+    "Ejecutar los tests frontend y comprobar que los cuatro goldens Go se decodifican con los tipos generados."
+  ],
+  "knownLimitations": [
+    "La integración de los cambios paralelos del carril F2 corresponde al orquestador.",
+    "El contrato canónico de Telemetry Core no se genera en esta fase."
+  ]
+}

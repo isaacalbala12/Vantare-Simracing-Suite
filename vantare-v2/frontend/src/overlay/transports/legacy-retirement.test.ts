@@ -38,6 +38,32 @@ describe("telemetry frontend retirement", () => {
       expect(source, forbidden).not.toContain(forbidden);
     }
   });
+
+  it("keeps generated telemetry declarations out of handwritten contracts", () => {
+    const generatedPath = path.join(
+      frontendRoot,
+      "src/generated/telemetry.ts",
+    );
+    const generated = readFileSync(generatedPath, "utf8");
+    expect(generated.startsWith("// DO NOT EDIT —")).toBe(true);
+
+    const generatedNames = [
+      ...generated.matchAll(/^export (?:interface|type) ([A-Za-z0-9_]+)/gm),
+    ].map((match) => match[1]);
+    const contracts = readFileSync(
+      path.join(frontendRoot, "src/telemetry-transport/contracts.ts"),
+      "utf8",
+    );
+    expect(contracts).toContain('from "../generated/telemetry"');
+    for (const name of generatedNames) {
+      expect(
+        contracts,
+        `src/telemetry-transport/contracts.ts redeclares generated ${name}`,
+      ).not.toMatch(
+        new RegExp(`^export (?:interface|type) ${name}(?:<[^>]+>)?\\s*[={]`, "m"),
+      );
+    }
+  });
 });
 
 function productionTypeScriptFiles(root: string): string[] {

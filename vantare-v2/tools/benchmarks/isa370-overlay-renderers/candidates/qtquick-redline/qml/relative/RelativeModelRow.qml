@@ -23,7 +23,6 @@ Item {
     property real enterScaleY: 1
     property real transitionOpacity: 1
     readonly property real visualEnterScaleY: reducedMotion ? 1 : enterScaleY
-    property CrossingBudget crossBudget: null
     property int crossSlot: -1
     property string crossDirection: ""
     property string previousSide: ""
@@ -57,17 +56,22 @@ Item {
 
     RelativeTokens { id: tokens }
 
+    signal crossDetected(string direction)
+
+    function acceptCross(direction, slot) {
+        crossSlot = slot
+        if (crossSlot >= 0) {
+            crossDirection = direction
+            crossReset.restart()
+        } else {
+            crossDirection = ""
+        }
+    }
+
     Component.onCompleted: previousSide = side
     onSideChanged: {
-        if (modelReady && previousSide.length > 0 && previousSide !== side && !isPlayer) {
-            crossSlot = crossBudget !== null ? crossBudget.reserve() : -1
-            if (crossSlot >= 0) {
-                crossDirection = side === "ahead" ? "lost" : "gained"
-                crossReset.restart()
-            } else {
-                crossDirection = ""
-            }
-        }
+        if (modelReady && previousSide.length > 0 && previousSide !== side && !isPlayer)
+            crossDetected(side === "ahead" ? "lost" : "gained")
         previousSide = side
     }
     Timer {

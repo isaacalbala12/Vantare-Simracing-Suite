@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick 2.15
 
-Item {
+CrossingBudget {
     id: root
     objectName: "mirrorRelative"
 
@@ -16,7 +16,6 @@ Item {
     implicitHeight: list.height
 
     RelativeTokens { id: tokens }
-    CrossingBudget { id: crossingBudget }
 
     function classRank(vehicleClass) {
         const ranks = ({"HYPERCAR": 0, "LMH": 0, "LMDH": 0, "GTP": 0,
@@ -40,7 +39,7 @@ Item {
             mode: "all"
             modelReady: root.modelReady
             reducedMotion: root.reducedMotion
-            crossBudget: crossingBudget
+            onCrossDetected: direction => acceptCross(direction, root.reserveCrossSlot())
             height: 30 + (isPlayer ? 36 : 0)
 
             RelativeAxis {

@@ -2,12 +2,33 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
+
+func TestFailurePolicyFlagRestoresLegacyBehaviour(t *testing.T) {
+	disabled := false
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryFailurePolicyV2: &disabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.lifecycle = telemetryRuntimeRunning
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 104))
+	if !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
+		t.Fatalf("legacy publication error = %v, want ErrPayloadTooLarge", err)
+	}
+	if runtime.lifecycle != telemetryRuntimeTerminal || runtime.Metrics().FailStops != 1 {
+		t.Fatalf("legacy policy did not fail-stop: lifecycle=%d metrics=%+v", runtime.lifecycle, runtime.Metrics())
+	}
+	if err := runtime.Start(context.Background()); !errors.Is(err, telemetrytransport.ErrClosed) {
+		t.Fatalf("legacy restart = %v, want ErrClosed", err)
+	}
+}
 
 func TestPublishFailureIsNotTerminal(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})

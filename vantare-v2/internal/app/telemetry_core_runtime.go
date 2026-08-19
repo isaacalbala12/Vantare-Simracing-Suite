@@ -56,6 +56,9 @@ type EngineerProjectionConsumer interface {
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
+	// TelemetryFailurePolicyV2 defaults to on when nil. Point it to false for
+	// one-cycle rollback to the legacy fail-stop consumer policy.
+	TelemetryFailurePolicyV2 *bool
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
@@ -117,17 +120,18 @@ type TelemetryCoreRuntime struct {
 	stoppedStatusPending   bool
 	stoppedStatusDelivered bool
 
-	enabled          bool
-	emitter          telemetrytransport.EventEmitter
-	hub              *telemetrytransport.Hub
-	strategyHub      *telemetrytransport.Hub
-	manager          *telemetrycore.DriverManager[lmu.Observation]
-	mapper           *lmu.BatchMapper
-	reducer          *telemetrycore.Reducer
-	coord            *telemetrycore.SessionCoordinator
-	derive           *derive.Pipeline
-	engineer         EngineerProjectionConsumer
-	engineerManifest engineerprojection.Manifest
+	enabled                  bool
+	telemetryFailurePolicyV2 bool
+	emitter                  telemetrytransport.EventEmitter
+	hub                      *telemetrytransport.Hub
+	strategyHub              *telemetrytransport.Hub
+	manager                  *telemetrycore.DriverManager[lmu.Observation]
+	mapper                   *lmu.BatchMapper
+	reducer                  *telemetrycore.Reducer
+	coord                    *telemetrycore.SessionCoordinator
+	derive                   *derive.Pipeline
+	engineer                 EngineerProjectionConsumer
+	engineerManifest         engineerprojection.Manifest
 
 	statusState   driver.State
 	statusAttempt int
@@ -148,6 +152,10 @@ type TelemetryCoreRuntime struct {
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
 // the LMU mapping lifecycle.
 func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
+	failurePolicyV2 := true
+	if config.TelemetryFailurePolicyV2 != nil {
+		failurePolicyV2 = *config.TelemetryFailurePolicyV2
+	}
 	manager, err := telemetrycore.NewDriverManager(
 		[]telemetrycore.DriverCandidate[lmu.Observation]{
 			{
@@ -173,7 +181,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		telemetrycore.ManagerConfig{
 			Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000},
 			TerminalRunError: func(err error) bool {
-				return classifyTelemetryError(err) == failureProgramming
+				return !failurePolicyV2 || classifyTelemetryError(err) == failureProgramming
 			},
 		},
 	)
@@ -193,8 +201,9 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
 	return &TelemetryCoreRuntime{
-		enabled: config.Enabled,
-		emitter: config.Emitter,
+		enabled:                  config.Enabled,
+		telemetryFailurePolicyV2: failurePolicyV2,
+		emitter:                  config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
 			Product: telemetrytransport.ProductOverlay,
 			Versions: projection.VersionPolicy{
@@ -741,6 +750,10 @@ func (runtime *TelemetryCoreRuntime) handlePostCommitFailure(
 	if err == nil {
 		return nil
 	}
+	if !runtime.telemetryFailurePolicyV2 {
+		runtime.failStop(err)
+		return err
+	}
 	if classifyTelemetryError(err) == failureProgramming {
 		runtime.failStop(err)
 		return err
@@ -833,6 +846,9 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 }
 
 func (runtime *TelemetryCoreRuntime) guardConsumer(boundary string, fn func() error) (err error) {
+	if !runtime.telemetryFailurePolicyV2 {
+		return fn()
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			runtime.metricStore.consumerPanic(boundary)

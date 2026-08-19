@@ -30,6 +30,10 @@ var telemetryApplyDurationBucketBounds = [...]uint64{
 	telemetryPayloadOverflowBucket,
 }
 
+var engineerConsumeLatencyBucketBounds = [...]uint64{
+	1, 5, 10, 25, 50, 100, 250, 500, 1_000, telemetryPayloadOverflowBucket,
+}
+
 type TelemetryPayloadPercentiles struct {
 	Count uint64
 	P50   uint64
@@ -51,6 +55,40 @@ type TelemetryDurationPercentiles struct {
 type telemetryDurationHistogram struct {
 	count   uint64
 	buckets [len(telemetryApplyDurationBucketBounds)]uint64
+}
+
+type engineerConsumeLatencyHistogram struct {
+	count   uint64
+	buckets [len(engineerConsumeLatencyBucketBounds)]uint64
+}
+
+func (histogram *engineerConsumeLatencyHistogram) observe(value uint64) {
+	histogram.count++
+	for index, upper := range engineerConsumeLatencyBucketBounds {
+		if value <= upper {
+			histogram.buckets[index]++
+			return
+		}
+	}
+}
+
+func (histogram engineerConsumeLatencyHistogram) snapshot() TelemetryDurationPercentiles {
+	return TelemetryDurationPercentiles{Count: histogram.count, P50: histogram.percentile(50), P99: histogram.percentile(99)}
+}
+
+func (histogram engineerConsumeLatencyHistogram) percentile(percent uint64) uint64 {
+	if histogram.count == 0 {
+		return 0
+	}
+	target := (histogram.count*percent + 99) / 100
+	var cumulative uint64
+	for index, count := range histogram.buckets {
+		cumulative += count
+		if cumulative >= target {
+			return engineerConsumeLatencyBucketBounds[index]
+		}
+	}
+	return telemetryPayloadOverflowBucket
 }
 
 func (histogram *telemetryDurationHistogram) observe(value uint64) {
@@ -126,12 +164,16 @@ type telemetryCoreMetricStore struct {
 	framesRejected           map[string]uint64
 	publishFailures          map[string]uint64
 	consumerPanics           map[string]uint64
+	consumerRecover          map[string]uint64
 	payloadBytes             map[string]*telemetryPayloadHistogram
 	lifecycleTransitions     map[string]uint64
 	watchdogDegradations     uint64
 	applyDurationUs          telemetryDurationHistogram
 	overlayV2PayloadBytes    map[string]*telemetryPayloadHistogram
 	overlayV2BuildDurationUs telemetryDurationHistogram
+	engineerConsumeLatencyMs engineerConsumeLatencyHistogram
+	engineerStatesDropped    uint64
+	engineerTimeouts         uint64
 }
 
 func (store *telemetryCoreMetricStore) increment(target *map[string]uint64, label string) {
@@ -192,6 +234,29 @@ func (store *telemetryCoreMetricStore) publishFailure(product string) {
 
 func (store *telemetryCoreMetricStore) consumerPanic(boundary string) {
 	store.increment(&store.consumerPanics, boundary)
+	store.increment(&store.consumerRecover, boundary)
+}
+
+func (store *telemetryCoreMetricStore) observeEngineerConsumeLatency(duration time.Duration) {
+	milliseconds := duration.Milliseconds()
+	if milliseconds < 0 {
+		milliseconds = 0
+	}
+	store.mu.Lock()
+	store.engineerConsumeLatencyMs.observe(uint64(milliseconds))
+	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) engineerStateDropped() {
+	store.mu.Lock()
+	store.engineerStatesDropped++
+	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) engineerTimeout() {
+	store.mu.Lock()
+	store.engineerTimeouts++
+	store.mu.Unlock()
 }
 
 func (store *telemetryCoreMetricStore) observePayload(product string, size uint64) {
@@ -234,12 +299,16 @@ func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
 		framesRejected:           cloneMetricMap(store.framesRejected),
 		publishFailures:          cloneMetricMap(store.publishFailures),
 		consumerPanics:           cloneMetricMap(store.consumerPanics),
+		consumerRecover:          cloneMetricMap(store.consumerRecover),
 		payloadBytes:             payloadBytes,
 		lifecycleTransitions:     cloneMetricMap(store.lifecycleTransitions),
 		watchdogDegradations:     store.watchdogDegradations,
 		applyDurationUs:          store.applyDurationUs.snapshot(),
 		overlayV2PayloadBytes:    overlayV2PayloadBytes,
 		overlayV2BuildDurationUs: store.overlayV2BuildDurationUs.snapshot(),
+		engineerConsumeLatencyMs: store.engineerConsumeLatencyMs.snapshot(),
+		engineerStatesDropped:    store.engineerStatesDropped,
+		engineerTimeouts:         store.engineerTimeouts,
 	}
 }
 
@@ -248,12 +317,16 @@ type telemetryCoreMetricSnapshot struct {
 	framesRejected           map[string]uint64
 	publishFailures          map[string]uint64
 	consumerPanics           map[string]uint64
+	consumerRecover          map[string]uint64
 	payloadBytes             map[string]TelemetryPayloadPercentiles
 	lifecycleTransitions     map[string]uint64
 	watchdogDegradations     uint64
 	applyDurationUs          TelemetryDurationPercentiles
 	overlayV2PayloadBytes    map[string]TelemetryPayloadPercentiles
 	overlayV2BuildDurationUs TelemetryDurationPercentiles
+	engineerConsumeLatencyMs TelemetryDurationPercentiles
+	engineerStatesDropped    uint64
+	engineerTimeouts         uint64
 }
 
 func cloneMetricMap(source map[string]uint64) map[string]uint64 {

@@ -51,8 +51,8 @@ const (
 // EngineerProjectionConsumer is the in-process product boundary owned by the
 // composition root. Implementations consume versioned product values and must
 // never be given a driver, mapping or canonical mutable state. Callbacks are
-// synchronous to preserve source order: they must return promptly and must not
-// call TelemetryCoreRuntime.Start or Stop. The composition root owns lifecycle.
+// delivered by an isolated port. Implementations must not call
+// TelemetryCoreRuntime.Start or Stop. The composition root owns lifecycle.
 type EngineerProjectionConsumer interface {
 	ConsumeSourceStatus(engineerprojection.SourceStatusV1) error
 	ConsumeObservation(engineerprojection.ObservationSnapshotV1) error
@@ -80,6 +80,12 @@ type TelemetryCoreRuntimeConfig struct {
 	// OverlayFrameV2Shadow defaults to on. It remains observational: without
 	// an active v2 consumer the frame is neither built nor published.
 	OverlayFrameV2Shadow *bool
+	// EngineerAsyncPort defaults to on when nil. Point it to false for a
+	// one-cycle rollback to synchronous Engineer delivery.
+	EngineerAsyncPort *bool
+	// EngineerConsumeTimeout bounds each asynchronous observation callback.
+	// Values <= 0 use 250 milliseconds.
+	EngineerConsumeTimeout time.Duration
 	// TelemetryShadowEvery controls semantic comparison sampling while the
 	// engine flag is on. Zero uses one comparison every 30 accepted batches.
 	TelemetryShadowEvery uint64
@@ -112,6 +118,7 @@ type TelemetryCoreMetrics struct {
 	FramesRejected               map[string]uint64
 	PublishFailures              map[string]uint64
 	ConsumerPanics               map[string]uint64
+	ConsumerRecover              map[string]uint64
 	FailStops                    uint64
 	LastFrameAgeMs               uint64
 	WatchdogDegradations         uint64
@@ -129,6 +136,9 @@ type TelemetryCoreMetrics struct {
 	OverlayV2PayloadBytes        map[string]TelemetryPayloadPercentiles
 	OverlayV2BuildDurationUs     TelemetryDurationPercentiles
 	PublisherDroppedFrames       map[string]uint64
+	EngineerConsumeLatencyMs     TelemetryDurationPercentiles
+	EngineerStatesDropped        uint64
+	EngineerTimeouts             uint64
 }
 
 type telemetryCoreCounters struct {
@@ -165,6 +175,7 @@ type TelemetryCoreRuntime struct {
 	telemetryFailurePolicyV2 bool
 	telemetryEngineApply     bool
 	overlayFrameV2Shadow     bool
+	engineerAsyncPort        bool
 	emitter                  telemetrytransport.EventEmitter
 	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
@@ -177,6 +188,7 @@ type TelemetryCoreRuntime struct {
 	engine                   *telemetryengine.TelemetryEngine
 	shadow                   *telemetryShadow
 	engineer                 EngineerProjectionConsumer
+	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
 
 	statusState     driver.State
@@ -228,6 +240,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	overlayFrameV2Shadow := true
 	if config.OverlayFrameV2Shadow != nil {
 		overlayFrameV2Shadow = *config.OverlayFrameV2Shadow
+	}
+	engineerAsyncPort := true
+	if config.EngineerAsyncPort != nil {
+		engineerAsyncPort = *config.EngineerAsyncPort
 	}
 	overlayV2Publishers, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
 		Product: telemetrytransport.ProductOverlayV2,
@@ -282,11 +298,12 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	reducer := telemetrycore.NewReducer()
 	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: now})
 	pipeline := derive.NewPipeline(derive.Config{})
-	return &TelemetryCoreRuntime{
+	runtime := &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
 		telemetryEngineApply:     engineApply,
 		overlayFrameV2Shadow:     overlayFrameV2Shadow,
+		engineerAsyncPort:        engineerAsyncPort,
 		emitter:                  config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
 			Product: telemetrytransport.ProductOverlay,
@@ -316,7 +333,11 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		watchdogDelay:       watchdogDelay,
 		watchdogEnabled:     watchdogEnabled,
 		overlayV2Project:    overlayv2.ProjectV2,
-	}, nil
+	}
+	if engineerAsyncPort {
+		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout)
+	}
+	return runtime, nil
 }
 
 func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
@@ -365,6 +386,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		FramesRejected:               details.framesRejected,
 		PublishFailures:              details.publishFailures,
 		ConsumerPanics:               details.consumerPanics,
+		ConsumerRecover:              details.consumerRecover,
 		FailStops:                    runtime.counters.failStops.Load(),
 		LastFrameAgeMs:               runtime.lastFrameAgeMilliseconds(),
 		WatchdogDegradations:         details.watchdogDegradations,
@@ -384,6 +406,9 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		PublisherDroppedFrames: map[string]uint64{
 			string(telemetrytransport.ProductOverlayV2): runtime.overlayV2Publishers.DroppedFrames(telemetrytransport.ProductOverlayV2),
 		},
+		EngineerConsumeLatencyMs: details.engineerConsumeLatencyMs,
+		EngineerStatesDropped:    details.engineerStatesDropped,
+		EngineerTimeouts:         details.engineerTimeouts,
 	}
 }
 
@@ -470,6 +495,9 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 	if terminal {
 		return telemetrytransport.ErrClosed
 	}
+	if runtime.engineerAsyncPort {
+		runtime.engineerPort.Start()
+	}
 	runtime.deliverInitialEngineerStatus(initial, 0)
 
 	runtime.lifecycleMu.Lock()
@@ -555,6 +583,7 @@ func (runtime *TelemetryCoreRuntime) Stop(ctx context.Context) error {
 	if hadOwnership {
 		runtime.requestStoppedEngineerStatus()
 	}
+	runtime.requestEngineerPortStopWhenReady()
 	// Normal teardown lets adapters and the monitor observe cancellation before
 	// hubs close. A timed-out wait still reaches Close so no transport remains
 	// usable after Stop returns.
@@ -610,10 +639,12 @@ func (runtime *TelemetryCoreRuntime) abortStart(startErr error) error {
 		cancel()
 	}
 	if initialStatusDelivered {
-		runtime.requestStoppedEngineerStatus()
+		runtime.requestStoppedEngineerStatusAndWait()
 	}
+	runtime.requestEngineerPortStopWhenReady()
+	var cleanupErr error
 	if cleanupOwner {
-		cleanupErr := runtime.closeProductHubs()
+		cleanupErr = errors.Join(cleanupErr, runtime.closeProductHubs())
 		runtime.wg.Wait()
 		runtime.lifecycleMu.Lock()
 		runtime.cleanupErr = errors.Join(runtime.cleanupErr, cleanupErr)
@@ -667,7 +698,7 @@ func (runtime *TelemetryCoreRuntime) deliverInitialEngineerStatus(state driver.S
 	runtime.initialStatusDelivery = engineerInitialStatusDelivering
 	runtime.lifecycleMu.Unlock()
 
-	runtime.deliverEngineerStatus(state, attempt)
+	runtime.deliverInitialEngineerStatusValue(state, attempt)
 
 	runtime.lifecycleMu.Lock()
 	runtime.initialStatusDelivery = engineerInitialStatusDelivered
@@ -678,8 +709,27 @@ func (runtime *TelemetryCoreRuntime) deliverInitialEngineerStatus(state driver.S
 	}
 	runtime.lifecycleMu.Unlock()
 	if deliverStopped {
-		runtime.deliverEngineerStatus(driver.StateStopped, 0)
+		runtime.deliverInitialEngineerStatusValue(driver.StateStopped, 0)
 	}
+	runtime.requestEngineerPortStopWhenReady()
+}
+
+func (runtime *TelemetryCoreRuntime) deliverInitialEngineerStatusValue(state driver.State, attempt int) {
+	if runtime.engineer == nil {
+		return
+	}
+	status, err := engineerprojection.NewSourceStatusV1(engineerSourceState(state), attempt)
+	if err != nil {
+		runtime.counters.engineerFailures.Add(1)
+		runtime.mu.Lock()
+		runtime.engineerStatusErr = err
+		runtime.mu.Unlock()
+		return
+	}
+	if runtime.engineerAsyncPort && runtime.engineerPort.DeliverStatus(status) {
+		return
+	}
+	runtime.consumeEngineerStatus(status)
 }
 
 func (runtime *TelemetryCoreRuntime) requestStoppedEngineerStatus() {
@@ -700,6 +750,31 @@ func (runtime *TelemetryCoreRuntime) requestStoppedEngineerStatus() {
 	runtime.stoppedStatusDelivered = true
 	runtime.lifecycleMu.Unlock()
 	runtime.deliverEngineerStatus(driver.StateStopped, 0)
+}
+
+func (runtime *TelemetryCoreRuntime) requestStoppedEngineerStatusAndWait() {
+	runtime.lifecycleMu.Lock()
+	if runtime.stoppedStatusDelivered {
+		runtime.lifecycleMu.Unlock()
+		return
+	}
+	runtime.stoppedStatusPending = false
+	runtime.stoppedStatusDelivered = true
+	runtime.lifecycleMu.Unlock()
+	runtime.deliverInitialEngineerStatusValue(driver.StateStopped, 0)
+}
+
+func (runtime *TelemetryCoreRuntime) requestEngineerPortStopWhenReady() {
+	if runtime.engineerPort == nil {
+		return
+	}
+	runtime.lifecycleMu.Lock()
+	ready := runtime.lifecycle == telemetryRuntimeTerminal &&
+		runtime.initialStatusDelivery != engineerInitialStatusDelivering
+	runtime.lifecycleMu.Unlock()
+	if ready {
+		runtime.engineerPort.RequestStop()
+	}
 }
 
 func (runtime *TelemetryCoreRuntime) serveWails(
@@ -1007,11 +1082,15 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 	}
 	observation, err := engineerprojection.ProjectObservationV1(final, runtime.engineerManifest)
 	if err == nil {
-		err = newTelemetryConsumerError("engineer.observation", runtime.guardConsumer("engineer.observation", func() error {
-			return runtime.engineer.ConsumeObservation(observation)
-		}))
-		if err == nil {
-			runtime.counters.engineerObservations.Add(1)
+		if runtime.engineerAsyncPort && runtime.engineerPort.EnqueueObservation(observation) {
+			err = nil
+		} else {
+			err = newTelemetryConsumerError("engineer.observation", runtime.guardConsumer("engineer.observation", func() error {
+				return runtime.engineer.ConsumeObservation(observation)
+			}))
+			if err == nil {
+				runtime.counters.engineerObservations.Add(1)
+			}
 		}
 	}
 	for _, fact := range facts {
@@ -1042,11 +1121,11 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 	}
 	status, err := engineerprojection.NewSourceStatusV1(engineerSourceState(state), attempt)
 	if err == nil {
-		err = newTelemetryConsumerError("engineer.source-status", runtime.guardConsumer("engineer.source-status", func() error {
-			return runtime.engineer.ConsumeSourceStatus(status)
-		}))
-		if err == nil {
-			runtime.counters.engineerStatusesDelivered.Add(1)
+		if runtime.engineerAsyncPort && runtime.engineerPort.EnqueueStatus(status) {
+			err = nil
+		} else {
+			runtime.consumeEngineerStatus(status)
+			return
 		}
 	}
 	if err != nil {
@@ -1054,6 +1133,31 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 	}
 	runtime.mu.Lock()
 	runtime.engineerStatusErr = err
+	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) consumeEngineerStatus(status engineerprojection.SourceStatusV1) {
+	err := newTelemetryConsumerError("engineer.source-status", runtime.guardConsumer("engineer.source-status", func() error {
+		return runtime.engineer.ConsumeSourceStatus(status)
+	}))
+	if err == nil {
+		runtime.counters.engineerStatusesDelivered.Add(1)
+	} else {
+		runtime.counters.engineerFailures.Add(1)
+	}
+	runtime.mu.Lock()
+	runtime.engineerStatusErr = err
+	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) recordEngineerObservationResult(err error) {
+	if err == nil {
+		runtime.counters.engineerObservations.Add(1)
+	} else {
+		runtime.counters.engineerFailures.Add(1)
+	}
+	runtime.mu.Lock()
+	runtime.engineerErr = err
 	runtime.mu.Unlock()
 }
 

@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 func TestFailurePolicyFlagRestoresLegacyBehaviour(t *testing.T) {
@@ -70,25 +72,101 @@ func TestConsumerPanicDoesNotKillProcess(t *testing.T) {
 }
 
 func TestSlowEngineerDoesNotBlockDriverLoop(t *testing.T) {
-	t.Skip("ISA-371 consumidor Engineer síncrono: activar en F7; no existe inyección de driver")
 	consumer := &slowEngineerConsumer{delay: 50 * time.Millisecond}
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
 		t.Fatal(err)
 	}
+	runtime.engineerPort.Start()
+	defer func() {
+		if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	starts := make([]time.Time, 0, 2)
 	for sequence := uint64(1); sequence <= 2; sequence++ {
+		starts = append(starts, time.Now())
 		if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(sequence, 1)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	starts := consumer.observationStarts()
-	if len(starts) != 2 {
-		t.Fatalf("Engineer observations = %d, want 2", len(starts))
-	}
 	// A 60 Hz driver has a 16.67 ms period; 20 ms is the allowed +20% ceiling.
 	if interval := starts[1].Sub(starts[0]); interval > 20*time.Millisecond {
 		t.Fatalf("driver-facing interval = %v, want <= 20ms", interval)
+	} else {
+		t.Logf("driver-facing interval with 50ms Engineer = %v", interval)
 	}
+	waitForEngineerObservations(t, consumer, 1)
+}
+
+func TestEngineerLatestWinsDropsIntermediateStates(t *testing.T) {
+	consumer := newBlockingEngineerConsumer()
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.engineerPort.Start()
+	defer func() {
+		if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	runtime.engineerPort.EnqueueObservation(engineerprojection.ObservationSnapshotV1{Metadata: projectionMetadata(1)})
+	<-consumer.started
+	runtime.engineerPort.EnqueueObservation(engineerprojection.ObservationSnapshotV1{Metadata: projectionMetadata(2)})
+	runtime.engineerPort.EnqueueObservation(engineerprojection.ObservationSnapshotV1{Metadata: projectionMetadata(3)})
+	close(consumer.release)
+	waitForEngineerSequences(t, consumer, []uint64{1, 3})
+	if dropped := runtime.Metrics().EngineerStatesDropped; dropped != 1 {
+		t.Fatalf("EngineerStatesDropped = %d, want 1", dropped)
+	}
+}
+
+func TestEngineerTimeoutIsBoundedAndCounted(t *testing.T) {
+	consumer := newBlockingEngineerConsumer()
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Engineer: consumer, EngineerConsumeTimeout: 20 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.engineerPort.Start()
+	started := time.Now()
+	runtime.engineerPort.EnqueueObservation(engineerprojection.ObservationSnapshotV1{})
+	<-consumer.started
+	deadline := time.Now().Add(200 * time.Millisecond)
+	for runtime.Metrics().EngineerTimeouts != 1 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	close(consumer.release)
+	if err := runtime.engineerPort.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	metrics := runtime.Metrics()
+	if metrics.EngineerTimeouts != 1 || metrics.EngineerConsumeLatencyMs.Count != 1 ||
+		time.Since(started) > 150*time.Millisecond {
+		t.Fatalf("timeout metrics = %+v", metrics)
+	}
+}
+
+func TestEngineerAsyncPortFlagCanRollbackToSynchronousDelivery(t *testing.T) {
+	disabled := false
+	consumer := &slowEngineerConsumer{delay: 25 * time.Millisecond}
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer, EngineerAsyncPort: &disabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(started); elapsed < consumer.delay {
+		t.Fatalf("synchronous rollback returned in %v, want >= %v", elapsed, consumer.delay)
+	}
+}
+
+func projectionMetadata(sequence uint64) telemetryprojection.Metadata {
+	return telemetryprojection.Metadata{Sequence: schema.Sequence(sequence)}
 }
 
 type panicEngineerConsumer struct{}
@@ -122,4 +200,65 @@ func (consumer *slowEngineerConsumer) observationStarts() []time.Time {
 	consumer.mu.Lock()
 	defer consumer.mu.Unlock()
 	return append([]time.Time(nil), consumer.start...)
+}
+
+func waitForEngineerObservations(t *testing.T, consumer *slowEngineerConsumer, want int) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for len(consumer.observationStarts()) < want && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if got := len(consumer.observationStarts()); got < want {
+		t.Fatalf("Engineer observations = %d, want at least %d", got, want)
+	}
+}
+
+type blockingEngineerConsumer struct {
+	started  chan struct{}
+	release  chan struct{}
+	start    sync.Once
+	mu       sync.Mutex
+	sequence []uint64
+}
+
+func newBlockingEngineerConsumer() *blockingEngineerConsumer {
+	return &blockingEngineerConsumer{started: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (*blockingEngineerConsumer) ConsumeSourceStatus(engineerprojection.SourceStatusV1) error {
+	return nil
+}
+
+func (consumer *blockingEngineerConsumer) ConsumeObservation(value engineerprojection.ObservationSnapshotV1) error {
+	consumer.mu.Lock()
+	consumer.sequence = append(consumer.sequence, uint64(value.Sequence))
+	consumer.mu.Unlock()
+	consumer.start.Do(func() { close(consumer.started) })
+	<-consumer.release
+	return nil
+}
+
+func (*blockingEngineerConsumer) ConsumeFact(engineerprojection.FactEnvelopeV1) error { return nil }
+
+func (consumer *blockingEngineerConsumer) sequences() []uint64 {
+	consumer.mu.Lock()
+	defer consumer.mu.Unlock()
+	return append([]uint64(nil), consumer.sequence...)
+}
+
+func waitForEngineerSequences(t *testing.T, consumer *blockingEngineerConsumer, want []uint64) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for len(consumer.sequences()) < len(want) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	got := consumer.sequences()
+	if len(got) != len(want) {
+		t.Fatalf("Engineer sequences = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("Engineer sequences = %v, want %v", got, want)
+		}
+	}
 }

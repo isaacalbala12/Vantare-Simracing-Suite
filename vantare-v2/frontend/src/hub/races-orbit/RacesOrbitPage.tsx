@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
-import { useFeatureGate } from "../components/AccessGate";
+import { useFeatureGate } from "../feature-gate";
 import { requestCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import {

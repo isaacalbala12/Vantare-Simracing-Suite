@@ -1,28 +1,17 @@
-import { I18nProvider } from "../i18n/I18nProvider";
+import { I18nProvider } from '../i18n/I18nProvider';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
-import { V52Shell } from './components/V52Shell';
 import { OrbitShell } from './components/orbit/OrbitShell';
-import { isOrbitEnabled } from './orbit/orbit-flag';
 import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
 import { initialSection } from './orbit/initial-view';
 import { viewToSection } from './orbit/views';
-import { DashboardPage } from './pages/DashboardPage';
-import { OverlaysStudioPage } from './pages/OverlaysStudioPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { EngineerPage } from './pages/EngineerPage';
-import { LauncherPage } from './pages/LauncherPage';
-import { TelemetryPage } from './pages/TelemetryPage';
-import { StrategyPlannerPage } from './strategy/StrategyPlannerPage';
-import { RoadmapPage } from './pages/RoadmapPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { TestingCenterPage } from './testing-center/TestingCenterPage';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
-import { UPDATER_CHANNEL_EVENT, buildChannelOf, type UpdaterChannelEvent } from './settings/updater-channel';
-import { submitTestingCenterReport } from './testing-center/report-submission-client';
-import { wailsTestingCenterClient } from './testing-center/wails-testing-center-client';
-import { testingCenterFeedbackClient } from './testing-center/candidate-feedback-client';
+import {
+  UPDATER_CHANNEL_EVENT,
+  buildChannelOf,
+  type UpdaterChannelEvent,
+} from './settings/updater-channel';
 import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
@@ -36,7 +25,6 @@ import type { CalendarReminderPayload } from '../calendar/calendar-types';
 import { HubErrorBoundary } from './HubErrorBoundary';
 import { ChainRunnerProvider } from './launcher/chain-store';
 import { LauncherStoreProvider } from './launcher/launcher-store';
-import { useHubResponsiveZoom } from './use-hub-responsive-zoom';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
@@ -54,34 +42,33 @@ function LicenseGate({ children }: { children: ReactNode }) {
   // se reconstruia desde cero en cada revalidacion. Los bloqueos posteriores se
   // pintan como capa superpuesta, que impide interactuar igual que antes pero
   // conserva el estado de React.
-  const hasRenderedHub = useRef(false);
+  const [hasRenderedHub, setHasRenderedHub] = useState(false);
+  const markHubRendered = useCallback(() => setHasRenderedHub(true), []);
 
   // Pantalla bloqueante que corresponde al estado actual, o null si se puede
   // usar la aplicacion.
-  const blocking = loading
-    ? null
-    : !result || result.state === 'anonymous'
-      ? (
-        <LoginScreen
-          onLoggedIn={(tokens) => {
-            if (!tokens?.accessToken) return;
-            Events.Emit('license:validate', {
-              sessionToken: tokens.accessToken,
-              refreshToken: tokens.refreshToken ?? '',
-            });
-          }}
-        />
-      )
-      // Unconfigured is a backend configuration error (missing Supabase env
-      // vars in the release build). It must never block the user behind a
-      // paywall. Show an actionable message instead.
-      : result.state === 'unconfigured'
-        ? <UnconfiguredScreen />
-        : result.state === 'expired' || result.state === 'device-limit'
-          ? <PaywallScreen email={result.email} result={result} />
-          : null;
+  const blocking = loading ? null : !result || result.state === 'anonymous' ? (
+    <LoginScreen
+      onLoggedIn={(tokens) => {
+        if (!tokens?.accessToken) return;
+        Events.Emit('license:validate', {
+          sessionToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken ?? '',
+        });
+      }}
+    />
+  ) : // Unconfigured is a backend configuration error (missing Supabase env
+  // vars in the release build). It must never block the user behind a
+  // paywall. Show an actionable message instead.
+  result.state === 'unconfigured' ? (
+    <UnconfiguredScreen />
+  ) : result.state === 'expired' || result.state === 'device-limit' ? (
+    <PaywallScreen email={result.email} result={result} />
+  ) : null;
 
-  if (!hasRenderedHub.current) {
+  const canRenderHub = !loading && blocking === null;
+
+  if (!hasRenderedHub && !canRenderHub) {
     if (loading) {
       return (
         <div
@@ -97,13 +84,12 @@ function LicenseGate({ children }: { children: ReactNode }) {
     if (blocking) {
       return blocking;
     }
-    hasRenderedHub.current = true;
   }
 
   return (
     <>
       <LicenseBanner />
-      {children}
+      <MountedHub onMount={markHubRendered}>{children}</MountedHub>
       {blocking ? (
         <div
           data-testid="license-blocked-overlay"
@@ -116,11 +102,14 @@ function LicenseGate({ children }: { children: ReactNode }) {
   );
 }
 
+function MountedHub({ children, onMount }: { children: ReactNode; onMount(): void }) {
+  useEffect(onMount, [onMount]);
+  return children;
+}
+
 function HubShell() {
   const { result: licenseResult } = useLicense();
-  // El flag se lee una vez por montaje: `?orbit=1` lo enciende y lo persiste.
-  const [orbitEnabled] = useState(() => isOrbitEnabled());
-  const [section, setSection] = useState<Section>(() => initialSection(orbitEnabled));
+  const [section, setSection] = useState<Section>(() => initialSection());
   const [version, setVersion] = useState<string | null>(null);
   const [buildChannel, setBuildChannel] = useState<VantareBuildChannel | null>(null);
   // Canal elegido en Ajustes > Actualizaciones. Manda sobre el canal con el que
@@ -131,7 +120,6 @@ function HubShell() {
   const [sourceStatus, setSourceStatus] = useState<TelemetrySourceStatus | null>(null);
   const [showBetaWelcome, setShowBetaWelcome] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [pendingRecommendedAutoStart, setPendingRecommendedAutoStart] = useState<"recommended-auto" | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
   // Destino de la última navegación de la shell Orbit (`navigate(view, target)`):
   // la pantalla destino lo consume, hoy el Studio para abrir «Mis perfiles».
@@ -142,20 +130,27 @@ function HubShell() {
     licenseResult?.capabilities,
   );
 
-  const visibleSection: Section = section === "testing-center" && !testingCenterChannel
-    ? "dashboard"
-    : section;
+  const visibleSection: Section =
+    section === 'testing-center' && !testingCenterChannel ? 'dashboard' : section;
 
   useEffect(() => {
     document.body.classList.add('hub');
-    const unsub = Events.On('app:version', (event: { data: { version?: string; buildChannel?: string } }) => {
-      setVersion(event.data.version ?? null);
-      const channel = event.data.buildChannel;
-      setBuildChannel(channel === 'nightly' || channel === 'testers' || channel === 'master' ? channel : null);
-    });
-    const unsubSource = Events.On(telemetrySourceStatusEvent, (event: { data: TelemetrySourceStatus }) => {
-      setSourceStatus(event.data);
-    });
+    const unsub = Events.On(
+      'app:version',
+      (event: { data: { version?: string; buildChannel?: string } }) => {
+        setVersion(event.data.version ?? null);
+        const channel = event.data.buildChannel;
+        setBuildChannel(
+          channel === 'nightly' || channel === 'testers' || channel === 'master' ? channel : null,
+        );
+      },
+    );
+    const unsubSource = Events.On(
+      telemetrySourceStatusEvent,
+      (event: { data: TelemetrySourceStatus }) => {
+        setSourceStatus(event.data);
+      },
+    );
     const unsubSettings = Events.On('settings', (event: { data: Record<string, unknown> }) => {
       settingsRef.current = event.data ?? null;
       const completed = event.data?.betaWelcomeCompleted === true;
@@ -170,10 +165,13 @@ function HubShell() {
     });
     // Ajustes emite este evento al confirmar el canal (y al releerlo del
     // backend): la shell se entera sin recargar.
-    const unsubChannel = Events.On(UPDATER_CHANNEL_EVENT, (event: { data: UpdaterChannelEvent }) => {
-      const channel = event.data?.channel;
-      setPreferredChannel(channel ? buildChannelOf(channel) : null);
-    });
+    const unsubChannel = Events.On(
+      UPDATER_CHANNEL_EVENT,
+      (event: { data: UpdaterChannelEvent }) => {
+        const channel = event.data?.channel;
+        setPreferredChannel(channel ? buildChannelOf(channel) : null);
+      },
+    );
     // Y al arrancar, directo del backend: Ajustes puede no haberse abierto nunca.
     const unsubUpdaterSettings = Events.On(
       'updater:settings',
@@ -182,9 +180,12 @@ function HubShell() {
         if (channel) setPreferredChannel(buildChannelOf(channel));
       },
     );
-    const unsubReminder = Events.On('calendar:reminder', (event: { data: CalendarReminderPayload }) => {
-      setReminder(event.data ?? null);
-    });
+    const unsubReminder = Events.On(
+      'calendar:reminder',
+      (event: { data: CalendarReminderPayload }) => {
+        setReminder(event.data ?? null);
+      },
+    );
     const unsubOverlayStudio = Events.On('hub:open-overlay-studio', () => {
       setSection('profiles');
     });
@@ -204,12 +205,15 @@ function HubShell() {
     };
   }, []);
 
-  const handleNavigate = useCallback((id: string, target?: string) => {
-    if (isSection(id) && (id !== "testing-center" || testingCenterChannel)) {
-      setSection(id);
-      setNavTarget(target);
-    }
-  }, [testingCenterChannel]);
+  const handleNavigate = useCallback(
+    (id: string, target?: string) => {
+      if (isSection(id) && (id !== 'testing-center' || testingCenterChannel)) {
+        setSection(id);
+        setNavTarget(target);
+      }
+    },
+    [testingCenterChannel],
+  );
 
   const handleBetaWelcomeClose = useCallback((role: BetaUserRole) => {
     setShowBetaWelcome(false);
@@ -223,17 +227,9 @@ function HubShell() {
     }
   }, []);
 
-  const handleAutoStartHandled = useCallback(() => {
-    setPendingRecommendedAutoStart(null);
-  }, []);
-
   const handleCloseReminder = useCallback(() => {
     setReminder(null);
   }, []);
-
-  // Feature flag `hub.orbit`: con el flag apagado (por defecto) la shell actual
-  // no cambia; con `?orbit=1` se monta la shell Orbit con las mismas páginas.
-  const Shell = orbitEnabled ? OrbitShell : V52Shell;
 
   // La bienvenida y el aviso de carrera son capas `fixed` sobre toda la app, no
   // contenido de una pantalla. Vivían dentro de `children`, y como la shell
@@ -241,58 +237,21 @@ function HubShell() {
   // acababa apareciendo en Overlays Studio en vez de encima de Inicio.
   return (
     <>
-    <Shell
-      activeSection={visibleSection}
-      onNavigate={handleNavigate}
-      version={version}
-      sourceStatus={sourceStatus}
-      testingCenterChannel={testingCenterChannel}
-    >
-      {visibleSection === "dashboard" && (
-        <DashboardPage
-          onNavigate={handleNavigate}
-          version={version}
-          buildChannel={buildChannel}
-        />
-      )}
-      {visibleSection === "profiles" && (
-        <OverlaysStudioPage
-          pendingRecommendedAutoStart={pendingRecommendedAutoStart}
-          onAutoStartHandled={handleAutoStartHandled}
-          target={navTarget}
-        />
-      )}
-      {visibleSection === "launcher" && <LauncherPage />}
-      {visibleSection === "calendar" && <CalendarPage />}
-      {visibleSection === "setup" && <SettingsPage />}
-      {visibleSection === "engineer" && <EngineerPage />}
-      {visibleSection === "strategy" && <StrategyPlannerPage />}
-      {visibleSection === "telemetry" && <TelemetryPage />}
-      {visibleSection === "testing-center" && testingCenterChannel && (
-        <TestingCenterPage
-          channel={testingCenterChannel}
-          version={version}
-          client={wailsTestingCenterClient}
-          submitReport={submitTestingCenterReport}
-          feedbackClient={testingCenterFeedbackClient}
-        />
-      )}
-      {visibleSection === "roadmap" && <RoadmapPage />}
-    </Shell>
-    {settingsLoaded && showBetaWelcome && (
-      <BetaWelcome onComplete={handleBetaWelcomeClose} />
-    )}
-    {reminder && (
-      <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />
-    )}
+      <OrbitShell
+        activeSection={visibleSection}
+        onNavigate={handleNavigate}
+        version={version}
+        sourceStatus={sourceStatus}
+        testingCenterChannel={testingCenterChannel}
+        target={navTarget}
+      />
+      {settingsLoaded && showBetaWelcome && <BetaWelcome onComplete={handleBetaWelcomeClose} />}
+      {reminder && <CalendarReminderBanner reminder={reminder} onClose={handleCloseReminder} />}
     </>
   );
 }
 
 export function HubApp() {
-  // Con Orbit el escalado lo lleva la propia shell (D-R4-3): el zoom de V52 se
-  // apaga para que no se pisen sobre `documentElement.style.zoom`.
-  useHubResponsiveZoom({ enabled: !isOrbitEnabled() });
   return (
     <LicenseProvider>
       <I18nProvider>

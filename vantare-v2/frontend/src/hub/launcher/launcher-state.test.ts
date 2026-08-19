@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppSettings } from "../pages/SettingsPage";
+import type { AppSettings } from "../settings/settings-contract";
 import {
   appSortOrder,
   estimateChainDuration,

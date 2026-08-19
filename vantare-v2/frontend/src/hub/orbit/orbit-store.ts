@@ -7,16 +7,15 @@
  */
 
 export const ORBIT_KEYS = {
-  enabled: "vantare.orbit.enabled",
-  view: "vantare.v03orbit.view",
-  sidebar: "vantare.v03orbit.sidebar",
-  rightDock: "vantare.v03orbit.rightDock",
-  density: "vantare.v03orbit.density",
-  telemetryDemo: "vantare.v03orbit.telemetryDemo",
-  settingsSection: "vantare.v03orbit.settings",
-  reduceMotion: "vantare.v03orbit.reduceMotion",
+  view: 'vantare.v03orbit.view',
+  sidebar: 'vantare.v03orbit.sidebar',
+  rightDock: 'vantare.v03orbit.rightDock',
+  density: 'vantare.v03orbit.density',
+  telemetryDemo: 'vantare.v03orbit.telemetryDemo',
+  settingsSection: 'vantare.v03orbit.settings',
+  reduceMotion: 'vantare.v03orbit.reduceMotion',
   /** Interruptor de diagnostico: `1` desactiva el escalado proporcional. */
-  zoomOff: "vantare.v03orbit.zoomOff",
+  zoomOff: 'vantare.v03orbit.zoomOff',
 } as const;
 
 export type OrbitStorageKey = (typeof ORBIT_KEYS)[keyof typeof ORBIT_KEYS];
@@ -40,7 +39,7 @@ export const orbitStore = {
 
 function safeStorage(): Storage | undefined {
   try {
-    return typeof window === "undefined" ? undefined : window.localStorage;
+    return typeof window === 'undefined' ? undefined : window.localStorage;
   } catch {
     return undefined;
   }

@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Events } from "@wailsio/runtime";
-import { useAccess } from "../../../lib/access";
-import { useLicense } from "../../../lib/license";
-import { useI18n } from "../../../i18n/I18nProvider";
-import type { TelemetrySourceStatus } from "../../../telemetry-transport/source-status";
-import type { TestingCenterChannel } from "../../testing-center/contracts";
-import { useLauncherSnapshot } from "../../launcher/launcher-store";
-import { profileLabel, profileTarget, type ProfileEntry } from "../../state/overlay-workbench";
-import { type Section } from "../../navigation";
-import { formatMessage } from "../../orbit/format-message";
-import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
-import { applyOrbitThemeWhileMounted } from "../../orbit/orbit-theme";
-import { useAccountIdentity } from "../../orbit/use-account-identity";
-import { useCalendarStarts } from "../../orbit/use-calendar-starts";
-import { OrbitSimStatusContext } from "../../orbit/sim-status-context";
-import { useOverlayState } from "../../orbit/use-overlay-state";
-import { useOrbitResponsiveZoom } from "../../orbit/use-orbit-responsive-zoom";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Events } from '@wailsio/runtime';
+import { useAccess } from '../../../lib/access';
+import { useLicense } from '../../../lib/license';
+import { useI18n } from '../../../i18n/I18nProvider';
+import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
+import type { TestingCenterChannel } from '../../testing-center/contracts';
+import { useLauncherSnapshot } from '../../launcher/launcher-store';
+import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
+import { type Section } from '../../navigation';
+import { formatMessage } from '../../orbit/format-message';
+import { ORBIT_KEYS, orbitStore } from '../../orbit/orbit-store';
+import { applyOrbitThemeWhileMounted } from '../../orbit/orbit-theme';
+import { useAccountIdentity } from '../../orbit/use-account-identity';
+import { useCalendarStarts } from '../../orbit/use-calendar-starts';
+import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
+import { useOverlayState } from '../../orbit/use-overlay-state';
+import { useOrbitResponsiveZoom } from '../../orbit/use-orbit-responsive-zoom';
 import {
   canSeeView,
   planLabelOf,
@@ -26,62 +27,60 @@ import {
   type SimStatus,
   type UpdateState,
   type ViewId,
-} from "../../orbit/views";
-import { CommandPalette, type PaletteItem } from "./CommandPalette";
-import { ContextColumn, type ContextColumnBlock } from "./ContextColumn";
-import { Rail, type RailItem } from "./Rail";
-import { SideLauncher } from "./SideLauncher";
-import { SideProfile } from "./SideProfile";
-import { SideRaces } from "./SideRaces";
-import { Topbar } from "./Topbar";
-import { HomeOrbitPage } from "../../home-orbit/HomeOrbitPage";
+} from '../../orbit/views';
+import { CommandPalette, type PaletteItem } from './CommandPalette';
+import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
+import { Rail, type RailItem } from './Rail';
+import { SideLauncher } from './SideLauncher';
+import { SideProfile } from './SideProfile';
+import { SideRaces } from './SideRaces';
+import { Topbar } from './Topbar';
+import { HomeOrbitPage } from '../../home-orbit/HomeOrbitPage';
 import {
   LauncherOrbitPage,
   LAUNCHER_CONTEXT_SLOT_ID,
   LAUNCHER_TOPBAR_SLOT_ID,
-} from "../../launcher-orbit/LauncherOrbitPage";
+} from '../../launcher-orbit/LauncherOrbitPage';
 import {
   RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
-} from "../../races-orbit/RacesOrbitPage";
+} from '../../races-orbit/RacesOrbitPage';
 import {
   StrategyOrbitPage,
   STRATEGY_CONTEXT_SLOT_ID,
-} from "../../strategy-orbit/StrategyOrbitPage";
-import { EngineerOrbitPage } from "../../engineer-orbit/EngineerOrbitPage";
+} from '../../strategy-orbit/StrategyOrbitPage';
+import { EngineerOrbitPage } from '../../engineer-orbit/EngineerOrbitPage';
 import {
   TelemetryOrbitPage,
   TELEMETRY_CONTEXT_SLOT_ID,
-} from "../../telemetry-orbit/TelemetryOrbitPage";
-import {
-  RoadmapOrbitPage,
-  ROADMAP_CONTEXT_SLOT_ID,
-} from "../../roadmap-orbit/RoadmapOrbitPage";
+} from '../../telemetry-orbit/TelemetryOrbitPage';
+import { RoadmapOrbitPage, ROADMAP_CONTEXT_SLOT_ID } from '../../roadmap-orbit/RoadmapOrbitPage';
 import {
   SettingsOrbitPage,
   SETTINGS_CONTEXT_SLOT_ID,
-} from "../../settings-orbit/SettingsOrbitPage";
-import { TestingCenterOrbitPage } from "../../testing-center-orbit/TestingCenterOrbitPage";
-import { ToastProvider } from "../../../ui/orbit/Toast";
-import { useToast } from "../../../ui/orbit/toast-context";
-import "../../../styles/orbit.tokens.css";
-import "../../../styles/orbit-kit.css";
-import "../../../styles/orbit-shell.css";
+} from '../../settings-orbit/SettingsOrbitPage';
+import { TestingCenterOrbitPage } from '../../testing-center-orbit/TestingCenterOrbitPage';
+import { StudioRoute } from '../../overlay-studio/StudioRoute';
+import { ToastProvider } from '../../../ui/orbit/Toast';
+import { useToast } from '../../../ui/orbit/toast-context';
+import '../../../styles/orbit.tokens.css';
+import '../../../styles/orbit-kit.css';
+import '../../../styles/orbit-shell.css';
 
 const AUTO_COLLAPSE_WIDTH = 1152;
 
 const RAIL_LABEL_KEY: Record<ViewId, string> = {
-  inicio: "shell.rail.home",
-  studio: "shell.rail.studio",
-  launcher: "shell.rail.launcher",
-  carreras: "shell.rail.races",
-  estrategia: "shell.rail.strategy",
-  ingeniero: "shell.rail.engineer",
-  telemetria: "shell.rail.telemetry",
-  roadmap: "shell.rail.roadmap",
-  ajustes: "shell.rail.settings",
-  testing: "shell.rail.testing",
+  inicio: 'shell.rail.home',
+  studio: 'shell.rail.studio',
+  launcher: 'shell.rail.launcher',
+  carreras: 'shell.rail.races',
+  estrategia: 'shell.rail.strategy',
+  ingeniero: 'shell.rail.engineer',
+  telemetria: 'shell.rail.telemetry',
+  roadmap: 'shell.rail.roadmap',
+  ajustes: 'shell.rail.settings',
+  testing: 'shell.rail.testing',
 };
 
 export type OrbitShellProps = {
@@ -90,14 +89,14 @@ export type OrbitShellProps = {
   version?: string | null;
   sourceStatus?: TelemetrySourceStatus | null;
   testingCenterChannel?: TestingCenterChannel | null;
-  children: ReactNode;
+  target?: string;
 };
 
 function resolveSimStatus(source: TelemetrySourceStatus | null | undefined): SimStatus {
-  if (!source) return "disconnected";
-  if (source.live && source.available) return "connected";
-  if (source.live) return "searching";
-  return "disconnected";
+  if (!source) return 'disconnected';
+  if (source.live && source.available) return 'connected';
+  if (source.live) return 'searching';
+  return 'disconnected';
 }
 
 export function OrbitShell(props: OrbitShellProps) {
@@ -116,7 +115,7 @@ function OrbitShellBody({
   version,
   sourceStatus,
   testingCenterChannel,
-  children,
+  target,
 }: OrbitShellProps) {
   const { t } = useI18n();
   const access = useAccess();
@@ -130,7 +129,7 @@ function OrbitShellBody({
   const identity = useAccountIdentity();
 
   const [columnOpen, setColumnOpen] = useState(
-    () => orbitStore.get(ORBIT_KEYS.sidebar) !== "closed",
+    () => orbitStore.get(ORBIT_KEYS.sidebar) !== 'closed',
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Destino de la última navegación: la shell es quien lo despacha, así que lo
@@ -138,8 +137,8 @@ function OrbitShellBody({
   // serie que se abre desde el dial de Inicio o desde la columna).
   const [navTarget, setNavTarget] = useState<string | undefined>(undefined);
   const toastApi = useToast();
-  const [update, setUpdate] = useState<UpdateState>("none");
-  const [updateTag, setUpdateTag] = useState<string>("");
+  const [update, setUpdate] = useState<UpdateState>('none');
+  const [updateTag, setUpdateTag] = useState<string>('');
 
   // Escalado proporcional en ventanas por debajo del mínimo de diseño
   // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
@@ -152,12 +151,12 @@ function OrbitShellBody({
 
   // Actualización: misma señal que UpdateBanner, sin duplicar su UI.
   useEffect(() => {
-    const unsubNotify = Events.On("updater:notify", (event: { data?: { tag?: string } }) => {
-      setUpdateTag(event.data?.tag ?? "");
-      setUpdate("available");
+    const unsubNotify = Events.On('updater:notify', (event: { data?: { tag?: string } }) => {
+      setUpdateTag(event.data?.tag ?? '');
+      setUpdate('available');
     });
-    const unsubProgress = Events.On("updater:progress", () => setUpdate("downloading"));
-    const unsubReady = Events.On("updater:ready", () => setUpdate("ready"));
+    const unsubProgress = Events.On('updater:progress', () => setUpdate('downloading'));
+    const unsubReady = Events.On('updater:ready', () => setUpdate('ready'));
     return () => {
       unsubNotify?.();
       unsubProgress?.();
@@ -167,12 +166,12 @@ function OrbitShellBody({
 
   // ≤ 1152 px la columna se pliega sola sin tocar la preferencia guardada.
   const [narrow, setNarrow] = useState(
-    () => typeof window !== "undefined" && window.innerWidth <= AUTO_COLLAPSE_WIDTH,
+    () => typeof window !== 'undefined' && window.innerWidth <= AUTO_COLLAPSE_WIDTH,
   );
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth <= AUTO_COLLAPSE_WIDTH);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const effectiveColumnOpen = columnOpen && !narrow;
@@ -185,7 +184,7 @@ function OrbitShellBody({
   const toggleColumn = useCallback(() => {
     setColumnOpen((open) => {
       const next = !open;
-      orbitStore.set(ORBIT_KEYS.sidebar, next ? "open" : "closed");
+      orbitStore.set(ORBIT_KEYS.sidebar, next ? 'open' : 'closed');
       return next;
     });
   }, []);
@@ -194,22 +193,22 @@ function OrbitShellBody({
   // canal el botón no está en el rail y llegar por URL devuelve a Inicio con
   // un toast, en vez de dejar la vista en blanco.
   useEffect(() => {
-    if (activeView !== "testing" || testingCenterChannel) return;
-    toast(t("testing.unavailable"));
-    orbitStore.set(ORBIT_KEYS.view, "inicio");
-    onNavigate(viewToSection("inicio"));
+    if (activeView !== 'testing' || testingCenterChannel) return;
+    toast(t('testing.unavailable'));
+    orbitStore.set(ORBIT_KEYS.view, 'inicio');
+    onNavigate(viewToSection('inicio'));
   }, [activeView, onNavigate, t, testingCenterChannel, toast]);
 
   const navigate = useCallback(
     (view: ViewId, target?: string) => {
-      if (view === "testing" && !testingCenterChannel) {
-        toast(t("testing.unavailable"));
+      if (view === 'testing' && !testingCenterChannel) {
+        toast(t('testing.unavailable'));
         return;
       }
       if (!canSeeView(access, view)) {
         toast(
-          t("shell.access.unavailable"),
-          formatMessage(t("shell.access.requiresPlan"), {
+          t('shell.access.unavailable'),
+          formatMessage(t('shell.access.requiresPlan'), {
             plan: REQUIRED_PLAN[view] ?? planLabel,
             current: planLabel,
           }),
@@ -225,14 +224,14 @@ function OrbitShellBody({
 
   const railItems: RailItem[] = useMemo(
     () =>
-      RAIL_ORDER.filter((entry) => entry.id !== "testing" || Boolean(testingCenterChannel)).map(
+      RAIL_ORDER.filter((entry) => entry.id !== 'testing' || Boolean(testingCenterChannel)).map(
         (entry) => {
           const allowed = canSeeView(access, entry.id);
-          const soon = entry.id === "telemetria";
+          const soon = entry.id === 'telemetria';
           return {
             id: entry.id,
             icon: entry.icon,
-            label: soon ? t("shell.rail.telemetrySoon") : t(RAIL_LABEL_KEY[entry.id]),
+            label: soon ? t('shell.rail.telemetrySoon') : t(RAIL_LABEL_KEY[entry.id]),
             soon,
             locked: allowed
               ? undefined
@@ -245,14 +244,14 @@ function OrbitShellBody({
 
   const toggleOverlay = useCallback(() => {
     if (overlay.running) {
-      Events.Emit("overlay:stop");
+      Events.Emit('overlay:stop');
       return;
     }
     if (overlay.active) {
-      Events.Emit("overlay:start", profileTarget(overlay.active));
+      Events.Emit('overlay:start', profileTarget(overlay.active));
       return;
     }
-    Events.Emit("overlay:start-active");
+    Events.Emit('overlay:start-active');
   }, [overlay.active, overlay.running]);
 
   // «Activar» del recomendado activa de verdad el perfil (mismo evento que usa
@@ -260,10 +259,10 @@ function OrbitShellBody({
   // prometía una acción que no ocurría.
   const activateProfile = useCallback(
     (profile: ProfileEntry) => {
-      Events.Emit("hub:set-active", { id: profile.id, file: profile.file });
+      Events.Emit('hub:set-active', { id: profile.id, file: profile.file });
       toast(
-        t("shell.column.activated"),
-        formatMessage(t("shell.column.activatedHint"), { name: profileLabel(profile) }),
+        t('shell.column.activated'),
+        formatMessage(t('shell.column.activatedHint'), { name: profileLabel(profile) }),
       );
     },
     [t, toast],
@@ -281,41 +280,41 @@ function OrbitShellBody({
   const blocks: ContextColumnBlock[] = useMemo(
     () => [
       {
-        id: "races",
+        id: 'races',
         // En el Studio la columna es solo la lista de widgets (briefing 04):
         // ni carreras ni launcher compiten por su altura.
-        hiddenFor: ["carreras", "studio"],
+        hiddenFor: ['carreras', 'studio'],
         content: (
           <SideRaces
             labels={{
-              title: t("shell.column.nextRaces"),
-              seeAll: t("shell.column.seeAll"),
-              in: t("shell.column.in"),
-              empty: t("shell.column.noRaces"),
+              title: t('shell.column.nextRaces'),
+              seeAll: t('shell.column.seeAll'),
+              in: t('shell.column.in'),
+              empty: t('shell.column.noRaces'),
             }}
-            onSeeAll={() => navigate("carreras")}
-            onSelect={(seriesId) => navigate("carreras", seriesId)}
+            onSeeAll={() => navigate('carreras')}
+            onSelect={(seriesId) => navigate('carreras', seriesId)}
             starts={races.starts}
           />
         ),
       },
       {
-        id: "profile",
-        hiddenFor: ["studio"],
+        id: 'profile',
+        hiddenFor: ['studio'],
         content: (
           <SideProfile
             active={overlay.active}
             labels={{
-              title: t("shell.column.overlayProfile"),
-              stopped: t("shell.column.stopped"),
-              live: t("shell.column.live"),
-              widgets: t("shell.column.widgets"),
-              active: t("shell.column.active"),
-              recommended: t("shell.column.recommended"),
-              empty: t("shell.column.noProfiles"),
+              title: t('shell.column.overlayProfile'),
+              stopped: t('shell.column.stopped'),
+              live: t('shell.column.live'),
+              widgets: t('shell.column.widgets'),
+              active: t('shell.column.active'),
+              recommended: t('shell.column.recommended'),
+              empty: t('shell.column.noProfiles'),
             }}
             onActivate={activateProfile}
-            onOpenStudio={() => navigate("studio")}
+            onOpenStudio={() => navigate('studio')}
             onToggleOverlay={toggleOverlay}
             recommended={overlay.recommended}
             running={overlay.running}
@@ -323,24 +322,34 @@ function OrbitShellBody({
         ),
       },
       {
-        id: "launcher",
-        hiddenFor: ["launcher", "studio"],
+        id: 'launcher',
+        hiddenFor: ['launcher', 'studio'],
         content: (
           <SideLauncher
             labels={{
-              title: t("shell.column.launcher"),
-              manage: t("shell.column.manage"),
-              steps: t("shell.column.steps"),
-              empty: t("shell.column.noProfiles"),
+              title: t('shell.column.launcher'),
+              manage: t('shell.column.manage'),
+              steps: t('shell.column.steps'),
+              empty: t('shell.column.noProfiles'),
             }}
-            onManage={() => navigate("launcher")}
-            onRun={(profileId) => Events.Emit("launcher:profile:run", { profileId })}
+            onManage={() => navigate('launcher')}
+            onRun={(profileId) => Events.Emit('launcher:profile:run', { profileId })}
             profiles={launcherProfiles}
           />
         ),
       },
     ],
-    [activateProfile, launcherProfiles, navigate, overlay.active, overlay.recommended, overlay.running, races.starts, t, toggleOverlay],
+    [
+      activateProfile,
+      launcherProfiles,
+      navigate,
+      overlay.active,
+      overlay.recommended,
+      overlay.running,
+      races.starts,
+      t,
+      toggleOverlay,
+    ],
   );
 
   // El contexto por sección lo rellena cada briefing de pantalla. Inicio no
@@ -348,25 +357,25 @@ function OrbitShellBody({
   // Studio sí: la shell reserva el hueco y la propia pantalla porta ahí su
   // lista de widgets, que necesita el store del Studio (briefing 04).
   const contextNode: ReactNode =
-    activeView === "studio" ? (
+    activeView === 'studio' ? (
       <div className="orbit-column__slot" id="orbit-studio-context-slot" />
-    ) : activeView === "launcher" ? (
+    ) : activeView === 'launcher' ? (
       <div className="orbit-column__slot" id={LAUNCHER_CONTEXT_SLOT_ID} />
-    ) : activeView === "carreras" ? (
+    ) : activeView === 'carreras' ? (
       <div className="orbit-column__slot" id={RACES_CONTEXT_SLOT_ID} />
-    ) : activeView === "estrategia" ? (
+    ) : activeView === 'estrategia' ? (
       <div className="orbit-column__slot" id={STRATEGY_CONTEXT_SLOT_ID} />
-    ) : activeView === "telemetria" ? (
+    ) : activeView === 'telemetria' ? (
       <div className="orbit-column__slot" id={TELEMETRY_CONTEXT_SLOT_ID} />
-    ) : activeView === "roadmap" ? (
+    ) : activeView === 'roadmap' ? (
       <div className="orbit-column__slot" id={ROADMAP_CONTEXT_SLOT_ID} />
-    ) : activeView === "ajustes" ? (
+    ) : activeView === 'ajustes' ? (
       // En Ajustes la columna es solo la navegación de secciones: los bloques
       // persistentes ya los oculta `ContextColumn` (briefing 01).
       <div className="orbit-column__slot" id={SETTINGS_CONTEXT_SLOT_ID} />
     ) : null;
   const visibleBlockCount =
-    activeView === "ajustes"
+    activeView === 'ajustes'
       ? 0
       : blocks.filter((block) => !block.hiddenFor.includes(activeView)).length;
   const columnAvailable = Boolean(contextNode) || visibleBlockCount > 0;
@@ -378,25 +387,25 @@ function OrbitShellBody({
       meta: t(`shell.topbar.eyebrow.${item.id}`),
       icon: item.icon,
       locked: item.locked
-        ? formatMessage(t("shell.access.requiresPlanShort"), { plan: item.locked.requiredPlan })
+        ? formatMessage(t('shell.access.requiresPlanShort'), { plan: item.locked.requiredPlan })
         : undefined,
       run: () => navigate(item.id),
     }));
     items.push({
-      id: "ajustes",
-      label: t("shell.rail.settings"),
-      meta: t("shell.topbar.eyebrow.ajustes"),
-      icon: "i-ajustes",
+      id: 'ajustes',
+      label: t('shell.rail.settings'),
+      meta: t('shell.topbar.eyebrow.ajustes'),
+      icon: 'i-ajustes',
       locked: undefined,
-      run: () => navigate("ajustes", "application"),
+      run: () => navigate('ajustes', 'application'),
     });
     items.push({
-      id: "cuenta",
-      label: t("shell.palette.account"),
-      meta: t("shell.palette.accountMeta"),
-      icon: "i-cuenta",
+      id: 'cuenta',
+      label: t('shell.palette.account'),
+      meta: t('shell.palette.accountMeta'),
+      icon: 'i-cuenta',
       locked: undefined,
-      run: () => navigate("ajustes", "account"),
+      run: () => navigate('ajustes', 'account'),
     });
     return items;
   }, [navigate, railItems, t]);
@@ -404,18 +413,18 @@ function OrbitShellBody({
   const actions: PaletteItem[] = useMemo(
     () => [
       {
-        id: "toggle-overlay",
-        label: t("shell.palette.toggleOverlay"),
-        meta: overlay.active?.name ?? "",
-        icon: "i-studio",
+        id: 'toggle-overlay',
+        label: t('shell.palette.toggleOverlay'),
+        meta: overlay.active?.name ?? '',
+        icon: 'i-studio',
         run: toggleOverlay,
       },
       {
-        id: "save-profile",
-        label: t("shell.palette.saveProfile"),
-        meta: t("shell.rail.studio"),
-        icon: "i-studio",
-        run: () => Events.Emit("studio:save"),
+        id: 'save-profile',
+        label: t('shell.palette.saveProfile'),
+        meta: t('shell.rail.studio'),
+        icon: 'i-studio',
+        run: () => Events.Emit('studio:save'),
       },
     ],
     [overlay.active?.name, t, toggleOverlay],
@@ -423,28 +432,31 @@ function OrbitShellBody({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen((open) => !open);
       }
-      if (event.key === "Escape") setPaletteOpen(false);
+      if (event.key === 'Escape') setPaletteOpen(false);
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
   const simStatus = resolveSimStatus(sourceStatus);
-  const accountLabel = formatMessage(t("shell.rail.account"), { plan: planLabel });
+  const accountLabel = formatMessage(t('shell.rail.account'), { plan: planLabel });
   const updateLabel =
-    update === "ready"
-      ? t("shell.update.ready")
-      : update === "downloading"
-        ? formatMessage(t("shell.update.downloading"), { pct: 0 })
-        : formatMessage(t("shell.update.available"), { v: updateTag });
+    update === 'ready'
+      ? t('shell.update.ready')
+      : update === 'downloading'
+        ? formatMessage(t('shell.update.downloading'), { pct: 0 })
+        : formatMessage(t('shell.update.available'), { v: updateTag });
 
   const shell = (
     <div className="orbit-root" data-testid="orbit-shell">
-      <div className="orbit-shell" data-column={effectiveColumnOpen && columnAvailable ? "open" : "closed"}>
+      <div
+        className="orbit-shell"
+        data-column={effectiveColumnOpen && columnAvailable ? 'open' : 'closed'}
+      >
         <Rail
           active={activeView}
           accountEmail={identity.email ?? undefined}
@@ -454,14 +466,14 @@ function OrbitShellBody({
           columnOpen={effectiveColumnOpen}
           items={railItems}
           labels={{
-            rail: t("shell.rail.label"),
-            palette: t("shell.rail.palette"),
-            settings: t("shell.rail.settings"),
+            rail: t('shell.rail.label'),
+            palette: t('shell.rail.palette'),
+            settings: t('shell.rail.settings'),
             account: accountLabel,
-            toggleColumn: t("shell.rail.toggleColumn"),
-            toggleColumnHide: t("shell.rail.toggleColumnHide"),
-            noContext: t("shell.rail.noContext"),
-            requiresPlan: formatMessage(t("shell.access.requiresPlan"), {
+            toggleColumn: t('shell.rail.toggleColumn'),
+            toggleColumnHide: t('shell.rail.toggleColumnHide'),
+            noContext: t('shell.rail.noContext'),
+            requiresPlan: formatMessage(t('shell.access.requiresPlan'), {
               plan: REQUIRED_PLAN[activeView] ?? planLabel,
               current: planLabel,
             }),
@@ -477,12 +489,12 @@ function OrbitShellBody({
             blocks={blocks}
             context={contextNode}
             labels={{
-              column: t("shell.column.label"),
-              collapse: t("shell.column.collapse"),
+              column: t('shell.column.label'),
+              collapse: t('shell.column.collapse'),
             }}
             onCollapse={toggleColumn}
             title={t(`shell.title.${activeView}`)}
-            version={version ?? ""}
+            version={version ?? ''}
           />
         ) : (
           <div />
@@ -493,25 +505,25 @@ function OrbitShellBody({
             eyebrow={t(`shell.topbar.eyebrow.${activeView}`)}
             // El pill no instala a ciegas: lleva a Ajustes › Actualizaciones, que es
             // donde vive el estado real, el canal y el botón de instalar (briefing 11).
-            onUpdate={() => navigate("ajustes", "updates")}
+            onUpdate={() => navigate('ajustes', 'updates')}
             title={t(RAIL_LABEL_KEY[activeView])}
             update={update}
             updateLabel={updateLabel}
             view={activeView}
           >
-            {activeView === "studio" ? (
+            {activeView === 'studio' ? (
               <div className="orbit-topbar__slot" id="orbit-studio-topbar-slot" />
-            ) : activeView === "launcher" ? (
+            ) : activeView === 'launcher' ? (
               <div className="orbit-topbar__slot" id={LAUNCHER_TOPBAR_SLOT_ID} />
-            ) : activeView === "carreras" ? (
+            ) : activeView === 'carreras' ? (
               <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
           <div className="orbit-workspace">
-            {activeView === "inicio" ? (
+            {activeView === 'inicio' ? (
               <HomeOrbitPage
                 onActivateProfile={(profile) =>
-                  Events.Emit("hub:set-active", { id: profile.id, file: profile.file })
+                  Events.Emit('hub:set-active', { id: profile.id, file: profile.file })
                 }
                 onNavigate={navigate}
                 onOpenPalette={() => setPaletteOpen(true)}
@@ -520,27 +532,27 @@ function OrbitShellBody({
                 races={races.starts}
                 simStatus={simStatus}
                 target={races.target}
-                userName={license?.email?.split("@")[0]}
+                userName={license?.email?.split('@')[0]}
               />
-            ) : activeView === "launcher" ? (
+            ) : activeView === 'launcher' ? (
               <LauncherOrbitPage />
-            ) : activeView === "carreras" ? (
+            ) : activeView === 'carreras' ? (
               <RacesOrbitPage calendar={races.calendar} target={navTarget} />
-            ) : activeView === "estrategia" ? (
+            ) : activeView === 'estrategia' ? (
               <StrategyOrbitPage />
-            ) : activeView === "ingeniero" ? (
+            ) : activeView === 'ingeniero' ? (
               <EngineerOrbitPage />
-            ) : activeView === "telemetria" ? (
+            ) : activeView === 'telemetria' ? (
               <TelemetryOrbitPage />
-            ) : activeView === "roadmap" ? (
-              <RoadmapOrbitPage channel={testingCenterChannel ?? "stable"} />
-            ) : activeView === "ajustes" ? (
+            ) : activeView === 'roadmap' ? (
+              <RoadmapOrbitPage channel={testingCenterChannel ?? 'stable'} />
+            ) : activeView === 'ajustes' ? (
               <SettingsOrbitPage target={navTarget} />
-            ) : activeView === "testing" && testingCenterChannel ? (
+            ) : activeView === 'testing' && testingCenterChannel ? (
               <TestingCenterOrbitPage channel={testingCenterChannel} version={version} />
-            ) : (
-              children
-            )}
+            ) : activeView === 'studio' ? (
+              <StudioRoute target={target} />
+            ) : null}
           </div>
         </div>
       </div>
@@ -549,15 +561,15 @@ function OrbitShellBody({
         actions={actions}
         destinations={destinations}
         labels={{
-          title: t("shell.palette.title"),
-          placeholder: t("shell.palette.placeholder"),
-          goTo: t("shell.palette.goTo"),
-          actions: t("shell.palette.actions"),
-          footNav: t("shell.palette.foot.nav"),
-          footRun: t("shell.palette.foot.run"),
-          footLocked: t("shell.palette.foot.locked"),
+          title: t('shell.palette.title'),
+          placeholder: t('shell.palette.placeholder'),
+          goTo: t('shell.palette.goTo'),
+          actions: t('shell.palette.actions'),
+          footNav: t('shell.palette.foot.nav'),
+          footRun: t('shell.palette.foot.run'),
+          footLocked: t('shell.palette.foot.locked'),
         }}
-        onBlocked={(item) => toast(t("shell.access.unavailable"), item.locked)}
+        onBlocked={(item) => toast(t('shell.access.unavailable'), item.locked)}
         onClose={() => setPaletteOpen(false)}
         open={paletteOpen}
       />

@@ -546,6 +546,20 @@ func registerTelemetryStatusReplayHandlers(
 		)
 		unsubscribes = append(unsubscribes, unsubscribe)
 	}
+	unsubscribes = append(unsubscribes, events.On(
+		telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2),
+		func(_ *application.CustomEvent) {
+			publisher, active := telemetryRuntime.OverlayV2Publishers().Lookup(telemetrytransport.ProductOverlayV2)
+			if !active {
+				return
+			}
+			replay, ok := publisher.ReplaySnapshot()
+			if !ok {
+				return
+			}
+			emitter.Emit(telemetrytransport.PublisherEventName(replay.Product, replay.Kind), replay.Data)
+		},
+	))
 	var cleanup sync.Once
 	return func() {
 		cleanup.Do(func() {
@@ -1665,6 +1679,12 @@ func main() {
 				return nil
 			}
 			return telemetryCoreRuntime.StrategyHub()
+		}(),
+		OverlayV2Publishers: func() *telemetrytransport.PublisherRegistry {
+			if telemetryCoreRuntime == nil {
+				return nil
+			}
+			return telemetryCoreRuntime.OverlayV2Publishers()
 		}(),
 	})
 	httpSrv.Start()

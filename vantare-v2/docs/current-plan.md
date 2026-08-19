@@ -1,3 +1,22 @@
+Nota ISA-372/F6 (2026-08-19, implementada localmente, sin promoción):
+- OverlayFrame v2 define el contrato compacto completo; este vertical slice
+  puebla player/session/capabilities y deja el resto explícitamente vacío.
+- El sintético completo de 104 vehículos mide 34.650 bytes. El parseo Node
+  JSON.parse+decoder midió CPU p99/op 0,720 ms en lotes; WebView2/OBS real
+  queda pendiente y no se infiere de Node.
+- v1 sigue productivo. v2 se construye post-commit, se publica después de v1 y
+  cualquier fallo queda aislado y contado. Wails/SSE usan el mismo store y
+  exponen solo diagnóstico sanitizado.
+- `pedals-telemetry` compara por epoch/secuencia el valor mostrado v1/v2; el feature
+  v2 permanece default-off. Paridad de goldens 1/20/44/104 y capturas
+  Playwright wide/medium/compact: PASS.
+- Gate real: mismatches=0 en al menos 5 sesiones de 20 minutos, una con más de
+  40 coches. Pendiente de Isaac. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f6-overlay-v2-slice.md`.
+- Rama `vantareapp/isa-372-tc-f6-overlay-frame-v2-slice` sobre
+  `tc-integration@bafe94d5`; sin push, PR, CI remoto, merge, promoción ni
+  release.
+
 Nota ISA-372/F3 (2026-08-19, implementada localmente, sin promoción):
 - `TelemetryEngine.Apply` es la frontera default-on de commit único para
   reducer, coordinator y derive; el camino anterior queda como rollback.

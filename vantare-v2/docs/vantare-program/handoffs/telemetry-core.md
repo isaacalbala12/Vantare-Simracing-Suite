@@ -15,6 +15,17 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F6 está implementada localmente sobre `tc-integration@bafe94d5` en
+  `vantareapp/isa-372-tc-f6-overlay-frame-v2-slice`. OverlayFrame v2 fija el
+  contrato compacto completo y puebla solo player/session/capabilities; el
+  sintético completo de 104 vehículos mide 34.650 bytes. El runtime lo
+  construye después del commit, publica v1 primero y aísla fallos v2. Publisher
+  latest-wins, replay, store TS generado y Wails/SSE quedan cableados en
+  shadow. `pedals-telemetry` compara valores mostrados por epoch/secuencia, con
+  feature v2 default-off para el usuario. Node sintético midió CPU p99/op
+  0,720 ms; no acredita WebView2. Evidencia, procedimiento y gate real pendiente:
+  `docs/telemetry-core/evidence/isa-372-f6-overlay-v2-slice.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
 - ISA-372/F3 está implementada localmente sobre `tc-integration@c52d6c1d` en
   `vantareapp/isa-372-tc-f3-engine-apply`. `TelemetryEngine.Apply` prepara y
   confirma reducer/coordinator/derive como una transacción, y el mapper no

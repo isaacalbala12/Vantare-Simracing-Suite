@@ -14,7 +14,10 @@
     "La ausencia y reaparición del player ya no crea un epoch ni borra el historial de controles o la referencia de delta.",
     "Un cambio de piloto conserva SessionID y VehicleID, abre un StintID nuevo y emite un fact driver-changed; no se inventa Team cuando LMU no lo aporta.",
     "Reducer, ciclo de sesión y derivaciones se confirman juntos mediante TelemetryEngine.Apply; el flag default-on permite volver temporalmente al camino anterior.",
-    "Un shadow Go aislado compara periódicamente el engine con la orquestación anterior, se auto-desactiva si excede su presupuesto y no publica datos ni facts."
+    "Un shadow Go aislado compara periódicamente el engine con la orquestación anterior, se auto-desactiva si excede su presupuesto y no publica datos ni facts.",
+    "OverlayFrame v2 añade un contrato compacto generado para TypeScript; el sintético completo de 104 vehículos queda por debajo de 48 KiB.",
+    "El publisher v2 es latest-wins, repite el último snapshot a suscriptores tardíos y aísla sus fallos para que Overlay v1 continúe productivo.",
+    "Wails y OBS decodifican v2 en shadow; pedals-telemetry compara por secuencia el valor mostrado v1/v2 mientras el feature v2 permanece desactivado por defecto."
   ],
   "testing": [
     "Abrir Vantare antes que LMU, entrar en pista y confirmar que el estado pasa a live al llegar telemetría.",
@@ -24,13 +27,16 @@
     "Ejecutar los tests frontend y comprobar que los cuatro goldens Go se decodifican con los tipos generados.",
     "En una sesión con una caída breve de una fila, confirmar que el coche reaparece con la misma identidad; reutilizar el slot con otro piloto o clase y confirmar una identidad nueva.",
     "Durante un cambio de piloto, confirmar un StintID nuevo y FactDriverChanged sin cambio de SessionID, VehicleID ni epoch.",
-    "Revisar EngineSequence, FramesRejected, métricas de identidad, ApplyDurationUs y ShadowMismatches sin payload de telemetría."
+    "Revisar EngineSequence, FramesRejected, métricas de identidad, ApplyDurationUs y ShadowMismatches sin payload de telemetría.",
+    "En Wails y OBS, leer window.__vantareOverlayV2Diagnostics() y confirmar parse p99 menor de 1 ms y cero mismatches sin capturar payload raw.",
+    "Completar al menos cinco sesiones de 20 minutos, una con más de 40 coches, antes de considerar un cutover de Overlay v2."
   ],
   "knownLimitations": [
     "La validación local usa relojes inyectados y fixtures; queda pendiente una sesión LMU real y una build Wails/OBS instalada.",
-    "El payload Overlay v1 de 104 vehículos sigue pudiendo descartarse hasta la compactación prevista en F6.",
+    "Overlay v1 sigue siendo productivo; poblar standings, relative, delta, fuel y spotter en v2 queda para fases posteriores.",
     "El contrato canónico de Telemetry Core no se genera en esta fase.",
     "El benchmark Apply es sintético y no sustituye la validación pendiente con LMU, Wails, WebView2 u OBS reales.",
-    "La retirada del camino legacy exige todavía 2 Nightly y 3 sesiones reales con shadow sin divergencias."
+    "La retirada del camino legacy exige todavía 2 Nightly y 3 sesiones reales con shadow sin divergencias.",
+    "La medición de parseo v2 es Node sintético; WebView2 y OBS instalados permanecen pendientes de Isaac."
   ]
 }

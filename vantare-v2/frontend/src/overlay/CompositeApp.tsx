@@ -12,6 +12,12 @@ import { InPlaceEditModeBranch } from "./edit/InPlaceEditModeBranch";
 import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
+import {
+  attachOverlayFrameV2Transport,
+  createOverlayFrameV2Store,
+  OVERLAY_V2_SNAPSHOT_REQUEST_EVENT,
+} from "../telemetry-transport/overlay-frame-v2-store";
+import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -28,6 +34,8 @@ export function CompositeApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
+  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
+  const overlayV2Shadow = useMemo(() => createOverlayV2ShadowRuntime(), []);
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
   const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({
     store: engineerPresentations,
@@ -47,27 +55,56 @@ export function CompositeApp() {
         coordinator,
         runtime: "desktop",
         subscribe,
+        onMappedSnapshot: overlayV2Shadow.acceptLegacy,
         // Una ventana de overlay abierta a mitad de sesion no recibe estado,
         // porque solo se publica al cambiar y el puente Wails no repite lo ya
         // emitido. Sin estado el observador no pinta nada.
         requestStatus: () => Events.Emit(statusRequestEventName("overlay")),
       });
     },
-    [coordinator],
+    [coordinator, overlayV2Shadow],
   );
 
   useEffect(() => applyOverlayDocumentMode(), []);
 
   useEffect(() => {
+    const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
+      const state = overlayV2Store.getSnapshot();
+      if (state.frame && state.source) {
+        overlayV2Shadow.acceptOverlayV2(state.frame, state.source);
+      }
+    });
+    const detachOverlayV2 = attachOverlayFrameV2Transport(
+      overlayV2Store,
+      {
+        subscribe: (event, handler) => {
+          const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
+          return () => unsubscribe?.();
+        },
+      },
+      (error) => console.error("overlay-v2 shadow ingest failed", error),
+      () => Events.Emit(OVERLAY_V2_SNAPSHOT_REQUEST_EVENT),
+    );
+    const diagnosticWindow = window as Window & {
+      __vantareOverlayV2Diagnostics?: () => unknown;
+    };
+    diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
+      ...overlayV2Store.getDiagnostics(),
+      shadow: overlayV2Shadow.sessionSummary(),
+    });
     adapter.start();
     engineerAdapter.start();
     return () => {
+      delete diagnosticWindow.__vantareOverlayV2Diagnostics;
+      detachOverlayV2();
+      unsubscribeOverlayV2Store();
       adapter.stop();
       engineerAdapter.stop();
+      overlayV2Store.dispose();
       engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations]);
+  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayV2Shadow, overlayV2Store]);
 
   useEffect(() => {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {

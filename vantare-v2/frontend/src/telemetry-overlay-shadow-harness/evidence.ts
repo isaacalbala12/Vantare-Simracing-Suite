@@ -9,9 +9,11 @@ import type {
 import {
   OVERLAY_SHADOW_POLICIES,
   compareOverlayShadow,
+  createOverlayV2PlayerInstrumentsComparator,
   type OverlayShadowCoverage,
   type OverlayShadowReport,
 } from "../overlay/telemetry-shadow/overlay-shadow-comparator";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../generated/telemetry";
 
 export const SHADOW_HARNESS_SCENARIOS = [
   "equal",
@@ -134,6 +136,22 @@ export function buildShadowHarnessCoverage(): ShadowHarnessCoverage {
   };
 }
 
+export function buildPlayerInstrumentsV2HarnessFixture() {
+  const widget = createWidget("pedals-telemetry");
+  widget.content = { showPosition: false, showClutch: true };
+  const snapshot = createSnapshot("ready");
+  const frame = playerInstrumentsFrameV2();
+  const source: OverlaySourceStatusV2 = { state: "live" };
+  const comparator = createOverlayV2PlayerInstrumentsComparator();
+  const comparison = comparator.compare({
+    legacySnapshot: snapshot,
+    frame,
+    source,
+    content: { showPosition: false, showClutch: true },
+  });
+  return { widget, snapshot, frame, source, comparison, summary: comparator.sessionSummary() };
+}
+
 function createWidget(type: WidgetType): WidgetInstanceV3 {
   return widgetTypeRegistry.get(type).createDefault(`shadow-fixture-${type}`);
 }
@@ -168,6 +186,27 @@ function createSnapshot(status: TelemetrySnapshot["status"]): TelemetrySnapshot 
         teamName: "PRIVATE_TEAM_SHADOW_105",
       },
     ],
+  };
+}
+
+function playerInstrumentsFrameV2(): OverlayFrameV2 {
+  const missing = { q: "missing" as const };
+  return {
+    contract: 2, algorithm: 1, epoch: 1, sequence: 1,
+    sessionId: "shadow-fixture", generatedAt: "2026-08-19T12:00:00Z",
+    units: { speed: "kph", temperature: "celsius", pressure: "kpa", fuel: "liters" },
+    session: { track: missing, phase: missing, flag: missing, remaining: missing, maxLaps: missing },
+    player: {
+      speed: { q: "fresh" }, rpm: { q: "fresh" }, gear: { q: "fresh" },
+      throttle: { q: "fresh" }, brake: { q: "fresh" }, clutch: { q: "fresh" }, steering: missing,
+    },
+    standings: [], relative: [], delta: { seconds: missing, available: [] },
+    fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
+    spotter: { mode: "none", left: missing, right: missing },
+    capabilities: {
+      supported: ["controls"], available: { controls: "fresh" },
+      modes: { spatial: [], delta: [], standings: "none", gaps: "none" },
+    },
   };
 }
 

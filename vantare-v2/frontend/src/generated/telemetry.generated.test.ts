@@ -6,6 +6,7 @@ import type {
   AnalysisPayloadV1,
   EngineerPayloadV1,
   JSONObject,
+  OverlayUpdateV2,
   OverlayPayloadV1,
   ProductID,
   ProjectionEnvelope,
@@ -29,6 +30,11 @@ const GOLDENS: Record<ProductID, string> = {
   analysis:
     "../internal/telemetry/projection/analysis/testdata/analysis_v1.golden.json",
 };
+
+const OVERLAY_V2_GOLDENS = [1, 20, 44, 104].map(
+  (vehicles) =>
+    `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
+);
 
 describe("generated telemetry contract", () => {
   it.each(Object.entries(GOLDENS) as [ProductID, string][])(
@@ -59,6 +65,18 @@ describe("generated telemetry contract", () => {
       if (decoded.kind === "projection") {
         expect(asGeneratedPayload(product, decoded.value.payload)).toEqual(payload);
       }
+    },
+  );
+
+  it.each(OVERLAY_V2_GOLDENS)(
+    "types the compact Go golden %s without a handwritten mirror",
+    (relativePath) => {
+      const update = JSON.parse(
+        readFileSync(path.resolve(process.cwd(), relativePath), "utf8"),
+      ) as OverlayUpdateV2;
+      expect(update.frame?.contract).toBe(2);
+      expect(update.frame?.standings).toEqual([]);
+      expect(update.frame?.player.speed.q).toBe("fresh");
     },
   );
 });

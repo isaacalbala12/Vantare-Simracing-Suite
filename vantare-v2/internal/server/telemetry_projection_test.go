@@ -112,6 +112,35 @@ func TestServerExposesCanonicalStrategyProjectionSSE(t *testing.T) {
 	}
 }
 
+func TestServerExposesOverlayV2PublisherSSE(t *testing.T) {
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
+		Product: telemetrytransport.ProductOverlayV2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := registry.RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if err := publisher.PublishSnapshot(3, map[string]any{"revision": 3, "frame": map[string]any{"contract": 2}}); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	request := httptest.NewRequest(http.MethodGet, telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2), nil).WithContext(ctx)
+	request.RemoteAddr = "127.0.0.1:45678"
+	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 1}
+	srv := server.New(server.ServerConfig{OverlayV2Publishers: registry})
+	srv.Handler().ServeHTTP(writer, request)
+
+	body := writer.body.String()
+	if !strings.Contains(body, "event: telemetry:overlay-v2:snapshot") || !strings.Contains(body, `"contract":2`) {
+		t.Fatalf("Overlay v2 SSE body = %q", body)
+	}
+}
+
 func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 	strategyHub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
 		Product: telemetrytransport.ProductStrategy,

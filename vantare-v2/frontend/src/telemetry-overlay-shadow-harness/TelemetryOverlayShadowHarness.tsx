@@ -7,9 +7,11 @@ import {
 import {
   SHADOW_HARNESS_SCENARIOS,
   buildShadowHarnessReport,
+  buildPlayerInstrumentsV2HarnessFixture,
   getShadowHarnessScenario,
   type ShadowHarnessScenario,
 } from "./evidence";
+import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
 
 export function TelemetryOverlayShadowHarness({
   initialScenario = "equal",
@@ -17,6 +19,7 @@ export function TelemetryOverlayShadowHarness({
   const [scenario, setScenario] = useState(initialScenario);
   const selected = getShadowHarnessScenario(scenario);
   const report = useMemo(() => buildShadowHarnessReport(scenario), [scenario]);
+  const playerV2 = useMemo(() => buildPlayerInstrumentsV2HarnessFixture(), []);
 
   return (
     <main
@@ -68,6 +71,31 @@ export function TelemetryOverlayShadowHarness({
         <SummaryMetric label="Iguales" value={report.summary.equal} tone="good" />
         <SummaryMetric label="Tolerancia" value={report.summary.withinTolerance} />
         <SummaryMetric label="Diferencias" value={report.summary.mismatches} tone="warning" />
+      </section>
+
+      <section className="shadow-player-v2" data-essential="true" aria-label="Paridad visual player instruments">
+        <div>
+          <p className="shadow-eyebrow">V1 productivo</p>
+          <div className="shadow-player-capture" data-testid="shadow-player-v1">
+            <WidgetVisualHost widget={playerV2.widget} snapshot={playerV2.snapshot} renderMode="harness" />
+          </div>
+        </div>
+        <div>
+          <p className="shadow-eyebrow">V2 feature flag</p>
+          <div className="shadow-player-capture" data-testid="shadow-player-v2">
+            <WidgetVisualHost
+              widget={playerV2.widget}
+              snapshot={playerV2.snapshot}
+              renderMode="harness"
+              runtime={{
+                overlayV2Features: ["player-instruments"],
+                overlayV2Frame: playerV2.frame,
+                overlayV2Source: playerV2.source,
+              }}
+            />
+          </div>
+        </div>
+        <strong data-testid="shadow-player-v2-mismatches">{playerV2.summary.mismatches}</strong>
       </section>
 
       <div className="shadow-report-heading">
@@ -241,6 +269,10 @@ const HARNESS_CSS = `
   .shadow-scenario-copy { min-width: 0; display: grid; gap: 4px; }
   .shadow-scenario-copy strong { color: #fff; }
   .shadow-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  .shadow-player-v2 { display: grid; grid-template-columns: repeat(2, 300px) max-content; align-items: end; gap: 18px; margin-top: 24px; padding: 18px; overflow: auto; border: 1px solid #292b31; border-radius: 12px; background: #111216; }
+  .shadow-player-v2 > div { min-width: 0; }
+  .shadow-player-capture { width: min(300px, 100%); height: 112px; overflow: hidden; }
+  .shadow-player-v2 > strong { align-self: center; color: #35d38b; font-variant-numeric: tabular-nums; }
   .shadow-metric { min-width: 0; padding: 16px; border: 1px solid #272930; border-radius: 10px; background: #111216; }
   .shadow-metric span { display: block; margin-bottom: 8px; color: #85878f; font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
   .shadow-metric strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
@@ -278,6 +310,7 @@ const HARNESS_CSS = `
     .shadow-scenario-copy { grid-column: auto; }
     .shadow-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .shadow-results { grid-template-columns: minmax(0, 1fr); }
+    .shadow-player-v2 { grid-template-columns: minmax(0, 1fr); }
     .shadow-widget > header { align-items: flex-start; }
     .shadow-entry-main { align-items: flex-start; flex-direction: column; gap: 5px; }
   }

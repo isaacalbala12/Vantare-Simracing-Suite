@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -18,6 +19,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
+	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
@@ -75,6 +77,9 @@ type TelemetryCoreRuntimeConfig struct {
 	// TelemetryEngineApply defaults to on when nil. Point it to false for
 	// one-cycle rollback to the previous explicit stage orchestration.
 	TelemetryEngineApply *bool
+	// OverlayFrameV2Shadow defaults to on. It remains observational: without
+	// an active v2 consumer the frame is neither built nor published.
+	OverlayFrameV2Shadow *bool
 	// TelemetryShadowEvery controls semantic comparison sampling while the
 	// engine flag is on. Zero uses one comparison every 30 accepted batches.
 	TelemetryShadowEvery uint64
@@ -121,6 +126,9 @@ type TelemetryCoreMetrics struct {
 	SlotGenerationBumps          uint64
 	IdentityEvicted              uint64
 	ApplyDurationUs              TelemetryDurationPercentiles
+	OverlayV2PayloadBytes        map[string]TelemetryPayloadPercentiles
+	OverlayV2BuildDurationUs     TelemetryDurationPercentiles
+	PublisherDroppedFrames       map[string]uint64
 }
 
 type telemetryCoreCounters struct {
@@ -156,9 +164,11 @@ type TelemetryCoreRuntime struct {
 	enabled                  bool
 	telemetryFailurePolicyV2 bool
 	telemetryEngineApply     bool
+	overlayFrameV2Shadow     bool
 	emitter                  telemetrytransport.EventEmitter
 	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
+	overlayV2Publishers      *telemetrytransport.PublisherRegistry
 	manager                  *telemetrycore.DriverManager[lmu.Observation]
 	mapper                   *lmu.BatchMapper
 	reducer                  *telemetrycore.Reducer
@@ -181,13 +191,15 @@ type TelemetryCoreRuntime struct {
 	lastTerminalErr error
 	statusRev       uint64
 
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
-	runErr            error
-	engineerErr       error
-	engineerStatusErr error
-	counters          telemetryCoreCounters
-	metricStore       telemetryCoreMetricStore
+	cancel                    context.CancelFunc
+	wg                        sync.WaitGroup
+	runErr                    error
+	engineerErr               error
+	engineerStatusErr         error
+	counters                  telemetryCoreCounters
+	metricStore               telemetryCoreMetricStore
+	overlayV2Project          func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error)
+	overlayV2DeliveryRevision uint64
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -212,6 +224,16 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	engineApply := true
 	if config.TelemetryEngineApply != nil {
 		engineApply = *config.TelemetryEngineApply
+	}
+	overlayFrameV2Shadow := true
+	if config.OverlayFrameV2Shadow != nil {
+		overlayFrameV2Shadow = *config.OverlayFrameV2Shadow
+	}
+	overlayV2Publishers, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
+		Product: telemetrytransport.ProductOverlayV2,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
 	}
 	manager, err := telemetrycore.NewDriverManager(
 		[]telemetrycore.DriverCandidate[lmu.Observation]{
@@ -264,6 +286,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
 		telemetryEngineApply:     engineApply,
+		overlayFrameV2Shadow:     overlayFrameV2Shadow,
 		emitter:                  config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
 			Product: telemetrytransport.ProductOverlay,
@@ -279,18 +302,20 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				MinimumSupported: strategyprojection.MinimumSupportedVersion,
 			},
 		}),
-		manager:          manager,
-		mapper:           lmu.NewBatchMapper(),
-		reducer:          reducer,
-		coord:            coordinator,
-		derive:           pipeline,
-		engine:           telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:           newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:         config.Engineer,
-		engineerManifest: engineerManifest,
-		now:              now,
-		watchdogDelay:    watchdogDelay,
-		watchdogEnabled:  watchdogEnabled,
+		overlayV2Publishers: overlayV2Publishers,
+		manager:             manager,
+		mapper:              lmu.NewBatchMapper(),
+		reducer:             reducer,
+		coord:               coordinator,
+		derive:              pipeline,
+		engine:              telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:              newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
+		engineer:            config.Engineer,
+		engineerManifest:    engineerManifest,
+		now:                 now,
+		watchdogDelay:       watchdogDelay,
+		watchdogEnabled:     watchdogEnabled,
+		overlayV2Project:    overlayv2.ProjectV2,
 	}, nil
 }
 
@@ -308,6 +333,13 @@ func (runtime *TelemetryCoreRuntime) StrategyHub() *telemetrytransport.Hub {
 		return nil
 	}
 	return runtime.strategyHub
+}
+
+func (runtime *TelemetryCoreRuntime) OverlayV2Publishers() *telemetrytransport.PublisherRegistry {
+	if runtime == nil {
+		return nil
+	}
+	return runtime.overlayV2Publishers
 }
 
 func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
@@ -347,6 +379,11 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		SlotGenerationBumps:          mapper.SlotGenerationBumps,
 		IdentityEvicted:              coordinator.IdentityEvicted,
 		ApplyDurationUs:              details.applyDurationUs,
+		OverlayV2PayloadBytes:        details.overlayV2PayloadBytes,
+		OverlayV2BuildDurationUs:     details.overlayV2BuildDurationUs,
+		PublisherDroppedFrames: map[string]uint64{
+			string(telemetrytransport.ProductOverlayV2): runtime.overlayV2Publishers.DroppedFrames(telemetrytransport.ProductOverlayV2),
+		},
 	}
 }
 
@@ -455,9 +492,10 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 		go runtime.monitor(ctx)
 	}
 	if runtime.emitter != nil {
-		runtime.wg.Add(2)
+		runtime.wg.Add(3)
 		go runtime.serveWails(ctx, telemetrytransport.ProductOverlay, runtime.hub)
 		go runtime.serveWails(ctx, telemetrytransport.ProductStrategy, runtime.strategyHub)
+		go runtime.serveWailsOverlayV2(ctx)
 	}
 	runtime.lifecycleMu.Unlock()
 	return nil
@@ -683,6 +721,18 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 	runtime.failStop(fmt.Errorf("serve %s telemetry: %w", productName(product), err))
 }
 
+func (runtime *TelemetryCoreRuntime) serveWailsOverlayV2(ctx context.Context) {
+	defer runtime.wg.Done()
+	err := telemetrytransport.ServeWailsPublisher(ctx, runtime.overlayV2Publishers, telemetrytransport.ProductOverlayV2, runtime.emitter)
+	if err == nil || ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, telemetrytransport.ErrClosed) {
+		return
+	}
+	// The v2 bridge is shadow-only and must never stop acquisition or v1.
+	runtime.metricStore.publishFailure(string(telemetrytransport.ProductOverlayV2))
+	runtime.metricStore.dropFrame("overlay-v2-wails")
+	log.Printf("telemetry Overlay v2 Wails failure is non-terminal: %v", err)
+}
+
 func productName(product telemetrytransport.ProductID) string {
 	switch product {
 	case telemetrytransport.ProductOverlay:
@@ -844,12 +894,73 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 			return failureErr
 		}
 	}
+	if err := sink.runtime.publishOverlayV2(final, status.State, status.ReconnectAttempt); err != nil {
+		sink.runtime.handleOverlayV2Failure(err)
+	}
 	if publication.overlayPublished && publication.strategyPublished {
 		sink.runtime.counters.projectionsPublished.Add(1)
 	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, factValues)
 	return nil
+}
+
+func (runtime *TelemetryCoreRuntime) publishOverlayV2(
+	final envelope.Snapshot[derive.FinalState],
+	state driver.State,
+	attempt int,
+) error {
+	if !runtime.overlayFrameV2Shadow {
+		return nil
+	}
+	publisher, active := runtime.overlayV2Publishers.Lookup(telemetrytransport.ProductOverlayV2)
+	if !active {
+		return nil
+	}
+	runtime.mu.Lock()
+	runtime.overlayV2DeliveryRevision++
+	revision := runtime.overlayV2DeliveryRevision
+	lastFrameAt := runtime.lastFrameAt
+	runtime.mu.Unlock()
+	age := runtime.now().Sub(lastFrameAt).Milliseconds()
+	if age < 0 {
+		age = 0
+	}
+	started := time.Now()
+	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
+		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
+		DescriptorCapabilities: []string{string(lmu.CapabilitySharedMemory), string(lmu.CapabilityREST)},
+	}, overlayv2.DefaultPreferencesV2(), revision)
+	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
+	if err != nil {
+		return fmt.Errorf("%w: project Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
+	}
+	encoded, err := json.Marshal(update)
+	if err != nil {
+		return fmt.Errorf("%w: encode Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
+	}
+	value, ok := final.Value()
+	if !ok {
+		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
+	}
+	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
+	if err := publisher.PublishSnapshot(revision, json.RawMessage(encoded)); err != nil {
+		return fmt.Errorf("%w: publish Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
+	}
+	return nil
+}
+
+func (runtime *TelemetryCoreRuntime) handleOverlayV2Failure(err error) {
+	if err == nil {
+		return
+	}
+	// Shadow failure is deliberately not reflected in the canonical source
+	// status: doing so would invalidate a pending v1 full and make an
+	// observational path user-visible.
+	product := string(telemetrytransport.ProductOverlayV2)
+	runtime.metricStore.publishFailure(product)
+	runtime.metricStore.dropFrame(product + "-publish")
+	log.Printf("telemetry %s-publish failure is non-terminal: %v", product, err)
 }
 
 func (runtime *TelemetryCoreRuntime) handlePostCommitFailure(

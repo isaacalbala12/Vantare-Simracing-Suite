@@ -9,6 +9,7 @@ Incluye:
 
 - proyecciones v1 de Overlay, Engineer, Strategy y el contrato Analysis
   conservado para F12.b;
+- contrato compacto `projection/overlayv2`, incluido su `QValue<T>` genérico;
 - metadata y campos wire compartidos de `projection`;
 - `Envelope`, `StatusEnvelope`, `StatusPayload`, `SnapshotKind`, `ProductID` y
   `EventKind` de `internal/app/telemetrytransport`;

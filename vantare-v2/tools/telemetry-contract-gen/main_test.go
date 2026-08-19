@@ -60,6 +60,30 @@ func TestGeneratedContractMatchesHandwritten(t *testing.T) {
 	compareValues(t, "EventKind", enumValues(t, generated, "EventKind"), []string{"projection", "status", "fact"})
 }
 
+func TestGeneratedOverlayV2ContractUsesCompactGenericQuality(t *testing.T) {
+	t.Parallel()
+
+	generatedBytes, err := generate()
+	if err != nil {
+		t.Fatalf("generate contract: %v", err)
+	}
+	generated := string(generatedBytes)
+	compareFields(t, "OverlayUpdateV2", interfaceFields(t, generated, "OverlayUpdateV2"), map[string]tsField{
+		"revision": {typeName: "number"},
+		"source":   {typeName: "OverlaySourceStatusV2"},
+		"frame":    {typeName: "OverlayFrameV2 | null"},
+	}, nil)
+	compareFields(t, "OverlayQValue", interfaceFields(t, generated, "OverlayQValue<T>"), map[string]tsField{
+		"q": {typeName: "OverlayQualityV2"},
+		"v": {typeName: "T | undefined", optional: true},
+	}, nil)
+	compareValues(t, "OverlayQualityV2", enumValues(t, generated, "OverlayQualityV2"),
+		[]string{"fresh", "invalid", "missing", "stale"})
+	if strings.Contains(generated, "interface Overlayv2QValue") {
+		t.Fatal("generic QValue was emitted as a duplicated concrete interface")
+	}
+}
+
 // handwrittenTransportContract is the pre-F5 transport mirror characterized
 // by F5.2. It is test evidence only; production TypeScript reexports the Go-
 // generated declarations after F5.3.

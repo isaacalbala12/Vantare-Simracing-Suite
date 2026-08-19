@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-350",
+  "type": "feature",
+  "summary": "Testing Center incorpora persistencia privada y transaccional para la evidencia de capturas.",
+  "technicalNotes": [
+    "Los lotes de 1 a 10 capturas PNG/JPEG usan rutas server-owned, bucket privado, inserción exact-path y outbox durable.",
+    "Las operaciones prepare, finalize y submit son idempotentes y conservan intacta la RPC v1.",
+    "El rollback exige limpieza física previa y falla cerrado ante objetos preexistentes, revocación tardía o concurrencia insegura."
+  ],
+  "testing": [
+    "El runner ISA-350 pasó 80/80 tras reaplicar el esquema.",
+    "Se validaron revocación post-prepare, rollback atómico, finalize exactly-once, inserción concurrente bloqueada y buckets preexistentes fail-closed."
+  ],
+  "knownLimitations": [
+    "Este corte no despliega Supabase remoto ni valida bytes reales, interfaz de usuario, URLs firmadas o acceso de agentes."
+  ]
+}

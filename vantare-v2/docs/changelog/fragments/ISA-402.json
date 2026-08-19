@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-402",
+  "type": "feature",
+  "summary": "El editor in-place incorpora un inspector flotante para contenido, apariencia y comportamiento del widget.",
+  "technicalNotes": [
+    "El inspector comparte una vista headless con el Hub y mantiene la sesión sobre el documento V3 cargado en memoria.",
+    "El autosave usa debounce, coalescing, revisión optimista y estados visibles de error o conflicto sin escribir mediante studio:profile:save.",
+    "El panel fijo permite editar propiedades con acceso de licencia real y ofrece undo/redo, dirty, retry y conflict."
+  ],
+  "testing": [
+    "La implementación pasó 388 archivos y 2863 tests frontend, Go completo, build, lint focal y diff-check en su validación de rama.",
+    "El gate P1 verificó preview imperativa, telemetría congelada durante drag y un único guardado."
+  ],
+  "knownLimitations": [
+    "La promoción a Nightly no sustituye la revisión manual del flujo con una cuenta y licencia reales.",
+    "La sesión no materializa layouts de carrera y el panel no añade todavía delete, duplicate, center ni z-order."
+  ]
+}

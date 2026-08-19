@@ -176,6 +176,29 @@ func TestStatusIsLowRateAndIndependentFromSnapshotSequence(t *testing.T) {
 	assertSnapshot(t, mustNext(t, subscription), Full, 11)
 }
 
+func TestStatusRevisionGapIsAccepted(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "connecting"})); err != nil {
+		t.Fatal(err)
+	}
+	if err := hub.PublishStatus(mustStatus(t, 4, map[string]any{"state": "live"})); err != nil {
+		t.Fatalf("status revision gap: %v", err)
+	}
+	if err := hub.PublishStatus(mustStatus(t, 3, map[string]any{"state": "connecting"})); !errors.Is(err, ErrStatusRevision) {
+		t.Fatalf("retrograde status revision error = %v, want %v", err, ErrStatusRevision)
+	}
+
+	subscription := mustSubscribe(t, hub)
+	event := mustNext(t, subscription)
+	var retained StatusEnvelope
+	if err := json.Unmarshal(event.Data, &retained); err != nil {
+		t.Fatal(err)
+	}
+	if retained.StatusRevision != 4 {
+		t.Fatalf("retained status revision = %d, want 4", retained.StatusRevision)
+	}
+}
+
 func TestLateJoinNeverPairsNewStatusWithOldSnapshot(t *testing.T) {
 	hub := NewHub(HubConfig{Product: ProductOverlay})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "connecting"})); err != nil {

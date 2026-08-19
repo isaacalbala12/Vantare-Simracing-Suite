@@ -247,7 +247,7 @@ func (hub *Hub) PublishStatus(status StatusEnvelope) error {
 	if !knownProduct(hub.product) || status.Product != hub.product {
 		return ErrProductMismatch
 	}
-	if hub.hasStatus && status.StatusRevision != hub.status.StatusRevision+1 {
+	if hub.hasStatus && status.StatusRevision <= hub.status.StatusRevision {
 		return fmt.Errorf("%w: got %d after %d", ErrStatusRevision,
 			status.StatusRevision, hub.status.StatusRevision)
 	}

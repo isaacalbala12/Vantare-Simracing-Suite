@@ -7,6 +7,9 @@ import "../theme" as Theme
 Item {
     id: root
 
+    // Integration seam: bind directly to StandingsModel.visualClasses. The
+    // model owns pitText/isLeader projection and session-best derivation.
+    readonly property string snapshotContract: "StandingsModel.visualClasses"
     property var incomingSnapshot: []
     property var previousSnapshot: []
     property var classModel: []
@@ -127,7 +130,7 @@ Item {
                         x: 262,
                         y: y + 8 + headerHeight + index * tokens.rowStride +
                             (tokens.rowHeight - tokens.bestCellHeight) / 2 +
-                            tokens.bestCellHeight / 2 - crownFly.height / 2
+                            tokens.bestCellHeight / 2 - tokens.fastestGlyphHeight / 2
                     }
             }
             y += 16 + headerHeight + rows.length * tokens.rowStride + 10

@@ -28,7 +28,6 @@ func TestPublishFailureIsNotTerminal(t *testing.T) {
 }
 
 func TestConsumerPanicDoesNotKillProcess(t *testing.T) {
-	t.Skip("ISA-371 06§13#13: activar en F7")
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: panicEngineerConsumer{}})
 	if err != nil {
 		t.Fatal(err)
@@ -41,6 +40,11 @@ func TestConsumerPanicDoesNotKillProcess(t *testing.T) {
 	}()
 	if got := <-panicValue; got != nil {
 		t.Fatalf("Engineer panic escaped consumer boundary: %v", got)
+	}
+	metrics := runtime.Metrics()
+	if metrics.ConsumerPanics["engineer.observation"] != 1 || metrics.FailStops != 0 ||
+		runtime.lifecycle != telemetryRuntimeRunning {
+		t.Fatalf("recovered panic metrics/lifecycle = %+v / %d", metrics, runtime.lifecycle)
 	}
 }
 

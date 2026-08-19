@@ -777,7 +777,9 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 	}
 	observation, err := engineerprojection.ProjectObservationV1(final, runtime.engineerManifest)
 	if err == nil {
-		err = runtime.engineer.ConsumeObservation(observation)
+		err = newTelemetryConsumerError("engineer.observation", runtime.guardConsumer("engineer.observation", func() error {
+			return runtime.engineer.ConsumeObservation(observation)
+		}))
 		if err == nil {
 			runtime.counters.engineerObservations.Add(1)
 		}
@@ -788,7 +790,9 @@ func (runtime *TelemetryCoreRuntime) deliverEngineer(
 			err = errors.Join(err, projectErr)
 			continue
 		}
-		consumeErr := runtime.engineer.ConsumeFact(projected)
+		consumeErr := newTelemetryConsumerError("engineer.fact", runtime.guardConsumer("engineer.fact", func() error {
+			return runtime.engineer.ConsumeFact(projected)
+		}))
 		if consumeErr == nil {
 			runtime.counters.engineerFacts.Add(1)
 		}
@@ -808,7 +812,9 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 	}
 	status, err := engineerprojection.NewSourceStatusV1(engineerSourceState(state), attempt)
 	if err == nil {
-		err = runtime.engineer.ConsumeSourceStatus(status)
+		err = newTelemetryConsumerError("engineer.source-status", runtime.guardConsumer("engineer.source-status", func() error {
+			return runtime.engineer.ConsumeSourceStatus(status)
+		}))
 		if err == nil {
 			runtime.counters.engineerStatusesDelivered.Add(1)
 		}
@@ -819,6 +825,20 @@ func (runtime *TelemetryCoreRuntime) deliverEngineerStatus(state driver.State, a
 	runtime.mu.Lock()
 	runtime.engineerStatusErr = err
 	runtime.mu.Unlock()
+}
+
+func (runtime *TelemetryCoreRuntime) guardConsumer(boundary string, fn func() error) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			runtime.metricStore.consumerPanic(boundary)
+			log.Printf("telemetry consumer panic recovered at %s: %v", boundary, recovered)
+			err = newTelemetryConsumerError(boundary, fmt.Errorf("panic: %v", recovered))
+		}
+	}()
+	if fn == nil {
+		return newTelemetryConsumerError(boundary, errors.New("nil consumer callback"))
+	}
+	return fn()
 }
 
 func engineerSourceState(state driver.State) engineerprojection.SourceState {
@@ -876,7 +896,9 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 			result.overlayErr = fmt.Errorf("build Overlay telemetry projection: %w", err)
 		} else {
 			runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
-			if err := runtime.hub.PublishSnapshot(overlayFrame, nil); err != nil {
+			if err := runtime.guardConsumer("overlay.publish", func() error {
+				return runtime.hub.PublishSnapshot(overlayFrame, nil)
+			}); err != nil {
 				result.overlayErr = fmt.Errorf("publish Overlay telemetry projection: %w", err)
 			} else {
 				result.overlayPublished = true
@@ -894,7 +916,9 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 			result.strategyErr = fmt.Errorf("build Strategy telemetry projection: %w", err)
 		} else {
 			runtime.metricStore.observePayload(productName(telemetrytransport.ProductStrategy), uint64(len(strategyFrame.Payload)))
-			if err := runtime.strategyHub.PublishSnapshot(strategyFrame, nil); err != nil {
+			if err := runtime.guardConsumer("strategy.publish", func() error {
+				return runtime.strategyHub.PublishSnapshot(strategyFrame, nil)
+			}); err != nil {
 				result.strategyErr = fmt.Errorf("publish Strategy telemetry projection: %w", err)
 			} else {
 				result.strategyPublished = true

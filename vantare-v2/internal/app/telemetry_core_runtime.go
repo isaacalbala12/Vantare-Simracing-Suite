@@ -104,6 +104,7 @@ type TelemetryCoreMetrics struct {
 	EngineerFacts                uint64
 	EngineerDeliveryFailures     uint64
 	FramesDropped                map[string]uint64
+	FramesRejected               map[string]uint64
 	PublishFailures              map[string]uint64
 	ConsumerPanics               map[string]uint64
 	FailStops                    uint64
@@ -115,6 +116,11 @@ type TelemetryCoreMetrics struct {
 	StrategyTransport            telemetrytransport.HubMetrics
 	ShadowMismatches             map[string]uint64
 	ShadowDisabled               bool
+	EngineSequence               uint64
+	SlotGraceReopen              uint64
+	SlotGenerationBumps          uint64
+	IdentityEvicted              uint64
+	ApplyDurationUs              TelemetryDurationPercentiles
 }
 
 type telemetryCoreCounters struct {
@@ -129,6 +135,7 @@ type telemetryCoreCounters struct {
 	engineerFacts             atomic.Uint64
 	engineerFailures          atomic.Uint64
 	failStops                 atomic.Uint64
+	engineSequence            atomic.Uint64
 }
 
 // TelemetryCoreRuntime owns the canonical LMU pipeline and publishes only
@@ -309,6 +316,8 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 	}
 	details := runtime.metricStore.snapshot()
 	shadow := runtime.shadow.metrics()
+	mapper := runtime.mapper.Metrics()
+	coordinator := runtime.coord.Metrics()
 	return TelemetryCoreMetrics{
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
 		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
@@ -321,6 +330,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		EngineerFacts:                runtime.counters.engineerFacts.Load(),
 		EngineerDeliveryFailures:     runtime.counters.engineerFailures.Load(),
 		FramesDropped:                details.framesDropped,
+		FramesRejected:               details.framesRejected,
 		PublishFailures:              details.publishFailures,
 		ConsumerPanics:               details.consumerPanics,
 		FailStops:                    runtime.counters.failStops.Load(),
@@ -332,6 +342,11 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		StrategyTransport:            runtime.strategyHub.Metrics(),
 		ShadowMismatches:             shadow.mismatches,
 		ShadowDisabled:               shadow.disabled,
+		EngineSequence:               runtime.counters.engineSequence.Load(),
+		SlotGraceReopen:              mapper.SlotGraceReopen,
+		SlotGenerationBumps:          mapper.SlotGenerationBumps,
+		IdentityEvicted:              coordinator.IdentityEvicted,
+		ApplyDurationUs:              details.applyDurationUs,
 	}
 }
 
@@ -723,6 +738,10 @@ func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observa
 	err := sink.runtime.mapper.WriteObservation(ctx, observation, runtimeBatchSink{runtime: sink.runtime})
 	if err != nil {
 		sink.runtime.counters.observationsRejected.Add(1)
+		if lmu.IsUnmappableFrame(err) {
+			_, reason := telemetryRejectedFrameLabel(err)
+			sink.runtime.metricStore.rejectFrame("map", reason)
+		}
 	}
 	// Antes solo se absorbia ErrInvalidSessionIdentity, el caso del menu. Los
 	// otros cinco errores de validacion describen exactamente lo mismo -- un
@@ -745,10 +764,15 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	var final envelope.Snapshot[derive.FinalState]
 	var factValues []envelope.Fact[telemetrycore.SessionFact]
 	if sink.runtime.telemetryEngineApply {
+		started := time.Now()
 		result, err := sink.runtime.engine.Apply(ctx, batch)
+		sink.runtime.metricStore.observeApplyDuration(time.Since(started))
 		if err != nil {
+			stage, reason := telemetryRejectedFrameLabel(err)
+			sink.runtime.metricStore.rejectFrame(stage, reason)
 			return err
 		}
+		sink.runtime.counters.engineSequence.Store(uint64(result.Cursor.Sequence))
 		final = result.State
 		factValues = result.Facts
 		sink.runtime.shadow.observe(ctx, batch, result)

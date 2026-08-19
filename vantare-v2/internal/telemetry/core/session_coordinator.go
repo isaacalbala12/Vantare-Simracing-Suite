@@ -75,6 +75,10 @@ type SessionCoordinatorConfig struct {
 	MaxVehicleHistory int
 }
 
+type SessionCoordinatorMetrics struct {
+	IdentityEvicted uint64
+}
+
 type coordinatorVehicle struct {
 	identity      identity.RunIdentity
 	completedLaps standings.CompletedLaps
@@ -98,6 +102,7 @@ type coordinatorState struct {
 	connectionKnown bool
 	vehicles        map[identity.VehicleID]coordinatorVehicle
 	factSequence    FactSequence
+	identityEvicted uint64
 }
 
 // SessionCoordinator is a synchronous, single-owner state machine. It performs
@@ -368,6 +373,15 @@ func (coordinator *SessionCoordinator) Current() (envelope.Header, FactSequence,
 	return coordinator.state.header, coordinator.state.factSequence, coordinator.state.initialized
 }
 
+func (coordinator *SessionCoordinator) Metrics() SessionCoordinatorMetrics {
+	if coordinator == nil {
+		return SessionCoordinatorMetrics{}
+	}
+	coordinator.mu.RLock()
+	defer coordinator.mu.RUnlock()
+	return SessionCoordinatorMetrics{IdentityEvicted: coordinator.state.identityEvicted}
+}
+
 func (coordinator *SessionCoordinator) applySnapshot(
 	next *coordinatorState,
 	header *envelope.Header,
@@ -435,6 +449,7 @@ func (coordinator *SessionCoordinator) applySnapshot(
 		for _, vehicleID := range victims {
 			delete(updatedVehicles, vehicleID)
 		}
+		next.identityEvicted += uint64(len(victims))
 		if trackedVehicles-len(victims) > coordinator.maxVehicles {
 			return nil, ErrVehicleHistoryOverflow
 		}

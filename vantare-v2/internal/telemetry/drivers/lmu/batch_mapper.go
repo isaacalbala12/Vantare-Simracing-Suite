@@ -39,22 +39,29 @@ type sessionSignature struct {
 }
 
 type batchMapperState struct {
-	initialized    bool
-	sessionCounter uint64
-	cursor         schema.Cursor
-	sessionID      identity.SessionID
-	playerID       identity.VehicleID
-	lastFresh      sessionSignature
-	hasFresh       bool
-	lastSourceTime time.Duration
-	hasSourceTime  bool
-	frame          uint64
-	slotGrace      uint64
-	slots          *identitypolicy.SlotTracker[VehicleSourceID]
+	initialized         bool
+	sessionCounter      uint64
+	cursor              schema.Cursor
+	sessionID           identity.SessionID
+	playerID            identity.VehicleID
+	lastFresh           sessionSignature
+	hasFresh            bool
+	lastSourceTime      time.Duration
+	hasSourceTime       bool
+	frame               uint64
+	slotGrace           uint64
+	slots               *identitypolicy.SlotTracker[VehicleSourceID]
+	slotGraceReopen     uint64
+	slotGenerationBumps uint64
 }
 
 type BatchMapperConfig struct {
 	SlotGraceFrames uint64
+}
+
+type BatchMapperMetrics struct {
+	SlotGraceReopen     uint64
+	SlotGenerationBumps uint64
 }
 
 // BatchMapper is a long-lived, synchronous identity owner. It is deliberately
@@ -86,6 +93,18 @@ func NewBatchMapper(configs ...BatchMapperConfig) *BatchMapper {
 		config = configs[0]
 	}
 	return &BatchMapper{state: emptyBatchMapperState(config.SlotGraceFrames)}
+}
+
+func (mapper *BatchMapper) Metrics() BatchMapperMetrics {
+	if mapper == nil {
+		return BatchMapperMetrics{}
+	}
+	mapper.mu.Lock()
+	defer mapper.mu.Unlock()
+	return BatchMapperMetrics{
+		SlotGraceReopen:     mapper.state.slotGraceReopen,
+		SlotGenerationBumps: mapper.state.slotGenerationBumps,
+	}
 }
 
 func NewObservationBatchSink(mapper *BatchMapper, sink telemetrycore.BatchSink) (*ObservationBatchSink, error) {
@@ -220,6 +239,12 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 	for index, source := range observation.Vehicles {
 		fingerprint := slotFingerprint(source)
 		outcome := state.slots.Observe(source.SourceID, fingerprint, state.frame)
+		if outcome.Reopened {
+			state.slotGraceReopen++
+		}
+		if outcome.Bumped {
+			state.slotGenerationBumps++
+		}
 		mappedVehicleID := vehicleID(source.SourceID, outcome.Generation)
 		vehicles[index] = mapVehicle(source, mappedVehicleID, state.sessionID)
 		if playerSlot != nil && source.SourceID == *playerSlot {

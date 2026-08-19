@@ -15,6 +15,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F3 está implementada localmente sobre `tc-integration@c52d6c1d` en
+  `vantareapp/isa-372-tc-f3-engine-apply`. `TelemetryEngine.Apply` prepara y
+  confirma reducer/coordinator/derive como una transacción, y el mapper no
+  confirma su candidato hasta que esa aplicación completa acepta el batch.
+  Identidad usa gracia de slot, LRU inactiva y `StintID`; el shadow Go es privado,
+  muestreado y auto-disable. Métricas y regresiones cubren atomicidad,
+  reintento, identidad y divergencias. Build, suite Go aplicable, replay por
+  digest y diff-check pasan; vet conserva solo tres `unsafe.Pointer`
+  heredados. Benchmark sintético @104 cumple p99 < 1 ms solo en ventanas de
+  200; bajo ejecución adaptativa sostenida sube a 10,5–12,1 ms por GC, así que
+  el objetivo sostenido sigue pendiente. Evidencia y límites:
+  `docs/telemetry-core/evidence/isa-372-f3-engine-apply.md`. Sin push, PR, CI
+  remoto, merge, promoción ni release; LMU/Wails/OBS y gate de estabilidad
+  real pendientes.
 - ISA-372/F2 está implementada localmente sobre
   `tc-integration@98c3e2f2` en la rama
   `vantareapp/isa-372-tc-f2-watchdog-stale`. Backend y store degradan a stale

@@ -37,4 +37,7 @@ func TestIdentityEvictionKeepsBoundedMemory(t *testing.T) {
 			t.Fatalf("identity history size = %d, want <= 16", got)
 		}
 	}
+	if got := coordinator.Metrics().IdentityEvicted; got != 484 {
+		t.Fatalf("IdentityEvicted = %d, want 484", got)
+	}
 }

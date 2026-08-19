@@ -38,6 +38,9 @@ func TestSlotMissingOneFrameKeepsVehicleIdentity(t *testing.T) {
 			if got := vehicleIDForSlot(t, sink.last(t), test.slot); got != firstID {
 				t.Fatalf("identity after one missing frame = %q, want %q", got, firstID)
 			}
+			if got := mapper.Metrics().SlotGraceReopen; got != 1 {
+				t.Fatalf("SlotGraceReopen = %d, want 1", got)
+			}
 		})
 	}
 }
@@ -62,6 +65,9 @@ func TestSlotReusedByAnotherCarGetsNewIdentity(t *testing.T) {
 	writeMapped(t, mapper, reused, sink)
 	if got := vehicleIDForSlot(t, sink.last(t), 8); got == firstID {
 		t.Fatalf("reused slot retained identity %q", got)
+	}
+	if got := mapper.Metrics().SlotGenerationBumps; got != 3 {
+		t.Fatalf("SlotGenerationBumps = %d, want 3 (two initial slots plus reuse)", got)
 	}
 }
 
@@ -173,6 +179,9 @@ func TestGraceWindowExpiryReleasesSlot(t *testing.T) {
 	writeMapped(t, mapper, reappeared, sink)
 	if got := vehicleIDForSlot(t, sink.last(t), 7); got == firstID {
 		t.Fatalf("expired slot retained identity %q", got)
+	}
+	if got := mapper.Metrics().SlotGenerationBumps; got != 2 {
+		t.Fatalf("SlotGenerationBumps = %d, want initial plus expiry bump", got)
 	}
 }
 

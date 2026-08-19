@@ -1,3 +1,20 @@
+Nota ISA-372/F3 (2026-08-19, implementada localmente, sin promoción):
+- `TelemetryEngine.Apply` es la frontera default-on de commit único para
+  reducer, coordinator y derive; el camino anterior queda como rollback.
+- Identidad LMU conserva slots durante 30 frames, usa LRU inactiva acotada a
+  512 y abre `StintID`/`FactDriverChanged` al cambiar piloto sin inventar Team.
+- Shadow Go privado compara semánticamente 1/30, se auto-desactiva por
+  presupuesto y no tiene efectos externos. Métricas cubren secuencia,
+  rechazos tipados, identidad, duración p50/p99 y divergencias.
+- Suite Go aplicable, replay por digest, build y diff-check pasan; vet conserva
+  exactamente tres `unsafe.Pointer` heredados. Benchmark sintético @104: p99
+  578,8–777,8 µs en ventanas de 200, pero 10,5–12,1 ms bajo ejecución
+  adaptativa sostenida por GC; el objetivo sostenido sigue pendiente. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f3-engine-apply.md`.
+- Rama `vantareapp/isa-372-tc-f3-engine-apply` sobre
+  `tc-integration@c52d6c1d`; sin push, PR, CI remoto, merge, promoción ni
+  release. LMU/Wails/OBS y gate de estabilidad real pendientes.
+
 Nota ISA-372/F5 (2026-08-19, implementada en rama, sin promoción):
 - El contrato TypeScript wire se genera de forma determinista desde raíces Go
   explícitas de Overlay, Engineer, Strategy, Analysis y telemetrytransport; el

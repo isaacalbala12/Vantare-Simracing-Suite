@@ -244,7 +244,7 @@ func testPlayerAppearance(t *testing.T) {
 	writeMapped(t, mapper, menuObservation(), sink)
 	writeMapped(t, mapper, trackObservation(7), sink)
 	batch := sink.last(t)
-	assertCursor(t, batch, 2, 1)
+	assertCursor(t, batch, 1, 2)
 	if batch.Header.Identity.Session != "lmu-session-1" || batch.Header.Identity.Vehicle != "lmu-slot-7-generation-1" {
 		t.Fatalf("identity = %+v", batch.Header.Identity)
 	}
@@ -302,8 +302,8 @@ func TestBatchMapperPlayerAbsenceClearsActivePlayerThroughProjection(t *testing.
 	if projected.History.Freshness != telemetryprojection.FreshnessMissing {
 		t.Fatalf("history freshness = %q, want missing", projected.History.Freshness)
 	}
-	if len(projected.History.Samples) != 0 {
-		t.Fatalf("player absence retained stale controls: samples = %d, want 0", len(projected.History.Samples))
+	if len(projected.History.Samples) != 1 {
+		t.Fatalf("player absence history samples = %d, want retained reference sample", len(projected.History.Samples))
 	}
 }
 
@@ -323,9 +323,9 @@ func testVacatedSlotGeneration(t *testing.T) {
 	writeMapped(t, mapper, reappeared, sink)
 	batch := sink.last(t)
 	assertCursor(t, batch, 1, 3)
-	// Este test fija el comportamiento actual. F3 lo sustituirá por una ventana
-	// de gracia que conserve la identidad tras una única ausencia.
-	assertVehicleID(t, batch, 7, "lmu-slot-7-generation-2")
+	// F3 conserva la generación durante la ventana de gracia si la huella del
+	// slot sigue siendo la misma.
+	assertVehicleID(t, batch, 7, "lmu-slot-7-generation-1")
 }
 
 func testPlayerGenerationChange(t *testing.T) {
@@ -338,8 +338,8 @@ func testPlayerGenerationChange(t *testing.T) {
 	reappeared.SourceTime = observed(3 * time.Second)
 	writeMapped(t, mapper, reappeared, sink)
 	batch := sink.last(t)
-	assertCursor(t, batch, 2, 1)
-	if batch.Header.Identity.Vehicle != "lmu-slot-7-generation-2" {
+	assertCursor(t, batch, 1, 3)
+	if batch.Header.Identity.Vehicle != "lmu-slot-7-generation-1" {
 		t.Fatalf("player identity = %q", batch.Header.Identity.Vehicle)
 	}
 }

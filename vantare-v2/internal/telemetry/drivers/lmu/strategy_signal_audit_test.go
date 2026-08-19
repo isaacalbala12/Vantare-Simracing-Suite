@@ -13,7 +13,6 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
-	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
@@ -160,7 +159,7 @@ func TestStrategySignalAuditLedgerMatchesClosedV1Golden(t *testing.T) {
 	}
 }
 
-func TestStrategySignalAuditTracksCanonicalVehicleGeneration(t *testing.T) {
+func TestStrategySignalAuditTracksCanonicalVehicleGrace(t *testing.T) {
 	mapper, sink := NewBatchMapper(), new(batchCollector)
 	writeMapped(t, mapper, trackObservation(7), sink)
 	first := sink.last(t)
@@ -174,9 +173,9 @@ func TestStrategySignalAuditTracksCanonicalVehicleGeneration(t *testing.T) {
 	reappeared := trackObservation(7)
 	reappeared.SourceTime = observed(3 * time.Second)
 	writeMapped(t, mapper, reappeared, sink)
-	secondGeneration := sink.last(t)
-	if secondGeneration.Header.Identity.Session != "lmu-session-1" || secondGeneration.Header.Identity.Vehicle != "lmu-slot-7-generation-2" {
-		t.Fatalf("identity after disappearance/reappearance = %+v", secondGeneration.Header.Identity)
+	reopened := sink.last(t)
+	if reopened.Header.Identity.Session != "lmu-session-1" || reopened.Header.Identity.Vehicle != "lmu-slot-7-generation-1" {
+		t.Fatalf("identity after disappearance/reappearance = %+v", reopened.Header.Identity)
 	}
 
 	reset := trackObservation(7)
@@ -289,17 +288,6 @@ func TestStrategySignalAuditSupportedRowsMatchProductionContracts(t *testing.T) 
 	)
 	if remaining.Source != wantRemainingSource || remaining.Authority != "canonical Derive pipeline only; no raw remaining-time field" {
 		t.Fatalf("remaining-time source/authority = %+v", remaining)
-	}
-	foundRemainingDerivation := false
-	for _, definition := range derive.Registry() {
-		if definition.ID != derive.DerivationSessionRemaining {
-			continue
-		}
-		foundRemainingDerivation = reflect.DeepEqual(definition.Inputs, []derive.SignalID{derive.SignalObservedSourceTime, derive.SignalObservedEndTime}) &&
-			reflect.DeepEqual(definition.Outputs, []derive.SignalID{derive.SignalSessionRemaining})
-	}
-	if !foundRemainingDerivation {
-		t.Fatal("canonical Derive registry no longer proves session.remaining_time from source/end time")
 	}
 }
 

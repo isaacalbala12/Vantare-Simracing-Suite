@@ -15,8 +15,6 @@ import (
 )
 
 func TestPostReducerStageFailureKeepsCursorsAligned(t *testing.T) {
-	t.Skip("ISA-371 D-01: activar en F3")
-
 	mapper := lmu.NewBatchMapper()
 	sink := &postReducerFailingSink{reducer: telemetrycore.NewReducer(), failNext: true}
 	observation := commitBoundaryObservation(1)
@@ -41,13 +39,15 @@ type postReducerFailingSink struct {
 }
 
 func (sink *postReducerFailingSink) WriteBatch(_ context.Context, batch telemetrycore.Batch) error {
-	if _, err := sink.reducer.Apply(batch); err != nil {
+	candidate, err := sink.reducer.Prepare(batch)
+	if err != nil {
 		return err
 	}
 	if sink.failNext {
 		sink.failNext = false
 		return errInjectedPostReducerStage
 	}
+	sink.reducer.Commit(candidate)
 	return nil
 }
 

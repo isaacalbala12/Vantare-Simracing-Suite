@@ -14,6 +14,132 @@
   box-sizing: border-box;
 }
 
+/* ============================================ SCROLL (política única)
+
+   Isaac no quiere ver la barra nativa del sistema en ninguna vista de Orbit:
+   ni en la lista del `Select`, ni en el inspector del Studio, ni en la columna,
+   ni en Roadmap, Carreras o Estrategia. En vez de repetir el bloque en cada
+   hoja (que es como se coló la barra gris allí donde nadie se acordó), el kit
+   fija aquí una sola política que cubre `.orbit-root` y las capas que se
+   portalizan fuera de él (lista del Select, menú, drawer, toasts).
+
+   La barra es fina, sin pista y con el pulgar redondeado; en reposo el pulgar
+   es transparente y solo aparece al pasar el ratón por el contenedor o cuando
+   algo dentro tiene el foco. La rueda del ratón nunca depende de esto: solo se
+   pinta la barra, no se desactiva el desplazamiento (nada de `overflow:
+   hidden` ni de `::-webkit-scrollbar { display: none }`). */
+
+.orbit-root,
+.orbit-root *,
+.orbit-kit-scope,
+.orbit-kit-scope *,
+.orbit-select__list,
+.orbit-select__list *,
+.orbit-menu,
+.orbit-menu *,
+.orbit-drawer-layer,
+.orbit-drawer-layer *,
+.orbit-toast-region,
+.orbit-toast-region * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--orbit-scroll-thumb-idle) var(--orbit-scroll-track);
+}
+
+.orbit-root:hover,
+.orbit-root :hover,
+.orbit-root :focus-within,
+.orbit-kit-scope:hover,
+.orbit-kit-scope :hover,
+.orbit-kit-scope :focus-within,
+.orbit-select__list,
+.orbit-menu,
+.orbit-drawer-layer :hover,
+.orbit-drawer-layer :focus-within,
+.orbit-toast-region :hover {
+  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
+}
+
+.orbit-root ::-webkit-scrollbar,
+.orbit-kit-scope ::-webkit-scrollbar,
+.orbit-select__list::-webkit-scrollbar,
+.orbit-select__list ::-webkit-scrollbar,
+.orbit-menu::-webkit-scrollbar,
+.orbit-menu ::-webkit-scrollbar,
+.orbit-drawer-layer ::-webkit-scrollbar,
+.orbit-toast-region ::-webkit-scrollbar {
+  width: var(--orbit-scroll-size);
+  height: var(--orbit-scroll-size);
+}
+
+.orbit-root ::-webkit-scrollbar-track,
+.orbit-kit-scope ::-webkit-scrollbar-track,
+.orbit-select__list::-webkit-scrollbar-track,
+.orbit-select__list ::-webkit-scrollbar-track,
+.orbit-menu::-webkit-scrollbar-track,
+.orbit-menu ::-webkit-scrollbar-track,
+.orbit-drawer-layer ::-webkit-scrollbar-track,
+.orbit-toast-region ::-webkit-scrollbar-track {
+  border: 0;
+  background: var(--orbit-scroll-track);
+}
+
+.orbit-root ::-webkit-scrollbar-corner,
+.orbit-kit-scope ::-webkit-scrollbar-corner,
+.orbit-select__list::-webkit-scrollbar-corner,
+.orbit-menu::-webkit-scrollbar-corner,
+.orbit-drawer-layer ::-webkit-scrollbar-corner,
+.orbit-toast-region ::-webkit-scrollbar-corner {
+  background: var(--orbit-scroll-track);
+}
+
+.orbit-root ::-webkit-scrollbar-thumb,
+.orbit-kit-scope ::-webkit-scrollbar-thumb,
+.orbit-select__list::-webkit-scrollbar-thumb,
+.orbit-select__list ::-webkit-scrollbar-thumb,
+.orbit-menu::-webkit-scrollbar-thumb,
+.orbit-menu ::-webkit-scrollbar-thumb,
+.orbit-drawer-layer ::-webkit-scrollbar-thumb,
+.orbit-toast-region ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--orbit-scroll-thumb-idle);
+  transition: background-color var(--orbit-med) var(--orbit-ease);
+}
+
+/* Al posarse en el contenedor (o al entrar el foco dentro) el pulgar se revela.
+   Las capas flotantes se muestran ya visibles: se abren bajo el puntero y su
+   contenido es la única razón por la que existen. */
+.orbit-root *:hover::-webkit-scrollbar-thumb,
+.orbit-root *:focus-within::-webkit-scrollbar-thumb,
+.orbit-kit-scope *:hover::-webkit-scrollbar-thumb,
+.orbit-kit-scope *:focus-within::-webkit-scrollbar-thumb,
+.orbit-select__list::-webkit-scrollbar-thumb,
+.orbit-menu::-webkit-scrollbar-thumb,
+.orbit-drawer-layer *:hover::-webkit-scrollbar-thumb,
+.orbit-drawer-layer *:focus-within::-webkit-scrollbar-thumb,
+.orbit-toast-region *:hover::-webkit-scrollbar-thumb {
+  background: var(--orbit-scroll-thumb);
+}
+
+.orbit-root ::-webkit-scrollbar-thumb:hover,
+.orbit-kit-scope ::-webkit-scrollbar-thumb:hover,
+.orbit-select__list::-webkit-scrollbar-thumb:hover,
+.orbit-menu::-webkit-scrollbar-thumb:hover,
+.orbit-drawer-layer ::-webkit-scrollbar-thumb:hover,
+.orbit-toast-region ::-webkit-scrollbar-thumb:hover {
+  background: var(--orbit-scroll-thumb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-root ::-webkit-scrollbar-thumb,
+  .orbit-kit-scope ::-webkit-scrollbar-thumb,
+  .orbit-select__list::-webkit-scrollbar-thumb,
+  .orbit-menu::-webkit-scrollbar-thumb,
+  .orbit-drawer-layer ::-webkit-scrollbar-thumb,
+  .orbit-toast-region ::-webkit-scrollbar-thumb {
+    transition-duration: 0s;
+  }
+}
+
 /* ============================================================ FOCO (08) */
 
 .orbit-btn:focus-visible,
@@ -1799,23 +1925,9 @@ button.orbit-pill {
 .orbit-tl {
   overflow-x: auto;
   width: 100%;
-  /* Scrollbar fina: el eje se desplaza mucho y la nativa gruesa parte la caja. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
+  /* La barra la resuelve la política única del kit (arriba); aquí solo importa
+     que el gesto de rueda no arrastre a la página de detrás. */
   overscroll-behavior-x: contain;
-}
-
-.orbit-tl::-webkit-scrollbar {
-  height: 8px;
-}
-
-.orbit-tl::-webkit-scrollbar-track {
-  background: var(--orbit-scroll-track);
-}
-
-.orbit-tl::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: var(--orbit-scroll-thumb);
 }
 
 /* Con arrastre activo el eje se agarra; los bloques siguen siendo botones. */

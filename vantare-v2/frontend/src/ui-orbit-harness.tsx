@@ -95,6 +95,24 @@ function Bench({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** 14 opciones: la lista desborda su altura máxima y aparece la barra. */
+const TRACK_OPTIONS = [
+  { value: "spa", label: "Spa-Francorchamps" },
+  { value: "monza", label: "Monza" },
+  { value: "sebring", label: "Sebring" },
+  { value: "lemans", label: "Le Mans" },
+  { value: "imola", label: "Imola" },
+  { value: "bathurst", label: "Bathurst" },
+  { value: "suzuka", label: "Suzuka" },
+  { value: "interlagos", label: "Interlagos" },
+  { value: "nurburgring", label: "Nürburgring" },
+  { value: "silverstone", label: "Silverstone" },
+  { value: "daytona", label: "Daytona" },
+  { value: "watkins", label: "Watkins Glen" },
+  { value: "road-america", label: "Road America" },
+  { value: "laguna", label: "Laguna Seca" },
+];
+
 function Primitives() {
   const [seg, setSeg] = useState("mock");
   const [wide, setWide] = useState("a");
@@ -103,6 +121,9 @@ function Primitives() {
   const [text, setText] = useState("Vantare");
   const [num, setNum] = useState("42");
   const [sel, setSel] = useState("crystal");
+  // Lista larga: el único sitio del kit donde el desplegable llega a desbordar,
+  // que es justo donde asomaba la barra gris del sistema (política de scroll).
+  const [track, setTrack] = useState("spa");
   const [check, setCheck] = useState(true);
   const [area, setArea] = useState("Notas del ingeniero.");
 
@@ -211,6 +232,16 @@ function Primitives() {
               { value: "carbon", label: "Carbon", disabled: true, group: "Míos" },
             ]}
             value={sel}
+            width={195}
+          />
+        </Field>
+        <Field htmlFor="ok-select-long" label="Circuito">
+          <Select
+            id="ok-select-long"
+            label="Circuito"
+            onChange={setTrack}
+            options={TRACK_OPTIONS}
+            value={track}
             width={195}
           />
         </Field>

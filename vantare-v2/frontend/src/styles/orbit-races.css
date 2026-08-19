@@ -16,39 +16,8 @@
   font-family: var(--orbit-font-sans);
 }
 
-/* Scrollbar fina en todo lo que se desplaza dentro de Carreras: la nativa
-   gruesa partia la caja del calendario y del detalle. */
-.orbit-races .orbit-surface__body,
-.orbit-races__next,
-.orbit-races__day,
-.orbit-races__week,
-.orbit-races__detail-body {
-  scrollbar-width: thin;
-  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
-}
-
-.orbit-races .orbit-surface__body::-webkit-scrollbar,
-.orbit-races__next::-webkit-scrollbar,
-.orbit-races__day::-webkit-scrollbar,
-.orbit-races__week::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.orbit-races .orbit-surface__body::-webkit-scrollbar-thumb,
-.orbit-races__next::-webkit-scrollbar-thumb,
-.orbit-races__day::-webkit-scrollbar-thumb,
-.orbit-races__week::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: var(--orbit-scroll-thumb);
-}
-
-.orbit-races .orbit-surface__body::-webkit-scrollbar-track,
-.orbit-races__next::-webkit-scrollbar-track,
-.orbit-races__day::-webkit-scrollbar-track,
-.orbit-races__week::-webkit-scrollbar-track {
-  background: var(--orbit-scroll-track);
-}
+/* Las barras de desplazamiento de Carreras las resuelve la politica unica
+   del kit (`orbit-kit.css` § SCROLL): aqui no se repite nada. */
 
 /* ------------------------------------------------------------- CABECERA */
 

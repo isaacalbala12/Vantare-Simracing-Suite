@@ -175,6 +175,62 @@ try {
     await page.screenshot({ path: path.join(output, `${group.file}-1920x1080.png`), fullPage: false });
   }
 
+  // ── Política de scroll (B1) ────────────────────────────────────────────
+  // El desplegable largo es el caso que Isaac reportó: la lista desbordaba y
+  // asomaba la barra gris del sistema. Se comprueba que desborda de verdad,
+  // que la rueda sigue moviéndola y que la barra que pinta es la del kit
+  // (6 px, pista transparente, pulgar con el token).
+  await page.locator('[data-group="primitivos"]').scrollIntoViewIfNeeded();
+  await page.getByRole("combobox", { name: "Circuito" }).click();
+  const longList = page.getByRole("listbox", { name: "Circuito" });
+  await longList.waitFor();
+  const scrollReport = await longList.evaluate((node) => {
+    const styles = getComputedStyle(node);
+    const bar = getComputedStyle(node, "::-webkit-scrollbar");
+    const track = getComputedStyle(node, "::-webkit-scrollbar-track");
+    const thumb = getComputedStyle(node, "::-webkit-scrollbar-thumb");
+    return {
+      overflows: node.scrollHeight > node.clientHeight + 1,
+      width: styles.scrollbarWidth,
+      barWidth: bar.width,
+      trackBg: track.backgroundColor,
+      thumbBg: thumb.backgroundColor,
+      thumbRadius: thumb.borderTopLeftRadius,
+    };
+  });
+  if (!scrollReport.overflows) {
+    throw new Error("el desplegable largo no desborda: el caso de la barra no se está probando");
+  }
+  if (scrollReport.width !== "thin") {
+    throw new Error(`la lista no usa scrollbar fina (scrollbar-width: ${scrollReport.width})`);
+  }
+  if (scrollReport.barWidth !== "6px") {
+    throw new Error(`la barra mide ${scrollReport.barWidth}, se esperaban 6px`);
+  }
+  if (scrollReport.trackBg !== "rgba(0, 0, 0, 0)") {
+    throw new Error(`la pista de la barra no es transparente (${scrollReport.trackBg})`);
+  }
+  if (scrollReport.thumbRadius === "0px") {
+    throw new Error("el pulgar de la barra no está redondeado");
+  }
+  if (!scrollReport.thumbBg.startsWith("rgba(255, 255, 255")) {
+    throw new Error(`el pulgar no usa el token del kit (${scrollReport.thumbBg})`);
+  }
+  // La rueda del ratón sigue desplazando: la política pinta, no desactiva.
+  await longList.hover();
+  await page.mouse.wheel(0, 200);
+  await page.waitForFunction(
+    () => (document.querySelector(".orbit-select__list")?.scrollTop ?? 0) > 0,
+    undefined,
+    { timeout: 2000 },
+  );
+  await page.waitForTimeout(160);
+  await page.screenshot({
+    path: path.join(output, "orbit-kit-5-scroll-1920x1080.png"),
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+
   if (problems.length) throw new Error(`la consola no está limpia\n${problems.join("\n")}`);
   await page.close();
   console.log(`Orbit kit visual PASS. Captures: ${output}`);

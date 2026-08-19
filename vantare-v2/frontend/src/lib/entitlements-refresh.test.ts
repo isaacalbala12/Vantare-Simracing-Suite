@@ -55,6 +55,16 @@ function freshLicense(
   };
 }
 
+/**
+ * `await Promise.resolve()` solo vacia un tick de microtareas: si la sesion
+ * simulada resuelve en mas de uno, el listener `license:changed` todavia no
+ * esta registrado cuando el test lo emite. Este helper vacia la cola entera de
+ * forma determinista, sin esperas reales.
+ */
+async function flushPending(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(0);
+}
+
 describe("entitlements-refresh", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -193,7 +203,7 @@ describe("entitlements-refresh", () => {
   it("refreshCurrentUserEntitlements emits validate with session token", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = refreshCurrentUserEntitlements({ timeoutMs: 5000 });
-    await Promise.resolve();
+    await flushPending();
     expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
       sessionToken: "tok-1",
     });
@@ -209,7 +219,7 @@ describe("entitlements-refresh", () => {
   it("refreshCurrentUserEntitlements ignores stale license:changed events", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = refreshCurrentUserEntitlements({ timeoutMs: 5000 });
-    await Promise.resolve();
+    await flushPending();
     emitChanged({
       state: "authenticated-no-entitlement",
       entitlements: [],
@@ -230,7 +240,7 @@ describe("entitlements-refresh", () => {
   it("refreshCurrentUserEntitlements returns pending when suite entitlement missing", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = refreshCurrentUserEntitlements();
-    await Promise.resolve();
+    await flushPending();
     emitChanged(
       freshLicense({
         state: "authenticated-no-entitlement",
@@ -263,7 +273,7 @@ describe("entitlements-refresh", () => {
   it("resetActiveDevice emits reset-device and resolves on fresh license:changed", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = resetActiveDevice({ timeoutMs: 5000 });
-    await Promise.resolve();
+    await flushPending();
     expect(eventsEmit).toHaveBeenCalledWith("license:reset-device", {
       sessionToken: "tok-1",
     });
@@ -274,7 +284,7 @@ describe("entitlements-refresh", () => {
   it("resetActiveDevice maps rate_limit errors", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = resetActiveDevice({ timeoutMs: 5000 });
-    await Promise.resolve();
+    await flushPending();
     emitError("rate_limit: solo 1 reset cada 24h");
     await expect(promise).resolves.toEqual({
       ok: false,

@@ -35,6 +35,6 @@ describe("applyOrbitThemeWhileMounted", () => {
   it("sin preferencia guardada vuelve al tema por defecto", () => {
     const restore = applyOrbitThemeWhileMounted();
     restore();
-    expect(document.documentElement.dataset.theme).toBe("vantare-v5");
+    expect(document.documentElement.dataset.theme).toBe("vantare-orbit");
   });
 });

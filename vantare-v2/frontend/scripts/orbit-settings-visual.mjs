@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/11-ajustes");
 const port = 5201;
-const base = `http://127.0.0.1:${port}/orbit-settings-harness.html?orbit=1&view=ajustes`;
+const base = `http://127.0.0.1:${port}/orbit-settings-harness.html?view=ajustes`;
 const url = (section) => `${base}&settings=${section}`;
 
 const SECTIONS = ["account", "application", "updates", "hotkeys", "diagnostics"];

@@ -98,7 +98,6 @@ describe("resolveRuntimeLayout", () => {
 
 describe("selectRuntimeWidgets", () => {
   it("sorts widgets by z-index and filters disabled or invisible widgets", () => {
-    const document = buildDocument();
     const delta = deltaDefinition.createDefault("delta-low");
     delta.layout.zIndex = 1;
     const standings = standingsDefinition.createDefault("standings-high");

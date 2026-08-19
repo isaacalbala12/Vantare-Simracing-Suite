@@ -1,4 +1,6 @@
 import type { CalendarReminderPayload } from "../../calendar/calendar-types";
+import { useI18n } from "../../i18n/I18nProvider";
+import { formatMessage } from "../orbit/format-message";
 
 type Props = {
   reminder: CalendarReminderPayload;
@@ -6,6 +8,8 @@ type Props = {
 };
 
 export function CalendarReminderBanner({ reminder, onClose }: Props) {
+  const { t } = useI18n();
+
   return (
     <div
       role="alert"
@@ -17,7 +21,7 @@ export function CalendarReminderBanner({ reminder, onClose }: Props) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <span className="text-[10px] bg-vantare-red-950 text-vantare-red-400 border border-vantare-red-900/50 font-bold uppercase px-2 py-0.5 rounded tracking-widest inline-block shadow-lg mb-2">
-                Próxima carrera
+                {t("calendar.reminder.eyebrow")}
               </span>
               <h3 className="font-display font-bold text-base text-white truncate">
                 {reminder.title}
@@ -28,13 +32,15 @@ export function CalendarReminderBanner({ reminder, onClose }: Props) {
                 </p>
               )}
               <p className="text-xs font-semibold text-vantare-red-400 mt-1">
-                Faltan {reminder.minutesLeft} min
+                {formatMessage(t("calendar.reminder.minutesLeft"), {
+                  minutes: reminder.minutesLeft,
+                })}
               </p>
             </div>
 
             <button
               type="button"
-              aria-label="Cerrar recordatorio"
+              aria-label={t("calendar.reminder.close")}
               onClick={onClose}
               className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-vantare-textMuted hover:text-white"
             >
@@ -52,7 +58,7 @@ export function CalendarReminderBanner({ reminder, onClose }: Props) {
                 rel="noopener noreferrer"
                 className="btn-primary w-full inline-flex items-center justify-center px-4 py-2 rounded-lg font-bold text-xs text-white shadow-lg shadow-vantare-red-900/20"
               >
-                Abrir registro
+                {t("calendar.reminder.openRegistration")}
               </a>
             </div>
           )}

@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/05-launcher");
 const port = 5197;
-const url = `http://127.0.0.1:${port}/orbit-launcher-harness.html?orbit=1&view=launcher`;
+const url = `http://127.0.0.1:${port}/orbit-launcher-harness.html?view=launcher`;
 
 // Reloj congelado: la instantánea del harness fecha la última detección y la
 // última ejecución ese día, así que sin fijar la hora la captura cambiaría.

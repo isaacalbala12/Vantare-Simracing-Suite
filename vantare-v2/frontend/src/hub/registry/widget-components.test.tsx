@@ -5,16 +5,19 @@ import {
   registerDesignSystem,
   clearDesignSystemRegistry,
   type DesignSystem,
+  type WidgetComponentProps,
 } from "./index";
 import {
   resolveWidgetComponents,
   useWidgetComponents,
 } from "./widget-components";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const HeaderComponent: ComponentType<any> = () => <div data-testid="custom-header" />;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const RowComponent: ComponentType<any> = () => <div data-testid="custom-row" />;
+const HeaderComponent: ComponentType<WidgetComponentProps<unknown>> = () => (
+  <div data-testid="custom-header" />
+);
+const RowComponent: ComponentType<WidgetComponentProps<unknown>> = () => (
+  <div data-testid="custom-row" />
+);
 
 // Use a complete fake tokens object (not `{} as DesignSystem["tokens"]`) so
 // the test breaks if DesignSystemTokens changes — same pattern as B1.

@@ -14,7 +14,6 @@ export const testingOrbitEs: Record<string, string> = {
   "testing.draft.error": "El borrador no se pudo guardar",
 
   "testing.form.title": "Reporte",
-  "testing.form.privacy": "Solo se envía lo que escribes aquí y lo que marques en Consentimiento.",
   "testing.field.module": "Módulo",
   "testing.field.didWhat": "Qué hiciste",
   "testing.field.expected": "Qué esperabas",

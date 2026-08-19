@@ -279,6 +279,21 @@ Nota ISA-357 / STANDINGS-BATTLE (2026-08-14, rama aislada validada):
 - **Siguiente acción:** review del PR #279 a `nightly`. No iniciar el briefing
   `01-shell.md` hasta aceptar todos los criterios de `00-fundamentos.md`.
 
+Nota ISA-369 / HUD-ORBIT (2026-08-19, porte completo en Nightly):
+- El porte completo de Command Orbit v0.3 al hub quedó integrado en `nightly`
+  mediante el commit `af2c90d1` (PR #279) dentro de la release
+  **v0.1.0.7-nightly.10**. Quedan portadas las 9 páginas + Testing Center en
+  Orbit (Inicio, Studio, Launcher, Carreras, Estrategia, Ingeniero, Telemetría,
+  Roadmap, Ajustes) con shell Orbit (rail 81px, columna contextual 296px,
+  topbar, paleta `Ctrl K`), kit `ui/orbit/` completo, tema
+  `vantare-orbit.json`, `orbit.tokens.css` y harnesses `visual:orbit-*`.
+- **Fase 8 en curso en ISA-368:** retirada del sistema v5 del hub (clases
+  `card-sleek`, `glass-panel`, uppercase de chrome, `ProSidebar`/`V52Shell`) y
+  del flag `hub.orbit` en el código, y sincronización de `docs/DESIGN.md`.
+  Los overlays (widgets sobre el juego) mantienen su sistema V3.
+- **Próximos pasos:** code review / limpieza del porte y decisión de promoción
+  a `testers`.
+
 Nota ISA-347 / DELTA-REFERENCES (2026-08-14, rama aislada validada):
 - Cada layout admite exactamente un widget Delta. Studio oculta la acción de
   añadir cuando ya existe uno y las fronteras TS/Go rechazan la adición, la

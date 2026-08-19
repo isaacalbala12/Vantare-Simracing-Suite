@@ -14,7 +14,6 @@ export const testingOrbitEn: Record<string, string> = {
   "testing.draft.error": "The draft could not be saved",
 
   "testing.form.title": "Report",
-  "testing.form.privacy": "Only what you type here and what you tick under Consent is sent.",
   "testing.field.module": "Module",
   "testing.field.didWhat": "What you did",
   "testing.field.expected": "What you expected",

@@ -21,16 +21,6 @@ function parseHarnessSearch(search: string): {
   };
 }
 
-function parseViewportWidth(search: string): number {
-  const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
-  const raw = params.get("viewport");
-  if (!raw) {
-    return typeof window !== "undefined" ? window.innerWidth : 1600;
-  }
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1600;
-}
-
 export function OverlayStudioV3HarnessPage({ search }: { search: string }): React.ReactElement {
   const harnessSearch = parseHarnessSearch(search);
   const client = useMemo(
@@ -40,12 +30,11 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
       }),
     [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout],
   );
-  const viewportWidth = parseViewportWidth(search);
   const coordinator = useMemo(() => {
     const next = createTelemetryRateCoordinator();
     next.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     return next;
-  }, [harnessSearch.primaryWidget, harnessSearch.relativeLegacyLayout]);
+  }, []);
 
   return (
     <ConnectedStudioProvider
@@ -59,14 +48,9 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
         activeFile={HARNESS_PROFILE_FILE}
         coordinator={coordinator}
         liveAvailable={false}
-        viewportWidth={viewportWidth}
         browserViewStudioPreview
         recoveryStorage={typeof window !== "undefined" ? window.sessionStorage : null}
         onRequestProfileChange={() => undefined}
-        onOpenManageProfiles={() => undefined}
-        onOpenRecommended={() => undefined}
-        onOpenCommunity={() => undefined}
-        onOpenObs={() => undefined}
       />
     </ConnectedStudioProvider>
   );

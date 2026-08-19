@@ -14,22 +14,17 @@ const THEMES: Record<ThemeId, VantareTheme> = {
   "vantare-orbit": vantareOrbit as unknown as VantareTheme,
 };
 
-export function themeById(id: ThemeId): VantareTheme {
-  return THEMES[id];
-}
-
 /**
  * Aplica el tema Orbit **sin** tocar la preferencia guardada y devuelve la
  * función que restaura el tema que el usuario tuviera.
  *
- * Orbit vive detrás de un feature flag: encenderlo no puede cambiar el tema
- * que el usuario eligió en Ajustes, porque al apagar el flag se quedaría con
- * un tema que nunca pidió.
+ * La shell del Hub siempre usa Orbit sin alterar la preferencia persistida que
+ * todavía consumen las superficies de overlay y sus previews.
  */
 export function applyOrbitThemeWhileMounted(
   storage: Storage | undefined = typeof window === "undefined" ? undefined : window.localStorage,
 ): () => void {
-  const previous: ThemeId = storage ? getStoredThemeId(storage) : "vantare-v5";
+  const previous: ThemeId = storage ? getStoredThemeId(storage) : "vantare-orbit";
   applyTheme(THEMES["vantare-orbit"]);
   return () => {
     applyTheme(THEMES[previous]);

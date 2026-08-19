@@ -86,7 +86,7 @@ export const Events = {
 };
 
 export const Browser = {
-  OpenURL: (_url: string) => {
+  OpenURL: () => {
     // no-op in harness
   },
 };

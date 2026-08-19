@@ -99,7 +99,7 @@
   padding: 20px 22px;
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
-  background: rgba(16, 17, 20, 0.79);
+  background: var(--orbit-panel-bg);
 }
 
 .orbit-set-acct__avatar {
@@ -429,7 +429,7 @@
   padding: 20px 22px;
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
-  background: rgba(16, 17, 20, 0.79);
+  background: var(--orbit-panel-bg);
 }
 
 .orbit-set-upd__ver {
@@ -476,7 +476,7 @@
   padding: 16px 18px;
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
-  background: rgba(16, 17, 20, 0.79);
+  background: var(--orbit-panel-bg);
   cursor: pointer;
   text-align: left;
   transition: var(--orbit-fast) var(--orbit-ease);
@@ -489,7 +489,7 @@
 
 .orbit-set-channel[data-state="on"] {
   border-color: rgba(240, 71, 85, 0.35);
-  background: linear-gradient(135deg, rgba(213, 47, 73, 0.09), rgba(16, 17, 20, 0.79));
+  background: linear-gradient(135deg, rgba(213, 47, 73, 0.09), var(--orbit-panel-bg));
   box-shadow: 0 0 28px rgba(213, 47, 73, 0.08);
 }
 
@@ -696,6 +696,8 @@ body[data-reduce-motion="true"] {
   --orbit-move: 0s;
 }
 
+/* `!important` imprescindible: anula cualquier duracion declarada por las
+   reglas de cada componente cuando el usuario pide reducir el movimiento. */
 body[data-reduce-motion="true"] * {
   animation-duration: 0.001ms !important;
   transition-duration: 0.001ms !important;

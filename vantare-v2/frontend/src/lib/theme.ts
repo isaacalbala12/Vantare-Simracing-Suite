@@ -59,7 +59,7 @@ export type VantareTheme = {
   fonts: ThemeFonts;
 };
 
-export const DEFAULT_THEME_ID: ThemeId = "vantare-v5";
+export const DEFAULT_THEME_ID: ThemeId = "vantare-orbit";
 const THEME_STORAGE_KEY = "vantare.theme";
 
 const ORBIT_COLOR_DEFAULTS = {

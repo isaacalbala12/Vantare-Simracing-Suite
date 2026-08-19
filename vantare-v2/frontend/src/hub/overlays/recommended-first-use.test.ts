@@ -45,7 +45,7 @@ describe("runRecommendedFirstUse", () => {
     expect(emit).toHaveBeenCalledWith("hub:save-own-copy", expect.any(Object));
     expect(emit).not.toHaveBeenCalledWith("hub:set-active");
     expect(emit).not.toHaveBeenCalledWith("overlay:start-active");
-    expect(onError).toHaveBeenCalledWith(expect.stringMatching(/no se encontr/i));
+    expect(onError).toHaveBeenCalledWith("overlays.firstUse.fileNotFound");
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
@@ -66,6 +66,6 @@ describe("runRecommendedFirstUse", () => {
 
     expect(emit).not.toHaveBeenCalled();
     expect(resolveFile).not.toHaveBeenCalled();
-    expect(onError).toHaveBeenCalledWith(expect.stringMatching(/vacío/i));
+    expect(onError).toHaveBeenCalledWith("overlays.firstUse.emptyName");
   });
 });

@@ -228,7 +228,8 @@ function applyCarOverrides(
       if (!patch) {
         return row;
       }
-      const { absent: _absent, ...rest } = patch;
+      const rest: Record<string, unknown> = { ...patch };
+      delete rest.absent;
       return { ...row, ...rest };
     });
 }

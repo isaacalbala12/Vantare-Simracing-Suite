@@ -41,11 +41,11 @@ const expectedZoom = (width, height) =>
   Math.min(Math.max(Math.min(width / REF_WIDTH, height / REF_HEIGHT), ZOOM_FLOOR), 1);
 
 const scenes = [
-  { name: "inicio", page: "orbit-shell-harness.html", query: "?orbit=1", nav: null },
+  { name: "inicio", page: "orbit-shell-harness.html", query: "", nav: null },
   // Ajustes es la otra cara del contrato: rejilla de formulario, controles del
   // kit y `Select` portalado a `document.body`. Se llega por la paleta, igual
   // que en la app.
-  { name: "ajustes", page: "orbit-shell-harness.html", query: "?orbit=1", nav: "ajustes" },
+  { name: "ajustes", page: "orbit-shell-harness.html", query: "", nav: "ajustes" },
 ];
 
 // El Studio no entra aquí: su harness no monta el editor dentro de este script

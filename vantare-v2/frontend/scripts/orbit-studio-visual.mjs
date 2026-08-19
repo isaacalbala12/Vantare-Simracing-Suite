@@ -10,7 +10,7 @@ const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/04-studio");
 const port = 5196;
 const base = `http://127.0.0.1:${port}/orbit-studio-harness.html`;
-const url = (query = "") => `${base}?orbit=1&view=studio${query}`;
+const url = (query = "") => `${base}?view=studio${query}`;
 
 const shots = [
   { name: "1920x1080", width: 1920, height: 1080, query: "" },

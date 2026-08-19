@@ -122,7 +122,7 @@ describe("theme", () => {
       },
     });
 
-    expect(getStoredThemeId()).toBe("vantare-v5");
+    expect(getStoredThemeId()).toBe("vantare-orbit");
 
     Object.defineProperty(window, "localStorage", {
       configurable: true,

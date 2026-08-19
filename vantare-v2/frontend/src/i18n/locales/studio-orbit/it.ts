@@ -5,7 +5,6 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.column.searchAria": "Cerca widget del profilo",
   "studio.column.add": "Aggiungi widget",
   "studio.column.empty": "Questo profilo non ha ancora widget.",
-  "studio.column.dragAria": "Riordina {{name}}",
   "studio.column.status.active": "attivo",
   "studio.column.status.hidden": "nascosto",
   "studio.column.hide": "Nascondi {{name}}",

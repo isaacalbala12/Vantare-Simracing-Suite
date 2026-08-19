@@ -8,14 +8,30 @@
 
 ## 0. Estado y fuente de verdad
 
+> **Actualización 2026-08-19:** el sistema de diseño del **hub** de escritorio es ahora **Command Orbit v0.3**. El sistema "v5" del hub (clases `card-sleek`, `glass-panel`, `uppercase` de chrome, `ProSidebar`/`V52Shell`) queda **retirado** del hub y solo se conserva aquí como referencia histórica (ver §0.1 y §13.8). Los **overlays** (widgets sobre el juego) mantienen su propio sistema V3 (`docs/design-system-authoring-v3.md`); nada de la parte de overlays/brand de este documento cambia.
+
 **Importante:** este documento describe los tokens que el código real usa hoy, no un ideal teórico. Hay tres sistemas visuales compitiendo en el código (ver §13 "Inconsistencias conocidas"). El objetivo de este doc es doble:
 1. Documentar exactamente qué hay hoy.
 2. Marcar qué está normalizado vs qué necesita normalización.
 
+### 0.1 El sistema del hub es Command Orbit
+
+Para el **hub de escritorio** (todas las secciones: rail lateral, columna contextual, topbar, paleta de comando, ajustes y atajos), el sistema de diseño canónico es **Command Orbit v0.3**:
+
+- **Paquete de diseño:** `docs/design/orbit-v03/README.md` (decisiones, principios, tokens, shell/layout, componentes, patrones, pantallas, motion, a11y, contenido, plan de porte, QA y contratos).
+- **Tokens:** `docs/design/orbit-v03/02-tokens.md` y el CSS exportable `frontend/src/styles/orbit.tokens.css`.
+- **Tema:** `frontend/src/themes/vantare-orbit.json` (aplicado por `frontend/src/lib/theme.ts`).
+- **Kit de componentes:** `frontend/src/ui/orbit/`.
+- **Contratos de componentes (props/variantes/eventos):** `docs/design/orbit-v03/12-contratos-componentes.md`.
+- **QA checklist por PR de UI:** `docs/design/orbit-v03/11-qa-checklist.md`.
+- **Harnesses visuales:** `pnpm --dir frontend visual:orbit-*` (`orbit-foundations`, `orbit-shell`, `orbit-kit`, `orbit-home`, `orbit-studio`, `orbit-launcher`, `orbit-races`, `orbit-strategy`, `orbit-engineer`, `orbit-telemetry`, `orbit-roadmap`, `orbit-settings`, `orbit-testing`, `orbit-responsive`).
+
+**Regla:** si tocas el hub, sigue Command Orbit, no las secciones v5 de abajo (marcadas como retiradas).
+
 **Fuente de verdad primaria (en orden de prioridad):**
-1. `frontend/src/index.css` — variables CSS en `:root` y `vantare-v5.json` que las sobreescriben.
+1. `frontend/src/index.css` — variables CSS en `:root` y temas JSON (`vantare-orbit.json`) que las sobreescriben.
 2. `frontend/tailwind.config.*` — tokens de Tailwind si existen.
-3. `frontend/src/overlay/widgets/widget-design-system.ts` — design system de widgets overlay.
+3. `frontend/src/overlay/widgets/widget-design-system.ts` — design system de widgets overlay (sistema V3).
 4. Componentes reales como referencia de uso.
 
 **Cuando implementes UI:**
@@ -434,10 +450,13 @@ Los widgets de telemetría/standings/relative tienen su propio sub-sistema en `f
 
 ### 7.1 Hub shell
 
-- Layout principal: `V52Shell` = Topbar + Dock + contenido.
-- Fondo: `v52-shell-bg` (radial gradients rojos + fondo oscuro).
+> **Retirado:** el hub ya no usa el shell v5 (V52Shell = Topbar + Dock). Ver §0.1 y `docs/design/orbit-v03/03-shell-y-layout.md`.
+
+- Layout principal del hub (retirado): `V52Shell` = Topbar + Dock + contenido.
+- Fondo (retirado): `v52-shell-bg` (radial gradients rojos + fondo oscuro).
 - Viñeta sutil con `.v52-vignette`.
 - Grain opcional con `.v52-grain`.
+- **Actual (Command Orbit):** rail lateral (81px) + columna contextual (296px) + topbar + workspace, según `docs/design/orbit-v03/03-shell-y-layout.md`; paleta de comando con `Ctrl K`; densidad balanced/compact/comfortable.
 
 ### 7.2 Grids comunes
 
@@ -572,6 +591,11 @@ Estas son las grietas que un worker de normalización debería cerrar. Documenta
 - `#E63946`, `#ff2a3b`, `#ff4d4d`, `#9a0606`, `#ff6b6b`, `#e21b1b` aparecen en componentes sin pasar por tokens.
 - **Acción**: PR de normalización para mapearlos a `--v-red-*` o `--v-blood`.
 
+### 13.8 El sistema v5 del hub queda retirado
+- El hub migró a **Command Orbit v0.3** (ver §0.1 y `docs/design/orbit-v03/README.md`). Las clases y el shell v5 del hub (`card-sleek`, `glass-panel`, `uppercase` de chrome, `ProSidebar`/`V52Shell`) quedan **retirados** del hub.
+- Esta documentación conserva las secciones v5 abajo como referencia histórica; no las uses para tocar el hub.
+- Los **overlays** (widgets sobre el juego) no forman parte de esta retirada: mantienen su sistema V3 (`docs/design-system-authoring-v3.md`) y las secciones de este documento que describen overlays/brand siguen vigentes.
+
 ---
 
 ## 14. Temas de widget (overlay)
@@ -608,13 +632,21 @@ El código tiene **tres estilos oficiales** de widget overlay, definidos en `wid
 - `frontend/src/lib/widget-variants.ts` — variantes.
 - `frontend/src/lib/profile.ts` — tipos de perfil.
 
-### Componentes hub clave
+### Componentes hub clave (Command Orbit)
+- `frontend/src/hub/components/orbit/` — shell Orbit (`OrbitShell`, `Rail`, `ContextColumn`, `Topbar`, `CommandPalette`).
+- `frontend/src/ui/orbit/` — kit de componentes reutilizable (Button, Seg, Toggle, Input/Select, Pill, Chip, StatTile, Panel/Surface, ListRow, Menu, Accordion, Toast, Tooltip…).
+- `frontend/src/hub/*-orbit` — páginas/secciones portadas a Orbit (Inicio, Studio, Launcher, Carreras, Estrategia, Ingeniero, Telemetría, Roadmap, Ajustes, Testing Center).
+- `frontend/src/styles/orbit-*.css` — estilos Orbit por sección (`orbit.tokens.css`, `orbit-shell.css`, `orbit-kit.css`, `orbit-home.css`, …).
+- `frontend/src/themes/vantare-orbit.json` — tema Orbit.
+- (Retirado) `frontend/src/hub/components/V52Shell.tsx`, `ProSidebar.tsx`, `LauncherDock.tsx`, `Topbar.tsx` (v5).
+
+### Componentes hub clave (histórico v5, retirado)
 - `frontend/src/hub/components/V52Shell.tsx` — shell.
 - `frontend/src/hub/components/Topbar.tsx` — topbar (logo inline).
 - `frontend/src/hub/components/LauncherDock.tsx` — dock lateral.
 - `frontend/src/hub/components/V52SectionHeader.tsx` — header de sección.
 - `frontend/src/hub/components/V52InfoCard.tsx` — card info.
-- `frontend/src/hub/components/AccessGate.tsx` — gating.
+- `frontend/src/hub/components/AccessGate.tsx` — gating (aún en uso para candados/motivos en Orbit).
 
 ### CSS / tokens
 - `frontend/src/index.css` — variables CSS raíz, clases utilitarias.
@@ -676,6 +708,8 @@ Antes de hacer merge de un componente nuevo, verificar:
 ## 18. Documentos relacionados
 
 - [`BRAND.md`](./BRAND.md) — Identidad de marca conceptual.
+- [`docs/design/orbit-v03/README.md`](./design/orbit-v03/README.md) — **Sistema de diseño del hub (Command Orbit v0.3)**; sus `02-tokens.md`, `03-shell-y-layout.md`, `04-componentes.md`, `12-contratos-componentes.md` y `11-qa-checklist.md`.
+- `docs/design-system-authoring-v3.md` — Sistema V3 de widgets overlay.
 - `docs/styleguide.html` — Style guide HTML navegable.
 - `docs/marketing/02-brand-strategy.md` — Estrategia detallada (mapping actualizado al final de este PR).
 - `docs/widget-architecture.md` — Arquitectura canónica de widgets.

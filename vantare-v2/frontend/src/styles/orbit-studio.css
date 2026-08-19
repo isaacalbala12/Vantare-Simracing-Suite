@@ -245,6 +245,8 @@
 
 /* Etiqueta de seleccion: vive en el `stage`, no en el `scene` escalado, para
    medir en pixeles reales y poder recortarse contra los bordes del lienzo. */
+/* z-index local al contexto de apilado de `.orbit-studio-stage`, no una capa
+   global de la shell: por eso no usa los tokens `--orbit-z-*`. */
 .orbit-studio-stage__tag {
   position: absolute;
   z-index: 30;
@@ -451,7 +453,7 @@
 
 .orbit-studio-ins__error {
   margin: 0;
-  color: var(--orbit-red, #f04755);
+  color: var(--orbit-red);
   font-size: 11.5px;
 }
 

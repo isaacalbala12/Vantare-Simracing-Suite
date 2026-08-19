@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 const MAX_LISTED_TARGETS = 5;
 
-export type StudioConfirmTone = "danger" | "primary";
+export type StudioConfirmTone = 'danger' | 'primary';
 
 export type StudioConfirmDialogProps = {
   open: boolean;
@@ -43,7 +43,7 @@ export function StudioConfirmDialog(props: StudioConfirmDialogProps): React.Reac
     hint,
     confirmLabel,
     cancelLabel,
-    tone = "danger",
+    tone = 'danger',
     rememberLabel,
     testIdPrefix,
     onCancel,
@@ -54,22 +54,22 @@ export function StudioConfirmDialog(props: StudioConfirmDialogProps): React.Reac
 
   useEffect(() => {
     if (!open) {
-      setDontAskAgain(false);
-      return;
+      const resetTimer = window.setTimeout(() => setDontAskAgain(false), 0);
+      return () => window.clearTimeout(resetTimer);
     }
     // El foco arranca en Cancelar: la accion no debe dispararse con un Enter
     // de inercia despues de pulsar el boton que abrio el dialogo.
     const timer = window.setTimeout(() => cancelRef.current?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         event.preventDefault();
         onCancel();
       }
     };
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [onCancel, open]);
 
@@ -99,27 +99,53 @@ export function StudioConfirmDialog(props: StudioConfirmDialogProps): React.Reac
       >
         <div className="osv3-confirm-dialog__head">
           <span className="osv3-confirm-dialog__mark" aria-hidden="true">
-            {tone === "danger" ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8">
+            {tone === 'danger' ? (
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
                 <path d="M4 7h16" strokeLinecap="round" />
-                <path d="M9.5 7V5.4A1.4 1.4 0 0 1 10.9 4h2.2a1.4 1.4 0 0 1 1.4 1.4V7" strokeLinecap="round" />
-                <path d="M6.4 7l.8 11.2A1.8 1.8 0 0 0 9 20h6a1.8 1.8 0 0 0 1.8-1.8L17.6 7" strokeLinecap="round" />
+                <path
+                  d="M9.5 7V5.4A1.4 1.4 0 0 1 10.9 4h2.2a1.4 1.4 0 0 1 1.4 1.4V7"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6.4 7l.8 11.2A1.8 1.8 0 0 0 9 20h6a1.8 1.8 0 0 0 1.8-1.8L17.6 7"
+                  strokeLinecap="round"
+                />
                 <path d="M10.5 11v5M13.5 11v5" strokeLinecap="round" />
               </svg>
             ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              >
                 <path d="M12 3.5l8 4.2-8 4.2-8-4.2 8-4.2Z" strokeLinejoin="round" />
                 <path d="M4 12.4l8 4.2 8-4.2" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M4 16.6l8 4.2 8-4.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
           </span>
-          <h2 id={`${testIdPrefix}-title`} className="osv3-dialog-panel__title osv3-confirm-dialog__title">
+          <h2
+            id={`${testIdPrefix}-title`}
+            className="osv3-dialog-panel__title osv3-confirm-dialog__title"
+          >
             {title}
           </h2>
         </div>
 
-        <p id={`${testIdPrefix}-body`} className="osv3-dialog-panel__body osv3-confirm-dialog__body">
+        <p
+          id={`${testIdPrefix}-body`}
+          className="osv3-dialog-panel__body osv3-confirm-dialog__body"
+        >
           {body}
         </p>
 
@@ -166,9 +192,9 @@ export function StudioConfirmDialog(props: StudioConfirmDialogProps): React.Reac
             type="button"
             data-testid={`${testIdPrefix}-confirm`}
             className={
-              tone === "danger"
-                ? "osv3-dialog-panel__button osv3-dialog-panel__button--danger"
-                : "osv3-dialog-panel__button osv3-dialog-panel__button--primary"
+              tone === 'danger'
+                ? 'osv3-dialog-panel__button osv3-dialog-panel__button--danger'
+                : 'osv3-dialog-panel__button osv3-dialog-panel__button--primary'
             }
             onClick={() => onConfirm(dontAskAgain)}
           >

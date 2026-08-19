@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 const {
   onListeners,
@@ -30,7 +30,7 @@ const {
   };
 });
 
-vi.mock("@wailsio/runtime", () => ({
+vi.mock('@wailsio/runtime', () => ({
   Events: {
     On: eventsOn,
     Off: eventsOff,
@@ -38,12 +38,12 @@ vi.mock("@wailsio/runtime", () => ({
   },
 }));
 
-vi.mock("../lib/license", () => ({
+vi.mock('../lib/license', () => ({
   LicenseProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useLicense: useLicenseMock,
 }));
 
-vi.mock("./auth/LoginScreen", () => ({
+vi.mock('./auth/LoginScreen', () => ({
   LoginScreen: ({
     onLoggedIn,
   }: {
@@ -55,7 +55,7 @@ vi.mock("./auth/LoginScreen", () => ({
         <button
           type="button"
           data-testid="trigger-login"
-          onClick={() => onLoggedIn({ accessToken: "tok-123", refreshToken: "ref-1" })}
+          onClick={() => onLoggedIn({ accessToken: 'tok-123', refreshToken: 'ref-1' })}
         >
           trigger
         </button>
@@ -71,56 +71,52 @@ vi.mock("./auth/LoginScreen", () => ({
   },
 }));
 
-vi.mock("./auth/PaywallScreen", () => ({
+vi.mock('./auth/PaywallScreen', () => ({
   PaywallScreen: ({ email }: { email: string }) => {
     paywallScreenMock(email);
     return <div data-testid="paywall-screen">paywall {email}</div>;
   },
 }));
 
-vi.mock("./auth/LicenseBanner", () => ({
+vi.mock('./auth/LicenseBanner', () => ({
   LicenseBanner: () => {
     licenseBannerMock();
     return <div data-testid="license-banner">banner</div>;
   },
 }));
 
-vi.mock("./onboarding/BetaWelcome", () => ({
+vi.mock('./onboarding/BetaWelcome', () => ({
   BetaWelcome: ({ onComplete }: { onComplete: (role: string) => void }) => (
     <div data-testid="beta-welcome">
       <button
         type="button"
         data-testid="beta-welcome-pick-creator"
-        onClick={() => onComplete("creator")}
+        onClick={() => onComplete('creator')}
       >
         PickCreator
       </button>
-      <button
-        type="button"
-        data-testid="beta-welcome-close"
-        onClick={() => onComplete("creator")}
-      >
+      <button type="button" data-testid="beta-welcome-close" onClick={() => onComplete('creator')}>
         Empezar
       </button>
     </div>
   ),
 }));
 
-vi.mock("./roadmap/projects-data", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./roadmap/projects-data")>();
+vi.mock('./roadmap/projects-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./roadmap/projects-data')>();
   return {
     ...actual,
     fetchRoadmapProjectsDataset: vi.fn().mockResolvedValue({
       dataset: actual.ROADMAP_PROJECTS_FALLBACK,
-      status: "embedded-fallback",
-      state: "embedded-fallback",
-      provenance: "embedded",
-      reason: "unavailable",
+      status: 'embedded-fallback',
+      state: 'embedded-fallback',
+      provenance: 'embedded',
+      reason: 'unavailable',
     }),
   };
 });
 
-import { HubApp } from "./HubApp";
+import { HubApp } from './HubApp';
 
 function setLicense(result: unknown, loading = false) {
   useLicenseMock.mockReturnValue({
@@ -130,7 +126,7 @@ function setLicense(result: unknown, loading = false) {
   });
 }
 
-describe("HubApp gate (production)", () => {
+describe('HubApp gate (production)', () => {
   beforeEach(() => {
     cleanup();
     onListeners.clear();
@@ -141,70 +137,71 @@ describe("HubApp gate (production)", () => {
     paywallScreenMock.mockReset();
     licenseBannerMock.mockReset();
     getSessionMock.mockReset();
+    window.localStorage.clear();
     // Default to "no session" so the bridge does not blow up tests that do
     // not explicitly set the session token.
     getSessionMock.mockResolvedValue(null);
   });
 
-  it("shows loading screen while license is loading", () => {
+  it('shows loading screen while license is loading', () => {
     setLicense(null, true);
     render(<HubApp />);
-    expect(screen.getByTestId("license-loading")).toBeTruthy();
+    expect(screen.getByTestId('license-loading')).toBeTruthy();
   });
 
-  it("blocks normal use with LoginScreen when anonymous", () => {
+  it('blocks normal use with LoginScreen when anonymous', () => {
     setLicense({
-      state: "anonymous",
+      state: 'anonymous',
       entitlements: [],
-      userId: "",
-      email: "",
+      userId: '',
+      email: '',
       deviceOK: true,
     });
     render(<HubApp />);
     expect(loginScreenMock).toHaveBeenCalled();
-    expect(screen.getByTestId("login-screen")).toBeTruthy();
-    expect(screen.queryByTestId("paywall-screen")).toBeNull();
-    expect(screen.queryByTestId("license-banner")).toBeNull();
+    expect(screen.getByTestId('login-screen')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-screen')).toBeNull();
+    expect(screen.queryByTestId('license-banner')).toBeNull();
   });
 
-  it("falls back to login when result is null", () => {
+  it('falls back to login when result is null', () => {
     setLicense(null, false);
     render(<HubApp />);
-    expect(screen.getByTestId("login-screen")).toBeTruthy();
+    expect(screen.getByTestId('login-screen')).toBeTruthy();
   });
 
-  it("blocks with PaywallScreen on expired", () => {
+  it('blocks with PaywallScreen on expired', () => {
     setLicense({
-      state: "expired",
+      state: 'expired',
       entitlements: [],
-      userId: "u",
-      email: "exp@example.com",
+      userId: 'u',
+      email: 'exp@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    expect(paywallScreenMock).toHaveBeenCalledWith("exp@example.com");
-    expect(screen.getByTestId("paywall-screen")).toBeTruthy();
-    expect(screen.queryByTestId("login-screen")).toBeNull();
+    expect(paywallScreenMock).toHaveBeenCalledWith('exp@example.com');
+    expect(screen.getByTestId('paywall-screen')).toBeTruthy();
+    expect(screen.queryByTestId('login-screen')).toBeNull();
   });
 
-  it("blocks with PaywallScreen on device-limit", () => {
+  it('blocks with PaywallScreen on device-limit', () => {
     setLicense({
-      state: "device-limit",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "dev@example.com",
+      state: 'device-limit',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'dev@example.com',
       deviceOK: false,
     });
     render(<HubApp />);
-    expect(paywallScreenMock).toHaveBeenCalledWith("dev@example.com");
+    expect(paywallScreenMock).toHaveBeenCalledWith('dev@example.com');
   });
 
-  it("renders shell when authenticated-no-entitlement (Free)", () => {
+  it('renders shell when authenticated-no-entitlement (Free)', () => {
     setLicense({
-      state: "authenticated-no-entitlement",
+      state: 'authenticated-no-entitlement',
       entitlements: [],
-      userId: "u",
-      email: "u@example.com",
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
@@ -212,66 +209,69 @@ describe("HubApp gate (production)", () => {
     expect(licenseBannerMock).toHaveBeenCalled();
   });
 
-  it("renders shell with banner when active", () => {
+  it('renders shell with banner when active', () => {
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     expect(licenseBannerMock).toHaveBeenCalled();
-    expect(screen.getByTestId("license-banner")).toBeTruthy();
-    expect(screen.queryByTestId("login-screen")).toBeNull();
-    expect(screen.queryByTestId("paywall-screen")).toBeNull();
+    expect(screen.getByTestId('license-banner')).toBeTruthy();
+    expect(screen.queryByTestId('login-screen')).toBeNull();
+    expect(screen.queryByTestId('paywall-screen')).toBeNull();
   });
 
-  it("forwards the runtime version and channel to the dashboard hero", async () => {
+  it('subscribes the Orbit shell to runtime version and channel updates', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "app:version") {
-        setTimeout(() => cb({ data: { version: "v0.1.0.7-nightly.8", buildChannel: "nightly" } }), 0);
+      if (name === 'app:version') {
+        setTimeout(
+          () => cb({ data: { version: 'v0.1.0.7-nightly.8', buildChannel: 'nightly' } }),
+          0,
+        );
       }
-      if (name === "settings") {
+      if (name === 'settings') {
         setTimeout(() => cb({ data: { betaWelcomeCompleted: true } }), 0);
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
 
     render(<HubApp />);
 
     await waitFor(() => {
-      expect(screen.getAllByText("v0.1.0.7-nightly.8")).toHaveLength(2);
-      expect(screen.getByText("NIGHTLY")).toBeTruthy();
+      expect(eventsOn).toHaveBeenCalledWith('app:version', expect.any(Function));
+      expect(screen.getByTestId('orbit-shell')).toBeTruthy();
     });
   });
 
-  it("renders shell with banner when grace", () => {
+  it('renders shell with banner when grace', () => {
     setLicense({
-      state: "grace",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'grace',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     expect(licenseBannerMock).toHaveBeenCalled();
-    expect(screen.queryByTestId("paywall-screen")).toBeNull();
+    expect(screen.queryByTestId('paywall-screen')).toBeNull();
   });
 
-  it("LicenseBridge is a no-op stub in standalone mode", async () => {
+  it('LicenseBridge is a no-op stub in standalone mode', async () => {
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
@@ -283,24 +283,24 @@ describe("HubApp gate (production)", () => {
     });
   });
 
-  it("LicenseBridge does not invoke getSession (standalone mode skips it)", async () => {
+  it('LicenseBridge does not invoke getSession (standalone mode skips it)', async () => {
     const refreshMock = vi.fn();
     setLicense(
       {
-        state: "active",
-        entitlements: ["overlays"],
-        userId: "u",
-        email: "u@example.com",
+        state: 'active',
+        entitlements: ['overlays'],
+        userId: 'u',
+        email: 'u@example.com',
         deviceOK: true,
       },
       false,
     );
     useLicenseMock.mockReturnValue({
       result: {
-        state: "active",
-        entitlements: ["overlays"],
-        userId: "u",
-        email: "u@example.com",
+        state: 'active',
+        entitlements: ['overlays'],
+        userId: 'u',
+        email: 'u@example.com',
         deviceOK: true,
       },
       loading: false,
@@ -313,458 +313,611 @@ describe("HubApp gate (production)", () => {
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it("LoginScreen onLoggedIn with token re-emits license:validate", async () => {
+  it('LoginScreen onLoggedIn with token re-emits license:validate', async () => {
     setLicense({
-      state: "anonymous",
+      state: 'anonymous',
       entitlements: [],
-      userId: "",
-      email: "",
+      userId: '',
+      email: '',
       deviceOK: true,
     });
     render(<HubApp />);
     eventsEmit.mockClear();
-    screen.getByTestId("trigger-login").click();
+    screen.getByTestId('trigger-login').click();
     await waitFor(() => {
-      expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
-        sessionToken: "tok-123",
-        refreshToken: "ref-1",
+      expect(eventsEmit).toHaveBeenCalledWith('license:validate', {
+        sessionToken: 'tok-123',
+        refreshToken: 'ref-1',
       });
     });
   });
 
-  it("LoginScreen onLoggedIn without token ignores emission (prevents immediate logout loop)", () => {
+  it('LoginScreen onLoggedIn without token ignores emission (prevents immediate logout loop)', () => {
     setLicense({
-      state: "anonymous",
+      state: 'anonymous',
       entitlements: [],
-      userId: "",
-      email: "",
+      userId: '',
+      email: '',
       deviceOK: true,
     });
     render(<HubApp />);
     eventsEmit.mockClear();
-    screen.getByTestId("trigger-login-bare").click();
-    expect(eventsEmit).not.toHaveBeenCalledWith("license:validate", expect.anything());
+    screen.getByTestId('trigger-login-bare').click();
+    expect(eventsEmit).not.toHaveBeenCalledWith('license:validate', expect.anything());
   });
 
-  it("shows BetaWelcome when betaWelcomeCompleted is false", async () => {
+  it('shows BetaWelcome when betaWelcomeCompleted is false', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: false } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: false,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.queryByTestId("beta-welcome")).toBeTruthy();
+      expect(screen.queryByTestId('beta-welcome')).toBeTruthy();
     });
   });
 
-  it("does not show BetaWelcome when betaWelcomeCompleted is true", async () => {
+  it('does not show BetaWelcome when betaWelcomeCompleted is true', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.queryByTestId("beta-welcome")).toBeNull();
+      expect(screen.queryByTestId('beta-welcome')).toBeNull();
     });
   });
 
-  it("emits settings:save with the full settings payload when welcome is closed", async () => {
+  it('emits settings:save with the full settings payload when welcome is closed', async () => {
     const settings = {
-      deltaMode: "self",
+      deltaMode: 'self',
       cpuSampling: true,
-      hotkeys: { toggleOverlay: "ctrl+shift+v", nextProfile: "ctrl+shift+n" },
-      activeOverlayProfileId: "profile-clean",
+      hotkeys: { toggleOverlay: 'ctrl+shift+v', nextProfile: 'ctrl+shift+n' },
+      activeOverlayProfileId: 'profile-clean',
       betaWelcomeCompleted: false,
     };
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
+      if (name === 'settings') {
         setTimeout(() => cb({ data: settings }), 0);
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+      expect(screen.getByTestId('beta-welcome')).toBeTruthy();
     });
     eventsEmit.mockClear();
-    screen.getByTestId("beta-welcome-close").click();
+    screen.getByTestId('beta-welcome-close').click();
     await waitFor(() => {
       expect(eventsEmit).toHaveBeenCalledWith(
-        "settings:save",
+        'settings:save',
         expect.objectContaining({
-          deltaMode: "self",
+          deltaMode: 'self',
           cpuSampling: true,
-          hotkeys: { toggleOverlay: "ctrl+shift+v", nextProfile: "ctrl+shift+n" },
-          activeOverlayProfileId: "profile-clean",
+          hotkeys: { toggleOverlay: 'ctrl+shift+v', nextProfile: 'ctrl+shift+n' },
+          activeOverlayProfileId: 'profile-clean',
           betaWelcomeCompleted: true,
-          betaUserRole: "creator",
+          betaUserRole: 'creator',
         }),
       );
     });
   });
 
-  it("does not erase activeOverlayProfileId when closing BetaWelcome", async () => {
+  it('does not erase activeOverlayProfileId when closing BetaWelcome', async () => {
     const settings = {
-      deltaMode: "session",
+      deltaMode: 'session',
       cpuSampling: false,
       hotkeys: {},
-      activeOverlayProfileId: "profile-active-must-survive",
+      activeOverlayProfileId: 'profile-active-must-survive',
       betaWelcomeCompleted: false,
     };
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
+      if (name === 'settings') {
         setTimeout(() => cb({ data: settings }), 0);
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+      expect(screen.getByTestId('beta-welcome')).toBeTruthy();
     });
     eventsEmit.mockClear();
-    screen.getByTestId("beta-welcome-close").click();
+    screen.getByTestId('beta-welcome-close').click();
     await waitFor(() => {
       expect(eventsEmit).toHaveBeenCalledWith(
-        "settings:save",
+        'settings:save',
         expect.objectContaining({
-          activeOverlayProfileId: "profile-active-must-survive",
+          activeOverlayProfileId: 'profile-active-must-survive',
           betaWelcomeCompleted: true,
-          betaUserRole: "creator",
+          betaUserRole: 'creator',
         }),
       );
     });
-    const [, payload] = eventsEmit.mock.calls.find(
-      (call: unknown[]) => call[0] === "settings:save",
-    ) ?? [];
+    const [, payload] =
+      eventsEmit.mock.calls.find((call: unknown[]) => call[0] === 'settings:save') ?? [];
     expect((payload as Record<string, unknown>).betaWelcomeCompleted).toBe(true);
-    expect((payload as Record<string, unknown>).betaUserRole).toBe("creator");
+    expect((payload as Record<string, unknown>).betaUserRole).toBe('creator');
   });
 
-  it("saves betaUserRole with the role passed to onComplete", async () => {
+  it('saves betaUserRole with the role passed to onComplete', async () => {
     const settings = {
-      deltaMode: "self",
+      deltaMode: 'self',
       cpuSampling: true,
       hotkeys: {},
-      activeOverlayProfileId: "profile-x",
+      activeOverlayProfileId: 'profile-x',
       betaWelcomeCompleted: false,
     };
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
+      if (name === 'settings') {
         setTimeout(() => cb({ data: settings }), 0);
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("beta-welcome")).toBeTruthy();
+      expect(screen.getByTestId('beta-welcome')).toBeTruthy();
     });
     eventsEmit.mockClear();
-    screen.getByTestId("beta-welcome-pick-creator").click();
+    screen.getByTestId('beta-welcome-pick-creator').click();
     await waitFor(() => {
       expect(eventsEmit).toHaveBeenCalledWith(
-        "settings:save",
+        'settings:save',
         expect.objectContaining({
           betaWelcomeCompleted: true,
-          betaUserRole: "creator",
-          activeOverlayProfileId: "profile-x",
+          betaUserRole: 'creator',
+          activeOverlayProfileId: 'profile-x',
         }),
       );
     });
   });
 
-
-  it("renders Launcher page when launcher section is selected", async () => {
+  it('renders Launcher page when launcher section is selected', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     // Wait for the topbar Launcher button to be available, then click it.
-    const topbarLauncher = await waitFor(() =>
-      screen.getByTestId("topbar-nav-launcher"),
-    );
+    const topbarLauncher = await waitFor(() => screen.getByTestId('orbit-rail-launcher'));
     topbarLauncher.click();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Launcher" })).toBeTruthy();
+      expect(screen.getByTestId('orbit-launcher')).toBeTruthy();
     });
   });
 
-  it("marks the active section as current in the topbar", async () => {
+  it('marks the active section as current in the topbar', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      const dash = screen.getByTestId("topbar-nav-dashboard");
-      expect(dash.getAttribute("aria-current")).toBe("page");
+      const dash = screen.getByTestId('orbit-rail-inicio');
+      expect(dash.getAttribute('aria-current')).toBe('page');
     });
   });
 
-  it("topbar exposes all expected v5.2 sections (no Setup, Ajustes is setup)", async () => {
+  it('the Orbit rail exposes every hub destination', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("topbar-nav-dashboard")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-profiles")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-launcher")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-calendar")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-engineer")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-strategy")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-telemetry")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-roadmap")).toBeTruthy();
-      expect(screen.getByTestId("topbar-nav-setup")).toBeTruthy();
+      for (const view of [
+        'inicio',
+        'studio',
+        'launcher',
+        'carreras',
+        'estrategia',
+        'ingeniero',
+        'telemetria',
+        'roadmap',
+        'ajustes',
+      ]) {
+        expect(screen.getByTestId(`orbit-rail-${view}`)).toBeTruthy();
+      }
     });
   });
 
-  it("renders Strategy Planner when the Strategy section is selected", async () => {
+  it('renders Strategy Planner when the Strategy section is selected', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
+      if (name === 'settings') {
         setTimeout(() => cb({ data: { betaWelcomeCompleted: true } }), 0);
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    fireEvent.click(await waitFor(() => screen.getByTestId("topbar-nav-strategy")));
+    fireEvent.click(await waitFor(() => screen.getByTestId('orbit-rail-estrategia')));
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Mis planes" })).toBeTruthy();
-      expect(screen.getByText("Workspace local · sin conexión live")).toBeTruthy();
+      expect(screen.getByTestId('orbit-strategy')).toBeTruthy();
     });
   });
 
-  it("renders Telemetry page when telemetry section is selected", async () => {
+  it('renders Telemetry page when telemetry section is selected', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    const topbarTelemetry = await waitFor(() =>
-      screen.getByTestId("topbar-nav-telemetry"),
-    );
+    const topbarTelemetry = await waitFor(() => screen.getByTestId('orbit-rail-telemetria'));
     fireEvent.click(topbarTelemetry);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Telemetría" })).toBeTruthy();
-      expect(screen.getByText(/en desarrollo/i)).toBeTruthy();
+      expect(screen.getByTestId('orbit-telemetry')).toBeTruthy();
     });
   });
 
-  it("renders Calendar page when calendar section is selected", async () => {
+  it('renders Calendar page when calendar section is selected', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    const topbarCalendar = await waitFor(() =>
-      screen.getByTestId("topbar-nav-calendar"),
-    );
+    const topbarCalendar = await waitFor(() => screen.getByTestId('orbit-rail-carreras'));
     fireEvent.click(topbarCalendar);
     await waitFor(() => {
-      expect(screen.getByTestId("calendar-toolbar")).toBeTruthy();
+      expect(screen.getByTestId('orbit-races')).toBeTruthy();
     });
   });
 
-  it("shows reminder banner when calendar:reminder is received", async () => {
+  it('shows reminder banner when calendar:reminder is received', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
-      if (name === "calendar:reminder") {
-        setTimeout(() => cb({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } }), 10);
+      if (name === 'calendar:reminder') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                eventId: 'evt-1',
+                title: '6h de Spa',
+                track: 'Spa',
+                minutesLeft: 15,
+                startTime: '2026-07-02T20:00:00+02:00',
+                registrationUrl: '',
+              },
+            }),
+          10,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.getByTestId("calendar-reminder-banner")).toBeTruthy();
-      expect(screen.getByText("6h de Spa")).toBeTruthy();
-      expect(screen.getByText("Faltan 15 min")).toBeTruthy();
+      expect(screen.getByTestId('calendar-reminder-banner')).toBeTruthy();
+      expect(screen.getByText('6h de Spa')).toBeTruthy();
+      expect(screen.getByText('Faltan 15 min')).toBeTruthy();
     });
   });
 
-  it("replaces reminder banner when a second calendar:reminder arrives", async () => {
+  it('replaces reminder banner when a second calendar:reminder arrives', async () => {
     const reminderCb: { current: ((event: unknown) => void) | null } = { current: null };
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
-      if (name === "calendar:reminder") {
+      if (name === 'calendar:reminder') {
         reminderCb.current = cb;
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
     await waitFor(() => {
-      expect(screen.queryByTestId("calendar-reminder-banner")).toBeNull();
+      expect(screen.queryByTestId('calendar-reminder-banner')).toBeNull();
     });
-    reminderCb.current?.({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } });
-    await waitFor(() => {
-      expect(screen.getByText("6h de Spa")).toBeTruthy();
+    reminderCb.current?.({
+      data: {
+        eventId: 'evt-1',
+        title: '6h de Spa',
+        track: 'Spa',
+        minutesLeft: 15,
+        startTime: '2026-07-02T20:00:00+02:00',
+        registrationUrl: '',
+      },
     });
-    reminderCb.current?.({ data: { eventId: "evt-2", title: "24h de Le Mans", track: "La Sarthe", minutesLeft: 5, startTime: "2026-07-03T16:00:00+02:00", registrationUrl: "" } });
     await waitFor(() => {
-      expect(screen.getByText("24h de Le Mans")).toBeTruthy();
-      expect(screen.queryByText("6h de Spa")).toBeNull();
+      expect(screen.getByText('6h de Spa')).toBeTruthy();
+    });
+    reminderCb.current?.({
+      data: {
+        eventId: 'evt-2',
+        title: '24h de Le Mans',
+        track: 'La Sarthe',
+        minutesLeft: 5,
+        startTime: '2026-07-03T16:00:00+02:00',
+        registrationUrl: '',
+      },
+    });
+    await waitFor(() => {
+      expect(screen.getByText('24h de Le Mans')).toBeTruthy();
+      expect(screen.queryByText('6h de Spa')).toBeNull();
     });
   });
 
-  it("hides reminder banner when close button is clicked", async () => {
+  it('hides reminder banner when close button is clicked', async () => {
     const reminderCb: { current: ((event: unknown) => void) | null } = { current: null };
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
-      if (name === "calendar:reminder") {
+      if (name === 'calendar:reminder') {
         reminderCb.current = cb;
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    reminderCb.current?.({ data: { eventId: "evt-1", title: "6h de Spa", track: "Spa", minutesLeft: 15, startTime: "2026-07-02T20:00:00+02:00", registrationUrl: "" } });
-    await waitFor(() => {
-      expect(screen.getByTestId("calendar-reminder-banner")).toBeTruthy();
+    reminderCb.current?.({
+      data: {
+        eventId: 'evt-1',
+        title: '6h de Spa',
+        track: 'Spa',
+        minutesLeft: 15,
+        startTime: '2026-07-02T20:00:00+02:00',
+        registrationUrl: '',
+      },
     });
-    fireEvent.click(screen.getByLabelText("Cerrar recordatorio"));
     await waitFor(() => {
-      expect(screen.queryByTestId("calendar-reminder-banner")).toBeNull();
+      expect(screen.getByTestId('calendar-reminder-banner')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByLabelText('Cerrar recordatorio'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('calendar-reminder-banner')).toBeNull();
     });
   });
 
-  it("renders Roadmap page when roadmap section is selected", async () => {
+  it('renders Roadmap page when roadmap section is selected', async () => {
     eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
-      if (name === "settings") {
-        setTimeout(() => cb({ data: { deltaMode: "self", cpuSampling: true, hotkeys: {}, betaWelcomeCompleted: true } }), 0);
+      if (name === 'settings') {
+        setTimeout(
+          () =>
+            cb({
+              data: {
+                deltaMode: 'self',
+                cpuSampling: true,
+                hotkeys: {},
+                betaWelcomeCompleted: true,
+              },
+            }),
+          0,
+        );
       }
       return () => false;
     });
     setLicense({
-      state: "active",
-      entitlements: ["overlays"],
-      userId: "u",
-      email: "u@example.com",
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
       deviceOK: true,
     });
     render(<HubApp />);
-    const topbarRoadmap = await waitFor(() =>
-      screen.getByTestId("topbar-nav-roadmap"),
-    );
+    const topbarRoadmap = await waitFor(() => screen.getByTestId('orbit-rail-roadmap'));
     fireEvent.click(topbarRoadmap);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Desarrollo Vantare" })).toBeTruthy();
+      expect(screen.getByTestId('orbit-roadmap')).toBeTruthy();
     });
   });
 });

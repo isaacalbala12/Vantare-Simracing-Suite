@@ -706,8 +706,7 @@ export const Events = {
 };
 
 export const Browser = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  OpenURL: (_url: string) => {
+  OpenURL: () => {
     // no-op in harness
   },
 };

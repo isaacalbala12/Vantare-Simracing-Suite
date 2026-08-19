@@ -1,22 +1,23 @@
-import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { useDeleteWidgetConfirm } from "../components/StudioConfirmProvider";
-import type { StudioCommand } from "../state/studio-command";
-import {
-  executeWidgetAction,
-  type WidgetActionId,
-} from "./widget-actions";
+import type {
+  ProfileDocumentV3,
+  SessionLayoutType,
+  WidgetInstanceV3,
+} from '../../../overlay/core/profile-document';
+import type { LayoutViewport } from '../../../overlay/core/layout-viewport';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { useDeleteWidgetConfirm } from '../components/studio-confirm';
+import type { StudioCommand } from '../state/studio-command';
+import { executeWidgetAction, type WidgetActionId } from './widget-actions';
 
 const ACTION_ITEMS: readonly { id: WidgetActionId; labelKey: string }[] = [
-  { id: "duplicate", labelKey: "studio.v3.widgetActions.duplicate" },
-  { id: "delete", labelKey: "studio.v3.widgetActions.delete" },
-  { id: "center", labelKey: "studio.v3.widgetActions.center" },
-  { id: "reset-layout", labelKey: "studio.v3.widgetActions.resetLayout" },
-  { id: "front", labelKey: "studio.v3.widgetActions.front" },
-  { id: "forward", labelKey: "studio.v3.widgetActions.forward" },
-  { id: "backward", labelKey: "studio.v3.widgetActions.backward" },
-  { id: "back", labelKey: "studio.v3.widgetActions.back" },
+  { id: 'duplicate', labelKey: 'studio.v3.widgetActions.duplicate' },
+  { id: 'delete', labelKey: 'studio.v3.widgetActions.delete' },
+  { id: 'center', labelKey: 'studio.v3.widgetActions.center' },
+  { id: 'reset-layout', labelKey: 'studio.v3.widgetActions.resetLayout' },
+  { id: 'front', labelKey: 'studio.v3.widgetActions.front' },
+  { id: 'forward', labelKey: 'studio.v3.widgetActions.forward' },
+  { id: 'backward', labelKey: 'studio.v3.widgetActions.backward' },
+  { id: 'back', labelKey: 'studio.v3.widgetActions.back' },
 ];
 
 export type CanvasActionBarProps = {
@@ -38,8 +39,10 @@ export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement
 
   return (
     <div
-      data-testid={inert ? "studio-canvas-action-bar-placeholder" : "studio-canvas-action-bar"}
-      className={inert ? "osv3-canvas-action-bar osv3-canvas-action-bar--inert" : "osv3-canvas-action-bar"}
+      data-testid={inert ? 'studio-canvas-action-bar-placeholder' : 'studio-canvas-action-bar'}
+      className={
+        inert ? 'osv3-canvas-action-bar osv3-canvas-action-bar--inert' : 'osv3-canvas-action-bar'
+      }
       aria-hidden={inert}
     >
       {ACTION_ITEMS.map((item) => (
@@ -65,7 +68,7 @@ export function CanvasActionBar(props: CanvasActionBarProps): React.ReactElement
                     selectWidget: props.selectWidget,
                     confirmDelete: props.confirmDelete,
                     requestDeleteConfirm: deleteConfirm?.request,
-                    deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
+                    deleteMessage: t('studio.v3.widgetActions.deleteConfirm'),
                   })
           }
         >

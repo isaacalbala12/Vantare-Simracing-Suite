@@ -66,7 +66,6 @@ export const launcherOrbitIt: Record<string, string> = {
   "launcher.context.profiles": "Profili ({{n}})",
   "launcher.context.catalog": "Catalogo ({{n}} · {{detected}} rilevate)",
   "launcher.context.hint": "Il rilevamento cerca nel registro, in Steam e nei collegamenti.",
-  "launcher.context.run": "Avvia {{name}}",
   "launcher.context.steps": "{{n}} passi",
   "launcher.context.noProfiles": "Nessun profilo",
   "launcher.stats.profilesSubOne": "{{favorites}} preferito",

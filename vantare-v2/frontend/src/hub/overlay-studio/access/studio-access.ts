@@ -3,36 +3,43 @@ import {
   type AccessContext,
   type FeatureGate,
   type FeatureId,
-} from "../../../lib/access-policy";
+} from '../../../lib/access-policy';
 import {
   STUDIO_PREMIUM_SAVE_DENIED_KEY,
   STUDIO_WIDGET_ACCESS_MESSAGE_KEY,
-} from "../studio-v3-i18n";
+} from '../studio-v3-i18n';
 
 export const DEFAULT_STUDIO_ACCESS: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
+  planLabel: 'free',
+  planStatus: 'active',
   roles: [],
   isBlocked: false,
   isUnconfigured: false,
 };
-import type { ProfileDocumentV3, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import { resolveDesignRequiredFeature, type WidgetDesignV1 } from "../../../overlay/core/widget-design";
-import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
-import type { StudioCommand } from "../state/studio-command";
-import { resolveSessionLayout } from "../state/session-layouts";
+import type {
+  ProfileDocumentV3,
+  SessionLayoutType,
+  WidgetInstanceV3,
+} from '../../../overlay/core/profile-document';
+import {
+  resolveDesignRequiredFeature,
+  type WidgetDesignV1,
+} from '../../../overlay/core/widget-design';
+import { getWidgetRequiredFeature } from '../../../overlay/core/widget-definition';
+import type { StudioCommand } from '../state/studio-command';
+import { resolveSessionLayout } from '../state/session-layouts';
 
 export type StudioMutation =
-  | "add"
-  | "duplicate"
-  | "delete"
-  | "layout"
-  | "behavior"
-  | "content"
-  | "visual"
-  | "apply-design"
-  | "apply-all"
-  | "save";
+  | 'add'
+  | 'duplicate'
+  | 'delete'
+  | 'layout'
+  | 'behavior'
+  | 'content'
+  | 'visual'
+  | 'apply-design'
+  | 'apply-all'
+  | 'save';
 
 export class StudioAccessError extends Error {
   readonly mutation: StudioMutation;
@@ -40,24 +47,21 @@ export class StudioAccessError extends Error {
 
   constructor(mutation: StudioMutation, widgetIds: readonly string[], message: string) {
     super(message);
-    this.name = "StudioAccessError";
+    this.name = 'StudioAccessError';
     this.mutation = mutation;
     this.widgetIds = widgetIds;
   }
 }
 
 const SESSION_LAYOUT_TYPES: readonly SessionLayoutType[] = [
-  "general",
-  "practice",
-  "qualifying",
-  "race",
-  "endurance",
+  'general',
+  'practice',
+  'qualifying',
+  'race',
+  'endurance',
 ];
 
-function collectRequiredFeatures(
-  widget?: WidgetInstanceV3,
-  design?: WidgetDesignV1,
-): FeatureId[] {
+function collectRequiredFeatures(widget?: WidgetInstanceV3, design?: WidgetDesignV1): FeatureId[] {
   const features = new Set<FeatureId>();
   if (widget) {
     features.add(getWidgetRequiredFeature(widget.type));
@@ -74,8 +78,10 @@ function hasFullWidgetAccess(access: AccessContext, widget: WidgetInstanceV3): b
 }
 
 function widgetNonLayoutEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
-  const { layout: _leftLayout, ...leftRest } = left;
-  const { layout: _rightLayout, ...rightRest } = right;
+  const { layout: leftLayout, ...leftRest } = left;
+  const { layout: rightLayout, ...rightRest } = right;
+  void leftLayout;
+  void rightLayout;
   return JSON.stringify(leftRest) === JSON.stringify(rightRest);
 }
 
@@ -85,7 +91,7 @@ export function getStudioMutationGate(input: {
   widget?: WidgetInstanceV3;
   design?: WidgetDesignV1;
 }): FeatureGate {
-  if (input.mutation === "save" || input.mutation === "layout") {
+  if (input.mutation === 'save' || input.mutation === 'layout') {
     return { allowed: true };
   }
 
@@ -100,7 +106,7 @@ export function getStudioMutationGate(input: {
 }
 
 export function canMutateWidget(access: AccessContext, widget: WidgetInstanceV3): boolean {
-  return getStudioMutationGate({ access, mutation: "layout", widget }).allowed;
+  return getStudioMutationGate({ access, mutation: 'layout', widget }).allowed;
 }
 
 function widgetsEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
@@ -161,50 +167,50 @@ export function validateDraftAccess(
 }
 
 function resolveResetSectionMutation(
-  section: Extract<StudioCommand, { type: "widget/reset-section" }>["section"],
+  section: Extract<StudioCommand, { type: 'widget/reset-section' }>['section'],
 ): StudioMutation {
   switch (section) {
-    case "design":
-      return "apply-design";
-    case "appearance":
-      return "visual";
-    case "content":
-      return "content";
-    case "behavior":
-      return "behavior";
-    case "layout":
-      return "layout";
+    case 'design':
+      return 'apply-design';
+    case 'appearance':
+      return 'visual';
+    case 'content':
+      return 'content';
+    case 'behavior':
+      return 'behavior';
+    case 'layout':
+      return 'layout';
   }
 }
 
 export function resolveCommandMutations(command: StudioCommand): StudioMutation[] {
   switch (command.type) {
-    case "document/layout-viewport":
-    case "document/monitor":
-      return ["layout"];
-    case "widget/add":
-      return ["add"];
-    case "widget/duplicate":
-      return ["duplicate"];
-    case "widget/delete":
-      return ["delete"];
-    case "widget/layout":
-    case "widget/order":
-      return ["layout"];
-    case "widget/behavior":
-      return ["behavior"];
-    case "widget/content":
-      return ["content"];
-    case "widget/visual":
-      return ["visual"];
-    case "widget/apply-design":
-      return command.widgetIds.length > 1 ? ["apply-all"] : ["apply-design"];
-    case "widget/reset-section":
+    case 'document/layout-viewport':
+    case 'document/monitor':
+      return ['layout'];
+    case 'widget/add':
+      return ['add'];
+    case 'widget/duplicate':
+      return ['duplicate'];
+    case 'widget/delete':
+      return ['delete'];
+    case 'widget/layout':
+    case 'widget/order':
+      return ['layout'];
+    case 'widget/behavior':
+      return ['behavior'];
+    case 'widget/content':
+      return ['content'];
+    case 'widget/visual':
+      return ['visual'];
+    case 'widget/apply-design':
+      return command.widgetIds.length > 1 ? ['apply-all'] : ['apply-design'];
+    case 'widget/reset-section':
       return [resolveResetSectionMutation(command.section)];
-    case "widget/restore-defaults":
-      return ["content", "visual", "behavior"];
-    case "session/copy":
-      return ["layout", "behavior", "content", "visual", "apply-design"];
+    case 'widget/restore-defaults':
+      return ['content', 'visual', 'behavior'];
+    case 'session/copy':
+      return ['layout', 'behavior', 'content', 'visual', 'apply-design'];
   }
 }
 
@@ -213,16 +219,16 @@ function findWidgetsForCommand(
   command: StudioCommand,
 ): WidgetInstanceV3[] {
   switch (command.type) {
-    case "document/layout-viewport":
-    case "document/monitor": {
+    case 'document/layout-viewport':
+    case 'document/monitor': {
       const widgets = Object.values(document.layouts).flatMap((layout) => layout?.widgets ?? []);
       return [
         ...new Map(widgets.map((widget) => [`${widget.type}:${widget.id}`, widget])).values(),
       ];
     }
-    case "widget/add":
+    case 'widget/add':
       return [command.widget];
-    case "session/copy": {
+    case 'session/copy': {
       const sourceLayout = resolveSessionLayout(document, command.source);
       return [...sourceLayout.widgets];
     }
@@ -249,11 +255,7 @@ export function assertCommandAccess(
     for (const widget of widgets) {
       const gate = getStudioMutationGate({ access, mutation, widget, design });
       if (!gate.allowed) {
-        throw new StudioAccessError(
-          mutation,
-          widgetIds,
-          STUDIO_WIDGET_ACCESS_MESSAGE_KEY,
-        );
+        throw new StudioAccessError(mutation, widgetIds, STUDIO_WIDGET_ACCESS_MESSAGE_KEY);
       }
     }
   }

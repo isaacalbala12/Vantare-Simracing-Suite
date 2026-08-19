@@ -306,7 +306,6 @@ jobs:
           # channel builds (nightly/testers). Scoped to the build step so the
           # frontend test gate keeps running with the flag OFF (its default).
           # Public builds keep the current shell until the direction is promoted.
-          VITE_ORBIT_DEFAULT: ${{ (inputs.publish_channel == 'nightly' || inputs.publish_channel == 'testers') && '1' || '' }}
         run: pnpm build
 
       - name: Gate - Go tests

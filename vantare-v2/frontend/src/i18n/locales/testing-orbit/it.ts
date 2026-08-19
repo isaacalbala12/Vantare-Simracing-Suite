@@ -14,7 +14,6 @@ export const testingOrbitIt: Record<string, string> = {
   "testing.draft.error": "Non è stato possibile salvare la bozza",
 
   "testing.form.title": "Segnalazione",
-  "testing.form.privacy": "Viene inviato solo ciò che scrivi qui e ciò che selezioni in Consenso.",
   "testing.field.module": "Modulo",
   "testing.field.didWhat": "Cosa hai fatto",
   "testing.field.expected": "Cosa ti aspettavi",

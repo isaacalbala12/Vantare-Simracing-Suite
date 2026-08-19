@@ -66,7 +66,6 @@ export const launcherOrbitEn: Record<string, string> = {
   "launcher.context.profiles": "Profiles ({{n}})",
   "launcher.context.catalog": "Catalogue ({{n}} · {{detected}} detected)",
   "launcher.context.hint": "Detection searches the registry, Steam and shortcuts.",
-  "launcher.context.run": "Launch {{name}}",
   "launcher.context.steps": "{{n}} steps",
   "launcher.context.noProfiles": "No profiles",
   "launcher.stats.profilesSubOne": "{{favorites}} favourite",

@@ -1,0 +1,404 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useAccess } from "../../../lib/access";
+import type { AccessContext } from "../../../lib/access-policy";
+import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
+import type {
+  ProfileDocumentV3,
+  SessionLayoutType,
+} from "../../../overlay/core/profile-document";
+import {
+  assertCommandAccess,
+  StudioAccessError,
+  validateDraftAccess,
+} from "../access/studio-access";
+import { upgradeProfileVisualConfigs } from "../../../overlay/core/visual-config-migration";
+import {
+  commitStudioCommand,
+  discardStudioHistory,
+  createStudioHistory,
+  isStudioHistoryDirty,
+  markStudioHistorySaved,
+  redoStudioHistory,
+  undoStudioHistory,
+  type StudioHistory,
+} from "./studio-history";
+import { resolveSessionLayout } from "./session-layouts";
+import { StudioCommandError, type StudioCommand } from "./studio-command";
+import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
+import { buildHistoryFromRecovery, createStudioRecoveryStore } from "./studio-recovery";
+import {
+  StudioDocumentContext,
+  StudioPreviewContext,
+  type StudioDocumentContextValue,
+  type StudioPreviewContextValue,
+  type StudioPreviewState,
+  type StudioSaveState,
+} from "./studio-context";
+
+const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
+  source: "mock",
+  mockSession: "practice",
+  mockLocation: "track",
+  zoom: "fit",
+  // El degradado se parece mas a lo que hay detras de un overlay en carrera que
+  // una rejilla plana, asi que juzgar contraste y legibilidad sobre el es mas
+  // fiel. La rejilla sigue disponible en el selector para alinear a ojo.
+  backgroundId: "gradient",
+  safeArea: false,
+};
+
+function buildInitialHistory(loadedDocument: ProfileDocumentV3): {
+  history: StudioHistory;
+  migratedWidgetIds: string[];
+} {
+  const upgrade = upgradeProfileVisualConfigs(loadedDocument);
+  const history = {
+    ...createStudioHistory(upgrade.document),
+    saved: structuredClone(loadedDocument),
+  };
+  return {
+    history,
+    migratedWidgetIds: upgrade.migratedWidgetIds,
+  };
+}
+
+export function StudioProvider(props: {
+  client: StudioProfileClient;
+  initialFile: string;
+  children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
+  access?: AccessContext;
+}): React.ReactElement {
+  const {
+    client,
+    initialFile,
+    children,
+    recoveryStorage = null,
+    recoveryWriteDelayMs = 300,
+    access: accessOverride,
+  } = props;
+  const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
+  const [history, setHistory] = useState<StudioHistory | null>(null);
+  const [revision, setRevision] = useState<string>("");
+  const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<StudioSaveState>("idle");
+  const [accessNotice, setAccessNotice] = useState<string | null>(null);
+  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
+  const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Ref del presente para que save() lea siempre el documento mas reciente,
+  // incluso si una edicion B ocurrio mientras una peticion A estaba en vuelo.
+  const historyRef = useRef<StudioHistory | null>(null);
+  const revisionRef = useRef<string>("");
+  const recoveryStore = useMemo(
+    () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
+    [recoveryStorage],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void client.load(initialFile).then(
+      (loaded) => {
+        if (cancelled) {
+          return;
+        }
+        setSaveState("idle");
+        setAccessNotice(null);
+        setLoadError(null);
+        const initial = buildInitialHistory(loaded.document);
+        setHistory(initial.history);
+        historyRef.current = initial.history;
+        setRevision(loaded.revision);
+        revisionRef.current = loaded.revision;
+        setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
+        setActiveSession("general");
+        setSelectedWidgetId(null);
+      },
+      (error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : "failed to load studio profile";
+        setSaveState("idle");
+        setAccessNotice(null);
+        setLoadError(message);
+        setHistory(null);
+        historyRef.current = null;
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [client, initialFile]);
+
+  const document = history?.present ?? null;
+  const dirty = history ? isStudioHistoryDirty(history) : false;
+  const canUndo = (history?.past.length ?? 0) > 0;
+  const canRedo = (history?.future.length ?? 0) > 0;
+
+  useEffect(() => {
+    if (!recoveryStore || !history || !document || !dirty) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      recoveryStore.write({
+        version: 1,
+        profileId: document.id,
+        baseRevision: revision,
+        capturedAt: new Date().toISOString(),
+        document,
+      });
+    }, recoveryWriteDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [recoveryStore, history, document, dirty, revision, recoveryWriteDelayMs]);
+
+  const activeLayout = useMemo(() => {
+    if (!document) {
+      return null;
+    }
+    return resolveSessionLayout(document, activeSession);
+  }, [document, activeSession]);
+
+  const dispatch = useCallback(
+    (command: StudioCommand): boolean => {
+      if (!history?.present) {
+        return false;
+      }
+      try {
+        assertCommandAccess(
+          access,
+          command,
+          history.present,
+          command.type === "widget/apply-design" ? command.design : undefined,
+        );
+      } catch (error) {
+        if (error instanceof StudioAccessError) {
+          setAccessNotice(error.message);
+          return false;
+        }
+        throw error;
+      }
+      try {
+        const next = commitStudioCommand(history, command);
+        if (next === history) {
+          return false;
+        }
+        setAccessNotice(null);
+        setHistory(next);
+        historyRef.current = next;
+        setSaveState("idle");
+        return true;
+      } catch (error) {
+        if (error instanceof StudioCommandError) {
+          setAccessNotice(error.message);
+          return false;
+        }
+        throw error;
+      }
+    },
+    [access, history],
+  );
+
+  const undo = useCallback((): boolean => {
+    if (!history) {
+      return false;
+    }
+    const next = undoStudioHistory(history);
+    if (next === history) {
+      return false;
+    }
+    setHistory(next);
+    historyRef.current = next;
+    return true;
+  }, [history]);
+
+  const redo = useCallback((): boolean => {
+    if (!history) {
+      return false;
+    }
+    const next = redoStudioHistory(history);
+    if (next === history) {
+      return false;
+    }
+    setHistory(next);
+    historyRef.current = next;
+    return true;
+  }, [history]);
+
+  const discardAll = useCallback(() => {
+    setHistory((current) => {
+      if (!current) {
+        return current;
+      }
+      if (recoveryStore && current.saved) {
+        recoveryStore.clear(current.saved.id);
+      }
+      return discardStudioHistory(current);
+    });
+    setSaveState("idle");
+    setAccessNotice(null);
+    setVisuallyMigratedWidgetIds([]);
+  }, [recoveryStore]);
+
+  const dismissAccessNotice = useCallback(() => {
+    setAccessNotice(null);
+  }, []);
+
+  const notifyAccessDenied = useCallback((message: string) => {
+    setAccessNotice(message);
+  }, []);
+
+  const acceptRecovery = useCallback(
+    (recoveredDocument: ProfileDocumentV3) => {
+      setHistory((current) => {
+        if (!current) {
+          return current;
+        }
+        return buildHistoryFromRecovery(current.saved, recoveredDocument);
+      });
+    },
+    [],
+  );
+
+  const save = useCallback(async (): Promise<StudioSaveResult> => {
+    // Se lee del ref para guardar siempre el documento mas reciente: una
+    // edicion B ocurrida mientras una peticion A estaba en vuelo se conserva
+    // en el presente y este save la incluye.
+    const currentHistory = historyRef.current;
+    const currentDocument = currentHistory?.present ?? null;
+    const currentRevision = revisionRef.current;
+    if (!currentHistory || !currentDocument || !currentHistory.saved) {
+      return { status: "error", message: "studio profile is not loaded" };
+    }
+    const draftValidation = validateDraftAccess(access, currentHistory.saved, currentDocument);
+    if (!draftValidation.allowed) {
+      setSaveState("error");
+      setAccessNotice(draftValidation.reason);
+      return { status: "error", message: draftValidation.reason };
+    }
+    setSaveState("saving");
+    setAccessNotice(null);
+    const result = await client.save({ document: currentDocument, expectedRevision: currentRevision });
+    if (result.status === "saved") {
+      // Hardening: solo se actualizan saved y revision. El presente se
+      // conserva tal como exista al resolver la peticion: una edicion B
+      // realizada mientras A estaba en vuelo no desaparece.
+      setHistory((current) => {
+        const next = current ? markStudioHistorySaved(current, result.document) : current;
+        if (next) {
+          historyRef.current = next;
+        }
+        return next;
+      });
+      if (recoveryStore) {
+        recoveryStore.clear(result.document.id);
+      }
+      setRevision(result.revision);
+      revisionRef.current = result.revision;
+      setSaveState("saved");
+      setVisuallyMigratedWidgetIds([]);
+      return result;
+    }
+    if (result.status === "conflict") {
+      setSaveState("conflict");
+      setAccessNotice(result.message);
+      return result;
+    }
+    setSaveState("error");
+    setAccessNotice(result.message);
+    return result;
+  }, [access, client, recoveryStore]);
+
+  const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
+    setPreviewState((current) => ({ ...current, ...patch }));
+  }, []);
+
+  const documentValue = useMemo<StudioDocumentContextValue>(
+    () => ({
+      access,
+      document,
+      savedDocument: history?.saved ?? null,
+      revision,
+      activeLayout,
+      activeSession,
+      selectedWidgetId,
+      dirty,
+      canUndo,
+      canRedo,
+      saveState,
+      lastError: loadError,
+      accessNotice,
+      visuallyMigratedWidgetIds,
+      dispatch,
+      selectWidget: setSelectedWidgetId,
+      selectSession: setActiveSession,
+      save,
+      undo,
+      redo,
+      discardAll,
+      acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
+    }),
+    [
+      access,
+      document,
+      history,
+      revision,
+      activeLayout,
+      activeSession,
+      selectedWidgetId,
+      dirty,
+      canUndo,
+      canRedo,
+      saveState,
+      loadError,
+      accessNotice,
+      visuallyMigratedWidgetIds,
+      dispatch,
+      save,
+      undo,
+      redo,
+      discardAll,
+      acceptRecovery,
+      dismissAccessNotice,
+      notifyAccessDenied,
+    ],
+  );
+
+  const previewValue = useMemo<StudioPreviewContextValue>(
+    () => ({
+      preview,
+      setPreview,
+    }),
+    [preview, setPreview],
+  );
+
+  return (
+    <StudioDocumentContext.Provider value={documentValue}>
+      <StudioPreviewContext.Provider value={previewValue}>{children}</StudioPreviewContext.Provider>
+    </StudioDocumentContext.Provider>
+  );
+}
+
+export function ConnectedStudioProvider(props: {
+  client: StudioProfileClient;
+  initialFile: string;
+  children: ReactNode;
+  recoveryStorage?: Storage | null;
+  recoveryWriteDelayMs?: number;
+}): React.ReactElement {
+  const access = useAccess();
+  return <StudioProvider {...props} access={access} />;
+}

@@ -255,7 +255,7 @@ export interface WeekRow {
 }
 
 /** Todas las salidas locales de una serie dentro de un día. */
-export function daySlots(entry: RaceSeriesEntry, day: Date): Date[] {
+function daySlots(entry: RaceSeriesEntry, day: Date): Date[] {
   const end = new Date(day.getTime() + 86_400_000);
   return nextStarts(entry.engine, day, dayCount(entry.engine)).filter((at) => at < end);
 }

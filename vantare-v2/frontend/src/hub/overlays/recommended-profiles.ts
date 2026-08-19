@@ -3,7 +3,8 @@ import type { ProfileConfig } from "../../lib/profile";
 export type RecommendedProfile = {
   id: string;
   name: string;
-  description: string;
+  /** Clave i18n con la descripción del preset (catálogo `hub-shared`). */
+  descriptionKey: string;
   tag: "racing" | "streaming" | "minimal";
   readOnly: true;
   profile: ProfileConfig;
@@ -13,7 +14,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
   {
     id: "vantare-clean-overlay",
     name: "Clean Overlay",
-    description: "Overlay limpio con delta, relative y standings para correr sin ruido.",
+    descriptionKey: "overlays.recommended.desc.vantare-clean-overlay",
     tag: "racing",
     readOnly: true,
     profile: {
@@ -98,7 +99,7 @@ export const RECOMMENDED_PROFILES: RecommendedProfile[] = [
   {
     id: "vantare-lmu-basic",
     name: "Le Mans Ultimate - Basic",
-    description: "Perfil básico para Le Mans Ultimate con delta, relative, standings y pedals.",
+    descriptionKey: "overlays.recommended.desc.vantare-lmu-basic",
     tag: "racing",
     readOnly: true,
     profile: {

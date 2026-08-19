@@ -1,31 +1,29 @@
-import { StrictMode, useState } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import { initializeDensity } from "./lib/density";
-import { applyTheme, type VantareTheme } from "./lib/theme";
-import orbitThemeJson from "./themes/vantare-orbit.json";
-import { I18nProvider } from "./i18n/I18nProvider";
-import { LicenseProvider } from "./lib/license";
-import { ChainRunnerProvider } from "./hub/launcher/chain-store";
-import { LauncherStoreProvider } from "./hub/launcher/launcher-store";
-import { OrbitShell } from "./hub/components/orbit/OrbitShell";
-import { isOrbitEnabled } from "./hub/orbit/orbit-flag";
-import { StudioRoute } from "./hub/overlay-studio/StudioRoute";
-import { widgetTypeRegistry } from "./overlay/core/widget-registry";
-import type { WidgetType } from "./overlay/core/profile-document";
+import { StrictMode, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import { initializeDensity } from './lib/density';
+import { applyTheme, type VantareTheme } from './lib/theme';
+import orbitThemeJson from './themes/vantare-orbit.json';
+import { I18nProvider } from './i18n/I18nProvider';
+import { LicenseProvider } from './lib/license';
+import { ChainRunnerProvider } from './hub/launcher/chain-store';
+import { LauncherStoreProvider } from './hub/launcher/launcher-store';
+import { OrbitShell } from './hub/components/orbit/OrbitShell';
+import { widgetTypeRegistry } from './overlay/core/widget-registry';
+import type { WidgetType } from './overlay/core/profile-document';
 import {
   createHubProfile,
   loadHubDocument,
   resetHubMockState,
   saveHubDocument,
   setActiveHubProfile,
-} from "./overlay-harness/hub-profile-mock-state";
-import type { Section } from "./hub/navigation";
+} from './overlay-harness/hub-profile-mock-state';
+import type { Section } from './hub/navigation';
 
 /**
  * Harness visual del Studio Orbit (briefing 04).
  *
- * Monta la shell Orbit real con `StudioRoute` dentro, contra el runtime
+ * Monta la shell Orbit real, que resuelve `StudioRoute` internamente, contra el runtime
  * simulado: el perfil por defecto trae tres widgets reales (delta, relative,
  * standings). `?stress=1` reescribe ese documento con veinte widgets de nombre
  * largo, que es el modo estrés del briefing; el modo estrés vive aquí y no en
@@ -37,30 +35,30 @@ initializeDensity();
 // `delta` no entra en el ciclo: el documento V3 solo admite uno por layout, y
 // repetirlo hace que el perfil no valide.
 const STRESS_TYPES: WidgetType[] = [
-  "standings",
-  "relative",
-  "pedals",
-  "racing-flags",
-  "track-weather",
-  "car-damage-numbers",
-  "race-schedule",
-  "head-to-head",
-  "input-telemetry",
+  'standings',
+  'relative',
+  'pedals',
+  'racing-flags',
+  'track-weather',
+  'car-damage-numbers',
+  'race-schedule',
+  'head-to-head',
+  'input-telemetry',
 ];
 
 resetHubMockState();
-const created = createHubProfile("Clean Overlay");
-if (!("error" in created)) {
+const created = createHubProfile('Clean Overlay');
+if (!('error' in created)) {
   setActiveHubProfile(created.id, created.file);
 
-  const stress = new URLSearchParams(window.location.search).get("stress") === "1";
+  const stress = new URLSearchParams(window.location.search).get('stress') === '1';
   if (stress) {
     const stored = loadHubDocument(created.file);
     if (stored) {
       stored.document.layouts.general = {
-        type: "general",
+        type: 'general',
         widgets: Array.from({ length: 20 }, (_, index) => {
-          const type = index === 0 ? "delta" : STRESS_TYPES[index % STRESS_TYPES.length];
+          const type = index === 0 ? 'delta' : STRESS_TYPES[index % STRESS_TYPES.length];
           const widget = widgetTypeRegistry.get(type).createDefault(`stress-${index}`);
           widget.name = `Widget de prueba con un nombre larguísimo para el modo estrés ${index + 1}`;
           widget.layout = {
@@ -78,11 +76,10 @@ if (!("error" in created)) {
 }
 
 export function Harness() {
-  const [section, setSection] = useState<Section>("profiles");
-  isOrbitEnabled();
+  const [section, setSection] = useState<Section>('profiles');
   // `?studio=profiles` abre «Mis perfiles» por el mismo destino que usa la
   // shell real (`navigate("studio", "profiles")`), no por un estado inventado.
-  const studioTarget = new URLSearchParams(window.location.search).get("studio") ?? undefined;
+  const studioTarget = new URLSearchParams(window.location.search).get('studio') ?? undefined;
 
   return (
     <LicenseProvider>
@@ -92,12 +89,11 @@ export function Harness() {
             <OrbitShell
               activeSection={section}
               onNavigate={(next) => setSection(next as Section)}
-              sourceStatus={{ name: "LMU", live: true, available: true } as never}
+              sourceStatus={{ name: 'LMU', live: true, available: true } as never}
+              target={studioTarget}
               testingCenterChannel={null}
               version="v0.3.9"
-            >
-              <StudioRoute liveAvailable={false} target={studioTarget} />
-            </OrbitShell>
+            />
           </LauncherStoreProvider>
         </ChainRunnerProvider>
       </I18nProvider>
@@ -105,7 +101,7 @@ export function Harness() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Harness />
   </StrictMode>,

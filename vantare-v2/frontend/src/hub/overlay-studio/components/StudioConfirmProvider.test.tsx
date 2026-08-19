@@ -6,8 +6,8 @@ import {
 } from "../state/studio-confirm-preferences";
 import {
   StudioConfirmProvider,
-  useDeleteWidgetConfirm,
 } from "./StudioConfirmProvider";
+import { useDeleteWidgetConfirm } from "./studio-confirm";
 
 function memoryStorage(seed: Record<string, string> = {}): Storage {
   const map = new Map(Object.entries(seed));

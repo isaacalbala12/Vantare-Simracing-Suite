@@ -18,10 +18,10 @@ export function useSelectionFit(input: {
   enabled: boolean;
   frameRef: React.RefObject<HTMLElement | null>;
   selectionRef: React.RefObject<HTMLElement | null>;
-  /** Cualquier cambio aqui fuerza una remedida (layout, diseno, contenido). */
-  deps: readonly unknown[];
+  /** Una clave estable de layout, diseno y contenido fuerza una remedida. */
+  dependencyKey: string;
 }): void {
-  const { enabled, frameRef, selectionRef, deps } = input;
+  const { enabled, frameRef, selectionRef, dependencyKey } = input;
 
   const apply = useCallback(() => {
     const selection = selectionRef.current;
@@ -59,8 +59,7 @@ export function useSelectionFit(input: {
     if (typeof requestAnimationFrame !== "function") return;
     const raf = requestAnimationFrame(() => apply());
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apply, ...deps]);
+  }, [apply, dependencyKey]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -76,6 +75,5 @@ export function useSelectionFit(input: {
       }
     }
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apply, enabled, frameRef, ...deps]);
+  }, [apply, enabled, frameRef, dependencyKey]);
 }

@@ -61,7 +61,6 @@ export const telemetryOrbitEn: Record<string, string> = {
   "telemetry.insights.flat": "{{corner}} · neutral",
   "telemetry.insights.empty": "No corners to analyse yet.",
 
-  "telemetry.empty.title": "No sessions available",
   "telemetry.empty.body":
     "No sessions available · import local LMU files once the flow is available.",
 

@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useI18n } from "../../../i18n/I18nProvider";
-import { resolveLayoutViewport } from "../../../overlay/core/layout-viewport";
-import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
-import type { WidgetDiagnosticCollector } from "../../../overlay/core/widget-diagnostics";
-import { canMutateWidget } from "../access/studio-access";
-import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from "../studio-v3-i18n";
-import { CanvasGuides } from "../canvas/CanvasGuides";
-import { StudioWidgetFrame } from "../canvas/StudioWidgetFrame";
-import { resolveCanvasBackground } from "../canvas/canvas-backgrounds";
-import { clientToLogical } from "../canvas/canvas-geometry";
-import { useCanvasInteraction } from "../canvas/useCanvasInteraction";
-import { useStudioTelemetrySnapshot } from "../canvas/StudioTelemetryProvider";
-import { useStudioDocument, useStudioPreview } from "../state/studio-store";
-import { placeSelectionTag, type TagAnchor } from "./selection-tag-placement";
-import { fill, widgetLabel } from "./studio-orbit-model";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
+import type { WidgetInstanceV3 } from '../../../overlay/core/profile-document';
+import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
+import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
+import { canMutateWidget } from '../access/studio-access';
+import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
+import { CanvasGuides } from '../canvas/CanvasGuides';
+import { StudioWidgetFrame } from '../canvas/StudioWidgetFrame';
+import { resolveCanvasBackground } from '../canvas/canvas-backgrounds';
+import { clientToLogical } from '../canvas/canvas-geometry';
+import { useCanvasInteraction } from '../canvas/useCanvasInteraction';
+import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
+import { fill, widgetLabel } from './studio-orbit-model';
 
 /** Area segura del prototipo: 4.5 % del lado corto (`.safe-area { inset: 4.5% }`). */
-const SAFE_AREA_INSET = "4.5%";
+const SAFE_AREA_INSET = '4.5%';
 
 function sortByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
@@ -70,9 +70,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       if (width > 0) setStageWidth((current) => (current === width ? current : width));
     };
     update();
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", update);
-      return () => window.removeEventListener("resize", update);
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
     }
     const observer = new ResizeObserver(update);
     observer.observe(node);
@@ -85,10 +85,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const scale = stageWidth > 0 ? stageWidth / layoutViewport.width : 0;
   const ready = stageWidth > 0 && document !== null;
 
-  const widgets = useMemo(
-    () => sortByZIndex(activeLayout?.widgets ?? []),
-    [activeLayout?.widgets],
-  );
+  const widgets = useMemo(() => sortByZIndex(activeLayout?.widgets ?? []), [activeLayout?.widgets]);
 
   const background = resolveCanvasBackground(preview.backgroundId);
 
@@ -117,9 +114,11 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   // su contenido a 30 Hz mientras se mueve el marco es trabajo tirado. La foto
   // se toma en el efecto de transicion, no en render, para no leer una ref
   // mientras se pinta (`react-hooks/refs`).
-  const interacting = interaction.interaction.kind !== "idle";
+  const interacting = interaction.interaction.kind !== 'idle';
   const latestSnapshotRef = useRef(liveSnapshot);
-  const [snapshotOverride, setSnapshotOverride] = useState<TelemetrySnapshot | undefined>(undefined);
+  const [snapshotOverride, setSnapshotOverride] = useState<TelemetrySnapshot | undefined>(
+    undefined,
+  );
   useEffect(() => {
     latestSnapshotRef.current = liveSnapshot;
   }, [liveSnapshot]);
@@ -149,7 +148,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     const frame = stage.querySelector<HTMLElement>(
       `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
     );
-    const box = frame?.querySelector<HTMLElement>("[data-widget-selection]") ?? frame;
+    const box = frame?.querySelector<HTMLElement>('[data-widget-selection]') ?? frame;
     if (!box) {
       setAnchor((current) => (current === null ? current : null));
       return;
@@ -163,11 +162,11 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       height: rect.height,
     };
     setAnchor((current) =>
-      current
-      && Math.abs(current.left - next.left) < 0.5
-      && Math.abs(current.top - next.top) < 0.5
-      && Math.abs(current.width - next.width) < 0.5
-      && Math.abs(current.height - next.height) < 0.5
+      current &&
+      Math.abs(current.left - next.left) < 0.5 &&
+      Math.abs(current.top - next.top) < 0.5 &&
+      Math.abs(current.width - next.width) < 0.5 &&
+      Math.abs(current.height - next.height) < 0.5
         ? current
         : next,
     );
@@ -180,7 +179,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   // Durante el arrastre/redimensionado el marco se mueve por estilo en linea:
   // la unica forma de que la etiqueta lo siga es remedir por frame.
   useEffect(() => {
-    if (!interacting || typeof requestAnimationFrame !== "function") return;
+    if (!interacting || typeof requestAnimationFrame !== 'function') return;
     let raf = 0;
     const tick = () => {
       measureAnchor();
@@ -221,7 +220,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const showWidget = () => {
     if (!selected) return;
     dispatch({
-      type: "widget/behavior",
+      type: 'widget/behavior',
       session: activeSession,
       widgetIds: [selected.id],
       patch: { enabled: true },
@@ -243,25 +242,25 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       className="orbit-studio-stage-wrap"
       data-testid="orbit-studio-stage-wrap"
       onPointerDown={() => {
-        if (interaction.interaction.kind === "idle") selectWidget(null);
+        if (interaction.interaction.kind === 'idle') selectWidget(null);
       }}
       onPointerLeave={() => onPointer(null)}
       onPointerMove={handlePointerMove}
     >
       <div
-        aria-label={t("studio.stage.aria")}
+        aria-label={t('studio.stage.aria')}
         className={`orbit-studio-stage ${background.className}`}
-        data-safe={preview.safeArea ? "true" : undefined}
+        data-safe={preview.safeArea ? 'true' : undefined}
         data-testid="orbit-studio-stage"
         data-zoom={String(preview.zoom)}
         ref={stageRef}
         style={{
           aspectRatio: `${layoutViewport.width} / ${layoutViewport.height}`,
-          width: preview.zoom === "fit" ? undefined : `${(preview.zoom / 100) * 100}%`,
+          width: preview.zoom === 'fit' ? undefined : `${(preview.zoom / 100) * 100}%`,
         }}
       >
         <span className="orbit-studio-stage__label">
-          {fill(t("studio.stage.label"), { w: layoutViewport.width, h: layoutViewport.height })}
+          {fill(t('studio.stage.label'), { w: layoutViewport.width, h: layoutViewport.height })}
         </span>
         {preview.safeArea ? (
           <div
@@ -269,7 +268,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
             data-testid="orbit-studio-safe-area"
             style={{ inset: SAFE_AREA_INSET }}
           >
-            <span>{t("studio.stage.safeArea")}</span>
+            <span>{t('studio.stage.safeArea')}</span>
           </div>
         ) : null}
 
@@ -281,8 +280,8 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
             width: `${layoutViewport.width}px`,
             height: `${layoutViewport.height}px`,
             transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            visibility: ready ? undefined : "hidden",
+            transformOrigin: 'top left',
+            visibility: ready ? undefined : 'hidden',
           }}
         >
           <CanvasGuides guides={interaction.guides} />
@@ -310,20 +309,20 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
         {selected && selectedLayout ? (
           <div
             className="orbit-studio-stage__tag"
-            data-hidden={selected.behavior.enabled ? undefined : "true"}
-            data-place={tagPlacement?.side ?? "above"}
+            data-hidden={selected.behavior.enabled ? undefined : 'true'}
+            data-place={tagPlacement?.side ?? 'above'}
             data-testid="orbit-studio-selection-tag"
             ref={tagRef}
             style={{
               left: `${tagPlacement?.left ?? 0}px`,
               top: `${tagPlacement?.top ?? 0}px`,
-              visibility: tagPlacement ? undefined : "hidden",
+              visibility: tagPlacement ? undefined : 'hidden',
             }}
           >
             <span data-testid="orbit-studio-selection-tag-copy">
-              {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{" "}
+              {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{' '}
               {Math.round(selectedLayout.h)}
-              {selected.behavior.enabled ? "" : ` · ${t("studio.stage.hiddenSuffix")}`}
+              {selected.behavior.enabled ? '' : ` · ${t('studio.stage.hiddenSuffix')}`}
             </span>
             {selected.behavior.enabled ? null : (
               <button
@@ -333,7 +332,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                 onPointerDown={(event) => event.stopPropagation()}
                 type="button"
               >
-                {t("studio.stage.show")}
+                {t('studio.stage.show')}
               </button>
             )}
           </div>

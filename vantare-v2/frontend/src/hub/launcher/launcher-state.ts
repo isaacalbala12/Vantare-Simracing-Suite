@@ -1,4 +1,4 @@
-import type { AppSettings } from "../pages/SettingsPage";
+import type { AppSettings } from "../settings/settings-contract";
 import type {
   LaunchProfile,
   LauncherAppEntry,

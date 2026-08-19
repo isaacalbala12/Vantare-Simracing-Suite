@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/08-ingeniero");
 const port = 5198;
-const url = `http://127.0.0.1:${port}/orbit-engineer-harness.html?orbit=1&view=ingeniero`;
+const url = `http://127.0.0.1:${port}/orbit-engineer-harness.html?view=ingeniero`;
 
 // Reloj congelado: los mensajes sembrados se anclan a esta sesión.
 const FROZEN_CLOCK = new Date("2026-07-07T18:44:30Z");

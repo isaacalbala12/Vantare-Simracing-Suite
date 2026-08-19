@@ -9,6 +9,18 @@ Bienvenido a la **Beta Publica** de **Vantare Suite** — la suite local para si
 
 ---
 
+## 0. Nota sobre la shell del Hub (desde v0.1.0.7-nightly.10)
+
+Desde **v0.1.0.7-nightly.10** el Hub usa la nueva shell **Command Orbit** (rail lateral, columna contextual y paleta de comando). Cambios visibles para el tester:
+
+- **Rail lateral** estrecho a la izquierda con los iconos de cada seccion (Inicio, Studio, Launcher, Carreras, Estrategia, Ingeniero, Telemetria, Roadmap, Ajustes, Testing Center).
+- **Columna contextual** a la derecha con contenido segun la seccion (proximo evento, perfil, launcher…).
+- **Ctrl K** abre la **paleta de comando** para navegar y ejecutar acciones rapidas.
+
+Si encuentras un problema con la shell, una seccion o un widget del Hub, reportalo desde el **Testing Center** de la propia app (canal `testers`/`nightly`) siguiendo el proceso de `docs/tester-feedback-process.md`. Los overlays sobre el juego (widgets) no cambian con esta migracion: siguen usando su sistema V3.
+
+---
+
 ## 1. Requisitos del sistema y preparacion
 
 - **Sistema operativo**: Windows 10 u 11 (64 bits).

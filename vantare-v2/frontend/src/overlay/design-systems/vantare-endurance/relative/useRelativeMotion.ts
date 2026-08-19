@@ -30,6 +30,12 @@ export type RelativeMotionState = {
   ghosts: readonly RelativeGhost[];
 };
 
+type RelativeGhostState = {
+  model: RelativeViewModel | null;
+  ghosts: readonly RelativeGhost[];
+  departed: readonly RelativeGhost[];
+};
+
 function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null {
   return root?.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(rowId)}"]`) ?? null;
 }
@@ -50,9 +56,11 @@ export function useRelativeMotion(
 ): RelativeMotionState {
   const prevRef = useRef<RelativeViewModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-  const [ghosts, setGhosts] = useState<readonly RelativeGhost[]>([]);
-  /** Model the last render was built from, so a departure is caught in-render. */
-  const [renderedModel, setRenderedModel] = useState<RelativeViewModel | null>(null);
+  const [ghostState, setGhostState] = useState<RelativeGhostState>({
+    model: null,
+    ghosts: [],
+    departed: [],
+  });
   const ghostTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   /**
    * Top position of every row in the last painted model, relative to the root.
@@ -72,6 +80,43 @@ export function useRelativeMotion(
       timers.clear();
     };
   }, []);
+
+  let ghosts = ghostState.ghosts;
+  if (ghostState.model !== model) {
+    const stillHere = new Set(model.rows.map((row) => row.id));
+    const departed: RelativeGhost[] = [];
+    if (enabled && model.status === "ready" && ghostState.model?.status === "ready") {
+      ghostState.model.rows.forEach((row, index) => {
+        if (!row.isPlayer && !stillHere.has(row.id)) {
+          departed.push({ row, index });
+        }
+      });
+    }
+    ghosts = [
+      ...ghostState.ghosts.filter(
+        (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
+      ),
+      ...departed,
+    ];
+    setGhostState({ model, ghosts, departed });
+  }
+
+  useEffect(() => {
+    const departed = ghostState.departed;
+    if (departed.length === 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      ghostTimersRef.current.delete(timer);
+      setGhostState((current) => ({
+        ...current,
+        ghosts: current.ghosts.filter(
+          (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
+        ),
+      }));
+    }, EXIT_MS);
+    ghostTimersRef.current.add(timer);
+  }, [ghostState.departed]);
 
   useLayoutEffect(() => {
     if (!enabled || model.status !== "ready") {
@@ -170,35 +215,6 @@ export function useRelativeMotion(
       timers.clear();
     };
   }, []);
-
-  // Held during the render that drops the row, not from an effect afterwards.
-  // Retaining it a beat later would let the list close over the gap first and
-  // the ghost would fold from somewhere the row never was.
-  if (renderedModel !== model) {
-    setRenderedModel(model);
-    if (enabled && model.status === "ready" && renderedModel?.status === "ready") {
-      const stillHere = new Set(model.rows.map((row) => row.id));
-      const departed: RelativeGhost[] = [];
-      renderedModel.rows.forEach((row, index) => {
-        if (!row.isPlayer && !stillHere.has(row.id)) {
-          departed.push({ row, index });
-        }
-      });
-      if (departed.length > 0) {
-        setGhosts((current) => [
-          ...current.filter((ghost) => !departed.some((item) => item.row.id === ghost.row.id)),
-          ...departed,
-        ]);
-        const timer = setTimeout(() => {
-          ghostTimersRef.current.delete(timer);
-          setGhosts((current) =>
-            current.filter((ghost) => !departed.some((item) => item.row.id === ghost.row.id)),
-          );
-        }, EXIT_MS);
-        ghostTimersRef.current.add(timer);
-      }
-    }
-  }
 
   // A row that comes back is no longer a ghost.
   const present = new Set(model.rows.map((row) => row.id));

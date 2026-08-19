@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/06-carreras");
 const port = 5198;
-const url = `http://127.0.0.1:${port}/orbit-races-harness.html?orbit=1&view=carreras`;
+const url = `http://127.0.0.1:${port}/orbit-races-harness.html?view=carreras`;
 
 // Reloj congelado: las cinco vistas y la línea "ahora" del timeline se calculan
 // desde la hora local, así que sin fijarla la captura cambiaría en cada pase.

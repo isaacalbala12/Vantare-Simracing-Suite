@@ -187,18 +187,21 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   // plays that animation once, start to finish, and stops on its last frame.
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(
+    () =>
+      (initialQuery.sceneFrame ?? 0) *
+      (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
+  );
+  const elapsedRef = useRef(0);
   const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
 
-  // A linked frame parks the playhead on that keyframe.
   useEffect(() => {
-    setElapsedMs((parsed.sceneFrame ?? 0) * (scene?.frameMs ?? 0));
-  }, [parsed.sceneId, parsed.sceneFrame, scene]);
+    elapsedRef.current = elapsedMs;
+  }, [elapsedMs]);
 
   // Playhead in milliseconds, advanced on every animation frame. The scene's
   // frames are keyframes; what plays between them is interpolated, so a gap
   // closing or a pedal going down moves instead of stepping.
-  const [elapsedMs, setElapsedMs] = useState(0);
-
   useEffect(() => {
     if (!scene || !playing) {
       return;
@@ -223,9 +226,6 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [scene, playing, loop]);
-
-  const elapsedRef = useRef(0);
-  elapsedRef.current = elapsedMs;
 
   // In a race the world is continuous but telemetry is sampled: a widget only
   // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
@@ -259,13 +259,12 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     setPlaying(true);
   };
 
-  // Reads the latest query without making the effect depend on the object
-  // identity, so only a real fixture change rebuilds and remounts.
-  const parsedRef = useRef(parsed);
-  parsedRef.current = parsed;
-
   useLayoutEffect(() => {
-    const next = prepareFixture(parsedRef.current);
+    const fixtureQuery = parseOverlayWorkshopQuery(fixtureKey);
+    if ("error" in fixtureQuery) {
+      throw new Error(`invalid serialized fixture query: ${fixtureQuery.error}`);
+    }
+    const next = prepareFixture(fixtureQuery);
     resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
     let active = true;
     queueMicrotask(() => {

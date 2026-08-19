@@ -109,15 +109,3 @@ export function isSettingsSection(value: string | null | undefined): value is Se
   return Boolean(value) && (SETTINGS_SECTIONS as readonly string[]).includes(value as string);
 }
 
-/**
- * Sección pedida por la URL (`?settings=…`).
- *
- * Devuelve `null` cuando el parámetro falta o no nombra una sección real, para
- * que quien llame decida el respaldo (la preferencia guardada o `application`,
- * que es a donde llevan el rail y la paleta).
- */
-export function readSettingsSectionFromSearch(search: string): SettingsSection | null {
-  const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
-  const raw = params.get("settings");
-  return isSettingsSection(raw) ? raw : null;
-}

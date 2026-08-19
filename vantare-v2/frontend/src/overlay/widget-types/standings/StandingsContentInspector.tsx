@@ -1,8 +1,7 @@
-import { useI18n } from "../../../i18n/I18nProvider";
-import { useIsOrbitSkin } from "../../core/inspector-skin";
-import type { CustomInspectorProps } from "../../core/inspector-control";
-import { Check, Field, Seg } from "../../../ui/orbit";
-import type { WidgetColumnWidthPreset } from "../shared/widget-column";
+import { useI18n } from '../../../i18n/I18nProvider';
+import type { CustomInspectorProps } from '../../core/inspector-control';
+import { Check, Field, Seg } from '../../../ui/orbit';
+import type { WidgetColumnWidthPreset } from '../shared/widget-column';
 import {
   moveStandingsColumn,
   parseStandingsContent,
@@ -10,14 +9,12 @@ import {
   STANDINGS_ROW_COUNT_OPTIONS,
   toggleStandingsColumn,
   updateStandingsColumn,
-} from "./standings-content";
+} from './standings-content';
 
-const WIDTH_PRESET_OPTIONS: readonly WidgetColumnWidthPreset[] = ["xs", "sm", "md", "lg", "auto"];
-const ALIGN_OPTIONS = ["left", "center", "right"] as const;
 /** En la piel Orbit el ancho se ofrece como `Seg`: tres pasos, no cinco. */
-const ORBIT_WIDTH_OPTIONS: readonly WidgetColumnWidthPreset[] = ["sm", "md", "lg"];
+const ORBIT_WIDTH_OPTIONS: readonly WidgetColumnWidthPreset[] = ['sm', 'md', 'lg'];
 
-type AlignOption = (typeof ALIGN_OPTIONS)[number];
+type AlignOption = 'left' | 'center' | 'right';
 
 function templateLabel(columnId: string): string {
   return STANDINGS_COLUMN_TEMPLATES.find((template) => template.id === columnId)?.label ?? columnId;
@@ -34,8 +31,8 @@ function updateRowCount(
 function hasAlign(column: { id: string; style?: { align?: string } }): boolean {
   if (column.style?.align !== undefined) return true;
   return (
-    STANDINGS_COLUMN_TEMPLATES.find((template) => template.id === column.id)?.style?.align
-    !== undefined
+    STANDINGS_COLUMN_TEMPLATES.find((template) => template.id === column.id)?.style?.align !==
+    undefined
   );
 }
 
@@ -45,7 +42,7 @@ function hasAlign(column: { id: string; style?: { align?: string } }): boolean {
  * con un trazo propio. Sigue siendo el control del kit, sin `title` nativo.
  */
 function OrderButton(props: {
-  direction: "up" | "down";
+  direction: 'up' | 'down';
   label: string;
   disabled?: boolean;
   testId: string;
@@ -75,7 +72,7 @@ function OrderButton(props: {
         viewBox="0 0 14 14"
         width={13}
       >
-        {direction === "up" ? (
+        {direction === 'up' ? (
           <path d="M7 11V3M3.5 6.5 7 3l3.5 3.5" />
         ) : (
           <path d="M7 3v8M3.5 7.5 7 11l3.5-3.5" />
@@ -88,14 +85,13 @@ function OrderButton(props: {
 export function StandingsContentInspector(props: CustomInspectorProps): React.ReactElement {
   const { widget, disabled, onContentChange } = props;
   const { t } = useI18n();
-  const orbit = useIsOrbitSkin();
   const content = parseStandingsContent(widget.content);
 
   const publish = (nextContent: ReturnType<typeof parseStandingsContent>) => {
     onContentChange?.(nextContent as Record<string, unknown>);
   };
 
-  if (orbit) {
+  {
     // Misma logica y mismos handlers que la piel V3: solo cambia el JSX. Ni un
     // control nativo — ni `input[type=checkbox]` ni `select` (`briefing 04 · A5`).
     return (
@@ -105,9 +101,9 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
         data-widget-id={widget.id}
       >
         <div data-testid="studio-standings-row-count">
-          <Field label={t("studio.inspector.content.rows")}>
+          <Field label={t('studio.inspector.content.rows')}>
             <Seg
-              label={t("studio.inspector.content.rows")}
+              label={t('studio.inspector.content.rows')}
               onChange={(next) => publish(updateRowCount(content, Number(next)))}
               options={STANDINGS_ROW_COUNT_OPTIONS.map((count) => ({
                 value: String(count),
@@ -123,7 +119,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
         <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
           {content.columns.map((column, index) => {
             const name = templateLabel(column.id);
-            const align = (column.style?.align ?? "left") as AlignOption;
+            const align = (column.style?.align ?? 'left') as AlignOption;
             return (
               <li
                 className="orbit-studio-cols__item"
@@ -144,15 +140,15 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                     <OrderButton
                       direction="up"
                       disabled={disabled || index === 0}
-                      label={`${t("studio.inspector.content.moveUp")} · ${name}`}
-                      onClick={() => publish(moveStandingsColumn(content, column.id, "up"))}
+                      label={`${t('studio.inspector.content.moveUp')} · ${name}`}
+                      onClick={() => publish(moveStandingsColumn(content, column.id, 'up'))}
                       testId={`studio-standings-column-up-${column.id}`}
                     />
                     <OrderButton
                       direction="down"
                       disabled={disabled || index === content.columns.length - 1}
-                      label={`${t("studio.inspector.content.moveDown")} · ${name}`}
-                      onClick={() => publish(moveStandingsColumn(content, column.id, "down"))}
+                      label={`${t('studio.inspector.content.moveDown')} · ${name}`}
+                      onClick={() => publish(moveStandingsColumn(content, column.id, 'down'))}
                       testId={`studio-standings-column-down-${column.id}`}
                     />
                   </div>
@@ -163,7 +159,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                     data-testid={`studio-standings-column-width-${column.id}`}
                   >
                     <Seg
-                      label={`${t("studio.inspector.content.width")} · ${name}`}
+                      label={`${t('studio.inspector.content.width')} · ${name}`}
                       onChange={(next) =>
                         publish(
                           updateStandingsColumn(content, column.id, {
@@ -179,7 +175,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       value={
                         ORBIT_WIDTH_OPTIONS.includes(column.widthPreset)
                           ? column.widthPreset
-                          : ("md" as WidgetColumnWidthPreset)
+                          : ('md' as WidgetColumnWidthPreset)
                       }
                       wide
                     />
@@ -190,7 +186,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       data-testid={`studio-standings-column-align-${column.id}`}
                     >
                       <Seg
-                        label={`${t("studio.inspector.content.align")} · ${name}`}
+                        label={`${t('studio.inspector.content.align')} · ${name}`}
                         onChange={(next) =>
                           publish(
                             updateStandingsColumn(content, column.id, {
@@ -200,17 +196,17 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                         }
                         options={[
                           {
-                            value: "left",
-                            label: t("studio.inspector.content.align.left"),
+                            value: 'left',
+                            label: t('studio.inspector.content.align.left'),
                             disabled,
                           },
                           {
-                            value: "right",
-                            label: t("studio.inspector.content.align.right"),
+                            value: 'right',
+                            label: t('studio.inspector.content.align.right'),
                             disabled,
                           },
                         ]}
-                        value={align === "center" ? "left" : align}
+                        value={align === 'center' ? 'left' : align}
                         wide
                       />
                     </div>
@@ -223,98 +219,4 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
       </div>
     );
   }
-
-  return (
-    <div data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
-      <div className="osv3-inspector-field-group" data-testid="studio-standings-row-count">
-        <span className="osv3-inspector-field__label">{t("studio.v3.standings.rowCount")}</span>
-        <div className="osv3-inspector-preset-row">
-          {STANDINGS_ROW_COUNT_OPTIONS.map((count) => (
-            <button
-              key={count}
-              type="button"
-              data-testid={`studio-standings-row-count-${count}`}
-              className={content.rowCount === count ? "is-active" : undefined}
-              onClick={() => publish(updateRowCount(content, count))}
-              disabled={disabled}
-            >
-              {count}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ul className="osv3-standings-columns" data-testid="studio-standings-columns">
-        {content.columns.map((column, index) => (
-          <li key={column.id} className="osv3-standings-columns__item" data-testid={`studio-standings-column-${column.id}`}>
-            <label className="osv3-standings-columns__toggle">
-              <input
-                type="checkbox"
-                checked={column.enabled}
-                disabled={disabled}
-                onChange={() => publish(toggleStandingsColumn(content, column.id))}
-              />
-              <span>{templateLabel(column.id)}</span>
-            </label>
-            <div className="osv3-standings-columns__controls">
-              <button
-                type="button"
-                disabled={disabled || index === 0}
-                data-testid={`studio-standings-column-up-${column.id}`}
-                onClick={() => publish(moveStandingsColumn(content, column.id, "up"))}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={disabled || index === content.columns.length - 1}
-                data-testid={`studio-standings-column-down-${column.id}`}
-                onClick={() => publish(moveStandingsColumn(content, column.id, "down"))}
-              >
-                ↓
-              </button>
-              <select
-                value={column.widthPreset}
-                disabled={disabled}
-                data-testid={`studio-standings-column-width-${column.id}`}
-                onChange={(event) =>
-                  publish(
-                    updateStandingsColumn(content, column.id, {
-                      widthPreset: event.target.value as WidgetColumnWidthPreset,
-                    }),
-                  )
-                }
-              >
-                {WIDTH_PRESET_OPTIONS.map((preset) => (
-                  <option key={preset} value={preset}>
-                    {preset}
-                  </option>
-                ))}
-              </select>
-              {hasAlign(column) ? (
-                <select
-                  value={column.style?.align ?? "left"}
-                  disabled={disabled}
-                  data-testid={`studio-standings-column-align-${column.id}`}
-                  onChange={(event) =>
-                    publish(
-                      updateStandingsColumn(content, column.id, {
-                        style: { align: event.target.value as AlignOption },
-                      }),
-                    )
-                  }
-                >
-                  {ALIGN_OPTIONS.map((align) => (
-                    <option key={align} value={align}>
-                      {align}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }

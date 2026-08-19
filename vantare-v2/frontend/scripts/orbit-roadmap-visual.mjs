@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/10-roadmap");
 const port = 5200;
-const url = `http://127.0.0.1:${port}/orbit-roadmap-harness.html?orbit=1&view=roadmap`;
+const url = `http://127.0.0.1:${port}/orbit-roadmap-harness.html?view=roadmap`;
 
 const shots = [
   { name: "1920x1080", width: 1920, height: 1080, noPageScroll: true, interact: true },

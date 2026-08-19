@@ -123,7 +123,7 @@ export function orderProfiles(
 }
 
 /** Estado por paso desde la cadena activa real de la instantánea. */
-export function stepStatus(
+function stepStatus(
   chain: LauncherActiveChain | undefined,
   appId: string,
   index: number,

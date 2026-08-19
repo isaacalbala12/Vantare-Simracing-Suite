@@ -1,37 +1,29 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useI18n } from "../../i18n/I18nProvider";
-import { resolveStudioV3Text } from "./studio-v3-i18n";
-import "./overlay-studio-v3.css";
-import { openBrowserView, type BrowserViewDecision } from "./browser-view";
-import type { TelemetryRateCoordinator } from "../../overlay/core/telemetry-rate-coordinator";
-import { createWidgetDiagnosticCollector } from "../../overlay/core/widget-diagnostics";
-import type { TelemetryAdapter } from "../../overlay/transports/telemetry-adapter";
-import { StudioTelemetryProvider } from "./canvas/StudioTelemetryProvider";
-import { StudioCanvas } from "./canvas/StudioCanvas";
-import { StudioConfirmProvider } from "./components/StudioConfirmProvider";
-import { DirtyChangesDialog } from "./components/DirtyChangesDialog";
-import { InspectorSlot } from "./components/InspectorSlot";
-import { RecoveryDialog } from "./components/RecoveryDialog";
-import { ResponsivePanelControls } from "./components/ResponsivePanelControls";
-import { StudioHeader, type StudioHeaderProps } from "./components/StudioHeader";
-import { WidgetListPanel } from "./components/WidgetListPanel";
-import { createStudioRecoveryStore, type StudioRecoveryRecord } from "./state/studio-recovery";
-import { useStudioDocument } from "./state/studio-store";
-import { isOrbitEnabled } from "../orbit/orbit-flag";
-import { StudioOrbitLayout } from "./orbit/StudioOrbitLayout";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '../../i18n/I18nProvider';
+import { resolveStudioV3Text } from './studio-v3-i18n';
+import './overlay-studio-v3.css';
+import { openBrowserView, type BrowserViewDecision } from './browser-view';
+import type { TelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
+import { createWidgetDiagnosticCollector } from '../../overlay/core/widget-diagnostics';
+import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import { StudioTelemetryProvider } from './canvas/StudioTelemetryProvider';
+import { StudioConfirmProvider } from './components/StudioConfirmProvider';
+import { DirtyChangesDialog } from './components/DirtyChangesDialog';
+import { RecoveryDialog } from './components/RecoveryDialog';
+import { createStudioRecoveryStore, type StudioRecoveryRecord } from './state/studio-recovery';
+import { useStudioDocument } from './state/studio-store';
+import { StudioOrbitLayout } from './orbit/StudioOrbitLayout';
+import type { StudioProfileEntry } from './studio-profile-entry';
 
-export type OverlayStudioV3Props = StudioHeaderProps & {
+export type OverlayStudioV3Props = {
+  profiles: StudioProfileEntry[];
+  activeFile: string;
+  onRequestProfileChange: (file: string) => void;
   coordinator: TelemetryRateCoordinator;
   telemetryAdapter?: TelemetryAdapter | null;
   liveAvailable?: boolean;
-  viewportWidth?: number;
   recoveryStorage?: Storage | null;
   browserViewStudioPreview?: boolean;
-  /**
-   * Disposicion Orbit (briefing 04). Por defecto la decide el flag `hub.orbit`:
-   * con el flag apagado el Studio se pinta exactamente igual que antes.
-   */
-  orbitLayout?: boolean;
 };
 
 type RecoveryPromptState = {
@@ -44,24 +36,16 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     coordinator,
     telemetryAdapter = null,
     liveAvailable = false,
-    viewportWidth: viewportWidthProp,
     recoveryStorage: recoveryStorageProp,
     browserViewStudioPreview = false,
-    orbitLayout: orbitLayoutProp,
     onRequestProfileChange,
     activeFile,
-    ...headerProps
+    profiles,
   } = props;
-  const [orbitLayoutFlag] = useState(() => isOrbitEnabled());
-  const orbitLayout = orbitLayoutProp ?? orbitLayoutFlag;
   const { t } = useI18n();
   const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
-  const [windowViewportWidth, setWindowViewportWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 1440,
-  );
-  const viewportWidth = viewportWidthProp ?? windowViewportWidth;
   const recoveryStorage =
-    recoveryStorageProp ?? (typeof window !== "undefined" ? window.sessionStorage : null);
+    recoveryStorageProp ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);
 
   const {
@@ -71,7 +55,6 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     acceptRecovery,
     document,
     revision,
-    selectedWidgetId,
     accessNotice,
     dismissAccessNotice,
   } = useStudioDocument();
@@ -88,15 +71,6 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const browserViewDecideRef = useRef<((decision: BrowserViewDecision) => void) | null>(null);
 
   useEffect(() => {
-    if (viewportWidthProp !== undefined || typeof window === "undefined") {
-      return;
-    }
-    const updateViewportWidth = () => setWindowViewportWidth(window.innerWidth);
-    window.addEventListener("resize", updateViewportWidth);
-    return () => window.removeEventListener("resize", updateViewportWidth);
-  }, [viewportWidthProp]);
-
-  useEffect(() => {
     const profileId = document?.id;
     if (!profileId || !recoveryStorage) {
       return;
@@ -108,9 +82,12 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
 
     const store = createStudioRecoveryStore(recoveryStorage);
     const result = store.read(profileId, revision);
-    if (result.record) {
-      setRecoveryPrompt({ record: result.record, warning: result.warning });
-    }
+    if (!result.record) return;
+    const timer = window.setTimeout(
+      () => setRecoveryPrompt({ record: result.record!, warning: result.warning }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
   }, [document?.id, recoveryStorage, revision]);
 
   useEffect(() => {
@@ -120,8 +97,8 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault();
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
   const closeDirtyDialog = useCallback(() => {
@@ -160,7 +137,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     setDirtySaving(true);
     setDirtyError(null);
     const result = await save();
-    if (result.status === "saved") {
+    if (result.status === 'saved') {
       continueProfileNavigation();
       return;
     }
@@ -192,7 +169,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   }, [acceptRecovery, recoveryPrompt, recoveryStorage]);
 
   const closeBrowserViewDialog = useCallback(() => {
-    browserViewDecideRef.current?.("cancel");
+    browserViewDecideRef.current?.('cancel');
     browserViewDecideRef.current = null;
     setBrowserViewDialogOpen(false);
     setBrowserViewSaving(false);
@@ -200,7 +177,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   }, []);
 
   const handleOpenBrowserView = useCallback(async () => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
@@ -217,42 +194,35 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         }),
       save,
       open: (url) => {
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(url, '_blank', 'noopener,noreferrer');
       },
     });
 
     setBrowserViewSaving(false);
     browserViewDecideRef.current = null;
 
-    if (result === "opened" || result === "cancelled") {
+    if (result === 'opened' || result === 'cancelled') {
       setBrowserViewDialogOpen(false);
       setBrowserViewError(null);
       return;
     }
 
     setBrowserViewDialogOpen(true);
-    setBrowserViewError("studio.v3.browserView.saveFailed");
+    setBrowserViewError('studio.v3.browserView.saveFailed');
   }, [activeFile, browserViewStudioPreview, dirty, save]);
 
   const handleBrowserViewSave = useCallback(() => {
     setBrowserViewSaving(true);
     setBrowserViewError(null);
-    browserViewDecideRef.current?.("save");
+    browserViewDecideRef.current?.('save');
   }, []);
 
   return (
     <div
       data-testid="overlay-studio-v3"
-      className={orbitLayout ? "osv3-workbench osv3-workbench--orbit" : "osv3-workbench"}
-      data-orbit={orbitLayout ? "true" : undefined}
+      className="osv3-workbench osv3-workbench--orbit"
+      data-orbit="true"
     >
-      {orbitLayout ? null : (
-        <StudioHeader
-          {...headerProps}
-          activeFile={activeFile}
-          onRequestProfileChange={guardedProfileChange}
-        />
-      )}
       {accessNotice ? (
         <div
           data-testid="studio-access-notice"
@@ -270,33 +240,15 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         </div>
       ) : null}
       <StudioConfirmProvider>
-        {orbitLayout ? (
-          <StudioTelemetryProvider {...telemetryProps}>
-            <StudioOrbitLayout
-              activeFile={activeFile}
-              diagnostics={diagnostics}
-              onOpenBrowserView={() => void handleOpenBrowserView()}
-              onRequestProfileChange={guardedProfileChange}
-              profiles={headerProps.profiles}
-            />
-          </StudioTelemetryProvider>
-        ) : (
-        <ResponsivePanelControls
-          viewportWidth={viewportWidth}
-          selectedWidgetId={selectedWidgetId}
-          listPanel={<WidgetListPanel />}
-          canvasPanel={
-            <StudioTelemetryProvider {...telemetryProps}>
-              <StudioCanvas onOpenBrowserView={() => void handleOpenBrowserView()} diagnostics={diagnostics} />
-            </StudioTelemetryProvider>
-          }
-          inspectorPanel={
-            <StudioTelemetryProvider {...telemetryProps}>
-              <InspectorSlot />
-            </StudioTelemetryProvider>
-          }
-        />
-        )}
+        <StudioTelemetryProvider {...telemetryProps}>
+          <StudioOrbitLayout
+            activeFile={activeFile}
+            diagnostics={diagnostics}
+            onOpenBrowserView={() => void handleOpenBrowserView()}
+            onRequestProfileChange={guardedProfileChange}
+            profiles={profiles}
+          />
+        </StudioTelemetryProvider>
       </StudioConfirmProvider>
       <DirtyChangesDialog
         open={dirtyDialogOpen}
@@ -308,8 +260,12 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
       />
       <RecoveryDialog
         open={recoveryPrompt !== null}
-        profileName={recoveryPrompt?.record.document.name ?? document?.name ?? t("studio.v3.recovery.profileFallback")}
-        capturedAt={recoveryPrompt?.record.capturedAt ?? ""}
+        profileName={
+          recoveryPrompt?.record.document.name ??
+          document?.name ??
+          t('studio.v3.recovery.profileFallback')
+        }
+        capturedAt={recoveryPrompt?.record.capturedAt ?? ''}
         staleRevisionWarning={recoveryPrompt?.warning}
         onRecover={handleRecoveryRecover}
         onDiscard={handleRecoveryDiscard}
@@ -319,8 +275,8 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
         saving={browserViewSaving}
         errorMessage={browserViewError ? resolveStudioV3Text(browserViewError, t) : null}
         dialogTestId="studio-browser-view-dialog"
-        title={t("studio.v3.browserView.dialog.title")}
-        body={t("studio.v3.browserView.dialog.body")}
+        title={t('studio.v3.browserView.dialog.title')}
+        body={t('studio.v3.browserView.dialog.body')}
         showDiscard={false}
         onSave={handleBrowserViewSave}
         onCancel={closeBrowserViewDialog}

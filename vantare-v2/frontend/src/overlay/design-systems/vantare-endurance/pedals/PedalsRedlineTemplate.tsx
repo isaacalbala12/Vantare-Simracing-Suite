@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { PedalsViewModel } from "../../../widget-types/pedals/pedals-view-model";
 import { nextBrakePeak, shouldRevealPeak } from "./pedals-motion";
 
@@ -35,9 +35,15 @@ const RAILS = [
 export function PedalsRedlineTemplate({ model }: { model: PedalsViewModel }) {
   // Peak of the current braking event, carried across frames. A single render
   // has no history, so the mark cannot appear on a still capture.
-  const peakRef = useRef<number | null>(null);
-  peakRef.current = nextBrakePeak(peakRef.current, model.brake);
-  const brakePeak = peakRef.current;
+  const [brakeMotion, setBrakeMotion] = useState(() => ({
+    brake: model.brake,
+    peak: nextBrakePeak(null, model.brake),
+  }));
+  let brakePeak = brakeMotion.peak;
+  if (brakeMotion.brake !== model.brake) {
+    brakePeak = nextBrakePeak(brakeMotion.peak, model.brake);
+    setBrakeMotion({ brake: model.brake, peak: brakePeak });
+  }
   const showPeak = shouldRevealPeak(brakePeak, model.brake);
 
   return (

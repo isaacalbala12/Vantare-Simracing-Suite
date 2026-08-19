@@ -63,13 +63,6 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.topbar.eyebrow.roadmap": "Sorgente versionata",
   "shell.topbar.eyebrow.ajustes": "Preferenze locali",
   "shell.topbar.eyebrow.testing": "Qualità",
-  "shell.topbar.activeProfile": "Profilo attivo",
-  "shell.topbar.openOverlay": "Apri overlay",
-  "shell.topbar.stopOverlay": "Ferma overlay",
-  "shell.topbar.save": "Salva",
-  "shell.topbar.saved": "Salvato",
-  "shell.topbar.unsaved": "Modifiche non salvate",
-  "shell.topbar.noChanges": "Nessuna modifica",
 
   "shell.palette.title": "Comando di Vantare",
   "shell.palette.placeholder": "Cerca una sezione o un'azione…",
@@ -86,10 +79,8 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "Download… {{pct}}%",
   "shell.update.ready": "Installa aggiornamento",
-  "shell.update.none": "Nessun aggiornamento in sospeso.",
 
   "shell.access.unavailable": "Accesso non disponibile",
   "shell.access.requiresPlan": "Richiede il piano {{plan}} · piano attuale {{current}}",
   "shell.access.requiresPlanShort": "Richiede {{plan}}",
-  "shell.access.soon": "La Telemetria arriverà prossimamente.",
 };

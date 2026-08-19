@@ -35,7 +35,7 @@ export function isTelemetryDemoEnabled(
  * de `telemetryanalysis` publique sesiones, esta función las lee y el modo demo
  * deja de tener sentido.
  */
-export function realTelemetrySessions(): TelemetrySession[] {
+function realTelemetrySessions(): TelemetrySession[] {
   return [];
 }
 

@@ -56,6 +56,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/**
+ * Las aserciones negativas ("no se guardo nada mas") esperaban 50 ms reales,
+ * que ni cubren el debounce de 300 ms ni son deterministas. Con temporizadores
+ * falsos se adelanta el reloj muy por encima de la ventana y se vacian las
+ * microtareas, sin espera real.
+ */
+async function settleWithoutSaves(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+}
+
 describe("useInplaceAutosave", () => {
   it("saves layout commands immediately without debounce", async () => {
     const { result, save } = renderAutosave();
@@ -161,7 +173,8 @@ describe("useInplaceAutosave", () => {
     });
     await waitFor(() => expect(result.current.paused).toBe("conflict"));
     expect(save).toHaveBeenCalledTimes(1);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    vi.useFakeTimers();
+    await settleWithoutSaves();
     expect(save).toHaveBeenCalledTimes(1);
   });
 
@@ -177,7 +190,8 @@ describe("useInplaceAutosave", () => {
     act(() => {
       result.current.dispatch(layoutCommand());
     });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    vi.useFakeTimers();
+    await settleWithoutSaves();
     expect(save).toHaveBeenCalledTimes(1);
   });
 

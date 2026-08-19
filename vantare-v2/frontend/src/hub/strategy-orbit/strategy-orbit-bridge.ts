@@ -86,7 +86,7 @@ function parseStrategy(value: unknown, index: number): RosterStrategy | null {
 }
 
 /** Traduce el payload del puente; `null` si no trae un evento utilizable. */
-export function parseStrategyRoster(payload: unknown): StrategyRoster | null {
+function parseStrategyRoster(payload: unknown): StrategyRoster | null {
   if (!isRecord(payload) || !isRecord(payload.event)) return null;
   const raw = payload.event;
   const drivers = (Array.isArray(payload.drivers) ? payload.drivers : [])

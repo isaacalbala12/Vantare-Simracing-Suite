@@ -1,41 +1,34 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import type {
   SessionLayoutType,
   WidgetInstanceV3,
   WidgetLayoutV3,
-} from "../../../overlay/core/profile-document";
+} from '../../../overlay/core/profile-document';
 import {
   DEFAULT_LAYOUT_VIEWPORT,
   type LayoutViewport,
-} from "../../../overlay/core/layout-viewport";
-import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
-import type { StudioCommand } from "../state/studio-command";
+} from '../../../overlay/core/layout-viewport';
+import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
+import type { StudioCommand } from '../state/studio-command';
 import {
   applyStudioFrameLayoutPreview,
   beginStudioFramePreview,
   clearStudioFrameLayoutPreview,
   resetStudioFrameLayoutPreview,
-} from "./canvas-frame-preview";
+} from './canvas-frame-preview';
 import {
   clampRecoverableLayout,
   clientToLogical,
   type DOMRectLike,
   type Point,
-} from "./canvas-geometry";
-import { resizeWidgetLayout, type ResizeHandle } from "./canvas-resize";
-import { snapPoint, snapWidgetLayout, type SnapGuide } from "./canvas-snap";
+} from './canvas-geometry';
+import { resizeWidgetLayout, type ResizeHandle } from './canvas-resize';
+import { snapPoint, snapWidgetLayout, type SnapGuide } from './canvas-snap';
 
 export type CanvasInteraction =
-  | { kind: "idle" }
+  | { kind: 'idle' }
   | {
-      kind: "move";
+      kind: 'move';
       widgetId: string;
       pointerId: number;
       pointerOrigin: Point;
@@ -45,7 +38,7 @@ export type CanvasInteraction =
       guides: SnapGuide[];
     }
   | {
-      kind: "resize";
+      kind: 'resize';
       widgetId: string;
       pointerId: number;
       handle: ResizeHandle;
@@ -56,11 +49,11 @@ export type CanvasInteraction =
       guides: SnapGuide[];
     };
 
-type ActiveCanvasInteraction = Exclude<CanvasInteraction, { kind: "idle" }> & {
+type ActiveCanvasInteraction = Exclude<CanvasInteraction, { kind: 'idle' }> & {
   preview: WidgetLayoutV3;
 };
 
-type CanvasInteractionRef = { kind: "idle" } | ActiveCanvasInteraction;
+type CanvasInteractionRef = { kind: 'idle' } | ActiveCanvasInteraction;
 
 export type UseCanvasInteractionInput = {
   widgets: readonly WidgetInstanceV3[];
@@ -91,10 +84,7 @@ export type UseCanvasInteractionResult = {
 
 function layoutGeometryChanged(start: WidgetLayoutV3, preview: WidgetLayoutV3): boolean {
   return (
-    start.x !== preview.x
-    || start.y !== preview.y
-    || start.w !== preview.w
-    || start.h !== preview.h
+    start.x !== preview.x || start.y !== preview.y || start.w !== preview.w || start.h !== preview.h
   );
 }
 
@@ -150,7 +140,7 @@ function toLogicalPoint(
 }
 
 function toPublicInteraction(current: CanvasInteractionRef): CanvasInteraction {
-  if (current.kind === "idle") {
+  if (current.kind === 'idle') {
     return current;
   }
   const interaction = {
@@ -162,10 +152,10 @@ function toPublicInteraction(current: CanvasInteractionRef): CanvasInteraction {
     start: current.start,
     guides: current.guides,
   };
-  if (current.kind === "move") {
-    return { ...interaction, kind: "move" };
+  if (current.kind === 'move') {
+    return { ...interaction, kind: 'move' };
   }
-  return { ...interaction, kind: "resize", handle: current.handle };
+  return { ...interaction, kind: 'resize', handle: current.handle };
 }
 
 export function applyMovePreview(input: {
@@ -193,11 +183,11 @@ export function applyMovePreview(input: {
     layoutViewport: input.layoutViewport,
   });
   const layout = clampRecoverableLayout(snapped.layout, input.layoutViewport);
-  const guides = snapped.guides.filter((guide) => (
-    guide.orientation === "vertical"
+  const guides = snapped.guides.filter((guide) =>
+    guide.orientation === 'vertical'
       ? layout.x === snapped.layout.x
-      : layout.y === snapped.layout.y
-  ));
+      : layout.y === snapped.layout.y,
+  );
   return { layout, guides };
 }
 
@@ -216,14 +206,15 @@ export function applyResizePreview(input: {
     dx: input.pointerCurrent.x - input.pointerOrigin.x,
     dy: input.pointerCurrent.y - input.pointerOrigin.y,
   };
-  const resize = (delta: { dx: number; dy: number }) => resizeWidgetLayout({
-    startLayout: input.start,
-    handle: input.handle,
-    pointerDelta: delta,
-    minSize: definition.capabilities.minimumSize,
-    supportsAspectUnlock: definition.capabilities.supportsAspectUnlock,
-    resizeMode: definition.capabilities.resizeMode,
-  });
+  const resize = (delta: { dx: number; dy: number }) =>
+    resizeWidgetLayout({
+      startLayout: input.start,
+      handle: input.handle,
+      pointerDelta: delta,
+      minSize: definition.capabilities.minimumSize,
+      supportsAspectUnlock: definition.capabilities.supportsAspectUnlock,
+      resizeMode: definition.capabilities.resizeMode,
+    });
 
   const resized = resize(pointerDelta);
   if (input.disableSnap) {
@@ -233,10 +224,10 @@ export function applyResizePreview(input: {
     };
   }
 
-  const movesWest = input.handle === "w" || input.handle === "nw" || input.handle === "sw";
-  const movesEast = input.handle === "e" || input.handle === "ne" || input.handle === "se";
-  const movesNorth = input.handle === "n" || input.handle === "nw" || input.handle === "ne";
-  const movesSouth = input.handle === "s" || input.handle === "sw" || input.handle === "se";
+  const movesWest = input.handle === 'w' || input.handle === 'nw' || input.handle === 'sw';
+  const movesEast = input.handle === 'e' || input.handle === 'ne' || input.handle === 'se';
+  const movesNorth = input.handle === 'n' || input.handle === 'nw' || input.handle === 'ne';
+  const movesSouth = input.handle === 's' || input.handle === 'sw' || input.handle === 'se';
   const locksAspect = input.start.aspectLocked || !definition.capabilities.supportsAspectUnlock;
 
   const edgePoint = {
@@ -267,7 +258,7 @@ export function applyResizePreview(input: {
   const layout = clampRecoverableLayout(resize(snappedDelta), input.layoutViewport);
   const canSnapYEdge = !locksAspect || (!movesWest && !movesEast);
   const guides = snappedEdge.guides.filter((guide) => {
-    if (guide.orientation === "vertical") {
+    if (guide.orientation === 'vertical') {
       if (movesWest) {
         return layout.x === guide.position;
       }
@@ -289,8 +280,8 @@ export function applyResizePreview(input: {
 }
 
 export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanvasInteractionResult {
-  const [interaction, setInteraction] = useState<CanvasInteraction>({ kind: "idle" });
-  const interactionRef = useRef<CanvasInteractionRef>({ kind: "idle" });
+  const [interaction, setInteraction] = useState<CanvasInteraction>({ kind: 'idle' });
+  const interactionRef = useRef<CanvasInteractionRef>({ kind: 'idle' });
   const guidesFrameRef = useRef<number | null>(null);
   const inputRef = useRef({
     ...input,
@@ -326,7 +317,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
 
   const scheduleGuidesUpdate = useCallback((guides: SnapGuide[]) => {
     const current = interactionRef.current;
-    if (current.kind === "idle") {
+    if (current.kind === 'idle') {
       return;
     }
 
@@ -339,7 +330,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     guidesFrameRef.current = requestAnimationFrame(() => {
       guidesFrameRef.current = null;
       const latest = interactionRef.current;
-      if (latest.kind === "idle") {
+      if (latest.kind === 'idle') {
         return;
       }
       setInteraction(toPublicInteraction(latest));
@@ -350,62 +341,83 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
 
   const cancelInteraction = useCallback(() => {
     const current = interactionRef.current;
-    if (current.kind !== "idle") {
+    if (current.kind !== 'idle') {
       resetStudioFrameLayoutPreview(current.widgetId, current.start);
     }
     flushGuidesFrame();
-    setInteractionState({ kind: "idle" });
+    setInteractionState({ kind: 'idle' });
   }, [flushGuidesFrame, setInteractionState]);
 
   const commitInteraction = useCallback(() => {
     const current = interactionRef.current;
-    if (current.kind === "idle") {
+    if (current.kind === 'idle') {
       return;
     }
     if (!layoutGeometryChanged(current.start, current.preview)) {
       clearStudioFrameLayoutPreview(current.widgetId);
       flushGuidesFrame();
-      setInteractionState({ kind: "idle" });
+      setInteractionState({ kind: 'idle' });
       return;
     }
     const patch = buildLayoutPatch(current.start, current.preview);
     inputRef.current.dispatch({
-      type: "widget/layout",
+      type: 'widget/layout',
       session: inputRef.current.session,
       widgetIds: [current.widgetId],
       patch,
     });
     clearStudioFrameLayoutPreview(current.widgetId);
     flushGuidesFrame();
-    setInteractionState({ kind: "idle" });
+    setInteractionState({ kind: 'idle' });
   }, [flushGuidesFrame, setInteractionState]);
 
-  const updatePointer = useCallback((event: PointerEvent) => {
-    const current = interactionRef.current;
-    if (current.kind === "idle" || event.pointerId !== current.pointerId) {
-      return;
-    }
+  const updatePointer = useCallback(
+    (event: PointerEvent) => {
+      const current = interactionRef.current;
+      if (current.kind === 'idle' || event.pointerId !== current.pointerId) {
+        return;
+      }
 
-    const { widgets, sceneRef } = inputRef.current;
-    const widget = widgets.find((entry) => entry.id === current.widgetId);
-    if (!widget) {
-      cancelInteraction();
-      return;
-    }
+      const { widgets, sceneRef } = inputRef.current;
+      const widget = widgets.find((entry) => entry.id === current.widgetId);
+      if (!widget) {
+        cancelInteraction();
+        return;
+      }
 
-    const pointerCurrent = toLogicalPoint(
-      event.clientX,
-      event.clientY,
-      sceneRef,
-      current.scale,
-      current.sceneRect,
-    );
-    const siblings = siblingLayouts(widgets, current.widgetId);
-    const disableSnap = event.altKey;
+      const pointerCurrent = toLogicalPoint(
+        event.clientX,
+        event.clientY,
+        sceneRef,
+        current.scale,
+        current.sceneRect,
+      );
+      const siblings = siblingLayouts(widgets, current.widgetId);
+      const disableSnap = event.altKey;
 
-    if (current.kind === "move") {
-      const next = applyMovePreview({
+      if (current.kind === 'move') {
+        const next = applyMovePreview({
+          start: current.start,
+          pointerOrigin: current.pointerOrigin,
+          pointerCurrent,
+          siblings,
+          disableSnap,
+          layoutViewport: inputRef.current.layoutViewport,
+        });
+        interactionRef.current = {
+          ...current,
+          preview: next.layout,
+          guides: next.guides,
+        };
+        applyStudioFrameLayoutPreview(current.widgetId, next.layout);
+        scheduleGuidesUpdate(next.guides);
+        return;
+      }
+
+      const next = applyResizePreview({
+        widget,
         start: current.start,
+        handle: current.handle,
         pointerOrigin: current.pointerOrigin,
         pointerCurrent,
         siblings,
@@ -419,179 +431,172 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       };
       applyStudioFrameLayoutPreview(current.widgetId, next.layout);
       scheduleGuidesUpdate(next.guides);
-      return;
-    }
+    },
+    [cancelInteraction, scheduleGuidesUpdate],
+  );
 
-    const next = applyResizePreview({
-      widget,
-      start: current.start,
-      handle: current.handle,
-      pointerOrigin: current.pointerOrigin,
-      pointerCurrent,
-      siblings,
-      disableSnap,
-      layoutViewport: inputRef.current.layoutViewport,
-    });
-    interactionRef.current = {
-      ...current,
-      preview: next.layout,
-      guides: next.guides,
-    };
-    applyStudioFrameLayoutPreview(current.widgetId, next.layout);
-    scheduleGuidesUpdate(next.guides);
-  }, [cancelInteraction, scheduleGuidesUpdate]);
+  const endPointer = useCallback(
+    (event: PointerEvent) => {
+      const current = interactionRef.current;
+      if (current.kind === 'idle' || event.pointerId !== current.pointerId) {
+        return;
+      }
+      flushGuidesFrame();
+      commitInteraction();
+    },
+    [commitInteraction, flushGuidesFrame],
+  );
 
-  const endPointer = useCallback((event: PointerEvent) => {
-    const current = interactionRef.current;
-    if (current.kind === "idle" || event.pointerId !== current.pointerId) {
-      return;
-    }
-    flushGuidesFrame();
-    commitInteraction();
-  }, [commitInteraction, flushGuidesFrame]);
-
-  const onLostPointerCapture = useCallback((event: PointerEvent) => {
-    const current = interactionRef.current;
-    if (current.kind === "idle" || event.pointerId !== current.pointerId) {
-      return;
-    }
-    cancelInteraction();
-  }, [cancelInteraction]);
+  const onLostPointerCapture = useCallback(
+    (event: PointerEvent) => {
+      const current = interactionRef.current;
+      if (current.kind === 'idle' || event.pointerId !== current.pointerId) {
+        return;
+      }
+      cancelInteraction();
+    },
+    [cancelInteraction],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      if (event.key !== 'Escape') {
         return;
       }
-      if (interactionRef.current.kind !== "idle") {
+      if (interactionRef.current.kind !== 'idle') {
         event.preventDefault();
         cancelInteraction();
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("pointermove", updatePointer);
-    window.addEventListener("pointerup", endPointer);
-    window.addEventListener("pointercancel", onLostPointerCapture);
-    window.addEventListener("lostpointercapture", onLostPointerCapture);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('pointermove', updatePointer);
+    window.addEventListener('pointerup', endPointer);
+    window.addEventListener('pointercancel', onLostPointerCapture);
+    window.addEventListener('lostpointercapture', onLostPointerCapture);
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("pointermove", updatePointer);
-      window.removeEventListener("pointerup", endPointer);
-      window.removeEventListener("pointercancel", onLostPointerCapture);
-      window.removeEventListener("lostpointercapture", onLostPointerCapture);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('pointermove', updatePointer);
+      window.removeEventListener('pointerup', endPointer);
+      window.removeEventListener('pointercancel', onLostPointerCapture);
+      window.removeEventListener('lostpointercapture', onLostPointerCapture);
     };
   }, [cancelInteraction, endPointer, onLostPointerCapture, updatePointer]);
 
-  const beginMove = useCallback((widgetId: string, event: React.PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) {
-      return;
-    }
-    const widget = inputRef.current.widgets.find((entry) => entry.id === widgetId);
-    if (!widget) {
-      return;
-    }
-    if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
-      inputRef.current.onLayoutBlocked?.();
-      return;
-    }
+  const beginMove = useCallback(
+    (widgetId: string, event: React.PointerEvent<HTMLElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const widget = inputRef.current.widgets.find((entry) => entry.id === widgetId);
+      if (!widget) {
+        return;
+      }
+      if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
+        inputRef.current.onLayoutBlocked?.();
+        return;
+      }
 
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
 
-    const sceneRect = getSceneRect(inputRef.current.sceneRef);
-    if (!sceneRect) {
-      return;
-    }
+      const sceneRect = getSceneRect(inputRef.current.sceneRef);
+      if (!sceneRect) {
+        return;
+      }
 
-    const scale = inputRef.current.scale;
-    const pointerOrigin = toLogicalPoint(
-      event.clientX,
-      event.clientY,
-      inputRef.current.sceneRef,
-      scale,
-      sceneRect,
-    );
-    const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "move", start);
-    applyStudioFrameLayoutPreview(widgetId, start);
+      const scale = inputRef.current.scale;
+      const pointerOrigin = toLogicalPoint(
+        event.clientX,
+        event.clientY,
+        inputRef.current.sceneRef,
+        scale,
+        sceneRect,
+      );
+      const start = structuredClone(widget.layout);
+      beginStudioFramePreview(widgetId, 'move', start);
+      applyStudioFrameLayoutPreview(widgetId, start);
 
-    setInteractionState({
-      kind: "move",
-      widgetId,
-      pointerId: event.pointerId,
-      pointerOrigin,
-      sceneRect,
-      scale,
-      start,
-      preview: start,
-      guides: [],
-    });
-    inputRef.current.selectWidget(widgetId);
-  }, [setInteractionState]);
+      setInteractionState({
+        kind: 'move',
+        widgetId,
+        pointerId: event.pointerId,
+        pointerOrigin,
+        sceneRect,
+        scale,
+        start,
+        preview: start,
+        guides: [],
+      });
+      inputRef.current.selectWidget(widgetId);
+    },
+    [setInteractionState],
+  );
 
-  const beginResize = useCallback((
-    widgetId: string,
-    handle: ResizeHandle,
-    event: React.PointerEvent<HTMLElement>,
-  ) => {
-    if (event.button !== 0) {
-      return;
-    }
-    const widget = inputRef.current.widgets.find((entry) => entry.id === widgetId);
-    if (!widget) {
-      return;
-    }
-    if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
-      inputRef.current.onLayoutBlocked?.();
-      return;
-    }
+  const beginResize = useCallback(
+    (widgetId: string, handle: ResizeHandle, event: React.PointerEvent<HTMLElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const widget = inputRef.current.widgets.find((entry) => entry.id === widgetId);
+      if (!widget) {
+        return;
+      }
+      if (inputRef.current.canMutateLayout && !inputRef.current.canMutateLayout(widget)) {
+        inputRef.current.onLayoutBlocked?.();
+        return;
+      }
 
-    event.stopPropagation();
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+      event.stopPropagation();
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
 
-    const sceneRect = getSceneRect(inputRef.current.sceneRef);
-    if (!sceneRect) {
-      return;
-    }
+      const sceneRect = getSceneRect(inputRef.current.sceneRef);
+      if (!sceneRect) {
+        return;
+      }
 
-    const scale = inputRef.current.scale;
-    const pointerOrigin = toLogicalPoint(
-      event.clientX,
-      event.clientY,
-      inputRef.current.sceneRef,
-      scale,
-      sceneRect,
-    );
-    const start = structuredClone(widget.layout);
-    beginStudioFramePreview(widgetId, "resize", start);
-    applyStudioFrameLayoutPreview(widgetId, start);
+      const scale = inputRef.current.scale;
+      const pointerOrigin = toLogicalPoint(
+        event.clientX,
+        event.clientY,
+        inputRef.current.sceneRef,
+        scale,
+        sceneRect,
+      );
+      const start = structuredClone(widget.layout);
+      beginStudioFramePreview(widgetId, 'resize', start);
+      applyStudioFrameLayoutPreview(widgetId, start);
 
-    setInteractionState({
-      kind: "resize",
-      widgetId,
-      pointerId: event.pointerId,
-      handle,
-      pointerOrigin,
-      sceneRect,
-      scale,
-      start,
-      preview: start,
-      guides: [],
-    });
-    inputRef.current.selectWidget(widgetId);
-  }, [setInteractionState]);
+      setInteractionState({
+        kind: 'resize',
+        widgetId,
+        pointerId: event.pointerId,
+        handle,
+        pointerOrigin,
+        sceneRect,
+        scale,
+        start,
+        preview: start,
+        guides: [],
+      });
+      inputRef.current.selectWidget(widgetId);
+    },
+    [setInteractionState],
+  );
 
-  const resolveLayout = useCallback((widget: WidgetInstanceV3): WidgetLayoutV3 => widget.layout, []);
+  const resolveLayout = useCallback(
+    (widget: WidgetInstanceV3): WidgetLayoutV3 => widget.layout,
+    [],
+  );
 
-  const isWidgetPreviewActive = useCallback((widgetId: string): boolean => {
-    const current = interactionRef.current;
-    return current.kind !== "idle" && current.widgetId === widgetId;
-  }, []);
+  const isWidgetPreviewActive = useCallback(
+    (widgetId: string): boolean => interaction.kind !== 'idle' && interaction.widgetId === widgetId,
+    [interaction],
+  );
 
-  const guides = interaction.kind === "idle" ? [] : interaction.guides;
+  const guides = interaction.kind === 'idle' ? [] : interaction.guides;
 
   return {
     interaction,

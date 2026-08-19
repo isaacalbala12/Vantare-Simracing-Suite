@@ -15,11 +15,49 @@ Item {
     property string remainingText: ""
     property string lapText: ""
     property bool finalMinutes: false
+    property bool reducedMotion: false
 
     implicitWidth: tokens.panelWidth
     implicitHeight: panel.implicitHeight
 
     Theme.RedlineTokens { id: tokens }
+
+    function displayItems() {
+        var rows = rowModel || []
+        if (!battle)
+            return rows.map(function(row) { return { kind: "row", row: row } })
+        var aheadIndex = battle.aheadIndex === undefined ? -1 : Number(battle.aheadIndex)
+        if (aheadIndex < 0 && battle.aheadId) {
+            for (var i = 0; i < rows.length; i++) {
+                if (String(rows[i].id) === String(battle.aheadId)) {
+                    aheadIndex = i
+                    break
+                }
+            }
+        }
+        if (aheadIndex < 0 || aheadIndex + 1 >= rows.length)
+            return rows.map(function(row) { return { kind: "row", row: row } })
+        var result = []
+        for (var index = 0; index < rows.length; index++) {
+            if (index === aheadIndex) {
+                result.push({ kind: "battle", ahead: rows[index], behind: rows[index + 1] })
+                index++
+            } else {
+                result.push({ kind: "row", row: rows[index] })
+            }
+        }
+        return result
+    }
+
+    function activeRowCount() {
+        var count = 0
+        var rows = rowModel || []
+        for (var index = 0; index < rows.length; index++) {
+            if (!rows[index].retiring)
+                count++
+        }
+        return count
+    }
 
     Common.Panel {
         id: panel
@@ -27,44 +65,34 @@ Item {
         height: implicitHeight
 
         Column {
-            id: content
             width: parent.width
 
             Item {
                 width: parent.width
-                height: root.showSessionHeader ? 38 : 0
+                height: root.showSessionHeader ? sessionRow.implicitHeight + 14 : 0
                 visible: root.showSessionHeader
 
                 Row {
-                    anchors.left: parent.left; anchors.leftMargin: 8
-                    anchors.verticalCenter: parent.verticalCenter
+                    id: sessionRow
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8
+                    anchors.top: parent.top
+                    anchors.topMargin: 4
                     spacing: 22
 
-                    Column {
-                        spacing: 1
-                        Text {
-                            text: root.sessionLabel
-                            color: tokens.accent
-                            font.pixelSize: 10; font.weight: Font.Bold
-                        }
-                        Text {
-                            id: remaining
-                            text: root.remainingText
-                            color: root.finalMinutes ? tokens.accentHot : tokens.text
-                            font.pixelSize: 13; font.weight: Font.Bold
-                            SequentialAnimation on opacity {
-                                running: root.finalMinutes
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.86; duration: tokens.finalMinutesMs / 2; easing.type: Easing.InOutQuad }
-                                NumberAnimation { to: 1.0; duration: tokens.finalMinutesMs / 2; easing.type: Easing.InOutQuad }
-                            }
-                        }
+                    Common.Slot {
+                        objectName: "sessionSlot"
+                        label: root.sessionLabel
+                        value: root.remainingText
+                        accent: true
+                        alert: root.finalMinutes
+                        breathing: root.finalMinutes
                     }
-                    Column {
+                    Common.Slot {
+                        objectName: "lapSlot"
                         visible: root.lapText.length > 0
-                        spacing: 1
-                        Text { text: "LAP"; color: tokens.textDim; font.pixelSize: 10; font.weight: Font.Bold }
-                        Text { text: root.lapText; color: tokens.text; font.pixelSize: 13; font.weight: Font.Bold }
+                        label: "LAP"
+                        value: root.lapText
                     }
                 }
             }
@@ -74,70 +102,85 @@ Item {
                 height: root.vehicleClass.length > 0 ? 30 : 0
                 visible: root.vehicleClass.length > 0
                 Rectangle {
+                    objectName: "classChip"
                     anchors.left: parent.left; anchors.leftMargin: 6
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.top: parent.top; anchors.topMargin: 2
                     width: classLabel.implicitWidth + 16; height: 19; radius: 5
                     color: "transparent"; border.width: 1.5; border.color: tokens.accent
                     Text {
                         id: classLabel; anchors.centerIn: parent
                         text: root.vehicleClass.toUpperCase()
-                        color: tokens.text; font.pixelSize: 10; font.weight: Font.Bold
+                        color: tokens.text; font.pixelSize: 10; font.weight: Font.ExtraBold
                     }
                 }
                 Text {
+                    objectName: "classCount"
                     anchors.right: parent.right; anchors.rightMargin: 6
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.rowModel ? root.rowModel.length : 0
+                    anchors.top: parent.top; anchors.topMargin: 2
+                    text: root.activeRowCount()
                     color: tokens.textDim; font.pixelSize: 10; font.weight: Font.Bold
                 }
             }
 
-            Item {
+            Column {
+                id: visualRows
                 width: parent.width
-                height: rowsColumn.height
 
-                Battle {
-                    visible: root.battle !== null && root.battle !== undefined
-                    x: -2
-                    y: visible ? Number(root.battle.aheadIndex || 0) * tokens.rowStride : 0
-                    width: parent.width + 4
-                    stage: visible && root.battle.stage ? root.battle.stage : "seam"
-                    intervalSeconds: visible ? Number(root.battle.intervalSeconds || 0) : 0
-                }
-
-                Column {
-                    id: rowsColumn
-                    width: parent.width
-                    Repeater {
-                        model: root.rowModel || []
-                        delegate: StandingsRow {
-                            required property int index
-                            required property var modelData
-
-                            width: rowsColumn.width
-                            rowIndex: index
-                            rowId: String(modelData.id || "")
-                            classPosition: Number(modelData.classPosition || index + 1)
-                            driverNumber: String(modelData.driverNumber || "")
-                            driverName: String(modelData.driverName || "")
-                            bestLapText: String(modelData.bestLapText || "—")
-                            gapText: String(modelData.gapText || "—")
-                            isPlayer: Boolean(modelData.isPlayer)
-                            isClassLeader: Boolean(modelData.isClassLeader || index === 0)
-                            inPit: Boolean(modelData.inPit)
-                            isSessionBest: Boolean(modelData.isSessionBest)
-                            tireCompound: String(modelData.tireCompound || "")
-                            tireLeaving: Boolean(modelData.tireLeaving)
-                            battleCharge: modelData.battleCharge === undefined ? -1 : Number(modelData.battleCharge)
-                            positionDelta: Number(modelData.positionDelta || 0)
-                            flipOffset: Number(modelData.flipOffset || 0)
-                            overtakeDirection: String(modelData.overtakeDirection || "")
-                            overtakeIndex: Number(modelData.overtakeIndex || 0)
-                            retiring: Boolean(modelData.retiring)
-                        }
+                Repeater {
+                    model: root.displayItems()
+                    delegate: Loader {
+                        required property var modelData
+                        width: visualRows.width
+                        sourceComponent: modelData.kind === "battle" ? battleDelegate : rowDelegate
+                        onLoaded: item.itemData = modelData
                     }
                 }
             }
+        }
+    }
+
+    Component {
+        id: rowDelegate
+        StandingsRow {
+            property var itemData: ({})
+            width: visualRows.width
+            rowIndex: Number(itemData.row.rowIndex || 0)
+            rowId: String(itemData.row.id || "")
+            classPosition: Number(itemData.row.classPosition || rowIndex + 1)
+            driverNumber: String(itemData.row.driverNumber || "")
+            driverName: String(itemData.row.driverName || "")
+            bestLapText: String(itemData.row.bestLapText || "—")
+            gapText: String(itemData.row.gapText || "—")
+            isPlayer: Boolean(itemData.row.isPlayer)
+            isClassLeader: itemData.row.isClassLeader === undefined
+                ? rowIndex === 0 : Boolean(itemData.row.isClassLeader)
+            inPit: Boolean(itemData.row.inPit)
+            isSessionBest: Boolean(itemData.row.isSessionBest)
+            tireCompound: String(itemData.row.tireReveal || "")
+            tireLeaving: Boolean(itemData.row.tireLeaving)
+            battleCharge: itemData.row.battleCharge === undefined ? -1 : Number(itemData.row.battleCharge)
+            positionDelta: Number(itemData.row.positionDelta || 0)
+            flipOffset: Number(itemData.row.flipOffset || 0)
+            overtakeDirection: String(itemData.row.overtakeDirection || "")
+            overtakeIndex: Number(itemData.row.overtakeIndex || 0)
+            retiring: Boolean(itemData.row.retiring)
+            entering: Boolean(itemData.row.entering)
+            hot: Boolean(itemData.row.hot)
+            reducedMotion: root.reducedMotion
+        }
+    }
+
+    Component {
+        id: battleDelegate
+        Battle {
+            property var itemData: ({})
+            width: visualRows.width + 4
+            x: -2
+            aheadRow: itemData.ahead
+            behindRow: itemData.behind
+            stage: String(root.battle.stage || "seam")
+            intervalSeconds: Number(root.battle.intervalSeconds || 0)
+            reducedMotion: root.reducedMotion
         }
     }
 }

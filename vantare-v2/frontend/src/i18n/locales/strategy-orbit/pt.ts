@@ -169,6 +169,16 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.picker.series": "A partir de um evento",
   "strategy.picker.seriesHint": "Escolhe uma série do calendário e a partida, a duração e a classe já vêm preenchidas.",
 
+  "strategy.recommended.eyebrow": "Do calendário",
+  "strategy.recommended.title": "Eventos recomendados",
+  "strategy.recommended.meta.special": "datas especiais do calendário",
+  "strategy.recommended.meta.weekly": "séries semanais · próxima partida",
+  "strategy.recommended.plan": "Planear",
+  "strategy.recommended.planName": "Planear {{name}}",
+  "strategy.recommended.emptyTitle": "Sem eventos no calendário",
+  "strategy.recommended.empty":
+    "O calendário não traz nenhuma data especial nem nenhuma série semanal com partida à frente. Cria o teu próprio evento acima.",
+
   "strategy.form.title": "Criar a minha estratégia",
   "strategy.form.editTitle": "Informação do evento",
   "strategy.form.meta": "tudo pode mudar depois",

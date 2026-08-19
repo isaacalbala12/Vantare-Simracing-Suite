@@ -169,6 +169,16 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.picker.series": "Da un evento",
   "strategy.picker.seriesHint": "Scegli una serie del calendario: partenza, durata e classe arrivano già compilate.",
 
+  "strategy.recommended.eyebrow": "Dal calendario",
+  "strategy.recommended.title": "Eventi consigliati",
+  "strategy.recommended.meta.special": "date speciali del calendario",
+  "strategy.recommended.meta.weekly": "serie settimanali · prossima partenza",
+  "strategy.recommended.plan": "Pianifica",
+  "strategy.recommended.planName": "Pianifica {{name}}",
+  "strategy.recommended.emptyTitle": "Nessun evento nel calendario",
+  "strategy.recommended.empty":
+    "Il calendario non ha nessuna data speciale né nessuna serie settimanale con una partenza davanti. Crea il tuo evento qui sopra.",
+
   "strategy.form.title": "Creare la mia strategia",
   "strategy.form.editTitle": "Informazioni dell'evento",
   "strategy.form.meta": "tutto si può cambiare dopo",

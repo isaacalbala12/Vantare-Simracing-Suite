@@ -71,6 +71,10 @@ import {
   type StrategyEventRecord,
   type StrategyEventsState,
 } from "./strategy-events-store";
+import {
+  buildRecommendedEvents,
+  type RecommendedEvent,
+} from "./strategy-recommended";
 import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
   addAvailability,
@@ -723,8 +727,16 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
   }, [commit, eventId, form, store.events, t, toast]);
 
+  /**
+   * Crea el evento desde una salida del calendario. Acepta tanto una salida de
+   * serie (`RaceStart`) como una fila recomendada: es la misma acción y el
+   * mismo constructor del dominio, no una copia con otras reglas.
+   */
   const createFromSeries = useCallback(
-    (start: RaceStart) => {
+    (start: Pick<RaceStart, "seriesId" | "name" | "track" | "at"> & {
+      vehicleClass?: string;
+      durationMin?: number;
+    }) => {
       const created = createEventFromSeries(store.events, start, me(), {
         strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
         strategyNote: t("strategy.cards.newNote"),
@@ -796,6 +808,30 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     const rest = calendar.starts.filter((start) => !start.followed);
     return [...followed, ...rest].slice(0, 10);
   }, [calendar.starts]);
+
+  /**
+   * Eventos recomendados del estado inicial: especiales del calendario y, si no
+   * hay ninguno, las series semanales con su próxima salida (`strategy-recommended`).
+   */
+  const recommended = useMemo(
+    () => buildRecommendedEvents(calendar.calendar, calendar.starts, new Date()),
+    [calendar.calendar, calendar.starts],
+  );
+
+  /** Subtítulo de una fila recomendada: solo lo que el calendario publica. */
+  const recommendedSubtitle = useCallback(
+    (row: RecommendedEvent) =>
+      [
+        row.track,
+        row.vehicleClass || row.note,
+        row.durationMin > 0
+          ? formatMessage(t("strategy.chip.duration"), { min: row.durationMin })
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    [t],
+  );
 
   const context = (
     <div className="orbit-strategy__context">
@@ -1117,10 +1153,10 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         {form ? eventForm : (
+        <div className="orbit-strategy__empty-stack">
         <Surface
           aria-label={t("strategy.picker.title")}
           data-testid="orbit-strategy-empty"
-          fill
           meta={t("strategy.picker.meta")}
           title={t("strategy.picker.title")}
         >
@@ -1148,7 +1184,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           </div>
 
           {path === "series" ? (
-            <div className="orbit-list" data-testid="orbit-strategy-series">
+            <div className="orbit-list orbit-strategy__series-list" data-testid="orbit-strategy-series">
               {seriesOptions.length === 0 ? (
                 <Note title={t("strategy.empty.noneTitle")}>{t("strategy.empty.none")}</Note>
               ) : (
@@ -1169,6 +1205,52 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             </div>
           ) : null}
         </Surface>
+
+        {/* El hueco bajo las dos tarjetas lo llena el calendario real: los
+            especiales si los hay, y si no las semanales (briefing 07, D-R3-E-1). */}
+        <Surface
+          aria-label={t("strategy.recommended.title")}
+          data-testid="orbit-strategy-recommended"
+          fill
+          meta={
+            recommended.kind === "none"
+              ? undefined
+              : t(`strategy.recommended.meta.${recommended.kind}`)
+          }
+          title={t("strategy.recommended.title")}
+        >
+          <span className="orbit-eyebrow">{t("strategy.recommended.eyebrow")}</span>
+          {recommended.rows.length === 0 ? (
+            <Note title={t("strategy.recommended.emptyTitle")}>
+              {t("strategy.recommended.empty")}
+            </Note>
+          ) : (
+            <div className="orbit-list orbit-strategy__rec" data-testid="orbit-strategy-recommended-list">
+              {recommended.rows.map((row) => (
+                <div className="orbit-strategy__rec-row" key={row.key}>
+                  <ListRow
+                    onClick={() => createFromSeries(row)}
+                    subtitle={recommendedSubtitle(row)}
+                    title={row.name}
+                    trailing={<span className="orbit-when">{formatStartTime(row.at)}</span>}
+                  />
+                  <Button
+                    aria-label={formatMessage(t("strategy.recommended.planName"), {
+                      name: row.name,
+                    })}
+                    data-testid={`orbit-strategy-plan-${row.seriesId}`}
+                    onClick={() => createFromSeries(row)}
+                    size="sm"
+                    variant="primary"
+                  >
+                    {t("strategy.recommended.plan")}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Surface>
+        </div>
         )}
       </div>
     );

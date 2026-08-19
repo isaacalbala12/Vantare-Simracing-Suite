@@ -682,6 +682,50 @@
   line-height: 1.5;
 }
 
+/* Selector + eventos recomendados: el selector mide lo que ocupa y la lista se
+   queda el resto con su propio scroll, así la página nunca hace el suyo. */
+
+.orbit-strategy__empty-stack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  min-height: 0;
+}
+
+.orbit-strategy__empty-stack > .orbit-surface:first-child {
+  flex: none;
+}
+
+/* Diez series no pueden empujar la lista recomendada fuera de la pantalla. */
+.orbit-strategy__series-list {
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.orbit-strategy__rec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+/* La fila entera planifica; el botón repite la acción con nombre explícito. */
+.orbit-strategy__rec-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-strategy__rec-row > .orbit-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-strategy__rec-row > .orbit-btn {
+  flex: none;
+}
+
 /* ------------------------------------------------- FORMULARIO DEL EVENTO */
 
 .orbit-event-form {

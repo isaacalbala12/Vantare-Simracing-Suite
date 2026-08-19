@@ -21,9 +21,11 @@ vi.mock("@wailsio/runtime", () => ({
 
 /** Salidas del calendario real que ve la pantalla; cada prueba pone las suyas. */
 const starts: unknown[] = [];
+/** Calendario completo (los especiales viven en `events`); mutable por prueba. */
+const calendarRef: { current: unknown } = { current: null };
 
 vi.mock("../orbit/use-calendar-starts", () => ({
-  useCalendarStarts: () => ({ calendar: null, starts, target: null }),
+  useCalendarStarts: () => ({ calendar: calendarRef.current, starts, target: null }),
 }));
 
 const SPA_START = {
@@ -38,6 +40,20 @@ const SPA_START = {
   durationMin: 45,
   at: new Date("2030-01-01T14:00:00Z"),
   followed: true,
+};
+
+const WEEKLY_START = {
+  seriesId: "weekly-endurance",
+  name: "LMU Weekly Endurance",
+  track: "Le Mans",
+  tier: "weekly",
+  licenseLabel: "",
+  note: "Cada semana",
+  intervalMin: 10080,
+  vehicleClass: "LMP2",
+  durationMin: 90,
+  at: new Date("2030-01-05T18:00:00Z"),
+  followed: false,
 };
 
 /** Cliente en memoria del editor real: mismos comandos, sin backend. */
@@ -112,6 +128,7 @@ async function mounted() {
 beforeEach(() => {
   window.localStorage.clear();
   starts.length = 0;
+  calendarRef.current = null;
 });
 
 afterEach(() => {
@@ -406,6 +423,65 @@ describe("StrategyOrbitPage · estado inicial", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("GT3 Sprint Series");
     expect(screen.getAllByText("GT3").length).toBeGreaterThan(0);
     expect(screen.getByText(/45 min/)).toBeTruthy();
+  });
+
+  it("sin especiales ni semanales la lista recomendada lo dice y no inventa filas", async () => {
+    starts.push(SPA_START); // `advanced`: no es semanal, no cuenta.
+    mount(null);
+
+    const block = await screen.findByTestId("orbit-strategy-recommended");
+    expect(block.textContent).toContain("Eventos recomendados");
+    expect(block.textContent).toContain("Sin eventos en el calendario");
+    expect(screen.queryByTestId("orbit-strategy-recommended-list")).toBeNull();
+  });
+
+  it("con especiales en el calendario los recomienda y «Planificar» crea el evento", async () => {
+    calendarRef.current = {
+      events: [
+        {
+          id: "spa-24h",
+          title: "24 Horas de Spa",
+          sim: "LMU",
+          track: "Spa-Francorchamps",
+          series: "Special Events",
+          sessionLabel: "",
+          startTime: "2030-07-27T14:00:00Z",
+          durationMin: 1440,
+          registrationUrl: "",
+          source: "test",
+          notes: "",
+        },
+      ],
+    };
+    starts.push(WEEKLY_START); // Hay semanal, pero el especial manda.
+    mount(null);
+
+    const list = await screen.findByTestId("orbit-strategy-recommended-list");
+    expect(list.textContent).toContain("24 Horas de Spa");
+    expect(list.textContent).toContain("Spa-Francorchamps");
+    expect(list.textContent).not.toContain("LMU Weekly Endurance");
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-plan-Special Events"));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("24 Horas de Spa");
+  });
+
+  it("sin especiales recomienda las semanales con su próxima salida", async () => {
+    calendarRef.current = { events: [] };
+    starts.push(WEEKLY_START);
+    mount(null);
+
+    const list = await screen.findByTestId("orbit-strategy-recommended-list");
+    expect(list.textContent).toContain("LMU Weekly Endurance");
+    expect(list.textContent).toContain("LMP2");
+    expect(list.textContent).toContain("90 min");
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-plan-weekly-endurance"));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("LMU Weekly Endurance");
+    expect(screen.getAllByText("LMP2").length).toBeGreaterThan(0);
   });
 
   it("el evento se guarda y vuelve al recargar la pantalla", async () => {

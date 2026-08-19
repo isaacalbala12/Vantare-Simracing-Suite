@@ -170,6 +170,16 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.picker.series": "Desde un evento",
   "strategy.picker.seriesHint": "Elige una serie del calendario y la salida, la duración y la clase ya vienen puestas.",
 
+  "strategy.recommended.eyebrow": "Del calendario",
+  "strategy.recommended.title": "Eventos recomendados",
+  "strategy.recommended.meta.special": "citas especiales del calendario",
+  "strategy.recommended.meta.weekly": "series semanales · próxima salida",
+  "strategy.recommended.plan": "Planificar",
+  "strategy.recommended.planName": "Planificar {{name}}",
+  "strategy.recommended.emptyTitle": "Sin eventos en el calendario",
+  "strategy.recommended.empty":
+    "El calendario no trae ninguna cita especial ni ninguna serie semanal con salida por delante. Crea tu propio evento arriba.",
+
   "strategy.form.title": "Crear mi estrategia",
   "strategy.form.editTitle": "Información del evento",
   "strategy.form.meta": "todo se puede cambiar después",

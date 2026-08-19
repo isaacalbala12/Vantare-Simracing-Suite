@@ -530,3 +530,13 @@ El rótulo pasa a vivir en su propia caja (`.orbit-tl__block-label`) con `overfl
 **Decisión.** El bloque baja de 32 a 24 de alto (centrado en la fila de 48), toma `--orbit-radius-chip` en vez del 7 suelto y separa 2 px de su vecino. La separación se pinta con `border-right: 2px solid transparent` y `background-clip: padding-box` en lugar de restar píxeles al ancho: el ancho del bloque sigue siendo el porcentaje exacto del `spanMin`, que es lo que hace que la posición en el eje sea verdad y lo que los tests del kit comprueban.
 
 Los estados dejan de ser solo sombra: `hover`/`focus` añaden un anillo interior claro y el seleccionado un anillo carmín de 2 px, ambos como `box-shadow: inset` para no mover el bloque un píxel al entrar y salir. El contraste del rótulo lo declara el consumidor con `ink` (`dark` por defecto, `light` para fondos oscuros) en vez de que el kit adivine la luminancia de un color que le llega como variable CSS: los cuatro `TIER_COLOR` de Carreras son claros y van con tinta oscura, muy por encima del 4.5:1 de AA.
+## D-R3-E-1 · El estado inicial de Estrategia recomienda eventos reales, no deja un hueco
+**Decisión.** Bajo las dos tarjetas de «Empieza tu estrategia» quedaba media pantalla vacía. La llena una `Surface` «Eventos recomendados» alimentada por el calendario real, con dos niveles y ninguno inventado (`hub/strategy-orbit/strategy-recommended.ts`):
+
+1. **Especiales** — `calendar.events`, las citas con fecha propia. Si hay alguna por delante, manda.
+2. **Semanales** — si no hay ninguna especial, las series de tier `weekly` con su próxima salida, una fila por serie.
+
+Cada fila lleva circuito, clase (o serie), duración y hora, y un botón «Planificar» que llama a `createEventFromSeries`, **la misma acción del camino «Desde un evento»**: no hay una segunda vía de creación con otras reglas. La fila entera también planifica; el botón repite la acción con nombre accesible explícito porque un `ListRow` es ya un `<button>` y anidar otro sería HTML inválido.
+
+Sin especiales ni semanales la lista no se rellena con nada: una `Note` dice que el calendario no trae ninguna de las dos y remite a crear el evento propio. Para que la lista de series del camino «Desde un evento» no empuje la recomendación fuera de la pantalla, esa lista gana un tope de altura con scroll propio; la página sigue sin hacer el suyo.
+

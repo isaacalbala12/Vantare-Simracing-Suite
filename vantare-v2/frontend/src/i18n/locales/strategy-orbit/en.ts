@@ -169,6 +169,16 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.picker.series": "From an event",
   "strategy.picker.seriesHint": "Pick a series on the calendar and the start, duration and class come filled in.",
 
+  "strategy.recommended.eyebrow": "From the calendar",
+  "strategy.recommended.title": "Recommended events",
+  "strategy.recommended.meta.special": "special dates on the calendar",
+  "strategy.recommended.meta.weekly": "weekly series · next start",
+  "strategy.recommended.plan": "Plan it",
+  "strategy.recommended.planName": "Plan {{name}}",
+  "strategy.recommended.emptyTitle": "No events on the calendar",
+  "strategy.recommended.empty":
+    "The calendar has no special date and no weekly series with a start ahead. Build your own event above.",
+
   "strategy.form.title": "Build my own strategy",
   "strategy.form.editTitle": "Event information",
   "strategy.form.meta": "everything can be changed later",

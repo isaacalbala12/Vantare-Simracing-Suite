@@ -250,6 +250,8 @@ try {
     if (pathsScroll.nativeTitles !== 0) {
       throw new Error(`${viewport.name}: el selector usa \`title\` nativo`);
     }
+    // El hueco bajo las dos tarjetas lo llena la lista recomendada (D-R3-E-1).
+    await page.getByTestId("orbit-strategy-recommended").waitFor();
     // El camino «Desde un evento» lista las series reales del calendario.
     await page.getByTestId("orbit-strategy-path-series").click();
     await page.getByTestId("orbit-strategy-series").waitFor();

@@ -257,6 +257,12 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
 		return true
 	}
+	// 2026-08-19: F6.1 defines the reviewed Overlay v2 wire contract before
+	// F6.2 connects its first builder. Remove or narrow this staged exception
+	// as soon as the production projection root exists.
+	if symbol.packagePath == "internal/telemetry/projection/overlayv2" {
+		return true
+	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.
 	_, allowed := wiringGuardExistingContractBaseline[symbol.packagePath+"."+symbol.name]

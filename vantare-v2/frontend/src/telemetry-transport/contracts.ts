@@ -1,21 +1,35 @@
+import type {
+  EventKind,
+  FactEnvelope,
+  JSONObject,
+  JSONValue,
+  ProductID,
+  ProjectionEnvelope,
+  StatusEnvelope,
+  StatusState,
+  TransportEvent,
+} from "../generated/telemetry";
+
+export type {
+  EventKind,
+  FactEnvelope,
+  JSONObject,
+  JSONValue,
+  ProductID,
+  ProjectionEnvelope,
+  SnapshotKind,
+  StatusEnvelope,
+  StatusPayload,
+  StatusState,
+  TransportEvent,
+} from "../generated/telemetry";
+
 export const TELEMETRY_PRODUCTS = [
   "overlay",
   "engineer",
   "strategy",
   "analysis",
 ] as const;
-
-export type ProductID = (typeof TELEMETRY_PRODUCTS)[number];
-export type SnapshotKind = "full";
-export type EventKind = "projection" | "status" | "fact";
-export type JSONValue =
-  | null
-  | boolean
-  | number
-  | string
-  | JSONValue[]
-  | { [key: string]: JSONValue };
-export type JSONObject = { [key: string]: JSONValue };
 
 export const MAX_PAYLOAD_BYTES = 256 * 1024;
 export const PROJECTION_VERSION = 1;
@@ -30,45 +44,6 @@ export const TELEMETRY_STATUS_STATES = [
   "error",
   "stopping",
 ] as const;
-
-export type StatusState = (typeof TELEMETRY_STATUS_STATES)[number];
-
-export type ProjectionEnvelope = {
-  product: ProductID;
-  projectionVersion: number;
-  epoch: number;
-  sequence: number;
-  kind: SnapshotKind;
-  capturedAt: string;
-  statusRevision: number;
-  payload: JSONObject;
-};
-
-export type StatusEnvelope = {
-  product: ProductID;
-  statusRevision: number;
-  capturedAt: string;
-  payload: {
-    state: StatusState;
-    reconnectAttempt: number;
-  };
-};
-
-export type FactEnvelope = {
-  product: ProductID;
-  projectionVersion: number;
-  epoch: number;
-  sequence: number;
-  factSequence: number;
-  capturedAt: string;
-  statusRevision: number;
-  payload: JSONObject;
-};
-
-export type TransportEvent =
-  | { kind: "projection"; value: ProjectionEnvelope }
-  | { kind: "status"; value: StatusEnvelope }
-  | { kind: "fact"; value: FactEnvelope };
 
 export type TransportErrorCode =
   | "event-name"

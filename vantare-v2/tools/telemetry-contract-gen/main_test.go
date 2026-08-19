@@ -23,7 +23,7 @@ func TestGeneratedContractMatchesHandwritten(t *testing.T) {
 		t.Fatalf("generate contract: %v", err)
 	}
 	generated := string(generatedBytes)
-	transport := readRepositoryFile(t, "frontend", "src", "telemetry-transport", "contracts.ts")
+	transport := handwrittenTransportContract
 	overlayMirror := readRepositoryFile(t, "frontend", "src", "overlay", "projection", "overlay-projection-v1.ts")
 
 	compareFields(t, "ProjectionEnvelope",
@@ -59,6 +59,43 @@ func TestGeneratedContractMatchesHandwritten(t *testing.T) {
 	compareValues(t, "SnapshotKind", enumValues(t, generated, "SnapshotKind"), []string{"full"})
 	compareValues(t, "EventKind", enumValues(t, generated, "EventKind"), []string{"projection", "status", "fact"})
 }
+
+// handwrittenTransportContract is the pre-F5 transport mirror characterized
+// by F5.2. It is test evidence only; production TypeScript reexports the Go-
+// generated declarations after F5.3.
+const handwrittenTransportContract = `
+export const TELEMETRY_PRODUCTS = ["overlay", "engineer", "strategy", "analysis"] as const;
+export const TELEMETRY_STATUS_STATES = ["stopped", "detecting", "connecting", "live", "degraded", "stale", "error", "stopping"] as const;
+export type ProjectionEnvelope = {
+  product: ProductID;
+  projectionVersion: number;
+  epoch: number;
+  sequence: number;
+  kind: SnapshotKind;
+  capturedAt: string;
+  statusRevision: number;
+  payload: JSONObject;
+};
+export type StatusEnvelope = {
+  product: ProductID;
+  statusRevision: number;
+  capturedAt: string;
+  payload: {
+    state: StatusState;
+    reconnectAttempt: number;
+  };
+};
+export type FactEnvelope = {
+  product: ProductID;
+  projectionVersion: number;
+  epoch: number;
+  sequence: number;
+  factSequence: number;
+  capturedAt: string;
+  statusRevision: number;
+  payload: JSONObject;
+};
+`
 
 func TestGenerateIsDeterministic(t *testing.T) {
 	t.Parallel()

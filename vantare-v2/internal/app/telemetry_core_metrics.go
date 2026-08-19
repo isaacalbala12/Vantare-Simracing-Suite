@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 
@@ -120,15 +121,17 @@ func (histogram telemetryPayloadHistogram) percentile(percent uint64) uint64 {
 }
 
 type telemetryCoreMetricStore struct {
-	mu                   sync.Mutex
-	framesDropped        map[string]uint64
-	framesRejected       map[string]uint64
-	publishFailures      map[string]uint64
-	consumerPanics       map[string]uint64
-	payloadBytes         map[string]*telemetryPayloadHistogram
-	lifecycleTransitions map[string]uint64
-	watchdogDegradations uint64
-	applyDurationUs      telemetryDurationHistogram
+	mu                       sync.Mutex
+	framesDropped            map[string]uint64
+	framesRejected           map[string]uint64
+	publishFailures          map[string]uint64
+	consumerPanics           map[string]uint64
+	payloadBytes             map[string]*telemetryPayloadHistogram
+	lifecycleTransitions     map[string]uint64
+	watchdogDegradations     uint64
+	applyDurationUs          telemetryDurationHistogram
+	overlayV2PayloadBytes    map[string]*telemetryPayloadHistogram
+	overlayV2BuildDurationUs telemetryDurationHistogram
 }
 
 func (store *telemetryCoreMetricStore) increment(target *map[string]uint64, label string) {
@@ -156,6 +159,31 @@ func (store *telemetryCoreMetricStore) observeApplyDuration(duration time.Durati
 	store.mu.Lock()
 	store.applyDurationUs.observe(uint64(microseconds))
 	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) observeOverlayV2BuildDuration(duration time.Duration) {
+	microseconds := duration.Microseconds()
+	if microseconds < 0 {
+		microseconds = 0
+	}
+	store.mu.Lock()
+	store.overlayV2BuildDurationUs.observe(uint64(microseconds))
+	store.mu.Unlock()
+}
+
+func (store *telemetryCoreMetricStore) observeOverlayV2Payload(vehicles int, size uint64) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.overlayV2PayloadBytes == nil {
+		store.overlayV2PayloadBytes = make(map[string]*telemetryPayloadHistogram)
+	}
+	label := strconv.Itoa(max(vehicles, 0))
+	histogram := store.overlayV2PayloadBytes[label]
+	if histogram == nil {
+		histogram = &telemetryPayloadHistogram{}
+		store.overlayV2PayloadBytes[label] = histogram
+	}
+	histogram.observe(size)
 }
 
 func (store *telemetryCoreMetricStore) publishFailure(product string) {
@@ -197,27 +225,35 @@ func (store *telemetryCoreMetricStore) snapshot() telemetryCoreMetricSnapshot {
 	for product, histogram := range store.payloadBytes {
 		payloadBytes[product] = histogram.snapshot()
 	}
+	overlayV2PayloadBytes := make(map[string]TelemetryPayloadPercentiles, len(store.overlayV2PayloadBytes))
+	for vehicles, histogram := range store.overlayV2PayloadBytes {
+		overlayV2PayloadBytes[vehicles] = histogram.snapshot()
+	}
 	return telemetryCoreMetricSnapshot{
-		framesDropped:        cloneMetricMap(store.framesDropped),
-		framesRejected:       cloneMetricMap(store.framesRejected),
-		publishFailures:      cloneMetricMap(store.publishFailures),
-		consumerPanics:       cloneMetricMap(store.consumerPanics),
-		payloadBytes:         payloadBytes,
-		lifecycleTransitions: cloneMetricMap(store.lifecycleTransitions),
-		watchdogDegradations: store.watchdogDegradations,
-		applyDurationUs:      store.applyDurationUs.snapshot(),
+		framesDropped:            cloneMetricMap(store.framesDropped),
+		framesRejected:           cloneMetricMap(store.framesRejected),
+		publishFailures:          cloneMetricMap(store.publishFailures),
+		consumerPanics:           cloneMetricMap(store.consumerPanics),
+		payloadBytes:             payloadBytes,
+		lifecycleTransitions:     cloneMetricMap(store.lifecycleTransitions),
+		watchdogDegradations:     store.watchdogDegradations,
+		applyDurationUs:          store.applyDurationUs.snapshot(),
+		overlayV2PayloadBytes:    overlayV2PayloadBytes,
+		overlayV2BuildDurationUs: store.overlayV2BuildDurationUs.snapshot(),
 	}
 }
 
 type telemetryCoreMetricSnapshot struct {
-	framesDropped        map[string]uint64
-	framesRejected       map[string]uint64
-	publishFailures      map[string]uint64
-	consumerPanics       map[string]uint64
-	payloadBytes         map[string]TelemetryPayloadPercentiles
-	lifecycleTransitions map[string]uint64
-	watchdogDegradations uint64
-	applyDurationUs      TelemetryDurationPercentiles
+	framesDropped            map[string]uint64
+	framesRejected           map[string]uint64
+	publishFailures          map[string]uint64
+	consumerPanics           map[string]uint64
+	payloadBytes             map[string]TelemetryPayloadPercentiles
+	lifecycleTransitions     map[string]uint64
+	watchdogDegradations     uint64
+	applyDurationUs          TelemetryDurationPercentiles
+	overlayV2PayloadBytes    map[string]TelemetryPayloadPercentiles
+	overlayV2BuildDurationUs TelemetryDurationPercentiles
 }
 
 func cloneMetricMap(source map[string]uint64) map[string]uint64 {

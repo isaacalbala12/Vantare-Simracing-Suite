@@ -286,16 +286,18 @@ func (subscription *PublisherSubscription) Close() error {
 }
 
 type PublisherRegistry struct {
-	mu         sync.Mutex
-	configs    map[PublisherProduct]PublisherConfig
-	publishers map[PublisherProduct]*Publisher
-	consumers  map[PublisherProduct]int
+	mu                    sync.Mutex
+	configs               map[PublisherProduct]PublisherConfig
+	publishers            map[PublisherProduct]*Publisher
+	consumers             map[PublisherProduct]int
+	releasedDroppedFrames map[PublisherProduct]uint64
 }
 
 func NewPublisherRegistry(configs ...PublisherConfig) (*PublisherRegistry, error) {
 	registry := &PublisherRegistry{
 		configs: make(map[PublisherProduct]PublisherConfig), publishers: make(map[PublisherProduct]*Publisher),
-		consumers: make(map[PublisherProduct]int),
+		consumers:             make(map[PublisherProduct]int),
+		releasedDroppedFrames: make(map[PublisherProduct]uint64),
 	}
 	for _, config := range configs {
 		if !knownPublisherProduct(config.Product) {
@@ -304,6 +306,21 @@ func NewPublisherRegistry(configs ...PublisherConfig) (*PublisherRegistry, error
 		registry.configs[config.Product] = config
 	}
 	return registry, nil
+}
+
+// DroppedFrames includes both the active publisher and publishers released by
+// earlier consumers, so disconnecting OBS does not erase diagnostics.
+func (registry *PublisherRegistry) DroppedFrames(product PublisherProduct) uint64 {
+	if registry == nil {
+		return 0
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	result := registry.releasedDroppedFrames[product]
+	if publisher := registry.publishers[product]; publisher != nil {
+		result += publisher.Metrics().DroppedFrames
+	}
+	return result
 }
 
 func (registry *PublisherRegistry) RegisterConsumer(product PublisherProduct) (*Publisher, func(), error) {
@@ -354,6 +371,7 @@ func (registry *PublisherRegistry) releaseConsumer(product PublisherProduct, pub
 	}
 	registry.consumers[product]--
 	if registry.consumers[product] == 0 {
+		registry.releasedDroppedFrames[product] += publisher.Metrics().DroppedFrames
 		delete(registry.publishers, product)
 		delete(registry.consumers, product)
 		_ = publisher.Close()

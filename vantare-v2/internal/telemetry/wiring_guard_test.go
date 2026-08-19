@@ -257,17 +257,10 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
 		return true
 	}
-	// 2026-08-19: F6.3 generates every Overlay v2 wire type from Go, while
-	// ProjectV2 itself remains intentionally disconnected until runtime F6.5.
-	if symbol.packagePath == "internal/telemetry/projection/overlayv2" && symbol.name == "ProjectV2" {
-		return true
-	}
-	// 2026-08-19: F6.4 delivers the bounded Publisher before F6.5 gives the
-	// runtime ownership of its registry, Wails bridge and explicit late-join
-	// replay. Keep this exception exact and remove each name when wired.
+	// 2026-08-19: F6.4 delivers explicit replay; F6.6 wires the frontend request.
 	if symbol.packagePath == "internal/app/telemetrytransport" {
 		switch symbol.name {
-		case "NewPublisherRegistry", "Lookup", "ServeWailsPublisher", "ReplaySnapshot":
+		case "ReplaySnapshot":
 			return true
 		}
 	}

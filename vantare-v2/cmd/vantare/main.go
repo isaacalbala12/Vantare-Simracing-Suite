@@ -1666,6 +1666,12 @@ func main() {
 			}
 			return telemetryCoreRuntime.StrategyHub()
 		}(),
+		OverlayV2Publishers: func() *telemetrytransport.PublisherRegistry {
+			if telemetryCoreRuntime == nil {
+				return nil
+			}
+			return telemetryCoreRuntime.OverlayV2Publishers()
+		}(),
 	})
 	httpSrv.Start()
 	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {

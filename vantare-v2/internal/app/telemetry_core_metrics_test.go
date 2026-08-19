@@ -23,6 +23,8 @@ func TestTelemetryCoreMetricsCounters(t *testing.T) {
 	runtime.metricStore.rejectFrame("reduce", "sequence-gap")
 	runtime.metricStore.observeApplyDuration(80 * time.Microsecond)
 	runtime.metricStore.observeApplyDuration(800 * time.Microsecond)
+	runtime.metricStore.observeOverlayV2BuildDuration(80 * time.Microsecond)
+	runtime.metricStore.observeOverlayV2Payload(104, 34*1024)
 	runtime.lifecycleMu.Lock()
 	runtime.transitionLifecycleLocked(telemetryRuntimeStarting)
 	runtime.transitionLifecycleLocked(telemetryRuntimeRunning)
@@ -39,6 +41,10 @@ func TestTelemetryCoreMetricsCounters(t *testing.T) {
 	}
 	if metrics.ApplyDurationUs.Count != 2 || metrics.ApplyDurationUs.P50 != 100 || metrics.ApplyDurationUs.P99 != 1_000 {
 		t.Fatalf("apply duration histogram = %+v", metrics.ApplyDurationUs)
+	}
+	if metrics.OverlayV2BuildDurationUs.Count != 1 || metrics.OverlayV2BuildDurationUs.P99 != 100 ||
+		metrics.OverlayV2PayloadBytes["104"].P99 != 64*1024 {
+		t.Fatalf("Overlay v2 histograms = duration %+v payload %+v", metrics.OverlayV2BuildDurationUs, metrics.OverlayV2PayloadBytes)
 	}
 	payload := metrics.PayloadBytes["Overlay"]
 	if payload.Count != 2 || payload.P50 != 1024 || payload.P95 != 128*1024 || payload.P99 != 128*1024 {

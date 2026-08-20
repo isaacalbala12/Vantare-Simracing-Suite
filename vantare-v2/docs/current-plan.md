@@ -1,3 +1,23 @@
+Nota ISA-372/F11 (2026-08-20, implementada localmente, sin promoción):
+- La cadencia de Overlay v2 se decide por sección antes de construir y de
+  serializar el frame: `SectionCadence` + `SectionScheduler` puro con reloj
+  inyectado, dirty-trigger y techo de frescura para el tier lento.
+- El frame publicado sigue siendo completo; las secciones no programadas
+  reutilizan su valor memoizado. Contrato wire v2 sin cambios y `contract-gen
+  -check` verde.
+- Los defaults son cero, es decir el comportamiento actual sin regulación,
+  hasta medir bytes/s y CPU en el binario real (Wails + OBS).
+- `BenchmarkOverlayV2ByCadence` @104: plana 480 builds/s y 39.118 ns/op frente
+  a regulada 76 builds/s y 26.516 ns/op. Los B/s no cambian (78.829) porque el
+  contrato publica frame completo: se ahorra CPU y asignaciones, no payload.
+- El coordinador del frontend pierde los buckets por Hz y queda solo visual
+  (un bucle de repintado compartido).
+- Falta aplicar la línea de integración en `telemetry_core_runtime.go` y
+  retirar la excepción de `cadence.go` en el wiring guard. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`.
+- Rama `vantareapp/isa-372-tc-f11-cadencias` sobre `tc-integration@f7e2cc07`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+
 Nota ISA-372/F7 (2026-08-19, implementada localmente, sin promoción):
 - Engineer sale del bucle del sink mediante puerto asíncrono default-on:
   snapshots latest-wins cap 1, timeout/recover y facts ordenados por otro canal

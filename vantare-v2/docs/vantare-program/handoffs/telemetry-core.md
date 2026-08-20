@@ -15,6 +15,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F11 está implementada localmente sobre `tc-integration@f7e2cc07` en
+  `vantareapp/isa-372-tc-f11-cadencias`. La cadencia de Overlay v2 se regula por
+  sección antes de proyectar y serializar: `SectionScheduler` puro con reloj
+  inyectado, dirty-trigger y techo para el tier lento, y un `CachedProjector`
+  que memoiza por sección manteniendo el frame completo. Los defaults son cero,
+  o sea el comportamiento actual sin regulación, hasta medir en el binario real.
+  El benchmark @104 baja de 480 a 76 construcciones por segundo simulado y de
+  39.118 a 26.516 ns/op, con los mismos 78.829 B/s porque el contrato publica
+  frame completo. El coordinador del frontend queda solo visual. Falta aplicar
+  la línea de integración en `telemetry_core_runtime.go` y retirar la excepción
+  del wiring guard. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`. Sin push, PR, CI
+  remoto, merge, promoción ni release.
 - ISA-372/F7 está implementada localmente sobre `tc-integration@f65f485f` en
   `vantareapp/isa-372-tc-f7-aislamiento-consumidores`. Engineer usa un puerto
   asíncrono default-on: snapshots latest-wins cap 1 con timeout/recover y facts

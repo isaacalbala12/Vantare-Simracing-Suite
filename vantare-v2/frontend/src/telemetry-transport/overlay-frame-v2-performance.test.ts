@@ -59,6 +59,8 @@ function syntheticFullUpdate(vehicles: number) {
     authority: "native" as const,
     name: row.driver,
   }));
+  // The worst case is always the full canonical window of pedal samples.
+  const series = (offset: number) => Array.from({ length: 120 }, (_, index) => (index * 7 + offset) % 1_001);
   return {
     revision: 1,
     source: { state: "live", retry: 0, ageMs: 0 },
@@ -75,6 +77,7 @@ function syntheticFullUpdate(vehicles: number) {
         id: "vehicle-000", speed: fresh(50), rpm: fresh(7_200), gear: fresh(4),
         throttle: fresh(0.75), brake: fresh(0.125), clutch: fresh(0), steering: fresh(-0.1),
       },
+      controls: { history: { q: "fresh", windowMs: 1_904, throttle: series(0), brake: series(37), clutch: series(91) } },
       standings,
       relative,
       delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived" },

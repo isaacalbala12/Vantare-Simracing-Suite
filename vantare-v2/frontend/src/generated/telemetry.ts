@@ -179,6 +179,18 @@ export interface OverlayControlSampleV1 {
   readonly vehicleId: string;
 }
 
+export interface OverlayControlsHistoryV2 {
+  readonly brake?: readonly number[] | undefined;
+  readonly clutch?: readonly number[] | undefined;
+  readonly q: OverlayQualityV2;
+  readonly throttle?: readonly number[] | undefined;
+  readonly windowMs?: number | undefined;
+}
+
+export interface OverlayControlsV2 {
+  readonly history: OverlayControlsHistoryV2;
+}
+
 export interface OverlayDeltaHistoryV1 {
   readonly freshness: TelemetryFreshness;
   readonly present: boolean;
@@ -208,6 +220,7 @@ export interface OverlayFrameV2 {
   readonly algorithm: number;
   readonly capabilities: OverlayCapabilitiesV2;
   readonly contract: number;
+  readonly controls: OverlayControlsV2;
   readonly delta: OverlayDeltaViewV2;
   readonly epoch: number;
   readonly fuel: OverlayFuelViewV2;

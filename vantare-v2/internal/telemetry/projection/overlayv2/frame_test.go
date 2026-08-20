@@ -62,6 +62,18 @@ func TestFrameV2SyntheticFullUnder64KiBWith104Vehicles(t *testing.T) {
 }
 
 func syntheticFullFrame(vehicles int) FrameV2 {
+	// The controls history is the player's alone and does not scale with the
+	// grid, but the worst case is always the full canonical window, so the
+	// budget must be measured with it populated.
+	controls := ControlsHistoryV2{
+		Q: QualityFresh, WindowMS: 1904,
+		Throttle: make([]int16, 120), Brake: make([]int16, 120), Clutch: make([]int16, 120),
+	}
+	for index := range controls.Throttle {
+		controls.Throttle[index] = int16(876 + index%100)
+		controls.Brake[index] = int16(543 - index%100)
+		controls.Clutch[index] = int16(index % 100)
+	}
 	standings := make([]StandingRowV2, vehicles)
 	relative := make([]RelativeRowV2, vehicles)
 	for index := 0; index < vehicles; index++ {
@@ -92,6 +104,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 			Brake: QValue[float64]{V: .02, Q: QualityFresh}, Clutch: QValue[float64]{V: 0, Q: QualityFresh},
 			Steering: QValue[float64]{V: -.13, Q: QualityFresh},
 		},
+		Controls:  ControlsV2{History: controls},
 		Standings: standings, Relative: relative,
 		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
 		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}},

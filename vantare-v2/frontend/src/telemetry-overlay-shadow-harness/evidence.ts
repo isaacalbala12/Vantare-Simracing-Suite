@@ -196,6 +196,7 @@ function playerInstrumentsFrameV2(): OverlayFrameV2 {
     sessionId: "shadow-fixture", generatedAt: "2026-08-19T12:00:00Z",
     units: { speed: "kph", temperature: "celsius", pressure: "kpa", fuel: "liters" },
     session: { track: missing, phase: missing, flag: missing, remaining: missing, maxLaps: missing },
+    controls: { history: missing },
     player: {
       speed: { q: "fresh" }, rpm: { q: "fresh" }, gear: { q: "fresh" },
       throttle: { q: "fresh" }, brake: { q: "fresh" }, clutch: { q: "fresh" }, steering: missing,

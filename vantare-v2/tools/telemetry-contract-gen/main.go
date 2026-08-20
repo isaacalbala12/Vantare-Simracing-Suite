@@ -271,6 +271,8 @@ func newGenerator() *generator {
 	g.addStruct(reflect.TypeFor[overlayv2.UnitsV2](), "OverlayUnitsV2")
 	g.addStruct(reflect.TypeFor[overlayv2.SessionV2](), "OverlaySessionV2")
 	g.addStruct(reflect.TypeFor[overlayv2.PlayerInstrumentsV2](), "OverlayPlayerInstrumentsV2")
+	g.addStruct(reflect.TypeFor[overlayv2.ControlsV2](), "OverlayControlsV2")
+	g.addStruct(reflect.TypeFor[overlayv2.ControlsHistoryV2](), "OverlayControlsHistoryV2")
 	g.addStruct(reflect.TypeFor[overlayv2.StandingRowV2](), "OverlayStandingRowV2")
 	g.addStruct(reflect.TypeFor[overlayv2.RelativeRowV2](), "OverlayRelativeRowV2")
 	g.addStruct(reflect.TypeFor[overlayv2.DeltaViewV2](), "OverlayDeltaViewV2")

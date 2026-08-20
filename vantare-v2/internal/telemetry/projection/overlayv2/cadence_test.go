@@ -151,7 +151,7 @@ func TestTierMapCoversEverySection(t *testing.T) {
 		t.Fatalf("AllSections has %d entries, want %d", len(sections), sectionCount)
 	}
 	want := map[Section]SectionTier{
-		SectionPlayer: TierFast, SectionDelta: TierFast,
+		SectionPlayer: TierFast, SectionControls: TierFast, SectionDelta: TierFast,
 		SectionRelative: TierMid, SectionSpotter: TierMid,
 		SectionSession: TierSlow, SectionStandings: TierSlow,
 		SectionFuel: TierSlow, SectionCapabilities: TierSlow,

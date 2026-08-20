@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -47,11 +48,17 @@ type Availability struct {
 }
 
 type ControlSample struct {
-	Cursor   schema.Cursor
-	Vehicle  identity.VehicleID
-	Throttle schema.Ratio
-	Brake    schema.Ratio
-	Clutch   schema.Ratio
+	Cursor schema.Cursor
+	// CapturedAt is the envelope reception instant of the batch the sample was
+	// taken from, exactly as SelfDeltaSample already records it. Without it the
+	// series only has an ordering, and any consumer that draws it against time
+	// has to invent a spacing; with it the canonical history carries its own
+	// time base and the projection can publish a real window.
+	CapturedAt time.Time
+	Vehicle    identity.VehicleID
+	Throttle   schema.Ratio
+	Brake      schema.Ratio
+	Clutch     schema.Ratio
 }
 
 type ControlHistory struct {
@@ -230,11 +237,12 @@ func deriveControlsHistory(
 	brake, _ := active.Brake.Value()
 	clutch, _ := active.Clutch.Value()
 	history = append(history, ControlSample{
-		Cursor:   header.Cursor,
-		Vehicle:  header.Identity.Vehicle,
-		Throttle: throttle,
-		Brake:    brake,
-		Clutch:   clutch,
+		Cursor:     header.Cursor,
+		CapturedAt: header.Clock.ReceivedUTC,
+		Vehicle:    header.Identity.Vehicle,
+		Throttle:   throttle,
+		Brake:      brake,
+		Clutch:     clutch,
 	})
 	if overflow := len(history) - limit; overflow > 0 {
 		history = slices.Clone(history[overflow:])

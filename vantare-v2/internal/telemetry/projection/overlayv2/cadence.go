@@ -11,12 +11,13 @@ import (
 )
 
 // Section names the parts of FrameV2 that can be regulated independently.
-// "controls" lives inside Player and "gaps" inside Standings: the wire
-// contract has no separate field for either, so they inherit that tier.
+// "gaps" lives inside Standings: the wire contract has no separate field for
+// it, so it inherits that tier.
 type Section uint8
 
 const (
 	SectionPlayer Section = iota
+	SectionControls
 	SectionDelta
 	SectionRelative
 	SectionSpotter
@@ -25,11 +26,12 @@ const (
 	SectionFuel
 	SectionCapabilities
 
-	sectionCount = 8
+	sectionCount = 9
 )
 
 var sectionNames = [sectionCount]string{
 	SectionPlayer:       "player",
+	SectionControls:     "controls",
 	SectionDelta:        "delta",
 	SectionRelative:     "relative",
 	SectionSpotter:      "spotter",
@@ -50,7 +52,7 @@ func (section Section) String() string {
 // deterministic; tests and metrics depend on that order.
 func AllSections() []Section {
 	return []Section{
-		SectionPlayer, SectionDelta, SectionRelative, SectionSpotter,
+		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
 		SectionSession, SectionStandings, SectionFuel, SectionCapabilities,
 	}
 }
@@ -68,7 +70,7 @@ const (
 // relative/spotter are mid, session/standings/gaps/fuel/capabilities are slow.
 func TierOf(section Section) SectionTier {
 	switch section {
-	case SectionPlayer, SectionDelta:
+	case SectionPlayer, SectionControls, SectionDelta:
 		return TierFast
 	case SectionRelative, SectionSpotter:
 		return TierMid
@@ -231,6 +233,7 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 // TestCachedProjectorMatchesProjectV2ByteForByte guards that equivalence.
 type SectionBuilders struct {
 	Player       func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) PlayerInstrumentsV2
+	Controls     func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) ControlsV2
 	Delta        func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) DeltaViewV2
 	Relative     func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) []RelativeRowV2
 	Spotter      func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) SpotterViewV2
@@ -245,6 +248,9 @@ func DefaultSectionBuilders() SectionBuilders {
 	return SectionBuilders{
 		Player: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) PlayerInstrumentsV2 {
 			return BuildPlayerInstruments(final, preferences)
+		},
+		Controls: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) ControlsV2 {
+			return BuildControls(final)
 		},
 		Session: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) SessionV2 {
 			return BuildSession(final)
@@ -311,6 +317,9 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 	defaults := DefaultSectionBuilders()
 	if builders.Player == nil {
 		builders.Player = defaults.Player
+	}
+	if builders.Controls == nil {
+		builders.Controls = defaults.Controls
 	}
 	if builders.Delta == nil {
 		builders.Delta = defaults.Delta
@@ -406,6 +415,9 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionPlayer) {
 		frame.Player = projector.builders.Player(final, preferences, source)
+	}
+	if plan.Rebuild(SectionControls) {
+		frame.Controls = projector.builders.Controls(final, preferences, source)
 	}
 	if plan.Rebuild(SectionDelta) {
 		frame.Delta = projector.builders.Delta(final, preferences, source)
@@ -530,5 +542,5 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		dirty = dirty.Mark(SectionCapabilities)
 	}
 	// Fast sections exist to move: they are never gated by dirtiness.
-	return dirty.Mark(SectionPlayer)
+	return dirty.Mark(SectionPlayer).Mark(SectionControls)
 }

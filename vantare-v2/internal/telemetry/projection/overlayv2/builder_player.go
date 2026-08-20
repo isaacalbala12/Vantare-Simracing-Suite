@@ -82,6 +82,7 @@ func ProjectV2(
 		},
 		Session:      BuildSession(final),
 		Player:       BuildPlayerInstruments(final, preferences),
+		Controls:     BuildControls(final),
 		Standings:    BuildStandings(final),
 		Relative:     BuildRelative(final),
 		Delta:        BuildDelta(final, preferences),

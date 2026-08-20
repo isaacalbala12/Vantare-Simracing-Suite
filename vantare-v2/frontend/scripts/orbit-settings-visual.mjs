@@ -182,6 +182,41 @@ try {
         }
       }
 
+      // ── Actualizaciones: cada tarjeta de canal enseña la versión de SU canal.
+      // Con el canal Stable activo la tarjeta de Testers llegó a lucir una
+      // nightly porque se clasificaba por `prerelease` a secas (ISA-368).
+      if (shot.noPageScroll && section === "updates") {
+        await page.getByTestId("orbit-settings-channels").waitFor();
+        await page.waitForFunction(() =>
+          (document.querySelector('[data-testid="orbit-settings-channel-stable"]')?.textContent ?? "")
+            .includes("v0."),
+        );
+        const cards = await page.evaluate(() =>
+          ["stable", "testers", "nightly"].map((channel) => ({
+            channel,
+            text: document.querySelector(`[data-testid="orbit-settings-channel-${channel}"]`)?.textContent ?? "",
+          })),
+        );
+        const marker = { stable: null, testers: "testers", nightly: "nightly" };
+        const foreign = { stable: ["nightly", "testers"], testers: ["nightly"], nightly: ["testers"] };
+        for (const card of cards) {
+          if (!/v\d+\.\d+/.test(card.text)) {
+            throw new Error(`${label}: la tarjeta «${card.channel}» no enseña ninguna versión`);
+          }
+          if (marker[card.channel] && !card.text.includes(marker[card.channel])) {
+            throw new Error(`${label}: la tarjeta «${card.channel}» no enseña una release de su canal`);
+          }
+          for (const alien of foreign[card.channel]) {
+            if (card.text.includes(alien)) {
+              throw new Error(`${label}: la tarjeta «${card.channel}» enseña una release «${alien}»`);
+            }
+          }
+        }
+        await page.getByTestId("orbit-settings-channels").screenshot({
+          path: path.join(output, `orbit-ajustes-canales-${label}.png`),
+        });
+      }
+
       // ── Atajos: grabar una combinación la pinta en keycaps.
       if (shot.noPageScroll && section === "hotkeys") {
         const row = page.getByTestId("orbit-keycap-row").first();

@@ -25,6 +25,14 @@ export type Release = {
   assets: Asset[];
 };
 
+/**
+ * Última release de cada canal, sin filtrar por el canal configurado.
+ *
+ * Espejo de `updater.ChannelReleases` en Go. Un canal sin release publicada de
+ * la línea de producto actual sencillamente no aparece.
+ */
+export type ChannelReleases = Partial<Record<Channel, Release>>;
+
 export type UpdateInfo = {
   currentVersion: string;
   latestVersion?: string;
@@ -33,6 +41,11 @@ export type UpdateInfo = {
   isDowngrade: boolean;
   releases?: Release[];
   ignoredVersion?: string;
+  /**
+   * Ausente en binarios anteriores a ISA-368: quien lo lea debe tener un plan B
+   * sobre `releases`.
+   */
+  channels?: ChannelReleases;
 };
 
 export type UpdaterSettings = {

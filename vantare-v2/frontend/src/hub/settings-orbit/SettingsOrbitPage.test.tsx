@@ -149,6 +149,103 @@ describe("SettingsOrbitPage", () => {
     expect(emit.mock.calls.some(([name]) => name === UPDATER_CHANNEL_EVENT)).toBe(true);
   });
 
+  // Las tarjetas clasificaban por `prerelease` a secas, así que Testers y
+  // Nightly enseñaban la MISMA release: con canal Stable activo la tarjeta de
+  // Testers llegó a lucir una v0.1.0.7-nightly.9 (ISA-368).
+  function mountUpdatesWith(info: unknown) {
+    const handlers = new Map<string, (event: { data: unknown }) => void>();
+    vi.spyOn(Events, "On").mockImplementation(((name: string, cb: unknown) => {
+      handlers.set(name, cb as (event: { data: unknown }) => void);
+      return () => handlers.delete(name);
+    }) as never);
+    vi.spyOn(Events, "Emit").mockImplementation(((name: string) => {
+      if (name === "updater:check") handlers.get("updater:available")?.({ data: { info } });
+      if (name === "updater:settings:get") {
+        handlers.get("updater:settings")?.({ data: { settings: { channel: "stable" } } });
+      }
+      return Promise.resolve(true);
+    }) as never);
+    mount("updates");
+  }
+
+  const nightly11 = {
+    tag_name: "v0.1.0.7-nightly.11",
+    name: "",
+    body: "",
+    prerelease: true,
+    published_at: "2026-06-05T00:00:00Z",
+    html_url: "",
+    assets: [],
+  };
+  const testers1 = { ...nightly11, tag_name: "v0.1.0.7-testers.1", published_at: "2026-06-03T00:00:00Z" };
+  const stable2 = {
+    ...nightly11,
+    tag_name: "v0.1.0.2",
+    prerelease: false,
+    published_at: "2026-06-02T00:00:00Z",
+  };
+
+  it("cada tarjeta de canal enseña la versión de SU canal, con el canal Stable activo", async () => {
+    mountUpdatesWith({
+      currentVersion: "v0.1.0.1",
+      hasUpdate: true,
+      isDowngrade: false,
+      latestVersion: "v0.1.0.2",
+      releases: [stable2],
+      channels: { stable: stable2, testers: testers1, nightly: nightly11 },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-settings-channel-stable").textContent).toContain("v0.1.0.2");
+    });
+    const testers = screen.getByTestId("orbit-settings-channel-testers").textContent ?? "";
+    const nightly = screen.getByTestId("orbit-settings-channel-nightly").textContent ?? "";
+    expect(testers).toContain("v0.1.0.7-testers.1");
+    expect(testers).not.toContain("nightly");
+    expect(nightly).toContain("v0.1.0.7-nightly.11");
+    expect(nightly).not.toContain("testers");
+    // El hero sigue hablando del canal del usuario y de su última versión.
+    expect(screen.getByTestId("orbit-settings-upd-hero").textContent).toContain("v0.1.0.2");
+  });
+
+  it("sin resumen del backend clasifica la lista y nunca cruza nightly con testers", async () => {
+    mountUpdatesWith({
+      currentVersion: "v0.1.0.1",
+      hasUpdate: false,
+      isDowngrade: false,
+      releases: [nightly11, testers1, stable2],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-settings-channel-testers").textContent).toContain(
+        "v0.1.0.7-testers.1",
+      );
+    });
+    expect(screen.getByTestId("orbit-settings-channel-nightly").textContent).toContain(
+      "v0.1.0.7-nightly.11",
+    );
+    expect(screen.getByTestId("orbit-settings-channel-stable").textContent).toContain("v0.1.0.2");
+  });
+
+  it("un canal sin release publicada lo dice en vez de tomar prestada otra", async () => {
+    mountUpdatesWith({
+      currentVersion: "v0.1.0.1",
+      hasUpdate: false,
+      isDowngrade: false,
+      releases: [stable2],
+      channels: { stable: stable2 },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-settings-channel-stable").textContent).toContain("v0.1.0.2");
+    });
+    for (const channel of ["testers", "nightly"]) {
+      const text = screen.getByTestId(`orbit-settings-channel-${channel}`).textContent ?? "";
+      expect(text).not.toContain("v0.1.0");
+      expect(text).toContain("sin versión publicada");
+    }
+  });
+
   it("ida y vuelta del canal contra el bridge: se guarda, se relee y se refleja", async () => {
     // El bridge simulado hace el viaje entero de la app: `save` responde
     // `settings-saved`, eso dispara un `get` y el `get` devuelve lo guardado.

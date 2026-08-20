@@ -88,6 +88,7 @@
       "seconds": {
         "q": "missing"
       },
+      "requested": "personal-best",
       "available": []
     },
     "fuel": {

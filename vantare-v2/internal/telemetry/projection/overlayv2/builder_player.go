@@ -30,6 +30,11 @@ type PreferencesV2 struct {
 	Temperature TemperatureUnit
 	Pressure    PressureUnit
 	Fuel        FuelUnit
+	// DeltaReference is the reference lap the consumer asks the delta view to
+	// use. It lives here, not in the widget, because the frame is one per tick:
+	// the builder publishes the requested reference alongside the effective one
+	// so the widget can render the difference instead of resolving it.
+	DeltaReference string
 }
 
 type SourceContextV2 struct {
@@ -44,6 +49,7 @@ func DefaultPreferencesV2() PreferencesV2 {
 	return PreferencesV2{
 		Speed: SpeedUnitMPS, Temperature: TemperatureUnitCelsius,
 		Pressure: PressureUnitKPA, Fuel: FuelUnitLiters,
+		DeltaReference: DeltaReferencePersonalBest,
 	}
 }
 
@@ -78,7 +84,7 @@ func ProjectV2(
 		Player:       BuildPlayerInstruments(final, preferences),
 		Standings:    BuildStandings(final),
 		Relative:     make([]RelativeRowV2, 0),
-		Delta:        DeltaViewV2{Seconds: missingValue[float64](), Available: make([]string, 0)},
+		Delta:        BuildDelta(final, preferences),
 		Fuel:         FuelViewV2{Remaining: missingValue[float64](), Capacity: missingValue[float64](), PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64]()},
 		Spotter:      SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()},
 		Capabilities: BuildCapabilities(final, source.DescriptorCapabilities),
@@ -194,6 +200,11 @@ func normalizedPreferences(preferences PreferencesV2) PreferencesV2 {
 	case FuelUnitLiters, FuelUnitGallonsUS:
 	default:
 		preferences.Fuel = defaults.Fuel
+	}
+	switch preferences.DeltaReference {
+	case DeltaReferencePersonalBest, DeltaReferenceSessionBest, DeltaReferencePreviousLap:
+	default:
+		preferences.DeltaReference = defaults.DeltaReference
 	}
 	return preferences
 }

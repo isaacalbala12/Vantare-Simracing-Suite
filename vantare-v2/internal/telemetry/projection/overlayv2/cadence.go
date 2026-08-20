@@ -252,8 +252,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		Capabilities: func(final derive.FinalState, _ PreferencesV2, source SourceContextV2) CapabilitiesV2 {
 			return BuildCapabilities(final, source.DescriptorCapabilities)
 		},
-		Delta: func(derive.FinalState, PreferencesV2, SourceContextV2) DeltaViewV2 {
-			return DeltaViewV2{Seconds: missingValue[float64](), Available: make([]string, 0)}
+		Delta: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) DeltaViewV2 {
+			return BuildDelta(final, preferences)
 		},
 		Relative: func(derive.FinalState, PreferencesV2, SourceContextV2) []RelativeRowV2 {
 			return make([]RelativeRowV2, 0)

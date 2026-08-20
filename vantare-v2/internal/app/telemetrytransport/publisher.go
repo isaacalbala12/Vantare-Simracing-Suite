@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 var (
@@ -16,6 +17,10 @@ var (
 )
 
 const DefaultPublisherMaxPayloadBytes = 64 * 1024
+
+// DefaultPublisherBytesWindow is the moving window used to report the outgoing
+// byte rate. One second keeps the number readable next to a cadence in Hz.
+const DefaultPublisherBytesWindow = time.Second
 
 type PublisherProduct string
 
@@ -38,6 +43,12 @@ type PublisherConfig struct {
 	Product         PublisherProduct
 	MaxPayloadBytes int
 	MaxSubscribers  int
+	// BytesWindow sizes the moving window behind BytesPerSecond. Zero uses
+	// DefaultPublisherBytesWindow.
+	BytesWindow time.Duration
+	// Now injects the clock so the byte-rate window is testable without
+	// sleeping. Zero uses time.Now.
+	Now func() time.Time
 }
 
 type PublisherMetrics struct {
@@ -48,6 +59,11 @@ type PublisherMetrics struct {
 	SnapshotReplacements uint64
 	StatusPublications   uint64
 	DroppedFrames        uint64
+	// SnapshotBytes is every byte accepted for delivery since the publisher
+	// was created. BytesPerSecond is the same measure over the moving window,
+	// which is what a cadence change is expected to move.
+	SnapshotBytes  uint64
+	BytesPerSecond uint64
 }
 
 type publisherSubscriber struct {
@@ -61,12 +77,21 @@ type publisherSubscriber struct {
 // wrap Hub: Hub owns the v1 envelope, statusRevision coupling and canonical
 // cursor validation that OverlayUpdate v2 removes. The same bounded
 // latest-wins pending-bit pattern is retained here without duplicating queues.
+type bytesSample struct {
+	at    time.Time
+	bytes int
+}
+
 type Publisher struct {
 	mu sync.Mutex
 
 	closed           bool
 	product          PublisherProduct
 	maxPayload       int
+	bytesWindow      time.Duration
+	now              func() time.Time
+	bytesSamples     []bytesSample
+	bytesInWindow    uint64
 	maxSubscribers   int
 	status           PublisherEvent
 	hasStatus        bool
@@ -90,8 +115,17 @@ func newPublisher(config PublisherConfig) (*Publisher, error) {
 	if subscribers <= 0 || subscribers > MaxSubscribers {
 		subscribers = DefaultMaxSubscribers
 	}
+	window := config.BytesWindow
+	if window <= 0 {
+		window = DefaultPublisherBytesWindow
+	}
+	clock := config.Now
+	if clock == nil {
+		clock = time.Now
+	}
 	return &Publisher{
 		product: config.Product, maxPayload: maximum, maxSubscribers: subscribers,
+		bytesWindow: window, now: clock,
 		subscribers: make(map[*PublisherSubscription]*publisherSubscriber),
 		metrics:     PublisherMetrics{MaxPayloadBytes: maximum, MaxSubscribers: subscribers},
 	}, nil
@@ -121,6 +155,8 @@ func (publisher *Publisher) PublishSnapshot(deliveryRevision uint64, payload any
 	publisher.hasSnapshot = true
 	publisher.snapshotRevision = deliveryRevision
 	publisher.metrics.SnapshotPublications++
+	publisher.metrics.SnapshotBytes += uint64(len(encoded))
+	publisher.recordBytes(len(encoded))
 	for _, subscriber := range publisher.subscribers {
 		subscriber.pendingSnapshot = true
 		notifyPublisher(subscriber)
@@ -212,8 +248,10 @@ func (publisher *Publisher) Metrics() PublisherMetrics {
 	}
 	publisher.mu.Lock()
 	defer publisher.mu.Unlock()
+	publisher.pruneBytes(publisher.now())
 	result := publisher.metrics
 	result.CurrentSubscribers = len(publisher.subscribers)
+	result.BytesPerSecond = publisher.bytesRate()
 	return result
 }
 
@@ -232,6 +270,40 @@ func (publisher *Publisher) Close() error {
 		delete(publisher.subscribers, subscription)
 	}
 	return nil
+}
+
+// recordBytes adds one accepted payload to the moving window. Only snapshots
+// count: status events are not regulated by any cadence.
+func (publisher *Publisher) recordBytes(size int) {
+	at := publisher.now()
+	publisher.bytesSamples = append(publisher.bytesSamples, bytesSample{at: at, bytes: size})
+	publisher.bytesInWindow += uint64(size)
+	publisher.pruneBytes(at)
+}
+
+func (publisher *Publisher) pruneBytes(at time.Time) {
+	cutoff := at.Add(-publisher.bytesWindow)
+	dropped := 0
+	for _, sample := range publisher.bytesSamples {
+		if sample.at.After(cutoff) {
+			break
+		}
+		publisher.bytesInWindow -= uint64(sample.bytes)
+		dropped++
+	}
+	if dropped == 0 {
+		return
+	}
+	publisher.bytesSamples = append(publisher.bytesSamples[:0], publisher.bytesSamples[dropped:]...)
+}
+
+// bytesRate normalizes the window to one second so a 500 ms window and a two
+// second one are still comparable.
+func (publisher *Publisher) bytesRate() uint64 {
+	if publisher.bytesWindow <= 0 || publisher.bytesInWindow == 0 {
+		return 0
+	}
+	return uint64(float64(publisher.bytesInWindow) * float64(time.Second) / float64(publisher.bytesWindow))
 }
 
 type PublisherSubscription struct {

@@ -273,14 +273,15 @@ func DefaultSectionBuilders() SectionBuilders {
 	}
 }
 
-// CachedProjectorMetrics counts regulation work. SectionBuilds is the number
-// of builder invocations; SectionSkips is the number of ticks a section reused
-// its memoized value.
+// CachedProjectorMetrics counts regulation work. SectionPublishes is the
+// number of builder invocations whose value reached the published frame fresh;
+// DirtySkips is the number of ticks a section reused its memoized value
+// because the scheduler judged it neither due nor dirty.
 type CachedProjectorMetrics struct {
-	Ticks         uint64
-	FullRebuilds  uint64
-	SectionBuilds map[string]uint64
-	SectionSkips  map[string]uint64
+	Ticks            uint64
+	FullRebuilds     uint64
+	SectionPublishes map[string]uint64
+	DirtySkips       map[string]uint64
 }
 
 // CachedProjector is a drop-in replacement for ProjectV2 that regulates
@@ -345,12 +346,12 @@ func (projector *CachedProjector) Cadence() SectionCadence { return projector.sc
 func (projector *CachedProjector) Metrics() CachedProjectorMetrics {
 	result := CachedProjectorMetrics{
 		Ticks: projector.ticks, FullRebuilds: projector.fullRuns,
-		SectionBuilds: make(map[string]uint64, sectionCount),
-		SectionSkips:  make(map[string]uint64, sectionCount),
+		SectionPublishes: make(map[string]uint64, sectionCount),
+		DirtySkips:       make(map[string]uint64, sectionCount),
 	}
 	for _, section := range AllSections() {
-		result.SectionBuilds[section.String()] = projector.builds[section]
-		result.SectionSkips[section.String()] = projector.skips[section]
+		result.SectionPublishes[section.String()] = projector.builds[section]
+		result.DirtySkips[section.String()] = projector.skips[section]
 	}
 	return result
 }

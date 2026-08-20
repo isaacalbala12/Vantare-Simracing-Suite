@@ -71,8 +71,8 @@ func TestCachedProjectorKeepsFullFrameWhenSlowSectionsAreSkipped(t *testing.T) {
 	if second.Frame == nil || first.Frame == nil {
 		t.Fatalf("regulated frames must never be nil")
 	}
-	if projector.Metrics().SectionSkips["standings"] != 1 {
-		t.Fatalf("standings should have been skipped once: %#v", projector.Metrics().SectionSkips)
+	if projector.Metrics().DirtySkips["standings"] != 1 {
+		t.Fatalf("standings should have been skipped once: %#v", projector.Metrics().DirtySkips)
 	}
 	// The frame stays full and the skipped sections reuse the memoized value.
 	if second.Frame.Standings == nil || second.Frame.Relative == nil || second.Frame.Delta.Available == nil {

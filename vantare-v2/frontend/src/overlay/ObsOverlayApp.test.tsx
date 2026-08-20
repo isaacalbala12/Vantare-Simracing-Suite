@@ -118,7 +118,7 @@ describe("ObsOverlayApp", () => {
     globalThis.ResizeObserver = originalResizeObserver;
   });
 
-  it("loads profile-v3 and starts the canonical SSE adapter", async () => {
+  it("loads profile-v3 and starts canonical v1 plus shadow v2 SSE adapters", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
@@ -140,6 +140,7 @@ describe("ObsOverlayApp", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
+      "/telemetry/overlay-v2/projection",
       "/telemetry/overlay/projection",
       "/engineer/stream",
     ]);

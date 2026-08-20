@@ -22,6 +22,27 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
+func TestCloneSelfDeltaTrackerUsesCopyOnWrite(t *testing.T) {
+	original := &selfDeltaTracker{
+		limit:     8,
+		candidate: []lapSample{{Distance: 10}, {Distance: 20}},
+		history:   []DeltaSample{{Seconds: 1}, {Seconds: 2}},
+	}
+	candidate := cloneSelfDeltaTracker(original)
+
+	candidate.ownCandidate()
+	candidate.candidate[0].Distance = 99
+	candidate.ownHistory()
+	candidate.history[0].Seconds = 99
+
+	if original.candidate[0].Distance != 10 {
+		t.Fatalf("committed candidate history changed through clone: %+v", original.candidate)
+	}
+	if original.history[0].Seconds != 1 {
+		t.Fatalf("committed public history changed through clone: %+v", original.history)
+	}
+}
+
 func TestSelfDeltaRequiresCompletedReferenceAndInterpolatesDocumentedSign(t *testing.T) {
 	tracker := newSelfDeltaTracker(MaxSelfDeltaSamples)
 	sequence := schema.Sequence(0)

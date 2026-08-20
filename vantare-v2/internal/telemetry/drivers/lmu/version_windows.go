@@ -5,6 +5,8 @@ package lmu
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -15,6 +17,12 @@ const (
 	processQueryLimitedInformation = 0x1000
 	maxPathUTF16                   = 32768
 	fixedFileInfoSignature         = 0xFEEF04BD
+)
+
+const (
+	defaultSteamLibraryRoot   = `C:\Program Files (x86)\Steam`
+	steamLibraryFoldersFile   = `steamapps\libraryfolders.vdf`
+	lmuRelativeExecutablePath = `steamapps\common\Le Mans Ultimate\Le Mans Ultimate.exe`
 )
 
 var (
@@ -68,8 +76,116 @@ type buildWindowsAPI struct {
 	close       func(uintptr) (uintptr, error)
 }
 
+// readLMUBuildEvidence prefers the running process, whose path proves the
+// mapping and the executable belong to the same installation. Since LMU 1.4.1.3
+// the process is protected: OpenProcess succeeds but QueryFullProcessImageNameW
+// yields no path, so the process route returns empty evidence. Only then do we
+// fall back to the installed executable on disk, which carries the same
+// FileVersion/ProductVersion pair.
 func readLMUBuildEvidence() (BuildEvidence, error) {
-	return findLMUBuildEvidence(systemBuildWindowsAPI())
+	return resolveLMUBuildEvidence(systemBuildWindowsAPI(), systemDiskBuildAPI())
+}
+
+func resolveLMUBuildEvidence(process buildWindowsAPI, disk diskBuildAPI) (BuildEvidence, error) {
+	evidence, err := findLMUBuildEvidence(process)
+	if err == nil && evidence.complete() {
+		return evidence, nil
+	}
+	diskEvidence, diskErr := findLMUDiskBuildEvidence(disk)
+	if diskErr != nil {
+		return BuildEvidence{}, errors.Join(err, diskErr)
+	}
+	return diskEvidence, nil
+}
+
+// complete reports whether both version fields are populated. Partial evidence
+// is treated as a failed read so the disk fallback can supply the full pair.
+func (evidence BuildEvidence) complete() bool {
+	return strings.TrimSpace(evidence.FileVersion) != "" &&
+		strings.TrimSpace(evidence.ProductVersion) != ""
+}
+
+// diskBuildAPI isolates the filesystem so the fallback stays testable and never
+// logs or returns installation paths.
+type diskBuildAPI struct {
+	exists      func(string) bool
+	readFile    func(string) ([]byte, error)
+	versionInfo func(string) (BuildEvidence, error)
+}
+
+func systemDiskBuildAPI() diskBuildAPI {
+	return diskBuildAPI{
+		exists: func(path string) bool {
+			info, err := os.Stat(path)
+			return err == nil && !info.IsDir()
+		},
+		readFile:    os.ReadFile,
+		versionInfo: readWindowsFileVersion,
+	}
+}
+
+func findLMUDiskBuildEvidence(api diskBuildAPI) (BuildEvidence, error) {
+	if api.exists == nil || api.readFile == nil || api.versionInfo == nil {
+		return BuildEvidence{}, ErrBuildUnavailable
+	}
+	for _, root := range steamLibraryRoots(api) {
+		executable := filepath.Join(root, lmuRelativeExecutablePath)
+		if !api.exists(executable) {
+			continue
+		}
+		evidence, err := api.versionInfo(executable)
+		if err != nil || !evidence.complete() {
+			continue
+		}
+		return evidence, nil
+	}
+	return BuildEvidence{}, ErrBuildUnavailable
+}
+
+// steamLibraryRoots lists the default Steam root first and then every library
+// declared in libraryfolders.vdf, de-duplicated and in a stable order.
+func steamLibraryRoots(api diskBuildAPI) []string {
+	roots := []string{defaultSteamLibraryRoot}
+	seen := map[string]struct{}{strings.ToLower(defaultSteamLibraryRoot): {}}
+	data, err := api.readFile(filepath.Join(defaultSteamLibraryRoot, steamLibraryFoldersFile))
+	if err != nil {
+		return roots
+	}
+	for _, path := range parseSteamLibraryPaths(string(data)) {
+		key := strings.ToLower(path)
+		if _, duplicate := seen[key]; duplicate {
+			continue
+		}
+		seen[key] = struct{}{}
+		roots = append(roots, path)
+	}
+	return roots
+}
+
+// parseSteamLibraryPaths extracts the `"path" "<value>"` entries of a Steam
+// libraryfolders.vdf without pulling in a VDF dependency.
+func parseSteamLibraryPaths(document string) []string {
+	var paths []string
+	for _, line := range strings.Split(document, "\n") {
+		fields := strings.TrimSpace(line)
+		if !strings.HasPrefix(fields, `"path"`) {
+			continue
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(fields, `"path"`))
+		if len(rest) < 2 || !strings.HasPrefix(rest, `"`) {
+			continue
+		}
+		rest = rest[1:]
+		end := strings.Index(rest, `"`)
+		if end <= 0 {
+			continue
+		}
+		value := strings.ReplaceAll(rest[:end], `\\`, `\`)
+		if value = strings.TrimSpace(value); value != "" {
+			paths = append(paths, filepath.Clean(value))
+		}
+	}
+	return paths
 }
 
 func findLMUBuildEvidence(api buildWindowsAPI) (evidence BuildEvidence, resultErr error) {

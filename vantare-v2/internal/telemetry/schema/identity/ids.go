@@ -14,6 +14,7 @@ type RunIdentity struct {
 	Vehicle VehicleID
 	Team    TeamID
 	Driver  DriverID
+	Stint   StintID
 }
 
 func (identity RunIdentity) SessionKnown() bool {

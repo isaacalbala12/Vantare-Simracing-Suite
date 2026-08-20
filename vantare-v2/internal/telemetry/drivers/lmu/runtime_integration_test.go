@@ -575,8 +575,7 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	reappeared := cloneRuntimeObservation(base)
 	advanceRuntimeObservation(&reappeared, received.Add(3*time.Second), 3*time.Second, ClockContinuous)
 	reappearedResult := writeRuntimeObservation(t, mapper, downstream, reappeared)
-	assertProjectionHasVehicle(t, reappearedResult.projection, string(vehicleID(omittedSlot, 2)))
-	assertProjectionLacksVehicle(t, reappearedResult.projection, string(vehicleID(omittedSlot, 1)))
+	assertProjectionHasVehicle(t, reappearedResult.projection, string(vehicleID(omittedSlot, 1)))
 
 	reset := cloneRuntimeObservation(base)
 	advanceRuntimeObservation(&reset, received.Add(4*time.Second), 100*time.Millisecond, ClockReset)
@@ -585,7 +584,6 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 		t.Fatalf("session reset epoch/session = %d/%q, want epoch > %d and session != %q", resetResult.projection.Epoch, resetResult.run.Session, reappearedResult.projection.Epoch, reappearedResult.run.Session)
 	}
 	assertProjectionHasVehicle(t, resetResult.projection, string(vehicleID(omittedSlot, 1)))
-	assertProjectionLacksVehicle(t, resetResult.projection, string(vehicleID(omittedSlot, 2)))
 
 	playerChanged := cloneRuntimeObservation(reset)
 	for index := range playerChanged.Vehicles {
@@ -595,8 +593,8 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	playerChangedResult := writeRuntimeObservation(t, mapper, downstream, playerChanged)
 	wantPlayer := vehicleID(newPlayerSlot, 1)
 	if playerChangedResult.projection.Player != wantPlayer || playerChangedResult.run.Vehicle != wantPlayer ||
-		playerChangedResult.run.Session != resetResult.run.Session || playerChangedResult.projection.Epoch <= resetResult.projection.Epoch {
-		t.Fatalf("player change projection player=%q run=%+v epoch=%d, want player=%q same session=%q and epoch > %d", playerChangedResult.projection.Player, playerChangedResult.run, playerChangedResult.projection.Epoch, wantPlayer, resetResult.run.Session, resetResult.projection.Epoch)
+		playerChangedResult.run.Session != resetResult.run.Session || playerChangedResult.projection.Epoch != resetResult.projection.Epoch {
+		t.Fatalf("player change projection player=%q run=%+v epoch=%d, want player=%q same session=%q and epoch=%d", playerChangedResult.projection.Player, playerChangedResult.run, playerChangedResult.projection.Epoch, wantPlayer, resetResult.run.Session, resetResult.projection.Epoch)
 	}
 }
 

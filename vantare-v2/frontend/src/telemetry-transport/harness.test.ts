@@ -4,12 +4,11 @@ import { createTelemetryTransportHarness } from "./harness";
 
 describe("explicit telemetry transport harness", () => {
   it.each(TELEMETRY_PRODUCTS)(
-    "reproduces full, delta, gap and reconnect for %s",
+    "reproduces full, gap and reconnect for %s",
     (product) => {
       const harness = createTelemetryTransportHarness(product);
       harness.status();
       harness.full({ value: 1 });
-      harness.delta({ value: 2 });
       harness.gap({ value: 5 });
       harness.reconnect();
       const state = harness.snapshot();

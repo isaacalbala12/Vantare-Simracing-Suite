@@ -25,7 +25,18 @@ type Coordinator struct {
 	runErr       error
 	pendingSince time.Time
 	pending      []pendingBatch
+	gapMarkers   []GapMarker
 	terminal     *failureRequest
+}
+
+// GapMarker records an accepted-cursor range that the bounded recording queue
+// could not retain. Recording fails closed after writing one: consumers can
+// inspect the discontinuity instead of treating the session as continuous.
+// Persistence remains disconnected until F12 wires the coordinator.
+type GapMarker struct {
+	First  Cursor
+	Last   Cursor
+	Reason IncompleteReason
 }
 
 type pendingBatch struct {
@@ -117,14 +128,7 @@ func (c *Coordinator) TryAccept(batch RecordingBatch) error {
 	now := c.config.Clock.Now()
 	// One batch may be in the writer while QueueCapacity more remain queued.
 	if len(c.pending) >= c.config.QueueCapacity+1 {
-		c.status.State = StateStopping
-		c.status.RejectedBatches++
-		c.status.Failure = FailureQueue
-		c.requestFailureLocked(failureRequest{
-			reason: IncompleteQueueFull,
-			code:   FailureQueue,
-			err:    ErrQueueFull,
-		})
+		c.rejectQueueFullLocked(batch)
 		return ErrQueueFull
 	}
 	if len(c.pending) > 0 && now.Sub(c.pending[0].acceptedAt) >= c.config.MaxVolatileAge {
@@ -147,16 +151,27 @@ func (c *Coordinator) TryAccept(batch RecordingBatch) error {
 		c.status.QueueDepth = len(c.queue)
 		return nil
 	default:
-		c.status.State = StateStopping
-		c.status.RejectedBatches++
-		c.status.Failure = FailureQueue
-		c.requestFailureLocked(failureRequest{
-			reason: IncompleteQueueFull,
-			code:   FailureQueue,
-			err:    ErrQueueFull,
-		})
+		c.rejectQueueFullLocked(batch)
 		return ErrQueueFull
 	}
+}
+
+func (c *Coordinator) rejectQueueFullLocked(batch RecordingBatch) {
+	marker := GapMarker{
+		First:  batch.Observed[0].Cursor(),
+		Last:   batch.Accepted,
+		Reason: IncompleteQueueFull,
+	}
+	c.gapMarkers = append(c.gapMarkers, marker)
+	c.status.State = StateIncomplete
+	c.status.RejectedBatches++
+	c.status.GapMarkers++
+	c.status.Failure = FailureQueue
+	c.requestFailureLocked(failureRequest{
+		reason: IncompleteQueueFull,
+		code:   FailureQueue,
+		err:    ErrQueueFull,
+	})
 }
 
 func (c *Coordinator) Stop(ctx context.Context) error {
@@ -191,6 +206,15 @@ func (c *Coordinator) Status() CoordinatorStatus {
 	status := c.status
 	status.QueueDepth = len(c.queue)
 	return status
+}
+
+// GapMarkers returns a stable copy of every declared discontinuity. The
+// coordinator stops on the first marker today, but the slice keeps the API
+// compatible with a future explicit recovery/resume cycle.
+func (c *Coordinator) GapMarkers() []GapMarker {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]GapMarker(nil), c.gapMarkers...)
 }
 
 func (c *Coordinator) run(ctx context.Context) {

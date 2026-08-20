@@ -57,6 +57,9 @@ type RetryPolicy struct {
 type ManagerConfig struct {
 	Preferred driver.ID
 	Retry     RetryPolicy
+	// TerminalRunError is an optional composition-root policy. Nil preserves
+	// the historical fail-stop behavior for non-retryable Run errors.
+	TerminalRunError func(error) bool
 }
 
 // DriverStatus is one point-in-time, immutable view of manager state.
@@ -293,7 +296,8 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 		if runErr == nil {
 			runErr = errors.New("driver Run returned without cancellation")
 		}
-		if candidate.Retryable == nil || !candidate.Retryable(runErr) {
+		retryable := candidate.Retryable != nil && candidate.Retryable(runErr)
+		if !retryable && manager.terminalRunError(runErr) {
 			manager.setTerminal(fmt.Errorf("run driver %q: %w", candidate.Descriptor.ID, runErr))
 			return
 		}
@@ -306,13 +310,21 @@ func (manager *DriverManager[T]) run(ctx context.Context, sink driver.Observatio
 		}
 		attempt := manager.recordTransient(runErr)
 		if attempt > manager.config.Retry.MaxReconnects {
-			manager.setTerminal(errors.Join(ErrReconnectExhausted, runErr))
-			return
+			exhausted := errors.Join(ErrReconnectExhausted, runErr)
+			if manager.terminalRunError(exhausted) {
+				manager.setTerminal(exhausted)
+				return
+			}
+			manager.resetAttempts()
 		}
 		if err := manager.config.Retry.Wait(ctx, manager.backoffDelay(attempt-1)); err != nil {
 			return
 		}
 	}
+}
+
+func (manager *DriverManager[T]) terminalRunError(err error) bool {
+	return manager.config.TerminalRunError == nil || manager.config.TerminalRunError(err)
 }
 
 func (manager *DriverManager[T]) finishRun(generation uint64) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
+	"github.com/vantare/overlays/v2/internal/telemetry/fusion"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
@@ -74,6 +75,49 @@ func AuthorityMatrix() []AuthorityRule {
 	return result
 }
 
+// sharedMatrix is the driver-neutral projection of authorityMatrixV4. It is
+// built once at process start and indexed by signal, so no lookup below scans
+// the table linearly and none of them can panic on an uncovered signal.
+var sharedMatrix = fusion.MustMatrix(sharedRules())
+
+func sharedRules() []fusion.Rule {
+	rules := make([]fusion.Rule, 0, len(authorityMatrixV4))
+	for _, rule := range authorityMatrixV4 {
+		sources := []fusion.Candidate{{Slot: slotOf(rule.Preferred), TTL: rule.PreferredTTL}}
+		if rule.Alternative != SourceUnknown {
+			sources = append(sources, fusion.Candidate{Slot: slotOf(rule.Alternative), TTL: rule.AlternativeTTL})
+		}
+		rules = append(rules, fusion.Rule{Signal: rule.Signal, Sources: sources, Equivalent: rule.Equivalent})
+	}
+	return rules
+}
+
+func slotOf(source ObservationSource) fusion.SlotID {
+	switch source {
+	case SourceSharedMemory:
+		return fusion.SlotID(CapabilitySharedMemory)
+	case SourceREST:
+		return fusion.SlotID(CapabilityREST)
+	default:
+		return fusion.SlotUnknown
+	}
+}
+
+func sourceOf(slot fusion.SlotID) ObservationSource {
+	switch slot {
+	case fusion.SlotID(CapabilitySharedMemory):
+		return SourceSharedMemory
+	case fusion.SlotID(CapabilityREST):
+		return SourceREST
+	default:
+		return SourceUnknown
+	}
+}
+
+func stampOf(stamp monotonicStamp) fusion.Stamp {
+	return fusion.Stamp{Elapsed: stamp.elapsed, Set: stamp.set}
+}
+
 type FieldDecision struct {
 	Signal    catalog.SignalID
 	Source    ObservationSource
@@ -92,31 +136,30 @@ type monotonicStamp struct {
 	set     bool
 }
 
-type fusionSource struct {
-	observation Observation
-	received    monotonicStamp
-	sequence    uint64
-}
-
 // Fusion is single-writer state owned by one Driver.Run. UTC is output metadata
 // only; arrival sequence orders inputs and monotonic elapsed time governs TTL.
+// The N-slot store lives in the shared fusion package: LMU declares two slots,
+// and a single-source driver declares one without duplicating this code.
 type Fusion struct {
-	shared   fusionSource
-	rest     fusionSource
-	sequence uint64
+	slots *fusion.Slots[Observation]
 }
 
-func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs ...Observation) Observation {
-	for _, input := range inputs {
-		fusion.sequence++
-		state := fusionSource{observation: input, received: monotonicStamp{elapsed: elapsed, set: true}, sequence: fusion.sequence}
-		switch input.Source {
-		case SourceSharedMemory:
-			fusion.shared = state
-		case SourceREST:
-			fusion.rest = state
-		}
+func (state *Fusion) store() *fusion.Slots[Observation] {
+	if state.slots == nil {
+		state.slots = fusion.NewSlots[Observation](slotOf(SourceSharedMemory), slotOf(SourceREST))
 	}
+	return state.slots
+}
+
+func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs ...Observation) Observation {
+	slots := state.store()
+	for _, input := range inputs {
+		slots.Put(slotOf(input.Source), input, fusion.Stamp{Elapsed: elapsed, Set: true})
+	}
+	sharedEntry := slots.Get(slotOf(SourceSharedMemory))
+	restEntry := slots.Get(slotOf(SourceREST))
+	sharedStamp := monotonicStamp{elapsed: sharedEntry.Received.Elapsed, set: sharedEntry.Received.Set}
+	restStamp := monotonicStamp{elapsed: restEntry.Received.Elapsed, set: restEntry.Received.Set}
 
 	result := Observation{
 		Source:        SourceCanonical,
@@ -125,33 +168,33 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 		Decisions:     make([]FieldDecision, 0, len(authorityMatrixV4)),
 		Conflicts:     make([]ConflictDiagnostic, 0, maxConflictDiagnostics),
 	}
-	if fusion.shared.sequence != 0 {
-		result.Compatibility = fusion.shared.observation.Compatibility
-		result.Fingerprint = fusion.shared.observation.Fingerprint
-		result.ClockChange = fusion.shared.observation.ClockChange
+	if sharedEntry.Present() {
+		result.Compatibility = sharedEntry.Value.Compatibility
+		result.Fingerprint = sharedEntry.Value.Fingerprint
+		result.ClockChange = sharedEntry.Value.ClockChange
 	}
-	shm := fusion.shared.observation
-	rest := fusion.rest.observation.REST
-	shmStamp := fusion.shared.received
-	result.SourceTime = chooseSourceTime(elapsed, ruleFor(catalog.SignalSessionSourceTime), shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, fusion.rest.received), &result)
-	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, fusion.rest.received), &result)
-	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, fusion.rest.received), &result)
-	result.VehicleCount = chooseField(elapsed, ruleFor(catalog.SignalSessionVehicleCount), shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, fusion.rest.received), &result)
+	shm := sharedEntry.Value
+	rest := restEntry.Value.REST
+	shmStamp := sharedStamp
+	result.SourceTime = chooseSourceTime(elapsed, ruleFor(catalog.SignalSessionSourceTime), shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, restStamp), &result)
+	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
+	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)
+	result.VehicleCount = chooseField(elapsed, ruleFor(catalog.SignalSessionVehicleCount), shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, restStamp), &result)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
 	playerIndex := playerVehicleIndex(result.Vehicles)
 	restPlayerPresent := rest.PlayerPresent.Field
 	if len(result.Vehicles) == 0 {
 		restPlayerPresent = schema.MissingField[bool]()
 	}
-	result.PlayerPresent = chooseField(elapsed, ruleFor(catalog.SignalVehiclePlayerPresent), shm.PlayerPresent, shmStamp, restPlayerPresent, timedStamp(rest.PlayerPresent, fusion.rest.received), &result)
+	result.PlayerPresent = chooseField(elapsed, ruleFor(catalog.SignalVehiclePlayerPresent), shm.PlayerPresent, shmStamp, restPlayerPresent, timedStamp(rest.PlayerPresent, restStamp), &result)
 	result.EndTime = choosePreferredOnly(elapsed, ruleFor(catalog.SignalSessionEndTime), shm.EndTime, shmStamp, &result)
 	result.MaximumLaps = choosePreferredOnly(elapsed, ruleFor(catalog.SignalSessionMaximumLaps), shm.MaximumLaps, shmStamp, &result)
 
 	if playerIndex >= 0 {
 		player := result.Vehicles[playerIndex]
-		result.PlayerPosition = chooseField(elapsed, ruleFor(catalog.SignalStandingsPosition), player.Position, shmStamp, rest.PlayerPosition.Field, timedStamp(rest.PlayerPosition, fusion.rest.received), &result)
-		result.CompletedLaps = chooseField(elapsed, ruleFor(catalog.SignalStandingsCompletedLaps), player.CompletedLaps, shmStamp, rest.CompletedLaps.Field, timedStamp(rest.CompletedLaps, fusion.rest.received), &result)
-		result.PitStopCount = chooseField(elapsed, ruleFor(catalog.SignalPitStopCount), player.PitStopCount, shmStamp, rest.PitStopCount.Field, timedStamp(rest.PitStopCount, fusion.rest.received), &result)
+		result.PlayerPosition = chooseField(elapsed, ruleFor(catalog.SignalStandingsPosition), player.Position, shmStamp, rest.PlayerPosition.Field, timedStamp(rest.PlayerPosition, restStamp), &result)
+		result.CompletedLaps = chooseField(elapsed, ruleFor(catalog.SignalStandingsCompletedLaps), player.CompletedLaps, shmStamp, rest.CompletedLaps.Field, timedStamp(rest.CompletedLaps, restStamp), &result)
+		result.PitStopCount = chooseField(elapsed, ruleFor(catalog.SignalPitStopCount), player.PitStopCount, shmStamp, rest.PitStopCount.Field, timedStamp(rest.PitStopCount, restStamp), &result)
 		player.Position = result.PlayerPosition
 		player.CompletedLaps = result.CompletedLaps
 		player.PitStopCount = result.PitStopCount
@@ -176,13 +219,54 @@ func (fusion *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs
 	return result
 }
 
+// ruleFor resolves one signal through the indexed shared matrix. An uncovered
+// signal degrades to an unsourced rule -- the field is reported missing -- and
+// never panics.
 func ruleFor(signal catalog.SignalID) AuthorityRule {
-	for _, rule := range authorityMatrixV4 {
-		if rule.Signal == signal {
-			return rule
-		}
+	shared, err := sharedMatrix.Lookup(signal)
+	if err != nil {
+		return AuthorityRule{Signal: signal, Preferred: SourceUnknown, Alternative: SourceUnknown}
 	}
-	panic("LMU authority rule is missing")
+	rule := AuthorityRule{Signal: shared.Signal, Equivalent: shared.Equivalent}
+	preferred := shared.Preferred()
+	rule.Preferred = sourceOf(preferred.Slot)
+	rule.PreferredTTL = preferred.TTL
+	if alternatives := shared.Alternatives(); len(alternatives) > 0 {
+		rule.Alternative = sourceOf(alternatives[0].Slot)
+		rule.AlternativeTTL = alternatives[0].TTL
+	}
+	return rule
+}
+
+func sharedRuleFor(rule AuthorityRule) fusion.Rule {
+	shared, err := sharedMatrix.Lookup(rule.Signal)
+	if err != nil {
+		return fusion.Rule{Signal: rule.Signal}
+	}
+	return shared
+}
+
+// resolve runs one shared-package choice and folds its ledger back into the
+// driver observation.
+func resolve[T comparable](rule AuthorityRule, result *Observation, choose func(fusion.Rule, *fusion.Ledger) schema.Field[T]) schema.Field[T] {
+	ledger := fusion.NewLedger(1, maxConflictDiagnostics)
+	field := choose(sharedRuleFor(rule), ledger)
+	for _, decision := range ledger.Decisions() {
+		result.Decisions = append(result.Decisions, FieldDecision{
+			Signal:    decision.Signal,
+			Source:    sourceOf(decision.Slot),
+			Freshness: decision.Freshness,
+			Fallback:  decision.Fallback,
+		})
+	}
+	for _, conflict := range ledger.Conflicts() {
+		appendConflict(result, ConflictDiagnostic{
+			Signal:      conflict.Signal,
+			Preferred:   sourceOf(conflict.Preferred),
+			Alternative: sourceOf(conflict.Alternative),
+		})
+	}
+	return field
 }
 
 func missingDecision[T comparable](rule AuthorityRule, result *Observation) schema.Field[T] {
@@ -365,12 +449,17 @@ func timedStamp[T comparable](field TimedField[T], fallback monotonicStamp) mono
 }
 
 func chooseSourceTime(elapsed time.Duration, rule AuthorityRule, preferred schema.Field[time.Duration], preferredAt monotonicStamp, alternative schema.Field[time.Duration], alternativeAt monotonicStamp, result *Observation) schema.Field[time.Duration] {
-	preferred = fieldAt(elapsed, preferredAt, rule.PreferredTTL, preferred)
-	alternative = fieldAt(elapsed, alternativeAt, rule.AlternativeTTL, alternative)
-	if validUsable(preferred) && validUsable(alternative) && sourceTimesDiffer(elapsed, preferred, preferredAt, alternative, alternativeAt) {
-		appendConflict(result, ConflictDiagnostic{Signal: rule.Signal, Preferred: rule.Preferred, Alternative: rule.Alternative})
-	}
-	return selectField(rule, preferred, alternative, result)
+	return resolve(rule, result, func(shared fusion.Rule, ledger *fusion.Ledger) schema.Field[time.Duration] {
+		return fusion.ChooseFunc(elapsed, shared, ledger,
+			func(left, right fusion.Input[time.Duration]) bool {
+				return sourceTimesDiffer(elapsed,
+					left.Field, monotonicStamp{elapsed: left.At.Elapsed, set: left.At.Set},
+					right.Field, monotonicStamp{elapsed: right.At.Elapsed, set: right.At.Set})
+			},
+			fusion.Input[time.Duration]{Slot: slotOf(rule.Preferred), Field: preferred, At: stampOf(preferredAt)},
+			fusion.Input[time.Duration]{Slot: slotOf(rule.Alternative), Field: alternative, At: stampOf(alternativeAt)},
+		)
+	})
 }
 
 func sourceTimesDiffer(elapsed time.Duration, preferred schema.Field[time.Duration], preferredAt monotonicStamp, alternative schema.Field[time.Duration], alternativeAt monotonicStamp) bool {
@@ -395,82 +484,27 @@ func projectedSourceTime(elapsed time.Duration, field schema.Field[time.Duration
 }
 
 func chooseField[T comparable](elapsed time.Duration, rule AuthorityRule, preferred schema.Field[T], preferredAt monotonicStamp, alternative schema.Field[T], alternativeAt monotonicStamp, result *Observation) schema.Field[T] {
-	preferred = fieldAt(elapsed, preferredAt, rule.PreferredTTL, preferred)
-	alternative = fieldAt(elapsed, alternativeAt, rule.AlternativeTTL, alternative)
-	if validUsable(preferred) && validUsable(alternative) && fieldsDiffer(preferred, alternative) {
-		appendConflict(result, ConflictDiagnostic{Signal: rule.Signal, Preferred: rule.Preferred, Alternative: rule.Alternative})
-	}
-	return selectField(rule, preferred, alternative, result)
-}
-
-func selectField[T comparable](rule AuthorityRule, preferred, alternative schema.Field[T], result *Observation) schema.Field[T] {
-	switch {
-	case usable(preferred):
-		appendDecision(result, rule, rule.Preferred, preferred.Freshness(), false)
-		return preferred
-	case rule.Equivalent && usable(alternative):
-		appendDecision(result, rule, rule.Alternative, alternative.Freshness(), true)
-		return alternative
-	case validStale(preferred):
-		appendDecision(result, rule, rule.Preferred, preferred.Freshness(), false)
-		return preferred
-	case rule.Equivalent && validStale(alternative):
-		appendDecision(result, rule, rule.Alternative, alternative.Freshness(), true)
-		return alternative
-	case hasValue(preferred):
-		appendDecision(result, rule, rule.Preferred, preferred.Freshness(), false)
-		return preferred
-	case rule.Equivalent && hasValue(alternative):
-		appendDecision(result, rule, rule.Alternative, alternative.Freshness(), true)
-		return alternative
-	default:
-		appendDecision(result, rule, SourceUnknown, schema.FreshnessMissing, false)
-		return schema.MissingField[T]()
-	}
+	return resolve(rule, result, func(shared fusion.Rule, ledger *fusion.Ledger) schema.Field[T] {
+		return fusion.Choose(elapsed, shared, ledger,
+			fusion.Input[T]{Slot: slotOf(rule.Preferred), Field: preferred, At: stampOf(preferredAt)},
+			fusion.Input[T]{Slot: slotOf(rule.Alternative), Field: alternative, At: stampOf(alternativeAt)},
+		)
+	})
 }
 
 func choosePreferredOnly[T comparable](elapsed time.Duration, rule AuthorityRule, field schema.Field[T], updated monotonicStamp, result *Observation) schema.Field[T] {
-	field = fieldAt(elapsed, updated, rule.PreferredTTL, field)
-	if hasValue(field) {
-		appendDecision(result, rule, rule.Preferred, field.Freshness(), false)
-		return field
-	}
-	appendDecision(result, rule, SourceUnknown, schema.FreshnessMissing, false)
-	return schema.MissingField[T]()
+	return resolve(rule, result, func(shared fusion.Rule, ledger *fusion.Ledger) schema.Field[T] {
+		return fusion.Choose(elapsed, shared, ledger,
+			fusion.Input[T]{Slot: slotOf(rule.Preferred), Field: field, At: stampOf(updated)},
+		)
+	})
 }
 
 func fieldAt[T comparable](elapsed time.Duration, updated monotonicStamp, ttl time.Duration, field schema.Field[T]) schema.Field[T] {
-	if !updated.set || !hasValue(field) || field.Freshness() != schema.FreshnessFresh {
-		return field
-	}
-	if elapsed < updated.elapsed || elapsed-updated.elapsed > ttl {
-		return copyFreshness(field, schema.FreshnessStale)
-	}
-	return field
+	return fusion.FieldAt(elapsed, stampOf(updated), ttl, field)
 }
 
-func usable[T comparable](field schema.Field[T]) bool {
-	_, present := field.Value()
-	return present && field.Freshness() == schema.FreshnessFresh
-}
-
-func validStale[T comparable](field schema.Field[T]) bool {
-	_, present := field.Value()
-	return present && field.Freshness() == schema.FreshnessStale
-}
-
-func validUsable[T comparable](field schema.Field[T]) bool { return usable(field) || validStale(field) }
-
-func hasValue[T comparable](field schema.Field[T]) bool {
-	_, present := field.Value()
-	return present
-}
-
-func fieldsDiffer[T comparable](left, right schema.Field[T]) bool {
-	leftValue, leftPresent := left.Value()
-	rightValue, rightPresent := right.Value()
-	return leftPresent != rightPresent || (leftPresent && leftValue != rightValue)
-}
+func hasValue[T comparable](field schema.Field[T]) bool { return fusion.Present(field) }
 
 func appendDecision(result *Observation, rule AuthorityRule, source ObservationSource, freshness schema.Freshness, fallback bool) {
 	result.Decisions = append(result.Decisions, FieldDecision{Signal: rule.Signal, Source: source, Freshness: freshness, Fallback: fallback})

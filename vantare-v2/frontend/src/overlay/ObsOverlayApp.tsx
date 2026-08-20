@@ -12,6 +12,11 @@ import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
 import { createSseProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createSseEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
+import {
+  attachOverlayFrameV2Sse,
+  createOverlayFrameV2Store,
+} from "../telemetry-transport/overlay-frame-v2-store";
+import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -30,6 +35,8 @@ export function ObsOverlayApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
+  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
+  const overlayV2Shadow = useMemo(() => createOverlayV2ShadowRuntime(), []);
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
   const engineerAdapter = useMemo(
     () => createSseEngineerPresentationAdapter({ store: engineerPresentations }),
@@ -40,22 +47,43 @@ export function ObsOverlayApp() {
       createSseProjectionTelemetryAdapter({
         coordinator,
         runtime: "obs",
+        onMappedSnapshot: overlayV2Shadow.acceptLegacy,
       }),
-    [coordinator],
+    [coordinator, overlayV2Shadow],
   );
 
   useEffect(() => applyOverlayDocumentMode(), []);
 
   useEffect(() => {
+    const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
+      const state = overlayV2Store.getSnapshot();
+      if (state.frame && state.source) {
+        overlayV2Shadow.acceptOverlayV2(state.frame, state.source);
+      }
+    });
+    const detachOverlayV2 = attachOverlayFrameV2Sse(overlayV2Store, {
+      onError: (cause) => console.error("overlay-v2 shadow ingest failed", cause),
+    });
+    const diagnosticWindow = window as Window & {
+      __vantareOverlayV2Diagnostics?: () => unknown;
+    };
+    diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
+      ...overlayV2Store.getDiagnostics(),
+      shadow: overlayV2Shadow.sessionSummary(),
+    });
     adapter.start();
     engineerAdapter.start();
     return () => {
+      delete diagnosticWindow.__vantareOverlayV2Diagnostics;
+      detachOverlayV2();
+      unsubscribeOverlayV2Store();
       adapter.stop();
       engineerAdapter.stop();
+      overlayV2Store.dispose();
       engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations]);
+  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayV2Shadow, overlayV2Store]);
 
   useEffect(() => {
     const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {

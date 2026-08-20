@@ -3,17 +3,55 @@ import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../core/widget-definition";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
+import { buildStandingsViewModel } from "../widget-types/standings/standings-view-model";
+import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
+import type { StandingsContent } from "../widget-types/standings/standings-content";
+import type { RacingFlagsContent } from "../widget-types/racing-flags/racing-flags-definition";
+import type { RacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
+import { buildRacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
+import {
+  buildRacingFlagsViewModelV2,
+  racingFlagsDisplayedValues,
+} from "../widget-types/racing-flags/racing-flags-view-model-v2";
 import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types/broadcast-tower/broadcast-tower-view-model";
 import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
+import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import {
+  buildInputTelemetryViewModelV2,
+  inputTelemetryDisplayedValues,
+} from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
+export { OVERLAY_V2_CONTROLS_DECLARED_GAPS } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import type { PedalsTelemetryContent } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
+import {
+  buildPedalsTelemetryViewModel,
+  type PedalsTelemetryViewModel,
+} from "../widget-types/pedals-telemetry/pedals-telemetry-view-model";
+import {
+  buildPedalsTelemetryViewModelV2,
+  pedalsTelemetryDisplayedValues,
+} from "../widget-types/pedals-telemetry/pedals-telemetry-view-model-v2";
+import type { DeltaContent } from "../widget-types/delta/delta-definition";
 import type { DeltaViewModel } from "../widget-types/delta/delta-view-model";
+import { buildDeltaViewModel } from "../widget-types/delta/delta-view-model";
+import { buildDeltaViewModelV2 } from "../widget-types/delta/delta-view-model-v2";
+export { OVERLAY_V2_DELTA_DECLARED_GAPS } from "../widget-types/delta/delta-view-model-v2";
 import type { DeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
 import type { DeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
 import type { TrackMapViewModel } from "../widget-types/track-map/track-map-view-model";
+import type { FuelStrategyContent } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 import type { FuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
+import { buildFuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
+import { buildFuelStrategyViewModelV2 } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
+export { OVERLAY_V2_FUEL_DECLARED_GAPS } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
 import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
+import type { RelativeContent } from "../widget-types/relative/relative-content";
 import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
+import { buildRelativeViewModel } from "../widget-types/relative/relative-view-model";
+import { buildRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
+export { OVERLAY_V2_RELATIVE_DECLARED_GAPS } from "../widget-types/relative/relative-view-model-v2";
 import { readScoringBoolean, readScoringNumber, readScoringString } from "../widget-types/shared/scoring-readers";
 import type {
   OverlayProjectionAdaptation,
@@ -93,6 +131,558 @@ export type OverlayShadowReport = Readonly<{
   widgets: readonly OverlayShadowWidgetResult[];
   truncated: boolean;
 }>;
+
+export const OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES = Object.freeze({
+  throttle: 1e-9,
+  brake: 1e-9,
+  clutch: 1e-9,
+  speedKph: 3.6e-6,
+  rpm: 1e-6,
+  gear: 0,
+});
+
+export type OverlayV2PlayerInstrumentComparison = Readonly<{
+  equal: boolean;
+  phase: OverlayShadowPhase;
+  mismatches: readonly string[];
+  legacyDisplayed: Readonly<Record<string, string>>;
+  overlayV2Displayed: Readonly<Record<string, string>>;
+}>;
+
+/**
+ * Effective phase of one shadow comparison. Overlay v1 legacy retains the last
+ * known value while the v2 view models hide stale values on purpose, so only
+ * `live` comparisons are divergences; every other phase is a declared contract
+ * difference and is accounted separately.
+ */
+export type OverlayShadowPhase = "live" | "stale" | "degraded" | "no-frame" | "transition";
+
+export const OVERLAY_SHADOW_PHASES: readonly OverlayShadowPhase[] = Object.freeze([
+  "live",
+  "stale",
+  "degraded",
+  "no-frame",
+  "transition",
+]);
+
+export type OverlayShadowPhaseCounts = Readonly<Record<OverlayShadowPhase, number>>;
+
+export type OverlayV2ShadowSessionSummary = Readonly<{
+  /** Frames compared in the `live` phase: the gate denominator. */
+  frames: number;
+  /** Mismatches observed in the `live` phase: the gate numerator. */
+  mismatches: number;
+  /** Mismatches observed outside `live`; an intentional contract difference. */
+  declaredDifferences: number;
+  framesByPhase: OverlayShadowPhaseCounts;
+  mismatchesByPhase: OverlayShadowPhaseCounts;
+  /** Times the accumulators were rotated because the stream epoch changed. */
+  epochResets: number;
+  metrics: Readonly<Record<string, number>>;
+}>;
+
+export type OverlayV2PlayerInstrumentsComparator = Readonly<{
+  compare(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: PedalsTelemetryContent;
+  }>): OverlayV2PlayerInstrumentComparison;
+  compareSession(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: RacingFlagsContent;
+  }>): OverlayV2FeatureComparison;
+  compareStandings(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: StandingsContent;
+  }>): OverlayV2FeatureComparison;
+  compareDelta(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: DeltaContent;
+  }>): OverlayV2FeatureComparison;
+  compareRelative(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: RelativeContent;
+  }>): OverlayV2FeatureComparison;
+  compareFuel(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: FuelStrategyContent;
+  }>): OverlayV2FeatureComparison;
+  /**
+   * The controls slice needs the legacy history explicitly: Overlay v1 keeps
+   * it in a browser accumulator outside the snapshot, so the caller has to
+   * supply the very series the v1 widget would have drawn.
+   */
+  compareControls(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    legacyHistory: readonly InputTelemetrySample[];
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: InputTelemetryContent;
+  }>): OverlayV2FeatureComparison;
+  /** Rotates every accumulator. The runtime calls it on epoch/session change. */
+  reset(): void;
+  sessionSummary(): OverlayV2ShadowSessionSummary;
+}>;
+
+/**
+ * Resolves the effective phase from the legacy status and the v2 source state.
+ *
+ * Under load (54 AI cars measured) the LMU session block grazes the 500 ms
+ * freshness limit and the driver oscillates stale<->live every few seconds.
+ * The two contracts observe that edge at slightly different instants, so a
+ * comparison where they disagree is a `transition`, never a live divergence:
+ * a comparison is `live` only when both sides independently say so.
+ */
+export function resolveOverlayShadowPhase(
+  legacySnapshot: TelemetrySnapshot,
+  source: OverlaySourceStatusV2,
+): OverlayShadowPhase {
+  const legacy = legacyPhase(legacySnapshot);
+  const overlayV2 = overlayV2Phase(source);
+  return legacy === overlayV2 ? legacy : "transition";
+}
+
+function legacyPhase(snapshot: TelemetrySnapshot): Exclude<OverlayShadowPhase, "transition"> {
+  switch (snapshot.status) {
+    case "ready":
+      return "live";
+    case "stale":
+      return "stale";
+    default:
+      return "no-frame";
+  }
+}
+
+function overlayV2Phase(source: OverlaySourceStatusV2): Exclude<OverlayShadowPhase, "transition"> {
+  switch (source.state) {
+    case "live":
+      return "live";
+    case "stale":
+      return "stale";
+    case "stopped":
+    case "error":
+      return "no-frame";
+    default:
+      return "degraded";
+  }
+}
+
+/**
+ * The anchor feature. Every paired frame is compared through it exactly once,
+ * so it is what advances framesByPhase: the gate denominator must count paired
+ * frames, not the number of features compared on each frame.
+ */
+const ANCHOR_FEATURE = "player-instruments";
+
+type ShadowPhaseAccumulator = Readonly<{
+  record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
+  reset(): void;
+  markEpochReset(): void;
+  summary(): OverlayV2ShadowSessionSummary;
+}>;
+
+function emptyPhaseCounts(): Record<OverlayShadowPhase, number> {
+  return { live: 0, stale: 0, degraded: 0, "no-frame": 0, transition: 0 };
+}
+
+function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
+  let framesByPhase = emptyPhaseCounts();
+  let mismatchesByPhase = emptyPhaseCounts();
+  let epochResets = 0;
+  let byMetric = new Map<string, number>();
+  return {
+    record(feature, phase, fields) {
+      if (feature === ANCHOR_FEATURE) framesByPhase[phase] += 1;
+      mismatchesByPhase[phase] += fields.length;
+      for (const field of fields) {
+        const key = `overlay_shadow_mismatches_total{feature="${feature}",field="${field}",phase="${phase}"}`;
+        byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+      }
+    },
+    reset() {
+      framesByPhase = emptyPhaseCounts();
+      mismatchesByPhase = emptyPhaseCounts();
+      byMetric = new Map();
+    },
+    markEpochReset() {
+      epochResets += 1;
+    },
+    summary() {
+      const declaredDifferences = OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
+        .reduce((total, phase) => total + mismatchesByPhase[phase], 0);
+      return Object.freeze({
+        frames: framesByPhase.live,
+        mismatches: mismatchesByPhase.live,
+        declaredDifferences,
+        framesByPhase: Object.freeze({ ...framesByPhase }),
+        mismatchesByPhase: Object.freeze({ ...mismatchesByPhase }),
+        epochResets,
+        metrics: Object.freeze(Object.fromEntries(
+          [...byMetric.entries()].sort(([left], [right]) => left.localeCompare(right)),
+        )),
+      });
+    },
+  };
+}
+
+/** Absolute tolerance for the float gap carried by a standings row. */
+export const OVERLAY_V2_STANDINGS_GAP_TOLERANCE = 1e-6;
+
+/**
+ * Absolute tolerances for the floats each feature compares. They are explicit
+ * per field because the two contracts reach the same number through different
+ * arithmetic: the delta and the relative gap round-trip through JSON, and the
+ * progress bar divides by a scale constant on both sides.
+ */
+export const OVERLAY_V2_DELTA_TOLERANCES = Object.freeze({
+  progress: 1e-9,
+});
+export const OVERLAY_V2_RELATIVE_GAP_TOLERANCE = 1e-6;
+export const OVERLAY_V2_FUEL_TOLERANCES = Object.freeze({
+  fuelLiters: 1e-6,
+  // Both sides publish a whole number of laps: any difference is a real one.
+  lapsRemaining: 0,
+});
+/**
+ * Pedal ratios travel the v2 wire quantized to per mille, so the two paths can
+ * legitimately differ by half a step of that quantization and no more.
+ */
+export const OVERLAY_V2_CONTROLS_RATIO_TOLERANCE = 5e-4;
+
+export type OverlayV2FeatureComparison = Readonly<{
+  equal: boolean;
+  phase: OverlayShadowPhase;
+  mismatches: readonly string[];
+}>;
+
+/**
+ * Compares the session slice through the racing-flags widget. Both contracts
+ * declare the flag absent today, so this asserts the shared absence rather
+ * than a value: it is the regression that catches one side inventing a green.
+ */
+export function compareSessionModels(
+  legacy: RacingFlagsViewModel,
+  overlayV2: RacingFlagsViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  const legacyDisplayed = racingFlagsDisplayedValues(legacy);
+  const overlayV2Displayed = racingFlagsDisplayedValues(overlayV2);
+  for (const field of Object.keys(legacyDisplayed)) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  return [...mismatch].sort();
+}
+
+/**
+ * Compares the standings slice row by row, keyed by vehicle identity, with the
+ * order treated as significant: the order is now resolved in Go and a
+ * reordering is exactly the kind of regression this gate must catch.
+ *
+ * Only fields both contracts can produce are compared. driverNumber, teamCode,
+ * teamBrandColor, tireCompound, bestLap and the interval to the car ahead have
+ * no canonical signal behind them and are reported as declared gaps, never as
+ * divergences.
+ */
+export function compareStandingsModels(
+  legacy: StandingsViewModel,
+  overlayV2: StandingsViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  for (const field of ["status", "sessionLabel", "activeClass", "remainingText"] as const) {
+    if (legacy[field] !== overlayV2[field]) mismatch.add(field);
+  }
+  if (legacy.rows.length !== overlayV2.rows.length) mismatch.add("rows.length");
+  const legacyOrder = legacy.rows.map((row) => row.id);
+  const overlayV2Order = overlayV2.rows.map((row) => row.id);
+  if (legacyOrder.join("|") !== overlayV2Order.join("|")) mismatch.add("rows.order");
+
+  const overlayV2ById = new Map(overlayV2.rows.map((row) => [row.id, row]));
+  for (const legacyRow of legacy.rows) {
+    const overlayV2Row = overlayV2ById.get(legacyRow.id);
+    if (!overlayV2Row) {
+      mismatch.add("rows[].identity");
+      continue;
+    }
+    for (const field of COMPARABLE_STANDINGS_FIELDS) {
+      if (legacyRow[field] !== overlayV2Row[field]) mismatch.add(`rows[].${field}`);
+    }
+  }
+  return [...mismatch].sort();
+}
+
+const COMPARABLE_STANDINGS_FIELDS = [
+  "position",
+  "driverName",
+  "vehicleClass",
+  "currentLapText",
+  "lastLapText",
+  "pitText",
+  "isPlayer",
+  "isLeader",
+] as const satisfies readonly (keyof StandingsRowViewModel)[];
+
+/** Fields with no canonical signal behind them; declared, never compared. */
+export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
+  "rows[].driverNumber",
+  "rows[].teamCode",
+  "rows[].teamBrandColor",
+  "rows[].tireCompound",
+  "rows[].bestLapText",
+  "rows[].intervalText",
+]);
+
+/**
+ * Compares the delta slice. The reference resolution now lives in Go, so what
+ * this asserts is that the widget renders the same number and the same tone
+ * from the resolved reference that Overlay v1 rendered from the one it picked
+ * itself.
+ *
+ * bestLapText, lapText, predictedLapText and the trend have no canonical signal
+ * behind them and are declared gaps, never divergences.
+ */
+export function compareDeltaModels(
+  legacy: DeltaViewModel,
+  overlayV2: DeltaViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  for (const field of ["status", "tone", "deltaText", "lastLapText", "splitText"] as const) {
+    if (legacy[field] !== overlayV2[field]) mismatch.add(field);
+  }
+  if (!numbersWithin(legacy.progress, overlayV2.progress, OVERLAY_V2_DELTA_TOLERANCES.progress)) {
+    mismatch.add("progress");
+  }
+  return [...mismatch].sort();
+}
+
+/**
+ * Compares the relative slice row by row, keyed by vehicle identity and with
+ * the order treated as significant: the window and its order are now resolved
+ * in Go and a reordering is exactly the regression this gate must catch.
+ *
+ * Declared difference, accounted and not compared as a value: Overlay v1
+ * ordered the window by lap distance and kept lapped cars with a blank gap,
+ * while the v2 builder orders by the canonical relative gap and leaves a
+ * vehicle without one out of the window. Rows present on one side only are
+ * reported once as `rows[].identity` rather than as a field divergence.
+ */
+export function compareRelativeModels(
+  legacy: RelativeViewModel,
+  overlayV2: RelativeViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  if (legacy.status !== overlayV2.status) mismatch.add("status");
+  if (legacy.rows.length !== overlayV2.rows.length) mismatch.add("rows.length");
+  const legacyOrder = legacy.rows.map((row) => row.id);
+  const overlayV2Order = overlayV2.rows.map((row) => row.id);
+  if (legacyOrder.join("|") !== overlayV2Order.join("|")) mismatch.add("rows.order");
+
+  const overlayV2ById = new Map(overlayV2.rows.map((row) => [row.id, row]));
+  for (const legacyRow of legacy.rows) {
+    const overlayV2Row = overlayV2ById.get(legacyRow.id);
+    if (!overlayV2Row) {
+      mismatch.add("rows[].identity");
+      continue;
+    }
+    for (const field of COMPARABLE_RELATIVE_FIELDS) {
+      if (legacyRow[field] !== overlayV2Row[field]) mismatch.add(`rows[].${field}`);
+    }
+    if (!numbersWithin(
+      legacyRow.gapSeconds ?? undefined,
+      overlayV2Row.gapSeconds ?? undefined,
+      OVERLAY_V2_RELATIVE_GAP_TOLERANCE,
+    )) {
+      mismatch.add("rows[].gapSeconds");
+    }
+  }
+  return [...mismatch].sort();
+}
+
+const COMPARABLE_RELATIVE_FIELDS = [
+  "position",
+  "driverName",
+  "vehicleClass",
+  "side",
+  "tone",
+  "isPlayer",
+] as const satisfies readonly (keyof RelativeRowViewModel)[];
+
+/**
+ * Compares the fuel slice. Only the tank and the laps projection have a
+ * canonical authority; everything the v1 widget derived from `fuelHistory`
+ * is a declared gap until that derivation exists in derive/.
+ */
+export function compareFuelModels(
+  legacy: FuelStrategyViewModel,
+  overlayV2: FuelStrategyViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  if (legacy.status !== overlayV2.status) mismatch.add("status");
+  for (const field of Object.keys(OVERLAY_V2_FUEL_TOLERANCES) as (keyof typeof OVERLAY_V2_FUEL_TOLERANCES)[]) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_FUEL_TOLERANCES[field])) {
+      mismatch.add(field);
+    }
+  }
+  return [...mismatch].sort();
+}
+
+/**
+ * Compares the controls slice: the instantaneous pedals, and the series behind
+ * them.
+ *
+ * The series is the interesting half. Overlay v1 builds it in the browser, one
+ * accumulator per widget id, sampling whatever snapshots arrive; Overlay v2
+ * reads a series Go derived once from the canonical stream. They cannot be
+ * compared position by position from the start, because the two have different
+ * beginnings — the browser accumulator starts when the widget mounts, the
+ * canonical history when the run does — and different retention. What must
+ * agree is the part they both cover, so the comparison walks both series
+ * backwards from the newest sample and compares the overlap.
+ *
+ * Declared differences, accounted and never compared as values:
+ *   - `history.length`: warm-up and retention are not the same on both sides.
+ *   - `history[].capturedAt`: v2 reconstructs the instants from `windowMs`.
+ *   - `history[].speedKph`, `rpm`, `gear`: the canonical sample has pedals
+ *     only, so the v2 series carries no such fields to compare.
+ *
+ * A side that has a series while the other has none is not a retention
+ * difference: it is reported once as `history.presence`.
+ */
+export function compareControlsModels(
+  legacy: InputTelemetryViewModel,
+  overlayV2: InputTelemetryViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  if (legacy.status !== overlayV2.status) mismatch.add("status");
+  const legacyDisplayed = inputTelemetryDisplayedValues(legacy);
+  const overlayV2Displayed = inputTelemetryDisplayedValues(overlayV2);
+  for (const field of ["status", "throttle", "brake", "clutch"] as const) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  for (const field of ["throttle", "brake", "clutch"] as const) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+      mismatch.add(field);
+    }
+  }
+  for (const field of ["speedKph", "rpm", "gear"] as const) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+      mismatch.add(field);
+    }
+  }
+
+  if ((legacy.history.length === 0) !== (overlayV2.history.length === 0)) {
+    mismatch.add("history.presence");
+    return [...mismatch].sort();
+  }
+  const overlap = Math.min(legacy.history.length, overlayV2.history.length);
+  for (let step = 1; step <= overlap; step += 1) {
+    const legacySample = legacy.history[legacy.history.length - step];
+    const overlayV2Sample = overlayV2.history[overlayV2.history.length - step];
+    for (const field of ["throttle", "brake", "clutch"] as const) {
+      if (!numbersWithin(legacySample[field], overlayV2Sample[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+        mismatch.add(`history[].${field}`);
+      }
+    }
+  }
+  return [...mismatch].sort();
+}
+
+export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
+  const accumulator = createShadowPhaseAccumulator();
+  return {
+    compareSession(input) {
+      const legacy = buildRacingFlagsViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildRacingFlagsViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "session", input, compareSessionModels(legacy, overlayV2));
+    },
+    compareStandings(input) {
+      const legacy = buildStandingsViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildStandingsViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "standings", input, compareStandingsModels(legacy, overlayV2));
+    },
+    compareDelta(input) {
+      const legacy = buildDeltaViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildDeltaViewModelV2(input.frame, input.source);
+      return record(accumulator, "delta", input, compareDeltaModels(legacy, overlayV2));
+    },
+    compareRelative(input) {
+      const legacy = buildRelativeViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildRelativeViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "relative", input, compareRelativeModels(legacy, overlayV2));
+    },
+    compareFuel(input) {
+      const legacy = buildFuelStrategyViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildFuelStrategyViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "fuel", input, compareFuelModels(legacy, overlayV2));
+    },
+    compareControls(input) {
+      const legacy = buildInputTelemetryViewModel(input.legacySnapshot, input.content, input.legacyHistory);
+      const overlayV2 = buildInputTelemetryViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "controls", input, compareControlsModels(legacy, overlayV2));
+    },
+    compare(input) {
+      const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
+      const fields = comparePlayerInstrumentModels(legacy, overlayV2);
+      const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+      accumulator.record(ANCHOR_FEATURE, phase, fields);
+      return Object.freeze({
+        equal: fields.length === 0,
+        phase,
+        mismatches: Object.freeze(fields),
+        legacyDisplayed: pedalsTelemetryDisplayedValues(legacy),
+        overlayV2Displayed: pedalsTelemetryDisplayedValues(overlayV2),
+      });
+    },
+    reset() {
+      accumulator.reset();
+      accumulator.markEpochReset();
+    },
+    sessionSummary: accumulator.summary,
+  };
+}
+
+function record(
+  accumulator: ShadowPhaseAccumulator,
+  feature: string,
+  input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+  fields: readonly string[],
+): OverlayV2FeatureComparison {
+  const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+  accumulator.record(feature, phase, fields);
+  return Object.freeze({ equal: fields.length === 0, phase, mismatches: Object.freeze(fields) });
+}
+
+function comparePlayerInstrumentModels(
+  legacy: PedalsTelemetryViewModel,
+  overlayV2: PedalsTelemetryViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  for (const field of Object.keys(OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES) as (keyof typeof OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES)[]) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES[field])) mismatch.add(field);
+  }
+  const legacyDisplayed = pedalsTelemetryDisplayedValues(legacy);
+  const overlayV2Displayed = pedalsTelemetryDisplayedValues(overlayV2);
+  for (const field of Object.keys(legacyDisplayed)) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  return [...mismatch].sort();
+}
+
+function numbersWithin(left: number | undefined, right: number | undefined, tolerance: number): boolean {
+  if (left === undefined || right === undefined) return left === right;
+  return Math.abs(left - right) <= tolerance;
+}
 
 type ShadowScalar = string | number | boolean | null | undefined;
 type ViewModelReader = (model: WidgetViewModelBase) => ShadowScalar;

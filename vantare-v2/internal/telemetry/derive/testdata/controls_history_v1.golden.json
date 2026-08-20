@@ -9,6 +9,7 @@
           "Epoch": 1,
           "Sequence": 1
         },
+        "CapturedAt": "2026-08-20T10:00:00.05Z",
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
@@ -28,6 +29,7 @@
           "Epoch": 1,
           "Sequence": 1
         },
+        "CapturedAt": "2026-08-20T10:00:00.05Z",
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
@@ -47,6 +49,7 @@
           "Epoch": 1,
           "Sequence": 1
         },
+        "CapturedAt": "2026-08-20T10:00:00.05Z",
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
@@ -57,6 +60,7 @@
           "Epoch": 1,
           "Sequence": 3
         },
+        "CapturedAt": "2026-08-20T10:00:00.15Z",
         "Vehicle": "vehicle",
         "Throttle": 0.3,
         "Brake": 0.4,

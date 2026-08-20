@@ -7,15 +7,20 @@ import {
   type StatusEnvelope,
   TransportContractError,
 } from "./contracts";
-import { applyMergePatch } from "./merge-patch";
+import {
+  createFreshnessWatchdog,
+  type FreshnessWatchdogOptions,
+} from "./freshness-watchdog";
+
+export type ProjectionTransportStoreOptions = FreshnessWatchdogOptions &
+  Readonly<{ telemetryWatchdogEnabled?: boolean }>;
 
 export type DiagnosticCode =
   | "status-gap"
   | "status-advanced"
-  | "snapshot-gap"
   | "snapshot-resync"
+  | "snapshot-stale-watchdog"
   | "snapshot-regression"
-  | "delta-without-base"
   | "fact-gap"
   | "fact-regression"
   | "reconnect"
@@ -32,8 +37,9 @@ export type TransportDiagnostic = {
 
 export type ProjectionState = {
   product: ProductID;
+  ageMs: number;
   status?: StatusEnvelope;
-  snapshot?: ProjectionEnvelope & { kind: "full"; payload: JSONObject };
+  snapshot?: ProjectionEnvelope & { payload: JSONObject };
   facts: readonly FactEnvelope[];
   needsFactResync: boolean;
   diagnostics: readonly TransportDiagnostic[];
@@ -53,18 +59,70 @@ const MAX_FACTS = 256;
 
 export function createProjectionTransportStore(
   product: ProductID,
+  watchdogOptions: ProjectionTransportStoreOptions = {},
 ): ProjectionTransportStore {
   let state: ProjectionState = freezeState(initialState(product));
   let disposed = false;
   let factCursor = 0;
   let lastSnapshot: ProjectionState["snapshot"];
+  let wireStatus: StatusEnvelope | undefined;
+  let watchdogDiagnosticActive = false;
+  const watchdogEnabled = watchdogOptions.telemetryWatchdogEnabled !== false;
   const listeners = new Set<() => void>();
+  const freshnessWatchdog = createFreshnessWatchdog(
+    refreshFreshness,
+    watchdogOptions,
+  );
 
   function publish(next: ProjectionState): void {
-    state = freezeState(next);
+    let refreshed = withFreshness(next);
+    const watchdogStale =
+      refreshed.snapshot !== undefined &&
+      refreshed.status?.payload.state === "stale" &&
+      (wireStatus?.payload.state === "live" ||
+        wireStatus?.payload.state === "degraded");
+    if (watchdogStale && !watchdogDiagnosticActive) {
+      refreshed = addDiagnostic(refreshed, {
+        code: "snapshot-stale-watchdog",
+        product,
+        epoch: refreshed.snapshot?.epoch,
+        sequence: refreshed.snapshot?.sequence,
+        statusRevision: refreshed.status?.statusRevision,
+      });
+    }
+    watchdogDiagnosticActive = watchdogStale;
+    state = freezeState(refreshed);
     for (const listener of listeners) {
       listener();
     }
+  }
+
+  function refreshFreshness(): void {
+    if (!disposed && (state.status || state.snapshot)) {
+      publish(state);
+    }
+  }
+
+  function withFreshness(next: ProjectionState): ProjectionState {
+    if (!watchdogEnabled) {
+      return { ...next, ageMs: 0, status: wireStatus };
+    }
+    const capturedAt = next.snapshot?.capturedAt ?? wireStatus?.capturedAt;
+    if (!capturedAt) {
+      return { ...next, ageMs: 0, status: wireStatus };
+    }
+    const measurement = freshnessWatchdog.measure(capturedAt);
+    const stale =
+      measurement.stale &&
+      (wireStatus?.payload.state === "live" ||
+        wireStatus?.payload.state === "degraded");
+    const status = stale && wireStatus
+      ? {
+          ...wireStatus,
+          payload: { ...wireStatus.payload, state: "stale" as const },
+        }
+      : wireStatus;
+    return { ...next, ageMs: measurement.ageMs, status };
   }
 
   function addDiagnostic(
@@ -78,7 +136,7 @@ export function createProjectionTransportStore(
   }
 
   function applyStatus(status: StatusEnvelope): void {
-    const current = state.status;
+    const current = wireStatus;
     if (current && status.statusRevision < current.statusRevision) {
       throw contractFailure("status-gap");
     }
@@ -88,16 +146,14 @@ export function createProjectionTransportStore(
       }
       return;
     }
-    if (current && status.statusRevision !== current.statusRevision + 1) {
-      throw contractFailure("status-gap");
-    }
+    wireStatus = status;
     let next: ProjectionState = { ...state, status };
     if (
       state.snapshot &&
       state.snapshot.statusRevision !== status.statusRevision
     ) {
       next = addDiagnostic(
-        { ...next, snapshot: undefined },
+        next,
         {
           code: "status-advanced",
           product,
@@ -114,10 +170,7 @@ export function createProjectionTransportStore(
     }
     const previous = lastSnapshot;
     if (!previous) {
-      if (frame.kind !== "full") {
-        throw contractFailure("delta-without-base");
-      }
-      lastSnapshot = asFull(frame);
+      lastSnapshot = frame;
       publish({
         ...state,
         snapshot: lastSnapshot,
@@ -132,7 +185,6 @@ export function createProjectionTransportStore(
       frame.sequence === previous.sequence
     ) {
       if (
-        frame.kind !== "full" ||
         frame.projectionVersion !== previous.projectionVersion ||
         frame.capturedAt !== previous.capturedAt ||
         !semanticEqual(frame.payload, previous.payload)
@@ -140,7 +192,7 @@ export function createProjectionTransportStore(
         throw contractFailure("snapshot-regression");
       }
       if (frame.statusRevision !== previous.statusRevision) {
-        lastSnapshot = asFull(frame);
+        lastSnapshot = frame;
         publish({ ...state, snapshot: lastSnapshot });
       }
       return;
@@ -152,26 +204,12 @@ export function createProjectionTransportStore(
       throw contractFailure("snapshot-regression");
     }
     const epochChanged = frame.epoch > previous.epoch;
-    if (epochChanged && (frame.sequence !== 1 || frame.kind !== "full")) {
+    if (epochChanged && frame.sequence !== 1) {
       throw contractFailure("snapshot-regression");
     }
     const contiguous =
       !epochChanged && frame.sequence === previous.sequence + 1;
-    if (frame.kind === "delta" && !contiguous) {
-      throw contractFailure("snapshot-gap");
-    }
-    if (frame.kind === "delta") {
-      lastSnapshot = asFull({
-        ...frame,
-        payload: applyMergePatch(previous.payload, frame.payload),
-      });
-      publish({
-        ...state,
-        snapshot: lastSnapshot,
-      });
-      return;
-    }
-    lastSnapshot = asFull(frame);
+    lastSnapshot = frame;
     let next: ProjectionState = { ...state, snapshot: lastSnapshot };
     if (!epochChanged && !contiguous) {
       next = addDiagnostic(next, {
@@ -221,8 +259,14 @@ export function createProjectionTransportStore(
         throw contractFailure("disposed");
       }
       listeners.add(listener);
+      if (watchdogEnabled && listeners.size === 1) {
+        freshnessWatchdog.start();
+      }
       return () => {
         listeners.delete(listener);
+        if (listeners.size === 0) {
+          freshnessWatchdog.stop();
+        }
       };
     },
     ingest(name, data) {
@@ -265,6 +309,7 @@ export function createProjectionTransportStore(
         return;
       }
       disposed = true;
+      freshnessWatchdog.stop();
       listeners.clear();
       state = freezeState(
         addDiagnostic(state, { code: "disposed", product }),
@@ -276,16 +321,11 @@ export function createProjectionTransportStore(
 function initialState(product: ProductID): ProjectionState {
   return {
     product,
+    ageMs: 0,
     facts: [],
     needsFactResync: false,
     diagnostics: [],
   };
-}
-
-function asFull(
-  frame: ProjectionEnvelope,
-): ProjectionEnvelope & { kind: "full" } {
-  return { ...frame, kind: "full" };
 }
 
 function freezeState(state: ProjectionState): ProjectionState {

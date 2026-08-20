@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-678",
+  "type": "feature",
+  "summary": "El widget de combustible muestra el consumo real por vuelta y cuántas vueltas te permite el depósito.",
+  "technicalNotes": [
+    "El consumo por vuelta se calcula una sola vez en el núcleo de telemetría, como media de las últimas tres vueltas válidas del stint.",
+    "Las vueltas con entrada a boxes, repostaje o salto de vuelta quedan fuera de la media en lugar de contaminarla.",
+    "Las vueltas restantes prefieren el depósito cuando hay consumo medido y vuelven a la proyección por tiempo de sesión mientras no lo hay.",
+    "El combustible necesario sigue sin mostrarse: dependería de una proyección de vueltas de sesión que ya no siempre se publica."
+  ],
+  "testing": [
+    "Completar tres vueltas limpias y comprobar que el consumo por vuelta aparece y que las vueltas restantes cuadran con el depósito.",
+    "Entrar a boxes y repostar, y comprobar que esa vuelta no altera la media de consumo.",
+    "Empezar una sesión o un stint nuevos y comprobar que la media se reinicia en lugar de arrastrar la anterior."
+  ],
+  "knownLimitations": [
+    "El valor puede diferir del que mostraba la versión anterior del widget: la media se calcula sobre otra ventana y excluye las vueltas no válidas.",
+    "Hasta completar la primera vuelta válida no hay consumo que mostrar."
+  ]
+}

@@ -12,6 +12,7 @@ import { buildRelativeViewModelV2 } from "../widget-types/relative/relative-view
 import {
   OVERLAY_V2_DELTA_DECLARED_GAPS,
   OVERLAY_V2_FUEL_DECLARED_GAPS,
+  OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES,
   OVERLAY_V2_FUEL_TOLERANCES,
   OVERLAY_V2_RELATIVE_DECLARED_GAPS,
   OVERLAY_V2_RELATIVE_GAP_TOLERANCE,
@@ -174,15 +175,29 @@ describe("fuel comparison rules", () => {
     expect(compareFuelModels(model, { ...model, fuelLiters: undefined })).toEqual(["fuelLiters"]);
   });
 
-  it("declares everything that needs a fuel history instead of comparing it", () => {
+  it("declares everything the frame does not publish instead of comparing it", () => {
     const model = buildFuelStrategyViewModelV2(goldenFrame(20), { state: "live" }, FUEL_CONTENT);
     const invented = {
-      ...model, avgPerLap: 3.4, requiredFuel: 42, fuelPercent: 0.5,
+      ...model, requiredFuel: 42, fuelPercent: 0.5,
       history: [{ lap: 1, consumedLiters: 3.4 }],
     };
     expect(compareFuelModels(model, invented)).toEqual([]);
     expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(
-      expect.arrayContaining(["avgPerLap", "requiredFuel", "history", "fuelPercent"]),
+      expect.arrayContaining(["requiredFuel", "history", "fuelPercent"]),
+    );
+  });
+
+  it("accounts the intentional differences instead of gating on them", () => {
+    const model = buildFuelStrategyViewModelV2(goldenFrame(20), { state: "live" }, FUEL_CONTENT);
+    // A different average is expected: the two sides use different windows.
+    expect(compareFuelModels(model, { ...model, avgPerLap: 3.4 })).toEqual([]);
+    // Under basis "session" the two answer the same question, so the laps are
+    // compared strictly; under basis "fuel" they do not, so they are not.
+    const drifted = { ...model, lapsRemaining: (model.lapsRemaining ?? 0) + 1 };
+    expect(compareFuelModels(model, drifted, "session")).toEqual(["lapsRemaining"]);
+    expect(compareFuelModels(model, drifted, "fuel")).toEqual([]);
+    expect(OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES).toEqual(
+      expect.arrayContaining(["avgPerLap", "lapsRemaining"]),
     );
   });
 });

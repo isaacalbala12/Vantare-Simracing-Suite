@@ -1,11 +1,11 @@
 /** `roadmap.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
     "What's next" view (D-R3-F-1): a single narrative column NOW / NEXT / DONE.
-    Labels only: phases and milestones come from `docs/roadmap-source.json`. */
+    Labels only: phases and milestones come from `docs/roadmap/roadmap.json`. */
 export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.eyebrow": "Product direction",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "What is being worked on now, what comes next and what already shipped, exactly as docs/roadmap-source.json declares it.",
+    "What is being worked on now, what comes next and what already shipped, exactly as docs/roadmap/plan.md declares it.",
 
   "roadmap.source.loading": "Loading the source…",
   "roadmap.source.ok": "Source available · {{version}}",
@@ -34,6 +34,15 @@ export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.done.summary": "{{phases}} phases · {{releases}} shipped",
   "roadmap.done.none": "The source declares no completed phase.",
   "roadmap.done.released": "Shipped",
+
+  "roadmap.delivered.title": "Delivered recently",
+  "roadmap.delivered.note":
+    "{{n}} changes read from the commits already merged into nightly, not from the plan.",
+  "roadmap.delivered.kind.feat": "Feature",
+  "roadmap.delivered.kind.fix": "Fix",
+  "roadmap.delivered.kind.perf": "Performance",
+  "roadmap.delivered.kind.docs": "Docs",
+  "roadmap.delivered.kind.change": "Change",
 
   "roadmap.derived": "derived",
   "roadmap.derivedNote":

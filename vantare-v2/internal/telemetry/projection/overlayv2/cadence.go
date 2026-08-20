@@ -1,6 +1,14 @@
 package overlayv2
 
-import "time"
+import (
+	"time"
+
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+)
 
 // Section names the parts of FrameV2 that can be regulated independently.
 // "controls" lives inside Player and "gaps" inside Standings: the wire
@@ -73,11 +81,12 @@ func TierOf(section Section) SectionTier {
 // spacing between rebuilds of a section; zero means "rebuild on every tick",
 // which is the current unregulated behaviour and therefore the default.
 //
-// DirtyCeiling is the maximum staleness accepted for a section: when it is
-// greater than zero the section only rebuilds inside its interval window if it
-// was marked dirty, and rebuilds unconditionally once the ceiling elapses.
-// With DirtyCeiling zero the dirty flag is irrelevant and each section simply
-// rebuilds whenever its interval has elapsed.
+// DirtyCeiling only applies to the slow tier and is the maximum staleness
+// accepted there: once its interval elapsed a slow section rebuilds if it was
+// marked dirty, and rebuilds unconditionally once the ceiling elapses. With
+// DirtyCeiling zero the dirty flag is irrelevant and every section simply
+// rebuilds whenever its interval has elapsed. Fast and mid sections always
+// follow their plain interval.
 type SectionCadence struct {
 	Fast         time.Duration
 	Mid          time.Duration
@@ -163,10 +172,11 @@ func (scheduler *SectionScheduler) Cadence() SectionCadence { return scheduler.c
 //
 //  1. it has never been built (first frame is always complete);
 //  2. its tier interval is zero (no regulation, the default);
-//  3. the interval elapsed and either no ceiling is configured or the section
-//     is dirty;
-//  4. the ceiling is configured and elapsed, so nothing can stay stale for
-//     longer than DirtyCeiling even if nothing changed.
+//  3. it is fast or mid and its interval elapsed;
+//  4. it is slow, its interval elapsed and either no ceiling is configured or
+//     the section is dirty;
+//  5. it is slow and the configured ceiling elapsed, so nothing stays stale
+//     for longer than DirtyCeiling even if nothing changed.
 //
 // A non-monotonic clock (now before the last build) is treated as a
 // discontinuity and rebuilds the section.
@@ -195,6 +205,11 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 	if elapsed < 0 {
 		return true
 	}
+	// Dirty gating and the staleness ceiling only apply to the slow tier: fast
+	// and mid sections exist to move and follow a plain interval.
+	if TierOf(section) != TierSlow {
+		return elapsed >= interval
+	}
 	if ceiling > 0 && elapsed >= ceiling {
 		return true
 	}
@@ -202,4 +217,320 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 		return false
 	}
 	return ceiling <= 0 || dirty.Has(section)
+}
+
+// --- Regulated projection -------------------------------------------------
+//
+// The published frame stays FULL: a section that is not rebuilt on a tick
+// reuses the value memoized from its last build. This is memoization per
+// section, never a patch, so the v2 wire contract is untouched.
+
+// SectionBuilders holds one constructor per regulated section. Splitting the
+// frame assembly this way is what lets the scheduler skip real work: a skipped
+// section never invokes its builder. The defaults reproduce ProjectV2 exactly;
+// TestCachedProjectorMatchesProjectV2ByteForByte guards that equivalence.
+type SectionBuilders struct {
+	Player       func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) PlayerInstrumentsV2
+	Delta        func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) DeltaViewV2
+	Relative     func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) []RelativeRowV2
+	Spotter      func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) SpotterViewV2
+	Session      func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) SessionV2
+	Standings    func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) []StandingRowV2
+	Fuel         func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) FuelViewV2
+	Capabilities func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) CapabilitiesV2
+}
+
+// DefaultSectionBuilders mirrors the section values ProjectV2 assembles today.
+func DefaultSectionBuilders() SectionBuilders {
+	return SectionBuilders{
+		Player: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) PlayerInstrumentsV2 {
+			return BuildPlayerInstruments(final, preferences)
+		},
+		Session: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) SessionV2 {
+			return BuildSession(final)
+		},
+		Capabilities: func(final derive.FinalState, _ PreferencesV2, source SourceContextV2) CapabilitiesV2 {
+			return BuildCapabilities(final, source.DescriptorCapabilities)
+		},
+		Delta: func(derive.FinalState, PreferencesV2, SourceContextV2) DeltaViewV2 {
+			return DeltaViewV2{Seconds: missingValue[float64](), Available: make([]string, 0)}
+		},
+		Relative: func(derive.FinalState, PreferencesV2, SourceContextV2) []RelativeRowV2 {
+			return make([]RelativeRowV2, 0)
+		},
+		Spotter: func(derive.FinalState, PreferencesV2, SourceContextV2) SpotterViewV2 {
+			return SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()}
+		},
+		Standings: func(derive.FinalState, PreferencesV2, SourceContextV2) []StandingRowV2 {
+			return make([]StandingRowV2, 0)
+		},
+		Fuel: func(derive.FinalState, PreferencesV2, SourceContextV2) FuelViewV2 {
+			return FuelViewV2{
+				Remaining: missingValue[float64](), Capacity: missingValue[float64](),
+				PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64](),
+			}
+		},
+	}
+}
+
+// CachedProjectorMetrics counts regulation work. SectionBuilds is the number
+// of builder invocations; SectionSkips is the number of ticks a section reused
+// its memoized value.
+type CachedProjectorMetrics struct {
+	Ticks         uint64
+	FullRebuilds  uint64
+	SectionBuilds map[string]uint64
+	SectionSkips  map[string]uint64
+}
+
+// CachedProjector is a drop-in replacement for ProjectV2 that regulates
+// section rebuilds before projecting and therefore before marshalling. With
+// DefaultSectionCadence it rebuilds everything on every tick and produces
+// frames byte-identical to ProjectV2.
+type CachedProjector struct {
+	builders  SectionBuilders
+	scheduler *SectionScheduler
+
+	previous dirtySignals
+	hasPrev  bool
+	memo     FrameV2
+
+	ticks    uint64
+	fullRuns uint64
+	builds   [sectionCount]uint64
+	skips    [sectionCount]uint64
+}
+
+// NewCachedProjector builds a projector for a cadence. A zero cadence keeps
+// today's unregulated behaviour.
+func NewCachedProjector(cadence SectionCadence) *CachedProjector {
+	return NewCachedProjectorWithBuilders(cadence, DefaultSectionBuilders())
+}
+
+// NewCachedProjectorWithBuilders lets a caller (and the tests) substitute the
+// per-section constructors, for instance to count invocations.
+func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuilders) *CachedProjector {
+	defaults := DefaultSectionBuilders()
+	if builders.Player == nil {
+		builders.Player = defaults.Player
+	}
+	if builders.Delta == nil {
+		builders.Delta = defaults.Delta
+	}
+	if builders.Relative == nil {
+		builders.Relative = defaults.Relative
+	}
+	if builders.Spotter == nil {
+		builders.Spotter = defaults.Spotter
+	}
+	if builders.Session == nil {
+		builders.Session = defaults.Session
+	}
+	if builders.Standings == nil {
+		builders.Standings = defaults.Standings
+	}
+	if builders.Fuel == nil {
+		builders.Fuel = defaults.Fuel
+	}
+	if builders.Capabilities == nil {
+		builders.Capabilities = defaults.Capabilities
+	}
+	return &CachedProjector{builders: builders, scheduler: NewSectionScheduler(cadence)}
+}
+
+// Cadence returns the configuration in use.
+func (projector *CachedProjector) Cadence() SectionCadence { return projector.scheduler.Cadence() }
+
+// Metrics returns a copy of the regulation counters.
+func (projector *CachedProjector) Metrics() CachedProjectorMetrics {
+	result := CachedProjectorMetrics{
+		Ticks: projector.ticks, FullRebuilds: projector.fullRuns,
+		SectionBuilds: make(map[string]uint64, sectionCount),
+		SectionSkips:  make(map[string]uint64, sectionCount),
+	}
+	for _, section := range AllSections() {
+		result.SectionBuilds[section.String()] = projector.builds[section]
+		result.SectionSkips[section.String()] = projector.skips[section]
+	}
+	return result
+}
+
+// Project builds one UpdateV2 for now, rebuilding only the sections the
+// scheduler selected and reusing the memoized value for the rest. It is not
+// safe for concurrent use: the runtime publishes Overlay v2 from a single
+// goroutine.
+func (projector *CachedProjector) Project(
+	snapshot envelope.Snapshot[derive.FinalState],
+	source SourceContextV2,
+	preferences PreferencesV2,
+	deliveryRevision uint64,
+	now time.Time,
+) (UpdateV2, error) {
+	final, ok := snapshot.Value()
+	if !ok {
+		return UpdateV2{}, envelope.ErrCloneRequired
+	}
+	preferences = normalizedPreferences(preferences)
+	header := snapshot.Header()
+
+	signals := observeDirtySignals(header, final, source)
+	dirty := AllDirty()
+	if projector.hasPrev {
+		dirty = signals.diff(projector.previous)
+	}
+	projector.previous, projector.hasPrev = signals, true
+
+	plan := projector.scheduler.Plan(now, dirty)
+	projector.ticks++
+	if plan.Count() == sectionCount {
+		projector.fullRuns++
+	}
+	for _, section := range AllSections() {
+		if plan.Rebuild(section) {
+			projector.builds[section]++
+			continue
+		}
+		projector.skips[section]++
+	}
+
+	// Header fields are per-tick metadata, never regulated: skipping them
+	// would publish a stale cursor and break ordering downstream.
+	frame := projector.memo
+	frame.ContractVersion = ContractVersionV2
+	frame.AlgorithmVersion = AlgorithmVersionV1
+	frame.StreamEpoch = uint64(header.Cursor.Epoch)
+	frame.SourceSequence = uint64(header.Cursor.Sequence)
+	frame.SessionID = string(header.Identity.Session)
+	frame.GeneratedAt = header.Clock.ReceivedUTC.Round(0).UTC().Format(time.RFC3339Nano)
+	frame.Units = UnitsV2{
+		Speed: preferences.Speed, Temperature: preferences.Temperature,
+		Pressure: preferences.Pressure, Fuel: preferences.Fuel,
+	}
+	if plan.Rebuild(SectionPlayer) {
+		frame.Player = projector.builders.Player(final, preferences, source)
+	}
+	if plan.Rebuild(SectionDelta) {
+		frame.Delta = projector.builders.Delta(final, preferences, source)
+	}
+	if plan.Rebuild(SectionRelative) {
+		frame.Relative = projector.builders.Relative(final, preferences, source)
+	}
+	if plan.Rebuild(SectionSpotter) {
+		frame.Spotter = projector.builders.Spotter(final, preferences, source)
+	}
+	if plan.Rebuild(SectionSession) {
+		frame.Session = projector.builders.Session(final, preferences, source)
+	}
+	if plan.Rebuild(SectionStandings) {
+		frame.Standings = projector.builders.Standings(final, preferences, source)
+	}
+	if plan.Rebuild(SectionFuel) {
+		frame.Fuel = projector.builders.Fuel(final, preferences, source)
+	}
+	if plan.Rebuild(SectionCapabilities) {
+		frame.Capabilities = projector.builders.Capabilities(final, preferences, source)
+	}
+	projector.memo = frame
+
+	published := frame
+	return UpdateV2{
+		DeliveryRevision: deliveryRevision,
+		Source: SourceStatusV2{
+			State: source.State, ReconnectAttempt: uint32(max(source.ReconnectAttempt, 0)),
+			LastFrameAgeMS: max(source.LastFrameAgeMS, 0), DegradedReason: source.DegradedReason,
+		},
+		Frame: &published,
+	}, nil
+}
+
+// dirtySignals are the cheap, allocation-free observations used to decide
+// whether a slow section changed materially. They deliberately avoid invoking
+// any builder: asking a builder would defeat the regulation.
+type dirtySignals struct {
+	session      string
+	epoch        int64
+	vehicles     int
+	sourceState  string
+	degraded     string
+	capabilities int
+
+	track       schema.Field[string]
+	sessionType schema.Field[session.Type]
+	maximumLaps schema.Field[session.MaximumLaps]
+	remaining   schema.Field[session.RemainingTime]
+
+	playerFuel     schema.Field[energy.Fuel]
+	standingsMark  standingsSignature
+	gapsFreshness  schema.Freshness
+	deltaFreshness schema.Freshness
+	spatialMark    schema.Freshness
+}
+
+// standingsSignature summarizes the ordering without copying every row.
+type standingsSignature struct {
+	positions uint64
+	freshness uint64
+}
+
+func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
+	signals := dirtySignals{
+		session:        string(header.Identity.Session),
+		epoch:          int64(header.Cursor.Epoch),
+		vehicles:       len(final.Observed.Vehicles),
+		sourceState:    source.State,
+		degraded:       source.DegradedReason,
+		capabilities:   len(source.DescriptorCapabilities),
+		track:          final.Observed.TrackName,
+		sessionType:    final.Observed.SessionType,
+		maximumLaps:    final.Observed.MaximumLaps,
+		remaining:      final.Derived.SessionRemaining,
+		gapsFreshness:  final.Derived.Gaps.Freshness,
+		deltaFreshness: final.Derived.Delta.Freshness,
+		spatialMark:    schema.FreshnessMissing,
+	}
+	for index := range final.Observed.Vehicles {
+		current := &final.Observed.Vehicles[index]
+		position, _ := current.Position.Value()
+		signals.standingsMark.positions = signals.standingsMark.positions*31 + uint64(uint32(position))
+		signals.standingsMark.freshness = signals.standingsMark.freshness*31 + uint64(current.Position.Freshness())
+		if current.WorldPosition.Freshness() == schema.FreshnessFresh {
+			signals.spatialMark = schema.FreshnessFresh
+		}
+		if player, present := current.Player.Value(); present && player {
+			signals.playerFuel = current.Fuel
+		}
+	}
+	return signals
+}
+
+// diff maps observed changes to the sections they invalidate. A stream
+// discontinuity (new session or new epoch) invalidates everything.
+func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
+	if signals.session != previous.session || signals.epoch != previous.epoch {
+		return AllDirty()
+	}
+	dirty := DirtySet(0)
+	if signals.track != previous.track || signals.sessionType != previous.sessionType ||
+		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
+		dirty = dirty.Mark(SectionSession)
+	}
+	if signals.vehicles != previous.vehicles || signals.standingsMark != previous.standingsMark ||
+		signals.gapsFreshness != previous.gapsFreshness {
+		dirty = dirty.Mark(SectionStandings).Mark(SectionRelative)
+	}
+	if signals.deltaFreshness != previous.deltaFreshness {
+		dirty = dirty.Mark(SectionDelta)
+	}
+	if signals.spatialMark != previous.spatialMark {
+		dirty = dirty.Mark(SectionSpotter)
+	}
+	if signals.playerFuel != previous.playerFuel {
+		dirty = dirty.Mark(SectionFuel)
+	}
+	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||
+		signals.capabilities != previous.capabilities || signals.vehicles != previous.vehicles {
+		dirty = dirty.Mark(SectionCapabilities)
+	}
+	// Fast sections exist to move: they are never gated by dirtiness.
+	return dirty.Mark(SectionPlayer)
 }

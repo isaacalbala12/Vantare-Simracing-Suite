@@ -15,6 +15,29 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F8 lote 1 está implementada localmente sobre `tc-integration@f7e2cc07`
+  en `vantareapp/isa-372-tc-f8-builders-lote1`. El comparador shadow v2
+  segmenta por fase y el gate lee sólo `phase=live`: los 317k mismatches de
+  `gear` de la sesión #1 y los 213+213 de la sesión #2 eran retención v1 frente
+  a ocultación v2 en fase stale, una diferencia de contrato intencional que
+  ahora se cuenta como `declaredDifferences`. La fase `transition` cubre el
+  caso en que el status v1 y el `source.state` v2 discrepan: con 54 coches de
+  IA el driver oscila stale↔live y ambos productores cruzan el borde en
+  instantes distintos, lo que producía los 153 mismatches de `display.status`.
+  Los acumuladores y el histograma de parseo rotan por epoch/sesión y los
+  percentiles describen sólo la ventana live. La ventana de emparejamiento sube
+  de 8 a 64 con desalojo por secuencia más atrasada, lo que corrige el atasco
+  de ~2 minutos medido. `builder_session.go` documenta la bandera ausente y
+  `builder_standings.go` sube a Go el orden de la clasificación, incluido el
+  fallback `index+1` que el widget aplicaba en silencio, y deriva
+  `ClassPosition` de ese orden. Los ViewModels v2 de `standings` y
+  `racing-flags` quedan en shadow detrás de features apagadas por defecto y
+  ningún widget se conmuta. Presupuesto verde: sintético @104 = 34.650 B y
+  golden real compacto @104 con 104 filas = 21.775 B. Quedan declarados
+  ausentes bandera de sesión, dorsal, mejor vuelta por fila e intervalo al
+  coche de delante; `relative`, `delta`, `fuel` y `spotter` siguen sin poblar.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote1.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
 - ISA-372/F7 está implementada localmente sobre `tc-integration@f65f485f` en
   `vantareapp/isa-372-tc-f7-aislamiento-consumidores`. Engineer usa un puerto
   asíncrono default-on: snapshots latest-wins cap 1 con timeout/recover y facts

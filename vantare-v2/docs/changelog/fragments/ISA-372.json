@@ -20,7 +20,13 @@
     "Wails y OBS decodifican v2 en shadow; pedals-telemetry compara por secuencia el valor mostrado v1/v2 mientras el feature v2 permanece desactivado por defecto.",
     "Engineer consume snapshots fuera del bucle de adquisición mediante un puerto latest-wins con timeout y recuperación de panic; los facts usan una cola ordenada separada y exigen resync explícito ante huecos.",
     "Strategy conserva su builder y consumidor in-process, pero deja de crear transporte Wails/SSE por defecto; un flag temporal permite probar el rollback.",
-    "Recording declara la grabación Incomplete y conserva el rango del gap cuando su cola rechaza sin bloquear; permanece desconectado hasta la fase de integración."
+    "Recording declara la grabación Incomplete y conserva el rango del gap cuando su cola rechaza sin bloquear; permanece desconectado hasta la fase de integración.",
+    "El comparador shadow v2 segmenta por fase: solo phase=live cuenta para el gate y la retencion de valores de v1 frente a la ocultacion de v2 se registra como diferencia declarada.",
+    "Una comparacion donde el status v1 y el source.state v2 discrepan se clasifica como transition, no como divergencia: bajo carga de mas de 40 coches ambos productores cruzan el borde de frescura en instantes distintos.",
+    "Los acumuladores shadow y el histograma de parseo se rotan al cambiar de epoch o sesion, y los percentiles de parseo describen solo la ventana live actual.",
+    "La ventana de emparejamiento shadow sube a 64 secuencias y desaloja las mas atrasadas: con 8 el emparejamiento podia atascarse minutos cuando los dos productores derivaban.",
+    "OverlayFrame v2 puebla standings con el orden resuelto en Go, incluido el fallback que Overlay v1 aplicaba en silencio en el widget, y deriva ClassPosition de ese orden.",
+    "Los ViewModels v2 de standings y racing-flags quedan detras de sus features, apagadas por defecto; ningun widget se conmuta."
   ],
   "testing": [
     "Abrir Vantare antes que LMU, entrar en pista y confirmar que el estado pasa a live al llegar telemetría.",
@@ -34,7 +40,9 @@
     "En Wails y OBS, leer window.__vantareOverlayV2Diagnostics() y confirmar parse p99 menor de 1 ms y cero mismatches sin capturar payload raw.",
     "Completar al menos cinco sesiones de 20 minutos, una con más de 40 coches, antes de considerar un cutover de Overlay v2.",
     "Con Engineer activo, inducir latencia y confirmar que la adquisición y Overlay continúan, mientras crecen los contadores de timeout, descarte o recuperación esperados.",
-    "Confirmar que Strategy no expone ruta ni eventos públicos por defecto y que el flag de rollback los restaura de forma aislada."
+    "Confirmar que Strategy no expone ruta ni eventos públicos por defecto y que el flag de rollback los restaura de forma aislada.",
+    "Tras una sesion real, leer window.__vantareOverlayV2Diagnostics() y comprobar que shadow.mismatches (solo fase live) es cero y que shadow.declaredDifferences recoge las diferencias de contrato.",
+    "Comprobar que shadow.epochResets crece al reiniciar una sesion y que los contadores se refieren a la ultima carrera."
   ],
   "knownLimitations": [
     "La validación local usa relojes inyectados y fixtures; queda pendiente una sesión LMU real y una build Wails/OBS instalada.",
@@ -45,6 +53,8 @@
     "La medición de parseo v2 es Node sintético; WebView2 y OBS instalados permanecen pendientes de Isaac.",
     "La validación de Engineer asíncrono es local y sintética; queda pendiente una sesión LMU real con el producto instalado.",
     "Recording conserva gap markers en el coordinador, pero su wiring y persistencia operativa esperan a F12.",
-    "EngineerService detecta el error tipado de resync, pero todavía no tiene callback al puerto para pedir y reaplicar automáticamente la retención."
+    "EngineerService detecta el error tipado de resync, pero todavía no tiene callback al puerto para pedir y reaplicar automáticamente la retención.",
+    "El contrato v2 no lleva dorsal, mejor vuelta por fila ni intervalo al coche de delante, ni bandera de sesion: no existe senal canonica y quedan declarados ausentes.",
+    "relative, delta, fuel y spotter siguen sin poblar en v2 y CapabilityModesV2 permanece en none."
   ]
 }

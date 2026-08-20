@@ -170,6 +170,18 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
     source: OverlaySourceStatusV2;
     content: PedalsTelemetryContent;
   }>): OverlayV2PlayerInstrumentComparison;
+  compareSession(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: RacingFlagsContent;
+  }>): OverlayV2FeatureComparison;
+  compareStandings(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: StandingsContent;
+  }>): OverlayV2FeatureComparison;
   /** Rotates every accumulator. The runtime calls it on epoch/session change. */
   reset(): void;
   sessionSummary(): OverlayV2ShadowSessionSummary;

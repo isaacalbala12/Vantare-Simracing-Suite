@@ -75,7 +75,10 @@ describe("generated telemetry contract", () => {
         readFileSync(path.resolve(process.cwd(), relativePath), "utf8"),
       ) as OverlayUpdateV2;
       expect(update.frame?.contract).toBe(2);
-      expect(update.frame?.standings).toEqual([]);
+      // F8 poblo standings; el golden ya no lo trae vacio. Lo que este test
+      // sigue comprobando es que los tipos generados cubren la fila completa.
+      expect(update.frame?.standings.length).toBeGreaterThan(0);
+      expect(update.frame?.standings[0].gap.q).toBeTruthy();
       expect(update.frame?.player.speed.q).toBe("fresh");
     },
   );

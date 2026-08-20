@@ -1,3 +1,27 @@
+Nota ISA-372/F10 (2026-08-20, implementada localmente, sin promoción):
+- La fusión deja de ser privada del driver LMU: `internal/telemetry/fusion` es
+  neutra, admite N slots por señal, indexa la matriz de autoridad por `SignalID`
+  y devuelve `ErrRuleMissing` donde antes había un `panic`. LMU la usa a través
+  de una fachada delgada y sus tests y goldens siguen intactos.
+- `internal/telemetry/capability` separa `Supported` (declarado por el driver),
+  `Available` (por sesión, no puede ampliar el soporte) y `Modes` (cómo se
+  resolvió), con `spatial.longitudinal` y `spatial.lateral` separadas.
+- El manifiesto de Engineer se deriva del driver activo; deja de estar
+  hardcodeado a siete `Supported` en `telemetry_core_runtime.go:170-177`.
+- El composition root ya no nombra `lmu.Observation` ni `*lmu.BatchMapper`: un
+  `SimulatorRuntime` con el tipo de observación borrado y una registración por
+  configuración. LMU es el registro por defecto.
+- El driver sintético SimX (determinista, 50 Hz simulados, sin spatial de
+  rivales, sin weather y sin delta nativo) llega a Overlay v2 tras un flag de
+  diagnóstico apagado por defecto. El diff de la rama no contiene ningún archivo
+  bajo `frontend/` ni bajo `projection/overlayv2/`.
+- Hueco: el builder de Overlay v2 sigue expandiendo canal de adquisición a
+  capabilities de producto; el runtime ya le pasa además los ids declarados.
+  Es propiedad del lote 2a de F8. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f10-multisim.md`.
+- Rama `vantareapp/isa-372-tc-f10-capabilities-multisim` sobre
+  `tc-integration@74e1a5a6`; sin push, PR, merge ni promoción.
+
 Nota ISA-372/F11 (2026-08-20, implementada localmente, sin promoción):
 - La cadencia de Overlay v2 se decide por sección antes de construir y de
   serializar el frame: `SectionCadence` + `SectionScheduler` puro con reloj

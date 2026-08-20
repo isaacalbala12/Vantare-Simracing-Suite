@@ -12,6 +12,11 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 - Las credenciales de sesión dañadas se descartan de forma segura para evitar fallos repetidos al arrancar.
 - Las operaciones concurrentes de restauración, renovación y cierre ya no pueden recuperar una sesión cerrada.
 
+**Telemetría (interno, sin efecto visible todavía)**
+
+- Vantare declara ahora qué puede y qué no puede hacer cada simulador en vez de deducirlo del dato: una función ausente se anuncia como no soportada, no como un hueco vacío. Con Le Mans Ultimate no cambia nada de lo que ves.
+- Los avisos que necesitan saber si tienes un coche a izquierda o derecha se apagan solos en un simulador que no publica esa posición, en lugar de intentar avisar sin datos.
+
 **Supabase y recuperación**
 
 - El despliegue de Functions queda limitado a la lista aprobada y siempre ejecuta su control de superficie antes de publicar.

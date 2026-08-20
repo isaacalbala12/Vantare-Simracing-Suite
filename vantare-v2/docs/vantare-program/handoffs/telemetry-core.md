@@ -15,6 +15,22 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F10 está implementada localmente sobre `tc-integration@74e1a5a6` en
+  `vantareapp/isa-372-tc-f10-capabilities-multisim`. La fusión se promovió a
+  `internal/telemetry/fusion` (N slots, índice por señal, `ErrRuleMissing` en
+  lugar de `panic`), `internal/telemetry/capability` declara
+  Supported/Available/Modes con spatial longitudinal y lateral separadas, el
+  manifiesto de Engineer se deriva del driver activo y el composition root dejó
+  de estar instanciado sobre `lmu.Observation`. El driver sintético SimX prueba
+  el contrato extremo a extremo: llega a Overlay v2 con standings, sesión e
+  instrumentos poblados y con su degradación declarada, y el diff de la rama no
+  contiene ningún archivo bajo `frontend/`. Queda un hueco conocido: el builder
+  de Overlay v2 aún expande el canal de adquisición a capabilities de producto y
+  pertenece al lote 2a de F8; el runtime ya le entrega también los ids
+  declarados. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f10-multisim.md`. Sin push, PR, merge ni
+  promoción.
+
 - ISA-372/F11 está implementada localmente sobre `tc-integration@f7e2cc07` en
   `vantareapp/isa-372-tc-f11-cadencias`. La cadencia de Overlay v2 se regula por
   sección antes de proyectar y serializar: `SectionScheduler` puro con reloj

@@ -257,6 +257,13 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 		(symbol.name == "ErrFactResyncRequired" || symbol.name == "FactResyncRequiredError") {
 		return true
 	}
+	// 2026-08-20: F11's per-section cadence stays intentionally disconnected
+	// until the runtime swaps ProjectV2 for CachedProjector. Remove this entry
+	// with that one-line integration.
+	if symbol.packagePath == "internal/telemetry/projection/overlayv2" &&
+		filepath.Base(symbol.file) == "cadence.go" {
+		return true
+	}
 	// 2026-08-19: exact pre-F4 baseline outside ISA-372's approved deletion scope.
 	// Keeping this list explicit means a newly orphaned export still fails the guard.
 	_, allowed := wiringGuardExistingContractBaseline[symbol.packagePath+"."+symbol.name]

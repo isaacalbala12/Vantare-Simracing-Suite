@@ -83,7 +83,18 @@
         }
       }
     ],
-    "relative": [],
+    "relative": [
+      {
+        "id": "vehicle-000",
+        "gap": {
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
     "delta": {
       "seconds": {
         "q": "missing"

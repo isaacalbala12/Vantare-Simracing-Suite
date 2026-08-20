@@ -83,7 +83,7 @@ func ProjectV2(
 		Session:      BuildSession(final),
 		Player:       BuildPlayerInstruments(final, preferences),
 		Standings:    BuildStandings(final),
-		Relative:     make([]RelativeRowV2, 0),
+		Relative:     BuildRelative(final),
 		Delta:        BuildDelta(final, preferences),
 		Fuel:         FuelViewV2{Remaining: missingValue[float64](), Capacity: missingValue[float64](), PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64]()},
 		Spotter:      SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()},

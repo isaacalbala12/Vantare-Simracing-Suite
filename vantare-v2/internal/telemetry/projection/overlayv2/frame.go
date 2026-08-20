@@ -148,6 +148,7 @@ type RelativeRowV2 struct {
 	Side        string          `json:"side"`
 	Authority   Authority       `json:"authority"`
 	DisplayName string          `json:"name,omitempty"`
+	ClassID     string          `json:"classId,omitempty"`
 }
 
 type DeltaViewV2 struct {

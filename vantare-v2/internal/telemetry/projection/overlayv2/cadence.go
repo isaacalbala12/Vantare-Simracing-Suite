@@ -255,8 +255,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		Delta: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) DeltaViewV2 {
 			return BuildDelta(final, preferences)
 		},
-		Relative: func(derive.FinalState, PreferencesV2, SourceContextV2) []RelativeRowV2 {
-			return make([]RelativeRowV2, 0)
+		Relative: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []RelativeRowV2 {
+			return BuildRelative(final)
 		},
 		Spotter: func(derive.FinalState, PreferencesV2, SourceContextV2) SpotterViewV2 {
 			return SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()}

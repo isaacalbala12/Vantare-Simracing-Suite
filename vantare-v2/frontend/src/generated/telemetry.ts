@@ -236,6 +236,7 @@ export interface OverlayFrameV2 {
 }
 
 export interface OverlayFuelViewV2 {
+  readonly basis?: string | undefined;
   readonly capacity: OverlayQValue<number>;
   readonly estimatedLaps: OverlayQValue<number>;
   readonly perLap: OverlayQValue<number>;

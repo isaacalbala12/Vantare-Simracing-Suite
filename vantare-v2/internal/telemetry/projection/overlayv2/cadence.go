@@ -470,6 +470,7 @@ type dirtySignals struct {
 	remaining   schema.Field[session.RemainingTime]
 
 	playerFuel     schema.Field[energy.Fuel]
+	fuelPerLap     schema.Field[energy.FuelAmount]
 	standingsMark  standingsSignature
 	gapsFreshness  schema.Freshness
 	deltaFreshness schema.Freshness
@@ -496,6 +497,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		remaining:      final.Derived.SessionRemaining,
 		gapsFreshness:  final.Derived.Gaps.Freshness,
 		deltaFreshness: final.Derived.Delta.Freshness,
+		fuelPerLap:     final.Derived.Fuel.PerLap,
 		spatialMark:    schema.FreshnessMissing,
 	}
 	for index := range final.Observed.Vehicles {
@@ -534,7 +536,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.spatialMark != previous.spatialMark {
 		dirty = dirty.Mark(SectionSpotter)
 	}
-	if signals.playerFuel != previous.playerFuel {
+	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap {
 		dirty = dirty.Mark(SectionFuel)
 	}
 	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||

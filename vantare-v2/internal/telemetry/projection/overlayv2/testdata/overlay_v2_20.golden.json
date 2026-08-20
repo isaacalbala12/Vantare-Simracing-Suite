@@ -546,7 +546,8 @@
       "estimatedLaps": {
         "v": 79,
         "q": "fresh"
-      }
+      },
+      "basis": "session"
     },
     "spotter": {
       "mode": "none",

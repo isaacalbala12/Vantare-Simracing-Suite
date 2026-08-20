@@ -301,11 +301,6 @@ jobs:
 
       - name: Gate - Frontend build
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        env:
-          # Command Orbit shell (ISA-368/369): ON by default only in internal
-          # channel builds (nightly/testers). Scoped to the build step so the
-          # frontend test gate keeps running with the flag OFF (its default).
-          # Public builds keep the current shell until the direction is promoted.
         run: pnpm build
 
       - name: Gate - Go tests

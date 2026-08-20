@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows/registry"
 )
 
 const (
@@ -22,8 +24,22 @@ const (
 const (
 	defaultSteamLibraryRoot   = `C:\Program Files (x86)\Steam`
 	steamLibraryFoldersFile   = `steamapps\libraryfolders.vdf`
-	lmuRelativeExecutablePath = `steamapps\common\Le Mans Ultimate\Le Mans Ultimate.exe`
+	lmuExecutableName         = `Le Mans Ultimate.exe`
+	lmuRelativeExecutablePath = `steamapps\common\Le Mans Ultimate\` + lmuExecutableName
+	lmuDisplayNameFragment    = "le mans ultimate"
+	// lmuPathEnvVar es el ultimo recurso explicito: acepta la ruta del
+	// ejecutable o la carpeta de instalacion. Solo lo usa quien lo declara.
+	lmuPathEnvVar = "VANTARE_LMU_PATH"
 )
+
+var uninstallRegistryRoots = []struct {
+	key  registry.Key
+	path string
+}{
+	{registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`},
+	{registry.LOCAL_MACHINE, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall`},
+	{registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall`},
+}
 
 var (
 	createToolhelp32Snapshot = kernel32.NewProc("CreateToolhelp32Snapshot")
@@ -81,7 +97,8 @@ type buildWindowsAPI struct {
 // the process is protected: OpenProcess succeeds but QueryFullProcessImageNameW
 // yields no path, so the process route returns empty evidence. Only then do we
 // fall back to the installed executable on disk, which carries the same
-// FileVersion/ProductVersion pair.
+// FileVersion/ProductVersion pair. La precedencia completa del fallback esta
+// documentada en findLMUDiskBuildEvidence.
 func readLMUBuildEvidence() (BuildEvidence, error) {
 	return resolveLMUBuildEvidence(systemBuildWindowsAPI(), systemDiskBuildAPI())
 }
@@ -105,12 +122,14 @@ func (evidence BuildEvidence) complete() bool {
 		strings.TrimSpace(evidence.ProductVersion) != ""
 }
 
-// diskBuildAPI isolates the filesystem so the fallback stays testable and never
-// logs or returns installation paths.
+// diskBuildAPI isolates the filesystem, the registry and the environment so the
+// fallback stays testable and never logs or returns installation paths.
 type diskBuildAPI struct {
-	exists      func(string) bool
-	readFile    func(string) ([]byte, error)
-	versionInfo func(string) (BuildEvidence, error)
+	exists           func(string) bool
+	readFile         func(string) ([]byte, error)
+	versionInfo      func(string) (BuildEvidence, error)
+	installLocations func() []string
+	lookupEnv        func(string) (string, bool)
 }
 
 func systemDiskBuildAPI() diskBuildAPI {
@@ -119,17 +138,34 @@ func systemDiskBuildAPI() diskBuildAPI {
 			info, err := os.Stat(path)
 			return err == nil && !info.IsDir()
 		},
-		readFile:    os.ReadFile,
-		versionInfo: readWindowsFileVersion,
+		readFile:         os.ReadFile,
+		versionInfo:      readWindowsFileVersion,
+		installLocations: uninstallInstallLocations,
+		lookupEnv:        os.LookupEnv,
 	}
 }
 
+// Precedencia de fuentes de evidencia de build (ISA-680), de mas a menos
+// fiable. La primera que produzca un par FileVersion/ProductVersion completo
+// gana y las siguientes no se consultan:
+//
+//  1. Proceso en ejecucion (resolveLMUBuildEvidence): la ruta del propio
+//     proceso prueba que el mapeo y el ejecutable son la misma instalacion.
+//     Desde 1.4.1.3 el proceso esta protegido y suele no dar ruta.
+//  2. Steam: raiz por defecto y cada biblioteca de `libraryfolders.vdf`.
+//  3. Registro de Windows: claves de desinstalacion de HKLM (nativo y
+//     WOW6432Node) y HKCU cuyo DisplayName contiene "Le Mans Ultimate";
+//     cubre instalaciones fuera de Steam y Steam en rutas no estandar.
+//  4. Variable de entorno `VANTARE_LMU_PATH`: ultimo recurso explicito, con
+//     la ruta del ejecutable o de la carpeta de instalacion.
+//
+// Si ninguna aporta evidencia completa el resultado es ErrBuildUnavailable y
+// el fingerprint publica `evidence=unavailable`.
 func findLMUDiskBuildEvidence(api diskBuildAPI) (BuildEvidence, error) {
 	if api.exists == nil || api.readFile == nil || api.versionInfo == nil {
 		return BuildEvidence{}, ErrBuildUnavailable
 	}
-	for _, root := range steamLibraryRoots(api) {
-		executable := filepath.Join(root, lmuRelativeExecutablePath)
+	for _, executable := range lmuExecutableCandidates(api) {
 		if !api.exists(executable) {
 			continue
 		}
@@ -140,6 +176,90 @@ func findLMUDiskBuildEvidence(api diskBuildAPI) (BuildEvidence, error) {
 		return evidence, nil
 	}
 	return BuildEvidence{}, ErrBuildUnavailable
+}
+
+// lmuExecutableCandidates aplica la precedencia documentada arriba y
+// de-duplica sin alterar el orden.
+func lmuExecutableCandidates(api diskBuildAPI) []string {
+	var candidates []string
+	seen := map[string]struct{}{}
+	add := func(path string) {
+		if path = strings.TrimSpace(path); path == "" {
+			return
+		}
+		path = filepath.Clean(path)
+		key := strings.ToLower(path)
+		if _, duplicate := seen[key]; duplicate {
+			return
+		}
+		seen[key] = struct{}{}
+		candidates = append(candidates, path)
+	}
+	for _, root := range steamLibraryRoots(api) {
+		add(filepath.Join(root, lmuRelativeExecutablePath))
+	}
+	if api.installLocations != nil {
+		for _, location := range api.installLocations() {
+			add(executablePathFrom(location))
+		}
+	}
+	if api.lookupEnv != nil {
+		if value, present := api.lookupEnv(lmuPathEnvVar); present {
+			add(executablePathFrom(value))
+		}
+	}
+	return candidates
+}
+
+// executablePathFrom acepta indistintamente la ruta del ejecutable o la de la
+// carpeta que lo contiene.
+func executablePathFrom(value string) string {
+	value = strings.Trim(strings.TrimSpace(value), `"`)
+	if value == "" {
+		return ""
+	}
+	if strings.EqualFold(filepath.Ext(value), ".exe") {
+		return value
+	}
+	return filepath.Join(value, lmuExecutableName)
+}
+
+// uninstallInstallLocations lee las claves de desinstalacion de Windows y
+// devuelve el InstallLocation de cada entrada cuyo DisplayName menciona
+// "Le Mans Ultimate". Las claves ilegibles se ignoran en silencio: la ausencia
+// de evidencia no es un error propio de esta fuente.
+func uninstallInstallLocations() []string {
+	var locations []string
+	for _, root := range uninstallRegistryRoots {
+		parent, err := registry.OpenKey(root.key, root.path, registry.ENUMERATE_SUB_KEYS|registry.READ)
+		if err != nil {
+			continue
+		}
+		names, err := parent.ReadSubKeyNames(-1)
+		parent.Close()
+		if err != nil {
+			continue
+		}
+		for _, name := range names {
+			key, err := registry.OpenKey(root.key, root.path+`\`+name, registry.QUERY_VALUE)
+			if err != nil {
+				continue
+			}
+			displayName, _, nameErr := key.GetStringValue("DisplayName")
+			location, _, locationErr := key.GetStringValue("InstallLocation")
+			key.Close()
+			if nameErr != nil || locationErr != nil {
+				continue
+			}
+			if !strings.Contains(strings.ToLower(displayName), lmuDisplayNameFragment) {
+				continue
+			}
+			if location = strings.TrimSpace(location); location != "" {
+				locations = append(locations, location)
+			}
+		}
+	}
+	return locations
 }
 
 // steamLibraryRoots lists the default Steam root first and then every library

@@ -6,6 +6,13 @@ Changelog publico para testers y Discord. Solo se publican versiones funcionales
 
 Cambios funcionales verificados en rama aislada; esta sección no representa una release ni autoriza despliegue.
 
+**Estrategia**
+
+- La pestaña Estrategia abre con un menú propio: continúa la estrategia que dejaste a medias (con su evento, sus pilotos y la fecha de la última edición) o empieza una nueva. Las guardadas se listan aparte y se pueden abrir, duplicar o eliminar. (ISA-377)
+- Si ya tenías una estrategia abierta se entra directo a su editor, con un botón «Mis estrategias» en la cabecera para volver al menú.
+- «Nueva estrategia» pasa por un asistente de tres pasos: manual o automática con telemetría (esta última, deshabilitada y explicando que la fuente de sesiones aún no llega), solo o con equipo, y de qué partes. En solitario el tablero se simplifica a un piloto y desaparece la pestaña de disponibilidad.
+- Eliminar una estrategia pregunta con el diálogo propio de la app, nunca con el del sistema operativo. Textos completos en es/en/pt/it.
+
 **Cuenta y seguridad**
 
 - El cierre de sesión confirma primero que la credencial local protegida se ha eliminado y diferencia ese resultado del cierre remoto.

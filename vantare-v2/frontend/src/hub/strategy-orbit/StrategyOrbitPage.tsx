@@ -13,6 +13,7 @@ import {
   AvailabilityBoard,
   Button,
   Chip,
+  ConfirmDialog,
   CornerSlot,
   Donut,
   Featured,
@@ -58,11 +59,16 @@ import {
   createCustomEvent,
   createEventFromSeries,
   eventFromRoster,
+  eventsByRecency,
+  freeEventId,
   initialsOf,
+  lastOpenedEventOf,
   newDriver,
+  openEvent,
   patchEvent,
   readLegacyStrategyState,
   readStrategyEvents,
+  removeEvent,
   rosterEventId,
   toStrategyEvent,
   upsertEvent,
@@ -70,6 +76,8 @@ import {
   DRIVER_COLORS,
   type StrategyEventRecord,
   type StrategyEventsState,
+  type StrategyFillMode,
+  type StrategyTeamMode,
 } from "./strategy-events-store";
 import {
   buildRecommendedEvents,
@@ -108,8 +116,24 @@ import "../../styles/orbit-strategy.css";
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 
 type StrategyTab = "overview" | "strategies" | "availability";
-/** Camino elegido en el estado inicial (`00-decisiones.md`, D-W4-2). */
+/** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */
 type PickerPath = "none" | "series";
+
+/**
+ * Pasos del asistente de creación (ISA-377): de dónde salen los datos, si se
+ * corre solo o con equipo, y de qué punto de partida nace el evento.
+ */
+type WizardStep = "fill" | "team" | "start";
+
+const WIZARD_STEPS: readonly WizardStep[] = ["fill", "team", "start"];
+
+interface WizardState {
+  step: WizardStep;
+  fill: StrategyFillMode;
+  team: StrategyTeamMode;
+  /** Dentro del paso `start`: si se está mirando la lista del calendario. */
+  path: PickerPath;
+}
 type SidePanel = "drivers" | "tyres";
 type DonutMode = "laps" | "time";
 
@@ -275,7 +299,9 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     commit((current) => {
       if (current.events.some((event) => event.id === id)) return current;
       const next = upsertEvent(current, eventFromRoster(roster, readLegacyStrategyState()));
-      return { ...next, activeId: current.activeId ?? id };
+      // El roster es la sesión que el usuario tiene delante: si no había nada
+      // abierto se abre él, y abrir sella `lastOpenedAt` como cualquier otro.
+      return current.activeId ? next : openEvent(next, id);
     });
   }, [commit, roster]);
 
@@ -622,9 +648,16 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [update],
   );
 
-  // ── eventos: dos caminos, formulario y edición ──────────────────────────
-  const [path, setPath] = useState<PickerPath>("none");
-  const [form, setForm] = useState<{ mode: "create" | "edit"; draft: EventForm } | null>(null);
+  // ── eventos: menú de entrada, asistente, formulario y edición ───────────
+  const [wizard, setWizard] = useState<WizardState | null>(null);
+  const [form, setForm] = useState<{
+    mode: "create" | "edit";
+    /** Tablero elegido en el asistente; el formulario lo respeta. */
+    teamMode: StrategyTeamMode;
+    draft: EventForm;
+  } | null>(null);
+  /** Evento que espera confirmación de borrado (diálogo del kit, nunca `confirm`). */
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   /**
    * El piloto por defecto de un evento nuevo es quien lo crea. El nombre real
@@ -636,12 +669,13 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     return { ...newDriver(name, 0), ini: initialsOf(name) };
   }, [t]);
 
-  const openCreate = useCallback(() => {
+  const openCreate = useCallback((teamMode: StrategyTeamMode = "team") => {
     const start = new Date();
     start.setMinutes(0, 0, 0);
     start.setHours(start.getHours() + 1);
     setForm({
       mode: "create",
+      teamMode,
       draft: {
         name: "",
         track: "",
@@ -658,7 +692,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
   const openEdit = useCallback(() => {
     if (!eventRecord) return;
-    setForm({ mode: "edit", draft: formOf(eventRecord) });
+    setForm({ mode: "edit", teamMode: eventRecord.teamMode ?? "team", draft: formOf(eventRecord) });
   }, [eventRecord]);
 
   const patchForm = useCallback((change: Partial<EventForm>) => {
@@ -702,6 +736,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         patchEvent(current, eventId, (event) => ({
           ...event,
           ...shared,
+          teamMode: form.teamMode,
           team: shared.team || undefined,
           // Si un piloto desaparece, las estrategias que lo usaban se rehacen.
           strategies: event.strategies.map((item) => {
@@ -716,13 +751,17 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       toast.show(t("strategy.form.savedTitle"), formatMessage(t("strategy.form.savedHint"), { name }));
       return;
     }
-    const created = createCustomEvent(store.events, shared, {
-      strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
-      strategyNote: t("strategy.cards.newNote"),
-    });
-    commit((current) => ({ ...upsertEvent(current, created), activeId: created.id }));
+    const created = createCustomEvent(
+      store.events,
+      { ...shared, teamMode: form.teamMode },
+      {
+        strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+        strategyNote: t("strategy.cards.newNote"),
+      },
+    );
+    commit((current) => openEvent(upsertEvent(current, created), created.id));
     setForm(null);
-    setPath("none");
+    setWizard(null);
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
   }, [commit, eventId, form, store.events, t, toast]);
@@ -733,16 +772,25 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
    * mismo constructor del dominio, no una copia con otras reglas.
    */
   const createFromSeries = useCallback(
-    (start: Pick<RaceStart, "seriesId" | "name" | "track" | "at"> & {
-      vehicleClass?: string;
-      durationMin?: number;
-    }) => {
-      const created = createEventFromSeries(store.events, start, me(), {
-        strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
-        strategyNote: t("strategy.cards.newNote"),
-      });
-      commit((current) => ({ ...upsertEvent(current, created), activeId: created.id }));
-      setPath("none");
+    (
+      start: Pick<RaceStart, "seriesId" | "name" | "track" | "at"> & {
+        vehicleClass?: string;
+        durationMin?: number;
+      },
+      teamMode: StrategyTeamMode = "team",
+    ) => {
+      const created = createEventFromSeries(
+        store.events,
+        start,
+        me(),
+        {
+          strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+          strategyNote: t("strategy.cards.newNote"),
+        },
+        teamMode,
+      );
+      commit((current) => openEvent(upsertEvent(current, created), created.id));
+      setWizard(null);
       setTab("overview");
       toast.show(
         t("strategy.form.createdTitle"),
@@ -752,11 +800,12 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [commit, me, store.events, t, toast],
   );
 
+  /** Abrir es la única puerta al editor: aquí se sella `lastOpenedAt`. */
   const selectEvent = useCallback(
     (id: string) => {
-      commit((current) => ({ ...current, activeId: id }));
+      commit((current) => openEvent(current, id));
       setForm(null);
-      setPath("none");
+      setWizard(null);
       setEditing(-1);
       setSelected(-1);
       setCompareId(null);
@@ -765,12 +814,56 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [commit],
   );
 
-  /** «Nuevo evento» vuelve al selector de dos caminos. */
-  const newEvent = useCallback(() => {
+  /**
+   * Vuelve al menú de entrada sin tocar nada del evento.
+   *
+   * Decisión de UX (ISA-377): con un evento abierto la pestaña entra **directa
+   * al editor**, porque volver a un plan a medias es lo que se hace el 90 % de
+   * las veces y un menú intermedio sería un peaje. El menú no desaparece: está
+   * a un clic desde la cabecera y desde la columna contextual.
+   */
+  const backToMenu = useCallback(() => {
     commit((current) => ({ ...current, activeId: null }));
     setForm(null);
-    setPath("none");
+    setWizard(null);
   }, [commit]);
+
+  const startWizard = useCallback(() => {
+    setForm(null);
+    setWizard({ step: "fill", fill: "manual", team: "team", path: "none" });
+  }, []);
+
+  /** Copia un evento entero con sus estrategias; la copia nace sin abrir. */
+  const duplicateEvent = useCallback(
+    (id: string) => {
+      const source = store.events.find((event) => event.id === id);
+      if (!source) return;
+      const name = formatMessage(t("strategy.home.copyName"), { name: source.name });
+      const copy: StrategyEventRecord = {
+        ...source,
+        id: freeEventId(store.events, "copy"),
+        name,
+        lastOpenedAt: undefined,
+      };
+      commit((current) => upsertEvent(current, copy));
+      toast.show(
+        t("strategy.home.duplicated"),
+        formatMessage(t("strategy.home.duplicatedHint"), { name }),
+      );
+    },
+    [commit, store.events, t, toast],
+  );
+
+  const confirmDelete = useCallback(() => {
+    const target = store.events.find((event) => event.id === pendingDelete);
+    if (!target) return;
+    commit((current) => removeEvent(current, target.id));
+    setPendingDelete(null);
+    toast.show(
+      t("strategy.home.deleted"),
+      formatMessage(t("strategy.home.deletedHint"), { name: target.name }),
+    );
+  }, [commit, pendingDelete, store.events, t, toast]);
 
   // ── pilotos del evento (editables) ──────────────────────────────────────
   const [editDriver, setEditDriver] = useState<string | null>(null);
@@ -901,10 +994,10 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         <Button
           className="orbit-strategy__new"
           data-testid="orbit-strategy-new-event"
-          onClick={newEvent}
+          onClick={backToMenu}
           variant="ghost"
         >
-          {t("strategy.context.newEvent")}
+          {t("strategy.context.menu")}
         </Button>
       </div>
     </div>
@@ -1030,6 +1123,9 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             <h4>{t("strategy.form.drivers")}</h4>
             <Button
               data-testid="orbit-strategy-form-add-driver"
+              data-tip={form.teamMode === "solo" ? t("strategy.form.soloTip") : undefined}
+              data-tip-side="left"
+              disabled={form.teamMode === "solo"}
               onClick={() =>
                 setForm((current) =>
                   current
@@ -1147,25 +1243,209 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     </Surface>
   ) : null;
 
-  // ── estado inicial: dos caminos ─────────────────────────────────────────
-  if (!eventRecord || !strategyEvent || !active || !plan) {
-    return (
-      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
-        {contextSlot ? createPortal(context, contextSlot) : null}
-        {form ? eventForm : (
-        <div className="orbit-strategy__empty-stack">
-        <Surface
-          aria-label={t("strategy.picker.title")}
-          data-testid="orbit-strategy-empty"
-          meta={t("strategy.picker.meta")}
-          title={t("strategy.picker.title")}
-        >
-          <p className="orbit-strategy__empty-lead">{t("strategy.picker.lead")}</p>
+  // ── menú de entrada y asistente de creación (ISA-377) ───────────────────
+
+  /** Resumen de una estrategia guardada: evento, pilotos y variantes. */
+  const savedSummary = (record: StrategyEventRecord) =>
+    [
+      [record.cls, record.track].filter(Boolean).join(" · "),
+      formatMessage(t("strategy.home.driversN"), { n: record.drivers.length }),
+      formatMessage(t("strategy.home.variantsN"), { n: record.strategies.length }),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+  /** Última edición en formato corto; sin sello, el evento nunca se abrió. */
+  const lastEditLabel = (record: StrategyEventRecord) => {
+    if (!record.lastOpenedAt) return t("strategy.home.neverOpened");
+    const at = new Date(record.lastOpenedAt);
+    if (Number.isNaN(at.getTime())) return t("strategy.home.neverOpened");
+    return formatMessage(t("strategy.home.lastEdit"), {
+      when: new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(at),
+    });
+  };
+
+  const savedEvents = eventsByRecency(store);
+  const continueEvent = lastOpenedEventOf(store);
+  const deleteTarget = store.events.find((event) => event.id === pendingDelete) ?? null;
+
+  const deleteDialog = (
+    <ConfirmDialog
+      body={formatMessage(t("strategy.home.deleteBody"), { name: deleteTarget?.name ?? "" })}
+      cancelLabel={t("strategy.home.deleteCancel")}
+      confirmLabel={t("strategy.home.deleteConfirm")}
+      data-testid="orbit-strategy-delete-dialog"
+      onCancel={() => setPendingDelete(null)}
+      onConfirm={confirmDelete}
+      open={deleteTarget !== null}
+      title={t("strategy.home.deleteTitle")}
+      tone="danger"
+    />
+  );
+
+  /** Lista del calendario y recomendados: el punto de partida «desde evento». */
+  const calendarStep = (
+    <>
+      {wizard?.path === "series" ? (
+        <div className="orbit-list orbit-strategy__series-list" data-testid="orbit-strategy-series">
+          {seriesOptions.length === 0 ? (
+            <Note title={t("strategy.empty.noneTitle")}>{t("strategy.empty.none")}</Note>
+          ) : (
+            seriesOptions.map((start) => (
+              <ListRow
+                key={`${start.seriesId}-${start.at.getTime()}`}
+                onClick={() => createFromSeries(start, wizard.team)}
+                subtitle={[
+                  start.track,
+                  start.vehicleClass,
+                  start.durationMin
+                    ? formatMessage(t("strategy.chip.duration"), { min: start.durationMin })
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                title={start.name}
+                trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
+              />
+            ))
+          )}
+        </div>
+      ) : null}
+
+      {/* El hueco bajo las dos tarjetas lo llena el calendario real: los
+          especiales si los hay, y si no las semanales (briefing 07, D-R3-E-1). */}
+      <section className="orbit-strategy__rec-block" data-testid="orbit-strategy-recommended">
+        <div className="orbit-block__head">
+          <span className="orbit-eyebrow">{t("strategy.recommended.eyebrow")}</span>
+          {recommended.kind === "none" ? null : (
+            <span className="orbit-strategy__rec-meta">
+              {t(`strategy.recommended.meta.${recommended.kind}`)}
+            </span>
+          )}
+        </div>
+        {recommended.rows.length === 0 ? (
+          <Note title={t("strategy.recommended.emptyTitle")}>
+            {t("strategy.recommended.empty")}
+          </Note>
+        ) : (
+          <div className="orbit-list orbit-strategy__rec" data-testid="orbit-strategy-recommended-list">
+            {recommended.rows.map((row) => (
+              <div className="orbit-strategy__rec-row" key={row.key}>
+                <ListRow
+                  onClick={() => createFromSeries(row, wizard?.team ?? "team")}
+                  subtitle={recommendedSubtitle(row)}
+                  title={row.name}
+                  trailing={<span className="orbit-when">{formatStartTime(row.at)}</span>}
+                />
+                <Button
+                  aria-label={formatMessage(t("strategy.recommended.planName"), { name: row.name })}
+                  data-testid={`orbit-strategy-plan-${row.seriesId}`}
+                  onClick={() => createFromSeries(row, wizard?.team ?? "team")}
+                  size="sm"
+                  variant="primary"
+                >
+                  {t("strategy.recommended.plan")}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+
+  const stepIndex = wizard ? WIZARD_STEPS.indexOf(wizard.step) : 0;
+
+  const wizardView = wizard ? (
+    <Surface
+      aria-label={t("strategy.wizard.title")}
+      data-testid="orbit-strategy-wizard"
+      fill
+      meta={formatMessage(t("strategy.wizard.stepMeta"), {
+        n: stepIndex + 1,
+        total: WIZARD_STEPS.length,
+      })}
+      title={t("strategy.wizard.title")}
+    >
+      <ol aria-label={t("strategy.wizard.stepsLabel")} className="orbit-strategy__steps">
+        {WIZARD_STEPS.map((id, index) => (
+          <li
+            data-state={index < stepIndex ? "done" : index === stepIndex ? "now" : "next"}
+            data-testid={`orbit-strategy-wizard-step-${id}`}
+            key={id}
+          >
+            <span className="orbit-strategy__step-n">{index + 1}</span>
+            <span>{t(`strategy.wizard.steps.${id}`)}</span>
+          </li>
+        ))}
+      </ol>
+
+      {wizard.step === "fill" ? (
+        <>
+          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.fill.lead")}</p>
+          <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-fill">
+            <Featured
+              data-testid="orbit-strategy-wizard-manual"
+              interactive
+              onClick={() => setWizard({ ...wizard, fill: "manual", step: "team" })}
+            >
+              <span className="orbit-path__k">{t("strategy.wizard.fill.manual")}</span>
+              <span className="orbit-path__d">{t("strategy.wizard.fill.manualHint")}</span>
+            </Featured>
+            {/* Automática: la fuente de sesiones de telemetría (ADR 0005) aún no
+                llega al frontend, así que el control va deshabilitado y dice por qué. */}
+            <Featured
+              className="orbit-strategy__opt--off"
+              data-testid="orbit-strategy-wizard-auto"
+            >
+              <span className="orbit-path__k">{t("strategy.wizard.fill.auto")}</span>
+              <span className="orbit-path__d">{t("strategy.wizard.fill.autoHint")}</span>
+              <Button
+                data-testid="orbit-strategy-wizard-auto-action"
+                data-tip={t("strategy.wizard.fill.autoTip")}
+                data-tip-side="top"
+                disabled
+                size="sm"
+                variant="ghost"
+              >
+                {t("strategy.wizard.fill.autoAction")}
+              </Button>
+            </Featured>
+          </div>
+        </>
+      ) : wizard.step === "team" ? (
+        <>
+          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.team.lead")}</p>
+          <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-team-step">
+            <Featured
+              data-testid="orbit-strategy-wizard-solo"
+              interactive
+              onClick={() => setWizard({ ...wizard, team: "solo", step: "start" })}
+            >
+              <span className="orbit-path__k">{t("strategy.wizard.team.solo")}</span>
+              <span className="orbit-path__d">{t("strategy.wizard.team.soloHint")}</span>
+            </Featured>
+            <Featured
+              data-testid="orbit-strategy-wizard-team"
+              interactive
+              onClick={() => setWizard({ ...wizard, team: "team", step: "start" })}
+            >
+              <span className="orbit-path__k">{t("strategy.wizard.team.team")}</span>
+              <span className="orbit-path__d">{t("strategy.wizard.team.teamHint")}</span>
+            </Featured>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.start.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-paths">
             <Featured
               data-testid="orbit-strategy-path-own"
               interactive
-              onClick={openCreate}
+              onClick={() => openCreate(wizard.team)}
             >
               <span className="orbit-path__k">{t("strategy.picker.own")}</span>
               <span className="orbit-path__d">{t("strategy.picker.ownHint")}</span>
@@ -1173,91 +1453,145 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             <Featured
               data-testid="orbit-strategy-path-series"
               interactive
-              onClick={() => {
-                setForm(null);
-                setPath("series");
-              }}
+              onClick={() => setWizard({ ...wizard, path: "series" })}
             >
               <span className="orbit-path__k">{t("strategy.picker.series")}</span>
               <span className="orbit-path__d">{t("strategy.picker.seriesHint")}</span>
             </Featured>
           </div>
+          {calendarStep}
+        </>
+      )}
 
-          {path === "series" ? (
-            <div className="orbit-list orbit-strategy__series-list" data-testid="orbit-strategy-series">
-              {seriesOptions.length === 0 ? (
-                <Note title={t("strategy.empty.noneTitle")}>{t("strategy.empty.none")}</Note>
-              ) : (
-                seriesOptions.map((start) => (
-                  <ListRow
-                    key={`${start.seriesId}-${start.at.getTime()}`}
-                    onClick={() => createFromSeries(start)}
-                    subtitle={[start.track, start.vehicleClass, start.durationMin
-                      ? formatMessage(t("strategy.chip.duration"), { min: start.durationMin })
-                      : ""]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    title={start.name}
-                    trailing={<span className="orbit-when">{formatStartTime(start.at)}</span>}
-                  />
-                ))
-              )}
-            </div>
-          ) : null}
-        </Surface>
-
-        {/* El hueco bajo las dos tarjetas lo llena el calendario real: los
-            especiales si los hay, y si no las semanales (briefing 07, D-R3-E-1). */}
-        <Surface
-          aria-label={t("strategy.recommended.title")}
-          data-testid="orbit-strategy-recommended"
-          fill
-          meta={
-            recommended.kind === "none"
-              ? undefined
-              : t(`strategy.recommended.meta.${recommended.kind}`)
-          }
-          title={t("strategy.recommended.title")}
+      <div className="orbit-strategy__wizard-acts">
+        <Button
+          data-testid="orbit-strategy-wizard-back"
+          onClick={() => {
+            if (stepIndex === 0) {
+              setWizard(null);
+              return;
+            }
+            setWizard({ ...wizard, step: WIZARD_STEPS[stepIndex - 1], path: "none" });
+          }}
+          variant="ghost"
         >
-          <span className="orbit-eyebrow">{t("strategy.recommended.eyebrow")}</span>
-          {recommended.rows.length === 0 ? (
-            <Note title={t("strategy.recommended.emptyTitle")}>
-              {t("strategy.recommended.empty")}
-            </Note>
-          ) : (
-            <div className="orbit-list orbit-strategy__rec" data-testid="orbit-strategy-recommended-list">
-              {recommended.rows.map((row) => (
-                <div className="orbit-strategy__rec-row" key={row.key}>
-                  <ListRow
-                    onClick={() => createFromSeries(row)}
-                    subtitle={recommendedSubtitle(row)}
-                    title={row.name}
-                    trailing={<span className="orbit-when">{formatStartTime(row.at)}</span>}
-                  />
+          {stepIndex === 0 ? t("strategy.wizard.cancel") : t("strategy.wizard.back")}
+        </Button>
+      </div>
+    </Surface>
+  ) : null;
+
+  const entryMenu = (
+    <div className="orbit-strategy__empty-stack">
+      <Surface
+        aria-label={t("strategy.home.title")}
+        data-testid="orbit-strategy-home"
+        meta={t("strategy.home.meta")}
+        title={t("strategy.home.title")}
+      >
+        <p className="orbit-strategy__empty-lead">{t("strategy.home.lead")}</p>
+        <div className="orbit-strategy__entry" data-testid="orbit-strategy-entry">
+          {continueEvent ? (
+            <Featured
+              className="orbit-strategy__entry-card"
+              data-testid="orbit-strategy-continue"
+              interactive
+              onClick={() => selectEvent(continueEvent.id)}
+            >
+              <span className="orbit-eyebrow">{t("strategy.home.continue")}</span>
+              <span className="orbit-path__k">{continueEvent.name}</span>
+              <span className="orbit-path__d">{savedSummary(continueEvent)}</span>
+              <span className="orbit-strategy__entry-when">{lastEditLabel(continueEvent)}</span>
+            </Featured>
+          ) : null}
+          <Featured
+            className="orbit-strategy__entry-card"
+            data-testid="orbit-strategy-new-strategy"
+            interactive
+            onClick={startWizard}
+          >
+            <span className="orbit-eyebrow">{t("strategy.home.newEyebrow")}</span>
+            <span className="orbit-path__k">{t("strategy.home.new")}</span>
+            <span className="orbit-path__d">{t("strategy.home.newHint")}</span>
+          </Featured>
+        </div>
+      </Surface>
+
+      <Surface
+        aria-label={t("strategy.home.saved")}
+        data-testid="orbit-strategy-saved"
+        fill
+        meta={formatMessage(t("strategy.home.savedMeta"), { n: savedEvents.length })}
+        title={t("strategy.home.saved")}
+      >
+        {savedEvents.length === 0 ? (
+          <Note title={t("strategy.home.emptyTitle")}>{t("strategy.home.empty")}</Note>
+        ) : (
+          <div className="orbit-list orbit-strategy__saved" data-testid="orbit-strategy-saved-list">
+            {savedEvents.map((record) => (
+              <div className="orbit-strategy__saved-row" key={record.id}>
+                <ListRow
+                  onClick={() => selectEvent(record.id)}
+                  subtitle={savedSummary(record)}
+                  title={record.name}
+                  trailing={
+                    <span className="orbit-when">{formatStartTime(new Date(record.startAt))}</span>
+                  }
+                />
+                <div className="orbit-strategy__saved-acts">
                   <Button
-                    aria-label={formatMessage(t("strategy.recommended.planName"), {
-                      name: row.name,
-                    })}
-                    data-testid={`orbit-strategy-plan-${row.seriesId}`}
-                    onClick={() => createFromSeries(row)}
+                    data-testid={`orbit-strategy-open-${record.id}`}
+                    onClick={() => selectEvent(record.id)}
                     size="sm"
                     variant="primary"
                   >
-                    {t("strategy.recommended.plan")}
+                    {t("strategy.home.open")}
+                  </Button>
+                  <Button
+                    aria-label={formatMessage(t("strategy.home.duplicateName"), {
+                      name: record.name,
+                    })}
+                    data-testid={`orbit-strategy-duplicate-${record.id}`}
+                    onClick={() => duplicateEvent(record.id)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    {t("strategy.home.duplicate")}
+                  </Button>
+                  <Button
+                    aria-label={formatMessage(t("strategy.home.deleteName"), { name: record.name })}
+                    data-testid={`orbit-strategy-delete-${record.id}`}
+                    onClick={() => setPendingDelete(record.id)}
+                    size="sm"
+                    variant="danger"
+                  >
+                    {t("strategy.home.delete")}
                   </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </Surface>
-        </div>
+              </div>
+            ))}
+          </div>
         )}
+      </Surface>
+    </div>
+  );
+
+  // ── entrada: menú, asistente o formulario ───────────────────────────────
+  if (!eventRecord || !strategyEvent || !active || !plan) {
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        {form ? eventForm : (wizardView ?? entryMenu)}
+        {deleteDialog}
       </div>
     );
   }
 
+
   const event = strategyEvent;
   const drivers = eventRecord.drivers;
+  /** Tablero de un solo piloto: elección del asistente (ISA-377). */
+  const soloBoard = eventRecord.teamMode === "solo";
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
@@ -1397,6 +1731,14 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           </div>
         </div>
         <div className="orbit-strategy__actions">
+          <Button
+            data-testid="orbit-strategy-back"
+            icon="i-estrategia"
+            onClick={backToMenu}
+            variant="ghost"
+          >
+            {t("strategy.backToMenu")}
+          </Button>
           <Menu
             items={[
               {
@@ -1444,7 +1786,8 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         tabs={[
           { id: "overview", label: t("strategy.tabs.overview") },
           { id: "strategies", label: t("strategy.tabs.strategies") },
-          { id: "availability", label: t("strategy.tabs.availability") },
+          // Un evento en solitario no reparte turnos: la pestaña sobraría.
+          ...(soloBoard ? [] : [{ id: "availability" as const, label: t("strategy.tabs.availability") }]),
         ]}
         value={tab}
       />

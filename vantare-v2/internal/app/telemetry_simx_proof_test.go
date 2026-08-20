@@ -3,9 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"os/exec"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -230,29 +228,12 @@ func TestAuthorityMatrixIsExhaustiveBySignalID(t *testing.T) {
 	}
 }
 
-// The whole point of the phase, expressed as an assertion: this branch must not
-// contain a single file below frontend/.
-func TestBranchDiffContainsNoFrontendFile(t *testing.T) {
-	t.Parallel()
-
-	base := "vantareapp/isa-372-tc-integration"
-	output, err := exec.Command("git", "diff", "--name-only", base+"...HEAD").CombinedOutput()
-	if err != nil {
-		t.Skipf("git diff against %s is unavailable here: %v", base, err)
-	}
-	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		file := strings.TrimSpace(line)
-		if file == "" {
-			continue
-		}
-		if strings.Contains(file, "frontend/") {
-			t.Fatalf("the branch changes a frontend file: %s", file)
-		}
-		if strings.Contains(file, "projection/overlayv2/") {
-			t.Fatalf("the branch changes an Overlay v2 file owned by another worker: %s", file)
-		}
-	}
-}
+// The one-off branch-diff proof for the F10 phase (no frontend file in the
+// branch) used to live here; it diffed against the integration branch and can
+// only fail once promoted to nightly. The durable guarantee is structural:
+// the SimX driver cannot import frontend code (architecture_test.go) and the
+// historical demonstration is recorded in
+// docs/telemetry-core/evidence/isa-372-f10-multisim.md (ISA-683).
 
 func lmuMatrixSignals() []string {
 	rules := lmu.AuthorityMatrix()

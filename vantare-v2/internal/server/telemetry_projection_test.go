@@ -89,7 +89,7 @@ func TestServerExposesCanonicalStrategyProjectionSSE(t *testing.T) {
 	).WithContext(ctx)
 	request.RemoteAddr = "127.0.0.1:45678"
 	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 2}
-	srv := server.New(server.ServerConfig{StrategyProjection: hub})
+	srv := server.New(server.ServerConfig{StrategyProjection: hub, StrategyPublicTransport: true})
 	srv.Handler().ServeHTTP(writer, request)
 
 	if got := writer.header.Get("Content-Type"); got != "text/event-stream" {
@@ -109,6 +109,35 @@ func TestServerExposesCanonicalStrategyProjectionSSE(t *testing.T) {
 	}
 	if strings.Contains(body, "telemetry:overlay:") {
 		t.Fatalf("Strategy route emitted Overlay channel: %q", body)
+	}
+}
+
+func TestServerExposesOverlayV2PublisherSSE(t *testing.T) {
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
+		Product: telemetrytransport.ProductOverlayV2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := registry.RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if err := publisher.PublishSnapshot(3, map[string]any{"revision": 3, "frame": map[string]any{"contract": 2}}); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	request := httptest.NewRequest(http.MethodGet, telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2), nil).WithContext(ctx)
+	request.RemoteAddr = "127.0.0.1:45678"
+	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 1}
+	srv := server.New(server.ServerConfig{OverlayV2Publishers: registry})
+	srv.Handler().ServeHTTP(writer, request)
+
+	body := writer.body.String()
+	if !strings.Contains(body, "event: telemetry:overlay-v2:snapshot") || !strings.Contains(body, `"contract":2`) {
+		t.Fatalf("Overlay v2 SSE body = %q", body)
 	}
 }
 
@@ -137,6 +166,13 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 			wantStatus: http.StatusNotFound,
 		},
 		{
+			name:       "hub without public flag stays disabled",
+			server:     server.New(server.ServerConfig{StrategyProjection: strategyHub}),
+			route:      strategyRoute,
+			remoteAddr: "127.0.0.1:45678",
+			wantStatus: http.StatusNotFound,
+		},
+		{
 			name: "overlay does not enable strategy",
 			server: server.New(server.ServerConfig{
 				OverlayProjection: overlayHub,
@@ -148,7 +184,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "strategy does not enable overlay",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: strategyHub,
+				StrategyProjection:      strategyHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      overlayRoute,
 			remoteAddr: "127.0.0.1:45678",
@@ -157,7 +194,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "cross product hub",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: overlayHub,
+				StrategyProjection:      overlayHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      strategyRoute,
 			remoteAddr: "127.0.0.1:45678",
@@ -166,7 +204,8 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "non loopback",
 			server: server.New(server.ServerConfig{
-				StrategyProjection: strategyHub,
+				StrategyProjection:      strategyHub,
+				StrategyPublicTransport: true,
 			}),
 			route:      strategyRoute,
 			remoteAddr: "203.0.113.10:45678",

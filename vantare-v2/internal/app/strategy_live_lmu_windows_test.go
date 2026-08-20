@@ -44,7 +44,7 @@ func TestStrategyLiveLMUOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build live engine: %v", err)
 	}
-	telemetryRuntime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: true})
+	telemetryRuntime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: true, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatalf("build telemetry core runtime: %v", err)
 	}

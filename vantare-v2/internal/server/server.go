@@ -167,10 +167,15 @@ func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		// 'self' es imprescindible: la pagina /overlay (OBS browser source)
+		// carga el bundle y estilos del propio servidor (/assets/*); sin
+		// 'self' cualquier navegador conforme bloquea el SPA y el overlay
+		// queda en blanco fuera de la WebView de la app (ISA-372/F6).
 		w.Header().Set("Content-Security-Policy",
-			"default-src 'none'; script-src 'unsafe-inline'; "+
-				"connect-src http://127.0.0.1:39261 http://localhost:39261; "+
-				"style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'")
+			"default-src 'none'; script-src 'self' 'unsafe-inline'; "+
+				"connect-src 'self' http://127.0.0.1:39261 http://localhost:39261; "+
+				"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
+				"font-src 'self'; base-uri 'none'; form-action 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -194,13 +199,15 @@ type Server struct {
 }
 
 type ServerConfig struct {
-	Addr               string
-	DistFS             fs.FS
-	CfgDir             string
-	EngineerSvc        *engineerservice.EngineerService
-	Emitter            EventEmitter
-	OverlayProjection  *telemetrytransport.Hub
-	StrategyProjection *telemetrytransport.Hub
+	Addr                    string
+	DistFS                  fs.FS
+	CfgDir                  string
+	EngineerSvc             *engineerservice.EngineerService
+	Emitter                 EventEmitter
+	OverlayProjection       *telemetrytransport.Hub
+	StrategyProjection      *telemetrytransport.Hub
+	StrategyPublicTransport bool
+	OverlayV2Publishers     *telemetrytransport.PublisherRegistry
 }
 
 func New(cfg ServerConfig) *Server {
@@ -227,10 +234,16 @@ func New(cfg ServerConfig) *Server {
 			telemetrytransport.SSEHandler(cfg.OverlayProjection),
 		)
 	}
-	if cfg.StrategyProjection != nil {
+	if cfg.StrategyPublicTransport && cfg.StrategyProjection != nil {
 		mux.Handle(
 			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),
 			telemetrytransport.SSEHandler(cfg.StrategyProjection),
+		)
+	}
+	if cfg.OverlayV2Publishers != nil {
+		mux.Handle(
+			"GET "+telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
+			telemetrytransport.PublisherSSEHandler(cfg.OverlayV2Publishers, telemetrytransport.ProductOverlayV2),
 		)
 	}
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)

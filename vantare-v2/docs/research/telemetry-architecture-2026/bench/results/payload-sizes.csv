@@ -1,0 +1,28 @@
+variante,vehiculos,bytes
+a. overlay v1 (actual),1,7221
+a2. engineer v1,1,6889
+a3. strategy v1,1,1356
+a4. analysis v1,1,847
+b. OverlayFrame compacto (array),1,760
+e. OverlayFrame compacto (mapa),1,770
+c. canonical/final completo,1,6960
+d1. merge-patch sobre overlay v1,1,5535
+d2. merge-patch sobre compacto,1,515
+a. overlay v1 (actual),20,55757
+a2. engineer v1,20,64876
+a3. strategy v1,20,1356
+a4. analysis v1,20,847
+b. OverlayFrame compacto (array),20,7104
+e. OverlayFrame compacto (mapa),20,7304
+c. canonical/final completo,20,60754
+d1. merge-patch sobre overlay v1,20,54111
+d2. merge-patch sobre compacto,20,6899
+a. overlay v1 (actual),104,269573
+a2. engineer v1,104,320631
+a3. strategy v1,104,1356
+a4. analysis v1,104,847
+b. OverlayFrame compacto (array),104,35209
+e. OverlayFrame compacto (mapa),104,36249
+c. canonical/final completo,104,298482
+d1. merge-patch sobre overlay v1,104,268079
+d2. merge-patch sobre compacto,104,35156

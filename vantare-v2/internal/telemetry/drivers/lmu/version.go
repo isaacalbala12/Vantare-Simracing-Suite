@@ -7,9 +7,19 @@ import (
 )
 
 const (
-	supportedLMUVersion  = "1.3.0.0"
-	diagnosticLMUVersion = "1.4.0.0"
+	supportedLMUVersion   = "1.3.0.0"
+	diagnosticLMUVersion  = "1.4.0.0"
+	diagnosticLMUVersion1 = "1.4.1.3"
 )
+
+// diagnosticLMUVersions is the closed set of builds admitted for capture-time
+// structural validation. Every entry is an exact build observed locally; it is
+// never a prefix or range match and never promotes a build into
+// supportedLMUVersions.
+var diagnosticLMUVersions = map[string]struct{}{
+	diagnosticLMUVersion:  {},
+	diagnosticLMUVersion1: {},
+}
 
 var ErrBuildUnavailable = errors.New("LMU build evidence unavailable")
 
@@ -31,6 +41,17 @@ var supportedLMUVersions = map[string]pinnedFixtureEvidence{
 		trackSHA256:     "c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5",
 		restMenuSHA256:  "325d40882d718e7cb36837b0d3f77575eca72008ecef9bdb436325af1a285312",
 		restTrackSHA256: "bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36",
+		requireREST:     true,
+	},
+	// Captured live from LMU 1.4.1.3 with the opt-in harness and persisted in
+	// testdata. The menu digest is byte-for-byte the one already pinned for
+	// 1.4.0.0: the sanitized menu frame is identical across both builds, which
+	// independently confirms the layout did not change.
+	diagnosticLMUVersion1: {
+		menuSHA256:      "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
+		trackSHA256:     "52ff620c80fb464ef7032431fac39e26d547cbde42480bd5238b1c60fcae06b1",
+		restMenuSHA256:  "5db40a287ab52d5c85f4101b4ca275854869a59b4717fd7cca4452aeaac31ecb",
+		restTrackSHA256: "79f7691e70d936546ec09c4555fda170b6d44e513aced2ae67aecd1c22e92e1e",
 		requireREST:     true,
 	},
 }
@@ -56,7 +77,10 @@ func profileFromBuild(evidence BuildEvidence) compatibilityProfile {
 func diagnosticCandidateProfile(evidence BuildEvidence) (compatibilityProfile, bool) {
 	fileVersion, fileOK := normalizeVersion(evidence.FileVersion)
 	productVersion, productOK := normalizeVersion(evidence.ProductVersion)
-	if !fileOK || !productOK || fileVersion != productVersion || fileVersion != diagnosticLMUVersion {
+	if !fileOK || !productOK || fileVersion != productVersion {
+		return compatibilityProfile{}, false
+	}
+	if _, candidate := diagnosticLMUVersions[fileVersion]; !candidate {
 		return compatibilityProfile{}, false
 	}
 	return compatibilityProfile{version: fileVersion, supported: true}, true
@@ -95,7 +119,7 @@ func (evidence BuildEvidence) supportedVersion() (string, bool) {
 	if !allowed || !fixtures.pinned() {
 		return "", false
 	}
-	if version == diagnosticLMUVersion && (!filePresent || !productPresent) {
+	if _, candidate := diagnosticLMUVersions[version]; candidate && (!filePresent || !productPresent) {
 		return "", false
 	}
 	return version, true

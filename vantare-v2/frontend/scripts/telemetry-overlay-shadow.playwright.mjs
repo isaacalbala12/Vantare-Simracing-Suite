@@ -227,6 +227,14 @@ try {
       timeout: 10_000,
     });
     await page.getByTestId("shadow-harness-root").waitFor({ state: "visible" });
+    if ((await page.getByTestId("shadow-player-v2-mismatches").textContent()) !== "0") {
+      throw new Error(`${viewport.name}: Overlay v2 player instruments mismatch`);
+    }
+    const v1Widget = await page.getByTestId("shadow-player-v1").screenshot();
+    const v2Widget = await page.getByTestId("shadow-player-v2").screenshot();
+    if (!v1Widget.equals(v2Widget)) {
+      throw new Error(`${viewport.name}: v1/v2 player widget captures differ`);
+    }
     for (const [scenario, label] of scenarios) {
       await assertScenario(page, scenario, label);
       await assertSafeResponsiveDom(page, `${viewport.name}/${scenario}`);
@@ -238,6 +246,7 @@ try {
         return {
           coverage: evidence.buildShadowHarnessCoverage(),
           report: evidence.buildShadowHarnessReport("partial"),
+          playerInstrumentsV2: evidence.buildPlayerInstrumentsV2HarnessFixture().summary,
         };
       });
     }

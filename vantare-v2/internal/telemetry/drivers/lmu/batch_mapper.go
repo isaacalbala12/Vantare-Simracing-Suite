@@ -10,6 +10,7 @@ import (
 
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	identitypolicy "github.com/vantare/overlays/v2/internal/telemetry/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -37,22 +38,30 @@ type sessionSignature struct {
 	sessionType session.Type
 }
 
-type mappedSlot struct {
-	vehicleID identity.VehicleID
+type batchMapperState struct {
+	initialized         bool
+	sessionCounter      uint64
+	cursor              schema.Cursor
+	sessionID           identity.SessionID
+	playerID            identity.VehicleID
+	lastFresh           sessionSignature
+	hasFresh            bool
+	lastSourceTime      time.Duration
+	hasSourceTime       bool
+	frame               uint64
+	slotGrace           uint64
+	slots               *identitypolicy.SlotTracker[VehicleSourceID]
+	slotGraceReopen     uint64
+	slotGenerationBumps uint64
 }
 
-type batchMapperState struct {
-	initialized    bool
-	sessionCounter uint64
-	cursor         schema.Cursor
-	sessionID      identity.SessionID
-	playerID       identity.VehicleID
-	lastFresh      sessionSignature
-	hasFresh       bool
-	lastSourceTime time.Duration
-	hasSourceTime  bool
-	active         map[VehicleSourceID]mappedSlot
-	generations    map[VehicleSourceID]uint64
+type BatchMapperConfig struct {
+	SlotGraceFrames uint64
+}
+
+type BatchMapperMetrics struct {
+	SlotGraceReopen     uint64
+	SlotGenerationBumps uint64
 }
 
 // BatchMapper is a long-lived, synchronous identity owner. It is deliberately
@@ -61,6 +70,11 @@ type batchMapperState struct {
 type BatchMapper struct {
 	mu    sync.Mutex
 	state batchMapperState
+}
+
+type preparedObservation struct {
+	candidate batchMapperState
+	batch     telemetrycore.Batch
 }
 
 // ObservationBatchSink binds the long-lived mapper to the canonical batch
@@ -73,8 +87,24 @@ type ObservationBatchSink struct {
 
 var _ driver.ObservationSink[Observation] = (*ObservationBatchSink)(nil)
 
-func NewBatchMapper() *BatchMapper {
-	return &BatchMapper{state: emptyBatchMapperState()}
+func NewBatchMapper(configs ...BatchMapperConfig) *BatchMapper {
+	config := BatchMapperConfig{}
+	if len(configs) != 0 {
+		config = configs[0]
+	}
+	return &BatchMapper{state: emptyBatchMapperState(config.SlotGraceFrames)}
+}
+
+func (mapper *BatchMapper) Metrics() BatchMapperMetrics {
+	if mapper == nil {
+		return BatchMapperMetrics{}
+	}
+	mapper.mu.Lock()
+	defer mapper.mu.Unlock()
+	return BatchMapperMetrics{
+		SlotGraceReopen:     mapper.state.slotGraceReopen,
+		SlotGenerationBumps: mapper.state.slotGenerationBumps,
+	}
 }
 
 func NewObservationBatchSink(mapper *BatchMapper, sink telemetrycore.BatchSink) (*ObservationBatchSink, error) {
@@ -111,10 +141,13 @@ func IsUnmappableFrame(err error) bool {
 		errors.Is(err, ErrInvalidPlayerIdentity)
 }
 
-func emptyBatchMapperState() batchMapperState {
+func emptyBatchMapperState(grace uint64) batchMapperState {
+	if grace == 0 {
+		grace = identitypolicy.DefaultSlotGraceFrames
+	}
 	return batchMapperState{
-		active:      make(map[VehicleSourceID]mappedSlot),
-		generations: make(map[VehicleSourceID]uint64),
+		slotGrace: grace,
+		slots:     identitypolicy.NewSlotTracker[VehicleSourceID](grace),
 	}
 }
 
@@ -137,17 +170,32 @@ func (mapper *BatchMapper) WriteObservation(ctx context.Context, observation Obs
 		return err
 	}
 
-	candidate := cloneBatchMapperState(mapper.state)
-	batch, err := candidate.mapObservation(observation)
+	prepared, err := mapper.prepareObservation(observation)
 	if err != nil {
 		return err
 	}
-	batch.State.Vehicles = append([]telemetrycore.VehicleState(nil), batch.State.Vehicles...)
-	if err := sink.WriteBatch(ctx, batch); err != nil {
+	if err := sink.WriteBatch(ctx, prepared.batch); err != nil {
 		return fmt.Errorf("write mapped LMU batch: %w", err)
 	}
-	mapper.state = candidate
+	mapper.commit(prepared)
 	return nil
+}
+
+// prepareObservation builds an owned candidate. In particular, advancing the
+// candidate cursor does not advance the mapper cursor visible to the next
+// observation; commit happens only after the complete engine apply succeeds.
+func (mapper *BatchMapper) prepareObservation(observation Observation) (preparedObservation, error) {
+	candidate := cloneBatchMapperState(mapper.state)
+	batch, err := candidate.mapObservation(observation)
+	if err != nil {
+		return preparedObservation{}, err
+	}
+	batch.State.Vehicles = append([]telemetrycore.VehicleState(nil), batch.State.Vehicles...)
+	return preparedObservation{candidate: candidate, batch: batch}, nil
+}
+
+func (mapper *BatchMapper) commit(prepared preparedObservation) {
+	mapper.state = prepared.candidate
 }
 
 func (state *batchMapperState) mapObservation(observation Observation) (telemetrycore.Batch, error) {
@@ -166,7 +214,10 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 		state.hasSourceTime = true
 	}
 	sessionBoundary := !first && clockChange == ClockReset
-	if !sessionBoundary && !first && freshSignature && state.hasFresh && signature != state.lastFresh {
+	// A usable but stale P->Q signature is not authority to merge Q into P.
+	// Open a boundary when it disagrees with the last fresh signature; only a
+	// fresh signature becomes the new baseline.
+	if !sessionBoundary && !first && state.hasFresh && signature != state.lastFresh {
 		sessionBoundary = true
 	}
 	epochBoundary := sessionBoundary || (!first && clockChange == ClockWrap)
@@ -178,38 +229,30 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 		state.sessionCounter++
 		state.sessionID = sessionID(state.sessionCounter)
 		state.playerID = ""
-		state.active = make(map[VehicleSourceID]mappedSlot)
-		state.generations = make(map[VehicleSourceID]uint64)
+		state.frame = 0
+		state.slots = identitypolicy.NewSlotTracker[VehicleSourceID](state.slotGrace)
 	}
+	state.frame++
 
 	vehicles := make([]telemetrycore.VehicleState, len(observation.Vehicles))
-	nextActive := make(map[VehicleSourceID]mappedSlot, len(observation.Vehicles))
 	var observedPlayer identity.VehicleID
 	for index, source := range observation.Vehicles {
-		mapped, exists := state.active[source.SourceID]
-		if !exists {
-			generation := state.generations[source.SourceID] + 1
-			mapped = mappedSlot{
-				vehicleID: vehicleID(source.SourceID, generation),
-			}
-			state.generations[source.SourceID] = generation
+		fingerprint := slotFingerprint(source)
+		outcome := state.slots.Observe(source.SourceID, fingerprint, state.frame)
+		if outcome.Reopened {
+			state.slotGraceReopen++
 		}
-		nextActive[source.SourceID] = mapped
-		vehicles[index] = mapVehicle(source, mapped.vehicleID, state.sessionID)
+		if outcome.Bumped {
+			state.slotGenerationBumps++
+		}
+		mappedVehicleID := vehicleID(source.SourceID, outcome.Generation)
+		vehicles[index] = mapVehicle(source, mappedVehicleID, state.sessionID)
 		if playerSlot != nil && source.SourceID == *playerSlot {
-			observedPlayer = mapped.vehicleID
+			observedPlayer = mappedVehicleID
 		}
 	}
 
-	if observedPlayer == "" {
-		state.playerID = ""
-	} else if state.playerID != observedPlayer {
-		if !first && !sessionBoundary {
-			epochBoundary = true
-		}
-		state.playerID = observedPlayer
-	}
-	state.active = nextActive
+	state.playerID = observedPlayer
 
 	transition := schema.TransitionContinuous
 	if epochBoundary {
@@ -245,6 +288,16 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 			Vehicles:      vehicles,
 		},
 	}, nil
+}
+
+func slotFingerprint(source VehicleObservation) identitypolicy.SlotFingerprint {
+	driverName, _ := usableField(source.DriverName)
+	class, _ := usableField(source.VehicleClass)
+	return identitypolicy.SlotFingerprint{
+		SourceKey: fmt.Sprint(source.SourceID),
+		Driver:    string(driverName),
+		Class:     string(class),
+	}
 }
 
 func validateMapperObservation(observation Observation) (sessionSignature, bool, *VehicleSourceID, error) {
@@ -297,8 +350,9 @@ func validateMapperObservation(observation Observation) (sessionSignature, bool,
 }
 
 func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID identity.SessionID) telemetrycore.VehicleState {
+	driverName, _ := usableField(source.DriverName)
 	return telemetrycore.VehicleState{
-		Identity:         identity.RunIdentity{Event: batchEventID, Session: sessionID, Vehicle: id},
+		Identity:         identity.RunIdentity{Event: batchEventID, Session: sessionID, Vehicle: id, Driver: identity.DriverID(driverName)},
 		DriverName:       source.DriverName,
 		Name:             source.VehicleName,
 		VehicleClass:     source.VehicleClass,
@@ -334,14 +388,7 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 
 func cloneBatchMapperState(input batchMapperState) batchMapperState {
 	result := input
-	result.active = make(map[VehicleSourceID]mappedSlot, len(input.active))
-	for slot, mapped := range input.active {
-		result.active[slot] = mapped
-	}
-	result.generations = make(map[VehicleSourceID]uint64, len(input.generations))
-	for slot, generation := range input.generations {
-		result.generations[slot] = generation
-	}
+	result.slots = input.slots.Clone()
 	return result
 }
 

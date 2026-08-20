@@ -20,6 +20,7 @@ type CommonOptions = Readonly<{
   coordinator: TelemetryRateCoordinator;
   runtime: OverlayRuntime;
   now?: () => number;
+  onMappedSnapshot?: (epoch: number, sequence: number, snapshot: TelemetrySnapshot) => void;
 }>;
 
 export function createWailsProjectionTelemetryAdapter(options: CommonOptions & Readonly<{
@@ -90,6 +91,9 @@ function createProjectionTelemetryAdapter(
         lastSnapshot = observation.adaptation.snapshot;
         lastStatus = observation.status;
         options.coordinator.publish(observation.adaptation.snapshot);
+        if (observation.epoch !== undefined && observation.sequence !== undefined) {
+          options.onMappedSnapshot?.(observation.epoch, observation.sequence, observation.adaptation.snapshot);
+        }
         return;
       }
       publishFallback(

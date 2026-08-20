@@ -16,7 +16,6 @@ export type TelemetryTransportHarness = {
   store: ProjectionTransportStore;
   status(state?: StatusEnvelope["payload"]["state"]): void;
   full(payload: JSONObject, sequence?: number): void;
-  delta(patch: JSONObject): void;
   gap(payload: JSONObject): void;
   fact(payload: JSONObject, factSequence?: number): void;
   reconnect(): void;
@@ -26,12 +25,14 @@ export type TelemetryTransportHarness = {
 export function createTelemetryTransportHarness(
   product: ProductID,
 ): TelemetryTransportHarness {
-  const store = createProjectionTransportStore(product);
+  const capturedAt = "2026-07-30T00:00:00Z";
+  const store = createProjectionTransportStore(product, {
+    now: () => Date.parse(capturedAt),
+  });
   let statusRevision = 0;
   const epoch = 1;
   let sequence = 0;
   let factSequence = 0;
-  const capturedAt = "2026-07-30T00:00:00Z";
   let retainedStatus: StatusEnvelope | undefined;
   let retainedFull: ProjectionEnvelope | undefined;
 
@@ -51,13 +52,6 @@ export function createTelemetryTransportHarness(
       sequence = requestedSequence ?? sequence + 1;
       retainedFull = projection(product, "full", epoch, sequence, statusRevision, payload);
       store.ingest(eventName(product, "projection"), retainedFull);
-    },
-    delta(patch) {
-      sequence += 1;
-      store.ingest(
-        eventName(product, "projection"),
-        projection(product, "delta", epoch, sequence, statusRevision, patch),
-      );
     },
     gap(payload) {
       sequence += 2;

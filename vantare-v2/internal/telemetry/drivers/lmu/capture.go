@@ -24,11 +24,24 @@ var ErrUnsanitizableFrame = errors.New("LMU frame cannot be sanitized safely")
 
 var ErrDiagnosticCapture = errors.New("LMU diagnostic capture failed")
 
+// ErrStaleSessionRemnant identifica el remanente que LMU 1.4.1.3 conserva en
+// la Shared Memory tras terminar una sesion: un frame estructuralmente valido
+// y estable cuyo reloj ya no avanza. readStable y el sanitizador lo aceptan,
+// asi que la captura debe exigir un reloj en movimiento antes de producir una
+// fixture que afirme una sesion activa.
+var ErrStaleSessionRemnant = errors.New("LMU shared memory holds a frozen session remnant")
+
 const (
-	diagnosticCaptureRateHz       = 5
-	diagnosticCaptureAttempts     = 20
-	diagnosticCaptureWindow       = 250 * time.Millisecond
+	diagnosticCaptureRateHz   = 5
+	diagnosticCaptureAttempts = 20
+	// La ventana cubre los reintentos y una confirmacion de vitalidad que
+	// necesita esperar mas que la cadencia real del bloque de sesion (5 Hz).
+	diagnosticCaptureWindow       = 2 * time.Second
 	diagnosticCaptureRetrySpacing = 10 * time.Millisecond
+	// LMU 1.4.1.3 deja un remanente congelado de la sesion en el mapping
+	// durante varios minutos tras salir al menu. 500 ms dan 2,5x la cadencia
+	// medida del bloque (200 ms): un reloj vivo siempre avanza en ese margen.
+	diagnosticLivenessSpacing = 500 * time.Millisecond
 )
 
 type SanitizationFailureCode string
@@ -387,7 +400,7 @@ func captureSanitizedSharedMemory(
 	open openMemory,
 	now func() time.Time,
 ) (DiagnosticCaptureArtifact, error) {
-	return captureSanitizedSharedMemoryWithRetry(ctx, build, open, now, waitDiagnosticCaptureRetry)
+	return captureSanitizedSharedMemoryWithRetry(ctx, build, open, now, waitDiagnosticCaptureRetry, waitDiagnosticLiveness)
 }
 
 type diagnosticRetryWait func(context.Context) error
@@ -398,8 +411,9 @@ func captureSanitizedSharedMemoryWithRetry(
 	open openMemory,
 	now func() time.Time,
 	wait diagnosticRetryWait,
+	livenessWait diagnosticRetryWait,
 ) (artifact DiagnosticCaptureArtifact, resultErr error) {
-	if ctx == nil || build == nil || open == nil || now == nil || wait == nil {
+	if ctx == nil || build == nil || open == nil || now == nil || wait == nil || livenessWait == nil {
 		return DiagnosticCaptureArtifact{}, ErrDiagnosticCapture
 	}
 	if err := ctx.Err(); err != nil {
@@ -445,6 +459,10 @@ func captureSanitizedSharedMemoryWithRetry(
 		} else {
 			captured, err := buildSharedMemoryDiagnosticArtifact(input, now().Round(0).UTC(), sanitizer)
 			if err == nil {
+				if err := confirmCaptureLiveness(ctx, reader, input, scratch, sanitizer.profile, now, livenessWait); err != nil {
+					clear(captured.payload)
+					return DiagnosticCaptureArtifact{}, err
+				}
 				return captured, nil
 			}
 			code, retryable := retryableSanitizationFailure(err)
@@ -462,6 +480,60 @@ func captureSanitizedSharedMemoryWithRetry(
 		}
 	}
 	return DiagnosticCaptureArtifact{}, newDiagnosticRetryError(diagnosticCaptureAttempts, failures, lastFailure)
+}
+
+// confirmCaptureLiveness rechaza el remanente congelado post-sesion: si el
+// frame afirma una sesion activa (player presente o parrilla no vacia), exige
+// que source_time avance entre dos adquisiciones separadas por livenessWait.
+// Un frame de menu genuino (sin player, parrilla vacia) mantiene el reloj
+// estatico y es admisible tal cual: asi se capturaron las fixtures de menu.
+func confirmCaptureLiveness(
+	ctx context.Context,
+	reader memoryReader,
+	first []byte,
+	scratch []byte,
+	profile compatibilityProfile,
+	now func() time.Time,
+	livenessWait diagnosticRetryWait,
+) error {
+	baseline, err := parseWithProfile(first, now().Round(0).UTC(), profile)
+	if err != nil {
+		return fmt.Errorf("%w: parse liveness baseline: %w", ErrDiagnosticCapture, err)
+	}
+	player, _ := baseline.PlayerPresent.Value()
+	vehicles, _ := baseline.VehicleCount.Value()
+	if !player && vehicles == 0 {
+		return nil
+	}
+	if err := livenessWait(ctx); err != nil {
+		return err
+	}
+	second := make([]byte, ObjectOutSize)
+	defer clear(second)
+	if err := readStable(ctx, reader, second, scratch, defaultStableComparisons); err != nil {
+		return fmt.Errorf("%w: liveness snapshot: %w", ErrDiagnosticCapture, err)
+	}
+	confirmation, err := parseWithProfile(second, now().Round(0).UTC(), profile)
+	if err != nil {
+		return fmt.Errorf("%w: parse liveness confirmation: %w", ErrDiagnosticCapture, err)
+	}
+	baselineTime, _ := baseline.SourceTime.Value()
+	confirmationTime, _ := confirmation.SourceTime.Value()
+	if confirmationTime == baselineTime {
+		return fmt.Errorf("%w: %w: source_time frozen at %.3fs", ErrDiagnosticCapture, ErrStaleSessionRemnant, baselineTime.Seconds())
+	}
+	return nil
+}
+
+func waitDiagnosticLiveness(ctx context.Context) error {
+	timer := time.NewTimer(diagnosticLivenessSpacing)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func waitDiagnosticCaptureRetry(ctx context.Context) error {

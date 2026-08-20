@@ -244,10 +244,17 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 	tests := []struct {
 		name     string
 		evidence BuildEvidence
+		version  string
 		ok       bool
 	}{
-		{name: "exact pair", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.4.0.0"}, ok: true},
-		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, ok: true},
+		{name: "exact pair", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.4.0.0"}, version: diagnosticLMUVersion, ok: true},
+		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, version: diagnosticLMUVersion, ok: true},
+		{name: "exact 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "normalized 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1,4,1,3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "1.4.1.3 file only", evidence: BuildEvidence{FileVersion: "1.4.1.3"}},
+		{name: "1.4.1.3 contradictory", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.0.0"}},
+		{name: "unpinned 1.4.1.0 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.0", ProductVersion: "1.4.1.0"}},
+		{name: "unpinned 1.4.1.4 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.4", ProductVersion: "1.4.1.4"}},
 		{name: "file only", evidence: BuildEvidence{FileVersion: "1.4.0.0"}},
 		{name: "product only", evidence: BuildEvidence{ProductVersion: "1.4.0.0"}},
 		{name: "contradictory", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.3.0.0"}},
@@ -261,7 +268,7 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 			if ok != test.ok {
 				t.Fatalf("diagnosticCandidateProfile() ok = %v, want %v", ok, test.ok)
 			}
-			if ok && (!profile.supported || profile.version != diagnosticLMUVersion) {
+			if ok && (!profile.supported || profile.version != test.version) {
 				t.Fatalf("candidate profile = %#v", profile)
 			}
 		})
@@ -302,5 +309,109 @@ func TestBuildProfilesGateEveryOffsetField(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestLMU1413PinnedFixturesMatchSanitizedArtifactsAndReplay(t *testing.T) {
+	evidence := supportedLMUVersions[diagnosticLMUVersion1]
+	if !evidence.pinned() || !evidence.requireREST {
+		t.Fatalf("1.4.1.3 evidence = %#v", evidence)
+	}
+	root := filepath.Join("..", "..", "..", "..", "testdata")
+	fixtures := []struct {
+		name string
+		file string
+		hash string
+	}{
+		{name: "menu Shared Memory", file: "lmu-1.4.1.3-menu-fixture.bin", hash: evidence.menuSHA256},
+		{name: "track Shared Memory", file: "lmu-1.4.1.3-track-fixture.bin", hash: evidence.trackSHA256},
+		{name: "menu REST", file: "lmu-1.4.1.3-rest-menu-fixture.json", hash: evidence.restMenuSHA256},
+		{name: "track REST", file: "lmu-1.4.1.3-rest-track-fixture.json", hash: evidence.restTrackSHA256},
+	}
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			payload, err := os.ReadFile(filepath.Join(root, fixture.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			digest := sha256.Sum256(payload)
+			if got := hex.EncodeToString(digest[:]); got != fixture.hash {
+				t.Fatalf("SHA-256 = %s, want pinned evidence", got)
+			}
+		})
+	}
+	build := BuildEvidence{FileVersion: diagnosticLMUVersion1, ProductVersion: diagnosticLMUVersion1}
+	for _, test := range []struct {
+		name     string
+		file     string
+		player   bool
+		vehicles int32
+	}{
+		{name: "menu", file: "lmu-1.4.1.3-menu-fixture.bin"},
+		{name: "track", file: "lmu-1.4.1.3-track-fixture.bin", player: true, vehicles: 18},
+	} {
+		t.Run(test.name+" replay", func(t *testing.T) {
+			payload, err := os.ReadFile(filepath.Join(root, test.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertOnlyAllowedDiagnosticBytes(t, payload, payload)
+			observation, err := parseWithBuild(payload, time.Unix(1, 0).UTC(), build)
+			if err != nil {
+				t.Fatal(err)
+			}
+			player, playerPresent := observation.PlayerPresent.Value()
+			vehicles, vehiclesPresent := observation.VehicleCount.Value()
+			if observation.Compatibility != CompatibilityKnown || !playerPresent || player != test.player ||
+				!vehiclesPresent || int32(vehicles) != test.vehicles {
+				t.Fatalf("compatibility=%v player=%v,%v vehicles=%v,%v", observation.Compatibility, player, playerPresent, vehicles, vehiclesPresent)
+			}
+		})
+	}
+	for _, test := range []struct {
+		name   string
+		file   string
+		status string
+	}{
+		{name: "menu", file: "lmu-1.4.1.3-rest-menu-fixture.json", status: "empty"},
+		{name: "track", file: "lmu-1.4.1.3-rest-track-fixture.json", status: "live"},
+	} {
+		t.Run(test.name+" REST schema", func(t *testing.T) {
+			payload, err := os.ReadFile(filepath.Join(root, test.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var document diagnosticRESTDocument
+			if err := json.Unmarshal(payload, &document); err != nil {
+				t.Fatal(err)
+			}
+			if document.Schema != "vantare.lmu-rest-overlap.v1" || document.Status != test.status {
+				t.Fatalf("schema=%q status=%q", document.Schema, document.Status)
+			}
+		})
+	}
+}
+
+func TestLMU1413IsASupportedBuild(t *testing.T) {
+	evidence := BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}
+	version, supported := evidence.supportedVersion()
+	if !supported || version != diagnosticLMUVersion1 {
+		t.Fatalf("supportedVersion() = %q,%v", version, supported)
+	}
+	if !hasPinnedSanitizedFixtures(diagnosticLMUVersion1) {
+		t.Fatal("1.4.1.3 lacks pinned sanitized fixtures")
+	}
+	// A single version source is not enough for a pinned diagnostic build, and
+	// neighbouring builds stay out of the allowlist.
+	for _, partial := range []BuildEvidence{
+		{FileVersion: "1.4.1.3"},
+		{ProductVersion: "1.4.1.3"},
+		{FileVersion: "1.4.1.3", ProductVersion: "1.4.0.0"},
+		{FileVersion: "1.4.1.2", ProductVersion: "1.4.1.2"},
+		{FileVersion: "1.4.1.4", ProductVersion: "1.4.1.4"},
+	} {
+		if _, ok := partial.supportedVersion(); ok {
+			t.Fatalf("evidence admitted: %#v", partial)
+		}
 	}
 }

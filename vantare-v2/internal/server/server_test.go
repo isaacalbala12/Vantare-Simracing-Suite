@@ -746,8 +746,11 @@ func TestSecurityHeadersCSP(t *testing.T) {
 	if !strings.Contains(csp, "default-src 'none'") {
 		t.Fatal("CSP should include default-src 'none'")
 	}
-	if !strings.Contains(csp, "script-src 'unsafe-inline'") {
-		t.Fatal("CSP should include script-src 'unsafe-inline'")
+	if !strings.Contains(csp, "script-src 'self' 'unsafe-inline'") {
+		t.Fatal("CSP should include script-src 'self' 'unsafe-inline'")
+	}
+	if !strings.Contains(csp, "style-src 'self' 'unsafe-inline'") {
+		t.Fatal("CSP should include style-src 'self' 'unsafe-inline'")
 	}
 	if !strings.Contains(csp, "base-uri 'none'") {
 		t.Fatal("CSP should include base-uri 'none'")

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -51,7 +52,7 @@ func TestProductionEngineerIsWiredOnlyThroughTelemetryCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(mainSource), "Engineer: engSvc") {
+	if !regexp.MustCompile(`Engineer:\s+engSvc`).Match(mainSource) {
 		t.Fatal("composition root does not inject Engineer into TelemetryCoreRuntime")
 	}
 	bridgeSource, err := os.ReadFile(filepath.Join(repoRoot, "internal", "app", "engineer_bridge.go"))
@@ -74,7 +75,12 @@ func TestRetiredTelemetryBackendStaysRemoved(t *testing.T) {
 		"internal/telemetry/lmu",
 		"internal/telemetry/lmuapi",
 		"internal/telemetry/normalizer",
-		"internal/telemetry/fusion",
+		// internal/telemetry/fusion is no longer a retired path. The v1 backend
+		// package of that name was removed and stayed removed; ISA-372 F10
+		// reintroduces the name for the driver-neutral N-slot fusion promoted
+		// out of drivers/lmu. Its layering is guarded by
+		// internal/telemetry/architecture_test.go, which forbids it from
+		// importing any driver, product or transport package.
 		"internal/telemetry/gap",
 		"internal/telemetry/diff",
 		"internal/telemetry/pipeline",

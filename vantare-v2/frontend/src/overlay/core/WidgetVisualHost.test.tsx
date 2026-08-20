@@ -7,6 +7,8 @@ import { designSystemRegistry } from "./design-system-registry";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { WidgetVisualHost } from "./WidgetVisualHost";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
+import { pedalsTelemetryDefinition } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
+import type { OverlayFrameV2 } from "../../generated/telemetry";
 
 afterEach(() => cleanup());
 
@@ -132,4 +134,51 @@ describe("WidgetVisualHost", () => {
     );
     expect(desktop.container.querySelector("[data-engineer-radio-root]")).toBeNull();
   });
+
+  it("keeps Overlay v2 player instruments off by default and allows explicit diagnostics activation", () => {
+    const widget = pedalsTelemetryDefinition.createDefault("pedals-v2");
+    widget.content = { showPosition: false, showClutch: true };
+    const frame = playerFrameV2();
+    const legacy = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" runtime={{
+        overlayV2Frame: frame,
+        overlayV2Source: { state: "live" },
+      }} />,
+    );
+    const legacySpeed = legacy.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
+    cleanup();
+    const activated = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" runtime={{
+        overlayV2Features: ["player-instruments"],
+        overlayV2Frame: frame,
+        overlayV2Source: { state: "live" },
+      }} />,
+    );
+    const v2Speed = activated.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
+    expect(legacySpeed).not.toBe("180");
+    expect(v2Speed).toBe("180");
+  });
 });
+
+function playerFrameV2(): OverlayFrameV2 {
+  const missing = { q: "missing" as const };
+  return {
+    contract: 2,
+    algorithm: 1,
+    epoch: 1,
+    sequence: 1,
+    sessionId: "fixture",
+    generatedAt: "2026-08-19T12:00:00Z",
+    units: { speed: "mps", temperature: "celsius", pressure: "kpa", fuel: "liters" },
+    session: { track: missing, phase: missing, flag: missing, remaining: missing, maxLaps: missing },
+    player: {
+      speed: { v: 50, q: "fresh" }, rpm: { v: 7_200, q: "fresh" }, gear: { v: 4, q: "fresh" },
+      throttle: { v: 0.75, q: "fresh" }, brake: { v: 0.125, q: "fresh" }, clutch: { q: "fresh" }, steering: missing,
+    },
+    standings: [], relative: [],
+    delta: { seconds: missing, available: [] },
+    fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
+    spotter: { mode: "none", left: missing, right: missing },
+    capabilities: { supported: ["controls"], available: { controls: "fresh" }, modes: { spatial: [], delta: [], standings: "none", gaps: "none" } },
+  };
+}

@@ -2,17 +2,21 @@ package telemetrytransport
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
 )
 
 func ProjectionRoute(product ProductID) string {
 	return "/telemetry/" + string(product) + "/projection"
 }
 
+func PublisherProjectionRoute(product PublisherProduct) string {
+	return "/telemetry/" + string(product) + "/projection"
+}
+
+// Deprecated: reserved route contract for the F7 Engineer facts port; F4
+// removes the disconnected Wails/SSE fact transport.
 func FactsRoute(product ProductID) string {
 	return "/telemetry/" + string(product) + "/facts"
 }
@@ -21,19 +25,16 @@ func EventName(product ProductID, kind EventKind) string {
 	return "telemetry:" + string(product) + ":" + string(kind)
 }
 
+func PublisherEventName(product PublisherProduct, kind PublisherEventKind) string {
+	return "telemetry:" + string(product) + ":" + string(kind)
+}
+
+func PublisherSnapshotRequestEventName(product PublisherProduct) string {
+	return PublisherEventName(product, PublisherEventSnapshot) + ":get"
+}
+
 type EventEmitter interface {
 	Emit(name string, data any)
-}
-
-// FactSubscription preserves ordered delivery. A gap is reported by the
-// source; adapters never coalesce facts or derive their cursor from snapshots.
-type FactSubscription interface {
-	Next(ctx context.Context) (FactEnvelope, error)
-	Close() error
-}
-
-type FactSource interface {
-	SubscribeFacts(ctx context.Context, after uint64) (FactSubscription, error)
 }
 
 // ServeWails blocks until cancellation or closure. It starts no goroutine; the
@@ -56,35 +57,33 @@ func ServeWails(ctx context.Context, hub *Hub, emitter EventEmitter) error {
 	}
 }
 
-func ServeWailsFacts(
+// ServeWailsPublisher registers one active v2 consumer for this bridge and
+// releases the lazily-created publisher when the bridge stops.
+func ServeWailsPublisher(
 	ctx context.Context,
-	product ProductID,
-	source FactSource,
-	after uint64,
+	registry *PublisherRegistry,
+	product PublisherProduct,
 	emitter EventEmitter,
 ) error {
-	if !knownProduct(product) || source == nil || emitter == nil {
+	if emitter == nil {
 		return ErrInvalidEnvelope
 	}
-	subscription, err := source.SubscribeFacts(ctx, after)
+	publisher, release, err := registry.RegisterConsumer(product)
+	if err != nil {
+		return err
+	}
+	defer release()
+	subscription, err := publisher.Subscribe(ctx)
 	if err != nil {
 		return err
 	}
 	defer subscription.Close()
-	expected := after
 	for {
-		fact, nextErr := subscription.Next(ctx)
+		event, nextErr := subscription.Next(ctx)
 		if nextErr != nil {
 			return nextErr
 		}
-		if err := validateFact(fact, DefaultMaxPayloadBytes); err != nil {
-			return err
-		}
-		if fact.Product != product || !nextFactSequence(expected, fact.FactSequence) {
-			return ErrSequenceGap
-		}
-		expected = fact.FactSequence
-		emitter.Emit(EventName(product, EventFact), fact)
+		emitter.Emit(PublisherEventName(event.Product, event.Kind), event.Data)
 	}
 }
 
@@ -138,13 +137,16 @@ func SSEHandler(hub *Hub) http.Handler {
 	})
 }
 
-func SSEFactsHandler(product ProductID, source FactSource) http.Handler {
+// PublisherSSEHandler activates the configured product only while a loopback
+// browser source is connected. Wails and SSE therefore share one retained
+// latest-wins publisher when both consumers are active.
+func PublisherSSEHandler(registry *PublisherRegistry, product PublisherProduct) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if !knownProduct(product) || source == nil {
-			http.Error(w, "telemetry projection fact transport unavailable", http.StatusServiceUnavailable)
+		if registry == nil || !knownPublisherProduct(product) {
+			http.Error(w, "telemetry publisher unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		if request.URL.Path != FactsRoute(product) {
+		if request.URL.Path != PublisherProjectionRoute(product) {
 			http.NotFound(w, request)
 			return
 		}
@@ -157,78 +159,34 @@ func SSEFactsHandler(product ProductID, source FactSource) http.Handler {
 			http.Error(w, ErrUnsupportedProtocol.Error(), http.StatusInternalServerError)
 			return
 		}
-		after, err := parseFactCursor(request)
+		publisher, release, err := registry.RegisterConsumer(product)
 		if err != nil {
-			http.Error(w, "invalid fact cursor", http.StatusBadRequest)
+			http.Error(w, "telemetry publisher unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		subscription, err := source.SubscribeFacts(request.Context(), after)
+		defer release()
+		subscription, err := publisher.Subscribe(request.Context())
 		if err != nil {
-			http.Error(w, "full snapshot resync required", http.StatusConflict)
+			http.Error(w, "telemetry publisher subscription unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		defer subscription.Close()
-		expected := after
+
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Connection", "keep-alive")
 		w.Header().Set("X-Accel-Buffering", "no")
-		emitted := false
 		for {
-			fact, nextErr := subscription.Next(request.Context())
+			event, nextErr := subscription.Next(request.Context())
 			if nextErr != nil {
 				return
 			}
-			if validateFact(fact, DefaultMaxPayloadBytes) != nil {
+			if _, writeErr := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", PublisherEventName(event.Product, event.Kind), event.Data); writeErr != nil {
 				return
 			}
-			if fact.Product != product || !nextFactSequence(expected, fact.FactSequence) {
-				if !emitted {
-					http.Error(w, ErrSequenceGap.Error(), http.StatusConflict)
-				}
-				return
-			}
-			expected = fact.FactSequence
-			encoded, marshalErr := json.Marshal(fact)
-			if marshalErr != nil {
-				return
-			}
-			if _, writeErr := fmt.Fprintf(
-				w,
-				"event: %s\ndata: %s\n\n",
-				EventName(product, EventFact),
-				encoded,
-			); writeErr != nil {
-				return
-			}
-			emitted = true
 			flusher.Flush()
 		}
 	})
-}
-
-func validateFact(fact FactEnvelope, maximum int) error {
-	if fact.seal != factSeal(fact) || !knownProduct(fact.Product) ||
-		fact.ProjectionVersion == 0 || fact.Epoch == 0 ||
-		fact.Sequence == 0 || fact.FactSequence == 0 || fact.StatusRevision == 0 {
-		return ErrInvalidEnvelope
-	}
-	if err := validateTimestamp(fact.CapturedAt); err != nil {
-		return err
-	}
-	return validatePayload(fact.Payload, maximum)
-}
-
-func nextFactSequence(after, next uint64) bool {
-	return after < ^uint64(0) && next == after+1
-}
-
-func parseFactCursor(request *http.Request) (uint64, error) {
-	value := request.URL.Query().Get("after")
-	if value == "" {
-		return 0, nil
-	}
-	return strconv.ParseUint(value, 10, 64)
 }
 
 func isLoopback(remoteAddress string) bool {

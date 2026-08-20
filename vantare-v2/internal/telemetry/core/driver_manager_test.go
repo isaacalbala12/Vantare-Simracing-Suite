@@ -78,6 +78,58 @@ func TestDriverManagerReconnectReusesTheLongLivedObservationSink(t *testing.T) {
 	}
 }
 
+func TestDriverManagerDoesNotSetTerminalForRecoverableRunError(t *testing.T) {
+	productFailure := errors.New("product publication failed")
+	started := make(chan int, 2)
+	runs := 0
+	manager, err := NewDriverManager([]DriverCandidate[int]{
+		{
+			Descriptor: driver.Descriptor{ID: "lmu", Priority: 1},
+			Detect:     func(context.Context) (bool, error) { return true, nil },
+			New: func() (Driver[int], error) {
+				runs++
+				cycle := runs
+				return &managerTestDriver{state: driver.StateLive, run: func(ctx context.Context) error {
+					started <- cycle
+					if cycle == 1 {
+						return productFailure
+					}
+					<-ctx.Done()
+					return ctx.Err()
+				}}, nil
+			},
+			Retryable: func(error) bool { return false },
+		},
+	}, ManagerConfig{
+		Retry: RetryPolicy{MaxReconnects: 1, Wait: func(context.Context, time.Duration) error { return nil }},
+		TerminalRunError: func(err error) bool {
+			return !errors.Is(err, productFailure)
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(t.Context(), managerTestSink{}); err != nil {
+		t.Fatal(err)
+	}
+	for want := 1; want <= 2; want++ {
+		select {
+		case got := <-started:
+			if got != want {
+				t.Fatalf("driver cycle = %d, want %d", got, want)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("driver cycle %d did not start", want)
+		}
+	}
+	if status := manager.Status(); status.State == driver.StateError {
+		t.Fatalf("recoverable run error became terminal: %#v", status)
+	}
+	if err := manager.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type collectingManagerSink struct {
 	values chan int
 }

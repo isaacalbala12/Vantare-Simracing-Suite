@@ -43,6 +43,17 @@ var supportedLMUVersions = map[string]pinnedFixtureEvidence{
 		restTrackSHA256: "bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36",
 		requireREST:     true,
 	},
+	// Captured live from LMU 1.4.1.3 with the opt-in harness and persisted in
+	// testdata. The menu digest is byte-for-byte the one already pinned for
+	// 1.4.0.0: the sanitized menu frame is identical across both builds, which
+	// independently confirms the layout did not change.
+	diagnosticLMUVersion1: {
+		menuSHA256:      "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
+		trackSHA256:     "52ff620c80fb464ef7032431fac39e26d547cbde42480bd5238b1c60fcae06b1",
+		restMenuSHA256:  "5db40a287ab52d5c85f4101b4ca275854869a59b4717fd7cca4452aeaac31ecb",
+		restTrackSHA256: "79f7691e70d936546ec09c4555fda170b6d44e513aced2ae67aecd1c22e92e1e",
+		requireREST:     true,
+	},
 }
 
 type BuildEvidence struct {

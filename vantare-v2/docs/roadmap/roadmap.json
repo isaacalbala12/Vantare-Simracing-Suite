@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T15:24:38Z",
+  "generatedAt": "2026-08-20T17:31:36Z",
   "digest": {
-    "lastCommit": "15bbeec4a419ab0edb54a509ce94077bafcd3042"
+    "lastCommit": "3ee6d7269a76f6cea9deb5659f85fad2989abd8f"
   },
   "phases": [
     {
@@ -386,6 +386,28 @@
         "en": "In progress",
         "pt": "Em desenvolvimento",
         "it": "In corso"
+      }
+    },
+    {
+      "id": "redline-qt-runtime",
+      "type": "plan",
+      "title": {
+        "es": "Runtime Redline Qt Quick en evaluación",
+        "en": "Qt Quick Redline runtime under evaluation",
+        "pt": "Runtime Redline Qt Quick em avaliação",
+        "it": "Runtime Redline Qt Quick in valutazione"
+      },
+      "body": {
+        "es": "Evaluación gradual del runtime ingame Redline en Qt Quick, con Wails como motor por defecto y fallback hasta superar paridad, rendimiento, hardware y estabilidad.",
+        "en": "Gradual evaluation of the Redline in-game runtime in Qt Quick, with Wails as the default engine and fallback until parity, performance, hardware and stability gates pass.",
+        "pt": "Avaliação gradual do runtime Redline ingame em Qt Quick, com Wails como motor predefinido e fallback até superar os gates de paridade, desempenho, hardware e estabilidade.",
+        "it": "Valutazione graduale del runtime Redline in-game in Qt Quick, con Wails come motore predefinito e fallback finché non supera i gate di parità, prestazioni, hardware e stabilità."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
       }
     },
     {

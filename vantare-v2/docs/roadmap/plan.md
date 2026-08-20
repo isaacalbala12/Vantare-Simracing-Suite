@@ -282,6 +282,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
+### Runtime Redline Qt Quick en evaluación
+
+- id: redline-qt-runtime
+- tipo: plan
+- titulo.en: Qt Quick Redline runtime under evaluation
+- titulo.pt: Runtime Redline Qt Quick em avaliação
+- titulo.it: Runtime Redline Qt Quick in valutazione
+- cuerpo: Evaluación gradual del runtime ingame Redline en Qt Quick, con Wails como motor por defecto y fallback hasta superar paridad, rendimiento, hardware y estabilidad.
+- cuerpo.en: Gradual evaluation of the Redline in-game runtime in Qt Quick, with Wails as the default engine and fallback until parity, performance, hardware and stability gates pass.
+- cuerpo.pt: Avaliação gradual do runtime Redline ingame em Qt Quick, com Wails como motor predefinido e fallback até superar os gates de paridade, desempenho, hardware e estabilidade.
+- cuerpo.it: Valutazione graduale del runtime Redline in-game in Qt Quick, con Wails come motore predefinito e fallback finché non supera i gate di parità, prestazioni, hardware e stabilità.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Telemetría LMU en vivo
 
 - id: telemetry-live

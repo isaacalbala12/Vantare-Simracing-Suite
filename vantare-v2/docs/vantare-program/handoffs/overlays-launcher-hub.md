@@ -3,12 +3,28 @@
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Overlay: ADR 0003, `docs/overlays-studio/`, proyecto Linear y sus dos HTML.
+- Overlay: ADR 0003, `docs/overlays-studio/`, GitHub Issues, Project Vantare
+  y sus dos HTML.
 - Crystal: `docs/overlay-glassmorphism-pro.html`, solo secciones 01–16.
-- Launcher: `docs/launcher-v3-architecture.md`, su plan vigente y Linear.
+- Launcher: `docs/launcher-v3-architecture.md`, su plan vigente, GitHub Issues
+  y Project Vantare.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
 ## Estado
+
+- **OS-QT-01 / GitHub #690 — runtime Redline Qt Quick en SPECIFY
+  (2026-08-20):** borrador SDD para evaluar una migración gradual del runtime
+  ingame desktop de los seis diseños oficiales Redline. La propuesta usa un
+  sidecar Qt x64 supervisado por Go, selección por perfil completo y Wails
+  como default/fallback. Studio, Workshop y OBS conservan
+  `WidgetVisualHost`; Qt solo consume el contrato público Overlay v2 cuando
+  #677 cierre los datos Redline. El spike ISA-370 demuestra viabilidad visual
+  y menor consumo, pero Standings aún falla el gate temporal (~30 ms p95 de
+  actualización QML) y no hay autorización de implementación. Spec:
+  `docs/superpowers/specs/2026-08-20-isa-690-qt-redline-runtime-migration-spec.md`.
+  Rama aislada `vantareapp/isa-690-sdd-migracion-qt-redline` sobre
+  `origin/nightly@3ee6d726`; pendiente aprobación de Isaac antes de PLAN, sin
+  push, PR, CI, integración, promoción ni release.
 
 - **Hub: porte Command Orbit completo en Nightly (2026-08-19).** El hub de
   escritorio migró a la shell **Command Orbit v0.3** (`docs/design/orbit-v03/`):

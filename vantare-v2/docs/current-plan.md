@@ -1,3 +1,25 @@
+Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase SPECIFY):
+- Borrador de especificación para una migración gradual y reversible del
+  runtime ingame de la familia Vantare Endurance Redline a Qt Quick.
+- Alcance cerrado a Standings, Relative Mirror/Proximity/Traffic, Delta y
+  Pedals. Studio, Workshop, OBS y el resto de diseños conservan
+  `WidgetVisualHost`/TSX/CSS; Wails sigue siendo default y fallback.
+- La selección propuesta es por perfil completo y un solo motor. Un perfil no
+  elegible, edit mode, capa global no soportada o fallo del sidecar vuelve a
+  Wails sin convertir el documento.
+- Qt consumiría exclusivamente el contrato público Overlay v2 cuando GitHub
+  #677 cierre la matriz Redline; no importa structs internas del Telemetry
+  Core ni el snapshot legacy.
+- Arquitectura mínima propuesta: sidecar Qt x64, pipe JSON UTF-8 enmarcado y
+  supervisor Go. Se excluyen DSL/codegen visual, shared memory, dos ventanas y
+  retirada de Wails.
+- Spec:
+  `docs/superpowers/specs/2026-08-20-isa-690-qt-redline-runtime-migration-spec.md`.
+  Issue #690 en Project Vantare, In Progress. Rama
+  `vantareapp/isa-690-sdd-migracion-qt-redline` sobre
+  `origin/nightly@3ee6d726`; sin código de producto, push, PR, CI, integración,
+  promoción ni release. Pendiente aprobación explícita de Isaac antes de PLAN.
+
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

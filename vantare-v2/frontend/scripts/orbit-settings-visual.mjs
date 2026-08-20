@@ -81,6 +81,14 @@ function contractOf() {
     title: document.querySelector('[data-testid="orbit-settings-title"]')?.textContent ?? "",
     lead: document.querySelector('[data-testid="orbit-settings-lead"]')?.textContent ?? "",
     contextRows: document.querySelectorAll('[data-testid="orbit-settings-context"] .orbit-row').length,
+    // La fila activa se tiñe con el degradado `--orbit-selection-bg` del kit.
+    // Si alguna hoja de página resetea `.orbit-row { background }` despues del
+    // kit, la seleccion queda plana y no hay forma de saber dónde estás: aquí
+    // se exige que la fila activa tenga un `background-image` real.
+    selectedRows: document.querySelectorAll('[data-testid="orbit-settings-context"] .orbit-row--sel').length,
+    selectedTinted: [
+      ...document.querySelectorAll('[data-testid="orbit-settings-context"] .orbit-row--sel'),
+    ].every((node) => getComputedStyle(node).backgroundImage !== "none"),
     // La regla del briefing 01: en Ajustes la columna no muestra ningún bloque
     // persistente, solo la navegación de secciones.
     persistentBlocks: document.querySelectorAll('[data-testid="orbit-column-blocks"]').length,
@@ -130,6 +138,12 @@ try {
       }
       if (summary.contextRows !== 5) {
         throw new Error(`${label}: la columna lista ${summary.contextRows} secciones (esperadas 5)`);
+      }
+      if (summary.selectedRows !== 1) {
+        throw new Error(`${label}: la columna marca ${summary.selectedRows} filas activas (esperada 1)`);
+      }
+      if (!summary.selectedTinted) {
+        throw new Error(`${label}: la fila activa no lleva el degradado \`--orbit-selection-bg\` (background-image: none)`);
       }
       if (summary.persistentBlocks !== 0) {
         throw new Error(`${label}: la columna sigue mostrando bloques persistentes`);

@@ -1190,11 +1190,15 @@ button.orbit-pill {
   transform: scale(0.985);
 }
 
-.orbit-row--sel {
+/* Los estados de la fila se escriben con doble clase (`.orbit-row.orbit-row--sel`)
+   para ganar en especificidad, no por orden de importacion: cualquier hoja de
+   pagina que declare un `.orbit-row { background: … }` cargada despues del kit
+   dejaria la seleccion plana si aqui usaramos una sola clase (0,1,0). */
+.orbit-row.orbit-row--sel {
   background: var(--orbit-selection-bg);
 }
 
-.orbit-row--sel::before {
+.orbit-row.orbit-row--sel::before {
   content: "";
   position: absolute;
   left: -13px;

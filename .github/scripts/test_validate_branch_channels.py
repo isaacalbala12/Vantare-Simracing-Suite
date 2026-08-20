@@ -131,7 +131,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must come from 'testers'"):
             validate("pull_request", "refs/pull/5/merge", "master", "nightly")
 
-    def test_accepts_only_linear_hotfix_branches_as_master_exception(self) -> None:
+    def test_accepts_only_isa_hotfix_branches_as_master_exception(self) -> None:
         self.assertEqual(
             validate(
                 "pull_request",
@@ -168,7 +168,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
 
     def test_rejects_non_issue_branches_into_nightly(self) -> None:
         for head in ("testers", "master", "develop", "feature/x", "codex/isa-121"):
-            with self.subTest(head=head), self.assertRaisesRegex(ValueError, "Linear issue branch"):
+            with self.subTest(head=head), self.assertRaisesRegex(ValueError, "ISA issue branch"):
                 validate("pull_request", "refs/pull/6/merge", "nightly", head)
 
     def test_push_is_limited_to_channel_branches(self) -> None:
@@ -311,7 +311,7 @@ class TcBranchPreauthorizationTest(unittest.TestCase):
             "vantareapp/tc-0123456789ab-revert-fix",
         ):
             with self.subTest(head=head), self.assertRaisesRegex(
-                ValueError, "Linear issue branch"
+                ValueError, "ISA issue branch"
             ):
                 validate("pull_request", "refs/pull/51/merge", "nightly", head)
 

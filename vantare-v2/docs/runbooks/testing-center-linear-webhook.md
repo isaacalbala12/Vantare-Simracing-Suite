@@ -1,5 +1,7 @@
 # Testing Center — webhook Linear y reconciliación
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 Estado: TAU-07F validado localmente en ISA-240. No desplegado.
 
 ## Propósito y frontera

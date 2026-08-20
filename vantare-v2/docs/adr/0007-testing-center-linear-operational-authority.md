@@ -1,5 +1,7 @@
 # ADR 0007: Linear como proyección operativa del Testing Center
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 - Estado: aceptado para contratos locales; integraciones remotas apagadas.
 - Fecha: 2026-08-03.
 - Issue: ISA-238 / TAU-07D.

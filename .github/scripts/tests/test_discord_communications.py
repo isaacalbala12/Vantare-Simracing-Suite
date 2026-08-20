@@ -2,7 +2,9 @@ import importlib.util
 import json
 import pathlib
 import re
+import tempfile
 import unittest
+import urllib.error
 
 
 MODULE_PATH = pathlib.Path(__file__).parents[1] / "discord_communications.py"
@@ -28,7 +30,7 @@ def tc_fragment():
 
 
 class FragmentTests(unittest.TestCase):
-    def test_tc_fragment_is_accepted_without_linear(self):
+    def test_tc_fragment_is_accepted_without_an_isa_id(self):
         self.assertEqual(
             communications.validate_fragment(tc_fragment())["issue"],
             "TC-0123456789AB",
@@ -39,11 +41,11 @@ class FragmentTests(unittest.TestCase):
             with self.subTest(issue=issue), self.assertRaises(ValueError):
                 communications.validate_fragment(fragment(issue))
 
-    def test_mixed_tc_and_linear_fragments_have_stable_family_order(self):
+    def test_mixed_tc_and_isa_fragments_have_stable_family_order(self):
         values = [
-            fragment("ISA-304", "Linear nueva"),
+            fragment("ISA-304", "ISA nueva"),
             fragment("TC-ABCDEFABCDEF", "Automática sin dígitos"),
-            fragment("ISA-95", "Linear antigua"),
+            fragment("ISA-95", "ISA antigua"),
             fragment("TC-0123456789AB", "Automática con dígitos"),
         ]
         ordered = sorted(values, key=communications._fragment_order, reverse=True)
@@ -110,71 +112,171 @@ class FragmentTests(unittest.TestCase):
         self.assertTrue(all(len(field["value"]) <= 1024 for field in payload["embeds"][0]["fields"]))
 
 
-class LinearDigestTests(unittest.TestCase):
-    def test_parse_public_update_requires_marker(self):
-        private = "Estado interno que no debe salir"
-        public = "<!-- discord:development -->\nAvanzamos en el parser."
-        self.assertIsNone(communications.parse_public_update(private))
-        self.assertEqual(communications.parse_public_update(public), "Avanzamos en el parser.")
+class DevelopmentDigestSourceTests(unittest.TestCase):
+    """The digest falls back roadmap -> open milestones -> honest silence."""
 
-    def test_public_update_neutralizes_discord_mass_mentions(self):
-        value = communications.parse_public_update("<!-- discord:development -->\n@everyone avance")
+    def _roadmap(self, payload):
+        path = pathlib.Path(tempfile.mkdtemp()) / "roadmap.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    def _absent(self):
+        return pathlib.Path(tempfile.mkdtemp()) / "absent.json"
+
+    def test_public_text_neutralizes_discord_mass_mentions(self):
+        value = communications.sanitize_public_text("@everyone avance @here")
         self.assertNotIn("@everyone", value)
+        self.assertNotIn("@here", value)
 
-    def test_active_projects_show_safe_metadata_but_hide_unapproved_text(self):
-        projects = [
-            {"name": "Billing", "url": "https://linear.app/p/1", "progress": 0.5,
-             "summary": "Billing seguro", "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nPolar en curso."}]}},
-            {"name": "Privado", "url": "https://linear.app/p/2", "progress": 0.2,
-             "summary": "Resumen público seguro", "status": {"type": "started"}, "projectUpdates": {"nodes": [{"body": "Notas internas"}]}},
-            {"name": "Contenido", "url": "https://linear.app/p/content", "progress": 0.1,
-             "summary": "", "status": {"type": "started"}, "projectUpdates": {"nodes": []}},
-            {"name": "Terminado", "url": "https://linear.app/p/3", "progress": 1,
-             "summary": "Finalizado", "status": {"type": "completed"}, "projectUpdates": {"nodes": [{"body": "<!-- discord:development -->\nListo"}]}},
-        ]
-        active = communications.select_public_projects(projects, {"Billing", "Privado"})
-        self.assertEqual([item["name"] for item in active], ["Privado", "Billing"])
-        self.assertIn("Desarrollo en curso", active[0]["update"])
-        self.assertNotIn("Notas internas", str(active))
+    def test_roadmap_wins_and_tolerates_percentages_and_wrappers(self):
+        path = self._roadmap({"phases": [
+            {"title": "Telemetry Core", "status": "in_progress", "progress": 42,
+             "summary": "Contrato canonico en curso.", "url": "https://example.test/1"},
+            {"name": "Ya hecho", "state": "done", "progress": 1.0},
+        ]})
+        projects, source = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_ROADMAP)
+        self.assertEqual([item["name"] for item in projects], ["Telemetry Core"])
+        self.assertAlmostEqual(projects[0]["progress"], 0.42)
 
-    def test_empty_project_digest_is_explicit(self):
+    def test_localized_fields_are_read_in_spanish(self):
+        path = self._roadmap({"phases": [{
+            "title": {"en": "Public beta", "es": "Beta publica"},
+            "summary": {"en": "Ships soon.", "es": "Sale pronto."},
+            "status": "in-progress",
+        }]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(projects[0]["name"], "Beta publica")
+        self.assertEqual(projects[0]["update"], "Sale pronto.")
+
+    def test_the_real_roadmap_file_still_feeds_the_digest(self):
+        """Guards against ISA-378's schema drifting away from this reader."""
+        path = (pathlib.Path(__file__).parents[3]
+                / "vantare-v2/docs/roadmap/roadmap.json")
+        if not path.is_file():
+            self.skipTest("roadmap.json not in this checkout")
+        projects = communications.load_roadmap_projects(path)
+        self.assertTrue(projects, "the real roadmap.json yields no active phase")
+        for project in projects:
+            self.assertTrue(project["name"].strip())
+            self.assertNotIn("{", project["name"])  # a locale map leaked through
+            self.assertTrue(0.0 <= project["progress"] <= 1.0)
+            self.assertTrue(project["update"].strip())
+
+    def test_phase_label_prefixes_the_name_without_duplicating_it(self):
+        path = self._roadmap({"phases": [
+            {"phaseLabel": {"es": "Fase 2"}, "title": {"es": "Pulido beta"}, "status": "in-progress"},
+            {"phaseLabel": "Fase 3", "title": "Fase 3 ya rotulada", "status": "in-progress"},
+        ]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(projects[0]["name"], "Fase 2 \u00b7 Pulido beta")
+        self.assertEqual(projects[1]["name"], "Fase 3 ya rotulada")
+
+    def test_only_in_progress_phases_reach_the_digest(self):
+        path = self._roadmap({"phases": [
+            {"title": "Hecha", "status": "done"},
+            {"title": "En curso", "status": "in-progress"},
+            {"title": "Planeada", "status": "planned"},
+            {"title": "Futura", "status": "future"},
+        ]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual([item["name"] for item in projects], ["En curso"])
+
+    def test_roadmap_accepts_a_bare_list_and_done_over_total_progress(self):
+        path = self._roadmap([{"label": "Billing", "progress": {"done": 3, "total": 4}}])
+        projects, source = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_ROADMAP)
+        self.assertAlmostEqual(projects[0]["progress"], 0.75)
+        self.assertIn("Desarrollo en curso", projects[0]["update"])
+
+    def test_unreadable_or_absent_roadmap_falls_through_instead_of_failing(self):
+        broken = self._roadmap([])
+        broken.write_text("{not json", encoding="utf-8")
+        for path in (self._absent(), broken):
+            with self.subTest(path=path.name):
+                self.assertEqual(communications.load_roadmap_projects(path), [])
+
+    def test_milestones_are_the_second_source_with_closed_over_total_progress(self):
+        milestones = [{"title": "Overlay Studio V3", "state": "open", "description": "Paridad visual.",
+                       "closed_issues": 2, "open_issues": 8, "html_url": "https://example.test/m/1",
+                       "updated_at": "2026-08-01T00:00:00Z"}]
+
+        class _Response:
+            status = 200
+
+            def read(self):
+                return json.dumps(milestones).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        projects, source = communications.resolve_development_projects(
+            roadmap_path=self._absent(), token="t", repository="owner/repo",
+            opener=lambda *args, **kwargs: _Response(),
+        )
+        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_MILESTONES)
+        self.assertAlmostEqual(projects[0]["progress"], 0.2)
+        self.assertEqual(projects[0]["url"], "https://example.test/m/1")
+
+    def test_a_failing_milestone_lookup_degrades_to_no_news(self):
+        def _boom(*args, **kwargs):
+            raise urllib.error.URLError("offline")
+
+        projects, source = communications.resolve_development_projects(
+            roadmap_path=self._absent(), token="t", repository="owner/repo", opener=_boom,
+        )
+        self.assertEqual((projects, source), ([], communications.DEVELOPMENT_SOURCE_NONE))
+
+    def test_no_source_at_all_still_renders_the_honest_embed(self):
         payload = communications.render_development([])
-        self.assertIn("No hay actualizaciones públicas", payload["embeds"][0]["description"])
+        self.assertIn("No hay actualizaciones", payload["embeds"][0]["description"])
+
+    def test_the_digest_never_mentions_the_retired_tracker(self):
+        projects = [{"name": "Telemetry Core", "url": "https://example.test/m/1", "progress": 0.42,
+                     "update": "Contrato canonico en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
+        rendered = (str(communications.render_development(projects))
+                    + communications.render_development_html(projects)).casefold()
+        self.assertNotIn("linear.app", rendered)
+        self.assertNotIn("desde linear", rendered)
 
     def test_project_digest_stays_inside_discord_limit(self):
-        projects = [{"name": f"Project {index}", "url": "https://linear.app/p/x", "progress": 0.5, "update": "x" * 2000} for index in range(10)]
+        projects = [{"name": f"Project {index}", "url": "https://example.test/m/x", "progress": 0.5,
+                     "update": "x" * 2000} for index in range(10)]
         payload = communications.render_development(projects)
         self.assertLessEqual(len(payload["embeds"][0]["fields"]), 3)
         self.assertLessEqual(sum(len(field["value"]) for field in payload["embeds"][0]["fields"]), 3072)
 
     def test_development_embed_hides_raw_urls_and_uses_attachment(self):
-        projects = [{"name": "Telemetry Core", "url": "https://linear.app/p/telemetry", "progress": 0.42,
-                     "update": "Contrato canónico en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
+        projects = [{"name": "Telemetry Core", "url": "https://example.test/m/1", "progress": 0.42,
+                     "update": "Contrato canonico en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
         payload = communications.render_development(projects, include_image=True)
         embed = payload["embeds"][0]
         self.assertEqual(embed["image"]["url"], "attachment://vantare-development.png")
         self.assertNotIn("<https://", str(payload))
-        self.assertIn("[Abrir proyecto](https://linear.app/p/telemetry)", embed["fields"][0]["value"])
+        self.assertIn("[Abrir proyecto](https://example.test/m/1)", embed["fields"][0]["value"])
 
-    def test_development_html_uses_vantare_brand_and_escapes_linear_text(self):
-        projects = [{"name": "Overlay <Studio>", "url": "https://linear.app/p/overlay", "progress": 0.08,
-                     "update": "Paridad & revisión", "updatedAt": "2026-07-15T10:00:00Z"}]
+    def test_development_html_uses_vantare_brand_and_escapes_source_text(self):
+        projects = [{"name": "Overlay <Studio>", "url": "https://example.test/m/2", "progress": 0.08,
+                     "update": "Paridad & revision", "updatedAt": "2026-07-15T10:00:00Z"}]
         output = communications.render_development_html(projects)
         # The eyebrow and footer are uppercased by CSS now, so the markup
         # carries the sentence-case source text.
         self.assertIn("Vantare", output)
         self.assertIn("Estado de desarrollo", output)
         self.assertIn("Overlay &lt;Studio&gt;", output)
-        self.assertIn("Paridad &amp; revisión", output)
+        self.assertIn("Paridad &amp; revision", output)
         self.assertNotIn("Overlay <Studio>", output)
         self.assertNotIn("Development pulse", output)
         self.assertNotIn("BUILDING IN PUBLIC", output)
 
     def test_development_html_does_not_add_empty_placeholder_projects(self):
-        projects = [{"name": "Overlay Studio", "url": "https://linear.app/p/overlay", "progress": 0.08,
+        projects = [{"name": "Overlay Studio", "url": "https://example.test/m/2", "progress": 0.08,
                      "update": "Paridad visual en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]
         output = communications.render_development_html(projects)
-        self.assertNotIn("Próximo proyecto", output)
+        self.assertNotIn("Proximo proyecto", output)
         self.assertNotIn("DISPONIBLE", output)
 
 
@@ -398,7 +500,8 @@ class SafetyTests(unittest.TestCase):
         self.assertIn("nightly", tester)
         self.assertIn("testers", tester)
         self.assertNotIn("current-plan.md", tester)
-        self.assertIn("LINEAR_API_KEY", development)
+        self.assertNotIn("LINEAR_API_KEY", development)
+        self.assertNotIn("linear", development.casefold())
         self.assertIn("schedule:", development)
         self.assertIn("google-chrome", development)
         self.assertIn("--image", development)

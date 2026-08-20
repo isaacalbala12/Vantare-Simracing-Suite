@@ -1,6 +1,6 @@
 # Comunicaciones de Vantare en Discord
 
-Este documento define qué información puede publicar automáticamente Vantare y en qué canal. GitHub Actions es el único publicador; Linear se consulta en modo lectura.
+Este documento define qué información puede publicar automáticamente Vantare y en qué canal. GitHub Actions es el único publicador y todas las fuentes se consultan en modo lectura.
 
 ## Canales
 
@@ -8,7 +8,7 @@ Este documento define qué información puede publicar automáticamente Vantare 
 |---|---|---|
 | `DISCORD_RELEASE_WEBHOOK_URL` | Lanzamientos públicos | Solo una versión nueva publicada desde `master`. |
 | `DISCORD_PROGRESS_WEBHOOK_URL` | Nightly/Testers (`1519752249977340168`) | Cambios verificables de la pre-release, identificados por canal. |
-| `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) | Resumen diario de proyectos grandes activos en Linear. El nombre histórico del secreto se conserva para no rotar el webhook. |
+| `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) | Resumen diario de las fases o milestones activos. El nombre histórico del secreto se conserva para no rotar el webhook. |
 | `DISCORD_BUILD_WEBHOOK_URL` | Changelog (`1519747444315914512`) | Changelog técnico y descarga de una build ya publicada y verificada. |
 
 No se usa `DISCORD_WEBHOOK_URL` como fallback. Una configuración incompleta debe fallar cerrada para evitar publicar en el canal equivocado.
@@ -24,16 +24,15 @@ Cada issue con comportamiento visible añade un JSON en `docs/changelog/fragment
 
 El enlace al commit no se inserta en el mensaje para impedir que el unfurl de Discord parezca una segunda publicación. El SHA corto sigue identificando el corte.
 
-## Desarrollo activo desde Linear
+## Desarrollo activo
 
-El digest consulta proyectos activos, no issues ni comentarios. Para autorizar texto público, la última actualización del proyecto debe contener esta marca:
+El digest diario resuelve su fuente en cascada, siempre en lectura:
 
-```markdown
-<!-- discord:development -->
-Texto profesional y apto para publicación.
-```
+1. `vantare-v2/docs/roadmap/roadmap.json` (lo genera `roadmap_digest.py`, ISA-378). Se publican solo las fases con estado `in-progress`; `done`, `planned` y `future` se descartan. El nombre es `phaseLabel · title`, el progreso viene de `progress` (0-100) y el texto de `summary`; los campos localizados se leen en español. Si el archivo no existe o no parsea, se pasa al siguiente nivel sin fallar.
+2. Milestones abiertos de GitHub del propio repositorio: el progreso es `closed/total` de sus issues y el texto es la descripción del milestone.
+3. Si no hay ninguna de las dos, se publica el embed honesto de "sin novedades".
 
-Todo texto anterior a la marca se considera interno. Los proyectos publicables se declaran explícitamente en `docs/discord-development-projects.json`; sin una actualización marcada se muestra solo nombre, progreso, URL y un texto neutro. Los proyectos no autorizados, terminados o pausados no aparecen. El workflow no modifica Linear.
+Solo se publican nombre, progreso, URL y el texto del propio milestone o fase; las menciones masivas se neutralizan. El workflow no escribe en ninguna fuente.
 
 ## Sistema visual compartido
 
@@ -52,7 +51,7 @@ La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, 
 | Release | `vantare-release.png` | Versión estable y tres novedades principales del changelog canónico. |
 | Nightly | `vantare-nightly.png` | Primera validación privada, cambios incluidos y comprobaciones. |
 | Testers | `vantare-testers.png` | Build candidata, cambios visibles y comprobación principal. |
-| Desarrollo | `vantare-development.png` | Tres proyectos autorizados de Linear con progreso. |
+| Desarrollo | `vantare-development.png` | Tres proyectos activos con progreso. |
 | Changelog | `vantare-changelog.png` | Versión, validación solicitada e integridad SHA-256. |
 
 El embed siempre conserva el contenido completo, enlaces, checksum y contexto técnico. La imagen resume; nunca es la única fuente de información. La publicación falla antes del POST si Chrome no genera un PNG no vacío.
@@ -70,7 +69,7 @@ Cada tarjeta responde una pregunta concreta de su audiencia:
 Reglas obligatorias:
 
 - español claro, salvo nombres propios y términos técnicos reconocibles como SHA-256;
-- datos procedentes del changelog, fragmento o actualización pública de Linear, nunca beneficios inventados;
+- datos procedentes del changelog, fragmento o descripción pública del milestone o de la fase, nunca beneficios inventados;
 - una idea útil por tarjeta;
 - sin tarjetas de relleno, eslóganes vacíos ni mensajes como «próximo proyecto»;
 - sin etiquetas internas como `Development pulse`, `Public preview`, `Building in public` o `Tester briefing`;

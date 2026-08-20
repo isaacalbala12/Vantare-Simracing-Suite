@@ -1,5 +1,7 @@
 # Testing Center — piloto remoto Supabase → Linear
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing
 `lbaxvpzexoferfvfkplz`. Schema completo; `testing-center-feedback` y
 `testing-center-linear-webhook` están `ACTIVE` v6 y

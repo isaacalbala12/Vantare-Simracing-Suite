@@ -1,11 +1,15 @@
 # Workflow de agentes
 
+> **Nota (2026-08-20):** Linear fue retirado; donde este documento diga
+> Linear, lease GitHub Issues (`ISA-N` = numero de issue de GitHub). El
+> resto del flujo sigue vigente.
+
 > Estado del checkout principal (2026-08-10): el worktree principal
 > `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`
 > (rama `refactor` == `nightly@9c11d7f`). `refactor-b70a950-backup` y
 > `chore/conservacion-untracked-2026-08-10` conservan la punta anterior y
 > trabajo untracked con valor; su destino queda pendiente de decision humana.
-> Trabajo nuevo: rama/worktree por issue de Linear sobre `nightly`, no sobre
+> Trabajo nuevo: rama/worktree por issue de GitHub sobre `nightly`, no sobre
 > `refactor`.
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
@@ -14,14 +18,17 @@
 
 ## Fuente operativa y aislamiento
 
-- Linear contiene proyectos, milestones, issues, dependencias, estado y rama.
-- Una issue ejecutable con cambios equivale a una rama Linear, un worktree y un
+- GitHub Issues contiene issues, milestones, dependencias, estado y rama; el
+  tablero es el GitHub Project "Vantare" y el estado vive en las labels
+  `state:*`.
+- Una issue ejecutable con cambios equivale a una rama, un worktree y un
   contexto propios.
-- Una investigación que solo modifica Linear no necesita rama; si genera docs
-  en el repo, sí.
+- Una investigación que solo modifica la issue no necesita rama; si genera
+  docs en el repo, sí.
 - Los hallazgos fuera de alcance crean issues; no se incorporan silenciosamente.
 - Se confirma base, worktree y estado limpio antes de editar.
-- Se usa exactamente el nombre de rama generado por Linear.
+- La rama sigue exactamente la convención `vantareapp/isa-N-slug`, con el
+  numero de la issue de GitHub.
 - Commits pequeños y staging limitado a rutas; no `git add .`.
 - El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
   autorización.
@@ -142,7 +149,7 @@ Debe buscar:
 ## Flujo normal
 
 1. Usuario debate con orquestador cuando hacen falta decisiones.
-2. Orquestador consulta Linear, `docs/vantare-program/` y el handoff vivo.
+2. Orquestador consulta GitHub Issues, `docs/vantare-program/` y el handoff vivo.
 3. El tablero histórico solo se consulta como contexto; no elige trabajo.
 4. Orquestador crea o identifica el miniplan vigente.
 5. Orquestador crea prompt worker.
@@ -151,15 +158,15 @@ Debe buscar:
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
 10. Se hace commit pequeño cuando el contrato de la issue lo permite.
-11. El orquestador actualiza el handoff vivo y Linear despues de cada worker o
-    cambio material. El worker deja la issue en `In Review`; no promociona por
-    su cuenta.
+11. El orquestador actualiza el handoff vivo y la issue de GitHub despues de
+    cada worker o cambio material. El worker deja la issue en revision
+    (label `state:in-review`); no promociona por su cuenta.
 12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
     entrega a `nightly`.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
-15. Se actualizan el handoff, Linear, `docs/current-plan.md` y, cuando siga
+15. Se actualizan el handoff, la issue de GitHub, `docs/current-plan.md` y, cuando siga
     siendo relevante, `docs/roadmap-execution-board.md`.
 
 ## Comunicación de cambios visibles

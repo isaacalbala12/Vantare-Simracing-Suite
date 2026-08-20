@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   announce:
@@ -14,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build approved Linear digest
+      # Source order: vantare-v2/docs/roadmap/roadmap.json first, then the
+      # repository's open GitHub milestones, then an honest "no news" embed.
+      - name: Build development digest
         env:
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python .github/scripts/discord_communications.py development --dry-run \
             --snapshot-output "$RUNNER_TEMP/projects.json" --html-output "$RUNNER_TEMP/vantare-development.html"
@@ -25,7 +28,7 @@ jobs:
           google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 \
             --screenshot="$RUNNER_TEMP/vantare-development.png" "file://$RUNNER_TEMP/vantare-development.html"
           test -s "$RUNNER_TEMP/vantare-development.png"
-      - name: Publish approved digest
+      - name: Publish digest
         env:
           DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
         run: |

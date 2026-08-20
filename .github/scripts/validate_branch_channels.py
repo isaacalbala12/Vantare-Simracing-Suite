@@ -113,7 +113,7 @@ def validate(
             return f"tc preauthorization accepted: {head} -> nightly"
         if not ISSUE_BRANCH.fullmatch(head):
             raise ValueError(
-                "promotion to 'nightly' requires a Linear issue branch named "
+                "promotion to 'nightly' requires an ISA issue branch named "
                 f"'vantareapp/isa-<number>-...', got {head!r}"
             )
 

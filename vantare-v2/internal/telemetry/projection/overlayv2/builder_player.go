@@ -49,6 +49,10 @@ func DefaultPreferencesV2() PreferencesV2 {
 	}
 }
 
+// Deprecated: the production path composes the frame per section through
+// CachedProjector (F11); ProjectV2 remains the reference implementation that
+// the byte-for-byte parity tests compare against. Do not wire it back into
+// the runtime.
 func ProjectV2(
 	snapshot envelope.Snapshot[derive.FinalState],
 	source SourceContextV2,

@@ -345,7 +345,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		now:                 now,
 		watchdogDelay:       watchdogDelay,
 		watchdogEnabled:     watchdogEnabled,
-		overlayV2Project:    overlayv2.ProjectV2,
+		overlayV2Project:    newCachedOverlayV2Project(),
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -1006,6 +1006,16 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, factValues)
 	return nil
+}
+
+// newCachedOverlayV2Project regula por seccion (F11) antes de proyectar y
+// serializar: envuelve CachedProjector con las cadencias por defecto (hoy
+// inertes: 0 = cada tick) conservando la firma inyectable que usan los tests.
+func newCachedOverlayV2Project() func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error) {
+	projector := overlayv2.NewCachedProjector(overlayv2.DefaultSectionCadence())
+	return func(snapshot envelope.Snapshot[derive.FinalState], source overlayv2.SourceContextV2, preferences overlayv2.PreferencesV2, revision uint64) (overlayv2.UpdateV2, error) {
+		return projector.Project(snapshot, source, preferences, revision, time.Now())
+	}
 }
 
 func (runtime *TelemetryCoreRuntime) publishOverlayV2(

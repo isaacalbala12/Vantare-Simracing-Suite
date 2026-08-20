@@ -11,7 +11,7 @@ func TestDefaultCadenceRebuildsEverySectionEveryTick(t *testing.T) {
 	t.Parallel()
 
 	scheduler := NewSectionScheduler(DefaultSectionCadence())
-	if DefaultSectionCadence().Regulates() {
+	if DefaultSectionCadence().regulates() {
 		t.Fatalf("defaults must not regulate")
 	}
 	for tick := range 240 {

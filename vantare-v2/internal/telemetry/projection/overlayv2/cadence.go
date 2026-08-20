@@ -115,8 +115,8 @@ func (cadence SectionCadence) Interval(tier SectionTier) time.Duration {
 	return value
 }
 
-// Regulates reports whether the cadence can ever skip a rebuild.
-func (cadence SectionCadence) Regulates() bool {
+// regulates reports whether the cadence can ever skip a rebuild.
+func (cadence SectionCadence) regulates() bool {
 	return cadence.Interval(TierFast) > 0 || cadence.Interval(TierMid) > 0 || cadence.Interval(TierSlow) > 0
 }
 

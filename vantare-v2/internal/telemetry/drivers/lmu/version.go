@@ -7,9 +7,19 @@ import (
 )
 
 const (
-	supportedLMUVersion  = "1.3.0.0"
-	diagnosticLMUVersion = "1.4.0.0"
+	supportedLMUVersion   = "1.3.0.0"
+	diagnosticLMUVersion  = "1.4.0.0"
+	diagnosticLMUVersion1 = "1.4.1.3"
 )
+
+// diagnosticLMUVersions is the closed set of builds admitted for capture-time
+// structural validation. Every entry is an exact build observed locally; it is
+// never a prefix or range match and never promotes a build into
+// supportedLMUVersions.
+var diagnosticLMUVersions = map[string]struct{}{
+	diagnosticLMUVersion:  {},
+	diagnosticLMUVersion1: {},
+}
 
 var ErrBuildUnavailable = errors.New("LMU build evidence unavailable")
 
@@ -56,7 +66,10 @@ func profileFromBuild(evidence BuildEvidence) compatibilityProfile {
 func diagnosticCandidateProfile(evidence BuildEvidence) (compatibilityProfile, bool) {
 	fileVersion, fileOK := normalizeVersion(evidence.FileVersion)
 	productVersion, productOK := normalizeVersion(evidence.ProductVersion)
-	if !fileOK || !productOK || fileVersion != productVersion || fileVersion != diagnosticLMUVersion {
+	if !fileOK || !productOK || fileVersion != productVersion {
+		return compatibilityProfile{}, false
+	}
+	if _, candidate := diagnosticLMUVersions[fileVersion]; !candidate {
 		return compatibilityProfile{}, false
 	}
 	return compatibilityProfile{version: fileVersion, supported: true}, true
@@ -95,7 +108,7 @@ func (evidence BuildEvidence) supportedVersion() (string, bool) {
 	if !allowed || !fixtures.pinned() {
 		return "", false
 	}
-	if version == diagnosticLMUVersion && (!filePresent || !productPresent) {
+	if _, candidate := diagnosticLMUVersions[version]; candidate && (!filePresent || !productPresent) {
 		return "", false
 	}
 	return version, true

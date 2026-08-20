@@ -244,10 +244,17 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 	tests := []struct {
 		name     string
 		evidence BuildEvidence
+		version  string
 		ok       bool
 	}{
-		{name: "exact pair", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.4.0.0"}, ok: true},
-		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, ok: true},
+		{name: "exact pair", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.4.0.0"}, version: diagnosticLMUVersion, ok: true},
+		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, version: diagnosticLMUVersion, ok: true},
+		{name: "exact 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "normalized 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1,4,1,3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "1.4.1.3 file only", evidence: BuildEvidence{FileVersion: "1.4.1.3"}},
+		{name: "1.4.1.3 contradictory", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.0.0"}},
+		{name: "unpinned 1.4.1.0 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.0", ProductVersion: "1.4.1.0"}},
+		{name: "unpinned 1.4.1.4 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.4", ProductVersion: "1.4.1.4"}},
 		{name: "file only", evidence: BuildEvidence{FileVersion: "1.4.0.0"}},
 		{name: "product only", evidence: BuildEvidence{ProductVersion: "1.4.0.0"}},
 		{name: "contradictory", evidence: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.3.0.0"}},
@@ -261,7 +268,7 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 			if ok != test.ok {
 				t.Fatalf("diagnosticCandidateProfile() ok = %v, want %v", ok, test.ok)
 			}
-			if ok && (!profile.supported || profile.version != diagnosticLMUVersion) {
+			if ok && (!profile.supported || profile.version != test.version) {
 				t.Fatalf("candidate profile = %#v", profile)
 			}
 		})

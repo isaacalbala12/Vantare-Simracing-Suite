@@ -357,7 +357,8 @@ function fuel(value: unknown, path: string): void {
 
 function spotter(value: unknown, path: string): void {
   objectWithKeys(value, path, ["mode", "left", "right"]);
-  enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated"]);
+  // "xyz" is the spotter's own mode: the verdict came from full 3D positions.
+  enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated", "xyz"]);
   qvalue(value.left, `${path}.left`, "boolean");
   qvalue(value.right, `${path}.right`, "boolean");
   Object.freeze(value);

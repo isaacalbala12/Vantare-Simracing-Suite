@@ -40,6 +40,10 @@ const (
 	ModeOfficial      Mode = "official"
 	ModeReconstructed Mode = "reconstructed"
 	ModeEstimated     Mode = "estimated"
+	// ModeXYZ is the spotter's: the verdict came from full 3D positions
+	// rotated into the player's frame, the strongest spatial mode the spec
+	// enumerates (xyz > xy > lap-distance > none).
+	ModeXYZ Mode = "xyz"
 )
 
 type SpeedUnit string

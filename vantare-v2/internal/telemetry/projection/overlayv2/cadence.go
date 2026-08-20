@@ -264,8 +264,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		Relative: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []RelativeRowV2 {
 			return BuildRelative(final)
 		},
-		Spotter: func(derive.FinalState, PreferencesV2, SourceContextV2) SpotterViewV2 {
-			return SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()}
+		Spotter: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) SpotterViewV2 {
+			return BuildSpotter(final)
 		},
 		Standings: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []StandingRowV2 {
 			return BuildStandings(final)

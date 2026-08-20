@@ -206,6 +206,7 @@ func newGenerator() *generator {
 	g.addEnum(reflect.TypeFor[overlayv2.Mode](), "OverlayModeV2", []string{
 		string(overlayv2.ModeNone), string(overlayv2.ModeOfficial),
 		string(overlayv2.ModeReconstructed), string(overlayv2.ModeEstimated),
+		string(overlayv2.ModeXYZ),
 	})
 	g.addEnum(reflect.TypeFor[overlayv2.SpeedUnit](), "OverlaySpeedUnitV2", []string{
 		string(overlayv2.SpeedUnitMPS), string(overlayv2.SpeedUnitKPH), string(overlayv2.SpeedUnitMPH),

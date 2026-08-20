@@ -87,7 +87,7 @@ func ProjectV2(
 		Relative:     BuildRelative(final),
 		Delta:        BuildDelta(final, preferences),
 		Fuel:         BuildFuel(final, preferences),
-		Spotter:      SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()},
+		Spotter:      BuildSpotter(final),
 		Capabilities: BuildCapabilities(final, source.DescriptorCapabilities),
 	}
 	return UpdateV2{

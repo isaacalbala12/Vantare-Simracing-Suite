@@ -11,6 +11,14 @@ name: Roadmap digest
 #
 # `nightly` es rama protegida: este workflow NUNCA hace push directo. Publica en
 # `bot/roadmap-digest` y abre la PR desde ahi.
+#
+# REQUISITO DE CONFIGURACION: hoy el repositorio tiene desactivado "Allow GitHub
+# Actions to create and approve pull requests" (Settings -> Actions -> General).
+# Mientras siga asi, el paso final falla al abrir la PR, pero la rama
+# `bot/roadmap-digest` queda igualmente publicada con el artefacto al dia: el
+# trabajo no se pierde y la PR se puede abrir a mano. Activando esa casilla, el
+# ciclo se cierra solo. La alternativa es sustituir `secrets.GITHUB_TOKEN` por
+# un PAT con permiso de `pull_request`.
 
 on:
   schedule:

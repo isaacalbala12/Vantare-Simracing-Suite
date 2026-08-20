@@ -22,6 +22,7 @@
     "controls.history@1",
     "session.remaining@1",
     "standings.relative-gaps@1",
-    "session.self-delta@1"
+    "session.self-delta@1",
+    "fuel.per-lap@1"
   ]
 }

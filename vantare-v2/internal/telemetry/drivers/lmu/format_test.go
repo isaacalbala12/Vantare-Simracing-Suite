@@ -165,10 +165,84 @@ func TestParseRejectsShortAndBuildAbsentAllZeroRemainsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Compatibility != CompatibilityUnknown || got.Fingerprint != unknownFingerprint {
+	if got.Compatibility != CompatibilityUnknown || got.Fingerprint != unavailableFingerprint {
 		t.Fatalf("observation = %#v", got)
 	}
 	assertNoPublishedFields(t, got)
+}
+
+// El fingerprint tiene tres formas y ninguna puede confundirse con otra:
+// evidencia ausente, build leida pero no soportada, y build pinneada.
+func TestFingerprintDistinguishesTheThreeEvidenceBranches(t *testing.T) {
+	cases := []struct {
+		name          string
+		build         BuildEvidence
+		compatibility Compatibility
+		fingerprint   string
+	}{
+		{
+			name:          "sin evidencia",
+			build:         BuildEvidence{},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unavailable",
+		},
+		{
+			name:          "evidencia en blanco",
+			build:         BuildEvidence{FileVersion: "  ", ProductVersion: "  "},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unavailable",
+		},
+		{
+			name:          "evidencia contradictoria",
+			build:         BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.3.0.0"},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unavailable",
+		},
+		{
+			name:          "evidencia no normalizable",
+			build:         BuildEvidence{FileVersion: "beta-1"},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unavailable",
+		},
+		{
+			name:          "build no soportada",
+			build:         BuildEvidence{FileVersion: "9.9.9.9", ProductVersion: "9.9.9.9"},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unsupported;build=9.9.9.9",
+		},
+		{
+			name:          "build no soportada normalizada",
+			build:         BuildEvidence{FileVersion: "9.9.9", ProductVersion: "9.9.9.0"},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unsupported;build=9.9.9.0",
+		},
+		{
+			name:          "diagnostica sin par completo no se promociona",
+			build:         BuildEvidence{FileVersion: diagnosticLMUVersion1},
+			compatibility: CompatibilityUnknown,
+			fingerprint:   "LMU_Data/size=324820/evidence=unsupported;build=1.4.1.3",
+		},
+		{
+			name:          "build pinneada",
+			build:         BuildEvidence{FileVersion: supportedLMUVersion, ProductVersion: supportedLMUVersion},
+			compatibility: CompatibilityKnown,
+			fingerprint:   "LMU_Data/runtime:build=1.3.0.0;size=324820;evidence=active-grid-bijective;telemetry=not-required-no-player",
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got, err := parseWithBuild(make([]byte, ObjectOutSize), time.Now(), testCase.build)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Compatibility != testCase.compatibility {
+				t.Fatalf("compatibility = %v want %v", got.Compatibility, testCase.compatibility)
+			}
+			if got.Fingerprint != testCase.fingerprint {
+				t.Fatalf("fingerprint = %q want %q", got.Fingerprint, testCase.fingerprint)
+			}
+		})
+	}
 }
 
 func TestBuildApprovedMenuWithoutPlayerNameIsKnownWithoutFastTelemetry(t *testing.T) {

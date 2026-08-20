@@ -3,6 +3,7 @@ package lmu
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -64,11 +65,55 @@ type BuildEvidence struct {
 type compatibilityProfile struct {
 	version   string
 	supported bool
+	// observedBuild guarda la build normalizada cuando la evidencia existe
+	// pero la build no esta soportada. Vacio significa que no hubo evidencia
+	// utilizable. Solo se rellena cuando `supported` es false.
+	observedBuild string
 }
 
 func profileFromBuild(evidence BuildEvidence) compatibilityProfile {
 	version, supported := evidence.supportedVersion()
-	return compatibilityProfile{version: version, supported: supported}
+	profile := compatibilityProfile{version: version, supported: supported}
+	if !supported {
+		if build, ok := evidence.observedBuild(); ok {
+			profile.observedBuild = build
+		}
+	}
+	return profile
+}
+
+// unknownFingerprint distingue las dos razones por las que una observacion no
+// puede clasificarse como conocida: sin evidencia de build, o con una build
+// leida que no esta pinneada.
+func (profile compatibilityProfile) unknownFingerprint() string {
+	if profile.observedBuild == "" {
+		return unavailableFingerprint
+	}
+	return fmt.Sprintf(unsupportedFingerprintFormat, profile.observedBuild)
+}
+
+// observedBuild devuelve la build normalizada cuando la evidencia produce una
+// unica version coherente, este o no soportada. Una evidencia vacia,
+// contradictoria (FileVersion != ProductVersion) o no normalizable no produce
+// build observada.
+func (evidence BuildEvidence) observedBuild() (string, bool) {
+	filePresent := strings.TrimSpace(evidence.FileVersion) != ""
+	productPresent := strings.TrimSpace(evidence.ProductVersion) != ""
+	switch {
+	case filePresent && productPresent:
+		fileVersion, fileOK := normalizeVersion(evidence.FileVersion)
+		productVersion, productOK := normalizeVersion(evidence.ProductVersion)
+		if !fileOK || !productOK || fileVersion != productVersion {
+			return "", false
+		}
+		return fileVersion, true
+	case filePresent:
+		return normalizeVersion(evidence.FileVersion)
+	case productPresent:
+		return normalizeVersion(evidence.ProductVersion)
+	default:
+		return "", false
+	}
 }
 
 // diagnosticCandidateProfile admits exactly the locally observed 1.4 build
@@ -87,33 +132,12 @@ func diagnosticCandidateProfile(evidence BuildEvidence) (compatibilityProfile, b
 }
 
 func (evidence BuildEvidence) supportedVersion() (string, bool) {
-	filePresent := strings.TrimSpace(evidence.FileVersion) != ""
-	productPresent := strings.TrimSpace(evidence.ProductVersion) != ""
-	if !filePresent && !productPresent {
+	version, ok := evidence.observedBuild()
+	if !ok {
 		return "", false
 	}
-
-	var version string
-	if filePresent && productPresent {
-		fileVersion, fileOK := normalizeVersion(evidence.FileVersion)
-		productVersion, productOK := normalizeVersion(evidence.ProductVersion)
-		if !fileOK || !productOK || fileVersion != productVersion {
-			return "", false
-		}
-		version = fileVersion
-	} else if filePresent {
-		var ok bool
-		version, ok = normalizeVersion(evidence.FileVersion)
-		if !ok {
-			return "", false
-		}
-	} else {
-		var ok bool
-		version, ok = normalizeVersion(evidence.ProductVersion)
-		if !ok {
-			return "", false
-		}
-	}
+	filePresent := strings.TrimSpace(evidence.FileVersion) != ""
+	productPresent := strings.TrimSpace(evidence.ProductVersion) != ""
 
 	fixtures, allowed := supportedLMUVersions[version]
 	if !allowed || !fixtures.pinned() {

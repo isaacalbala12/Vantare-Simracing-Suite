@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -120,6 +121,7 @@ type config struct {
 	recoveryWindow    time.Duration
 	stableComparisons int
 	build             buildProvider
+	logf              func(string, ...any)
 	rest              *restConfig
 	beforeRESTPublish func()
 	captureTap        *CaptureTap
@@ -169,11 +171,29 @@ func newDriver(cfg config) *Driver {
 	if cfg.build == nil {
 		cfg.build = readLMUBuildEvidence
 	}
+	if cfg.logf == nil {
+		cfg.logf = log.Printf
+	}
 	cfg.rest = normalizeRESTConfig(cfg.rest, cfg.now, cfg.elapsed)
 	// DriverManager exposes an instance only after selecting it as active, where
 	// its own state is already connecting. Matching that state at construction
 	// avoids a transient illegal connecting -> stopped snapshot before Run starts.
 	return &Driver{state: drivercontract.StateConnecting, config: cfg}
+}
+
+// logBuildProfile deja en el log la misma distincion que publica el
+// fingerprint: sin evidencia de build frente a build leida pero no soportada.
+// La build soportada no se registra: el fingerprint de cada observacion ya la
+// lleva. Nunca se registran rutas de instalacion.
+func (driver *Driver) logBuildProfile(profile compatibilityProfile) {
+	if profile.supported || driver.config.logf == nil {
+		return
+	}
+	if profile.observedBuild == "" {
+		driver.config.logf("LMU driver: sin evidencia de build utilizable; fingerprint=%s", profile.unknownFingerprint())
+		return
+	}
+	driver.config.logf("LMU driver: build %s leida pero no soportada (sin fixtures pinneadas); fingerprint=%s", profile.observedBuild, profile.unknownFingerprint())
 }
 
 func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSink[Observation]) (runErr error) {
@@ -212,6 +232,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 		build = BuildEvidence{}
 	}
 	profile := profileFromBuild(build)
+	driver.logBuildProfile(profile)
 	var captureSanitizer *FrameSanitizer
 	if driver.config.captureTap != nil {
 		captureSanitizer, _ = NewFrameSanitizer(build)

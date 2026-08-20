@@ -278,17 +278,18 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 func TestBuildProfilesGateEveryOffsetField(t *testing.T) {
 	fixture := knownBuffer(t)
 	for _, tt := range []struct {
-		name  string
-		build BuildEvidence
-		known bool
+		name    string
+		build   BuildEvidence
+		known   bool
+		unknown string
 	}{
 		{name: "allowlisted file", build: BuildEvidence{FileVersion: "1.3.0.0"}, known: true},
 		{name: "allowlisted product", build: BuildEvidence{ProductVersion: "1.3.0"}, known: true},
 		{name: "coherent versions", build: BuildEvidence{FileVersion: "1.3.0", ProductVersion: "1.3.0.0"}, known: true},
-		{name: "file contradicts product", build: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.3.0.0"}},
-		{name: "product contradicts file", build: BuildEvidence{FileVersion: "1.3.0.0", ProductVersion: "1.4.0.0"}},
-		{name: "absent", build: BuildEvidence{}},
-		{name: "not allowlisted", build: BuildEvidence{FileVersion: "1.4.0.0"}},
+		{name: "file contradicts product", build: BuildEvidence{FileVersion: "1.4.0.0", ProductVersion: "1.3.0.0"}, unknown: unavailableFingerprint},
+		{name: "product contradicts file", build: BuildEvidence{FileVersion: "1.3.0.0", ProductVersion: "1.4.0.0"}, unknown: unavailableFingerprint},
+		{name: "absent", build: BuildEvidence{}, unknown: unavailableFingerprint},
+		{name: "not allowlisted", build: BuildEvidence{FileVersion: "1.4.0.0"}, unknown: "LMU_Data/size=324820/evidence=unsupported;build=1.4.0.0"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseWithBuild(fixture, time.Now(), tt.build)
@@ -304,8 +305,10 @@ func TestBuildProfilesGateEveryOffsetField(t *testing.T) {
 				}
 			} else {
 				assertNoPublishedFields(t, got)
-				if strings.Contains(got.Fingerprint, tt.build.FileVersion) && tt.build.FileVersion != "" {
-					t.Fatalf("unsupported version leaked: %q", got.Fingerprint)
+				// El fingerprint desconocido nombra la build leida (ISA-680)
+				// pero nunca promociona la observacion ni publica campos.
+				if got.Fingerprint != tt.unknown {
+					t.Fatalf("fingerprint = %q want %q", got.Fingerprint, tt.unknown)
 				}
 			}
 		})

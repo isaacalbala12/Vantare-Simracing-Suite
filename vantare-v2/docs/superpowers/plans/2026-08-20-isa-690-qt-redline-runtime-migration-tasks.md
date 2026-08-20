@@ -55,16 +55,16 @@ antes de crear la ventana ingame.
 
 **Aceptación:**
 
-- [ ] El test documental localiza el caller productivo de `WidgetVisualHost` en
+- [x] El test documental localiza el caller productivo de `WidgetVisualHost` en
   Studio/Workshop/OBS/Desktop.
-- [ ] El test falla si el ADR nuevo afirma que Qt sustituye esos consumidores.
-- [ ] No cambia código de producto.
+- [x] El test falla si el ADR nuevo afirma que Qt sustituye esos consumidores.
+- [x] No cambia código de producto.
 
 **Verificación:**
 
-- [ ] `go test ./internal/architecture/...` si existe un gate documental Go; en
+- [x] `go test ./internal/architecture/...` si existe un gate documental Go; en
   otro caso, el validador documental vigente de ADRs.
-- [ ] `git diff --check`.
+- [x] `git diff --check`.
 
 **Dependencias:** ninguna.
 
@@ -79,17 +79,17 @@ default/fallback, Overlay v2 y autoridad TSX/CSS.
 
 **Aceptación:**
 
-- [ ] Contiene contexto, decisión, consecuencias, alternativas rechazadas,
+- [x] Contiene contexto, decisión, consecuencias, alternativas rechazadas,
   rollback y relación explícita con ADR 0003.
-- [ ] Prohíbe codegen visual, runtime por widget, cgo, shared memory y retirada de
+- [x] Prohíbe codegen visual, runtime por widget, cgo, shared memory y retirada de
   Wails dentro de #690.
-- [ ] Declara P1 Standings como gate GO/STOP previo al producto.
+- [x] Declara P1 Standings como gate GO/STOP previo al producto.
 
 **Verificación:**
 
-- [ ] Guard T01 verde.
-- [ ] Links y paths locales válidos.
-- [ ] `git diff --check`.
+- [x] Guard T01 verde.
+- [x] Links y paths locales válidos.
+- [x] `git diff --check`.
 
 **Dependencias:** T01.
 
@@ -104,13 +104,13 @@ Project, current-plan y handoff.
 
 **Aceptación:**
 
-- [ ] ADR pasa de Proposed a Accepted solo tras revisión de la issue.
+- [x] ADR pasa de Proposed a Accepted solo tras revisión de la issue.
 - [ ] La issue enlaza spec, PLAN, TASKS, commit y checks reales.
-- [ ] No existe código Qt ni cambio productivo en la rama.
+- [x] No existe código Qt ni cambio productivo en la rama.
 
 **Verificación:**
 
-- [ ] `git diff origin/nightly...HEAD --check`.
+- [x] `git diff origin/nightly...HEAD --check`.
 - [ ] Árbol limpio y solo paths documentales/guard aprobados.
 
 **Dependencias:** T02.

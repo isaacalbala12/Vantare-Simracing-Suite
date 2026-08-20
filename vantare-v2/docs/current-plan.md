@@ -31,6 +31,21 @@ Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase TASKS/IMPLEMENT):
   promoción ni release. Se crean solo P0-A, P0-B y P1; P2+ queda bloqueado por
   el checkpoint GO/STOP de Standings.
 
+Nota OS-QT-02 / GitHub #691 (2026-08-20, P0-A implementado localmente):
+- ADR 0009 queda Accepted: autoriza evaluar un sidecar Qt Quick x64 solo para
+  la ventana ingame Desktop de perfiles Redline completos. La decisión ocurre
+  antes de crear la ventana; Studio, Workshop, OBS y el fallback Desktop
+  conservan `WidgetVisualHost`/TSX/CSS.
+- Wails sigue siendo default/fallback, `OverlayFrame v2` es el único contrato
+  de datos futuro y #677 bloquea el wiring real. Standings permanece como gate
+  GO/STOP previo a cambios de producto.
+- Un guard Node autónomo recorre la cadena real Studio/Workshop/Desktop/OBS y
+  falla si el ADR sustituye consumidores web. RED por ADR ausente; GREEN 1/1;
+  links locales y `git diff --check` PASS.
+- Rama `vantareapp/isa-691-adr-runtime-qt-redline`, basada en el checkpoint
+  documental #690 `d64f241e`; sin código Qt/productivo, push, PR, CI,
+  integración, promoción ni release.
+
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

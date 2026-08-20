@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-681",
+  "type": "fix",
+  "summary": "El launcher ya no puede volver a reventar al guardar iconos cuando la cache en disco llega vacia, corrupta o de una version antigua.",
+  "technicalNotes": [
+    "El panic 'assignment to entry in nil map' de icon_windows.go venia de que la carga de la cache persistente de iconos salia antes de crear los mapas y el primer saveIconToDisk escribia sobre un mapa nil, matando la goroutine de extraccion en pleno escaneo.",
+    "La inicializacion de los mapas antes de cualquier salida temprana ya estaba en nightly desde ISA-369; esta issue la blinda con cobertura de las rutas que faltaban."
+  ],
+  "testing": [
+    "go test ./internal/app/launcher -count=1",
+    "TestSaveIconToDiskConCacheEnDiscoDegradada cubre fichero corrupto, version antigua, mapas nulos, mapas ausentes y fichero vacio."
+  ],
+  "knownLimitations": [
+    "El gate completo ./internal/app/... sigue rojo por TestBranchDiffContainsNoFrontendFile (internal/app/telemetry_simx_proof_test.go), un guard de slice ya integrada que no pertenece al launcher."
+  ]
+}

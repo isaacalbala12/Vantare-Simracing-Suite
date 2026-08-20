@@ -29,7 +29,9 @@ REQUIRED_FRAGMENT_FIELDS = {
 }
 PUBLIC_UPDATE_MARKER = "<!-- discord:development -->"
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
-VANTARE_RED = 0xFF3B3B
+# The embed's accent stripe sits right beside the card image, so it uses the
+# same brand carmine as the app (--orbit-carmine in orbit.tokens.css).
+VANTARE_RED = 0xD52F49
 DEVELOPMENT_IMAGE_NAME = "vantare-development.png"
 NIGHTLY_IMAGE_NAME = "vantare-nightly.png"
 TESTERS_IMAGE_NAME = "vantare-testers.png"
@@ -220,6 +222,183 @@ def _split_visual_copy(text: str, heading_limit: int = 72) -> tuple[str, str]:
     return text[:boundary].rstrip(" ,;"), text[boundary:].lstrip(" ,;")
 
 
+# The visual card clamps the heading to 4 lines and the body to 5. Anything
+# longer used to be cut mid-word by the clamp, which is exactly the illegible
+# copy this budget exists to prevent: we trim first, at a sentence or word
+# boundary, so the reader always gets a finished thought.
+CARD_HEADING_LIMIT = 96
+CARD_BODY_LIMIT = 230
+
+
+def _fit_text(text: str, limit: int) -> str:
+    """Trim to a sentence boundary, else a word boundary, marking the cut."""
+    value = " ".join((text or "").split())
+    if len(value) <= limit:
+        return value
+    window = value[:limit]
+    sentence = max(window.rfind(". "), window.rfind("; "), window.rfind(" · "))
+    if sentence >= limit // 2:
+        return window[:sentence + 1].rstrip(" ;·")
+    boundary = window.rfind(" ")
+    if boundary < limit // 3:
+        boundary = limit - 1
+    trimmed = window[:boundary]
+    # Ending inside an aside that never closes reads worse than ending before
+    # it, so an orphaned "(" takes its whole fragment with it.
+    open_paren = trimmed.rfind("(")
+    if open_paren > limit // 3 and trimmed.find(")", open_paren) == -1:
+        trimmed = trimmed[:open_paren]
+    return trimmed.rstrip(" ,;:·") + "…"
+
+
+def _unwrap_parenthetical(text: str) -> str:
+    """Promote an aside that became the whole body into a plain sentence.
+
+    When the headline is cut before a parenthesis, the remainder starts with
+    the orphaned "(" and reads as a footnote to nothing. With no sentence left
+    to be an aside to, the brackets stop earning their place.
+    """
+    value = text.strip()
+    if not value.startswith("("):
+        return value
+    depth = 0
+    for index, character in enumerate(value):
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth == 0:
+                inner = value[1:index].strip()
+                tail = value[index + 1:].strip()
+                # "…Diagnóstico)." would otherwise keep both stops.
+                if tail.startswith(".") and inner.endswith("."):
+                    tail = tail[1:].lstrip()
+                if not inner.endswith((".", "!", "?")) and tail.startswith("."):
+                    inner, tail = inner + ".", tail[1:].lstrip()
+                return f"{inner} {tail}".strip() if tail else inner
+    # Never closed: drop the stray bracket rather than leave it dangling.
+    return value[1:].strip()
+
+
+def _manifest_headline(manifest: dict[str, Any]) -> str:
+    """The manifest title without the brand prefix the card already shows."""
+    title = " ".join(str(manifest.get("title") or "").split())
+    return re.sub(r"^Vantare\s*[—–-]\s*", "", title).strip()
+
+
+def load_manifest(path: str) -> dict[str, Any]:
+    value = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: release manifest must be an object")
+    for field in ("tag", "title", "summary"):
+        if not isinstance(value.get(field), str) or not value[field].strip():
+            raise ValueError(f"{path}: manifest field {field} must be a non-empty string")
+    return value
+
+
+# The card is the app's face on Discord, so it speaks Command Orbit's visual
+# language rather than a look invented for the announcement: the values below
+# are copied from vantare-v2/frontend/src/styles/orbit.tokens.css. The brand
+# carmine is #d52f49 — the old #ff3b3b was never a Vantare colour.
+ORBIT_TOKENS = """
+:root{
+  --orbit-canvas:#08090b;--orbit-surface-1:#121316;--orbit-surface-2:#18191e;
+  --orbit-ink:#f5f3f2;--orbit-ink-2:#b7b2b2;--orbit-ink-3:#8a858b;--orbit-ink-4:#787379;--orbit-ink-muted:#57545a;
+  --orbit-line:rgba(255,255,255,.075);--orbit-line-strong:rgba(255,255,255,.13);
+  --orbit-carmine:#d52f49;--orbit-red:#f04755;--orbit-coral:#ff6a5f;--orbit-wine:#641526;
+  --orbit-featured-bg:linear-gradient(rgba(25,25,30,.98),rgba(19,19,23,.99));
+  --orbit-featured-border:linear-gradient(115deg,rgba(240,71,85,.62),rgba(255,106,95,.2),rgba(255,255,255,.06));
+  --orbit-font-sans:Inter,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+  --orbit-font-mono:"Cascadia Code","SFMono-Regular",ui-monospace,monospace;
+  --orbit-radius-featured:25px;--orbit-radius-chip:8px;
+  --orbit-shadow-featured:0 32px 91px rgba(0,0,0,.42),0 0 42px rgba(213,47,73,.04);
+  --orbit-inset-glass:inset 0 1px 0 rgba(255,255,255,.08);
+}
+"""
+
+# Shared chrome: canvas, ambient glow, brand lockup, chip, grid and footer.
+# Both cards used to carry their own near-identical copy of this.
+ORBIT_CHROME_CSS = """
+*{box-sizing:border-box}
+html,body{margin:0;width:1200px;height:630px;overflow:hidden}
+body{background:var(--orbit-canvas);color:var(--orbit-ink);font-family:var(--orbit-font-sans);-webkit-font-smoothing:antialiased}
+.canvas{position:relative;width:100%;height:100%;padding:44px 52px 34px;background:
+ radial-gradient(ellipse 52% 60% at 88% 6%,rgba(213,47,73,.16),transparent 62%),
+ radial-gradient(ellipse 40% 55% at 6% 96%,rgba(213,47,73,.09),transparent 66%),
+ var(--orbit-canvas)}
+header,.grid,footer{position:relative;z-index:1}
+header{display:flex;justify-content:space-between;align-items:flex-start}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:40px;height:40px;border-radius:13px;background:var(--orbit-surface-2);border:1px solid var(--orbit-line);box-shadow:var(--orbit-inset-glass)}
+.wordmark{font-size:17px;font-weight:650;letter-spacing:.02em;color:var(--orbit-ink)}
+.eyebrow{margin-top:17px;color:var(--orbit-ink-4);font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+.title{margin:7px 0 0;font-size:39px;line-height:1.04;font-weight:700;letter-spacing:-.02em}
+.title span{color:var(--orbit-ink-3)}
+/* No text-transform: the stamp carries a commit hash, and a hash shouted in
+   uppercase is a different string from the one you would paste into git. */
+.stamp{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:var(--orbit-radius-chip);
+ background:rgba(255,255,255,.035);color:var(--orbit-ink-4);font-family:var(--orbit-font-mono);font-size:10px;font-weight:700;letter-spacing:.06em}
+.grid{display:grid;width:min(100%,var(--grid-width));grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:18px;margin:28px auto 0}
+.project-card{position:relative;height:326px;padding:22px 24px;border:1px solid var(--orbit-line);
+ border-radius:var(--orbit-radius-featured);background:var(--orbit-surface-1);box-shadow:0 24px 64px rgba(0,0,0,.36),var(--orbit-inset-glass)}
+.card-top{display:flex;align-items:center;justify-content:space-between}
+.index{font-family:var(--orbit-font-mono);font-size:10px;font-weight:700;color:var(--orbit-ink-muted);letter-spacing:.06em}
+.status{display:flex;align-items:center;gap:8px;color:var(--orbit-ink-4);font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+.status i{width:6.5px;height:6.5px;border-radius:50%;background:var(--orbit-red);box-shadow:0 0 10px currentcolor;color:var(--orbit-red)}
+footer{display:flex;align-items:center;justify-content:space-between;margin-top:22px;
+ color:var(--orbit-ink-muted);font-family:var(--orbit-font-mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.live{display:flex;align-items:center;gap:8px}
+.live:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--orbit-red);box-shadow:0 0 10px rgba(240,71,85,.6)}
+"""
+
+# The rail mark: the nested-chevron logotype on its dark tile, as the shell
+# renders it — a red gradient glyph, not a glowing solid triangle.
+ORBIT_MARK_SVG = (
+    '<svg class="mark" viewBox="0 0 40 40" aria-hidden="true">'
+    '<defs><linearGradient id="vm" x1="0" y1="0" x2="0" y2="1">'
+    '<stop stop-color="#ff6a5f"/><stop offset=".55" stop-color="#f04755"/>'
+    '<stop offset="1" stop-color="#9c1b2c"/></linearGradient></defs>'
+    '<path d="M20 8 32 32H26.4L20 19.2 13.6 32H8Z" fill="url(#vm)"/></svg>'
+)
+
+
+def _orbit_header(*, eyebrow: str, title: str, accent: str, stamp: str) -> str:
+    return (
+        f'<header><div><div class="brand">{ORBIT_MARK_SVG}'
+        f'<span class="wordmark">Vantare</span></div>'
+        f'<div class="eyebrow">{html.escape(eyebrow)}</div>'
+        f'<h1 class="title">{html.escape(title)} <span>{html.escape(accent)}</span></h1></div>'
+        f'<div class="stamp">{html.escape(stamp)}</div></header>'
+    )
+
+
+def _orbit_document(*, extra_css: str, header: str, cards: list[str], footer: str) -> str:
+    column_count = len(cards)
+    grid_width = {1: 520, 2: 780, 3: 1096}[column_count]
+    return (
+        '<!doctype html>\n<html lang="es"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=1200, initial-scale=1"><style>'
+        f'{ORBIT_TOKENS}{ORBIT_CHROME_CSS}{extra_css}</style></head>'
+        f'<body><main class="canvas">{header}'
+        f'<section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">'
+        f'{"".join(cards)}</section>{footer}</main></body></html>'
+    )
+
+
+CHANNEL_CARD_CSS = """
+.project-card.primary{border-color:transparent;
+ background:var(--orbit-featured-bg) padding-box,var(--orbit-featured-border) border-box;
+ box-shadow:var(--orbit-shadow-featured)}
+.project-card.primary .index{color:var(--orbit-red)}
+/* min-height, not height: two-line headings line up across the three cards
+   without a fixed box leaving a hole under the shorter ones. */
+h2{display:-webkit-box;min-height:48px;margin:20px 0 14px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;
+ font-size:20px;line-height:1.2;font-weight:650;letter-spacing:-.01em;color:var(--orbit-ink)}
+p{display:-webkit-box;margin:0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:5;
+ color:var(--orbit-ink-2);font-size:13.5px;line-height:1.55}
+"""
+
+
 def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
                   cards: list[tuple[str, str, str]], footer_left: str, footer_right: str) -> str:
     if not cards:
@@ -231,22 +410,14 @@ def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
             <div class="card-top"><span class="index">0{index}</span><span class="status"><i></i> {html.escape(label)}</span></div>
             <h2>{html.escape(heading)}</h2><p>{html.escape(body)}</p>
           </article>""")
-    column_count = len(rendered_cards)
-    grid_width = {1: 520, 2: 760, 3: 1096}[column_count]
-    return f"""<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=1200, initial-scale=1"><style>
-*{{box-sizing:border-box}}html,body{{margin:0;width:1200px;height:630px;overflow:hidden}}body{{font-family:Inter,Arial,sans-serif;color:#f5f5f5;background:#080808}}
-.canvas{{position:relative;width:100%;height:100%;padding:46px 52px 38px;background:radial-gradient(ellipse 45% 65% at 12% 90%,rgba(255,59,59,.18),transparent 68%),radial-gradient(ellipse 70% 70% at 58% 45%,rgba(255,59,59,.07),transparent 70%),linear-gradient(145deg,#151515 0%,#090909 58%,#050505 100%)}}
-.canvas:after{{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.42))}}header,.grid,footer{{position:relative;z-index:1}}header{{display:flex;justify-content:space-between;align-items:flex-start}}
-.brand{{display:flex;align-items:center;gap:15px}}.logo{{width:38px;height:38px;filter:drop-shadow(0 0 12px rgba(255,59,59,.45))}}.wordmark{{font-size:22px;font-weight:800;letter-spacing:.08em}}
-.eyebrow{{margin-top:10px;color:#ff3b3b;font-size:11px;font-weight:800;letter-spacing:.28em}}.title{{margin:5px 0 0;font-size:39px;line-height:1;font-weight:800;letter-spacing:-.04em}}.title span{{color:rgba(245,245,245,.35)}}
-.stamp{{padding:9px 12px;border:1px solid rgba(245,245,245,.09);border-radius:8px;background:rgba(20,20,20,.55);font:700 10px 'Courier New',monospace;letter-spacing:.14em;color:rgba(245,245,245,.48)}}
-.grid{{display:grid;width:min(100%,var(--grid-width));grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:16px;margin:30px auto 0}}.project-card{{height:330px;padding:22px;border:1px solid rgba(245,245,245,.09);border-radius:14px;background:linear-gradient(180deg,rgba(27,27,27,.82),rgba(13,13,13,.76));box-shadow:0 20px 55px rgba(0,0,0,.25)}}
-.project-card.primary{{border-color:rgba(255,59,59,.42);box-shadow:0 20px 55px rgba(255,59,59,.08)}}.card-top{{display:flex;align-items:center;justify-content:space-between;font:700 9px 'Courier New',monospace;letter-spacing:.15em;color:rgba(245,245,245,.35)}}
-.index{{color:#ff3b3b}}.status{{display:flex;align-items:center;gap:7px}}.status i{{width:6px;height:6px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 9px rgba(255,59,59,.75)}}h2{{display:-webkit-box;height:100px;margin:22px 0 10px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;font-size:20px;line-height:1.2;letter-spacing:-.025em}}p{{display:-webkit-box;height:104px;margin:0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:5;color:rgba(245,245,245,.56);font-size:13px;line-height:1.55}}
-.empty{{opacity:.38;border-style:dashed}}footer{{display:flex;align-items:center;justify-content:space-between;margin-top:25px;color:rgba(245,245,245,.32);font:700 9px 'Courier New',monospace;letter-spacing:.16em}}.live{{display:flex;align-items:center;gap:8px}}.live:before{{content:"";width:5px;height:5px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,.65)}}
-</style></head><body><main class="canvas"><header><div><div class="brand"><svg class="logo" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4d4d"/><stop offset=".55" stop-color="#e21b1b"/><stop offset="1" stop-color="#9a0606"/></linearGradient></defs><path d="M20 2 38 38H28L20 18 12 38H2Z" fill="url(#g)"/></svg><span class="wordmark">VANTARE</span></div><div class="eyebrow">{html.escape(eyebrow)}</div><h1 class="title">{html.escape(title)} <span>{html.escape(accent)}</span></h1></div><div class="stamp">{html.escape(stamp)}</div></header>
-<section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">{''.join(rendered_cards)}</section><footer><span class="live">{html.escape(footer_left)}</span><span>{html.escape(footer_right)}</span></footer></main></body></html>"""
+    footer = (f'<footer><span class="live">{html.escape(footer_left)}</span>'
+              f'<span>{html.escape(footer_right)}</span></footer>')
+    return _orbit_document(
+        extra_css=CHANNEL_CARD_CSS,
+        header=_orbit_header(eyebrow=eyebrow, title=title, accent=accent, stamp=stamp),
+        cards=rendered_cards,
+        footer=footer,
+    )
 
 
 def _channel_copy(channel: str) -> dict[str, str]:
@@ -294,7 +465,8 @@ def _fragment_order(fragment: dict[str, Any]) -> tuple[int, str]:
 
 
 def render_channel_update(fragments: list[dict[str, Any]], revision: str, channel: str,
-                          *, include_image: bool = False) -> dict[str, Any]:
+                          *, include_image: bool = False,
+                          manifest: dict[str, Any] | None = None) -> dict[str, Any]:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     copy = _channel_copy(channel)
@@ -306,11 +478,19 @@ def render_channel_update(fragments: list[dict[str, Any]], revision: str, channe
     testing = [step for item in ordered for step in item["testing"]]
     limitations = [note for item in ordered for note in item["knownLimitations"]]
     limitation_copy = limitations or ["No hay limitaciones conocidas declaradas para este corte."]
+    # A tester reads the description first, so it leads with what this cut is
+    # about in plain words; the per-issue "Resumen" stays below for detail.
+    description = f"{copy['description']} Revisión `{revision[:12]}`."
+    if manifest:
+        headline = _manifest_headline(manifest)
+        lead = " ".join(str(manifest.get("summary") or "").split())
+        description = "\n\n".join(part for part in (
+            f"**{headline}**\n{lead}".strip(), description) if part)
     payload = {
         "allowed_mentions": {"parse": []},
         "embeds": [{
             "title": copy["title"],
-            "description": f"{copy['description']} Revisión `{revision[:12]}`.",
+            "description": description,
             "color": VANTARE_RED,
             "fields": [
                 *_embed_fields("Resumen", summary, max_fields=2),
@@ -326,19 +506,53 @@ def render_channel_update(fragments: list[dict[str, Any]], revision: str, channe
     return payload
 
 
-def render_channel_update_html(fragments: list[dict[str, Any]], revision: str, channel: str) -> str:
+def _card_from_items(items: Sequence[str], *, empty_heading: str = "",
+                     empty_body: str = "") -> tuple[str, str]:
+    """Turn a list of sourced sentences into a short heading plus a full body.
+
+    The first item is split into a headline and its own remainder, and the
+    following items continue the body, so nothing is announced as a half
+    sentence the way a raw line-clamp used to leave it.
+    """
+    if not items:
+        return empty_heading, empty_body
+    heading, remainder = _split_visual_copy(items[0])
+    # A heading that opens a parenthesis it never closes reads as broken copy,
+    # so the aside moves down to the body where it can finish.
+    open_paren = heading.rfind("(")
+    if open_paren > 0 and heading.find(")", open_paren) == -1:
+        remainder = f"{heading[open_paren:]} {remainder}".strip()
+        heading = heading[:open_paren].rstrip(" ,;:")
+    remainder = _unwrap_parenthetical(remainder)
+    body_parts = [part for part in (remainder, *items[1:]) if part and part.strip()]
+    body = " ".join(body_parts).strip()
+    if body[:1].islower():
+        body = body[0].upper() + body[1:]
+    return _fit_text(heading, CARD_HEADING_LIMIT), _fit_text(body, CARD_BODY_LIMIT)
+
+
+def render_channel_update_html(fragments: list[dict[str, Any]], revision: str, channel: str,
+                               *, manifest: dict[str, Any] | None = None) -> str:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     copy = _channel_copy(channel)
-    issue_list = " · ".join(item["issue"] for item in fragments)
-    summaries = " ".join(item["summary"] for item in fragments)
     test_steps = [step for item in fragments for step in item["testing"]]
     limitations = [note for item in fragments for note in item["knownLimitations"]]
+    if manifest:
+        # A raw issue ID means nothing to a tester; the manifest already carries
+        # the human headline and summary written for exactly this audience.
+        lead_heading = _fit_text(_manifest_headline(manifest), CARD_HEADING_LIMIT)
+        lead_body = _fit_text(str(manifest.get("summary") or ""), CARD_BODY_LIMIT)
+    else:
+        lead_heading = _fit_text(" · ".join(item["issue"] for item in fragments), CARD_HEADING_LIMIT)
+        lead_body = _fit_text(" ".join(item["summary"] for item in fragments), CARD_BODY_LIMIT)
     cards = [
-        (f"{len(fragments)} CAMBIO{'S' if len(fragments) != 1 else ''}", issue_list, summaries),
-        ("QUÉ DEBES PROBAR", test_steps[0], " ".join(test_steps[1:3])),
-        ("LIMITACIONES", limitations[0] if limitations else "Sin limitaciones conocidas",
-         " ".join(limitations[1:3]) if limitations else "El corte ha superado sus gates automáticos."),
+        (f"{len(fragments)} CAMBIO{'S' if len(fragments) != 1 else ''}", lead_heading, lead_body),
+        ("QUÉ DEBES PROBAR", *_card_from_items(test_steps)),
+        ("LIMITACIONES", *_card_from_items(
+            limitations,
+            empty_heading="Sin limitaciones conocidas",
+            empty_body="El corte ha superado sus gates automáticos.")),
     ]
     return _branded_html(eyebrow=copy["eyebrow"], title=copy["heading"], accent=copy["accent"],
                          stamp=f"{channel.upper()} · {revision[:12]}", cards=cards,
@@ -463,6 +677,24 @@ def render_development(projects: list[dict[str, Any]], *, include_image: bool = 
     return {"allowed_mentions": {"parse": []}, "embeds": [embed]}
 
 
+DEVELOPMENT_CARD_CSS = """
+.project-card:first-child{border-color:transparent;
+ background:var(--orbit-featured-bg) padding-box,var(--orbit-featured-border) border-box;
+ box-shadow:var(--orbit-shadow-featured)}
+.project-card:first-child .index{color:var(--orbit-red)}
+h2{display:-webkit-box;min-height:48px;margin:20px 0 14px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ font-size:20px;line-height:1.2;font-weight:650;letter-spacing:-.01em;color:var(--orbit-ink)}
+p{display:-webkit-box;margin:0 0 auto;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:5;
+ color:var(--orbit-ink-2);font-size:13.5px;line-height:1.55}
+.project-card{display:flex;flex-direction:column}
+.progress-meta{display:flex;justify-content:space-between;align-items:center;padding-top:18px;
+ border-top:1px solid var(--orbit-line);color:var(--orbit-ink-4);font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+.progress-meta strong{font-family:var(--orbit-font-mono);font-size:17px;font-weight:700;letter-spacing:0;color:var(--orbit-ink)}
+.track{height:5px;margin-top:11px;overflow:hidden;border-radius:6px;background:rgba(255,255,255,.06)}
+.track div{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--orbit-wine),var(--orbit-red));box-shadow:0 0 12px rgba(240,71,85,.45)}
+"""
+
+
 def render_development_html(projects: list[dict[str, Any]]) -> str:
     cards = []
     for index, project in enumerate(projects[:3], start=1):
@@ -486,38 +718,15 @@ def render_development_html(projects: list[dict[str, Any]]) -> str:
             <div class="card-top"><span class="index">—</span><span class="status">SIN CAMBIOS PUBLICADOS</span></div>
             <h2>No hay novedades públicas hoy</h2><p>Los proyectos activos continúan en Linear sin una actualización nueva para Discord.</p>
           </article>""")
-    column_count = len(cards)
-    grid_width = {1: 520, 2: 760, 3: 1096}[column_count]
-    return f"""<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=1200, initial-scale=1">
-<style>
-*{{box-sizing:border-box}} html,body{{margin:0;width:1200px;height:630px;overflow:hidden}}
-body{{font-family:Inter,Arial,sans-serif;color:#f5f5f5;background:#080808}}
-.canvas{{position:relative;width:100%;height:100%;padding:46px 52px 38px;background:
-radial-gradient(ellipse 45% 65% at 12% 90%,rgba(255,59,59,.18),transparent 68%),
-radial-gradient(ellipse 70% 70% at 58% 45%,rgba(255,59,59,.07),transparent 70%),
-linear-gradient(145deg,#151515 0%,#090909 58%,#050505 100%)}}
-.canvas:after{{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.42))}}
-header,.grid,footer{{position:relative;z-index:1}} header{{display:flex;justify-content:space-between;align-items:flex-start}}
-.brand{{display:flex;align-items:center;gap:15px}} .logo{{width:38px;height:38px;filter:drop-shadow(0 0 12px rgba(255,59,59,.45))}}
-.wordmark{{font-size:22px;font-weight:800;letter-spacing:.08em}} .eyebrow{{margin-top:10px;color:#ff3b3b;font-size:11px;font-weight:800;letter-spacing:.28em}}
-.title{{margin:5px 0 0;font-size:39px;line-height:1;font-weight:800;letter-spacing:-.04em}} .title span{{color:rgba(245,245,245,.35)}}
-.stamp{{padding:9px 12px;border:1px solid rgba(245,245,245,.09);border-radius:8px;background:rgba(20,20,20,.55);font:700 10px 'Courier New',monospace;letter-spacing:.14em;color:rgba(245,245,245,.48)}}
-.grid{{display:grid;width:min(100%,var(--grid-width));grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:16px;margin:30px auto 0}}
-.project-card{{height:330px;padding:22px;border:1px solid rgba(245,245,245,.09);border-radius:14px;background:linear-gradient(180deg,rgba(27,27,27,.82),rgba(13,13,13,.76));box-shadow:0 20px 55px rgba(0,0,0,.25)}}
-.project-card:first-child{{border-color:rgba(255,59,59,.42);box-shadow:0 20px 55px rgba(255,59,59,.08)}}
-.card-top{{display:flex;align-items:center;justify-content:space-between;font:700 9px 'Courier New',monospace;letter-spacing:.15em;color:rgba(245,245,245,.35)}}
-.index{{color:#ff3b3b}} .status{{display:flex;align-items:center;gap:7px}} .status i{{width:6px;height:6px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 9px rgba(255,59,59,.75)}}
-h2{{height:58px;margin:24px 0 12px;font-size:22px;line-height:1.14;letter-spacing:-.025em}} p{{height:112px;margin:0;color:rgba(245,245,245,.56);font-size:13px;line-height:1.55}}
-.progress-meta{{display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid rgba(245,245,245,.08);font:700 9px 'Courier New',monospace;letter-spacing:.15em;color:rgba(245,245,245,.35)}}
-.progress-meta strong{{font-size:17px;letter-spacing:0;color:#f5f5f5}} .track{{height:5px;margin-top:11px;overflow:hidden;border-radius:6px;background:rgba(245,245,245,.06)}} .track div{{height:100%;background:linear-gradient(90deg,#9a0606,#ff3b3b);box-shadow:0 0 12px rgba(255,59,59,.45)}}
-.empty{{opacity:.38;border-style:dashed}} footer{{display:flex;align-items:center;justify-content:space-between;margin-top:25px;color:rgba(245,245,245,.32);font:700 9px 'Courier New',monospace;letter-spacing:.16em}}
-.live{{display:flex;align-items:center;gap:8px}} .live:before{{content:"";width:5px;height:5px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 8px rgba(255,59,59,.65)}}
-</style></head><body><main class="canvas">
-<header><div><div class="brand"><svg class="logo" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff4d4d"/><stop offset=".55" stop-color="#e21b1b"/><stop offset="1" stop-color="#9a0606"/></linearGradient></defs><path d="M20 2 38 38H28L20 18 12 38H2Z" fill="url(#g)"/></svg><span class="wordmark">VANTARE</span></div><div class="eyebrow">ESTADO DE DESARROLLO</div><h1 class="title">Proyectos <span>en curso</span></h1></div><div class="stamp">ACTUALIZADO DESDE LINEAR</div></header>
-<section class="grid" style="--columns:{column_count};--grid-width:{grid_width}px">{''.join(cards)}</section>
-<footer><span class="live">ACTUALIZACIÓN AUTOMÁTICA</span><span>VANTARE · DESARROLLO EN CURSO</span></footer>
-</main></body></html>"""
+    footer = ('<footer><span class="live">Actualización automática</span>'
+              '<span>Vantare · Desarrollo en curso</span></footer>')
+    return _orbit_document(
+        extra_css=DEVELOPMENT_CARD_CSS,
+        header=_orbit_header(eyebrow="Estado de desarrollo", title="Proyectos",
+                             accent="en curso", stamp="Actualizado desde Linear"),
+        cards=cards,
+        footer=footer,
+    )
 
 
 def assert_channel(metadata: dict[str, Any], expected_channel_id: str) -> None:
@@ -645,6 +854,7 @@ def main() -> int:
     parser.add_argument("--known-issues-url", default="")
     parser.add_argument("--channel-id", default="")
     parser.add_argument("--channel", choices=("nightly", "testers"), default="testers")
+    parser.add_argument("--manifest")
     args = parser.parse_args()
 
     if args.mode == "select-fragments":
@@ -655,11 +865,16 @@ def main() -> int:
         return 0
     if args.mode in {"nightly", "testers"}:
         fragments = load_fragment_files(args.fragment)
+        # Optional on purpose: other callers still invoke this without a
+        # manifest and must keep getting the previous, ID-based copy.
+        manifest = load_manifest(args.manifest) if args.manifest else None
         if args.html_output:
             pathlib.Path(args.html_output).write_text(
-                render_channel_update_html(fragments, args.revision, args.mode), encoding="utf-8"
+                render_channel_update_html(fragments, args.revision, args.mode, manifest=manifest),
+                encoding="utf-8",
             )
-        payload = render_channel_update(fragments, args.revision, args.mode, include_image=bool(args.image))
+        payload = render_channel_update(fragments, args.revision, args.mode,
+                                        include_image=bool(args.image), manifest=manifest)
         webhook = os.environ.get("DISCORD_PROGRESS_WEBHOOK_URL", "")
         channel = TESTERS_CHANNEL_ID
     elif args.mode == "release":

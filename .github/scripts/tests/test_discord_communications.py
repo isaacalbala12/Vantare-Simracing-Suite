@@ -160,12 +160,13 @@ class LinearDigestTests(unittest.TestCase):
         projects = [{"name": "Overlay <Studio>", "url": "https://linear.app/p/overlay", "progress": 0.08,
                      "update": "Paridad & revisión", "updatedAt": "2026-07-15T10:00:00Z"}]
         output = communications.render_development_html(projects)
-        self.assertIn("VANTARE", output)
-        self.assertIn("ESTADO DE DESARROLLO", output)
+        # The eyebrow and footer are uppercased by CSS now, so the markup
+        # carries the sentence-case source text.
+        self.assertIn("Vantare", output)
+        self.assertIn("Estado de desarrollo", output)
         self.assertIn("Overlay &lt;Studio&gt;", output)
         self.assertIn("Paridad &amp; revisión", output)
         self.assertNotIn("Overlay <Studio>", output)
-        self.assertIn("ESTADO DE DESARROLLO", output)
         self.assertNotIn("Development pulse", output)
         self.assertNotIn("BUILDING IN PUBLIC", output)
 
@@ -458,6 +459,189 @@ class ChannelUpdateOverflowTests(unittest.TestCase):
         for issue in ("ISA-1", "ISA-2", "ISA-3"):
             self.assertIn(issue, summary)
         self.assertNotIn("más, en el changelog", summary)
+
+
+class OrbitSkinTests(unittest.TestCase):
+    """The card must keep speaking the hub's visual language, not its own."""
+
+    TOKENS_CSS = (pathlib.Path(__file__).parents[3]
+                  / "vantare-v2/frontend/src/styles/orbit.tokens.css")
+
+    def _outputs(self):
+        return {
+            "channel": communications.render_channel_update_html(
+                [fragment()], "abc1234", "nightly", manifest=manifest()),
+            "development": communications.render_development_html(
+                [{"name": "Overlay Studio", "url": "", "progress": 0.4,
+                  "update": "Paridad visual en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]),
+        }
+
+    def test_no_invented_palette_survives(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                # #ff3b3b was never a Vantare colour, and Courier is not the
+                # hub's mono face.
+                self.assertNotIn("#ff3b3b", output.lower())
+                self.assertNotIn("courier", output.lower())
+
+    def test_cards_use_the_real_orbit_tokens(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                self.assertIn("--orbit-carmine:#d52f49", output)
+                self.assertIn("--orbit-canvas:#08090b", output)
+                self.assertIn("Cascadia Code", output)
+                self.assertIn("var(--orbit-radius-featured)", output)
+                self.assertIn("var(--orbit-shadow-featured)", output)
+
+    @unittest.skipUnless(TOKENS_CSS.is_file(), "frontend tokens not in this checkout")
+    def test_token_values_match_the_frontend_stylesheet(self):
+        source = self.TOKENS_CSS.read_text(encoding="utf-8")
+        for token in ("--orbit-canvas", "--orbit-carmine", "--orbit-red",
+                      "--orbit-ink", "--orbit-ink-2", "--orbit-wine"):
+            expected = re.search(rf"{token}:\s*([^;]+);", source).group(1).strip()
+            self.assertIn(f"{token}:{expected}", communications.ORBIT_TOKENS,
+                          f"{token} drifted from orbit.tokens.css")
+
+    def test_embed_stripe_uses_the_brand_carmine(self):
+        payload = communications.render_channel_update(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        self.assertEqual(payload["embeds"][0]["color"], 0xD52F49)
+
+    def test_card_geometry_stays_within_the_discord_frame(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                self.assertIn("width:1200px;height:630px", output)
+
+
+def manifest(title="Vantare — Command Orbit, única interfaz del Hub",
+             summary="Esta Nightly retira la interfaz anterior del Hub."):
+    return {"schemaVersion": 1, "tag": "v0.1.0.7-nightly.11", "channel": "nightly",
+            "title": title, "summary": summary, "issues": ["ISA-95"]}
+
+
+def _card_texts(output):
+    """Return (label, heading, body) for each card in the rendered HTML."""
+    pattern = re.compile(
+        r'<span class="status"><i></i> ([^<]*)</span></div>\s*<h2>([^<]*)</h2><p>([^<]*)</p>')
+    return [tuple(html_unescape(part) for part in match)
+            for match in pattern.findall(output)]
+
+
+def html_unescape(value):
+    import html as _html
+    return _html.unescape(value)
+
+
+class ManifestCopyTests(unittest.TestCase):
+    def test_lead_card_uses_manifest_title_without_brand_prefix(self):
+        output = communications.render_channel_update_html(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        label, heading, body = _card_texts(output)[0]
+        self.assertEqual(label, "1 CAMBIO")
+        self.assertEqual(heading, "Command Orbit, única interfaz del Hub")
+        self.assertNotIn("ISA-95", heading)
+        self.assertIn("retira la interfaz anterior", body)
+
+    def test_without_manifest_the_previous_id_based_copy_is_kept(self):
+        output = communications.render_channel_update_html(
+            [fragment("ISA-95", "Discord fiable")], "abc1234", "nightly")
+        _, heading, body = _card_texts(output)[0]
+        self.assertEqual(heading, "ISA-95")
+        self.assertIn("Discord fiable", body)
+
+    def test_testing_card_splits_the_step_into_headline_and_body(self):
+        value = fragment()
+        value["testing"] = [
+            "Abrir el Hub y recorrer todas las secciones: no debe quedar ningún rastro de la interfaz anterior.",
+            "Cambiar de idioma en Ajustes y verificar que no hay claves sin traducir.",
+        ]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        label, heading, body = _card_texts(output)[1]
+        self.assertEqual(label, "QUÉ DEBES PROBAR")
+        self.assertEqual(heading, "Abrir el Hub y recorrer todas las secciones")
+        self.assertIn("No debe quedar ningún rastro", body)
+        self.assertIn("Cambiar de idioma", body)
+
+    def test_card_copy_never_exceeds_the_clamp_budget(self):
+        value = fragment()
+        value["testing"] = ["Comprobar la paleta de comandos " + "y también cada atajo registrado " * 20]
+        value["knownLimitations"] = ["Solo se valida en Windows " + "con la build firmada " * 40]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        for _, heading, body in _card_texts(output):
+            self.assertLessEqual(len(heading), communications.CARD_HEADING_LIMIT)
+            self.assertLessEqual(len(body), communications.CARD_BODY_LIMIT)
+            self.assertFalse(body.endswith(" "), body)
+
+    def test_aside_promoted_to_the_body_reads_as_a_plain_sentence(self):
+        value = fragment()
+        value["knownLimitations"] = [
+            "Los pendientes de producto de la nightly.10 siguen vigentes "
+            "(favoritos del Launcher, eventos múltiples de Estrategia, "
+            "fuente de sesiones de Telemetría, registros en Diagnóstico)."
+        ]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        _, heading, body = _card_texts(output)[2]
+        self.assertEqual(heading, "Los pendientes de producto de la nightly.10 siguen vigentes")
+        self.assertEqual(
+            body,
+            "Favoritos del Launcher, eventos múltiples de Estrategia, "
+            "fuente de sesiones de Telemetría, registros en Diagnóstico.",
+        )
+        self.assertNotIn("(", body)
+        self.assertNotIn(")", body)
+        self.assertFalse(body.endswith(".."), body)
+
+    def test_unwrap_parenthetical_handles_nesting_and_stray_brackets(self):
+        self.assertEqual(
+            communications._unwrap_parenthetical("(uno (dos) tres) resto."),
+            "uno (dos) tres resto.",
+        )
+        self.assertEqual(communications._unwrap_parenthetical("(sin cierre"), "sin cierre")
+        self.assertEqual(communications._unwrap_parenthetical("(solo esto)"), "solo esto")
+        self.assertEqual(communications._unwrap_parenthetical("(ya con punto.)."), "ya con punto.")
+        self.assertEqual(communications._unwrap_parenthetical("texto normal"), "texto normal")
+
+    def test_missing_limitations_still_state_it_honestly(self):
+        value = fragment()
+        value["knownLimitations"] = []
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        _, heading, body = _card_texts(output)[2]
+        self.assertEqual(heading, "Sin limitaciones conocidas")
+        self.assertIn("gates automáticos", body)
+
+    def test_embed_description_leads_with_the_manifest_copy(self):
+        payload = communications.render_channel_update(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        embed = payload["embeds"][0]
+        self.assertIn("Command Orbit, única interfaz del Hub", embed["description"])
+        self.assertIn("retira la interfaz anterior", embed["description"])
+        self.assertIn("abc1234", embed["description"])
+        summary = next(f for f in embed["fields"] if f["name"] == "Resumen")
+        self.assertIn("**ISA-95**", summary["value"])
+
+    def test_embed_without_manifest_is_unchanged(self):
+        payload = communications.render_channel_update([fragment()], "abc1234", "nightly")
+        self.assertNotIn("Command Orbit", payload["embeds"][0]["description"])
+
+    def test_load_manifest_rejects_an_incomplete_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "bad.json"
+            path.write_text(json.dumps({"tag": "v1", "title": ""}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                communications.load_manifest(str(path))
+
+    def test_fit_text_cuts_at_a_sentence_or_word_boundary(self):
+        text = "Primera frase completa. Segunda frase que ya no cabe entera en el hueco."
+        fitted = communications._fit_text(text, 40)
+        self.assertEqual(fitted, "Primera frase completa.")
+        word = communications._fit_text("palabra " * 20, 30)
+        self.assertTrue(word.endswith("…"))
+        self.assertFalse(word[:-1].endswith(" "))
 
 
 if __name__ == "__main__":

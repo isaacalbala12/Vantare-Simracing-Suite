@@ -3,50 +3,71 @@ import { createDerivedTelemetryStore } from "./derived-telemetry-store";
 
 export type TelemetryListener = () => void;
 
+/**
+ * A repaint scheduler drives one visual frame. It carries no frequency
+ * domain: the display decides when to paint.
+ */
 export type TelemetryScheduler = {
-  start(onTick: () => void): void;
+  start(onFrame: () => void): void;
   stop(): void;
 };
 
 export type TelemetryRateCoordinator = {
-  getSnapshot(hz: number): TelemetrySnapshot;
-  subscribe(hz: number, listener: TelemetryListener): () => void;
+  /** The `hz` argument is accepted for source compatibility and ignored. */
+  getSnapshot(hz?: number): TelemetrySnapshot;
+  /** The `hz` argument is accepted for source compatibility and ignored. */
+  subscribe(hz: number | undefined, listener: TelemetryListener): () => void;
   publish(snapshot: TelemetrySnapshot): void;
   dispose(): void;
 };
 
 export type TelemetryRateCoordinatorOptions = {
+  /** Accepted for source compatibility; the coordinator holds no clock. */
   now?: () => number;
-  createScheduler?: (hz: number) => TelemetryScheduler;
+  /** Injects the repaint loop. Defaults to requestAnimationFrame. */
+  createScheduler?: () => TelemetryScheduler;
 };
 
-type BucketState = {
-  listeners: Set<TelemetryListener>;
-  scheduler: TelemetryScheduler;
-};
-
-function defaultScheduler(hz: number): TelemetryScheduler {
-  let timer: ReturnType<typeof setInterval> | null = null;
+/**
+ * Since ISA-372 / F11 the cadence is regulated in Go, before projecting and
+ * serializing the frame. This coordinator is purely visual: it holds the
+ * latest snapshot, and repaints subscribers once per animation frame when
+ * something arrived. It never throttles, never buckets by frequency and never
+ * decides which snapshot deserves an update.
+ */
+function defaultScheduler(): TelemetryScheduler {
+  let handle: number | null = null;
+  let stopped = false;
+  const request: (callback: () => void) => number =
+    typeof requestAnimationFrame === "function"
+      ? (callback) => requestAnimationFrame(() => callback())
+      : (callback) => setTimeout(callback, 16) as unknown as number;
+  const cancel: (id: number) => void =
+    typeof cancelAnimationFrame === "function"
+      ? (id) => cancelAnimationFrame(id)
+      : (id) => clearTimeout(id as unknown as ReturnType<typeof setTimeout>);
   return {
-    start(onTick) {
-      if (timer) {
+    start(onFrame) {
+      if (handle !== null || stopped) {
         return;
       }
-      const intervalMs = Math.max(1, Math.round(1000 / hz));
-      timer = setInterval(onTick, intervalMs);
+      const loop = () => {
+        onFrame();
+        if (!stopped) {
+          handle = request(loop);
+        }
+      };
+      handle = request(loop);
     },
     stop() {
-      if (!timer) {
+      stopped = true;
+      if (handle === null) {
         return;
       }
-      clearInterval(timer);
-      timer = null;
+      cancel(handle);
+      handle = null;
     },
   };
-}
-
-function isImmediateStatus(status: TelemetrySnapshot["status"]): boolean {
-  return status === "stale" || status === "disconnected" || status === "error";
 }
 
 function emptySnapshot(): TelemetrySnapshot {
@@ -65,43 +86,47 @@ export function createTelemetryRateCoordinator(
   const createScheduler = options.createScheduler ?? defaultScheduler;
   let latest = emptySnapshot();
   const derived = createDerivedTelemetryStore();
-  const buckets = new Map<number, BucketState>();
+  const listeners = new Set<TelemetryListener>();
+  let scheduler: TelemetryScheduler | null = null;
+  let pending = false;
 
-  const notifyBucket = (bucket: BucketState) => {
-    for (const listener of bucket.listeners) {
+  const paint = () => {
+    if (!pending) {
+      return;
+    }
+    pending = false;
+    for (const listener of listeners) {
       listener();
     }
   };
 
-  const ensureBucket = (hz: number): BucketState => {
-    const existing = buckets.get(hz);
-    if (existing) {
-      return existing;
+  const ensureScheduler = () => {
+    if (scheduler) {
+      return;
     }
-    const scheduler = createScheduler(hz);
-    const bucket: BucketState = {
-      listeners: new Set(),
-      scheduler,
-    };
-    scheduler.start(() => {
-      notifyBucket(bucket);
-    });
-    buckets.set(hz, bucket);
-    return bucket;
+    scheduler = createScheduler();
+    scheduler.start(paint);
+  };
+
+  const releaseScheduler = () => {
+    if (!scheduler) {
+      return;
+    }
+    scheduler.stop();
+    scheduler = null;
   };
 
   return {
     getSnapshot() {
       return latest;
     },
-    subscribe(hz, listener) {
-      const bucket = ensureBucket(hz);
-      bucket.listeners.add(listener);
+    subscribe(_hz, listener) {
+      ensureScheduler();
+      listeners.add(listener);
       return () => {
-        bucket.listeners.delete(listener);
-        if (bucket.listeners.size === 0) {
-          bucket.scheduler.stop();
-          buckets.delete(hz);
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          releaseScheduler();
         }
       };
     },
@@ -115,19 +140,12 @@ export function createTelemetryRateCoordinator(
           deltaHistory: derived.getDeltaHistory(),
         },
       };
-      if (!isImmediateStatus(snapshot.status)) {
-        return;
-      }
-      for (const bucket of buckets.values()) {
-        notifyBucket(bucket);
-      }
+      pending = true;
     },
     dispose() {
-      for (const bucket of buckets.values()) {
-        bucket.scheduler.stop();
-        bucket.listeners.clear();
-      }
-      buckets.clear();
+      releaseScheduler();
+      listeners.clear();
+      pending = false;
       derived.dispose();
     },
   };

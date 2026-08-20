@@ -498,3 +498,180 @@ func containsAny(value string, candidates []string) bool {
 	}
 	return false
 }
+
+// TestFreshnessGateAsymmetricHysteresis fija la histeresis del gate paso a
+// paso: entrada inmediata al alcanzar el limite, salida solo tras la ventana
+// completa de avances sostenidos.
+func TestFreshnessGateAsymmetricHysteresis(t *testing.T) {
+	const limit = 500 * time.Millisecond
+	const window = 2 * time.Second
+
+	type step struct {
+		elapsed   time.Duration
+		source    time.Duration
+		wantStale bool
+	}
+	tests := []struct {
+		name  string
+		steps []step
+	}{
+		{
+			name: "parada larga entra en stale al alcanzar el limite",
+			steps: []step{
+				{elapsed: 0, source: time.Second},
+				{elapsed: 100 * time.Millisecond, source: time.Second},
+				{elapsed: 400 * time.Millisecond, source: time.Second},
+				{elapsed: 499 * time.Millisecond, source: time.Second},
+				{elapsed: 500 * time.Millisecond, source: time.Second, wantStale: true},
+			},
+		},
+		{
+			name: "la recuperacion exige la ventana completa",
+			steps: []step{
+				{elapsed: 0, source: time.Second},
+				{elapsed: 500 * time.Millisecond, source: time.Second, wantStale: true},
+				// Avance a los 100 ms de entrar en stale: no devuelve live.
+				{elapsed: 600 * time.Millisecond, source: 1200 * time.Millisecond, wantStale: true},
+				{elapsed: 1 * time.Second, source: 1600 * time.Millisecond, wantStale: true},
+				{elapsed: 2599 * time.Millisecond, source: 3 * time.Second, wantStale: true},
+				{elapsed: 2600 * time.Millisecond, source: 3200 * time.Millisecond},
+			},
+		},
+		{
+			name: "una parada dentro de la ventana reinicia la recuperacion",
+			steps: []step{
+				{elapsed: 0, source: time.Second},
+				{elapsed: 500 * time.Millisecond, source: time.Second, wantStale: true},
+				{elapsed: 600 * time.Millisecond, source: 1200 * time.Millisecond, wantStale: true},
+				// Parada de 500 ms dentro de la ventana: reinicia el contador.
+				{elapsed: 1100 * time.Millisecond, source: 1200 * time.Millisecond, wantStale: true},
+				{elapsed: 1200 * time.Millisecond, source: 1400 * time.Millisecond, wantStale: true},
+				// Sin el reinicio esto ya seria live (600 ms + 2 s).
+				{elapsed: 2600 * time.Millisecond, source: 2800 * time.Millisecond, wantStale: true},
+				{elapsed: 3200 * time.Millisecond, source: 3400 * time.Millisecond},
+			},
+		},
+		{
+			name: "el remanente congelado permanece stale para siempre",
+			steps: []step{
+				{elapsed: 0, source: 4 * time.Second},
+				{elapsed: 500 * time.Millisecond, source: 4 * time.Second, wantStale: true},
+				{elapsed: 30 * time.Second, source: 4 * time.Second, wantStale: true},
+				{elapsed: 5 * time.Minute, source: 4 * time.Second, wantStale: true},
+				{elapsed: 30 * time.Minute, source: 4 * time.Second, wantStale: true},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gate := freshnessGate{limit: limit, recoveryWindow: window}
+			for index, current := range tt.steps {
+				if got := gate.observe(current.elapsed, current.source); got != current.wantStale {
+					t.Fatalf("paso %d (elapsed=%v source=%v): stale = %v, want %v", index, current.elapsed, current.source, got, current.wantStale)
+				}
+			}
+		})
+	}
+}
+
+// TestFreshnessGateDoesNotFlapUnderLoad reproduce cadencias irregulares del
+// bloque de sesion y comprueba que no hay rafagas de transiciones.
+func TestFreshnessGateDoesNotFlapUnderLoad(t *testing.T) {
+	const limit = 500 * time.Millisecond
+	const window = 2 * time.Second
+	const poll = 50 * time.Millisecond
+
+	tests := []struct {
+		name          string
+		intervals     []time.Duration
+		wantToStale   int
+		wantToFresh   int
+		wantFinalFlag bool
+	}{
+		{
+			name: "parada marginal unica seguida de cadencia sana",
+			intervals: append(
+				[]time.Duration{200 * time.Millisecond, 200 * time.Millisecond, 550 * time.Millisecond},
+				repeatInterval(200*time.Millisecond, 40)...,
+			),
+			wantToStale: 1,
+			wantToFresh: 1,
+		},
+		{
+			name:        "carga 54 IA con avances irregulares",
+			intervals:   loadPatternIntervals(60),
+			wantToStale: 1,
+			wantToFresh: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gate := freshnessGate{limit: limit, recoveryWindow: window}
+			var elapsed, source, nextUpdate time.Duration
+			index := 0
+			stale := gate.observe(0, source)
+			if stale {
+				t.Fatalf("estado inicial stale")
+			}
+			nextUpdate = tt.intervals[0]
+			toStale, toFresh := 0, 0
+			total := time.Duration(0)
+			for _, interval := range tt.intervals {
+				total += interval
+			}
+			for elapsed < total {
+				elapsed += poll
+				for index < len(tt.intervals) && elapsed >= nextUpdate {
+					source += tt.intervals[index]
+					index++
+					if index < len(tt.intervals) {
+						nextUpdate += tt.intervals[index]
+					}
+				}
+				current := gate.observe(elapsed, source)
+				switch {
+				case current && !stale:
+					toStale++
+				case !current && stale:
+					toFresh++
+				}
+				stale = current
+			}
+			if toStale != tt.wantToStale || toFresh != tt.wantToFresh {
+				t.Fatalf("transiciones a stale = %d (want %d), a fresh = %d (want %d)", toStale, tt.wantToStale, toFresh, tt.wantToFresh)
+			}
+			if stale != tt.wantFinalFlag {
+				t.Fatalf("estado final stale = %v, want %v", stale, tt.wantFinalFlag)
+			}
+		})
+	}
+}
+
+func repeatInterval(value time.Duration, count int) []time.Duration {
+	result := make([]time.Duration, count)
+	for index := range result {
+		result[index] = value
+	}
+	return result
+}
+
+// loadPatternIntervals reproduce la cadencia observada con 54 coches de IA:
+// avances irregulares entre 300 y 700 ms durante la carga y vuelta a 200 ms
+// cuando el simulador se descongestiona.
+func loadPatternIntervals(count int) []time.Duration {
+	pattern := []time.Duration{
+		300 * time.Millisecond,
+		650 * time.Millisecond,
+		420 * time.Millisecond,
+		700 * time.Millisecond,
+		380 * time.Millisecond,
+		540 * time.Millisecond,
+		310 * time.Millisecond,
+		690 * time.Millisecond,
+	}
+	result := make([]time.Duration, 0, count+40)
+	for index := 0; index < count; index++ {
+		result = append(result, pattern[index%len(pattern)])
+	}
+	return append(result, repeatInterval(200*time.Millisecond, 40)...)
+}

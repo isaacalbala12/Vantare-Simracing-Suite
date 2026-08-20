@@ -154,7 +154,9 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
     def test_geometry_matches_the_productive_420px_css_grid(self):
         panel = self.component("common/Panel.qml", {"width": 420, "height": 100})
         content = self.child(panel, "panelContent")
-        self.assertEqual((8.0, 8.0, 404.0), (content.x(), content.y(), content.width()))
+        # CSS .ven-red-block uses content-box sizing: border + padding consume
+        # 18 px of the 420 px outer block, leaving a 402 px content box.
+        self.assertEqual((9.0, 9.0, 402.0), (content.x(), content.y(), content.width()))
         self.assertEqual((10.0, 32, 0.8125), (
             panel.property("shadowVerticalOffset"), panel.property("shadowBlurMax"),
             panel.property("shadowBlur"),
@@ -165,7 +167,7 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
             "shadowVerticalOffset": 6, "shadowOpacity": 0.3,
         })
         compact_content = self.child(compact, "panelContent")
-        self.assertEqual((7.0, 7.0, 186.0), (
+        self.assertEqual((8.0, 8.0, 184.0), (
             compact_content.x(), compact_content.y(), compact_content.width(),
         ))
         self.assertEqual((6.0, 7.0, 0.55, 18.0, 6.0, 0.3), (

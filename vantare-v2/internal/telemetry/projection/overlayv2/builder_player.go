@@ -72,7 +72,7 @@ func ProjectV2(
 		},
 		Session:      BuildSession(final),
 		Player:       BuildPlayerInstruments(final, preferences),
-		Standings:    make([]StandingRowV2, 0),
+		Standings:    BuildStandings(final),
 		Relative:     make([]RelativeRowV2, 0),
 		Delta:        DeltaViewV2{Seconds: missingValue[float64](), Available: make([]string, 0)},
 		Fuel:         FuelViewV2{Remaining: missingValue[float64](), Capacity: missingValue[float64](), PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64]()},

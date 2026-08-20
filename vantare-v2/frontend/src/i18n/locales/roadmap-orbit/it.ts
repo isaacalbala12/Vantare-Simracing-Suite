@@ -1,11 +1,11 @@
 /** Catalogo `roadmap.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
     Vista «Cosa arriva» (D-R3-F-1): una colonna narrativa ORA / PROSSIMO / FATTO.
-    Solo etichette: fasi e traguardi vengono da `docs/roadmap-source.json`. */
+    Solo etichette: fasi e traguardi vengono da `docs/roadmap/roadmap.json`. */
 export const roadmapOrbitIt: Record<string, string> = {
   "roadmap.eyebrow": "Direzione del prodotto",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "Ciò su cui si sta lavorando ora, ciò che arriva dopo e ciò che è già pubblicato, così come lo dichiara docs/roadmap-source.json.",
+    "Ciò su cui si sta lavorando ora, ciò che arriva dopo e ciò che è già pubblicato, così come lo dichiara docs/roadmap/plan.md.",
 
   "roadmap.source.loading": "Caricamento della fonte…",
   "roadmap.source.ok": "Fonte disponibile · {{version}}",
@@ -34,6 +34,15 @@ export const roadmapOrbitIt: Record<string, string> = {
   "roadmap.done.summary": "{{phases}} fasi · {{releases}} pubblicati",
   "roadmap.done.none": "La fonte non dichiara nessuna fase completata.",
   "roadmap.done.released": "Pubblicato",
+
+  "roadmap.delivered.title": "Consegnato di recente",
+  "roadmap.delivered.note":
+    "{{n}} modifiche lette dai commit già uniti in nightly, non dal piano.",
+  "roadmap.delivered.kind.feat": "Novità",
+  "roadmap.delivered.kind.fix": "Correzione",
+  "roadmap.delivered.kind.perf": "Prestazioni",
+  "roadmap.delivered.kind.docs": "Documentazione",
+  "roadmap.delivered.kind.change": "Modifica",
 
   "roadmap.derived": "derivato",
   "roadmap.derivedNote":

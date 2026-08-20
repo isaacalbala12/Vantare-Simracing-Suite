@@ -402,3 +402,67 @@
     transition: none;
   }
 }
+
+/* ── Entregado recientemente ──────────────────────────────────────────────
+   Registro leído de los commits mergeados a nightly. Se lee como un
+   changelog compacto: un día, y bajo él sus entregas con el tipo por delante.
+   Deliberadamente más callado que las fases: es contexto, no dirección. */
+.orbit-rm__delivered {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__delivered > li + li {
+  margin-top: 14px;
+}
+
+.orbit-rm__delivered > li > b {
+  display: block;
+  color: var(--orbit-ink-muted);
+  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orbit-rm__delivered ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-rm__delivered ul li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-top: 1px solid var(--orbit-line, rgba(255, 255, 255, 0.06));
+}
+
+.orbit-rm__delivered em {
+  flex: 0 0 auto;
+  min-width: 92px;
+  color: var(--orbit-rm-kind, var(--orbit-ink-muted));
+  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-rm__delivered em[data-kind="feat"] {
+  --orbit-rm-kind: var(--orbit-green);
+}
+
+.orbit-rm__delivered em[data-kind="fix"] {
+  --orbit-rm-kind: var(--orbit-red);
+}
+
+.orbit-rm__delivered em[data-kind="perf"] {
+  --orbit-rm-kind: var(--orbit-ember);
+}
+
+.orbit-rm__delivered span {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+}

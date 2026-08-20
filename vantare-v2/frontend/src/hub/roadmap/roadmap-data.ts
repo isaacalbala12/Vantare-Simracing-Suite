@@ -1,14 +1,21 @@
 // Datos del roadmap.
 //
-// Fuente de verdad MANUAL: docs/roadmap-source.json (editado por Isaac). La app
-// lo trae por fetch en runtime (ver fetchRoadmapDataset). NO hay script que
-// regenere estos datos desde otros documentos: se transcriben a mano.
+// Fuente de verdad MANUAL: `docs/roadmap/plan.md` (lo escribe una persona). De
+// ahi sale `docs/roadmap/roadmap.json`, que genera
+// `.github/scripts/roadmap_digest.py` combinando el plan con los commits ya
+// mergeados a nightly. Ese artefacto es lo que se empaqueta aqui: la pantalla
+// ya no lleva fases escritas a mano.
 //
-// El texto de las cards vive INLINE en el JSON fuente (es/en/pt/it), no en los
+// El texto de las cards vive INLINE en el JSON (es/en/pt/it), no en los
 // diccionarios i18n. El "chrome" de la UI (eyebrows, labels, feedback, hero)
-// sigue en i18n. ROADMAP_FALLBACK es una copia empaquetada para uso sin red.
+// sigue en i18n.
 //
-// Procedimiento y flujo manual: docs/roadmap-maintenance.md.
+// En runtime la app sigue prefiriendo la copia publicada en master
+// (`ROADMAP_SOURCE_URL`); la empaquetada es la que se usa sin red.
+//
+// Procedimiento: `docs/roadmap/plan.md` y `docs/roadmap-maintenance.md`.
+
+import generatedRoadmapJson from "../../../../docs/roadmap/roadmap.json";
 
 export type RoadmapStatus = "done" | "in-progress" | "planned" | "future";
 
@@ -54,17 +61,46 @@ export type RoadmapMilestone = {
   label: LocalizedText;
 };
 
+/**
+ * Tipo de una entrega leida de un commit. `change` es lo que queda cuando el
+ * asunto no declara un tipo convencional: el generador no adivina uno.
+ */
+export type RoadmapDeliveredKind = "feat" | "fix" | "perf" | "docs" | "change";
+
+export type RoadmapDeliveredEntry = {
+  kind: RoadmapDeliveredKind;
+  /** Ambito del commit (`hub`, `overlay`...). Vacio si el asunto no lo declara. */
+  scope: string;
+  /** Asunto del commit, ya limpio de codigo de issue y numero de PR. */
+  text: string;
+  breaking?: boolean;
+};
+
+/** Un dia de entregas, tal y como lo agrupa el generador. */
+export type RoadmapDeliveredDay = {
+  /** ISO `YYYY-MM-DD`. */
+  date: string;
+  entries: ReadonlyArray<RoadmapDeliveredEntry>;
+};
+
 export type RoadmapDataset = {
   phases: ReadonlyArray<RoadmapPhase>;
   areas: ReadonlyArray<RoadmapArea>;
   milestones: ReadonlyArray<RoadmapMilestone>;
+  /**
+   * Lo mergeado a nightly ultimamente, de mas reciente a mas antiguo. Sale de
+   * los commits, no del plan manual, y por eso la pantalla lo presenta aparte
+   * en vez de mezclarlo con las fases.
+   */
+  delivered: ReadonlyArray<RoadmapDeliveredDay>;
 };
 
-// URL de la fuente manual. Apunta al JSON en el repo (raw GitHub). Cambiable
-// sin tocar código: si más adelante usas un Google Doc exportado a JSON o
-// Supabase Storage, solo sustituyes esta constante.
+// Copia publicada del MISMO artefacto que se empaqueta aquí. Apunta a
+// `nightly` porque es donde la tarea programada deja el digest al día; una
+// build antigua puede así enseñar entregas posteriores a su propia fecha.
+// Cambiable sin tocar código: solo se sustituye esta constante.
 export const ROADMAP_SOURCE_URL =
-  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-source.json";
+  "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/nightly/vantare-v2/docs/roadmap/roadmap.json";
 
 // Escala obligatoria de porcentajes (docs/roadmap-maintenance.md §3).
 export const PROGRESS_SCALE = [0, 10, 25, 50, 75, 100] as const;
@@ -164,115 +200,20 @@ export function pickText(text: LocalizedText, locale: string): string {
   return text?.es ?? "";
 }
 
-// Fallback empaquetado (copia de docs/roadmap-source.json) para cuando no hay
-// red. Debe mantenerse sincronizado manualmente con la fuente remota.
-export const ROADMAP_FALLBACK: RoadmapDataset = {
-  phases: [
-    {
-      id: "beta-foundation",
-      phaseLabel: { es: "Fase 1", en: "Phase 1", pt: "Fase 1", it: "Fase 1" },
-      title: { es: "Beta pública", en: "Public beta", pt: "Beta pública", it: "Beta pubblica" },
-      target: { es: "v0.1.0", en: "v0.1.0", pt: "v0.1.0", it: "v0.1.0" },
-      status: "done",
-      progress: 100,
-      summary: { es: "Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.", en: "Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.", pt: "Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.", it: "Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2." },
-      highlights: [
-        { es: "Google OAuth externo y sesión persistente", en: "External Google OAuth and persistent session", pt: "Google OAuth externo e sessão persistente", it: "Google OAuth esterno e sessione persistente" },
-        { es: "Perfiles recomendados y editor de overlays", en: "Recommended profiles and overlay editor", pt: "Perfis recomendados e editor de overlays", it: "Profili consigliati e editor di overlay" },
-        { es: "Launcher LMU básico", en: "Basic LMU launcher", pt: "Launcher LMU básico", it: "Launcher LMU di base" },
-      ],
-    },
-    {
-      id: "beta-iteration",
-      phaseLabel: { es: "Fase 2", en: "Phase 2", pt: "Fase 2", it: "Fase 2" },
-      title: { es: "Pulido beta v0.1.x", en: "Beta polish v0.1.x", pt: "Polimento beta v0.1.x", it: "Polish beta v0.1.x" },
-      target: { es: "v0.1.x", en: "v0.1.x", pt: "v0.1.x", it: "v0.1.x" },
-      status: "in-progress",
-      progress: 75,
-      summary: { es: "Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.", en: "Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.", pt: "Overlay Studio V3, telemetria LMU ao vivo, licenças com credencial offline e Launcher com cadeias de lançamento.", it: "Overlay Studio V3, telemetria LMU dal vivo, licenze con credenziale offline e Launcher con catene di avvio." },
-      highlights: [
-        { es: "Overlay Studio V3 con los catálogos Crystal, Neo y Endurance", en: "Overlay Studio V3 with the Crystal, Neo and Endurance catalogues", pt: "Overlay Studio V3 com os catálogos Crystal, Neo e Endurance", it: "Overlay Studio V3 con i cataloghi Crystal, Neo ed Endurance" },
-        { es: "Telemetría LMU en vivo con transporte compartido y proyecciones", en: "Live LMU telemetry with a shared transport and projections", pt: "Telemetria LMU ao vivo com transporte partilhado e projeções", it: "Telemetria LMU dal vivo con trasporto condiviso e proiezioni" },
-        { es: "Licencias con credencial offline y arranque desde caché", en: "Licensing with offline credentials and cache-first startup", pt: "Licenças com credencial offline e arranque a partir da cache", it: "Licenze con credenziale offline e avvio dalla cache" },
-        { es: "Launcher con detección de apps y cadenas de lanzamiento", en: "Launcher with app detection and launch chains", pt: "Launcher com deteção de apps e cadeias de lançamento", it: "Launcher con rilevamento app e catene di avvio" },
-      ],
-    },
-    {
-      id: "engineer",
-      phaseLabel: { es: "Fase 3", en: "Phase 3", pt: "Fase 3", it: "Fase 3" },
-      title: { es: "Ingeniero y estrategia", en: "Engineer and strategy", pt: "Engenheiro e estratégia", it: "Engineer e strategia" },
-      target: { es: "Por planear", en: "To plan", pt: "Por planear", it: "Da pianificare" },
-      status: "planned",
-      progress: 25,
-      summary: { es: "Ingeniero y estrategia con avisos útiles sobre datos ya validados; la voz llega cuando los datos la sostengan.", en: "Engineer and strategy with useful alerts over validated data; voice arrives once the data supports it.", pt: "Engenheiro e estratégia com avisos úteis sobre dados validados; a voz chega quando os dados a sustentarem.", it: "Engineer e strategia con avvisi utili su dati validati; la voce arriva quando i dati la sostengono." },
-      highlights: [
-        { es: "Proyecciones de ingeniero y estrategia sobre telemetría real", en: "Engineer and strategy projections over real telemetry", pt: "Projeções de engenheiro e estratégia sobre telemetria real", it: "Proiezioni engineer e strategia su telemetria reale" },
-        { es: "Reglas locales primero", en: "Local rules first", pt: "Regras locais primeiro", it: "Regole locali prima" },
-        { es: "Voz y perfiles avanzados después", en: "Voice and advanced profiles later", pt: "Voz e perfis avançados depois", it: "Voce e profili avanzati dopo" },
-      ],
-    },
-    {
-      id: "ecosystem",
-      phaseLabel: { es: "Fase 4", en: "Phase 4", pt: "Fase 4", it: "Fase 4" },
-      title: { es: "Ecosistema", en: "Ecosystem", pt: "Ecossistema", it: "Ecosistema" },
-      target: { es: "Futuro", en: "Future", pt: "Futuro", it: "Futuro" },
-      status: "future",
-      progress: 10,
-      summary: { es: "Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.", en: "Community, paid plans, multisim and real analytics once the base is stable.", pt: "Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.", it: "Community, piani a pagamento, multisim e analitiche reali quando la base è stabile." },
-      highlights: [
-        { es: "Comunidad de overlays", en: "Overlay community", pt: "Comunidade de overlays", it: "Community di overlay" },
-        { es: "Planes de pago y suite reales", en: "Real paid and suite plans", pt: "Planos pagos e suite reais", it: "Piani a pagamento e suite reali" },
-        { es: "Datos reales de carrera y progresión", en: "Real race and progression data", pt: "Dados reais de corrida e progressão", it: "Dati reali di gara e progressione" },
-      ],
-    },
-  ],
-  areas: [
-    { id: "overlays-studio", title: { es: "Overlays Studio", en: "Overlays Studio", pt: "Overlays Studio", it: "Overlays Studio" }, progress: 75, status: "in-progress", projects: ["overlay-studio-v3"] },
-    { id: "launcher-lmu", title: { es: "Launcher", en: "Launcher", pt: "Launcher", it: "Launcher" }, progress: 75, status: "in-progress", projects: ["launcher"] },
-    { id: "telemetry", title: { es: "Telemetría", en: "Telemetry", pt: "Telemetria", it: "Telemetria" }, progress: 25, status: "in-progress", projects: ["telemetry-core", "telemetry-analysis"] },
-    { id: "calendar-local", title: { es: "Calendario", en: "Calendar", pt: "Calendário", it: "Calendario" }, progress: 50, status: "in-progress", projects: ["calendar"] },
-    { id: "engineer", title: { es: "Ingeniero", en: "Engineer", pt: "Engenheiro", it: "Engineer" }, progress: 25, status: "planned", projects: ["engineer-spotter"] },
-    { id: "strategy", title: { es: "Estrategia", en: "Strategy", pt: "Estratégia", it: "Strategia" }, progress: 25, status: "in-progress", projects: ["strategy-planner"] },
-    { id: "licensing", title: { es: "Licencias y cuenta", en: "Licensing and account", pt: "Licenças e conta", it: "Licenze e account" }, progress: 50, status: "in-progress", projects: ["billing"] },
-  ],
-  milestones: [
-    {
-      id: "v0105",
-      type: "release",
-      title: { es: "v0.1.0.5 en nightly", en: "v0.1.0.5 on nightly", pt: "v0.1.0.5 em nightly", it: "v0.1.0.5 su nightly" },
-      body: { es: "Lote de launcher de Windows, paneles del hub, servicios internos y documentación de marca y diseño.", en: "Windows launcher batch, hub panels, internal services and brand and design documentation.", pt: "Lote de launcher do Windows, painéis do hub, serviços internos e documentação de marca e design.", it: "Lotto di launcher Windows, pannelli hub, servizi interni e documentazione di brand e design." },
-      label: { es: "Release", en: "Release", pt: "Release", it: "Release" },
-    },
-    {
-      id: "overlay-studio-v3",
-      type: "feature",
-      title: { es: "Overlay Studio V3 en marcha", en: "Overlay Studio V3 under way", pt: "Overlay Studio V3 em curso", it: "Overlay Studio V3 in corso" },
-      body: { es: "Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.", en: "A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.", pt: "Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.", it: "Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance." },
-      label: { es: "En desarrollo", en: "In progress", pt: "Em desenvolvimento", it: "In corso" },
-    },
-    {
-      id: "telemetry-live",
-      type: "feature",
-      title: { es: "Telemetria LMU en vivo", en: "Live LMU telemetry", pt: "Telemetria LMU ao vivo", it: "Telemetria LMU dal vivo" },
-      body: { es: "Driver LMU con reconexión acotada, transporte compartido entre ventanas y proyecciones de overlay, ingeniero y estrategia.", en: "LMU driver with bounded reconnects, a transport shared across windows and overlay, engineer and strategy projections.", pt: "Driver LMU com reconexão limitada, transporte partilhado entre janelas e projeções de overlay, engenheiro e estratégia.", it: "Driver LMU con riconnessione limitata, trasporto condiviso tra finestre e proiezioni di overlay, engineer e strategia." },
-      label: { es: "En desarrollo", en: "In progress", pt: "Em desenvolvimento", it: "In corso" },
-    },
-    {
-      id: "licensing-offline",
-      type: "feature",
-      title: { es: "Licencias con credencial offline", en: "Licensing with offline credentials", pt: "Licencas com credencial offline", it: "Licenze con credenziale offline" },
-      body: { es: "La app arranca desde la credencial en caché y verifica sin red, de modo que una caída del servicio no cierra la sesión.", en: "The app starts from the cached credential and verifies offline, so a service outage does not sign you out.", pt: "A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.", it: "L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione." },
-      label: { es: "Feature", en: "Feature", pt: "Feature", it: "Feature" },
-    },
-    {
-      id: "channels",
-      type: "plan",
-      title: { es: "Canales nightly y testers", en: "Nightly and testers channels", pt: "Canais nightly e testers", it: "Canali nightly e tester" },
-      body: { es: "Tres canales de actualización (estable, testers y nightly) con acceso según el rol de la cuenta.", en: "Three update channels (stable, testers and nightly) with access driven by the account role.", pt: "Três canais de atualização (estável, testers e nightly) com acesso conforme o papel da conta.", it: "Tre canali di aggiornamento (stabile, tester e nightly) con accesso in base al ruolo dell'account." },
-      label: { es: "Plan", en: "Plan", pt: "Plano", it: "Piano" },
-    },
-  ],
+// Copia empaquetada del artefacto generado. Se usa cuando no hay red y como
+// base de la pantalla: es exactamente lo que produjo el ultimo digest, no una
+// transcripcion a mano que pueda divergir.
+export const ROADMAP_FALLBACK: RoadmapDataset = normalizeRoadmapSource(generatedRoadmapJson) ?? {
+  phases: [],
+  areas: [],
+  milestones: [],
+  delivered: [],
 };
+
+/** Momento en que se genero la copia empaquetada (ISO 8601). */
+export const ROADMAP_GENERATED_AT: string = String(
+  (generatedRoadmapJson as { generatedAt?: unknown }).generatedAt ?? "",
+);
 
 // Trae la fuente manual remota. Si falla (sin red, JSON roto, timeout),
 // devuelve el fallback empaquetado. Nunca lanza.
@@ -336,8 +277,33 @@ function normalizeRoadmapSource(raw: unknown): RoadmapDataset | null {
       body: asText(m.body),
       label: asText(m.label),
     }));
+  const delivered = Array.isArray(obj.delivered)
+    ? (obj.delivered as unknown[])
+        .filter((d): d is Record<string, unknown> => !!d && typeof d === "object")
+        .map((d) => ({
+          date: String(d.date ?? ""),
+          entries: Array.isArray(d.entries)
+            ? (d.entries as unknown[])
+                .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+                .map((e) => ({
+                  kind: asDeliveredKind(e.kind),
+                  scope: String(e.scope ?? ""),
+                  text: String(e.text ?? ""),
+                  ...(e.breaking === true ? { breaking: true as const } : {}),
+                }))
+                .filter((e) => e.text.length > 0)
+            : [],
+        }))
+        .filter((d) => d.date.length > 0 && d.entries.length > 0)
+    : [];
   if (phases.length === 0 || areas.length === 0) return null;
-  return { phases, areas, milestones };
+  return { phases, areas, milestones, delivered };
+}
+
+function asDeliveredKind(v: unknown): RoadmapDeliveredKind {
+  const s = String(v);
+  if (s === "feat" || s === "fix" || s === "perf" || s === "docs") return s;
+  return "change";
 }
 
 function asText(v: unknown): LocalizedText {

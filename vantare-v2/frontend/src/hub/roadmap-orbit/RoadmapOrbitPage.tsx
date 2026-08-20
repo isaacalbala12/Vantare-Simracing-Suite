@@ -7,6 +7,8 @@ import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { pickText, ROADMAP_FALLBACK, type RoadmapDataset } from "../roadmap/roadmap-data";
 import {
   buildNarrative,
+  deliveredCount,
+  formatDeliveredDate,
   loadRoadmapSource,
   ROADMAP_SECTIONS,
   sectionCount,
@@ -340,6 +342,42 @@ export function RoadmapOrbitPage({
                     ))}
                   </ol>
                 )}
+
+                {/* Entregado recientemente: lo único de esta pantalla que no
+                    sale del plan manual, sino de los commits mergeados a
+                    nightly. Va aquí abajo y marcado, porque es un registro de
+                    lo que ya pasó, no una promesa. */}
+                {narrative.delivered.length > 0 ? (
+                  <div className="orbit-rm__anchored" data-testid="orbit-roadmap-delivered">
+                    <div className="orbit-rm__anchored-head">
+                      <span className="orbit-eyebrow">{t("roadmap.delivered.title")}</span>
+                      {derivedMark}
+                    </div>
+                    <p className="orbit-rm__note">
+                      {formatMessage(t("roadmap.delivered.note"), {
+                        n: deliveredCount(narrative),
+                      })}
+                    </p>
+                    <ol className="orbit-rm__delivered">
+                      {narrative.delivered.map((day) => (
+                        <li data-testid={`orbit-roadmap-delivered-${day.date}`} key={day.date}>
+                          <b>{formatDeliveredDate(day.date, locale)}</b>
+                          <ul>
+                            {day.entries.map((entry, index) => (
+                              <li key={`${day.date}-${index}`}>
+                                <em data-kind={entry.kind}>
+                                  {t(`roadmap.delivered.kind.${entry.kind}`)}
+                                  {entry.scope ? ` · ${entry.scope}` : ""}
+                                </em>
+                                <span>{entry.text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
 
                 {narrative.doneMilestones.length > 0 ? (
                   <div className="orbit-rm__anchored">

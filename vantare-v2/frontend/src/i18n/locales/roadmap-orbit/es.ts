@@ -1,11 +1,11 @@
 /** Catálogo `roadmap.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
     Vista «Qué viene» (D-R3-F-1): una columna narrativa AHORA / PRÓXIMO / HECHO.
-    Solo rótulos: fases e hitos vienen de `docs/roadmap-source.json`. */
+    Solo rótulos: fases e hitos vienen de `docs/roadmap/roadmap.json`. */
 export const roadmapOrbitEs: Record<string, string> = {
   "roadmap.eyebrow": "Dirección del producto",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "Lo que se está haciendo ahora, lo que viene después y lo ya publicado, tal y como lo declara docs/roadmap-source.json.",
+    "Lo que se está haciendo ahora, lo que viene después y lo ya publicado, tal y como lo declara docs/roadmap/plan.md.",
 
   "roadmap.source.loading": "Cargando la fuente…",
   "roadmap.source.ok": "Fuente disponible · {{version}}",
@@ -34,6 +34,15 @@ export const roadmapOrbitEs: Record<string, string> = {
   "roadmap.done.summary": "{{phases}} fases · {{releases}} publicados",
   "roadmap.done.none": "La fuente no declara ninguna fase completada.",
   "roadmap.done.released": "Publicado",
+
+  "roadmap.delivered.title": "Entregado recientemente",
+  "roadmap.delivered.note":
+    "{{n}} cambios leídos de los commits ya mergeados a nightly, no del plan.",
+  "roadmap.delivered.kind.feat": "Novedad",
+  "roadmap.delivered.kind.fix": "Corrección",
+  "roadmap.delivered.kind.perf": "Rendimiento",
+  "roadmap.delivered.kind.docs": "Documentación",
+  "roadmap.delivered.kind.change": "Cambio",
 
   "roadmap.derived": "derivado",
   "roadmap.derivedNote":

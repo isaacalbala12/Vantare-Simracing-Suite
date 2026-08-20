@@ -8,6 +8,7 @@ import {
   nearestOnScale,
   PROGRESS_SCALE,
   ROADMAP_FALLBACK,
+  ROADMAP_GENERATED_AT,
   ROADMAP_CHANGELOG,
   ROADMAP_FEEDBACK_LINKS,
   ROADMAP_CHANGELOG_URL,
@@ -83,6 +84,24 @@ describe("ROADMAP_FALLBACK dataset", () => {
     const count = ROADMAP_FALLBACK.phases.filter((p) => p.status === "in-progress").length;
     expect(count).toBe(1);
   });
+  // The packaged dataset is the artefact the digest writes, not a hand copy,
+  // so it must carry the part of it no human writes: the delivered window.
+  it("carries the delivered window, newest day first", () => {
+    expect(ROADMAP_FALLBACK.delivered.length).toBeGreaterThan(0);
+    const dates = ROADMAP_FALLBACK.delivered.map((day) => day.date);
+    expect([...dates].sort().reverse()).toEqual(dates);
+    for (const day of ROADMAP_FALLBACK.delivered) {
+      expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(day.entries.length).toBeGreaterThan(0);
+      for (const entry of day.entries) {
+        expect(entry.text.length).toBeGreaterThan(0);
+        expect(["feat", "fix", "perf", "docs", "change"]).toContain(entry.kind);
+      }
+    }
+  });
+  it("was generated, and says when", () => {
+    expect(ROADMAP_GENERATED_AT).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });
 
 describe("ROADMAP changelog + feedback links", () => {
@@ -98,9 +117,9 @@ describe("ROADMAP changelog + feedback links", () => {
       "https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/master/vantare-v2/docs/changelog.md",
     );
   });
-  it("source url points to the manual roadmap json", () => {
+  it("source url points to the generated roadmap artefact on nightly", () => {
     expect(ROADMAP_SOURCE_URL).toBe(
-      "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/master/vantare-v2/docs/roadmap-source.json",
+      "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/nightly/vantare-v2/docs/roadmap/roadmap.json",
     );
   });
 });

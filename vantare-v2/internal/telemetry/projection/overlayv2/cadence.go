@@ -256,7 +256,7 @@ func DefaultSectionBuilders() SectionBuilders {
 			return BuildSession(final)
 		},
 		Capabilities: func(final derive.FinalState, _ PreferencesV2, source SourceContextV2) CapabilitiesV2 {
-			return BuildCapabilities(final, source.DescriptorCapabilities)
+			return BuildCapabilities(final, source)
 		},
 		Delta: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) DeltaViewV2 {
 			return BuildDelta(final, preferences)

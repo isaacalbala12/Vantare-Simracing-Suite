@@ -43,7 +43,7 @@ func TestDamageIsNotACapabilityBecauseTheCanonicalHasNoDamageSignal(t *testing.T
 	if !ok {
 		t.Fatal("missing final state")
 	}
-	capabilities := BuildCapabilities(final, builderSourceContext().DescriptorCapabilities)
+	capabilities := BuildCapabilities(final, builderSourceContext())
 	for _, capability := range capabilities.Supported {
 		if strings.Contains(capability, "damage") {
 			t.Fatalf("damage is declared supported (%q) with no canonical signal behind it", capability)

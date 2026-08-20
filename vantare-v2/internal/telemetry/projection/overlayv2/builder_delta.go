@@ -47,19 +47,8 @@ var deltaReferencePriority = [3]string{
 // declared missing rather than invented.
 func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 {
 	preferences = normalizedPreferences(preferences)
-	delta := final.Derived.Delta
-	candidates := map[string]schema.Field[session.DeltaSeconds]{
-		DeltaReferencePersonalBest: delta.PersonalBest,
-		DeltaReferenceSessionBest:  delta.SessionBest,
-		DeltaReferencePreviousLap:  delta.PreviousLap,
-	}
-
-	available := make([]string, 0, len(deltaReferencePriority))
-	for _, name := range deltaReferencePriority {
-		if usableDeltaSeconds(candidates[name]) {
-			available = append(available, name)
-		}
-	}
+	candidates := deltaReferenceCandidates(final)
+	available := AvailableDeltaReferences(final)
 
 	requested := preferences.DeltaReference
 	effective := ""
@@ -82,6 +71,30 @@ func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 
 	result.Seconds = qualityValue(field, func(value session.DeltaSeconds) float64 { return float64(value) })
 	result.Authority = deltaAuthority(field)
 	return result
+}
+
+func deltaReferenceCandidates(final derive.FinalState) map[string]schema.Field[session.DeltaSeconds] {
+	delta := final.Derived.Delta
+	return map[string]schema.Field[session.DeltaSeconds]{
+		DeltaReferencePersonalBest: delta.PersonalBest,
+		DeltaReferenceSessionBest:  delta.SessionBest,
+		DeltaReferencePreviousLap:  delta.PreviousLap,
+	}
+}
+
+// AvailableDeltaReferences lists, in the documented priority order, the delta
+// references that carry a usable value right now. It is the single source for
+// both the delta view and the capability modes the composition root resolves,
+// so the two can never disagree about what the session can answer.
+func AvailableDeltaReferences(final derive.FinalState) []string {
+	candidates := deltaReferenceCandidates(final)
+	available := make([]string, 0, len(deltaReferencePriority))
+	for _, name := range deltaReferencePriority {
+		if usableDeltaSeconds(candidates[name]) {
+			available = append(available, name)
+		}
+	}
+	return available
 }
 
 // usableDeltaSeconds accepts only a present, finite value whose quality can be

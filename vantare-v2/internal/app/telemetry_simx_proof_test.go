@@ -122,6 +122,25 @@ func TestSimXStartsWithoutTouchingWidgets(t *testing.T) {
 	if modes := declared.Modes(); modes.Spatial != capability.SpatialLapDistance || modes.Gaps != capability.GapsEstimated {
 		t.Fatalf("declared modes = %#v", modes)
 	}
+
+	// ISA-679: the published frame now carries the resolved modes, so a
+	// consumer degrades on the mode and never on the simulator name. SimX has
+	// no world coordinates, so the spatial mode is the lap distance it really
+	// publishes; personal-best is excluded by its declaration; the running
+	// order is the simulator's own but the gaps are reconstructed.
+	published := frame.Capabilities.Modes
+	if len(published.Spatial) != 1 || published.Spatial[0] != string(capability.SpatialLapDistance) {
+		t.Fatalf("published spatial modes = %v, want [lap-distance]", published.Spatial)
+	}
+	if slices.Contains(published.Delta, overlayv2.DeltaReferencePersonalBest) {
+		t.Fatalf("published delta modes = %v, want no personal-best for SimX", published.Delta)
+	}
+	if published.Standings != overlayv2.ModeOfficial {
+		t.Fatalf("published standings mode = %q, want official", published.Standings)
+	}
+	if published.Gaps != overlayv2.ModeEstimated {
+		t.Fatalf("published gaps mode = %q, want estimated", published.Gaps)
+	}
 }
 
 // Without a lateral position there is no honest side awareness, so the Engineer

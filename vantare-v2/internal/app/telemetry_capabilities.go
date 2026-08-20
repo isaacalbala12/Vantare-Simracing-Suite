@@ -2,8 +2,12 @@ package app
 
 import (
 	"github.com/vantare/overlays/v2/internal/telemetry/capability"
+	"github.com/vantare/overlays/v2/internal/telemetry/core"
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 // engineerCapabilityBySignal maps the shared capability vocabulary onto the
@@ -71,4 +75,73 @@ func descriptorCapabilityTokens(descriptor driver.Descriptor, set capability.Set
 		tokens = append(tokens, string(channel))
 	}
 	return append(tokens, set.SupportedKeys()...)
+}
+
+// overlayCapabilityModes resolves, for one published tick, how the active
+// driver actually answered each capability, and translates the result into the
+// Overlay v2 wire vocabulary.
+//
+// It lives in the composition root because it is the only layer allowed to see
+// both sides: ADR 0004 keeps `projection` free of any capability or driver
+// import, so the builder receives modes already resolved and never learns which
+// simulator produced them. The declaration bounds the answer (a driver that
+// never sends world coordinates can never publish "xyz") and the live state
+// narrows it (fresh geometry degrades to lap distance and then to none).
+func overlayCapabilityModes(declaration capability.Declaration, final derive.FinalState) overlayv2.CapabilityModesV2 {
+	modes := capability.ResolveModes(declaration, capability.SessionEvidence{
+		WorldPosition:   bestVehicleQuality(final, func(state core.VehicleState) schema.Freshness { return state.WorldPosition.Freshness() }),
+		LapDistance:     bestVehicleQuality(final, func(state core.VehicleState) schema.Freshness { return state.LapDistance.Freshness() }),
+		DeltaReferences: overlayv2.AvailableDeltaReferences(final),
+		Standings:       bestVehicleQuality(final, func(state core.VehicleState) schema.Freshness { return state.Position.Freshness() }),
+		Gaps:            capabilityQuality(final.Derived.Gaps.Freshness),
+	})
+	spatial := make([]string, 0, 1)
+	if modes.Spatial != capability.SpatialNone {
+		spatial = append(spatial, string(modes.Spatial))
+	}
+	return overlayv2.CapabilityModesV2{
+		Spatial:   spatial,
+		Delta:     modes.DeltaReferences,
+		Standings: overlayv2.Mode(modes.Standings),
+		Gaps:      overlayv2.Mode(modes.Gaps),
+	}
+}
+
+// bestVehicleQuality answers with the best freshness any vehicle reports for
+// one field, which is the same rule the Overlay v2 availability map uses: one
+// car with a valid position is enough for the capability to exist.
+func bestVehicleQuality(final derive.FinalState, freshness func(core.VehicleState) schema.Freshness) capability.Quality {
+	best := schema.FreshnessMissing
+	for _, vehicle := range final.Observed.Vehicles {
+		if freshnessRank(freshness(vehicle)) > freshnessRank(best) {
+			best = freshness(vehicle)
+		}
+	}
+	return capabilityQuality(best)
+}
+
+func freshnessRank(value schema.Freshness) int {
+	switch value {
+	case schema.FreshnessFresh:
+		return 3
+	case schema.FreshnessStale:
+		return 2
+	case schema.FreshnessInvalid:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func capabilityQuality(value schema.Freshness) capability.Quality {
+	switch value {
+	case schema.FreshnessFresh:
+		return capability.QualityFresh
+	case schema.FreshnessStale:
+		return capability.QualityStale
+	case schema.FreshnessInvalid:
+		return capability.QualityInvalid
+	default:
+		return capability.QualityMissing
+	}
 }

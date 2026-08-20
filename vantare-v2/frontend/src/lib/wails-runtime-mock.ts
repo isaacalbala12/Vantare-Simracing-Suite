@@ -353,6 +353,49 @@ function applyHarnessEngineerSetting(name: string, data: unknown) {
   }
 }
 
+/** El canal del actualizador que enseña el harness; por defecto el estable. */
+const harnessUpdaterSettings: { channel: string } = { channel: "stable" };
+
+function harnessRelease(tag: string, prerelease: boolean, publishedAt: string) {
+  return {
+    tag_name: tag,
+    name: tag,
+    body: "",
+    prerelease,
+    published_at: publishedAt,
+    html_url: `https://example.com/${tag}`,
+    assets: [],
+  };
+}
+
+const harnessStableRelease = harnessRelease("v0.1.0.2", false, "2026-06-02T00:00:00Z");
+const harnessTestersRelease = harnessRelease("v0.1.0.7-testers.1", true, "2026-06-03T00:00:00Z");
+const harnessNightlyRelease = harnessRelease("v0.1.0.7-nightly.11", true, "2026-06-05T00:00:00Z");
+
+/**
+ * Espejo del backend: `releases` va filtrada por el canal configurado y
+ * `channels` lleva la última de CADA canal.
+ */
+function harnessUpdateInfo() {
+  const channel = harnessUpdaterSettings.channel;
+  const releases = [harnessStableRelease];
+  if (channel === "testers" || channel === "nightly") releases.unshift(harnessTestersRelease);
+  if (channel === "nightly") releases.unshift(harnessNightlyRelease);
+  return {
+    currentVersion: "v0.1.0.1",
+    latestVersion: releases[0].tag_name,
+    latestRelease: releases[0],
+    hasUpdate: true,
+    isDowngrade: false,
+    releases,
+    channels: {
+      stable: harnessStableRelease,
+      testers: harnessTestersRelease,
+      nightly: harnessNightlyRelease,
+    },
+  };
+}
+
 function broadcast(name: string, data: unknown) {
 
   setTimeout(() => {
@@ -403,6 +446,26 @@ export const Events = {
 
     if (name === "strategy:manual:calculate") {
       setTimeout(() => handleHarnessStrategyManual(readHarnessPayload(data)), 0);
+      return;
+    }
+
+    // El actualizador: el harness necesita releases MEZCLADAS (estable, testers
+    // y nightly a la vez) para que la regresión visual pueda comprobar que cada
+    // tarjeta de canal enseña la suya y no la de al lado (ISA-368).
+    if (name === "updater:settings:get") {
+      setTimeout(() => broadcast("updater:settings", { settings: harnessUpdaterSettings }), 20);
+      return;
+    }
+
+    if (name === "updater:settings:save") {
+      const next = readHarnessPayload(data) as { channel?: string } | undefined;
+      if (next?.channel) harnessUpdaterSettings.channel = next.channel;
+      setTimeout(() => broadcast("updater:settings-saved", { ok: true }), 0);
+      return;
+    }
+
+    if (name === "updater:check") {
+      setTimeout(() => broadcast("updater:available", { info: harnessUpdateInfo() }), 30);
       return;
     }
 

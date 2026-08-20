@@ -43,6 +43,7 @@ import { useOverlayState } from "../orbit/use-overlay-state";
 import { useOrbitSimStatus } from "../orbit/sim-status-context";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../orbit/views";
 import { RELEASE_NEWS } from "../release-news";
+import { channelRelease } from "../settings/release-channel";
 import type { Channel } from "../settings/settings-contract";
 import { useAppSettings } from "../settings/useAppSettings";
 import { useUpdaterSettings } from "../settings/useUpdaterSettings";
@@ -640,13 +641,11 @@ function UpdatesSection() {
         ? formatMessage(t("settings.upd.stateAvailable"), { version: info.latestVersion })
         : t("settings.upd.stateUpToDate");
 
-  // La versión y la fecha de cada canal salen de la lista real de releases: un
-  // canal sin publicación lo dice, no se le inventa una versión.
-  const releaseFor = (channel: Channel) => {
-    const releases = info?.releases ?? [];
-    if (channel === "stable") return releases.find((release) => !release.prerelease) ?? null;
-    return releases.find((release) => release.prerelease) ?? null;
-  };
+  // La versión y la fecha de cada canal salen del resumen por canal del
+  // backend, que clasifica por el tag real: `prerelease` solo, no distingue una
+  // nightly de una de testers y ambas tarjetas acababan enseñando la misma.
+  // Un canal sin publicación lo dice, no se le inventa una versión.
+  const releaseFor = (channel: Channel) => channelRelease(channel, info);
 
   return (
     <>

@@ -1,3 +1,21 @@
+Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
+- GitHub Issue `#688` sustituye el antiguo flujo Linear y fija la rama
+  `vantareapp/isa-688-spike-nakama-raceos-historico-ratings` sobre la punta
+  remota verificada `origin/nightly@3ee6d726`.
+- LMU 1.4 en ejecución escucha en `127.0.0.1:6397` y mantiene tráfico hacia
+  infraestructura de `raceos.gg`; las trazas recientes muestran
+  `/api/v1/notifications/global`. No apareció Nakama, Bearer o JWT en ocho
+  trazas recientes; los Steam IDs detectados se contaron sin mostrarlos.
+- `cmd/lmu-online-surface-probe` materializa una observación repetible y
+  fail-closed: ruta de logs explícita, REST solo loopback, redirects y
+  directorios enlazados rechazados, entradas enlazadas omitidas al enumerar y
+  salida limitada a contadores y esquema sin valores. Conserva un riesgo TOCTOU
+  local concurrente documentado en el informe.
+- Pendiente para cerrar el spike: observación dentro de un evento RaceControl
+  propio y veredicto sobre identidad estable, paginación, profundidad histórica
+  y DR/SR. Sin auth remota, scraping, backend, producto, PR, merge,
+  promoción o release.
+
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

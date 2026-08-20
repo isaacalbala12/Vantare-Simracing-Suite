@@ -10,12 +10,27 @@ visible es `Telemetría`.
 
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
-- Este handoff y el proyecto Linear del módulo.
+- Este handoff y las issues de GitHub del módulo.
 - ADR 0004 y el handoff de Telemetry Core para contratos/recording.
 - La futura investigación, spec, HTML y plan aprobados reemplazarán el resumen
   de experiencia cuando aporten más detalle.
 
 ## Estado
+
+ISA-688 abrió un spike aislado sobre
+`origin/nightly@3ee6d7269a76f6cea9deb5659f85fad2989abd8f` para clasificar
+la fuente online actual de LMU sin integrar ratings ni datos remotos en
+producto. La evidencia pasiva inicial con LMU 1.4 en ejecución confirma tráfico
+y trazas hacia `raceos.gg`; el host Nakama histórico sigue disponible, pero no
+apareció en las conexiones o trazas observadas. La herramienta
+`cmd/lmu-online-surface-probe` solo emite contadores y esquema JSON: exige ruta
+de logs explícita, restringe REST a loopback, rechaza redirects y directorios
+enlazados, y omite entradas enlazadas al enumerar. No imprime IDs, UUID, tokens
+ni valores personales; conserva el riesgo TOCTOU local concurrente documentado
+en el informe. Pendiente: repetir la
+observación dentro de un evento RaceControl propio y demostrar o descartar
+identidad estable, paginación e histórico. Evidencia:
+`docs/vantare-program/research/competition-data/isa-688-spike.md`.
 
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review

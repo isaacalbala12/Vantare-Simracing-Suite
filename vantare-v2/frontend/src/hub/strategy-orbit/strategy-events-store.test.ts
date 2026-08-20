@@ -5,14 +5,18 @@ import {
   createEventFromSeries,
   dayLabelOf,
   eventFromRoster,
+  eventsByRecency,
   FALLBACK_SERIES_DURATION_MIN,
   freeEventId,
   initialsOf,
+  lastOpenedEventOf,
   monogramOf,
   newDriver,
+  openEvent,
   patchEvent,
   readLegacyStrategyState,
   readStrategyEvents,
+  removeEvent,
   rosterEventId,
   startMinuteOf,
   STRATEGY_EVENTS_KEY,
@@ -262,5 +266,95 @@ describe("mutación", () => {
     state = patchEvent(state, b.id, (event) => ({ ...event, tankL: 42 }));
     expect(state.events[0].tankL).toBe(90);
     expect(state.events[1].tankL).toBe(42);
+  });
+});
+
+describe("strategy-events-store · lastOpenedAt (ISA-377)", () => {
+  const own = (name: string) =>
+    createCustomEvent(
+      [],
+      {
+        name,
+        track: "",
+        cls: "",
+        durationMin: 60,
+        startAt: "2030-01-01T14:00:00.000Z",
+        tankL: 90,
+        pitLossSec: 60,
+        drivers: [ISAAC],
+      },
+      LABELS,
+    );
+
+  it("abrir un evento sella la fecha y lo deja activo", () => {
+    const a = { ...own("A"), id: "own-1", lastOpenedAt: undefined };
+    const b = { ...own("B"), id: "own-2", lastOpenedAt: undefined };
+    const state = openEvent(
+      { events: [a, b], activeId: null },
+      "own-2",
+      new Date("2030-02-02T10:00:00Z"),
+    );
+
+    expect(state.activeId).toBe("own-2");
+    expect(state.events[1].lastOpenedAt).toBe("2030-02-02T10:00:00.000Z");
+    // Abrir uno no toca al resto.
+    expect(state.events[0].lastOpenedAt).toBeUndefined();
+  });
+
+  it("abrir un id que no existe no inventa nada", () => {
+    const a = { ...own("A"), id: "own-1" };
+    const state: StrategyEventsState = { events: [a], activeId: null };
+    expect(openEvent(state, "fantasma")).toBe(state);
+  });
+
+  it("«Continuar» es el último abierto, no el último creado", () => {
+    const a = { ...own("A"), id: "own-1", lastOpenedAt: "2030-01-05T10:00:00.000Z" };
+    const b = { ...own("B"), id: "own-2", lastOpenedAt: "2030-01-09T10:00:00.000Z" };
+    const c = { ...own("C"), id: "own-3", lastOpenedAt: undefined };
+    const state: StrategyEventsState = { events: [a, b, c], activeId: null };
+
+    expect(lastOpenedEventOf(state)?.id).toBe("own-2");
+    expect(eventsByRecency(state).map((event) => event.id)).toEqual(["own-2", "own-1", "own-3"]);
+  });
+
+  it("sin ningún evento abierto no hay nada que continuar", () => {
+    const a = { ...own("A"), id: "own-1", lastOpenedAt: undefined };
+    expect(lastOpenedEventOf({ events: [a], activeId: null })).toBeNull();
+  });
+
+  it("la fecha sobrevive al guardado y a la relectura", () => {
+    const a = { ...own("A"), id: "own-1", lastOpenedAt: "2030-01-05T10:00:00.000Z" };
+    writeStrategyEvents({ events: [a], activeId: "own-1" });
+    expect(readStrategyEvents().events[0].lastOpenedAt).toBe("2030-01-05T10:00:00.000Z");
+  });
+
+  it("borrar el evento activo devuelve la vista al menú", () => {
+    const a = { ...own("A"), id: "own-1" };
+    const b = { ...own("B"), id: "own-2" };
+    const state = removeEvent({ events: [a, b], activeId: "own-1" }, "own-1");
+    expect(state.events.map((event) => event.id)).toEqual(["own-2"]);
+    expect(state.activeId).toBeNull();
+  });
+
+  it("el asistente decide el tablero y el evento lo guarda", () => {
+    const solo = createCustomEvent(
+      [],
+      {
+        name: "Solo",
+        track: "",
+        cls: "",
+        durationMin: 60,
+        startAt: "2030-01-01T14:00:00.000Z",
+        tankL: 90,
+        pitLossSec: 60,
+        drivers: [ISAAC],
+        teamMode: "solo",
+      },
+      LABELS,
+    );
+    expect(solo.teamMode).toBe("solo");
+    // Hoy no hay fuente de telemetría: nada puede nacer automático.
+    expect(solo.fillMode).toBe("manual");
+    expect(own("Por defecto").teamMode).toBe("team");
   });
 });

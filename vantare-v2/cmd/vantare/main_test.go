@@ -1173,11 +1173,99 @@ func TestHandleCancelProfileNoPanic(t *testing.T) {
 	}
 }
 
-func TestHandleAppPickEmitsFallbackError(t *testing.T) {
+// fakeLauncherFilePicker is a launcherFilePicker for tests: no OS dialog, just
+// the answer the case under test needs.
+type fakeLauncherFilePicker struct {
+	path  string
+	err   error
+	calls int
+}
+
+func (f *fakeLauncherFilePicker) PickExecutable() (string, error) {
+	f.calls++
+	return f.path, f.err
+}
+
+func TestHandleAppPickEmitsPickedPathAndSuggestedName(t *testing.T) {
 	emitter := &spyMainEmitter{}
-	handleAppPick(emitter)
+	picker := &fakeLauncherFilePicker{path: filepath.Join("C:\\", "Apps", "SimHubWPF.exe")}
+	handleAppPick(picker, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:app:picked" {
+		t.Fatalf("expected launcher:app:picked, got %v", emitter.events)
+	}
+	payload, ok := emitter.data[0].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected payload type %T", emitter.data[0])
+	}
+	if payload["path"] != picker.path {
+		t.Fatalf("path = %v, want %q", payload["path"], picker.path)
+	}
+	if payload["suggestedName"] != "SimHubWPF" {
+		t.Fatalf("suggestedName = %v, want SimHubWPF", payload["suggestedName"])
+	}
+}
+
+// A cancelled dialog is not a failure: the frontend still needs an answer so
+// it can drop its "waiting for the picker" state.
+func TestHandleAppPickCancelEmitsEmptyPath(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	handleAppPick(&fakeLauncherFilePicker{}, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:app:picked" {
+		t.Fatalf("expected launcher:app:picked, got %v", emitter.events)
+	}
+	payload := emitter.data[0].(map[string]any)
+	if payload["path"] != "" {
+		t.Fatalf("cancel must report an empty path, got %v", payload["path"])
+	}
+}
+
+func TestHandleAppPickWithoutPickerEmitsError(t *testing.T) {
+	emitter := &spyMainEmitter{}
+	handleAppPick(nil, emitter)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
-		t.Fatalf("expected launcher:error fallback, got %v", emitter.events)
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+	if code := emitter.data[0].(map[string]any)["code"]; code != "picker_unavailable" {
+		t.Fatalf("code = %v, want picker_unavailable", code)
+	}
+}
+
+func TestHandleAddCustomAppPersistsAndSnapshots(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	exe := filepath.Join(t.TempDir(), "myapp.exe")
+	if err := os.WriteFile(exe, []byte("stub"), 0o600); err != nil {
+		t.Fatalf("write exe: %v", err)
+	}
+	handleAddCustomApp("Mi App", exe, svc, emitter)
+	if len(emitter.events) < 2 {
+		t.Fatalf("expected added + snapshot, got %v", emitter.events)
+	}
+	if emitter.events[0] != "launcher:app:added" {
+		t.Fatalf("first event = %q, want launcher:app:added", emitter.events[0])
+	}
+	if emitter.events[len(emitter.events)-1] != "launcher:snapshot" {
+		t.Fatalf("last event = %q, want launcher:snapshot", emitter.events[len(emitter.events)-1])
+	}
+	added := emitter.data[0].(map[string]any)
+	id, _ := added["id"].(string)
+	if !launcher.IsCustomAppID(id) {
+		t.Fatalf("id = %q, want a custom app id", id)
+	}
+	if _, ok := svc.Settings().GetLauncherApps()[id]; !ok {
+		t.Fatalf("app %q was not persisted", id)
+	}
+}
+
+// A path that does not exist can never be launched, so it must be refused with
+// an actionable code instead of landing a broken row in the catalog.
+func TestHandleAddCustomAppRejectsMissingExecutable(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	handleAddCustomApp("Mi App", filepath.Join(t.TempDir(), "nope.exe"), svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("expected launcher:error, got %v", emitter.events)
+	}
+	if code := emitter.data[0].(map[string]any)["code"]; code != "invalid_custom_app" {
+		t.Fatalf("code = %v, want invalid_custom_app", code)
 	}
 }
 
@@ -1564,7 +1652,7 @@ func TestHandleAppFavorite(t *testing.T) {
 	}
 
 	emitter := &spyMainEmitter{}
-	handleAppFavorite("obs", true, settingsSvc2, emitter)
+	handleAppFavorite("obs", true, settingsSvc2, launcher.NewService(settingsSvc2, emitter, nil), emitter)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:snapshot" {
 		t.Fatalf("expected launcher:snapshot, got %v", emitter.events)
@@ -1584,7 +1672,7 @@ func TestHandleAppFavoriteEmitsErrorOnUnknown(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	emitter := &spyMainEmitter{}
-	handleAppFavorite("ghost", true, settingsSvc, emitter)
+	handleAppFavorite("ghost", true, settingsSvc, launcher.NewService(settingsSvc, emitter, nil), emitter)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
 		t.Fatalf("expected launcher:error, got %v", emitter.events)
 	}

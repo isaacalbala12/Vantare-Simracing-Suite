@@ -67,8 +67,28 @@ describe("RoadmapOrbitPage · columna «Qué viene»", () => {
   it("no pinta ningún porcentaje ni barra de progreso", () => {
     mount({ doneOpen: true });
     const root = screen.getByTestId("orbit-roadmap");
-    expect(root.textContent).not.toMatch(/\d+\s?%/);
+    // El bloque de entregas cita asuntos de commit literales, y uno puede
+    // llevar un porcentaje suyo («28% mas rapido»). Lo que esta prueba
+    // defiende es que la pantalla no publique los porcentajes de progreso del
+    // roadmap, así que se mide sobre todo lo demás.
+    const withoutDelivered = root.cloneNode(true) as HTMLElement;
+    withoutDelivered.querySelector("[data-testid='orbit-roadmap-delivered']")?.remove();
+    expect(withoutDelivered.textContent).not.toMatch(/\d+\s?%/);
     expect(root.querySelectorAll(".orbit-rm-phase__bar")).toHaveLength(0);
+  });
+
+  it("lista lo entregado recientemente agrupado por día y marcado como derivado", () => {
+    mount({ doneOpen: true });
+    const delivered = screen.getByTestId("orbit-roadmap-delivered");
+    const days = ROADMAP_FALLBACK.delivered;
+    expect(days.length).toBeGreaterThan(0);
+    for (const day of days) {
+      expect(within(delivered).getByTestId(`orbit-roadmap-delivered-${day.date}`)).toBeTruthy();
+    }
+    // El asunto del commit se publica tal cual: la pantalla no lo reescribe.
+    expect(within(delivered).getAllByText(days[0].entries[0].text).length).toBeGreaterThan(0);
+    // Sale de los commits, no del plan: la pantalla lo dice.
+    expect(within(delivered).getByTestId("orbit-roadmap-derived")).toBeTruthy();
   });
 
   it("declara la posición de la fase en curso sin inventar una fecha", () => {

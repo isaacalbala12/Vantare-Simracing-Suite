@@ -314,6 +314,12 @@ func (s *Service) AddManualApp(entry app.LauncherAppEntry) error {
 	return AddManualApp(s.settings, entry)
 }
 
+// AddCustomApp delegates to apps.go. It returns the derived entry so the
+// caller can name it in an event without re-deriving the ID.
+func (s *Service) AddCustomApp(displayName, executablePath string) (app.LauncherAppEntry, error) {
+	return AddCustomApp(s.settings, displayName, executablePath)
+}
+
 // RemoveApp delegates to apps.go.
 func (s *Service) RemoveApp(id string) error {
 	return RemoveApp(s.settings, id)

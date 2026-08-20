@@ -104,4 +104,41 @@ export const launcherOrbitPt: Record<string, string> = {
   "launcher.editor.autostartBlocked": "Adiciona pelo menos um passo para o iniciar com o Windows.",
   "launcher.editor.cancel": "Cancelar",
   "launcher.editor.save": "Guardar",
+  // Favoritas do catálogo e adição/remoção de aplicações personalizadas (ISA-376).
+  "launcher.app.favorite": "Marcar {{name}} como favorita",
+  "launcher.app.unfavorite": "Retirar {{name}} das favoritas",
+  "launcher.app.remove": "Eliminar {{name}}",
+  "launcher.app.removeBlocked":
+    "Só podes eliminar as aplicações que adicionaste; as do catálogo voltam na próxima deteção.",
+
+  "launcher.catalog.addApp": "Adicionar aplicação",
+  "launcher.catalog.addAppHint": "Escolhe um executável que a deteção não reconhece.",
+
+  "launcher.context.favorites": "Favoritas ({{n}})",
+  "launcher.context.favoritesTitle": "Favoritas",
+  "launcher.context.noFavorites": "Sem favoritas: marca a estrela de uma aplicação.",
+
+  "launcher.addApp.title": "Adicionar aplicação",
+  "launcher.addApp.close": "Fechar a adição de aplicação",
+  "launcher.addApp.hint":
+    "A deteção só conhece o catálogo oficial. Aqui adicionas qualquer outro programa pelo seu executável.",
+  "launcher.addApp.path": "Executável",
+  "launcher.addApp.pathPlaceholder": "C:\\Programas\\MinhaApp\\MinhaApp.exe",
+  "launcher.addApp.browse": "Procurar…",
+  "launcher.addApp.browseUnavailable":
+    "O seletor de ficheiros é aberto pela aplicação de secretária; aqui não há backend que o atenda.",
+  "launcher.addApp.browsing": "Escolhe o executável na janela do sistema…",
+  "launcher.addApp.name": "Nome",
+  "launcher.addApp.namePlaceholder": "Nome no catálogo",
+  "launcher.addApp.cancel": "Cancelar",
+  "launcher.addApp.submit": "Adicionar",
+  "launcher.addApp.submitBlocked": "São precisos um nome e o caminho do executável.",
+
+  "launcher.removeApp.title": "Eliminar aplicação",
+  "launcher.removeApp.body": "{{name}} será eliminada do catálogo do Launcher.",
+  "launcher.removeApp.hint":
+    "Nada é apagado do teu disco. Se algum perfil a usa como passo, retira-a do perfil primeiro.",
+  "launcher.removeApp.close": "Fechar a confirmação",
+  "launcher.removeApp.cancel": "Cancelar",
+  "launcher.removeApp.confirm": "Eliminar",
 };

@@ -104,4 +104,41 @@ export const launcherOrbitEs: Record<string, string> = {
   "launcher.editor.autostartBlocked": "Añade al menos un paso para poder iniciarlo con Windows.",
   "launcher.editor.cancel": "Cancelar",
   "launcher.editor.save": "Guardar",
+  // Favoritos del catalogo y alta/baja de aplicaciones personalizadas (ISA-376).
+  "launcher.app.favorite": "Marcar {{name}} como favorita",
+  "launcher.app.unfavorite": "Quitar {{name}} de favoritas",
+  "launcher.app.remove": "Eliminar {{name}}",
+  "launcher.app.removeBlocked":
+    "Solo se pueden eliminar las aplicaciones que hayas añadido tú; las del catálogo vuelven en el siguiente escaneo.",
+
+  "launcher.catalog.addApp": "Añadir aplicación",
+  "launcher.catalog.addAppHint": "Elige un ejecutable que la detección no reconoce.",
+
+  "launcher.context.favorites": "Favoritas ({{n}})",
+  "launcher.context.favoritesTitle": "Favoritas",
+  "launcher.context.noFavorites": "Sin favoritas: marca la estrella de una aplicación.",
+
+  "launcher.addApp.title": "Añadir aplicación",
+  "launcher.addApp.close": "Cerrar el alta de aplicación",
+  "launcher.addApp.hint":
+    "La detección solo reconoce el catálogo oficial. Aquí añades cualquier otro programa por su ejecutable.",
+  "launcher.addApp.path": "Ejecutable",
+  "launcher.addApp.pathPlaceholder": "C:\\Programas\\MiApp\\MiApp.exe",
+  "launcher.addApp.browse": "Examinar…",
+  "launcher.addApp.browseUnavailable":
+    "El selector de ficheros lo abre la aplicación de escritorio; aquí no hay backend que lo atienda.",
+  "launcher.addApp.browsing": "Selecciona el ejecutable en la ventana del sistema…",
+  "launcher.addApp.name": "Nombre",
+  "launcher.addApp.namePlaceholder": "Nombre en el catálogo",
+  "launcher.addApp.cancel": "Cancelar",
+  "launcher.addApp.submit": "Añadir",
+  "launcher.addApp.submitBlocked": "Hacen falta un nombre y la ruta del ejecutable.",
+
+  "launcher.removeApp.title": "Eliminar aplicación",
+  "launcher.removeApp.body": "Se eliminará {{name}} del catálogo del Launcher.",
+  "launcher.removeApp.hint":
+    "No se borra nada de tu disco. Si algún perfil la usa como paso, quítala del perfil primero.",
+  "launcher.removeApp.close": "Cerrar la confirmación",
+  "launcher.removeApp.cancel": "Cancelar",
+  "launcher.removeApp.confirm": "Eliminar",
 };

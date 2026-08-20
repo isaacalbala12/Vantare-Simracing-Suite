@@ -13,6 +13,7 @@ import {
   fetchRoadmapDataset,
   ROADMAP_FALLBACK,
   type RoadmapDataset,
+  type RoadmapDeliveredDay,
   type RoadmapMilestone,
   type RoadmapPhase,
   type RoadmapStatus,
@@ -81,6 +82,8 @@ export interface RoadmapNarrative {
   nextMilestones: ReadonlyArray<RoadmapMilestone>;
   /** Hitos ya publicados (`release`). DERIVADO del tipo. */
   doneMilestones: ReadonlyArray<RoadmapMilestone>;
+  /** Dias con entregas leidas de los commits, de mas reciente a mas antiguo. */
+  delivered: ReadonlyArray<RoadmapDeliveredDay>;
 }
 
 /**
@@ -105,7 +108,33 @@ export function buildNarrative(data: RoadmapDataset): RoadmapNarrative {
     nowMilestones: milestones.filter((m) => milestoneState(m) === "active"),
     nextMilestones: milestones.filter((m) => milestoneState(m) === "planned"),
     doneMilestones: milestones.filter((m) => milestoneState(m) === "done"),
+    delivered: data.delivered ?? [],
   };
+}
+
+/** Cuantas entregas trae la ventana, sumando todos los dias. */
+export function deliveredCount(narrative: RoadmapNarrative): number {
+  return narrative.delivered.reduce((total, day) => total + day.entries.length, 0);
+}
+
+/**
+ * Fecha de un dia de entregas en el idioma activo. La fuente escribe
+ * `YYYY-MM-DD` sin hora; se formatea en UTC para que no se corra un dia segun
+ * el huso del lector.
+ */
+export function formatDeliveredDate(date: string, locale: string): string {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(parsed);
+  } catch {
+    return date;
+  }
 }
 
 /** Recuento visible en la columna contextual de cada sección. */

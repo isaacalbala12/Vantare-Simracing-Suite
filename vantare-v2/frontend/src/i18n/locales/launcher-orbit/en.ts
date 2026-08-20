@@ -104,4 +104,41 @@ export const launcherOrbitEn: Record<string, string> = {
   "launcher.editor.autostartBlocked": "Add at least one step to start it with Windows.",
   "launcher.editor.cancel": "Cancel",
   "launcher.editor.save": "Save",
+  // Catalog favourites and custom app add/remove (ISA-376).
+  "launcher.app.favorite": "Mark {{name}} as a favourite",
+  "launcher.app.unfavorite": "Remove {{name}} from favourites",
+  "launcher.app.remove": "Remove {{name}}",
+  "launcher.app.removeBlocked":
+    "Only apps you added yourself can be removed; catalog ones come back on the next scan.",
+
+  "launcher.catalog.addApp": "Add application",
+  "launcher.catalog.addAppHint": "Pick an executable that detection does not recognise.",
+
+  "launcher.context.favorites": "Favourites ({{n}})",
+  "launcher.context.favoritesTitle": "Favourites",
+  "launcher.context.noFavorites": "No favourites yet: star an application.",
+
+  "launcher.addApp.title": "Add application",
+  "launcher.addApp.close": "Close the add application form",
+  "launcher.addApp.hint":
+    "Detection only knows the official catalog. Add any other program here by its executable.",
+  "launcher.addApp.path": "Executable",
+  "launcher.addApp.pathPlaceholder": "C:\\Programs\\MyApp\\MyApp.exe",
+  "launcher.addApp.browse": "Browse…",
+  "launcher.addApp.browseUnavailable":
+    "The desktop app opens the file picker; there is no backend here to answer it.",
+  "launcher.addApp.browsing": "Pick the executable in the system window…",
+  "launcher.addApp.name": "Name",
+  "launcher.addApp.namePlaceholder": "Name in the catalog",
+  "launcher.addApp.cancel": "Cancel",
+  "launcher.addApp.submit": "Add",
+  "launcher.addApp.submitBlocked": "A name and the executable path are required.",
+
+  "launcher.removeApp.title": "Remove application",
+  "launcher.removeApp.body": "{{name}} will be removed from the Launcher catalog.",
+  "launcher.removeApp.hint":
+    "Nothing is deleted from your disk. If a profile uses it as a step, remove it from the profile first.",
+  "launcher.removeApp.close": "Close the confirmation",
+  "launcher.removeApp.cancel": "Cancel",
+  "launcher.removeApp.confirm": "Remove",
 };

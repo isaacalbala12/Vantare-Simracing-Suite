@@ -18,6 +18,8 @@ import {
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
+import { OrbitAddAppDrawer } from "./OrbitAddAppDrawer";
+import { OrbitConfirmDrawer } from "./OrbitConfirmDrawer";
 import { OrbitProfileEditor } from "./OrbitProfileEditor";
 import type { LaunchProfile } from "../launcher/launcher-contract";
 import { appSortOrder, newProfileId, type LauncherAppEntry } from "../launcher/launcher-state";
@@ -29,12 +31,15 @@ import {
 import {
   chainSteps,
   detectedCount,
+  favoriteApps,
   hotkeyKeys,
   lastLaunchedAt,
+  orderCatalogApps,
   orderProfiles,
   policyChips,
   profileInitials,
   toOrbitApp,
+  type LauncherOrbitApp,
 } from "./launcher-orbit-model";
 import { AppChainStep, AppMonogram } from "./AppMonogram";
 import "../../styles/orbit-launcher.css";
@@ -63,6 +68,45 @@ function PencilMark() {
   );
 }
 
+/** Estrella de favorito: el sprite Orbit no la trae (precedente D-47). */
+function StarMark({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill={filled ? "currentColor" : "none"}
+      focusable="false"
+      height={15}
+      stroke="currentColor"
+      strokeLinejoin="round"
+      strokeWidth={1.4}
+      viewBox="0 0 16 16"
+      width={15}
+    >
+      <path d="M8 1.9l1.83 3.86 4.17.6-3 3 .71 4.24L8 11.6l-3.71 2l.71-4.24-3-3 4.17-.6z" />
+    </svg>
+  );
+}
+
+/** Papelera de eliminar aplicación personalizada. */
+function TrashMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      focusable="false"
+      height={15}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.4}
+      viewBox="0 0 16 16"
+      width={15}
+    >
+      <path d="M2.8 4.3h10.4M6.4 4.3V2.9h3.2v1.4M4.3 4.3l.6 8.2h6.2l.6-8.2M6.7 6.7v3.6M9.3 6.7v3.6" />
+    </svg>
+  );
+}
+
 function formatMoment(value: Date): string {
   return value.toLocaleString(undefined, {
     day: "2-digit",
@@ -84,7 +128,7 @@ export function LauncherOrbitPage() {
   const { t } = useI18n();
   const snapshot = useLauncherSnapshot();
   const progress = useLauncherDiscoveryProgress();
-  const { dispatchLauncherCommand, discoverApps } = useLauncherStore();
+  const { dispatchLauncherCommand, discoverApps, subscribeAppPicked } = useLauncherStore();
   const contextSlot = useOrbitSlot(LAUNCHER_CONTEXT_SLOT_ID);
   const topbarSlot = useOrbitSlot(LAUNCHER_TOPBAR_SLOT_ID);
   const [query, setQuery] = useState("");
@@ -93,6 +137,10 @@ export function LauncherOrbitPage() {
   // el editor se buscaba en la instantanea del store, que solo trae el perfil
   // cuando el backend confirma el guardado, asi que el clic se perdia.
   const [draftProfile, setDraftProfile] = useState<LaunchProfile | null>(null);
+  // Alta de aplicacion personalizada y baja confirmada: ambas viven en cajones
+  // del kit, nunca en un confirm() nativo.
+  const [addingApp, setAddingApp] = useState(false);
+  const [appToRemove, setAppToRemove] = useState<LauncherOrbitApp | null>(null);
 
   // Misma detección real que el Launcher clásico: el store la salta si el
   // último escaneo sigue fresco (TTL), así que entrar aquí no relanza el disco.
@@ -106,7 +154,10 @@ export function LauncherOrbitPage() {
   const detected = detectedCount(apps);
   const favorites = profiles.filter((profile) => profile.isFavorite).length;
 
-  const orbitApps = useMemo(() => apps.map(toOrbitApp), [apps]);
+  // El favorito manda en el orden del catalogo: sin esto marcar la estrella no
+  // movia nada, porque la instantanea llega ordenada por id.
+  const orbitApps = useMemo(() => orderCatalogApps(apps.map(toOrbitApp)), [apps]);
+  const favoriteCatalogApps = useMemo(() => favoriteApps(orbitApps), [orbitApps]);
   const visibleApps = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return orbitApps;
@@ -164,6 +215,12 @@ export function LauncherOrbitPage() {
 
   const launch = (profileId: string) =>
     dispatchLauncherCommand("launcher:profile:launch", { id: profileId });
+
+  // El favorito se persiste en el backend Go (`SetLauncherAppFavorite` sobre
+  // los ajustes de la aplicacion), igual que el resto del estado del launcher:
+  // la pantalla no guarda nada por su cuenta y espera a la instantanea.
+  const toggleFavorite = (app: LauncherOrbitApp) =>
+    dispatchLauncherCommand("launcher:app:favorite", { id: app.id, favorite: !app.isFavorite });
 
   const create = () => {
     const id = newProfileId("profile");
@@ -357,6 +414,42 @@ export function LauncherOrbitPage() {
               </section>
 
               <section
+                aria-label={formatMessage(t("launcher.context.favorites"), {
+                  n: favoriteCatalogApps.length,
+                })}
+                className="orbit-block"
+              >
+                <div className="orbit-block__head">
+                  <span className="orbit-eyebrow">{t("launcher.context.favoritesTitle")}</span>
+                  <span className="orbit-launcher__context-count">
+                    {favoriteCatalogApps.length}
+                  </span>
+                </div>
+                <div className="orbit-list" data-testid="orbit-launcher-context-favorites">
+                  {favoriteCatalogApps.length === 0 ? (
+                    <p className="orbit-row__copy">{t("launcher.context.noFavorites")}</p>
+                  ) : (
+                    favoriteCatalogApps.map((app) => (
+                      <ListRow
+                        key={app.id}
+                        leading={
+                          <AppMonogram
+                            app={app}
+                            g1={app.g1}
+                            g2={app.g2}
+                            size={32}
+                            text={app.abbreviation}
+                          />
+                        }
+                        subtitle={t(app.categoryKey)}
+                        title={app.name}
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section
                 aria-label={formatMessage(t("launcher.context.catalog"), {
                   n: apps.length,
                   detected,
@@ -462,17 +555,69 @@ export function LauncherOrbitPage() {
                   subtitle={`${t(app.categoryKey)} · ${t(app.methodKey)}`}
                   title={app.name}
                   trailing={
-                    <Chip
-                      className={`orbit-launcher__state orbit-launcher__state--${app.state}`}
-                      tone={app.state === "installed" ? "ok" : "neutral"}
-                    >
-                      {t(`launcher.state.${app.state}`)}
-                    </Chip>
+                    <span className="orbit-launcher__app-actions">
+                      <Chip
+                        className={`orbit-launcher__state orbit-launcher__state--${app.state}`}
+                        tone={app.state === "installed" ? "ok" : "neutral"}
+                      >
+                        {t(`launcher.state.${app.state}`)}
+                      </Chip>
+                      <button
+                        aria-label={formatMessage(
+                          t(app.isFavorite ? "launcher.app.unfavorite" : "launcher.app.favorite"),
+                          { name: app.name },
+                        )}
+                        aria-pressed={app.isFavorite}
+                        className={`orbit-icon-btn orbit-icon-btn--28 orbit-launcher__star${
+                          app.isFavorite ? " orbit-launcher__star--on" : ""
+                        }`}
+                        data-testid={`orbit-launcher-favorite-${app.id}`}
+                        data-tip={formatMessage(
+                          t(app.isFavorite ? "launcher.app.unfavorite" : "launcher.app.favorite"),
+                          { name: app.name },
+                        )}
+                        data-tip-side="top"
+                        onClick={() => toggleFavorite(app)}
+                        type="button"
+                      >
+                        <StarMark filled={app.isFavorite} />
+                      </button>
+                      <button
+                        aria-label={formatMessage(t("launcher.app.remove"), { name: app.name })}
+                        className="orbit-icon-btn orbit-icon-btn--28 orbit-launcher__remove"
+                        data-testid={`orbit-launcher-remove-${app.id}`}
+                        data-tip={
+                          app.custom
+                            ? formatMessage(t("launcher.app.remove"), { name: app.name })
+                            : t("launcher.app.removeBlocked")
+                        }
+                        data-tip-side="top"
+                        disabled={!app.custom}
+                        onClick={() => setAppToRemove(app)}
+                        type="button"
+                      >
+                        <TrashMark />
+                      </button>
+                    </span>
                   }
                 />
               ))
             )}
           </div>
+          <button
+            className="orbit-launcher__add-app"
+            data-testid="orbit-launcher-add-app-open"
+            onClick={() => setAddingApp(true)}
+            type="button"
+          >
+            <span aria-hidden="true" className="orbit-launcher__add-app-ico">
+              +
+            </span>
+            <span className="orbit-launcher__add-app-copy">
+              <b>{t("launcher.catalog.addApp")}</b>
+              <span>{t("launcher.catalog.addAppHint")}</span>
+            </span>
+          </button>
           {detectionRan ? null : (
             <Note className="orbit-launcher__note" title={t("launcher.catalog.neutralTitle")}>
               {t("launcher.catalog.neutral")}
@@ -509,6 +654,38 @@ export function LauncherOrbitPage() {
 
       {/* Mismo flujo real de edición y creación que el Launcher V3 (mismos
           handlers y las mismas reglas), servido por el cajón del kit. */}
+      {/* La `key` remonta el cajon en cada apertura, asi el borrador nace en
+          blanco sin un efecto que lo reinicie. */}
+      <OrbitAddAppDrawer
+        key={addingApp ? "add-app-open" : "add-app-closed"}
+        onBrowse={() => dispatchLauncherCommand("launcher:app:pick")}
+        onClose={() => setAddingApp(false)}
+        onSubmit={({ displayName, path }) => {
+          dispatchLauncherCommand("launcher:app:addCustom", { displayName, path });
+          setAddingApp(false);
+        }}
+        open={addingApp}
+        subscribeAppPicked={subscribeAppPicked}
+      />
+
+      {appToRemove ? (
+        <OrbitConfirmDrawer
+          body={formatMessage(t("launcher.removeApp.body"), { name: appToRemove.name })}
+          cancelLabel={t("launcher.removeApp.cancel")}
+          closeLabel={t("launcher.removeApp.close")}
+          confirmLabel={t("launcher.removeApp.confirm")}
+          data-testid="orbit-launcher-remove-app"
+          hint={t("launcher.removeApp.hint")}
+          onCancel={() => setAppToRemove(null)}
+          onConfirm={() => {
+            dispatchLauncherCommand("launcher:app:remove", { id: appToRemove.id });
+            setAppToRemove(null);
+          }}
+          open
+          title={t("launcher.removeApp.title")}
+        />
+      ) : null}
+
       {editingProfile ? (
         <OrbitProfileEditor
           apps={editorApps}

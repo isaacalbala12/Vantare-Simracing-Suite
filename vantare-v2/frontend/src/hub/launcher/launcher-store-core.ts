@@ -7,12 +7,15 @@ import {
   requestSnapshot as bridgeRequestSnapshot,
   subscribeSnapshot as bridgeSubscribeSnapshot,
   subscribeDiscoveryProgress as bridgeSubscribeDiscoveryProgress,
+  subscribeAppPicked as bridgeSubscribeAppPicked,
+  type AppPickedListener,
   type LauncherBridgeLike,
+  type Unsubscribe,
 } from "./launcher-bridge";
 import type { LauncherDiscoveryProgress, LauncherSnapshot } from "./launcher-contract";
 import { LauncherStoreContext } from "./launcher-context";
 
-export type { LauncherBridgeLike } from "./launcher-bridge";
+export type { AppPickedListener, AppPickedPayload, LauncherBridgeLike } from "./launcher-bridge";
 
 export type LauncherStore = {
   getSnapshot: () => LauncherSnapshot | null;
@@ -24,11 +27,18 @@ export type LauncherStore = {
   stop: () => void;
   requestSnapshot: () => void;
   dispatchLauncherCommand: (name: string, payload?: unknown) => void;
+  /**
+   * `null` cuando el puente no trae selector nativo de ficheros. La pantalla
+   * lo usa para deshabilitar «Examinar…» con su motivo en vez de dejar un
+   * boton mudo.
+   */
+  subscribeAppPicked: ((listener: AppPickedListener) => Unsubscribe) | null;
 };
 
 const defaultBridge: LauncherBridgeLike = {
   subscribeSnapshot: bridgeSubscribeSnapshot,
   subscribeDiscoveryProgress: bridgeSubscribeDiscoveryProgress,
+  subscribeAppPicked: bridgeSubscribeAppPicked,
   requestSnapshot: bridgeRequestSnapshot,
   dispatchLauncherCommand: bridgeDispatchLauncherCommand,
 };
@@ -100,6 +110,9 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
     },
     dispatchLauncherCommand: (name, payload) =>
       bridge.dispatchLauncherCommand(name, payload),
+    subscribeAppPicked: bridge.subscribeAppPicked
+      ? (listener) => bridge.subscribeAppPicked!(listener)
+      : null,
   };
 
   return store;

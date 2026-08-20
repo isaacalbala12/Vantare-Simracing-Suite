@@ -8,7 +8,10 @@ import {
   appCatalogState,
   chainSteps,
   detectedCount,
+  favoriteApps,
   hotkeyKeys,
+  isCustomApp,
+  orderCatalogApps,
   lastLaunchedAt,
   orderProfiles,
   policyChips,
@@ -206,5 +209,41 @@ describe("profileInitials", () => {
     expect(profileInitials("Pro")).toBe("PRO");
     expect(profileInitials("de la")).toBe("DL");
     expect(profileInitials("   ")).toBe("··");
+  });
+});
+
+describe("catalogo de aplicaciones", () => {
+  it("pone los favoritos primero y ordena el resto por nombre", () => {
+    const catalog = [
+      app("obs", { displayName: "OBS Studio" }),
+      app("lmu", { displayName: "Le Mans Ultimate", isFavorite: true }),
+      app("crewchief", { displayName: "CrewChief" }),
+      app("simhub", { displayName: "SimHub", isFavorite: true }),
+    ].map(toOrbitApp);
+    expect(orderCatalogApps(catalog).map((entry) => entry.id)).toEqual([
+      "lmu",
+      "simhub",
+      "crewchief",
+      "obs",
+    ]);
+  });
+
+  it("no muta la lista que recibe", () => {
+    const catalog = [app("obs"), app("lmu", { isFavorite: true })].map(toOrbitApp);
+    const before = catalog.map((entry) => entry.id);
+    orderCatalogApps(catalog);
+    expect(catalog.map((entry) => entry.id)).toEqual(before);
+  });
+
+  it("solo trata como personalizadas las del prefijo del backend", () => {
+    expect(isCustomApp(app("custom:mi-app"))).toBe(true);
+    expect(isCustomApp(app("lmu"))).toBe(false);
+    expect(toOrbitApp(app("custom:mi-app")).custom).toBe(true);
+    expect(toOrbitApp(app("lmu")).custom).toBe(false);
+  });
+
+  it("filtra las favoritas para la columna contextual", () => {
+    const catalog = [app("obs"), app("lmu", { isFavorite: true })].map(toOrbitApp);
+    expect(favoriteApps(catalog).map((entry) => entry.id)).toEqual(["lmu"]);
   });
 });

@@ -659,17 +659,58 @@ func handleCancelProfile(id string, svc *launcher.Service) {
 	svc.CancelChain(id)
 }
 
-// handleAppPick opens a native file picker for an executable. Wails v3
-// alpha.98-tui does not expose a file dialog API, so we emit a launcher:error
-// noting the limitation and let the frontend's HTML file input take over.
+// handleAppPick opens the native "open file" dialog and reports the chosen
+// executable as launcher:app:picked { path, suggestedName }. A cancelled
+// dialog emits the same event with an empty path so the frontend can settle
+// its pending state instead of waiting forever.
 //
-// TODO(launcher): when Wails exposes a native file dialog, replace the fallback
-// with application.NewFileDialog().SetTitle(...).AddFilter("exe","*.exe").BrowseFiles()
-// and emit launcher:app:picked with the chosen path.
-func handleAppPick(emitter app.EventEmitter) {
-	emitter.Emit("launcher:error", map[string]any{
-		"message": "file picker no disponible en esta versión de Wails; usa el selector del navegador",
+// suggestedName is the executable's base name without extension: it is only a
+// starting point, the user renames it in the add form before anything is saved.
+func handleAppPick(picker launcherFilePicker, emitter app.EventEmitter) {
+	if picker == nil {
+		emitter.Emit("launcher:error", map[string]any{
+			"code":    "picker_unavailable",
+			"message": "launcher: file picker unavailable",
+		})
+		return
+	}
+	path, err := picker.PickExecutable()
+	if err != nil {
+		log.Printf("launcher:app:pick error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{
+			"code":    "picker_unavailable",
+			"message": err.Error(),
+		})
+		return
+	}
+	emitter.Emit("launcher:app:picked", map[string]any{
+		"path":          path,
+		"suggestedName": suggestedAppName(path),
 	})
+}
+
+// suggestedAppName turns C:\Apps\SimHub\SimHubWPF.exe into "SimHubWPF".
+func suggestedAppName(path string) string {
+	base := filepath.Base(strings.TrimSpace(path))
+	if base == "." || base == string(filepath.Separator) {
+		return ""
+	}
+	return strings.TrimSuffix(base, filepath.Ext(base))
+}
+
+// handleAddCustomApp persists a user-added executable. The ID, monogram and
+// availability are derived in the launcher package so the frontend never
+// invents catalog metadata; on success the canonical snapshot carries the new
+// row back to the UI.
+func handleAddCustomApp(displayName, executablePath string, svc *launcher.Service, emitter app.EventEmitter) {
+	entry, err := svc.AddCustomApp(displayName, executablePath)
+	if err != nil {
+		log.Printf("launcher:app:addCustom error: %v", err)
+		emitLauncherCommandError(emitter, err)
+		return
+	}
+	emitter.Emit("launcher:app:added", map[string]any{"id": entry.ID, "displayName": entry.DisplayName})
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleRegistryList reads all installed apps from the Windows Registry using
@@ -956,13 +997,16 @@ func handleAutostartToggle(profileID string, enabled bool, emitter app.EventEmit
 
 // handleAppFavorite toggles the IsFavorite flag for a launcher app entry and
 // re-emits the full app set so the UI stays in sync.
-func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsService, emitter app.EventEmitter) {
+// It re-emits the snapshot through the live orchestrator: building a throwaway
+// launcher.Service here used to answer with an empty ActiveChains list, so
+// starring an app mid-launch blanked the chain the UI was drawing.
+func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsService, svc *launcher.Service, emitter app.EventEmitter) {
 	if err := settingsSvc.SetLauncherAppFavorite(id, favorite); err != nil {
 		log.Printf("launcher:app:favorite error: %v", err)
-		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+		emitLauncherCommandError(emitter, err)
 		return
 	}
-	handleLauncherSnapshot(launcher.NewService(settingsSvc, emitter, nil), emitter)
+	handleLauncherSnapshot(svc, emitter)
 }
 
 // handleLaunchFlag parses --launch=<profileID> from the command-line arguments.
@@ -2462,12 +2506,28 @@ func main() {
 		})
 	}
 
-	// File picker for manual apps. Wails v3 alpha.98-tui has no native dialog
-	// API, so this emits a fallback error and lets the frontend's HTML file
-	// input drive the real selection (see handleAppPick).
+	// File picker for custom apps: the native "open file" dialog answers with
+	// launcher:app:picked so the Add application form gets a real, launchable
+	// path (the browser's file input only hands over a sandboxed File).
+	launcherPicker := newWailsLauncherFilePicker(wailsApp)
 	wailsApp.Event.On("launcher:app:pick", func(event *application.CustomEvent) {
 		_ = event
-		handleAppPick(emitter)
+		handleAppPick(launcherPicker, emitter)
+	})
+
+	// Custom app creation. The frontend sends only what the user typed and
+	// chose; every derived field is computed in the launcher package.
+	wailsApp.Event.On("launcher:app:addCustom", func(event *application.CustomEvent) {
+		var payload struct {
+			DisplayName string `json:"displayName"`
+			Path        string `json:"path"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleAddCustomApp(payload.DisplayName, payload.Path, launcherSvc, emitter)
 	})
 
 	// Registry list handler for the AddNonSteamGameModal. Reads all installed
@@ -2632,7 +2692,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleAppFavorite(payload.ID, payload.Favorite, settingsSvc, emitter)
+		handleAppFavorite(payload.ID, payload.Favorite, settingsSvc, launcherSvc, emitter)
 	})
 
 	// Calendar event handlers (CALENDAR-02-A) and series follow/unfollow

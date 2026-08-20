@@ -2,6 +2,15 @@
 
 **Fecha:** 2026-07-02
 **Propósito:** Confirmar la identidad de cada DLL (SimHub plugin vs LMU native plugin vs híbrido) y reconstruir el flujo de autenticación Nakama/Steam sin ejecutar código ni usar credenciales.
+
+> Reevaluación 2026-08-20: este documento describe doX 1.9.1 y el backend
+> anterior a la migración de LMU 1.4 a RaceOS. La documentación oficial de
+> Nakama exige un token Steam válido en `authenticate/steam`, y Steamworks exige
+> que la aplicación solicite un ticket para la identidad Web API concreta. La
+> hipótesis posterior de que bastaría un Steam ID de SimHub más una server key
+> no está respaldada y debe considerarse descartada. El contrato observado de
+> doX sigue siendo evidencia histórica; no demuestra un endpoint actual ni una
+> vía autorizada para obtener o reutilizar credenciales de LMU.
 **Método:** Análisis estático de strings Unicode, metadatos de instalador NSIS, archivos de template SimHub (.djson), licencias, y paths de instalación. Sin descompilación IL, sin ejecución de DLLs, sin carga en SimHub.
 **Estado:** Investigación — NO implementación.
 

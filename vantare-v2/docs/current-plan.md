@@ -22,6 +22,14 @@ Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
   RaceOS y ninguna con las IP resueltas entonces para el host Nakama histórico;
   esto no atribuye todo el tráfico. Pendiente: la superficie autorizada para
   DR/SR exactos e histórico; no otra captura de sesión.
+- La relectura documental confirma el contrato Nakama histórico de doX, pero no
+  la obtención legítima del ticket Steam ni de la server key. RaceCenter declara
+  y muestra públicamente que su activador extrae el token de sesión de
+  `coherent_local_storage.json` y lo envía a su servidor; Vantare no copiará esa
+  custodia. La alternativa aprobable es un conector opt-in local, token solo en
+  memoria, subida de registros sanitizados y un worker diario separado para la
+  superficie pública de RaceControl. La paridad sigue condicional hasta probar
+  identidad, paginación, histórico y deltas DR/SR en la superficie actual.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

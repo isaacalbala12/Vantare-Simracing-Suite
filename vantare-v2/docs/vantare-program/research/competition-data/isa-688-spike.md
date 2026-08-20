@@ -82,6 +82,90 @@ segura comprobada. No permite descartar que esos datos estén codificados con
 otra clave o representación. Los valores DR/SR exactos y el histórico siguen
 sin una fuente identificada y autorizada.
 
+## Relectura de Nakama y RaceCenter — 2026-08-20
+
+La investigación estática anterior de doX sí reconstruyó el contrato histórico
+con bastante precisión: autenticación Steam de Nakama, sesión Bearer y RPC
+`event_get` paginado por evento. No reconstruyó las dos credenciales necesarias:
+el ticket Steam válido para LMU y la server key de Nakama. La documentación
+oficial de Nakama exige un token Steam válido; un Steam ID por sí solo no sirve.
+Steamworks, además, exige que la aplicación solicite el ticket para su propia
+identidad Web API. Por tanto, la hipótesis antigua «Steam ID de SimHub + server
+key» no está demostrada y no debe guiar una implementación.
+
+La interfaz pública actual de RaceCenter aporta una pieza adicional:
+
+- su política de privacidad, actualizada el 11 de agosto de 2026, declara que
+  sincroniza rating, histórico y vueltas desde Nakama después de vincular la
+  cuenta;
+- su pantalla de vinculación indica que un activador lee
+  `coherent_local_storage.json`, extrae el token de sesión actual de LMU y lo
+  envía a RaceCenter para efectuar una vinculación persistente;
+- el frontend consulta su propio `/api/nakama/events` sin autenticación y lo
+  refresca cada 30 segundos; ese endpoint entrega catálogo de eventos, no el
+  histórico completo de cada piloto.
+
+Esto explica cómo RaceCenter salva el hueco de credenciales, pero no convierte
+el mecanismo en un contrato oficial ni demuestra que el backend actual de LMU
+sea Nakama de extremo a extremo. LMU 1.4 anunció que RaceOS sustituyó una capa
+de terceros, y la observación local actual solo vio RaceOS. Los nombres internos
+de RaceCenter pueden ser heredados o describir una capa aún situada detrás de
+RaceOS.
+
+### Superficie pública de RaceControl
+
+RaceControl publica, sin iniciar sesión, páginas de eventos alojados con:
+
+- inscritos y Grid Rating propio de SimGrid;
+- resultados de clasificación y carrera;
+- vueltas por piloto;
+- standings y reglas de puntuación de campeonatos.
+
+Esta superficie permite un colector de baja frecuencia para eventos públicos,
+pero no se ha demostrado que enumere todas las carreras oficiales Daily/Weekly
+ni expone el DR/SR oficial de LMU. El valor alrededor de 2.000 y las categorías
+Bronze/Experienced Bronze pertenecen a Grid Rating: el HTML usa
+`icon-grid-rating`, el sitio está operado mediante SimGrid y la documentación de
+SimGrid fija 2.000 como base de su propio rating. No debe mezclarse con LMU.
+`robots.txt` no declara restricciones, pero la accesibilidad pública no equivale
+a permiso de republicación masiva. Antes de guardar nombres o perfiles de
+terceros en una base pública se necesita revisión de términos, finalidad RGPD,
+retención, rectificación, borrado y mecanismo de exclusión.
+
+## Arquitectura viable sin custodiar credenciales
+
+La opción recomendada para Vantare es híbrida:
+
+1. Un conector local, voluntario y visible, se ejecuta únicamente cuando el
+   usuario abre LMU. El token de sesión nunca sale del equipo, no se registra y
+   solo vive en memoria durante la sincronización.
+2. El conector consulta la superficie autorizada que se confirme para el propio
+   usuario y normaliza localmente resultados, cambios DR/SR y participantes.
+   Solo sube registros sanitizados y con procedencia, nunca tokens ni respuestas
+   remotas completas.
+3. Un worker barato ingiere una vez al día las páginas públicas permitidas de
+   RaceControl y reconcilia eventos/resultados alojados. Su Grid Rating se
+   conserva, si se usa, en un campo y namespace distintos; no puede sustituir
+   al conector local para DR/SR o carreras oficiales que requieren sesión.
+4. El backend conserva observaciones append-only y una proyección corregible.
+   Una exclusión o detección de fraude invalida la proyección sin borrar la
+   procedencia; los datos personales sí siguen su política de borrado.
+
+Abrir LMU una vez al día puede activar el snapshot local. Una ejecución semanal
+sirve para catálogo e histórico que el origen ya conserve, pero puede perder
+cambios intermedios de rating. La paridad exacta con RaceCenter solo queda
+demostrada si una prueba local identifica, sin extraer ni subir credenciales,
+que la sesión actual permite obtener `event_get` o su equivalente RaceOS con
+identidad estable, paginación y deltas DR/SR.
+
+### Límites de implementación
+
+- No copiar el modelo de RaceCenter de enviar el token LMU a un servidor.
+- No almacenar token, refresh token, server key o respuesta de sesión.
+- No usar `/api/nakama/*` de RaceCenter como fuente de Vantare.
+- No reutilizar una credencial de LMU en un worker Cloudflare.
+- No presentar el nombre histórico `event_get` como endpoint actual confirmado.
+
 ## Herramienta reproducible
 
 `cmd/lmu-online-surface-probe` recibe una ruta de logs explícita y consulta
@@ -126,6 +210,12 @@ sesión y presencia del campo `badge`, pero no identifica la representación ni
 fuente de DR/SR exactos o histórico; por tanto, la paridad global permanece
 `condicional`.
 
+El siguiente experimento permitido es un analizador local de esquema para
+`coherent_local_storage.json` que opere con consentimiento explícito y emita
+solo nombres de claves, tipos y contadores. Requiere antes una revisión de
+seguridad específica porque el archivo contiene una credencial. No se leerá ni
+se implementará el intercambio remoto del token como parte de este checkpoint.
+
 ## Verificación del checkpoint
 
 - `go test ./cmd/lmu-online-surface-probe`: PASS.
@@ -148,5 +238,11 @@ fuente de DR/SR exactos o histórico; por tanto, la paridad global permanece
 - Racecenter, política de privacidad: https://racecenter.fr/politique-de-confidentialite
 - LMU V1.4 / RaceOS: https://lemansultimate.com/le-mans-ultimate-goes-stateside-with-us-track-dlc-and-v1-4-update/
 - Nakama Authentication: https://heroiclabs.com/docs/nakama/concepts/authentication/
+- Steamworks `ISteamUser`: https://partner.steamgames.com/doc/api/ISteamUser
+- Nakama RPC: https://heroiclabs.com/docs/nakama/server-framework/typescript-runtime/code-samples/
+- RaceControl, reglas y términos: https://www.racecontrol.gg/rules
+- RaceControl, ejemplo público de resultados: https://www.racecontrol.gg/events/20443/results?race_id=219624
+- RaceControl, ejemplo público de inscritos: https://www.racecontrol.gg/events/20443/drivers
+- SimGrid, definición de Grid Rating: https://pits.thesimgrid.com/announcements/grid-rating-arrives-at-simgrid/
 - Investigación previa doX: `docs/research/dox-lmu-plugin-identity-and-auth-flow.md`
 - Decisión previa de producto: `docs/adr/0001-close-lmu-pilot-ratings.md`

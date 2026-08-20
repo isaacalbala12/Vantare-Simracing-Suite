@@ -40,6 +40,18 @@ IP resueltas entonces para el host Nakama histórico; no atribuye todo el tráfi
 a nivel de aplicación. Pendiente ahora: identificar, sin extraer credenciales,
 la superficie autorizada de DR/SR e histórico.
 
+La revisión de los documentos Nakama confirma el flujo histórico de doX, pero
+no cómo obtener legítimamente el ticket Steam ni la server key. La interfaz
+pública de RaceCenter explica su mecanismo actual: un activador lee el token de
+sesión de `coherent_local_storage.json` y lo envía a su backend. Vantare no debe
+custodiar esa credencial. El diseño viable es un conector opt-in local con token
+efímero solo en memoria, subida de observaciones sanitizadas y un worker diario
+independiente para páginas públicas autorizadas de RaceControl. RaceControl sí
+publica resultados, vueltas, standings e inscritos de eventos alojados, pero el
+rating visible allí es Grid Rating de SimGrid, no DR/SR oficial de LMU. Aún no
+se ha demostrado cobertura de todo el calendario oficial ni permiso de
+republicación masiva.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

@@ -1,0 +1,409 @@
+# Plan del roadmap
+
+Fuente de verdad **manual** del roadmap publico. Lo edita una persona; nadie lo
+genera. De aqui salen las fases, las areas y los hitos que pinta la pagina
+Roadmap del hub.
+
+El artefacto que consume la app es `roadmap.json`, y **no se edita a mano**: lo
+escribe `.github/scripts/roadmap_digest.py` combinando este fichero con los
+commits ya mergeados a `nightly`. Para regenerarlo en local:
+
+```sh
+python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly
+```
+
+## Formato
+
+Deliberadamente plano, para editarlo sin pensar en el parser:
+
+- `##` abre seccion: `Fases`, `Areas` o `Hitos`. Cualquier otra se ignora.
+- `###` abre una entrada. El texto del encabezado es su **titulo en espanol**.
+- `- clave: valor` declara un campo; el idioma va en la clave
+  (`- resumen.en: ...`). Sin sufijo, el valor se usa para los cuatro idiomas.
+- `- item:` anade un punto a la fase; `- item.en:` traduce el ultimo anadido.
+- Cualquier otra linea es prosa para quien edita y no llega al artefacto.
+
+Claves por seccion:
+
+| Seccion | Claves |
+| --- | --- |
+| Fases | `id`, `estado`, `etiqueta`, `objetivo`, `progreso`, `resumen`, `titulo`, `item` |
+| Areas | `id`, `estado`, `progreso`, `titulo`, `proyectos` |
+| Hitos | `id`, `tipo`, `titulo`, `cuerpo`, `etiqueta` |
+
+`estado` es `done`, `in-progress`, `planned` o `future`, y solo una fase puede
+estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
+
+---
+
+## Fases
+
+### Beta publica
+
+- id: beta-foundation
+- estado: done
+- progreso: 100
+- etiqueta: Fase 1
+- etiqueta.en: Phase 1
+- objetivo: v0.1.0
+- titulo.en: Public beta
+- titulo.pt: Beta pública
+- titulo.it: Beta pubblica
+- resumen: Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.
+- resumen.en: Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.
+- resumen.pt: Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.
+- resumen.it: Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2.
+- item: Google OAuth externo y sesión persistente
+- item.en: External Google OAuth and persistent session
+- item.pt: Google OAuth externo e sessão persistente
+- item.it: Google OAuth esterno e sessione persistente
+- item: Perfiles recomendados y editor de overlays
+- item.en: Recommended profiles and overlay editor
+- item.pt: Perfis recomendados e editor de overlays
+- item.it: Profili consigliati e editor di overlay
+- item: Launcher LMU básico
+- item.en: Basic LMU launcher
+- item.pt: Launcher LMU básico
+- item.it: Launcher LMU di base
+
+### Pulido beta v0.1.x
+
+- id: beta-iteration
+- estado: in-progress
+- progreso: 75
+- etiqueta: Fase 2
+- etiqueta.en: Phase 2
+- objetivo: v0.1.x
+- titulo.en: Beta polish v0.1.x
+- titulo.pt: Polimento beta v0.1.x
+- titulo.it: Polish beta v0.1.x
+- resumen: Command Orbit como única shell, Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.
+- resumen.en: Command Orbit as the only shell, Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.
+- resumen.pt: Command Orbit como única shell, Overlay Studio V3, telemetria LMU ao vivo, licenças com credencial offline e Launcher com cadeias de lançamento.
+- resumen.it: Command Orbit come unica shell, Overlay Studio V3, telemetria LMU dal vivo, licenze con credenziale offline e Launcher con catene di avvio.
+- item: Command Orbit v0.3 portada al hub y V5.2 retirada
+- item.en: Command Orbit v0.3 ported to the hub and V5.2 retired
+- item.pt: Command Orbit v0.3 portada para o hub e V5.2 retirada
+- item.it: Command Orbit v0.3 portata nell'hub e V5.2 ritirata
+- item: Overlay Studio V3 con los catálogos Crystal, Neo y Endurance
+- item.en: Overlay Studio V3 with the Crystal, Neo and Endurance catalogues
+- item.pt: Overlay Studio V3 com os catálogos Crystal, Neo e Endurance
+- item.it: Overlay Studio V3 con i cataloghi Crystal, Neo ed Endurance
+- item: Telemetría LMU en vivo con transporte compartido y proyecciones
+- item.en: Live LMU telemetry with a shared transport and projections
+- item.pt: Telemetria LMU ao vivo com transporte partilhado e projeções
+- item.it: Telemetria LMU dal vivo con trasporto condiviso e proiezioni
+- item: Licencias con credencial offline y arranque desde caché
+- item.en: Licensing with offline credentials and cache-first startup
+- item.pt: Licenças com credencial offline e arranque a partir da cache
+- item.it: Licenze con credenziale offline e avvio dalla cache
+- item: Launcher con detección de apps y cadenas de lanzamiento
+- item.en: Launcher with app detection and launch chains
+- item.pt: Launcher com deteção de apps e cadeias de lançamento
+- item.it: Launcher con rilevamento app e catene di avvio
+
+### Ingeniero y estrategia
+
+- id: engineer
+- estado: planned
+- progreso: 25
+- etiqueta: Fase 3
+- etiqueta.en: Phase 3
+- objetivo: Por planear
+- objetivo.en: To plan
+- objetivo.pt: Por planear
+- objetivo.it: Da pianificare
+- titulo.en: Engineer and strategy
+- titulo.pt: Engenheiro e estratégia
+- titulo.it: Engineer e strategia
+- resumen: Ingeniero y estrategia con avisos útiles sobre datos ya validados; la voz llega cuando los datos la sostengan.
+- resumen.en: Engineer and strategy with useful alerts over validated data; voice arrives once the data supports it.
+- resumen.pt: Engenheiro e estratégia com avisos úteis sobre dados validados; a voz chega quando os dados a sustentarem.
+- resumen.it: Engineer e strategia con avvisi utili su dati validati; la voce arriva quando i dati la sostengono.
+- item: Proyecciones de ingeniero y estrategia sobre telemetría real
+- item.en: Engineer and strategy projections over real telemetry
+- item.pt: Projeções de engenheiro e estratégia sobre telemetria real
+- item.it: Proiezioni engineer e strategia su telemetria reale
+- item: Suite de análisis sobre la grabación DuckDB (ADR 0004/0005)
+- item.en: Analysis suite over the DuckDB recording (ADR 0004/0005)
+- item.pt: Suite de análise sobre a gravação DuckDB (ADR 0004/0005)
+- item.it: Suite di analisi sulla registrazione DuckDB (ADR 0004/0005)
+- item: Reglas locales primero
+- item.en: Local rules first
+- item.pt: Regras locais primeiro
+- item.it: Regole locali prima
+- item: Voz y perfiles avanzados después
+- item.en: Voice and advanced profiles later
+- item.pt: Voz e perfis avançados depois
+- item.it: Voce e profili avanzati dopo
+
+### Ecosistema
+
+- id: ecosystem
+- estado: future
+- progreso: 10
+- etiqueta: Fase 4
+- etiqueta.en: Phase 4
+- objetivo: Futuro
+- objetivo.en: Future
+- objetivo.pt: Futuro
+- objetivo.it: Futuro
+- titulo.en: Ecosystem
+- titulo.pt: Ecossistema
+- titulo.it: Ecosistema
+- resumen: Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.
+- resumen.en: Community, paid plans, multisim and real analytics once the base is stable.
+- resumen.pt: Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.
+- resumen.it: Community, piani a pagamento, multisim e analitiche reali quando la base è stabile.
+- item: Comunidad de overlays
+- item.en: Overlay community
+- item.pt: Comunidade de overlays
+- item.it: Community di overlay
+- item: Planes de pago y suite reales
+- item.en: Real paid and suite plans
+- item.pt: Planos pagos e suite reais
+- item.it: Piani a pagamento e suite reali
+- item: Datos reales de carrera y progresión
+- item.en: Real race and progression data
+- item.pt: Dados reais de corrida e progressão
+- item.it: Dati reali di gara e progressione
+
+---
+
+## Areas
+
+### Overlays Studio
+
+- id: overlays-studio
+- estado: in-progress
+- progreso: 75
+- proyectos: overlay-studio-v3
+
+### Launcher
+
+- id: launcher-lmu
+- estado: in-progress
+- progreso: 75
+- proyectos: launcher
+
+### Telemetría
+
+- id: telemetry
+- estado: in-progress
+- progreso: 25
+- titulo.en: Telemetry
+- titulo.pt: Telemetria
+- titulo.it: Telemetria
+- proyectos: telemetry-core, telemetry-analysis
+
+### Calendario
+
+- id: calendar-local
+- estado: in-progress
+- progreso: 50
+- titulo.en: Calendar
+- titulo.pt: Calendário
+- titulo.it: Calendario
+- proyectos: calendar
+
+### Ingeniero
+
+- id: engineer
+- estado: planned
+- progreso: 25
+- titulo.en: Engineer
+- titulo.pt: Engenheiro
+- titulo.it: Engineer
+- proyectos: engineer-spotter
+
+### Estrategia
+
+- id: strategy
+- estado: in-progress
+- progreso: 25
+- titulo.en: Strategy
+- titulo.pt: Estratégia
+- titulo.it: Strategia
+- proyectos: strategy-planner
+
+### Licencias y cuenta
+
+- id: licensing
+- estado: in-progress
+- progreso: 50
+- titulo.en: Licensing and account
+- titulo.pt: Licenças e conta
+- titulo.it: Licenze e account
+- proyectos: billing
+
+---
+
+## Hitos
+
+### v0.1.0.5 en nightly
+
+- id: v0105
+- tipo: release
+- titulo.en: v0.1.0.5 on nightly
+- titulo.pt: v0.1.0.5 em nightly
+- titulo.it: v0.1.0.5 su nightly
+- cuerpo: Lote de launcher de Windows, paneles del hub, servicios internos y documentación de marca y diseño.
+- cuerpo.en: Windows launcher batch, hub panels, internal services and brand and design documentation.
+- cuerpo.pt: Lote de launcher do Windows, painéis do hub, serviços internos e documentação de marca e design.
+- cuerpo.it: Lotto di launcher Windows, pannelli hub, servizi interni e documentazione di brand e design.
+- etiqueta: Release
+
+### Command Orbit v0.3 en el hub
+
+- id: orbit-v03
+- tipo: release
+- titulo.en: Command Orbit v0.3 in the hub
+- titulo.pt: Command Orbit v0.3 no hub
+- titulo.it: Command Orbit v0.3 nell'hub
+- cuerpo: El porte completo de la shell Orbit sustituye a la V5.2 y pasa a ser la única shell del hub.
+- cuerpo.en: The full Orbit shell port replaces V5.2 and becomes the hub's only shell.
+- cuerpo.pt: O porte completo da shell Orbit substitui a V5.2 e passa a ser a única shell do hub.
+- cuerpo.it: Il porting completo della shell Orbit sostituisce la V5.2 e diventa l'unica shell dell'hub.
+- etiqueta: Release
+
+### Overlay Studio V3 en marcha
+
+- id: overlay-studio-v3
+- tipo: feature
+- titulo.en: Overlay Studio V3 under way
+- titulo.pt: Overlay Studio V3 em curso
+- titulo.it: Overlay Studio V3 in corso
+- cuerpo: Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.
+- cuerpo.en: A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.
+- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.
+- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance.
+- etiqueta: En desarrollo
+- etiqueta.en: In progress
+- etiqueta.pt: Em desenvolvimento
+- etiqueta.it: In corso
+
+### Telemetría LMU en vivo
+
+- id: telemetry-live
+- tipo: feature
+- titulo.en: Live LMU telemetry
+- titulo.pt: Telemetria LMU ao vivo
+- titulo.it: Telemetria LMU dal vivo
+- cuerpo: Driver LMU con reconexión acotada, transporte compartido entre ventanas y proyecciones de overlay, ingeniero y estrategia.
+- cuerpo.en: LMU driver with bounded reconnects, a transport shared across windows and overlay, engineer and strategy projections.
+- cuerpo.pt: Driver LMU com reconexão limitada, transporte partilhado entre janelas e projeções de overlay, engenheiro e estratégia.
+- cuerpo.it: Driver LMU con riconnessione limitata, trasporto condiviso tra finestre e proiezioni di overlay, engineer e strategia.
+- etiqueta: En desarrollo
+- etiqueta.en: In progress
+- etiqueta.pt: Em desenvolvimento
+- etiqueta.it: In corso
+
+### Licencias con credencial offline
+
+- id: licensing-offline
+- tipo: feature
+- titulo.en: Licensing with offline credentials
+- titulo.pt: Licenças com credencial offline
+- titulo.it: Licenze con credenziale offline
+- cuerpo: La app arranca desde la credencial en caché y verifica sin red, de modo que una caída del servicio no cierra la sesión.
+- cuerpo.en: The app starts from the cached credential and verifies offline, so a service outage does not sign you out.
+- cuerpo.pt: A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.
+- cuerpo.it: L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione.
+- etiqueta: Feature
+
+### Canales nightly y testers
+
+- id: channels
+- tipo: plan
+- titulo.en: Nightly and testers channels
+- titulo.pt: Canais nightly e testers
+- titulo.it: Canali nightly e tester
+- cuerpo: Tres canales de actualización (estable, testers y nightly) con acceso según el rol de la cuenta.
+- cuerpo.en: Three update channels (stable, testers and nightly) with access driven by the account role.
+- cuerpo.pt: Três canais de atualização (estável, testers e nightly) com acesso conforme o papel da conta.
+- cuerpo.it: Tre canali di aggiornamento (stabile, tester e nightly) con accesso in base al ruolo dell'account.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+<!--
+Los hitos que siguen salen de la auditoria de cableado de Orbit v0.3
+(`docs/design/orbit-v03/evidence/porte/wiring-audit.md`, seccion "Pendiente por
+decision de producto"): controles que hoy quedan honestos porque falta una
+decision o una fuente, no porque falte codigo.
+-->
+
+### Marcar favorito en el Launcher
+
+- id: launcher-favorite-toggle
+- tipo: plan
+- titulo.en: Toggling a Launcher favourite
+- titulo.pt: Marcar favorito no Launcher
+- titulo.it: Segnare un preferito nel Launcher
+- cuerpo: Hoy el favorito solo ordena y colorea la lista; falta el control para alternarlo desde Orbit.
+- cuerpo.en: A favourite only sorts and tints the list today; the control to toggle it from Orbit is missing.
+- cuerpo.pt: Hoje o favorito apenas ordena e colore a lista; falta o controlo para o alternar a partir do Orbit.
+- cuerpo.it: Oggi il preferito ordina e colora solo la lista; manca il controllo per attivarlo da Orbit.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Estrategias por evento
+
+- id: strategy-multi-event
+- tipo: plan
+- titulo.en: Per-event strategies
+- titulo.pt: Estratégias por evento
+- titulo.it: Strategie per evento
+- cuerpo: El puente de estrategia publica un único evento activo; «Otros eventos» solo podrá listarlos cuando publique varios.
+- cuerpo.en: The strategy bridge publishes a single active event; "Other events" can only list them once it publishes several.
+- cuerpo.pt: A ponte de estratégia publica um único evento ativo; «Outros eventos» só os poderá listar quando publicar vários.
+- cuerpo.it: Il ponte di strategia pubblica un solo evento attivo; «Altri eventi» potrà elencarli solo quando ne pubblicherà diversi.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Editar pilotos y sus ritmos
+
+- id: strategy-edit-drivers
+- tipo: plan
+- titulo.en: Editing drivers and their pace
+- titulo.pt: Editar pilotos e os seus ritmos
+- titulo.it: Modificare i piloti e i loro ritmi
+- cuerpo: Los ritmos llegan desde el hub y no hay comando para escribirlos, así que la edición queda pendiente de contrato.
+- cuerpo.en: Pace figures arrive from the hub and no command writes them back, so editing waits on a contract.
+- cuerpo.pt: Os ritmos chegam do hub e não há comando para os escrever, pelo que a edição fica pendente de contrato.
+- cuerpo.it: I ritmi arrivano dall'hub e nessun comando li riscrive, quindi la modifica attende un contratto.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Registros y últimos eventos en Diagnóstico
+
+- id: diagnostics-logs
+- tipo: plan
+- titulo.en: Logs and recent events in Diagnostics
+- titulo.pt: Registos e últimos eventos em Diagnóstico
+- titulo.it: Log e ultimi eventi in Diagnostica
+- cuerpo: Falta decidir dónde viven los registros y abrir un canal de log del backend al hub.
+- cuerpo.en: Where the logs live is still undecided, and there is no log channel from the backend to the hub.
+- cuerpo.pt: Falta decidir onde vivem os registos e abrir um canal de log do backend para o hub.
+- cuerpo.it: Manca decidere dove vivono i log e aprire un canale di log dal backend all'hub.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Eje temporal en Telemetría y exportar radio
+
+- id: telemetry-timeline-export
+- tipo: plan
+- titulo.en: Telemetry timeline and radio export
+- titulo.pt: Eixo temporal em Telemetria e exportar rádio
+- titulo.it: Asse temporale in Telemetria ed esportazione radio
+- cuerpo: Ambos dependen de que la grabación DuckDB (ADR 0004/0005) se exponga al frontend.
+- cuerpo.en: Both wait on the DuckDB recording (ADR 0004/0005) being exposed to the frontend.
+- cuerpo.pt: Ambos dependem de que a gravação DuckDB (ADR 0004/0005) seja exposta ao frontend.
+- cuerpo.it: Entrambi dipendono dall'esposizione della registrazione DuckDB (ADR 0004/0005) al frontend.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano

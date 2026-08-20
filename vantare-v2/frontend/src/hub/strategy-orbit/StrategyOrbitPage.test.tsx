@@ -125,6 +125,17 @@ async function mounted() {
   await screen.findByTestId("orbit-stint-0");
 }
 
+/**
+ * Recorre el asistente de creación (ISA-377) hasta el punto de partida, que es
+ * donde viven los dos caminos de siempre.
+ */
+async function openWizard(team: "solo" | "team" = "team") {
+  fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+  fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
+  fireEvent.click(await screen.findByTestId(`orbit-strategy-wizard-${team}`));
+  await screen.findByTestId("orbit-strategy-paths");
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   starts.length = 0;
@@ -368,21 +379,73 @@ describe("StrategyOrbitPage · Disponibilidad", () => {
 });
 
 describe("StrategyOrbitPage · estado inicial", () => {
-  it("sin evento ofrece los dos caminos, no una lista muerta", async () => {
+  it("sin nada guardado el menú ofrece crear y lo dice, no una lista muerta", async () => {
     mount(null);
 
-    const empty = await screen.findByTestId("orbit-strategy-empty");
-    expect(empty.textContent).toContain("Empieza tu estrategia");
+    const home = await screen.findByTestId("orbit-strategy-home");
+    expect(home.textContent).toContain("Nueva estrategia");
+    // Nunca se abrió nada: no hay tarjeta de «Continuar».
+    expect(screen.queryByTestId("orbit-strategy-continue")).toBeNull();
+    expect((await screen.findByTestId("orbit-strategy-saved")).textContent).toContain(
+      "Aún no hay nada guardado",
+    );
+    expect(screen.queryByTestId("orbit-strategy-overview")).toBeNull();
+    // El asistente todavía no está abierto.
+    expect(screen.queryByTestId("orbit-strategy-wizard")).toBeNull();
+  });
+
+  it("el asistente pregunta origen y equipo antes de dejar crear", async () => {
+    mount(null);
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const wizard = await screen.findByTestId("orbit-strategy-wizard");
+    expect(wizard.textContent).toContain("paso 1 de 3");
+    // Todavía no se puede elegir punto de partida: falta contestar.
+    expect(screen.queryByTestId("orbit-strategy-paths")).toBeNull();
+
+    // La automática va deshabilitada y dice por qué (ADR 0005, sin fuente).
+    const auto = screen.getByTestId("orbit-strategy-wizard-auto-action");
+    expect(auto.hasAttribute("disabled")).toBe(true);
+    expect(auto.getAttribute("data-tip")).toContain("ADR 0005");
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-manual"));
+    expect((await screen.findByTestId("orbit-strategy-wizard")).textContent).toContain(
+      "paso 2 de 3",
+    );
+    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-team"));
+
+    await screen.findByTestId("orbit-strategy-paths");
     expect(screen.getByTestId("orbit-strategy-path-own")).toBeTruthy();
     expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
-    expect(screen.queryByTestId("orbit-strategy-overview")).toBeNull();
     // Las series solo se listan cuando el usuario elige ese camino.
     expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
   });
 
+  it("«Solo» crea un evento de un piloto y quita la disponibilidad del tablero", async () => {
+    mount(null);
+    await openWizard("solo");
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-own"));
+
+    const form = await screen.findByTestId("orbit-strategy-form");
+    // Con un solo piloto no se pueden añadir compañeros, y se dice por qué.
+    const add = within(form).getByTestId("orbit-strategy-form-add-driver");
+    expect(add.hasAttribute("disabled")).toBe(true);
+    expect(add.getAttribute("data-tip")).toContain("solitario");
+
+    fireEvent.change(within(form).getByLabelText("Nombre del evento"), {
+      target: { value: "Enduro en solitario" },
+    });
+    fireEvent.click(within(form).getByTestId("orbit-strategy-form-submit"));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.queryByRole("tab", { name: "Disponibilidad de pilotos" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Estrategias" })).toBeTruthy();
+  });
+
   it("«Crear mi estrategia» crea el evento propio y entra en el Resumen", async () => {
     mount(null);
-    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+    await openWizard();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-own"));
 
     const form = await screen.findByTestId("orbit-strategy-form");
     fireEvent.change(within(form).getByLabelText("Nombre del evento"), {
@@ -413,7 +476,8 @@ describe("StrategyOrbitPage · estado inicial", () => {
     starts.push(SPA_START);
     mount(null);
 
-    fireEvent.click(await screen.findByTestId("orbit-strategy-path-series"));
+    await openWizard();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-series"));
     const list = await screen.findByTestId("orbit-strategy-series");
     expect(list.textContent).toContain("GT3");
     expect(list.textContent).toContain("45 min");
@@ -428,9 +492,10 @@ describe("StrategyOrbitPage · estado inicial", () => {
   it("sin especiales ni semanales la lista recomendada lo dice y no inventa filas", async () => {
     starts.push(SPA_START); // `advanced`: no es semanal, no cuenta.
     mount(null);
+    await openWizard();
 
     const block = await screen.findByTestId("orbit-strategy-recommended");
-    expect(block.textContent).toContain("Eventos recomendados");
+    expect(block.textContent).toContain("Del calendario");
     expect(block.textContent).toContain("Sin eventos en el calendario");
     expect(screen.queryByTestId("orbit-strategy-recommended-list")).toBeNull();
   });
@@ -455,6 +520,7 @@ describe("StrategyOrbitPage · estado inicial", () => {
     };
     starts.push(WEEKLY_START); // Hay semanal, pero el especial manda.
     mount(null);
+    await openWizard();
 
     const list = await screen.findByTestId("orbit-strategy-recommended-list");
     expect(list.textContent).toContain("24 Horas de Spa");
@@ -471,6 +537,7 @@ describe("StrategyOrbitPage · estado inicial", () => {
     calendarRef.current = { events: [] };
     starts.push(WEEKLY_START);
     mount(null);
+    await openWizard();
 
     const list = await screen.findByTestId("orbit-strategy-recommended-list");
     expect(list.textContent).toContain("LMU Weekly Endurance");
@@ -486,7 +553,8 @@ describe("StrategyOrbitPage · estado inicial", () => {
 
   it("el evento se guarda y vuelve al recargar la pantalla", async () => {
     mount(null);
-    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+    await openWizard();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-own"));
     fireEvent.change(screen.getByLabelText("Nombre del evento"), {
       target: { value: "Enduro de casa" },
     });
@@ -509,7 +577,8 @@ describe("StrategyOrbitPage · varios eventos", () => {
 
     // Un segundo evento, propio.
     fireEvent.click(screen.getByTestId("orbit-strategy-new-event"));
-    fireEvent.click(await screen.findByTestId("orbit-strategy-path-own"));
+    await openWizard();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-own"));
     fireEvent.change(screen.getByLabelText("Nombre del evento"), {
       target: { value: "Enduro de casa" },
     });
@@ -567,5 +636,105 @@ describe("StrategyOrbitPage · pilotos del evento", () => {
 
     // Un ritmo más lento ⇒ menos vueltas en el mismo tiempo de carrera.
     await waitFor(() => expect(laps()).toBeLessThan(before));
+  });
+});
+
+describe("StrategyOrbitPage · menú de entrada (ISA-377)", () => {
+  /** Crea un evento propio con el nombre dado y vuelve al menú. */
+  async function createAndLeave(name: string) {
+    await openWizard();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-own"));
+    fireEvent.change(await screen.findByLabelText("Nombre del evento"), {
+      target: { value: name },
+    });
+    fireEvent.click(screen.getByTestId("orbit-strategy-form-submit"));
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByTestId("orbit-strategy-back"));
+    return screen.findByTestId("orbit-strategy-home");
+  }
+
+  it("con un evento abierto la pestaña entra directa al editor, con vuelta al menú", async () => {
+    await mounted();
+    // Nada de peaje: el plan que estaba abierto es lo primero que se ve.
+    expect(screen.getByTestId("orbit-strategy-overview")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-strategy-home")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-back"));
+    const home = await screen.findByTestId("orbit-strategy-home");
+    expect(within(home).getByTestId("orbit-strategy-continue").textContent).toContain(
+      "4 Horas de Imola",
+    );
+  });
+
+  it("«Continuar» ofrece el último abierto y devuelve a su editor", async () => {
+    mount(null);
+    await createAndLeave("Enduro de casa");
+    await createAndLeave("Sprint del jueves");
+
+    const card = screen.getByTestId("orbit-strategy-continue");
+    // El último abierto es el segundo, no el primero ni el de arriba de la lista.
+    expect(card.textContent).toContain("Sprint del jueves");
+    expect(card.textContent).toContain("Última edición");
+
+    fireEvent.click(card);
+    await screen.findByTestId("orbit-strategy-overview");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Sprint del jueves");
+  });
+
+  it("la lista guardada duplica sin tocar el original", async () => {
+    mount(null);
+    await createAndLeave("Enduro de casa");
+
+    // La lista de guardadas vive en su propia superficie, no en la de entrada.
+    const saved = screen.getByTestId("orbit-strategy-saved");
+    const rows = () => within(saved).getAllByTestId(/^orbit-strategy-open-/);
+    expect(rows()).toHaveLength(1);
+    fireEvent.click(within(saved).getByLabelText("Duplicar Enduro de casa"));
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(saved.textContent).toContain("Enduro de casa (copia)");
+  });
+
+  it("eliminar pregunta con el diálogo del kit y respeta el «Cancelar»", async () => {
+    mount(null);
+    await createAndLeave("Enduro de casa");
+    fireEvent.click(screen.getByLabelText("Eliminar Enduro de casa"));
+
+    const dialog = await screen.findByTestId("orbit-strategy-delete-dialog");
+    // Es un diálogo real de la app, no un `confirm` del sistema.
+    expect(within(dialog).getByRole("alertdialog")).toBeTruthy();
+    expect(dialog.textContent).toContain("Enduro de casa");
+
+    fireEvent.click(within(dialog).getByTestId("orbit-confirm-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("orbit-strategy-delete-dialog")).toBeNull());
+    expect(screen.getByTestId("orbit-strategy-saved").textContent).toContain("Enduro de casa");
+
+    fireEvent.click(screen.getByLabelText("Eliminar Enduro de casa"));
+    fireEvent.click(
+      within(await screen.findByTestId("orbit-strategy-delete-dialog")).getByTestId(
+        "orbit-confirm-accept",
+      ),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-strategy-saved").textContent).toContain(
+        "Aún no hay nada guardado",
+      ),
+    );
+  });
+
+  it("la última apertura sobrevive al recargar la pantalla", async () => {
+    mount(null);
+    await createAndLeave("Enduro de casa");
+
+    cleanup();
+    document.body.replaceChildren();
+    mount(null);
+
+    // Sin evento activo se entra al menú, y «Continuar» recuerda cuál era.
+    const home = await screen.findByTestId("orbit-strategy-home");
+    expect(within(home).getByTestId("orbit-strategy-continue").textContent).toContain(
+      "Enduro de casa",
+    );
   });
 });

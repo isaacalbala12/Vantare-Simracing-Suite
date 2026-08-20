@@ -1,0 +1,103 @@
+name: Roadmap digest
+
+# Mantiene `vantare-v2/docs/roadmap/roadmap.json` al dia: combina el plan manual
+# (`vantare-v2/docs/roadmap/plan.md`, lo escribe una persona) con los commits ya
+# mergeados a `nightly` desde la ultima ejecucion, y abre una PR si el resultado
+# cambia.
+#
+# El estado de la tarea vive DENTRO del artefacto (`digest.lastCommit`), no en
+# una cache de Actions: si la PR no se mergea, la siguiente ejecucion vuelve a
+# leer la misma ventana de commits y no se pierde nada.
+#
+# `nightly` es rama protegida: este workflow NUNCA hace push directo. Publica en
+# `bot/roadmap-digest` y abre la PR desde ahi.
+
+on:
+  schedule:
+    # Diario, antes de la hora laboral europea. El roadmap se mueve cuando
+    # mergea algo, no cuando cambia el codigo, asi que una pasada al dia basta.
+    - cron: "0 5 * * *"
+  push:
+    # `schedule` solo dispara desde la rama por defecto, que va por detras de
+    # `nightly`. El push mantiene el artefacto vivo mientras tanto, igual que en
+    # roadmap-snapshot.yml.
+    branches: [nightly]
+    paths-ignore:
+      # Evita que el propio merge de la PR del bot vuelva a lanzar el workflow.
+      - "vantare-v2/docs/roadmap/roadmap.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: roadmap-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out nightly with full history
+        uses: actions/checkout@v4
+        with:
+          # El generador lee `git log`, asi que necesita la historia completa.
+          fetch-depth: 0
+          # `schedule` corre sobre la rama por defecto; el plan y el artefacto
+          # viven en el canal de integracion.
+          ref: nightly
+
+      - name: Verify the generator still behaves
+        run: python .github/scripts/tests/test_roadmap_digest.py
+
+      - name: Regenerate the roadmap artefact
+        run: |
+          python .github/scripts/roadmap_digest.py \
+            --repo . \
+            --ref HEAD \
+            --limit 200
+
+      - name: Decide whether anything changed
+        id: diff
+        run: |
+          if git diff --quiet -- vantare-v2/docs/roadmap/roadmap.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "el roadmap ya refleja el plan y los commits"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- vantare-v2/docs/roadmap/roadmap.json
+          fi
+
+      - name: Open a pull request against nightly
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # El token del job basta: la accion solo escribe en su propia rama y
+          # abre la PR. Nunca toca `nightly`, que esta protegida.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: nightly
+          branch: bot/roadmap-digest
+          # La accion reescribe `bot/roadmap-digest` en cada pasada: el
+          # artefacto es generado, y acumular commits sobre el solo ensucia la
+          # PR.
+          delete-branch: true
+          add-paths: vantare-v2/docs/roadmap/roadmap.json
+          commit-message: |
+            docs(roadmap): actualizar el digest del roadmap (ISA-378)
+
+            Regenerado por .github/workflows/roadmap-digest.yml a partir de
+            vantare-v2/docs/roadmap/plan.md y los commits mergeados a nightly.
+          title: "docs(roadmap): actualizar el digest del roadmap (ISA-378)"
+          body: |
+            Actualizacion automatica de `vantare-v2/docs/roadmap/roadmap.json`.
+
+            El artefacto se regenera desde dos fuentes y solo esas dos:
+
+            - `vantare-v2/docs/roadmap/plan.md`, la fuente manual de fases,
+              areas e hitos.
+            - Los commits mergeados a `nightly` desde el ultimo SHA procesado,
+              que quedan guardados en `digest.lastCommit` del propio artefacto.
+
+            Si el contenido del roadmap no es el que esperabas, corrige
+            `plan.md`: este fichero no se edita a mano.

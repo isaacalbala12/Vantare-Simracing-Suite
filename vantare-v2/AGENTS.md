@@ -67,6 +67,13 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   Los HTML son contratos visuales; el fondo del escenario no forma parte del
   widget ni de sus capturas de paridad.
 - Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
+- Todo cambio de alcance o de plan futuro se refleja en
+  `vantare-v2/docs/roadmap/plan.md` **en el mismo PR** que lo introduce. Eso
+  incluye anadir, retirar o reordenar una fase, cambiar su estado, y todo
+  pendiente que quede a la espera de una decision de producto. `plan.md` es la
+  unica fuente manual del roadmap publico: `vantare-v2/docs/roadmap/roadmap.json`
+  lo genera `.github/scripts/roadmap_digest.py` y nunca se edita a mano. Si el
+  PR cambia el rumbo del producto y no toca `plan.md`, esta incompleto.
 - No hagas features, refactors o limpieza general si no están en el alcance.
 - No redisenes arquitectura de forma oportunista. Un cambio arquitectónico solo
   se ejecuta dentro de una issue/plan aprobados, con ADR cuando corresponda,

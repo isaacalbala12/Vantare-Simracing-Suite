@@ -1,0 +1,1280 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-20T02:58:27Z",
+  "digest": {
+    "lastCommit": "e5b4f7936f9918c7ab54ce7123e715ea6dfda3d6"
+  },
+  "phases": [
+    {
+      "id": "beta-foundation",
+      "phaseLabel": {
+        "es": "Fase 1",
+        "en": "Phase 1",
+        "pt": "Fase 1",
+        "it": "Fase 1"
+      },
+      "title": {
+        "es": "Beta publica",
+        "en": "Public beta",
+        "pt": "Beta pública",
+        "it": "Beta pubblica"
+      },
+      "status": "done",
+      "target": {
+        "es": "v0.1.0",
+        "en": "v0.1.0",
+        "pt": "v0.1.0",
+        "it": "v0.1.0"
+      },
+      "progress": 100,
+      "summary": {
+        "es": "Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.",
+        "en": "Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.",
+        "pt": "Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.",
+        "it": "Login Google, piano Free, overlay consigliati, launcher LMU e Hub v5.2."
+      },
+      "highlights": [
+        {
+          "es": "Google OAuth externo y sesión persistente",
+          "en": "External Google OAuth and persistent session",
+          "pt": "Google OAuth externo e sessão persistente",
+          "it": "Google OAuth esterno e sessione persistente"
+        },
+        {
+          "es": "Perfiles recomendados y editor de overlays",
+          "en": "Recommended profiles and overlay editor",
+          "pt": "Perfis recomendados e editor de overlays",
+          "it": "Profili consigliati e editor di overlay"
+        },
+        {
+          "es": "Launcher LMU básico",
+          "en": "Basic LMU launcher",
+          "pt": "Launcher LMU básico",
+          "it": "Launcher LMU di base"
+        }
+      ]
+    },
+    {
+      "id": "beta-iteration",
+      "phaseLabel": {
+        "es": "Fase 2",
+        "en": "Phase 2",
+        "pt": "Fase 2",
+        "it": "Fase 2"
+      },
+      "title": {
+        "es": "Pulido beta v0.1.x",
+        "en": "Beta polish v0.1.x",
+        "pt": "Polimento beta v0.1.x",
+        "it": "Polish beta v0.1.x"
+      },
+      "status": "in-progress",
+      "target": {
+        "es": "v0.1.x",
+        "en": "v0.1.x",
+        "pt": "v0.1.x",
+        "it": "v0.1.x"
+      },
+      "progress": 75,
+      "summary": {
+        "es": "Command Orbit como única shell, Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.",
+        "en": "Command Orbit as the only shell, Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.",
+        "pt": "Command Orbit como única shell, Overlay Studio V3, telemetria LMU ao vivo, licenças com credencial offline e Launcher com cadeias de lançamento.",
+        "it": "Command Orbit come unica shell, Overlay Studio V3, telemetria LMU dal vivo, licenze con credenziale offline e Launcher con catene di avvio."
+      },
+      "highlights": [
+        {
+          "es": "Command Orbit v0.3 portada al hub y V5.2 retirada",
+          "en": "Command Orbit v0.3 ported to the hub and V5.2 retired",
+          "pt": "Command Orbit v0.3 portada para o hub e V5.2 retirada",
+          "it": "Command Orbit v0.3 portata nell'hub e V5.2 ritirata"
+        },
+        {
+          "es": "Overlay Studio V3 con los catálogos Crystal, Neo y Endurance",
+          "en": "Overlay Studio V3 with the Crystal, Neo and Endurance catalogues",
+          "pt": "Overlay Studio V3 com os catálogos Crystal, Neo e Endurance",
+          "it": "Overlay Studio V3 con i cataloghi Crystal, Neo ed Endurance"
+        },
+        {
+          "es": "Telemetría LMU en vivo con transporte compartido y proyecciones",
+          "en": "Live LMU telemetry with a shared transport and projections",
+          "pt": "Telemetria LMU ao vivo com transporte partilhado e projeções",
+          "it": "Telemetria LMU dal vivo con trasporto condiviso e proiezioni"
+        },
+        {
+          "es": "Licencias con credencial offline y arranque desde caché",
+          "en": "Licensing with offline credentials and cache-first startup",
+          "pt": "Licenças com credencial offline e arranque a partir da cache",
+          "it": "Licenze con credenziale offline e avvio dalla cache"
+        },
+        {
+          "es": "Launcher con detección de apps y cadenas de lanzamiento",
+          "en": "Launcher with app detection and launch chains",
+          "pt": "Launcher com deteção de apps e cadeias de lançamento",
+          "it": "Launcher con rilevamento app e catene di avvio"
+        }
+      ]
+    },
+    {
+      "id": "engineer",
+      "phaseLabel": {
+        "es": "Fase 3",
+        "en": "Phase 3",
+        "pt": "Fase 3",
+        "it": "Fase 3"
+      },
+      "title": {
+        "es": "Ingeniero y estrategia",
+        "en": "Engineer and strategy",
+        "pt": "Engenheiro e estratégia",
+        "it": "Engineer e strategia"
+      },
+      "status": "planned",
+      "target": {
+        "es": "Por planear",
+        "en": "To plan",
+        "pt": "Por planear",
+        "it": "Da pianificare"
+      },
+      "progress": 25,
+      "summary": {
+        "es": "Ingeniero y estrategia con avisos útiles sobre datos ya validados; la voz llega cuando los datos la sostengan.",
+        "en": "Engineer and strategy with useful alerts over validated data; voice arrives once the data supports it.",
+        "pt": "Engenheiro e estratégia com avisos úteis sobre dados validados; a voz chega quando os dados a sustentarem.",
+        "it": "Engineer e strategia con avvisi utili su dati validati; la voce arriva quando i dati la sostengono."
+      },
+      "highlights": [
+        {
+          "es": "Proyecciones de ingeniero y estrategia sobre telemetría real",
+          "en": "Engineer and strategy projections over real telemetry",
+          "pt": "Projeções de engenheiro e estratégia sobre telemetria real",
+          "it": "Proiezioni engineer e strategia su telemetria reale"
+        },
+        {
+          "es": "Suite de análisis sobre la grabación DuckDB (ADR 0004/0005)",
+          "en": "Analysis suite over the DuckDB recording (ADR 0004/0005)",
+          "pt": "Suite de análise sobre a gravação DuckDB (ADR 0004/0005)",
+          "it": "Suite di analisi sulla registrazione DuckDB (ADR 0004/0005)"
+        },
+        {
+          "es": "Reglas locales primero",
+          "en": "Local rules first",
+          "pt": "Regras locais primeiro",
+          "it": "Regole locali prima"
+        },
+        {
+          "es": "Voz y perfiles avanzados después",
+          "en": "Voice and advanced profiles later",
+          "pt": "Voz e perfis avançados depois",
+          "it": "Voce e profili avanzati dopo"
+        }
+      ]
+    },
+    {
+      "id": "ecosystem",
+      "phaseLabel": {
+        "es": "Fase 4",
+        "en": "Phase 4",
+        "pt": "Fase 4",
+        "it": "Fase 4"
+      },
+      "title": {
+        "es": "Ecosistema",
+        "en": "Ecosystem",
+        "pt": "Ecossistema",
+        "it": "Ecosistema"
+      },
+      "status": "future",
+      "target": {
+        "es": "Futuro",
+        "en": "Future",
+        "pt": "Futuro",
+        "it": "Futuro"
+      },
+      "progress": 10,
+      "summary": {
+        "es": "Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.",
+        "en": "Community, paid plans, multisim and real analytics once the base is stable.",
+        "pt": "Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.",
+        "it": "Community, piani a pagamento, multisim e analitiche reali quando la base è stabile."
+      },
+      "highlights": [
+        {
+          "es": "Comunidad de overlays",
+          "en": "Overlay community",
+          "pt": "Comunidade de overlays",
+          "it": "Community di overlay"
+        },
+        {
+          "es": "Planes de pago y suite reales",
+          "en": "Real paid and suite plans",
+          "pt": "Planos pagos e suite reais",
+          "it": "Piani a pagamento e suite reali"
+        },
+        {
+          "es": "Datos reales de carrera y progresión",
+          "en": "Real race and progression data",
+          "pt": "Dados reais de corrida e progressão",
+          "it": "Dati reali di gara e progressione"
+        }
+      ]
+    }
+  ],
+  "areas": [
+    {
+      "id": "overlays-studio",
+      "title": {
+        "es": "Overlays Studio",
+        "en": "Overlays Studio",
+        "pt": "Overlays Studio",
+        "it": "Overlays Studio"
+      },
+      "progress": 75,
+      "status": "in-progress",
+      "projects": [
+        "overlay-studio-v3"
+      ]
+    },
+    {
+      "id": "launcher-lmu",
+      "title": {
+        "es": "Launcher",
+        "en": "Launcher",
+        "pt": "Launcher",
+        "it": "Launcher"
+      },
+      "progress": 75,
+      "status": "in-progress",
+      "projects": [
+        "launcher"
+      ]
+    },
+    {
+      "id": "telemetry",
+      "title": {
+        "es": "Telemetría",
+        "en": "Telemetry",
+        "pt": "Telemetria",
+        "it": "Telemetria"
+      },
+      "progress": 25,
+      "status": "in-progress",
+      "projects": [
+        "telemetry-core",
+        "telemetry-analysis"
+      ]
+    },
+    {
+      "id": "calendar-local",
+      "title": {
+        "es": "Calendario",
+        "en": "Calendar",
+        "pt": "Calendário",
+        "it": "Calendario"
+      },
+      "progress": 50,
+      "status": "in-progress",
+      "projects": [
+        "calendar"
+      ]
+    },
+    {
+      "id": "engineer",
+      "title": {
+        "es": "Ingeniero",
+        "en": "Engineer",
+        "pt": "Engenheiro",
+        "it": "Engineer"
+      },
+      "progress": 25,
+      "status": "planned",
+      "projects": [
+        "engineer-spotter"
+      ]
+    },
+    {
+      "id": "strategy",
+      "title": {
+        "es": "Estrategia",
+        "en": "Strategy",
+        "pt": "Estratégia",
+        "it": "Strategia"
+      },
+      "progress": 25,
+      "status": "in-progress",
+      "projects": [
+        "strategy-planner"
+      ]
+    },
+    {
+      "id": "licensing",
+      "title": {
+        "es": "Licencias y cuenta",
+        "en": "Licensing and account",
+        "pt": "Licenças e conta",
+        "it": "Licenze e account"
+      },
+      "progress": 50,
+      "status": "in-progress",
+      "projects": [
+        "billing"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "v0105",
+      "type": "release",
+      "title": {
+        "es": "v0.1.0.5 en nightly",
+        "en": "v0.1.0.5 on nightly",
+        "pt": "v0.1.0.5 em nightly",
+        "it": "v0.1.0.5 su nightly"
+      },
+      "body": {
+        "es": "Lote de launcher de Windows, paneles del hub, servicios internos y documentación de marca y diseño.",
+        "en": "Windows launcher batch, hub panels, internal services and brand and design documentation.",
+        "pt": "Lote de launcher do Windows, painéis do hub, serviços internos e documentação de marca e design.",
+        "it": "Lotto di launcher Windows, pannelli hub, servizi interni e documentazione di brand e design."
+      },
+      "label": {
+        "es": "Release",
+        "en": "Release",
+        "pt": "Release",
+        "it": "Release"
+      }
+    },
+    {
+      "id": "orbit-v03",
+      "type": "release",
+      "title": {
+        "es": "Command Orbit v0.3 en el hub",
+        "en": "Command Orbit v0.3 in the hub",
+        "pt": "Command Orbit v0.3 no hub",
+        "it": "Command Orbit v0.3 nell'hub"
+      },
+      "body": {
+        "es": "El porte completo de la shell Orbit sustituye a la V5.2 y pasa a ser la única shell del hub.",
+        "en": "The full Orbit shell port replaces V5.2 and becomes the hub's only shell.",
+        "pt": "O porte completo da shell Orbit substitui a V5.2 e passa a ser a única shell do hub.",
+        "it": "Il porting completo della shell Orbit sostituisce la V5.2 e diventa l'unica shell dell'hub."
+      },
+      "label": {
+        "es": "Release",
+        "en": "Release",
+        "pt": "Release",
+        "it": "Release"
+      }
+    },
+    {
+      "id": "overlay-studio-v3",
+      "type": "feature",
+      "title": {
+        "es": "Overlay Studio V3 en marcha",
+        "en": "Overlay Studio V3 under way",
+        "pt": "Overlay Studio V3 em curso",
+        "it": "Overlay Studio V3 in corso"
+      },
+      "body": {
+        "es": "Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.",
+        "en": "A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance."
+      },
+      "label": {
+        "es": "En desarrollo",
+        "en": "In progress",
+        "pt": "Em desenvolvimento",
+        "it": "In corso"
+      }
+    },
+    {
+      "id": "telemetry-live",
+      "type": "feature",
+      "title": {
+        "es": "Telemetría LMU en vivo",
+        "en": "Live LMU telemetry",
+        "pt": "Telemetria LMU ao vivo",
+        "it": "Telemetria LMU dal vivo"
+      },
+      "body": {
+        "es": "Driver LMU con reconexión acotada, transporte compartido entre ventanas y proyecciones de overlay, ingeniero y estrategia.",
+        "en": "LMU driver with bounded reconnects, a transport shared across windows and overlay, engineer and strategy projections.",
+        "pt": "Driver LMU com reconexão limitada, transporte partilhado entre janelas e projeções de overlay, engenheiro e estratégia.",
+        "it": "Driver LMU con riconnessione limitata, trasporto condiviso tra finestre e proiezioni di overlay, engineer e strategia."
+      },
+      "label": {
+        "es": "En desarrollo",
+        "en": "In progress",
+        "pt": "Em desenvolvimento",
+        "it": "In corso"
+      }
+    },
+    {
+      "id": "licensing-offline",
+      "type": "feature",
+      "title": {
+        "es": "Licencias con credencial offline",
+        "en": "Licensing with offline credentials",
+        "pt": "Licenças com credencial offline",
+        "it": "Licenze con credenziale offline"
+      },
+      "body": {
+        "es": "La app arranca desde la credencial en caché y verifica sin red, de modo que una caída del servicio no cierra la sesión.",
+        "en": "The app starts from the cached credential and verifies offline, so a service outage does not sign you out.",
+        "pt": "A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.",
+        "it": "L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
+      "id": "channels",
+      "type": "plan",
+      "title": {
+        "es": "Canales nightly y testers",
+        "en": "Nightly and testers channels",
+        "pt": "Canais nightly e testers",
+        "it": "Canali nightly e tester"
+      },
+      "body": {
+        "es": "Tres canales de actualización (estable, testers y nightly) con acceso según el rol de la cuenta.",
+        "en": "Three update channels (stable, testers and nightly) with access driven by the account role.",
+        "pt": "Três canais de atualização (estável, testers e nightly) com acesso conforme o papel da conta.",
+        "it": "Tre canali di aggiornamento (stabile, tester e nightly) con accesso in base al ruolo dell'account."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "launcher-favorite-toggle",
+      "type": "plan",
+      "title": {
+        "es": "Marcar favorito en el Launcher",
+        "en": "Toggling a Launcher favourite",
+        "pt": "Marcar favorito no Launcher",
+        "it": "Segnare un preferito nel Launcher"
+      },
+      "body": {
+        "es": "Hoy el favorito solo ordena y colorea la lista; falta el control para alternarlo desde Orbit.",
+        "en": "A favourite only sorts and tints the list today; the control to toggle it from Orbit is missing.",
+        "pt": "Hoje o favorito apenas ordena e colore a lista; falta o controlo para o alternar a partir do Orbit.",
+        "it": "Oggi il preferito ordina e colora solo la lista; manca il controllo per attivarlo da Orbit."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "strategy-multi-event",
+      "type": "plan",
+      "title": {
+        "es": "Estrategias por evento",
+        "en": "Per-event strategies",
+        "pt": "Estratégias por evento",
+        "it": "Strategie per evento"
+      },
+      "body": {
+        "es": "El puente de estrategia publica un único evento activo; «Otros eventos» solo podrá listarlos cuando publique varios.",
+        "en": "The strategy bridge publishes a single active event; \"Other events\" can only list them once it publishes several.",
+        "pt": "A ponte de estratégia publica um único evento ativo; «Outros eventos» só os poderá listar quando publicar vários.",
+        "it": "Il ponte di strategia pubblica un solo evento attivo; «Altri eventi» potrà elencarli solo quando ne pubblicherà diversi."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "strategy-edit-drivers",
+      "type": "plan",
+      "title": {
+        "es": "Editar pilotos y sus ritmos",
+        "en": "Editing drivers and their pace",
+        "pt": "Editar pilotos e os seus ritmos",
+        "it": "Modificare i piloti e i loro ritmi"
+      },
+      "body": {
+        "es": "Los ritmos llegan desde el hub y no hay comando para escribirlos, así que la edición queda pendiente de contrato.",
+        "en": "Pace figures arrive from the hub and no command writes them back, so editing waits on a contract.",
+        "pt": "Os ritmos chegam do hub e não há comando para os escrever, pelo que a edição fica pendente de contrato.",
+        "it": "I ritmi arrivano dall'hub e nessun comando li riscrive, quindi la modifica attende un contratto."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "diagnostics-logs",
+      "type": "plan",
+      "title": {
+        "es": "Registros y últimos eventos en Diagnóstico",
+        "en": "Logs and recent events in Diagnostics",
+        "pt": "Registos e últimos eventos em Diagnóstico",
+        "it": "Log e ultimi eventi in Diagnostica"
+      },
+      "body": {
+        "es": "Falta decidir dónde viven los registros y abrir un canal de log del backend al hub.",
+        "en": "Where the logs live is still undecided, and there is no log channel from the backend to the hub.",
+        "pt": "Falta decidir onde vivem os registos e abrir um canal de log do backend para o hub.",
+        "it": "Manca decidere dove vivono i log e aprire un canale di log dal backend all'hub."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "telemetry-timeline-export",
+      "type": "plan",
+      "title": {
+        "es": "Eje temporal en Telemetría y exportar radio",
+        "en": "Telemetry timeline and radio export",
+        "pt": "Eixo temporal em Telemetria e exportar rádio",
+        "it": "Asse temporale in Telemetria ed esportazione radio"
+      },
+      "body": {
+        "es": "Ambos dependen de que la grabación DuckDB (ADR 0004/0005) se exponga al frontend.",
+        "en": "Both wait on the DuckDB recording (ADR 0004/0005) being exposed to the frontend.",
+        "pt": "Ambos dependem de que a gravação DuckDB (ADR 0004/0005) seja exposta ao frontend.",
+        "it": "Entrambi dipendono dall'esposizione della registrazione DuckDB (ADR 0004/0005) al frontend."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    }
+  ],
+  "delivered": [
+    {
+      "date": "2026-08-20",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Anuncios de Discord con copy humano desde el manifiesto"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Tipo válido en el fragmento de changelog"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fix release.yml — bloque env vacío"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Manifiesto de release v0.1.0.7-nightly.11 y changelog"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Módulos muertos, fix de cascada de selección y baselines refrescadas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fase 8 — retirar V52, Orbit única shell, y pase de calidad"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-19",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "VITE_ORBIT_DEFAULT acotado al paso de build en release.yml"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Manifiesto de release v0.1.0.7-nightly.10 y changelog"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-17",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-16",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Spatial capability, collapsing relative ghost and real FLIP motion"
+        },
+        {
+          "kind": "feat",
+          "scope": "ui",
+          "text": "Escala proporcional de escritorio 1080p a 32:9 4K (overlay + hub)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "TM-04 posición de cada coche sobre el mapa"
+        },
+        {
+          "kind": "feat",
+          "scope": "transport",
+          "text": "TM/TC medir el ahorro real de publicar deltas de Overlay"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Modo edicion in-place por hotkey (Ctrl+Shift+E) - isa-401"
+        },
+        {
+          "kind": "fix",
+          "scope": "relative",
+          "text": "Seleccionar vecinos físicos 2+2"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Persistencia privada de capturas del Testing Center"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Add Nightly 9 canonical manifest"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-15",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record ISA-363 nightly promotion"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Preserve stale frame during telemetry recovery"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlays",
+          "text": "Record ISA-364 nightly promotion"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlays",
+          "text": "List pure V3 profiles"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-14",
+      "entries": [
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Launcher - cache persistente de iconos e indice de shortcuts en disco, iconos en paralelo"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "TM-01 mapa de circuito con silueta en vantare-endurance"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Launcher - primer escaneo 28% mas rapido, iconos cacheados, TTL de rescan y debounce de args"
+        },
+        {
+          "kind": "fix",
+          "scope": "updater",
+          "text": "Excluir linea de producto legacy de la lista de actualizaciones"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlays",
+          "text": "Close ISA-357 Nightly promotion"
+        },
+        {
+          "kind": "docs",
+          "scope": "hub",
+          "text": "Record ISA-358 nightly promotion"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Limitar la batalla de Standings a carrera y una pareja"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-358 · Conectar el HUD principal con datos canónicos"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Contrato puro v1 para capturas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Arquitectura de capturas en incidencias"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Record ISA-347 nightly promotion"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Delta real, único y con hotkey global"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-13",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-12",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Record nightly 7 publication"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "La celda de presion se va en vez de desaparecer"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-11",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Auditar señales live para Strategy"
+        },
+        {
+          "kind": "fix",
+          "scope": "discord",
+          "text": "Stop the tester announcement hiding the release it announces"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Pedals Redline, el cuarto widget de la direccion insignia"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-10",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "overlays",
+          "text": "Plan V1 stabilization and commercial rollout"
+        },
+        {
+          "kind": "docs",
+          "scope": "telemetry",
+          "text": "Record nightly merge authorization"
+        },
+        {
+          "kind": "docs",
+          "scope": "telemetry",
+          "text": "Record rebased CI evidence"
+        },
+        {
+          "kind": "docs",
+          "scope": "telemetry",
+          "text": "Record ISA-311 pull request"
+        },
+        {
+          "kind": "fix",
+          "scope": "isa-247",
+          "text": "Mostrar Testing Center a testers Nightly operativos"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Integrate the Strategy Planner stack"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Redline titular en vantare-endurance y rescate de relative y delta"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Devolver el gate visual a verde y que deje de ocultar sus propios fallos"
+        },
+        {
+          "kind": "docs",
+          "scope": "conservacion",
+          "text": "Integrar trabajo documental de analisis de telemetria"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Seis bugs de Overlays Studio v3 y alineación del gate de licencia"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-09",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-304 / CAL-02: el calendario como puerta de entrada a los eventos de LMU"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-08",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "notifications",
+          "text": "Own the OS thread the toasts go out on"
+        },
+        {
+          "kind": "fix",
+          "scope": "notifications",
+          "text": "Drop the permission fiction, make the failure legible"
+        },
+        {
+          "kind": "feat",
+          "scope": "notifications",
+          "text": "Raise real Windows toasts through Wails"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Stop re-rendering the whole app on every settings event"
+        },
+        {
+          "kind": "fix",
+          "scope": "license",
+          "text": "A tokenless check must not demote an authenticated owner"
+        },
+        {
+          "kind": "fix",
+          "scope": "hub",
+          "text": "Bundle the typefaces and make the account avatar a real button"
+        },
+        {
+          "kind": "fix",
+          "scope": "license",
+          "text": "Stop sending null where the UI was promised a list"
+        },
+        {
+          "kind": "docs",
+          "scope": "settings",
+          "text": "Close the plan with what shipped and what did not"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Notification preferences that govern real alerts"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Show and reclaim what Vantare keeps on disk"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Open Vantare at sign-in, optionally minimised"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Attach the section nav under the global nav"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-07",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Retire the inert Advanced tab and translate what remains"
+        },
+        {
+          "kind": "fix",
+          "scope": "roadmap",
+          "text": "Call the calendar area Calendar, not Races"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Publish Launcher and Races, and let the catalog run ahead"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Retire the UI area and point Launcher and Races at Linear"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Count area percentages from Linear instead of by hand"
+        },
+        {
+          "kind": "fix",
+          "scope": "roadmap",
+          "text": "Refresh the bundled projects fallback from the exporter"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Redline motion polish + studio access to vantare-endurance"
+        },
+        {
+          "kind": "fix",
+          "scope": "roadmap",
+          "text": "Count channel review states as done in the public snapshot"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Refresh the snapshot on every push to nightly"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Stop the missing changelog webhook blocking every pre-release"
+        },
+        {
+          "kind": "fix",
+          "scope": "build",
+          "text": "Sync the version strings the app actually displays"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Publish the Linear projects snapshot where the app can read it"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-06",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Add the Redline motion engine and workshop replay"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Land Redline flagship direction for vantare-endurance"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Add vantare-endurance design system"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Make the locked aspect hold at the minimum and in previews"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Count consecutive reconnects, and let stale stay available"
+        },
+        {
+          "kind": "fix",
+          "scope": "license",
+          "text": "Start from cache and stop the gate tearing down the Hub"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Never paint the canvas before it knows what to paint"
+        },
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Give the canvas a gradient background and the rail real icons"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Conform locked aspects and paint nothing before the profile"
+        },
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Retire Crystal Simple from the delta catalogue"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Give mid-session consumers the transport status they need"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Stop a single garage frame from killing the LMU driver"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-05",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Keep standings headers within their columns"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Align standings typography with relative"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Restyle Original standings to the Relative language"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record nightly promotion of Overlay Workshop"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record CSS selector and reload findings"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Close ISA-291 handoff"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Document direct Workshop authoring"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Clarify HMR smoke guards"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Harden direct code HMR"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record reversible HMR helpers"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record catalog invariant gate"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record Workshop host guard"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-04",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Validate workshop authoring controls"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Isolate workshop from wails bootstrap"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Complete workshop control contracts"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record workshop controls evidence"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Add workshop authoring controls"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Stabilize workshop fixture seeding"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Add dev-only workshop MVP"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Record verified app smoke procedure"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Clarify local app startup failure"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlay",
+          "text": "Define workshop contract"
+        },
+        {
+          "kind": "feat",
+          "scope": "roadmap",
+          "text": "Pestañas de proyectos y tareas Linear"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-03",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "discord",
+          "text": "Resolve routes from channel identity"
+        },
+        {
+          "kind": "fix",
+          "scope": "discord",
+          "text": "Validate destinations before release build"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Accept four-part Vantare versions"
+        },
+        {
+          "kind": "fix",
+          "scope": "ci",
+          "text": "Preserve advisory gates for channel builds"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Isolate binding generation flags"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Unblock profile loading after hotkey"
+        },
+        {
+          "kind": "fix",
+          "scope": "hub",
+          "text": "Make topbar responsive without horizontal scroll"
+        },
+        {
+          "kind": "feat",
+          "scope": "billing",
+          "text": "Add revocable operational access"
+        },
+        {
+          "kind": "fix",
+          "scope": "auth",
+          "text": "Hydrate WebView session after OAuth callback"
+        },
+        {
+          "kind": "fix",
+          "scope": "ci",
+          "text": "Align offline license deploy guard"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-02",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "billing",
+          "text": "Add operational observability"
+        },
+        {
+          "kind": "feat",
+          "scope": "billing",
+          "text": "Add signed offline license credential"
+        }
+      ]
+    }
+  ]
+}

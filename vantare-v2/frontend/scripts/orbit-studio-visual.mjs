@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/04-studio");
@@ -131,7 +132,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const shot of shots) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: shot.width, height: shot.height },
       deviceScaleFactor: 1,
     });
@@ -146,7 +147,8 @@ try {
     if (shot.profiles) {
       await page.getByTestId("orbit-profiles").waitFor();
       await page.getByTestId("orbit-profiles-grid").waitFor();
-      await page.evaluate(async () => { await document.fonts.ready; });
+      await hideToasts(page);
+      await settle(page);
 
       const own = await page.evaluate(() => {
         const root = document.querySelector('[data-testid="orbit-profiles"]');
@@ -191,6 +193,9 @@ try {
         throw new Error(`${shot.name}: la consola no esta limpia\n${problems.join("\n")}`);
       }
 
+      await hideToasts(page);
+
+      await settle(page);
       await page.screenshot({ path: path.join(output, shot.file), fullPage: false });
       await page.close();
       continue;
@@ -218,7 +223,9 @@ try {
       await columns.scrollIntoViewIfNeeded();
     }
 
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+
+    await settle(page);
 
     const contract = await page.evaluate((selected) => {
       const studio = document.querySelector('[data-testid="orbit-studio"]');
@@ -492,6 +499,9 @@ try {
       throw new Error(`${shot.name}: la consola no está limpia\n${problems.join("\n")}`);
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({ path: path.join(output, shot.file ?? `orbit-studio-${shot.name}.png`), fullPage: false });
     await page.close();
   }

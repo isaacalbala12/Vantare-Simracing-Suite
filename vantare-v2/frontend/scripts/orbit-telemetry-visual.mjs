@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/09-telemetria");
@@ -101,7 +102,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const shot of shots) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: shot.width, height: shot.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -114,7 +115,8 @@ try {
 
     await page.goto(shot.url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-telemetry").waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const label = `${shot.mode}-${shot.name}`;
     const summary = await page.evaluate(contractOf);
@@ -164,6 +166,9 @@ try {
       }
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({
       path: path.join(output, `orbit-telemetria-${label}.png`),
       fullPage: false,
@@ -183,6 +188,8 @@ try {
       if (!(await page.getByTestId("orbit-trackmap-car").count())) {
         throw new Error(`${label}: el coche no aparece en el mapa tras enfocar`);
       }
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-telemetria-foco-${label}.png`),
         fullPage: false,
@@ -214,6 +221,8 @@ try {
       if (after.nativeTitles !== 0) {
         throw new Error(`${label}: la vista usa \`title\` nativo tras interactuar`);
       }
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-telemetria-referencia-${label}.png`),
         fullPage: false,

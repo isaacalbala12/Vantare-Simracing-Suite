@@ -794,7 +794,12 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   [data-tip]::after {
     transition: none;
   }
-  .orbit-palette-backdrop { animation: none; }
+  /* ISA-380: los pulsos infinitos también son movimiento. Sin esto la shell
+     seguía latiendo con «reducir animaciones» activo (y las capturas de los
+     harnesses caían en un fotograma cualquiera del ciclo). */
+  .orbit-palette-backdrop,
+  .orbit-pill--pulse .orbit-pill__dot,
+  .orbit-btn__loading { animation: none; }
 }
 
 .orbit-sr-only {

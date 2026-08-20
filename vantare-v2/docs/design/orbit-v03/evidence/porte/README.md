@@ -64,14 +64,36 @@ diff, descarta estas:
   Testing Center pintan fechas, cuentas atrás y ventanas relativas a «ahora»:
   cambian solas entre dos pasadas separadas en el tiempo. Los harnesses fijan
   `timeZone: Europe/Madrid`, que quita el salto de huso pero no el del reloj.
+  Resueltos el fundido de entrada y los toasts (ver abajo), este es **el único
+  ruido que queda**: dos pasadas seguidas de los 13 harnesses dejan 103 capturas
+  con un **0,043 %** global, y las pocas que se mueven lo hacen aquí. La peor
+  (**1,07 %**, `12-testing-center/orbit-testing-stable-1920x1080`) no es un
+  fallo: la lista de próximas salidas avanzó una entrada porque una carrera
+  arrancó entre las dos pasadas.
 - **Changelog y versión.** `11-ajustes/orbit-ajustes-updates-*` pinta las
   novedades reales del changelog: cada entrada nueva mueve la captura entera.
-- **Animación de entrada en vuelo.** El harness responsive cambia de sección y
-  dispara: si la captura cae a mitad del fundido, el panel entero sale
-  atenuado y desplazado un par de píxeles. Es la diferencia más ruidosa de
-  todas (`01-shell/responsive/orbit-responsive-ajustes-*` puede irse a un
-  tercio de la imagen) y no significa nada: la referencia buena es la captura
-  con el panel ya asentado.
+- ~~**Animación de entrada en vuelo.**~~ **Resuelto (ISA-380).** El harness
+  responsive cambiaba de sección y disparaba a mitad del fundido: el panel
+  entero salía atenuado y desplazado un par de píxeles, y
+  `01-shell/responsive/orbit-responsive-ajustes-1920x1080` llegaba a **30,1 %**
+  de píxeles distintos entre dos pasadas idénticas. Todos los harnesses Orbit
+  abren ahora la página con `scripts/lib/orbit-still.mjs`: `reducedMotion:
+  'reduce'` (el mismo interruptor que el ajuste «reducir animaciones»), una
+  hoja inyectada antes del arranque que anula animaciones y transiciones, y un
+  `settle()` —fuentes resueltas, animaciones rematadas, dos frames— delante de
+  cada captura. Medido con dos pasadas seguidas de `visual:orbit-responsive` y
+  `visual:orbit-shell`: **0,000 %** en las 23 capturas. Si vuelve a aparecer
+  ruido de este tipo, es que un harness nuevo se saltó el helper.
+- ~~**Toasts a medio camino.**~~ **Resuelto (ISA-380).** Los toasts se cierran
+  solos por temporizador, así que cuántos había en pantalla dependía de lo que
+  hubiera tardado el harness en llegar hasta la captura: en Estrategia dos
+  pasadas seguidas pillaban tres, uno o ninguno (**2,8 %** en
+  `07-estrategia/orbit-estrategia-evento-propio-1920x1080`), y encima tapaban la
+  fila de stints que la captura venía a auditar. `hideToasts()` los oculta con
+  CSS antes de capturar en todos los harnesses menos dos: el del kit, que audita
+  la pila de toasts, y el del Testing Center, que comprueba su texto. Se ocultan
+  con CSS y no quitando los nodos a propósito: son nodos de React y arrancarlos
+  por debajo rompe la reconciliación.
 
 Cualquier otra diferencia sí merece mirarse: son las que delatan una regresión
 de piel, como la selección de fila que se perdió al desduplicar CSS entre el kit

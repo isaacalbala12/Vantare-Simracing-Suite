@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/06-carreras");
@@ -89,7 +90,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const viewport of viewports) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -105,7 +106,8 @@ try {
     await page.getByTestId("orbit-races").waitFor();
     await page.getByTestId("orbit-races-filters").waitFor();
     await page.clock.setFixedTime(FROZEN_CLOCK);
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const wanted = viewport.all ? views : views.filter((view) => SHORT_VIEWS.includes(view.id));
 
@@ -210,6 +212,9 @@ try {
         throw new Error(`${viewport.name}/${view.id}: la consola no está limpia\n${problems.join("\n")}`);
       }
 
+      await hideToasts(page);
+
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-carreras-${view.id}-${viewport.name}.png`),
         fullPage: false,
@@ -226,6 +231,8 @@ try {
         if (!(after > before)) {
           throw new Error(`${viewport.name}: el rango 12 h no acerca el eje (${before} → ${after})`);
         }
+        await hideToasts(page);
+        await settle(page);
         await page.screenshot({
           path: path.join(output, `orbit-carreras-timeline-zoom12-${viewport.name}.png`),
           fullPage: false,

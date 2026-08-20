@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/10-roadmap");
@@ -141,7 +142,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const shot of shots) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: shot.width, height: shot.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -154,7 +155,8 @@ try {
 
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-roadmap").waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const label = shot.name;
     const summary = await page.evaluate(contractOf);
@@ -165,6 +167,9 @@ try {
       throw new Error(`${label}: el plegable HECHO no nace cerrado`);
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({
       path: path.join(output, `orbit-roadmap-${label}.png`),
       fullPage: false,
@@ -181,6 +186,8 @@ try {
         throw new Error(`${label}: el resaltado marca ${focused.focused} secciones`);
       }
       assertContract(`${label} foco`, focused);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-roadmap-foco-${label}.png`),
         fullPage: false,
@@ -195,6 +202,8 @@ try {
       const opened = await page.evaluate(contractOf);
       if (opened.doneOpen !== true) throw new Error(`${label}: HECHO no se despliega`);
       assertContract(`${label} hecho`, opened);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-roadmap-hecho-${label}.png`),
         fullPage: false,

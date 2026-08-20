@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/08-ingeniero");
@@ -93,7 +94,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const viewport of viewports) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -109,7 +110,8 @@ try {
     await page.getByTestId("orbit-engineer").waitFor();
     await page.getByTestId("orbit-engineer-modules").waitFor();
     await page.locator('[data-testid^="orbit-rf-"]').first().waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const summary = await page.evaluate(contractOf);
     if (summary.scrollHeight > summary.innerHeight) {
@@ -134,6 +136,9 @@ try {
       throw new Error(`${viewport.name}: la vista usa \`title\` nativo (${summary.nativeTitles})`);
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({
       path: path.join(output, `orbit-ingeniero-${viewport.name}.png`),
       fullPage: false,
@@ -146,6 +151,8 @@ try {
       await page.waitForFunction(
         () => document.querySelectorAll('[data-testid^="orbit-rf-"]').length === 8,
       );
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-ingeniero-filtro-spotter-${viewport.name}.png`),
         fullPage: false,
@@ -185,6 +192,9 @@ try {
         throw new Error(`${viewport.name}: la vista usa \`title\` nativo tras interactuar`);
       }
 
+      await hideToasts(page);
+
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-ingeniero-modulos-${viewport.name}.png`),
         fullPage: false,

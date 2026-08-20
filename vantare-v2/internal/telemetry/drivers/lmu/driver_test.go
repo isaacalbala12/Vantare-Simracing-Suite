@@ -259,6 +259,7 @@ func TestDriverLifecycleFreshnessUsesElapsedAcrossUTCJumpsAndRecovers(t *testing
 				elapsed:        func() time.Duration { return time.Duration(elapsedNanos.Load()) },
 				newTicker:      func(time.Duration) ticker { return ticks },
 				freshnessLimit: time.Second,
+				recoveryWindow: 2 * time.Second,
 			})
 			sink := &collectingSink{values: make(chan Observation, 4)}
 			ctx, cancel := context.WithCancel(t.Context())
@@ -292,6 +293,18 @@ func TestDriverLifecycleFreshnessUsesElapsedAcrossUTCJumpsAndRecovers(t *testing
 			binary.LittleEndian.PutUint64(buffer[1700:], math.Float64bits(currentSeconds+1))
 			recoveryWall := initialWall.Add(-365 * 24 * time.Hour)
 			wallNanos.Store(recoveryWall.UnixNano())
+			ticks.ticks <- recoveryWall
+			// La histeresis de salida cambia esta expectativa: el primer avance
+			// del reloj ya no devuelve live. La observacion se sigue publicando
+			// con los metadatos nuevos, pero marcada stale hasta completar
+			// `recoveryWindow` de avances sostenidos.
+			recovering := <-sink.values
+			if recovering.ReceivedUTC != recoveryWall || recovering.SourceTime.Freshness() != schema.FreshnessStale || driver.RuntimeSnapshot().State != drivercontract.StateStale {
+				t.Fatalf("recovering metadata=%v freshness=%v runtime=%v", recovering.ReceivedUTC, recovering.SourceTime.Freshness(), driver.RuntimeSnapshot().State)
+			}
+
+			binary.LittleEndian.PutUint64(buffer[1700:], math.Float64bits(currentSeconds+2))
+			elapsedNanos.Store(int64(time.Second + time.Nanosecond + 2*time.Second))
 			ticks.ticks <- recoveryWall
 			recovered := <-sink.values
 			if recovered.ReceivedUTC != recoveryWall || recovered.SourceTime.Freshness() != schema.FreshnessFresh || driver.RuntimeSnapshot().State != drivercontract.StateLive {

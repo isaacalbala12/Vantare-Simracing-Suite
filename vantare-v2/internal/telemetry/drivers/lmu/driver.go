@@ -16,8 +16,80 @@ const (
 	CapabilitySharedMemory   drivercontract.Capability = "shared-memory"
 	defaultInterval                                    = time.Second / 60
 	defaultFreshnessLimit                              = 500 * time.Millisecond
+	defaultRecoveryWindow                              = 2 * time.Second
 	defaultStableComparisons                           = 3
 )
+
+// freshnessGate decide si la observacion se publica como stale a partir del
+// avance del reloj de origen, con histeresis asimetrica.
+//
+// Entrada a stale: sin cambios respecto al umbral historico. El reloj lleva
+// parado `limit` (500 ms) y la observacion pasa a stale de inmediato. La
+// deteccion de congelacion real no se debilita: el remanente de sesion que deja
+// LMU 1.4.1.3 al salir a garaje se queda parado minutos, asi que entra en stale
+// en el primer tick pasado el limite y ya nunca cumple la ventana de
+// recuperacion.
+//
+// Salida de stale: aqui esta la asimetria. Medido en vivo el 2026-08-20 con una
+// carrera de 54 coches de IA en LMU 1.4.1.3, el bloque de sesion deja de
+// refrescarse a los 5 Hz nominales (200 ms) y sus intervalos efectivos oscilan
+// entre 300 y 700 ms, rozando el limite. Con un unico umbral simetrico eso
+// producia rafagas stale<->live (observadas 3 transiciones en 2 s en el log
+// `telemetry source: state=...`). Volver a fresh exige ahora `recoveryWindow`
+// (2 s) de avances sostenidos sin ninguna parada que vuelva a alcanzar `limit`;
+// cualquier parada dentro de la ventana la reinicia. Durante la recuperacion la
+// observacion se sigue publicando -- los datos fluyen -- pero marcada stale
+// hasta consolidar.
+//
+// No subas `limit` para tapar un parpadeo: la amortiguacion vive en la ventana
+// de salida, no en el umbral de entrada.
+type freshnessGate struct {
+	limit          time.Duration
+	recoveryWindow time.Duration
+
+	previousSource  time.Duration
+	unchangedSince  monotonicStamp
+	stale           bool
+	recoveringSince monotonicStamp
+}
+
+// observe registra la lectura del reloj de origen y devuelve true si la
+// observacion debe publicarse como stale. `elapsed` es el reloj monotonico
+// inyectable del driver, inmune a saltos de la hora del sistema.
+func (gate *freshnessGate) observe(elapsed time.Duration, current time.Duration) bool {
+	advanced := current != gate.previousSource
+	gate.previousSource = current
+	// Un retroceso del monotonico solo puede venir de un reinicio de la
+	// referencia: reancla las marcas en vez de deducir un parón imposible.
+	rewound := gate.unchangedSince.set && elapsed < gate.unchangedSince.elapsed
+	if advanced || !gate.unchangedSince.set || rewound {
+		gate.unchangedSince = monotonicStamp{elapsed: elapsed, set: true}
+	}
+	if rewound {
+		gate.recoveringSince = monotonicStamp{}
+	}
+	stalled := elapsed-gate.unchangedSince.elapsed >= gate.limit
+
+	if !gate.stale {
+		gate.stale = stalled
+		return gate.stale
+	}
+	if stalled {
+		gate.recoveringSince = monotonicStamp{}
+		return true
+	}
+	if !gate.recoveringSince.set {
+		if !advanced {
+			return true
+		}
+		gate.recoveringSince = monotonicStamp{elapsed: elapsed, set: true}
+	}
+	if elapsed-gate.recoveringSince.elapsed >= gate.recoveryWindow {
+		gate.stale = false
+		gate.recoveringSince = monotonicStamp{}
+	}
+	return gate.stale
+}
 
 var (
 	ErrDisconnected  = errors.New("LMU shared memory disconnected")
@@ -41,6 +113,7 @@ type config struct {
 	newTicker         func(time.Duration) ticker
 	interval          time.Duration
 	freshnessLimit    time.Duration
+	recoveryWindow    time.Duration
 	stableComparisons int
 	build             buildProvider
 	rest              *restConfig
@@ -82,6 +155,9 @@ func newDriver(cfg config) *Driver {
 	}
 	if cfg.freshnessLimit <= 0 {
 		cfg.freshnessLimit = defaultFreshnessLimit
+	}
+	if cfg.recoveryWindow <= 0 {
+		cfg.recoveryWindow = defaultRecoveryWindow
 	}
 	if cfg.stableComparisons <= 0 {
 		cfg.stableComparisons = defaultStableComparisons
@@ -179,8 +255,7 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 	buffer := make([]byte, ObjectOutSize)
 	scratch := make([]byte, ObjectOutSize)
 	var fusion Fusion
-	var previousSource time.Duration
-	var unchangedSince monotonicStamp
+	gate := freshnessGate{limit: driver.config.freshnessLimit, recoveryWindow: driver.config.recoveryWindow}
 
 	acquire := func() error {
 		if err := readStable(ctx, reader, buffer, scratch, driver.config.stableComparisons); err != nil {
@@ -207,18 +282,10 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			return err
 		}
 		if current, present := observation.SourceTime.Value(); present && observation.SourceTime.Freshness() == schema.FreshnessFresh {
-			observation.ClockChange = classifyClock(previousSource, current)
-			if current != previousSource || !unchangedSince.set {
-				unchangedSince = monotonicStamp{elapsed: elapsed, set: true}
-			} else if elapsed < unchangedSince.elapsed || elapsed-unchangedSince.elapsed >= driver.config.freshnessLimit {
-				// Medido en LMU 1.4: el simulador refresca su bloque de sesion a
-				// 5 Hz constantes (200 ms), asi que este limite deja 2,5x de
-				// margen y solo se alcanza en parones reales -- pausa, menu,
-				// carga. No es un umbral ajustado: no lo subas para tapar un
-				// parpadeo sin medir antes la cadencia.
+			observation.ClockChange = classifyClock(gate.previousSource, current)
+			if gate.observe(elapsed, current) {
 				observation = withFreshness(observation, schema.FreshnessStale)
 			}
-			previousSource = current
 		}
 		state := runtimeState(observation)
 		if err := ctx.Err(); err != nil {

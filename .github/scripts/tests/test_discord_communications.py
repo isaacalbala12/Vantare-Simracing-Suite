@@ -139,6 +139,49 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
         self.assertEqual([item["name"] for item in projects], ["Telemetry Core"])
         self.assertAlmostEqual(projects[0]["progress"], 0.42)
 
+    def test_localized_fields_are_read_in_spanish(self):
+        path = self._roadmap({"phases": [{
+            "title": {"en": "Public beta", "es": "Beta publica"},
+            "summary": {"en": "Ships soon.", "es": "Sale pronto."},
+            "status": "in-progress",
+        }]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(projects[0]["name"], "Beta publica")
+        self.assertEqual(projects[0]["update"], "Sale pronto.")
+
+    def test_the_real_roadmap_file_still_feeds_the_digest(self):
+        """Guards against ISA-378's schema drifting away from this reader."""
+        path = (pathlib.Path(__file__).parents[3]
+                / "vantare-v2/docs/roadmap/roadmap.json")
+        if not path.is_file():
+            self.skipTest("roadmap.json not in this checkout")
+        projects = communications.load_roadmap_projects(path)
+        self.assertTrue(projects, "the real roadmap.json yields no active phase")
+        for project in projects:
+            self.assertTrue(project["name"].strip())
+            self.assertNotIn("{", project["name"])  # a locale map leaked through
+            self.assertTrue(0.0 <= project["progress"] <= 1.0)
+            self.assertTrue(project["update"].strip())
+
+    def test_phase_label_prefixes_the_name_without_duplicating_it(self):
+        path = self._roadmap({"phases": [
+            {"phaseLabel": {"es": "Fase 2"}, "title": {"es": "Pulido beta"}, "status": "in-progress"},
+            {"phaseLabel": "Fase 3", "title": "Fase 3 ya rotulada", "status": "in-progress"},
+        ]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual(projects[0]["name"], "Fase 2 \u00b7 Pulido beta")
+        self.assertEqual(projects[1]["name"], "Fase 3 ya rotulada")
+
+    def test_only_in_progress_phases_reach_the_digest(self):
+        path = self._roadmap({"phases": [
+            {"title": "Hecha", "status": "done"},
+            {"title": "En curso", "status": "in-progress"},
+            {"title": "Planeada", "status": "planned"},
+            {"title": "Futura", "status": "future"},
+        ]})
+        projects, _ = communications.resolve_development_projects(roadmap_path=path)
+        self.assertEqual([item["name"] for item in projects], ["En curso"])
+
     def test_roadmap_accepts_a_bare_list_and_done_over_total_progress(self):
         path = self._roadmap([{"label": "Billing", "progress": {"done": 3, "total": 4}}])
         projects, source = communications.resolve_development_projects(roadmap_path=path)

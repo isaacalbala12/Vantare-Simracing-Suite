@@ -28,7 +28,7 @@ El enlace al commit no se inserta en el mensaje para impedir que el unfurl de Di
 
 El digest diario resuelve su fuente en cascada, siempre en lectura:
 
-1. `vantare-v2/docs/roadmap/roadmap.json` — fases del roadmap con estado. Si el archivo no existe o no parsea, se pasa al siguiente nivel sin fallar.
+1. `vantare-v2/docs/roadmap/roadmap.json` (lo genera `roadmap_digest.py`, ISA-378). Se publican solo las fases con estado `in-progress`; `done`, `planned` y `future` se descartan. El nombre es `phaseLabel · title`, el progreso viene de `progress` (0-100) y el texto de `summary`; los campos localizados se leen en español. Si el archivo no existe o no parsea, se pasa al siguiente nivel sin fallar.
 2. Milestones abiertos de GitHub del propio repositorio: el progreso es `closed/total` de sus issues y el texto es la descripción del milestone.
 3. Si no hay ninguna de las dos, se publica el embed honesto de "sin novedades".
 

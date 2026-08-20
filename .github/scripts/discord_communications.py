@@ -640,11 +640,34 @@ def sanitize_public_text(value: str | None) -> str:
     )
 
 
+# The digest speaks Spanish, so a localized field is read in that order.
+DIGEST_LOCALES = ("es", "en", "pt", "it")
+
+
+def _localized_str(value: Any) -> str:
+    """Flatten a plain string or a {es,en,pt,it} block into one string.
+
+    roadmap.json stores every human-facing field as a locale map, so a reader
+    that only accepted `str` would silently drop every phase.
+    """
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        for locale in DIGEST_LOCALES:
+            candidate = value.get(locale)
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+        for candidate in value.values():
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+    return ""
+
+
 def _first_str(source: dict[str, Any], keys: Sequence[str]) -> str:
     for key in keys:
-        value = source.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+        text = _localized_str(source.get(key))
+        if text:
+            return text
     return ""
 
 
@@ -710,6 +733,11 @@ def load_roadmap_projects(path: pathlib.Path) -> list[dict[str, Any]]:
         name = _first_str(entry, ("name", "title", "label", "phase"))
         if not name:
             continue
+        # roadmap.json numbers its phases separately from their title, and the
+        # digest reads better carrying both ("Fase 2 · Pulido beta v0.1.x").
+        prefix = _first_str(entry, ("phaseLabel",))
+        if prefix and not name.casefold().startswith(prefix.casefold()):
+            name = f"{prefix} · {name}"
         selected.append({
             "name": sanitize_public_text(name),
             "url": _first_str(entry, ("url", "link", "href")),

@@ -38,7 +38,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Fases
 
-### Beta publica
+### Beta pública
 
 - id: beta-foundation
 - estado: done

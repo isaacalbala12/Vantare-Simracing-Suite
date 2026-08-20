@@ -71,6 +71,14 @@ function contractOf() {
   const root = document.querySelector(".orbit-rm");
   const reader = document.querySelector(".orbit-rm__column");
   const details = document.querySelector(".orbit-rm__done");
+  // El bloque «Entregado recientemente» cita asuntos de commit literales, y un
+  // asunto puede llevar un porcentaje suyo («28% mas rapido»). Eso no es la
+  // pantalla publicando progreso —que es lo que prohíbe D-R3-F-1—, así que la
+  // medida se toma sobre la lectura menos ese bloque. El `<details>` de HECHO
+  // mantiene sus hijos en el DOM aunque esté plegado, de modo que sin excluirlo
+  // la primera captura ya contaría el texto que ni siquiera se ve.
+  const narrative = reader?.cloneNode(true) ?? null;
+  narrative?.querySelector('[data-testid="orbit-roadmap-delivered"]')?.remove();
   return {
     scrollHeight: document.documentElement.scrollHeight,
     innerHeight: window.innerHeight,
@@ -89,8 +97,16 @@ function contractOf() {
     contextRows: document.querySelectorAll('[data-testid="orbit-roadmap-context"] .orbit-row').length,
     focused: document.querySelectorAll('.orbit-rm__section[data-focus="true"]').length,
     doneOpen: details ? details.open : null,
-    // Sin porcentajes en ninguna parte de la lectura (D-R3-F-1).
-    percents: reader ? /\d+\s?%/.test(reader.textContent ?? "") : false,
+    // Sin porcentajes de progreso en ninguna parte de la lectura (D-R3-F-1).
+    // Se devuelve el texto encontrado, no un booleano: un fallo que no dice qué
+    // porcentaje ha visto obliga a reproducirlo a mano para saberlo.
+    percent: narrative
+      ? (narrative.textContent ?? "").match(/.{0,40}\d+\s?%.{0,40}/)?.[0] ?? null
+      : null,
+    // El registro de entregas sale de los commits, no del plan: tiene que
+    // estar, y tiene que estar marcado como derivado.
+    delivered: document.querySelectorAll('[data-testid="orbit-roadmap-delivered"]').length,
+    deliveredDays: document.querySelectorAll('[data-testid^="orbit-roadmap-delivered-2"]').length,
     // El `title` nativo está prohibido en la vista y en su columna (`08 · a11y`).
     // Se mide sobre la pantalla, no sobre la shell, que es de otro briefing.
     nativeTitles: [...document.querySelectorAll(".orbit-rm, .orbit-rm__context")]
@@ -116,7 +132,15 @@ function assertContract(label, summary) {
   if (summary.derived === 0) {
     throw new Error(`${label}: el reparto derivado de los hitos no está marcado`);
   }
-  if (summary.percents) throw new Error(`${label}: la columna narrativa pinta un porcentaje`);
+  if (summary.percent) {
+    throw new Error(`${label}: la columna narrativa pinta un porcentaje («${summary.percent.trim()}»)`);
+  }
+  if (summary.delivered !== 1) {
+    throw new Error(`${label}: la vista pinta ${summary.delivered} bloques de entregas (esperado 1)`);
+  }
+  if (summary.deliveredDays === 0) {
+    throw new Error(`${label}: el registro de entregas no agrupa ningún día`);
+  }
   if (summary.contextRows !== 3) {
     throw new Error(`${label}: la columna lista ${summary.contextRows} secciones (esperadas 3)`);
   }
@@ -206,6 +230,21 @@ try {
       await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-roadmap-hecho-${label}.png`),
+        fullPage: false,
+      });
+
+      // ── Entregado recientemente: vive al final de HECHO, así que sin bajar
+      // hasta él la evidencia no enseñaría el bloque que lee los commits.
+      // El scroll no necesita espera propia: `stillPage` inyecta
+      // `scroll-behavior: auto`, de modo que el desplazamiento es instantáneo
+      // en vez de suave, y `settle` remata lo que quede vivo (ISA-380).
+      await page.getByTestId("orbit-roadmap-delivered").scrollIntoViewIfNeeded();
+      await hideToasts(page);
+      await settle(page);
+      const delivered = await page.evaluate(contractOf);
+      assertContract(`${label} entregado`, delivered);
+      await page.screenshot({
+        path: path.join(output, `orbit-roadmap-entregado-${label}.png`),
         fullPage: false,
       });
     }

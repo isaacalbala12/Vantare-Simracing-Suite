@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T02:58:27Z",
+  "generatedAt": "2026-08-20T06:06:19Z",
   "digest": {
-    "lastCommit": "e5b4f7936f9918c7ab54ce7123e715ea6dfda3d6"
+    "lastCommit": "5c70921f8056499c8a50482f45acff3319667a5f"
   },
   "phases": [
     {
@@ -14,7 +14,7 @@
         "it": "Fase 1"
       },
       "title": {
-        "es": "Beta publica",
+        "es": "Beta pública",
         "en": "Public beta",
         "pt": "Beta pública",
         "it": "Beta pubblica"
@@ -603,6 +603,31 @@
           "kind": "change",
           "scope": "",
           "text": "Fase 8 — retirar V52, Orbit única shell, y pase de calidad"
+        },
+        {
+          "kind": "feat",
+          "scope": "ci",
+          "text": "Retirar Linear como fuente operativa"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Diagnostico publica los registros y los ultimos eventos"
+        },
+        {
+          "kind": "feat",
+          "scope": "launcher",
+          "text": "Favoritos del catalogo y aplicaciones personalizadas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Roadmap semiautomatico: plan manual + digest de commits"
+        },
+        {
+          "kind": "feat",
+          "scope": "estrategia",
+          "text": "Menu de entrada, asistente de creacion y pase de UI"
         }
       ]
     },

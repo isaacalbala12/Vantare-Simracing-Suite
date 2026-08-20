@@ -16,7 +16,13 @@ import {
 import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types/broadcast-tower/broadcast-tower-view-model";
 import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
+import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import { buildInputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
+import {
+  buildInputTelemetryViewModelV2,
+  inputTelemetryDisplayedValues,
+} from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
+export { OVERLAY_V2_CONTROLS_DECLARED_GAPS } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { PedalsTelemetryContent } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
 import {
@@ -212,6 +218,18 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
     source: OverlaySourceStatusV2;
     content: FuelStrategyContent;
   }>): OverlayV2FeatureComparison;
+  /**
+   * The controls slice needs the legacy history explicitly: Overlay v1 keeps
+   * it in a browser accumulator outside the snapshot, so the caller has to
+   * supply the very series the v1 widget would have drawn.
+   */
+  compareControls(input: Readonly<{
+    legacySnapshot: TelemetrySnapshot;
+    legacyHistory: readonly InputTelemetrySample[];
+    frame: OverlayFrameV2;
+    source: OverlaySourceStatusV2;
+    content: InputTelemetryContent;
+  }>): OverlayV2FeatureComparison;
   /** Rotates every accumulator. The runtime calls it on epoch/session change. */
   reset(): void;
   sessionSummary(): OverlayV2ShadowSessionSummary;
@@ -336,6 +354,11 @@ export const OVERLAY_V2_FUEL_TOLERANCES = Object.freeze({
   // Both sides publish a whole number of laps: any difference is a real one.
   lapsRemaining: 0,
 });
+/**
+ * Pedal ratios travel the v2 wire quantized to per mille, so the two paths can
+ * legitimately differ by half a step of that quantization and no more.
+ */
+export const OVERLAY_V2_CONTROLS_RATIO_TOLERANCE = 5e-4;
 
 export type OverlayV2FeatureComparison = Readonly<{
   equal: boolean;
@@ -513,6 +536,67 @@ export function compareFuelModels(
   return [...mismatch].sort();
 }
 
+/**
+ * Compares the controls slice: the instantaneous pedals, and the series behind
+ * them.
+ *
+ * The series is the interesting half. Overlay v1 builds it in the browser, one
+ * accumulator per widget id, sampling whatever snapshots arrive; Overlay v2
+ * reads a series Go derived once from the canonical stream. They cannot be
+ * compared position by position from the start, because the two have different
+ * beginnings — the browser accumulator starts when the widget mounts, the
+ * canonical history when the run does — and different retention. What must
+ * agree is the part they both cover, so the comparison walks both series
+ * backwards from the newest sample and compares the overlap.
+ *
+ * Declared differences, accounted and never compared as values:
+ *   - `history.length`: warm-up and retention are not the same on both sides.
+ *   - `history[].capturedAt`: v2 reconstructs the instants from `windowMs`.
+ *   - `history[].speedKph`, `rpm`, `gear`: the canonical sample has pedals
+ *     only, so the v2 series carries no such fields to compare.
+ *
+ * A side that has a series while the other has none is not a retention
+ * difference: it is reported once as `history.presence`.
+ */
+export function compareControlsModels(
+  legacy: InputTelemetryViewModel,
+  overlayV2: InputTelemetryViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  if (legacy.status !== overlayV2.status) mismatch.add("status");
+  const legacyDisplayed = inputTelemetryDisplayedValues(legacy);
+  const overlayV2Displayed = inputTelemetryDisplayedValues(overlayV2);
+  for (const field of ["status", "throttle", "brake", "clutch"] as const) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  for (const field of ["throttle", "brake", "clutch"] as const) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+      mismatch.add(field);
+    }
+  }
+  for (const field of ["speedKph", "rpm", "gear"] as const) {
+    if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+      mismatch.add(field);
+    }
+  }
+
+  if ((legacy.history.length === 0) !== (overlayV2.history.length === 0)) {
+    mismatch.add("history.presence");
+    return [...mismatch].sort();
+  }
+  const overlap = Math.min(legacy.history.length, overlayV2.history.length);
+  for (let step = 1; step <= overlap; step += 1) {
+    const legacySample = legacy.history[legacy.history.length - step];
+    const overlayV2Sample = overlayV2.history[overlayV2.history.length - step];
+    for (const field of ["throttle", "brake", "clutch"] as const) {
+      if (!numbersWithin(legacySample[field], overlayV2Sample[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
+        mismatch.add(`history[].${field}`);
+      }
+    }
+  }
+  return [...mismatch].sort();
+}
+
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
   const accumulator = createShadowPhaseAccumulator();
   return {
@@ -540,6 +624,11 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
       const legacy = buildFuelStrategyViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildFuelStrategyViewModelV2(input.frame, input.source, input.content);
       return record(accumulator, "fuel", input, compareFuelModels(legacy, overlayV2));
+    },
+    compareControls(input) {
+      const legacy = buildInputTelemetryViewModel(input.legacySnapshot, input.content, input.legacyHistory);
+      const overlayV2 = buildInputTelemetryViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "controls", input, compareControlsModels(legacy, overlayV2));
     },
     compare(input) {
       const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);

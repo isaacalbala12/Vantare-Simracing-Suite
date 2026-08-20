@@ -2,7 +2,7 @@
 
 Fecha: 2026-08-20. Issue: [#690](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/690) (`OS-QT-01`). Proyecto: GitHub Project **Vantare**, estado **In Progress**. Rama: `vantareapp/isa-690-sdd-migracion-qt-redline`. Base: `origin/nightly@64a33318a8a852c0e089b221357b8e4e8e3c442c`.
 
-Estado SDD: **SPECIFY aprobado explícitamente por Isaac el 2026-08-20; PLAN en preparación**. La aprobación no autoriza TASKS, implementación, integración ni promoción.
+Estado SDD: **SPECIFY y PLAN aprobados explícitamente por Isaac el 2026-08-20; TASKS P0/P1 autorizadas**. No autoriza promoción, release, ampliación de alcance ni continuar tras un resultado STOP.
 
 ---
 

@@ -12,26 +12,29 @@
 
 ## Estado
 
-- **OS-QT-01 / GitHub #690 — runtime Redline Qt Quick en PLAN
-  (2026-08-20):** SPECIFY aprobada por Isaac; se prepara el PLAN técnico para
-  evaluar una migración gradual del runtime
-  ingame desktop de los seis diseños oficiales Redline. La propuesta usa un
+- **OS-QT-01 / GitHub #690 — runtime Redline Qt Quick en TASKS/IMPLEMENT
+  (2026-08-20):** SPECIFY y PLAN aprobados por Isaac; la primera ola P0/P1 se
+  descompone y ejecuta para evaluar una migración gradual del runtime ingame
+  desktop de los seis diseños oficiales Redline. La propuesta usa un
   sidecar Qt x64 supervisado por Go, selección por perfil completo y Wails
   como default/fallback. Studio, Workshop y OBS conservan
   `WidgetVisualHost`; Qt solo consume el contrato público Overlay v2 cuando
   #677 cierre los datos Redline. El spike ISA-370 demuestra viabilidad visual
   y menor consumo, pero Standings aún falla el gate temporal (~30 ms p95 de
-  actualización QML) y no hay autorización de implementación. El PLAN propone
-  resolver ese riesgo como gate fail-fast antes de tocar el producto, después
-  validar selector/supervisor y solo tras #677 conectar Delta+Pedals, Relative y
+  actualización QML). La implementación de candidate y gate P0/P1 está
+  autorizada; la integración de producto sigue bloqueada. El PLAN resuelve ese
+  riesgo como gate fail-fast antes de tocar el producto, después valida
+  selector/supervisor y solo tras #677 conecta Delta+Pedals, Relative y
   Standings en ese orden. Spec:
   `docs/superpowers/specs/2026-08-20-isa-690-qt-redline-runtime-migration-spec.md`.
   PLAN:
   `docs/superpowers/plans/2026-08-20-isa-690-qt-redline-runtime-migration-plan.md`.
+  TASKS:
+  `docs/superpowers/plans/2026-08-20-isa-690-qt-redline-runtime-migration-tasks.md`.
   Rama aislada `vantareapp/isa-690-sdd-migracion-qt-redline` sobre
-  `origin/nightly@64a33318`; PLAN pendiente de aprobación antes de TASKS, sin
-  issues hijas, código de producto, push, PR, CI, integración, promoción ni
-  release.
+  `origin/nightly@64a33318`; se crean solo las issues P0-A/P0-B/P1 y P2+ queda
+  bloqueado por GO/STOP. Sin código de producto, push, PR, CI, integración,
+  promoción ni release en el checkpoint documental.
 
 - **Hub: porte Command Orbit completo en Nightly (2026-08-19).** El hub de
   escritorio migró a la shell **Command Orbit v0.3** (`docs/design/orbit-v03/`):

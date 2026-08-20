@@ -1,7 +1,7 @@
-Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase PLAN):
-- SPECIFY aprobada explícitamente por Isaac; se prepara el PLAN técnico para
-  una migración gradual y reversible del runtime ingame de la familia Vantare
-  Endurance Redline a Qt Quick.
+Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase TASKS/IMPLEMENT):
+- SPECIFY y PLAN aprobados explícitamente por Isaac; la primera ola P0/P1 se
+  descompone y ejecuta para evaluar una migración gradual y reversible del
+  runtime ingame de la familia Vantare Endurance Redline a Qt Quick.
 - Alcance cerrado a Standings, Relative Mirror/Proximity/Traffic, Delta y
   Pedals. Studio, Workshop, OBS y el resto de diseños conservan
   `WidgetVisualHost`/TSX/CSS; Wails sigue siendo default y fallback.
@@ -18,6 +18,8 @@ Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase PLAN):
   `docs/superpowers/specs/2026-08-20-isa-690-qt-redline-runtime-migration-spec.md`.
 - PLAN técnico:
   `docs/superpowers/plans/2026-08-20-isa-690-qt-redline-runtime-migration-plan.md`.
+- TASKS primera ola:
+  `docs/superpowers/plans/2026-08-20-isa-690-qt-redline-runtime-migration-tasks.md`.
   Orden fail-fast: ADR/corpus portable → gate temporal de Standings antes de
   producto → selector/supervisor → sidecar standalone → bloqueo #677 →
   Delta+Pedals → Relative → Standings → lifecycle/packaging/gates → Nightly
@@ -26,8 +28,8 @@ Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase PLAN):
   Issue #690 en Project Vantare, In Progress. Rama
   `vantareapp/isa-690-sdd-migracion-qt-redline` sobre
   `origin/nightly@64a33318`; sin código de producto, push, PR, CI, integración,
-  promoción ni release. PLAN pendiente de aprobación explícita antes de TASKS;
-  no se crean todavía las issues hijas.
+  promoción ni release. Se crean solo P0-A, P0-B y P1; P2+ queda bloqueado por
+  el checkpoint GO/STOP de Standings.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

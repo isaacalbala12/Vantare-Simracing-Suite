@@ -8,9 +8,10 @@ Spec aprobada:
 Rama documental: `vantareapp/isa-690-sdd-migracion-qt-redline`. Base:
 `origin/nightly@64a33318a8a852c0e089b221357b8e4e8e3c442c`.
 
-Estado SDD: **PLAN — pendiente de aprobación explícita de Isaac**. Este
-documento organiza la implementación, pero no autoriza TASKS, cambios de código
-de producto, push, PR, integración, promoción ni release.
+Estado SDD: **PLAN aprobado explícitamente por Isaac el 2026-08-20**. TASKS de
+la primera ola P0/P1 están autorizadas para redactarse y ejecutarse sin otra
+pausa SDD; no se autoriza promoción, release ni continuar tras un resultado
+STOP.
 
 ## 1. Resultado que debe producir el programa
 
@@ -830,5 +831,7 @@ Se recomienda aprobar conjuntamente:
    no cumple hardware/motion/packaging;
 8. una nueva pausa después de TASKS antes de cualquier implementación.
 
-Hasta la aprobación explícita de este PLAN no se crean las issues hijas, no se
-redacta TASKS y no se modifica código de producto.
+PLAN aprobado. La primera ola se descompone en
+`docs/superpowers/plans/2026-08-20-isa-690-qt-redline-runtime-migration-tasks.md`.
+Solo se crean inicialmente las issues P0-A, P0-B y P1; P2+ sigue bloqueado por
+el checkpoint GO/STOP.

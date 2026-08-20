@@ -193,6 +193,21 @@ Para y pide revision si:
 - Ejecuta `pnpm --dir frontend test` si tocaste frontend.
 - Ejecuta `pnpm --dir frontend build` antes de cerrar cambios frontend relevantes.
 - Ejecuta `pnpm --dir frontend lint` si tocaste patrones que ESLint cubre.
+- Ejecuta `pnpm --dir frontend typecheck` para comprobar tipos sin construir.
+
+### Typecheck: usa `pnpm typecheck` o `pnpm build`, nunca `-p tsconfig.json`
+
+`frontend/tsconfig.json` es solution-style: tiene `"files": []` y delega en
+`references` (`tsconfig.app.json` y `tsconfig.node.json`). Por eso:
+
+- **VALIDO:** `pnpm --dir frontend typecheck` (`tsc -b --noEmit`) o
+  `pnpm --dir frontend build` (`tsc -b && vite build`). Ambos recorren los
+  proyectos referenciados y comprueban los ficheros de verdad.
+- **NO COMPRUEBA NADA:** `tsc --noEmit -p tsconfig.json`. Con `"files": []` no
+  typechequea ni un solo fichero y sale con codigo 0 en vacio, aunque el
+  codigo tenga errores de tipos. Ya provoco que un error de tipos real
+  llegara a CI sin ser detectado. No lo uses como gate.
+
 - No anadas librerias UI sin aprobacion.
 - No dupliques estado si ya existe una fuente clara.
 - Mantener logica de negocio fuera de componentes React cuando sea razonable.

@@ -5,7 +5,7 @@ import { RELEASE_NEWS, normalizeReleaseNews, sortReleaseNews } from "./release-n
 describe("release news", () => {
   it("discovers the latest canonical manifest without a manual list", () => {
     expect(RELEASE_NEWS[0]).toMatchObject({
-      tag: "v0.1.0.7-nightly.10",
+      tag: "v0.1.0.7-nightly.11",
       channel: "nightly",
     });
   });
@@ -29,7 +29,7 @@ describe("release news", () => {
   it("sorts release iterations numerically from newest to oldest", () => {
     const releases = [
       { tag: "v0.1.0.7-nightly.2", channel: "nightly", title: "2", summary: "2" },
-      { tag: "v0.1.0.7-nightly.10", channel: "nightly", title: "10", summary: "10" },
+      { tag: "v0.1.0.7-nightly.11", channel: "nightly", title: "10", summary: "10" },
     ] as const;
 
     expect(sortReleaseNews(releases).map((release) => release.tag)).toEqual([

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-368",
+  "type": "improvement",
+  "summary": "Command Orbit es la única interfaz del Hub: la shell antigua desaparece y toda la app queda auditada (lint, i18n, estilos y tests).",
+  "technicalNotes": [
+    "Retirada completa de la shell V52 y del flag hub.orbit: OrbitShell se monta siempre; el Studio usa solo la disposición Orbit y Mis perfiles la capa Orbit.",
+    "Pase de calidad: eslint a cero en todo src; auditor de i18n en CI (pnpm i18n:audit) con paridad es/en/pt/it y purga de claves huérfanas; CSS consolidado en tokens; exports y módulos sin uso eliminados; tests con temporizadores deterministas.",
+    "Corregida una regresión del desduplicado de CSS: el estado seleccionado (filas de la columna, perfiles, widgets del Studio) recuperó su tinte carmín; los estados del kit ya no dependen del orden de importación de las hojas.",
+    "Gancho de depuración de WebView2 (VANTARE_WEBVIEW_DEBUG_PORT) desactivado en builds de producción mediante build tags.",
+    "Neto: unas 28.000 líneas menos entre las dos tandas de limpieza."
+  ],
+  "testing": [
+    "Abrir el Hub y recorrer todas las secciones: no debe quedar ningún rastro de la interfaz anterior (sidebar antiguo, páginas con la estética previa).",
+    "Comprobar que la fila activa de la columna contextual, el perfil activo en Inicio y Perfiles, y el widget seleccionado en el Studio se ven con el tinte carmín de selección.",
+    "Cambiar de idioma en Ajustes › Aplicación y verificar que ninguna sección muestra claves sin traducir.",
+    "Uso general: el comportamiento debe ser idéntico a la nightly.10 (esta versión no añade funciones, consolida)."
+  ],
+  "knownLimitations": [
+    "Los pendientes de producto de la nightly.10 siguen vigentes (favoritos del Launcher, eventos múltiples de Estrategia, fuente de sesiones de Telemetría, registros en Diagnóstico)."
+  ]
+}

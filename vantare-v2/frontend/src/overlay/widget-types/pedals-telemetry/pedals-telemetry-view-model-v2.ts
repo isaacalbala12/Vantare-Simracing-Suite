@@ -63,7 +63,12 @@ function displayedNumber(value: OverlayQValue<number>): number | undefined {
   return value.v ?? 0;
 }
 
-function speedInKph(value: OverlayQValue<number>, unit: OverlayFrameV2["units"]["speed"]): number | undefined {
+/**
+ * Converts the frame speed to the km/h the widgets render. It is exported so
+ * every v2 view model that shows a speed shares one conversion instead of
+ * keeping a private copy of the same three constants.
+ */
+export function speedInKph(value: OverlayQValue<number>, unit: OverlayFrameV2["units"]["speed"]): number | undefined {
   const speed = displayedNumber(value);
   if (speed === undefined) return undefined;
   if (unit === "mps") return speed * 3.6;

@@ -65,6 +65,24 @@
         "q": "missing"
       }
     },
+    "controls": {
+      "history": {
+        "q": "fresh",
+        "windowMs": 1000,
+        "throttle": [
+          750,
+          750
+        ],
+        "brake": [
+          125,
+          125
+        ],
+        "clutch": [
+          0,
+          0
+        ]
+      }
+    },
     "standings": [
       {
         "id": "vehicle-000",

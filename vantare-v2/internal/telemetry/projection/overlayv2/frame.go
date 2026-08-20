@@ -40,6 +40,10 @@ const (
 	ModeOfficial      Mode = "official"
 	ModeReconstructed Mode = "reconstructed"
 	ModeEstimated     Mode = "estimated"
+	// ModeXYZ is the spotter's: the verdict came from full 3D positions
+	// rotated into the player's frame, the strongest spatial mode the spec
+	// enumerates (xyz > xy > lap-distance > none).
+	ModeXYZ Mode = "xyz"
 )
 
 type SpeedUnit string
@@ -101,6 +105,7 @@ type FrameV2 struct {
 	Units            UnitsV2             `json:"units"`
 	Session          SessionV2           `json:"session"`
 	Player           PlayerInstrumentsV2 `json:"player"`
+	Controls         ControlsV2          `json:"controls"`
 	Standings        []StandingRowV2     `json:"standings"`
 	Relative         []RelativeRowV2     `json:"relative"`
 	Delta            DeltaViewV2         `json:"delta"`
@@ -126,6 +131,37 @@ type PlayerInstrumentsV2 struct {
 	Brake     QValue[float64] `json:"brake"`
 	Clutch    QValue[float64] `json:"clutch"`
 	Steering  QValue[float64] `json:"steering"`
+}
+
+// ControlsHistoryV2 carries the player's recent pedal series. It is the player
+// alone, never the grid: one row of three ratios per canonical tick.
+//
+// The wire form is three parallel arrays of per-mille integers (0..1000), which
+// is the ratio quantized to the three decimals the widget draws. Parallel
+// arrays cost one number per sample instead of an object with three keys, and
+// a per-mille integer costs at most four characters instead of the five a
+// "0.123" float needs. At the canonical maximum of 120 samples the whole
+// section stays around 1.5 KB.
+//
+// The samples are evenly spaced in the canonical stream (one per tick), so the
+// series publishes a single WindowMS — the span from the first sample to the
+// last — instead of repeating a timestamp per sample. A consumer that draws the
+// series against time reconstructs each x as an equal step across that window.
+// Under an irregular tick that reconstruction is an approximation of the real
+// capture instants; it is a declared difference against Overlay v1, which
+// carries a per-sample timestamp, and never an invented value.
+type ControlsHistoryV2 struct {
+	Q Quality `json:"q"`
+	// WindowMS is the span covered by the samples, first to last. It is zero
+	// when fewer than two samples exist: a single point spans nothing.
+	WindowMS int64   `json:"windowMs,omitempty"`
+	Throttle []int16 `json:"throttle,omitempty"`
+	Brake    []int16 `json:"brake,omitempty"`
+	Clutch   []int16 `json:"clutch,omitempty"`
+}
+
+type ControlsV2 struct {
+	History ControlsHistoryV2 `json:"history"`
 }
 
 type StandingRowV2 struct {

@@ -1,3 +1,44 @@
+Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
+- Cierra los builders del contrato v2: todas las secciones del frame quedan
+  pobladas o declaradas con evidencia.
+- `controls` es nueva y aditiva: el historial de pedales sube a Go desde
+  `derive.ControlsHistory`. Forma compacta en el wire (tres arrays paralelos de
+  enteros por mil más un solo `windowMs`) porque las muestras son una por tick.
+  1.515 B al máximo canónico de 120 muestras, y es solo del jugador, así que no
+  escala con la parrilla. Muere la dependencia del acumulador TS en el camino
+  v2; el acumulador sigue vivo para v1 y se retira en F9.
+- `derive/pipeline.go` gana `CapturedAt` en `ControlSample`, copiado del sobre
+  igual que `SelfDeltaSample` ya hacía. Es el mínimo para que la serie lleve su
+  base de tiempo; no es una derivación nueva.
+- `builder_spotter.go` publica presencia lateral desde `WorldPosition` y
+  `Orientation` canónicos, con los mismos metros y las mismas puertas que
+  `internal/engineer/spotter` a sensibilidad normal. No se reutiliza su código
+  (clasifica un frame rF2 de producto), pero dos tests anclan umbral a umbral y
+  veredicto a veredicto contra su geometría. `mode` es `xyz` solo cuando la
+  clasificación pudo ejecutarse; si no `none` con lados en missing.
+- Divergencias del spotter declaradas para F13: sin puerta de Full Course
+  Yellow (el canónico no tiene fase de sesión), sensibilidad fija en normal, y
+  sin lista de zonas ni colapso de apilados.
+- Sin paridad v1 en spotter: no existe widget de spotter en Overlay v1 ni en
+  v2, así que no se crea ViewModel sin consumidor. Cobertura = tests del
+  builder con casos sintéticos izquierda/derecha/ambos/ninguno.
+- `damage` se declara inexistente con evidencia: no hay señal de daño en
+  `core.VehicleState`, ni en `schema/**`, ni en Overlay Projection v1, que la
+  lista como `unsupported-by-projection`. Los widgets v1 la leen del camino
+  Wails heredado y el único lector real es el privado de Engineer
+  (`DentSeverity`, `WheelDetachedCount`). Queda ausente de `CapabilitiesV2` en
+  vez de presente y vacía, con un tripwire que falla si aparece en el canónico.
+  Enganche para F10: dominio canónico -> mapeo del driver -> capability.
+- Comparador ampliado a `controls` con métrica `{feature,field,phase}` y gate
+  solo en `phase=live`; la serie se compara por solapamiento desde la muestra
+  más nueva, no por longitud. Tests `stale->live` y `transition`.
+- Presupuesto verde: sintético @104 sube de 34.650 B a 36.037 B (la ventana
+  llena de 120 muestras, peor caso real); golden real compacto @104 de 22.942 B
+  a 23.116 B, incremento constante en cualquier parrilla.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2b.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote2b` sobre `tc-integration@b17f6228`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+
 Nota ISA-372/F8 lote 2a (2026-08-20, implementada localmente, sin promoción):
 - `builder_delta.go` sube a Go la resolución de referencia que
   `delta-view-model.ts` (:111-118) hacía en el widget: el frame publica

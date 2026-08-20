@@ -239,7 +239,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sessionId", "generatedAt", "units",
-    "session", "player", "standings", "relative", "delta", "fuel", "spotter", "capabilities",
+    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -250,6 +250,7 @@ function frame(value: unknown, path: string): void {
   units(value.units, `${path}.units`);
   session(value.session, `${path}.session`);
   player(value.player, `${path}.player`);
+  controls(value.controls, `${path}.controls`);
   rowArray(value.standings, `${path}.standings`, validStanding);
   rowArray(value.relative, `${path}.relative`, validRelative);
   delta(value.delta, `${path}.delta`);
@@ -283,6 +284,37 @@ function player(value: unknown, path: string): void {
   optionalString(value.id, `${path}.id`);
   for (const key of ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"] as const) {
     qvalue(value[key], `${path}.${key}`, "number");
+  }
+  Object.freeze(value);
+}
+
+/**
+ * The controls history is three parallel per-mille arrays. They must have the
+ * same length: a frame whose pedals disagree on how many samples exist is
+ * malformed, not partially usable.
+ */
+function controls(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["history"]);
+  const history = value.history;
+  objectWithKeys(history, `${path}.history`, ["q"], ["windowMs", "throttle", "brake", "clutch"]);
+  quality(history.q, `${path}.history.q`);
+  optionalNonNegativeInteger(history.windowMs, `${path}.history.windowMs`);
+  let length: number | undefined;
+  for (const key of ["throttle", "brake", "clutch"] as const) {
+    const series = history[key];
+    if (series === undefined) continue;
+    perMilleSeries(series, `${path}.history.${key}`);
+    if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
+    length = series.length;
+  }
+  Object.freeze(history);
+  Object.freeze(value);
+}
+
+function perMilleSeries(value: unknown, path: string): asserts value is readonly number[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!Number.isSafeInteger(entry) || entry < 0 || entry > 1000) invalid(path);
   }
   Object.freeze(value);
 }
@@ -325,7 +357,8 @@ function fuel(value: unknown, path: string): void {
 
 function spotter(value: unknown, path: string): void {
   objectWithKeys(value, path, ["mode", "left", "right"]);
-  enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated"]);
+  // "xyz" is the spotter's own mode: the verdict came from full 3D positions.
+  enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated", "xyz"]);
   qvalue(value.left, `${path}.left`, "boolean");
   qvalue(value.right, `${path}.right`, "boolean");
   Object.freeze(value);

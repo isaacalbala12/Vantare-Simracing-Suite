@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -35,9 +36,9 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 	}
 
 	want := []ControlSample{
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 3}, Vehicle: "vehicle-a", Throttle: .7, Brake: .8, Clutch: .9},
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 4}, Vehicle: "vehicle-a", Throttle: 0, Brake: 0, Clutch: 0},
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 5}, Vehicle: "vehicle-a", Throttle: 1, Brake: 1, Clutch: 1},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 3}, CapturedAt: observedCapturedAt(3), Vehicle: "vehicle-a", Throttle: .7, Brake: .8, Clutch: .9},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 4}, CapturedAt: observedCapturedAt(4), Vehicle: "vehicle-a", Throttle: 0, Brake: 0, Clutch: 0},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 5}, CapturedAt: observedCapturedAt(5), Vehicle: "vehicle-a", Throttle: 1, Brake: 1, Clutch: 1},
 	}
 	if !reflect.DeepEqual(got.Derived.ControlsHistory.Samples, want) {
 		t.Fatalf("golden history:\n got  %+v\n want %+v", got.Derived.ControlsHistory.Samples, want)
@@ -160,6 +161,15 @@ func TestPipelineRejectsOrderAndCancellationAtomically(t *testing.T) {
 	}
 }
 
+// observedOrigin anchors the synthetic clock of the derive fixtures.
+var observedOrigin = time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
+
+// observedCapturedAt is the reception instant observedSnapshot stamps on a
+// sequence; the control samples must record exactly this.
+func observedCapturedAt(sequence schema.Sequence) time.Time {
+	return observedOrigin.Add(time.Duration(sequence) * 50 * time.Millisecond).Round(0).UTC()
+}
+
 func observedSnapshot(
 	t *testing.T,
 	epoch schema.Epoch,
@@ -186,6 +196,12 @@ func observedSnapshot(
 		Identity: identity.RunIdentity{
 			Event: event, Session: sessionID, Vehicle: vehicleID,
 		},
+		// A deterministic 50 ms tick so the control samples carry a real time
+		// base instead of the zero instant.
+		Clock: schema.NewClock(
+			schema.Field[time.Duration]{}, schema.Field[time.Duration]{},
+			observedOrigin.Add(time.Duration(sequence)*50*time.Millisecond),
+		),
 	}
 	state := core.ObservedState{Vehicles: []core.VehicleState{{
 		Identity: header.Identity,

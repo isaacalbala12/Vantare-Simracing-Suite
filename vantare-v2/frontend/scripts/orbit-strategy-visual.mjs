@@ -240,8 +240,72 @@ try {
       });
     }
 
-    // ── Eventos: los dos caminos, el formulario y el Resumen recién creado.
+    // ── Menú de entrada: Continuar, Nueva estrategia y las guardadas (ISA-377).
     await page.getByTestId("orbit-strategy-new-event").click();
+    await page.getByTestId("orbit-strategy-home").waitFor();
+    await page.getByTestId("orbit-strategy-saved-list").waitFor();
+    // El evento que acabamos de dejar es el que ofrece «Continuar».
+    const continueCard = page.getByTestId("orbit-strategy-continue");
+    await continueCard.waitFor();
+    const continueText = (await continueCard.textContent()) ?? "";
+    if (!continueText.includes("Última edición")) {
+      throw new Error(`${viewport.name}: la tarjeta Continuar no dice la última edición`);
+    }
+    const homeScroll = await page.evaluate(contractOf);
+    if (homeScroll.scrollHeight > homeScroll.innerHeight) {
+      throw new Error(`${viewport.name}: el menú de entrada hace scroll de página`);
+    }
+    if (homeScroll.nativeTitles !== 0) {
+      throw new Error(`${viewport.name}: el menú de entrada usa \`title\` nativo`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-menu-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+
+    // ── El diálogo de borrado es del kit, nunca un `confirm` nativo.
+    const firstDelete = page.locator('[data-testid^="orbit-strategy-delete-"]').first();
+    const deletable = (await firstDelete.count()) > 0;
+    if (deletable) {
+      await firstDelete.click();
+      await page.getByTestId("orbit-strategy-delete-dialog").waitFor();
+      if (viewport.editor) {
+        await page.screenshot({
+          path: path.join(output, `orbit-estrategia-borrar-${viewport.name}.png`),
+          fullPage: false,
+        });
+      }
+      await page.keyboard.press("Escape");
+      await page.getByTestId("orbit-strategy-delete-dialog").waitFor({ state: "detached" });
+    }
+
+    // ── Asistente: origen (automática deshabilitada), equipo y punto de partida.
+    await page.getByTestId("orbit-strategy-new-strategy").click();
+    await page.getByTestId("orbit-strategy-wizard").waitFor();
+    const auto = page.getByTestId("orbit-strategy-wizard-auto-action");
+    if (!(await auto.isDisabled())) {
+      throw new Error(`${viewport.name}: la vía automática debería estar deshabilitada`);
+    }
+    if (!((await auto.getAttribute("data-tip")) ?? "").includes("ADR 0005")) {
+      throw new Error(`${viewport.name}: la vía automática no dice por qué no está`);
+    }
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-asistente-origen-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+    await page.getByTestId("orbit-strategy-wizard-manual").click();
+    await page.getByTestId("orbit-strategy-wizard-team").waitFor();
+    if (viewport.editor) {
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-asistente-equipo-${viewport.name}.png`),
+        fullPage: false,
+      });
+    }
+    await page.getByTestId("orbit-strategy-wizard-team").click();
     await page.getByTestId("orbit-strategy-paths").waitFor();
     const pathsScroll = await page.evaluate(contractOf);
     if (pathsScroll.scrollHeight > pathsScroll.innerHeight) {

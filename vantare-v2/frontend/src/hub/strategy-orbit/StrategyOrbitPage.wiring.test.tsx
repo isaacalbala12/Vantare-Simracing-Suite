@@ -86,8 +86,12 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(within(events).getByText("4 Horas de Imola")).toBeTruthy();
     expect(screen.queryByTestId("orbit-strategy-others")).toBeNull();
 
-    // Y «Nuevo evento» devuelve al selector de dos caminos.
+    // Y «Mis estrategias» devuelve al menú de entrada (ISA-377).
     fireEvent.click(screen.getByTestId("orbit-strategy-new-event"));
-    expect(await screen.findByTestId("orbit-strategy-paths")).toBeTruthy();
+    const home = await screen.findByTestId("orbit-strategy-home");
+    // El evento que estaba abierto es el que ofrece «Continuar».
+    expect(within(home).getByTestId("orbit-strategy-continue").textContent).toContain(
+      "4 Horas de Imola",
+    );
   });
 });

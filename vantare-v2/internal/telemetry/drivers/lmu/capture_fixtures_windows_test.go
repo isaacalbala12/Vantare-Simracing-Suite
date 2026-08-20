@@ -72,8 +72,11 @@ func TestCaptureLMUFixturesOptIn(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatalf("create capture directory: %v", err)
 	}
-	sharedPath := filepath.Join(out, "lmu-"+state+"-shared-memory.bin")
-	restPath := filepath.Join(out, "lmu-"+state+"-rest.json")
+	// The pinned digests are the digests of these persisted files, not of a
+	// live capture: the REST document embeds wall-clock timestamps, so only a
+	// stored fixture has a stable SHA-256. Naming mirrors the 1.4 fixtures.
+	sharedPath := filepath.Join(out, "lmu-"+evidence.FileVersion+"-"+state+"-fixture.bin")
+	restPath := filepath.Join(out, "lmu-"+evidence.FileVersion+"-rest-"+state+"-fixture.json")
 	if err := WriteSanitizedCapture(sharedPath, shared); err != nil {
 		t.Fatalf("write shared memory capture: %v", err)
 	}

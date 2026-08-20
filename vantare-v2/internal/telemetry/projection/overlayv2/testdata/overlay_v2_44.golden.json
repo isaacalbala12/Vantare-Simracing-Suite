@@ -65,7 +65,759 @@
         "q": "missing"
       }
     },
-    "standings": [],
+    "standings": [
+      {
+        "id": "vehicle-000",
+        "position": 1,
+        "classPosition": 1,
+        "classId": "hypercar",
+        "driver": "Driver 000",
+        "gap": {
+          "q": "fresh"
+        },
+        "pit": "pit",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-001",
+        "position": 2,
+        "classPosition": 1,
+        "classId": "lmp2",
+        "driver": "Driver 001",
+        "gap": {
+          "v": 1.234,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.28399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-002",
+        "position": 3,
+        "classPosition": 1,
+        "classId": "gte",
+        "driver": "Driver 002",
+        "gap": {
+          "v": 2.468,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.33399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-003",
+        "position": 4,
+        "classPosition": 2,
+        "classId": "hypercar",
+        "driver": "Driver 003",
+        "gap": {
+          "v": 3.702,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.384,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-004",
+        "position": 5,
+        "classPosition": 2,
+        "classId": "lmp2",
+        "driver": "Driver 004",
+        "gap": {
+          "v": 4.936,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.434,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-005",
+        "position": 6,
+        "classPosition": 2,
+        "classId": "gte",
+        "driver": "Driver 005",
+        "gap": {
+          "v": 6.17,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.484,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-006",
+        "position": 7,
+        "classPosition": 3,
+        "classId": "hypercar",
+        "driver": "Driver 006",
+        "gap": {
+          "v": 7.404,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.53399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-007",
+        "position": 8,
+        "classPosition": 3,
+        "classId": "lmp2",
+        "driver": "Driver 007",
+        "gap": {
+          "v": 8.638,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.58399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-008",
+        "position": 9,
+        "classPosition": 3,
+        "classId": "gte",
+        "driver": "Driver 008",
+        "gap": {
+          "v": 9.872,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.634,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-009",
+        "position": 10,
+        "classPosition": 4,
+        "classId": "hypercar",
+        "driver": "Driver 009",
+        "gap": {
+          "v": 11.106,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.684,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-010",
+        "position": 11,
+        "classPosition": 4,
+        "classId": "lmp2",
+        "driver": "Driver 010",
+        "gap": {
+          "v": 12.34,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.734,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-011",
+        "position": 12,
+        "classPosition": 4,
+        "classId": "gte",
+        "driver": "Driver 011",
+        "gap": {
+          "v": 13.574,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.78399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-012",
+        "position": 13,
+        "classPosition": 5,
+        "classId": "hypercar",
+        "driver": "Driver 012",
+        "gap": {
+          "v": 14.808,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.83399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-013",
+        "position": 14,
+        "classPosition": 5,
+        "classId": "lmp2",
+        "driver": "Driver 013",
+        "gap": {
+          "v": 16.042,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.884,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-014",
+        "position": 15,
+        "classPosition": 5,
+        "classId": "gte",
+        "driver": "Driver 014",
+        "gap": {
+          "v": 17.276,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.934,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-015",
+        "position": 16,
+        "classPosition": 6,
+        "classId": "hypercar",
+        "driver": "Driver 015",
+        "gap": {
+          "v": 18.509999999999998,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 126,
+        "lastLap": {
+          "v": 91.984,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-016",
+        "position": 17,
+        "classPosition": 6,
+        "classId": "lmp2",
+        "driver": "Driver 016",
+        "gap": {
+          "v": 19.744,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.03399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-017",
+        "position": 18,
+        "classPosition": 6,
+        "classId": "gte",
+        "driver": "Driver 017",
+        "gap": {
+          "v": 20.978,
+          "q": "fresh"
+        },
+        "pit": "pit",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.08399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-018",
+        "position": 19,
+        "classPosition": 7,
+        "classId": "hypercar",
+        "driver": "Driver 018",
+        "gap": {
+          "v": 22.212,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.134,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-019",
+        "position": 20,
+        "classPosition": 7,
+        "classId": "lmp2",
+        "driver": "Driver 019",
+        "gap": {
+          "v": 23.445999999999998,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.184,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-020",
+        "position": 21,
+        "classPosition": 7,
+        "classId": "gte",
+        "driver": "Driver 020",
+        "gap": {
+          "v": 24.68,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.234,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-021",
+        "position": 22,
+        "classPosition": 8,
+        "classId": "hypercar",
+        "driver": "Driver 021",
+        "gap": {
+          "v": 25.914,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.28399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-022",
+        "position": 23,
+        "classPosition": 8,
+        "classId": "lmp2",
+        "driver": "Driver 022",
+        "gap": {
+          "v": 27.148,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.33399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-023",
+        "position": 24,
+        "classPosition": 8,
+        "classId": "gte",
+        "driver": "Driver 023",
+        "gap": {
+          "v": 28.381999999999998,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 125,
+        "lastLap": {
+          "v": 92.384,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-024",
+        "position": 25,
+        "classPosition": 9,
+        "classId": "hypercar",
+        "driver": "Driver 024",
+        "gap": {
+          "v": 29.616,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.434,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-025",
+        "position": 26,
+        "classPosition": 9,
+        "classId": "lmp2",
+        "driver": "Driver 025",
+        "gap": {
+          "v": 30.85,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.484,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-026",
+        "position": 27,
+        "classPosition": 9,
+        "classId": "gte",
+        "driver": "Driver 026",
+        "gap": {
+          "v": 32.084,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.53399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-027",
+        "position": 28,
+        "classPosition": 10,
+        "classId": "hypercar",
+        "driver": "Driver 027",
+        "gap": {
+          "v": 33.318,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.58399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-028",
+        "position": 29,
+        "classPosition": 10,
+        "classId": "lmp2",
+        "driver": "Driver 028",
+        "gap": {
+          "v": 34.552,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.634,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-029",
+        "position": 30,
+        "classPosition": 10,
+        "classId": "gte",
+        "driver": "Driver 029",
+        "gap": {
+          "v": 35.786,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.684,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-030",
+        "position": 31,
+        "classPosition": 11,
+        "classId": "hypercar",
+        "driver": "Driver 030",
+        "gap": {
+          "v": 37.019999999999996,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.734,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-031",
+        "position": 32,
+        "classPosition": 11,
+        "classId": "lmp2",
+        "driver": "Driver 031",
+        "gap": {
+          "v": 38.254,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 124,
+        "lastLap": {
+          "v": 92.78399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-032",
+        "position": 33,
+        "classPosition": 11,
+        "classId": "gte",
+        "driver": "Driver 032",
+        "gap": {
+          "v": 39.488,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 92.83399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-033",
+        "position": 34,
+        "classPosition": 12,
+        "classId": "hypercar",
+        "driver": "Driver 033",
+        "gap": {
+          "v": 40.722,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 92.884,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-034",
+        "position": 35,
+        "classPosition": 12,
+        "classId": "lmp2",
+        "driver": "Driver 034",
+        "gap": {
+          "v": 41.956,
+          "q": "fresh"
+        },
+        "pit": "pit",
+        "laps": 123,
+        "lastLap": {
+          "v": 92.934,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-035",
+        "position": 36,
+        "classPosition": 12,
+        "classId": "gte",
+        "driver": "Driver 035",
+        "gap": {
+          "v": 43.19,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 92.984,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-036",
+        "position": 37,
+        "classPosition": 13,
+        "classId": "hypercar",
+        "driver": "Driver 036",
+        "gap": {
+          "v": 44.424,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 93.03399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-037",
+        "position": 38,
+        "classPosition": 13,
+        "classId": "lmp2",
+        "driver": "Driver 037",
+        "gap": {
+          "v": 45.658,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 93.08399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-038",
+        "position": 39,
+        "classPosition": 13,
+        "classId": "gte",
+        "driver": "Driver 038",
+        "gap": {
+          "v": 46.891999999999996,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 93.134,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-039",
+        "position": 40,
+        "classPosition": 14,
+        "classId": "hypercar",
+        "driver": "Driver 039",
+        "gap": {
+          "v": 48.126,
+          "q": "fresh"
+        },
+        "pit": "track",
+        "laps": 123,
+        "lastLap": {
+          "v": 93.184,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-040",
+        "position": 41,
+        "classPosition": 14,
+        "classId": "lmp2",
+        "driver": "Driver 040",
+        "gap": {
+          "v": 49.36,
+          "q": "fresh"
+        },
+        "gapLaps": 1,
+        "pit": "track",
+        "laps": 122,
+        "lastLap": {
+          "v": 93.234,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-041",
+        "position": 42,
+        "classPosition": 14,
+        "classId": "gte",
+        "driver": "Driver 041",
+        "gap": {
+          "v": 50.594,
+          "q": "fresh"
+        },
+        "gapLaps": 1,
+        "pit": "track",
+        "laps": 122,
+        "lastLap": {
+          "v": 93.28399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-042",
+        "position": 43,
+        "classPosition": 15,
+        "classId": "hypercar",
+        "driver": "Driver 042",
+        "gap": {
+          "v": 51.828,
+          "q": "fresh"
+        },
+        "gapLaps": 1,
+        "pit": "track",
+        "laps": 122,
+        "lastLap": {
+          "v": 93.33399999999999,
+          "q": "fresh"
+        }
+      },
+      {
+        "id": "vehicle-043",
+        "position": 44,
+        "classPosition": 15,
+        "classId": "lmp2",
+        "driver": "Driver 043",
+        "gap": {
+          "v": 53.062,
+          "q": "fresh"
+        },
+        "gapLaps": 1,
+        "pit": "track",
+        "laps": 122,
+        "lastLap": {
+          "v": 93.384,
+          "q": "fresh"
+        }
+      }
+    ],
     "relative": [],
     "delta": {
       "seconds": {
@@ -112,7 +864,7 @@
         "controls": "fresh",
         "delta": "missing",
         "fuel": "fresh",
-        "gaps": "missing",
+        "gaps": "fresh",
         "session": "fresh",
         "spatial.lateral": "fresh",
         "spatial.longitudinal": "fresh",

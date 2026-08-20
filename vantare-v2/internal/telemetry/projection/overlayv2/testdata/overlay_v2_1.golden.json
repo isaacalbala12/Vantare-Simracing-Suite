@@ -65,7 +65,24 @@
         "q": "missing"
       }
     },
-    "standings": [],
+    "standings": [
+      {
+        "id": "vehicle-000",
+        "position": 1,
+        "classPosition": 1,
+        "classId": "hypercar",
+        "driver": "Driver 000",
+        "gap": {
+          "q": "fresh"
+        },
+        "pit": "pit",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        }
+      }
+    ],
     "relative": [],
     "delta": {
       "seconds": {
@@ -112,7 +129,7 @@
         "controls": "fresh",
         "delta": "missing",
         "fuel": "fresh",
-        "gaps": "missing",
+        "gaps": "fresh",
         "session": "fresh",
         "spatial.lateral": "fresh",
         "spatial.longitudinal": "fresh",

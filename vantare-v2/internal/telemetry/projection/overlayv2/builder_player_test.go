@@ -17,6 +17,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
@@ -170,6 +171,8 @@ func builderFinalState(tb testing.TB, count int) envelope.Snapshot[derive.FinalS
 	return final
 }
 
+var builderClasses = []string{"hypercar", "lmp2", "gte"}
+
 func builderBatch(count int, sequence uint64) core.Batch {
 	run := identity.RunIdentity{Event: "f6-event", Session: "f6-session", Vehicle: "vehicle-000"}
 	vehicles := make([]core.VehicleState, count)
@@ -179,6 +182,15 @@ func builderBatch(count int, sequence uint64) core.Batch {
 			Identity: identity.RunIdentity{Event: run.Event, Session: run.Session, Vehicle: id},
 			Player:   builderPresent(index == 0), Position: builderPresent(standings.Position(index + 1)),
 			WorldPosition: builderPresent(spatial.Position{X: float64(index), Z: float64(index) * -2}),
+			// Classification signals so the standings builder and its budget are
+			// exercised with populated rows, not with an empty slice.
+			DriverName:       builderPresent(identity.DriverName(fmt.Sprintf("Driver %03d", index))),
+			VehicleClass:     builderPresent(standings.VehicleClass(builderClasses[index%len(builderClasses)])),
+			CompletedLaps:    builderPresent(standings.CompletedLaps(127 - index/8)),
+			LastLapTime:      builderPresent(standings.LapTime(91.234 + float64(index)*0.05)),
+			TimeBehindLeader: builderPresent(standings.TimeGap(float64(index) * 1.234)),
+			LapsBehindLeader: builderPresent(standings.LapGap(index / 40)),
+			InPit:            builderPresent(pit.InPit(index%17 == 0)),
 		}
 	}
 	vehicles[0].Gear = builderPresent(vehicle.Gear(4))

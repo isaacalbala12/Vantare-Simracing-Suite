@@ -16,6 +16,29 @@ Nota ISA-372/F11 (2026-08-20, implementada localmente, sin promoción):
   retirar la excepción de `cadence.go` en el wiring guard. Evidencia:
   `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`.
 - Rama `vantareapp/isa-372-tc-f11-cadencias` sobre `tc-integration@f7e2cc07`;
+Nota ISA-372/F8 lote 1 (2026-08-20, implementada localmente, sin promoción):
+- El comparador shadow v2 segmenta por fase y el gate lee sólo `phase=live`.
+  Los 317k mismatches de `gear` de la sesión #1 y los 213+213 de la sesión #2
+  eran retención v1 frente a ocultación v2 en fase stale: diferencia de
+  contrato intencional, ahora contada como `declaredDifferences`.
+- Nueva fase `transition` para cuando el status v1 y el `source.state` v2
+  discrepan. Con 54 coches de IA el driver oscila stale↔live y los dos
+  productores ven el borde en instantes distintos: los 153 mismatches de
+  `display.status` medidos caen ahí y quedan fuera del gate.
+- Acumuladores e histograma de parseo rotan por epoch/sesión; los percentiles
+  describen sólo la ventana live. La ventana de emparejamiento sube de 8 a 64
+  con desalojo por secuencia más atrasada: corrige el atasco de ~2 min medido.
+- `builder_session.go` y `builder_standings.go`. El orden de la clasificación
+  sube a Go, incluido el fallback `index+1` que `standings-view-model.ts`
+  aplicaba en silencio; `ClassPosition` se deriva de ese orden.
+- ViewModels v2 de `standings` y `racing-flags` en shadow, detrás de features
+  apagadas por defecto. Ningún widget se conmuta y v1 sigue productivo.
+- Presupuesto verde: sintético @104 = 34.650 B; golden real compacto @104 con
+  104 filas de standings = 21.775 B.
+- Ausentes declarados, no inventados: bandera de sesión, dorsal, mejor vuelta
+  por fila e intervalo al coche de delante. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f8-lote1.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote1` sobre `tc-integration@f7e2cc07`;
   sin push, PR, CI remoto, merge, promoción ni release.
 
 Nota ISA-372/F7 (2026-08-19, implementada localmente, sin promoción):

@@ -52,9 +52,13 @@ describe("OverlayFrame v2 player-instruments parity", () => {
     expect(comparator.sessionSummary()).toEqual({
       frames: 2,
       mismatches: 2,
+      declaredDifferences: 0,
+      framesByPhase: { live: 2, stale: 0, degraded: 0, "no-frame": 0, transition: 0 },
+      mismatchesByPhase: { live: 2, stale: 0, degraded: 0, "no-frame": 0, transition: 0 },
+      epochResets: 0,
       metrics: {
-        'overlay_shadow_mismatches_total{field="display.speed"}': 1,
-        'overlay_shadow_mismatches_total{field="speedKph"}': 1,
+        'overlay_shadow_mismatches_total{feature="player-instruments",field="display.speed",phase="live"}': 1,
+        'overlay_shadow_mismatches_total{feature="player-instruments",field="speedKph",phase="live"}': 1,
       },
     });
   });

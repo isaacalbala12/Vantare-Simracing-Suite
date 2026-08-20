@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
@@ -78,7 +76,7 @@ func ProjectV2(
 		},
 		Session:      BuildSession(final),
 		Player:       BuildPlayerInstruments(final, preferences),
-		Standings:    make([]StandingRowV2, 0),
+		Standings:    BuildStandings(final),
 		Relative:     make([]RelativeRowV2, 0),
 		Delta:        DeltaViewV2{Seconds: missingValue[float64](), Available: make([]string, 0)},
 		Fuel:         FuelViewV2{Remaining: missingValue[float64](), Capacity: missingValue[float64](), PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64]()},
@@ -121,17 +119,6 @@ func BuildPlayerInstruments(final derive.FinalState, preferences PreferencesV2) 
 		return result
 	}
 	return result
-}
-
-func BuildSession(final derive.FinalState) SessionV2 {
-	return SessionV2{
-		Track: qualityValue(final.Observed.TrackName, func(value string) string { return value }),
-		Phase: qualityValue(final.Observed.SessionType, projection.SessionTypeName),
-		// The canonical state currently has no session flag field.
-		Flag:             missingValue[string](),
-		RemainingSeconds: qualityValue(final.Derived.SessionRemaining, func(value session.RemainingTime) float64 { return float64(value) }),
-		MaximumLaps:      qualityValue(final.Observed.MaximumLaps, func(value session.MaximumLaps) int32 { return int32(value) }),
-	}
 }
 
 func BuildCapabilities(final derive.FinalState, descriptorCapabilities []string) CapabilitiesV2 {

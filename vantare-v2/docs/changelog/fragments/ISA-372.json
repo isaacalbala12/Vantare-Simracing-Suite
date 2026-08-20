@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-372",
   "type": "change",
-  "summary": "Telemetry Core: los overlays dejan de presentar datos congelados como actuales, el contrato TypeScript se genera desde Go y una ausencia breve ya no cambia la identidad del coche.",
+  "summary": "Telemetry Core: watchdog de frescura, contrato TS generado, cadencias por sección y shadow v2 con comparador por fase (standings y sesión preparados en Go).",
   "technicalNotes": [
     "Backend y frontend degradan a stale cuando el último frame supera el presupuesto de frescura.",
     "Los saltos válidos de revisión de status ya no congelan el store cuando el transporte agrupa eventos.",
@@ -24,7 +24,13 @@
     "La cadencia de Overlay v2 se decide por sección antes de construir y serializar el frame, con dirty-trigger y un techo de frescura para las secciones lentas.",
     "El frame publicado sigue siendo completo: una sección no reconstruida reutiliza su último valor, sin parches ni cambios en el contrato de red.",
     "Los valores por defecto no regulan nada y reproducen el comportamiento anterior hasta que la medición en el binario instalado autorice bajarlos.",
-    "El coordinador de telemetría del frontend deja de agrupar por frecuencia y se limita a repintar una vez por frame."
+    "El coordinador de telemetría del frontend deja de agrupar por frecuencia y se limita a repintar una vez por frame.",
+    "El comparador shadow v2 segmenta por fase: solo phase=live cuenta para el gate y la retencion de valores de v1 frente a la ocultacion de v2 se registra como diferencia declarada.",
+    "Una comparacion donde el status v1 y el source.state v2 discrepan se clasifica como transition, no como divergencia: bajo carga de mas de 40 coches ambos productores cruzan el borde de frescura en instantes distintos.",
+    "Los acumuladores shadow y el histograma de parseo se rotan al cambiar de epoch o sesion, y los percentiles de parseo describen solo la ventana live actual.",
+    "La ventana de emparejamiento shadow sube a 64 secuencias y desaloja las mas atrasadas: con 8 el emparejamiento podia atascarse minutos cuando los dos productores derivaban.",
+    "OverlayFrame v2 puebla standings con el orden resuelto en Go, incluido el fallback que Overlay v1 aplicaba en silencio en el widget, y deriva ClassPosition de ese orden.",
+    "Los ViewModels v2 de standings y racing-flags quedan detras de sus features, apagadas por defecto; ningun widget se conmuta."
   ],
   "testing": [
     "Abrir Vantare antes que LMU, entrar en pista y confirmar que el estado pasa a live al llegar telemetría.",
@@ -40,7 +46,9 @@
     "Con Engineer activo, inducir latencia y confirmar que la adquisición y Overlay continúan, mientras crecen los contadores de timeout, descarte o recuperación esperados.",
     "Confirmar que Strategy no expone ruta ni eventos públicos por defecto y que el flag de rollback los restaura de forma aislada.",
     "Con la cadencia por defecto, comprobar que los overlays se comportan exactamente igual que antes de esta versión.",
-    "Con muchos coches en pista, confirmar que las tablas y el consumo siguen actualizándose y que ninguna sección se queda congelada."
+    "Con muchos coches en pista, confirmar que las tablas y el consumo siguen actualizándose y que ninguna sección se queda congelada.",
+    "Tras una sesion real, leer window.__vantareOverlayV2Diagnostics() y comprobar que shadow.mismatches (solo fase live) es cero y que shadow.declaredDifferences recoge las diferencias de contrato.",
+    "Comprobar que shadow.epochResets crece al reiniciar una sesion y que los contadores se refieren a la ultima carrera."
   ],
   "knownLimitations": [
     "La validación local usa relojes inyectados y fixtures; queda pendiente una sesión LMU real y una build Wails/OBS instalada.",
@@ -53,6 +61,8 @@
     "Recording conserva gap markers en el coordinador, pero su wiring y persistencia operativa esperan a F12.",
     "EngineerService detecta el error tipado de resync, pero todavía no tiene callback al puerto para pedir y reaplicar automáticamente la retención.",
     "La regulación por cadencia queda inerte hasta medir bytes por segundo y CPU en una build Wails/OBS instalada.",
-    "El ahorro medido es sintético y crecerá cuando standings, relative, delta, fuel y spotter dejen de estar vacíos."
+    "El ahorro medido es sintético y crecerá cuando standings, relative, delta, fuel y spotter dejen de estar vacíos.",
+    "El contrato v2 no lleva dorsal, mejor vuelta por fila ni intervalo al coche de delante, ni bandera de sesion: no existe senal canonica y quedan declarados ausentes.",
+    "relative, delta, fuel y spotter siguen sin poblar en v2 y CapabilityModesV2 permanece en none."
   ]
 }

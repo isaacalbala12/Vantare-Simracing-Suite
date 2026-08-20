@@ -40,6 +40,7 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 - Autofix con política fail-closed v2, máquina de estados para jobs de agentes con jaulas de seguridad, triage DeepSeek de solo lectura y dispatch GitHub App en cloud, y TDD cloud con diff gate y revisión Opus. (ISA-319, ISA-320, ISA-321, ISA-323)
 - Red de seguridad de Telemetry Core: tests rojos saltados para D-01…D-08 y baseline de proyección para grids de 1/20/44/104 vehículos; no cambia el runtime. (ISA-373, pendiente de promoción)
 - Telemetry Core retira fan-out, deltas RFC 7396, hashes por frame y transportes desconectados; un guard ejecutable evita volver a confundir código muerto con wiring real. (ISA-372/F4, pendiente de promoción)
+- Telemetry Core puebla tres secciones más del frame de overlay en shadow: el delta ya dice qué referencia está usando realmente en lugar de caer a otra en silencio, la ventana del relative y su orden se resuelven en el backend, y el combustible publica depósito, capacidad y vueltas restantes de sesión. El consumo medio por vuelta queda declarado ausente hasta que exista su derivación canónica. Ningún widget cambia todavía. (ISA-372/F8 lote 2a, pendiente de promoción)
 
 **Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
 

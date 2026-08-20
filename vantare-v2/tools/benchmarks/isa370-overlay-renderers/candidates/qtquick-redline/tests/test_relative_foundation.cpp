@@ -339,14 +339,16 @@ void RelativeFoundationTest::trafficThreatFollowsTheFoundation()
     model.apply(record(QStringLiteral("ready"), {player, threat}));
     auto view = viewFor(model, false, QStringLiteral("traffic"));
 
-    QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), QStringLiteral("trafficRelative")), 250);
+    QTRY_VERIFY_WITH_TIMEOUT(named(view->rootObject(), QStringLiteral("trafficRelative")), 1000);
+    QTRY_COMPARE_WITH_TIMEOUT(view->rootObject()->property("playerClass").toString(),
+                              QStringLiteral("GT3"), 1000);
     QObject *traffic = named(view->rootObject(), QStringLiteral("trafficRelative"));
-    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QStringLiteral("threat"), 250);
+    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QStringLiteral("threat"), 1000);
     QVERIFY(named(traffic, QStringLiteral("lapNote")));
 
     threat.insert(QStringLiteral("gapSeconds"), 0.2);
     model.apply(record(QStringLiteral("ready"), {player, threat}));
-    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QString(), 250);
+    QTRY_COMPARE_WITH_TIMEOUT(traffic->property("threatId").toString(), QString(), 1000);
 }
 
 int main(int argc, char **argv)

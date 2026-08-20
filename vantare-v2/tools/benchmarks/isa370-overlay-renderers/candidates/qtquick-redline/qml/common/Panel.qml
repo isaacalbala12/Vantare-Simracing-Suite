@@ -11,6 +11,9 @@ Item {
     property alias contentItem: contentItem
     property real panelRadius: tokens.panelRadius
     property real panelPadding: tokens.panelPadding
+    property real panelBorderWidth: 1
+    property color panelBorderColor: tokens.panelBorder
+    property color panelTopBorderColor: tokens.panelBorderTop
     property color gradientTop: tokens.panelTop
     property color gradientMiddle: "#0f0f10"
     property color gradientBottom: tokens.panelBottom
@@ -23,7 +26,7 @@ Item {
     readonly property real shadowBlur: shadowBlurRadius / shadowBlurMax
 
     implicitWidth: tokens.panelWidth
-    implicitHeight: contentItem.childrenRect.height + panelPadding * 2
+    implicitHeight: contentItem.childrenRect.height + (panelPadding + panelBorderWidth) * 2
 
     Theme.RedlineTokens { id: tokens }
 
@@ -31,8 +34,8 @@ Item {
         id: background
         anchors.fill: parent
         radius: root.panelRadius
-        border.width: 1
-        border.color: tokens.panelBorder
+        border.width: root.panelBorderWidth
+        border.color: root.panelBorderColor
         gradient: Gradient {
             GradientStop { position: 0.0; color: root.gradientTop }
             GradientStop { position: root.gradientMiddlePosition; color: root.gradientMiddle }
@@ -53,17 +56,17 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.leftMargin: 1
-        anchors.rightMargin: 1
-        height: 1
+        anchors.leftMargin: root.panelBorderWidth
+        anchors.rightMargin: root.panelBorderWidth
+        height: root.panelBorderWidth
         radius: root.panelRadius
-        color: tokens.panelBorderTop
+        color: root.panelTopBorderColor
     }
 
     Item {
         id: contentItem
         objectName: "panelContent"
         anchors.fill: parent
-        anchors.margins: root.panelPadding
+        anchors.margins: root.panelPadding + root.panelBorderWidth
     }
 }

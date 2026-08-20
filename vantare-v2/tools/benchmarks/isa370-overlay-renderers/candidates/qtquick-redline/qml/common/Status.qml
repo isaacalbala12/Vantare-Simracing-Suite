@@ -9,6 +9,7 @@ Item {
     property bool card: false
     property real horizontalPadding: 8
     property real verticalPadding: 6
+    property color textColor: tokens.textMuted
 
     visible: message.length > 0
     implicitHeight: visible ? Math.max(card ? 34 : 0, statusText.implicitHeight + verticalPadding * 2) : 0
@@ -35,7 +36,7 @@ Item {
         anchors.topMargin: root.verticalPadding
         anchors.bottomMargin: root.verticalPadding
         text: root.message
-        color: tokens.textMuted
+        color: root.textColor
         font.pixelSize: 11
         font.weight: Font.DemiBold
         lineHeightMode: Text.ProportionalHeight

@@ -667,6 +667,73 @@
   gap: 6px;
   font-family: var(--orbit-font-mono, ui-monospace, monospace);
   font-size: 12px;
+  min-height: 0;
+}
+
+/* ISA-379: el anillo de registros del backend. La lista scrollea dentro de su
+   tarjeta —nunca la página, que el harness comprueba— y las columnas son de
+   ancho fijo para que las marcas de tiempo y los niveles queden alineados
+   verticalmente y el mensaje se lea como una columna limpia. */
+.orbit-set-log__filter {
+  margin-bottom: 10px;
+}
+
+.orbit-set-log__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.orbit-set-log__row {
+  display: grid;
+  grid-template-columns: auto 52px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.orbit-set-log__row:nth-child(odd) {
+  background: var(--orbit-line-row);
+}
+
+.orbit-set-log__time {
+  color: var(--orbit-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-set-log__level {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  /* El nivel `info` es el fondo del ruido: se pinta apagado para que warn y
+     error salten a la vista al recorrer la lista. */
+  color: var(--orbit-ink-3);
+}
+
+.orbit-set-log__row[data-level="warn"] .orbit-set-log__level {
+  color: var(--orbit-ember);
+}
+
+.orbit-set-log__row[data-level="error"] .orbit-set-log__level {
+  color: var(--orbit-coral);
+}
+
+.orbit-set-log__row[data-level="error"] {
+  background: color-mix(in srgb, var(--orbit-coral) 8%, transparent);
+}
+
+.orbit-set-log__msg {
+  color: var(--orbit-ink-2);
+  /* Un error largo se parte en varias líneas en vez de estirar la tarjeta y
+     provocar scroll horizontal en la página. */
+  overflow-wrap: anywhere;
 }
 
 /* ------------------------------------------------------------- COLUMNA */

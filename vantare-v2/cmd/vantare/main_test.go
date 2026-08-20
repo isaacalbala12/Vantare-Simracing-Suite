@@ -1730,3 +1730,79 @@ func TestCancelAllNoPanic(t *testing.T) {
 		t.Fatalf("expected no events from CancelAll, got %v", emitter2.events)
 	}
 }
+
+// ISA-379: the log file has to land somewhere Diagnostics can offer to open,
+// and an installed build must not try to write inside Program Files.
+func TestResolveLogsRoot(t *testing.T) {
+	base := t.TempDir()
+	userConfigDir := filepath.Join(base, "Roaming")
+	localDataDir := filepath.Join(base, "Local")
+	installedConfigDir := filepath.Join(userConfigDir, "Vantare", "configs")
+
+	tests := []struct {
+		name    string
+		cfgDir  string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:   "installed uses local data directory",
+			cfgDir: installedConfigDir,
+			want:   filepath.Join(localDataDir, "Vantare", "logs"),
+		},
+		{
+			name:   "portable uses sibling data directory",
+			cfgDir: filepath.Join(base, "portable", "configs"),
+			want:   filepath.Join(base, "portable", "data", "logs"),
+		},
+		{
+			name:    "empty config is rejected",
+			cfgDir:  "",
+			wantErr: true,
+		},
+		{
+			name:    "relative config is rejected",
+			cfgDir:  filepath.Join("relative", "configs"),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveLogsRoot(tt.cfgDir, userConfigDir, localDataDir)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("resolve logs root = %q, want error", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolve logs root: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("resolve logs root = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// The logs directory must stay out of the telemetry tree, or clearing telemetry
+// from Settings would take the log with it.
+func TestLogsRootIsNotInsideTheTelemetrySessionsRoot(t *testing.T) {
+	base := t.TempDir()
+	userConfigDir := filepath.Join(base, "Roaming")
+	localDataDir := filepath.Join(base, "Local")
+	cfgDir := filepath.Join(base, "portable", "configs")
+
+	logs, err := resolveLogsRoot(cfgDir, userConfigDir, localDataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessions, err := resolveTelemetrySessionsRoot(cfgDir, userConfigDir, localDataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(logs, sessions) {
+		t.Fatalf("logs root %q sits inside the clearable telemetry root %q", logs, sessions)
+	}
+}

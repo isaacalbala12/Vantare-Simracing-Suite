@@ -154,6 +154,10 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.diag.folder": "Data folder",
   "settings.diag.folderOpen": "Open",
   "settings.diag.folderEmpty": "The backend has not declared any folder yet.",
+  "settings.diag.logs": "Logs folder",
+  "settings.diag.logsOpen": "Open",
+  "settings.diag.logsUnavailable":
+    "This install has nowhere to write the log, so it only stays in memory for the session.",
   "settings.diag.sampling": "CPU sampling",
   "settings.diag.samplingSub": "Local diagnostics metric.",
   "settings.diag.report": "Diagnostics report",
@@ -165,6 +169,16 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.diag.events": "Latest events",
   "settings.diag.eventsMeta": "current session",
   "settings.diag.eventsEmpty":
-    "Vantare keeps no log buffer readable from the interface, so there is nothing to show here. The diagnostics report does carry the full state.",
+    "The backend in this session does not publish its log to the hub, so there is nothing to show here. The diagnostics report does carry the full state.",
+  "settings.diag.eventsQuiet": "The backend has not logged anything yet this session.",
+  "settings.diag.eventsFiltered": "No event this session has that level.",
+  "settings.diag.eventsCount": "{{n}} this session",
+  "settings.diag.eventsCopy": "Copy",
+  "settings.diag.eventsCopied": "Copied",
+  "settings.diag.eventsFilter": "Filter events by level",
+  "settings.diag.eventsLevel.all": "All",
+  "settings.diag.eventsLevel.info": "Info",
+  "settings.diag.eventsLevel.warn": "Warning",
+  "settings.diag.eventsLevel.error": "Error",
   "settings.diag.none": "—",
 };

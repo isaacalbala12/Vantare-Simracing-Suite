@@ -193,8 +193,8 @@ Resumen: **142 controles auditados** · 131 OK de partida · **8 corregidos** ·
 | Diagnóstico: «Abrir carpeta» | `storage:reveal` | OK |
 | Diagnóstico: muestreo de CPU | Persiste | OK |
 | Diagnóstico: «Preparar informe» | Cliente de diagnóstico real | OK |
-| Diagnóstico: «Registros» | El backend solo expone `configs` y `telemetry` como ubicaciones | HONESTO — no se pinta ningún botón de registros (nada mudo); pendiente de que el backend publique la ubicación |
-| Diagnóstico: «Últimos eventos» | Log con niveles | HONESTO — nota de «sin eventos»; el backend no publica el log al hub |
+| Diagnóstico: «Registros» | Abre la carpeta de registros | **CORREGIDO** (ISA-379) — el backend escribe un log rotado (`internal/applog`) y publica `logs` como tercera ubicación de `storage`; la fila ofrece «Abrir». Sin sitio donde escribir, explica por qué en vez de pintar un botón mudo |
+| Diagnóstico: «Últimos eventos» | Log con niveles | **CORREGIDO** (ISA-379) — anillo de 200 entradas en el backend; `applog:get` da el snapshot y `applog:entry` empuja cada nueva. Lista con nivel, filtro y copiar. Sin backend (maqueta) sigue diciendo que no hay canal |
 
 ## Testing Center
 
@@ -226,7 +226,5 @@ Resumen: **142 controles auditados** · 131 OK de partida · **8 corregidos** ·
 2. **Estrategias por evento**: el puente `strategy:roster` publica un único
    evento activo. Hasta que publique varios, «Otros eventos» solo puede explicar.
 3. **Editar pilotos**: los ritmos vienen del hub; no hay comando para escribirlos.
-4. **Registros y últimos eventos en Diagnóstico**: falta ubicación de logs y un
-   canal de log del backend al hub.
-5. **Eje temporal en Telemetría** y **Exportar radio**: dependen de que la fuente
+4. **Eje temporal en Telemetría** y **Exportar radio**: dependen de que la fuente
    (DuckDB, ADR 0004/0005) se exponga al frontend.

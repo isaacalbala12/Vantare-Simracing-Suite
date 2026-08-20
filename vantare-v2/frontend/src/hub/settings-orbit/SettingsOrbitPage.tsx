@@ -11,6 +11,7 @@ import {
   KeycapRow,
   ListRow,
   Note,
+  Seg,
   Select,
   StatRow,
   StatTile,
@@ -49,6 +50,13 @@ import { useAppSettings } from "../settings/useAppSettings";
 import { useUpdaterSettings } from "../settings/useUpdaterSettings";
 import { useStartupSettings } from "../settings/useStartupSettings";
 import { useStorageSettings, formatBytes } from "../settings/useStorageSettings";
+import {
+  countByLevel,
+  formatLogForClipboard,
+  useAppLog,
+  useVisibleLogEntries,
+  type LogFilter,
+} from "../settings/useAppLog";
 import { useSystemNotifications } from "../settings/useSystemNotifications";
 import {
   createDiagnosticsClient,
@@ -103,10 +111,10 @@ export interface SettingsOrbitPageProps {
  * salen de `useLicense`, el canal y las versiones de `useUpdaterSettings`, los
  * atajos de `useAppSettings` (con su bucle real de grabación), el arranque de
  * `useStartupSettings`, los datos de disco de `useStorageSettings` y las
- * métricas de proceso del evento `ops:metrics` del backend. Donde el prototipo
- * dibuja algo que la app todavía no tiene (lista de dispositivos, instalación
- * automática, unidades, búfer de registros) la sección lo dice en una `Note`
- * en vez de inventarlo.
+ * métricas de proceso del evento `ops:metrics` del backend, y los últimos
+ * eventos del anillo de `useAppLog` (ISA-379). Donde el prototipo dibuja algo
+ * que la app todavía no tiene (lista de dispositivos, instalación automática,
+ * unidades) la sección lo dice en una `Note` en vez de inventarlo.
  */
 export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
   const { t, locale, setLocale } = useI18n();
@@ -860,6 +868,108 @@ function HotkeysSection() {
 
 /* ═══════════════════════════════════════════════════════════ DIAGNÓSTICO ══ */
 
+/**
+ * ISA-379: «Últimos eventos» deja de estar honestamente vacío.
+ *
+ * El backend publica su anillo de registros (`internal/applog`) y empuja cada
+ * entrada nueva. Sin ese canal —maqueta o build sin backend— la tarjeta sigue
+ * diciendo la verdad en vez de inventar filas.
+ */
+function EventLogSurface() {
+  const { t, locale } = useI18n();
+  const log = useAppLog();
+  const [filter, setFilter] = useState<LogFilter>("all");
+  const [copied, setCopied] = useState(false);
+  const visible = useVisibleLogEntries(log.entries, filter);
+  const counts = useMemo(() => countByLevel(log.entries), [log.entries]);
+
+  // El aviso de copiado se retira solo; sin esto quedaría fijo para siempre.
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const copy = useCallback(() => {
+    void navigator.clipboard
+      ?.writeText(formatLogForClipboard(visible))
+      .then(() => setCopied(true))
+      .catch(() => setCopied(false));
+  }, [visible]);
+
+  const timeFormat = useMemo(
+    () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
+    [locale],
+  );
+
+  const filters: LogFilter[] = ["all", "info", "warn", "error"];
+
+  return (
+    <Surface
+      actions={
+        log.available && log.entries.length > 0 ? (
+          <Button
+            data-testid="orbit-settings-log-copy"
+            onClick={copy}
+            size="sm"
+            variant="ghost"
+          >
+            {t(copied ? "settings.diag.eventsCopied" : "settings.diag.eventsCopy")}
+          </Button>
+        ) : null
+      }
+      aria-label={t("settings.diag.events")}
+      fill
+      meta={
+        log.available
+          ? formatMessage(t("settings.diag.eventsCount"), { n: log.entries.length })
+          : t("settings.diag.eventsMeta")
+      }
+      title={t("settings.diag.events")}
+    >
+      {log.available && log.entries.length > 0 ? (
+        // El argumento de tipo explícito es necesario, no decorativo: al
+        // inferirlo, `onChange` compite como origen y `T` sale como
+        // `SetStateAction<LogFilter>`, que no extiende `string`. Mismo patrón
+        // que el filtro de radio de Ingeniero.
+        <Seg<LogFilter>
+          className="orbit-set-log__filter"
+          label={t("settings.diag.eventsFilter")}
+          onChange={setFilter}
+          options={filters.map((level) => ({
+            value: level,
+            label: `${t(`settings.diag.eventsLevel.${level}`)} ${counts[level]}`,
+          }))}
+          value={filter}
+        />
+      ) : null}
+      <div className="orbit-set-log" data-testid="orbit-settings-log">
+        {!log.available ? (
+          <Note>{t("settings.diag.eventsEmpty")}</Note>
+        ) : log.entries.length === 0 ? (
+          <Note>{t("settings.diag.eventsQuiet")}</Note>
+        ) : visible.length === 0 ? (
+          <Note>{t("settings.diag.eventsFiltered")}</Note>
+        ) : (
+          <ul className="orbit-set-log__list">
+            {visible.map((entry) => (
+              <li className="orbit-set-log__row" data-level={entry.level} key={entry.seq}>
+                <span className="orbit-set-log__time">
+                  {timeFormat.format(new Date(entry.time))}
+                </span>
+                <span className="orbit-set-log__level">
+                  {t(`settings.diag.eventsLevel.${entry.level}`)}
+                </span>
+                <span className="orbit-set-log__msg">{entry.message}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Surface>
+  );
+}
+
 type ReportState =
   | { kind: "idle" }
   | { kind: "working" }
@@ -910,6 +1020,9 @@ function DiagnosticsSection() {
 
   const none = t("settings.diag.none");
   const dataFolder = storage.summary.locations[0] ?? null;
+  // Se busca por clave, no por índice: el orden lo decide el backend y la
+  // ubicación falta por completo cuando no hay dónde escribir el registro.
+  const logsFolder = storage.summary.locations.find((location) => location.key === "logs") ?? null;
 
   return (
     <>
@@ -983,6 +1096,24 @@ function DiagnosticsSection() {
               testid="orbit-settings-data-folder"
               title={t("settings.diag.folder")}
             />
+            {/* ISA-379: el backend ya publica `logs` como ubicación, así que
+                el botón deja de ser mudo. Si no la publica —build sin sitio
+                donde escribir— se dice por qué en vez de pintar un botón que
+                no abriría nada. */}
+            <SettingRow
+              control={
+                logsFolder ? (
+                  <Button onClick={() => storage.reveal(logsFolder.key)} size="sm">
+                    {t("settings.diag.logsOpen")}
+                  </Button>
+                ) : (
+                  <span className="orbit-set-row__none">{none}</span>
+                )
+              }
+              hint={logsFolder?.path ?? t("settings.diag.logsUnavailable")}
+              testid="orbit-settings-logs-folder"
+              title={t("settings.diag.logs")}
+            />
             <SettingRow
               control={
                 <Toggle
@@ -1029,16 +1160,7 @@ function DiagnosticsSection() {
           {storage.error ? <SubtleStatus tone="attn">{storage.error}</SubtleStatus> : null}
         </Surface>
 
-        <Surface
-          aria-label={t("settings.diag.events")}
-          fill
-          meta={t("settings.diag.eventsMeta")}
-          title={t("settings.diag.events")}
-        >
-          <div className="orbit-set-log" data-testid="orbit-settings-log">
-            <Note>{t("settings.diag.eventsEmpty")}</Note>
-          </div>
-        </Surface>
+        <EventLogSurface />
       </div>
     </>
   );

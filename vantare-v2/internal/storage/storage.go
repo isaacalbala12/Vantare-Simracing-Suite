@@ -22,10 +22,14 @@ var ErrUnknownLocation = errors.New("storage: unknown location")
 var ErrNotClearable = errors.New("storage: location cannot be cleared")
 
 // Location keys. The frontend sends a key, never a path: nothing outside these
-// two directories is reachable through this service.
+// three directories is reachable through this service.
 const (
 	ConfigsKey   = "configs"
 	TelemetryKey = "telemetry"
+	// LogsKey is where the rotated application log lives. Diagnostics offers a
+	// button for it so a support request can point at a file instead of
+	// describing the symptom from memory.
+	LogsKey = "logs"
 )
 
 // Location is one directory Vantare owns.
@@ -53,11 +57,14 @@ type Summary struct {
 type Service struct {
 	configsDir   string
 	telemetryDir string
+	logsDir      string
 }
 
-// New builds a service over the two directories the app resolved at startup.
-func New(configsDir, telemetryDir string) *Service {
-	return &Service{configsDir: configsDir, telemetryDir: telemetryDir}
+// New builds a service over the directories the app resolved at startup. An
+// empty logsDir is normal rather than an error: a build with nowhere writable
+// to log still reports its other locations.
+func New(configsDir, telemetryDir, logsDir string) *Service {
+	return &Service{configsDir: configsDir, telemetryDir: telemetryDir, logsDir: logsDir}
 }
 
 func (s *Service) path(key string) (string, error) {
@@ -66,6 +73,8 @@ func (s *Service) path(key string) (string, error) {
 		return s.configsDir, nil
 	case TelemetryKey:
 		return s.telemetryDir, nil
+	case LogsKey:
+		return s.logsDir, nil
 	default:
 		return "", fmt.Errorf("%w: %q", ErrUnknownLocation, key)
 	}
@@ -75,8 +84,8 @@ func (s *Service) path(key string) (string, error) {
 // as empty rather than failing the whole summary: one unreadable folder should
 // not blank the page.
 func (s *Service) Summary() Summary {
-	summary := Summary{Locations: make([]Location, 0, 2)}
-	for _, key := range []string{ConfigsKey, TelemetryKey} {
+	summary := Summary{Locations: make([]Location, 0, 3)}
+	for _, key := range []string{ConfigsKey, TelemetryKey, LogsKey} {
 		path, err := s.path(key)
 		if err != nil || path == "" {
 			continue
@@ -84,8 +93,10 @@ func (s *Service) Summary() Summary {
 		location := Location{
 			Key:  key,
 			Path: path,
-			// Configs hold the user's profiles and settings. Losing them is
-			// not a cache miss, so this service refuses to empty that one.
+			// Configs hold the user's profiles and settings; the log is the
+			// evidence a support request is built on, and the app holds the
+			// live file open. Losing either is not a cache miss, so this
+			// service refuses to empty them.
 			Clearable: key == TelemetryKey,
 		}
 		if info, err := os.Stat(path); err == nil && info.IsDir() {

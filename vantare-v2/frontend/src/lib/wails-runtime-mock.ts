@@ -396,6 +396,65 @@ function harnessUpdateInfo() {
   };
 }
 
+// ISA-379: el harness de Ajustes tiene que poder enseñar «Últimos eventos» con
+// filas reales, así que el mock siembra un anillo con los tres niveles. Las
+// marcas de tiempo son relativas al arranque del harness para que la captura no
+// dependa de una fecha fija, y el orden es el del backend: más antiguo primero.
+const harnessLogSeed: { level: "info" | "warn" | "error"; message: string; agoMs: number }[] = [
+  { level: "info", message: "HTTP server: listening on 127.0.0.1:39261", agoMs: 184_000 },
+  { level: "info", message: "telemetry: LMU shared memory attached", agoMs: 171_000 },
+  { level: "warn", message: "warning: configs directory not found — hub profile CRUD disabled", agoMs: 152_000 },
+  { level: "info", message: "overlay: profile 'Racing' loaded with 7 widgets", agoMs: 118_000 },
+  { level: "error", message: "storage error: telemetry session chunk could not be written", agoMs: 96_000 },
+  { level: "info", message: "updater: channel nightly selected", agoMs: 61_000 },
+  { level: "warn", message: "warning: hotkey Ctrl+Alt+O already registered by another app", agoMs: 34_000 },
+  { level: "info", message: "launcher: Le Mans Ultimate started", agoMs: 12_000 },
+];
+
+const harnessLogPath = "C:\\Users\\piloto\\AppData\\Local\\Vantare\\logs\\vantare.log";
+
+function harnessLogEntries() {
+  const now = Date.now();
+  return harnessLogSeed.map((entry, index) => ({
+    seq: index + 1,
+    time: new Date(now - entry.agoMs).toISOString(),
+    level: entry.level,
+    message: entry.message,
+  }));
+}
+
+// Las mismas ubicaciones que publica `internal/storage`, incluida `logs`, para
+// que el botón «Abrir carpeta de registros» tenga a qué apuntar en el harness.
+const harnessStorageSummary = {
+  locations: [
+    {
+      key: "configs",
+      path: "C:\\Users\\piloto\\AppData\\Roaming\\Vantare\\configs",
+      bytes: 184_320,
+      files: 12,
+      exists: true,
+      clearable: false,
+    },
+    {
+      key: "telemetry",
+      path: "C:\\Users\\piloto\\AppData\\Local\\Vantare\\telemetry\\sessions",
+      bytes: 47_185_920,
+      files: 38,
+      exists: true,
+      clearable: true,
+    },
+    {
+      key: "logs",
+      path: "C:\\Users\\piloto\\AppData\\Local\\Vantare\\logs",
+      bytes: 262_144,
+      files: 3,
+      exists: true,
+      clearable: false,
+    },
+  ],
+  totalBytes: 47_632_384,
+};
+
 function broadcast(name: string, data: unknown) {
 
   setTimeout(() => {
@@ -436,6 +495,32 @@ export const Events = {
     ) {
       applyHarnessEngineerSetting(name, data);
       setTimeout(() => broadcast("engineer:status", { ...harnessEngineerStatus }), 0);
+      return;
+    }
+
+    // ISA-379: registros y últimos eventos de Diagnóstico.
+    if (name === "applog:get") {
+      setTimeout(
+        () =>
+          broadcast("applog", {
+            entries: harnessLogEntries(),
+            path: harnessLogPath,
+            available: true,
+          }),
+        20,
+      );
+      return;
+    }
+
+    if (name === "storage:get") {
+      setTimeout(() => broadcast("storage", harnessStorageSummary), 20);
+      return;
+    }
+
+    // Revelar una carpeta es cosa del sistema operativo: en el mock no hay nada
+    // que abrir, pero tampoco debe caer al `broadcast` genérico y simular una
+    // respuesta que el backend real nunca manda.
+    if (name === "storage:reveal") {
       return;
     }
 

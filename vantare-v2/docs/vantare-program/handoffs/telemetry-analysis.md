@@ -20,17 +20,25 @@ visible es `Telemetría`.
 ISA-688 abrió un spike aislado sobre
 `origin/nightly@3ee6d7269a76f6cea9deb5659f85fad2989abd8f` para clasificar
 la fuente online actual de LMU sin integrar ratings ni datos remotos en
-producto. La evidencia pasiva inicial con LMU 1.4 en ejecución confirma tráfico
-y trazas hacia `raceos.gg`; el host Nakama histórico sigue disponible, pero no
-apareció en las conexiones o trazas observadas. La herramienta
+producto. La evidencia pasiva inicial con LMU 1.4 en ejecución confirma trazas
+hacia `raceos.gg` y una coincidencia puntual entre una IP activa y su resolución
+DNS; el host Nakama histórico sigue disponible, pero no apareció en las trazas
+ni coincidió con las IP resueltas en ese instante. La herramienta
 `cmd/lmu-online-surface-probe` solo emite contadores y esquema JSON: exige ruta
 de logs explícita, restringe REST a loopback, rechaza redirects y directorios
 enlazados, y omite entradas enlazadas al enumerar. No imprime IDs, UUID, tokens
 ni valores personales; conserva el riesgo TOCTOU local concurrente documentado
-en el informe. Pendiente: repetir la
-observación dentro de un evento RaceControl propio y demostrar o descartar
-identidad estable, paginación e histórico. Evidencia:
+en el informe. Evidencia:
 `docs/vantare-program/research/competition-data/isa-688-spike.md`.
+
+La observación online de ISA-688 ya se completó en una práctica estándar propia:
+standings, equipos y sesión aparecen por REST local; `multiplayer/teams` contiene
+`badge`, pero ni ese endpoint ni `standings` usan los nombres DR/SR/rating de la
+lista segura comprobada. Esto no descarta otra clave o representación. Una IP
+activa coincidió puntualmente con la resolución DNS de RaceOS y ninguna con las
+IP resueltas entonces para el host Nakama histórico; no atribuye todo el tráfico
+a nivel de aplicación. Pendiente ahora: identificar, sin extraer credenciales,
+la superficie autorizada de DR/SR e histórico.
 
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review

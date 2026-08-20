@@ -53,6 +53,35 @@ directamente, si RaceOS actúa delante de Nakama o si Racecenter conserva un
 contrato anterior/privado. No se atribuye histórico ni DR/SR a ninguna de las
 dos capas hasta observar una sesión online real.
 
+## Evidencia online — práctica RaceControl propia
+
+El 2026-08-20 se entró en un servidor estándar gratuito de práctica propio, sin
+usar Practice+, Upgrade, compra o inscripción en carrera.
+
+Durante la sesión:
+
+- `/navigation/state` indicó `PRACTICE1`, fase `GREEN` y `NAV_EVENT`.
+- `/rest/watch/standings` pasó de vacío a un documento JSON de aproximadamente
+  38–47 kB; `/rest/multiplayer/teams` expuso unos 8 kB y `sessionInfo` 875 B.
+- Una búsqueda de nombres de campo contra una lista estática segura encontró
+  `badge` 34 veces en `multiplayer/teams`. No encontró `rating`,
+  `driverRating`, `safetyRating`, `driverRank`, `safetyRank`, `DR` o `SR` en
+  `teams` ni `standings`.
+- LMU mantenía diez conexiones establecidas: tres HTTPS y siete con otros
+  puertos. Una IP activa coincidía en ese instante con la resolución DNS de
+  RaceOS; ninguna coincidía con las IP resueltas entonces para el host Nakama
+  histórico. Esto no atribuye por sí solo cada conexión a nivel de aplicación.
+- Las ocho trazas recientes conservaron nueve menciones RaceOS y cero Nakama,
+  joins, Bearer o JWT. La ruta segura observable siguió siendo
+  `/api/v1/notifications/global`.
+
+La UI de RaceControl sí presenta DR/SR en su lista de inscritos. La observación
+solo demuestra que los endpoints REST locales contienen standings y `badge`, y
+que no usan ninguno de los nombres de campo DR/SR/rating incluidos en la lista
+segura comprobada. No permite descartar que esos datos estén codificados con
+otra clave o representación. Los valores DR/SR exactos y el histórico siguen
+sin una fuente identificada y autorizada.
+
 ## Herramienta reproducible
 
 `cmd/lmu-online-surface-probe` recibe una ruta de logs explícita y consulta
@@ -85,18 +114,16 @@ host REST que no sea loopback. Rechaza un directorio enlazado y omite entradas
 que ya son enlaces al enumerarlas; una sustitución local concurrente entre la
 validación y la apertura permanece como riesgo residual de bajo nivel.
 
-## Próxima observación necesaria
+## Gate restante
 
-Con LMU dentro de una sesión RaceControl online propia:
-
-1. ejecutar la herramienta antes de entrar;
-2. entrar en un evento y esperar a que aparezcan standings;
-3. ejecutar de nuevo la herramienta;
-4. comparar únicamente destinos, contadores y esquema;
-5. detenerse si para continuar hiciera falta recuperar una clave o token.
+La comparación antes/durante la práctica ya se completó. Cualquier observación
+posterior debe limitarse a destinos, contadores y esquema, y detenerse si exige
+recuperar una clave, token o valor personal.
 
 El gate siguiente exige demostrar un identificador estable y paginación de
-histórico sin eludir controles. Hasta entonces, la paridad global permanece
+histórico sin eludir controles. La observación online ya demuestra standings de
+sesión y presencia del campo `badge`, pero no identifica la representación ni
+fuente de DR/SR exactos o histórico; por tanto, la paridad global permanece
 `condicional`.
 
 ## Verificación del checkpoint

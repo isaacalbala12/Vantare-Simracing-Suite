@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/05-launcher");
@@ -80,7 +81,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const viewport of viewports) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: viewport.dpr ?? 1,
     });
@@ -96,7 +97,8 @@ try {
     await page.getByTestId("orbit-launcher-apps").waitFor();
     await page.getByTestId("orbit-launcher-context-profiles").waitFor();
     await page.clock.setFixedTime(FROZEN_CLOCK);
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const contract = await page.evaluate(() => {
       const view = document.querySelector(".orbit-launcher");
@@ -155,6 +157,9 @@ try {
       throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({ path: path.join(output, `orbit-launcher-${viewport.name}.png`), fullPage: false });
 
     if (viewport.iconsOnly) {
@@ -177,6 +182,8 @@ try {
       if (upscaled.length) {
         throw new Error(`${viewport.name}: iconos ampliados en la losa\n${upscaled.join("\n")}`);
       }
+      await hideToasts(page);
+      await settle(page);
       await page.getByTestId("orbit-launcher-apps").screenshot({
         path: path.join(output, `orbit-launcher-catalogo-iconos-${viewport.name}.png`),
       });
@@ -189,6 +196,8 @@ try {
     if (!viewport.profilesScroll) {
       await page.getByTestId("orbit-launcher-create").hover();
       await page.waitForTimeout(200);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({ path: path.join(output, `orbit-launcher-crear-hover-${viewport.name}.png`), fullPage: false });
 
       await page.getByTestId("orbit-launcher-profile-creator").getByRole("button", { name: /Editar el perfil/ }).click();
@@ -209,6 +218,8 @@ try {
       if (drawer.dialog !== 1) throw new Error(`${viewport.name}: ${drawer.dialog} dialogos modales abiertos`);
       if (!drawer.focusInside) throw new Error(`${viewport.name}: el foco no entro en el cajon`);
       if (drawer.nativeTitles !== 0) throw new Error(`${viewport.name}: el cajon usa title nativo`);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({ path: path.join(output, `orbit-launcher-editor-${viewport.name}.png`), fullPage: false });
       await page.keyboard.press("Escape");
     }

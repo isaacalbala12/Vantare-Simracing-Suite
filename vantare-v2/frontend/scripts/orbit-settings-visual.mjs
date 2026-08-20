@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/11-ajustes");
@@ -108,7 +109,7 @@ try {
 
   for (const shot of shots) {
     for (const section of shot.sections) {
-      const page = await browser.newPage({
+      const page = await stillPage(browser, {
         viewport: { width: shot.width, height: shot.height },
         deviceScaleFactor: 1,
         timezoneId: "Europe/Madrid",
@@ -122,7 +123,8 @@ try {
       await page.goto(url(section), { waitUntil: "networkidle" });
       await page.getByTestId("orbit-settings").waitFor();
       await page.getByTestId(`orbit-settings-panel-${section}`).waitFor();
-      await page.evaluate(async () => { await document.fonts.ready; });
+      await hideToasts(page);
+      await settle(page);
 
       const label = `${section}-${shot.name}`;
       const summary = await page.evaluate(contractOf);
@@ -158,6 +160,9 @@ try {
         throw new Error(`${label}: la página hace scroll horizontal (${summary.scrollWidth} > ${summary.innerWidth})`);
       }
 
+      await hideToasts(page);
+
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-ajustes-${label}.png`),
         fullPage: false,
@@ -212,6 +217,8 @@ try {
             }
           }
         }
+        await hideToasts(page);
+        await settle(page);
         await page.getByTestId("orbit-settings-channels").screenshot({
           path: path.join(output, `orbit-ajustes-canales-${label}.png`),
         });
@@ -257,6 +264,8 @@ try {
         if ((await logsRow.locator("button").count()) !== 1) {
           throw new Error(`${label}: «Registros» no ofrece el botón de abrir carpeta`);
         }
+        await hideToasts(page);
+        await settle(page);
         await page.screenshot({
           path: path.join(output, `orbit-ajustes-registros-${label}.png`),
           fullPage: false,
@@ -278,6 +287,8 @@ try {
         if (keys.length < 3) {
           throw new Error(`${label}: la grabación pintó ${keys.length} keycaps`);
         }
+        await hideToasts(page);
+        await settle(page);
         await page.screenshot({
           path: path.join(output, `orbit-ajustes-grabacion-${label}.png`),
           fullPage: false,

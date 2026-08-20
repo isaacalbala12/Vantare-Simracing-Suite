@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/12-testing-center");
@@ -97,7 +98,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const shot of shots) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: shot.width, height: shot.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -110,7 +111,7 @@ try {
 
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-testing").waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await settle(page);
 
     const label = shot.name;
     const summary = await page.evaluate(contractOf);
@@ -143,6 +144,7 @@ try {
       throw new Error(`${label}: la página hace scroll horizontal (${summary.scrollWidth} > ${summary.innerWidth})`);
     }
 
+    await settle(page);
     await page.screenshot({
       path: path.join(output, `orbit-testing-${label}.png`),
       fullPage: false,
@@ -161,6 +163,7 @@ try {
       if (validated.scrollHeight > validated.innerHeight) {
         throw new Error(`${label}: la página hace scroll tras validar`);
       }
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-testing-validacion-${label}.png`),
         fullPage: false,
@@ -176,6 +179,7 @@ try {
       if (preview.scrollHeight > preview.innerHeight) {
         throw new Error(`${label}: la vista previa hace scroll de página`);
       }
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-testing-diagnostico-${label}.png`),
         fullPage: false,
@@ -201,6 +205,7 @@ try {
       if (validate.scrollWidth > validate.innerWidth) {
         throw new Error(`${label}: Validar hace scroll horizontal`);
       }
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-testing-validar-${label}.png`),
         fullPage: false,
@@ -216,6 +221,7 @@ try {
       if (mine.scrollHeight > mine.innerHeight) {
         throw new Error(`${label}: Mis reportes hace scroll de página`);
       }
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-testing-mis-reportes-${label}.png`),
         fullPage: false,
@@ -233,7 +239,7 @@ try {
   }
 
   // ── Canal Stable: la vista no existe y la shell devuelve a Inicio con toast.
-  const stablePage = await browser.newPage({
+  const stablePage = await stillPage(browser, {
     viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
     timezoneId: "Europe/Madrid",
@@ -257,6 +263,7 @@ try {
   if (stableSummary.railTesting !== 0) {
     throw new Error("stable: el rail sigue enseñando el botón de Testing Center");
   }
+  await settle(stablePage);
   await stablePage.screenshot({
     path: path.join(output, "orbit-testing-stable-1920x1080.png"),
     fullPage: false,

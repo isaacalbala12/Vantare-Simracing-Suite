@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(
@@ -219,7 +220,7 @@ try {
     const url = sceneUrl(scene);
     for (const viewport of viewports) {
       const label = `${scene.name} ${viewport.name}`;
-      const page = await browser.newPage({
+      const page = await stillPage(browser, {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
@@ -231,7 +232,8 @@ try {
 
       await page.goto(url, { waitUntil: "networkidle" });
       await enterScene(page, scene);
-      await page.evaluate(async () => { await document.fonts.ready; });
+      await hideToasts(page);
+      await settle(page);
 
       const report = await page.evaluate(collect);
       const expected = expectedZoom(viewport.width, viewport.height);
@@ -306,6 +308,8 @@ try {
       if (problems.length) failures.push(`${label}: la consola no está limpia\n${problems.join("\n")}`);
 
       await assertNoHorizontalOverflow(page, label);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-responsive-${scene.name}-${viewport.name}.png`),
         fullPage: false,
@@ -320,7 +324,7 @@ try {
   // que obliga a poner el `zoom` en `<html>` y no en `.orbit-root`.
   {
     const factor = expectedZoom(870, 780);
-    const page = await browser.newPage({ viewport: { width: 870, height: 780 }, deviceScaleFactor: 1 });
+    const page = await stillPage(browser, { viewport: { width: 870, height: 780 }, deviceScaleFactor: 1 });
     page.on("pageerror", () => {});
 
     // 1 · Paleta de comandos (dentro de la shell).
@@ -344,6 +348,8 @@ try {
     if (Math.abs(palette.veilRight - 870) > 2 || Math.abs(palette.veilBottom - 780) > 2) {
       failures.push(`paleta: el velo no cubre la ventana (${palette.veilRight}x${palette.veilBottom})`);
     }
+    await hideToasts(page);
+    await settle(page);
     await page.screenshot({ path: path.join(output, "orbit-responsive-paleta-870x780.png") });
 
     // 2 · Select de Ajustes (portalado a `document.body`, fuera de la shell).
@@ -372,6 +378,8 @@ try {
         );
       }
       if (list.drift > 4) failures.push(`select: la lista no queda anclada al disparador (${list.drift}px)`);
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({ path: path.join(output, "orbit-responsive-select-870x780.png") });
     } else {
       failures.push("select: no se encontró ningún Select en Ajustes");
@@ -389,11 +397,12 @@ try {
     const steps = 20;
     const from = { width: 1920, height: 1080 };
     const to = { width: 900, height: 700 };
-    const page = await browser.newPage({ viewport: { ...from }, deviceScaleFactor: 1 });
+    const page = await stillPage(browser, { viewport: { ...from }, deviceScaleFactor: 1 });
     page.on("pageerror", () => {});
     await page.goto(sceneUrl(inicioScene), { waitUntil: "networkidle" });
     await page.getByTestId("orbit-shell").waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Performance.enable");
@@ -464,7 +473,7 @@ try {
   // Extra: por debajo del suelo la shell desplaza internamente en vez de
   // recortar, y la página sigue sin sacar barras.
   {
-    const page = await browser.newPage({ viewport: { width: 640, height: 420 }, deviceScaleFactor: 1 });
+    const page = await stillPage(browser, { viewport: { width: 640, height: 420 }, deviceScaleFactor: 1 });
     page.on("pageerror", () => {});
     await page.goto(sceneUrl(inicioScene), { waitUntil: "networkidle" });
     await page.getByTestId("orbit-shell").waitFor();
@@ -486,6 +495,8 @@ try {
     if (floor.pageScrollWidth > floor.innerWidth + 1) {
       failures.push("640x420: la página saca barra horizontal en vez de desplazar la shell");
     }
+    await hideToasts(page);
+    await settle(page);
     await page.screenshot({ path: path.join(output, "orbit-responsive-inicio-640x420-suelo.png") });
     await page.close();
   }

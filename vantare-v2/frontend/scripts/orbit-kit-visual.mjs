@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/02-kit");
@@ -90,7 +91,7 @@ let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
+  const page = await stillPage(browser, { viewport, deviceScaleFactor: 1 });
 
   const problems = [];
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
@@ -102,7 +103,7 @@ try {
 
   await page.goto(url, { waitUntil: "networkidle" });
   await page.getByTestId("orbit-kit-harness").waitFor();
-  await page.evaluate(async () => { await document.fonts.ready; });
+  await settle(page);
 
   // Contrato del kit: nada del harness usa `title` nativo (08 · tooltips).
   const nativeTitles = await page.evaluate(
@@ -172,6 +173,7 @@ try {
       if (nativeSelects > 0) throw new Error(`el kit todavia usa ${nativeSelects} \`select\` nativos`);
       await page.waitForTimeout(120);
     }
+    await settle(page);
     await page.screenshot({ path: path.join(output, `${group.file}-1920x1080.png`), fullPage: false });
   }
 
@@ -225,6 +227,7 @@ try {
     { timeout: 2000 },
   );
   await page.waitForTimeout(160);
+  await settle(page);
   await page.screenshot({
     path: path.join(output, "orbit-kit-5-scroll-1920x1080.png"),
     fullPage: false,

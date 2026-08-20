@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/07-estrategia");
@@ -91,7 +92,7 @@ try {
   browser = await chromium.launch({ headless: true });
 
   for (const viewport of viewports) {
-    const page = await browser.newPage({
+    const page = await stillPage(browser, {
       viewport: { width: viewport.width, height: viewport.height },
       deviceScaleFactor: 1,
       timezoneId: "Europe/Madrid",
@@ -107,7 +108,8 @@ try {
     await page.getByTestId("orbit-strategy").waitFor();
     await page.getByTestId("orbit-strategy-overview").waitFor();
     await page.getByTestId("orbit-stint-0").waitFor();
-    await page.evaluate(async () => { await document.fonts.ready; });
+    await hideToasts(page);
+    await settle(page);
 
     const summary = await page.evaluate(contractOf);
     if (summary.scrollHeight > summary.innerHeight) {
@@ -126,6 +128,9 @@ try {
       throw new Error(`${viewport.name}: la vista usa \`title\` nativo (${summary.nativeTitles})`);
     }
 
+    await hideToasts(page);
+
+    await settle(page);
     await page.screenshot({
       path: path.join(output, `orbit-estrategia-resumen-${viewport.name}.png`),
       fullPage: false,
@@ -164,6 +169,9 @@ try {
         throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
       }
 
+      await hideToasts(page);
+
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-editor-neumaticos-${viewport.name}.png`),
         fullPage: false,
@@ -196,6 +204,8 @@ try {
       throw new Error(`${viewport.name}: Estrategias usa \`title\` nativo`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-estrategias-${viewport.name}.png`),
         fullPage: false,
@@ -234,6 +244,8 @@ try {
       throw new Error(`${viewport.name}: Disponibilidad usa \`title\` nativo`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-disponibilidad-${viewport.name}.png`),
         fullPage: false,
@@ -259,6 +271,8 @@ try {
       throw new Error(`${viewport.name}: el menú de entrada usa \`title\` nativo`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-menu-${viewport.name}.png`),
         fullPage: false,
@@ -272,6 +286,8 @@ try {
       await firstDelete.click();
       await page.getByTestId("orbit-strategy-delete-dialog").waitFor();
       if (viewport.editor) {
+        await hideToasts(page);
+        await settle(page);
         await page.screenshot({
           path: path.join(output, `orbit-estrategia-borrar-${viewport.name}.png`),
           fullPage: false,
@@ -292,6 +308,8 @@ try {
       throw new Error(`${viewport.name}: la vía automática no dice por qué no está`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-asistente-origen-${viewport.name}.png`),
         fullPage: false,
@@ -300,6 +318,8 @@ try {
     await page.getByTestId("orbit-strategy-wizard-manual").click();
     await page.getByTestId("orbit-strategy-wizard-team").waitFor();
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-asistente-equipo-${viewport.name}.png`),
         fullPage: false,
@@ -320,6 +340,8 @@ try {
     await page.getByTestId("orbit-strategy-path-series").click();
     await page.getByTestId("orbit-strategy-series").waitFor();
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-selector-${viewport.name}.png`),
         fullPage: false,
@@ -342,6 +364,8 @@ try {
       throw new Error(`${viewport.name}: el formulario usa \`title\` nativo`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-formulario-${viewport.name}.png`),
         fullPage: false,
@@ -376,6 +400,8 @@ try {
       throw new Error(`${viewport.name}: el Resumen del evento propio usa \`title\` nativo`);
     }
     if (viewport.editor) {
+      await hideToasts(page);
+      await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-evento-propio-${viewport.name}.png`),
         fullPage: false,

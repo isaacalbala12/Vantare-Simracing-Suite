@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/00-fundamentos");
@@ -63,7 +64,7 @@ let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  const page = await stillPage(browser, { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const browserProblems = [];
   page.on("console", (message) => {
     if (message.type() === "error" || message.type() === "warning") browserProblems.push(`${message.type()}: ${message.text()}`);
@@ -79,6 +80,8 @@ try {
     ]);
     await document.fonts.ready;
   });
+  await hideToasts(page);
+  await settle(page);
 
   const contract = await page.evaluate(() => {
     const root = getComputedStyle(document.documentElement);
@@ -114,12 +117,17 @@ try {
   if (!contract.fontsLoaded || contract.externalFontRequest) throw new Error(`offline font contract failed: ${JSON.stringify(contract)}`);
   if (browserProblems.length) throw new Error(`browser console not clean\n${browserProblems.join("\n")}`);
 
+  await hideToasts(page);
+
+  await settle(page);
   await page.screenshot({ path: path.join(output, "orbit-foundations-1920x1080.png"), fullPage: false });
 
   const marks = page.getByTestId("orbit-mark-variants");
   await marks.waitFor();
   const markRows = await marks.evaluate((node) => node.children.length);
   if (markRows !== 4) throw new Error(`expected 4 mark rows (marca + 3 referencias), found ${markRows}`);
+  await hideToasts(page);
+  await settle(page);
   await marks.screenshot({ path: path.join(shellOutput, "orbit-rail-mark.png") });
 
   await page.evaluate(() => localStorage.setItem("vantare.v03orbit.density", "compact"));
@@ -131,6 +139,8 @@ try {
   }));
   if (compact.density !== "compact" || compact.row !== "42px") throw new Error(`compact density changed: ${JSON.stringify(compact)}`);
   if (browserProblems.length) throw new Error(`browser console not clean after compact reload\n${browserProblems.join("\n")}`);
+  await hideToasts(page);
+  await settle(page);
   await page.screenshot({ path: path.join(output, "orbit-foundations-compact-1920x1080.png"), fullPage: false });
 
   console.log(`Orbit foundations visual PASS. Captures: ${output}`);

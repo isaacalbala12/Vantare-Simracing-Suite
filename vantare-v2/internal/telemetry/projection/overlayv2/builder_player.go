@@ -85,7 +85,7 @@ func ProjectV2(
 		Standings:    BuildStandings(final),
 		Relative:     BuildRelative(final),
 		Delta:        BuildDelta(final, preferences),
-		Fuel:         FuelViewV2{Remaining: missingValue[float64](), Capacity: missingValue[float64](), PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64]()},
+		Fuel:         BuildFuel(final, preferences),
 		Spotter:      SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()},
 		Capabilities: BuildCapabilities(final, source.DescriptorCapabilities),
 	}

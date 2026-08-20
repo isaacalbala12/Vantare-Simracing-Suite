@@ -2007,16 +2007,19 @@
     },
     "fuel": {
       "remaining": {
-        "q": "missing"
+        "v": 42,
+        "q": "fresh"
       },
       "capacity": {
-        "q": "missing"
+        "v": 100,
+        "q": "fresh"
       },
       "perLap": {
         "q": "missing"
       },
       "estimatedLaps": {
-        "q": "missing"
+        "v": 79,
+        "q": "fresh"
       }
     },
     "spotter": {

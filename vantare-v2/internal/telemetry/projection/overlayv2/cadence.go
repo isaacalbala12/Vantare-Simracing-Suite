@@ -264,11 +264,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		Standings: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []StandingRowV2 {
 			return BuildStandings(final)
 		},
-		Fuel: func(derive.FinalState, PreferencesV2, SourceContextV2) FuelViewV2 {
-			return FuelViewV2{
-				Remaining: missingValue[float64](), Capacity: missingValue[float64](),
-				PerLap: missingValue[float64](), EstimatedLaps: missingValue[float64](),
-			}
+		Fuel: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) FuelViewV2 {
+			return BuildFuel(final, preferences)
 		},
 	}
 }

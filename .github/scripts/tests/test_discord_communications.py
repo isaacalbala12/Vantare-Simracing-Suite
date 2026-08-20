@@ -160,12 +160,13 @@ class LinearDigestTests(unittest.TestCase):
         projects = [{"name": "Overlay <Studio>", "url": "https://linear.app/p/overlay", "progress": 0.08,
                      "update": "Paridad & revisión", "updatedAt": "2026-07-15T10:00:00Z"}]
         output = communications.render_development_html(projects)
-        self.assertIn("VANTARE", output)
-        self.assertIn("ESTADO DE DESARROLLO", output)
+        # The eyebrow and footer are uppercased by CSS now, so the markup
+        # carries the sentence-case source text.
+        self.assertIn("Vantare", output)
+        self.assertIn("Estado de desarrollo", output)
         self.assertIn("Overlay &lt;Studio&gt;", output)
         self.assertIn("Paridad &amp; revisión", output)
         self.assertNotIn("Overlay <Studio>", output)
-        self.assertIn("ESTADO DE DESARROLLO", output)
         self.assertNotIn("Development pulse", output)
         self.assertNotIn("BUILDING IN PUBLIC", output)
 
@@ -458,6 +459,58 @@ class ChannelUpdateOverflowTests(unittest.TestCase):
         for issue in ("ISA-1", "ISA-2", "ISA-3"):
             self.assertIn(issue, summary)
         self.assertNotIn("más, en el changelog", summary)
+
+
+class OrbitSkinTests(unittest.TestCase):
+    """The card must keep speaking the hub's visual language, not its own."""
+
+    TOKENS_CSS = (pathlib.Path(__file__).parents[3]
+                  / "vantare-v2/frontend/src/styles/orbit.tokens.css")
+
+    def _outputs(self):
+        return {
+            "channel": communications.render_channel_update_html(
+                [fragment()], "abc1234", "nightly", manifest=manifest()),
+            "development": communications.render_development_html(
+                [{"name": "Overlay Studio", "url": "", "progress": 0.4,
+                  "update": "Paridad visual en curso.", "updatedAt": "2026-07-15T10:00:00Z"}]),
+        }
+
+    def test_no_invented_palette_survives(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                # #ff3b3b was never a Vantare colour, and Courier is not the
+                # hub's mono face.
+                self.assertNotIn("#ff3b3b", output.lower())
+                self.assertNotIn("courier", output.lower())
+
+    def test_cards_use_the_real_orbit_tokens(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                self.assertIn("--orbit-carmine:#d52f49", output)
+                self.assertIn("--orbit-canvas:#08090b", output)
+                self.assertIn("Cascadia Code", output)
+                self.assertIn("var(--orbit-radius-featured)", output)
+                self.assertIn("var(--orbit-shadow-featured)", output)
+
+    @unittest.skipUnless(TOKENS_CSS.is_file(), "frontend tokens not in this checkout")
+    def test_token_values_match_the_frontend_stylesheet(self):
+        source = self.TOKENS_CSS.read_text(encoding="utf-8")
+        for token in ("--orbit-canvas", "--orbit-carmine", "--orbit-red",
+                      "--orbit-ink", "--orbit-ink-2", "--orbit-wine"):
+            expected = re.search(rf"{token}:\s*([^;]+);", source).group(1).strip()
+            self.assertIn(f"{token}:{expected}", communications.ORBIT_TOKENS,
+                          f"{token} drifted from orbit.tokens.css")
+
+    def test_embed_stripe_uses_the_brand_carmine(self):
+        payload = communications.render_channel_update(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        self.assertEqual(payload["embeds"][0]["color"], 0xD52F49)
+
+    def test_card_geometry_stays_within_the_discord_frame(self):
+        for name, output in self._outputs().items():
+            with self.subTest(card=name):
+                self.assertIn("width:1200px;height:630px", output)
 
 
 def manifest(title="Vantare — Command Orbit, única interfaz del Hub",

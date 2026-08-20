@@ -115,14 +115,41 @@ export const OVERLAY_V2_PLAYER_INSTRUMENT_TOLERANCES = Object.freeze({
 
 export type OverlayV2PlayerInstrumentComparison = Readonly<{
   equal: boolean;
+  phase: OverlayShadowPhase;
   mismatches: readonly string[];
   legacyDisplayed: Readonly<Record<string, string>>;
   overlayV2Displayed: Readonly<Record<string, string>>;
 }>;
 
+/**
+ * Effective phase of one shadow comparison. Overlay v1 legacy retains the last
+ * known value while the v2 view models hide stale values on purpose, so only
+ * `live` comparisons are divergences; every other phase is a declared contract
+ * difference and is accounted separately.
+ */
+export type OverlayShadowPhase = "live" | "stale" | "degraded" | "no-frame" | "transition";
+
+export const OVERLAY_SHADOW_PHASES: readonly OverlayShadowPhase[] = Object.freeze([
+  "live",
+  "stale",
+  "degraded",
+  "no-frame",
+  "transition",
+]);
+
+export type OverlayShadowPhaseCounts = Readonly<Record<OverlayShadowPhase, number>>;
+
 export type OverlayV2ShadowSessionSummary = Readonly<{
+  /** Frames compared in the `live` phase: the gate denominator. */
   frames: number;
+  /** Mismatches observed in the `live` phase: the gate numerator. */
   mismatches: number;
+  /** Mismatches observed outside `live`; an intentional contract difference. */
+  declaredDifferences: number;
+  framesByPhase: OverlayShadowPhaseCounts;
+  mismatchesByPhase: OverlayShadowPhaseCounts;
+  /** Times the accumulators were rotated because the stream epoch changed. */
+  epochResets: number;
   metrics: Readonly<Record<string, number>>;
 }>;
 
@@ -133,40 +160,127 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
     source: OverlaySourceStatusV2;
     content: PedalsTelemetryContent;
   }>): OverlayV2PlayerInstrumentComparison;
+  /** Rotates every accumulator. The runtime calls it on epoch/session change. */
+  reset(): void;
   sessionSummary(): OverlayV2ShadowSessionSummary;
 }>;
 
+/**
+ * Resolves the effective phase from the legacy status and the v2 source state.
+ *
+ * Under load (54 AI cars measured) the LMU session block grazes the 500 ms
+ * freshness limit and the driver oscillates stale<->live every few seconds.
+ * The two contracts observe that edge at slightly different instants, so a
+ * comparison where they disagree is a `transition`, never a live divergence:
+ * a comparison is `live` only when both sides independently say so.
+ */
+export function resolveOverlayShadowPhase(
+  legacySnapshot: TelemetrySnapshot,
+  source: OverlaySourceStatusV2,
+): OverlayShadowPhase {
+  const legacy = legacyPhase(legacySnapshot);
+  const overlayV2 = overlayV2Phase(source);
+  return legacy === overlayV2 ? legacy : "transition";
+}
+
+function legacyPhase(snapshot: TelemetrySnapshot): Exclude<OverlayShadowPhase, "transition"> {
+  switch (snapshot.status) {
+    case "ready":
+      return "live";
+    case "stale":
+      return "stale";
+    default:
+      return "no-frame";
+  }
+}
+
+function overlayV2Phase(source: OverlaySourceStatusV2): Exclude<OverlayShadowPhase, "transition"> {
+  switch (source.state) {
+    case "live":
+      return "live";
+    case "stale":
+      return "stale";
+    case "stopped":
+    case "error":
+      return "no-frame";
+    default:
+      return "degraded";
+  }
+}
+
+type ShadowPhaseAccumulator = Readonly<{
+  record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
+  reset(): void;
+  markEpochReset(): void;
+  summary(): OverlayV2ShadowSessionSummary;
+}>;
+
+function emptyPhaseCounts(): Record<OverlayShadowPhase, number> {
+  return { live: 0, stale: 0, degraded: 0, "no-frame": 0, transition: 0 };
+}
+
+function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
+  let framesByPhase = emptyPhaseCounts();
+  let mismatchesByPhase = emptyPhaseCounts();
+  let epochResets = 0;
+  let byMetric = new Map<string, number>();
+  return {
+    record(feature, phase, fields) {
+      framesByPhase[phase] += 1;
+      mismatchesByPhase[phase] += fields.length;
+      for (const field of fields) {
+        const key = `overlay_shadow_mismatches_total{feature="${feature}",field="${field}",phase="${phase}"}`;
+        byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+      }
+    },
+    reset() {
+      framesByPhase = emptyPhaseCounts();
+      mismatchesByPhase = emptyPhaseCounts();
+      byMetric = new Map();
+    },
+    markEpochReset() {
+      epochResets += 1;
+    },
+    summary() {
+      const declaredDifferences = OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
+        .reduce((total, phase) => total + mismatchesByPhase[phase], 0);
+      return Object.freeze({
+        frames: framesByPhase.live,
+        mismatches: mismatchesByPhase.live,
+        declaredDifferences,
+        framesByPhase: Object.freeze({ ...framesByPhase }),
+        mismatchesByPhase: Object.freeze({ ...mismatchesByPhase }),
+        epochResets,
+        metrics: Object.freeze(Object.fromEntries(
+          [...byMetric.entries()].sort(([left], [right]) => left.localeCompare(right)),
+        )),
+      });
+    },
+  };
+}
+
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
-  let frames = 0;
-  let mismatches = 0;
-  const byField = new Map<string, number>();
+  const accumulator = createShadowPhaseAccumulator();
   return {
     compare(input) {
       const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
       const fields = comparePlayerInstrumentModels(legacy, overlayV2);
-      frames += 1;
-      mismatches += fields.length;
-      for (const field of fields) byField.set(field, (byField.get(field) ?? 0) + 1);
+      const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+      accumulator.record("player-instruments", phase, fields);
       return Object.freeze({
         equal: fields.length === 0,
+        phase,
         mismatches: Object.freeze(fields),
         legacyDisplayed: pedalsTelemetryDisplayedValues(legacy),
         overlayV2Displayed: pedalsTelemetryDisplayedValues(overlayV2),
       });
     },
-    sessionSummary() {
-      return Object.freeze({
-        frames,
-        mismatches,
-        metrics: Object.freeze(Object.fromEntries(
-          [...byField.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([field, value]) => [
-            `overlay_shadow_mismatches_total{field="${field}"}`,
-            value,
-          ]),
-        )),
-      });
+    reset() {
+      accumulator.reset();
+      accumulator.markEpochReset();
     },
+    sessionSummary: accumulator.summary,
   };
 }
 

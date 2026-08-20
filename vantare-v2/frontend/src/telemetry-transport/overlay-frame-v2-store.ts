@@ -33,7 +33,8 @@ export type OverlayFrameV2Store = Readonly<{
 }>;
 
 export type OverlayFrameV2StoreDiagnostics = Readonly<{
-  overlay_v2_parse_duration: Readonly<{ count: number; p50: number; p99: number }>;
+  /** Percentiles over the current live window only; see `ingest`. */
+  overlay_v2_parse_duration: Readonly<{ count: number; p50: number; p99: number; nonLiveSamples: number }>;
 }>;
 
 export type OverlayFrameV2EventSource = Readonly<{
@@ -57,6 +58,8 @@ export function createOverlayFrameV2Store(
   let disposed = false;
   const listeners = new Set<() => void>();
   const parseDurations: number[] = [];
+  let currentStream: string | undefined;
+  let nonLiveParseSamples = 0;
   const watchdog = createFreshnessWatchdog(refreshAge, options);
 
   function publish(next: OverlayFrameV2State): void {
@@ -98,8 +101,16 @@ export function createOverlayFrameV2Store(
       }
       const started = performance.now();
       const update = decodeOverlayUpdateV2(input);
-      parseDurations.push(performance.now() - started);
-      if (parseDurations.length > 512) parseDurations.shift();
+      const elapsed = performance.now() - started;
+      // The percentiles describe the current live window only. Samples taken
+      // while the source is stale, degraded or reconnecting mix a different
+      // regime into the same ring and made the published p99 unreadable.
+      if (update.source.state === "live") {
+        parseDurations.push(elapsed);
+        if (parseDurations.length > 512) parseDurations.shift();
+      } else {
+        nonLiveParseSamples += 1;
+      }
       if (update.revision <= state.revision) {
         throw new OverlayFrameV2ContractError("revision");
       }
@@ -108,6 +119,16 @@ export function createOverlayFrameV2Store(
       }
       if (name === OVERLAY_V2_STATUS_EVENT && update.frame !== null) {
         throw new OverlayFrameV2ContractError("frame");
+      }
+      // The 512-sample ring already rotates per sample, but its percentiles
+      // must not mix two runs: a new epoch or session id starts a fresh window.
+      if (update.frame) {
+        const stream = `${update.frame.epoch}:${update.frame.sessionId}`;
+        if (currentStream !== undefined && currentStream !== stream) {
+          parseDurations.length = 0;
+          nonLiveParseSamples = 0;
+        }
+        currentStream = stream;
       }
       const frame = update.frame ?? state.frame;
       const ageMs = frame ? watchdog.measure(frame.generatedAt).ageMs : update.source.ageMs ?? 0;
@@ -120,6 +141,7 @@ export function createOverlayFrameV2Store(
           count: sorted.length,
           p50: percentile(sorted, 0.5),
           p99: percentile(sorted, 0.99),
+          nonLiveSamples: nonLiveParseSamples,
         }),
       });
     },

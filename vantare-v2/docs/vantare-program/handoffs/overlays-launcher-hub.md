@@ -12,14 +12,15 @@
 
 ## Estado
 
-- **OS-QT-02 / GitHub #691 — ADR 0009 Accepted localmente (2026-08-20):** la
+- **OS-QT-02 / GitHub #691 — ADR 0009 Accepted y P0-A cerrado (2026-08-20):** la
   excepción Qt se decide antes de crear la ventana ingame Desktop y solo para
   perfiles Redline completos. Studio, Workshop, OBS y fallback Desktop
   conservan `WidgetVisualHost`; TSX/CSS sigue siendo autoridad visual, Wails
   default/fallback y `OverlayFrame v2` el único contrato futuro. El guard
   autónomo caracteriza la cadena real y pasa 1/1; no hay código Qt/productivo,
-  push, PR, CI, integración, promoción ni release. Siguiente corte autorizado:
-  OS-QT-03/#692, candidate portable y corpus custodiado.
+  push, PR, CI, integración, promoción ni release. Commit local `1543da93`;
+  #691/Project Done. Siguiente corte en progreso: OS-QT-03/#692, candidate
+  portable y corpus custodiado.
 
 - **OS-QT-01 / GitHub #690 — runtime Redline Qt Quick en TASKS/IMPLEMENT
   (2026-08-20):** SPECIFY y PLAN aprobados por Isaac; la primera ola P0/P1 se

@@ -105,13 +105,13 @@ Project, current-plan y handoff.
 **Aceptación:**
 
 - [x] ADR pasa de Proposed a Accepted solo tras revisión de la issue.
-- [ ] La issue enlaza spec, PLAN, TASKS, commit y checks reales.
+- [x] La issue enlaza spec, PLAN, TASKS, commit y checks reales.
 - [x] No existe código Qt ni cambio productivo en la rama.
 
 **Verificación:**
 
 - [x] `git diff origin/nightly...HEAD --check`.
-- [ ] Árbol limpio y solo paths documentales/guard aprobados.
+- [x] Árbol limpio y solo paths documentales/guard aprobados.
 
 **Dependencias:** T02.
 
@@ -121,9 +121,9 @@ Project, current-plan y handoff.
 
 ## Checkpoint P0-A
 
-- [ ] ADR 0009 Accepted.
-- [ ] Issue P0-A cerrable sin producto ni dependencia nueva.
-- [ ] P0-B puede basarse en el commit integrado/revisado de P0-A.
+- [x] ADR 0009 Accepted.
+- [x] Issue P0-A cerrada sin producto ni dependencia nueva.
+- [x] P0-B puede basarse en el commit revisado de P0-A.
 
 ## 4. P0-B — Candidate Qt Redline portable
 

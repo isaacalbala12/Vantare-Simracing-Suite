@@ -41,6 +41,7 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 - Red de seguridad de Telemetry Core: tests rojos saltados para D-01…D-08 y baseline de proyección para grids de 1/20/44/104 vehículos; no cambia el runtime. (ISA-373, pendiente de promoción)
 - Telemetry Core retira fan-out, deltas RFC 7396, hashes por frame y transportes desconectados; un guard ejecutable evita volver a confundir código muerto con wiring real. (ISA-372/F4, pendiente de promoción)
 - Telemetry Core puebla tres secciones más del frame de overlay en shadow: el delta ya dice qué referencia está usando realmente en lugar de caer a otra en silencio, la ventana del relative y su orden se resuelven en el backend, y el combustible publica depósito, capacidad y vueltas restantes de sesión. El consumo medio por vuelta queda declarado ausente hasta que exista su derivación canónica. Ningún widget cambia todavía. (ISA-372/F8 lote 2a, pendiente de promoción)
+- Telemetry Core cierra las secciones del frame de overlay en shadow: la gráfica de pedales deja de depender de un acumulador del navegador por widget y pasa a leer una serie que el backend deriva una sola vez, y el spotter publica si hay coche a izquierda o derecha con la misma geometría que ya usa el ingeniero de carrera. El daño queda declarado inexistente con evidencia: hoy ninguna señal de daño llega al núcleo. Ningún widget cambia todavía. (ISA-372/F8 lote 2b, pendiente de promoción)
 
 **Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
 

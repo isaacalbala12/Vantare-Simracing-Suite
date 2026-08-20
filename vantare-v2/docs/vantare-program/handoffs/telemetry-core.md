@@ -15,6 +15,50 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F8 lote 2b está implementada localmente sobre
+  `tc-integration@b17f6228` en `vantareapp/isa-372-tc-f8-builders-lote2b`, y
+  cierra los builders del contrato v2: todas las secciones del frame quedan
+  pobladas o declaradas con evidencia. `controls` es nueva y aditiva y sube a
+  Go el historial de pedales que Overlay v1 acumulaba en el navegador, un
+  acumulador por id de widget, de modo que dos widgets mirando la misma vuelta
+  podían discrepar y un remount perdía la vuelta. La forma en el wire es
+  compacta a propósito -tres arrays paralelos de enteros por mil más un solo
+  `windowMs`, porque las muestras son una por tick canónico- y cuesta 1.515 B
+  al máximo de 120 muestras sin escalar con la parrilla, porque es solo del
+  jugador. `derive/pipeline.go` gana `CapturedAt` en `ControlSample` copiado
+  del sobre igual que `SelfDeltaSample` ya hacía: es el mínimo para que la
+  serie lleve su base de tiempo, no una derivación nueva. `builder_spotter.go`
+  publica presencia lateral desde `WorldPosition` y `Orientation` canónicos con
+  los mismos metros y las mismas puertas que `internal/engineer/spotter` a
+  sensibilidad normal; no se reutiliza su código porque clasifica un frame rF2
+  de producto y `internal/telemetry` no puede importar producto, pero dos tests
+  anclan umbral a umbral y veredicto a veredicto contra su geometría para que
+  no se separen en silencio. Divergencias declaradas para F13: sin puerta de
+  Full Course Yellow porque el canónico no tiene fase de sesión, sensibilidad
+  fija en normal y sin lista de zonas. `mode` es `xyz` solo cuando la
+  clasificación pudo ejecutarse; si no, `none` con los lados en missing, porque
+  "no hay nadie al lado" y "no se puede saber" son respuestas distintas. El
+  spotter va sin paridad v1: no existe widget de spotter ni en v1 ni en v2,
+  así que no se crea un ViewModel sin consumidor y la cobertura son tests del
+  builder con casos sintéticos. `damage` se declara inexistente con
+  evidencia: no hay señal de daño en `core.VehicleState` ni en `schema/**`, y
+  Overlay Projection v1 tampoco la lleva -el adaptador la lista como
+  `unsupported-by-projection`-; los widgets v1 la leen del camino Wails
+  heredado y el único lector real de daño es el privado de Engineer
+  (`DentSeverity`, `WheelDetachedCount`), nunca promovido al canónico. Queda
+  ausente de `CapabilitiesV2` en vez de presente y vacía, con un tripwire que
+  falla el día que aparezca en el canónico. Enganche para F10, en orden:
+  dominio de daño canónico, mapeo del driver de LMU, capability en el
+  descriptor y solo entonces builder. El comparador cubre `controls` con
+  métrica `{feature,field,phase}` y gate solo en `phase=live`; la serie se
+  compara por solapamiento desde la muestra más nueva y no por longitud, porque
+  el acumulador del navegador y el historial canónico empiezan en momentos
+  distintos. Presupuesto verde: sintético @104 sube de 34.650 B a 36.037 B por
+  la ventana llena de 120 muestras, que es el peor caso real, y el golden real
+  compacto @104 de 22.942 B a 23.116 B, un incremento constante en cualquier
+  parrilla. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f8-lote2b.md`. Sin push, PR, CI remoto,
+  merge, promoción ni release.
 - ISA-372/F11 está implementada localmente sobre `tc-integration@f7e2cc07` en
   `vantareapp/isa-372-tc-f11-cadencias`. La cadencia de Overlay v2 se regula por
   sección antes de proyectar y serializar: `SectionScheduler` puro con reloj

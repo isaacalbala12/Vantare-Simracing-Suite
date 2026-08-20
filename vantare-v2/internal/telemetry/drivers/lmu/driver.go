@@ -13,6 +13,10 @@ import (
 )
 
 const (
+	// DriverID is the stable identifier of this compiled driver. The
+	// composition root registers candidates by descriptor, so this constant is
+	// the only place the string "lmu" is spelled outside this package.
+	DriverID                 drivercontract.ID         = "lmu"
 	CapabilitySharedMemory   drivercontract.Capability = "shared-memory"
 	defaultInterval                                    = time.Second / 60
 	defaultFreshnessLimit                              = 500 * time.Millisecond

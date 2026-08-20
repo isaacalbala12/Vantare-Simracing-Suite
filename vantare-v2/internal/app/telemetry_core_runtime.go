@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/telemetry/capability"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
-	"github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
 	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
@@ -102,6 +102,15 @@ type TelemetryCoreRuntimeConfig struct {
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
 	Engineer EngineerProjectionConsumer
+	// Simulator registers the active simulator. Nil uses
+	// DefaultTelemetrySimulator, which is LMU. The composition root never
+	// names a driver observation type, so a second simulator is a
+	// configuration change rather than a runtime change.
+	Simulator *TelemetrySimulator
+	// TelemetrySimXDriver registers the synthetic diagnostic driver instead of
+	// the default one. It is off unless explicitly pointed at true, and an
+	// explicit Simulator always wins over it.
+	TelemetrySimXDriver *bool
 }
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
@@ -165,8 +174,8 @@ type telemetryCoreCounters struct {
 	engineSequence            atomic.Uint64
 }
 
-// TelemetryCoreRuntime owns the canonical LMU pipeline and publishes only
-// versioned product projections.
+// TelemetryCoreRuntime owns the canonical pipeline of the registered
+// simulator and publishes only versioned product projections.
 type TelemetryCoreRuntime struct {
 	lifecycleMu sync.Mutex
 	mu          sync.Mutex
@@ -189,8 +198,7 @@ type TelemetryCoreRuntime struct {
 	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
 	overlayV2Publishers      *telemetrytransport.PublisherRegistry
-	manager                  *telemetrycore.DriverManager[lmu.Observation]
-	mapper                   *lmu.BatchMapper
+	simulator                telemetrycore.SimulatorRuntime
 	reducer                  *telemetrycore.Reducer
 	coord                    *telemetrycore.SessionCoordinator
 	derive                   *derive.Pipeline
@@ -199,6 +207,8 @@ type TelemetryCoreRuntime struct {
 	engineer                 EngineerProjectionConsumer
 	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
+	capabilities             capability.Set
+	descriptorCapabilities   []string
 
 	statusState     driver.State
 	statusAttempt   int
@@ -260,47 +270,33 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
 	}
-	manager, err := telemetrycore.NewDriverManager(
-		[]telemetrycore.DriverCandidate[lmu.Observation]{
-			{
-				Descriptor: driver.Descriptor{
-					ID:       "lmu",
-					Priority: 100,
-					Capabilities: []driver.Capability{
-						lmu.CapabilitySharedMemory,
-						lmu.CapabilityREST,
-					},
-				},
-				Detect:    func(context.Context) (bool, error) { return true, nil },
-				New:       func() (telemetrycore.Driver[lmu.Observation], error) { return lmu.New(), nil },
-				Retryable: lmu.IsRetryable,
-			},
-		},
-		// The budget is deliberately large: "the simulator is not running" is
-		// indistinguishable from a transient disconnect here, and it is the
-		// normal state whenever the Hub is open without a session. The budget
-		// is also restored by RetryPolicy.StableRun after any run that lasted,
-		// so an evening of sessions no longer spends it down towards a
-		// permanent death.
-		telemetrycore.ManagerConfig{
-			Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000},
-			TerminalRunError: func(err error) bool {
-				return !failurePolicyV2 || classifyTelemetryError(err) == failureProgramming
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("build telemetry core manager: %w", err)
+	simulatorConfig := resolveTelemetrySimulator(config)
+	if err := simulatorConfig.validate(); err != nil {
+		return nil, err
 	}
-	engineerManifest, err := engineerprojection.NewManifest([]engineerprojection.Capability{
-		{ID: engineerprojection.CapabilitySession, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityStandings, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityControls, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityPit, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityFuel, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityGaps, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilitySpatial, State: engineerprojection.CapabilitySupported},
+	// Capabilities are declared by the driver, never by the composition root.
+	// No session evidence exists yet at construction time, so every supported
+	// capability starts as declared-but-not-yet-observed.
+	capabilities, err := capability.Resolve(simulatorConfig.Capabilities, nil)
+	if err != nil {
+		return nil, fmt.Errorf("resolve active driver capabilities: %w", err)
+	}
+	// The reconnect budget is deliberately large: "the simulator is not
+	// running" is indistinguishable from a transient disconnect here, and it
+	// is the normal state whenever the Hub is open without a session. The
+	// budget is also restored by RetryPolicy.StableRun after any run that
+	// lasted, so an evening of sessions no longer spends it down towards a
+	// permanent death.
+	simulator, err := simulatorConfig.New(telemetrycore.ManagerConfig{
+		Retry: telemetrycore.RetryPolicy{MaxReconnects: 1_000},
+		TerminalRunError: func(err error) bool {
+			return !failurePolicyV2 || classifyTelemetryError(err) == failureProgramming
+		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("build telemetry simulator runtime: %w", err)
+	}
+	engineerManifest, err := engineerprojection.NewManifest(engineerCapabilities(capabilities))
 	if err != nil {
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
@@ -331,21 +327,22 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				MinimumSupported: overlayprojection.MinimumSupportedVersion,
 			},
 		}),
-		strategyHub:         strategyHub,
-		overlayV2Publishers: overlayV2Publishers,
-		manager:             manager,
-		mapper:              lmu.NewBatchMapper(),
-		reducer:             reducer,
-		coord:               coordinator,
-		derive:              pipeline,
-		engine:              telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:              newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:            config.Engineer,
-		engineerManifest:    engineerManifest,
-		now:                 now,
-		watchdogDelay:       watchdogDelay,
-		watchdogEnabled:     watchdogEnabled,
-		overlayV2Project:    newCachedOverlayV2Project(),
+		strategyHub:            strategyHub,
+		overlayV2Publishers:    overlayV2Publishers,
+		simulator:              simulator,
+		reducer:                reducer,
+		coord:                  coordinator,
+		derive:                 pipeline,
+		engine:                 telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:                 newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
+		engineer:               config.Engineer,
+		engineerManifest:       engineerManifest,
+		capabilities:           capabilities,
+		descriptorCapabilities: descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
+		now:                    now,
+		watchdogDelay:          watchdogDelay,
+		watchdogEnabled:        watchdogEnabled,
+		overlayV2Project:       newCachedOverlayV2Project(),
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -382,7 +379,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 	}
 	details := runtime.metricStore.snapshot()
 	shadow := runtime.shadow.metrics()
-	mapper := runtime.mapper.Metrics()
+	mapper := runtime.simulator.MapperMetrics()
 	coordinator := runtime.coord.Metrics()
 	return TelemetryCoreMetrics{
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
@@ -534,7 +531,10 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 		return runtime.abortStart(err)
 	}
 	if runtime.enabled {
-		if err := runtime.manager.Start(ctx, runtimeObservationSink{runtime: runtime}); err != nil {
+		if err := runtime.simulator.Start(ctx, runtimeBatchSink{runtime: runtime}, telemetrycore.SimulatorHooks{
+			ObservationReceived: func() { runtime.counters.observationsReceived.Add(1) },
+			ObservationRejected: runtime.recordRejectedObservation,
+		}); err != nil {
 			runtime.lifecycleMu.Unlock()
 			return runtime.abortStart(fmt.Errorf("start telemetry core manager: %w", err))
 		}
@@ -594,7 +594,7 @@ func (runtime *TelemetryCoreRuntime) Stop(ctx context.Context) error {
 
 	var stopErr error
 	if managerStarted {
-		stopErr = runtime.manager.Stop(ctx)
+		stopErr = runtime.simulator.Stop(ctx)
 	}
 	waitDone := make(chan struct{})
 	go func() {
@@ -856,7 +856,7 @@ func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			status := runtime.manager.Status()
+			status := runtime.simulator.Status()
 			// status.Err se descartaba por completo: el manager guarda el
 			// error terminal y nadie lo leia nunca, asi que un driver muerto
 			// era indistinguible desde fuera de "el simulador no esta abierto".
@@ -884,31 +884,18 @@ func (runtime *TelemetryCoreRuntime) monitor(ctx context.Context) {
 	}
 }
 
-type runtimeObservationSink struct{ runtime *TelemetryCoreRuntime }
-
-func (sink runtimeObservationSink) WriteObservation(ctx context.Context, observation lmu.Observation) error {
-	sink.runtime.counters.observationsReceived.Add(1)
-	err := sink.runtime.mapper.WriteObservation(ctx, observation, runtimeBatchSink{runtime: sink.runtime})
-	if err != nil {
-		sink.runtime.counters.observationsRejected.Add(1)
-		if lmu.IsUnmappableFrame(err) {
-			_, reason := telemetryRejectedFrameLabel(err)
-			sink.runtime.metricStore.rejectFrame("map", reason)
-		}
+// recordRejectedObservation es la mitad del recuento que pertenece al
+// composition root. El runtime del simulador decide si absorbe un frame no
+// mapeable -- un garaje o un cambio de sesion llegarian a DriverManager, que
+// los clasifica como no reintentables y apagaria la telemetria hasta reiniciar
+// la aplicacion -- y aqui solo se registra. Rechazado no es fatal, y perder el
+// contador dejaria esos descartes invisibles en las metricas.
+func (runtime *TelemetryCoreRuntime) recordRejectedObservation(err error, unmappable bool) {
+	runtime.counters.observationsRejected.Add(1)
+	if unmappable {
+		_, reason := telemetryRejectedFrameLabel(err)
+		runtime.metricStore.rejectFrame("map", reason)
 	}
-	// Antes solo se absorbia ErrInvalidSessionIdentity, el caso del menu. Los
-	// otros cinco errores de validacion describen exactamente lo mismo -- un
-	// frame que todavia no representa una sesion coherente: boxes, pantallas de
-	// carga, cambios de sesion -- pero subian hasta DriverManager, que los
-	// clasifica como no reintentables y llama a setTerminal. Un unico frame de
-	// garaje dejaba la telemetria apagada hasta reiniciar la aplicacion.
-	//
-	// Se cuentan como rechazados igualmente: rechazado no es fatal, y perder el
-	// contador dejaria estos descartes invisibles en las metricas.
-	if lmu.IsUnmappableFrame(err) {
-		return nil
-	}
-	return err
 }
 
 type runtimeBatchSink struct{ runtime *TelemetryCoreRuntime }
@@ -969,7 +956,7 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 			return failureErr
 		}
 	}
-	status := sink.runtime.manager.Status()
+	status := sink.runtime.simulator.Status()
 	publication := sink.runtime.publishProjections(
 		overlayProjected,
 		overlayReady,
@@ -1042,7 +1029,7 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	started := time.Now()
 	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
-		DescriptorCapabilities: []string{string(lmu.CapabilitySharedMemory), string(lmu.CapabilityREST)},
+		DescriptorCapabilities: runtime.descriptorCapabilities,
 	}, overlayv2.DefaultPreferencesV2(), revision)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {
@@ -1100,7 +1087,7 @@ func (runtime *TelemetryCoreRuntime) handlePostCommitFailure(
 	}
 	runtime.metricStore.dropFrame(reason)
 	log.Printf("telemetry %s failure is non-terminal: %v", reason, err)
-	status := runtime.manager.Status()
+	status := runtime.simulator.Status()
 	if statusErr := runtime.setStatus(driver.StateDegraded, status.ReconnectAttempt); statusErr != nil {
 		log.Printf("telemetry degraded status could not be published after %s failure: %v", reason, statusErr)
 		if classifyTelemetryError(statusErr) == failureProgramming {
@@ -1449,7 +1436,7 @@ func (runtime *TelemetryCoreRuntime) failStop(err error) {
 		return
 	}
 	runtime.counters.failStops.Add(1)
-	status := runtime.manager.Status()
+	status := runtime.simulator.Status()
 	statusErr := runtime.setStatus(driver.StateError, status.ReconnectAttempt)
 	runtime.lifecycleMu.Lock()
 	runtime.transitionLifecycleLocked(telemetryRuntimeTerminal)

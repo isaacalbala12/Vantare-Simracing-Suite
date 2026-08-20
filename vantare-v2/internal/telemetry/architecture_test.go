@@ -467,6 +467,27 @@ func validateImport(edge importEdge) error {
 		}
 	}
 
+	if edge.Package == "internal/telemetry/fusion" || strings.HasPrefix(edge.Package, "internal/telemetry/fusion/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/catalog",
+			modulePath+"/internal/telemetry/fusion",
+		) {
+			return fmt.Errorf("shared fusion may only import schema, catalog, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
+	if edge.Package == "internal/telemetry/capability" || strings.HasPrefix(edge.Package, "internal/telemetry/capability/") {
+		if unexpectedTelemetryImport(edge.Import,
+			modulePath+"/internal/telemetry/schema",
+			modulePath+"/internal/telemetry/catalog",
+			modulePath+"/internal/telemetry/driver",
+			modulePath+"/internal/telemetry/capability",
+		) {
+			return fmt.Errorf("capability may only import schema, catalog, neutral driver contracts, and its own tree within telemetry, not %s", edge.Import)
+		}
+	}
+
 	if ownDriverRoot, ok := concreteDriverRoot(edge.Package); ok {
 		if unexpectedTelemetryImport(edge.Import,
 			modulePath+"/internal/telemetry/schema",
@@ -474,9 +495,11 @@ func validateImport(edge importEdge) error {
 			modulePath+"/internal/telemetry/core",
 			modulePath+"/internal/telemetry/catalog",
 			modulePath+"/internal/telemetry/identity",
+			modulePath+"/internal/telemetry/fusion",
+			modulePath+"/internal/telemetry/capability",
 			ownDriverRoot,
 		) {
-			return fmt.Errorf("concrete driver may only import schema, core ports, neutral driver contracts, and its own tree within telemetry, not %s", edge.Import)
+			return fmt.Errorf("concrete driver may only import schema, core ports, neutral driver contracts, shared fusion and capability, and its own tree within telemetry, not %s", edge.Import)
 		}
 	}
 

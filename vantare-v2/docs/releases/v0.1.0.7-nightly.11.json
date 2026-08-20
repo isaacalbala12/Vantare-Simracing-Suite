@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.11",
+  "channel": "nightly",
+  "title": "Vantare — Command Orbit, única interfaz del Hub",
+  "summary": "Esta Nightly retira por completo la interfaz anterior del Hub: Command Orbit pasa a ser la única shell en todos los canales, con una auditoría integral de código (lint a cero, i18n con paridad en cuatro idiomas, estilos consolidados en tokens y tests deterministas) y la señal de selección carmín restaurada en toda la app.",
+  "issues": [
+    "ISA-368"
+  ]
+}

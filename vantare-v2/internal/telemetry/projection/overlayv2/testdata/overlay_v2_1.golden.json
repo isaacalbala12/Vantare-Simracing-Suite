@@ -1,0 +1,180 @@
+{
+  "revision": 1,
+  "source": {
+    "state": "live"
+  },
+  "frame": {
+    "contract": 2,
+    "algorithm": 1,
+    "epoch": 3,
+    "sequence": 2,
+    "sessionId": "f6-session",
+    "generatedAt": "2026-08-19T12:00:02Z",
+    "units": {
+      "speed": "mps",
+      "temperature": "celsius",
+      "pressure": "kpa",
+      "fuel": "liters"
+    },
+    "session": {
+      "track": {
+        "v": "Sebring",
+        "q": "fresh"
+      },
+      "phase": {
+        "v": "race",
+        "q": "fresh"
+      },
+      "flag": {
+        "q": "missing"
+      },
+      "remaining": {
+        "v": 7198,
+        "q": "fresh"
+      },
+      "maxLaps": {
+        "q": "fresh"
+      }
+    },
+    "player": {
+      "id": "vehicle-000",
+      "speed": {
+        "v": 50,
+        "q": "fresh"
+      },
+      "rpm": {
+        "v": 7200,
+        "q": "fresh"
+      },
+      "gear": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "throttle": {
+        "v": 0.75,
+        "q": "fresh"
+      },
+      "brake": {
+        "v": 0.125,
+        "q": "fresh"
+      },
+      "clutch": {
+        "q": "fresh"
+      },
+      "steering": {
+        "q": "missing"
+      }
+    },
+    "controls": {
+      "history": {
+        "q": "fresh",
+        "windowMs": 1000,
+        "throttle": [
+          750,
+          750
+        ],
+        "brake": [
+          125,
+          125
+        ],
+        "clutch": [
+          0,
+          0
+        ]
+      }
+    },
+    "standings": [
+      {
+        "id": "vehicle-000",
+        "position": 1,
+        "classPosition": 1,
+        "classId": "hypercar",
+        "driver": "Driver 000",
+        "gap": {
+          "q": "fresh"
+        },
+        "pit": "pit",
+        "laps": 127,
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        }
+      }
+    ],
+    "relative": [
+      {
+        "id": "vehicle-000",
+        "gap": {
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
+    "delta": {
+      "seconds": {
+        "q": "missing"
+      },
+      "requested": "personal-best",
+      "available": []
+    },
+    "fuel": {
+      "remaining": {
+        "v": 42,
+        "q": "fresh"
+      },
+      "capacity": {
+        "v": 100,
+        "q": "fresh"
+      },
+      "perLap": {
+        "q": "missing"
+      },
+      "estimatedLaps": {
+        "v": 79,
+        "q": "fresh"
+      }
+    },
+    "spotter": {
+      "mode": "none",
+      "left": {
+        "q": "missing"
+      },
+      "right": {
+        "q": "missing"
+      }
+    },
+    "capabilities": {
+      "supported": [
+        "controls",
+        "delta",
+        "fuel",
+        "gaps",
+        "session",
+        "spatial.lateral",
+        "spatial.longitudinal",
+        "spotter",
+        "standings"
+      ],
+      "available": {
+        "controls": "fresh",
+        "delta": "missing",
+        "fuel": "fresh",
+        "gaps": "fresh",
+        "session": "fresh",
+        "spatial.lateral": "fresh",
+        "spatial.longitudinal": "fresh",
+        "spotter": "fresh",
+        "standings": "fresh"
+      },
+      "modes": {
+        "spatial": [],
+        "delta": [],
+        "standings": "none",
+        "gaps": "none"
+      }
+    }
+  }
+}

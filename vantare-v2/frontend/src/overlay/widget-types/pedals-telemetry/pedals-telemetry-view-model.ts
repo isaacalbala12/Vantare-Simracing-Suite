@@ -24,16 +24,16 @@ export type PedalsTelemetryViewModel = WidgetViewModelBase & {
 const EMPTY_INPUT = 0;
 const PLACEHOLDER = "—";
 
-function formatSpeed(value: number | undefined): string {
+export function formatPedalsTelemetrySpeed(value: number | undefined): string {
   return value === undefined ? PLACEHOLDER : String(Math.round(value));
 }
 
-function formatRpm(value: number | undefined): string {
+export function formatPedalsTelemetryRpm(value: number | undefined): string {
   if (value === undefined) return PLACEHOLDER;
   return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
 }
 
-function formatGear(value: number | undefined): string {
+export function formatPedalsTelemetryGear(value: number | undefined): string {
   return value === undefined ? PLACEHOLDER : String(Math.round(value));
 }
 
@@ -91,9 +91,9 @@ export function buildPedalsTelemetryViewModel(
     rpm,
     gear,
     playerPosition,
-    speedText: formatSpeed(speedKph),
-    rpmText: formatRpm(rpm),
-    gearText: formatGear(gear),
+    speedText: formatPedalsTelemetrySpeed(speedKph),
+    rpmText: formatPedalsTelemetryRpm(rpm),
+    gearText: formatPedalsTelemetryGear(gear),
     positionText: formatPosition(playerPosition),
     showPosition: _content.showPosition,
     showClutch: _content.showClutch,

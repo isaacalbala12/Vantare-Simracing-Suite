@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -252,13 +253,26 @@ func TestDiagnosticCapturePreservesSanitizedFailureCode(t *testing.T) {
 	}
 }
 
+// advancedClockBuffer devuelve una copia del buffer con source_time adelantado,
+// para que la confirmacion de vitalidad de la captura vea un reloj vivo.
+func advancedClockBuffer(t testing.TB, source []byte, delta float64) []byte {
+	t.Helper()
+	buf := append([]byte(nil), source...)
+	offset := lmu13Layout.Session.CurrentTime.Offset
+	current := math.Float64frombits(binary.LittleEndian.Uint64(buf[offset : offset+8]))
+	binary.LittleEndian.PutUint64(buf[offset:offset+8], math.Float64bits(current+delta))
+	return buf
+}
+
 func TestDiagnosticCaptureRetriesTransientInvariantThenAccepts(t *testing.T) {
 	invalid := knownBuffer(t)
 	base, _ := lmu13Layout.ScoringRows.rowBase(0)
 	invalid[base+lmu13Layout.Scoring.Position.Offset] = 0
 	valid := knownBuffer(t)
-	reader := &testReader{snapshots: [][]byte{invalid, invalid, valid, valid}}
+	advanced := advancedClockBuffer(t, valid, 0.4)
+	reader := &testReader{snapshots: [][]byte{invalid, invalid, valid, valid, advanced, advanced}}
 	waits := 0
+	livenessWaits := 0
 	artifact, err := captureSanitizedSharedMemoryWithRetry(
 		t.Context(),
 		func() (BuildEvidence, error) {
@@ -270,12 +284,16 @@ func TestDiagnosticCaptureRetriesTransientInvariantThenAccepts(t *testing.T) {
 			waits++
 			return nil
 		},
+		func(context.Context) error {
+			livenessWaits++
+			return nil
+		},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !artifact.valid() || reader.reads != 4 || reader.closes != 1 || waits != 1 {
-		t.Fatalf("artifact valid=%t reads=%d closes=%d waits=%d", artifact.valid(), reader.reads, reader.closes, waits)
+	if !artifact.valid() || reader.reads != 6 || reader.closes != 1 || waits != 1 || livenessWaits != 1 {
+		t.Fatalf("artifact valid=%t reads=%d closes=%d waits=%d livenessWaits=%d", artifact.valid(), reader.reads, reader.closes, waits, livenessWaits)
 	}
 }
 
@@ -297,6 +315,7 @@ func TestDiagnosticCaptureExhaustsTwentyInvalidAttemptsWithoutPersistence(t *tes
 			waits++
 			return nil
 		},
+		func(context.Context) error { return nil },
 	)
 	if artifact.valid() || !errors.Is(err, ErrDiagnosticCapture) || !errors.Is(err, ErrUnsanitizableFrame) {
 		t.Fatalf("artifact=%#v error=%v", artifact, err)
@@ -340,6 +359,7 @@ func TestDiagnosticCaptureRejectsPermanentBuildOnce(t *testing.T) {
 			waits++
 			return nil
 		},
+		func(context.Context) error { return nil },
 	)
 	if !errors.Is(err, ErrDiagnosticCapture) || buildCalls != 1 || opens != 0 || waits != 0 {
 		t.Fatalf("error=%v buildCalls=%d opens=%d waits=%d", err, buildCalls, opens, waits)
@@ -353,7 +373,10 @@ func TestDiagnosticCaptureRejectsPermanentBuildOnce(t *testing.T) {
 func TestDiagnosticSharedMemoryCaptureUsesOneMappingAndNeverReturnsRaw(t *testing.T) {
 	input := knownBuffer(t)
 	writeCString(input[lmu13Layout.Session.TrackName.Offset:lmu13Layout.Session.TrackName.end()], "Private Circuit")
-	reader := &testReader{data: input}
+	// La confirmacion de vitalidad exige un reloj en movimiento para frames de
+	// sesion activa, asi que la segunda adquisicion avanza source_time.
+	advanced := advancedClockBuffer(t, input, 0.4)
+	reader := &testReader{snapshots: [][]byte{input, input, advanced, advanced}}
 	opens := 0
 	at := time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC)
 	artifact, err := captureSanitizedSharedMemory(
@@ -370,7 +393,7 @@ func TestDiagnosticSharedMemoryCaptureUsesOneMappingAndNeverReturnsRaw(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opens != 1 || reader.closes != 1 || reader.reads != 2 {
+	if opens != 1 || reader.closes != 1 || reader.reads != 4 {
 		t.Fatalf("opens=%d closes=%d reads=%d", opens, reader.closes, reader.reads)
 	}
 	if len(artifact.payload) != ObjectOutSize || artifact.capturedAtUTC != at || len(artifact.sha256) != 64 {
@@ -1090,5 +1113,61 @@ func assertCStringEquals(t testing.TB, value []byte, expected string) {
 	copy(want, expected)
 	if !bytes.Equal(value, want) {
 		t.Fatalf("C string = %q, want %q", value, want)
+	}
+}
+
+func TestDiagnosticCaptureRejectsFrozenSessionRemnant(t *testing.T) {
+	frozen := knownBuffer(t)
+	reader := &testReader{data: frozen}
+	livenessWaits := 0
+	artifact, err := captureSanitizedSharedMemoryWithRetry(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: diagnosticLMUVersion, ProductVersion: diagnosticLMUVersion}, nil
+		},
+		func() (memoryReader, error) { return reader, nil },
+		func() time.Time { return time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC) },
+		func(context.Context) error { return nil },
+		func(context.Context) error {
+			livenessWaits++
+			return nil
+		},
+	)
+	if artifact.valid() || !errors.Is(err, ErrDiagnosticCapture) || !errors.Is(err, ErrStaleSessionRemnant) {
+		t.Fatalf("artifact=%#v error=%v", artifact, err)
+	}
+	if livenessWaits != 1 {
+		t.Fatalf("livenessWaits = %d, want 1", livenessWaits)
+	}
+	if strings.Contains(err.Error(), "Private") {
+		t.Fatalf("liveness error leaked PII: %v", err)
+	}
+}
+
+func TestDiagnosticCaptureMenuFrameSkipsLivenessConfirmation(t *testing.T) {
+	menu, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-1.4.1.3-menu-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := &testReader{data: menu}
+	livenessWaits := 0
+	artifact, err := captureSanitizedSharedMemoryWithRetry(
+		t.Context(),
+		func() (BuildEvidence, error) {
+			return BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}, nil
+		},
+		func() (memoryReader, error) { return reader, nil },
+		func() time.Time { return time.Date(2026, 8, 20, 3, 0, 0, 0, time.UTC) },
+		func(context.Context) error { return nil },
+		func(context.Context) error {
+			livenessWaits++
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !artifact.valid() || livenessWaits != 0 || reader.reads != 2 {
+		t.Fatalf("artifact valid=%t livenessWaits=%d reads=%d", artifact.valid(), livenessWaits, reader.reads)
 	}
 }

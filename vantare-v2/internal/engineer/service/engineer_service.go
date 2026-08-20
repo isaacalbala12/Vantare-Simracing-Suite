@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
@@ -779,6 +780,12 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 	sequence := uint64(fact.Fact.Sequence)
 	if epoch == 0 || sequence == 0 || epoch < s.factEpoch || (epoch == s.factEpoch && sequence <= s.factSequence) {
 		return errors.New("engineer fact cursor is stale or invalid")
+	}
+	if epoch == s.factEpoch && s.factSequence != 0 && sequence != s.factSequence+1 {
+		return &engineerprojection.FactResyncRequiredError{
+			Previous: telemetrycore.FactSequence(s.factSequence),
+			Next:     telemetrycore.FactSequence(sequence),
+		}
 	}
 	if epoch > s.factEpoch {
 		s.factSequence = 0

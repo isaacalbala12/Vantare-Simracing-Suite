@@ -15,6 +15,188 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- ISA-372/F10 está implementada localmente sobre `tc-integration@74e1a5a6` en
+  `vantareapp/isa-372-tc-f10-capabilities-multisim`. La fusión se promovió a
+  `internal/telemetry/fusion` (N slots, índice por señal, `ErrRuleMissing` en
+  lugar de `panic`), `internal/telemetry/capability` declara
+  Supported/Available/Modes con spatial longitudinal y lateral separadas, el
+  manifiesto de Engineer se deriva del driver activo y el composition root dejó
+  de estar instanciado sobre `lmu.Observation`. El driver sintético SimX prueba
+  el contrato extremo a extremo: llega a Overlay v2 con standings, sesión e
+  instrumentos poblados y con su degradación declarada, y el diff de la rama no
+  contiene ningún archivo bajo `frontend/`. Queda un hueco conocido: el builder
+  de Overlay v2 aún expande el canal de adquisición a capabilities de producto y
+  pertenece al lote 2a de F8; el runtime ya le entrega también los ids
+  declarados. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f10-multisim.md`. Sin push, PR, merge ni
+  promoción.
+
+- ISA-372/F8 lote 2b está implementada localmente sobre
+  `tc-integration@b17f6228` en `vantareapp/isa-372-tc-f8-builders-lote2b`, y
+  cierra los builders del contrato v2: todas las secciones del frame quedan
+  pobladas o declaradas con evidencia. `controls` es nueva y aditiva y sube a
+  Go el historial de pedales que Overlay v1 acumulaba en el navegador, un
+  acumulador por id de widget, de modo que dos widgets mirando la misma vuelta
+  podían discrepar y un remount perdía la vuelta. La forma en el wire es
+  compacta a propósito -tres arrays paralelos de enteros por mil más un solo
+  `windowMs`, porque las muestras son una por tick canónico- y cuesta 1.515 B
+  al máximo de 120 muestras sin escalar con la parrilla, porque es solo del
+  jugador. `derive/pipeline.go` gana `CapturedAt` en `ControlSample` copiado
+  del sobre igual que `SelfDeltaSample` ya hacía: es el mínimo para que la
+  serie lleve su base de tiempo, no una derivación nueva. `builder_spotter.go`
+  publica presencia lateral desde `WorldPosition` y `Orientation` canónicos con
+  los mismos metros y las mismas puertas que `internal/engineer/spotter` a
+  sensibilidad normal; no se reutiliza su código porque clasifica un frame rF2
+  de producto y `internal/telemetry` no puede importar producto, pero dos tests
+  anclan umbral a umbral y veredicto a veredicto contra su geometría para que
+  no se separen en silencio. Divergencias declaradas para F13: sin puerta de
+  Full Course Yellow porque el canónico no tiene fase de sesión, sensibilidad
+  fija en normal y sin lista de zonas. `mode` es `xyz` solo cuando la
+  clasificación pudo ejecutarse; si no, `none` con los lados en missing, porque
+  "no hay nadie al lado" y "no se puede saber" son respuestas distintas. El
+  spotter va sin paridad v1: no existe widget de spotter ni en v1 ni en v2,
+  así que no se crea un ViewModel sin consumidor y la cobertura son tests del
+  builder con casos sintéticos. `damage` se declara inexistente con
+  evidencia: no hay señal de daño en `core.VehicleState` ni en `schema/**`, y
+  Overlay Projection v1 tampoco la lleva -el adaptador la lista como
+  `unsupported-by-projection`-; los widgets v1 la leen del camino Wails
+  heredado y el único lector real de daño es el privado de Engineer
+  (`DentSeverity`, `WheelDetachedCount`), nunca promovido al canónico. Queda
+  ausente de `CapabilitiesV2` en vez de presente y vacía, con un tripwire que
+  falla el día que aparezca en el canónico. Enganche para F10, en orden:
+  dominio de daño canónico, mapeo del driver de LMU, capability en el
+  descriptor y solo entonces builder. El comparador cubre `controls` con
+  métrica `{feature,field,phase}` y gate solo en `phase=live`; la serie se
+  compara por solapamiento desde la muestra más nueva y no por longitud, porque
+  el acumulador del navegador y el historial canónico empiezan en momentos
+  distintos. Presupuesto verde: sintético @104 sube de 34.650 B a 36.037 B por
+  la ventana llena de 120 muestras, que es el peor caso real, y el golden real
+  compacto @104 de 22.942 B a 23.116 B, un incremento constante en cualquier
+  parrilla. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f8-lote2b.md`. Sin push, PR, CI remoto,
+  merge, promoción ni release.
+- ISA-372/F11 está implementada localmente sobre `tc-integration@f7e2cc07` en
+  `vantareapp/isa-372-tc-f11-cadencias`. La cadencia de Overlay v2 se regula por
+  sección antes de proyectar y serializar: `SectionScheduler` puro con reloj
+  inyectado, dirty-trigger y techo para el tier lento, y un `CachedProjector`
+  que memoiza por sección manteniendo el frame completo. Los defaults son cero,
+  o sea el comportamiento actual sin regulación, hasta medir en el binario real.
+  El benchmark @104 baja de 480 a 76 construcciones por segundo simulado y de
+  39.118 a 26.516 ns/op, con los mismos 78.829 B/s porque el contrato publica
+  frame completo. El coordinador del frontend queda solo visual. Falta aplicar
+  la línea de integración en `telemetry_core_runtime.go` y retirar la excepción
+  del wiring guard. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`. Sin push, PR, CI
+  remoto, merge, promoción ni release.
+- ISA-372/F8 lote 2a está implementada localmente sobre
+  `tc-integration@74e1a5a6` en `vantareapp/isa-372-tc-f8-builders-lote2a`. Tres
+  features más del frame v2 quedan pobladas con su dominio subido a Go.
+  `builder_delta.go` publica `requested`, `available[]`, la `reference`
+  efectiva y la `authority`, sustituyendo el repliegue silencioso a
+  `player.deltaSeconds` que `delta-view-model.ts` (:111-118) hacía sin decir
+  qué referencia usaba; `PreferencesV2` gana `DeltaReference` normalizada.
+  `builder_relative.go` sube la selección de la ventana de
+  `relative-row-selection.ts` (:9-48): el orden canónico es descendente por gap
+  relativo derivado, reproduce el orden de salida de v1 y queda acotado a 8+8
+  más el ancla, de modo que el coste de la sección no crece con la parrilla;
+  `RelativeRowV2` gana `classId` de forma aditiva y el validador del transporte
+  lo acepta. `builder_fuel.go` publica depósito y capacidad canónicos y la
+  proyección `ceil(remaining/lastLap)` con la peor calidad de sus dos entradas.
+  Decisión explícita en fuel: `perLap` se declara ausente en lugar de derivarse
+  aquí, porque su serie de consumo por vuelta solo existe hoy en el snapshot de
+  TypeScript y reconstruirla en la proyección crearía una segunda autoridad
+  sobre el consumo; la derivación pertenece a `derive/` y queda como follow-up.
+  Los ViewModels v2 de `delta`, `relative` y `fuel-strategy` quedan en shadow
+  detrás de features apagadas por defecto y ningún widget se conmuta. El
+  comparador cubre las tres features con tolerancias explícitas por campo y
+  filas de relative por identidad con orden significativo; el gate sigue
+  leyendo solo `phase=live`. Presupuesto verde: sintético @104 = 34.650 B y
+  golden real compacto @104 sube de 21.775 B a 22.942 B. Queda a vigilar en
+  sesión real que v1 ordena relative por distancia de vuelta y v2 por gap
+  derivado: bajo tráfico pueden divergir y hay que leer
+  `{feature="relative",field="rows.order",phase="live"}` antes de conmutar.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2a.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
+- ISA-372/F8 lote 1 está implementada localmente sobre `tc-integration@f7e2cc07`
+  en `vantareapp/isa-372-tc-f8-builders-lote1`. El comparador shadow v2
+  segmenta por fase y el gate lee sólo `phase=live`: los 317k mismatches de
+  `gear` de la sesión #1 y los 213+213 de la sesión #2 eran retención v1 frente
+  a ocultación v2 en fase stale, una diferencia de contrato intencional que
+  ahora se cuenta como `declaredDifferences`. La fase `transition` cubre el
+  caso en que el status v1 y el `source.state` v2 discrepan: con 54 coches de
+  IA el driver oscila stale↔live y ambos productores cruzan el borde en
+  instantes distintos, lo que producía los 153 mismatches de `display.status`.
+  Los acumuladores y el histograma de parseo rotan por epoch/sesión y los
+  percentiles describen sólo la ventana live. La ventana de emparejamiento sube
+  de 8 a 64 con desalojo por secuencia más atrasada, lo que corrige el atasco
+  de ~2 minutos medido. `builder_session.go` documenta la bandera ausente y
+  `builder_standings.go` sube a Go el orden de la clasificación, incluido el
+  fallback `index+1` que el widget aplicaba en silencio, y deriva
+  `ClassPosition` de ese orden. Los ViewModels v2 de `standings` y
+  `racing-flags` quedan en shadow detrás de features apagadas por defecto y
+  ningún widget se conmuta. Presupuesto verde: sintético @104 = 34.650 B y
+  golden real compacto @104 con 104 filas = 21.775 B. Quedan declarados
+  ausentes bandera de sesión, dorsal, mejor vuelta por fila e intervalo al
+  coche de delante; `relative`, `delta`, `fuel` y `spotter` siguen sin poblar.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote1.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
+- ISA-372/F7 está implementada localmente sobre `tc-integration@f65f485f` en
+  `vantareapp/isa-372-tc-f7-aislamiento-consumidores`. Engineer usa un puerto
+  asíncrono default-on: snapshots latest-wins cap 1 con timeout/recover y facts
+  ordenados por un canal separado con cursor/resync. El test F0 de Engineer
+  lento bajó de 92,9868 ms síncrono a 1,5167 ms tras F7.1 (0,5007 ms en una
+  repetición focal final). Strategy conserva builder y consumidor in-process,
+  pero su transporte público queda default-off con rollback explícito.
+  Recording registra rango de gap y `Incomplete` al saturarse sin bloquear,
+  aunque sigue desconectado hasta F12. Suite Go aplicable, build, contract-gen,
+  wiring guard y diff-check pasan; vet conserva sólo tres `unsafe.Pointer`
+  heredados. El resync automático del consumidor Engineer y la sesión LMU real
+  quedan pendientes. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f7-consumer-isolation.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
+- ISA-372/F6 está implementada localmente sobre `tc-integration@bafe94d5` en
+  `vantareapp/isa-372-tc-f6-overlay-frame-v2-slice`. OverlayFrame v2 fija el
+  contrato compacto completo y puebla solo player/session/capabilities; el
+  sintético completo de 104 vehículos mide 34.650 bytes. El runtime lo
+  construye después del commit, publica v1 primero y aísla fallos v2. Publisher
+  latest-wins, replay, store TS generado y Wails/SSE quedan cableados en
+  shadow. `pedals-telemetry` compara valores mostrados por epoch/secuencia, con
+  feature v2 default-off para el usuario. Node sintético midió CPU p99/op
+  0,720 ms; no acredita WebView2. Evidencia, procedimiento y gate real pendiente:
+  `docs/telemetry-core/evidence/isa-372-f6-overlay-v2-slice.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
+- ISA-372/F3 está implementada localmente sobre `tc-integration@c52d6c1d` en
+  `vantareapp/isa-372-tc-f3-engine-apply`. `TelemetryEngine.Apply` prepara y
+  confirma reducer/coordinator/derive como una transacción, y el mapper no
+  confirma su candidato hasta que esa aplicación completa acepta el batch.
+  Identidad usa gracia de slot, LRU inactiva y `StintID`; el shadow Go es privado,
+  muestreado y auto-disable. Métricas y regresiones cubren atomicidad,
+  reintento, identidad y divergencias. Build, suite Go aplicable, replay por
+  digest y diff-check pasan; vet conserva solo tres `unsafe.Pointer`
+  heredados. Benchmark sintético @104 cumple p99 < 1 ms solo en ventanas de
+  200; bajo ejecución adaptativa sostenida sube a 10,5–12,1 ms por GC, así que
+  el objetivo sostenido sigue pendiente. Evidencia y límites:
+  `docs/telemetry-core/evidence/isa-372-f3-engine-apply.md`. Sin push, PR, CI
+  remoto, merge, promoción ni release; LMU/Wails/OBS y gate de estabilidad
+  real pendientes.
+- ISA-372/F2 está implementada localmente sobre
+  `tc-integration@98c3e2f2` en la rama
+  `vantareapp/isa-372-tc-f2-watchdog-stale`. Backend y store degradan a stale
+  por edad con reloj inyectable, recuperan al volver frames, aceptan revisiones
+  de status mayores no contiguas y conservan el último full sin inventar
+  valores. Métricas, diagnóstico, rollback default-on y escenarios de
+  reconnect/late join quedan cubiertos. Frontend 390/2.866, Go focal/global,
+  builds, lint focal y Playwright de estados pasan con las deudas heredadas
+  citadas en `docs/telemetry-core/evidence/isa-372-f2-watchdog.md`. Sin push,
+  PR, CI remoto, merge, promoción ni release.
+- ISA-372/F4 está implementada localmente sobre `isa-373@3e9c77ed` en la rama
+  `vantareapp/isa-372-tc-f4-guard-wiring-y-borrado`, pendiente de promoción.
+  El guard AST de wiring queda activo; `core.Fanout`, RFC 7396 Go/TS, seal
+  SHA-256, transporte live de Analysis/facts y `telemetry-store.ts` quedaron
+  retirados tras demostrar cero llamadores productivos. El contrato de resync
+  y retención acotada de facts vive ahora en el puerto Engineer para F7. El
+  benchmark mediano del Hub bajó de 44.718 a 38.502 ns/op. No hubo push, PR,
+  merge, promoción ni release; Linear queda a cargo del orquestador.
 - ISA-160 / TC-10A está integrada en
   `nightly@8880a8800e07e2af21fe5ff37a714578bf8fcd00`. ISA-161 / TC-10B se
   construyó originalmente desde esa base. Su primer rebase local fue sobre
@@ -385,15 +567,65 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Integrada en Nightly | ISA-160 / TC-10A en `nightly@8880a88` |
 | PR draft / CI verde en corte publicado | ISA-161 / TC-10B, PR draft [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) OPEN/CLEAN/MERGEABLE a `nightly@b6df494`; [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366) SUCCESS para `19dddea`; Linear pendiente, sin integración |
 
+## Arquitectura objetivo (ISA-371 / ISA-372)
+
+- ISA-372 / F5 genera el contrato TypeScript wire desde raíces Go explícitas
+  de las cuatro proyecciones y telemetrytransport, sin generar el canonical.
+  `contracts.ts` reexporta el resultado, los cuatro goldens quedan intactos y
+  CI regenera/compara. El conteo histórico de 28 campos estaba obsoleto:
+  Overlay Vehicle v1 tiene 30 y Go/TS ya coincidían. El espejo vive realmente
+  en `overlay/projection/overlay-projection-v1.ts`, fuera del alcance editable
+  F5; queda pendiente un corte que sustituya allí los aliases por imports del
+  generado. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f5-contract-gen.md`.
+- ISA-372 / F1 implementa la política de fallo no terminal sobre
+  `isa-373@3e9c77ed`: errores de producto, payload y consumidor descartan y
+  cuentan el frame, publican `degraded` y no cierran adquisición; solo errores
+  de programación llaman `failStop`. Overlay y Strategy quedan aislados entre
+  sí, las cinco fronteras de consumidor recuperan panics y el status terminal
+  se entrega antes de `ErrClosed`.
+- `TelemetryFailurePolicyV2` queda on por defecto con rollback explícito a
+  legacy. El límite sigue en 256 KiB: 104 vehículos todavía descartan Overlay
+  v1 hasta F6, pero no matan el runtime. Métricas nuevas: frames descartados,
+  fallos por producto, panics por boundary, fail-stops, percentiles de payload
+  y transiciones de lifecycle. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f1-failure-policy.md`.
+- Los cuatro tests F0 de F1 están activos y la suite local pasa con las deudas
+  citadas. La sesión LMU real de 60 minutos queda pendiente de Isaac. Estado:
+  nueve commits locales, sin push, PR, CI remoto, merge, promoción ni release.
+- ISA-373 / F0 deja la red de seguridad ejecutable sin modificar producción.
+  Los tests rojos permanecen saltados con el defecto y la fase que los activa:
+  techo de payload y grid 104 (D-08/D-02), commit mapper/reducer (D-01),
+  publicación terminal, panic y consumidor lento (D-02 y riesgos 7/13), gracia
+  de identidad, historial y firma stale (D-03 y riesgo 11), historial de 300
+  vehículos (D-04), watchdog/orden del status terminal (D-06) y store frontend
+  con edad/revisión no contigua (D-06/D-07).
+- Sin `Skip`, los tests fallan por la causa prevista. La reutilización real de
+  un slot por otro coche ya asigna una identidad nueva y se conserva como
+  comportamiento correcto a migrar literalmente. El runtime no ofrece todavía
+  inyección de driver ni reloj; F0 usa el sink real post-driver y documenta el
+  reloj faltante sin añadir hooks de producción.
+- Baseline versionada en
+  `docs/telemetry-core/evidence/baseline-2026-08/`: mediana de proyección Overlay
+  + JSON para 1/20/44/104 vehículos, con salida cruda. A 104 son 1.593.117 ns/op,
+  1.160.221 B/op, 29 allocs/op y 277.119 payload bytes.
+- Estado: diez commits locales sobre `origin/nightly@7a92241d`; sin push, PR,
+  merge, promoción ni release. Linear queda a cargo del orquestador.
+
 ## Siguiente acción exacta
 
-Actualizar Linear tras reautenticar y solicitar review de Isaac sobre el PR
-draft #212; el estado final y los checks del HEAD vigente se consultan en ese
-PR. La validación LMU con jugador/Fuel en pista no se ejecutó y no debe
-atribuirse al smoke sanitizado. No mergear sin autorización nueva. ISA-152 /
-STR-17 permanece bloqueada hasta que la promoción de ISA-161 a `nightly` sea
-aceptada. VE, tyres, weather, facts y el motor live Strategy siguen fuera de
-este corte.
+El orquestador debe revisar los commits F1 y los cuatro commits F5, integrar el
+carril F2 sin sobrescribir sus archivos reservados y actualizar Linear cuando
+las issues propias existan. Isaac debe ejecutar la sesión LMU real de 60
+minutos y decidir si acepta la entrega aislada. No hacer push, PR, merge o
+promoción desde este worker. F6 sigue siendo el dueño del payload compacto de
+104 vehículos; F3 sigue siendo el dueño de la transacción única del engine.
+El orquestador debe revisar los cinco commits F2, actualizar Linear cuando la
+issue propia exista y decidir el siguiente corte de integración. Isaac debe
+ejecutar la verificación LMU/Wails/OBS descrita en la evidencia. No hacer push,
+PR, merge o promoción desde este worker. F6 sigue siendo el dueño del payload
+compacto de 104 vehículos; F3 sigue siendo el dueño de la transacción única
+del engine.
 
 ## Gate final
 
@@ -402,6 +634,23 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-19, ISA-372/F5: contrato TypeScript wire generado localmente desde Go,
+reexports en frontend, goldens compartidos y gate de regeneración local/CI.
+Hallazgo documentado: Overlay Vehicle v1 tiene 30 campos y el espejo ya era
+paritario. Sin cambios de red o canonical; sin push, PR, CI remoto, merge,
+promoción ni release. Integración F2 pendiente del orquestador.
+2026-08-19, ISA-372/F2: watchdog backend y frontend implementado con reloj
+inyectable, stale/recovery, revisión no contigua, métricas, diagnóstico,
+rollback y tests de reconnect/late join. Gates locales y Playwright de estados
+pasan; runtime LMU/Wails/OBS real pendiente. Cinco commits locales, sin push,
+PR, CI remoto, merge, promoción ni release.
+
+2026-08-19, ISA-372/F1: política v2 no terminal implementada localmente sobre
+`isa-373@3e9c77ed`, con rollback legacy, métricas, recover por consumidor,
+status terminal entregable y cuatro tests F0 activados. Gates locales pasan
+con las excepciones preexistentes documentadas; sesión LMU de 60 minutos
+pendiente de Isaac. Sin push, PR, CI remoto, merge, promoción ni release.
 
 2026-08-12, ISA-161: ISA-160 ya está integrada en `nightly@8880a88` e ISA-161
 surgió originalmente de esa base. El primer rebase fue sobre `234794d`; la base

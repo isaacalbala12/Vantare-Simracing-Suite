@@ -32,7 +32,7 @@ const (
 
 func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	consumer := &countingEngineerConsumer{}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,10 +176,16 @@ func TestTelemetryCoreMetricsCountRejectedObservationWithoutPayload(t *testing.T
 	// El frame se cuenta como rechazado pero no se propaga: llegar hasta
 	// DriverManager lo convertia en un error terminal y apagaba la telemetria
 	// hasta reiniciar la aplicacion. Rechazado no es fatal.
-	err = (runtimeObservationSink{runtime: runtime}).WriteObservation(
-		context.Background(),
-		structuralInvalidObservation(),
+	bridge := telemetrycore.NewObservationBridge[lmu.Observation](
+		lmu.NewBatchMapper(),
+		lmu.IsUnmappableFrame,
+		runtimeBatchSink{runtime: runtime},
+		telemetrycore.SimulatorHooks{
+			ObservationReceived: func() { runtime.counters.observationsReceived.Add(1) },
+			ObservationRejected: runtime.recordRejectedObservation,
+		},
 	)
+	err = bridge.WriteObservation(context.Background(), structuralInvalidObservation())
 	if err != nil {
 		t.Fatalf("unmappable observation must not be fatal, got %v", err)
 	}
@@ -191,7 +197,9 @@ func TestTelemetryCoreMetricsCountRejectedObservationWithoutPayload(t *testing.T
 }
 
 func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: &countingEngineerConsumer{}})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Engineer: &countingEngineerConsumer{}, StrategyPublicTransport: true,
+	})
 	if err != nil {
 		b.Fatal(err)
 	}

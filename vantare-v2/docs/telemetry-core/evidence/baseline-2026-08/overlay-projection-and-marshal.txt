@@ -1,0 +1,26 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlay
+cpu: AMD Ryzen 7 3700X 8-Core Processor
+BenchmarkOverlayProjectionAndMarshal1-16         70636     16618 ns/op      4425 payload_bytes     12136 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal1-16         63632     17667 ns/op      4425 payload_bytes     12139 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal1-16         63897     23486 ns/op      4425 payload_bytes     12144 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal1-16         53326     21306 ns/op      4425 payload_bytes     12139 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal1-16         52339     19965 ns/op      4425 payload_bytes     12142 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal20-16         6835    270839 ns/op     54685 payload_bytes    158748 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal20-16         4774    277554 ns/op     54685 payload_bytes    158714 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal20-16         5401    259184 ns/op     54685 payload_bytes    158643 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal20-16         5755    272038 ns/op     54685 payload_bytes    158424 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal20-16         4928    257700 ns/op     54685 payload_bytes    158509 B/op    21 allocs/op
+BenchmarkOverlayProjectionAndMarshal44-16         2739    580166 ns/op    118235 payload_bytes    376045 B/op    23 allocs/op
+BenchmarkOverlayProjectionAndMarshal44-16         2344    560930 ns/op    118235 payload_bytes    375543 B/op    23 allocs/op
+BenchmarkOverlayProjectionAndMarshal44-16         2293    551538 ns/op    118235 payload_bytes    374715 B/op    22 allocs/op
+BenchmarkOverlayProjectionAndMarshal44-16         2185    553755 ns/op    118235 payload_bytes    373711 B/op    22 allocs/op
+BenchmarkOverlayProjectionAndMarshal44-16         2312    555716 ns/op    118235 payload_bytes    374745 B/op    22 allocs/op
+BenchmarkOverlayProjectionAndMarshal104-16         724   1743311 ns/op    277119 payload_bytes   1169860 B/op    29 allocs/op
+BenchmarkOverlayProjectionAndMarshal104-16         750   1559628 ns/op    277119 payload_bytes   1130260 B/op    28 allocs/op
+BenchmarkOverlayProjectionAndMarshal104-16         723   1603576 ns/op    277119 payload_bytes   1160221 B/op    29 allocs/op
+BenchmarkOverlayProjectionAndMarshal104-16         718   1553040 ns/op    277119 payload_bytes   1159845 B/op    29 allocs/op
+BenchmarkOverlayProjectionAndMarshal104-16         774   1593117 ns/op    277119 payload_bytes   1164587 B/op    29 allocs/op
+PASS
+ok github.com/vantare/overlays/v2/internal/telemetry/projection/overlay 29.349s

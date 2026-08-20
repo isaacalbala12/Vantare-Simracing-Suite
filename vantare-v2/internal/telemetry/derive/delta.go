@@ -69,6 +69,7 @@ type selfDeltaTracker struct {
 	candidateOK  bool
 	candidateAt  time.Duration
 	candidate    []lapSample
+	candidateCOW bool
 	lastPrivate  time.Duration
 	pendingWrap  bool
 	pendingReset bool
@@ -82,6 +83,7 @@ type selfDeltaTracker struct {
 	previous          []lapSample
 
 	history    []DeltaSample
+	historyCOW bool
 	lastPublic time.Duration
 }
 
@@ -97,11 +99,26 @@ func cloneSelfDeltaTracker(input *selfDeltaTracker) *selfDeltaTracker {
 		return newSelfDeltaTracker(MaxSelfDeltaSamples)
 	}
 	result := *input
-	result.candidate = slices.Clone(input.candidate)
-	result.reference = slices.Clone(input.reference)
-	result.previous = slices.Clone(input.previous)
-	result.history = slices.Clone(input.history)
+	// The committed tracker is immutable while a candidate is prepared. Share
+	// its potentially large histories and detach only the slices that a
+	// successful candidate actually changes.
+	result.candidateCOW = len(input.candidate) > 0
+	result.historyCOW = len(input.history) > 0
 	return &result
+}
+
+func (tracker *selfDeltaTracker) ownCandidate() {
+	if tracker.candidateCOW {
+		tracker.candidate = slices.Clone(tracker.candidate)
+		tracker.candidateCOW = false
+	}
+}
+
+func (tracker *selfDeltaTracker) ownHistory() {
+	if tracker.historyCOW {
+		tracker.history = slices.Clone(tracker.history)
+		tracker.historyCOW = false
+	}
 }
 
 func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.ObservedState) SelfDelta {
@@ -143,7 +160,7 @@ func (tracker *selfDeltaTracker) Apply(header envelope.Header, observed core.Obs
 }
 
 func (tracker *selfDeltaTracker) applySelf(header envelope.Header, observed core.ObservedState) SelfDelta {
-	if tracker.initialized && (tracker.epoch != header.Cursor.Epoch || tracker.session != header.Identity.Session || tracker.player != header.Identity.Vehicle) {
+	if tracker.initialized && (tracker.epoch != header.Cursor.Epoch || tracker.session != header.Identity.Session) {
 		limit := tracker.limit
 		*tracker = *newSelfDeltaTracker(limit)
 	}
@@ -153,6 +170,7 @@ func (tracker *selfDeltaTracker) applySelf(header envelope.Header, observed core
 		tracker.session = header.Identity.Session
 		tracker.player = header.Identity.Vehicle
 	}
+	tracker.player = header.Identity.Vehicle
 	if header.Identity.Vehicle == "" {
 		tracker.invalidateCurrentLap()
 		return tracker.output(schema.FreshnessMissing, schema.MissingField[session.DeltaSeconds]())
@@ -319,8 +337,10 @@ func (tracker *selfDeltaTracker) recordSelectedDelta(
 		Seconds:     seconds,
 	}
 	if sameCursor {
+		tracker.ownHistory()
 		tracker.history[last] = sample
 	} else {
+		tracker.ownHistory()
 		tracker.history = append(tracker.history, sample)
 	}
 	if overflow := len(tracker.history) - MaxSelfDeltaHistory; overflow > 0 {
@@ -341,6 +361,7 @@ func (tracker *selfDeltaTracker) completeAndStartLap(boundary time.Duration, inp
 	tracker.candidate = []lapSample{{
 		Lap: input.lap, Distance: input.distance, Elapsed: input.sourceTime - boundary,
 	}}
+	tracker.candidateCOW = false
 }
 
 type selfDeltaInput struct {
@@ -424,6 +445,7 @@ func (tracker *selfDeltaTracker) appendCandidate(input selfDeltaInput) bool {
 	}
 	last := len(tracker.candidate) - 1
 	if last >= 0 && tracker.candidate[last].Distance == sample.Distance {
+		tracker.ownCandidate()
 		tracker.candidate[last] = sample
 		tracker.lastPrivate = input.sourceTime
 		return true
@@ -431,6 +453,7 @@ func (tracker *selfDeltaTracker) appendCandidate(input selfDeltaInput) bool {
 	if len(tracker.candidate) >= tracker.limit {
 		return false
 	}
+	tracker.ownCandidate()
 	tracker.candidate = append(tracker.candidate, sample)
 	tracker.lastPrivate = input.sourceTime
 	return true
@@ -452,6 +475,7 @@ func (tracker *selfDeltaTracker) completeCandidate(boundary time.Duration) {
 		tracker.referenceDuration = duration
 		tracker.reference = slices.Clone(tracker.candidate)
 		tracker.history = nil
+		tracker.historyCOW = false
 		tracker.lastPublic = 0
 	}
 }
@@ -472,6 +496,7 @@ func (tracker *selfDeltaTracker) currentDelta(header envelope.Header, input self
 	}
 	value := session.DeltaSeconds(seconds)
 	if tracker.lastPublic == 0 || input.sourceTime-tracker.lastPublic >= selfDeltaSampleInterval {
+		tracker.ownHistory()
 		tracker.history = append(tracker.history, DeltaSample{
 			Cursor: header.Cursor, CapturedAt: header.Clock.ReceivedUTC,
 			SourceTime: input.sourceTime, LapDistance: input.distance, Seconds: value,
@@ -552,6 +577,7 @@ func (tracker *selfDeltaTracker) invalidateCurrentLap() {
 	tracker.synchronized = false
 	tracker.candidateOK = false
 	tracker.candidate = nil
+	tracker.candidateCOW = false
 	tracker.lastPrivate = 0
 	tracker.pendingWrap = false
 	tracker.pendingReset = false
@@ -566,5 +592,6 @@ func (tracker *selfDeltaTracker) clearReference() {
 	tracker.previousDuration = 0
 	tracker.previous = nil
 	tracker.history = nil
+	tracker.historyCOW = false
 	tracker.lastPublic = 0
 }

@@ -329,24 +329,24 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 <!--
 Los hitos que siguen salen de la auditoria de cableado de Orbit v0.3
 (`docs/design/orbit-v03/evidence/porte/wiring-audit.md`, seccion "Pendiente por
-decision de producto"): controles que hoy quedan honestos porque falta una
-decision o una fuente, no porque falte codigo.
+decision de producto"): controles que quedaban honestos porque faltaba una
+decision o una fuente, no porque faltara codigo. Los dos primeros ya se
+entregaron (favoritos y apps propias del Launcher, registros de Diagnostico) y
+se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 -->
 
-### Marcar favorito en el Launcher
+### Favoritos y aplicaciones propias en el Launcher
 
 - id: launcher-favorite-toggle
-- tipo: plan
-- titulo.en: Toggling a Launcher favourite
-- titulo.pt: Marcar favorito no Launcher
-- titulo.it: Segnare un preferito nel Launcher
-- cuerpo: Hoy el favorito solo ordena y colorea la lista; falta el control para alternarlo desde Orbit.
-- cuerpo.en: A favourite only sorts and tints the list today; the control to toggle it from Orbit is missing.
-- cuerpo.pt: Hoje o favorito apenas ordena e colore a lista; falta o controlo para o alternar a partir do Orbit.
-- cuerpo.it: Oggi il preferito ordina e colora solo la lista; manca il controllo per attivarlo da Orbit.
-- etiqueta: Plan
-- etiqueta.pt: Plano
-- etiqueta.it: Piano
+- tipo: feature
+- titulo.en: Favourites and custom apps in the Launcher
+- titulo.pt: Favoritos e aplicações próprias no Launcher
+- titulo.it: Preferiti e app personalizzate nel Launcher
+- cuerpo: La estrella de cada aplicación marca el favorito y manda en el orden, y «Añadir aplicación» da de alta programas que el escaneo no detecta.
+- cuerpo.en: Each app's star marks it as a favourite and drives the ordering, and "Add application" registers programs the scan does not detect.
+- cuerpo.pt: A estrela de cada aplicação marca o favorito e comanda a ordem, e «Adicionar aplicação» regista programas que a análise não deteta.
+- cuerpo.it: La stella di ogni applicazione segna il preferito e comanda l'ordine, e «Aggiungi applicazione» registra programmi che la scansione non rileva.
+- etiqueta: Feature
 
 ### Estrategias por evento
 
@@ -381,17 +381,15 @@ decision o una fuente, no porque falte codigo.
 ### Registros y últimos eventos en Diagnóstico
 
 - id: diagnostics-logs
-- tipo: plan
+- tipo: feature
 - titulo.en: Logs and recent events in Diagnostics
 - titulo.pt: Registos e últimos eventos em Diagnóstico
 - titulo.it: Log e ultimi eventi in Diagnostica
-- cuerpo: Falta decidir dónde viven los registros y abrir un canal de log del backend al hub.
-- cuerpo.en: Where the logs live is still undecided, and there is no log channel from the backend to the hub.
-- cuerpo.pt: Falta decidir onde vivem os registos e abrir um canal de log do backend para o hub.
-- cuerpo.it: Manca decidere dove vivono i log e aprire un canale di log dal backend all'hub.
-- etiqueta: Plan
-- etiqueta.pt: Plano
-- etiqueta.it: Piano
+- cuerpo: La app escribe un registro rotado en disco, Diagnóstico abre su carpeta y lista los últimos eventos con su nivel.
+- cuerpo.en: The app writes a rotating log to disk, and Diagnostics opens its folder and lists recent events with their level.
+- cuerpo.pt: A app escreve um registo rotativo em disco, e Diagnóstico abre a sua pasta e lista os últimos eventos com o seu nível.
+- cuerpo.it: L'app scrive un log rotante su disco, e Diagnostica apre la sua cartella ed elenca gli ultimi eventi con il loro livello.
+- etiqueta: Feature
 
 ### Eje temporal en Telemetría y exportar radio
 

@@ -165,3 +165,55 @@ func TestSaveIconToDiskSinFicheroPrevio(t *testing.T) {
 		t.Fatalf("el icono debe quedar guardado, got %d entradas", stored)
 	}
 }
+
+// TestSaveIconToDiskConCacheEnDiscoDegradada (ISA-681) cubre las rutas de carga
+// que no pasan por la instalacion nueva: un fichero corrupto, uno de version
+// antigua y uno valido pero con los mapas a null. En las tres, la carga sale
+// antes de deserializar el mapa y `saveIconToDisk` escribia sobre un mapa nil,
+// reventando la goroutine de extraccion de iconos en pleno escaneo.
+func TestSaveIconToDiskConCacheEnDiscoDegradada(t *testing.T) {
+	casos := map[string]string{
+		"json corrupto":   "{no es json",
+		"version antigua": `{"version":1,"icons":{"x":{"path":"x"}},"shortcuts":{}}`,
+		"mapas nulos":     `{"version":2,"icons":null,"shortcuts":null}`,
+		"mapas ausentes":  `{"version":2}`,
+		"fichero vacio":   "",
+	}
+	for nombre, contenido := range casos {
+		t.Run(nombre, func(t *testing.T) {
+			dir := t.TempDir()
+			probe := filepath.Join(dir, "vantare-nil-map-probe.exe")
+			if err := os.WriteFile(probe, []byte("exe"), 0o644); err != nil {
+				t.Fatalf("write exe: %v", err)
+			}
+			cacheFile := filepath.Join(dir, "icons-cache-v2.json")
+			if err := os.WriteFile(cacheFile, []byte(contenido), 0o644); err != nil {
+				t.Fatalf("write cache: %v", err)
+			}
+			iconDiskCacheFileOverride = cacheFile
+			defer func() { iconDiskCacheFileOverride = "" }()
+
+			iconDiskMu.Lock()
+			iconDiskLoaded = false
+			iconDiskData = iconDiskCache{}
+			iconDiskMu.Unlock()
+
+			// No debe entrar en panico ni al leer ni al escribir.
+			if icon := loadIconFromDisk(probe); icon != nil {
+				t.Fatalf("una cache degradada no puede devolver icono, got %d bytes", len(icon))
+			}
+			saveIconToDisk(probe, solidIconPNG(t, 64))
+
+			iconDiskMu.Lock()
+			stored := len(iconDiskData.Icons)
+			shortcutsNil := iconDiskData.Shortcuts == nil
+			iconDiskMu.Unlock()
+			if stored != 1 {
+				t.Fatalf("el icono debe quedar guardado, got %d entradas", stored)
+			}
+			if shortcutsNil {
+				t.Fatal("el mapa de shortcuts debe quedar inicializado tras la carga")
+			}
+		})
+	}
+}

@@ -3,6 +3,8 @@ import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
@@ -57,6 +59,9 @@ export type WidgetViewModelBase = {
 export type WidgetRuntimeInput = {
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
+  overlayV2Features?: readonly OverlayV2Feature[];
+  overlayV2Frame?: OverlayFrameV2;
+  overlayV2Source?: OverlaySourceStatusV2;
 };
 
 export type WidgetCapabilities = {

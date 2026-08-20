@@ -84,6 +84,21 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   unica fuente manual del roadmap publico: `vantare-v2/docs/roadmap/roadmap.json`
   lo genera `.github/scripts/roadmap_digest.py` y nunca se edita a mano. Si el
   PR cambia el rumbo del producto y no toca `plan.md`, esta incompleto.
+- **Lo entregado tambien se refleja en `plan.md`, en el mismo PR.** La regla
+  anterior cubre lo que se planea; esta cubre lo que se cumple. Si tu PR
+  entrega algo que `plan.md` lista como pendiente, actualiza esa entrada en el
+  mismo PR: el hito pasa de `tipo: plan` a `feature`, `fix` o `release`, su
+  `cuerpo` se reescribe a lo que la app hace **hoy** (no a lo que faltaba), y
+  si la fase avanza, su `progreso` e `item` acompanan. Un hito entregado que
+  sigue anunciandose como plan es una mentira publicada: el roadmap lo pinta
+  en la app y el digest lo anuncia en Discord. Regenera despues el artefacto
+  con `python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly`.
+- Cada issue vive bajo su **proyecto** (label `area:*`, columna del GitHub
+  Project **Vantare**) y, si esta comprometida para una version, bajo su
+  **milestone** de GitHub. El milestone agrupa las features que justifican una
+  promocion de canal: cuando se cierra al 100%, ese corte es **candidato** a
+  subir de nightly a testers, y de testers a master tras su validacion. La
+  promocion la dispara una persona, nunca el cierre automatico del milestone.
 - No hagas features, refactors o limpieza general si no están en el alcance.
 - No redisenes arquitectura de forma oportunista. Un cambio arquitectónico solo
   se ejecuta dentro de una issue/plan aprobados, con ADR cuando corresponda,

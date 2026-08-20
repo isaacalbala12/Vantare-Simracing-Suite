@@ -21,13 +21,21 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
-func TestTelemetryCoreRuntimeStrategyHubIsNilSafeAndSharesOneCanonicalPipeline(t *testing.T) {
+func TestStrategyHubNotInstantiatedWithoutFlag(t *testing.T) {
 	var nilRuntime *TelemetryCoreRuntime
 	if nilRuntime.StrategyHub() != nil {
 		t.Fatal("nil StrategyHub() must be nil")
 	}
 
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	defaultRuntime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if defaultRuntime.StrategyHub() != nil {
+		t.Fatalf("default StrategyHub() = %p, want nil", defaultRuntime.StrategyHub())
+	}
+
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,16 +45,20 @@ func TestTelemetryCoreRuntimeStrategyHubIsNilSafeAndSharesOneCanonicalPipeline(t
 
 	// Guard the architectural contract without adding production seams: there
 	// is one canonical acquisition/reduction chain and exactly two product hubs.
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.manager), 1)
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.mapper), 1)
+	assertRuntimeFieldCount(t, runtime, reflect.TypeOf((*telemetrycore.SimulatorRuntime)(nil)).Elem(), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.reducer), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.coord), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.derive), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.hub), 2)
 }
 
+func newStrategyTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
+	config.StrategyPublicTransport = true
+	return NewTelemetryCoreRuntime(config)
+}
+
 func TestTelemetryCoreRuntimePublishesOverlayAndStrategyFromSameFinalState(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +113,7 @@ func TestTelemetryCoreRuntimePublishesOverlayAndStrategyFromSameFinalState(t *te
 }
 
 func TestTelemetryCoreRuntimePublishesIdenticalStatusTransitionsToBothProducts(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +164,7 @@ func TestTelemetryCoreRuntimePublishesIdenticalStatusTransitionsToBothProducts(t
 }
 
 func TestTelemetryCoreStrategyHubLateAndSlowSubscribersAlwaysReceiveFull(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +204,7 @@ func TestTelemetryCoreRuntimeStartEmitsNamespacedEventsAndStopsBothAdapters(t *t
 		seen:    make(map[string]int),
 		notices: make(chan string, 8),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +240,7 @@ func TestTelemetryCoreRuntimeStartEmitsNamespacedEventsAndStopsBothAdapters(t *t
 
 func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromBothProductHubs(t *testing.T) {
 	consumer := &recordingEngineerConsumer{observationErr: errors.New("engineer unavailable")}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,8 +270,8 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromBothProductHubs(t *testi
 	}
 }
 
-func TestTelemetryCoreRuntimeReportsStrategyTransportFailure(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+func TestStrategyFailureDoesNotAffectOverlay(t *testing.T) {
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,29 +285,27 @@ func TestTelemetryCoreRuntimeReportsStrategyTransportFailure(t *testing.T) {
 	}
 
 	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch())
-	if err == nil || !strings.Contains(err.Error(), "publish Strategy telemetry projection") ||
-		!errors.Is(err, telemetrytransport.ErrClosed) {
-		t.Fatalf("Strategy transport error = %v", err)
+	if err != nil {
+		t.Fatalf("Strategy transport failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
 	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 1 ||
 		metrics.StrategyProjectionsPublished != 0 || metrics.Transport.SnapshotPublications != 1 ||
-		metrics.StrategyTransport.SnapshotPublications != 0 {
+		metrics.StrategyTransport.SnapshotPublications != 0 ||
+		metrics.PublishFailures["strategy"] != 1 || metrics.FramesDropped["strategy-publish"] != 1 ||
+		metrics.FailStops != 0 {
 		t.Fatalf("failed cycle metrics = %#v", metrics)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
+	subscription, err := runtime.Hub().Subscribe(context.Background())
+	if err != nil {
+		t.Fatalf("Overlay hub closed by Strategy failure: %v", err)
+	}
+	defer subscription.Close()
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
-	if err := runtime.Start(context.Background()); !errors.Is(err, telemetrytransport.ErrClosed) {
-		t.Fatalf("Start() after partial publication error = %v, want %v", err, telemetrytransport.ErrClosed)
-	}
-	if err := runtime.Stop(context.Background()); err == nil ||
-		!strings.Contains(err.Error(), "publish Strategy telemetry projection") {
-		t.Fatalf("Stop() audit error = %v", err)
-	}
 }
 
 func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingEitherProduct(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +355,7 @@ func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingEitherProduct(
 }
 
 func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +379,7 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 
 func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *testing.T) {
 	consumer := &recordingEngineerConsumer{}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +436,7 @@ func TestTelemetryCoreRuntimeUnexpectedWailsCloseIsAuditedAndFailsBothHubs(t *te
 				seen:    make(map[string]int),
 				notices: make(chan string, 8),
 			}
-			runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
+			runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -457,7 +467,7 @@ func TestTelemetryCoreRuntimeConcurrentStopDoesNotWaitForEngineerCallback(t *tes
 		entered: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
 		Enabled:  true,
 		Engineer: consumer,
 	})
@@ -510,7 +520,7 @@ func TestTelemetryCoreRuntimeCanceledAfterInitialEngineerStatusDeliversStoppedOn
 		release:   make(chan struct{}),
 		statusErr: errors.New("Engineer consumer unavailable"),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
 		Enabled:  true,
 		Engineer: consumer,
 	})
@@ -563,7 +573,7 @@ func TestTelemetryCoreRuntimeDeliversInitialEngineerStatusBeforeStartingManager(
 		entered: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
 		Enabled:  true,
 		Engineer: consumer,
 	})
@@ -579,7 +589,7 @@ func TestTelemetryCoreRuntimeDeliversInitialEngineerStatusBeforeStartingManager(
 	case <-time.After(2 * time.Second):
 		t.Fatal("initial Engineer callback did not start")
 	}
-	if status := runtime.manager.Status(); status.State != driver.StateStopped {
+	if status := runtime.simulator.Status(); status.State != driver.StateStopped {
 		t.Fatalf("manager state during initial callback = %q, want stopped", status.State)
 	}
 	close(consumer.release)
@@ -601,7 +611,7 @@ func TestTelemetryCoreRuntimeFailStopMarksEnabledSourceUnavailable(t *testing.T)
 		seen:    make(map[string]int),
 		notices: make(chan string, 8),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
 		Enabled: true,
 		Emitter: emitter,
 	})
@@ -641,7 +651,7 @@ func TestTelemetryCoreRuntimeNormalStopCancelsWorkersBeforeClosingHubs(t *testin
 		seen:    make(map[string]int),
 		notices: make(chan string, 8),
 	}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
 		Enabled: true,
 		Emitter: emitter,
 	})

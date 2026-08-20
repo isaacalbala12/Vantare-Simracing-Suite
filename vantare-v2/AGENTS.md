@@ -14,6 +14,16 @@ Menos codigo es preferible cuando mantiene o mejora claridad, seguridad,
 pruebas y rendimiento. Si la complejidad supera claramente al problema, revisa
 y simplifica antes de ampliarla.
 
+## Issues
+
+- El tracker es **GitHub Issues de este mismo repositorio**. Linear fue
+  retirado el 2026-08-20 y no queda ninguna dependencia operativa suya.
+- Los identificadores `ISA-N` corresponden al numero de issue de GitHub: una
+  issue nueva ya nace con su ISA-N. Los `ISA-N` migrados desde Linear
+  conservan su titulo `ISA-N · ...` y las labels `state:*` y `migrated:linear`.
+- Las ramas siguen la convencion `vantareapp/isa-N-slug`.
+- El tablero es el GitHub Project **Vantare**.
+
 ## Fuentes de verdad y lectura obligatoria
 
 Antes de interpretar o ejecutar una tarea:
@@ -21,14 +31,14 @@ Antes de interpretar o ejecutar una tarea:
 1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
 2. Lee este archivo y `docs/current-plan.md`.
 3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
-   Git, Linear, CI, releases o estados.
+   Git, el tracker, CI, releases o estados.
 4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
    handoff vivo del proyecto.
-5. Lee la issue de Linear, sus dependencias y el plan, ADR o microplan vigente.
+5. Lee la issue de GitHub, sus dependencias y el plan, ADR o microplan vigente.
 6. Lee el codigo y los tests que demuestran el comportamiento actual.
 
 Las decisiones recientes del expediente canonico y la evidencia del runtime
-prevalecen sobre planes historicos. Linear es la autoridad para alcance,
+prevalecen sobre planes historicos. La issue de GitHub es la autoridad para alcance,
 dependencias, rama y estado; no sustituye los contratos de producto o
 arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
@@ -48,8 +58,8 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
   worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion; refleja el mismo estado real en Linear.
-- Todo trabajo nuevo debe estar cubierto por una issue de Linear antes de
+  riesgos o siguiente accion; refleja el mismo estado real en la issue de GitHub.
+- Todo trabajo nuevo debe estar cubierto por una issue de GitHub antes de
   editar. Los hallazgos fuera de alcance se documentan como issues y no se
   incorporan silenciosamente.
 - La delegacion tiene un solo nivel por defecto: el orquestador puede crear
@@ -107,7 +117,7 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Autoridad y acciones externas
 
-Dentro de una issue aprobada, los agentes pueden crear o actualizar Linear,
+Dentro de una issue aprobada, los agentes pueden crear o actualizar issues,
 ramas, worktrees, commits, pushes, PRs draft, CI, documentacion y reviews.
 
 Requieren autorizacion explicita de Isaac:
@@ -129,7 +139,7 @@ Requieren autorizacion explicita de Isaac:
 6. Ejecuta los checks aplicables.
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza el handoff, Linear y `docs/current-plan.md` si cambia el estado.
+9. Actualiza el handoff, la issue de GitHub y `docs/current-plan.md` si cambia el estado.
 
 ## Stop conditions
 

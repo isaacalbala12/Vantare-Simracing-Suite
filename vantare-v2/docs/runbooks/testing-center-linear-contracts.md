@@ -1,5 +1,7 @@
 # Testing Center: contratos Linear, rechazo y dossier Codex
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 Estado: contrato local de ISA-238. Sin red, credenciales, schema remoto, UI,
 dispatch Codex, merge, deploy o promoción.
 

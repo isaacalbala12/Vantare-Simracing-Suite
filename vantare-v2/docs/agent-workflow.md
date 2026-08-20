@@ -1,5 +1,7 @@
 # Workflow de agentes
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 > Estado del checkout principal (2026-08-10): el worktree principal
 > `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`
 > (rama `refactor` == `nightly@9c11d7f`). `refactor-b70a950-backup` y

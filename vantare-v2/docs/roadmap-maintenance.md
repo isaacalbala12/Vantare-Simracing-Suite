@@ -1,13 +1,19 @@
 # Mantenimiento del Roadmap y Changelog (Vantare)
 
-> **Desde ISA-378 este documento describe el flujo anterior.** La fuente manual
-> del roadmap es ahora `docs/roadmap/plan.md`, y el artefacto que consume la
-> app es `docs/roadmap/roadmap.json`, que genera
-> `.github/scripts/roadmap_digest.py` (tarea programada
-> `.github/workflows/roadmap-digest.yml`) combinando el plan con los commits ya
-> mergeados a `nightly`. `docs/roadmap-source.json` queda como referencia
-> histórica: ya no lo lee nadie. Lo que sigue vale para el changelog (§5) y
-> para entender de dónde viene el formato.
+> **Este documento describe el flujo anterior.** Dos cambios lo dejaron atras:
+>
+> - **ISA-378:** la fuente manual del roadmap es ahora `docs/roadmap/plan.md`, y
+>   el artefacto que consume la app es `docs/roadmap/roadmap.json`, que genera
+>   `.github/scripts/roadmap_digest.py` (tarea programada
+>   `.github/workflows/roadmap-digest.yml`) combinando el plan con los commits
+>   ya mergeados a `nightly`. `docs/roadmap-source.json` queda como referencia
+>   historica: ya no lo lee nadie.
+> - **ISA-381:** Linear fue retirado el 2026-08-20; los issues viven en GitHub
+>   Issues de este repositorio y `ISA-N` es el numero de issue de GitHub. El
+>   exporter `roadmap_linear_snapshot.py` y su workflow ya no existen.
+>
+> Lo que sigue vale para el changelog (§5) y para entender de donde viene el
+> formato.
 
 Procedimiento para editar el roadmap de forma **manual** y que se **actualice
 solo** en la app de todos los usuarios, sin scripts de generación automática.

@@ -27,8 +27,14 @@ REQUIRED_FRAGMENT_FIELDS = {
     "testing": list,
     "knownLimitations": list,
 }
-PUBLIC_UPDATE_MARKER = "<!-- discord:development -->"
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
+# Sources for the daily development digest, tried in order. The roadmap file is
+# the product's own statement of what is being built; open milestones are the
+# operational fallback now that the tracker is GitHub Issues.
+ROADMAP_JSON_PATH = "vantare-v2/docs/roadmap/roadmap.json"
+DEVELOPMENT_SOURCE_ROADMAP = "roadmap"
+DEVELOPMENT_SOURCE_MILESTONES = "milestones"
+DEVELOPMENT_SOURCE_NONE = "none"
 # The embed's accent stripe sits right beside the card image, so it uses the
 # same brand carmine as the app (--orbit-carmine in orbit.tokens.css).
 VANTARE_RED = 0xD52F49
@@ -453,11 +459,11 @@ def _channel_image_name(channel: str) -> str:
 
 
 def _fragment_order(fragment: dict[str, Any]) -> tuple[int, str]:
-    """Stable newest-first key for numeric Linear IDs and opaque TC IDs."""
+    """Stable newest-first key for numeric ISA IDs and opaque TC IDs."""
     issue = str(fragment.get("issue", ""))
-    linear = re.fullmatch(r"ISA-(\d+)", issue)
-    if linear:
-        return (0, f"{int(linear.group(1)):020d}")
+    numeric = re.fullmatch(r"ISA-(\d+)", issue)
+    if numeric:
+        return (0, f"{int(numeric.group(1)):020d}")
     testing_center = re.fullmatch(r"TC-([0-9A-F]{12})", issue)
     if testing_center:
         return (1, testing_center.group(1))
@@ -615,29 +621,127 @@ def render_build_html(version: str, notes: str, sha256: str, channel: str = "tes
                          footer_left="DESCARGA Y COMPRUEBA", footer_right="VANTARE · CHANGELOG")
 
 
-def parse_public_update(body: str | None) -> str | None:
-    if not body or PUBLIC_UPDATE_MARKER not in body:
+DEFAULT_DEVELOPMENT_UPDATE = "Desarrollo en curso. Consulta el repositorio para ver el estado operativo completo."
+# Anything a roadmap phase might call "being worked on right now". Matching is
+# case-insensitive and ignores separators, so "in_progress" and "In Progress"
+# both land here.
+ACTIVE_STATUS_WORDS = {
+    "inprogress", "progress", "started", "active", "doing", "wip", "ongoing",
+    "encurso", "enprogreso", "activo", "enmarcha", "current", "building",
+}
+
+
+def sanitize_public_text(value: str | None) -> str:
+    """Strip mass mentions so a digest can never ping the whole server."""
+    if not value:
+        return ""
+    return " ".join(
+        str(value).replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere").split()
+    )
+
+
+def _first_str(source: dict[str, Any], keys: Sequence[str]) -> str:
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _coerce_progress(value: Any) -> float:
+    """Normalize the many shapes a progress figure arrives in to a 0..1 float."""
+    if isinstance(value, dict):
+        percent = value.get("percent")
+        if isinstance(percent, (int, float)):
+            return max(0.0, min(1.0, float(percent) / 100))
+        done, total = value.get("done"), value.get("total")
+        if isinstance(done, (int, float)) and isinstance(total, (int, float)) and total:
+            return max(0.0, min(1.0, float(done) / float(total)))
+        return 0.0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.0
+    number = float(value)
+    if number > 1:  # percentages arrive as 0..100
+        number /= 100
+    return max(0.0, min(1.0, number))
+
+
+def _is_active_status(status: Any) -> bool | None:
+    """True/False when the entry states a status, None when it states none."""
+    if isinstance(status, dict):
+        status = status.get("type") or status.get("name") or status.get("id")
+    if not isinstance(status, str) or not status.strip():
         return None
-    public = body.split(PUBLIC_UPDATE_MARKER, 1)[1].strip()
-    public = public.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
-    return public or None
+    normalized = re.sub(r"[^a-z]", "", status.casefold())
+    return any(word in normalized for word in ACTIVE_STATUS_WORDS)
 
 
-def select_public_projects(projects: Iterable[dict[str, Any]], allowed_names: set[str]) -> list[dict[str, Any]]:
+def _roadmap_entries(document: Any) -> list[dict[str, Any]]:
+    """Pull the list of phases out of whichever shape the roadmap file uses."""
+    if isinstance(document, list):
+        candidates: Any = document
+    elif isinstance(document, dict):
+        candidates = []
+        for key in ("phases", "projects", "items", "entries", "roadmap", "milestones"):
+            value = document.get(key)
+            if isinstance(value, list) and value:
+                candidates = value
+                break
+    else:
+        return []
+    return [entry for entry in candidates if isinstance(entry, dict)]
+
+
+def load_roadmap_projects(path: pathlib.Path) -> list[dict[str, Any]]:
+    """Read the roadmap snapshot, tolerating an absent or unexpected schema.
+
+    ISA-378 owns that file's shape, so anything unreadable here is treated as
+    "no roadmap data" and the caller falls through to the next source instead
+    of failing the daily announcement.
+    """
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return []
     selected = []
-    for project in projects:
-        if (project.get("status") or {}).get("type") != "started":
+    for entry in _roadmap_entries(document):
+        if _is_active_status(entry.get("status") or entry.get("state")) is False:
             continue
-        if project.get("name") not in allowed_names:
+        name = _first_str(entry, ("name", "title", "label", "phase"))
+        if not name:
             continue
-        nodes = (project.get("projectUpdates") or {}).get("nodes") or []
-        public = parse_public_update(nodes[0].get("body") if nodes else None)
         selected.append({
-            "name": project.get("name", "Proyecto sin nombre"),
-            "url": project.get("url", ""),
-            "progress": project.get("progress", 0),
-            "update": public or "Desarrollo en curso. Consulta el proyecto para ver el estado operativo completo.",
-            "updatedAt": project.get("updatedAt", ""),
+            "name": sanitize_public_text(name),
+            "url": _first_str(entry, ("url", "link", "href")),
+            "progress": _coerce_progress(
+                entry.get("progress", entry.get("percent", entry.get("completion")))
+            ),
+            "update": sanitize_public_text(
+                _first_str(entry, ("update", "summary", "description", "note", "detail"))
+            ) or DEFAULT_DEVELOPMENT_UPDATE,
+            "updatedAt": _first_str(entry, ("updatedAt", "updated_at", "date")),
+        })
+    return selected
+
+
+def milestones_to_projects(milestones: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Shape open GitHub milestones like the render contract expects."""
+    selected = []
+    for milestone in milestones:
+        if not isinstance(milestone, dict) or milestone.get("state") not in (None, "open"):
+            continue
+        title = milestone.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        closed = milestone.get("closed_issues") or 0
+        opened = milestone.get("open_issues") or 0
+        total = closed + opened
+        selected.append({
+            "name": sanitize_public_text(title),
+            "url": str(milestone.get("html_url") or ""),
+            "progress": (closed / total) if total else 0.0,
+            "update": sanitize_public_text(milestone.get("description")) or DEFAULT_DEVELOPMENT_UPDATE,
+            "updatedAt": str(milestone.get("updated_at") or ""),
         })
     return sorted(selected, key=lambda item: (item["updatedAt"], item["name"].casefold()), reverse=True)
 
@@ -652,7 +756,7 @@ def render_development(projects: list[dict[str, Any]], *, include_image: bool = 
         description = "No hay actualizaciones públicas de proyectos activos en este corte."
         fields = []
     else:
-        description = f"{min(len(projects), 3)} proyectos públicos en desarrollo. Estado operativo desde Linear."
+        description = f"{min(len(projects), 3)} proyectos públicos en desarrollo. Estado operativo desde el repositorio."
         fields = []
         for project in projects[:3]:
             percent = round(float(project["progress"] or 0) * 100)
@@ -716,14 +820,14 @@ def render_development_html(projects: list[dict[str, Any]]) -> str:
         cards.append("""
           <article class="project-card">
             <div class="card-top"><span class="index">—</span><span class="status">SIN CAMBIOS PUBLICADOS</span></div>
-            <h2>No hay novedades públicas hoy</h2><p>Los proyectos activos continúan en Linear sin una actualización nueva para Discord.</p>
+            <h2>No hay novedades públicas hoy</h2><p>Los proyectos activos continúan sin una actualización nueva para Discord.</p>
           </article>""")
     footer = ('<footer><span class="live">Actualización automática</span>'
               '<span>Vantare · Desarrollo en curso</span></footer>')
     return _orbit_document(
         extra_css=DEVELOPMENT_CARD_CSS,
         header=_orbit_header(eyebrow="Estado de desarrollo", title="Proyectos",
-                             accent="en curso", stamp="Actualizado desde Linear"),
+                             accent="en curso", stamp="Actualizado automáticamente"),
         cards=cards,
         footer=footer,
     )
@@ -806,31 +910,52 @@ def publish(
             raise RuntimeError(f"Discord returned status {error.code}") from error
 
 
-def fetch_linear_projects(api_key: str) -> list[dict[str, Any]]:
-    query = """
-    query DiscordDevelopmentProjects {
-      projects(first: 50) {
-        nodes {
-          name url progress updatedAt
-          status { type }
-          projectUpdates(first: 1) { nodes { body } }
-        }
-      }
-    }
+def fetch_open_milestones(
+    token: str,
+    repository: str,
+    *,
+    opener: Callable[..., Any] = urllib.request.urlopen,
+) -> list[dict[str, Any]]:
+    """List the repository's open milestones, newest activity first.
+
+    A failure here is not fatal: the caller degrades to the honest "no news"
+    embed rather than skipping the daily announcement altogether.
     """
+    if not repository:
+        return []
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(
-        "https://api.linear.app/graphql",
-        data=json.dumps({"query": query}).encode("utf-8"),
-        headers={"Authorization": api_key, "Content-Type": "application/json", "User-Agent": USER_AGENT},
-        method="POST",
+        f"https://api.github.com/repos/{repository}/milestones"
+        "?state=open&sort=updated&direction=desc&per_page=20",
+        headers=headers,
+        method="GET",
     )
+    with opener(request, timeout=20) as response:
+        payload = json.loads(response.read().decode("utf-8") or "[]")
+    return payload if isinstance(payload, list) else []
+
+
+def resolve_development_projects(
+    *,
+    roadmap_path: pathlib.Path | None = None,
+    token: str = "",
+    repository: str = "",
+    opener: Callable[..., Any] = urllib.request.urlopen,
+) -> tuple[list[dict[str, Any]], str]:
+    """Pick the digest's source: roadmap first, open milestones next, else none."""
+    roadmap = load_roadmap_projects(roadmap_path or pathlib.Path(ROADMAP_JSON_PATH))
+    if roadmap:
+        return roadmap, DEVELOPMENT_SOURCE_ROADMAP
     try:
-        response = _request_json(request, urllib.request.urlopen)
-    except urllib.error.HTTPError as error:
-        raise RuntimeError(f"Linear GraphQL returned status {error.code}") from error
-    if response.get("errors"):
-        raise RuntimeError("Linear GraphQL query failed")
-    return response["data"]["projects"]["nodes"]
+        milestones = milestones_to_projects(fetch_open_milestones(token, repository, opener=opener))
+    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"warning: milestone lookup failed: {error}", file=sys.stderr)
+        milestones = []
+    if milestones:
+        return milestones, DEVELOPMENT_SOURCE_MILESTONES
+    return [], DEVELOPMENT_SOURCE_NONE
 
 
 def main() -> int:
@@ -901,16 +1026,11 @@ def main() -> int:
         if args.snapshot_input:
             selected_projects = json.loads(pathlib.Path(args.snapshot_input).read_text(encoding="utf-8"))
         else:
-            key = os.environ.get("LINEAR_API_KEY", "")
-            if not key and not args.dry_run:
-                raise RuntimeError("LINEAR_API_KEY is required")
-            projects = [] if args.dry_run and not key else fetch_linear_projects(key)
-            allowlist_path = pathlib.Path("vantare-v2/docs/discord-development-projects.json")
-            allowlist = json.loads(allowlist_path.read_text(encoding="utf-8"))
-            allowed_names = set(allowlist.get("projects", []))
-            if not allowed_names:
-                raise ValueError("development project allowlist is empty")
-            selected_projects = select_public_projects(projects, allowed_names)
+            selected_projects, source = resolve_development_projects(
+                token=os.environ.get("GITHUB_TOKEN", ""),
+                repository=os.environ.get("GITHUB_REPOSITORY", ""),
+            )
+            print(f"development digest source: {source}", file=sys.stderr)
         if args.snapshot_output:
             pathlib.Path(args.snapshot_output).write_text(json.dumps(selected_projects, ensure_ascii=False, indent=2), encoding="utf-8")
         if args.html_output:

@@ -1,5 +1,7 @@
 # Testing Center — outbox Linear en dry-run
 
+> **Deprecado.** Linear fue retirado el 2026-08-20; los issues viven en GitHub Issues de este repositorio. Documento conservado como historico.
+
 Estado: ISA-239 / TAU-07E implementado y validado localmente. No hay red,
 credencial Linear, webhook, UI, Codex, Discord, deploy, merge ni promoción.
 

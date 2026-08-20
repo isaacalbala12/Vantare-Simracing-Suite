@@ -104,4 +104,41 @@ export const launcherOrbitIt: Record<string, string> = {
   "launcher.editor.autostartBlocked": "Aggiungi almeno un passo per avviarlo con Windows.",
   "launcher.editor.cancel": "Annulla",
   "launcher.editor.save": "Salva",
+  // Preferite del catalogo e aggiunta/rimozione di applicazioni personalizzate (ISA-376).
+  "launcher.app.favorite": "Segna {{name}} come preferita",
+  "launcher.app.unfavorite": "Togli {{name}} dalle preferite",
+  "launcher.app.remove": "Elimina {{name}}",
+  "launcher.app.removeBlocked":
+    "Puoi eliminare solo le applicazioni che hai aggiunto tu; quelle del catalogo tornano alla prossima scansione.",
+
+  "launcher.catalog.addApp": "Aggiungi applicazione",
+  "launcher.catalog.addAppHint": "Scegli un eseguibile che il rilevamento non riconosce.",
+
+  "launcher.context.favorites": "Preferite ({{n}})",
+  "launcher.context.favoritesTitle": "Preferite",
+  "launcher.context.noFavorites": "Nessuna preferita: segna la stella di un'applicazione.",
+
+  "launcher.addApp.title": "Aggiungi applicazione",
+  "launcher.addApp.close": "Chiudi l'aggiunta di applicazione",
+  "launcher.addApp.hint":
+    "Il rilevamento conosce solo il catalogo ufficiale. Qui aggiungi qualsiasi altro programma dal suo eseguibile.",
+  "launcher.addApp.path": "Eseguibile",
+  "launcher.addApp.pathPlaceholder": "C:\\Programmi\\MiaApp\\MiaApp.exe",
+  "launcher.addApp.browse": "Sfoglia…",
+  "launcher.addApp.browseUnavailable":
+    "Il selettore di file lo apre l'applicazione desktop; qui non c'è un backend che risponda.",
+  "launcher.addApp.browsing": "Scegli l'eseguibile nella finestra di sistema…",
+  "launcher.addApp.name": "Nome",
+  "launcher.addApp.namePlaceholder": "Nome nel catalogo",
+  "launcher.addApp.cancel": "Annulla",
+  "launcher.addApp.submit": "Aggiungi",
+  "launcher.addApp.submitBlocked": "Servono un nome e il percorso dell'eseguibile.",
+
+  "launcher.removeApp.title": "Elimina applicazione",
+  "launcher.removeApp.body": "{{name}} sarà eliminata dal catalogo del Launcher.",
+  "launcher.removeApp.hint":
+    "Non viene cancellato nulla dal disco. Se un profilo la usa come passo, toglila prima dal profilo.",
+  "launcher.removeApp.close": "Chiudi la conferma",
+  "launcher.removeApp.cancel": "Annulla",
+  "launcher.removeApp.confirm": "Elimina",
 };

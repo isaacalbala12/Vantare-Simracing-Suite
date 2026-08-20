@@ -471,3 +471,130 @@
 .orbit-profile-editor__autostart {
   margin-top: 18px;
 }
+
+/* Estrella de favorito, papelera y alta de aplicacion personalizada (ISA-376).
+   Todo el color sale de los tokens: el carmin del sistema para la estrella
+   marcada y la escala de tinta para el resto. */
+.orbit-launcher__app-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.orbit-launcher__star,
+.orbit-launcher__remove {
+  color: var(--orbit-ink-4);
+  transition: color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-launcher__star:hover:not(:disabled),
+.orbit-launcher__star:focus-visible,
+.orbit-launcher__remove:hover:not(:disabled),
+.orbit-launcher__remove:focus-visible {
+  color: var(--orbit-ink);
+}
+
+.orbit-launcher__star--on {
+  color: var(--orbit-ember);
+}
+
+.orbit-launcher__star--on:hover:not(:disabled),
+.orbit-launcher__star--on:focus-visible {
+  color: var(--orbit-coral);
+}
+
+.orbit-launcher__remove:hover:not(:disabled),
+.orbit-launcher__remove:focus-visible {
+  color: var(--orbit-red);
+}
+
+/* Un control sin backend no se esconde: se apaga y explica su motivo por
+   `data-tip`, que sigue funcionando sobre un boton deshabilitado. */
+.orbit-launcher__remove:disabled {
+  color: var(--orbit-ink-muted);
+  cursor: not-allowed;
+}
+
+.orbit-launcher__add-app {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--orbit-line-strong);
+  border-radius: var(--orbit-radius-control);
+  background: transparent;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--orbit-fast) var(--orbit-ease),
+    color var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-launcher__add-app:hover,
+.orbit-launcher__add-app:focus-visible {
+  border-color: rgba(240, 71, 85, 0.42);
+  color: var(--orbit-ink);
+}
+
+.orbit-launcher__add-app-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 50%;
+  font-size: var(--orbit-fs-panel);
+  line-height: 1;
+}
+
+.orbit-launcher__add-app-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orbit-launcher__add-app-copy b {
+  font-size: var(--orbit-fs-body);
+  font-weight: 650;
+}
+
+.orbit-launcher__add-app-copy span {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-add-app__hint,
+.orbit-launcher-confirm__body,
+.orbit-launcher-confirm__hint {
+  margin: 0 0 16px;
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-body);
+  line-height: 1.5;
+}
+
+.orbit-launcher-confirm__hint {
+  margin-bottom: 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-add-app__path {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.orbit-add-app__path > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.orbit-add-app__browsing {
+  margin: 8px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}

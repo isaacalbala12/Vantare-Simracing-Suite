@@ -20,6 +20,11 @@ export type LauncherOrbitApp = {
   methodKey: string;
   state: AppCatalogState;
   isFavorite: boolean;
+  /**
+   * Aplicacion anadida por el usuario, no del catalogo oficial. Solo estas se
+   * pueden eliminar: una oficial vuelve en el siguiente escaneo.
+   */
+  custom: boolean;
   /** Campos que `useAppIcon` necesita para resolver el icono real. */
   iconUrl?: string;
   iconOverridePath?: string;
@@ -84,6 +89,18 @@ export function appCatalogState(app: LauncherApp): AppCatalogState {
   return "catalog";
 }
 
+/** Prefijo con el que el backend Go nombra las aplicaciones del usuario. */
+export const CUSTOM_APP_ID_PREFIX = "custom:";
+
+/**
+ * Una aplicacion es del usuario cuando su id lleva el prefijo del backend.
+ * `availability.catalogued` dice lo mismo, pero solo despues de un escaneo:
+ * el id es la unica senal que no depende de la deteccion.
+ */
+export function isCustomApp(app: Pick<LauncherApp, "id">): boolean {
+  return app.id.startsWith(CUSTOM_APP_ID_PREFIX);
+}
+
 export function toOrbitApp(app: LauncherApp): LauncherOrbitApp {
   return {
     id: app.id,
@@ -95,11 +112,29 @@ export function toOrbitApp(app: LauncherApp): LauncherOrbitApp {
     methodKey: `launcher.method.${app.launchMethod === "steam-uri" ? "steam" : "executable"}`,
     state: appCatalogState(app),
     isFavorite: app.isFavorite === true,
+    custom: isCustomApp(app),
     iconUrl: app.iconUrl,
     iconOverridePath: app.iconOverridePath,
     executablePath: app.executablePath,
     userExecutablePath: app.userExecutablePath,
   };
+}
+
+/**
+ * Orden del catalogo: los favoritos primero y, dentro de cada grupo, por
+ * nombre. Sin esto marcar un favorito no cambiaba nada visible, porque la
+ * instantanea llega ordenada por id.
+ */
+export function orderCatalogApps(apps: LauncherOrbitApp[]): LauncherOrbitApp[] {
+  return [...apps].sort((a, b) => {
+    if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/** Favoritos del catalogo, para la columna contextual. */
+export function favoriteApps(apps: LauncherOrbitApp[]): LauncherOrbitApp[] {
+  return apps.filter((app) => app.isFavorite);
 }
 
 export function detectedCount(apps: LauncherApp[]): number {

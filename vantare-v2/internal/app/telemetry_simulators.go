@@ -9,6 +9,7 @@ import (
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
+	"github.com/vantare/overlays/v2/internal/telemetry/drivers/simx"
 )
 
 // ErrInvalidTelemetrySimulator reports a simulator registration the
@@ -78,4 +79,50 @@ func DefaultTelemetrySimulator() *TelemetrySimulator {
 			})
 		},
 	}
+}
+
+// SimXTelemetrySimulator is the synthetic diagnostic registration. It is never
+// selected by default: the composition root only uses it when
+// TelemetrySimXDriver is explicitly pointed at true, or directly from tests.
+// Its whole purpose is to prove that a new simulator reaches Overlay v2 with
+// its degradation declared and without touching a widget.
+func SimXTelemetrySimulator(config simx.Config) *TelemetrySimulator {
+	descriptor := driver.Descriptor{
+		ID:           simx.DriverID,
+		Priority:     10,
+		Capabilities: []driver.Capability{simx.CapabilitySynthetic},
+	}
+	return &TelemetrySimulator{
+		Descriptor:   descriptor,
+		Capabilities: simx.Capabilities(),
+		New: func(manager telemetrycore.ManagerConfig) (telemetrycore.SimulatorRuntime, error) {
+			return telemetrycore.NewSimulatorRuntime(telemetrycore.SimulatorRegistration[simx.Observation]{
+				Candidates: []telemetrycore.DriverCandidate[simx.Observation]{
+					{
+						Descriptor: descriptor,
+						Detect:     func(context.Context) (bool, error) { return true, nil },
+						New: func() (telemetrycore.Driver[simx.Observation], error) {
+							return simx.New(config), nil
+						},
+						Retryable: simx.IsRetryable,
+					},
+				},
+				Manager:    manager,
+				Mapper:     simx.NewBatchMapper(),
+				Unmappable: simx.IsUnmappableFrame,
+			})
+		},
+	}
+}
+
+// resolveTelemetrySimulator picks the active registration. The synthetic driver
+// stays behind an explicit diagnostic flag that is off by default.
+func resolveTelemetrySimulator(config TelemetryCoreRuntimeConfig) *TelemetrySimulator {
+	if config.Simulator != nil {
+		return config.Simulator
+	}
+	if config.TelemetrySimXDriver != nil && *config.TelemetrySimXDriver {
+		return SimXTelemetrySimulator(simx.Config{})
+	}
+	return DefaultTelemetrySimulator()
 }

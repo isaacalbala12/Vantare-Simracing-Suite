@@ -107,6 +107,10 @@ type TelemetryCoreRuntimeConfig struct {
 	// names a driver observation type, so a second simulator is a
 	// configuration change rather than a runtime change.
 	Simulator *TelemetrySimulator
+	// TelemetrySimXDriver registers the synthetic diagnostic driver instead of
+	// the default one. It is off unless explicitly pointed at true, and an
+	// explicit Simulator always wins over it.
+	TelemetrySimXDriver *bool
 }
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
@@ -266,10 +270,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
 	}
-	simulatorConfig := config.Simulator
-	if simulatorConfig == nil {
-		simulatorConfig = DefaultTelemetrySimulator()
-	}
+	simulatorConfig := resolveTelemetrySimulator(config)
 	if err := simulatorConfig.validate(); err != nil {
 		return nil, err
 	}

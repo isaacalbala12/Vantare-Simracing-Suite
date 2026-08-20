@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": "ISA-368",
-  "type": "improvement",
+  "type": "change",
   "summary": "Command Orbit es la única interfaz del Hub: la shell antigua desaparece y toda la app queda auditada (lint, i18n, estilos y tests).",
   "technicalNotes": [
     "Retirada completa de la shell V52 y del flag hub.orbit: OrbitShell se monta siempre; el Studio usa solo la disposición Orbit y Mis perfiles la capa Orbit.",

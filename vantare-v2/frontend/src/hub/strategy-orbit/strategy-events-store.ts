@@ -30,6 +30,22 @@ export const STRATEGY_LEGACY_KEY = "vantare.v03orbit.strategy";
 /** De dónde nace el evento: del usuario, de una serie del calendario o del puente. */
 export type StrategyEventSource = "custom" | "series" | "roster";
 
+/**
+ * Modo de tablero elegido en el asistente (ISA-377).
+ *
+ * `solo` es un evento de un solo piloto: no hay reparto entre compañeros ni
+ * disponibilidad que cuadrar, así que la pantalla esconde lo que sobra.
+ * `team` es el tablero completo.
+ */
+export type StrategyTeamMode = "solo" | "team";
+
+/**
+ * Cómo se rellena la estrategia. `telemetry` (ADR 0005) todavía no tiene
+ * fuente en el frontend: el asistente lo ofrece deshabilitado y ningún evento
+ * puede nacer con ese valor hasta que la fuente llegue.
+ */
+export type StrategyFillMode = "manual" | "telemetry";
+
 export interface StrategyEventRecord {
   id: string;
   name: string;
@@ -51,6 +67,15 @@ export interface StrategyEventRecord {
   availability?: Record<string, AvailabilitySegment[]>;
   /** Estrategia activa dentro del evento. */
   activeStrategyId?: string;
+  /** Tablero completo o de un solo piloto (asistente, ISA-377). */
+  teamMode?: StrategyTeamMode;
+  /** Cómo se rellenó: a mano o con telemetría (hoy siempre `manual`). */
+  fillMode?: StrategyFillMode;
+  /**
+   * Última vez que el usuario abrió este evento, en ISO. Es lo que ordena el
+   * menú de entrada y lo que alimenta la tarjeta «Continuar» (ISA-377).
+   */
+  lastOpenedAt?: string;
 }
 
 export interface StrategyEventsState {
@@ -106,6 +131,9 @@ function parseEvent(value: unknown): StrategyEventRecord | null {
       : undefined,
     activeStrategyId:
       typeof value.activeStrategyId === "string" ? value.activeStrategyId : undefined,
+    teamMode: value.teamMode === "solo" || value.teamMode === "team" ? value.teamMode : undefined,
+    fillMode: value.fillMode === "manual" ? "manual" : undefined,
+    lastOpenedAt: typeof value.lastOpenedAt === "string" ? value.lastOpenedAt : undefined,
   };
 }
 
@@ -274,6 +302,8 @@ export interface CustomEventInput {
   pitLossSec: number;
   team?: string;
   drivers: StrategyDriver[];
+  /** Elección del asistente; sin ella el evento es de equipo, como siempre. */
+  teamMode?: StrategyTeamMode;
 }
 
 /** Evento propio: exactamente lo que el usuario ha escrito. */
@@ -296,6 +326,9 @@ export function createCustomEvent(
     pitLossSec: input.pitLossSec,
     strategies: [firstStrategy(input.drivers, labels.strategyName, labels.strategyNote)],
     activeStrategyId: "s1",
+    teamMode: input.teamMode ?? "team",
+    fillMode: "manual",
+    lastOpenedAt: new Date().toISOString(),
   };
 }
 
@@ -314,6 +347,7 @@ export function createEventFromSeries(
   },
   me: StrategyDriver,
   labels: { strategyName: string; strategyNote: string },
+  teamMode: StrategyTeamMode = "team",
 ): StrategyEventRecord {
   const drivers = [me];
   return {
@@ -330,6 +364,9 @@ export function createEventFromSeries(
     pitLossSec: 60,
     strategies: [firstStrategy(drivers, labels.strategyName, labels.strategyNote)],
     activeStrategyId: "s1",
+    teamMode,
+    fillMode: "manual",
+    lastOpenedAt: new Date().toISOString(),
   };
 }
 
@@ -428,4 +465,51 @@ export function patchEvent(
 /** El evento seleccionado, o `null`. */
 export function activeEventOf(state: StrategyEventsState): StrategyEventRecord | null {
   return state.events.find((event) => event.id === state.activeId) ?? null;
+}
+
+/** Quita un evento de la lista; si era el activo, la vista vuelve al menú. */
+export function removeEvent(state: StrategyEventsState, id: string): StrategyEventsState {
+  const events = state.events.filter((event) => event.id !== id);
+  return { events, activeId: state.activeId === id ? null : state.activeId };
+}
+
+/**
+ * Marca un evento como recién abierto y lo deja activo. Es la única puerta por
+ * la que se entra al editor, así que `lastOpenedAt` no puede desincronizarse
+ * de lo que el usuario está mirando (ISA-377).
+ */
+export function openEvent(
+  state: StrategyEventsState,
+  id: string,
+  at: Date = new Date(),
+): StrategyEventsState {
+  if (!state.events.some((event) => event.id === id)) return state;
+  return {
+    activeId: id,
+    events: state.events.map((event) =>
+      event.id === id ? { ...event, lastOpenedAt: at.toISOString() } : event,
+    ),
+  };
+}
+
+/**
+ * El evento que el usuario abrió más recientemente, que es el que ofrece
+ * «Continuar». Los que nunca se abrieron no cuentan: nadie los ha visto.
+ */
+export function lastOpenedEventOf(state: StrategyEventsState): StrategyEventRecord | null {
+  const stamped = state.events.filter((event) => Boolean(event.lastOpenedAt));
+  if (stamped.length === 0) return null;
+  return stamped.reduce((best, event) =>
+    (event.lastOpenedAt ?? "") > (best.lastOpenedAt ?? "") ? event : best,
+  );
+}
+
+/** Los eventos guardados en el orden del menú: primero el más reciente. */
+export function eventsByRecency(state: StrategyEventsState): StrategyEventRecord[] {
+  return [...state.events].sort((a, b) => {
+    const left = a.lastOpenedAt ?? "";
+    const right = b.lastOpenedAt ?? "";
+    if (left !== right) return right.localeCompare(left);
+    return a.startAt.localeCompare(b.startAt);
+  });
 }

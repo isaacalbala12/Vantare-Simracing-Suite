@@ -40,6 +40,7 @@ export {
 } from "./ChainStep";
 export { Menu, type MenuProps, type MenuItem } from "./Menu";
 export { Drawer, type DrawerProps } from "./Drawer";
+export { ConfirmDialog, type ConfirmDialogProps, type ConfirmTone } from "./ConfirmDialog";
 export { Accordion, type AccordionProps } from "./Accordion";
 export { UnderlineTabs, type UnderlineTabsProps } from "./UnderlineTabs";
 export { ToastProvider, ToastRegion } from "./Toast";

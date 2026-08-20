@@ -67,11 +67,16 @@
   margin-top: 10px;
 }
 
+/* Tres acciones (volver, ajustes y restablecer): en cuanto la cabecera se
+   estrecha bajan de línea en vez de empujar al título. */
 .orbit-strategy__actions {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
+  max-width: 40%;
 }
 
 .orbit-strategy__tabs {
@@ -653,7 +658,132 @@
   gap: 8px;
 }
 
-/* Los dos caminos del estado inicial (briefing 07, parte B). */
+/* --------------------------- MENÚ DE ENTRADA Y ASISTENTE (ISA-377) */
+
+/* Continuar y Nueva estrategia comparten fila. Sin nada abierto «Nueva» se
+   queda sola y ocupa el ancho entero: la rejilla se ajusta al contenido. */
+.orbit-strategy__entry {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.orbit-strategy__entry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  text-align: left;
+}
+
+.orbit-strategy__entry-when {
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fila de una guardada: la fila abre, los botones repiten con nombre. */
+.orbit-strategy__saved {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orbit-strategy__saved-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.orbit-strategy__saved-row > .orbit-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-strategy__saved-acts {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+/* Pasos del asistente: rail de tres, el actual en tinta viva. */
+.orbit-strategy__steps {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-strategy__steps li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--orbit-ink-muted);
+  font-size: var(--orbit-fs-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orbit-strategy__steps li[data-state="done"] {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-strategy__steps li[data-state="now"] {
+  color: var(--orbit-ink);
+}
+
+.orbit-strategy__step-n {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  font-size: var(--orbit-fs-micro);
+  font-variant-numeric: tabular-nums;
+  place-items: center;
+}
+
+.orbit-strategy__steps li[data-state="now"] .orbit-strategy__step-n {
+  border-color: var(--orbit-coral);
+  background: color-mix(in srgb, var(--orbit-coral) 18%, transparent);
+  color: var(--orbit-coral);
+}
+
+/* La opción sin backend no se pinta como clicable: no se puede pulsar. */
+.orbit-strategy__opt--off {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 20px;
+  /* El carmín es la señal de «esto se puede pulsar»: apagarlo evita prometer
+     una vía que todavía no existe. */
+  opacity: 0.72;
+  filter: grayscale(0.6);
+  text-align: left;
+}
+
+.orbit-strategy__wizard-acts {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* Recomendados dentro del asistente: bloque, ya no superficie propia. */
+.orbit-strategy__rec-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-strategy__rec-meta {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+/* Los dos caminos del último paso del asistente (briefing 07, parte B). */
 
 .orbit-strategy__paths {
   display: grid;

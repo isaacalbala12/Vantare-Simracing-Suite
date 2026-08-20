@@ -1898,25 +1898,128 @@
         }
       }
     ],
-    "relative": [],
+    "relative": [
+      {
+        "id": "vehicle-000",
+        "gap": {
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      },
+      {
+        "id": "vehicle-001",
+        "gap": {
+          "v": -1.234,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 001",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-002",
+        "gap": {
+          "v": -2.468,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 002",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-003",
+        "gap": {
+          "v": -3.702,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 003",
+        "classId": "hypercar"
+      },
+      {
+        "id": "vehicle-004",
+        "gap": {
+          "v": -4.936,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 004",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-005",
+        "gap": {
+          "v": -6.17,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 005",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-006",
+        "gap": {
+          "v": -7.404,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 006",
+        "classId": "hypercar"
+      },
+      {
+        "id": "vehicle-007",
+        "gap": {
+          "v": -8.638,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 007",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-008",
+        "gap": {
+          "v": -9.872,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 008",
+        "classId": "gte"
+      }
+    ],
     "delta": {
       "seconds": {
         "q": "missing"
       },
+      "requested": "personal-best",
       "available": []
     },
     "fuel": {
       "remaining": {
-        "q": "missing"
+        "v": 42,
+        "q": "fresh"
       },
       "capacity": {
-        "q": "missing"
+        "v": 100,
+        "q": "fresh"
       },
       "perLap": {
         "q": "missing"
       },
       "estimatedLaps": {
-        "q": "missing"
+        "v": 79,
+        "q": "fresh"
       }
     },
     "spotter": {

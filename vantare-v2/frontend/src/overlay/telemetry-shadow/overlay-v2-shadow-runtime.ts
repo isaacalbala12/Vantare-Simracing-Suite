@@ -1,6 +1,9 @@
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+import { deltaDefinition } from "../widget-types/delta/delta-definition";
+import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
+import { relativeDefinition } from "../widget-types/relative/relative-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import {
   createOverlayV2PlayerInstrumentsComparator,
@@ -24,6 +27,9 @@ const STANDINGS_CONTENT = standingsDefinition.parseContent({
   classScope: "all-classes",
   rowCount: 20,
 });
+const DELTA_CONTENT = deltaDefinition.parseContent({ reference: "personal-best" });
+const RELATIVE_CONTENT = relativeDefinition.parseContent({});
+const FUEL_CONTENT = fuelStrategyDefinition.parseContent({});
 
 export type OverlayV2ShadowRuntime = Readonly<{
   acceptLegacy(epoch: number, sequence: number, snapshot: TelemetrySnapshot): void;
@@ -51,6 +57,9 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
     });
     comparator.compareSession({ ...pair, content: SESSION_CONTENT });
     comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT });
+    comparator.compareDelta({ ...pair, content: DELTA_CONTENT });
+    comparator.compareRelative({ ...pair, content: RELATIVE_CONTENT });
+    comparator.compareFuel({ ...pair, content: FUEL_CONTENT });
     compared.add(key);
     legacy.delete(key);
     overlayV2.delete(key);

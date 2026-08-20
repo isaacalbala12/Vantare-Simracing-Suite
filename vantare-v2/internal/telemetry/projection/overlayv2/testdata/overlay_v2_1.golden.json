@@ -83,25 +83,40 @@
         }
       }
     ],
-    "relative": [],
+    "relative": [
+      {
+        "id": "vehicle-000",
+        "gap": {
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
     "delta": {
       "seconds": {
         "q": "missing"
       },
+      "requested": "personal-best",
       "available": []
     },
     "fuel": {
       "remaining": {
-        "q": "missing"
+        "v": 42,
+        "q": "fresh"
       },
       "capacity": {
-        "q": "missing"
+        "v": 100,
+        "q": "fresh"
       },
       "perLap": {
         "q": "missing"
       },
       "estimatedLaps": {
-        "q": "missing"
+        "v": 79,
+        "q": "fresh"
       }
     },
     "spotter": {

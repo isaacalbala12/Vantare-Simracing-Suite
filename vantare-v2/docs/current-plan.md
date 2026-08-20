@@ -1,3 +1,34 @@
+Nota ISA-372/F8 lote 2a (2026-08-20, implementada localmente, sin promoción):
+- `builder_delta.go` sube a Go la resolución de referencia que
+  `delta-view-model.ts` (:111-118) hacía en el widget: el frame publica
+  `requested`, `available[]`, la `reference` efectiva y la `authority`, en vez
+  del repliegue silencioso a `player.deltaSeconds` que nunca decía cuál usaba.
+- `builder_relative.go` sube la selección y el orden de la ventana que
+  `relative-row-selection.ts` (:9-48) resolvía por distancia de vuelta. El
+  orden canónico es descendente por gap relativo derivado y reproduce el orden
+  de salida de v1; la ventana queda acotada a 8+8+ancla para que el coste de la
+  sección no dependa de la parrilla. `RelativeRowV2` gana `classId` aditivo.
+- `builder_fuel.go` publica depósito y capacidad canónicos y la proyección de
+  vueltas de sesión `ceil(remaining/lastLap)` con la peor calidad de las dos
+  entradas. `perLap` se declara **ausente**: su serie de consumo por vuelta solo
+  existe hoy en TypeScript y derivarla en la proyección crearía una segunda
+  autoridad; la derivación pertenece a `derive/` y queda como follow-up.
+- ViewModels v2 de `delta`, `relative` y `fuel-strategy` en shadow, detrás de
+  features apagadas por defecto. Ningún widget se conmuta y v1 sigue productivo.
+- Comparador ampliado a las tres features con tolerancias explícitas por campo
+  (progress 1e-9, gap 1e-6, depósito 1e-6, vueltas exacta) y filas de relative
+  por identidad con orden significativo. Gate sigue leyendo solo `phase=live`.
+- Presupuesto verde: sintético @104 = 34.650 B; golden real compacto @104 sube
+  de 21.775 B a 22.942 B.
+- A vigilar en sesión real: v1 ordena relative por distancia de vuelta y v2 por
+  gap derivado. Bajo tráfico pueden divergir; leer
+  `{feature="relative",field="rows.order",phase="live"}` antes de conmutar.
+- Ausentes declarados: `delta.trend`, mejor vuelta y vuelta prevista del delta,
+  dorsal y mejor vuelta por fila en relative, `fuel.perLap`/`requiredFuel`.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2a.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote2a` sobre `tc-integration@74e1a5a6`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+
 Nota ISA-372/F11 (2026-08-20, implementada localmente, sin promoción):
 - La cadencia de Overlay v2 se decide por sección antes de construir y de
   serializar el frame: `SectionCadence` + `SectionScheduler` puro con reloj

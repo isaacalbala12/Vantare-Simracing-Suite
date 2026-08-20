@@ -265,6 +265,7 @@ export interface OverlayPlayerInstrumentsV2 {
 
 export interface OverlayRelativeRowV2 {
   readonly authority: OverlayAuthorityV2;
+  readonly classId?: string | undefined;
   readonly gap: OverlayQValue<number>;
   readonly id: string;
   readonly name?: string | undefined;

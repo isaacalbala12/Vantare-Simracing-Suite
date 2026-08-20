@@ -28,6 +28,35 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   del wiring guard. Evidencia:
   `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`. Sin push, PR, CI
   remoto, merge, promoción ni release.
+- ISA-372/F8 lote 2a está implementada localmente sobre
+  `tc-integration@74e1a5a6` en `vantareapp/isa-372-tc-f8-builders-lote2a`. Tres
+  features más del frame v2 quedan pobladas con su dominio subido a Go.
+  `builder_delta.go` publica `requested`, `available[]`, la `reference`
+  efectiva y la `authority`, sustituyendo el repliegue silencioso a
+  `player.deltaSeconds` que `delta-view-model.ts` (:111-118) hacía sin decir
+  qué referencia usaba; `PreferencesV2` gana `DeltaReference` normalizada.
+  `builder_relative.go` sube la selección de la ventana de
+  `relative-row-selection.ts` (:9-48): el orden canónico es descendente por gap
+  relativo derivado, reproduce el orden de salida de v1 y queda acotado a 8+8
+  más el ancla, de modo que el coste de la sección no crece con la parrilla;
+  `RelativeRowV2` gana `classId` de forma aditiva y el validador del transporte
+  lo acepta. `builder_fuel.go` publica depósito y capacidad canónicos y la
+  proyección `ceil(remaining/lastLap)` con la peor calidad de sus dos entradas.
+  Decisión explícita en fuel: `perLap` se declara ausente en lugar de derivarse
+  aquí, porque su serie de consumo por vuelta solo existe hoy en el snapshot de
+  TypeScript y reconstruirla en la proyección crearía una segunda autoridad
+  sobre el consumo; la derivación pertenece a `derive/` y queda como follow-up.
+  Los ViewModels v2 de `delta`, `relative` y `fuel-strategy` quedan en shadow
+  detrás de features apagadas por defecto y ningún widget se conmuta. El
+  comparador cubre las tres features con tolerancias explícitas por campo y
+  filas de relative por identidad con orden significativo; el gate sigue
+  leyendo solo `phase=live`. Presupuesto verde: sintético @104 = 34.650 B y
+  golden real compacto @104 sube de 21.775 B a 22.942 B. Queda a vigilar en
+  sesión real que v1 ordena relative por distancia de vuelta y v2 por gap
+  derivado: bajo tráfico pueden divergir y hay que leer
+  `{feature="relative",field="rows.order",phase="live"}` antes de conmutar.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2a.md`. Sin push, PR,
+  CI remoto, merge, promoción ni release.
 - ISA-372/F8 lote 1 está implementada localmente sobre `tc-integration@f7e2cc07`
   en `vantareapp/isa-372-tc-f8-builders-lote1`. El comparador shadow v2
   segmenta por fase y el gate lee sólo `phase=live`: los 317k mismatches de

@@ -299,11 +299,11 @@ function validStanding(value: unknown): boolean {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name"])) return false;
+  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name", "classId"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     validQValue(value.gap, "number") && typeof value.side === "string" && value.side.length > 0 &&
     ["native", "derived", "estimated"].includes(value.authority as string) &&
-    optionalStringValue(value.name);
+    optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
   return valid;
 }

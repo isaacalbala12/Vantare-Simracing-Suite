@@ -1,3 +1,223 @@
+Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
+- Cierra los builders del contrato v2: todas las secciones del frame quedan
+  pobladas o declaradas con evidencia.
+- `controls` es nueva y aditiva: el historial de pedales sube a Go desde
+  `derive.ControlsHistory`. Forma compacta en el wire (tres arrays paralelos de
+  enteros por mil más un solo `windowMs`) porque las muestras son una por tick.
+  1.515 B al máximo canónico de 120 muestras, y es solo del jugador, así que no
+  escala con la parrilla. Muere la dependencia del acumulador TS en el camino
+  v2; el acumulador sigue vivo para v1 y se retira en F9.
+- `derive/pipeline.go` gana `CapturedAt` en `ControlSample`, copiado del sobre
+  igual que `SelfDeltaSample` ya hacía. Es el mínimo para que la serie lleve su
+  base de tiempo; no es una derivación nueva.
+- `builder_spotter.go` publica presencia lateral desde `WorldPosition` y
+  `Orientation` canónicos, con los mismos metros y las mismas puertas que
+  `internal/engineer/spotter` a sensibilidad normal. No se reutiliza su código
+  (clasifica un frame rF2 de producto), pero dos tests anclan umbral a umbral y
+  veredicto a veredicto contra su geometría. `mode` es `xyz` solo cuando la
+  clasificación pudo ejecutarse; si no `none` con lados en missing.
+- Divergencias del spotter declaradas para F13: sin puerta de Full Course
+  Yellow (el canónico no tiene fase de sesión), sensibilidad fija en normal, y
+  sin lista de zonas ni colapso de apilados.
+- Sin paridad v1 en spotter: no existe widget de spotter en Overlay v1 ni en
+  v2, así que no se crea ViewModel sin consumidor. Cobertura = tests del
+  builder con casos sintéticos izquierda/derecha/ambos/ninguno.
+- `damage` se declara inexistente con evidencia: no hay señal de daño en
+  `core.VehicleState`, ni en `schema/**`, ni en Overlay Projection v1, que la
+  lista como `unsupported-by-projection`. Los widgets v1 la leen del camino
+  Wails heredado y el único lector real es el privado de Engineer
+  (`DentSeverity`, `WheelDetachedCount`). Queda ausente de `CapabilitiesV2` en
+  vez de presente y vacía, con un tripwire que falla si aparece en el canónico.
+  Enganche para F10: dominio canónico -> mapeo del driver -> capability.
+- Comparador ampliado a `controls` con métrica `{feature,field,phase}` y gate
+  solo en `phase=live`; la serie se compara por solapamiento desde la muestra
+  más nueva, no por longitud. Tests `stale->live` y `transition`.
+- Presupuesto verde: sintético @104 sube de 34.650 B a 36.037 B (la ventana
+  llena de 120 muestras, peor caso real); golden real compacto @104 de 22.942 B
+  a 23.116 B, incremento constante en cualquier parrilla.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2b.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote2b` sobre `tc-integration@b17f6228`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+
+Nota ISA-372/F8 lote 2a (2026-08-20, implementada localmente, sin promoción):
+- `builder_delta.go` sube a Go la resolución de referencia que
+  `delta-view-model.ts` (:111-118) hacía en el widget: el frame publica
+  `requested`, `available[]`, la `reference` efectiva y la `authority`, en vez
+  del repliegue silencioso a `player.deltaSeconds` que nunca decía cuál usaba.
+- `builder_relative.go` sube la selección y el orden de la ventana que
+  `relative-row-selection.ts` (:9-48) resolvía por distancia de vuelta. El
+  orden canónico es descendente por gap relativo derivado y reproduce el orden
+  de salida de v1; la ventana queda acotada a 8+8+ancla para que el coste de la
+  sección no dependa de la parrilla. `RelativeRowV2` gana `classId` aditivo.
+- `builder_fuel.go` publica depósito y capacidad canónicos y la proyección de
+  vueltas de sesión `ceil(remaining/lastLap)` con la peor calidad de las dos
+  entradas. `perLap` se declara **ausente**: su serie de consumo por vuelta solo
+  existe hoy en TypeScript y derivarla en la proyección crearía una segunda
+  autoridad; la derivación pertenece a `derive/` y queda como follow-up.
+- ViewModels v2 de `delta`, `relative` y `fuel-strategy` en shadow, detrás de
+  features apagadas por defecto. Ningún widget se conmuta y v1 sigue productivo.
+- Comparador ampliado a las tres features con tolerancias explícitas por campo
+  (progress 1e-9, gap 1e-6, depósito 1e-6, vueltas exacta) y filas de relative
+  por identidad con orden significativo. Gate sigue leyendo solo `phase=live`.
+- Presupuesto verde: sintético @104 = 34.650 B; golden real compacto @104 sube
+  de 21.775 B a 22.942 B.
+- A vigilar en sesión real: v1 ordena relative por distancia de vuelta y v2 por
+  gap derivado. Bajo tráfico pueden divergir; leer
+  `{feature="relative",field="rows.order",phase="live"}` antes de conmutar.
+- Ausentes declarados: `delta.trend`, mejor vuelta y vuelta prevista del delta,
+  dorsal y mejor vuelta por fila en relative, `fuel.perLap`/`requiredFuel`.
+  Evidencia: `docs/telemetry-core/evidence/isa-372-f8-lote2a.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote2a` sobre `tc-integration@74e1a5a6`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+Nota ISA-372/F10 (2026-08-20, implementada localmente, sin promoción):
+- La fusión deja de ser privada del driver LMU: `internal/telemetry/fusion` es
+  neutra, admite N slots por señal, indexa la matriz de autoridad por `SignalID`
+  y devuelve `ErrRuleMissing` donde antes había un `panic`. LMU la usa a través
+  de una fachada delgada y sus tests y goldens siguen intactos.
+- `internal/telemetry/capability` separa `Supported` (declarado por el driver),
+  `Available` (por sesión, no puede ampliar el soporte) y `Modes` (cómo se
+  resolvió), con `spatial.longitudinal` y `spatial.lateral` separadas.
+- El manifiesto de Engineer se deriva del driver activo; deja de estar
+  hardcodeado a siete `Supported` en `telemetry_core_runtime.go:170-177`.
+- El composition root ya no nombra `lmu.Observation` ni `*lmu.BatchMapper`: un
+  `SimulatorRuntime` con el tipo de observación borrado y una registración por
+  configuración. LMU es el registro por defecto.
+- El driver sintético SimX (determinista, 50 Hz simulados, sin spatial de
+  rivales, sin weather y sin delta nativo) llega a Overlay v2 tras un flag de
+  diagnóstico apagado por defecto. El diff de la rama no contiene ningún archivo
+  bajo `frontend/` ni bajo `projection/overlayv2/`.
+- Hueco: el builder de Overlay v2 sigue expandiendo canal de adquisición a
+  capabilities de producto; el runtime ya le pasa además los ids declarados.
+  Es propiedad del lote 2a de F8. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f10-multisim.md`.
+- Rama `vantareapp/isa-372-tc-f10-capabilities-multisim` sobre
+  `tc-integration@74e1a5a6`; sin push, PR, merge ni promoción.
+
+Nota ISA-372/F11 (2026-08-20, implementada localmente, sin promoción):
+- La cadencia de Overlay v2 se decide por sección antes de construir y de
+  serializar el frame: `SectionCadence` + `SectionScheduler` puro con reloj
+  inyectado, dirty-trigger y techo de frescura para el tier lento.
+- El frame publicado sigue siendo completo; las secciones no programadas
+  reutilizan su valor memoizado. Contrato wire v2 sin cambios y `contract-gen
+  -check` verde.
+- Los defaults son cero, es decir el comportamiento actual sin regulación,
+  hasta medir bytes/s y CPU en el binario real (Wails + OBS).
+- `BenchmarkOverlayV2ByCadence` @104: plana 480 builds/s y 39.118 ns/op frente
+  a regulada 76 builds/s y 26.516 ns/op. Los B/s no cambian (78.829) porque el
+  contrato publica frame completo: se ahorra CPU y asignaciones, no payload.
+- El coordinador del frontend pierde los buckets por Hz y queda solo visual
+  (un bucle de repintado compartido).
+- Falta aplicar la línea de integración en `telemetry_core_runtime.go` y
+  retirar la excepción de `cadence.go` en el wiring guard. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f11-cadencias.md`.
+- Rama `vantareapp/isa-372-tc-f11-cadencias` sobre `tc-integration@f7e2cc07`;
+Nota ISA-372/F8 lote 1 (2026-08-20, implementada localmente, sin promoción):
+- El comparador shadow v2 segmenta por fase y el gate lee sólo `phase=live`.
+  Los 317k mismatches de `gear` de la sesión #1 y los 213+213 de la sesión #2
+  eran retención v1 frente a ocultación v2 en fase stale: diferencia de
+  contrato intencional, ahora contada como `declaredDifferences`.
+- Nueva fase `transition` para cuando el status v1 y el `source.state` v2
+  discrepan. Con 54 coches de IA el driver oscila stale↔live y los dos
+  productores ven el borde en instantes distintos: los 153 mismatches de
+  `display.status` medidos caen ahí y quedan fuera del gate.
+- Acumuladores e histograma de parseo rotan por epoch/sesión; los percentiles
+  describen sólo la ventana live. La ventana de emparejamiento sube de 8 a 64
+  con desalojo por secuencia más atrasada: corrige el atasco de ~2 min medido.
+- `builder_session.go` y `builder_standings.go`. El orden de la clasificación
+  sube a Go, incluido el fallback `index+1` que `standings-view-model.ts`
+  aplicaba en silencio; `ClassPosition` se deriva de ese orden.
+- ViewModels v2 de `standings` y `racing-flags` en shadow, detrás de features
+  apagadas por defecto. Ningún widget se conmuta y v1 sigue productivo.
+- Presupuesto verde: sintético @104 = 34.650 B; golden real compacto @104 con
+  104 filas de standings = 21.775 B.
+- Ausentes declarados, no inventados: bandera de sesión, dorsal, mejor vuelta
+  por fila e intervalo al coche de delante. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f8-lote1.md`.
+- Rama `vantareapp/isa-372-tc-f8-builders-lote1` sobre `tc-integration@f7e2cc07`;
+  sin push, PR, CI remoto, merge, promoción ni release.
+
+Nota ISA-372/F7 (2026-08-19, implementada localmente, sin promoción):
+- Engineer sale del bucle del sink mediante puerto asíncrono default-on:
+  snapshots latest-wins cap 1, timeout/recover y facts ordenados por otro canal
+  con cursor, retención acotada y resync explícito.
+- La regresión F0 con Engineer de 50 ms está activa: el intervalo local bajó de
+  92,9868 ms síncrono a 1,5167 ms tras F7.1 (0,5007 ms en repetición final),
+  siempre bajo el límite de 20 ms.
+- Strategy conserva builder/consumidor in-process, pero Hub/Wails/SSE quedan
+  default-off con flag temporal de rollback. Recording declara gap con rango e
+  `Incomplete` al rechazar sin bloqueo; sigue desconectado hasta F12.
+- Gates Go aplicables, contract-gen, wiring guard y diff-check pasan; vet sólo
+  conserva tres `unsafe.Pointer` heredados. Pendientes: sesión LMU real de
+  Engineer y callback de resync del consumidor. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f7-consumer-isolation.md`.
+- Rama `vantareapp/isa-372-tc-f7-aislamiento-consumidores` sobre
+  `tc-integration@f65f485f`; sin push, PR, CI remoto, merge, promoción ni
+  release.
+
+Nota ISA-372/F6 (2026-08-19, implementada localmente, sin promoción):
+- OverlayFrame v2 define el contrato compacto completo; este vertical slice
+  puebla player/session/capabilities y deja el resto explícitamente vacío.
+- El sintético completo de 104 vehículos mide 34.650 bytes. El parseo Node
+  JSON.parse+decoder midió CPU p99/op 0,720 ms en lotes; WebView2/OBS real
+  queda pendiente y no se infiere de Node.
+- v1 sigue productivo. v2 se construye post-commit, se publica después de v1 y
+  cualquier fallo queda aislado y contado. Wails/SSE usan el mismo store y
+  exponen solo diagnóstico sanitizado.
+- `pedals-telemetry` compara por epoch/secuencia el valor mostrado v1/v2; el feature
+  v2 permanece default-off. Paridad de goldens 1/20/44/104 y capturas
+  Playwright wide/medium/compact: PASS.
+- Gate real: mismatches=0 en al menos 5 sesiones de 20 minutos, una con más de
+  40 coches. Pendiente de Isaac. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f6-overlay-v2-slice.md`.
+- Rama `vantareapp/isa-372-tc-f6-overlay-frame-v2-slice` sobre
+  `tc-integration@bafe94d5`; sin push, PR, CI remoto, merge, promoción ni
+  release.
+
+Nota ISA-372/F3 (2026-08-19, implementada localmente, sin promoción):
+- `TelemetryEngine.Apply` es la frontera default-on de commit único para
+  reducer, coordinator y derive; el camino anterior queda como rollback.
+- Identidad LMU conserva slots durante 30 frames, usa LRU inactiva acotada a
+  512 y abre `StintID`/`FactDriverChanged` al cambiar piloto sin inventar Team.
+- Shadow Go privado compara semánticamente 1/30, se auto-desactiva por
+  presupuesto y no tiene efectos externos. Métricas cubren secuencia,
+  rechazos tipados, identidad, duración p50/p99 y divergencias.
+- Suite Go aplicable, replay por digest, build y diff-check pasan; vet conserva
+  exactamente tres `unsafe.Pointer` heredados. Benchmark sintético @104: p99
+  578,8–777,8 µs en ventanas de 200, pero 10,5–12,1 ms bajo ejecución
+  adaptativa sostenida por GC; el objetivo sostenido sigue pendiente. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f3-engine-apply.md`.
+- Rama `vantareapp/isa-372-tc-f3-engine-apply` sobre
+  `tc-integration@c52d6c1d`; sin push, PR, CI remoto, merge, promoción ni
+  release. LMU/Wails/OBS y gate de estabilidad real pendientes.
+
+Nota ISA-372/F5 (2026-08-19, implementada en rama, sin promoción):
+- El contrato TypeScript wire se genera de forma determinista desde raíces Go
+  explícitas de Overlay, Engineer, Strategy, Analysis y telemetrytransport; el
+  canonical permanece fuera por ADR 0008.
+- `contracts.ts` reexporta sobres y enums generados. Los cuatro goldens Go se
+  decodifican sin cambios y un test caracteriza la paridad del espejo anterior.
+- Hallazgo: `OverlayVehicleV1` tiene hoy 30 campos, no los 28 citados por el
+  expediente histórico; Go y el espejo TS ya coincidían.
+- Gate local/CI: regeneración temporal, comparación byte a byte y
+  `git diff --exit-code` sobre `frontend/src/generated/`. Pendiente revisión e
+  integración por el orquestador junto al carril F2. Sin push, PR, merge,
+  promoción ni release.
+Nota ISA-372 / F2 (2026-08-19, implementada localmente, sin promoción):
+- Telemetry Core y el store frontend degradan a stale por edad con reloj
+  inyectable y recuperan live al volver frames, sin reiniciar el runtime.
+- `statusRevision` acepta saltos mayores por el coalescing del transporte; el
+  último full permanece disponible, pero no se adapta bajo una revisión de
+  status incoherente.
+- Métricas `LastFrameAgeMs`/`WatchdogDegradations`, diagnóstico
+  `snapshot-stale-watchdog` y rollback default-on quedan cubiertos.
+- Gates locales: frontend 390 archivos/2.866 tests, Go, builds, lint focal y
+  Playwright de estados PASS; vet conserva tres `unsafe.Pointer` heredados y
+  launcher sigue excluido por su panic preexistente. Evidencia:
+  `docs/telemetry-core/evidence/isa-372-f2-watchdog.md`.
+- Rama `vantareapp/isa-372-tc-f2-watchdog-stale` sobre
+  `tc-integration@98c3e2f2`; sin push, PR, CI remoto, merge, promoción ni
+  release. LMU/Wails/OBS real pendiente.
+
 Nota OVERLAY-INPLACE-EDIT-FASE2 (2026-08-16, implementada en rama, sin promoción):
 - El modo edición in-place del overlay (Fase 1) se extiende con un panel
   flotante que permite editar contenido, apariencia y comportamiento del

@@ -1,19 +1,30 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eventName, type JSONObject, type ProjectionEnvelope } from "../../telemetry-transport/contracts";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { createWailsProjectionTelemetryAdapter } from "./projection-telemetry-adapter";
 
 describe("canonical projection telemetry adapter", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T09:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("publishes canonical mapped, stale and disconnected snapshots", () => {
     const handlers = new Map<string, (data: unknown) => void>();
     const snapshots: TelemetrySnapshot[] = [];
+    const onMappedSnapshot = vi.fn();
     const adapter = createWailsProjectionTelemetryAdapter({
       coordinator: coordinator(snapshots),
       runtime: "desktop",
       now: () => 1_000,
+      onMappedSnapshot,
       subscribe: (name, listener) => {
         handlers.set(name, listener);
         return () => handlers.delete(name);
@@ -27,6 +38,7 @@ describe("canonical projection telemetry adapter", () => {
       status: "ready",
       player: { inPit: false, speedKph: 0 },
     });
+    expect(onMappedSnapshot).toHaveBeenCalledWith(projection.epoch, projection.sequence, snapshots.at(-1));
     emitStatus(handlers, 2, "stale");
     expect(snapshots.at(-1)?.status).toBe("stale");
     emitStatus(handlers, 3, "stopped");
@@ -113,6 +125,29 @@ describe("canonical projection telemetry adapter", () => {
     });
 
     expect(snapshots.at(-1)?.status).toBe("disconnected");
+    adapter.stop();
+  });
+
+  it("propagates watchdog stale without inventing snapshot values", () => {
+    const handlers = new Map<string, (data: unknown) => void>();
+    const snapshots: TelemetrySnapshot[] = [];
+    const adapter = createWailsProjectionTelemetryAdapter({
+      coordinator: coordinator(snapshots),
+      runtime: "desktop",
+      subscribe: (name, listener) => {
+        handlers.set(name, listener);
+        return () => handlers.delete(name);
+      },
+    });
+    adapter.start();
+    const projection = readGoldenEnvelope();
+    emitStatus(handlers, 1, "live");
+    handlers.get(eventName("overlay", "projection"))?.(projection);
+    const ready = snapshots.at(-1)!;
+
+    vi.advanceTimersByTime(1_000);
+
+    expect(snapshots.at(-1)).toEqual({ ...ready, status: "stale" });
     adapter.stop();
   });
 });

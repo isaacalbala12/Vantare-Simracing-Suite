@@ -144,6 +144,12 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build
 
+      - name: Telemetry TypeScript contract
+        working-directory: ${{ env.VANTARE_DIR }}
+        run: |
+          go run ./tools/telemetry-contract-gen -check
+          git diff --exit-code -- frontend/src/generated/
+
       # ISA-118, ISA-172, ISA-173 and ISA-174 used to be carved out of these two
       # runs and repeated as advisory steps, which painted the gate red on every
       # pass. Their causes are fixed, so they are back inside the blocking runs.

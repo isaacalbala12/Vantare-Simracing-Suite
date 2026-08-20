@@ -47,6 +47,25 @@ func TestTelemetryCoreRuntimeSourceStatusIsCanonicalAndFailClosed(t *testing.T) 
 	}
 }
 
+func TestTelemetryEngineApplyFlagDefaultsOnAndCanRollback(t *testing.T) {
+	defaultRuntime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !defaultRuntime.telemetryEngineApply {
+		t.Fatal("TelemetryEngineApply defaulted off")
+	}
+
+	disabled := false
+	legacyRuntime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryEngineApply: &disabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacyRuntime.telemetryEngineApply {
+		t.Fatal("TelemetryEngineApply ignored explicit rollback")
+	}
+}
+
 func TestTelemetryCoreRuntimeDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})
 	if err != nil {

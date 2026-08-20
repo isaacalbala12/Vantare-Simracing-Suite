@@ -505,7 +505,7 @@ func FuzzPipelineAgainstHistoryOracle(f *testing.F) {
 			}
 			if freshness == schema.FreshnessFresh {
 				oracle = append(oracle, ControlSample{
-					Cursor:  schema.Cursor{Epoch: epoch, Sequence: sequence},
+					Cursor: schema.Cursor{Epoch: epoch, Sequence: sequence}, CapturedAt: observedCapturedAt(sequence),
 					Vehicle: "vehicle", Throttle: schema.Ratio(value%11) / 10, Brake: 0, Clutch: 1,
 				})
 				if len(oracle) > limit {

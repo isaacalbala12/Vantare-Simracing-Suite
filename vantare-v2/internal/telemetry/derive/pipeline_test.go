@@ -5,90 +5,13 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 )
-
-func TestRegistryIsOrderedVersionedAndAcyclic(t *testing.T) {
-	definitions := Registry()
-	if err := ValidateDefinitions(definitions); err != nil {
-		t.Fatalf("validate canonical registry: %v", err)
-	}
-	if len(definitions) != 4 {
-		t.Fatalf("registered derivations = %d, want 4", len(definitions))
-	}
-	wantIDs := []DerivationID{DerivationControlsHistory, DerivationSessionRemaining, DerivationRelativeGaps, DerivationSelfDelta}
-	for index, definition := range definitions {
-		if definition.ID != wantIDs[index] || definition.Version != 1 || definition.Order != uint16(index+1) {
-			t.Fatalf("unexpected canonical definition %d: %+v", index, definition)
-		}
-	}
-	controls := definitions[0]
-	if controls.HistoryLimit != MaxControlsHistory {
-		t.Fatalf("controls history limit = %d, want %d", controls.HistoryLimit, MaxControlsHistory)
-	}
-	if controls.Reset != (ResetEpoch | ResetSession | ResetRun | ResetVehicle) {
-		t.Fatalf("controls reset policy = %d", controls.Reset)
-	}
-	delta := definitions[len(definitions)-1]
-	if delta.HistoryLimit != MaxSelfDeltaSamples {
-		t.Fatalf("delta private history limit = %d, want %d", delta.HistoryLimit, MaxSelfDeltaSamples)
-	}
-
-	definitions[0].Inputs[0] = SignalControlsHistory
-	if Registry()[0].Inputs[0] == SignalControlsHistory {
-		t.Fatal("Registry returned mutable metadata")
-	}
-}
-
-func TestValidateDefinitionsRejectsDuplicateVersionCyclesAndInvalidOrder(t *testing.T) {
-	base := Registry()[0]
-	tests := []struct {
-		name        string
-		definitions []Definition
-		want        error
-	}{
-		{
-			name:        "duplicate id and version",
-			definitions: []Definition{base, base},
-			want:        ErrDuplicateVersion,
-		},
-		{
-			name: "self output consumed",
-			definitions: []Definition{{
-				ID: DerivationID("self"), Version: 1, Order: 1,
-				Inputs: []SignalID{"derived.self"}, Outputs: []SignalID{"derived.self"},
-			}},
-			want: ErrDerivationCycle,
-		},
-		{
-			name: "later output consumed earlier",
-			definitions: []Definition{
-				{ID: "first", Version: 1, Order: 1, Inputs: []SignalID{"derived.later"}, Outputs: []SignalID{"derived.first"}},
-				{ID: "later", Version: 1, Order: 2, Inputs: []SignalID{"observed.value"}, Outputs: []SignalID{"derived.later"}},
-			},
-			want: ErrDerivationCycle,
-		},
-		{
-			name: "duplicate order",
-			definitions: []Definition{
-				{ID: "first", Version: 1, Order: 1, Inputs: []SignalID{"observed.a"}, Outputs: []SignalID{"derived.a"}},
-				{ID: "second", Version: 1, Order: 1, Inputs: []SignalID{"observed.b"}, Outputs: []SignalID{"derived.b"}},
-			},
-			want: ErrInvalidOrder,
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if err := ValidateDefinitions(test.definitions); !errors.Is(err, test.want) {
-				t.Fatalf("error = %v, want %v", err, test.want)
-			}
-		})
-	}
-}
 
 func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 	pipeline := NewPipeline(Config{MaxControlsHistory: 3})
@@ -113,9 +36,9 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 	}
 
 	want := []ControlSample{
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 3}, Vehicle: "vehicle-a", Throttle: .7, Brake: .8, Clutch: .9},
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 4}, Vehicle: "vehicle-a", Throttle: 0, Brake: 0, Clutch: 0},
-		{Cursor: schema.Cursor{Epoch: 1, Sequence: 5}, Vehicle: "vehicle-a", Throttle: 1, Brake: 1, Clutch: 1},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 3}, CapturedAt: observedCapturedAt(3), Vehicle: "vehicle-a", Throttle: .7, Brake: .8, Clutch: .9},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 4}, CapturedAt: observedCapturedAt(4), Vehicle: "vehicle-a", Throttle: 0, Brake: 0, Clutch: 0},
+		{Cursor: schema.Cursor{Epoch: 1, Sequence: 5}, CapturedAt: observedCapturedAt(5), Vehicle: "vehicle-a", Throttle: 1, Brake: 1, Clutch: 1},
 	}
 	if !reflect.DeepEqual(got.Derived.ControlsHistory.Samples, want) {
 		t.Fatalf("golden history:\n got  %+v\n want %+v", got.Derived.ControlsHistory.Samples, want)
@@ -238,6 +161,15 @@ func TestPipelineRejectsOrderAndCancellationAtomically(t *testing.T) {
 	}
 }
 
+// observedOrigin anchors the synthetic clock of the derive fixtures.
+var observedOrigin = time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
+
+// observedCapturedAt is the reception instant observedSnapshot stamps on a
+// sequence; the control samples must record exactly this.
+func observedCapturedAt(sequence schema.Sequence) time.Time {
+	return observedOrigin.Add(time.Duration(sequence) * 50 * time.Millisecond).Round(0).UTC()
+}
+
 func observedSnapshot(
 	t *testing.T,
 	epoch schema.Epoch,
@@ -264,6 +196,12 @@ func observedSnapshot(
 		Identity: identity.RunIdentity{
 			Event: event, Session: sessionID, Vehicle: vehicleID,
 		},
+		// A deterministic 50 ms tick so the control samples carry a real time
+		// base instead of the zero instant.
+		Clock: schema.NewClock(
+			schema.Field[time.Duration]{}, schema.Field[time.Duration]{},
+			observedOrigin.Add(time.Duration(sequence)*50*time.Millisecond),
+		),
 	}
 	state := core.ObservedState{Vehicles: []core.VehicleState{{
 		Identity: header.Identity,

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -103,6 +102,14 @@ type Reducer struct {
 	state       ObservedState
 }
 
+// ReducerCandidate owns a validated next reducer state without publishing it.
+type ReducerCandidate struct {
+	reducer  *Reducer
+	header   envelope.Header
+	state    ObservedState
+	snapshot envelope.Snapshot[ObservedState]
+}
+
 func NewReducer() *Reducer {
 	return &Reducer{}
 }
@@ -114,30 +121,48 @@ func (reducer *Reducer) Apply(batch Batch) (envelope.Snapshot[ObservedState], er
 		return envelope.Snapshot[ObservedState]{}, ErrReducerRunning
 	}
 	defer reducer.running.Store(false)
-	return reducer.apply(batch)
-}
-
-func (reducer *Reducer) apply(batch Batch) (envelope.Snapshot[ObservedState], error) {
-	reducer.mu.Lock()
-	defer reducer.mu.Unlock()
-
-	if err := validateBatchHeader(reducer.header, reducer.initialized, batch.Header); err != nil {
+	candidate, err := reducer.Prepare(batch)
+	if err != nil {
 		return envelope.Snapshot[ObservedState]{}, err
 	}
+	reducer.Commit(candidate)
+	return candidate.Snapshot(), nil
+}
+
+// Prepare validates and owns a batch without advancing reducer state.
+func (reducer *Reducer) Prepare(batch Batch) (ReducerCandidate, error) {
+	reducer.mu.RLock()
+	defer reducer.mu.RUnlock()
+	if err := validateBatchHeader(reducer.header, reducer.initialized, batch.Header); err != nil {
+		return ReducerCandidate{}, err
+	}
 	if err := validateObservedState(batch.Header.Identity, batch.State); err != nil {
-		return envelope.Snapshot[ObservedState]{}, err
+		return ReducerCandidate{}, err
 	}
 
 	owned := cloneObservedState(batch.State)
 	snapshot, err := envelope.NewSnapshot(batch.Header, owned, cloneObservedState)
 	if err != nil {
-		return envelope.Snapshot[ObservedState]{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
+		return ReducerCandidate{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
 	}
+	return ReducerCandidate{reducer: reducer, header: batch.Header, state: owned, snapshot: snapshot}, nil
+}
 
-	reducer.header = batch.Header
-	reducer.state = owned
+// Snapshot returns the owned observed state prepared by this candidate.
+func (candidate ReducerCandidate) Snapshot() envelope.Snapshot[ObservedState] {
+	return candidate.snapshot
+}
+
+// Commit publishes a candidate prepared by this reducer.
+func (reducer *Reducer) Commit(candidate ReducerCandidate) {
+	if candidate.reducer != reducer {
+		return
+	}
+	reducer.mu.Lock()
+	defer reducer.mu.Unlock()
+	reducer.header = candidate.header
+	reducer.state = cloneObservedState(candidate.state)
 	reducer.initialized = true
-	return snapshot, nil
 }
 
 // Current returns an owned copy of the latest accepted snapshot.
@@ -154,49 +179,6 @@ func (reducer *Reducer) Current() (envelope.Snapshot[ObservedState], bool) {
 	return snapshot, true
 }
 
-// Run synchronously owns the reducer until input closes, cancellation, or the
-// first rejected batch. It does not close caller-owned channels.
-func (reducer *Reducer) Run(
-	ctx context.Context,
-	batches <-chan Batch,
-	snapshots chan<- envelope.Snapshot[ObservedState],
-) error {
-	if !reducer.running.CompareAndSwap(false, true) {
-		return ErrReducerRunning
-	}
-	defer reducer.running.Store(false)
-
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case batch, ok := <-batches:
-			if !ok {
-				return nil
-			}
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			snapshot, err := reducer.apply(batch)
-			if err != nil {
-				return fmt.Errorf("apply telemetry batch: %w", err)
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case snapshots <- snapshot:
-			}
-		}
-	}
-}
-
-func (reducer *Reducer) Running() bool {
-	return reducer.running.Load()
-}
-
 func validateBatchHeader(current envelope.Header, initialized bool, next envelope.Header) error {
 	if !next.Identity.SessionKnown() {
 		return ErrIncompleteRunIdentity
@@ -208,12 +190,8 @@ func validateBatchHeader(current envelope.Header, initialized bool, next envelop
 		if !current.Identity.SameSession(next.Identity) {
 			return ErrRunIdentityChanged
 		}
-		// Losing the active player is not a new session or epoch. Clearing the
-		// vehicle prevents consumers from treating a stale row as the player;
-		// assigning a different non-empty vehicle still requires a new epoch.
-		if next.Identity.Vehicle != "" && current.Identity.Vehicle != next.Identity.Vehicle {
-			return ErrRunIdentityChanged
-		}
+		// Player assignment is domain identity, not stream continuity. Slot
+		// policy and stint identity own changes within the same session.
 	}
 	return nil
 }

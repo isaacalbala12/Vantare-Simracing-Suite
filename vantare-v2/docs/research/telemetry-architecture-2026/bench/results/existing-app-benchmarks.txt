@@ -1,0 +1,13 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkTelemetryCoreCombined64Vehicles-16    	     158	   8073872 ns/op	 1746695 B/op	     196 allocs/op
+PASS
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkHubPublishSnapshot-16    	   16077	     71384 ns/op	   12636 B/op	     357 allocs/op
+PASS

@@ -1,0 +1,43 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkDriverCapturePath/tap-absent-16      	   40731	     32490 ns/op	   29404 B/op	     151 allocs/op
+BenchmarkDriverCapturePath/tap-active-16      	    7038	    197054 ns/op	  389523 B/op	     438 allocs/op
+BenchmarkDriverCapturePath/tap-saturated-16   	   26380	     48375 ns/op	   29407 B/op	     151 allocs/op
+BenchmarkSanitizeObjectOut44Vehicles-16       	    4956	    263526 ns/op	1232.59 MB/s	  360143 B/op	     287 allocs/op
+BenchmarkParseTrackFixture-16                 	   25152	     48844 ns/op	   29548 B/op	     155 allocs/op
+BenchmarkParseObjectOut44Vehicles-16          	   27538	     42714 ns/op	7604.61 MB/s	   29548 B/op	     155 allocs/op
+BenchmarkStableCopyAndParseTrackFixture-16    	   17385	     68301 ns/op	4755.71 MB/s	   29411 B/op	     151 allocs/op
+BenchmarkFusion-16                            	  352695	      3874 ns/op	     656 B/op	       6 allocs/op
+BenchmarkRESTDecodeObservations-16            	  227787	      5498 ns/op	    2112 B/op	      24 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	11.603s
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/core
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkFanoutPublishSnapshot64Vehicles-16      	  112946	     10794 ns/op	   40960 B/op	       1 allocs/op
+BenchmarkFanoutPublishSnapshotScalar-16          	 4537660	       236.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFanoutWriteFact-16                      	 9682119	       133.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkReducerApply64Vehicles-16               	   47428	     28496 ns/op	   85416 B/op	       5 allocs/op
+BenchmarkSessionCoordinatorApply64Vehicles-16    	   36697	     30921 ns/op	   62720 B/op	       9 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/core	8.223s
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/derive
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkSelfDeltaTracker-16           	  516984	      3074 ns/op	    9838 B/op	       2 allocs/op
+BenchmarkGapDerivation44Vehicles-16    	  245518	      5210 ns/op	    1792 B/op	       1 allocs/op
+BenchmarkPipelineApply64Vehicles-16    	   10000	    143970 ns/op	  232296 B/op	      13 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/derive	4.410s
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/catalog
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkByID-16                 	94150137	        15.10 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTypedStructAccess-16    	1000000000	         1.922 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/catalog	3.639s

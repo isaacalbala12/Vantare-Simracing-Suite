@@ -19,6 +19,11 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 - Las credenciales de sesión dañadas se descartan de forma segura para evitar fallos repetidos al arrancar.
 - Las operaciones concurrentes de restauración, renovación y cierre ya no pueden recuperar una sesión cerrada.
 
+**Telemetría (interno, sin efecto visible todavía)**
+
+- Vantare declara ahora qué puede y qué no puede hacer cada simulador en vez de deducirlo del dato: una función ausente se anuncia como no soportada, no como un hueco vacío. Con Le Mans Ultimate no cambia nada de lo que ves.
+- Los avisos que necesitan saber si tienes un coche a izquierda o derecha se apagan solos en un simulador que no publica esa posición, en lugar de intentar avisar sin datos.
+
 **Supabase y recuperación**
 
 - El despliegue de Functions queda limitado a la lista aprobada y siempre ejecuta su control de superficie antes de publicar.
@@ -45,9 +50,19 @@ Cambios funcionales verificados en rama aislada; esta sección no representa una
 **Plataforma y CI (interno, sin efecto visible para testers)**
 
 - Autofix con política fail-closed v2, máquina de estados para jobs de agentes con jaulas de seguridad, triage DeepSeek de solo lectura y dispatch GitHub App en cloud, y TDD cloud con diff gate y revisión Opus. (ISA-319, ISA-320, ISA-321, ISA-323)
+- Red de seguridad de Telemetry Core: tests rojos saltados para D-01…D-08 y baseline de proyección para grids de 1/20/44/104 vehículos; no cambia el runtime. (ISA-373, pendiente de promoción)
+- Telemetry Core retira fan-out, deltas RFC 7396, hashes por frame y transportes desconectados; un guard ejecutable evita volver a confundir código muerto con wiring real. (ISA-372/F4, pendiente de promoción)
+- Telemetry Core puebla tres secciones más del frame de overlay en shadow: el delta ya dice qué referencia está usando realmente en lugar de caer a otra en silencio, la ventana del relative y su orden se resuelven en el backend, y el combustible publica depósito, capacidad y vueltas restantes de sesión. El consumo medio por vuelta queda declarado ausente hasta que exista su derivación canónica. Ningún widget cambia todavía. (ISA-372/F8 lote 2a, pendiente de promoción)
+- Telemetry Core cierra las secciones del frame de overlay en shadow: la gráfica de pedales deja de depender de un acumulador del navegador por widget y pasa a leer una serie que el backend deriva una sola vez, y el spotter publica si hay coche a izquierda o derecha con la misma geometría que ya usa el ingeniero de carrera. El daño queda declarado inexistente con evidencia: hoy ninguna señal de daño llega al núcleo. Ningún widget cambia todavía. (ISA-372/F8 lote 2b, pendiente de promoción)
 
 **Pendiente de promoción (verificado en rama aislada, aún no en esta build)**
 
+- **Telemetry Core**: un payload demasiado grande o un fallo de Overlay,
+  Strategy o Engineer ya no detiene la adquisición completa; el producto
+  afectado pasa a degradado, el descarte queda contado y los panics de sus
+  fronteras se recuperan. El límite de 256 KiB se conserva y el payload
+  compacto para 104 vehículos sigue pendiente de una fase posterior.
+  (ISA-372/F1)
 - **Perfiles**: guardar perfiles ya acepta los perfiles oficiales Vantare Endurance (antes los rechazaba). (ISA-335)
 - **Studio**: el blade de Input Telemetry vuelve a respetar su proporción. (ISA-336)
 - **Widget nuevo Track Map (TM-01)**: primer corte con la geometría estática del circuito y silueta en Vantare Endurance, sin posicionar vehículos todavía. (ISA-344)

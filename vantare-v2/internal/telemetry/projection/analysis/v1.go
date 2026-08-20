@@ -1,5 +1,5 @@
-// Package analysis defines the small live contract available to Telemetry
-// Analysis. Historical files and recording formats remain separate concerns.
+// Package analysis is deprecated as a live projection. It remains only as the
+// transport-neutral contract reference for F12.b post-session Analysis.
 package analysis
 
 import (
@@ -14,11 +14,13 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
-const (
-	VersionV1               projection.Version = 1
-	CurrentVersion          projection.Version = VersionV1
-	MinimumSupportedVersion projection.Version = VersionV1
-)
+const VersionV1 projection.Version = 1
+
+// Deprecated: reference version for F12.b post-session Analysis; no live consumer.
+const CurrentVersion projection.Version = VersionV1
+
+// Deprecated: reference version for F12.b post-session Analysis; no live consumer.
+const MinimumSupportedVersion projection.Version = VersionV1
 
 type Capability string
 
@@ -110,6 +112,7 @@ func missingPlayer(id identity.VehicleID) PlayerV1 {
 	}
 }
 
+// Deprecated: reference projector for F12.b post-session Analysis; no live consumer.
 func ProjectV1(snapshot envelope.Snapshot[derive.FinalState]) (SnapshotV1, error) {
 	projected, err := (ProjectorV1{}).Project(snapshot)
 	if err != nil {

@@ -124,6 +124,7 @@ type CoordinatorStatus struct {
 	BackendCommitted    Cursor
 	AcceptedBatches     uint64
 	RejectedBatches     uint64
+	GapMarkers          uint64
 	CommittedBatches    uint64
 	Checkpoints         uint64
 	LastCheckpointAtUTC time.Time

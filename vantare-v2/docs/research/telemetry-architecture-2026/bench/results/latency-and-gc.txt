@@ -1,0 +1,10 @@
+3200 frames por escenario
+escenario                               media        p50        p95        p99        max     GCs  alloc total   heap final
+actual (v1+marshal) x1                   88µs       73µs      131µs      160µs      775µs     128     302.2 MiB      2451 KiB
+compacto (frame+marshal) x1              20µs         0s       63µs       94µs       94µs      70     155.5 MiB      3070 KiB
+actual (v1+marshal) x20                 242µs      250µs      312µs      321µs      344µs     137     978.4 MiB     12231 KiB
+compacto (frame+marshal) x20             59µs       63µs       98µs      125µs      129µs      64     452.9 MiB      8025 KiB
+actual (v1+marshal) x104              1.013ms      973µs    1.263ms    1.352ms    1.402ms     118    3950.8 MiB     62943 KiB
+compacto (frame+marshal) x104           310µs      313µs      407µs      444µs      470µs      55    1797.6 MiB     55296 KiB
+
+Presupuesto por frame: 16.67 ms @60 Hz, 33.3 ms @30 Hz, 50 ms @20 Hz, 100 ms @10 Hz

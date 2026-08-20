@@ -9,6 +9,9 @@ import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagn
 import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
+import { buildPedalsTelemetryViewModelV2 } from "../widget-types/pedals-telemetry/pedals-telemetry-view-model-v2";
+import type { PedalsTelemetryContent } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
+import { hasOverlayV2Feature, OVERLAY_V2_PLAYER_INSTRUMENTS } from "../telemetry-shadow/overlay-v2-features";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -92,6 +95,18 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
       ...model,
       history: readInputTelemetryHistory(widget.id, snapshot, inputContent.historySeconds),
     } as InputTelemetryViewModel;
+  }
+  if (
+    widget.type === "pedals-telemetry" &&
+    props.runtime?.overlayV2Frame &&
+    props.runtime.overlayV2Source &&
+    hasOverlayV2Feature(props.runtime.overlayV2Features, OVERLAY_V2_PLAYER_INSTRUMENTS)
+  ) {
+    model = buildPedalsTelemetryViewModelV2(
+      props.runtime.overlayV2Frame,
+      props.runtime.overlayV2Source,
+      content as PedalsTelemetryContent,
+    );
   }
 
   let registration;

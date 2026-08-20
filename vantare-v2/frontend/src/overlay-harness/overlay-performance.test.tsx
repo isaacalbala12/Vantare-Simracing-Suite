@@ -3,43 +3,46 @@ import { buildMockTelemetry } from "../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
 
 describe("Overlay Studio V3 performance contracts", () => {
-  it("bounds notifications by shared Hz buckets instead of widget count", () => {
-    const ticks = new Map<number, () => void>();
+  // Since ISA-372 / F11 the cadence is regulated in Go, before projecting and
+  // serializing. The frontend bounds work by repaint, not by Hz buckets.
+  it("bounds notifications by repaint, not by widget count", () => {
+    let frame: (() => void) | null = null;
+    let started = 0;
     const coordinator = createTelemetryRateCoordinator({
-      createScheduler: (hz) => ({
-        start(onTick) {
-          ticks.set(hz, onTick);
+      createScheduler: () => ({
+        start(onFrame) {
+          started += 1;
+          frame = onFrame;
         },
         stop() {
-          ticks.delete(hz);
+          frame = null;
         },
       }),
     });
-    const slowListeners = Array.from({ length: 20 }, () => vi.fn());
-    const fastListener = vi.fn();
-    slowListeners.forEach((listener) => coordinator.subscribe(15, listener));
-    coordinator.subscribe(30, fastListener);
+    const listeners = Array.from({ length: 20 }, () => vi.fn());
+    listeners.forEach((listener) => coordinator.subscribe(15, listener));
+    coordinator.subscribe(30, vi.fn());
 
     for (let index = 0; index < 120; index += 1) {
       coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
     }
-    for (let index = 0; index < 15; index += 1) ticks.get(15)?.();
-    for (let index = 0; index < 30; index += 1) ticks.get(30)?.();
+    frame?.();
 
-    expect(slowListeners.every((listener) => listener.mock.calls.length === 15)).toBe(true);
-    expect(fastListener).toHaveBeenCalledTimes(30);
-    expect(ticks.size).toBe(2);
+    // 120 snapshots collapse into a single repaint for every subscriber, and
+    // 21 subscribers share one loop.
+    expect(listeners.every((listener) => listener.mock.calls.length === 1)).toBe(true);
+    expect(started).toBe(1);
     coordinator.dispose();
-    expect(ticks.size).toBe(0);
+    expect(frame).toBeNull();
   });
 
-  it("isolates a subscriber updateHz change and cleans the old bucket", () => {
-    const stops = new Map<number, number>();
+  it("keeps the repaint loop alive while any subscriber remains", () => {
+    let stops = 0;
     const coordinator = createTelemetryRateCoordinator({
-      createScheduler: (hz) => ({
+      createScheduler: () => ({
         start() {},
         stop() {
-          stops.set(hz, (stops.get(hz) ?? 0) + 1);
+          stops += 1;
         },
       }),
     });
@@ -49,10 +52,11 @@ describe("Overlay Studio V3 performance contracts", () => {
     coordinator.subscribe(30, newListener);
     unsubscribeOld();
 
-    expect(stops.get(15)).toBe(1);
+    expect(stops).toBe(0);
     coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
     expect(oldListener).not.toHaveBeenCalled();
     expect(newListener).not.toHaveBeenCalled();
     coordinator.dispose();
+    expect(stops).toBe(1);
   });
 });

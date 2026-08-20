@@ -1,8 +1,8 @@
 # Spec (SDD · SPECIFY): migración gradual del runtime ingame Redline a Qt Quick
 
-Fecha: 2026-08-20. Issue: [#690](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/690) (`OS-QT-01`). Proyecto: GitHub Project **Vantare**, estado **In Progress**. Rama: `vantareapp/isa-690-sdd-migracion-qt-redline`. Base: `origin/nightly@3ee6d7269a76f6cea9deb5659f85fad2989abd8f`.
+Fecha: 2026-08-20. Issue: [#690](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/690) (`OS-QT-01`). Proyecto: GitHub Project **Vantare**, estado **In Progress**. Rama: `vantareapp/isa-690-sdd-migracion-qt-redline`. Base: `origin/nightly@64a33318a8a852c0e089b221357b8e4e8e3c442c`.
 
-Estado SDD: **SPECIFY — borrador pendiente de aprobación explícita de Isaac**. No autoriza PLAN, TASKS, implementación, integración ni promoción.
+Estado SDD: **SPECIFY aprobado explícitamente por Isaac el 2026-08-20; PLAN en preparación**. La aprobación no autoriza TASKS, implementación, integración ni promoción.
 
 ---
 
@@ -722,9 +722,9 @@ El resultado válido también puede ser **STOP**: si Qt no cierra motion,
 hardware, packaging o mantenimiento sin aumentar claramente la complejidad, se
 conserva Wails y se archiva el candidate con la evidencia.
 
-## 19. Decisiones solicitadas a Isaac para cerrar SPECIFY
+## 19. Decisiones aprobadas por Isaac para cerrar SPECIFY
 
-Propuesta recomendada:
+Isaac aprobó explícitamente esta propuesta el 2026-08-20:
 
 1. aprobar el alcance **ingame desktop + solo Redline**;
 2. aprobar selección **por perfil completo**, nunca por widget;
@@ -736,5 +736,6 @@ Propuesta recomendada:
 7. aprobar los gates y presupuestos de §§8–9 como punto de partida;
 8. exigir una nueva aprobación tras PLAN y otra tras TASKS antes de implementar.
 
-Hasta esa aprobación no se redacta el PLAN ejecutable ni se modifica código de
-producto desde #690.
+La fase PLAN puede redactarse. Debe someterse a otra aprobación explícita antes
+de redactar TASKS, y TASKS necesita una aprobación adicional antes de modificar
+código de producto desde #690.

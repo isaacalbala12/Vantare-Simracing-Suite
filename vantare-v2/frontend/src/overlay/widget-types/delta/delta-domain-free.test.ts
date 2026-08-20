@@ -32,7 +32,7 @@ describe("delta v2 view model", () => {
       requested: "personal-best",
       available: ["session-best"],
     });
-    const model = buildDeltaViewModelV2(frame, { state: "live" }, CONTENT);
+    const model = buildDeltaViewModelV2(frame, { state: "live" });
 
     expect(model.deltaText).toBe("-0.238");
     expect(model.tone).toBe("gaining");
@@ -48,7 +48,6 @@ describe("delta v2 view model", () => {
     const losing = buildDeltaViewModelV2(
       withDelta(golden(20), { seconds: { v: 0.41, q: "fresh" }, reference: "personal-best", requested: "personal-best", available: ["personal-best"] }),
       { state: "live" },
-      CONTENT,
     );
     expect(losing.deltaText).toBe("+0.410");
     expect(losing.tone).toBe("losing");
@@ -56,7 +55,6 @@ describe("delta v2 view model", () => {
     const zero = buildDeltaViewModelV2(
       withDelta(golden(20), { seconds: { q: "fresh" }, reference: "personal-best", requested: "personal-best", available: ["personal-best"] }),
       { state: "live" },
-      CONTENT,
     );
     expect(zero.deltaText).toBe("0.000");
     expect(zero.tone).toBe("neutral");
@@ -66,7 +64,7 @@ describe("delta v2 view model", () => {
     const update = golden(20);
     if (!update.frame) throw new Error("golden frame missing");
     expect(update.frame.delta.seconds.q).toBe("missing");
-    const model = buildDeltaViewModelV2(update.frame, update.source, CONTENT);
+    const model = buildDeltaViewModelV2(update.frame, update.source);
     expect(model.status).toBe("missing");
     expect(model.deltaText).toBe("—");
     expect(model.progress).toBe(0);
@@ -74,7 +72,7 @@ describe("delta v2 view model", () => {
   });
 
   it("leaves the fields the canonical state does not carry at the placeholder", () => {
-    const model = buildDeltaViewModelV2(golden20Frame(), { state: "live" }, CONTENT);
+    const model = buildDeltaViewModelV2(golden20Frame(), { state: "live" });
     expect(model.bestLapText).toBe("—");
     expect(model.lapText).toBeUndefined();
     expect(model.predictedLapText).toBeUndefined();
@@ -86,7 +84,7 @@ describe("delta v2 view model", () => {
     if (!update.frame) throw new Error("golden frame missing");
     const playerRow = update.frame.standings.find((row) => row.id === update.frame?.player.id);
     expect(playerRow).toBeDefined();
-    const model = buildDeltaViewModelV2(update.frame, update.source, CONTENT);
+    const model = buildDeltaViewModelV2(update.frame, update.source);
     expect(model.lastLapText).toBe("1:31.234");
   });
 
@@ -94,15 +92,15 @@ describe("delta v2 view model", () => {
     const frame = withDelta(golden(20), {
       seconds: { v: 0.2, q: "stale" }, reference: "personal-best", requested: "personal-best", available: ["personal-best"],
     });
-    expect(buildDeltaViewModelV2(frame, { state: "stale" }, CONTENT).status).toBe("stale");
-    const stopped = buildDeltaViewModelV2(frame, { state: "stopped" }, CONTENT);
+    expect(buildDeltaViewModelV2(frame, { state: "stale" }).status).toBe("stale");
+    const stopped = buildDeltaViewModelV2(frame, { state: "stopped" });
     expect(stopped.status).toBe("disconnected");
     expect(stopped.deltaText).toBe("—");
   });
 
   it("exposes a stable displayed projection for the shadow comparator", () => {
     const displayed = deltaDisplayedValues(
-      buildDeltaViewModelV2(golden20Frame(), { state: "live" }, CONTENT),
+      buildDeltaViewModelV2(golden20Frame(), { state: "live" }),
     );
     expect(Object.keys(displayed).sort()).toEqual([
       "bestLapText", "deltaText", "lastLapText", "progress", "splitText", "status", "tone",

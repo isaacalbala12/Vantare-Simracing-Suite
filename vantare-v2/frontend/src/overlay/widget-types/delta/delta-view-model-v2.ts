@@ -22,8 +22,9 @@ const DELTA_PROGRESS_SCALE_SECONDS = 2;
  * The widget's own `content.reference` is deliberately NOT used to pick a
  * value: the frame is one per tick and the requested reference is a runtime
  * preference, so a widget asking for another one renders the effective
- * reference the frame does carry instead of recomputing anything. Use
- * `deltaHonoursRequest` to detect and surface that difference.
+ * reference the frame does carry instead of recomputing anything. The builder
+ * takes no widget content at all for that reason; use `deltaHonoursRequest` to
+ * detect and surface the difference where it matters.
  *
  * Fields with no canonical signal behind them stay at the placeholder and are
  * declared for the shadow comparator instead of invented: bestLapText (no best
@@ -33,7 +34,6 @@ const DELTA_PROGRESS_SCALE_SECONDS = 2;
 export function buildDeltaViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
-  _content: DeltaContent,
 ): DeltaViewModel {
   if (source.state === "error" || source.state === "stopped") {
     return unavailable(source.state === "error" ? "error" : "disconnected", source.reason || undefined);

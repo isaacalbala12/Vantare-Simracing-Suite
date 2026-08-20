@@ -89,6 +89,10 @@ export function relativeDisplayedValues(
 export const OVERLAY_V2_RELATIVE_DECLARED_GAPS: readonly string[] = Object.freeze([
   "rows[].driverNumber",
   "rows[].bestLapText",
+  // Overlay v1 blanked the gap of a lapped car and kept the row; the v2 builder
+  // leaves a vehicle without a canonical relative gap out of the window, so the
+  // rendered gap text is a declared contract difference, not a divergence.
+  "rows[].gapText",
 ]);
 
 function unavailableStatus(state: string): RelativeViewModel["status"] {

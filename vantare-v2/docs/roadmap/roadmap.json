@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T06:06:19Z",
+  "generatedAt": "2026-08-20T15:24:38Z",
   "digest": {
-    "lastCommit": "5c70921f8056499c8a50482f45acff3319667a5f"
+    "lastCommit": "15bbeec4a419ab0edb54a509ce94077bafcd3042"
   },
   "phases": [
     {
@@ -456,24 +456,24 @@
     },
     {
       "id": "launcher-favorite-toggle",
-      "type": "plan",
+      "type": "feature",
       "title": {
-        "es": "Marcar favorito en el Launcher",
-        "en": "Toggling a Launcher favourite",
-        "pt": "Marcar favorito no Launcher",
-        "it": "Segnare un preferito nel Launcher"
+        "es": "Favoritos y aplicaciones propias en el Launcher",
+        "en": "Favourites and custom apps in the Launcher",
+        "pt": "Favoritos e aplicações próprias no Launcher",
+        "it": "Preferiti e app personalizzate nel Launcher"
       },
       "body": {
-        "es": "Hoy el favorito solo ordena y colorea la lista; falta el control para alternarlo desde Orbit.",
-        "en": "A favourite only sorts and tints the list today; the control to toggle it from Orbit is missing.",
-        "pt": "Hoje o favorito apenas ordena e colore a lista; falta o controlo para o alternar a partir do Orbit.",
-        "it": "Oggi il preferito ordina e colora solo la lista; manca il controllo per attivarlo da Orbit."
+        "es": "La estrella de cada aplicación marca el favorito y manda en el orden, y «Añadir aplicación» da de alta programas que el escaneo no detecta.",
+        "en": "Each app's star marks it as a favourite and drives the ordering, and \"Add application\" registers programs the scan does not detect.",
+        "pt": "A estrela de cada aplicação marca o favorito e comanda a ordem, e «Adicionar aplicação» regista programas que a análise não deteta.",
+        "it": "La stella di ogni applicazione segna il preferito e comanda l'ordine, e «Aggiungi applicazione» registra programmi che la scansione non rileva."
       },
       "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
       }
     },
     {
@@ -522,7 +522,7 @@
     },
     {
       "id": "diagnostics-logs",
-      "type": "plan",
+      "type": "feature",
       "title": {
         "es": "Registros y últimos eventos en Diagnóstico",
         "en": "Logs and recent events in Diagnostics",
@@ -530,16 +530,16 @@
         "it": "Log e ultimi eventi in Diagnostica"
       },
       "body": {
-        "es": "Falta decidir dónde viven los registros y abrir un canal de log del backend al hub.",
-        "en": "Where the logs live is still undecided, and there is no log channel from the backend to the hub.",
-        "pt": "Falta decidir onde vivem os registos e abrir um canal de log do backend para o hub.",
-        "it": "Manca decidere dove vivono i log e aprire un canale di log dal backend all'hub."
+        "es": "La app escribe un registro rotado en disco, Diagnóstico abre su carpeta y lista los últimos eventos con su nivel.",
+        "en": "The app writes a rotating log to disk, and Diagnostics opens its folder and lists recent events with their level.",
+        "pt": "A app escreve um registo rotativo em disco, e Diagnóstico abre a sua pasta e lista os últimos eventos com o seu nível.",
+        "it": "L'app scrive un log rotante su disco, e Diagnostica apre la sua cartella ed elenca gli ultimi eventi con il loro livello."
       },
       "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
       }
     },
     {

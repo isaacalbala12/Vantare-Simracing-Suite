@@ -320,10 +320,148 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByTestId("orbit-settings-hk-status").textContent).toContain("2");
   });
 
-  it("el diagnóstico no inventa registros cuando no hay búfer", () => {
-    mount("diagnostics");
-    const log = screen.getByTestId("orbit-settings-log");
-    expect(log.querySelectorAll("li")).toHaveLength(0);
-    expect(log.textContent?.length).toBeGreaterThan(0);
+  // ISA-379: «Registros» y «Últimos eventos» dejan de estar honestos-vacíos.
+  // El backend publica ahora la ubicación del log y su anillo de eventos, así
+  // que estas pruebas fijan las dos caras: con canal y sin él.
+  describe("diagnóstico · registros y últimos eventos", () => {
+    /** Bridge simulado del anillo del backend, como el de canales de arriba. */
+    function mountDiagnosticsWith(options: {
+      log?: { entries: unknown[]; path: string; available: boolean };
+      locations?: unknown[];
+    }) {
+      const handlers = new Map<string, (event: { data: unknown }) => void>();
+      const emitted: { name: string; data: unknown }[] = [];
+      vi.spyOn(Events, "On").mockImplementation(((name: string, cb: unknown) => {
+        handlers.set(name, cb as (event: { data: unknown }) => void);
+        return () => handlers.delete(name);
+      }) as never);
+      vi.spyOn(Events, "Emit").mockImplementation(((name: string, data: unknown) => {
+        emitted.push({ name, data });
+        if (name === "applog:get" && options.log) {
+          handlers.get("applog")?.({ data: options.log });
+        }
+        if (name === "storage:get" && options.locations) {
+          handlers.get("storage")?.({
+            data: { locations: options.locations, totalBytes: 0 },
+          });
+        }
+        return Promise.resolve(true);
+      }) as never);
+      mount("diagnostics");
+      return { handlers, emitted };
+    }
+
+    const entry = (seq: number, level: string, message: string) => ({
+      seq,
+      level,
+      message,
+      time: new Date(2026, 7, 20, 10, 0, seq).toISOString(),
+    });
+
+    it("sin canal de registros lo dice en vez de inventar filas", () => {
+      mountDiagnosticsWith({});
+      const log = screen.getByTestId("orbit-settings-log");
+      expect(log.querySelectorAll("li")).toHaveLength(0);
+      expect(log.textContent?.length).toBeGreaterThan(0);
+      // Tampoco se ofrece copiar algo que no existe.
+      expect(screen.queryByTestId("orbit-settings-log-copy")).toBeNull();
+    });
+
+    it("con el anillo del backend pinta una fila por evento y su nivel", async () => {
+      mountDiagnosticsWith({
+        log: {
+          available: true,
+          path: "C:\\logs\\vantare.log",
+          entries: [
+            entry(1, "info", "HTTP server: listening"),
+            entry(2, "warn", "warning: hotkey ya registrado"),
+            entry(3, "error", "storage error: disco lleno"),
+          ],
+        },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("orbit-settings-log").querySelectorAll("li")).toHaveLength(3);
+      });
+      const rows = [...screen.getByTestId("orbit-settings-log").querySelectorAll("li")];
+      // Más reciente primero: es donde mira quien acaba de ver algo romperse.
+      expect(rows.map((row) => row.dataset.level)).toEqual(["error", "warn", "info"]);
+      expect(rows[0].textContent).toContain("disco lleno");
+    });
+
+    it("el filtro por nivel deja solo los eventos de ese nivel", async () => {
+      mountDiagnosticsWith({
+        log: {
+          available: true,
+          path: "C:\\logs\\vantare.log",
+          entries: [
+            entry(1, "info", "arranque"),
+            entry(2, "error", "storage error: disco lleno"),
+            entry(3, "info", "perfil cargado"),
+          ],
+        },
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("orbit-settings-log").querySelectorAll("li")).toHaveLength(3);
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /^Error/ }));
+
+      await waitFor(() => {
+        const rows = [...screen.getByTestId("orbit-settings-log").querySelectorAll("li")];
+        expect(rows).toHaveLength(1);
+        expect(rows[0].textContent).toContain("disco lleno");
+      });
+    });
+
+    it("un evento empujado se añade sin duplicar el que ya vino en el snapshot", async () => {
+      const { handlers } = mountDiagnosticsWith({
+        log: {
+          available: true,
+          path: "C:\\logs\\vantare.log",
+          entries: [entry(1, "info", "arranque")],
+        },
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("orbit-settings-log").querySelectorAll("li")).toHaveLength(1);
+      });
+
+      // El mismo `seq` que ya está, y después uno nuevo.
+      handlers.get("applog:entry")?.({ data: entry(1, "info", "arranque") });
+      handlers.get("applog:entry")?.({ data: entry(2, "warn", "warning: algo raro") });
+
+      await waitFor(() => {
+        const rows = [...screen.getByTestId("orbit-settings-log").querySelectorAll("li")];
+        expect(rows).toHaveLength(2);
+        expect(rows[0].textContent).toContain("algo raro");
+      });
+    });
+
+    it("ofrece abrir la carpeta de registros cuando el backend publica la ubicación", async () => {
+      const { emitted } = mountDiagnosticsWith({
+        locations: [
+          { key: "configs", path: "C:\\configs", bytes: 0, files: 0, exists: true, clearable: false },
+          { key: "logs", path: "C:\\logs", bytes: 10, files: 1, exists: true, clearable: false },
+        ],
+      });
+
+      const row = await screen.findByTestId("orbit-settings-logs-folder");
+      expect(row.textContent).toContain("C:\\logs");
+      fireEvent.click(within(row).getByRole("button"));
+
+      expect(emitted).toContainEqual({ name: "storage:reveal", data: { key: "logs" } });
+    });
+
+    it("sin ubicación de registros no pinta un botón que no abriría nada", async () => {
+      mountDiagnosticsWith({
+        locations: [
+          { key: "configs", path: "C:\\configs", bytes: 0, files: 0, exists: true, clearable: false },
+        ],
+      });
+
+      const row = await screen.findByTestId("orbit-settings-logs-folder");
+      expect(within(row).queryByRole("button")).toBeNull();
+      expect(row.textContent?.length).toBeGreaterThan(0);
+    });
   });
 });

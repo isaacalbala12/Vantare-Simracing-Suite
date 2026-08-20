@@ -217,6 +217,52 @@ try {
         });
       }
 
+      // ── Diagnóstico: «Últimos eventos» pinta el anillo del backend con sus
+      // niveles, y «Registros» ofrece abrir la carpeta. Las dos tarjetas
+      // estuvieron honestamente vacías hasta que el backend publicó el canal y
+      // la ubicación (ISA-379); esto impide que vuelvan a quedarse mudas.
+      if (shot.noPageScroll && section === "diagnostics") {
+        await page.waitForFunction(
+          () =>
+            document.querySelectorAll('[data-testid="orbit-settings-log"] li').length > 0,
+          undefined,
+          { timeout: 5000 },
+        );
+        const levels = await page.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="orbit-settings-log"] li')].map(
+            (row) => row.dataset.level,
+          ),
+        );
+        for (const level of ["info", "warn", "error"]) {
+          if (!levels.includes(level)) {
+            throw new Error(`${label}: la lista de eventos no enseña ningún «${level}»`);
+          }
+        }
+        // Los tres niveles tienen que distinguirse a la vista, no solo en el
+        // DOM: si comparten color la lista no vale para nada.
+        const colours = await page.evaluate(() => {
+          const seen = {};
+          for (const row of document.querySelectorAll('[data-testid="orbit-settings-log"] li')) {
+            const badge = row.querySelector(".orbit-set-log__level");
+            if (badge) seen[row.dataset.level] = getComputedStyle(badge).color;
+          }
+          return seen;
+        });
+        if (new Set(Object.values(colours)).size !== 3) {
+          throw new Error(`${label}: los niveles no se distinguen por color: ${JSON.stringify(colours)}`);
+        }
+        // Y la carpeta de registros tiene que ofrecer un botón real.
+        const logsRow = page.getByTestId("orbit-settings-logs-folder");
+        await logsRow.waitFor();
+        if ((await logsRow.locator("button").count()) !== 1) {
+          throw new Error(`${label}: «Registros» no ofrece el botón de abrir carpeta`);
+        }
+        await page.screenshot({
+          path: path.join(output, `orbit-ajustes-registros-${label}.png`),
+          fullPage: false,
+        });
+      }
+
       // ── Atajos: grabar una combinación la pinta en keycaps.
       if (shot.noPageScroll && section === "hotkeys") {
         const row = page.getByTestId("orbit-keycap-row").first();

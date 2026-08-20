@@ -154,6 +154,10 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.diag.folder": "Cartella dati",
   "settings.diag.folderOpen": "Apri",
   "settings.diag.folderEmpty": "Il backend non ha ancora dichiarato nessuna cartella.",
+  "settings.diag.logs": "Cartella dei registri",
+  "settings.diag.logsOpen": "Apri",
+  "settings.diag.logsUnavailable":
+    "Questa installazione non ha dove scrivere il registro, quindi resta solo in memoria per la sessione.",
   "settings.diag.sampling": "Campionamento CPU",
   "settings.diag.samplingSub": "Metrica di diagnostica locale.",
   "settings.diag.report": "Rapporto di diagnostica",
@@ -165,6 +169,16 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.diag.events": "Ultimi eventi",
   "settings.diag.eventsMeta": "sessione corrente",
   "settings.diag.eventsEmpty":
-    "Vantare non mantiene un buffer di registri consultabile dall'interfaccia, quindi qui non c'è nulla da mostrare. Il rapporto di diagnostica porta invece lo stato completo.",
+    "Il backend di questa sessione non pubblica il suo registro all’interfaccia, quindi qui non c’è nulla da mostrare. Il rapporto di diagnostica porta invece lo stato completo.",
+  "settings.diag.eventsQuiet": "Il backend non ha ancora registrato nulla in questa sessione.",
+  "settings.diag.eventsFiltered": "Nessun evento di questa sessione ha quel livello.",
+  "settings.diag.eventsCount": "{{n}} in questa sessione",
+  "settings.diag.eventsCopy": "Copia",
+  "settings.diag.eventsCopied": "Copiato",
+  "settings.diag.eventsFilter": "Filtra eventi per livello",
+  "settings.diag.eventsLevel.all": "Tutti",
+  "settings.diag.eventsLevel.info": "Info",
+  "settings.diag.eventsLevel.warn": "Avviso",
+  "settings.diag.eventsLevel.error": "Errore",
   "settings.diag.none": "—",
 };

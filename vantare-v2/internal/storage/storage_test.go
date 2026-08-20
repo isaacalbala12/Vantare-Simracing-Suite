@@ -12,12 +12,13 @@ func newTestService(t *testing.T) (*Service, string, string) {
 	root := t.TempDir()
 	configs := filepath.Join(root, "configs")
 	telemetry := filepath.Join(root, "telemetry")
-	for _, dir := range []string{configs, telemetry} {
+	logs := filepath.Join(root, "logs")
+	for _, dir := range []string{configs, telemetry, logs} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)
 		}
 	}
-	return New(configs, telemetry), configs, telemetry
+	return New(configs, telemetry, logs), configs, telemetry
 }
 
 func write(t *testing.T, path string, size int) {
@@ -97,7 +98,7 @@ func TestClearEmptiesTelemetryButKeepsTheDirectory(t *testing.T) {
 }
 
 func TestClearIsFineWhenThereIsNothingThere(t *testing.T) {
-	service := New(t.TempDir(), filepath.Join(t.TempDir(), "never-written"))
+	service := New(t.TempDir(), filepath.Join(t.TempDir(), "never-written"), t.TempDir())
 
 	if _, err := service.Clear(TelemetryKey); err != nil {
 		t.Fatalf("Clear on a missing directory: %v", err)
@@ -119,12 +120,16 @@ func TestUnknownKeysDoNotResolveToAPath(t *testing.T) {
 }
 
 func TestSummaryReportsAMissingDirectoryWithoutFailing(t *testing.T) {
-	service := New(filepath.Join(t.TempDir(), "absent"), filepath.Join(t.TempDir(), "absent"))
+	service := New(
+		filepath.Join(t.TempDir(), "absent"),
+		filepath.Join(t.TempDir(), "absent"),
+		filepath.Join(t.TempDir(), "absent"),
+	)
 
 	summary := service.Summary()
 
-	if len(summary.Locations) != 2 {
-		t.Fatalf("expected both locations to be reported, got %d", len(summary.Locations))
+	if len(summary.Locations) != 3 {
+		t.Fatalf("expected every location to be reported, got %d", len(summary.Locations))
 	}
 	for _, location := range summary.Locations {
 		if location.Exists {
@@ -135,5 +140,45 @@ func TestSummaryReportsAMissingDirectoryWithoutFailing(t *testing.T) {
 		if location.Path == "" {
 			t.Fatalf("%q must still report its path", location.Key)
 		}
+	}
+}
+
+// ISA-379: Diagnostics offers an "open logs folder" button, which is only
+// honest if the service actually answers for that location.
+func TestSummaryReportsTheLogsLocation(t *testing.T) {
+	service, _, _ := newTestService(t)
+	summary := service.Summary()
+
+	logs := find(t, summary, LogsKey)
+	if logs.Path == "" {
+		t.Fatalf("logs location must report its path")
+	}
+	if logs.Clearable {
+		t.Fatalf("logs must not be clearable: the app holds the live file open")
+	}
+}
+
+func TestClearRefusesLogs(t *testing.T) {
+	service, _, _ := newTestService(t)
+
+	if _, err := service.Clear(LogsKey); !errors.Is(err, ErrNotClearable) {
+		t.Fatalf("Clear(logs) error = %v, want ErrNotClearable", err)
+	}
+}
+
+// A build with nowhere writable to log still has to answer for the rest.
+func TestAnEmptyLogsDirectoryIsOmittedRatherThanFaked(t *testing.T) {
+	root := t.TempDir()
+	service := New(filepath.Join(root, "configs"), filepath.Join(root, "telemetry"), "")
+
+	summary := service.Summary()
+
+	for _, location := range summary.Locations {
+		if location.Key == LogsKey {
+			t.Fatalf("logs was reported with no directory configured: %+v", location)
+		}
+	}
+	if err := service.Reveal(LogsKey); !errors.Is(err, ErrUnknownLocation) {
+		t.Fatalf("Reveal(logs) error = %v, want ErrUnknownLocation", err)
 	}
 }

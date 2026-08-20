@@ -154,6 +154,10 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.diag.folder": "Pasta de dados",
   "settings.diag.folderOpen": "Abrir",
   "settings.diag.folderEmpty": "O backend ainda não declarou nenhuma pasta.",
+  "settings.diag.logs": "Pasta de registos",
+  "settings.diag.logsOpen": "Abrir",
+  "settings.diag.logsUnavailable":
+    "Esta instalação não tem onde escrever o registo, por isso ele fica apenas em memória durante a sessão.",
   "settings.diag.sampling": "Amostragem de CPU",
   "settings.diag.samplingSub": "Métrica de diagnóstico local.",
   "settings.diag.report": "Relatório de diagnóstico",
@@ -165,6 +169,16 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.diag.events": "Últimos eventos",
   "settings.diag.eventsMeta": "sessão atual",
   "settings.diag.eventsEmpty":
-    "O Vantare não mantém um buffer de registos consultável pela interface, por isso não há nada para mostrar aqui. O relatório de diagnóstico leva o estado completo.",
+    "O backend desta sessão não publica o seu registo ao hub, por isso não há nada para mostrar aqui. O relatório de diagnóstico leva o estado completo.",
+  "settings.diag.eventsQuiet": "O backend ainda não registou nada nesta sessão.",
+  "settings.diag.eventsFiltered": "Nenhum evento desta sessão tem esse nível.",
+  "settings.diag.eventsCount": "{{n}} nesta sessão",
+  "settings.diag.eventsCopy": "Copiar",
+  "settings.diag.eventsCopied": "Copiado",
+  "settings.diag.eventsFilter": "Filtrar eventos por nível",
+  "settings.diag.eventsLevel.all": "Todos",
+  "settings.diag.eventsLevel.info": "Info",
+  "settings.diag.eventsLevel.warn": "Aviso",
+  "settings.diag.eventsLevel.error": "Erro",
   "settings.diag.none": "—",
 };

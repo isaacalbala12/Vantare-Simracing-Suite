@@ -22,6 +22,7 @@ import (
 	"github.com/vantare/overlays/v2/configs"
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/authsession"
@@ -211,6 +212,38 @@ func strategyRepositoryRoot(cfgDir string) (string, error) {
 		return "", fmt.Errorf("configs directory must be absolute")
 	}
 	return filepath.Join(filepath.Dir(filepath.Clean(cfgDir)), "data", "strategy"), nil
+}
+
+// logsRoot places the application log the same way telemetry sessions are
+// placed: an installed build writes under LocalAppData, a portable or
+// development build writes beside its own root. Logs follow session data rather
+// than the configs directory because they are disposable machine output, not
+// something the user authored.
+func logsRoot(cfgDir string) (string, error) {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve user config directory: %w", err)
+	}
+	localDataDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve local data directory: %w", err)
+	}
+	return resolveLogsRoot(cfgDir, userConfigDir, localDataDir)
+}
+
+func resolveLogsRoot(cfgDir string, userConfigDir string, localDataDir string) (string, error) {
+	if cfgDir == "" || !filepath.IsAbs(cfgDir) {
+		return "", fmt.Errorf("configs directory must be absolute")
+	}
+	cfgDir = filepath.Clean(cfgDir)
+	installedConfigDir := filepath.Join(userConfigDir, "Vantare", "configs")
+	if samePath(cfgDir, installedConfigDir) {
+		if localDataDir == "" || !filepath.IsAbs(localDataDir) {
+			return "", fmt.Errorf("local data directory must be absolute")
+		}
+		return filepath.Join(filepath.Clean(localDataDir), "Vantare", "logs"), nil
+	}
+	return filepath.Join(filepath.Dir(cfgDir), "data", "logs"), nil
 }
 
 type strategyCommandExecutor interface {
@@ -988,6 +1021,32 @@ func main() {
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
+	// The log is installed before anything else runs, so the startup warnings
+	// below — the ones that explain why a feature is missing — are the first
+	// thing in the file a support request will carry. In a windowed build they
+	// previously went to a stderr nobody could read.
+	cfgDir := configsDir()
+	logsDir := ""
+	if root, err := logsRoot(cfgDir); err == nil {
+		logsDir = root
+	}
+	// An empty logsDir has to stay empty rather than being joined with the file
+	// name: filepath.Join("", "vantare.log") is a relative path, which would
+	// drop a log file into whatever directory the app happened to start in.
+	logPath := ""
+	if logsDir != "" {
+		logPath = filepath.Join(logsDir, applog.FileName)
+	}
+	logService, logErr := applog.New(applog.Options{Path: logPath, Console: os.Stderr})
+	logService.Install()
+	defer func() { _ = logService.Close() }()
+	if logErr != nil {
+		// Only the file failed. The ring and the console still work, so this is
+		// a degraded log rather than no log, and it says so on the record.
+		logsDir = ""
+		log.Printf("warning: log file unavailable, keeping this session in memory only: %v", logErr)
+	}
+
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
@@ -1147,8 +1206,8 @@ func main() {
 	}
 	wailsApp.OnShutdown(cleanupApp)
 	defer cleanupApp()
-	// Get and verify configs directory first
-	cfgDir := configsDir()
+	// The configs directory was already resolved at the top of main so the log
+	// could be opened beside it.
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
@@ -1832,7 +1891,7 @@ func main() {
 	// Local data. The service is handed the two directories resolved here and
 	// answers only for those: the frontend sends a location key, never a path,
 	// so nothing else on the disk is reachable through these events.
-	storageSvc := storage.New(cfgDir, sessionsRoot)
+	storageSvc := storage.New(cfgDir, sessionsRoot, logsDir)
 
 	emitStorage := func() {
 		emitter.Emit("storage", storageSvc.Summary())
@@ -1872,6 +1931,22 @@ func main() {
 		// Emit the summary either way: after a refusal the UI has to go back to
 		// showing what is really on disk.
 		emitter.Emit("storage", summary)
+	})
+
+	// Application log. The hub asks once for the ring and is pushed each new
+	// entry after that, so the Diagnostics list survives a reload without the
+	// backend having to replay anything.
+	wailsApp.Event.On("applog:get", func(event *application.CustomEvent) {
+		emitter.Emit("applog", map[string]any{
+			"entries": logService.Snapshot(),
+			"path":    logService.Path(),
+			// The hub uses this to decide between "no events yet" and "no log
+			// available", which are different things to tell the user.
+			"available": true,
+		})
+	})
+	logService.Observe(func(entry applog.Entry) {
+		emitter.Emit("applog:entry", entry)
 	})
 
 	// Testing Center report drafts persist only resumable form text. The path is

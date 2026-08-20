@@ -580,6 +580,7 @@ jobs:
           )
           args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
           python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --dry-run --revision "$SOURCE_SHA" \
+            --manifest "$manifest" \
             --html-output "$RUNNER_TEMP/vantare-channel.html" "${args[@]}" > "$RUNNER_TEMP/channel.json"
           python .github/scripts/discord_communications.py build --dry-run --channel "${{ inputs.publish_channel }}" \
             --version "${{ steps.contract.outputs.tag }}" --notes "$NOTES" \
@@ -656,6 +657,7 @@ jobs:
           args=(); for file in "${files[@]}"; do args+=(--fragment "$file"); done
           DISCORD_PROGRESS_WEBHOOK_URL="$VANTARE_TESTER_WEBHOOK" \
           python .github/scripts/discord_communications.py "${{ inputs.publish_channel }}" --revision "$SOURCE_SHA" \
+            --manifest "$manifest" \
             --image "$RUNNER_TEMP/vantare-${{ inputs.publish_channel }}.png" "${args[@]}"
           # The changelog channel is optional. Posting it to whatever webhook
           # happened to be configured would put the card in the wrong channel,

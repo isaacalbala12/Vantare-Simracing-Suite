@@ -220,6 +220,51 @@ def _split_visual_copy(text: str, heading_limit: int = 72) -> tuple[str, str]:
     return text[:boundary].rstrip(" ,;"), text[boundary:].lstrip(" ,;")
 
 
+# The visual card clamps the heading to 4 lines and the body to 5. Anything
+# longer used to be cut mid-word by the clamp, which is exactly the illegible
+# copy this budget exists to prevent: we trim first, at a sentence or word
+# boundary, so the reader always gets a finished thought.
+CARD_HEADING_LIMIT = 96
+CARD_BODY_LIMIT = 230
+
+
+def _fit_text(text: str, limit: int) -> str:
+    """Trim to a sentence boundary, else a word boundary, marking the cut."""
+    value = " ".join((text or "").split())
+    if len(value) <= limit:
+        return value
+    window = value[:limit]
+    sentence = max(window.rfind(". "), window.rfind("; "), window.rfind(" · "))
+    if sentence >= limit // 2:
+        return window[:sentence + 1].rstrip(" ;·")
+    boundary = window.rfind(" ")
+    if boundary < limit // 3:
+        boundary = limit - 1
+    trimmed = window[:boundary]
+    # Ending inside an aside that never closes reads worse than ending before
+    # it, so an orphaned "(" takes its whole fragment with it.
+    open_paren = trimmed.rfind("(")
+    if open_paren > limit // 3 and trimmed.find(")", open_paren) == -1:
+        trimmed = trimmed[:open_paren]
+    return trimmed.rstrip(" ,;:·") + "…"
+
+
+def _manifest_headline(manifest: dict[str, Any]) -> str:
+    """The manifest title without the brand prefix the card already shows."""
+    title = " ".join(str(manifest.get("title") or "").split())
+    return re.sub(r"^Vantare\s*[—–-]\s*", "", title).strip()
+
+
+def load_manifest(path: str) -> dict[str, Any]:
+    value = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: release manifest must be an object")
+    for field in ("tag", "title", "summary"):
+        if not isinstance(value.get(field), str) or not value[field].strip():
+            raise ValueError(f"{path}: manifest field {field} must be a non-empty string")
+    return value
+
+
 def _branded_html(*, eyebrow: str, title: str, accent: str, stamp: str,
                   cards: list[tuple[str, str, str]], footer_left: str, footer_right: str) -> str:
     if not cards:
@@ -294,7 +339,8 @@ def _fragment_order(fragment: dict[str, Any]) -> tuple[int, str]:
 
 
 def render_channel_update(fragments: list[dict[str, Any]], revision: str, channel: str,
-                          *, include_image: bool = False) -> dict[str, Any]:
+                          *, include_image: bool = False,
+                          manifest: dict[str, Any] | None = None) -> dict[str, Any]:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     copy = _channel_copy(channel)
@@ -306,11 +352,19 @@ def render_channel_update(fragments: list[dict[str, Any]], revision: str, channe
     testing = [step for item in ordered for step in item["testing"]]
     limitations = [note for item in ordered for note in item["knownLimitations"]]
     limitation_copy = limitations or ["No hay limitaciones conocidas declaradas para este corte."]
+    # A tester reads the description first, so it leads with what this cut is
+    # about in plain words; the per-issue "Resumen" stays below for detail.
+    description = f"{copy['description']} Revisión `{revision[:12]}`."
+    if manifest:
+        headline = _manifest_headline(manifest)
+        lead = " ".join(str(manifest.get("summary") or "").split())
+        description = "\n\n".join(part for part in (
+            f"**{headline}**\n{lead}".strip(), description) if part)
     payload = {
         "allowed_mentions": {"parse": []},
         "embeds": [{
             "title": copy["title"],
-            "description": f"{copy['description']} Revisión `{revision[:12]}`.",
+            "description": description,
             "color": VANTARE_RED,
             "fields": [
                 *_embed_fields("Resumen", summary, max_fields=2),
@@ -326,19 +380,52 @@ def render_channel_update(fragments: list[dict[str, Any]], revision: str, channe
     return payload
 
 
-def render_channel_update_html(fragments: list[dict[str, Any]], revision: str, channel: str) -> str:
+def _card_from_items(items: Sequence[str], *, empty_heading: str = "",
+                     empty_body: str = "") -> tuple[str, str]:
+    """Turn a list of sourced sentences into a short heading plus a full body.
+
+    The first item is split into a headline and its own remainder, and the
+    following items continue the body, so nothing is announced as a half
+    sentence the way a raw line-clamp used to leave it.
+    """
+    if not items:
+        return empty_heading, empty_body
+    heading, remainder = _split_visual_copy(items[0])
+    # A heading that opens a parenthesis it never closes reads as broken copy,
+    # so the aside moves down to the body where it can finish.
+    open_paren = heading.rfind("(")
+    if open_paren > 0 and heading.find(")", open_paren) == -1:
+        remainder = f"{heading[open_paren:]} {remainder}".strip()
+        heading = heading[:open_paren].rstrip(" ,;:")
+    body_parts = [part for part in (remainder, *items[1:]) if part and part.strip()]
+    body = " ".join(body_parts).strip()
+    if body[:1].islower():
+        body = body[0].upper() + body[1:]
+    return _fit_text(heading, CARD_HEADING_LIMIT), _fit_text(body, CARD_BODY_LIMIT)
+
+
+def render_channel_update_html(fragments: list[dict[str, Any]], revision: str, channel: str,
+                               *, manifest: dict[str, Any] | None = None) -> str:
     if not fragments:
         raise ValueError("at least one changelog fragment is required")
     copy = _channel_copy(channel)
-    issue_list = " · ".join(item["issue"] for item in fragments)
-    summaries = " ".join(item["summary"] for item in fragments)
     test_steps = [step for item in fragments for step in item["testing"]]
     limitations = [note for item in fragments for note in item["knownLimitations"]]
+    if manifest:
+        # A raw issue ID means nothing to a tester; the manifest already carries
+        # the human headline and summary written for exactly this audience.
+        lead_heading = _fit_text(_manifest_headline(manifest), CARD_HEADING_LIMIT)
+        lead_body = _fit_text(str(manifest.get("summary") or ""), CARD_BODY_LIMIT)
+    else:
+        lead_heading = _fit_text(" · ".join(item["issue"] for item in fragments), CARD_HEADING_LIMIT)
+        lead_body = _fit_text(" ".join(item["summary"] for item in fragments), CARD_BODY_LIMIT)
     cards = [
-        (f"{len(fragments)} CAMBIO{'S' if len(fragments) != 1 else ''}", issue_list, summaries),
-        ("QUÉ DEBES PROBAR", test_steps[0], " ".join(test_steps[1:3])),
-        ("LIMITACIONES", limitations[0] if limitations else "Sin limitaciones conocidas",
-         " ".join(limitations[1:3]) if limitations else "El corte ha superado sus gates automáticos."),
+        (f"{len(fragments)} CAMBIO{'S' if len(fragments) != 1 else ''}", lead_heading, lead_body),
+        ("QUÉ DEBES PROBAR", *_card_from_items(test_steps)),
+        ("LIMITACIONES", *_card_from_items(
+            limitations,
+            empty_heading="Sin limitaciones conocidas",
+            empty_body="El corte ha superado sus gates automáticos.")),
     ]
     return _branded_html(eyebrow=copy["eyebrow"], title=copy["heading"], accent=copy["accent"],
                          stamp=f"{channel.upper()} · {revision[:12]}", cards=cards,
@@ -645,6 +732,7 @@ def main() -> int:
     parser.add_argument("--known-issues-url", default="")
     parser.add_argument("--channel-id", default="")
     parser.add_argument("--channel", choices=("nightly", "testers"), default="testers")
+    parser.add_argument("--manifest")
     args = parser.parse_args()
 
     if args.mode == "select-fragments":
@@ -655,11 +743,16 @@ def main() -> int:
         return 0
     if args.mode in {"nightly", "testers"}:
         fragments = load_fragment_files(args.fragment)
+        # Optional on purpose: other callers still invoke this without a
+        # manifest and must keep getting the previous, ID-based copy.
+        manifest = load_manifest(args.manifest) if args.manifest else None
         if args.html_output:
             pathlib.Path(args.html_output).write_text(
-                render_channel_update_html(fragments, args.revision, args.mode), encoding="utf-8"
+                render_channel_update_html(fragments, args.revision, args.mode, manifest=manifest),
+                encoding="utf-8",
             )
-        payload = render_channel_update(fragments, args.revision, args.mode, include_image=bool(args.image))
+        payload = render_channel_update(fragments, args.revision, args.mode,
+                                        include_image=bool(args.image), manifest=manifest)
         webhook = os.environ.get("DISCORD_PROGRESS_WEBHOOK_URL", "")
         channel = TESTERS_CHANNEL_ID
     elif args.mode == "release":

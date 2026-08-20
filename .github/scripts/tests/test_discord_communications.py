@@ -460,5 +460,106 @@ class ChannelUpdateOverflowTests(unittest.TestCase):
         self.assertNotIn("más, en el changelog", summary)
 
 
+def manifest(title="Vantare — Command Orbit, única interfaz del Hub",
+             summary="Esta Nightly retira la interfaz anterior del Hub."):
+    return {"schemaVersion": 1, "tag": "v0.1.0.7-nightly.11", "channel": "nightly",
+            "title": title, "summary": summary, "issues": ["ISA-95"]}
+
+
+def _card_texts(output):
+    """Return (label, heading, body) for each card in the rendered HTML."""
+    pattern = re.compile(
+        r'<span class="status"><i></i> ([^<]*)</span></div>\s*<h2>([^<]*)</h2><p>([^<]*)</p>')
+    return [tuple(html_unescape(part) for part in match)
+            for match in pattern.findall(output)]
+
+
+def html_unescape(value):
+    import html as _html
+    return _html.unescape(value)
+
+
+class ManifestCopyTests(unittest.TestCase):
+    def test_lead_card_uses_manifest_title_without_brand_prefix(self):
+        output = communications.render_channel_update_html(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        label, heading, body = _card_texts(output)[0]
+        self.assertEqual(label, "1 CAMBIO")
+        self.assertEqual(heading, "Command Orbit, única interfaz del Hub")
+        self.assertNotIn("ISA-95", heading)
+        self.assertIn("retira la interfaz anterior", body)
+
+    def test_without_manifest_the_previous_id_based_copy_is_kept(self):
+        output = communications.render_channel_update_html(
+            [fragment("ISA-95", "Discord fiable")], "abc1234", "nightly")
+        _, heading, body = _card_texts(output)[0]
+        self.assertEqual(heading, "ISA-95")
+        self.assertIn("Discord fiable", body)
+
+    def test_testing_card_splits_the_step_into_headline_and_body(self):
+        value = fragment()
+        value["testing"] = [
+            "Abrir el Hub y recorrer todas las secciones: no debe quedar ningún rastro de la interfaz anterior.",
+            "Cambiar de idioma en Ajustes y verificar que no hay claves sin traducir.",
+        ]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        label, heading, body = _card_texts(output)[1]
+        self.assertEqual(label, "QUÉ DEBES PROBAR")
+        self.assertEqual(heading, "Abrir el Hub y recorrer todas las secciones")
+        self.assertIn("No debe quedar ningún rastro", body)
+        self.assertIn("Cambiar de idioma", body)
+
+    def test_card_copy_never_exceeds_the_clamp_budget(self):
+        value = fragment()
+        value["testing"] = ["Comprobar la paleta de comandos " + "y también cada atajo registrado " * 20]
+        value["knownLimitations"] = ["Solo se valida en Windows " + "con la build firmada " * 40]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        for _, heading, body in _card_texts(output):
+            self.assertLessEqual(len(heading), communications.CARD_HEADING_LIMIT)
+            self.assertLessEqual(len(body), communications.CARD_BODY_LIMIT)
+            self.assertFalse(body.endswith(" "), body)
+
+    def test_missing_limitations_still_state_it_honestly(self):
+        value = fragment()
+        value["knownLimitations"] = []
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        _, heading, body = _card_texts(output)[2]
+        self.assertEqual(heading, "Sin limitaciones conocidas")
+        self.assertIn("gates automáticos", body)
+
+    def test_embed_description_leads_with_the_manifest_copy(self):
+        payload = communications.render_channel_update(
+            [fragment()], "abc1234", "nightly", manifest=manifest())
+        embed = payload["embeds"][0]
+        self.assertIn("Command Orbit, única interfaz del Hub", embed["description"])
+        self.assertIn("retira la interfaz anterior", embed["description"])
+        self.assertIn("abc1234", embed["description"])
+        summary = next(f for f in embed["fields"] if f["name"] == "Resumen")
+        self.assertIn("**ISA-95**", summary["value"])
+
+    def test_embed_without_manifest_is_unchanged(self):
+        payload = communications.render_channel_update([fragment()], "abc1234", "nightly")
+        self.assertNotIn("Command Orbit", payload["embeds"][0]["description"])
+
+    def test_load_manifest_rejects_an_incomplete_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "bad.json"
+            path.write_text(json.dumps({"tag": "v1", "title": ""}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                communications.load_manifest(str(path))
+
+    def test_fit_text_cuts_at_a_sentence_or_word_boundary(self):
+        text = "Primera frase completa. Segunda frase que ya no cabe entera en el hueco."
+        fitted = communications._fit_text(text, 40)
+        self.assertEqual(fitted, "Primera frase completa.")
+        word = communications._fit_text("palabra " * 20, 30)
+        self.assertTrue(word.endswith("…"))
+        self.assertFalse(word[:-1].endswith(" "))
+
+
 if __name__ == "__main__":
     unittest.main()

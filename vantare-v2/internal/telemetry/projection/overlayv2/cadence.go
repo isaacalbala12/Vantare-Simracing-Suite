@@ -261,8 +261,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		Spotter: func(derive.FinalState, PreferencesV2, SourceContextV2) SpotterViewV2 {
 			return SpotterViewV2{Mode: ModeNone, Left: missingValue[bool](), Right: missingValue[bool]()}
 		},
-		Standings: func(derive.FinalState, PreferencesV2, SourceContextV2) []StandingRowV2 {
-			return make([]StandingRowV2, 0)
+		Standings: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []StandingRowV2 {
+			return BuildStandings(final)
 		},
 		Fuel: func(derive.FinalState, PreferencesV2, SourceContextV2) FuelViewV2 {
 			return FuelViewV2{

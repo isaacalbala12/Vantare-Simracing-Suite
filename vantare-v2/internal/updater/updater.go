@@ -63,6 +63,22 @@ func (u *Updater) ListAvailable(settings *Settings) ([]Release, error) {
 // legacy lines (e.g. the pre-v2 "Overlays Studio" 0.3.x releases) must not compete
 // numerically for "latest" -- 0.3.10.0 is older than 0.1.0.7 but would sort first.
 func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]Release, error) {
+	lineReleases, err := u.listLineReleasesCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return filterByChannel(lineReleases, settings.Channel), nil
+}
+
+// listLineReleasesCtx returns every installable release of the running product
+// line, newest version first, WITHOUT filtering by the user's channel.
+//
+// The channel filter belongs to "what update should this user be offered", not
+// to "what exists". The channel cards in Settings need the second question:
+// with the Stable channel selected the testers/nightly cards were previously
+// left with no data at all, so they showed whatever the first prerelease of the
+// filtered list happened to be (or nothing).
+func (u *Updater) listLineReleasesCtx(ctx context.Context) ([]Release, error) {
 	releases, err := listReleasesURL(ctx, u.httpClient, u.releasesURL)
 	if err != nil {
 		return nil, err
@@ -76,9 +92,6 @@ func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]R
 				continue
 			}
 		}
-		if !ChannelIncludesRelease(settings.Channel, r) {
-			continue
-		}
 		if FindInstaller(r) == nil {
 			continue
 		}
@@ -91,6 +104,53 @@ func (u *Updater) ListAvailableCtx(ctx context.Context, settings *Settings) ([]R
 		return ParseVersion(out[i].TagName).Compare(ParseVersion(out[j].TagName)) > 0
 	})
 	return out, nil
+}
+
+func filterByChannel(releases []Release, channel Channel) []Release {
+	var out []Release
+	for _, r := range releases {
+		if ChannelIncludesRelease(channel, r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ChannelReleases is the latest release of each channel, independently of the
+// channel the user has configured. A channel with no published release of the
+// running product line is absent, and a prerelease whose tag carries no known
+// marker belongs to no channel at all.
+type ChannelReleases struct {
+	Stable  *Release `json:"stable,omitempty"`
+	Testers *Release `json:"testers,omitempty"`
+	Nightly *Release `json:"nightly,omitempty"`
+}
+
+// latestPerChannel expects releases sorted newest version first.
+func latestPerChannel(releases []Release) *ChannelReleases {
+	summary := &ChannelReleases{}
+	for i := range releases {
+		release := releases[i]
+		channel, known := ReleaseChannel(release)
+		if !known {
+			continue
+		}
+		switch channel {
+		case ChannelStable:
+			if summary.Stable == nil {
+				summary.Stable = &release
+			}
+		case ChannelTesters:
+			if summary.Testers == nil {
+				summary.Testers = &release
+			}
+		case ChannelNightly:
+			if summary.Nightly == nil {
+				summary.Nightly = &release
+			}
+		}
+	}
+	return summary
 }
 
 func ReleaseChannel(release Release) (Channel, bool) {
@@ -132,6 +192,12 @@ type UpdateInfo struct {
 	Releases       []Release `json:"releases,omitempty"`
 	IgnoredVersion string    `json:"ignoredVersion,omitempty"`
 	Throttled      bool      `json:"throttled"`
+	// Channels is the latest release of every channel, unfiltered by the user's
+	// configured channel. `Releases`, `LatestRelease` and `HasUpdate` keep their
+	// meaning: they are filtered by the user's channel and rule the update
+	// prompt. Channels only feeds the informative per-channel cards, and is nil
+	// when no fetch happened (throttled check).
+	Channels *ChannelReleases `json:"channels,omitempty"`
 }
 
 // Check fetches available releases and compares with the current version.
@@ -164,15 +230,18 @@ func (u *Updater) checkInternal(ctx context.Context, settings *Settings, manual 
 		}, nil
 	}
 
-	releases, err := u.ListAvailableCtx(ctx, settings)
+	lineReleases, err := u.listLineReleasesCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
+	channels := latestPerChannel(lineReleases)
+	releases := filterByChannel(lineReleases, settings.Channel)
 	settings.LastCheckAt = time.Now().UTC()
 	if len(releases) == 0 {
 		return &UpdateInfo{
 			CurrentVersion: u.currentVersion,
 			IgnoredVersion: settings.IgnoreVersion,
+			Channels:       channels,
 		}, nil
 	}
 	latest := releases[0]
@@ -195,6 +264,7 @@ func (u *Updater) checkInternal(ctx context.Context, settings *Settings, manual 
 		IsDowngrade:    isDowngrade,
 		Releases:       releases,
 		IgnoredVersion: settings.IgnoreVersion,
+		Channels:       channels,
 	}, nil
 }
 

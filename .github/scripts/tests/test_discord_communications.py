@@ -521,6 +521,36 @@ class ManifestCopyTests(unittest.TestCase):
             self.assertLessEqual(len(body), communications.CARD_BODY_LIMIT)
             self.assertFalse(body.endswith(" "), body)
 
+    def test_aside_promoted_to_the_body_reads_as_a_plain_sentence(self):
+        value = fragment()
+        value["knownLimitations"] = [
+            "Los pendientes de producto de la nightly.10 siguen vigentes "
+            "(favoritos del Launcher, eventos múltiples de Estrategia, "
+            "fuente de sesiones de Telemetría, registros en Diagnóstico)."
+        ]
+        output = communications.render_channel_update_html(
+            [value], "abc1234", "nightly", manifest=manifest())
+        _, heading, body = _card_texts(output)[2]
+        self.assertEqual(heading, "Los pendientes de producto de la nightly.10 siguen vigentes")
+        self.assertEqual(
+            body,
+            "Favoritos del Launcher, eventos múltiples de Estrategia, "
+            "fuente de sesiones de Telemetría, registros en Diagnóstico.",
+        )
+        self.assertNotIn("(", body)
+        self.assertNotIn(")", body)
+        self.assertFalse(body.endswith(".."), body)
+
+    def test_unwrap_parenthetical_handles_nesting_and_stray_brackets(self):
+        self.assertEqual(
+            communications._unwrap_parenthetical("(uno (dos) tres) resto."),
+            "uno (dos) tres resto.",
+        )
+        self.assertEqual(communications._unwrap_parenthetical("(sin cierre"), "sin cierre")
+        self.assertEqual(communications._unwrap_parenthetical("(solo esto)"), "solo esto")
+        self.assertEqual(communications._unwrap_parenthetical("(ya con punto.)."), "ya con punto.")
+        self.assertEqual(communications._unwrap_parenthetical("texto normal"), "texto normal")
+
     def test_missing_limitations_still_state_it_honestly(self):
         value = fragment()
         value["knownLimitations"] = []

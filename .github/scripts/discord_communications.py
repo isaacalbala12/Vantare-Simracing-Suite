@@ -249,6 +249,35 @@ def _fit_text(text: str, limit: int) -> str:
     return trimmed.rstrip(" ,;:·") + "…"
 
 
+def _unwrap_parenthetical(text: str) -> str:
+    """Promote an aside that became the whole body into a plain sentence.
+
+    When the headline is cut before a parenthesis, the remainder starts with
+    the orphaned "(" and reads as a footnote to nothing. With no sentence left
+    to be an aside to, the brackets stop earning their place.
+    """
+    value = text.strip()
+    if not value.startswith("("):
+        return value
+    depth = 0
+    for index, character in enumerate(value):
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth == 0:
+                inner = value[1:index].strip()
+                tail = value[index + 1:].strip()
+                # "…Diagnóstico)." would otherwise keep both stops.
+                if tail.startswith(".") and inner.endswith("."):
+                    tail = tail[1:].lstrip()
+                if not inner.endswith((".", "!", "?")) and tail.startswith("."):
+                    inner, tail = inner + ".", tail[1:].lstrip()
+                return f"{inner} {tail}".strip() if tail else inner
+    # Never closed: drop the stray bracket rather than leave it dangling.
+    return value[1:].strip()
+
+
 def _manifest_headline(manifest: dict[str, Any]) -> str:
     """The manifest title without the brand prefix the card already shows."""
     title = " ".join(str(manifest.get("title") or "").split())
@@ -397,6 +426,7 @@ def _card_from_items(items: Sequence[str], *, empty_heading: str = "",
     if open_paren > 0 and heading.find(")", open_paren) == -1:
         remainder = f"{heading[open_paren:]} {remainder}".strip()
         heading = heading[:open_paren].rstrip(" ,;:")
+    remainder = _unwrap_parenthetical(remainder)
     body_parts = [part for part in (remainder, *items[1:]) if part and part.strip()]
     body = " ".join(body_parts).strip()
     if body[:1].islower():

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/telemetry/capability"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
@@ -199,6 +200,8 @@ type TelemetryCoreRuntime struct {
 	engineer                 EngineerProjectionConsumer
 	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
+	capabilities             capability.Set
+	descriptorCapabilities   []string
 
 	statusState     driver.State
 	statusAttempt   int
@@ -260,20 +263,28 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
 	}
+	descriptor := driver.Descriptor{
+		ID:       lmu.DriverID,
+		Priority: 100,
+		Capabilities: []driver.Capability{
+			lmu.CapabilitySharedMemory,
+			lmu.CapabilityREST,
+		},
+	}
+	// Capabilities are declared by the driver, never by the composition root.
+	// No session evidence exists yet at construction time, so every supported
+	// capability starts as declared-but-not-yet-observed.
+	capabilities, err := capability.Resolve(lmu.Capabilities(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("resolve active driver capabilities: %w", err)
+	}
 	manager, err := telemetrycore.NewDriverManager(
 		[]telemetrycore.DriverCandidate[lmu.Observation]{
 			{
-				Descriptor: driver.Descriptor{
-					ID:       "lmu",
-					Priority: 100,
-					Capabilities: []driver.Capability{
-						lmu.CapabilitySharedMemory,
-						lmu.CapabilityREST,
-					},
-				},
-				Detect:    func(context.Context) (bool, error) { return true, nil },
-				New:       func() (telemetrycore.Driver[lmu.Observation], error) { return lmu.New(), nil },
-				Retryable: lmu.IsRetryable,
+				Descriptor: descriptor,
+				Detect:     func(context.Context) (bool, error) { return true, nil },
+				New:        func() (telemetrycore.Driver[lmu.Observation], error) { return lmu.New(), nil },
+				Retryable:  lmu.IsRetryable,
 			},
 		},
 		// The budget is deliberately large: "the simulator is not running" is
@@ -292,15 +303,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if err != nil {
 		return nil, fmt.Errorf("build telemetry core manager: %w", err)
 	}
-	engineerManifest, err := engineerprojection.NewManifest([]engineerprojection.Capability{
-		{ID: engineerprojection.CapabilitySession, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityStandings, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityControls, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityPit, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityFuel, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilityGaps, State: engineerprojection.CapabilitySupported},
-		{ID: engineerprojection.CapabilitySpatial, State: engineerprojection.CapabilitySupported},
-	})
+	engineerManifest, err := engineerprojection.NewManifest(engineerCapabilities(capabilities))
 	if err != nil {
 		return nil, fmt.Errorf("build Engineer capability manifest: %w", err)
 	}
@@ -331,21 +334,23 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 				MinimumSupported: overlayprojection.MinimumSupportedVersion,
 			},
 		}),
-		strategyHub:         strategyHub,
-		overlayV2Publishers: overlayV2Publishers,
-		manager:             manager,
-		mapper:              lmu.NewBatchMapper(),
-		reducer:             reducer,
-		coord:               coordinator,
-		derive:              pipeline,
-		engine:              telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:              newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:            config.Engineer,
-		engineerManifest:    engineerManifest,
-		now:                 now,
-		watchdogDelay:       watchdogDelay,
-		watchdogEnabled:     watchdogEnabled,
-		overlayV2Project:    newCachedOverlayV2Project(),
+		strategyHub:            strategyHub,
+		overlayV2Publishers:    overlayV2Publishers,
+		manager:                manager,
+		mapper:                 lmu.NewBatchMapper(),
+		reducer:                reducer,
+		coord:                  coordinator,
+		derive:                 pipeline,
+		engine:                 telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:                 newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
+		engineer:               config.Engineer,
+		engineerManifest:       engineerManifest,
+		capabilities:           capabilities,
+		descriptorCapabilities: descriptorCapabilityTokens(descriptor, capabilities),
+		now:                    now,
+		watchdogDelay:          watchdogDelay,
+		watchdogEnabled:        watchdogEnabled,
+		overlayV2Project:       newCachedOverlayV2Project(),
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -1042,7 +1047,7 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	started := time.Now()
 	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
-		DescriptorCapabilities: []string{string(lmu.CapabilitySharedMemory), string(lmu.CapabilityREST)},
+		DescriptorCapabilities: runtime.descriptorCapabilities,
 	}, overlayv2.DefaultPreferencesV2(), revision)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {

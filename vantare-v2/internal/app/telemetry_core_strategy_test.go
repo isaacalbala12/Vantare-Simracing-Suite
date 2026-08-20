@@ -45,8 +45,7 @@ func TestStrategyHubNotInstantiatedWithoutFlag(t *testing.T) {
 
 	// Guard the architectural contract without adding production seams: there
 	// is one canonical acquisition/reduction chain and exactly two product hubs.
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.manager), 1)
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.mapper), 1)
+	assertRuntimeFieldCount(t, runtime, reflect.TypeOf((*telemetrycore.SimulatorRuntime)(nil)).Elem(), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.reducer), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.coord), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.derive), 1)
@@ -590,7 +589,7 @@ func TestTelemetryCoreRuntimeDeliversInitialEngineerStatusBeforeStartingManager(
 	case <-time.After(2 * time.Second):
 		t.Fatal("initial Engineer callback did not start")
 	}
-	if status := runtime.manager.Status(); status.State != driver.StateStopped {
+	if status := runtime.simulator.Status(); status.State != driver.StateStopped {
 		t.Fatalf("manager state during initial callback = %q, want stopped", status.State)
 	}
 	close(consumer.release)

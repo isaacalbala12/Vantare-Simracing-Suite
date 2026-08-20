@@ -51,13 +51,13 @@ type DiagnosticsTelemetry struct {
 }
 
 type DiagnosticsSettings struct {
-	SchemaVersion              int    `json:"schemaVersion"`
-	CPUSampling                bool   `json:"cpuSampling"`
-	HotkeyCount                int    `json:"hotkeyCount"`
-	OverlayProfileConfigured   bool   `json:"overlayProfileConfigured"`
-	BetaWelcomeCompleted       bool   `json:"betaWelcomeCompleted"`
-	LauncherTriggerEnabled     bool   `json:"launcherTriggerEnabled"`
-	LauncherOnboardingComplete bool   `json:"launcherOnboardingComplete"`
+	SchemaVersion              int  `json:"schemaVersion"`
+	CPUSampling                bool `json:"cpuSampling"`
+	HotkeyCount                int  `json:"hotkeyCount"`
+	OverlayProfileConfigured   bool `json:"overlayProfileConfigured"`
+	BetaWelcomeCompleted       bool `json:"betaWelcomeCompleted"`
+	LauncherTriggerEnabled     bool `json:"launcherTriggerEnabled"`
+	LauncherOnboardingComplete bool `json:"launcherOnboardingComplete"`
 }
 
 type DiagnosticsProfile struct {

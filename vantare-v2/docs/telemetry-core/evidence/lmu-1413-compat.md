@@ -192,9 +192,11 @@ comprobando antes que `source_time` avanzaba entre dos lecturas
   `CompatibilityKnown` con `player=true`. El runtime si lo detecta y reporta
   `state=stale`, asi que el impacto queda acotado a la ruta de captura
   diagnostica. Queda como issue propia; la deteccion la aplicara el orquestador.
-- **`unknownFingerprint` es ambiguo.** `LMU_Data/size=324820/evidence=insufficient`
+- **`unknownFingerprint` es ambiguo.** *(Resuelto en ISA-680; ver
+  [`isa-680-lmu-version-evidence.md`](isa-680-lmu-version-evidence.md).)* `LMU_Data/size=324820/evidence=insufficient`
   se emite tanto cuando falta evidencia de build como cuando la version no esta
   pinneada. Esa ambiguedad desvio el diagnostico inicial hacia el proceso
   protegido cuando la causa era el gate.
-- **Sin fragmento de changelog**: `docs/changelog/fragments/schema.json` exige
+- **Sin fragmento de changelog** *(Resuelto: ISA-680 aporta
+  `docs/changelog/fragments/ISA-680.json`.)*: `docs/changelog/fragments/schema.json` exige
   `^(ISA-[0-9]+|TC-[0-9A-F]{12})$` y no hay numero de Linear todavia.

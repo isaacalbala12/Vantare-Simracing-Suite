@@ -1,5 +1,7 @@
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
+import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import {
   createOverlayV2PlayerInstrumentsComparator,
   type OverlayV2PlayerInstrumentsComparator,
@@ -14,6 +16,14 @@ import {
  * inserted, so a burst on one side cannot evict the counterpart still arriving.
  */
 const MAX_PENDING_SEQUENCES = 64;
+
+// Shadow-only comparison content. It is not a user profile: it fixes the
+// widget configuration so the sampled evidence stays comparable across runs.
+const SESSION_CONTENT = racingFlagsDefinition.parseContent({});
+const STANDINGS_CONTENT = standingsDefinition.parseContent({
+  classScope: "all-classes",
+  rowCount: 20,
+});
 
 export type OverlayV2ShadowRuntime = Readonly<{
   acceptLegacy(epoch: number, sequence: number, snapshot: TelemetrySnapshot): void;
@@ -33,14 +43,14 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
     const legacySnapshot = legacy.get(key);
     const current = overlayV2.get(key);
     if (!legacySnapshot || !current) return;
+    const pair = { legacySnapshot, frame: current.frame, source: current.source };
     comparator.compare({
-      legacySnapshot,
-      frame: current.frame,
-      source: current.source,
-      // Position belongs to the still-empty standings slice, not to the player
-      // instruments selected for F6.
+      ...pair,
+      // Position belongs to the standings slice, not to the player instruments.
       content: { showPosition: false, showClutch: true },
     });
+    comparator.compareSession({ ...pair, content: SESSION_CONTENT });
+    comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT });
     compared.add(key);
     legacy.delete(key);
     overlayV2.delete(key);

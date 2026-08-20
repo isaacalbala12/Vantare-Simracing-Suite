@@ -3,6 +3,16 @@ import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../core/widget-definition";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
+import { buildStandingsViewModel } from "../widget-types/standings/standings-view-model";
+import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
+import type { StandingsContent } from "../widget-types/standings/standings-content";
+import type { RacingFlagsContent } from "../widget-types/racing-flags/racing-flags-definition";
+import type { RacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
+import { buildRacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
+import {
+  buildRacingFlagsViewModelV2,
+  racingFlagsDisplayedValues,
+} from "../widget-types/racing-flags/racing-flags-view-model-v2";
 import type { BroadcastTowerRow, BroadcastTowerViewModel } from "../widget-types/broadcast-tower/broadcast-tower-view-model";
 import type { InputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import type { InputTelemetryContent } from "../widget-types/input-telemetry/input-telemetry-definition";
@@ -208,6 +218,13 @@ function overlayV2Phase(source: OverlaySourceStatusV2): Exclude<OverlayShadowPha
   }
 }
 
+/**
+ * The anchor feature. Every paired frame is compared through it exactly once,
+ * so it is what advances framesByPhase: the gate denominator must count paired
+ * frames, not the number of features compared on each frame.
+ */
+const ANCHOR_FEATURE = "player-instruments";
+
 type ShadowPhaseAccumulator = Readonly<{
   record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
   reset(): void;
@@ -226,7 +243,7 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
   let byMetric = new Map<string, number>();
   return {
     record(feature, phase, fields) {
-      framesByPhase[phase] += 1;
+      if (feature === ANCHOR_FEATURE) framesByPhase[phase] += 1;
       mismatchesByPhase[phase] += fields.length;
       for (const field of fields) {
         const key = `overlay_shadow_mismatches_total{feature="${feature}",field="${field}",phase="${phase}"}`;
@@ -259,15 +276,110 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
   };
 }
 
+/** Absolute tolerance for the float gap carried by a standings row. */
+export const OVERLAY_V2_STANDINGS_GAP_TOLERANCE = 1e-6;
+
+export type OverlayV2FeatureComparison = Readonly<{
+  equal: boolean;
+  phase: OverlayShadowPhase;
+  mismatches: readonly string[];
+}>;
+
+/**
+ * Compares the session slice through the racing-flags widget. Both contracts
+ * declare the flag absent today, so this asserts the shared absence rather
+ * than a value: it is the regression that catches one side inventing a green.
+ */
+export function compareSessionModels(
+  legacy: RacingFlagsViewModel,
+  overlayV2: RacingFlagsViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  const legacyDisplayed = racingFlagsDisplayedValues(legacy);
+  const overlayV2Displayed = racingFlagsDisplayedValues(overlayV2);
+  for (const field of Object.keys(legacyDisplayed)) {
+    if (legacyDisplayed[field] !== overlayV2Displayed[field]) mismatch.add(`display.${field}`);
+  }
+  return [...mismatch].sort();
+}
+
+/**
+ * Compares the standings slice row by row, keyed by vehicle identity, with the
+ * order treated as significant: the order is now resolved in Go and a
+ * reordering is exactly the kind of regression this gate must catch.
+ *
+ * Only fields both contracts can produce are compared. driverNumber, teamCode,
+ * teamBrandColor, tireCompound, bestLap and the interval to the car ahead have
+ * no canonical signal behind them and are reported as declared gaps, never as
+ * divergences.
+ */
+export function compareStandingsModels(
+  legacy: StandingsViewModel,
+  overlayV2: StandingsViewModel,
+): string[] {
+  const mismatch = new Set<string>();
+  for (const field of ["status", "sessionLabel", "activeClass", "remainingText"] as const) {
+    if (legacy[field] !== overlayV2[field]) mismatch.add(field);
+  }
+  if (legacy.rows.length !== overlayV2.rows.length) mismatch.add("rows.length");
+  const legacyOrder = legacy.rows.map((row) => row.id);
+  const overlayV2Order = overlayV2.rows.map((row) => row.id);
+  if (legacyOrder.join("|") !== overlayV2Order.join("|")) mismatch.add("rows.order");
+
+  const overlayV2ById = new Map(overlayV2.rows.map((row) => [row.id, row]));
+  for (const legacyRow of legacy.rows) {
+    const overlayV2Row = overlayV2ById.get(legacyRow.id);
+    if (!overlayV2Row) {
+      mismatch.add("rows[].identity");
+      continue;
+    }
+    for (const field of COMPARABLE_STANDINGS_FIELDS) {
+      if (legacyRow[field] !== overlayV2Row[field]) mismatch.add(`rows[].${field}`);
+    }
+  }
+  return [...mismatch].sort();
+}
+
+const COMPARABLE_STANDINGS_FIELDS = [
+  "position",
+  "driverName",
+  "vehicleClass",
+  "currentLapText",
+  "lastLapText",
+  "pitText",
+  "isPlayer",
+  "isLeader",
+] as const satisfies readonly (keyof StandingsRowViewModel)[];
+
+/** Fields with no canonical signal behind them; declared, never compared. */
+export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
+  "rows[].driverNumber",
+  "rows[].teamCode",
+  "rows[].teamBrandColor",
+  "rows[].tireCompound",
+  "rows[].bestLapText",
+  "rows[].intervalText",
+]);
+
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
   const accumulator = createShadowPhaseAccumulator();
   return {
+    compareSession(input) {
+      const legacy = buildRacingFlagsViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildRacingFlagsViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "session", input, compareSessionModels(legacy, overlayV2));
+    },
+    compareStandings(input) {
+      const legacy = buildStandingsViewModel(input.legacySnapshot, input.content);
+      const overlayV2 = buildStandingsViewModelV2(input.frame, input.source, input.content);
+      return record(accumulator, "standings", input, compareStandingsModels(legacy, overlayV2));
+    },
     compare(input) {
       const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
       const fields = comparePlayerInstrumentModels(legacy, overlayV2);
       const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
-      accumulator.record("player-instruments", phase, fields);
+      accumulator.record(ANCHOR_FEATURE, phase, fields);
       return Object.freeze({
         equal: fields.length === 0,
         phase,
@@ -282,6 +394,17 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     },
     sessionSummary: accumulator.summary,
   };
+}
+
+function record(
+  accumulator: ShadowPhaseAccumulator,
+  feature: string,
+  input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+  fields: readonly string[],
+): OverlayV2FeatureComparison {
+  const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+  accumulator.record(feature, phase, fields);
+  return Object.freeze({ equal: fields.length === 0, phase, mismatches: Object.freeze(fields) });
 }
 
 function comparePlayerInstrumentModels(

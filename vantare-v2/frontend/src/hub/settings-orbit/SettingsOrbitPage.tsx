@@ -928,7 +928,11 @@ function EventLogSurface() {
       title={t("settings.diag.events")}
     >
       {log.available && log.entries.length > 0 ? (
-        <Seg
+        // El argumento de tipo explícito es necesario, no decorativo: al
+        // inferirlo, `onChange` compite como origen y `T` sale como
+        // `SetStateAction<LogFilter>`, que no extiende `string`. Mismo patrón
+        // que el filtro de radio de Ingeniero.
+        <Seg<LogFilter>
           className="orbit-set-log__filter"
           label={t("settings.diag.eventsFilter")}
           onChange={setFilter}

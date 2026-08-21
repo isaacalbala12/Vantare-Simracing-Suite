@@ -40,6 +40,10 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	if err != nil {
 		t.Fatalf("stintPaceCost: %v", err)
 	}
+	fuelWeight, err := input.fuelWeightCost()
+	if err != nil {
+		t.Fatalf("fuelWeightCost: %v", err)
+	}
 	best := math.Inf(1)
 	var walk func(lap, fuelLeft, veLeft int64, stops int, total float64)
 	walk = func(lap, fuelLeft, veLeft int64, stops int, total float64) {
@@ -53,7 +57,7 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 			nextLap := lap + stintLaps
 			nextFuel := fuelLeft - fuel.perLap*stintLaps
 			nextVE := veLeft - ve.perLap*stintLaps
-			nextTotal := total + stint.TotalSeconds
+			nextTotal := total + stint.TotalSeconds + fuelWeight.stint(fuelLeft, fuel.perLap, stintLaps)
 			if nextLap == input.RaceLaps {
 				if allowed, _, _ := input.stopCountAllowed(stops); allowed && nextTotal < best {
 					best = nextTotal
@@ -98,6 +102,15 @@ func curveProjection(points []sp.PacePoint, sampleSize int, lower, upper float64
 func pacePoint(lap int, delta float64, samples int) sp.PacePoint {
 	lower, upper := delta, delta
 	return sp.PacePoint{LapInStint: lap, DeltaSeconds: delta, SampleSize: samples, RangeLower: &lower, RangeUpper: &upper}
+}
+
+func fuelWeightParameter(secondsPerLiter float64, kind sp.ProvenanceKind) *FuelWeightParameter {
+	return &FuelWeightParameter{
+		Presence:        sp.PresenceValid,
+		SecondsPerLiter: secondsPerLiter,
+		Provenance:      sp.Provenance{Kind: kind, SourceID: "solver-test:fuel-weight"},
+		Confidence:      sp.Confidence{SampleSize: 1, ComputationVersion: "solver-test.v1"},
+	}
 }
 
 func TestCombinedStintPaceCurveInterpolatesAndExtrapolatesConservatively(t *testing.T) {
@@ -203,6 +216,123 @@ func TestSolveV2CurveMatchesExhaustiveOracle(t *testing.T) {
 		if !got.Feasible || math.Abs(got.Expected.TotalSeconds-want) > epsilon {
 			t.Fatalf("laps=%d: solver=%v feasible=%v exhaustive=%v", raceLaps, got.Expected.TotalSeconds, got.Feasible, want)
 		}
+	}
+}
+
+func TestSolveV2FuelWeightMatchesExhaustiveOracle(t *testing.T) {
+	for _, raceLaps := range []int64{3, 4, 5, 6} {
+		input := baseInputV2()
+		input.RaceLaps = raceLaps
+		input.FuelWeight = fuelWeightParameter(0.08, sp.ProvenanceReference)
+
+		got, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("SolveV2(laps=%d): %v", raceLaps, err)
+		}
+		want := exhaustiveV2Best(t, input)
+		if !got.Feasible || math.Abs(got.Expected.TotalSeconds-want) > epsilon {
+			t.Fatalf("laps=%d: solver=%v feasible=%v exhaustive=%v", raceLaps, got.Expected.TotalSeconds, got.Feasible, want)
+		}
+	}
+}
+
+func TestFuelWeightCostUsesFuelBeforeEachLap(t *testing.T) {
+	cost := fuelWeightCost{secondsPerLiter: 0.1}
+	got := cost.stint(4*serviceScale, serviceScale, 3)
+	// Las tres vueltas empiezan con 4, 3 y 2 L: 9 L-vuelta en total.
+	if math.Abs(got-0.9) > epsilon {
+		t.Fatalf("fuel weight stint cost = %v, want 0.9", got)
+	}
+}
+
+func TestSolveV2FuelWeightChangesFillToSplash(t *testing.T) {
+	withoutWeight := baseInputV2()
+	withoutWeight.RaceLaps = 8
+	withoutWeight.FuelCapacityLiters = 4
+	withoutWeight.FuelPerLapLiters = 1
+	withoutWeight.Formation.Seconds = 0
+	withoutWeight.PitCost.TransitSeconds = 0.7
+	withoutWeight.PitCost.RefuelRateLPerS = 100
+	withoutWeight.PitCost.TyreSeconds = 0
+
+	filled, err := SolveV2(withoutWeight)
+	if err != nil {
+		t.Fatalf("SolveV2(without weight): %v", err)
+	}
+	withWeight := withoutWeight
+	withWeight.FuelWeight = fuelWeightParameter(0.20, sp.ProvenanceManual)
+	light, err := SolveV2(withWeight)
+	if err != nil {
+		t.Fatalf("SolveV2(with weight): %v", err)
+	}
+
+	if len(filled.Best.PitStops) != 1 || filled.Best.PitStops[0].FuelLiters != 4 {
+		t.Fatalf("model without weight did not fill once: %+v", filled.Best)
+	}
+	if len(light.Best.PitStops) != 2 {
+		t.Fatalf("fuel weight did not move the optimum to splash stops: %+v", light.Best)
+	}
+	fuelLeft := withWeight.FuelCapacityLiters
+	for index, stop := range light.Best.PitStops {
+		fuelLeft -= float64(light.Best.Stints[index].Laps) * withWeight.FuelPerLapLiters
+		fuelLeft += stop.FuelLiters
+		if fuelLeft >= withWeight.FuelCapacityLiters {
+			t.Fatalf("weighted plan filled instead of splashing: %+v", light.Best)
+		}
+	}
+}
+
+func TestSolveV2FuelWeightSensitivityAndAssumption(t *testing.T) {
+	input := baseInputV2()
+	input.FuelWeight = fuelWeightParameter(0.05, sp.ProvenanceReference)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if result.Expected.FuelWeightSeconds <= 0 {
+		t.Fatalf("fuel weight cost = %+v", result.Expected)
+	}
+	var sensitivity *SolverSensitivity
+	for index := range result.Sensitivities {
+		if result.Sensitivities[index].Parameter == "fuelWeightSecondsPerLiter" {
+			sensitivity = &result.Sensitivities[index]
+		}
+	}
+	if sensitivity == nil || math.Abs(sensitivity.ImpactSeconds-result.Expected.FuelWeightSeconds*defaultFuelWeightSensitivity) > epsilon {
+		t.Fatalf("fuel weight sensitivity = %+v", result.Sensitivities)
+	}
+	if result.FuelWeightCost.Provenance.Kind != sp.ProvenanceReference || len(result.Assumptions) == 0 {
+		t.Fatalf("fuel weight source/assumptions = source:%+v assumptions:%+v", result.FuelWeightCost, result.Assumptions)
+	}
+}
+
+func TestSolveV2AcceptsDerivedFuelWeightOnlyFromIdentifiabilityGate(t *testing.T) {
+	input := baseInputV2()
+	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 3), pacePoint(2, 0.1, 3)}, 3, 0, 0.1)
+	input.FuelWeight = fuelWeightParameter(0.03, sp.ProvenanceDerived)
+	if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
+		t.Fatalf("derived manual parameter error = %v, want invalid_input", err)
+	}
+
+	input.FuelWeight = nil
+	input.Projection.CombinedStintPaceCurve.Identifiability = sp.IdentifiabilitySeparable
+	input.Projection.FuelWeightCurve = &sp.SeparableCurve{
+		Presence: sp.PresenceValid,
+		Provenance: sp.Provenance{
+			Kind:     sp.ProvenanceDerived,
+			SourceID: "identifiability-gate:test",
+		},
+		Confidence:          sp.Confidence{SampleSize: 12, ComputationVersion: "derived-curves.v1"},
+		SlopeSecondsPerUnit: 0.03,
+		Points:              []sp.PacePoint{pacePoint(1, 0, 12)},
+	}
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(gated derived): %v", err)
+	}
+	if result.FuelWeightCost.Provenance.SourceID != "identifiability-gate:test" || result.FuelWeightCost.SecondsPerLiter != 0.03 {
+		t.Fatalf("derived fuel weight source = %+v", result.FuelWeightCost)
 	}
 }
 
@@ -337,10 +467,10 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
 		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false) {
 		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }

@@ -468,8 +468,13 @@ func buildSeparatedCurves(sourceID string, samples []curveLapSample, coefficient
 	}
 	provenance := strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID}
 	confidence := confidenceForValues(allFuels, len(samples), derivedCurvesComputationVersion)
-	return &strategyprojection.SeparableCurve{Presence: presence, Provenance: provenance, Confidence: confidence, Points: fuelPoints},
-		&strategyprojection.SeparableCurve{Presence: presence, Provenance: provenance, Confidence: confidence, Points: agePoints}
+	return &strategyprojection.SeparableCurve{
+			Presence: presence, Provenance: provenance, Confidence: confidence,
+			SlopeSecondsPerUnit: coefficients[1], Points: fuelPoints,
+		}, &strategyprojection.SeparableCurve{
+			Presence: presence, Provenance: provenance, Confidence: confidence,
+			SlopeSecondsPerUnit: coefficients[2], Points: agePoints,
+		}
 }
 
 func deriveTyreDegradation(sessionID string, validity LapValidityAnalysis, pages []HistoricalPage) strategyprojection.TyreDegradationFamily {

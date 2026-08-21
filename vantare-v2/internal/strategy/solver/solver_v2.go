@@ -153,7 +153,18 @@ type SolverInputV2 struct {
 	FuelPerLapLiters  float64               `json:"fuelPerLapLiters"`
 	VEPerLapPercent   float64               `json:"vePerLapPercent"`
 	DegradationPerLap float64               `json:"degradationPerLapSeconds"`
+	FuelWeight        *FuelWeightParameter  `json:"fuelWeight,omitempty"`
 	Discretization    ServiceDiscretization `json:"serviceDiscretization"`
+}
+
+// FuelWeightParameter transporta el fallback manual o de referencia para el
+// coste del combustible. Una fuente derivada solo puede llegar por la curva
+// separada que publica Analysis tras su gate de identificabilidad.
+type FuelWeightParameter struct {
+	Presence        sp.Presence   `json:"presence"`
+	SecondsPerLiter float64       `json:"secondsPerLiter"`
+	Provenance      sp.Provenance `json:"provenance"`
+	Confidence      sp.Confidence `json:"confidence"`
 }
 
 // ServiceDiscretization fija el espacio finito de cantidades que exploran
@@ -230,6 +241,11 @@ func (in SolverInputV2) Validate() error {
 			return fmt.Errorf("%s invalid", field)
 		}
 	}
+	if in.FuelWeight != nil {
+		if err := in.FuelWeight.Validate(); err != nil {
+			return fmt.Errorf("fuelWeight: %w", err)
+		}
+	}
 	// Projection puede ser nil (arranque en frío): se usa reference del catálogo o manual.
 	if in.Projection != nil {
 		if err := in.Projection.Validate(); err != nil {
@@ -239,21 +255,49 @@ func (in SolverInputV2) Validate() error {
 	return nil
 }
 
+func (parameter FuelWeightParameter) Validate() error {
+	if parameter.Presence != sp.PresenceValid {
+		return fmt.Errorf("presence must be valid")
+	}
+	if parameter.SecondsPerLiter < 0 || math.IsNaN(parameter.SecondsPerLiter) || math.IsInf(parameter.SecondsPerLiter, 0) {
+		return fmt.Errorf("secondsPerLiter invalid")
+	}
+	if parameter.Provenance.Kind != sp.ProvenanceManual && parameter.Provenance.Kind != sp.ProvenanceReference {
+		return fmt.Errorf("provenance.kind must be manual or reference")
+	}
+	if err := parameter.Provenance.Validate(); err != nil {
+		return err
+	}
+	if err := parameter.Confidence.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SolverResultV2 es el resultado con binding, sensibilidades y esperado/caso-malo.
 type SolverResultV2 struct {
-	ContractVersion  ContractVersion     `json:"contractVersion"`
-	InputHash        string              `json:"inputHash"`
-	StintPaceCost    StintPaceCostSource `json:"stintPaceCost"`
-	Best             DecisionVector      `json:"best"`
-	Binding          BindingConstraint   `json:"binding"`
-	Sensitivities    []SolverSensitivity `json:"sensitivities"`
-	Expected         ScenarioEvaluation  `json:"expected"`
-	WorstCase        ScenarioEvaluation  `json:"worstCase"`
-	Candidates       []DecisionVector    `json:"candidates,omitempty"`
-	CandidateDetails []SolverCandidateV2 `json:"candidateDetails,omitempty"`
-	Feasible         bool                `json:"feasible"`
-	Reasons          []SolverReason      `json:"reasons,omitempty"`
-	ComputeStats     ComputeStats        `json:"computeStats"`
+	ContractVersion  ContractVersion      `json:"contractVersion"`
+	InputHash        string               `json:"inputHash"`
+	StintPaceCost    StintPaceCostSource  `json:"stintPaceCost"`
+	FuelWeightCost   FuelWeightCostSource `json:"fuelWeightCost"`
+	Best             DecisionVector       `json:"best"`
+	Binding          BindingConstraint    `json:"binding"`
+	Sensitivities    []SolverSensitivity  `json:"sensitivities"`
+	Expected         ScenarioEvaluation   `json:"expected"`
+	WorstCase        ScenarioEvaluation   `json:"worstCase"`
+	Candidates       []DecisionVector     `json:"candidates,omitempty"`
+	CandidateDetails []SolverCandidateV2  `json:"candidateDetails,omitempty"`
+	Feasible         bool                 `json:"feasible"`
+	Reasons          []SolverReason       `json:"reasons,omitempty"`
+	Assumptions      []SolverReason       `json:"assumptions"`
+	ComputeStats     ComputeStats         `json:"computeStats"`
+}
+
+type FuelWeightCostSource struct {
+	Presence        sp.Presence   `json:"presence"`
+	SecondsPerLiter float64       `json:"secondsPerLiter"`
+	Provenance      sp.Provenance `json:"provenance"`
+	Confidence      sp.Confidence `json:"confidence"`
 }
 
 // SolverCandidateV2 conserva tanto planes completos como intentos inviables;
@@ -281,6 +325,7 @@ type ScenarioEvaluation struct {
 	TotalSeconds       float64 `json:"totalSeconds"`
 	GreenSeconds       float64 `json:"greenSeconds"`
 	DegradationSeconds float64 `json:"degradationSeconds"`
+	FuelWeightSeconds  float64 `json:"fuelWeightSeconds"`
 	PitSeconds         float64 `json:"pitSeconds"`
 	FormationSeconds   float64 `json:"formationSeconds"`
 }

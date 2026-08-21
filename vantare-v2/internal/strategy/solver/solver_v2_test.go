@@ -45,4 +45,13 @@ func TestSolverInputV2_Validate(t *testing.T) {
 		t.Fatalf("expected budget error")
 	}
 	// projection with separable without gate should fail
+	bad = in
+	bad.FuelWeight = &FuelWeightParameter{
+		Presence: sp.PresenceValid, SecondsPerLiter: 0.03,
+		Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "not-gated"},
+		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "test.v1"},
+	}
+	if err := bad.Validate(); err == nil {
+		t.Fatal("expected derived fallback fuel weight to be rejected")
+	}
 }

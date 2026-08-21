@@ -1,6 +1,9 @@
 package strategyprojection
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // StrategyInputProjectionV2 es el contrato que Analysis produce en F3a.
 // Familias degradadas por D19/informe F0-1:
@@ -93,10 +96,11 @@ type CombinedStintPaceCurve struct {
 
 // SeparableCurve solo se publica si identifiability==separable tras gate.
 type SeparableCurve struct {
-	Presence   Presence    `json:"presence"`
-	Provenance Provenance  `json:"provenance"`
-	Confidence Confidence  `json:"confidence"`
-	Points     []PacePoint `json:"points"`
+	Presence            Presence    `json:"presence"`
+	Provenance          Provenance  `json:"provenance"`
+	Confidence          Confidence  `json:"confidence"`
+	SlopeSecondsPerUnit float64     `json:"slopeSecondsPerUnit"`
+	Points              []PacePoint `json:"points"`
 }
 
 type PacePoint struct {
@@ -238,8 +242,21 @@ func (p StrategyInputProjectionV2) Validate() error {
 	if p.FuelWeightCurve != nil && p.CombinedStintPaceCurve.Identifiability != IdentifiabilitySeparable {
 		return contractError("invalid_document", "fuelWeightCurve", "requires separable identifiability")
 	}
+	if p.FuelWeightCurve != nil {
+		if err := p.FuelWeightCurve.Validate("fuelWeightCurve"); err != nil {
+			return err
+		}
+		if p.FuelWeightCurve.SlopeSecondsPerUnit < 0 {
+			return contractError("invalid_document", "fuelWeightCurve.slopeSecondsPerUnit", "must be non-negative")
+		}
+	}
 	if p.TyreAgeCurve != nil && p.CombinedStintPaceCurve.Identifiability != IdentifiabilitySeparable {
 		return contractError("invalid_document", "tyreAgeCurve", "requires separable identifiability")
+	}
+	if p.TyreAgeCurve != nil {
+		if err := p.TyreAgeCurve.Validate("tyreAgeCurve"); err != nil {
+			return err
+		}
 	}
 	// Pit: si no hay reloj comun, breakdown exacto no se publica; solo intervalos.
 	// La validacion aqui solo comprueba presencia/provenance/confidence basicos.
@@ -262,6 +279,22 @@ func (p StrategyInputProjectionV2) Validate() error {
 		if !interval.HasVERise && interval.VERatePPerS != nil {
 			return contractError("invalid_document", "pit.observedIntervals", "VE rate requires observed rise")
 		}
+	}
+	return nil
+}
+
+func (c SeparableCurve) Validate(field string) error {
+	if !c.Presence.Valid() {
+		return contractError("invalid_document", field+".presence", "unknown presence")
+	}
+	if err := c.Provenance.Validate(); err != nil {
+		return err
+	}
+	if err := c.Confidence.Validate(); err != nil {
+		return err
+	}
+	if math.IsNaN(c.SlopeSecondsPerUnit) || math.IsInf(c.SlopeSecondsPerUnit, 0) {
+		return contractError("invalid_document", field+".slopeSecondsPerUnit", "must be finite")
 	}
 	return nil
 }

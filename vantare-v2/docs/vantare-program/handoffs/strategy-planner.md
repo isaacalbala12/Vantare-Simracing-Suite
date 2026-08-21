@@ -17,6 +17,24 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-747 / F4-3 (2026-08-21, lista para review):
+
+- `SolveV2` suma por vuelta `litros al inicio * segundos/L` al ritmo base y a
+  la curva de stint. El nivel parte de la capacidad, resta consumo tras cada
+  vuelta y añade solo los repostajes elegidos por el candidato.
+- El coeficiente acepta `manual` o `reference` con presencia, procedencia y
+  confianza. Solo acepta `derived` desde la curva que Analysis materializa
+  tras `identifiability=separable`; dos autoridades fallan cerradas. El
+  resultado conserva la fuente, la declara en asunciones y expone coste y
+  sensibilidad del 20 %.
+- La poda exige el mismo fuel cuando el peso está activo y el oráculo exhaustivo
+  usa el mismo término. El test de negocio cambia el óptimo de una parada
+  llenando a dos repostajes splash.
+- Gates verdes: solver x100, Strategy+app, Telemetry Analysis, golden Orbit,
+  vet focal, gofmt y diff-check. Golden Orbit invariante; no se tocó frontend.
+  Sin dependencia, PR, merge, promoción ni release. Pendiente: review del
+  orquestador de #747.
+
 Actualización ISA-746 / F4-2 (2026-08-21, lista para review):
 
 - `SolveV2` usa la curva combinada `valid/combined_only` producida por Analysis

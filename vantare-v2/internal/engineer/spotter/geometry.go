@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	"github.com/vantare/overlays/v2/internal/spotter/geometry"
 )
 
 // MinSpotterSpeedMPS es la velocidad mínima del jugador (m/s) para que el
@@ -17,7 +18,7 @@ import (
 // El default exacto del user setting CC NO está en el repo fuente (no hay JSON
 // de defaults); 10.0 m/s es decisión Vantare alineada con la intención del gate
 // (silenciar parado/coche lento).
-const MinSpotterSpeedMPS = 10.0
+const MinSpotterSpeedMPS = geometry.MinSpotterSpeedMPS
 
 // FCYGamePhase es el valor de engineer.SessionInfo.GamePhase que indica
 // Full Course Yellow / Safety Car. Igual a rF2GamePhase.FullCourseYellow=6
@@ -45,21 +46,7 @@ func existingOverlap(aligned AlignedOpponent, active ActiveSides) bool {
 }
 
 func overlapConfigForSensitivity(s Sensitivity) OverlapConfig {
-	cfg := DefaultOverlapConfig()
-	switch s {
-	case SensitivityConservative:
-		cfg.CarWidthM = 1.6
-		cfg.CarLengthM = 4.8
-	case SensitivityAggressive:
-		cfg.CarWidthM = 2.0
-		cfg.CarLengthM = 4.2
-	case SensitivityNormal:
-		fallthrough
-	default:
-		cfg.CarWidthM = 1.8
-		cfg.CarLengthM = 4.5
-	}
-	return cfg
+	return geometry.ConfigForSensitivity(s)
 }
 
 // GridSide detects which side of the grid the player is on during the

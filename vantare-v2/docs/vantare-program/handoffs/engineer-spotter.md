@@ -105,8 +105,8 @@ productivo sin crear un segundo reader.
 
 - Rama activa: `vantareapp/isa-718-motor-familias`.
 - Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
-- Entrega: F4 #718 implementada localmente; PR draft a `nightly` pendiente de
-  crear tras completar todos los gates. F3 permanece en PR draft #733.
+- Entrega: F4 #718 implementada en tres commits atómicos; PR draft #739 abierto
+  a `nightly`, sin integración. F3 permanece en PR draft #733.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -325,7 +325,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
-| En implementación | ISA-718 / F4, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
+| En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
 | En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
@@ -364,8 +364,10 @@ bus con 13 intents, textos exactos del catálogo, prioridades P2/P3, cooldowns,
 TTLs, reset de lifecycle y health sanitizado. El cutover retira las cinco
 familias de la ruta legacy por defecto, pero conserva físicamente sus paquetes
 y ofrece `-engineer-legacy-families` como rollback exclusivo pre-Start. Las
-regresiones focales de familias, radio, Spotter y Engineer pasan; suite/gates
-globales, push, PR draft y CI remoto quedan pendientes en este punto.
+regresiones focales, vet, build frontend, race focal y suite Go global pasan.
+Commits `5481aca5`, `17be1248`, `712e6944`; PR draft #739 abierto y push
+verificado. CI remoto y gate LMU humano siguen pendientes; sin merge ni
+promoción.
 
 2026-08-21, ronda final del re-review ISA-717 / PR #733: `SetLocale` pre-Start
 rederiva `AudioConfig` y actualiza el router ya instalado, por lo que audio y

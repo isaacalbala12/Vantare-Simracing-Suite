@@ -37,6 +37,7 @@ var requiredOperationFields = map[Operation][]string{
 	OperationEditVariant:             {"eventId", "variant", "updatedAt"},
 	OperationListVariants:            {"eventId"},
 	OperationCompareVariants:         {"eventId", "leftVariantId", "rightVariantId"},
+	OperationCalculateOrbit:          {"input"},
 	OperationPreviewLegacyMigration:  {"sources", "migratedAt"},
 	OperationMigrateLegacy:           {"sources", "confirmedFingerprint", "migratedAt"},
 	OperationRollbackLegacyMigration: {"journalId", "rolledBackAt"},
@@ -199,6 +200,11 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command CompareVariantsCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.CompareVariants(ctx, command)
+		}
+	case OperationCalculateOrbit:
+		var command CalculateOrbitCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CalculateOrbit(ctx, command)
 		}
 	case OperationPreviewLegacyMigration:
 		var command LegacyMigrationCommand

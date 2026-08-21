@@ -14,6 +14,8 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.nav.hotkeysSub": "Combinazioni globali",
   "settings.nav.diagnostics": "Diagnostica",
   "settings.nav.diagnosticsSub": "Sorgenti, dati e registri",
+  "settings.search.placeholder": "Cerca impostazioni…",
+  "settings.search.empty": "Nessuna impostazione corrisponde alla tua ricerca.",
 
   "settings.sec.account.title": "Account",
   "settings.sec.account.lead": "La tua sessione, il tuo piano e ciò che include.",

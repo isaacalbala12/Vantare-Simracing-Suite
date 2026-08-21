@@ -18,6 +18,8 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.nav.hotkeysSub": "Combinaciones globales",
   "settings.nav.diagnostics": "Diagnóstico",
   "settings.nav.diagnosticsSub": "Fuentes, datos y registros",
+  "settings.search.placeholder": "Buscar ajustes…",
+  "settings.search.empty": "Ningún ajuste coincide con tu búsqueda.",
 
   "settings.sec.account.title": "Cuenta",
   "settings.sec.account.lead": "Tu sesión, tu plan y lo que incluye.",

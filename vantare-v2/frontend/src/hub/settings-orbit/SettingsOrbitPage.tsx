@@ -75,6 +75,7 @@ import {
   persistReduceMotion,
   persistSettingsSection,
   resolveSettingsSection,
+  searchSettings,
 } from "./settings-orbit-model";
 import "../../styles/orbit-settings.css";
 
@@ -143,6 +144,14 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
     persistSettingsSection(next);
   }, []);
 
+  // Búsqueda de ajustes: mientras hay consulta, la columna muestra resultados
+  // en vez de las secciones; elegir uno navega y limpia la búsqueda.
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchResults = useMemo(
+    () => searchSettings(searchQuery, (key) => t(key)),
+    [searchQuery, t],
+  );
+
   return (
     <div className="orbit-set" data-section={section} data-testid="orbit-settings">
       <header className="orbit-set__head">
@@ -176,18 +185,50 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
                 <div className="orbit-block__head">
                   <span className="orbit-eyebrow">{t("settings.nav.sections")}</span>
                 </div>
-                <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
-                  {SETTINGS_SECTIONS.map((id) => (
-                    <ListRow
-                      ariaSelected={id === section}
-                      key={id}
-                      onClick={() => selectSection(id)}
-                      selected={id === section}
-                      subtitle={t(`settings.nav.${id}Sub`)}
-                      title={t(`settings.nav.${id}`)}
-                    />
-                  ))}
-                </div>
+                <input
+                  aria-label={t("settings.search.placeholder")}
+                  className="orbit-set-search"
+                  data-testid="orbit-settings-search"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t("settings.search.placeholder")}
+                  type="search"
+                  value={searchQuery}
+                />
+                {searchQuery.trim() ? (
+                  searchResults.length > 0 ? (
+                    <div
+                      className="orbit-list"
+                      data-testid="orbit-settings-search-results"
+                    >
+                      {searchResults.map((entry) => (
+                        <ListRow
+                          key={`${entry.section}:${entry.key}`}
+                          onClick={() => {
+                            selectSection(entry.section);
+                            setSearchQuery("");
+                          }}
+                          subtitle={t(`settings.nav.${entry.section}`)}
+                          title={t(entry.key)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Note>{t("settings.search.empty")}</Note>
+                  )
+                ) : (
+                  <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
+                    {SETTINGS_SECTIONS.map((id) => (
+                      <ListRow
+                        ariaSelected={id === section}
+                        key={id}
+                        onClick={() => selectSection(id)}
+                        selected={id === section}
+                        subtitle={t(`settings.nav.${id}Sub`)}
+                        title={t(`settings.nav.${id}`)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             </div>,
             contextSlot,

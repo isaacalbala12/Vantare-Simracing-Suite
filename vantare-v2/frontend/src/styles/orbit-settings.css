@@ -752,6 +752,31 @@
   border-top: 0;
 }
 
+/* ------------------------------------------------------------- BUSQUEDA */
+
+/* El campo vive en la columna de contexto, encima de la lista de secciones:
+   mientras hay consulta, la lista se sustituye por resultados. */
+.orbit-set-search {
+  width: 100%;
+  margin: 10px 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  color: var(--orbit-ink);
+  font: inherit;
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-set-search::placeholder {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-set-search:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 1px;
+}
+
 /* ------------------------------------------------- MOVIMIENTO REDUCIDO */
 
 /* La preferencia local de Ajustes (`data-reduce-motion`) apaga el mismo

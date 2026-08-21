@@ -41,6 +41,7 @@ type SessionClassificationFamily struct {
 	Presence          Presence   `json:"presence"`
 	Provenance        Provenance `json:"provenance"`
 	Confidence        Confidence `json:"confidence"`
+	Reason            string     `json:"reason,omitempty"`
 	TrackName         string     `json:"trackName"`
 	TrackLayout       string     `json:"trackLayout"`
 	CarName           string     `json:"carName"`
@@ -55,10 +56,12 @@ type LapValidityFamily struct {
 	Presence   Presence      `json:"presence"`
 	Provenance Provenance    `json:"provenance"`
 	Confidence Confidence    `json:"confidence"`
+	Reason     string        `json:"reason,omitempty"`
 	Laps       []LapValidity `json:"laps"`
 }
 
 type LapValidity struct {
+	SessionID string   `json:"sessionId,omitempty"`
 	LapNumber int      `json:"lapNumber"`
 	Included  bool     `json:"included"`
 	Reason    string   `json:"reason"`
@@ -70,6 +73,7 @@ type ResourceConsumptionFamily struct {
 	Presence        Presence                  `json:"presence"`
 	Provenance      Provenance                `json:"provenance"`
 	Confidence      Confidence                `json:"confidence"`
+	Reason          string                    `json:"reason,omitempty"`
 	MeanPerLap      float64                   `json:"meanPerLap"`
 	RangeLower      float64                   `json:"rangeLower"`
 	RangeUpper      float64                   `json:"rangeUpper"`
@@ -143,19 +147,36 @@ type PitFamily struct {
 	Presence             Presence                  `json:"presence"`
 	Provenance           Provenance                `json:"provenance"`
 	Confidence           Confidence                `json:"confidence"`
+	Reason               string                    `json:"reason,omitempty"`
 	ObservedIntervals    []ObservedPitLaneInterval `json:"observedIntervals"`
+	FuelRate             ObservedRateFamily        `json:"fuelRate"`
+	VERate               ObservedRateFamily        `json:"veRate"`
 	TransitSecondsManual *float64                  `json:"transitSecondsManual,omitempty"`
 	ServiceSecondsManual *float64                  `json:"serviceSecondsManual,omitempty"`
 	RatesNote            string                    `json:"ratesNote"`
 }
 
+type ObservedRateFamily struct {
+	Presence   Presence   `json:"presence"`
+	Provenance Provenance `json:"provenance"`
+	Confidence Confidence `json:"confidence"`
+	Reason     string     `json:"reason,omitempty"`
+	Mean       float64    `json:"mean"`
+}
+
 type ObservedPitLaneInterval struct {
-	PitNumber       int      `json:"pitNumber"`
-	DurationSeconds float64  `json:"durationSeconds"`
-	FuelRateLPerS   *float64 `json:"fuelRateLPerS,omitempty"`
-	VERatePPerS     *float64 `json:"veRatePPerS,omitempty"`
-	HasFuelRise     bool     `json:"hasFuelRise"`
-	HasVERise       bool     `json:"hasVERise"`
+	PitNumber       int        `json:"pitNumber"`
+	StartTimestamp  *time.Time `json:"startTimestamp,omitempty"`
+	EndTimestamp    *time.Time `json:"endTimestamp,omitempty"`
+	DurationSeconds float64    `json:"durationSeconds"`
+	FuelAddedLiters *float64   `json:"fuelAddedLiters,omitempty"`
+	VEAddedPercent  *float64   `json:"veAddedPercent,omitempty"`
+	FuelRateLPerS   *float64   `json:"fuelRateLPerS,omitempty"`
+	VERatePPerS     *float64   `json:"veRatePPerS,omitempty"`
+	HasFuelRise     bool       `json:"hasFuelRise"`
+	HasVERise       bool       `json:"hasVERise"`
+	Ambiguous       bool       `json:"ambiguous"`
+	AmbiguityReason string     `json:"ambiguityReason,omitempty"`
 }
 
 // SavingCostFamily: A5 INVALID -> procedencia manual, derivable solo via protocolo A/B.
@@ -163,6 +184,7 @@ type SavingCostFamily struct {
 	Presence   Presence      `json:"presence"`
 	Provenance Provenance    `json:"provenance"`
 	Confidence Confidence    `json:"confidence"`
+	Reason     string        `json:"reason,omitempty"`
 	ManualNote string        `json:"manualNote"`
 	Levels     []SavingLevel `json:"levels,omitempty"`
 }
@@ -178,6 +200,7 @@ type ClimateBucketsFamily struct {
 	Presence   Presence             `json:"presence"`
 	Provenance Provenance           `json:"provenance"`
 	Confidence Confidence           `json:"confidence"`
+	Reason     string               `json:"reason,omitempty"`
 	Buckets    []ClimateBucketPoint `json:"buckets"`
 }
 
@@ -197,7 +220,11 @@ type ClimateBucketPoint struct {
 
 func (p StrategyInputProjectionV2) Validate() error {
 	if p.ContractVersion != ContractVersionStrategyInputProjectionV2 {
-		return contractError("unsupported_contract_version", "contractVersion", "unsupported strategy input projection version")
+		return contractError(
+			"unsupported_contract_version",
+			"contractVersion",
+			"unsupported strategy input projection version",
+		)
 	}
 	if err := validateTimestamp("generatedAt", p.GeneratedAt); err != nil {
 		return err
@@ -218,6 +245,23 @@ func (p StrategyInputProjectionV2) Validate() error {
 	// La validacion aqui solo comprueba presencia/provenance/confidence basicos.
 	if !p.Pit.Presence.Valid() {
 		return contractError("invalid_document", "pit.presence", "unknown presence")
+	}
+	for _, interval := range p.Pit.ObservedIntervals {
+		if interval.DurationSeconds <= 0 {
+			return contractError("invalid_document", "pit.observedIntervals", "duration must be positive")
+		}
+		if !interval.HasFuelRise && !interval.HasVERise && !interval.Ambiguous {
+			return contractError("invalid_document", "pit.observedIntervals", "pit without resource rise must be ambiguous")
+		}
+		if interval.Ambiguous && interval.AmbiguityReason == "" {
+			return contractError("invalid_document", "pit.observedIntervals", "ambiguous pit requires reason")
+		}
+		if !interval.HasFuelRise && interval.FuelRateLPerS != nil {
+			return contractError("invalid_document", "pit.observedIntervals", "fuel rate requires observed rise")
+		}
+		if !interval.HasVERise && interval.VERatePPerS != nil {
+			return contractError("invalid_document", "pit.observedIntervals", "VE rate requires observed rise")
+		}
 	}
 	return nil
 }

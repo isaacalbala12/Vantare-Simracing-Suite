@@ -1,0 +1,16 @@
+{
+  "contractVersion": "strategyinputprojection.v2",
+  "combinationId": "combo-real",
+  "sourceSessions": ["race-1", "practice-2"],
+  "families": {
+    "sessionClassification": {"presence": "valid", "provenance": "derived", "sampleSize": 2, "reason": ""},
+    "lapValidity": {"presence": "valid", "provenance": "derived", "sampleSize": 2, "reason": ""},
+    "fuelConsumption": {"presence": "valid", "provenance": "derived", "sampleSize": 4, "reason": ""},
+    "virtualEnergyConsumption": {"presence": "valid", "provenance": "derived", "sampleSize": 3, "reason": ""},
+    "combinedStintPaceCurve": {"presence": "valid", "provenance": "derived", "sampleSize": 1, "reason": "insufficient_stints"},
+    "tyreDegradation": {"presence": "valid", "provenance": "derived", "sampleSize": 2, "reason": ""},
+    "pit": {"presence": "unknown", "provenance": "derived", "sampleSize": 1, "reason": "degraded_no_transit_service_breakdown"},
+    "savingCost": {"presence": "missing", "provenance": "derived", "sampleSize": 0, "reason": "missing_fuel_mixture_levels"},
+    "climateBuckets": {"presence": "valid", "provenance": "derived", "sampleSize": 7, "reason": ""}
+  }
+}

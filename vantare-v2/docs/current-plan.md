@@ -1,3 +1,23 @@
+Nota ISA-744 / ISA-694 F3-a5 (2026-08-21, implementada en rama de issue):
+- Telemetry Analysis conserva cada intervalo cerrado `In Pits` y deriva Fuel/VE
+  solo cuando el canal declara un reloj común. Con reloj desconocido o sin
+  subida, el pit queda ambiguo con motivo; nunca se fabrica tránsito/servicio.
+- Las tasas observadas de repostaje y recarga llevan N, rango, varianza y
+  versión, y la agregación filtra combinación y sesiones duplicadas.
+- `ObservedStrategy v1` se extrae solo de carreras: stints y vueltas de parada
+  desde F3-a2, compuesto raw, cambios Fuel/neumático/desgaste y resultado con
+  vueltas completadas y tiempo sumado cuando existe.
+- El productor compone la selección multi-sesión en
+  `StrategyInputProjection v2`. Cada familia lleva presencia, procedencia,
+  confianza y motivo; una familia `missing`/`unsupported` no bloquea las demás.
+- Fixtures versionadas cubren pit alineado/degradado/ambiguo, estrategia
+  observada y la matriz de familias del productor. El contract test acepta
+  productor nuevo→consumidor v2 y rechaza fail-closed el fixture v1 antiguo.
+- Gates contractuales Analysis y Strategy, race, vet, gofmt y diff-check PASS.
+  `go test ./...` queda bloqueado porque falta el `frontend/dist` requerido por
+  `go:embed`; tampoco hay `frontend/node_modules` para regenerarlo localmente.
+  Pendiente: review del orquestador. Sin PR, merge, promoción ni release.
+
 Nota ISA-743 / ISA-694 F3-a4 (2026-08-21, implementada en rama de issue):
 - Telemetry Analysis publica la curva combinada por stint y su mediana por
   índice de vuelta para combinación+bucket, reutilizando vueltas limpias,

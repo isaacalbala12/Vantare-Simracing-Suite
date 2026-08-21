@@ -59,9 +59,14 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		return SolverResultV2{}, err
 	}
 	binding := input.bindingConstraint()
+	paceCost, err := input.stintPaceCost()
+	if err != nil {
+		return SolverResultV2{}, solveError(ErrorInvalidInput, "combinedStintPaceCurve", err.Error())
+	}
 	result := SolverResultV2{
 		ContractVersion:  SolverContractVersionV2,
 		InputHash:        inputHash,
+		StintPaceCost:    paceCost.source,
 		Binding:          binding,
 		Candidates:       []DecisionVector{},
 		CandidateDetails: []SolverCandidateV2{},
@@ -89,7 +94,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 					budgetExhausted = true
 					break
 				}
-				afterStint, err := appendStint(node, stintLaps, input)
+				afterStint, err := appendStint(node, stintLaps, input, paceCost)
 				if err != nil {
 					return SolverResultV2{}, err
 				}
@@ -158,6 +163,18 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	result.Best = cloneDecision(best.decision)
 	result.Expected = evaluationForNode(best, input.Formation.Seconds)
 	result.WorstCase = result.Expected
+	perturbed := paceCost.perturbed(defaultCurveSensitivity)
+	perturbedDegradation := decisionDegradation(best.decision, perturbed)
+	impact := perturbedDegradation - best.degradation
+	result.WorstCase.DegradationSeconds = perturbedDegradation
+	result.WorstCase.TotalSeconds += impact
+	parameter := "degradationPerLapSeconds"
+	if paceCost.source.Model == StintPaceModelCombinedCurve {
+		parameter = "combinedStintPaceCurve"
+	}
+	result.Sensitivities = append(result.Sensitivities, SolverSensitivity{
+		Parameter: parameter, Delta: defaultCurveSensitivity, ImpactSeconds: impact,
+	})
 	feasibleDetails := make([]SolverCandidateV2, 0, len(completed))
 	for index, candidate := range completed {
 		decision := cloneDecision(candidate.decision)
@@ -268,9 +285,9 @@ func serviceAmounts(current int64, resource serviceResource) []int64 {
 	return result
 }
 
-func appendStint(node searchNode, laps int64, input SolverInputV2) (searchNode, error) {
+func appendStint(node searchNode, laps int64, input SolverInputV2, paceCost stintPaceCost) (searchNode, error) {
 	next := cloneNode(node)
-	stint, err := planStint(laps, input.BaseLapSeconds, input.DegradationPerLap)
+	stint, err := paceCost.stint(laps, input.BaseLapSeconds)
 	if err != nil {
 		return searchNode{}, err
 	}
@@ -278,6 +295,20 @@ func appendStint(node searchNode, laps int64, input SolverInputV2) (searchNode, 
 	next.degradation += stint.DegradationSeconds
 	next.decision.Stints = append(next.decision.Stints, StintDecision{Index: len(next.decision.Stints), Laps: laps, SavingLevel: SavingNone})
 	return next, nil
+}
+
+func decisionDegradation(decision DecisionVector, paceCost stintPaceCost) float64 {
+	total := 0.0
+	for _, stint := range decision.Stints {
+		if int64(len(paceCost.cumulative)) > stint.Laps {
+			total += paceCost.cumulative[stint.Laps]
+			continue
+		}
+		for lap := int64(1); lap <= stint.Laps; lap++ {
+			total += paceCost.deltaAt(lap)
+		}
+	}
+	return total
 }
 
 func appendPit(node searchNode, fuelAmount, veAmount int64, input SolverInputV2) (searchNode, error) {

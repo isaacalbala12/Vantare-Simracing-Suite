@@ -243,6 +243,7 @@ func (in SolverInputV2) Validate() error {
 type SolverResultV2 struct {
 	ContractVersion  ContractVersion     `json:"contractVersion"`
 	InputHash        string              `json:"inputHash"`
+	StintPaceCost    StintPaceCostSource `json:"stintPaceCost"`
 	Best             DecisionVector      `json:"best"`
 	Binding          BindingConstraint   `json:"binding"`
 	Sensitivities    []SolverSensitivity `json:"sensitivities"`

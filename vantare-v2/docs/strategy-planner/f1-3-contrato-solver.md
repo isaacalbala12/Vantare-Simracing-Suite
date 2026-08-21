@@ -43,6 +43,38 @@ mismo Fuel y VE domina al otro. El oráculo de tests enumera sin poda exactament
 las mismas vueltas y cantidades en carreras pequeñas. Los empates se ordenan
 por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
 
+### Curva de ritmo por stint F4-2
+
+`SolveV2` selecciona una sola autoridad de coste de stint:
+
+- si `Projection.CombinedStintPaceCurve` está `valid` y declara
+  `identifiability=combined_only`, consume sus puntos y conserva en el resultado
+  `model`, `provenance`, `confidence` e `identifiability`;
+- en cualquier otro estado usa `DegradationPerLap` como curva lineal manual,
+  con procedencia `manual`. Así el modo manual sigue siendo un caso particular,
+  no un segundo solver.
+
+La edad de vuelta del stint empieza en 1. Entre dos edades observadas se hace
+interpolación lineal. Antes del primer punto se conserva su delta, sin inventar
+una mejora. Después del último punto se extrapola con una pendiente no negativa
+igual al máximo entre la pendiente del último tramo y
+`(rangeUpper-rangeLower)/sqrt(N)`, donde rango y N proceden de la confianza de
+la curva. Por tanto, poca muestra o mucha dispersión penalizan más el tail y
+nunca se prolonga una mejoría aparente fuera del rango observado.
+
+Una curva seleccionada falla cerrada si no tiene puntos, N/rango, edades
+positivas y únicas, muestras positivas o valores/rangos finitos. Los puntos se
+ordenan por edad y se precalcula el coste acumulado hasta `RaceLaps`; evaluar un
+candidato sigue siendo O(1) por stint. El oráculo exhaustivo usa el mismo coste
+por tramos sobre su espacio pequeño, pero continúa enumerando sin la poda del
+solver.
+
+La sensibilidad pesimista conserva el 20 % del modelo anterior. En una curva
+derivada perturba **todos** sus deltas y su rango, vuelve a evaluar el mismo plan
+y publica `parameter=combinedStintPaceCurve`; en manual perturba la pendiente
+lineal y publica `parameter=degradationPerLapSeconds`. `WorstCase` incorpora ese
+impacto sin cambiar la decisión elegida.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
@@ -52,7 +84,7 @@ por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
 
 ## Resultado
 
-`SolverResultV2{Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, ComputeStats{WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, ComputeStats{WithinBudget}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
@@ -60,13 +92,15 @@ por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
 
 ## Compatibilidad
 
-- `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido; `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente. F4-1 ejecuta formación, ritmo/degradación lineal vigente y pit por servicios; compuestos, pilotos, ahorro y clima permanecen en sus extensiones F4 posteriores. Se mantiene `tiempo_total = Σ stints + Σ pit + formación`.
+- `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido; `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente. F4-2 sustituye dentro de `SolveV2` la degradación lineal por la curva combinada cuando está disponible; compuestos, pilotos, ahorro y clima permanecen en sus extensiones F4 posteriores. Se mantiene `tiempo_total = Σ stints + Σ pit + formación`.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
 
 ## Verificación
 
 ```bash
 go vet ./internal/strategy/solver/...
-go test ./internal/strategy/solver/... -run TestSolverInputV2
+go test -count=100 ./internal/strategy/solver
+go test ./internal/strategy/... ./internal/app
+go test ./internal/strategy/application -run TestCalculateOrbitUsesGoEngineForGoldenPlan
 gofmt -l ./internal/strategy/solver/
 ```

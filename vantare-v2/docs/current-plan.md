@@ -1,3 +1,22 @@
+Nota ISA-746 / ISA-694 F4-2 (2026-08-21, implementada en rama de issue):
+- `SolveV2` consume la `CombinedStintPaceCurve` `valid/combined_only` de
+  Analysis y conserva modelo, procedencia, confianza e identificabilidad en el
+  resultado. Sin esa familia usa la degradación lineal manual como caso
+  particular con procedencia explícita.
+- El coste interpola entre edades observadas y extrapola el tail sin asumir
+  mejoría: máximo entre pendiente final no negativa y rango/sqrt(N). Los costes
+  acumulados se precalculan para mantener O(1) por stint.
+- La paridad exhaustiva usa el mismo coste por tramos; la sensibilidad del 20 %
+  perturba la curva completa. Un test de negocio demuestra que un cliff en la
+  quinta vuelta mueve el óptimo de cero paradas a una parada en la vuelta 4,
+  donde la aproximación lineal no paraba.
+- Gates verdes: solver x100, Strategy+app, golden Orbit focal, vet focal,
+  gofmt y diff-check. La suite Go global pasa todos los paquetes compilables y
+  solo queda roja en `frontend`/`cmd/vantare` porque este worktree no contiene
+  `frontend/dist` ni `frontend/node_modules` para regenerarlo. Sin frontend,
+  dependencia, PR, merge, promoción ni release. Pendiente: review del
+  orquestador de #746.
+
 Nota ISA-745 / ISA-694 F4-1 (2026-08-21, implementada en rama de issue):
 - `SolveV2` ejecuta el vector F1.3 con paradas en vueltas arbitrarias y
   cantidades Fuel/VE discretizadas por servicio. El coste de cada parada se

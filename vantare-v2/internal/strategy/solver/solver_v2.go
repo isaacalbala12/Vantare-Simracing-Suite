@@ -389,6 +389,7 @@ type SolverResultV2 struct {
 	WorstCase         ScenarioEvaluation        `json:"worstCase"`
 	Candidates        []DecisionVector          `json:"candidates,omitempty"`
 	CandidateDetails  []SolverCandidateV2       `json:"candidateDetails,omitempty"`
+	Variants          []SolverVariantV2         `json:"variants,omitempty"`
 	Feasible          bool                      `json:"feasible"`
 	Reasons           []SolverReason            `json:"reasons,omitempty"`
 	Assumptions       []SolverReason            `json:"assumptions"`
@@ -431,10 +432,43 @@ type FuelWeightCostSource struct {
 // SolverCandidateV2 conserva tanto planes completos como intentos inviables;
 // estos ultimos nunca desaparecen sin un motivo observable.
 type SolverCandidateV2 struct {
-	Decision   DecisionVector     `json:"decision"`
-	Evaluation ScenarioEvaluation `json:"evaluation"`
-	Feasible   bool               `json:"feasible"`
-	Reasons    []SolverReason     `json:"reasons,omitempty"`
+	Decision          DecisionVector     `json:"decision"`
+	Evaluation        ScenarioEvaluation `json:"evaluation"`
+	WorstCase         ScenarioEvaluation `json:"worstCase"`
+	Feasible          bool               `json:"feasible"`
+	WorstCaseFeasible bool               `json:"worstCaseFeasible"`
+	Risks             []SolverRisk       `json:"risks,omitempty"`
+	Reasons           []SolverReason     `json:"reasons,omitempty"`
+}
+
+type SolverVariantKind string
+
+const (
+	SolverVariantFast         SolverVariantKind = "fast"
+	SolverVariantBalanced     SolverVariantKind = "balanced"
+	SolverVariantConservative SolverVariantKind = "conservative"
+)
+
+// WorstCaseTolerance documenta el unico parametro que diferencia variantes.
+// Todas parten del mismo ranking esperado y del mismo conjunto de candidatos.
+type WorstCaseTolerance struct {
+	AllowHardRisk            bool    `json:"allowHardRisk"`
+	MaxExpectedSlowdownRatio float64 `json:"maxExpectedSlowdownRatio"`
+}
+
+type SolverVariantV2 struct {
+	Kind              SolverVariantKind  `json:"kind"`
+	Tolerance         WorstCaseTolerance `json:"tolerance"`
+	Decision          DecisionVector     `json:"decision"`
+	Expected          ScenarioEvaluation `json:"expected"`
+	WorstCase         ScenarioEvaluation `json:"worstCase"`
+	WorstCaseFeasible bool               `json:"worstCaseFeasible"`
+	Risks             []SolverRisk       `json:"risks,omitempty"`
+}
+
+type SolverRisk struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 type BindingConstraint struct {
@@ -447,6 +481,7 @@ type SolverSensitivity struct {
 	Parameter     string  `json:"parameter"`
 	Delta         float64 `json:"delta"`
 	ImpactSeconds float64 `json:"impactSeconds"`
+	Feasible      *bool   `json:"feasible,omitempty"`
 }
 
 type ScenarioEvaluation struct {

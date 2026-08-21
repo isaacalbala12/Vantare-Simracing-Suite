@@ -20,7 +20,7 @@ const (
 	defaultVEStep       = 1.0
 	maxServiceLevels    = int64(200)
 	maxRejectedDetails  = 8
-	maxRankedCandidates = 8
+	maxRankedCandidates = 32
 )
 
 type serviceResource struct {
@@ -49,6 +49,11 @@ type searchNode struct {
 	saving                  float64
 	pit                     float64
 	decision                DecisionVector
+	worstFuel               int64
+	worstVE                 int64
+	worstTyreAge            int64
+	worstTyreUsage          map[tyres.TyreID]int64
+	worstFeasible           bool
 }
 
 func (node searchNode) total(formation float64) float64 {
@@ -116,6 +121,24 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "weather", err.Error())
 	}
 	lapCosts := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, weather: weatherCost}
+	envelope := coherentWorstCase(input)
+	worstFuel, worstVE, err := envelope.full.serviceResources()
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	worstSaving, err := envelope.full.savingCost()
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	worstDrivers, err := newDriverDecisionModel(envelope.full, worstSaving)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	worstWeather, err := newWeatherCostModel(envelope.full)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	riskActive := hardUncertaintyActive(input, envelope.full)
 	result := SolverResultV2{
 		ContractVersion:   SolverContractVersionV2,
 		InputHash:         inputHash,
@@ -141,7 +164,10 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	}
 
 	initialChoices := tyreModel.initialChoices()
-	initial := searchNode{fuel: fuel.capacity, ve: ve.capacity, decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}}}
+	initial := searchNode{
+		fuel: fuel.capacity, ve: ve.capacity, worstFuel: worstFuel.capacity, worstVE: worstVE.capacity, worstFeasible: true,
+		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
+	}
 	byLap := make([][]searchNode, input.RaceLaps+1)
 	for _, choice := range initialChoices {
 		node := initial
@@ -167,6 +193,8 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		for _, node := range byLap[lap] {
 			for _, driver := range drivers.order {
 				for _, savingLevel := range saving.levels {
+					worstDriver, _ := driverByID(worstDrivers, driver.id)
+					worstSavingLevel, _ := savingByID(worstSaving, savingLevel.level)
 					maxLaps := weatherCost.runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps, driver, savingLevel)
 					if maxLaps < 1 {
 						result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
@@ -193,6 +221,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 						}
 						afterStint.fuel -= fuelUsed
 						afterStint.ve -= veUsed
+						worstFuelUsed, worstVEUsed, err := worstWeather.usage(lap+1, stintLaps, worstDriver, worstSavingLevel)
+						if err != nil {
+							return SolverResultV2{}, solveError(ErrorInvalidInput, "worstCase", err.Error())
+						}
+						afterStint.worstFuel -= worstFuelUsed
+						afterStint.worstVE -= worstVEUsed
+						if afterStint.worstFuel < 0 || afterStint.worstVE < 0 {
+							afterStint.worstFeasible = false
+						}
+						applyWorstTyreStint(&afterStint, node, stintLaps, envelope.full.TyreLifeLaps)
 						if allowed, code, message := input.applyDriverConstraints(node, &afterStint, driver); !allowed {
 							result.addRejected(afterStint, input, code, message)
 							continue
@@ -231,6 +269,11 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 									}
 									next.fuel += fuelAmount
 									next.ve += veAmount
+									next.worstFuel += fuelAmount
+									next.worstVE += veAmount
+									if tyreOption.change && !compoundPace.enabled {
+										next.worstTyreAge = 0
+									}
 									var prunedNow int
 									byLap[next.lap], prunedNow = insertNondominated(
 										byLap[next.lap],
@@ -242,6 +285,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 										len(input.EventRules.RequiredWindows) > 0,
 										len(input.EventRules.MandatoryCompounds) > 0,
 										drivers.enabled,
+										riskActive,
 									)
 									pruned += prunedNow
 								}
@@ -349,10 +393,25 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		if index == 0 {
 			reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
 		}
+		expected := evaluationForNode(candidate, input.Formation.Seconds)
+		worst, worstFeasible, risks, err := evaluateCandidateEnvelope(envelope, decision)
+		if err != nil {
+			return SolverResultV2{}, err
+		}
+		if len(risks) > 0 {
+			reason = SolverReason{Code: "worst_case_hard_risk", Message: riskSummary(risks)}
+		}
 		feasibleDetails = append(feasibleDetails, SolverCandidateV2{
-			Decision: decision, Evaluation: evaluationForNode(candidate, input.Formation.Seconds), Feasible: true,
+			Decision: decision, Evaluation: expected, WorstCase: worst,
+			Feasible: true, WorstCaseFeasible: worstFeasible, Risks: risks,
 			Reasons: []SolverReason{reason},
 		})
+	}
+	result.Variants = deriveVariants(feasibleDetails)
+	if fast, ok := variantByKind(result.Variants, SolverVariantFast); ok {
+		result.WorstCase = fast.WorstCase
+		result.Sensitivities = append(result.Sensitivities,
+			consumptionSensitivities(input, fast.Expected, fast.WorstCase, fast.WorstCaseFeasible)...)
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil
@@ -664,16 +723,17 @@ func insertNondominated(
 	windowsActive bool,
 	mandatoryCompoundsActive bool,
 	driversActive bool,
+	riskActive bool,
 ) ([]searchNode, int) {
 	for _, existing := range nodes {
-		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive) {
+		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
 			return nodes, 1
 		}
 	}
 	kept := nodes[:0]
 	pruned := 0
 	for _, existing := range nodes {
-		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive) {
+		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
 			kept = append(kept, existing)
 		} else {
 			pruned++
@@ -685,7 +745,7 @@ func insertNondominated(
 func dominates(
 	left, right searchNode,
 	formation float64,
-	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive bool,
+	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive bool,
 ) bool {
 	leftStops, rightStops := len(left.decision.PitStops), len(right.decision.PitStops)
 	if stopRulesActive && leftStops != rightStops {
@@ -708,6 +768,14 @@ func dominates(
 	}
 	if driversActive && (left.currentDriver != right.currentDriver || left.continuousDriverSeconds != right.continuousDriverSeconds || !sameDriverUsage(left.driverUsage, right.driverUsage)) {
 		return false
+	}
+	if riskActive {
+		if left.worstFeasible != right.worstFeasible {
+			return left.worstFeasible
+		}
+		if left.worstFeasible && (left.worstFuel < right.worstFuel || left.worstVE < right.worstVE || left.worstTyreAge > right.worstTyreAge || !sameTyreUsage(left.worstTyreUsage, right.worstTyreUsage)) {
+			return false
+		}
 	}
 	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
 }
@@ -759,6 +827,12 @@ func cloneNode(node searchNode) searchNode {
 		clone.tyreUsage = make(map[tyres.TyreID]int64, len(node.tyreUsage))
 		for id, laps := range node.tyreUsage {
 			clone.tyreUsage[id] = laps
+		}
+	}
+	if node.worstTyreUsage != nil {
+		clone.worstTyreUsage = make(map[tyres.TyreID]int64, len(node.worstTyreUsage))
+		for id, laps := range node.worstTyreUsage {
+			clone.worstTyreUsage[id] = laps
 		}
 	}
 	if node.driverUsage != nil {

@@ -186,6 +186,19 @@ func (bus *Bus) finish(seq uint64) {
 	}
 }
 
+// Reset drops pending work and cancels the active delivery at a product
+// lifecycle boundary. Cooldowns are communication context and reset too.
+func (bus *Bus) Reset(cause error) {
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+	bus.pending = bus.pending[:0]
+	clear(bus.cooldowns)
+	bus.priorityRun = 0
+	if bus.cancel != nil {
+		bus.cancel(cause)
+	}
+}
+
 func (bus *Bus) nextIndex() int {
 	if bus.pending[0].message.Priority == PriorityP0 || bus.priorityRun < bus.limits.MaxPriorityBurst {
 		return 0
@@ -242,4 +255,10 @@ func (bus *Bus) remove(index int) queued {
 	return removed
 }
 
-func dedupKey(message RadioMessage) string { return message.Intent + "\x00" + message.Subject }
+func dedupKey(message RadioMessage) string {
+	if message.Priority == PriorityP0 {
+		// P0 is reserved for Spotter: one subject has one current safety state.
+		return "spotter\x00" + message.Subject
+	}
+	return message.Intent + "\x00" + message.Subject
+}

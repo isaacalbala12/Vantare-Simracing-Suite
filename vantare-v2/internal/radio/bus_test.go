@@ -261,6 +261,42 @@ func TestSpotterDoesNotCancelActiveSpotter(t *testing.T) {
 	}
 }
 
+func TestSpotterPendingStateSupersedesLessSpecificIntent(t *testing.T) {
+	clock := newFakeClock(100)
+	bus := newTestBus(t, DefaultLimits(), clock)
+	_, _ = bus.Submit(testMessage("left", "spotter.car_left", "player", PriorityP0, 100))
+	result, err := bus.Submit(testMessage("both", "spotter.three_wide", "player", PriorityP0, 101))
+	if err != nil || !result.Accepted || !result.Coalesced || len(result.Dropped) != 1 || result.Dropped[0].ID != "left" {
+		t.Fatalf("three-wide supersession = %+v, %v", result, err)
+	}
+	if got := nextID(t, bus); got != "both" {
+		t.Fatalf("Next = %q, want current three-wide", got)
+	}
+}
+
+func TestResetClearsPendingCooldownAndCancelsActive(t *testing.T) {
+	limits := DefaultLimits()
+	limits.Cooldowns = map[string]time.Duration{"spotter.car_left": time.Second}
+	clock := newFakeClock(100)
+	bus := newTestBus(t, limits, clock)
+	_, _ = bus.Submit(testMessage("active", "spotter.car_left", "player", PriorityP0, 100))
+	item, _ := bus.Next(context.Background())
+	item.Started()
+	_, _ = bus.Submit(testMessage("pending", "spotter.car_right", "player", PriorityP0, 101))
+	bus.Reset(ErrSourceUnavailable)
+	if !errors.Is(context.Cause(item.Context), ErrSourceUnavailable) {
+		t.Fatalf("active cause = %v", context.Cause(item.Context))
+	}
+	item.Done()
+	if next, ok := bus.Next(context.Background()); ok || next != nil {
+		t.Fatalf("pending survived reset: %+v", next)
+	}
+	retry := testMessage("retry", "spotter.car_left", "player", PriorityP0, 102)
+	if result, err := bus.Submit(retry); err != nil || !result.Accepted {
+		t.Fatalf("cooldown survived reset: %+v, %v", result, err)
+	}
+}
+
 func TestConcurrentSubmissionsRemainBounded(t *testing.T) {
 	limits := DefaultLimits()
 	limits.MaxPending = 8

@@ -214,6 +214,21 @@ func TestRunHoldoutRejectsTemporalLeakage(t *testing.T) {
 	}
 }
 
+func TestRunHoldoutRequiresPositiveRankingSample(t *testing.T) {
+	date := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	race := fixtureRaceCase("race-minimum", "combo-minimum", date, []int{2, 3}, 90, 10)
+	config := Config{
+		Thresholds: ProvisionalThresholds(1),
+		Holdout: HoldoutConfig{
+			CutoffByCombination: map[string]time.Time{"combo-minimum": date.Add(-24 * time.Hour)},
+			MinimumRaces:        1, MinimumRankingRaces: 0, IntervalZScore: 1.96,
+		},
+	}
+	if _, err := RunHoldout([]RaceCase{race}, config); err == nil {
+		t.Fatal("zero minimum ranking sample was accepted")
+	}
+}
+
 func TestRunRaceRejectsProjectionContainingHoldoutSession(t *testing.T) {
 	date := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
 	race := fixtureRaceCase("race-leak", "combo-leak", date, []int{2, 3}, 90, 10)

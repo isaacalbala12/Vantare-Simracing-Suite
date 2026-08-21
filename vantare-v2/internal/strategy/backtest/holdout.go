@@ -139,7 +139,7 @@ func validateHoldoutConfig(config HoldoutConfig) error {
 			return fmt.Errorf("each holdout combination and cutoff is required")
 		}
 	}
-	if config.MinimumRaces <= 0 || config.MinimumRankingRaces < 0 {
+	if config.MinimumRaces <= 0 || config.MinimumRankingRaces <= 0 {
 		return fmt.Errorf("minimum race counts are invalid")
 	}
 	if config.IntervalZScore <= 0 || !finite(config.IntervalZScore) {

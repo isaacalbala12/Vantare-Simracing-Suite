@@ -109,7 +109,7 @@ Archivos que normalmente participan en un hotfix semanal:
 - `internal/calendar/seed/lmu-weekly-schedule.json`
 - `internal/calendar/official_schedule.go`
 - `internal/calendar/official_schedule_test.go`
-- `docs/current-plan.md`
+- la issue de GitHub y el handoff vivo correspondiente
 - `docs/changelog.md`
 
 Si un hotfix semanal necesita tocar frontend, revisar primero si es un bug existente. El cambio semanal normal deberia ser solo seed/tests/docs.

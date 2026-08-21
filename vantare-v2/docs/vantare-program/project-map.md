@@ -1,6 +1,7 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-08-01. Linear es la fuente del estado operativo.
+Estado: 2026-08-21. GitHub Issues es la fuente del estado operativo; el roadmap
+publico se mantiene en `roadmap/plan.md`.
 
 ## Grafo principal
 
@@ -17,7 +18,7 @@ Account + Billing ─ permisos y canales
 Launcher ───────── activación de LMU y módulos
 Calendar ───────── eventos → perfiles, layouts y estrategias
 Settings ───────── configuración común
-Roadmap/Discord ── publicación sanitizada desde Linear
+Roadmap/Discord ── publicación sanitizada desde GitHub y el roadmap editorial
 Installer/Updater  Nightly → Testers → Master
 ```
 
@@ -40,7 +41,7 @@ almacenamiento privado de otro.
 | Billing | Polar listo y Supabase endurecido | NO-GO | plan BIL y pruebas |
 | Settings | Configuración global/por perfil | por consolidar | ownership modular |
 | Installer/Updater | Instalación, rollback y canales | proyecto por crear | ramas y Billing |
-| Roadmap/Linear/Discord | Estado público seguro | workflows previos | resumen público |
+| Roadmap/GitHub/Discord | Estado público seguro | digest y workflows | resumen público |
 | Root migration | `vantare-v2` como raíz | auditoría ISA-14 | cerrar worktrees |
 
 Contenido y marketing no se implementan autónomamente.

@@ -1,6 +1,12 @@
 # Roadmap Execution Board
 
-Tablero operativo para ejecutar el roadmap por minifases y miniplanes.
+> **Histórico — no es una fuente normativa ni un tablero activo.** El planning,
+> el alcance futuro y el estado público viven en `docs/roadmap/plan.md`. Las
+> issues de GitHub, los handoffs y las ramas contienen el estado operativo y la
+> evidencia actual. Este documento se conserva por su contexto histórico y no
+> debe actualizarse en el flujo normal.
+
+Tablero histórico para ejecutar el roadmap por minifases y miniplanes.
 
 Este documento esta pensado para que otro modelo pueda orquestar el desarrollo sin depender del contexto de este chat.
 

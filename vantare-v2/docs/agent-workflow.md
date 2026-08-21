@@ -14,7 +14,7 @@
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
 > `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,
-> `docs/branch-channels.md` y el handoff vivo del proyecto.
+> `docs/branch-channels.md`, `docs/roadmap/plan.md` y el handoff vivo del proyecto.
 
 ## Fuente operativa y aislamiento
 
@@ -150,7 +150,8 @@ Debe buscar:
 
 1. Usuario debate con orquestador cuando hacen falta decisiones.
 2. Orquestador consulta GitHub Issues, `docs/vantare-program/` y el handoff vivo.
-3. El tablero histórico solo se consulta como contexto; no elige trabajo.
+3. `docs/roadmap/plan.md` define el alcance y el estado público. Los tableros y
+   planes históricos solo se consultan como contexto; no eligen trabajo.
 4. Orquestador crea o identifica el miniplan vigente.
 5. Orquestador crea prompt worker.
 6. Worker implementa.
@@ -158,16 +159,20 @@ Debe buscar:
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
 10. Se hace commit pequeño cuando el contrato de la issue lo permite.
-11. El orquestador actualiza el handoff vivo y la issue de GitHub despues de
-    cada worker o cambio material. El worker deja la issue en revision
-    (label `state:in-review`); no promociona por su cuenta.
+11. El orquestador actualiza el handoff vivo y la issue de GitHub después de
+    cada worker o cambio material. Si cambia el alcance, el plan futuro o el
+    estado público, actualiza `docs/roadmap/plan.md` en el mismo PR. El worker
+    deja la issue en revisión (label `state:in-review`); no promociona por su cuenta.
 12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
     entrega a `nightly`.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
-15. Se actualizan el handoff, la issue de GitHub, `docs/current-plan.md` y, cuando siga
-    siendo relevante, `docs/roadmap-execution-board.md`.
+15. Se actualizan el handoff y la issue de GitHub siempre que haya un cambio
+    material. El roadmap se actualiza cuando cambia el alcance, el plan futuro,
+    una fase, un área, un hito o una entrega pública. `docs/current-plan.md` y
+    `docs/roadmap-execution-board.md` son históricos y no se actualizan como
+    parte del flujo normal.
 
 ## Comunicación de cambios visibles
 
@@ -222,7 +227,9 @@ Una tarea esta terminada solo si:
 - tests actualizados si cambia comportamiento,
 - verificacion manual clara,
 - reviewer no encuentra criticos,
-- `current-plan.md` actualizado si cambia el estado.
+- `docs/roadmap/plan.md` actualizado si cambia el alcance, el plan futuro o el
+  estado público; el handoff y la issue de GitHub reflejan siempre el estado
+  técnico y operativo.
 
 Esta definicion cierra el trabajo tecnico de la rama. No demuestra que el
 cambio este en `nightly`, `testers`, `master` ni en una release. Esos estados

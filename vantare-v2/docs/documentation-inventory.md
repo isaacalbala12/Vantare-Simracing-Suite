@@ -1,6 +1,6 @@
 # Inventario de documentacion
 
-Ultima actualizacion: 2026-06-21.
+Ultima actualizacion: 2026-08-21.
 
 Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 
@@ -11,12 +11,14 @@ Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 | `README.md` | Util, pero parcialmente desactualizado respecto a Overlays Studio | Actualizar en una tarea separada despues de validacion manual completa |
 | `AGENTS.md` | Nuevo documento de control | Mantener como lectura obligatoria para agentes |
 | `docs/README.md` | Nuevo indice de documentacion | Mantener actualizado cuando se anadan docs |
-| `docs/current-plan.md` | Plan vivo actualizado tras Overlays Studio | Actualizar despues de cada tarea relevante |
+| `docs/roadmap/plan.md` | Fuente publica de fases, areas, hitos y entregas | Actualizar en la misma PR cuando cambie el alcance o estado publico |
+| `docs/current-plan.md` | Registro historico de ejecucion | No actualizar en el flujo normal; conservar como contexto |
 | `docs/architecture.md` | Nueva arquitectura resumida | Mantener simple; ampliar solo con decisiones reales |
 | `docs/domain-model.md` | Nuevo glosario de dominio | Actualizar si cambian nombres o conceptos |
 | `docs/testing-strategy.md` | Nueva estrategia de testing | Actualizar si cambian comandos |
 | `docs/manual-verification.md` | Guia manual actualizada al flujo real de Overlays Studio | Actualizar con cada flujo importante |
 | `docs/agent-workflow.md` | Nuevo workflow de agentes | Mantener alineado con el proceso real |
+| `docs/roadmap-maintenance.md` | Contrato de mantenimiento del roadmap | Mantener alineado con GitHub Issues y el digest generado |
 | `docs/operations.md` | Nueva guia de operaciones | Actualizar si cambia tooling |
 | `docs/go-review-checklist.md` | Nueva checklist Go | Mantener como referencia para reviewers |
 | `docs/stripe-licensing-status-audit.md` | Auditoría extensa de Stripe/licencias/pagos (2026-07-06) | Mantener actualizado al cerrar SQL-01/CHECKOUT-01/DEPLOY-01 |

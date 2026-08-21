@@ -2,7 +2,7 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-> Actualizacion 2026-06-29: este documento queda como mapa de producto y contexto historico. La linea publica se reinicio en `v0.1.x`; el estado operativo inmediato vive en `docs/current-plan.md` y la fuente de ejecucion hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
+> Actualizacion 2026-08-21: este documento queda como mapa de producto y contexto historico. La planificacion publica vive en `docs/roadmap/plan.md`; el estado operativo de cada issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo. La ejecucion especifica hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
 >
 > Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
 
@@ -13,7 +13,7 @@ Este documento ayuda a entender el producto completo, pero no debe usarse para s
 - `docs/alpha-beta-roadmap.md`
 - `docs/beta-widget-system-spec.md`
 - `docs/product-widget-customization.md`
-- `docs/current-plan.md`
+- `docs/roadmap/plan.md`
 - `docs/vantare-suite-architecture.md`
 - `docs/superpowers/plans/2026-06-25-vantare-suite-ingeniero-integration.md`
 - `docs/engineer-live-lmu-adapter-analysis.md`
@@ -42,7 +42,7 @@ La politica completa vive en `docs/versioning-and-release-gates.md`.
 
 - Antes de crear un miniplan tecnico, leer este documento.
 - Consultar primero `docs/release-roadmap-execution-index.md` para saber el orden oficial de release.
-- Consultar `docs/roadmap-execution-board.md` solo como tablero historico/operativo auxiliar.
+- Consultar `docs/roadmap/plan.md` para la planificacion publica. `docs/roadmap-execution-board.md` solo aporta contexto historico.
 - Trabajar la primera release planificada salvo decision explicita.
 - No iniciar multisimulador sin inventario, matriz de datos y adapter contract; Assetto Corsa e iRacing son scope de release, no futuribles.
 - No ampliar configuracion profunda de otros widgets antes de cerrar producto usable.
@@ -217,7 +217,7 @@ Post-release:
 
 ## Roadmap versionado
 
-Las fases versionadas siguientes son historial operativo previo al reset publico. Para la linea publica actual, usar primero el bloque `Roadmap publico 0.1.x` de este documento y `docs/current-plan.md`. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`.
+Las fases versionadas siguientes son historial operativo previo al reset publico. Para la linea publica actual, usar primero `docs/roadmap/plan.md`. Para el release oficial, ejecutar `docs/release-roadmap-execution-index.md`.
 
 ### Roadmap publico 0.1.x
 
@@ -519,7 +519,7 @@ Orden operativo desde hoy:
 11. `B4`: delta best live.
 12. `B5`: `Pedals` beta v1.
 
-El estado operativo detallado vive en `docs/roadmap-execution-board.md`.
+El estado operativo detallado de cada trabajo vive en GitHub Issues y en el handoff vivo correspondiente. `docs/roadmap-execution-board.md` se conserva como historial.
 
 ## Antipatrones
 

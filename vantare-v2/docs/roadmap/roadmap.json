@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T15:24:38Z",
+  "generatedAt": "2026-08-21T01:58:26Z",
   "digest": {
-    "lastCommit": "15bbeec4a419ab0edb54a509ce94077bafcd3042"
+    "lastCommit": "7735f098bb810559d12c48c5a1994cddaa335fc4"
   },
   "phases": [
     {
@@ -566,6 +566,36 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-21",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "telemetry",
+          "text": "Señales finas de suciedad para standings y relative"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Reducir churn de asignaciones de Apply (-74% bytes/frame)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fingerprint LMU sin ambiguedad y fallback de version no-Steam"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Derivacion canonica de fuel.perLap y estimacion de vueltas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+        }
+      ]
+    },
     {
       "date": "2026-08-20",
       "entries": [

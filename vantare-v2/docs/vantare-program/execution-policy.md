@@ -26,13 +26,15 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 ## Contrato por issue
 
 - Una issue ejecutable equivale a rama, worktree y contexto propios.
-- Se usa el nombre generado por Linear.
+- Se usa el nombre generado por la issue de GitHub (`ISA-N`).
 - Base exacta y destino constan en la issue.
 - Commits pequeños y staging limitado.
 - PR draft y `In Review` con evidencia; nunca merge implícito.
 - La promoción utiliza issues de integración separadas.
-- Cada proyecto tiene un unico handoff vivo y se actualiza tras cada worker,
-  decision o cambio material junto con Linear.
+- Cada proyecto tiene un único handoff vivo y se actualiza tras cada worker,
+  decisión o cambio material junto con la issue de GitHub. Los cambios de
+  alcance, plan futuro o estado público se reflejan también en
+  `../roadmap/plan.md` dentro del mismo PR.
 
 ## Delegacion y responsabilidad
 
@@ -45,7 +47,7 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 
 ## Autonomía
 
-Los agentes pueden crear/actualizar Linear, ramas, worktrees, commits, pushes,
+Los agentes pueden crear/actualizar issues de GitHub, ramas, worktrees, commits, pushes,
 PRs, CI, investigación, reviews y fixes dentro de la issue activa.
 
 Una simplificación arquitectónica o retirada de código se ejecuta solo cuando:
@@ -111,7 +113,7 @@ alcance, simplicidad, seguridad, rendimiento, tests complacientes, código
 muerto, contratos, privacidad y rollback.
 
 La entrega enumera base/rama/SHA, archivos, checks, omisiones, capturas/datos,
-rendimiento, riesgos, rollback, siguiente issue, commit/push/PR, Linear y nivel
+rendimiento, riesgos, rollback, siguiente issue, commit/push/PR, GitHub y nivel
 de promoción alcanzado.
 
 Una issue terminada en rama queda `In Review`. Solo queda `Done` cuando cumple

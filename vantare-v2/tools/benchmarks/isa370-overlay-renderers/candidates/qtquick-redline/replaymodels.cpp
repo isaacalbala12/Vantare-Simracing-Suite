@@ -108,10 +108,10 @@ int KeyedRowsModel::indexOfId(const QString &id, const int start) const
     return -1;
 }
 
-void KeyedRowsModel::applyRows(const ReplayRecord &record)
+bool KeyedRowsModel::applyRows(const ReplayRecord &record)
 {
     if (record.widget != m_widget) {
-        return;
+        return false;
     }
     const QString nextStatus = record.viewModel.value(QStringLiteral("status")).toString();
     const QString nextStatusMessage = record.viewModel.value(QStringLiteral("statusMessage")).toString();
@@ -129,18 +129,20 @@ void KeyedRowsModel::applyRows(const ReplayRecord &record)
         const QJsonObject row = value.toObject();
         const QString id = row.value(QStringLiteral("id")).toString();
         if (id.isEmpty() || desiredIds.contains(id)) {
-            return;
+            return false;
         }
         desiredIds.insert(id);
         desired.push_back(row);
     }
 
+    bool rowsChanged = false;
     for (int index = m_rows.size() - 1; index >= 0; --index) {
         const QString id = m_rows.at(index).value(QStringLiteral("id")).toString();
         if (!desiredIds.contains(id)) {
             beginRemoveRows({}, index, index);
             m_rows.removeAt(index);
             endRemoveRows();
+            rowsChanged = true;
         }
     }
     for (int target = 0; target < desired.size(); ++target) {
@@ -150,18 +152,22 @@ void KeyedRowsModel::applyRows(const ReplayRecord &record)
             beginInsertRows({}, target, target);
             m_rows.insert(target, desired.at(target));
             endInsertRows();
+            rowsChanged = true;
             continue;
         }
         if (current != target) {
             beginMoveRows({}, current, current, {}, target);
             m_rows.move(current, target);
             endMoveRows();
+            rowsChanged = true;
         }
         if (m_rows.at(target) != desired.at(target)) {
             m_rows[target] = desired.at(target);
             emit dataChanged(index(target), index(target));
+            rowsChanged = true;
         }
     }
+    return rowsChanged;
 }
 
 StandingsModel::StandingsModel(QObject *parent)
@@ -174,7 +180,7 @@ void StandingsModel::apply(const ReplayRecord &record)
     if (record.widget != QStringLiteral("standings")) {
         return;
     }
-    applyRows(record);
+    const bool rowsChanged = applyRows(record);
     const QJsonObject &value = record.viewModel;
     const QString activeClass = stringValue(value, "activeClass");
     const QString sessionLabel = stringValue(value, "sessionLabel");
@@ -191,7 +197,9 @@ void StandingsModel::apply(const ReplayRecord &record)
         m_columns = columns;
         emit metadataChanged();
     }
-    emit visualClassesChanged();
+    if (rowsChanged) {
+        emit visualClassesChanged();
+    }
 }
 
 QVariantList StandingsModel::visualClasses() const
@@ -273,7 +281,7 @@ void RelativeModel::apply(const ReplayRecord &record)
     if (record.widget != QStringLiteral("relative")) {
         return;
     }
-    applyRows(record);
+    (void)applyRows(record);
     const QString rowHeightMode = stringValue(record.viewModel, "rowHeightMode");
     const QVariantList columns = record.viewModel.value(QStringLiteral("columns")).toArray().toVariantList();
     if (m_rowHeightMode != rowHeightMode || m_columns != columns) {

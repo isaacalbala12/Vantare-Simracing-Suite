@@ -46,7 +46,7 @@ signals:
 
 protected:
     explicit KeyedRowsModel(QString widget, QObject *parent = nullptr);
-    void applyRows(const ReplayRecord &record);
+    [[nodiscard]] bool applyRows(const ReplayRecord &record);
     [[nodiscard]] const QVector<QJsonObject> &rows() const { return m_rows; }
 
 private:

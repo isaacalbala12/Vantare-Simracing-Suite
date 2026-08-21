@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-707",
+  "type": "change",
+  "summary": "Telemetry Core: cadencias reguladas activadas para standings y relative + ventana de combustible cableada.",
+  "technicalNotes": [
+    "SectionRelative pasa de TierMid a TierSlow para que su dirty fino (ventana 8+1+8, ISA-695) regule sin rancio; DefaultSectionCadence ahora es Fast 50ms / Mid 100ms / Slow 250ms / DirtyCeiling 1s.",
+    "Standings y relative regulados reducen builder invocations 480→57/s @104 a 60 Hz y B/op -46% (233k→120k) manteniendo frame completo y B/s idéntico; el ahorro es CPU/allocs, no payload.",
+    "FuelUsageWindow de producto definido como derive.DefaultFuelUsageWindowProduct = 3 y cableado explícito en ambos puntos de construcción del pipeline (telemetry_core_runtime.go y telemetry_shadow.go); sin UI nueva.",
+    "Pipeline expone FuelUsageWindow() para asserts de wiring y se añade TestFuelUsageWindowIsWiredExplicitly como tripwire si algún punto vuelve a Config vacía."
+  ],
+  "testing": [
+    "TestCachedProjectorMatchesProjectV2ByteForByte verifica byte-identidad con cadencia cero y con defaults regulados (memoización); TestStandingsRelativeStayFreshUnderRegulatedCadence usa cadencia cero como fresco y sigue verde.",
+    "TestTierMapCoversEverySection y TestSchedulerHonoursTierIntervals actualizados para Relative en slow; TestRegulationHappensBeforeMarshal espera Relative 4/s.",
+    "BenchmarkOverlayV2ByCadence @104 60 Hz (Ryzen 7 3700X, -benchtime 100x): plana 449139 ns/op vs regulada 228423 ns/op (-49% ns/op, -29 allocs/op).",
+    "go test ./internal/telemetry/... ./internal/app/... -count=1 verde; go vet solo tres unsafe.Pointer heredados en drivers/lmu y launcher."
+  ],
+  "knownLimitations": [
+    "La validación real de CPU/bytes en binario Wails/OBS sigue pendiente; la medición sintética es suelo.",
+    "Si un futuro builder añade campos a standings/relative sin ampliar el hash fino, el centinela byte-a-byte lo señalará.",
+    "Sin cambio de goldens v1/v2 ni de frame.go/contrato TS; la promoción la dispara una persona, nunca el CI."
+  ]
+}

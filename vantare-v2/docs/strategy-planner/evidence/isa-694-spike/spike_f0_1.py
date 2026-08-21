@@ -895,6 +895,18 @@ def choose_analysis_sessions(candidates: list[Candidate], limit: int) -> list[Ca
     races = [candidate for candidate in candidates if "race" in candidate.metadata.get("SessionType", "").casefold()]
     usable_races = [candidate for candidate in races if (candidate.laps or 0) >= 5]
     pool = usable_races or races or candidates
+    weather_priority = [
+        candidate
+        for candidate in candidates
+        if any(
+            token in candidate.metadata.get("WeatherConditions", "").casefold()
+            for token in ("drizzle", "rain", "wet")
+        )
+    ]
+    weather_priority.sort(
+        key=lambda candidate: (candidate.laps or 0, candidate.duration_s or 0, candidate.size),
+        reverse=True,
+    )
     by_combo: dict[tuple[str, str, str], list[Candidate]] = defaultdict(list)
     for candidate in pool:
         key = (
@@ -903,9 +915,11 @@ def choose_analysis_sessions(candidates: list[Candidate], limit: int) -> list[Ca
             candidate.metadata.get("CarClass", ""),
         )
         by_combo[key].append(candidate)
-    selected: list[Candidate] = []
+    selected: list[Candidate] = weather_priority[: min(4, len(weather_priority))]
     for _, group in sorted(by_combo.items(), key=lambda item: str(item[0]).casefold()):
-        selected.append(max(group, key=lambda candidate: (candidate.laps or 0, candidate.duration_s or 0, candidate.size)))
+        best = max(group, key=lambda candidate: (candidate.laps or 0, candidate.duration_s or 0, candidate.size))
+        if best not in selected:
+            selected.append(best)
     if len(selected) < limit:
         remaining = [candidate for candidate in pool if candidate not in selected]
         remaining.sort(key=lambda candidate: (candidate.laps or 0, candidate.duration_s or 0, candidate.size), reverse=True)
@@ -979,7 +993,11 @@ def metadata_quality(candidates: list[Candidate]) -> tuple[dict[str, Any], list[
                 "weatherconditions": candidate.metadata.get("WeatherConditions", ""),
             })
     ambiguous.sort(key=lambda row: (-row["spot_check_reason"].count(";"), row["session_id"]))
-    return {"fields": completeness, "distinct_values": distinct, "ambiguous_sessions": len(ambiguous)}, ambiguous[:8]
+    return {
+        "fields": completeness,
+        "distinct_values": distinct,
+        "spot_check_candidate_sessions": len(ambiguous),
+    }, ambiguous[:8]
 
 
 def dump_json(path: Path, value: Any) -> None:

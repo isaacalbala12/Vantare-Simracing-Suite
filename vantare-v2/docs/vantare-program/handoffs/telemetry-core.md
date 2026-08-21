@@ -15,6 +15,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
+
 - 2026-08-20, ISA-679: `CapabilityModesV2` deja de ser un hueco. Los modos se
   resuelven por tick con `capability.ResolveModes` (declaración del driver ×
   evidencia de la sesión) en la raíz de composición, y `BuildCapabilities` los

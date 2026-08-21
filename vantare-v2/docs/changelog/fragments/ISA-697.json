@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-697",
+  "type": "fix",
+  "summary": "Menos presión al GC durante la carrera: Apply hace 74% menos bytes por frame.",
+  "technicalNotes": [
+    "TelemetryEngine.Apply aloca 168KB por frame @104 en lugar de 650KB, con las mismas garantías.",
+    "Menos copias del estado de vehículos y menos clones de snapshots entre reducer, coordinator y derive.",
+    "La validación de duplicados ya no usa mapa por frame."
+  ],
+  "testing": [
+    "BenchmarkEngineApply104 @104 con 1000x: 168400 B/op y 327 allocs/op (antes 650190 B/op y 344).",
+    "Reproducir con go test ./internal/telemetry/engine -bench BenchmarkEngineApply104 -benchtime 1000x -benchmem.",
+    "Goldens v1/v2 y parity de replay siguen verdes."
+  ],
+  "knownLimitations": [
+    "Queda un 26% del churn original por la copia obligatoria del slice de vehículos entre etapas.",
+    "La validación aún aloca un slice temporal de 104 IDs y el gaps aún aloca su slice de 104 gaps."
+  ]
+}

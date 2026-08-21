@@ -475,6 +475,7 @@ type dirtySignals struct {
 	// (see hashStandingsVehicle), so a signal the builder ignores never marks
 	// the section dirty and any projected change always does.
 	standingsMark  uint64
+	relativeMark   uint64
 	gapsFreshness  schema.Freshness
 	deltaFreshness schema.Freshness
 	spatialMark    schema.Freshness
@@ -508,6 +509,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 			signals.playerFuel = current.Fuel
 		}
 	}
+	signals.relativeMark = hashRelativeMark(final)
 	return signals
 }
 
@@ -527,8 +529,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.vehicles != previous.vehicles || signals.standingsMark != previous.standingsMark {
 		dirty = dirty.Mark(SectionStandings)
 	}
-	if signals.vehicles != previous.vehicles || signals.standingsMark != previous.standingsMark ||
-		signals.gapsFreshness != previous.gapsFreshness {
+	if signals.relativeMark != previous.relativeMark {
 		dirty = dirty.Mark(SectionRelative)
 	}
 	if signals.deltaFreshness != previous.deltaFreshness {

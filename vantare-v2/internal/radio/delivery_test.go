@@ -2,12 +2,24 @@ package radio
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 )
+
+func TestMetricsSnapshotJSONContract(t *testing.T) {
+	payload, err := json.Marshal(MetricsSnapshot{Samples: 3, P95MS: 12, MaximumMS: 18})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"samples":3,"p95MS":12,"maximumMS":18}`
+	if string(payload) != want {
+		t.Fatalf("metrics JSON = %s, want %s", payload, want)
+	}
+}
 
 type recordingUI struct {
 	mu            sync.Mutex

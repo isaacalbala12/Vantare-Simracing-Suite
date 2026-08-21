@@ -145,8 +145,9 @@ func validStateReason(state State, reason Reason) bool {
 
 // MetricsSnapshot reports observed decision-to-start latency; Wails p95 remains an F3 gate.
 type MetricsSnapshot struct {
-	Samples          int
-	P95MS, MaximumMS int64
+	Samples   int   `json:"samples"`
+	P95MS     int64 `json:"p95MS"`
+	MaximumMS int64 `json:"maximumMS"`
 }
 
 // Metrics keeps a bounded rolling latency sample.

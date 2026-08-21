@@ -94,8 +94,8 @@ productivo sin crear un segundo reader.
 - Rama activa: `vantareapp/isa-717-spotter-unificado`.
 - Base inicial: `origin/nightly@df6ef2e14c861bae2f153b452df3b9b2b8e785b4`.
 - Entrega: F3 #717 implementada en commits atómicos; documentación de diseño y
-  gate en `docs/engineer/spotter-radio-isa-717.md`. PR draft a `nightly`
-  pendiente de crear tras los gates finales.
+  gate en `docs/engineer/spotter-radio-isa-717.md`. PR draft #733 abierto a
+  `nightly`, sin integración.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -340,7 +340,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar el PR draft de ISA-717 sin promoverlo y ejecutar el gate humano descrito
+Revisar el PR draft #733 de ISA-717 sin promoverlo y ejecutar el gate humano descrito
 en `docs/engineer/spotter-radio-isa-717.md`: LMU real, tráfico left/right/
 three-wide/clears, preempción, lifecycle y `radioDelivery.p95MS < 150`. Hasta
 esa evidencia no se declara validación LMU ni se integra en `nightly`. F4 puede

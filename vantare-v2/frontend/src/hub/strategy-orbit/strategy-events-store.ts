@@ -11,6 +11,14 @@
  * "roster"`) y conserva los overrides que la parte A ya guardaba en
  * `vantare.v03orbit.strategy` (migración por evento, ver `00-decisiones.md`,
  * D-W4-1).
+ *
+ * FREEZE ISA-694 F1 · Caracterizaciones (issue #727):
+ * Este store queda congelado — ninguna feature nueva sobre localStorage.
+ * Los defectos actuales se documentan con tests de caracterización verdes;
+ * se corregirán en F2 (cutover al backend canónico y migración tipada).
+ * Ver docs/strategy-planner/isa-694-current-state-and-rework-brief.md §8
+ * y docs/strategy-planner/evidence/isa-694-spike/matriz-migracion-orbit.csv.
+ * No ampliar shape, defaults ni lógica de lectura/escritura hasta F2.
  */
 
 import type { RaceStart } from "../orbit/race-starts";

@@ -1,3 +1,19 @@
+Nota OS-QT-04 / GitHub #693 (2026-08-21, T19 STOP; T20 GREEN local pendiente de medicion):
+- T19 probo dos familias pequenas sobre `ReplayModel`: evitar proyecciones
+  iguales y parsear la vuelta una vez. La primera rompio cadencia/liveness y
+  empeoro p95/max; la segunda no mostro mejora estable. Ambas se revirtieron y
+  el modelo queda byte-identico al baseline T18. No se anade cola, cache ni
+  semantica alternativa solo para forzar un PASS.
+- T20 sustituye la busqueda anidada de adelantamientos en
+  `StandingsRedline.applySnapshot()` por un indice lineal por clase/posicion.
+  Conserva la primera pareja observable y reduce ese tramo de O(n^2) a O(n).
+  TDD: RED por seam ausente; GREEN focal 2/2 y suite Standings 8/8, incluido
+  corpus de 104 filas; `git diff --check` PASS. Commit `fca5d9d3`.
+- La comparacion fisica T20 queda pendiente deliberadamente: LMU esta abierto
+  por el usuario y contaminaría CPU/GPU. No se publican los 7 traces parciales
+  anteriores ni se reinterpretan como evidencia. Al quedar libre el host se
+  ejecutaran 10 repeticiones nuevas de `stress104` contra T18.
+
 Nota OS-QT-04 / GitHub #693 (2026-08-21, T18 cerrado; T19 siguiente):
 - Baseline RED reproducible congelado: 10 repeticiones de `overtake`, `full`,
   `enter`, `retirement` y `stress`, 50 traces y 9.730 muestras model-apply.

@@ -12,6 +12,17 @@
 
 ## Estado
 
+- **OS-QT-04 / GitHub #693 — T19 STOP; T20 GREEN local pendiente de medicion
+  (2026-08-21):** los intentos acotados del modelo keyed no produjeron una
+  mejora segura: omitir proyecciones altero cadencia/liveness y parsear la
+  vuelta una vez no dio una señal estable. Ambos quedaron revertidos; el
+  modelo vuelve exactamente a T18. T20 elimina solo la busqueda O(n^2) de la
+  pareja de adelantamiento y conserva la primera pareja mediante un indice
+  lineal por clase/posicion. RED causal y GREEN Standings 8/8; commit
+  `fca5d9d3`. La medicion de 10 runs `stress104` sigue pendiente porque LMU
+  esta abierto; no ejecutar ni promover benchmarks contaminados. Sin push,
+  PR, CI remoto, integracion, promocion ni release.
+
 - **OS-QT-04 / GitHub #693 — T18 baseline RED cerrado; T19 siguiente
   (2026-08-21):** 50 runs seriales (10 por overtake/full/enter/retirement/
   stress104) quedan custodiados y reproducidos por un agregador independiente.

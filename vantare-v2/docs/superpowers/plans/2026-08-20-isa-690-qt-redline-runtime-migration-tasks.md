@@ -489,6 +489,11 @@ cambio de QML.
 
 ### T19 — Optimizar el modelo keyed sin cambiar semántica
 
+**Estado 2026-08-21:** STOP sin cambio productivo. Las dos optimizaciones
+acotadas ensayadas se revirtieron: una alteraba cadencia/liveness y empeoraba
+la cola, y la otra no mostro mejora estable. El modelo queda identico a T18;
+no se introduce cache, cola ni semantica nueva para cumplir el gate.
+
 **Descripción:** eliminar resets, copias y señales redundantes demostradas por
 T18.
 
@@ -510,6 +515,11 @@ T18.
 **Tamaño:** M.
 
 ### T20 — Optimizar bindings/delegates Standings de forma acotada
+
+**Estado 2026-08-21:** GREEN local parcial en `fca5d9d3`. La deteccion de la
+primera pareja de adelantamiento pasa de O(n^2) a O(n), sin recrear el arbol ni
+eliminar filas, materiales o animaciones. RED causal y suite Standings 8/8.
+La medicion antes/despues permanece abierta mientras LMU este ejecutandose.
 
 **Descripción:** corregir únicamente bindings o efectos señalados por el
 profiler, preservando visual y motion.

@@ -271,6 +271,30 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
 
         self.assertEqual(before, after)
 
+    def test_row_object_survives_shrink_grow_and_battle_overlay(self):
+        root = self.component("standings/StandingsRedline.qml")
+        self.apply_snapshot(root, visual_classes([ROW_1, ROW_2, ROW_3]))
+        retained_class = getCppPointer(self.child(root, "standingsClassSlot-0"))[0]
+        retained_slot = self.child(root, "standingsSlot-2")
+        retained_slot_pointer = getCppPointer(retained_slot)[0]
+        retained = getCppPointer(self.child(retained_slot, "standingsRow-3"))[0]
+
+        self.apply_snapshot(root, visual_classes([ROW_1, ROW_2]))
+        self.assertEqual(retained_class, getCppPointer(self.child(root, "standingsClassSlot-0"))[0])
+        current_slot = self.child(root, "standingsSlot-2")
+        self.assertEqual(retained_slot_pointer, getCppPointer(current_slot)[0])
+        self.assertEqual(retained, getCppPointer(self.child(current_slot, "standingsRow-3"))[0])
+        self.apply_snapshot(root, visual_classes([ROW_1, ROW_2, ROW_3]))
+        current_slot = self.child(root, "standingsSlot-2")
+        self.assertEqual(retained_slot_pointer, getCppPointer(current_slot)[0])
+        self.assertEqual(retained, getCppPointer(self.child(current_slot, "standingsRow-3"))[0])
+
+        ahead = getCppPointer(self.child(root, "standingsRow-1"))[0]
+        root.setProperty("sessionLabel", "RACE")
+        self.apply_snapshot(root, visual_classes([ROW_1, {**ROW_2, "pitText": ""}, ROW_3]))
+        self.assertEqual(ahead, getCppPointer(self.child(root, "standingsRow-1"))[0])
+        self.child(root, "battleWrapper")
+
     def test_battle_is_a_real_two_row_wrapper_and_reduced_motion_is_asymmetric(self):
         battle = self.component("standings/Battle.qml", {
             "width": 408, "aheadRow": ROW_1, "behindRow": ROW_2,

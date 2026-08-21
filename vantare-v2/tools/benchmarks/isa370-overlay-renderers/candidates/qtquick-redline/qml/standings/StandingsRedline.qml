@@ -13,7 +13,7 @@ Item {
     property var incomingSnapshot: []
     property var previousSnapshot: []
     property var classModel: []
-    property int classSlotCount: 0
+    readonly property int classSlotCount: classSlots.count
     property var baselinePositions: ({})
     property var retiredRowIds: []
     property var enteredRowIds: []
@@ -41,6 +41,7 @@ Item {
     implicitHeight: blocks.height + status.implicitHeight + (status.visible ? 8 : 0)
 
     Theme.RedlineTokens { id: tokens }
+    ListModel { id: classSlots }
 
     function cloneRow(row) {
         var copy = {}
@@ -324,7 +325,8 @@ Item {
 
     function publishClasses(classes) {
         classModel = classes
-        classSlotCount = Math.max(classSlotCount, classes.length)
+        while (classSlots.count < classes.length)
+            classSlots.append({})
     }
 
     function clearRetiredRows() {
@@ -429,9 +431,10 @@ Item {
         spacing: 10
 
         Repeater {
-            model: root.classSlotCount
+            model: classSlots
             delegate: ClassBlock {
                 required property int index
+                objectName: "standingsClassSlot-" + index
                 width: blocks.width
                 visible: index < root.classModel.length
                 height: visible ? implicitHeight : 0

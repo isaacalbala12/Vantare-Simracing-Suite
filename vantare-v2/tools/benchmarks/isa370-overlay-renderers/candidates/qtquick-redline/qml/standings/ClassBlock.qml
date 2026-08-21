@@ -17,12 +17,13 @@ Item {
     property bool finalMinutes: false
     property bool reducedMotion: false
     property var displayModel: []
-    property int slotCount: 0
+    readonly property int slotCount: rowSlots.count
 
     implicitWidth: tokens.panelWidth
     implicitHeight: panel.implicitHeight
 
     Theme.RedlineTokens { id: tokens }
+    ListModel { id: rowSlots }
 
     function displayItems() {
         var rows = rowModel || []
@@ -64,7 +65,8 @@ Item {
     function syncDisplayModel() {
         var next = displayItems()
         displayModel = next
-        slotCount = Math.max(slotCount, next.length)
+        while (rowSlots.count < next.length)
+            rowSlots.append({})
     }
 
     onRowModelChanged: syncDisplayModel()
@@ -140,59 +142,68 @@ Item {
                 width: parent.width
 
                 Repeater {
-                    model: root.slotCount
-                    delegate: Loader {
+                    model: rowSlots
+                    delegate: Item {
                         id: slot
                         required property int index
                         objectName: "standingsSlot-" + index
                         property var itemData: index < root.displayModel.length
                             ? root.displayModel[index] : null
+                        property var retainedRowData: ({})
                         width: visualRows.width
                         visible: itemData !== null
                         height: !visible ? 0 : itemData.kind === "battle"
                             ? (String(root.battle.stage || "seam") === "box" ? 84 : 65)
                             : 30
-                        sourceComponent: !itemData ? null
-                            : itemData.kind === "battle" ? battleDelegate : rowDelegate
+
                         onItemDataChanged: {
-                            if (item)
-                                item.itemData = itemData
+                            if (itemData && itemData.kind === "row")
+                                retainedRowData = itemData
+                            if (itemData && itemData.kind === "battle" && battleVisual.item)
+                                battleVisual.item.itemData = itemData
                         }
-                        onLoaded: item.itemData = itemData
+
+                        StandingsRow {
+                            property var itemData: slot.retainedRowData
+                            width: parent.width
+                            visible: slot.itemData !== null && slot.itemData.kind === "row"
+                            rowIndex: Number(itemData.row ? itemData.row.rowIndex || 0 : 0)
+                            rowId: String(itemData.row ? itemData.row.id || "" : "")
+                            classPosition: Number(itemData.row ? itemData.row.classPosition || rowIndex + 1 : 0)
+                            driverNumber: String(itemData.row ? itemData.row.driverNumber || "" : "")
+                            driverName: String(itemData.row ? itemData.row.driverName || "" : "")
+                            bestLapText: String(itemData.row ? itemData.row.bestLapText || "—" : "—")
+                            gapText: String(itemData.row ? itemData.row.gapText || "—" : "—")
+                            isPlayer: Boolean(itemData.row && itemData.row.isPlayer)
+                            isClassLeader: itemData.row && itemData.row.isClassLeader !== undefined
+                                ? Boolean(itemData.row.isClassLeader) : rowIndex === 0
+                            inPit: Boolean(itemData.row && itemData.row.inPit)
+                            isSessionBest: Boolean(itemData.row && itemData.row.isSessionBest)
+                            tireCompound: String(itemData.row ? itemData.row.tireReveal || "" : "")
+                            tireLeaving: Boolean(itemData.row && itemData.row.tireLeaving)
+                            battleCharge: itemData.row && itemData.row.battleCharge !== undefined
+                                ? Number(itemData.row.battleCharge) : -1
+                            positionDelta: Number(itemData.row ? itemData.row.positionDelta || 0 : 0)
+                            flipOffset: Number(itemData.row ? itemData.row.flipOffset || 0 : 0)
+                            overtakeDirection: String(itemData.row ? itemData.row.overtakeDirection || "" : "")
+                            overtakeIndex: Number(itemData.row ? itemData.row.overtakeIndex || 0 : 0)
+                            retiring: Boolean(itemData.row && itemData.row.retiring)
+                            entering: Boolean(itemData.row && itemData.row.entering)
+                            hot: Boolean(itemData.row && itemData.row.hot)
+                            reducedMotion: root.reducedMotion
+                        }
+
+                        Loader {
+                            id: battleVisual
+                            width: parent.width
+                            active: slot.itemData !== null && slot.itemData.kind === "battle"
+                            visible: active
+                            sourceComponent: battleDelegate
+                            onLoaded: item.itemData = slot.itemData
+                        }
                     }
                 }
             }
-        }
-    }
-
-    Component {
-        id: rowDelegate
-        StandingsRow {
-            property var itemData: ({})
-            width: visualRows.width
-            rowIndex: Number(itemData.row.rowIndex || 0)
-            rowId: String(itemData.row.id || "")
-            classPosition: Number(itemData.row.classPosition || rowIndex + 1)
-            driverNumber: String(itemData.row.driverNumber || "")
-            driverName: String(itemData.row.driverName || "")
-            bestLapText: String(itemData.row.bestLapText || "—")
-            gapText: String(itemData.row.gapText || "—")
-            isPlayer: Boolean(itemData.row.isPlayer)
-            isClassLeader: itemData.row.isClassLeader === undefined
-                ? rowIndex === 0 : Boolean(itemData.row.isClassLeader)
-            inPit: Boolean(itemData.row.inPit)
-            isSessionBest: Boolean(itemData.row.isSessionBest)
-            tireCompound: String(itemData.row.tireReveal || "")
-            tireLeaving: Boolean(itemData.row.tireLeaving)
-            battleCharge: itemData.row.battleCharge === undefined ? -1 : Number(itemData.row.battleCharge)
-            positionDelta: Number(itemData.row.positionDelta || 0)
-            flipOffset: Number(itemData.row.flipOffset || 0)
-            overtakeDirection: String(itemData.row.overtakeDirection || "")
-            overtakeIndex: Number(itemData.row.overtakeIndex || 0)
-            retiring: Boolean(itemData.row.retiring)
-            entering: Boolean(itemData.row.entering)
-            hot: Boolean(itemData.row.hot)
-            reducedMotion: root.reducedMotion
         }
     }
 

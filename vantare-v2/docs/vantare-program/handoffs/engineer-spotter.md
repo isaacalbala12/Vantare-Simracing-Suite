@@ -361,6 +361,17 @@ integración en `nightly` o promoción.
 
 ## Última actualización
 
+2026-08-21, ronda final del re-review de ISA-718 / PR #739: P1-A y P1-B se
+corrigen en `39e84316`. Los intents fuel dependientes de capacity requieren
+capacity fresca y positiva; su pérdida cancela en el bus únicamente esos
+intents. Repostaje y retirada de sanción devuelven `ResetIntents` antes de que
+un aviso obsoleto alcance `started`. Cada mensaje lleva una revisión interna
+de evidencia, por lo que un ACK anterior no muta el estado actual. Cuatro
+regresiones atraviesan servicio, bus y delivery con cancelación/reentrega real;
+una quinta fuerza el ACK tardío. Vet, focal, race focal, repeticiones y suite Go
+global pasan localmente. Pendientes: push, CI remoto, re-review y gate LMU
+humano; sin merge ni promoción.
+
 2026-08-21, corrección del review adversarial de ISA-718 / PR #739: los cuatro
 P1 y cuatro P2 quedan cubiertos por regresiones RED→GREEN. Las cinco familias
 exigen capabilities y campos frescos, comparten la identidad completa de

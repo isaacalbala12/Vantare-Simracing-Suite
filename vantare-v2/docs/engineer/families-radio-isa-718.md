@@ -1,7 +1,7 @@
 # ISA-718 · Motor de familias sobre radio.v1
 
-Estado: corregido tras review adversarial; gates locales y CI remoto verdes;
-pendiente de re-review y gate LMU humano.
+Estado: ronda final de re-review corregida; gates locales verdes; pendiente de
+CI remoto, re-review y gate LMU humano.
 
 ## Diseño
 
@@ -41,6 +41,11 @@ vacío y no se inventan parámetros fuera del catálogo.
 | cooldown iniciado solo por ACK y limpieza de contexto | `TestBusResetClearsFamilyCooldownFailClosed` |
 | `fuel`: capacidad ausente, cero o negativa no autoriza autonomía ni `for_pit_now` | `TestFuelParityUnknownCapacityNeverCalculatesRange` |
 | cursores y one-shots solo se consumen tras `started`; un P0 puede descartarlos y se reintentan | `TestFuelOneShotsRetryWhenSpotterDropsPendingBeforeStarted`, `TestEdgeCursorsCommitOnlyWhenStarted` |
+| pérdida de capacity cancela en servicio y bus un intent dependiente ya seleccionado | `TestFamilyFuelCapacityLossCancelsSelectedCapacityIntentThroughDelivery` |
+| repostaje pre-ACK cancela one-shots obsoletos y permite el siguiente aviso real | `TestFamilyFuelRefuelBeforeStartedCancelsObsoleteOneShotsAndRearms` |
+| retirada de sanción pre-ACK cancela el aviso y permite el siguiente flanco 0→1 | `TestFamilyPenaltyWithdrawalBeforeStartedCancelsAndAllowsNextRise` |
+| P0 elimina el primer intento fuel y el segundo llega realmente a `started` | `TestFamilyFuelRetriesAfterP0DropAndSecondAttemptReachesStarted` |
+| un ACK tardío de evidencia invalidada no muta el ciclo actual | `TestInvalidatedEvidenceRevisionRejectsLateFuelAndPenaltyStartedACK` |
 
 Los resets de source, identidad, epoch y facts de lifecycle siguen llamando a
 `radio.Bus.Reset`. La pérdida de capability o campo requerido usa
@@ -49,6 +54,13 @@ cooldowns y resembrar su estado sin contaminar a Spotter ni a otras familias.
 Spotter y el motor comparten `Context.Complete()` como criterio de identidad.
 El mapper LMU propaga el driver observado del jugador a la identidad del
 header; si no existe, ambos productores fallan cerrados.
+
+Los intents fuel que dependen de capacity tienen una autorización declarativa
+adicional (`FuelCapacityKnown && capacity > 0`). Su pérdida invalida solo
+`low_half_tank`, `laps_remaining_*` y `for_pit_now`. Un repostaje invalida los
+ocho intents fuel y una reducción del contador invalida
+`penalties.count_increased`. `ProducerRevision`, metadato interno no
+serializado, liga cada ACK a la revisión de evidencia que creó el mensaje.
 
 Los toggles de Spotter resetean exclusivamente sus siete intents y su cola
 legacy. No cancelan mensajes ni estado de fuel/laps/pit, y el runtime legacy

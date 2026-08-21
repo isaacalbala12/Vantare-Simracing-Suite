@@ -1012,6 +1012,21 @@ func newTestLauncherService(t *testing.T) (*launcher.Service, *spyMainEmitter) {
 }
 func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
+	// Deterministic fake: lista fija, no toca registro/disco ni iconos reales.
+	// Antes: ~4.00s (TestHandleDiscoverAppsEmitsDetected) tocando registro +
+	// rutas + iconos; ahora ~0.02s en aislado, suite cmd/vantare de ~4.27s a <1s.
+	fakeDetected := map[string]app.LauncherAppEntry{
+		"fake-lmu": {ID: "fake-lmu", DisplayName: "Fake LMU", LaunchMethod: "steam-uri", SteamAppID: 2399420, GradientFrom: "#0a0a0a", GradientTo: "#302e31"},
+		"fake-obs": {ID: "fake-obs", DisplayName: "Fake OBS", LaunchMethod: "executable", GradientFrom: "#302e31", GradientTo: "#0a0a0a"},
+	}
+	svc.SetDiscoverFunc(func() map[string]app.LauncherAppEntry {
+		out := make(map[string]app.LauncherAppEntry, len(fakeDetected))
+		for k, v := range fakeDetected {
+			out[k] = v
+		}
+		return out
+	})
+
 	handleDiscoverApps(svc, emitter)
 	// The icon phase reports once per app, so the number of progress events
 	// tracks how many apps were found rather than being fixed. What this
@@ -1026,6 +1041,20 @@ func TestHandleDiscoverAppsEmitsDetected(t *testing.T) {
 	for _, name := range emitter.events[:len(emitter.events)-1] {
 		if name != "launcher:discovery:progress" {
 			t.Fatalf("only progress may precede the snapshot, got %v", emitter.events)
+		}
+	}
+	// La lista fake debe aparecer determinista en el snapshot, sin depender de la maquina.
+	payload, ok := emitter.data[len(emitter.data)-1].(launcher.LauncherSnapshot)
+	if !ok {
+		t.Fatalf("snapshot payload wrong type: %T", emitter.data[len(emitter.data)-1])
+	}
+	found := map[string]bool{}
+	for _, a := range payload.Apps {
+		found[a.ID] = true
+	}
+	for _, want := range []string{"fake-lmu", "fake-obs"} {
+		if !found[want] {
+			t.Fatalf("deterministic fake missing %q in snapshot apps: %+v", want, payload.Apps)
 		}
 	}
 }

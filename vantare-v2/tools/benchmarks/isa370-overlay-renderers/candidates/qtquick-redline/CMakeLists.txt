@@ -14,6 +14,7 @@ set(REDLINE_CORE_SOURCES
     replaymodels.cpp replaymodels.h
     redlinefonts.cpp redlinefonts.h
     sceneplayback.cpp sceneplayback.h
+    qtmotiontrace.cpp qtmotiontrace.h
 )
 
 qt_add_executable(isa370_qtquick_redline
@@ -146,4 +147,16 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_QPA_FONTDIR=C:\\Windows\\Fonts"
         TIMEOUT 15
     )
+    qt_add_executable(isa370_qtquick_redline_motion_trace_tests
+        tests/qtmotiontrace_test.cpp
+        qtmotiontrace.cpp qtmotiontrace.h
+        replayloader.h
+    )
+    set_target_properties(isa370_qtquick_redline_motion_trace_tests PROPERTIES WIN32_EXECUTABLE FALSE)
+    target_include_directories(isa370_qtquick_redline_motion_trace_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(isa370_qtquick_redline_motion_trace_tests PRIVATE Qt6::Core Qt6::Test)
+    if(MSVC)
+        target_compile_options(isa370_qtquick_redline_motion_trace_tests PRIVATE /utf-8 /W4 /WX)
+    endif()
+    add_test(NAME isa370_qtquick_redline_motion_trace COMMAND isa370_qtquick_redline_motion_trace_tests)
 endif()

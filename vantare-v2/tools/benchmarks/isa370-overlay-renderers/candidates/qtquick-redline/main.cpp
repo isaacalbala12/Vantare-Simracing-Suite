@@ -1,4 +1,5 @@
 #include "overlaywindow.h"
+#include "qtmotiontrace.h"
 #include "redlinefonts.h"
 #include "replayloader.h"
 #include "replaymodels.h"
@@ -65,12 +66,22 @@ int main(int argc, char *argv[])
     DeltaModel delta;
     PedalsModel pedals;
     ScenePlayback playback;
+    QtMotionTrace motionTrace(qEnvironmentVariable("VANTARE_QT_MOTION_TRACE"),
+                              loaded.custody.replaySha256, loaded.records.size());
+    if (!motionTrace.error().isEmpty()) {
+        qCritical().noquote() << motionTrace.error();
+        return 7;
+    }
+    int traceFrame = 0;
     QObject::connect(&playback, &ScenePlayback::recordAdvanced, &application,
                      [&](const ReplayRecord &record) {
+                         motionTrace.beginRecord(record, traceFrame);
                          standings.apply(record);
                          relative.apply(record);
                          delta.apply(record);
                          pedals.apply(record);
+                         motionTrace.endRecord(record, traceFrame);
+                         ++traceFrame;
                      });
 
     QQmlApplicationEngine engine;
@@ -96,6 +107,18 @@ int main(int argc, char *argv[])
         qCritical("failed to configure transparent click-through overlay window");
         return 4;
     }
+    QObject::connect(window, &QQuickWindow::beforeSynchronizing, &application,
+                     [&motionTrace] { motionTrace.qmlSync(); }, Qt::DirectConnection);
+    QObject::connect(window, &QQuickWindow::frameSwapped, &application, [&] {
+        if (motionTrace.present()) {
+            QMetaObject::invokeMethod(&application, [&application] { application.quit(); },
+                                      Qt::QueuedConnection);
+        } else if (!motionTrace.error().isEmpty()) {
+            qCritical().noquote() << motionTrace.error();
+            QMetaObject::invokeMethod(&application, [&application] { application.exit(8); },
+                                      Qt::QueuedConnection);
+        }
+    }, Qt::DirectConnection);
 
     qInfo().noquote()
         << QStringLiteral("redline-ready scene=%1 widget=%2 records=%3 replay-sha256=%4")

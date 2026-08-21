@@ -88,6 +88,26 @@ func TestProduceStrategyInputProjectionV2ComposesIndependentFamilies(t *testing.
 	if len(got.Temporal.Segments) != 1 || len(got.Temporal.Gaps) != 1 {
 		t.Fatalf("temporal evidence = %#v", got.Temporal)
 	}
+	if got.Temporal.Segments[0].SegmentID != "race-1:segment-1" ||
+		got.Temporal.Gaps[0].GapID != "race-1:gap-1" {
+		t.Fatalf("temporal ids must be session scoped: %#v", got.Temporal)
+	}
+}
+
+func TestProjectionProducerKeepsMissingPitReason(t *testing.T) {
+	request := projectionProducerFixture()
+	request.Sessions[0].Pit = nil
+
+	got, err := ProduceStrategyInputProjectionV2(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Pit.Presence != strategyprojection.PresenceMissing || got.Pit.Reason != reasonMissingPit {
+		t.Fatalf("missing pit axes = %#v", got.Pit)
+	}
+	if got.VirtualEnergyConsumption.Presence != strategyprojection.PresenceValid {
+		t.Fatal("missing pit must not block independently available VE")
+	}
 }
 
 func TestProjectionProducerConsumerContractOldAndNewFixtures(t *testing.T) {

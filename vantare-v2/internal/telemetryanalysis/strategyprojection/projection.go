@@ -220,7 +220,11 @@ type ClimateBucketPoint struct {
 
 func (p StrategyInputProjectionV2) Validate() error {
 	if p.ContractVersion != ContractVersionStrategyInputProjectionV2 {
-		return contractError("unsupported_contract_version", "contractVersion", "unsupported strategy input projection version")
+		return contractError(
+			"unsupported_contract_version",
+			"contractVersion",
+			"unsupported strategy input projection version",
+		)
 	}
 	if err := validateTimestamp("generatedAt", p.GeneratedAt); err != nil {
 		return err
@@ -241,6 +245,23 @@ func (p StrategyInputProjectionV2) Validate() error {
 	// La validacion aqui solo comprueba presencia/provenance/confidence basicos.
 	if !p.Pit.Presence.Valid() {
 		return contractError("invalid_document", "pit.presence", "unknown presence")
+	}
+	for _, interval := range p.Pit.ObservedIntervals {
+		if interval.DurationSeconds <= 0 {
+			return contractError("invalid_document", "pit.observedIntervals", "duration must be positive")
+		}
+		if !interval.HasFuelRise && !interval.HasVERise && !interval.Ambiguous {
+			return contractError("invalid_document", "pit.observedIntervals", "pit without resource rise must be ambiguous")
+		}
+		if interval.Ambiguous && interval.AmbiguityReason == "" {
+			return contractError("invalid_document", "pit.observedIntervals", "ambiguous pit requires reason")
+		}
+		if !interval.HasFuelRise && interval.FuelRateLPerS != nil {
+			return contractError("invalid_document", "pit.observedIntervals", "fuel rate requires observed rise")
+		}
+		if !interval.HasVERise && interval.VERatePPerS != nil {
+			return contractError("invalid_document", "pit.observedIntervals", "VE rate requires observed rise")
+		}
 	}
 	return nil
 }

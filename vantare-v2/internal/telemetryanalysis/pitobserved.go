@@ -344,7 +344,8 @@ func DeriveObservedStrategy(
 	identityMismatch := strings.TrimSpace(session.ID) == "" || classified.SessionID != session.ID ||
 		pit.SessionID != session.ID || pit.CombinationID != classified.Combination.ID
 	if identityMismatch || classified.Type != SessionTypeRace ||
-		validity.Temporal.ContractVersion != strategyprojection.ContractVersionTemporalSegmentsV1 {
+		validity.Temporal.ContractVersion != strategyprojection.ContractVersionTemporalSegmentsV1 ||
+		!pit.Family.Presence.Valid() {
 		return strategyprojection.ObservedStrategyV1{}, fmt.Errorf("%w: race identity", ErrInvalidObservedStrategyInput)
 	}
 	grouped, err := groupPagesBySource(session, pages)
@@ -368,7 +369,7 @@ func DeriveObservedStrategy(
 		Changes:  []strategyprojection.ObservedChange{},
 	}
 	if len(laps) == 0 {
-		return result, nil
+		return validateObservedStrategyResult(result)
 	}
 	result.Presence = strategyprojection.PresenceValid
 	boundaries := append([]strategyprojection.StintBoundary(nil), validity.Temporal.StintBoundaries...)
@@ -386,6 +387,19 @@ func DeriveObservedStrategy(
 		result.Presence = weakestPresence(result.Presence, pit.Family.Presence)
 	}
 	result.Result = observedRaceResult(laps, readEvents(grouped["finish status"]))
+	return validateObservedStrategyResult(result)
+}
+
+func validateObservedStrategyResult(
+	result strategyprojection.ObservedStrategyV1,
+) (strategyprojection.ObservedStrategyV1, error) {
+	if err := result.Validate(); err != nil {
+		return strategyprojection.ObservedStrategyV1{}, fmt.Errorf(
+			"%w: produced contract: %v",
+			ErrInvalidObservedStrategyInput,
+			err,
+		)
+	}
 	return result, nil
 }
 

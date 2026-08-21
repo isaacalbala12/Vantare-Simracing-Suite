@@ -119,7 +119,11 @@ func ProduceStrategyInputProjectionV2(
 	}
 	if hasPit {
 		projection.Pit = pit.Family
-		projection.Pit.Reason = reasonDegradedPit
+		if len(projection.Pit.ObservedIntervals) > 0 {
+			projection.Pit.Reason = reasonDegradedPit
+		} else if projection.Pit.Reason == "" {
+			projection.Pit.Reason = reasonMissingPit
+		}
 		projection.Pit.Provenance = strategyprojection.Provenance{
 			Kind:     strategyprojection.ProvenanceDerived,
 			SourceID: sourceID,
@@ -136,7 +140,14 @@ func ProduceStrategyInputProjectionV2(
 }
 
 func validateProjectionRequest(request ProjectionProductionRequest) error {
-	if strings.TrimSpace(request.Combination.ID) == "" || len(request.Sessions) == 0 || request.GeneratedAt.IsZero() {
+	combination := request.Combination
+	missingCombination := strings.TrimSpace(combination.ID) == "" ||
+		strings.TrimSpace(combination.SimID) == "" ||
+		strings.TrimSpace(combination.TrackName) == "" ||
+		strings.TrimSpace(combination.TrackLayout) == "" ||
+		strings.TrimSpace(combination.CarName) == "" ||
+		strings.TrimSpace(combination.CarClass) == ""
+	if missingCombination || len(request.Sessions) == 0 || request.GeneratedAt.IsZero() {
 		return fmt.Errorf("%w: selection identity", ErrInvalidProjectionProductionInput)
 	}
 	seen := make(map[string]bool, len(request.Sessions))
@@ -246,8 +257,14 @@ func projectLapValidity(
 				Tags:      tags,
 			})
 		}
-		temporal.Segments = append(temporal.Segments, session.Validity.Temporal.Segments...)
-		temporal.Gaps = append(temporal.Gaps, session.Validity.Temporal.Gaps...)
+		for _, segment := range session.Validity.Temporal.Segments {
+			segment.SegmentID = session.Classified.SessionID + ":" + segment.SegmentID
+			temporal.Segments = append(temporal.Segments, segment)
+		}
+		for _, gap := range session.Validity.Temporal.Gaps {
+			gap.GapID = session.Classified.SessionID + ":" + gap.GapID
+			temporal.Gaps = append(temporal.Gaps, gap)
+		}
 		temporal.LapBoundaries = append(temporal.LapBoundaries, session.Validity.Temporal.LapBoundaries...)
 		temporal.StintBoundaries = append(temporal.StintBoundaries, session.Validity.Temporal.StintBoundaries...)
 	}
@@ -332,6 +349,9 @@ func projectResourceConsumption(
 		}
 	}
 	result.ByClimateBucket = allBuckets
+	if result.ByMixture == nil {
+		result.ByMixture = map[int]float64{}
+	}
 	result.Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID}
 	result.Reason = ""
 	return result
@@ -409,6 +429,18 @@ func projectBestTyreFamily(
 	result.Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID}
 	if !result.Presence.Valid() {
 		return missingTyreProjection(sourceID)
+	}
+	if result.ByAxle == nil {
+		result.ByAxle = map[strategyprojection.TyreAxle]float64{}
+	}
+	if result.ByWheel == nil {
+		result.ByWheel = map[strategyprojection.TyreWheel]float64{}
+	}
+	if result.ByCorner == nil {
+		result.ByCorner = map[string]float64{}
+	}
+	if result.LifeLapsByWheel == nil {
+		result.LifeLapsByWheel = map[strategyprojection.TyreWheel]float64{}
 	}
 	return result
 }

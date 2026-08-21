@@ -1,6 +1,9 @@
 package strategyprojection
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // ObservedStrategyV1 es la estrategia observada de cada carrera (D16).
 // Familia de derivacion de primera clase del corpus de carreras reales.
@@ -82,8 +85,41 @@ func (o ObservedStrategyV1) Validate() error {
 		if s.EndLap < s.StartLap {
 			return contractError("invalid_document", "stints", "endLap must be >= startLap")
 		}
+		if !s.Presence.Valid() {
+			return contractError("invalid_document", "stints.presence", "unknown presence")
+		}
 		if err := s.Provenance.Validate(); err != nil {
 			return err
+		}
+	}
+	for _, stop := range o.PitStops {
+		if stop.LapNumber <= 0 || stop.PitLaneSeconds <= 0 {
+			return contractError("invalid_document", "pitStops", "lap and pit lane duration must be positive")
+		}
+		if !stop.Presence.Valid() {
+			return contractError("invalid_document", "pitStops.presence", "unknown presence")
+		}
+		if err := stop.Provenance.Validate(); err != nil {
+			return err
+		}
+	}
+	for _, change := range o.Changes {
+		if change.LapNumber <= 0 {
+			return contractError("invalid_document", "changes.lapNumber", "must be positive")
+		}
+		if !change.Presence.Valid() {
+			return contractError("invalid_document", "changes.presence", "unknown presence")
+		}
+		if err := change.Provenance.Validate(); err != nil {
+			return err
+		}
+	}
+	if o.Result != nil {
+		invalidTime := o.Result.TotalTimeSeconds < 0 ||
+			math.IsNaN(o.Result.TotalTimeSeconds) ||
+			math.IsInf(o.Result.TotalTimeSeconds, 0)
+		if o.Result.CompletedLaps < 0 || invalidTime {
+			return contractError("invalid_document", "result", "completed laps and total time must be non-negative")
 		}
 	}
 	return nil

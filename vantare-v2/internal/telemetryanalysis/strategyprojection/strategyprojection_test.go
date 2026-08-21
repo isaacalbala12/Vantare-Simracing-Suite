@@ -128,6 +128,37 @@ func TestCombinedStintPaceCurveIdentifiability(t *testing.T) {
 	}
 }
 
+func TestPitWithoutResourceRiseMustBeAmbiguous(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	projection := StrategyInputProjectionV2{
+		ContractVersion:    ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:        now,
+		ComputationVersion: "1.0.0",
+		CombinedStintPaceCurve: CombinedStintPaceCurve{
+			Presence:        PresenceMissing,
+			Provenance:      Provenance{Kind: ProvenanceDerived, SourceID: "analysis:pace"},
+			Confidence:      Confidence{ComputationVersion: "1.0.0"},
+			Identifiability: IdentifiabilityCombinedOnly,
+			Points:          []PacePoint{},
+		},
+		Pit: PitFamily{
+			Presence: PresenceUnknown,
+			ObservedIntervals: []ObservedPitLaneInterval{{
+				PitNumber:       1,
+				DurationSeconds: 30,
+			}},
+		},
+	}
+	if err := projection.Validate(); err == nil {
+		t.Fatal("pit without a resource rise must declare ambiguity")
+	}
+	projection.Pit.ObservedIntervals[0].Ambiguous = true
+	projection.Pit.ObservedIntervals[0].AmbiguityReason = "no_resource_rise_detected"
+	if err := projection.Validate(); err != nil {
+		t.Fatalf("explicitly ambiguous pit should validate: %v", err)
+	}
+}
+
 func TestFixturesDecode(t *testing.T) {
 	cases := []struct {
 		file string

@@ -20,6 +20,7 @@ const (
 	capabilitySpatialLongitudinal = "spatial.longitudinal"
 	capabilitySpatialLateral      = "spatial.lateral"
 	capabilitySpotter             = "spotter"
+	capabilityDamage              = "damage"
 
 	driverCapabilitySharedMemory = "shared-memory"
 	driverCapabilityREST         = "rest"
@@ -97,6 +98,7 @@ func ProjectV2(
 		Delta:        BuildDelta(final, preferences),
 		Fuel:         BuildFuel(final, preferences),
 		Spotter:      BuildSpotter(final),
+		Damage:       BuildDamage(final),
 		Capabilities: BuildCapabilities(final, source),
 	}
 	return UpdateV2{
@@ -158,6 +160,8 @@ func BuildCapabilities(final derive.FinalState, source SourceContextV2) Capabili
 			available[id] = qualityFromFreshness(final.Derived.Delta.Freshness)
 		case capabilitySpatialLongitudinal, capabilitySpatialLateral, capabilitySpotter:
 			available[id] = spatialQuality(final)
+		case capabilityDamage:
+			available[id] = damageQuality(final)
 		default:
 			available[id] = QualityMissing
 		}
@@ -190,13 +194,13 @@ func normalizedCapabilityModes(modes CapabilityModesV2) CapabilityModesV2 {
 }
 
 func supportedCapabilities(descriptorCapabilities []string) []string {
-	result := make([]string, 0, 9)
+	result := make([]string, 0, 10)
 	for _, capability := range descriptorCapabilities {
 		switch capability {
 		case driverCapabilitySharedMemory:
 			result = append(result,
 				capabilitySession, capabilityControls, capabilityStandings, capabilityGaps,
-				capabilityFuel, capabilityDelta, capabilitySpatialLongitudinal, capabilitySpatialLateral, capabilitySpotter,
+				capabilityFuel, capabilityDelta, capabilitySpatialLongitudinal, capabilitySpatialLateral, capabilitySpotter, capabilityDamage,
 			)
 		case driverCapabilityREST:
 			result = append(result, capabilitySession)
@@ -311,4 +315,13 @@ func spatialQuality(final derive.FinalState) Quality {
 		qualities = append(qualities, qualityFromFreshness(current.WorldPosition.Freshness()))
 	}
 	return bestQuality(qualities...)
+}
+
+func damageQuality(final derive.FinalState) Quality {
+	for _, current := range final.Observed.Vehicles {
+		if player, present := current.Player.Value(); present && player {
+			return qualityFromFreshness(current.Damage.Freshness())
+		}
+	}
+	return QualityMissing
 }

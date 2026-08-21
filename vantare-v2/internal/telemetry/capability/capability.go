@@ -55,13 +55,14 @@ const (
 	SpatialLateral      ID = "spatial.lateral"
 	Spotter             ID = "spotter"
 	Weather             ID = "weather"
+	Damage              ID = "damage"
 )
 
 // All is the closed capability vocabulary in canonical order.
 func All() []ID {
 	return []ID{
 		Session, Controls, Standings, Gaps, Fuel, Pit, Delta,
-		SpatialLongitudinal, SpatialLateral, Spotter, Weather,
+		SpatialLongitudinal, SpatialLateral, Spotter, Weather, Damage,
 	}
 }
 

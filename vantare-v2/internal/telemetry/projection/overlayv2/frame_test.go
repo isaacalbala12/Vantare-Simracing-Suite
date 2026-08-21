@@ -109,9 +109,12 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
 		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}},
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
+		Damage: DamageViewV2{
+			Dents: QValue[[8]uint8]{V: [8]uint8{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},
+		},
 		Capabilities: CapabilitiesV2{
-			Supported: []string{"session", "controls", "standings", "gaps", "fuel", "delta", "spatial.longitudinal", "spatial.lateral", "spotter"},
-			Available: map[string]Quality{"session": QualityFresh, "controls": QualityFresh, "standings": QualityFresh, "gaps": QualityFresh, "fuel": QualityFresh, "delta": QualityFresh, "spotter": QualityFresh},
+			Supported: []string{"damage", "session", "controls", "standings", "gaps", "fuel", "delta", "spatial.longitudinal", "spatial.lateral", "spotter"},
+			Available: map[string]Quality{"session": QualityFresh, "controls": QualityFresh, "standings": QualityFresh, "gaps": QualityFresh, "fuel": QualityFresh, "delta": QualityFresh, "spotter": QualityFresh, "damage": QualityFresh},
 			Modes:     CapabilityModesV2{Spatial: []string{"xyz", "xy", "lap-distance"}, Delta: []string{"personal-best", "session-best", "previous-lap"}, Standings: ModeOfficial, Gaps: ModeEstimated},
 		},
 	}

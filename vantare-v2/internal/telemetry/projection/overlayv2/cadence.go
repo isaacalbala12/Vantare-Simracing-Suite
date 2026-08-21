@@ -5,6 +5,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
@@ -24,9 +25,10 @@ const (
 	SectionSession
 	SectionStandings
 	SectionFuel
+	SectionDamage
 	SectionCapabilities
 
-	sectionCount = 9
+	sectionCount = 10
 )
 
 var sectionNames = [sectionCount]string{
@@ -38,6 +40,7 @@ var sectionNames = [sectionCount]string{
 	SectionSession:      "session",
 	SectionStandings:    "standings",
 	SectionFuel:         "fuel",
+	SectionDamage:       "damage",
 	SectionCapabilities: "capabilities",
 }
 
@@ -53,7 +56,7 @@ func (section Section) String() string {
 func AllSections() []Section {
 	return []Section{
 		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
-		SectionSession, SectionStandings, SectionFuel, SectionCapabilities,
+		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionCapabilities,
 	}
 }
 
@@ -68,7 +71,7 @@ const (
 
 // TierOf maps a section to its tier. player/controls/delta are fast,
 // spotter is mid, session/standings/relative/gaps/fuel/capabilities are
-// slow. Standings y relative viven en slow para que su dirty fino (ISA-695)
+// slow (damage también slow). Standings y relative viven en slow para que su dirty fino (ISA-695)
 // regule sin riesgo de rancio; spotter permanece mid por su frescura
 // espacial de alta frecuencia.
 func TierOf(section Section) SectionTier {
@@ -255,6 +258,7 @@ type SectionBuilders struct {
 	Session      func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) SessionV2
 	Standings    func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) []StandingRowV2
 	Fuel         func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) FuelViewV2
+	Damage       func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) DamageViewV2
 	Capabilities func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) CapabilitiesV2
 }
 
@@ -287,6 +291,9 @@ func DefaultSectionBuilders() SectionBuilders {
 		},
 		Fuel: func(final derive.FinalState, preferences PreferencesV2, _ SourceContextV2) FuelViewV2 {
 			return BuildFuel(final, preferences)
+		},
+		Damage: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) DamageViewV2 {
+			return BuildDamage(final)
 		},
 	}
 }
@@ -353,6 +360,9 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 	}
 	if builders.Fuel == nil {
 		builders.Fuel = defaults.Fuel
+	}
+	if builders.Damage == nil {
+		builders.Damage = defaults.Damage
 	}
 	if builders.Capabilities == nil {
 		builders.Capabilities = defaults.Capabilities
@@ -452,6 +462,9 @@ func (projector *CachedProjector) Project(
 	if plan.Rebuild(SectionFuel) {
 		frame.Fuel = projector.builders.Fuel(final, preferences, source)
 	}
+	if plan.Rebuild(SectionDamage) {
+		frame.Damage = projector.builders.Damage(final, preferences, source)
+	}
 	if plan.Rebuild(SectionCapabilities) {
 		frame.Capabilities = projector.builders.Capabilities(final, preferences, source)
 	}
@@ -494,6 +507,7 @@ type dirtySignals struct {
 	gapsFreshness  schema.Freshness
 	deltaFreshness schema.Freshness
 	spatialMark    schema.Freshness
+	playerDamage   schema.Field[damage.State]
 }
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
@@ -522,6 +536,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		}
 		if player, present := current.Player.Value(); present && player {
 			signals.playerFuel = current.Fuel
+			signals.playerDamage = current.Damage
 		}
 	}
 	signals.relativeMark = hashRelativeMark(final)
@@ -555,6 +570,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	}
 	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap {
 		dirty = dirty.Mark(SectionFuel)
+	}
+	if signals.playerDamage != previous.playerDamage {
+		dirty = dirty.Mark(SectionDamage)
 	}
 	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||
 		signals.capabilities != previous.capabilities || signals.vehicles != previous.vehicles {

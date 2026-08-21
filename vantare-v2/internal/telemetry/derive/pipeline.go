@@ -34,6 +34,7 @@ const (
 	DerivationRelativeGaps     DerivationID = "standings.relative-gaps"
 	DerivationSelfDelta        DerivationID = "session.self-delta"
 	DerivationControlsHistory  DerivationID = "controls.history"
+	DerivationFuelUsage        DerivationID = "fuel.per-lap"
 )
 
 var canonicalAlgorithmVersions = []AlgorithmVersion{
@@ -41,6 +42,7 @@ var canonicalAlgorithmVersions = []AlgorithmVersion{
 	{ID: DerivationSessionRemaining, Version: 1},
 	{ID: DerivationRelativeGaps, Version: 1},
 	{ID: DerivationSelfDelta, Version: 1},
+	{ID: DerivationFuelUsage, Version: 1},
 }
 
 type Availability struct {
@@ -75,6 +77,7 @@ type DerivedState struct {
 	SessionRemaining schema.Field[session.RemainingTime]
 	Gaps             GapSet
 	Delta            SelfDelta
+	Fuel             FuelUsage
 	ControlsHistory  ControlHistory
 	Algorithms       []AlgorithmVersion
 }
@@ -88,6 +91,10 @@ type Config struct {
 	// MaxControlsHistory can reduce the canonical budget for harnesses. Values
 	// outside 1..120 use the canonical maximum and can never widen it.
 	MaxControlsHistory int
+	// FuelUsageWindow is the number of completed valid laps averaged into
+	// DerivedState.Fuel.PerLap. Values outside 1..MaxFuelUsageWindow use
+	// DefaultFuelUsageWindow.
+	FuelUsageWindow int
 }
 
 type Pipeline struct {
@@ -98,6 +105,7 @@ type Pipeline struct {
 	state       FinalState
 	maxHistory  int
 	delta       *selfDeltaTracker
+	fuel        *fuelUsageTracker
 }
 
 // PipelineCandidate owns a fully derived next state without publishing it.
@@ -106,6 +114,7 @@ type PipelineCandidate struct {
 	header   envelope.Header
 	state    FinalState
 	delta    *selfDeltaTracker
+	fuel     *fuelUsageTracker
 	snapshot envelope.Snapshot[FinalState]
 }
 
@@ -114,7 +123,11 @@ func NewPipeline(config Config) *Pipeline {
 	if limit <= 0 || limit > MaxControlsHistory {
 		limit = MaxControlsHistory
 	}
-	return &Pipeline{maxHistory: limit, delta: newSelfDeltaTracker(MaxSelfDeltaSamples)}
+	return &Pipeline{
+		maxHistory: limit,
+		delta:      newSelfDeltaTracker(MaxSelfDeltaSamples),
+		fuel:       newFuelUsageTracker(config.FuelUsageWindow),
+	}
 }
 
 // Apply runs the fixed chain synchronously. It performs no I/O and commits the
@@ -161,12 +174,14 @@ func (pipeline *Pipeline) Prepare(
 	}
 	derivedHistory := deriveControlsHistory(header, observedState, history, pipeline.maxHistory)
 	deltaTracker := cloneSelfDeltaTracker(pipeline.delta)
+	fuelTracker := cloneFuelUsageTracker(pipeline.fuel)
 	next := FinalState{
 		Observed: cloneObserved(observedState),
 		Derived: DerivedState{
 			SessionRemaining: deriveSessionRemaining(observedState.SourceTime, observedState.EndTime),
 			Gaps:             deriveRelativeGaps(header.Identity.Vehicle, observedState.PlayerPresent, observedState.Vehicles),
 			Delta:            deltaTracker.Apply(header, observedState),
+			Fuel:             fuelTracker.Apply(header, observedState),
 			ControlsHistory:  derivedHistory,
 			Algorithms:       canonicalVersions(),
 		},
@@ -178,7 +193,7 @@ func (pipeline *Pipeline) Prepare(
 	if err != nil {
 		return PipelineCandidate{}, fmt.Errorf("create final derived snapshot: %w", err)
 	}
-	return PipelineCandidate{pipeline: pipeline, header: header, state: next, delta: deltaTracker, snapshot: snapshot}, nil
+	return PipelineCandidate{pipeline: pipeline, header: header, state: next, delta: deltaTracker, fuel: fuelTracker, snapshot: snapshot}, nil
 }
 
 // Snapshot returns the fully owned final state prepared by this candidate.
@@ -196,6 +211,7 @@ func (pipeline *Pipeline) Commit(candidate PipelineCandidate) {
 	pipeline.header = candidate.header
 	pipeline.state = cloneFinal(candidate.state)
 	pipeline.delta = candidate.delta
+	pipeline.fuel = candidate.fuel
 	pipeline.initialized = true
 }
 

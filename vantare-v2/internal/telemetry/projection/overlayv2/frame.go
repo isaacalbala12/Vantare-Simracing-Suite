@@ -196,11 +196,23 @@ type DeltaViewV2 struct {
 	Authority Authority       `json:"authority,omitempty"`
 }
 
+// FuelBasis names the arithmetic behind FuelViewV2.EstimatedLaps.
+type FuelBasis string
+
+const (
+	// FuelBasisFuel is floor(remaining / perLap): the laps the tank allows.
+	FuelBasisFuel FuelBasis = "fuel"
+	// FuelBasisSession is ceil(sessionRemaining / lastLapTime): the laps the
+	// session has left at the last lap pace, which is what Overlay v1 showed.
+	FuelBasisSession FuelBasis = "session"
+)
+
 type FuelViewV2 struct {
 	Remaining     QValue[float64] `json:"remaining"`
 	Capacity      QValue[float64] `json:"capacity"`
 	PerLap        QValue[float64] `json:"perLap"`
 	EstimatedLaps QValue[float64] `json:"estimatedLaps"`
+	Basis         FuelBasis       `json:"basis,omitempty"`
 }
 
 type SpotterViewV2 struct {

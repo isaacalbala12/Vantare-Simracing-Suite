@@ -10,6 +10,7 @@ import {
 import { fuelStrategyDefinition } from "./fuel-strategy-definition";
 import {
   OVERLAY_V2_FUEL_DECLARED_GAPS,
+  OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES,
   buildFuelStrategyViewModelV2,
   fuelStrategyDisplayedValues,
 } from "./fuel-strategy-view-model-v2";
@@ -32,14 +33,29 @@ describe("fuel strategy v2 view model", () => {
     expect(model.lapsRemaining).toBe(frame.fuel.estimatedLaps.v);
   });
 
-  it("leaves everything that needs a fuel history undefined instead of inventing it", () => {
+  it("leaves everything the frame does not publish undefined instead of inventing it", () => {
     const model = buildFuelStrategyViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
-    expect(model.avgPerLap).toBeUndefined();
     expect(model.requiredFuel).toBeUndefined();
     expect(model.fuelPercent).toBeUndefined();
     expect(model.history).toEqual([]);
     expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(
-      expect.arrayContaining(["avgPerLap", "requiredFuel", "history", "fuelPercent"]),
+      expect.arrayContaining(["requiredFuel", "history", "fuelPercent"]),
+    );
+  });
+
+  it("reads the canonical per-lap consumption without averaging anything itself", () => {
+    const frame = goldenFrame(20);
+    // The golden fixture measures no lap, so the derivation is missing.
+    expect(frame.fuel.perLap.q).toBe("missing");
+    expect(buildFuelStrategyViewModelV2(frame, { state: "live" }, CONTENT).avgPerLap).toBeUndefined();
+
+    const measured = { ...frame, fuel: { ...frame.fuel, perLap: { q: "fresh", v: 3.42 } } } as OverlayFrameV2;
+    const model = buildFuelStrategyViewModelV2(measured, { state: "live" }, CONTENT);
+    // Read verbatim: no rounding, no window of its own. The window is the
+    // canonical one and the value can differ from the v1 average by design.
+    expect(model.avgPerLap).toBe(3.42);
+    expect(OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES).toEqual(
+      expect.arrayContaining(["avgPerLap", "lapsRemaining"]),
     );
   });
 
@@ -81,7 +97,7 @@ describe("fuel strategy v2 view model", () => {
       buildFuelStrategyViewModelV2(goldenFrame(20), { state: "live" }, CONTENT),
     );
     expect(Object.keys(displayed).sort()).toEqual([
-      "fuelLiters", "historyRows", "lapsRemaining", "status",
+      "avgPerLap", "fuelLiters", "historyRows", "lapsRemaining", "status",
     ]);
     expect(displayed.historyRows).toBe("0");
   });

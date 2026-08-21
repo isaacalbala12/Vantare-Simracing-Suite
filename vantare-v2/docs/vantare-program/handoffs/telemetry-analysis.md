@@ -17,6 +17,23 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-743 / ISA-694 F3-a4 está implementada en su rama aislada. La salida
+estándar es `CombinedStintPaceCurve`: cero local por mediana de las tres
+primeras vueltas limpias del stint y agregación por índice para la misma
+combinación+bucket, con rango y N. Un gate documentado exige diseño cruzado,
+3 stints, 15 vueltas, tres edades con rango de Fuel >=10 L, correlación máxima
+0,80 y varianza residual mínima de 25 % antes de publicar fuel/edad separados.
+La fixture cruzada pasa; la fixture sintética tipo corpus real no.
+
+`Tyres Wear` deriva pendiente por rueda/eje y vida al 20 % con rango y
+confianza; compuesto sigue `unsupported` por falta de mapping semántico. El
+coste del ahorro solo aparece con 5+5 vueltas limpias alternadas por nivel en
+el mismo stint, compuesto y clima; cualquier fallo queda `missing` con motivo.
+Contrato numérico en `docs/strategy-planner/isa-743-curvas-derivadas.md`.
+Suite focal, race, vet, gofmt y diff-check PASS. La suite Go global solo queda
+bloqueada en `frontend` y `cmd/vantare` por ausencia de `frontend/dist` en el
+worktree. Pendiente: review del orquestador; sin PR ni promoción.
+
 ISA-742 / ISA-694 F3-a3 está implementada en su rama aislada: Fuel y Virtual
 Energy por vuelta se calculan como delta entre fronteras válidas dentro del
 mismo `ContinuousSegment`, sin cruzar `CoverageGap` ni pit. El ritmo

@@ -347,11 +347,12 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Cerrar el gate PLAN de ISA-694 con la aprobación de Isaac y derivar los TASKS
-como issues de GitHub empezando por F0 (spike empírico sobre el corpus DuckDB
-de Isaac). La decisión D18 (consentimiento de subida) queda abierta sin
-bloquear PLAN ni F1–F5: su único punto de bloqueo es el arranque de F6a. No
-inventar un plan sintético; ninguna implementación sin tasks aprobados.
+Gate PLAN **cerrado por Isaac el 2026-08-21** y D18 **decidida**: subida
+automática opt-in con consentimiento revocable, cola visible, historial,
+pausa y borrado (el contrato de producto se modifica en el ADR 0009).
+Siguiente: ejecutar F0 (spike empírico sobre el corpus DuckDB real) en sus
+issues propias y, a su cierre, derivar los TASKS de F1. No inventar un plan
+sintético; ninguna implementación de producto fuera de tasks aprobados.
 
 ## Última actualización
 

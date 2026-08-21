@@ -53,7 +53,7 @@ modelo de tráfico/rivales, Monte Carlo, replanning autónomo, multi-sim.
 | D15 | El catálogo también publica **perfiles de referencia por combinación** (consumo/ritmo/degradación típicos, anonimizados) para el arranque en frío; se sustituyen por los datos propios cuando existen. Además, el primer arranque descubre e importa los DuckDB que LMU ya tiene en disco. |
 | D16 | La **estrategia observada** (qué corrió realmente cada piloto: vueltas de parada, compuestos, stints, resultado) se extrae de cada sesión de carrera como familia de derivación de primera clase. El corpus de carreras reales es la base de datos de estrategias. |
 | D17 | Desarrollo mediante SDD con gates humanos. Workers: `muse-spark-1.2-contributor` vía MCP T3 Code; tareas complejas y review adversarial con Codex `gpt-5.6-sol` razonamiento high; checks sencillos con Codex `gpt-5.6-terra` high. Claude planifica, orquesta y revisa. |
-| D18 | **Pendiente de Isaac:** modelo de consentimiento de subida. El contrato de producto vigente (`docs/vantare-program/product-contract.md`) exige preview del paquete exacto y acción explícita antes de enviar estrategias o perfiles; la automatización deseada en D10 requiere o bien mantener envío manual por bundle, o bien modificar el contrato para permitir consentimiento permanente revocable con cola visible, historial, pausa y borrado. Ver pregunta abierta #5. |
+| D18 | **Decidido (Isaac, 2026-08-21): subida automática.** Se modifica el contrato de producto (`docs/vantare-program/product-contract.md`) dentro del ADR 0009 para permitir consentimiento permanente **opt-in y revocable**, con cola de subida visible, historial, pausa y borrado; el bundle sigue siendo anonimizado y sin telemetría cruda. Los DuckDB de LMU viven en la misma ruta estándar en todos los PCs, lo que habilita el descubrimiento automático. |
 
 ## 3. Asunciones explícitas (a validar en el spike de Fase 0)
 
@@ -345,12 +345,8 @@ F7  Endurecimiento + campaña de testers (2 semanas) + decisión de promoción
    rate-limit; propuesta en F1 con coste como criterio).
 4. Qué pantallas de Orbit se renegocian al introducir el flujo asistido
    (propuesta de UX en F5, features intactas por D3).
-5. **Consentimiento de subida (D18, decide Isaac):** ¿envío manual con preview
-   por bundle según el contrato de producto vigente, o modificación del
-   contrato para permitir subida automática con consentimiento permanente
-   revocable, cola visible, historial, pausa y borrado? La recomendación del
-   plan es la segunda con todas esas salvaguardas, pero cambia el contrato de
-   producto y solo Isaac puede autorizarlo.
+5. ~~Consentimiento de subida~~ — resuelta: ver D18 (subida automática con
+   salvaguardas; el contrato de producto se modifica en el ADR 0009).
 
 ## 15. Siguientes pasos
 

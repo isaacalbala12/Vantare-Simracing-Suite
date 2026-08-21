@@ -17,10 +17,10 @@ Nota ISA-694 / auditoría Strategy Planner (2026-08-21, diagnóstico sin impleme
   (manual = caso degenerado de asistido; live = corte C posterior). Spec SDD
   aprobado (`docs/strategy-planner/isa-694-spec.md`, D1–D18, A1–A6) y plan
   técnico F0–F7b (`docs/strategy-planner/isa-694-plan.md`) revisados
-  adversarialmente por Codex `gpt-5.6-sol` high y corregidos. Pendiente:
-  cierre del gate PLAN y decisión D18 (consentimiento de subida, bloquea solo
-  F6a); después, TASKS como issues empezando por F0 (spike sobre corpus
-  DuckDB real).
+  adversarialmente por Codex `gpt-5.6-sol` high y corregidos. Gate PLAN
+  cerrado por Isaac el 2026-08-21; D18 decidida (subida automática opt-in con
+  salvaguardas, contrato de producto se modifica en ADR 0009). En curso: F0
+  (spike sobre corpus DuckDB real) en issues propias.
 - No hubo cambio de producto, merge, promoción ni release.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):

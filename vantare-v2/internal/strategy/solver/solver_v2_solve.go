@@ -10,6 +10,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
+	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const (
@@ -33,12 +34,19 @@ type searchNode struct {
 	ve          int64
 	green       float64
 	degradation float64
+	fuelWeight  float64
 	pit         float64
 	decision    DecisionVector
 }
 
 func (node searchNode) total(formation float64) float64 {
-	return formation + node.green + node.degradation + node.pit
+	return formation + node.green + node.degradation + node.fuelWeight + node.pit
+}
+
+type lapCostModel struct {
+	pace       stintPaceCost
+	fuelWeight fuelWeightCost
+	fuelPerLap int64
 }
 
 // SolveV2 optimiza el vector F1.3 con coste de pit por cantidades de servicio.
@@ -63,14 +71,21 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "combinedStintPaceCurve", err.Error())
 	}
+	fuelWeight, err := input.fuelWeightCost()
+	if err != nil {
+		return SolverResultV2{}, solveError(ErrorInvalidInput, "fuelWeight", err.Error())
+	}
+	lapCosts := lapCostModel{pace: paceCost, fuelWeight: fuelWeight, fuelPerLap: fuel.perLap}
 	result := SolverResultV2{
 		ContractVersion:  SolverContractVersionV2,
 		InputHash:        inputHash,
 		StintPaceCost:    paceCost.source,
+		FuelWeightCost:   fuelWeight.source,
 		Binding:          binding,
 		Candidates:       []DecisionVector{},
 		CandidateDetails: []SolverCandidateV2{},
 		Reasons:          []SolverReason{},
+		Assumptions:      []SolverReason{fuelWeight.assumption()},
 		Sensitivities:    []SolverSensitivity{},
 	}
 
@@ -94,7 +109,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 					budgetExhausted = true
 					break
 				}
-				afterStint, err := appendStint(node, stintLaps, input, paceCost)
+				afterStint, err := appendStint(node, stintLaps, input, lapCosts)
 				if err != nil {
 					return SolverResultV2{}, err
 				}
@@ -129,7 +144,13 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 						}
 						next.fuel += fuelAmount
 						next.ve += veAmount
-						byLap[next.lap] = insertNondominated(byLap[next.lap], next, input.Formation.Seconds, input.hasStopCountRules())
+						byLap[next.lap] = insertNondominated(
+							byLap[next.lap],
+							next,
+							input.Formation.Seconds,
+							input.hasStopCountRules(),
+							fuelWeight.secondsPerLiter > 0,
+						)
 					}
 					if budgetExhausted {
 						break
@@ -175,6 +196,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	result.Sensitivities = append(result.Sensitivities, SolverSensitivity{
 		Parameter: parameter, Delta: defaultCurveSensitivity, ImpactSeconds: impact,
 	})
+	if fuelWeight.source.Presence == sp.PresenceValid {
+		fuelWeightImpact := best.fuelWeight * defaultFuelWeightSensitivity
+		result.WorstCase.FuelWeightSeconds += fuelWeightImpact
+		result.WorstCase.TotalSeconds += fuelWeightImpact
+		result.Sensitivities = append(result.Sensitivities, SolverSensitivity{
+			Parameter:     "fuelWeightSecondsPerLiter",
+			Delta:         defaultFuelWeightSensitivity,
+			ImpactSeconds: fuelWeightImpact,
+		})
+	}
 	feasibleDetails := make([]SolverCandidateV2, 0, len(completed))
 	for index, candidate := range completed {
 		decision := cloneDecision(candidate.decision)
@@ -285,14 +316,15 @@ func serviceAmounts(current int64, resource serviceResource) []int64 {
 	return result
 }
 
-func appendStint(node searchNode, laps int64, input SolverInputV2, paceCost stintPaceCost) (searchNode, error) {
+func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCostModel) (searchNode, error) {
 	next := cloneNode(node)
-	stint, err := paceCost.stint(laps, input.BaseLapSeconds)
+	stint, err := costs.pace.stint(laps, input.BaseLapSeconds)
 	if err != nil {
 		return searchNode{}, err
 	}
 	next.green += stint.GreenSeconds
 	next.degradation += stint.DegradationSeconds
+	next.fuelWeight += costs.fuelWeight.stint(node.fuel, costs.fuelPerLap, laps)
 	next.decision.Stints = append(next.decision.Stints, StintDecision{Index: len(next.decision.Stints), Laps: laps, SavingLevel: SavingNone})
 	return next, nil
 }
@@ -371,27 +403,36 @@ func solverPitInput(input SolverInputV2, fuelAmount, veAmount int64) (manual.Pit
 
 func serviceValue(units int64) float64 { return float64(units) / float64(serviceScale) }
 
-func insertNondominated(nodes []searchNode, candidate searchNode, formation float64, stopRulesActive bool) []searchNode {
+func insertNondominated(
+	nodes []searchNode,
+	candidate searchNode,
+	formation float64,
+	stopRulesActive bool,
+	fuelWeightActive bool,
+) []searchNode {
 	for _, existing := range nodes {
-		if dominates(existing, candidate, formation, stopRulesActive) {
+		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive) {
 			return nodes
 		}
 	}
 	kept := nodes[:0]
 	for _, existing := range nodes {
-		if !dominates(candidate, existing, formation, stopRulesActive) {
+		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive) {
 			kept = append(kept, existing)
 		}
 	}
 	return append(kept, candidate)
 }
 
-func dominates(left, right searchNode, formation float64, stopRulesActive bool) bool {
+func dominates(left, right searchNode, formation float64, stopRulesActive, fuelWeightActive bool) bool {
 	leftStops, rightStops := len(left.decision.PitStops), len(right.decision.PitStops)
 	if stopRulesActive && leftStops != rightStops {
 		return false
 	}
 	if !stopRulesActive && leftStops > rightStops {
+		return false
+	}
+	if fuelWeightActive && left.fuel != right.fuel {
 		return false
 	}
 	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
@@ -454,7 +495,7 @@ func cloneDecision(decision DecisionVector) DecisionVector {
 func evaluationForNode(node searchNode, formation float64) ScenarioEvaluation {
 	return ScenarioEvaluation{
 		TotalSeconds: node.total(formation), GreenSeconds: node.green, DegradationSeconds: node.degradation,
-		PitSeconds: node.pit, FormationSeconds: formation,
+		FuelWeightSeconds: node.fuelWeight, PitSeconds: node.pit, FormationSeconds: formation,
 	}
 }
 

@@ -92,6 +92,7 @@ func TestDeriveSessionCurvesVersionedFixtures(t *testing.T) {
 				}
 				assertNear(t, bucket.FuelWeightCurve.Points[len(bucket.FuelWeightCurve.Points)-1].DeltaSeconds, fixture.Expected.FuelLastDelta)
 				assertNear(t, bucket.TyreAgeCurve.Points[len(bucket.TyreAgeCurve.Points)-1].DeltaSeconds, fixture.Expected.AgeLastDelta)
+				assertNear(t, bucket.FuelWeightCurve.SlopeSecondsPerUnit, fixture.Stints[0].FuelSecondsPerL)
 			} else if bucket.FuelWeightCurve != nil || bucket.TyreAgeCurve != nil {
 				t.Fatalf("combined-only gate published separated curves: %+v", bucket)
 			}

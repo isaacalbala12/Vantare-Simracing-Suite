@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -230,8 +231,14 @@ func validateObservedState(run identity.RunIdentity, state ObservedState) error 
 		int(count) != len(state.Vehicles) {
 		return ErrVehicleCountMismatch
 	}
-	vehicles := make(map[identity.VehicleID]struct{}, len(state.Vehicles))
-	for _, current := range state.Vehicles {
+	if len(state.Vehicles) == 0 {
+		return nil
+	}
+	// Evita el map por frame: con 104 coches el sort es barato y no aloca
+	// buckets de hash. Recolecta IDs, valida missing/mismatch en la pasada,
+	// y detecta duplicados por orden.
+	ids := make([]identity.VehicleID, len(state.Vehicles))
+	for index, current := range state.Vehicles {
 		id := current.Identity.Vehicle
 		if id == "" {
 			return ErrMissingVehicleID
@@ -239,10 +246,13 @@ func validateObservedState(run identity.RunIdentity, state ObservedState) error 
 		if stateIdentityMismatch(current.Identity, run) {
 			return ErrVehicleRunMismatch
 		}
-		if _, exists := vehicles[id]; exists {
+		ids[index] = id
+	}
+	slices.Sort(ids)
+	for index := 1; index < len(ids); index++ {
+		if ids[index] == ids[index-1] {
 			return ErrDuplicateVehicle
 		}
-		vehicles[id] = struct{}{}
 	}
 	return nil
 }

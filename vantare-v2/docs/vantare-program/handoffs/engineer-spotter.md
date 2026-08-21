@@ -119,8 +119,12 @@ productivo sin crear un segundo reader.
 - Entrega: F5 #719 implementada en la rama aislada; PR draft #756 abierto a
   `nightly`. La review independiente rechazó el primer corte con 5 P1 y 2 P2;
   los siete tienen regresión y corrección local. El backend real sigue
-  unavailable; gates globales y CI del nuevo HEAD quedan por ejecutar. F3/F4
-  permanecen como entregas separadas incluidas en esta base.
+  unavailable. Vet focal, focal, race focal, suite `internal`, suite Go global,
+  build frontend, roadmap/changelog y diff-check pasan. La primera suite
+  `internal` ejecutada en paralelo agotó el deadline de un test SQLite ajeno;
+  pasó aislada y el mismo paquete ya había pasado en la suite global. CI del
+  nuevo HEAD queda por ejecutar. F3/F4 permanecen como entregas separadas
+  incluidas en esta base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -380,7 +384,9 @@ STT acotados, inicio asíncrono, timeout/release PTT reconciliado, polling F24
 real aunque el helper esté unavailable, cero superficie OFF y detección de
 conflictos con hotkeys cargadas. WASAPI, Whisper, wake acústico, QueryPort,
 pulsación física y ENG-13 continúan pendientes/NO-GO. Regresiones focales y
-race focal pasan; gates globales y CI del nuevo HEAD aún pendientes. Sin merge
+race focal, suite `internal`, suite global, build frontend y validadores
+documentales pasan. Hubo un timeout SQLite solo bajo la primera ejecución
+paralela; el rerun aislado fue PASS. CI del nuevo HEAD aún pendiente. Sin merge
 ni promoción.
 
 2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:

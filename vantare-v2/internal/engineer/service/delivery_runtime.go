@@ -10,6 +10,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/presentation"
+	"github.com/vantare/overlays/v2/internal/families"
 	"github.com/vantare/overlays/v2/internal/radio"
 )
 
@@ -21,19 +22,21 @@ type wallClock struct{}
 func (wallClock) NowMS() int64 { return time.Now().UnixMilli() }
 
 type activeDelivery struct {
-	id       string
-	decision messagepolicy.Decision
-	radio    bool
-	cancel   context.CancelCauseFunc
+	id            string
+	decision      messagepolicy.Decision
+	radio         bool
+	radioFamily   messagepolicy.Family
+	radioPriority radio.Priority
+	cancel        context.CancelCauseFunc
 }
 
 func (delivery *activeDelivery) isSpotter() bool {
-	return delivery != nil && (delivery.radio || delivery.decision.Priority == messagepolicy.PrioritySpotter)
+	return delivery != nil && ((delivery.radio && delivery.radioPriority == radio.PriorityP0) || delivery.decision.Priority == messagepolicy.PrioritySpotter)
 }
 
 func (delivery *activeDelivery) family() messagepolicy.Family {
 	if delivery != nil && delivery.radio {
-		return messagepolicy.FamilySpotter
+		return delivery.radioFamily
 	}
 	return delivery.decision.Family
 }
@@ -102,6 +105,9 @@ func (s *EngineerService) resetRadioLocked(cause error) {
 	}
 	if s.radioBus != nil {
 		s.radioBus.Reset(cause)
+	}
+	if s.familyEngine != nil {
+		s.familyEngine.Reset()
 	}
 }
 
@@ -210,7 +216,7 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 	request := radio.Request{Version: radio.VersionV1, DeliveryID: deliveryID, DecidedAtMS: s.policyClock.NowMS(), Message: item.Message}
 	session, err := radio.NewSession(request, s.policyClock, s.radioMetrics, func(ack radio.Acknowledgement) error {
 		if ack.State == radio.StateStarted {
-			if s.spotterProducer != nil {
+			if item.Message.Priority == radio.PriorityP0 && s.spotterProducer != nil {
 				if err := s.spotterProducer.AcknowledgeStarted(item.Message, ack.AtMS); err != nil {
 					return err
 				}
@@ -225,7 +231,8 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 		s.mu.Unlock()
 		return true
 	}
-	mode := s.outputModes[messagepolicy.FamilySpotter]
+	family := radioMessageFamily(item.Message)
+	mode := s.outputModes[family]
 	var cachedAudio radio.CachedAudioResolver
 	var player radio.AudioPlayer
 	if outputHasAudio(mode) && s.audioPlayer != nil {
@@ -233,11 +240,11 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 		player = s.audioPlayer
 	}
 	port := radio.DualPort{
-		Resolver: s.radioResolver, UI: radioUIPublisher{service: s, visual: outputHasVisual(mode)},
+		Resolver: s.radioResolver, UI: radioUIPublisher{service: s, family: family, priority: radioNotificationPriority(item.Message.Priority), visual: outputHasVisual(mode)},
 		Audio: cachedAudio, Player: player, Clock: s.policyClock,
 	}
 	cancel := func(cause error) { s.radioBus.Reset(radioCancellationCause(cause)) }
-	s.activeDelivery = &activeDelivery{id: deliveryID, radio: true, cancel: cancel}
+	s.activeDelivery = &activeDelivery{id: deliveryID, radio: true, radioFamily: family, radioPriority: item.Message.Priority, cancel: cancel}
 	s.wg.Add(1)
 	s.mu.Unlock()
 	go s.runRadioDelivery(item, request, session, port)
@@ -440,8 +447,10 @@ func (resolver radioAudioResolver) ResolveCached(ctx context.Context, voiceText 
 }
 
 type radioUIPublisher struct {
-	service *EngineerService
-	visual  bool
+	service  *EngineerService
+	family   messagepolicy.Family
+	priority messagepolicy.Priority
+	visual   bool
 }
 
 func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented radio.Presentation) error {
@@ -452,17 +461,35 @@ func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented ra
 		Version: presentation.ContractVersionV1, ID: presented.ID, Category: presented.Family,
 		Severity: presented.Severity, TextKey: presented.Intent, Text: presented.VisualText,
 		VoiceText: presented.VoiceText, Locale: string(presented.Locale), Role: presented.Role,
-		Channel: string(presented.Channel), Priority: int(messagepolicy.PrioritySpotter),
+		Channel: string(presented.Channel), Priority: int(publisher.priority),
 		CreatedAt: presented.CreatedAtMS, ExpiresAt: presented.ExpiresAtMS, Source: "telemetry-core",
 	}
 	publisher.service.mu.Lock()
 	defer publisher.service.mu.Unlock()
 	if context.Cause(ctx) != nil || !publisher.service.running || !publisher.service.enabled ||
-		!outputHasVisual(publisher.service.outputModes[messagepolicy.FamilySpotter]) {
+		!outputHasVisual(publisher.service.outputModes[publisher.family]) {
 		return nil
 	}
 	publisher.service.publishNotificationLocked(notification)
 	return nil
+}
+
+func radioMessageFamily(message radio.RadioMessage) messagepolicy.Family {
+	if family, ok := families.FamilyForIntent(message.Intent); ok {
+		return messagepolicy.Family(family)
+	}
+	return messagepolicy.FamilySpotter
+}
+
+func radioNotificationPriority(priority radio.Priority) messagepolicy.Priority {
+	switch priority {
+	case radio.PriorityP0:
+		return messagepolicy.PrioritySpotter
+	case radio.PriorityP2:
+		return messagepolicy.PriorityFailureResource
+	default:
+		return messagepolicy.PriorityInformation
+	}
 }
 
 func (s *EngineerService) publishDecisionIfEnabled(ctx context.Context, decision messagepolicy.Decision, presented presentation.Presentation) bool {

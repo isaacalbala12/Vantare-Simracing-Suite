@@ -14,6 +14,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
+	"github.com/vantare/overlays/v2/internal/families"
+	"github.com/vantare/overlays/v2/internal/radio"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -562,6 +564,43 @@ func TestEngineerHealthExposesOnlySanitizedPolicyAndDeliveryMetrics(t *testing.T
 	}
 	if service.Health().Policy.Accepted != 1 {
 		t.Fatalf("policy metrics = %+v", service.Health().Policy)
+	}
+	if service.Health().ActiveFamilies != 5 {
+		t.Fatalf("active family count = %d", service.Health().ActiveFamilies)
+	}
+}
+
+func TestRadioFamilyDeliveryUsesOwnFamilyPriorityAndCatalog(t *testing.T) {
+	service := NewEngineerService(nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := service.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer service.Stop()
+	notifications, unsubscribe := service.Subscribe()
+	defer unsubscribe()
+
+	now := service.policyClock.NowMS()
+	message := radio.RadioMessage{Version: radio.VersionV1, ID: "lap-family", Source: "telemetry-core",
+		Intent: families.IntentLapCompleted, Subject: "player", Priority: radio.PriorityP3,
+		CreatedAtMS: now, ExpiresAtMS: now + 10_000, Locale: radio.LocaleES, Payload: map[string]string{}}
+	result, err := service.radioBus.Submit(message)
+	if err != nil || !result.Accepted {
+		t.Fatalf("radio family submit = %#v, %v", result, err)
+	}
+	service.mu.Lock()
+	service.signalDeliveryLocked()
+	service.mu.Unlock()
+
+	select {
+	case notification := <-notifications:
+		if notification.Category != string(messagepolicy.FamilyLaps) || notification.TextKey != families.IntentLapCompleted ||
+			notification.Text != "Vuelta completada" || notification.Priority != int(messagepolicy.PriorityInformation) {
+			t.Fatalf("radio family notification = %+v", notification)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("radio family delivery did not publish")
 	}
 }
 

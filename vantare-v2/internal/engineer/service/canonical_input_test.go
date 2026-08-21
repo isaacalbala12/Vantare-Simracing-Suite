@@ -340,6 +340,36 @@ func TestLegacySpotterRollbackIsExclusiveAndPreStartOnly(t *testing.T) {
 	t.Fatal("legacy rollback did not publish Spotter notification")
 }
 
+func TestLegacyFamiliesRollbackIsExclusivePreStartAndVisibleInHealth(t *testing.T) {
+	newPath := service.NewEngineerService(nil)
+	if got := newPath.Health().ActiveFamilies; got != 5 {
+		t.Fatalf("new family count = %d, want 5", got)
+	}
+
+	legacyPath := service.NewEngineerService(nil)
+	if err := legacyPath.SetLegacyFamiliesRollback(true); err != nil {
+		t.Fatal(err)
+	}
+	if got := legacyPath.Health().ActiveFamilies; got != 0 {
+		t.Fatalf("legacy rollback family count = %d, want 0", got)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := legacyPath.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer legacyPath.Stop()
+	if err := legacyPath.SetLegacyFamiliesRollback(false); !errors.Is(err, service.ErrLegacyFamiliesRunning) {
+		t.Fatalf("running rollback change error = %v", err)
+	}
+	if err := legacyPath.ConsumeObservation(canonicalSpotterObservation(t, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if samples := legacyPath.Health().RadioDelivery.Samples; samples != 0 {
+		t.Fatalf("radio family engine delivered during legacy rollback: %d samples", samples)
+	}
+}
+
 func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	ctx, cancel := context.WithCancel(context.Background())

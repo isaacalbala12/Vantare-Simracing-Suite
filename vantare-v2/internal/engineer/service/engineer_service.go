@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	legacyspotter "github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	"github.com/vantare/overlays/v2/internal/families"
 	"github.com/vantare/overlays/v2/internal/radio"
 	radiospotter "github.com/vantare/overlays/v2/internal/spotter"
 	spottergeometry "github.com/vantare/overlays/v2/internal/spotter/geometry"
@@ -32,6 +33,7 @@ var (
 
 var ErrPresentationLocaleRunning = errors.New("engineer presentation locale cannot change while the service is running")
 var ErrLegacySpotterRunning = errors.New("engineer legacy spotter rollback cannot change while the service is running")
+var ErrLegacyFamiliesRunning = errors.New("engineer legacy families rollback cannot change while the service is running")
 
 // observationCursor is the ordering boundary captured when the canonical
 // source becomes unavailable. Sequence is monotonic inside an epoch; a newer
@@ -68,6 +70,7 @@ type EngineerService struct {
 	source                string
 	spotterEnabled        bool
 	legacySpotter         bool
+	legacyFamilies        bool
 	sensitivity           string
 	outputModes           map[messagepolicy.Family]OutputMode
 	subtitlesEnabled      bool
@@ -117,6 +120,7 @@ type EngineerService struct {
 	radioResolver   *radio.Resolver
 	radioMetrics    *radio.Metrics
 	spotterProducer *radiospotter.Producer
+	familyEngine    *families.Engine
 
 	presentationResolver *presentation.Resolver
 	presentationLocale   presentation.Locale
@@ -203,16 +207,33 @@ func (s *EngineerService) SetLegacySpotterRollback(enabled bool) error {
 	return nil
 }
 
+// SetLegacyFamiliesRollback restores the five former projectioninput monitors.
+// It is false by default and immutable after Start. The radio family engine is
+// exclusive with this path so one observation can never produce doubles.
+func (s *EngineerService) SetLegacyFamiliesRollback(enabled bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		return ErrLegacyFamiliesRunning
+	}
+	s.legacyFamilies = enabled
+	return nil
+}
+
 // NewEngineerService creates a new instance of EngineerService.
 func NewEngineerService(emitter EventEmitter) *EngineerService {
 	queue := audio.NewQueue()
 	clock := wallClock{}
 	scheduler, schedulerErr := messagepolicy.NewScheduler(clock, messagepolicy.Limits{})
 	presentationResolver, presentationErr := presentation.NewResolver()
-	radioBus, radioBusErr := radio.NewBus(radio.DefaultLimits(), clock)
+	radioLimits := radio.DefaultLimits()
+	radioLimits.Cooldowns = families.Cooldowns()
+	radioBus, radioBusErr := radio.NewBus(radioLimits, clock)
 	radioResolver := radio.NewResolver()
 	radioCatalogErr := radiospotter.RegisterCatalog(radioResolver)
+	familyCatalogErr := families.RegisterCatalog(radioResolver)
 	spotterProducer, spotterProducerErr := radiospotter.NewProducer(clock, radio.LocaleES)
+	familyEngine, familyEngineErr := families.New(clock, radio.LocaleES)
 	s := &EngineerService{
 		store:                NewNotificationStore(50),
 		queue:                queue,
@@ -236,6 +257,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		radioResolver:        radioResolver,
 		radioMetrics:         radio.NewMetrics(128),
 		spotterProducer:      spotterProducer,
+		familyEngine:         familyEngine,
 		presentationResolver: presentationResolver,
 		presentationLocale:   presentation.LocaleSpanish,
 	}
@@ -247,7 +269,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		s.enabled = false
 		s.lastError = presentationErr.Error()
 	}
-	for _, initErr := range []error{radioBusErr, radioCatalogErr, spotterProducerErr} {
+	for _, initErr := range []error{radioBusErr, radioCatalogErr, familyCatalogErr, spotterProducerErr, familyEngineErr} {
 		if initErr != nil {
 			s.enabled = false
 			s.lastError = initErr.Error()
@@ -294,6 +316,11 @@ func (s *EngineerService) SetLocale(value string) error {
 	}
 	if s.spotterProducer != nil {
 		if err := s.spotterProducer.SetLocale(radio.Locale(locale)); err != nil {
+			return err
+		}
+	}
+	if s.familyEngine != nil {
+		if err := s.familyEngine.SetLocale(radio.Locale(locale)); err != nil {
 			return err
 		}
 	}
@@ -659,7 +686,7 @@ func (s *EngineerService) publishStatusLocked(status EngineerStatus) {
 	}
 }
 
-var approvedProjectionFamilies = []projectioninput.MonitorFamily{
+var legacyProjectionFamilies = []projectioninput.MonitorFamily{
 	projectioninput.FamilyFuel,
 	projectioninput.FamilyPenalties,
 	projectioninput.FamilyLaps,
@@ -815,7 +842,34 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			return err
 		}
 	}
-	for _, family := range approvedProjectionFamilies {
+	if !s.legacyFamilies && s.familyEngine != nil && s.radioBus != nil {
+		messages, err := s.familyEngine.Evaluate(snapshot)
+		if err == nil {
+			processed = true
+			for _, message := range messages {
+				result, submitErr := s.radioBus.Submit(message)
+				if submitErr != nil {
+					s.connected = false
+					s.lastError = submitErr.Error()
+					s.emitStatusLocked()
+					return submitErr
+				}
+				if result.Accepted {
+					s.signalDeliveryLocked()
+				}
+			}
+		} else if !errors.Is(err, families.ErrObservationNotReady) {
+			s.connected = false
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
+		}
+	}
+	legacyFamilies := []projectioninput.MonitorFamily(nil)
+	if s.legacyFamilies {
+		legacyFamilies = legacyProjectionFamilies
+	}
+	for _, family := range legacyFamilies {
 		frame, err := s.input.FrameFor(family, snapshot)
 		if errors.Is(err, projectioninput.ErrObservationNotReady) {
 			continue
@@ -949,16 +1003,17 @@ func (s *EngineerService) DropCount() uint64 {
 // EngineerHealth es un snapshot ligero para /api/engineer/health.
 // Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
 type EngineerHealth struct {
-	OK            bool                     `json:"ok"`
-	Source        string                   `json:"source"`
-	Connected     bool                     `json:"connected"`
-	Enabled       bool                     `json:"enabled"`
-	Subs          int                      `json:"subscribers"`
-	DropCount     uint64                   `json:"dropCount"`
-	Policy        EngineerPolicyMetrics    `json:"policy"`
-	Delivery      delivery.MetricsSnapshot `json:"delivery"`
-	RadioDelivery radio.MetricsSnapshot    `json:"radioDelivery"`
-	LastError     string                   `json:"lastError,omitempty"`
+	OK             bool                     `json:"ok"`
+	Source         string                   `json:"source"`
+	Connected      bool                     `json:"connected"`
+	Enabled        bool                     `json:"enabled"`
+	Subs           int                      `json:"subscribers"`
+	DropCount      uint64                   `json:"dropCount"`
+	ActiveFamilies int                      `json:"activeFamilies"`
+	Policy         EngineerPolicyMetrics    `json:"policy"`
+	Delivery       delivery.MetricsSnapshot `json:"delivery"`
+	RadioDelivery  radio.MetricsSnapshot    `json:"radioDelivery"`
+	LastError      string                   `json:"lastError,omitempty"`
 }
 
 // EngineerPolicyMetrics exposes counters only. Candidate IDs, message text,
@@ -987,15 +1042,20 @@ func (s *EngineerService) Health() EngineerHealth {
 			Expired: state.Expired, Cancelled: state.Cancelled, Unavailable: state.Unavailable,
 		}
 	}
+	activeFamilies := 0
+	if !s.legacyFamilies && s.familyEngine != nil {
+		activeFamilies = s.familyEngine.ActiveCount()
+	}
 	return EngineerHealth{
-		OK:        s.engineerSvcOKLocked(),
-		Source:    s.source,
-		Connected: s.connected,
-		Enabled:   s.enabled,
-		Subs:      len(s.subs) + len(s.streamSubs),
-		DropCount: s.dropCount.Load(),
-		Policy:    policyMetrics,
-		Delivery:  s.deliveryMetrics.Snapshot(),
+		OK:             s.engineerSvcOKLocked(),
+		Source:         s.source,
+		Connected:      s.connected,
+		Enabled:        s.enabled,
+		Subs:           len(s.subs) + len(s.streamSubs),
+		DropCount:      s.dropCount.Load(),
+		ActiveFamilies: activeFamilies,
+		Policy:         policyMetrics,
+		Delivery:       s.deliveryMetrics.Snapshot(),
 		RadioDelivery: func() radio.MetricsSnapshot {
 			if s.radioMetrics == nil {
 				return radio.MetricsSnapshot{}

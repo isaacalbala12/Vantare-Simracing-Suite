@@ -38,6 +38,7 @@ export type StrategyApplicationOperation =
   | "list_variants"
   | "compare_variants"
   | "calculate_orbit"
+  | "list_session_combinations"
   | "preview_legacy_migration"
   | "migrate_legacy"
   | "rollback_legacy_migration";
@@ -131,6 +132,10 @@ export type StrategyEventV2 = {
   readonly fillMode: StrategySourcedV2<"manual">;
   readonly lastOpenedAt?: StrategySourcedV2<string | null>;
   readonly tyreInventory: StrategyTyreInventoryV2;
+  readonly combination?: {
+    readonly combinationId: string;
+    readonly sessions: readonly { readonly sessionId: string; readonly included: boolean }[];
+  };
   /** Go encodes the byte-exact legacy backup as base64. */
   readonly rawLegacy?: string;
 };
@@ -330,6 +335,7 @@ export type StrategyApplicationCommandV1<TPayload> =
       updatedAt: string;
     })
   | CommandHeader<"list_events">
+  | CommandHeader<"list_session_combinations">
   | (CommandHeader<"create_driver" | "edit_driver"> & {
       eventId: string;
       driver: StrategyDriverV2;
@@ -453,6 +459,8 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly variants?: readonly StrategyVariantV2[];
   readonly comparison?: StrategyVariantComparisonV2;
   readonly orbitCalculation?: StrategyOrbitCalculationResultV1;
+  readonly sessionCatalogStatus?: "available" | "no_authorized_telemetry";
+  readonly sessionCombinations?: readonly StrategySessionCombinationV1[];
   readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
@@ -461,6 +469,35 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly imported?: boolean;
   readonly recoveredFromBackup: boolean;
   readonly closed: boolean;
+};
+
+export type StrategySessionClimateBucketV1 = {
+  readonly bucket: "dry" | "humid" | "wet";
+  readonly laps: number;
+};
+
+export type StrategySessionCatalogItemV1 = {
+  readonly sessionId: string;
+  readonly type: "practice" | "qualify" | "race";
+  readonly status: "identified_usable" | "identified_not_usable";
+  readonly defaultIncluded: boolean;
+  readonly exclusionReason?: "no_completed_lap" | "session_type_not_race";
+  readonly lastActivity: string;
+  readonly climateBuckets: readonly StrategySessionClimateBucketV1[];
+};
+
+export type StrategySessionCombinationV1 = {
+  readonly combinationId: string;
+  readonly simId: string;
+  readonly trackName: string;
+  readonly trackLayout: string;
+  readonly carName: string;
+  readonly carClass: string;
+  readonly sessionCount: number;
+  readonly raceCount: number;
+  readonly lastActivity: string;
+  readonly climateBuckets: readonly StrategySessionClimateBucketV1[];
+  readonly sessions: readonly StrategySessionCatalogItemV1[];
 };
 
 export type StrategyApplicationErrorCode =
@@ -735,6 +772,12 @@ async function parseResult<TPayload>(
     ...(payload.orbitCalculation === undefined
       ? {}
       : { orbitCalculation: parseStrategyOrbitCalculation(payload.orbitCalculation) }),
+    ...(payload.sessionCatalogStatus === undefined
+      ? {}
+      : { sessionCatalogStatus: parseSessionCatalogStatus(payload.sessionCatalogStatus) }),
+    ...(payload.sessionCombinations === undefined
+      ? {}
+      : { sessionCombinations: parseSessionCombinations(payload.sessionCombinations) }),
     ...(payload.legacyMigration === undefined
       ? {}
       : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
@@ -888,8 +931,72 @@ function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
   }
   if (event.activeStrategyId !== undefined) strategyString(event.activeStrategyId, `${field}.activeStrategyId`);
   if (event.rawLegacy !== undefined) strategyString(event.rawLegacy, `${field}.rawLegacy`);
+  if (event.combination !== undefined) {
+    const combination = strategyRecord(event.combination, `${field}.combination`);
+    strategyString(combination.combinationId, `${field}.combination.combinationId`);
+    if (!Array.isArray(combination.sessions)) throw new Error(`Invalid Strategy ${field}.combination.sessions`);
+    for (const [index, candidate] of combination.sessions.entries()) {
+      const session = strategyRecord(candidate, `${field}.combination.sessions.${index}`);
+      strategyString(session.sessionId, `${field}.combination.sessions.${index}.sessionId`);
+      if (typeof session.included !== "boolean") throw new Error(`Invalid Strategy ${field}.combination.sessions.${index}.included`);
+    }
+  }
   parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
   return { ...event, drivers, strategies, availability } as StrategyEventV2;
+}
+
+function parseSessionCombinations(value: unknown): readonly StrategySessionCombinationV1[] {
+  if (!Array.isArray(value)) throw new Error("Invalid Strategy sessionCombinations");
+  return value.map((candidate, index) => {
+    const field = `sessionCombinations.${index}`;
+    const combination = strategyRecord(candidate, field);
+    for (const name of ["combinationId", "simId", "trackName", "trackLayout", "carName", "carClass", "lastActivity"] as const) {
+      strategyString(combination[name], `${field}.${name}`);
+    }
+    strategyInteger(combination.sessionCount, `${field}.sessionCount`);
+    strategyInteger(combination.raceCount, `${field}.raceCount`);
+    const climateBuckets = parseSessionClimateBuckets(combination.climateBuckets, `${field}.climateBuckets`);
+    if (!Array.isArray(combination.sessions)) throw new Error(`Invalid Strategy ${field}.sessions`);
+    const sessions = combination.sessions.map((sessionCandidate, sessionIndex) => {
+      const sessionField = `${field}.sessions.${sessionIndex}`;
+      const session = strategyRecord(sessionCandidate, sessionField);
+      strategyString(session.sessionId, `${sessionField}.sessionId`);
+      strategyEnum(session.type, `${sessionField}.type`, ["practice", "qualify", "race"]);
+      strategyEnum(session.status, `${sessionField}.status`, ["identified_usable", "identified_not_usable"]);
+      if (typeof session.defaultIncluded !== "boolean") throw new Error(`Invalid Strategy ${sessionField}.defaultIncluded`);
+      if (session.exclusionReason !== undefined) strategyEnum(session.exclusionReason, `${sessionField}.exclusionReason`, ["no_completed_lap", "session_type_not_race"]);
+      strategyString(session.lastActivity, `${sessionField}.lastActivity`);
+      return { ...session, climateBuckets: parseSessionClimateBuckets(session.climateBuckets, `${sessionField}.climateBuckets`) } as StrategySessionCatalogItemV1;
+    });
+    return {
+      combinationId: combination.combinationId as string,
+      simId: combination.simId as string,
+      trackName: combination.trackName as string,
+      trackLayout: combination.trackLayout as string,
+      carName: combination.carName as string,
+      carClass: combination.carClass as string,
+      sessionCount: combination.sessionCount as number,
+      raceCount: combination.raceCount as number,
+      lastActivity: combination.lastActivity as string,
+      climateBuckets,
+      sessions,
+    };
+  });
+}
+
+function parseSessionCatalogStatus(value: unknown): "available" | "no_authorized_telemetry" {
+  strategyEnum(value, "sessionCatalogStatus", ["available", "no_authorized_telemetry"]);
+  return value as "available" | "no_authorized_telemetry";
+}
+
+function parseSessionClimateBuckets(value: unknown, field: string): readonly StrategySessionClimateBucketV1[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const bucket = strategyRecord(candidate, `${field}.${index}`);
+    strategyEnum(bucket.bucket, `${field}.${index}.bucket`, ["dry", "humid", "wet"]);
+    strategyInteger(bucket.laps, `${field}.${index}.laps`);
+    return bucket as StrategySessionClimateBucketV1;
+  });
 }
 
 function parseStrategyDriversV2(value: unknown, field: string): readonly StrategyDriverV2[] {

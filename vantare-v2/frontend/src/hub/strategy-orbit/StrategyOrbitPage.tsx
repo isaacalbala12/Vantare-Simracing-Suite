@@ -128,6 +128,13 @@ import {
   type StrategyDriver,
   type StrategyVariant,
 } from "./strategy-orbit-model";
+import {
+  loadStrategySessionCatalog,
+  persistStrategySessionSelection,
+  selectedCombination,
+  selectedSessions,
+  type StrategySessionCatalogView,
+} from "./strategy-session-selection";
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
@@ -171,7 +178,7 @@ interface WizardState {
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
 }
-type SidePanel = "drivers" | "tyres";
+type SidePanel = "drivers" | "tyres" | "sessions";
 type DonutMode = "laps" | "time";
 
 /** `FL|FR|RL|RR` → esquina del dominio real (`strategy-tyre`). */
@@ -348,6 +355,30 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     },
     [legacyReadOnly],
   );
+  const [sessionCatalog, setSessionCatalog] = useState<
+    | { status: "loading" }
+    | { status: "ready"; view: StrategySessionCatalogView }
+    | { status: "error"; message: string }
+  >({ status: "loading" });
+  const [sessionCatalogRetry, setSessionCatalogRetry] = useState(0);
+  const [sessionPickerDismissed, setSessionPickerDismissed] = useState<string | null>(null);
+  const [sessionSave, setSessionSave] = useState<"idle" | "saving" | "error">("idle");
+
+  useEffect(() => {
+    let current = true;
+    setSessionCatalog({ status: "loading" });
+    void loadStrategySessionCatalog(applicationClient).then(
+      (view) => {
+        if (current) setSessionCatalog({ status: "ready", view });
+      },
+      (error: unknown) => {
+        if (current) setSessionCatalog({ status: "error", message: visibleApplicationFailure(error).message });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [applicationClient, sessionCatalogRetry]);
 
   const previewMigration = useCallback(async () => {
     setMigration({ status: "loading", message: t("strategy.migration.reading") });
@@ -400,6 +431,13 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   }, [commit, roster]);
 
   const eventRecord = activeEventOf(store);
+  const catalogView = sessionCatalog.status === "ready" ? sessionCatalog.view : null;
+  const eventCombination = eventRecord && catalogView
+    ? selectedCombination(catalogView, eventRecord.id)
+    : undefined;
+  const eventSessionDecisions = eventRecord && catalogView && eventCombination
+    ? selectedSessions(catalogView, eventRecord.id, eventCombination)
+    : [];
   const strategyEvent = useMemo(
     () => (eventRecord ? toStrategyEvent(eventRecord, locale) : null),
     [eventRecord, locale],
@@ -1020,6 +1058,48 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
   }, [commit, eventId, form, store.events, t, toast]);
+
+  const chooseSessionCombination = useCallback(async (combinationId: string) => {
+    if (!eventRecord || !catalogView) return;
+    const combination = catalogView.combinations.find((item) => item.combinationId === combinationId);
+    if (!combination) return;
+    setSessionSave("saving");
+    try {
+      const view = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        eventRecord,
+        combination,
+        combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded })),
+      );
+      setSessionCatalog({ status: "ready", view });
+      setSessionPickerDismissed(eventRecord.id);
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  }, [applicationClient, catalogView, eventRecord]);
+
+  const toggleSession = useCallback(async (sessionId: string) => {
+    if (!eventRecord || !catalogView || !eventCombination) return;
+    const sessions = eventSessionDecisions.map((session) =>
+      session.sessionId === sessionId ? { ...session, included: !session.included } : session,
+    );
+    setSessionSave("saving");
+    try {
+      const view = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        eventRecord,
+        eventCombination,
+        sessions,
+      );
+      setSessionCatalog({ status: "ready", view });
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  }, [applicationClient, catalogView, eventCombination, eventRecord, eventSessionDecisions]);
 
   /**
    * Crea el evento desde una salida del calendario. Acepta tanto una salida de
@@ -1819,6 +1899,59 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     </Surface>
   ) : null;
 
+  const sessionPickerView = eventRecord ? (
+    <Surface
+      aria-label={t("strategy.sessions.pickerTitle")}
+      data-testid="orbit-strategy-session-picker"
+      meta={t("strategy.sessions.optional")}
+      title={t("strategy.sessions.pickerTitle")}
+    >
+      <p className="orbit-strategy__empty-lead">{t("strategy.sessions.pickerLead")}</p>
+      {sessionCatalog.status === "loading" ? (
+        <p role="status">{t("strategy.sessions.loading")}</p>
+      ) : sessionCatalog.status === "ready" && sessionCatalog.view.combinations.length === 0 ? (
+        <Note title={t("strategy.sessions.emptyTitle")}>{t("strategy.sessions.empty")}</Note>
+      ) : sessionCatalog.status === "ready" ? (
+        <div className="orbit-session-picker__list">
+          {sessionCatalog.view.combinations.map((combination) => (
+            <Featured
+              data-testid={`orbit-session-combination-${combination.combinationId}`}
+              interactive
+              key={combination.combinationId}
+              onClick={() => void chooseSessionCombination(combination.combinationId)}
+            >
+              <span className="orbit-eyebrow">{combination.simId.toUpperCase()}</span>
+              <span className="orbit-path__k">{combination.trackName} · {combination.carName}</span>
+              <span className="orbit-path__d">
+                {formatMessage(t("strategy.sessions.summary"), {
+                  sessions: combination.sessionCount,
+                  races: combination.raceCount,
+                  activity: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(combination.lastActivity)),
+                })}
+              </span>
+              <span className="orbit-session-picker__buckets">
+                {combination.climateBuckets.length > 0
+                  ? combination.climateBuckets.map((bucket) => `${t(`strategy.sessions.bucket.${bucket.bucket}`)} ${bucket.laps}`).join(" · ")
+                  : t("strategy.sessions.noBuckets")}
+              </span>
+            </Featured>
+          ))}
+        </div>
+      ) : null}
+      {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+      <div className="orbit-strategy__wizard-acts">
+        <Button
+          data-testid="orbit-strategy-session-skip"
+          disabled={sessionSave === "saving"}
+          onClick={() => setSessionPickerDismissed(eventRecord.id)}
+          variant="ghost"
+        >
+          {t("strategy.sessions.skip")}
+        </Button>
+      </div>
+    </Surface>
+  ) : null;
+
   const entryMenu = (
     <div className="orbit-strategy__empty-stack">
       <Surface
@@ -1922,6 +2055,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         {form ? eventForm : (wizardView ?? entryMenu)}
         {editorFailureView}
         {deleteDialog}
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (!eventCombination && sessionPickerDismissed !== eventRecord.id && sessionCatalog.status === "ready") {
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        {sessionPickerView}
+        {editorFailureView}
         {migrationDialog}
       </div>
     );
@@ -2084,6 +2228,51 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       ) : null}
     </div>
   ) : null;
+  const sessionDecisionByID = new Map(eventSessionDecisions.map((session) => [session.sessionId, session.included]));
+  const sessionsPanel = sessionCatalog.status === "error" ? (
+    <Note title={t("strategy.sessions.errorTitle")}>
+      {sessionCatalog.message}
+      <Button onClick={() => setSessionCatalogRetry((value) => value + 1)} size="sm" variant="ghost">
+        {t("strategy.sessions.retry")}
+      </Button>
+    </Note>
+  ) : !eventCombination ? (
+    <Note title={t("strategy.sessions.manualTitle")}>{t("strategy.sessions.manual")}</Note>
+  ) : (
+    <div className="orbit-strategy__sessions" data-testid="orbit-strategy-sessions">
+      <div className="orbit-strategy__sessions-head">
+        <b>{eventCombination.trackName} · {eventCombination.carName}</b>
+        <span>{eventCombination.carClass}</span>
+      </div>
+      {eventCombination.sessions.map((session) => {
+        const included = sessionDecisionByID.get(session.sessionId) ?? session.defaultIncluded;
+        const reason = included
+          ? t("strategy.sessions.included")
+          : session.defaultIncluded
+            ? t("strategy.sessions.userExcluded")
+            : t(`strategy.sessions.reason.${session.exclusionReason ?? "no_completed_lap"}`);
+        return (
+          <div className="orbit-strategy__session-row" data-included={included ? "true" : "false"} key={session.sessionId}>
+            <span>
+              <b>{t(`strategy.sessions.type.${session.type}`)}</b>
+              <small>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(session.lastActivity))}</small>
+            </span>
+            <span className="orbit-strategy__session-reason">{reason}</span>
+            <Button
+              aria-pressed={included}
+              disabled={sessionSave === "saving"}
+              onClick={() => void toggleSession(session.sessionId)}
+              size="sm"
+              variant={included ? "ghost" : "primary"}
+            >
+              {included ? t("strategy.sessions.exclude") : t("strategy.sessions.include")}
+            </Button>
+          </div>
+        );
+      })}
+      {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+    </div>
+  );
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
@@ -2734,6 +2923,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   options={[
                     { value: "drivers", label: t("strategy.drivers.title") },
                     { value: "tyres", label: t("strategy.drivers.tyres") },
+                    { value: "sessions", label: t("strategy.sessions.title") },
                   ]}
                   value={panel}
                 />
@@ -2744,10 +2934,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               meta={
                 panel === "drivers"
                   ? String(drivers.length)
-                  : formatMessage(t("strategy.drivers.inUse"), {
+                  : panel === "tyres" ? formatMessage(t("strategy.drivers.inUse"), {
                       n: inventory.length,
                       used: Object.keys(uses).length,
                     })
+                    : String(eventCombination?.sessions.length ?? 0)
               }
             >
               {panel === "drivers" ? (
@@ -2866,7 +3057,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     </article>
                   ))}
                 </div>
-              ) : (
+              ) : panel === "tyres" ? (
                 <div className="orbit-strategy__tyres" data-testid="orbit-strategy-tyres">
                   {inventory.length === 0 ? (
                     <Note title={t("strategy.tyres.emptyTitle")}>{t("strategy.tyres.empty")}</Note>
@@ -2902,7 +3093,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     </>
                   )}
                 </div>
-              )}
+              ) : sessionsPanel}
             </Surface>
           </div>
         </div>

@@ -10,6 +10,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
 
 const maxSafeRepositoryVersion = uint64(1<<53 - 1)
@@ -19,15 +20,24 @@ type repositoryPort[T any] interface {
 	Commit(context.Context, uint64, repository.ChangeSet[T]) (repository.CommitResult[T], error)
 }
 
+type sessionCatalogPort interface {
+	ListSessionCombinations(context.Context) ([]telemetryanalysis.CombinationCatalogEntry, error)
+}
+
 // Service is the only application facade for Strategy documents. The
 // repository remains the authority for persisted drafts/revisions; transient
 // editor history belongs to the frontend store.
 type Service[T any] struct {
-	repository repositoryPort[T]
+	repository     repositoryPort[T]
+	sessionCatalog sessionCatalogPort
 }
 
 func NewService[T any](repo repositoryPort[T]) *Service[T] {
-	return &Service[T]{repository: repo}
+	return NewServiceWithSessionCatalog(repo, nil)
+}
+
+func NewServiceWithSessionCatalog[T any](repo repositoryPort[T], catalog sessionCatalogPort) *Service[T] {
+	return &Service[T]{repository: repo, sessionCatalog: catalog}
 }
 
 func (service *Service[T]) Create(ctx context.Context, command CreateCommand[T]) (Result[T], error) {

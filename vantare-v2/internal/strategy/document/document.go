@@ -318,6 +318,19 @@ type TyreSet struct {
 	Provenance  Provenance    `json:"provenance"`
 }
 
+type SessionSelection struct {
+	SessionID string `json:"sessionId"`
+	Included  bool   `json:"included"`
+}
+
+// CombinationReference links an event to Analysis-owned historical sessions.
+// The decisions are non-destructive: they only say which session participates
+// in this event and never mutate or remove historical telemetry.
+type CombinationReference struct {
+	CombinationID string             `json:"combinationId"`
+	Sessions      []SessionSelection `json:"sessions"`
+}
+
 type Event struct {
 	ID               EventID                           `json:"id"`
 	Name             Sourced[string]                   `json:"name"`
@@ -338,6 +351,7 @@ type Event struct {
 	FillMode         Sourced[FillMode]                 `json:"fillMode"`
 	LastOpenedAt     *Sourced[*time.Time]              `json:"lastOpenedAt,omitempty"`
 	TyreInventory    TyreInventory                     `json:"tyreInventory"`
+	Combination      *CombinationReference             `json:"combination,omitempty"`
 	// RawLegacy preserva los bytes originales del backup, incluso cuando el
 	// JSON está corrupto y debe ir a cuarentena. encoding/json lo representa
 	// como base64, evitando la compactación destructiva de json.RawMessage.
@@ -473,6 +487,21 @@ func (d StrategyDocumentV2) Validate() error {
 		}
 		if err := ev.PitLossSeconds.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q pitLossSeconds evidence: %w", ev.ID, err)
+		}
+		if ev.Combination != nil {
+			if strings.TrimSpace(ev.Combination.CombinationID) == "" {
+				return fmt.Errorf("event %q combination id is required", ev.ID)
+			}
+			sessions := make(map[string]struct{}, len(ev.Combination.Sessions))
+			for _, session := range ev.Combination.Sessions {
+				if strings.TrimSpace(session.SessionID) == "" {
+					return fmt.Errorf("event %q combination session id is required", ev.ID)
+				}
+				if _, duplicate := sessions[session.SessionID]; duplicate {
+					return fmt.Errorf("event %q duplicate combination session %q", ev.ID, session.SessionID)
+				}
+				sessions[session.SessionID] = struct{}{}
+			}
 		}
 		if ev.PitLossSeconds.Value < 0 || math.IsNaN(ev.PitLossSeconds.Value) || math.IsInf(ev.PitLossSeconds.Value, 0) {
 			return fmt.Errorf("event %q pitLossSeconds must be finite and >=0", ev.ID)

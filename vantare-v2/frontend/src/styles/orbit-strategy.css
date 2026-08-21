@@ -481,6 +481,71 @@
   min-height: 0;
 }
 
+.orbit-session-picker__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.orbit-session-picker__list .orbit-featured {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  text-align: left;
+}
+
+.orbit-session-picker__buckets {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+}
+
+.orbit-strategy__sessions {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-strategy__sessions-head,
+.orbit-strategy__session-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+}
+
+.orbit-strategy__sessions-head {
+  border-bottom: 1px solid var(--orbit-line);
+  padding-bottom: 9px;
+}
+
+.orbit-strategy__sessions-head span,
+.orbit-strategy__session-row small,
+.orbit-strategy__session-reason {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+}
+
+.orbit-strategy__session-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  padding: 8px 0;
+}
+
+.orbit-strategy__session-row > span:first-child {
+  display: grid;
+}
+
+.orbit-strategy__session-row[data-included="false"] {
+  opacity: 0.72;
+}
+
+@media (max-width: 900px) {
+  .orbit-session-picker__list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .orbit-strategy__tyre-hint {
   margin: 0;
   padding: 8px 14px 6px;

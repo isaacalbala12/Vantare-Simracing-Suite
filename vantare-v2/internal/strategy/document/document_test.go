@@ -7,6 +7,19 @@ import (
 )
 
 func TestStrategyDocumentV2_Validate_FullFromOrbit(t *testing.T) {
+	doc := validDocumentV2(t)
+	if err := doc.Validate(); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	b, _ := json.Marshal(doc)
+	var out StrategyDocumentV2
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatalf("round-trip: %v", err)
+	}
+}
+
+func validDocumentV2(t *testing.T) StrategyDocumentV2 {
+	t.Helper()
 	now := time.Date(2026, 8, 21, 14, 0, 0, 0, time.UTC)
 	ev := Event{
 		ID:             "own-1",
@@ -32,13 +45,29 @@ func TestStrategyDocumentV2_Validate_FullFromOrbit(t *testing.T) {
 		Events:          []Event{ev},
 		ActiveEventID:   &active,
 	}
-	if err := doc.Validate(); err != nil {
-		t.Fatalf("validate: %v", err)
+	return doc
+}
+
+func TestStrategyDocumentV2CombinationReferenceIsAdditiveAndValidated(t *testing.T) {
+	doc := validDocumentV2(t)
+	doc.Events[0].Combination = &CombinationReference{
+		CombinationID: "lmu:combination",
+		Sessions:      []SessionSelection{{SessionID: "race-1", Included: true}, {SessionID: "practice-1", Included: false}},
 	}
-	b, _ := json.Marshal(doc)
-	var out StrategyDocumentV2
-	if err := json.Unmarshal(b, &out); err != nil {
-		t.Fatalf("round-trip: %v", err)
+	if err := doc.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reloaded StrategyDocumentV2
+	if err := json.Unmarshal(raw, &reloaded); err != nil || reloaded.Events[0].Combination == nil || reloaded.Events[0].Combination.Sessions[1].Included {
+		t.Fatalf("reloaded = %+v, error = %v", reloaded.Events[0].Combination, err)
+	}
+	reloaded.Events[0].Combination.Sessions = append(reloaded.Events[0].Combination.Sessions, SessionSelection{SessionID: "race-1"})
+	if err := reloaded.Validate(); err == nil {
+		t.Fatal("duplicate session accepted")
 	}
 }
 

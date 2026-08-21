@@ -241,7 +241,6 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 	radioResolver := radio.NewResolver()
 	radioCatalogErr := radiospotter.RegisterCatalog(radioResolver)
 	familyCatalogErr := families.RegisterCatalog(radioResolver)
-	voiceCatalogErr := registerVoiceInputCatalog(radioResolver)
 	spotterProducer, spotterProducerErr := radiospotter.NewProducer(clock, radio.LocaleES)
 	familyEngine, familyEngineErr := families.New(clock, radio.LocaleES)
 	s := &EngineerService{
@@ -279,7 +278,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		s.enabled = false
 		s.lastError = presentationErr.Error()
 	}
-	for _, initErr := range []error{radioBusErr, radioCatalogErr, familyCatalogErr, voiceCatalogErr, spotterProducerErr, familyEngineErr} {
+	for _, initErr := range []error{radioBusErr, radioCatalogErr, familyCatalogErr, spotterProducerErr, familyEngineErr} {
 		if initErr != nil {
 			s.enabled = false
 			s.lastError = initErr.Error()
@@ -297,6 +296,14 @@ func (s *EngineerService) SetVoiceInputHealth(provider func() voiceinput.Health)
 	if s.running {
 		return errors.New("engineer voice-input health cannot change while running")
 	}
+	if provider == nil {
+		return errors.New("engineer voice-input health provider is required")
+	}
+	if s.voiceHealth == nil {
+		if err := registerVoiceInputCatalog(s.radioResolver); err != nil {
+			return fmt.Errorf("register voice-input radio catalog: %w", err)
+		}
+	}
 	s.voiceHealth = provider
 	return nil
 }
@@ -311,7 +318,7 @@ func (s *EngineerService) PublishVoiceTurn(ctx context.Context, turn commands.Tu
 	intent, response := voiceTurnPresentation(turn, locale)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.running || !s.enabled || s.radioBus == nil {
+	if !s.running || !s.enabled || s.radioBus == nil || s.voiceHealth == nil {
 		return errors.New("engineer radio bus is unavailable")
 	}
 	s.voiceTurnNext++
@@ -1173,7 +1180,7 @@ type EngineerHealth struct {
 	Policy         EngineerPolicyMetrics    `json:"policy"`
 	Delivery       delivery.MetricsSnapshot `json:"delivery"`
 	RadioDelivery  radio.MetricsSnapshot    `json:"radioDelivery"`
-	VoiceInput     voiceinput.Health        `json:"voiceInput"`
+	VoiceInput     *voiceinput.Health       `json:"voiceInput,omitempty"`
 	LastError      string                   `json:"lastError,omitempty"`
 }
 
@@ -1207,9 +1214,10 @@ func (s *EngineerService) Health() EngineerHealth {
 	if !s.legacyFamilies && s.familyEngine != nil {
 		activeFamilies = s.familyEngine.ActiveCount()
 	}
-	voiceHealth := voiceinput.Health{Experimental: true, Enabled: false, State: voiceinput.StateDisabled}
+	var voiceHealth *voiceinput.Health
 	if s.voiceHealth != nil {
-		voiceHealth = s.voiceHealth()
+		snapshot := s.voiceHealth()
+		voiceHealth = &snapshot
 	}
 	return EngineerHealth{
 		OK:             s.engineerSvcOKLocked(),

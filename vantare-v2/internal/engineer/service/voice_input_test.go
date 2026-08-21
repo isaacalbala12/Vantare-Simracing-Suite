@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +11,27 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/engineer/voiceinput"
 )
+
+func TestVoiceInputDisabledHasZeroServiceSurface(t *testing.T) {
+	engineer := service.NewEngineerService(nil)
+	healthJSON, err := json.Marshal(engineer.Health())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(healthJSON), "voiceInput") {
+		t.Fatalf("disabled health exposed voice-input surface: %s", healthJSON)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := engineer.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer engineer.Stop()
+	turn := commands.Turn{Outcome: commands.OutcomeQueryAnswered, IntentID: "query.fuel", ResponseKey: "response.fuel", Values: map[string]string{"litres": "12"}}
+	if err := engineer.PublishVoiceTurn(ctx, turn, commands.LocaleSpanish); err == nil {
+		t.Fatal("disabled service accepted a voice turn")
+	}
+}
 
 func TestVoiceTurnUsesRegistrableRadioPresentationAndAggregateHealth(t *testing.T) {
 	engineer := service.NewEngineerService(nil)
@@ -38,7 +60,7 @@ func TestVoiceTurnUsesRegistrableRadioPresentationAndAggregateHealth(t *testing.
 		t.Fatal("radio.v1 did not publish the voice turn")
 	}
 	health := engineer.Health().VoiceInput
-	if !health.Experimental || !health.Enabled || health.Transcriptions != 1 || health.Queries != 1 {
+	if health == nil || !health.Experimental || !health.Enabled || health.Transcriptions != 1 || health.Queries != 1 {
 		t.Fatalf("voice health = %+v", health)
 	}
 }

@@ -150,17 +150,72 @@ func TestAggregateDerivedCurvesScopesCombinationAndBucket(t *testing.T) {
 	}
 }
 
-func TestSavingCostRejectsFivePlusFiveGroupedButNotAlternating(t *testing.T) {
-	fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
-	fixture.Stints[0].MixtureCodes = []int{0, 0, 0, 0, 0, 1, 1, 1, 1, 1}
+func TestSavingCostRejectsInvalidProtocols(t *testing.T) {
+	tests := []struct {
+		name          string
+		mutateFixture func(*derivedCurvesFixture)
+		mutatePace    func(*SessionConsumptionPace)
+		reason        string
+	}{
+		{
+			name: "cinco mas cinco agrupadas no alternan",
+			mutateFixture: func(fixture *derivedCurvesFixture) {
+				fixture.Stints[0].MixtureCodes = []int{0, 0, 0, 0, 0, 1, 1, 1, 1, 1}
+			},
+			reason: SavingReasonNotAlternating,
+		},
+		{
+			name: "cuatro vueltas por nivel no bastan",
+			mutateFixture: func(fixture *derivedCurvesFixture) {
+				fixture.Stints[0].Laps = 8
+			},
+			reason: SavingReasonInsufficientLaps,
+		},
+		{
+			name: "dos buckets no se mezclan",
+			mutatePace: func(pace *SessionConsumptionPace) {
+				for index := 5; index < len(pace.Laps); index++ {
+					bucket := strategyprojection.ClimateBucketHumid
+					pace.Laps[index].ClimateBucket = &bucket
+				}
+			},
+			reason: SavingReasonInsufficientLaps,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
+			if test.mutateFixture != nil {
+				test.mutateFixture(&fixture)
+			}
+			session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+			if test.mutatePace != nil {
+				test.mutatePace(&pace)
+			}
+
+			got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.SavingCost.Presence != strategyprojection.PresenceMissing || got.SavingCost.ManualNote != test.reason {
+				t.Fatalf("invalid A/B must be missing with reason: %+v", got.SavingCost)
+			}
+		})
+	}
+}
+
+func TestDeriveSessionCurvesMissingWearHasReason(t *testing.T) {
+	fixture := loadDerivedCurvesFixture(t, "derived-curves-crossed-v1.json")
 	session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+	pages[1].Samples = nil
 
 	got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SavingCost.Presence != strategyprojection.PresenceMissing || got.SavingCost.ManualNote != SavingReasonNotAlternating {
-		t.Fatalf("grouped A/B must be missing with reason: %+v", got.SavingCost)
+	if got.TyreDegradation.Presence != strategyprojection.PresenceMissing || got.TyreDegradation.Reason != "missing_clean_tyres_wear_laps" {
+		t.Fatalf("missing wear must carry reason: %+v", got.TyreDegradation)
 	}
 }
 

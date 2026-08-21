@@ -9,6 +9,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
+#include <QTimer>
 
 namespace {
 QString configuredPath(const char *environmentName, const char *fallback)
@@ -119,6 +120,19 @@ int main(int argc, char *argv[])
                                       Qt::QueuedConnection);
         }
     }, Qt::DirectConnection);
+    QObject::connect(&playback, &ScenePlayback::finishedChanged, &application, [&] {
+        if (!playback.finished() || !motionTrace.enabled()) {
+            return;
+        }
+        QTimer::singleShot(250, &application, [&] {
+            if (motionTrace.finish()) {
+                application.quit();
+            } else {
+                qCritical().noquote() << motionTrace.error();
+                application.exit(8);
+            }
+        });
+    });
 
     qInfo().noquote()
         << QStringLiteral("redline-ready scene=%1 widget=%2 records=%3 replay-sha256=%4")

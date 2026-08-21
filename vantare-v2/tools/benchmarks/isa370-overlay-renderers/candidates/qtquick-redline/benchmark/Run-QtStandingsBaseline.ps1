@@ -54,8 +54,22 @@ try {
             $env:VANTARE_REDLINE_SCENE = $sceneByScenario[$scenario]
             $env:VANTARE_QT_MOTION_TRACE = $tracePath
             $started = [DateTimeOffset]::UtcNow
-            $console = @(& $exe 2>&1 | ForEach-Object { [string]$_ })
-            $exitCode = $LASTEXITCODE
+            $startInfo = [Diagnostics.ProcessStartInfo]::new($exe)
+            $startInfo.UseShellExecute = $false
+            $startInfo.CreateNoWindow = $true
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            $process = [Diagnostics.Process]::Start($startInfo)
+            $stdout = $process.StandardOutput.ReadToEndAsync()
+            $stderr = $process.StandardError.ReadToEndAsync()
+            if (-not $process.WaitForExit(30000)) {
+                $process.Kill($true)
+                $process.WaitForExit()
+                throw "candidate timed out after 30 seconds: $scenario/$repetition"
+            }
+            $exitCode = $process.ExitCode
+            $console = @($stdout.Result, $stderr.Result) | Where-Object { $_.Length -gt 0 }
+            $process.Dispose()
             if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $tracePath -PathType Leaf)) {
                 throw "candidate failed $scenario/$repetition exit=$exitCode output=$($console -join ' | ')"
             }

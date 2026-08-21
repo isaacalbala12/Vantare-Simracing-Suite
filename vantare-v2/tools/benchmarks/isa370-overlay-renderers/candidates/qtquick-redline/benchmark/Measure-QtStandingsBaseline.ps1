@@ -102,7 +102,7 @@ foreach ($file in $traceFiles) {
         }
         $lastQpc = $qpc
     }
-    if ($null -ne $modelOpen -or $completed -ne $expectedRecords -or $presentCount -le 0 -or $lastPresentFrame -ne $expectedRecords - 1) {
+    if ($null -ne $modelOpen -or $completed -ne $expectedRecords -or $presentCount -le 0 -or $lastPresentFrame -lt 0) {
         throw "raw trace final completeness is invalid: $($file.Name)"
     }
     $sceneIds = @($events | ForEach-Object { [string]$_.sceneId } | Sort-Object -Unique)

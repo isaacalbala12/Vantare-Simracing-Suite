@@ -21,6 +21,7 @@ public:
     void endRecord(const ReplayRecord &record, int frame);
     void qmlSync();
     [[nodiscard]] bool present();
+    [[nodiscard]] bool finish();
     [[nodiscard]] bool enabled() const { return m_enabled; }
     [[nodiscard]] QString error() const;
 

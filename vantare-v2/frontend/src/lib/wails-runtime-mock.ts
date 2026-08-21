@@ -20,6 +20,7 @@ import {
 } from "../telemetry-transport/source-status";
 import { createOrbitCalculationTestClient } from "../hub/strategy-orbit/strategy-orbit-calculation.test-support";
 import type { StrategyApplicationCommandV1 } from "../strategy/strategy-application-client";
+import { canonicalizeAndHashStrategyJSONV1 } from "../strategy/strategy-contract-v1";
 
 setWailsRuntimeMockActive(true);
 licenseDebugWarn(
@@ -50,6 +51,8 @@ const strategyRepositoryKey = "vantare.strategy.harness.repository.v1";
 type HarnessStrategyRepository = {
   version: number;
   drafts: Record<string, Record<string, unknown>>;
+  revisions: Record<string, Record<string, unknown>>;
+  activePlan?: Record<string, unknown>;
 };
 
 
@@ -99,14 +102,14 @@ function readHarnessPayload(data: unknown): Record<string, unknown> {
 function loadHarnessStrategyRepository(): HarnessStrategyRepository {
   try {
     const raw = globalThis.localStorage?.getItem(strategyRepositoryKey);
-    if (!raw) return { version: 0, drafts: {} };
+    if (!raw) return { version: 0, drafts: {}, revisions: {} };
     const parsed = JSON.parse(raw) as HarnessStrategyRepository;
     if (!Number.isSafeInteger(parsed.version) || parsed.version < 0 || !parsed.drafts || typeof parsed.drafts !== "object") {
       throw new Error("invalid harness Strategy repository");
     }
-    return parsed;
+    return { ...parsed, revisions: parsed.revisions ?? {} };
   } catch {
-    return { version: 0, drafts: {} };
+    return { version: 0, drafts: {}, revisions: {} };
   }
 }
 
@@ -114,7 +117,7 @@ function saveHarnessStrategyRepository(repository: HarnessStrategyRepository) {
   globalThis.localStorage?.setItem(strategyRepositoryKey, JSON.stringify(repository));
 }
 
-function handleHarnessStrategyCommand(command: Record<string, unknown>) {
+async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   const commandId = typeof command.commandId === "string" ? command.commandId : "invalid-command";
   const operation = command.operation;
   const repository = loadHarnessStrategyRepository();
@@ -133,6 +136,37 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     void createOrbitCalculationTestClient()
       .execute(command as unknown as StrategyApplicationCommandV1<unknown>)
       .then((result) => broadcast("strategy:application:result", result));
+    return;
+  }
+
+  if (operation === "list") {
+    const plans = Object.values(repository.drafts).map((draft) => {
+      const planId = typeof draft.planId === "string" ? draft.planId : "";
+      const variantId = typeof draft.variantId === "string" ? draft.variantId : "";
+      const revisions = Object.values(repository.revisions).filter(
+        (revision) => revision.planId === planId && revision.variantId === variantId,
+      );
+      const latest = revisions.at(-1);
+      return {
+        planId,
+        variantId,
+        draftId: draft.draftId,
+        name: draft.name,
+        mode: draft.mode,
+        updatedAt: latest?.createdAt ?? draft.updatedAt,
+        hasDraft: true,
+        revisionCount: revisions.length,
+        ...(latest ? {
+          latestRevision: revisionReference(latest),
+          latestRevisionAt: latest.createdAt,
+        } : {}),
+      };
+    });
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      plans,
+      ...(repository.activePlan ? { activePlan: repository.activePlan } : {}),
+    });
     return;
   }
 
@@ -163,16 +197,28 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
     const revisionId = typeof command.revisionId === "string" ? command.revisionId : "";
     if (!draftId || !revisionId) return fail("invalid_command", "draft", "Invalid Strategy save");
-    const stored = {
-      ...structuredClone(draft),
-      baseRevision: {
-        planId: draft.planId,
-        variantId: draft.variantId,
-        revisionId,
-        contentHash: "a".repeat(64),
-      },
+    const createdAt = typeof command.createdAt === "string" ? command.createdAt : "";
+    const revisionWithoutHash = {
+      contractVersion: "strategy.v1",
+      hashAlgorithm: "sha256:strategy-c14n-v1",
+      revisionId,
+      sourceDraftId: draft.draftId,
+      planId: draft.planId,
+      variantId: draft.variantId,
+      ...(draft.baseRevision ? { baseRevision: draft.baseRevision } : {}),
+      name: draft.name,
+      mode: draft.mode,
+      capabilities: draft.capabilities,
+      provenance: draft.provenance,
+      confidence: draft.confidence,
+      createdAt,
+      payload: draft.payload,
     };
+    const { sha256: contentHash } = await canonicalizeAndHashStrategyJSONV1(JSON.stringify(revisionWithoutHash));
+    const revision = { ...revisionWithoutHash, contentHash };
+    const stored = { ...structuredClone(draft), baseRevision: revisionReference(revision) };
     repository.drafts[draftId] = stored;
+    repository.revisions[revisionKey(revision)] = revision;
     repository.version += 1;
     saveHarnessStrategyRepository(repository);
     broadcast("strategy:application:result", {
@@ -180,7 +226,45 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
       repositoryVersion: repository.version,
       draft: stored,
       savedDraft: stored,
+      revision,
     });
+    return;
+  }
+  if (operation === "activate") {
+    const wanted = readHarnessPayload(command.revision);
+    const storedRevision = repository.revisions[revisionKey(wanted)];
+    if (!storedRevision || storedRevision.contentHash !== wanted.contentHash) {
+      return fail("revision_not_found", "revision", "Strategy revision not found");
+    }
+    const activationId = typeof command.activationId === "string" ? command.activationId : "";
+    const activatedAt = typeof command.activatedAt === "string" ? command.activatedAt : "";
+    repository.activePlan = {
+      contractVersion: "strategy.v1",
+      activationId,
+      revision: revisionReference(storedRevision),
+      activatedAt,
+    };
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      activePlan: repository.activePlan,
+    });
+    return;
+  }
+  if (operation === "export") {
+    const plans = Array.isArray(command.plans) ? command.plans : [];
+    const selector = plans.length === 1 ? readHarnessPayload(plans[0]) : {};
+    const wanted = readHarnessPayload(selector.revision);
+    const storedRevision = repository.revisions[revisionKey(wanted)];
+    if (!storedRevision || storedRevision.contentHash !== wanted.contentHash) {
+      return fail("revision_not_found", "plans.revision", "Strategy revision not found");
+    }
+    const bytes = new TextEncoder().encode(JSON.stringify({ revision: storedRevision }));
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    broadcast("strategy:application:result", { ...baseResult, package: btoa(binary) });
     return;
   }
   if (operation === "close") {
@@ -188,6 +272,19 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     return;
   }
   fail("invalid_command", "operation", "Unsupported harness Strategy operation");
+}
+
+function revisionKey(value: Record<string, unknown>): string {
+  return `${String(value.planId ?? "")}\u0000${String(value.variantId ?? "")}\u0000${String(value.revisionId ?? "")}`;
+}
+
+function revisionReference(value: Record<string, unknown>) {
+  return {
+    planId: value.planId,
+    variantId: value.variantId,
+    revisionId: value.revisionId,
+    contentHash: value.contentHash,
+  };
 }
 
 function handleHarnessStrategyManual(command: Record<string, unknown>) {
@@ -486,7 +583,7 @@ export const Events = {
   Emit(name: string, data: unknown) {
 
     if (name === "strategy:application:command") {
-      setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      setTimeout(() => void handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
       return;
     }
 

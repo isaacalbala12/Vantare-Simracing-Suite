@@ -123,8 +123,10 @@ productivo sin crear un segundo reader.
   build frontend, roadmap/changelog y diff-check pasan. La primera suite
   `internal` ejecutada en paralelo agotó el deadline de un test SQLite ajeno;
   pasó aislada y el mismo paquete ya había pasado en la suite global. CI del
-  nuevo HEAD queda por ejecutar. F3/F4 permanecen como entregas separadas
-  incluidas en esta base.
+  head de código `9f0bc6bb` verde en run 32527254256: gate bloqueante,
+  política de promoción y GitGuardian PASS. El único cambio posterior registra
+  esa evidencia. F3/F4 permanecen como entregas separadas incluidas en esta
+  base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -386,8 +388,9 @@ conflictos con hotkeys cargadas. WASAPI, Whisper, wake acústico, QueryPort,
 pulsación física y ENG-13 continúan pendientes/NO-GO. Regresiones focales y
 race focal, suite `internal`, suite global, build frontend y validadores
 documentales pasan. Hubo un timeout SQLite solo bajo la primera ejecución
-paralela; el rerun aislado fue PASS. CI del nuevo HEAD aún pendiente. Sin merge
-ni promoción.
+paralela; el rerun aislado fue PASS. CI verde sobre `9f0bc6bb` en run
+32527254256; el único delta posterior documenta ese resultado. Sin merge ni
+promoción.
 
 2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
 el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia

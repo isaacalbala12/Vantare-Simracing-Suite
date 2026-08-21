@@ -1,0 +1,25 @@
+{
+  "envelope": {
+    "domain": "vantare.catalog.v1",
+    "catalogId": "vantare-strategy",
+    "channel": "stable",
+    "schemaId": "strategy.catalog",
+    "schemaVersion": "1.0.0",
+    "keyEpoch": "2026-08-a",
+    "version": 2,
+    "publishedAt": "2026-08-21T14:00:00Z",
+    "expiresAt": "2026-09-20T14:00:00Z",
+    "payloadDigest": "6ff590f9934a75d7c7b8cafa3f81f543a2c27c7dc961ddacb141fae39b9d4ffd"
+  },
+  "payload": {
+    "items": [
+      {
+        "combinationId": "spa-lmgt3",
+        "bestStrategyId": "s1",
+        "payloadVersion": 1
+      }
+    ]
+  },
+  "signature": "YBHQd+ZpPrbS1zzQH5QxT358UUyWF2lXtK/esKLyVZwb/pNDYyMrm9DC5mfmdkEsAU2aNtwjA7SHrBKZQCgIAw==",
+  "keyId": "test-key-1-2026-08-a"
+}

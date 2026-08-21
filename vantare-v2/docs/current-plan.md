@@ -11,8 +11,11 @@ Nota ISA-753 / ISA-694 F4-8 (2026-08-21, implementada en rama de issue):
   a degradacion, ahorro, compuestos y pilotos.
 - Casos de negocio: plan rapido dependiente del percentil favorable frente a
   conservador con margen; riesgo por vida de neumatico; convergencia con rangos
-  estrechos. Sin frontend, dependencia, PR, merge, promocion ni release.
-  Pendiente: gates finales, push y review del orquestador de #753.
+  estrechos. Gates solver x100, Strategy+app, golden Orbit, vet, gofmt y
+  diff-check verdes. El gate Go global solo falla setup de `frontend` y
+  `cmd/vantare` porque falta `frontend/dist`; el resto pasa. Sin frontend,
+  dependencia, PR, merge, promocion ni release. Pendiente: push y review del
+  orquestador de #753.
 
 Nota ISA-752 / ISA-694 F4-7 (2026-08-21, implementada en rama de issue):
 - `WeatherScenario v1` se interpola entre START/25/50/75/FINISH para producir

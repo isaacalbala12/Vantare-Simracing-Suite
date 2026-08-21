@@ -17,7 +17,7 @@ son fases históricas.
 
 ## Estado
 
-Actualizacion ISA-753 / F4-8 (2026-08-21, lista para gates finales):
+Actualizacion ISA-753 / F4-8 (2026-08-21, lista para review):
 
 - Cada candidato de `SolveV2` conserva esperado, caso malo coherente,
   factibilidad y riesgos duros Fuel/VE/neumatico. La poda considera tambien el
@@ -28,9 +28,11 @@ Actualizacion ISA-753 / F4-8 (2026-08-21, lista para gates finales):
 - El presupuesto p95 ya es efectivo: limita niveles de servicio y degrada el
   paso por potencias de dos de forma determinista, visible y repetible. El
   resultado consolida consumo y rain chance con las sensibilidades previas.
-- Casos de negocio Fuel y vida de neumatico verdes en focal. Sin frontend,
-  dependencias, PR, merge, promocion ni release. Siguiente: gates completos,
-  push y review del orquestador de #753.
+- Casos de negocio Fuel y vida de neumatico verdes. Gates solver x100,
+  Strategy+app, golden Orbit, vet, gofmt y diff-check pasan. El gate Go global
+  solo falla setup de `frontend`/`cmd/vantare` por `frontend/dist` ausente; el
+  resto pasa. Sin frontend, dependencias, PR, merge, promocion ni release.
+  Siguiente: push y review del orquestador de #753.
 
 Actualización ISA-752 / F4-7 (2026-08-21, lista para review):
 
@@ -608,6 +610,7 @@ issue propia. No integrar ni promover esta rama sin la autorización de Isaac.
 
 ## Última actualización
 
-2026-08-21, ISA-753: F4-8 implementada en rama propia con evaluación
-esperado/caso-malo, variantes por tolerancia y degradación p95 declarada;
-pendiente gates finales y review del orquestador, sin integración ni promoción.
+2026-08-21, ISA-753: F4-8 implementada y verificada en rama propia con
+evaluación esperado/caso-malo, variantes por tolerancia y degradación p95
+declarada; pendiente push y review del orquestador, sin integración ni
+promoción.

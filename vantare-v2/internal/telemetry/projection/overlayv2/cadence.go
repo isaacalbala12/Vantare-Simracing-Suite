@@ -469,18 +469,16 @@ type dirtySignals struct {
 	maximumLaps schema.Field[session.MaximumLaps]
 	remaining   schema.Field[session.RemainingTime]
 
-	playerFuel     schema.Field[energy.Fuel]
-	fuelPerLap     schema.Field[energy.FuelAmount]
-	standingsMark  standingsSignature
+	playerFuel schema.Field[energy.Fuel]
+	fuelPerLap schema.Field[energy.FuelAmount]
+	// standingsMark fingerprints exactly the fields BuildStandings projects
+	// (see hashStandingsVehicle), so a signal the builder ignores never marks
+	// the section dirty and any projected change always does.
+	standingsMark  uint64
+	relativeMark   uint64
 	gapsFreshness  schema.Freshness
 	deltaFreshness schema.Freshness
 	spatialMark    schema.Freshness
-}
-
-// standingsSignature summarizes the ordering without copying every row.
-type standingsSignature struct {
-	positions uint64
-	freshness uint64
 }
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
@@ -499,12 +497,11 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		deltaFreshness: final.Derived.Delta.Freshness,
 		fuelPerLap:     final.Derived.Fuel.PerLap,
 		spatialMark:    schema.FreshnessMissing,
+		standingsMark:  fnvOffset64,
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]
-		position, _ := current.Position.Value()
-		signals.standingsMark.positions = signals.standingsMark.positions*31 + uint64(uint32(position))
-		signals.standingsMark.freshness = signals.standingsMark.freshness*31 + uint64(current.Position.Freshness())
+		signals.standingsMark = hashStandingsVehicle(signals.standingsMark, current)
 		if current.WorldPosition.Freshness() == schema.FreshnessFresh {
 			signals.spatialMark = schema.FreshnessFresh
 		}
@@ -512,6 +509,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 			signals.playerFuel = current.Fuel
 		}
 	}
+	signals.relativeMark = hashRelativeMark(final)
 	return signals
 }
 
@@ -526,9 +524,13 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
 	}
-	if signals.vehicles != previous.vehicles || signals.standingsMark != previous.standingsMark ||
-		signals.gapsFreshness != previous.gapsFreshness {
-		dirty = dirty.Mark(SectionStandings).Mark(SectionRelative)
+	// Standings depends only on its own fingerprint: the derived gap set feeds
+	// relative, not the classification rows.
+	if signals.vehicles != previous.vehicles || signals.standingsMark != previous.standingsMark {
+		dirty = dirty.Mark(SectionStandings)
+	}
+	if signals.relativeMark != previous.relativeMark {
+		dirty = dirty.Mark(SectionRelative)
 	}
 	if signals.deltaFreshness != previous.deltaFreshness {
 		dirty = dirty.Mark(SectionDelta)

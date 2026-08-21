@@ -19,9 +19,10 @@ subproyecto no forma parte del build de la aplicación ni añade dependencias a
   de IP falla cerrado. El digest excluye `bundleId` y normaliza el orden de
   stints/estrategias; regzipear o reordenar JSON no evita el replay.
 - `POST /v1/tombstones` requiere `deleteSecret`, revoca la credencial y escribe
-  `vantare.curation.tombstone.v1` con las claves de todos sus bundles. Es la
-  forma que consume `cmd/vantare-curator` para borrar corpus, índices y
-  derivados en el siguiente ciclo (SLA máximo: 7 días).
+  `vantare.curation.tombstone.v1` con las claves de todos sus bundles. Es el
+  contrato que el pull del curador debe consumir para borrar corpus, índices y
+  derivados en el siguiente ciclo (SLA máximo: 7 días); el Worker no afirma
+  que ese ciclo local ya se haya ejecutado.
 - `POST /v1/credentials/rotate` exige ambos secretos vigentes y token de build;
   `GET /v1/quota?uploadId=...` exige el `uploadSecret`. Ninguno revela hashes.
 - Los logs contienen solo evento, entorno y referencias truncadas a 12 hex.
@@ -81,12 +82,28 @@ ningún comando de este apartado hasta que Isaac registre el gate 1 en #759.
    `vantare-curation-test`, `vantare-curation-controlled-capture` y
    `vantare-curation-production-community`. En cada uno, aplicar lifecycle de
    180 días a `bundles/`; no aplicar expiración a tombstones pendientes.
+
+   ```powershell
+   npx wrangler r2 bucket lifecycle add vantare-curation-test curation-bundles-180d bundles/ --expire-days 180
+   npx wrangler r2 bucket lifecycle add vantare-curation-controlled-capture curation-bundles-180d bundles/ --expire-days 180
+   npx wrangler r2 bucket lifecycle add vantare-curation-production-community curation-bundles-180d bundles/ --expire-days 180
+   npx wrangler r2 bucket lifecycle list vantare-curation-test
+   ```
+
+   Repetir el `list` para los otros dos buckets y guardar evidencia sanitizada.
 3. Confirmar que cada `wrangler --env` crea su propio Worker y namespace de
    Durable Object. No reutilizar credenciales, buckets, routes ni namespaces
    entre `test`, `controlled-capture` y `production-community`.
 4. Cargar con `wrangler secret put` dos secretos distintos por entorno:
    `BUILD_ADMISSION_TOKEN` (32–256 caracteres allowlisted) y `HASH_PEPPER`
    (aleatorio, 32+ caracteres). Nunca pasarlos por argumentos, logs o repo.
+
+   ```powershell
+   npx wrangler secret put BUILD_ADMISSION_TOKEN --env test
+   npx wrangler secret put HASH_PEPPER --env test
+   ```
+
+   Repetir de forma interactiva para cada entorno, sin reutilizar valores.
 5. Revisar las cuotas de `wrangler.jsonc` contra el presupuesto aprobado. Los
    límites globales de objetos y bytes diarios/mensuales son gates de coste;
    cualquier variable ausente o inválida deja el servicio en 503.

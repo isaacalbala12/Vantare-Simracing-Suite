@@ -911,5 +911,10 @@ Evidencia Task 4 y cierre acumulado:
   `c89f4b41059d041eed9ca9a0c5f6addcbf55e2f50c3d52029177bf53351d4f53`.
   El agregador aceptó el runset y rechazó una traza manipulada.
 - Resultado: Wails continúa como único runtime principal por la decisión de
-  arquitectura existente; Qt sigue como laboratorio. Sin PR, CI, integración,
+  arquitectura existente; Qt sigue como laboratorio. Sin PR, integración,
   promoción ni release en este corte.
+- Estado remoto posterior: el push sí disparó el workflow heredado
+  `testing-center-agent-fix.yml`; run `32536811879` terminó `failure` sin jobs
+  ni log. La rama no cambia `.github` y el mismo startup failure aparece en
+  `nightly` y otras ramas, pero este corte **no tiene CI remoto verde**. No se
+  amplía #760 para reparar automatización ajena al baseline.

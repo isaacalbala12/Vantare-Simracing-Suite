@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -44,6 +43,8 @@ type derivedCurvesFixtureExpected struct {
 	SavingReason    string                             `json:"savingReason"`
 	SavingFuel      float64                            `json:"savingFuel,omitempty"`
 	SavingTime      float64                            `json:"savingTime,omitempty"`
+	FuelLastDelta   float64                            `json:"fuelLastDelta,omitempty"`
+	AgeLastDelta    float64                            `json:"ageLastDelta,omitempty"`
 }
 
 func TestDeriveSessionCurvesVersionedFixtures(t *testing.T) {
@@ -89,6 +90,8 @@ func TestDeriveSessionCurvesVersionedFixtures(t *testing.T) {
 				if bucket.FuelWeightCurve == nil || bucket.TyreAgeCurve == nil {
 					t.Fatalf("separable gate did not publish both curves: %+v", bucket)
 				}
+				assertNear(t, bucket.FuelWeightCurve.Points[len(bucket.FuelWeightCurve.Points)-1].DeltaSeconds, fixture.Expected.FuelLastDelta)
+				assertNear(t, bucket.TyreAgeCurve.Points[len(bucket.TyreAgeCurve.Points)-1].DeltaSeconds, fixture.Expected.AgeLastDelta)
 			} else if bucket.FuelWeightCurve != nil || bucket.TyreAgeCurve != nil {
 				t.Fatalf("combined-only gate published separated curves: %+v", bucket)
 			}
@@ -96,7 +99,8 @@ func TestDeriveSessionCurvesVersionedFixtures(t *testing.T) {
 			assertNear(t, got.TyreDegradation.ByWheel[strategyprojection.TyreWheelFL], fixture.Expected.WearSlope)
 			assertNear(t, got.TyreDegradation.ByWheel[strategyprojection.TyreWheelRR], fixture.Expected.WearSlope)
 			if got.TyreDegradation.Confidence.SampleSize == 0 || got.TyreDegradation.Confidence.RangeLower == nil ||
-				got.TyreDegradation.Confidence.RangeUpper == nil || got.TyreDegradation.LifeLapsEstimate == nil {
+				got.TyreDegradation.Confidence.RangeUpper == nil || got.TyreDegradation.LifeLapsEstimate == nil ||
+				got.TyreDegradation.LifeLapsRangeLower == nil || got.TyreDegradation.LifeLapsRangeUpper == nil {
 				t.Fatalf("wear lacks range/confidence/life: %+v", got.TyreDegradation)
 			}
 			if got.TyreDegradation.CompoundPresence != strategyprojection.PresenceUnsupported || got.TyreDegradation.CompoundMappingNote == "" {
@@ -299,5 +303,3 @@ func savingLevel(t *testing.T, levels []strategyprojection.SavingLevel, code int
 	t.Fatalf("mixture code %d not found in %+v", code, levels)
 	return strategyprojection.SavingLevel{}
 }
-
-var _ = time.Time{}

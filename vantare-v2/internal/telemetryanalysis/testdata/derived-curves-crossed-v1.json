@@ -14,6 +14,8 @@
     "stintCurves": 3,
     "combinedPoints": 6,
     "wearSlope": 0.2,
+    "fuelLastDelta": -0.2,
+    "ageLastDelta": 0.75,
     "savingPresence": "missing",
     "savingReason": "missing_fuel_mixture_levels"
   }

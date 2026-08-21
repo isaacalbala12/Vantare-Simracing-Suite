@@ -34,6 +34,8 @@ import type {
 export const STRATEGY_EVENTS_KEY = "vantare.v03orbit.strategy.events";
 /** Clave de la parte A: solo estrategias del evento del puente. */
 export const STRATEGY_LEGACY_KEY = "vantare.v03orbit.strategy";
+/** Journal frontend: existe solo después de que Go confirme el commit canónico. */
+export const STRATEGY_MIGRATED_KEY = "vantare.v03orbit.strategy.migrated";
 
 /** De dónde nace el evento: del usuario, de una serie del calendario o del puente. */
 export type StrategyEventSource = "custom" | "series" | "roster";
@@ -161,11 +163,34 @@ export function readStrategyEvents(): StrategyEventsState {
   }
 }
 
-export function writeStrategyEvents(state: StrategyEventsState): void {
+export function writeStrategyEvents(state: StrategyEventsState): boolean {
   try {
+    if (window.localStorage?.getItem(STRATEGY_MIGRATED_KEY)) return false;
     window.localStorage?.setItem(STRATEGY_EVENTS_KEY, JSON.stringify(state));
+    return true;
   } catch {
     // Sin almacenamiento los eventos solo viven en memoria.
+    return false;
+  }
+}
+
+/** Sella el cutover. Se verifica la escritura para no declarar read-only si falló. */
+export function markStrategyEventsMigrated(fingerprint: string, migratedAt: string): void {
+  const marker = JSON.stringify({ fingerprint, migratedAt });
+  window.localStorage?.setItem(STRATEGY_MIGRATED_KEY, marker);
+  if (window.localStorage?.getItem(STRATEGY_MIGRATED_KEY) !== marker) {
+    throw new Error("No se pudo guardar la marca de migración de Orbit.");
+  }
+}
+
+export function isStrategyEventsReadOnly(): boolean {
+  return Boolean(window.localStorage?.getItem(STRATEGY_MIGRATED_KEY));
+}
+
+export function clearStrategyEventsMigrated(): void {
+  window.localStorage?.removeItem(STRATEGY_MIGRATED_KEY);
+  if (window.localStorage?.getItem(STRATEGY_MIGRATED_KEY)) {
+    throw new Error("No se pudo retirar la marca de migración de Orbit.");
   }
 }
 

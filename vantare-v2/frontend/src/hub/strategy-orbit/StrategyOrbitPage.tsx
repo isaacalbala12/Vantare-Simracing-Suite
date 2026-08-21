@@ -51,6 +51,7 @@ import {
 import type { StrategyEditorDocument, StrategyTyre } from "../../strategy/strategy-editor";
 import { assertPlannable, StrategyTyreError, type StrategyCorner } from "../../strategy/strategy-tyre";
 import {
+  createStrategyOrbitApplicationClient,
   subscribeToStrategyRoster,
   type StrategyRoster,
 } from "./strategy-orbit-bridge";
@@ -62,6 +63,7 @@ import {
   eventsByRecency,
   freeEventId,
   initialsOf,
+  isStrategyEventsReadOnly,
   lastOpenedEventOf,
   newDriver,
   openEvent,
@@ -79,6 +81,13 @@ import {
   type StrategyFillMode,
   type StrategyTeamMode,
 } from "./strategy-events-store";
+import {
+  commitOrbitLegacyMigration,
+  previewOrbitLegacyMigration,
+  rollbackOrbitLegacyMigration,
+  type PreparedOrbitLegacyMigration,
+} from "./strategy-orbit-migration";
+import type { StrategyLegacyMigrationPreviewV1 } from "../../strategy/strategy-application-client";
 import {
   buildRecommendedEvents,
   type RecommendedEvent,
@@ -245,6 +254,16 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const contextSlot = useOrbitSlot(STRATEGY_CONTEXT_SLOT_ID);
   const calendar = useCalendarStarts();
 
+  const [migrationClient] = useState(() => createStrategyOrbitApplicationClient<unknown>());
+  useEffect(() => () => migrationClient.dispose(), [migrationClient]);
+  const [migration, setMigration] = useState<
+    | { status: "idle" }
+    | { status: "loading"; message: string }
+    | { status: "preview"; prepared: PreparedOrbitLegacyMigration }
+    | { status: "success"; result: StrategyLegacyMigrationPreviewV1 }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
+
   // ── evento activo ───────────────────────────────────────────────────────
   const [bridged, setBridged] = useState<StrategyRoster | null>(null);
   useEffect(() => {
@@ -277,17 +296,53 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
   // ── eventos locales ─────────────────────────────────────────────────────
   const [store, setStore] = useState<StrategyEventsState>(() => readStrategyEvents());
+  const [legacyReadOnly, setLegacyReadOnly] = useState(() => isStrategyEventsReadOnly());
   const commit = useCallback(
     (change: (current: StrategyEventsState) => StrategyEventsState) => {
       setStore((current) => {
+        if (legacyReadOnly) return current;
         const next = change(current);
         if (next === current) return current;
         writeStrategyEvents(next);
         return next;
       });
     },
-    [],
+    [legacyReadOnly],
   );
+
+  const previewMigration = useCallback(async () => {
+    setMigration({ status: "loading", message: t("strategy.migration.reading") });
+    try {
+      const prepared = await previewOrbitLegacyMigration(migrationClient);
+      setMigration(prepared.preview.alreadyImported
+        ? { status: "success", result: prepared.preview }
+        : { status: "preview", prepared });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  }, [migrationClient, t]);
+
+  const confirmMigration = useCallback(async (prepared: PreparedOrbitLegacyMigration) => {
+    setMigration({ status: "loading", message: t("strategy.migration.committing") });
+    try {
+      const result = await commitOrbitLegacyMigration(migrationClient, prepared);
+      setLegacyReadOnly(true);
+      setMigration({ status: "success", result });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  }, [migrationClient, t]);
+
+  const rollbackMigration = useCallback(async (journalId: string) => {
+    setMigration({ status: "loading", message: t("strategy.migration.rollingBack") });
+    try {
+      const result = await rollbackOrbitLegacyMigration(migrationClient, journalId);
+      setLegacyReadOnly(false);
+      setMigration({ status: "success", result });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  }, [migrationClient, t]);
 
   // El roster del puente entra como un evento más y ya no manda sobre la vista.
   const imported = useRef<string | null>(null);
@@ -983,6 +1038,14 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
       <div className="orbit-strategy__context-acts">
         <Button
+          data-testid="orbit-strategy-migrate"
+          disabled={migration.status === "loading"}
+          onClick={() => void previewMigration()}
+          variant="ghost"
+        >
+          {legacyReadOnly ? t("strategy.migration.done") : t("strategy.migration.open")}
+        </Button>
+        <Button
           className="orbit-strategy__new"
           data-testid="orbit-strategy-new-column"
           disabled={!eventRecord}
@@ -1286,6 +1349,70 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     />
   );
 
+  const migrationPreview = migration.status === "preview" ? migration.prepared.preview : null;
+  const migrationResult = migration.status === "success" ? migration.result : null;
+  const migrationDialog = migration.status === "idle" ? null : (
+    <div className="orbit-migration" role="presentation">
+      <section
+        aria-labelledby="orbit-migration-title"
+        aria-modal="true"
+        autoFocus
+        className="orbit-migration__dialog"
+        data-testid="orbit-strategy-migration-dialog"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && migration.status !== "loading") setMigration({ status: "idle" });
+        }}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <h3 id="orbit-migration-title">{t("strategy.migration.title")}</h3>
+        {migration.status === "loading" ? <p>{migration.message}</p> : null}
+        {migration.status === "error" ? <Note title={t("strategy.migration.error")}>{migration.message}</Note> : null}
+        {migrationPreview ? (
+          <>
+            <p>{formatMessage(t("strategy.migration.summary"), {
+              events: migrationPreview.document.events.length,
+              quarantine: migrationPreview.quarantine.length,
+            })}</p>
+            <code className="orbit-migration__fingerprint">{migrationPreview.fingerprint}</code>
+            {migrationPreview.document.events.length ? (
+              <ul>{migrationPreview.document.events.map((event) => <li key={event.id}>{event.id} · {event.name.value}</li>)}</ul>
+            ) : null}
+            {migrationPreview.quarantine.length ? (
+              <div>
+                <h4>{t("strategy.migration.quarantine")}</h4>
+                <ul>{migrationPreview.quarantine.map((item, index) => <li key={`${item.path}-${index}`}><code>{item.path}</code> — {item.message}</li>)}</ul>
+              </div>
+            ) : null}
+            {migrationPreview.warnings.length ? <ul>{migrationPreview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+          </>
+        ) : null}
+        {migrationResult ? (
+          <Note title={migrationResult.rolledBack ? t("strategy.migration.rolledBack") : t("strategy.migration.done")}>{migrationResult.rolledBack ? t("strategy.migration.rolledBackResult") : formatMessage(t("strategy.migration.result"), {
+            events: migrationResult.document.events.length,
+            quarantine: migrationResult.quarantine.length,
+          })}</Note>
+        ) : null}
+        <div className="orbit-migration__actions">
+          {migration.status === "preview" ? (
+            <Button data-testid="orbit-strategy-migration-confirm" onClick={() => void confirmMigration(migration.prepared)} variant="primary">
+              {t("strategy.migration.confirm")}
+            </Button>
+          ) : null}
+          {migration.status === "error" ? <Button onClick={() => void previewMigration()} variant="primary">{t("strategy.migration.retry")}</Button> : null}
+          {migrationResult && !migrationResult.rolledBack ? (
+            <Button onClick={() => void rollbackMigration(migrationResult.journalId)} variant="danger">
+              {t("strategy.migration.rollback")}
+            </Button>
+          ) : null}
+          <Button disabled={migration.status === "loading"} onClick={() => setMigration({ status: "idle" })} variant="ghost">
+            {migrationResult ? t("strategy.migration.close") : t("strategy.migration.cancel")}
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+
   /** Lista del calendario y recomendados: el punto de partida «desde evento». */
   const calendarStep = (
     <>
@@ -1583,6 +1710,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         {contextSlot ? createPortal(context, contextSlot) : null}
         {form ? eventForm : (wizardView ?? entryMenu)}
         {deleteDialog}
+        {migrationDialog}
       </div>
     );
   }
@@ -1698,6 +1826,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
       {contextSlot ? createPortal(context, contextSlot) : null}
+      {migrationDialog}
 
       <header className="orbit-strategy__head">
         <Monogram

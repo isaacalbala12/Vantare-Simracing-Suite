@@ -100,6 +100,59 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
   });
 
+  it("parses the typed Orbit migration preview including quarantine and journal", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "migration-preview-1",
+      operation: "preview_legacy_migration",
+      expectedRepositoryVersion: 0,
+      sources: [{ key: "vantare.v03orbit.strategy.events", present: true, raw: "e25vIGpzb24=" }],
+      migratedAt: "2026-08-21T18:00:00Z",
+    };
+    const pending = client.execute(command);
+    const document = {
+      contractVersion: "strategy.v2",
+      schemaVersion: "2.0.0",
+      generatedAt: "2026-08-21T18:00:00Z",
+      events: [],
+      migrationMeta: {
+        sourceFingerprint: "fingerprint-1",
+        journalId: "journal-1",
+        migratedAt: "2026-08-21T18:00:00Z",
+        status: "backed_up",
+        sources: command.sources,
+        quarantine: [{ sourceKey: command.sources[0].key, path: "$", code: "invalid_json", message: "JSON roto", raw: command.sources[0].raw }],
+        warnings: ["Se conservará en cuarentena"],
+      },
+    };
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: command.commandId,
+      repositoryVersion: 1,
+      strategyDocument: document,
+      legacyMigration: {
+        fingerprint: "fingerprint-1",
+        journalId: "journal-1",
+        document,
+        quarantine: document.migrationMeta.quarantine,
+        warnings: document.migrationMeta.warnings,
+        imported: false,
+        alreadyImported: false,
+        rolledBack: false,
+      },
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      legacyMigration: {
+        fingerprint: "fingerprint-1",
+        quarantine: [{ code: "invalid_json", path: "$" }],
+      },
+    });
+  });
+
   it("ignores another command and exposes stable application errors", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

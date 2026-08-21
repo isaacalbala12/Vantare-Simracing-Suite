@@ -1,3 +1,30 @@
+Nota ISA-732 / ISA-694 F2(c) (2026-08-21, implementada en rama de issue):
+- La API de aplicación añade preview, commit y rollback de las dos claves
+  localStorage de Orbit. El primer commit guarda raw+fingerprint+journal antes
+  de parsear; el segundo publica el documento v2. Reintentos y crash entre
+  ambos no duplican, y un preview cancelado conserva su backup si los bytes
+  cambian después.
+- La matriz F0 queda tratada 28/28: defaults 90 L/60 s/60 min se marcan
+  `legacy_synthetic_default`; `startAt` ausente no se inventa; corruptos,
+  shapes ambiguas, referencias colgantes y colisiones se conservan en
+  cuarentena con clave/path/código/raw. `activeId` o `activeStrategyId`
+  colgantes no activan nada y generan aviso.
+- El rollback restaura el documento anterior y archiva el documento posterior;
+  no borra drafts, revisiones, activaciones ni audit trail. La política exacta
+  está en `docs/strategy-planner/isa-732-migracion-localstorage.md`.
+- Orbit añade un diálogo accesible de preview, confirmación, resultado y
+  rollback. El frontend solo lee/transporta raw; tras éxito verifica el flag
+  de migrado y el store viejo queda read-only. La página continúa leyéndolo
+  hasta F2(d).
+- Gates locales: `go test ./internal/strategy/... ./internal/app -count=1`,
+  frontend 375 archivos/2.899 tests, `typecheck`, `build` y `git diff --check`
+  PASS. El intento visual en navegador no produjo captura: la app completa
+  fuera de Wails falló en un contrato runtime preexistente y T3 Preview no pudo
+  tomar snapshot. La evidencia Wails con el localStorage real de Isaac sigue
+  siendo gate de fase, no de #732.
+- Sin dependencia nueva, PR, merge, promoción ni release. Siguiente: review
+  del orquestador de #732; F2(d) no se asume iniciada.
+
 Nota ISA-730 / ISA-694 F2(b) (2026-08-21, implementada en rama de issue):
 - El namespace Wails existente `strategy:application:*` se registra ahora
   mediante `internal/app.StrategyApplicationBridge`; el composition root deja

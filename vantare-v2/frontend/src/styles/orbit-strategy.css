@@ -968,3 +968,38 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.orbit-migration {
+  align-items: center;
+  background: rgb(4 7 12 / 78%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.orbit-migration__dialog {
+  background: var(--orbit-surface, #151922);
+  border: 1px solid var(--orbit-border, #343b49);
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  color: var(--orbit-text, #f5f7fb);
+  max-height: min(760px, calc(100vh - 48px));
+  max-width: 720px;
+  overflow: auto;
+  padding: 24px;
+  width: 100%;
+}
+
+.orbit-migration__fingerprint {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.orbit-migration__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

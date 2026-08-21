@@ -36,7 +36,10 @@ export type StrategyApplicationOperation =
   | "create_variant"
   | "edit_variant"
   | "list_variants"
-  | "compare_variants";
+  | "compare_variants"
+  | "preview_legacy_migration"
+  | "migrate_legacy"
+  | "rollback_legacy_migration";
 
 export type StrategyProvenanceKindV2 =
   | "unknown"
@@ -141,7 +144,54 @@ export type StrategyDocumentV2 = {
     readonly sourceFingerprint: string;
     readonly journalId: string;
     readonly migratedAt: string;
+    readonly status: "backed_up" | "committed" | "rolled_back";
+    readonly sources: readonly StrategyLegacyStorageSourceV1[];
+    readonly quarantine?: readonly StrategyLegacyQuarantineItemV1[];
+    readonly warnings?: readonly string[];
+    readonly previousGeneratedAt?: string;
+    readonly previousEvents?: readonly StrategyEventV2[];
+    readonly previousActiveEventId?: string;
+    readonly supersededJournals?: readonly {
+      readonly sourceFingerprint: string;
+      readonly journalId: string;
+      readonly backedUpAt: string;
+      readonly sources: readonly StrategyLegacyStorageSourceV1[];
+    }[];
   };
+  readonly migrationArchives?: readonly {
+    readonly journalId: string;
+    readonly archivedAt: string;
+    readonly generatedAt: string;
+    readonly events: readonly StrategyEventV2[];
+    readonly activeEventId?: string;
+  }[];
+};
+
+export type StrategyLegacyStorageSourceV1 = {
+  readonly key: string;
+  readonly present: boolean;
+  /** UTF-8 bytes encoded as base64, exactly as Go encodes []byte. */
+  readonly raw: string;
+};
+
+export type StrategyLegacyQuarantineItemV1 = {
+  readonly sourceKey: string;
+  readonly path: string;
+  readonly code: string;
+  readonly message: string;
+  readonly raw?: string;
+};
+
+export type StrategyLegacyMigrationPreviewV1 = {
+  readonly fingerprint: string;
+  readonly journalId: string;
+  readonly document: StrategyDocumentV2;
+  readonly quarantine: readonly StrategyLegacyQuarantineItemV1[];
+  readonly warnings: readonly string[];
+  readonly activeEventId?: string;
+  readonly imported: boolean;
+  readonly alreadyImported: boolean;
+  readonly rolledBack: boolean;
 };
 
 export type StrategyVariantComparisonV2 = {
@@ -221,6 +271,15 @@ export type StrategyApplicationCommandV1<TPayload> =
       eventId: string;
       leftVariantId: string;
       rightVariantId: string;
+    })
+  | (CommandHeader<"preview_legacy_migration" | "migrate_legacy"> & {
+      sources: readonly StrategyLegacyStorageSourceV1[];
+      confirmedFingerprint?: string;
+      migratedAt: string;
+    })
+  | (CommandHeader<"rollback_legacy_migration"> & {
+      journalId: string;
+      rolledBackAt: string;
     })
   | (CommandHeader<"restore"> & { draftId: string })
   | (CommandHeader<"close"> & {
@@ -308,6 +367,7 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly drivers?: readonly StrategyDriverV2[];
   readonly variants?: readonly StrategyVariantV2[];
   readonly comparison?: StrategyVariantComparisonV2;
+  readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
   readonly preview?: StrategyImportPreviewV1;
@@ -333,6 +393,8 @@ export type StrategyApplicationErrorCode =
   | "driver_in_use"
   | "variant_not_found"
   | "variant_conflict"
+  | "legacy_migration_conflict"
+  | "legacy_migration_not_found"
   | "import_refused"
   // Refusals raised by the package format itself.
   | "invalid_package"
@@ -395,6 +457,8 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "driver_in_use",
   "variant_not_found",
   "variant_conflict",
+  "legacy_migration_conflict",
+  "legacy_migration_not_found",
   "import_refused",
   "invalid_package",
   "unsupported_package_version",
@@ -576,6 +640,9 @@ async function parseResult<TPayload>(
     ...(payload.comparison === undefined
       ? {}
       : { comparison: parseStrategyVariantComparisonV2(payload.comparison) }),
+    ...(payload.legacyMigration === undefined
+      ? {}
+      : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
     ...(payload.package === undefined ? {} : { package: parsePackageBytes(payload.package) }),
     ...(payload.preview === undefined
       ? {}
@@ -609,8 +676,84 @@ function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
     strategyString(migration.sourceFingerprint, "document.migrationMeta.sourceFingerprint");
     strategyString(migration.journalId, "document.migrationMeta.journalId");
     strategyString(migration.migratedAt, "document.migrationMeta.migratedAt");
+    strategyEnum(migration.status, "document.migrationMeta.status", ["backed_up", "committed", "rolled_back"]);
+    parseLegacyStorageSources(migration.sources, "document.migrationMeta.sources");
+    if (migration.quarantine !== undefined) parseLegacyQuarantine(migration.quarantine, "document.migrationMeta.quarantine");
+    if (migration.warnings !== undefined && (!Array.isArray(migration.warnings) || migration.warnings.some((warning) => typeof warning !== "string"))) {
+      throw new Error("Invalid Strategy document.migrationMeta.warnings");
+    }
+    if (migration.previousGeneratedAt !== undefined) strategyString(migration.previousGeneratedAt, "document.migrationMeta.previousGeneratedAt");
+    if (migration.previousEvents !== undefined) parseStrategyEventsV2(migration.previousEvents, "document.migrationMeta.previousEvents");
+    if (migration.previousActiveEventId !== undefined) strategyString(migration.previousActiveEventId, "document.migrationMeta.previousActiveEventId");
+    if (migration.supersededJournals !== undefined) {
+      if (!Array.isArray(migration.supersededJournals)) throw new Error("Invalid Strategy document.migrationMeta.supersededJournals");
+      for (const [index, candidate] of migration.supersededJournals.entries()) {
+        const journal = strategyRecord(candidate, `document.migrationMeta.supersededJournals.${index}`);
+        strategyString(journal.sourceFingerprint, `document.migrationMeta.supersededJournals.${index}.sourceFingerprint`);
+        strategyString(journal.journalId, `document.migrationMeta.supersededJournals.${index}.journalId`);
+        strategyString(journal.backedUpAt, `document.migrationMeta.supersededJournals.${index}.backedUpAt`);
+        parseLegacyStorageSources(journal.sources, `document.migrationMeta.supersededJournals.${index}.sources`);
+      }
+    }
+  }
+  if (document.migrationArchives !== undefined) {
+    if (!Array.isArray(document.migrationArchives)) throw new Error("Invalid Strategy document.migrationArchives");
+    for (const [index, candidate] of document.migrationArchives.entries()) {
+      const archive = strategyRecord(candidate, `document.migrationArchives.${index}`);
+      strategyString(archive.journalId, `document.migrationArchives.${index}.journalId`);
+      strategyString(archive.archivedAt, `document.migrationArchives.${index}.archivedAt`);
+      strategyString(archive.generatedAt, `document.migrationArchives.${index}.generatedAt`);
+      parseStrategyEventsV2(archive.events, `document.migrationArchives.${index}.events`);
+      if (archive.activeEventId !== undefined) strategyString(archive.activeEventId, `document.migrationArchives.${index}.activeEventId`);
+    }
   }
   return { ...document, events } as StrategyDocumentV2;
+}
+
+function parseLegacyMigrationPreview(value: unknown): StrategyLegacyMigrationPreviewV1 {
+  const preview = strategyRecord(value, "legacyMigration");
+  strategyString(preview.fingerprint, "legacyMigration.fingerprint");
+  strategyString(preview.journalId, "legacyMigration.journalId");
+  const document = parseStrategyDocumentV2(preview.document);
+  const quarantine = parseLegacyQuarantine(preview.quarantine, "legacyMigration.quarantine");
+  if (!Array.isArray(preview.warnings) || preview.warnings.some((warning) => typeof warning !== "string")) {
+    throw new Error("Invalid Strategy legacyMigration.warnings");
+  }
+  if (preview.activeEventId !== undefined) strategyString(preview.activeEventId, "legacyMigration.activeEventId");
+  for (const field of ["imported", "alreadyImported", "rolledBack"] as const) {
+    if (typeof preview[field] !== "boolean") throw new Error(`Invalid Strategy legacyMigration.${field}`);
+  }
+  return {
+    fingerprint: preview.fingerprint as string,
+    journalId: preview.journalId as string,
+    document,
+    quarantine,
+    warnings: preview.warnings as string[],
+    ...(preview.activeEventId === undefined ? {} : { activeEventId: preview.activeEventId as string }),
+    imported: preview.imported as boolean,
+    alreadyImported: preview.alreadyImported as boolean,
+    rolledBack: preview.rolledBack as boolean,
+  };
+}
+
+function parseLegacyStorageSources(value: unknown, field: string): readonly StrategyLegacyStorageSourceV1[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const source = strategyRecord(candidate, `${field}.${index}`);
+    strategyString(source.key, `${field}.${index}.key`);
+    if (typeof source.present !== "boolean" || typeof source.raw !== "string") throw new Error(`Invalid Strategy ${field}.${index}`);
+    return { key: source.key as string, present: source.present, raw: source.raw };
+  });
+}
+
+function parseLegacyQuarantine(value: unknown, field: string): readonly StrategyLegacyQuarantineItemV1[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const item = strategyRecord(candidate, `${field}.${index}`);
+    for (const name of ["sourceKey", "path", "code", "message"] as const) strategyString(item[name], `${field}.${index}.${name}`);
+    if (item.raw !== undefined && typeof item.raw !== "string") throw new Error(`Invalid Strategy ${field}.${index}.raw`);
+    return item as StrategyLegacyQuarantineItemV1;
+  });
 }
 
 function parseStrategyEventsV2(value: unknown, field: string): readonly StrategyEventV2[] {

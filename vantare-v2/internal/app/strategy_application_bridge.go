@@ -164,6 +164,8 @@ func knownStrategyApplicationError(code strategyapplication.ErrorCode) bool {
 		strategyapplication.ErrorDriverInUse,
 		strategyapplication.ErrorVariantNotFound,
 		strategyapplication.ErrorVariantConflict,
+		strategyapplication.ErrorLegacyMigrationConflict,
+		strategyapplication.ErrorLegacyMigrationNotFound,
 		strategyapplication.ErrorImportRefused:
 		return true
 	default:
@@ -201,6 +203,10 @@ func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) string
 		return "The Strategy variant was not found."
 	case strategyapplication.ErrorVariantConflict:
 		return "The Strategy variant conflicts with another saved variant."
+	case strategyapplication.ErrorLegacyMigrationConflict:
+		return "The Orbit migration changed or conflicts with another migration. Run the preview again."
+	case strategyapplication.ErrorLegacyMigrationNotFound:
+		return "The Orbit migration journal was not found."
 	case strategyapplication.ErrorImportRefused:
 		return "The Strategy package was refused."
 	default:

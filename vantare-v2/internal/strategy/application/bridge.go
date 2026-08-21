@@ -24,19 +24,22 @@ var requiredOperationFields = map[Operation][]string{
 	// dryRun is deliberately not required: omitting it means a real import,
 	// and a caller that forgets the flag gets the explicit behaviour, not a
 	// silently skipped one.
-	OperationImport:          {"package"},
-	OperationClose:           {"draft", "savedDraft", "discard"},
-	OperationCreateEvent:     {"event", "updatedAt"},
-	OperationEditEvent:       {"event", "updatedAt"},
-	OperationListEvents:      {},
-	OperationCreateDriver:    {"eventId", "driver", "updatedAt"},
-	OperationEditDriver:      {"eventId", "driver", "updatedAt"},
-	OperationDeleteDriver:    {"eventId", "driverId", "updatedAt"},
-	OperationListDrivers:     {"eventId"},
-	OperationCreateVariant:   {"eventId", "variant", "updatedAt"},
-	OperationEditVariant:     {"eventId", "variant", "updatedAt"},
-	OperationListVariants:    {"eventId"},
-	OperationCompareVariants: {"eventId", "leftVariantId", "rightVariantId"},
+	OperationImport:                  {"package"},
+	OperationClose:                   {"draft", "savedDraft", "discard"},
+	OperationCreateEvent:             {"event", "updatedAt"},
+	OperationEditEvent:               {"event", "updatedAt"},
+	OperationListEvents:              {},
+	OperationCreateDriver:            {"eventId", "driver", "updatedAt"},
+	OperationEditDriver:              {"eventId", "driver", "updatedAt"},
+	OperationDeleteDriver:            {"eventId", "driverId", "updatedAt"},
+	OperationListDrivers:             {"eventId"},
+	OperationCreateVariant:           {"eventId", "variant", "updatedAt"},
+	OperationEditVariant:             {"eventId", "variant", "updatedAt"},
+	OperationListVariants:            {"eventId"},
+	OperationCompareVariants:         {"eventId", "leftVariantId", "rightVariantId"},
+	OperationPreviewLegacyMigration:  {"sources", "migratedAt"},
+	OperationMigrateLegacy:           {"sources", "confirmedFingerprint", "migratedAt"},
+	OperationRollbackLegacyMigration: {"journalId", "rolledBackAt"},
 }
 
 // JSONBridge is transport-neutral. Wails or a future transport only forwards
@@ -196,6 +199,21 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command CompareVariantsCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.CompareVariants(ctx, command)
+		}
+	case OperationPreviewLegacyMigration:
+		var command LegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.PreviewLegacyMigration(ctx, command)
+		}
+	case OperationMigrateLegacy:
+		var command LegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.MigrateLegacy(ctx, command)
+		}
+	case OperationRollbackLegacyMigration:
+		var command RollbackLegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RollbackLegacyMigration(ctx, command)
 		}
 	default:
 		err = applicationError(ErrorInvalidCommand, "operation", ErrInvalidCommand)

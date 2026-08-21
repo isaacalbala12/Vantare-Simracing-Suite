@@ -883,18 +883,18 @@ Evidencia Task 4 y cierre acumulado:
   La rama Qt de ISA-690 se conserva como prueba y este trabajo sigue aislado;
   no hay selector, sidecar, IPC, integración productiva ni promoción.
 - Issue GitHub #738, rama `vantareapp/isa-738-qt-standings-fixed-rows`, base
-  `origin/nightly@ebd5704` y commit funcional `a7aa4e35`.
-- Arquitectura mínima: `StandingsRedline` y `ClassBlock` mantienen pools
-  acotados que solo crecen hasta el máximo observado y reutilizan los mismos
-  slots al reordenar. No se añadieron threads, renderer C++ personalizado,
+  `origin/nightly@ebd5704` y commit funcional `5fd1e63e`.
+- Arquitectura mínima: `StandingsRedline` y `ClassBlock` mantienen modelos
+  append-only dimensionados por el corpus y reutilizan los mismos bloques,
+  slots y filas al reordenar, retirar/reintroducir o mostrar batalla. No se añadieron threads, renderer C++ personalizado,
   shaders, dependencias ni una segunda fuente de comportamiento.
-- TDD RED demostró recreación de filas; GREEN conserva identidad de los slots.
-  La suite visual Standings queda 8/8 PASS y el build Release Qt 6.10.2 pasa.
-- Stress104, tres runs comparables: p95 310.89 -> 18.34 ms (-94.10 %) y max
-  651.40 -> 195.44 ms (-70.00 %); p50 9.02 -> 11.04 ms (+22.39 %). El gate
+- TDD RED demostró recreación de filas; GREEN conserva identidad de clase, slot
+  y fila. La suite visual Standings queda 9/9 PASS y el build Release Qt 6.10.2 pasa.
+- Stress104, tres runs comparables: p95 310.89 -> 19.21 ms (-93.82 %) y max
+  651.40 -> 142.32 ms (-78.15 %); p50 9.02 -> 12.11 ms (+34.20 %). El gate
   stress de 8/16.67 ms sigue FAIL y no se relaja.
-- Cuatro escenarios canónicos, tres runs cada uno: p95 2.66..3.12 ms. Persisten
-  picos aislados de 40.28..53.84 ms. CTest core, Delta/Pedals y trace PASS;
+- Cuatro escenarios canónicos, tres runs cada uno: p95 2.52..5.37 ms. Persisten
+  picos aislados de 34.85..62.58 ms. CTest core, Delta/Pedals y trace PASS;
   Relative terminó sin salida al repetirlo en este host y queda como límite
   ajeno al write set.
 - Evidencia y hashes: `candidates/qtquick-redline/evidence/isa738-fixed-slots-v1/README.md`.

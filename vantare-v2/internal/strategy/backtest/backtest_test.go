@@ -9,6 +9,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	"github.com/vantare/overlays/v2/internal/strategy/tyres"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
@@ -143,6 +144,60 @@ func TestRunRaceSeparatesCalibrationFromCounterfactualRanking(t *testing.T) {
 	}
 }
 
+func TestRunRaceFeasibilityUsesRealizedSessionConstraints(t *testing.T) {
+	race := fixtureRaceCase(
+		"race-feasibility",
+		"combo-feasibility",
+		time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC),
+		[]int{2, 3},
+		90,
+		10,
+	)
+	race.PredictionInput.FuelCapacityLiters = 5
+	race.PredictionInput.FuelPerLapLiters = 1
+	race.PredictionInput.Discretization.FuelLiters = 1
+	race.RealizedInput.FuelCapacityLiters = 2
+	race.RealizedInput.FuelPerLapLiters = 1
+	race.RealizedInput.Discretization.FuelLiters = 1
+	fuelAdded := 2.0
+	race.Observed.PitStops[0].FuelAddedLiters = &fuelAdded
+
+	result, err := RunRace(race, ProvisionalThresholds(1))
+	if err != nil {
+		t.Fatalf("RunRace: %v", err)
+	}
+	if result.Feasibility.Passed || result.Ranking.Evaluable || result.Ranking.Reason != "recommended_plan_infeasible_on_realized_data" {
+		t.Fatalf("realized feasibility gate = %+v, ranking = %+v", result.Feasibility, result.Ranking)
+	}
+}
+
+func TestObservedDecisionKeepsConfiguredCompoundsAndPitLaps(t *testing.T) {
+	race := fixtureRaceCase(
+		"race-compounds",
+		"combo-compounds",
+		time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC),
+		[]int{2, 3},
+		90,
+		10,
+	)
+	hard, soft := 0, 1
+	race.Observed.Stints[0].CompoundRaw = &hard
+	race.Observed.Stints[1].CompoundRaw = &soft
+	race.CompoundMapping = map[int]solver.TyreCompound{
+		0: tyres.CompoundHard,
+		1: tyres.CompoundSoft,
+	}
+
+	decision, err := observedDecision(race)
+	if err != nil {
+		t.Fatalf("observedDecision: %v", err)
+	}
+	if decision.PitStops[0].Lap != 2 || !decision.PitStops[0].ChangeTyres ||
+		decision.Stints[0].Compound != tyres.CompoundHard || decision.Stints[1].Compound != tyres.CompoundSoft {
+		t.Fatalf("observed decision = %+v", decision)
+	}
+}
+
 func TestRunHoldoutRejectsTemporalLeakage(t *testing.T) {
 	date := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
 	race := fixtureRaceCase("race-leak", "combo-leak", date, []int{2, 3}, 90, 10)
@@ -165,6 +220,15 @@ func TestRunRaceRejectsProjectionContainingHoldoutSession(t *testing.T) {
 	race.PredictionInput.Projection.SourceSessions = append(race.PredictionInput.Projection.SourceSessions, race.RaceID)
 	if _, err := RunRace(race, ProvisionalThresholds(1)); err == nil {
 		t.Fatal("projection containing the holdout session was accepted")
+	}
+}
+
+func TestRunRaceRejectsPredictionObservedFromHoldoutSession(t *testing.T) {
+	date := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	race := fixtureRaceCase("race-observed-leak", "combo-observed-leak", date, []int{2, 3}, 90, 10)
+	race.PredictionInput.Observed = &race.Observed
+	if _, err := RunRace(race, ProvisionalThresholds(1)); err == nil {
+		t.Fatal("prediction input containing the holdout observation was accepted")
 	}
 }
 

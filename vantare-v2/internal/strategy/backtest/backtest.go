@@ -267,6 +267,9 @@ func validateRaceCase(race RaceCase) error {
 			}
 		}
 	}
+	if race.PredictionInput.Observed != nil && race.PredictionInput.Observed.SessionID == race.RaceID {
+		return fmt.Errorf("predictionInput observed strategy leaks the holdout race")
+	}
 	return nil
 }
 

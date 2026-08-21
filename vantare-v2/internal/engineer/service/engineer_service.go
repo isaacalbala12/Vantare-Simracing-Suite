@@ -3,10 +3,15 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/core"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
@@ -14,6 +19,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	legacyspotter "github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	"github.com/vantare/overlays/v2/internal/engineer/voiceinput"
 	"github.com/vantare/overlays/v2/internal/families"
 	"github.com/vantare/overlays/v2/internal/radio"
 	radiospotter "github.com/vantare/overlays/v2/internal/spotter"
@@ -121,6 +127,8 @@ type EngineerService struct {
 	radioMetrics    *radio.Metrics
 	spotterProducer *radiospotter.Producer
 	familyEngine    *families.Engine
+	voiceHealth     func() voiceinput.Health
+	voiceTurnNext   uint64
 
 	presentationResolver *presentation.Resolver
 	presentationLocale   presentation.Locale
@@ -234,6 +242,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 	radioResolver := radio.NewResolver()
 	radioCatalogErr := radiospotter.RegisterCatalog(radioResolver)
 	familyCatalogErr := families.RegisterCatalog(radioResolver)
+	voiceCatalogErr := registerVoiceInputCatalog(radioResolver)
 	spotterProducer, spotterProducerErr := radiospotter.NewProducer(clock, radio.LocaleES)
 	familyEngine, familyEngineErr := families.New(clock, radio.LocaleES)
 	s := &EngineerService{
@@ -271,7 +280,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		s.enabled = false
 		s.lastError = presentationErr.Error()
 	}
-	for _, initErr := range []error{radioBusErr, radioCatalogErr, familyCatalogErr, spotterProducerErr, familyEngineErr} {
+	for _, initErr := range []error{radioBusErr, radioCatalogErr, familyCatalogErr, voiceCatalogErr, spotterProducerErr, familyEngineErr} {
 		if initErr != nil {
 			s.enabled = false
 			s.lastError = initErr.Error()
@@ -279,6 +288,117 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		}
 	}
 	return s
+}
+
+// SetVoiceInputHealth installs the aggregate-only experimental health source.
+// It must be composed before Start and never exposes text or audio.
+func (s *EngineerService) SetVoiceInputHealth(provider func() voiceinput.Health) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		return errors.New("engineer voice-input health cannot change while running")
+	}
+	s.voiceHealth = provider
+	return nil
+}
+
+// PublishVoiceTurn is the only F5 ingress into radio.v1. It accepts the
+// deterministic router result, never a transcript, and uses the same
+// registrable presentation/delivery path as every other producer.
+func (s *EngineerService) PublishVoiceTurn(ctx context.Context, turn commands.Turn, locale commands.Locale) error {
+	if ctx == nil {
+		return errors.New("voice turn context is required")
+	}
+	intent, response := voiceTurnPresentation(turn, locale)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled || s.radioBus == nil {
+		return errors.New("engineer radio bus is unavailable")
+	}
+	s.voiceTurnNext++
+	now := time.Now().UnixMilli()
+	message := radio.RadioMessage{
+		Version: radio.VersionV1, ID: fmt.Sprintf("voice-turn-%d-%d", now, s.voiceTurnNext), Source: "voice-input",
+		Intent: intent, Subject: "driver", Priority: radio.PriorityP2,
+		CreatedAtMS: now, ExpiresAtMS: now + 5_000, Locale: radio.Locale(locale),
+		Payload: map[string]string{"response": response},
+	}
+	result, err := s.radioBus.Submit(message)
+	if err != nil {
+		return err
+	}
+	if !result.Accepted {
+		return errors.New("engineer radio bus rejected voice turn")
+	}
+	s.signalDeliveryLocked()
+	return nil
+}
+
+const (
+	voiceIntentAnswer      = "voice.query_answered"
+	voiceIntentUnavailable = "voice.unavailable"
+	voiceIntentActionOff   = "voice.action_disabled"
+)
+
+func registerVoiceInputCatalog(resolver *radio.Resolver) error {
+	definitions := []struct {
+		intent  string
+		phrases map[radio.Locale]radio.Phrase
+	}{
+		{voiceIntentAnswer, voicePhrases("Respuesta del ingeniero: {response}", "Engineer response: {response}", "Risposta dell'ingegnere: {response}", "Resposta do engenheiro: {response}")},
+		{voiceIntentUnavailable, voicePhrases("No puedo responder esa consulta ahora: {response}", "I cannot answer that query now: {response}", "Non posso rispondere ora: {response}", "Não posso responder a essa consulta agora: {response}")},
+		{voiceIntentActionOff, voicePhrases("Las acciones por voz están desactivadas: {response}", "Voice actions are disabled: {response}", "Le azioni vocali sono disattivate: {response}", "As ações por voz estão desativadas: {response}")},
+	}
+	for _, entry := range definitions {
+		if err := resolver.Register(entry.intent, radio.Definition{Family: "voice", Priority: radio.PriorityP2, Role: "engineer", Channel: audio.ChannelEngineer, Severity: "info", ParamKeys: []string{"response"}}, entry.phrases); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func voicePhrases(es, en, it, pt string) map[radio.Locale]radio.Phrase {
+	return map[radio.Locale]radio.Phrase{
+		radio.LocaleES: {Visual: es, Voice: es}, radio.LocaleEN: {Visual: en, Voice: en},
+		radio.LocaleIT: {Visual: it, Voice: it}, radio.LocalePTBR: {Visual: pt, Voice: pt},
+	}
+}
+
+func voiceTurnPresentation(turn commands.Turn, locale commands.Locale) (string, string) {
+	if strings.HasPrefix(turn.IntentID, "action.") || turn.Reason == commands.ReasonActionUnavailable {
+		return voiceIntentActionOff, localizedVoiceStatus(locale, "solo lectura", "read only", "sola lettura", "somente leitura")
+	}
+	if turn.Outcome != commands.OutcomeQueryAnswered {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+	}
+	keys := make([]string, 0, len(turn.Values))
+	for key := range turn.Values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys)+1)
+	parts = append(parts, turn.ResponseKey)
+	for _, key := range keys {
+		parts = append(parts, key+" "+turn.Values[key])
+	}
+	response := strings.Join(parts, ", ")
+	if len(response) > 256 {
+		response = response[:256]
+	}
+	return voiceIntentAnswer, response
+}
+
+func localizedVoiceStatus(locale commands.Locale, es, en, it, pt string) string {
+	switch locale {
+	case commands.LocaleEnglish:
+		return en
+	case commands.LocaleItalian:
+		return it
+	case commands.LocalePortugueseBrazil:
+		return pt
+	default:
+		return es
+	}
 }
 
 // Start launches the background loops for the service.
@@ -1027,6 +1147,7 @@ type EngineerHealth struct {
 	Policy         EngineerPolicyMetrics    `json:"policy"`
 	Delivery       delivery.MetricsSnapshot `json:"delivery"`
 	RadioDelivery  radio.MetricsSnapshot    `json:"radioDelivery"`
+	VoiceInput     voiceinput.Health        `json:"voiceInput"`
 	LastError      string                   `json:"lastError,omitempty"`
 }
 
@@ -1060,6 +1181,10 @@ func (s *EngineerService) Health() EngineerHealth {
 	if !s.legacyFamilies && s.familyEngine != nil {
 		activeFamilies = s.familyEngine.ActiveCount()
 	}
+	voiceHealth := voiceinput.Health{Experimental: true, Enabled: false, State: voiceinput.StateDisabled}
+	if s.voiceHealth != nil {
+		voiceHealth = s.voiceHealth()
+	}
 	return EngineerHealth{
 		OK:             s.engineerSvcOKLocked(),
 		Source:         s.source,
@@ -1076,7 +1201,8 @@ func (s *EngineerService) Health() EngineerHealth {
 			}
 			return s.radioMetrics.Snapshot()
 		}(),
-		LastError: s.lastError,
+		VoiceInput: voiceHealth,
+		LastError:  s.lastError,
 	}
 }
 

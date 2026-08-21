@@ -28,7 +28,10 @@ import (
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/commands"
+	"github.com/vantare/overlays/v2/internal/engineer/ptt"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/engineer/voiceinput"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
@@ -1091,6 +1094,12 @@ func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *laun
 }
 
 func main() {
+	if nonce, child := voiceinput.ChildNonceFromArgs(os.Args[1:]); child {
+		if err := voiceinput.RunUnavailableChild(nonce, os.Stdout); err != nil {
+			os.Exit(2)
+		}
+		return
+	}
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
 		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
@@ -1127,6 +1136,7 @@ func main() {
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
 	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
 	legacyEngineerFamilies := flag.Bool("engineer-legacy-families", false, "rollback to the five legacy Engineer family monitors instead of radio.v1")
+	engineerVoiceInput := flag.Bool("engineer-voice-input", false, "enable the experimental memory-only Engineer voice-input lane")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
@@ -1184,6 +1194,7 @@ func main() {
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
 	var engSvc *engineerservice.EngineerService
+	var engineerVoiceRuntime *voiceinput.Runtime
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var notifySvc *notify.Service
@@ -1244,6 +1255,12 @@ func main() {
 				{name: "engineer-bridge", stop: func(context.Context) error {
 					if engBridge != nil {
 						engBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "engineer-voice-input", stop: func(ctx context.Context) error {
+					if engineerVoiceRuntime != nil {
+						return engineerVoiceRuntime.Stop(ctx)
 					}
 					return nil
 				}},
@@ -1762,8 +1779,28 @@ func main() {
 	} else if engineerAudioConfig != nil {
 		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
 	}
+	voiceBinding := ptt.Binding{DeviceKind: ptt.DeviceKeyboard, DeviceID: "keyboard-0", Control: "f24", Scope: ptt.ScopeGlobal}
+	engineerVoiceRuntime, err = voiceinput.New(voiceinput.Config{
+		Enabled: *engineerVoiceInput, Locale: commands.Locale(engSvc.Locale()), Binding: voiceBinding,
+		Reader: ptt.NewPlatformReader(0), Host: voiceinput.NewProcessHost(nil), QueryPort: voiceinput.UnavailableQueryPort{},
+		Publisher: engSvc, MaxWindow: voiceinput.DefaultMaxWindow,
+		Lifecycle: func() commands.DialogueLifecycle {
+			return commands.DialogueLifecycle{SessionID: "voice-experimental", DriverID: "local-driver", SourceID: "telemetry-core", Epoch: 1}
+		},
+	})
+	if err != nil {
+		log.Printf("engineer experimental voice-input composition error: %v", err)
+		engineerVoiceRuntime = nil
+	} else if err := engSvc.SetVoiceInputHealth(engineerVoiceRuntime.Health); err != nil {
+		log.Printf("engineer experimental voice-input health error: %v", err)
+	}
 	if err := engSvc.Start(ctx); err != nil {
 		log.Printf("engineer service start error: %v", err)
+	}
+	if engineerVoiceRuntime != nil {
+		if err := engineerVoiceRuntime.Start(ctx); err != nil && *engineerVoiceInput {
+			log.Printf("engineer experimental voice-input unavailable: %v", err)
+		}
 	}
 
 	// Register Wails bridge for Engineer events and commands

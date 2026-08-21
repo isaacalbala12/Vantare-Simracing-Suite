@@ -18,6 +18,8 @@ const (
 	OutputDisabled OutputMode = "disabled"
 )
 
+const familyVoice messagepolicy.Family = "voice"
+
 var outputFamilies = [...]messagepolicy.Family{
 	messagepolicy.FamilySpotter,
 	messagepolicy.FamilyFuel,
@@ -25,6 +27,7 @@ var outputFamilies = [...]messagepolicy.Family{
 	messagepolicy.FamilyLaps,
 	messagepolicy.FamilyTimings,
 	messagepolicy.FamilyPitStops,
+	familyVoice,
 }
 
 func defaultOutputModes() map[messagepolicy.Family]OutputMode {

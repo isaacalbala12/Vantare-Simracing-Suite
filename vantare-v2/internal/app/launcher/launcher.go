@@ -51,6 +51,7 @@ type Service struct {
 	discoveryMu        sync.RWMutex
 	discovery          LauncherDiscovery
 	discoveryRunMu     sync.Mutex
+	discover           func() map[string]app.LauncherAppEntry
 }
 
 type serviceEmitter struct {
@@ -81,9 +82,20 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		discovery:          LauncherDiscovery{},
 		chainCleanupDelay:  defaultChainCleanupDelay,
 		chainCleanupTimers: make(map[string]*time.Timer),
+		discover:           Discover,
 	}
 	s.chain = NewChainRunner(s.settings, serviceEmitter{service: s, downstream: emit}, execFn)
 	return s
+}
+
+// SetDiscoverFunc overrides the discovery source used by DiscoverApps. A nil
+// value restores the default (Discover). It exists only to let handlers stay
+// deterministic in tests without touching the Windows registry or disk.
+func (s *Service) SetDiscoverFunc(fn func() map[string]app.LauncherAppEntry) {
+	if fn == nil {
+		fn = Discover
+	}
+	s.discover = fn
 }
 
 func (s *Service) recordChainEvent(name string, data any) {
@@ -245,7 +257,11 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	// Drop the cached shortcut index so a rescan sees apps installed since the
 	// last scan instead of replaying the first scan's view of the disk.
 	resetShortcutIndex()
-	detected := Discover()
+	discoverFn := s.discover
+	if discoverFn == nil {
+		discoverFn = Discover
+	}
+	detected := discoverFn()
 	s.emitDiscoveryProgress(15, DiscoveryDiscovering, true, nil)
 	merged := MergeAppsWithDiscovered(s.settings.GetLauncherApps(), detected)
 	s.emitDiscoveryProgress(55, DiscoveryMerging, true, nil)

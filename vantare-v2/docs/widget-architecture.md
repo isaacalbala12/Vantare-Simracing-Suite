@@ -257,7 +257,8 @@ Antes de cerrar un cambio de widgets:
 - [ ] Runtime desktop y OBS siguen compartiendo contrato de sizing.
 - [ ] No hay autosave accidental.
 - [ ] Hay tests o razon clara para no anadirlos.
-- [ ] `docs/current-plan.md` se actualizo si el estado del proyecto cambia.
+- [ ] La issue y el handoff se actualizaron si cambia el estado del proyecto;
+      `docs/roadmap/plan.md` tambien si cambia el alcance publico.
 
 ## Referencias rapidas
 

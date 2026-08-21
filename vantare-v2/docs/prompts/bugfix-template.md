@@ -14,7 +14,7 @@ Reproduccion:
 
 Antes de editar:
 - Lee `AGENTS.md`.
-- Lee `docs/current-plan.md`.
+- Lee `docs/roadmap/plan.md`.
 - Revisa `git status --short`.
 - Localiza el test mas cercano.
 

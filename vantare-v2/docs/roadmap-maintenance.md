@@ -1,219 +1,100 @@
-# Mantenimiento del Roadmap y Changelog (Vantare)
+# Mantenimiento del roadmap
 
-> **Este documento describe el flujo anterior.** Dos cambios lo dejaron atras:
->
-> - **ISA-378:** la fuente manual del roadmap es ahora `docs/roadmap/plan.md`, y
->   el artefacto que consume la app es `docs/roadmap/roadmap.json`, que genera
->   `.github/scripts/roadmap_digest.py` (tarea programada
->   `.github/workflows/roadmap-digest.yml`) combinando el plan con los commits
->   ya mergeados a `nightly`. `docs/roadmap-source.json` queda como referencia
->   historica: ya no lo lee nadie.
-> - **ISA-381:** Linear fue retirado el 2026-08-20; los issues viven en GitHub
->   Issues de este repositorio y `ISA-N` es el numero de issue de GitHub. El
->   exporter `roadmap_linear_snapshot.py` y su workflow ya no existen.
->
-> Lo que sigue vale para el changelog (§5) y para entender de donde viene el
-> formato.
+Este documento describe el procedimiento vigente para mantener el roadmap
+publico de Vantare. La autoridad del planning no se duplica en un registro de
+ejecucion historico.
 
-Procedimiento para editar el roadmap de forma **manual** y que se **actualice
-solo** en la app de todos los usuarios, sin scripts de generación automática.
+## Fuentes de verdad
 
-## 1. Dónde vive el roadmap
+Cada documento tiene una responsabilidad distinta:
 
-- **Fuente manual (la editas tú):** `docs/roadmap-source.json`.
-  - Texto de las cards en `es/en/pt/it` (inline, no en i18n).
-  - Progreso en la escala obligatoria `0/10/25/50/75/100`.
-  - Fases, áreas de progreso y hitos (milestones).
-- **App (runtime):** `frontend/src/hub/roadmap/roadmap-data.ts` trae el JSON
-  por `fetch` en `RoadmapPage` (`fetchRoadmapDataset`). Si no hay red, usa
-  `ROADMAP_FALLBACK` (copia empaquetada del JSON, en el mismo archivo).
-- **UI:** `frontend/src/hub/pages/RoadmapPage.tsx`.
-- **Changelog:** sigue en `docs/changelog.md` + array `ROADMAP_CHANGELOG`
-  (ver §5). El "chrome" de la UI (eyebrows, labels, feedback, hero) sigue en
-  los diccionarios i18n bajo `roadmap.*`.
-
-## 2. Flujo manual (sin script)
-
-No hay ningún script que regenere el roadmap desde otros documentos. El flujo
-es:
-
-1. **Tú editas `docs/roadmap-source.json`** (porcentajes, estado, texto de
-   cards, hitos nuevos).
-2. Haces commit/push del JSON al repo.
-3. La app de cada usuario hace `fetch(ROADMAP_SOURCE_URL)` al abrir la pestaña
-   Roadmap y muestra los valores nuevos. Sin nuevo release.
-
-Los agentes pueden leer `roadmap-source.json` y proponer/transcribir cambios,
-pero **la fuente de verdad la escribes tú a mano**. No se auto-genera nada.
-
-Si más adelante quieres editar desde otro sitio (p.ej. un Google Doc exportado
-a JSON o Supabase Storage), solo cambias la constante `ROADMAP_SOURCE_URL` en
-`roadmap-data.ts`. No tocas otra cosa.
-
-## 3. Porcentajes: se calculan solos
-
-**Los porcentajes de las áreas ya no se escriben a mano.** Cada área declara en
-`docs/roadmap-source.json` los proyectos del snapshot publico que la componen:
-
-```json
-{
-  "id": "telemetry",
-  "title": { "es": "Telemetría", "...": "..." },
-  "progress": 25,
-  "status": "in-progress",
-  "projects": ["telemetry-core", "telemetry-analysis"]
-}
-```
-
-La app suma las tareas de esos proyectos y muestra `hechas / totales`. El campo
-`progress` queda **solo como respaldo** para cuando no hay red o el área no
-tiene proyecto enlazado.
-
-El motivo es concreto: mantener números a mano al lado de números vivos
-garantiza que se desincronicen, y se desincronizaron. La vista editorial
-publicaba 25% de telemetria mientras la pestaña de Proyectos, leyendo el mismo
-Linear, mostraba 94%.
-
-El porcentaje global es la media de las áreas, redondeada a entero. **Ya no se
-ajusta a la escala 0/10/25/50/75/100**: redondear un 94% medido hasta 100%
-anunciaría como terminado algo que no lo está. `nearestOnScale` y
-`PROGRESS_SCALE` siguen existiendo para el progreso de las *fases*, que sí es
-editorial.
-
-### Áreas sin fuente automática
-
-Tres áreas no tienen proyecto en Linear y conservan su número manual:
-
-| Área | Estado |
+| Fuente | Responsabilidad |
 |---|---|
-| Launcher | sin proyecto en Linear |
-| Calendario local | sin proyecto en Linear |
-| UI v5.2 | sin proyecto en Linear |
+| GitHub Issue `ISA-N` | Alcance, dependencias, estado operativo, rama y entrega |
+| Handoff vivo | Continuidad tecnica, decisiones, evidencia, riesgos y siguiente accion |
+| `docs/roadmap/plan.md` | Fases, areas, hitos, alcance futuro y estado publico |
+| `docs/roadmap/roadmap.json` | Artefacto generado que consume la app; no se edita a mano |
+| `docs/current-plan.md` | Registro historico; no se actualiza como parte del flujo normal |
+| `docs/roadmap-execution-board.md` | Tablero historico; no se actualiza como parte del flujo normal |
 
-Para automatizarlas hay que crear su proyecto en Linear, añadirlo a
-`docs/roadmap-linear-catalog.json` y enlazarlo desde el área.
+Si hay conflicto, prevalecen la issue y el handoff para la ejecucion, y
+`docs/roadmap/plan.md` para el planning publico. El roadmap no sustituye los
+contratos tecnicos ni el handoff.
 
-## 4. Que sigue siendo manual
+## Cuando actualizar el roadmap
 
-- **El texto** de fases, áreas e hitos, en los cuatro idiomas.
-- **El estado** de cada área y fase (`done`, `in-progress`, `planned`,
-  `future`).
-- **El progreso de las fases**, que sí es un juicio editorial sobre un bloque
-  de roadmap y no se corresponde con ningun proyecto concreto.
-- **Qué proyectos componen cada área**, es decir, el enlace `projects`.
+El cambio se hace en el mismo PR que introduce el cambio material:
 
-## 5. Procedimiento de changelog (paso a paso)
+1. Al iniciar un planning que cambia el alcance publico: anadir o modificar la
+   fase, area, hito o pendiente que queda a la espera de una decision.
+2. Al retirar, reordenar o cambiar el estado de una fase, area o hito.
+3. Al completar una entrega que el roadmap anuncia: cambiar el hito de `plan` a
+   `feature`, `fix` o `release`, reescribir su cuerpo para describir lo que
+   funciona hoy y actualizar el progreso o los items de la fase si corresponde.
+4. Al cerrar una issue sin cambio de alcance publico: actualizar la issue y el
+   handoff; no hace falta tocar el roadmap solo por cambiar el estado interno.
 
-Cuando se cierra una feature / hotfix que el usuario deba ver:
+Un hito entregado no puede seguir presentandose como una promesa pendiente.
 
-1. Añadir la entrada a `docs/changelog.md` respetando su formato.
-2. Añadir la misma entrada (solo las últimas 5) al array `ROADMAP_CHANGELOG`
-   en `roadmap-data.ts`:
-   `{ id, version, date, titleKey, bodyKey }`.
-   `titleKey` / `bodyKey` apuntan a `roadmap.changelog.<id>.title/.body` en los
-   4 diccionarios i18n.
-3. Correr `pnpm --dir frontend test` y `pnpm --dir frontend build`.
-4. Commit + tag según `docs/versioning-and-release-gates.md`.
+## Formato de `plan.md`
 
-Reglas:
+El archivo es deliberadamente plano para que una persona pueda editarlo:
 
-- No commitear PNGs salvo decisión explícita.
-- El botón "Ver changelog completo" enlaza a `ROADMAP_CHANGELOG_URL`, no
-  renderiza `docs/changelog.md` en runtime.
-- El array se sincroniza a mano con `docs/changelog.md`; no hay lectura
-  automática.
+- `## Fases`, `## Areas` y `## Hitos` abren las secciones.
+- Cada `###` abre una entrada; su titulo es el texto base en espanol.
+- `- clave: valor` declara un campo.
+- `- clave.en: valor`, `.pt` o `.it` anade una traduccion.
+- `- item:` anade un punto a una fase; las claves localizadas traducen el ultimo
+  item anadido.
 
-## 6. No tocar
+Estados validos: `done`, `in-progress`, `planned` y `future`. Solo una fase
+puede estar en `in-progress`. Los tipos de hito son `release`, `feature`, `fix`
+y `plan`.
 
-- Backend Go, Supabase/Auth, runtime OBS, LayoutStudio.
-- `position` / `x` / `y` / `w` / `h`.
-- Dependencias nuevas.
-- `release-roadmap-execution-index.md` y `roadmap-execution-board.md` son
-  contexto de ejecución; el roadmap de la app los consume como inspiración
-  manual, no los lee ni los edita automáticamente.
+El generador valida ids, estados, progreso, traducciones y duplicados. No se
+anade un porcentaje separado para las tareas: el digest de entregas procede de
+los commits y la estimacion de fase sigue siendo editorial.
 
-## 7. Segunda pestaña: "Proyectos" (conectada a Linear)
+## Artefacto generado y digest
 
-La segunda pestaña del Roadmap ya **no** es "Desarrollo por features". Desde
-ISA-258 muestra proyectos agrupados en tabs, cuya fuente operativa es Linear.
+`.github/scripts/roadmap_digest.py` combina `plan.md` con los commits alcanzables
+desde la referencia indicada:
 
-### Cómo funciona
+- publica `feat`, `fix`, `perf` y `docs`;
+- descarta merges, promociones, chores, builds, tests, estilos y refactors;
+- elimina ruido de issues y PRs del asunto visible;
+- agrupa las entregas por dia, elimina duplicados y conserva una ventana acotada;
+- guarda el ultimo SHA procesado en `roadmap.json`.
 
-- **Catálogo privado (qué es público):** `docs/roadmap-linear-catalog.json`.
-  Fija qué proyectos de Linear se publican, con qué `id` opaco, en qué pestaña
-  y con qué copy en `es/en/pt/it`. El UUID de Linear vive aquí y **nunca** sale
-  en la salida pública.
-- **Snapshot público:** `docs/roadmap-public.snapshot.json`. Es lo que consume
-  la app. Incluye `generatedAt` y `staleAfterSeconds`.
-- **Cliente:** `frontend/src/hub/roadmap/projects-data.ts` valida el snapshot
-  entero antes de aceptarlo y distingue `remote-fresh`, `remote-stale` y
-  `embedded-fallback`. La app **nunca** habla con Linear ni recibe credenciales.
-- **UI:** `frontend/src/hub/roadmap/RoadmapProjectTabs.tsx`.
+El workflow `.github/workflows/roadmap-digest.yml` ejecuta el generador sobre
+`nightly`, comprueba el resultado y abre una PR de bot contra `nightly`. No hace
+push directo a la rama protegida.
 
-### Publicación automática
-
-`.github/workflows/roadmap-snapshot.yml` regenera el snapshot y lo publica en la
-rama de datos `roadmap-data`, que es de donde lo lee la app. Se dispara de tres
-formas:
-
-- **En cada push a `nightly`.** Es lo que hace que funcione hoy: un disparador
-  por `push` se ejecuta con el fichero tal como está en la rama que recibe el
-  push, sin depender de la rama por defecto. Sin filtro de rutas, a propósito.
-- **A diario a las 04:00.** El snapshot proyecta Linear, no el código, así que
-  se queda obsoleto cuando se mueve una tarea aunque nadie mergee nada. Este
-  disparador **solo se activará cuando el workflow llegue a `master`**: GitHub
-  únicamente lanza `schedule` desde la rama por defecto.
-- **A mano**, por `workflow_dispatch`.
-
-Detalles:
-
-- Se ejecuta sobre `nightly`, porque el exportador y el catálogo viven ahí;
-  `master` va por detrás y ni siquiera tiene `.github/scripts`.
-- Usa el secreto `LINEAR_API_KEY` que ya existe en el repositorio.
-- Antes de publicar, un paso de validación rechaza cualquier snapshot que
-  filtre datos privados o que el validador del frontend fuese a rechazar.
-- Si solo cambia `generatedAt`, no commitea: la rama no acumula ruido diario.
-- Si un día falla, la app enseña el aviso ámbar de "obsoleto" en vez de dar
-  datos viejos por actuales.
-
-El snapshot es contenido generado, así que **no** viaja por el camino
-issue → nightly → testers → master: un cambio de estado en una tarea de Linear
-no debe exigir una promoción de producto. Por eso vive en su propia rama.
-
-Para forzar una regeneración: lanzar el workflow por `workflow_dispatch`.
-Para regenerarlo en local con tu propia clave:
+Comprobacion local del parser y del digest:
 
 ```powershell
-$env:LINEAR_API_KEY = "..."
-python .github/scripts/roadmap_linear_snapshot.py `
-  --catalog vantare-v2/docs/roadmap-linear-catalog.json `
-  --output vantare-v2/docs/roadmap-public.snapshot.json
+python .github/scripts/tests/test_roadmap_digest.py
+python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly --check
 ```
 
-Sin clave, se puede probar toda la cadena contra el fixture:
+Si `--check` detecta que el artefacto empaquetado esta atrasado, se regenera en
+una PR del digest; no se edita `roadmap.json` manualmente.
 
-```powershell
-python .github/scripts/roadmap_linear_snapshot.py --catalog vantare-v2/docs/roadmap-linear-catalog.json --fixture .github/scripts/tests/fixtures/roadmap-linear-input.json --output "$env:TEMP/snap.json"
-```
+## Cambios visibles para testers
 
-### Qué edita cada quién
+Si una issue cambia comportamiento que los testers deben conocer, el worker
+anade `docs/changelog/fragments/ISA-N.json` siguiendo su schema. El changelog y
+los anuncios de canal se generan en sus pasos propios; una rama de issue no
+publica anuncios por su cuenta.
 
-- **Catálogo** (`docs/roadmap-linear-catalog.json`): lo editas tú. Decide qué
-  proyectos son públicos, en qué pestaña y con qué copy en cuatro idiomas.
-- **Snapshot** (`docs/roadmap-public.snapshot.json`): lo genera el exportador.
-  La copia del repo es el **fallback empaquetado** que entra en el build; la
-  copia viva está en `roadmap-data`. No lo edites a mano.
-- **Progreso y estados**: salen de Linear. No hay porcentaje manual aquí, a
-  diferencia del roadmap editorial (§3 y §4).
+## Documentos historicos
 
-### Invariantes que valida el cliente
+`docs/current-plan.md`, `docs/roadmap-execution-board.md`,
+`docs/master-feature-plan.md` y los planes antiguos pueden conservar decisiones
+o evidencia. No son fuentes normativas para iniciar trabajo nuevo. Si un dato
+historico contradice el roadmap o la issue, se conserva como contexto y se
+aplica la fuente vigente.
 
-`progress.total` = número de tareas, `progress.done` = tareas en `done`,
-`percent` = `Math.round(done/total*100)` y `null` si no hay tareas. Los estados
-`canceled` se excluyen. Ningún texto público puede contener `ISA-*`, URLs,
-dominios, correos ni UUID.
-
-### Código muerto pendiente de retirar
-
-`features-data.ts`, `roadmap-features.ts`, sus tests y `docs/features-source.json`
-ya no los importa nadie. ISA-258 los dejó como compatibilidad transitoria.
+La antigua ruta de proyectos/snapshots publicos se conserva solo como
+compatibilidad historica hasta una issue especifica. No es necesario modificar
+ese material para anadir fases, areas o hitos al roadmap editorial actual.

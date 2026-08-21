@@ -13,7 +13,7 @@ Tipo de tarea:
 
 Antes de editar:
 1. Lee `AGENTS.md`.
-2. Lee `docs/current-plan.md`.
+2. Lee `docs/roadmap/plan.md`.
 3. Lee los docs especificos de esta tarea:
    - [LISTA]
 4. Ejecuta o informa:
@@ -38,7 +38,7 @@ Reglas:
 - No limpies codigo no relacionado.
 - Si necesitas tocar mas archivos de los previstos, para y explica.
 - Si cambias comportamiento, anade o actualiza tests.
-- Si algo no esta claro, deja `Open questions` en `docs/current-plan.md` o pregunta.
+- Si algo no esta claro, deja `Open questions` en la issue de GitHub o en el handoff vivo, o pregunta.
 
 Checks esperados:
 - [COMANDOS CONCRETOS]

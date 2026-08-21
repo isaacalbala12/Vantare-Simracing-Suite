@@ -55,6 +55,7 @@ class QtMotionTraceTest final : public QObject
 private slots:
     void writesCompleteHashPinnedTrace();
     void coalescesLogicalRecordsBeforePresentationWithoutLosingModelEvents();
+    void finalizesWhenLastLogicalRecordDoesNotTriggerAPaint();
     void rejectsInvalidBoundsAndPayloadHash();
     void rejectsOmittedEventEvenWhenRehashed();
     void rejectsNonMonotonicQpcEvenWhenRehashed();
@@ -88,6 +89,29 @@ void QtMotionTraceTest::writesCompleteHashPinnedTrace()
     const QJsonObject document = QJsonDocument::fromJson(bytes).object();
     QCOMPARE(document.value(QStringLiteral("complete")).toBool(), true);
     QCOMPARE(document.value(QStringLiteral("events")).toArray().size(), 8);
+}
+
+void QtMotionTraceTest::finalizesWhenLastLogicalRecordDoesNotTriggerAPaint()
+{
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    QList<qint64> ticks{100, 110, 120, 130, 200, 210};
+    QtMotionTrace trace(temporary.filePath(QStringLiteral("trace.json")),
+                        QStringLiteral("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+                        2, 10'000'000, [&ticks] { return ticks.takeFirst(); });
+
+    trace.beginRecord(record(42, -2000.0), 0);
+    trace.endRecord(record(42, -2000.0), 0);
+    trace.qmlSync();
+    QVERIFY(!trace.present());
+    trace.beginRecord(record(43, -1933.3333), 1);
+    trace.endRecord(record(43, -1933.3333), 1);
+    QVERIFY(trace.finish());
+
+    QFile output(temporary.filePath(QStringLiteral("trace.json")));
+    QVERIFY(output.open(QIODevice::ReadOnly));
+    const QJsonObject document = QJsonDocument::fromJson(output.readAll()).object();
+    QCOMPARE(document.value(QStringLiteral("events")).toArray().size(), 6);
 }
 
 void QtMotionTraceTest::rejectsInvalidBoundsAndPayloadHash()

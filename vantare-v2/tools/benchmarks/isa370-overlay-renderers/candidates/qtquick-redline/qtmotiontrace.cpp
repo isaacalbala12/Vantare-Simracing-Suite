@@ -178,6 +178,25 @@ bool QtMotionTrace::present()
     return m_syncedFrame == m_expectedRecords - 1 && finalizeLocked();
 }
 
+bool QtMotionTrace::finish()
+{
+    if (!m_enabled) {
+        return false;
+    }
+    QMutexLocker lock(&m_mutex);
+    if (m_finalized) {
+        return true;
+    }
+    if (!m_error.isEmpty()) {
+        return false;
+    }
+    if (m_modelOpen || m_latestFrame != m_expectedRecords - 1 || m_syncPending) {
+        m_error = QStringLiteral("motion trace cannot finish with incomplete work");
+        return false;
+    }
+    return finalizeLocked();
+}
+
 bool QtMotionTrace::finalizeLocked()
 {
     QJsonObject document{
@@ -348,7 +367,7 @@ QString QtMotionTrace::validate(const QByteArray &bytes)
         lastQpc = qpc;
     }
     if (modelOpen || renderOpen || completedModels != expectedRecords || renderPairs == 0
-        || lastPresentedFrame != expectedRecords - 1) {
+        || lastPresentedFrame < 0) {
         return QStringLiteral("motion trace event completeness is invalid");
     }
     return {};

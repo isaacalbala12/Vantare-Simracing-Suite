@@ -25,7 +25,131 @@ export type StrategyApplicationOperation =
   | "close"
   | "list"
   | "export"
-  | "import";
+  | "import"
+  | "create_event"
+  | "edit_event"
+  | "list_events"
+  | "create_driver"
+  | "edit_driver"
+  | "delete_driver"
+  | "list_drivers"
+  | "create_variant"
+  | "edit_variant"
+  | "list_variants"
+  | "compare_variants";
+
+export type StrategyProvenanceKindV2 =
+  | "unknown"
+  | "observed"
+  | "corrected"
+  | "manual"
+  | "derived"
+  | "estimated"
+  | "range"
+  | "reference"
+  | "legacy_synthetic_default";
+
+export type StrategyConfidenceLevelV2 = "unknown" | "low" | "medium" | "high";
+
+export type StrategyEvidenceV2 = {
+  readonly provenance: {
+    readonly kind: StrategyProvenanceKindV2;
+    readonly sourceId?: string;
+    readonly observedAt?: string;
+  };
+  readonly confidence: {
+    readonly level: StrategyConfidenceLevelV2;
+    readonly basis?: string;
+  };
+};
+
+export type StrategySourcedV2<T> = {
+  readonly value: T;
+  readonly evidence: StrategyEvidenceV2;
+};
+
+export type StrategyAvailabilityWindowV2 = {
+  readonly state: "ok" | "no";
+  readonly from: number;
+  readonly to: number;
+};
+
+export type StrategyDriverV2 = {
+  readonly id: string;
+  readonly order: number;
+  readonly name?: StrategySourcedV2<string>;
+  readonly ini?: StrategySourcedV2<string>;
+  readonly color?: StrategySourcedV2<string>;
+  readonly cls?: StrategySourcedV2<string>;
+  readonly rawExtra?: Readonly<Record<string, unknown>>;
+};
+
+export type StrategyVariantV2 = {
+  readonly id: string;
+  readonly name: StrategySourcedV2<string>;
+  readonly note: StrategySourcedV2<string>;
+  readonly mode: StrategySourcedV2<"dry" | "wet" | "eco" | "humid">;
+  readonly order: readonly string[];
+  readonly state: StrategySourcedV2<"draft" | "ok">;
+  readonly overrides?: Readonly<Record<string, unknown>>;
+  readonly tyres?: Readonly<Record<string, unknown>>;
+};
+
+export type StrategyTyreInventoryV2 = {
+  readonly sets: readonly {
+    readonly compoundRaw?: number;
+    readonly compound?: string;
+    readonly count: number;
+    readonly presence: "valid" | "missing" | "invalid" | "stale" | "unsupported" | "unknown";
+    readonly provenance: StrategyEvidenceV2["provenance"];
+  }[];
+  readonly byCompound?: Readonly<Record<string, number>>;
+  readonly note?: string;
+};
+
+export type StrategyEventV2 = {
+  readonly id: string;
+  readonly name: StrategySourcedV2<string>;
+  readonly source: StrategySourcedV2<"custom" | "series" | "roster">;
+  readonly seriesId?: StrategySourcedV2<string>;
+  readonly track: StrategySourcedV2<string>;
+  readonly cls: StrategySourcedV2<string>;
+  readonly durationMin: StrategySourcedV2<number>;
+  readonly startAt: StrategySourcedV2<string | null>;
+  readonly team?: StrategySourcedV2<string>;
+  readonly drivers: readonly StrategyDriverV2[];
+  readonly tankLiters: StrategySourcedV2<number>;
+  readonly pitLossSeconds: StrategySourcedV2<number>;
+  readonly strategies: readonly StrategyVariantV2[];
+  readonly availability: Readonly<Record<string, readonly StrategyAvailabilityWindowV2[]>>;
+  readonly activeStrategyId?: string;
+  readonly teamMode?: StrategySourcedV2<"solo" | "team">;
+  readonly fillMode: StrategySourcedV2<"manual">;
+  readonly lastOpenedAt?: StrategySourcedV2<string | null>;
+  readonly tyreInventory: StrategyTyreInventoryV2;
+  /** Go encodes the byte-exact legacy backup as base64. */
+  readonly rawLegacy?: string;
+};
+
+export type StrategyDocumentV2 = {
+  readonly contractVersion: "strategy.v2";
+  readonly schemaVersion: "2.0.0";
+  readonly generatedAt: string;
+  readonly events: readonly StrategyEventV2[];
+  readonly activeEventId?: string;
+  readonly migrationMeta?: {
+    readonly sourceFingerprint: string;
+    readonly journalId: string;
+    readonly migratedAt: string;
+  };
+};
+
+export type StrategyVariantComparisonV2 = {
+  readonly eventId: string;
+  readonly left: StrategyVariantV2;
+  readonly right: StrategyVariantV2;
+  readonly differentFields: readonly string[];
+};
 
 type CommandHeader<T extends StrategyApplicationOperation> = {
   protocolVersion: typeof STRATEGY_APPLICATION_PROTOCOL_V1;
@@ -70,6 +194,33 @@ export type StrategyApplicationCommandV1<TPayload> =
       /** The package bytes, base64-encoded, exactly as Go encodes []byte. */
       package: string;
       dryRun?: boolean;
+    })
+  | (CommandHeader<"create_event" | "edit_event"> & {
+      event: StrategyEventV2;
+      updatedAt: string;
+    })
+  | CommandHeader<"list_events">
+  | (CommandHeader<"create_driver" | "edit_driver"> & {
+      eventId: string;
+      driver: StrategyDriverV2;
+      updatedAt: string;
+    })
+  | (CommandHeader<"delete_driver"> & {
+      eventId: string;
+      driverId: string;
+      updatedAt: string;
+    })
+  | (CommandHeader<"list_drivers"> & { eventId: string })
+  | (CommandHeader<"create_variant" | "edit_variant"> & {
+      eventId: string;
+      variant: StrategyVariantV2;
+      updatedAt: string;
+    })
+  | (CommandHeader<"list_variants"> & { eventId: string })
+  | (CommandHeader<"compare_variants"> & {
+      eventId: string;
+      leftVariantId: string;
+      rightVariantId: string;
     })
   | (CommandHeader<"restore"> & { draftId: string })
   | (CommandHeader<"close"> & {
@@ -150,7 +301,13 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly savedDraft?: PlanDraftV1<TPayload>;
   readonly revision?: PlanRevisionV1<TPayload>;
   readonly activePlan?: ActivePlanV1;
+  readonly activations?: readonly ActivePlanV1[];
   readonly plans?: readonly StrategyPlanSummaryV1[];
+  readonly strategyDocument?: StrategyDocumentV2;
+  readonly events?: readonly StrategyEventV2[];
+  readonly drivers?: readonly StrategyDriverV2[];
+  readonly variants?: readonly StrategyVariantV2[];
+  readonly comparison?: StrategyVariantComparisonV2;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
   readonly preview?: StrategyImportPreviewV1;
@@ -169,6 +326,13 @@ export type StrategyApplicationErrorCode =
   | "active_plan_conflict"
   | "unsaved_changes"
   | "plan_not_found"
+  | "event_not_found"
+  | "event_conflict"
+  | "driver_not_found"
+  | "driver_conflict"
+  | "driver_in_use"
+  | "variant_not_found"
+  | "variant_conflict"
   | "import_refused"
   // Refusals raised by the package format itself.
   | "invalid_package"
@@ -224,6 +388,13 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "active_plan_conflict",
   "unsaved_changes",
   "plan_not_found",
+  "event_not_found",
+  "event_conflict",
+  "driver_not_found",
+  "driver_conflict",
+  "driver_in_use",
+  "variant_not_found",
+  "variant_conflict",
   "import_refused",
   "invalid_package",
   "unsupported_package_version",
@@ -386,7 +557,25 @@ async function parseResult<TPayload>(
     ...(payload.activePlan === undefined
       ? {}
       : { activePlan: parseActivePlanV1(payload.activePlan) }),
+    ...(payload.activations === undefined
+      ? {}
+      : { activations: parseActivePlans(payload.activations) }),
     ...(payload.plans === undefined ? {} : { plans: parsePlanSummaries(payload.plans) }),
+    ...(payload.strategyDocument === undefined
+      ? {}
+      : { strategyDocument: parseStrategyDocumentV2(payload.strategyDocument) }),
+    ...(payload.events === undefined
+      ? {}
+      : { events: parseStrategyEventsV2(payload.events, "events") }),
+    ...(payload.drivers === undefined
+      ? {}
+      : { drivers: parseStrategyDriversV2(payload.drivers, "drivers") }),
+    ...(payload.variants === undefined
+      ? {}
+      : { variants: parseStrategyVariantsV2(payload.variants, "variants") }),
+    ...(payload.comparison === undefined
+      ? {}
+      : { comparison: parseStrategyVariantComparisonV2(payload.comparison) }),
     ...(payload.package === undefined ? {} : { package: parsePackageBytes(payload.package) }),
     ...(payload.preview === undefined
       ? {}
@@ -396,6 +585,176 @@ async function parseResult<TPayload>(
     closed: payload.closed,
   };
   return deepFreeze(result);
+}
+
+function parseActivePlans(value: unknown): readonly ActivePlanV1[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Invalid Strategy activation list");
+  }
+  return value.map((activePlan) => parseActivePlanV1(activePlan));
+}
+
+function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
+  const document = strategyRecord(value, "document");
+  if (document.contractVersion !== "strategy.v2" || document.schemaVersion !== "2.0.0") {
+    throw new Error("Unsupported Strategy document version");
+  }
+  strategyString(document.generatedAt, "document.generatedAt");
+  const events = parseStrategyEventsV2(document.events, "document.events");
+  if (document.activeEventId !== undefined) {
+    strategyString(document.activeEventId, "document.activeEventId");
+  }
+  if (document.migrationMeta !== undefined) {
+    const migration = strategyRecord(document.migrationMeta, "document.migrationMeta");
+    strategyString(migration.sourceFingerprint, "document.migrationMeta.sourceFingerprint");
+    strategyString(migration.journalId, "document.migrationMeta.journalId");
+    strategyString(migration.migratedAt, "document.migrationMeta.migratedAt");
+  }
+  return { ...document, events } as StrategyDocumentV2;
+}
+
+function parseStrategyEventsV2(value: unknown, field: string): readonly StrategyEventV2[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => parseStrategyEventV2(candidate, `${field}.${index}`));
+}
+
+function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
+  const event = strategyRecord(value, field);
+  strategyString(event.id, `${field}.id`);
+  strategyString(parseStrategySourcedV2(event.name, `${field}.name`), `${field}.name.value`);
+  strategyEnum(parseStrategySourcedV2(event.source, `${field}.source`), `${field}.source.value`, ["custom", "series", "roster"]);
+  strategyAnyString(parseStrategySourcedV2(event.track, `${field}.track`), `${field}.track.value`);
+  strategyAnyString(parseStrategySourcedV2(event.cls, `${field}.cls`), `${field}.cls.value`);
+  strategyInteger(parseStrategySourcedV2(event.durationMin, `${field}.durationMin`), `${field}.durationMin.value`);
+  strategyNullableString(parseStrategySourcedV2(event.startAt, `${field}.startAt`), `${field}.startAt.value`);
+  strategyNumber(parseStrategySourcedV2(event.tankLiters, `${field}.tankLiters`), `${field}.tankLiters.value`);
+  strategyNumber(parseStrategySourcedV2(event.pitLossSeconds, `${field}.pitLossSeconds`), `${field}.pitLossSeconds.value`);
+  strategyEnum(parseStrategySourcedV2(event.fillMode, `${field}.fillMode`), `${field}.fillMode.value`, ["manual"]);
+  if (event.seriesId !== undefined) strategyString(parseStrategySourcedV2(event.seriesId, `${field}.seriesId`), `${field}.seriesId.value`);
+  if (event.team !== undefined) strategyAnyString(parseStrategySourcedV2(event.team, `${field}.team`), `${field}.team.value`);
+  if (event.teamMode !== undefined) strategyEnum(parseStrategySourcedV2(event.teamMode, `${field}.teamMode`), `${field}.teamMode.value`, ["solo", "team"]);
+  if (event.lastOpenedAt !== undefined) strategyNullableString(parseStrategySourcedV2(event.lastOpenedAt, `${field}.lastOpenedAt`), `${field}.lastOpenedAt.value`);
+  const drivers = parseStrategyDriversV2(event.drivers, `${field}.drivers`);
+  const strategies = parseStrategyVariantsV2(event.strategies, `${field}.strategies`);
+  const availability = strategyRecord(event.availability, `${field}.availability`);
+  for (const [driverId, windows] of Object.entries(availability)) {
+    if (!Array.isArray(windows)) throw new Error(`Invalid Strategy ${field}.availability.${driverId}`);
+    for (const [index, window] of windows.entries()) {
+      const entry = strategyRecord(window, `${field}.availability.${driverId}.${index}`);
+      if (entry.state !== "ok" && entry.state !== "no") {
+        throw new Error(`Invalid Strategy ${field}.availability.${driverId}.${index}.state`);
+      }
+      strategyInteger(entry.from, `${field}.availability.${driverId}.${index}.from`);
+      strategyInteger(entry.to, `${field}.availability.${driverId}.${index}.to`);
+    }
+  }
+  if (event.activeStrategyId !== undefined) strategyString(event.activeStrategyId, `${field}.activeStrategyId`);
+  if (event.rawLegacy !== undefined) strategyString(event.rawLegacy, `${field}.rawLegacy`);
+  parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
+  return { ...event, drivers, strategies, availability } as StrategyEventV2;
+}
+
+function parseStrategyDriversV2(value: unknown, field: string): readonly StrategyDriverV2[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const driver = strategyRecord(candidate, `${field}.${index}`);
+    strategyString(driver.id, `${field}.${index}.id`);
+    strategyInteger(driver.order, `${field}.${index}.order`);
+    for (const optional of ["name", "ini", "color", "cls"] as const) {
+      if (driver[optional] !== undefined) {
+        strategyAnyString(parseStrategySourcedV2(driver[optional], `${field}.${index}.${optional}`), `${field}.${index}.${optional}.value`);
+      }
+    }
+    if (driver.rawExtra !== undefined) strategyRecord(driver.rawExtra, `${field}.${index}.rawExtra`);
+    return driver as StrategyDriverV2;
+  });
+}
+
+function parseStrategyVariantsV2(value: unknown, field: string): readonly StrategyVariantV2[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const variant = strategyRecord(candidate, `${field}.${index}`);
+    strategyString(variant.id, `${field}.${index}.id`);
+    strategyString(parseStrategySourcedV2(variant.name, `${field}.${index}.name`), `${field}.${index}.name.value`);
+    strategyAnyString(parseStrategySourcedV2(variant.note, `${field}.${index}.note`), `${field}.${index}.note.value`);
+    strategyEnum(parseStrategySourcedV2(variant.mode, `${field}.${index}.mode`), `${field}.${index}.mode.value`, ["dry", "wet", "eco", "humid"]);
+    strategyEnum(parseStrategySourcedV2(variant.state, `${field}.${index}.state`), `${field}.${index}.state.value`, ["draft", "ok"]);
+    if (!Array.isArray(variant.order) || variant.order.some((driverId) => typeof driverId !== "string" || driverId === "")) {
+      throw new Error(`Invalid Strategy ${field}.${index}.order`);
+    }
+    if (variant.overrides !== undefined) strategyRecord(variant.overrides, `${field}.${index}.overrides`);
+    if (variant.tyres !== undefined) strategyRecord(variant.tyres, `${field}.${index}.tyres`);
+    return variant as StrategyVariantV2;
+  });
+}
+
+function parseStrategyVariantComparisonV2(value: unknown): StrategyVariantComparisonV2 {
+  const comparison = strategyRecord(value, "comparison");
+  strategyString(comparison.eventId, "comparison.eventId");
+  const left = parseStrategyVariantsV2([comparison.left], "comparison.left")[0];
+  const right = parseStrategyVariantsV2([comparison.right], "comparison.right")[0];
+  if (!Array.isArray(comparison.differentFields) || comparison.differentFields.some((field) => typeof field !== "string")) {
+    throw new Error("Invalid Strategy comparison.differentFields");
+  }
+  return { eventId: comparison.eventId as string, left, right, differentFields: comparison.differentFields as string[] };
+}
+
+function parseStrategySourcedV2(value: unknown, field: string): unknown {
+  const sourced = strategyRecord(value, field);
+  if (!("value" in sourced)) throw new Error(`Invalid Strategy ${field}.value`);
+  const evidence = strategyRecord(sourced.evidence, `${field}.evidence`);
+  const provenance = strategyRecord(evidence.provenance, `${field}.evidence.provenance`);
+  const confidence = strategyRecord(evidence.confidence, `${field}.evidence.confidence`);
+  strategyEnum(provenance.kind, `${field}.evidence.provenance.kind`, ["unknown", "observed", "corrected", "manual", "derived", "estimated", "range", "reference", "legacy_synthetic_default"]);
+  strategyEnum(confidence.level, `${field}.evidence.confidence.level`, ["unknown", "low", "medium", "high"]);
+  if (provenance.sourceId !== undefined) strategyAnyString(provenance.sourceId, `${field}.evidence.provenance.sourceId`);
+  if (provenance.observedAt !== undefined) strategyString(provenance.observedAt, `${field}.evidence.provenance.observedAt`);
+  if (confidence.basis !== undefined) strategyAnyString(confidence.basis, `${field}.evidence.confidence.basis`);
+  return sourced.value;
+}
+
+function parseStrategyTyreInventoryV2(value: unknown, field: string): void {
+  const inventory = strategyRecord(value, field);
+  if (!Array.isArray(inventory.sets)) throw new Error(`Invalid Strategy ${field}.sets`);
+  for (const [index, candidate] of inventory.sets.entries()) {
+    const set = strategyRecord(candidate, `${field}.sets.${index}`);
+    strategyInteger(set.count, `${field}.sets.${index}.count`);
+    strategyEnum(set.presence, `${field}.sets.${index}.presence`, ["valid", "missing", "invalid", "stale", "unsupported", "unknown"]);
+    const provenance = strategyRecord(set.provenance, `${field}.sets.${index}.provenance`);
+    strategyEnum(provenance.kind, `${field}.sets.${index}.provenance.kind`, ["unknown", "observed", "corrected", "manual", "derived", "estimated", "range", "reference", "legacy_synthetic_default"]);
+  }
+  if (inventory.byCompound !== undefined) strategyRecord(inventory.byCompound, `${field}.byCompound`);
+}
+
+function strategyRecord(value: unknown, field: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`Invalid Strategy ${field}`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function strategyString(value: unknown, field: string): asserts value is string {
+  if (typeof value !== "string" || value === "") throw new Error(`Invalid Strategy ${field}`);
+}
+
+function strategyAnyString(value: unknown, field: string): asserts value is string {
+  if (typeof value !== "string") throw new Error(`Invalid Strategy ${field}`);
+}
+
+function strategyNullableString(value: unknown, field: string): asserts value is string | null {
+  if (value !== null && typeof value !== "string") throw new Error(`Invalid Strategy ${field}`);
+}
+
+function strategyNumber(value: unknown, field: string): asserts value is number {
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`Invalid Strategy ${field}`);
+}
+
+function strategyEnum(value: unknown, field: string, allowed: readonly string[]): asserts value is string {
+  if (typeof value !== "string" || !allowed.includes(value)) throw new Error(`Invalid Strategy ${field}`);
+}
+
+function strategyInteger(value: unknown, field: string): asserts value is number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) throw new Error(`Invalid Strategy ${field}`);
 }
 
 /** A reference is only usable if it is complete: an incomplete one is rejected. */

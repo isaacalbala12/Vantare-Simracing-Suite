@@ -10,12 +10,19 @@
  */
 
 import { Events } from "@wailsio/runtime";
+import {
+  createStrategyApplicationClient,
+  createWailsStrategyApplicationTransport,
+  type StrategyApplicationClient,
+} from "../../strategy/strategy-application-client";
 import type {
   StrategyDriver,
   StrategyEvent,
   StrategyMode,
   StrategyPace,
 } from "./strategy-orbit-model";
+
+export * from "../../strategy/strategy-application-client";
 
 export const STRATEGY_ROSTER_REQUEST = "strategy:roster:get";
 export const STRATEGY_ROSTER_EVENT = "strategy:roster";
@@ -35,6 +42,14 @@ export interface StrategyRoster {
   strategies: RosterStrategy[];
   /** Ids de los juegos que el evento asigna, si el puente los conoce. */
   tyreIds?: string[];
+}
+
+/**
+ * Única entrada de Orbit al protocolo de aplicación de Strategy. El cliente
+ * solo correlaciona, valida y tipa el wire; las decisiones viven en Go.
+ */
+export function createStrategyOrbitApplicationClient<TPayload>(): StrategyApplicationClient<TPayload> {
+  return createStrategyApplicationClient<TPayload>(createWailsStrategyApplicationTransport());
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

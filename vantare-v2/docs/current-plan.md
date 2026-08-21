@@ -1,3 +1,25 @@
+Nota ISA-740 / ISA-694 F3-a2 (2026-08-21, implementada en rama de issue):
+- Telemetry Analysis reconstruye vueltas desde eventos `Lap` y resets reales
+  de `Lap Dist` sin inventar un offset entre sus relojes. Cada `LapBoundary`
+  declara fuente, calidad y confianza; la diferencia de S266 queda `unknown`.
+- Cada vuelta conserva incompletas y etiqueta out/in-lap, pit, impacto/offtrack,
+  tráfico y outlier de ritmo. Tráfico nunca excluye por sí mismo (D7), y cada
+  familia consumidora recibe motivos de exclusión explícitos.
+- Los stints solo nacen de pit, salto de Fuel o cambio observable de neumático,
+  con confianza y sin identidad de piloto. Los huecos global/local se publican
+  como `CoverageGap`: 19,66 s en S045 y 9.985,14 s en S266.
+- Dos fixtures reales mínimas y sanitizadas reproducen los esperados del spike:
+  S045 9 vueltas/10 eventos/10 resets/6 tiempos utilizables; S266 70/71/70/66,
+  3 vueltas de pit y 4 stints aparentes. No contienen rutas, fechas, hashes,
+  piloto, coche, equipo ni circuito.
+- Gates locales: `go test ./internal/telemetryanalysis/... -count=1`, el mismo
+  gate con `-race`, `go vet`, `gofmt -l` y `git diff --check` PASS. La suite Go
+  global no se ejecutó porque este worktree no contiene `frontend/dist` ni
+  `frontend/node_modules`, necesarios por `go:embed`.
+- Commits de producto/prueba: `d36d9f1f` y `1d039c4e`. Sin PR, merge,
+  promoción ni release. Siguiente: review del orquestador de #740; F3-a3 no se
+  asume iniciada.
+
 Nota ISA-735 / ISA-694 F2(e) (2026-08-21, implementada en rama de issue):
 - `Guardar revisión` custodia el plan visible en el lifecycle canónico y crea
   una revisión inmutable. Orbit muestra `revisionId` y hash; los fallos llegan

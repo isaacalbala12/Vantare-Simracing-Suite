@@ -17,6 +17,21 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-740 / ISA-694 F3-a2 está implementada en su rama aislada: vueltas y
+fronteras se reconcilian desde `Lap` + resets de `Lap Dist` con calidad
+explícita; las vueltas incompletas permanecen visibles y las etiquetas
+out/in-lap, pit, impacto/offtrack, tráfico y outlier alimentan exclusiones
+explicadas por familia. Tráfico es solo etiqueta (D7). Stints aparentes usan
+únicamente pit, salto de Fuel o cambio observable de neumático, nunca identidad
+de piloto. La salida materializa `ContinuousSegment`, `CoverageGap`,
+`LapBoundary` y `StintBoundary` del contrato F1.2.
+
+Las fixtures reales mínimas y sanitizadas S045/S266 reproducen 9/70 vueltas,
+10/70 resets, 10/71 eventos, 6/66 tiempos utilizables, 0/3 vueltas de pit y
+1/4 stints aparentes; S266 conserva como gap sus 9.985,14 s de delta temporal.
+Los gates focal, race, vet, gofmt y diff-check pasan. Pendiente: review del
+orquestador de #740; no hay PR, integración ni promoción.
+
 ISA-737 / ISA-694 F3-a1 está implementada en su rama aislada: el modelo
 `HistoricalSession` se clasifica por combinación LMU, tipo y clima; las
 sesiones sin vuelta completa permanecen identificadas con usabilidad por

@@ -108,10 +108,10 @@ int KeyedRowsModel::indexOfId(const QString &id, const int start) const
     return -1;
 }
 
-bool KeyedRowsModel::applyRows(const ReplayRecord &record)
+void KeyedRowsModel::applyRows(const ReplayRecord &record)
 {
     if (record.widget != m_widget) {
-        return false;
+        return;
     }
     const QString nextStatus = record.viewModel.value(QStringLiteral("status")).toString();
     const QString nextStatusMessage = record.viewModel.value(QStringLiteral("statusMessage")).toString();
@@ -129,20 +129,18 @@ bool KeyedRowsModel::applyRows(const ReplayRecord &record)
         const QJsonObject row = value.toObject();
         const QString id = row.value(QStringLiteral("id")).toString();
         if (id.isEmpty() || desiredIds.contains(id)) {
-            return false;
+            return;
         }
         desiredIds.insert(id);
         desired.push_back(row);
     }
 
-    bool rowsChanged = false;
     for (int index = m_rows.size() - 1; index >= 0; --index) {
         const QString id = m_rows.at(index).value(QStringLiteral("id")).toString();
         if (!desiredIds.contains(id)) {
             beginRemoveRows({}, index, index);
             m_rows.removeAt(index);
             endRemoveRows();
-            rowsChanged = true;
         }
     }
     for (int target = 0; target < desired.size(); ++target) {
@@ -152,22 +150,18 @@ bool KeyedRowsModel::applyRows(const ReplayRecord &record)
             beginInsertRows({}, target, target);
             m_rows.insert(target, desired.at(target));
             endInsertRows();
-            rowsChanged = true;
             continue;
         }
         if (current != target) {
             beginMoveRows({}, current, current, {}, target);
             m_rows.move(current, target);
             endMoveRows();
-            rowsChanged = true;
         }
         if (m_rows.at(target) != desired.at(target)) {
             m_rows[target] = desired.at(target);
             emit dataChanged(index(target), index(target));
-            rowsChanged = true;
         }
     }
-    return rowsChanged;
 }
 
 StandingsModel::StandingsModel(QObject *parent)
@@ -180,10 +174,7 @@ void StandingsModel::apply(const ReplayRecord &record)
     if (record.widget != QStringLiteral("standings")) {
         return;
     }
-    const bool rowsChanged = applyRows(record);
-    if (rowsChanged) {
-        m_visualClassesDirty = true;
-    }
+    applyRows(record);
     const QJsonObject &value = record.viewModel;
     const QString activeClass = stringValue(value, "activeClass");
     const QString sessionLabel = stringValue(value, "sessionLabel");
@@ -205,17 +196,6 @@ void StandingsModel::apply(const ReplayRecord &record)
 
 QVariantList StandingsModel::visualClasses() const
 {
-    const auto projectionCopy = [this] {
-        QVariantList projection;
-        projection.reserve(m_visualClasses.size());
-        for (const QVariant &visualClass : m_visualClasses) {
-            projection.append(visualClass);
-        }
-        return projection;
-    };
-    if (!m_visualClassesDirty) {
-        return projectionCopy();
-    }
     double fastestSeconds = std::numeric_limits<double>::infinity();
     for (const QJsonObject &row : rows()) {
         const double candidate = lapSeconds(row.value(QStringLiteral("bestLapText")).toString());
@@ -280,9 +260,7 @@ QVariantList StandingsModel::visualClasses() const
         classes.append(QJsonObject{{QStringLiteral("vehicleClass"), group.vehicleClass},
                                    {QStringLiteral("rows"), group.rows}});
     }
-    m_visualClasses = classes.toVariantList();
-    m_visualClassesDirty = false;
-    return projectionCopy();
+    return classes.toVariantList();
 }
 
 RelativeModel::RelativeModel(QObject *parent)
@@ -295,7 +273,7 @@ void RelativeModel::apply(const ReplayRecord &record)
     if (record.widget != QStringLiteral("relative")) {
         return;
     }
-    (void)applyRows(record);
+    applyRows(record);
     const QString rowHeightMode = stringValue(record.viewModel, "rowHeightMode");
     const QVariantList columns = record.viewModel.value(QStringLiteral("columns")).toArray().toVariantList();
     if (m_rowHeightMode != rowHeightMode || m_columns != columns) {

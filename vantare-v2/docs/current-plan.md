@@ -1,3 +1,18 @@
+Nota ISA-751 / ISA-694 F4-6 (2026-08-21, implementada en rama de issue):
+- `SolveV2` asigna piloto por stint desde `PilotProfile v1` o entrada
+  manual/reference con procedencia. Ritmo base y consumo Fuel/VE del piloto
+  alimentan la misma función objetivo, autonomía, servicio y peso de F4-1..5.
+- Disponibilidad por tramos y máximos continuo/total son restricciones duras
+  con motivo; min/max de vueltas se aplican también. El modo mono-piloto
+  implícito conserva exactamente el cálculo anterior y el golden Orbit.
+- El caso de negocio pone al rápido alrededor de una ventana donde no está
+  disponible y demuestra el coste subóptimo en ritmo puro; otro caso prueba
+  que la eficiencia puede compensar ritmo. El oráculo sin poda incluye piloto,
+  exige paridad y demuestra `prunedStates > 0`; sensibilidad +0,20 s/vuelta.
+- Gates verdes: solver x100, Strategy+app, golden Orbit, vet focal, gofmt y
+  diff-check. Sin frontend, dependencias, PR, merge, promoción ni release.
+  Siguiente gate: review del orquestador de #751.
+
 Nota ISA-750 / ISA-694 F4-5 (2026-08-21, implementada en rama de issue):
 - `SolveV2` elige compuesto y juego físico por stint con parámetros de curva y
   delta `manual`/`reference` de D19. Reutiliza `internal/strategy/tyres` para

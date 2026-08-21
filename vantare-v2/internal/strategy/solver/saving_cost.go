@@ -100,10 +100,10 @@ func (input SolverInputV2) newSavingCost(options []SavingLevelOption, source Sav
 		if err != nil {
 			return savingCost{}, err
 		}
-		if fuelSaved > fuelPerLap {
+		if len(input.DriverProfiles) == 0 && fuelSaved > fuelPerLap {
 			return savingCost{}, fmt.Errorf("savingCost.levels[%d].fuelSavedPerLap exceeds base consumption", index)
 		}
-		if veSaved > vePerLap {
+		if len(input.DriverProfiles) == 0 && veSaved > vePerLap {
 			return savingCost{}, fmt.Errorf("savingCost.levels[%d].veSavedPerLap exceeds base consumption", index)
 		}
 		if fuelSaved == 0 && veSaved == 0 && option.TimeCostPerLap == 0 {

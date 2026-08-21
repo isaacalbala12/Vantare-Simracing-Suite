@@ -56,44 +56,53 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	if err != nil {
 		t.Fatalf("newTyreDecisionModel: %v", err)
 	}
-	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, fuelPerLap: fuel.perLap}
+	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight}
 	best := math.Inf(1)
 	var walk func(searchNode)
 	walk = func(node searchNode) {
-		for _, level := range saving.levels {
-			effectiveFuel := fuel.withPerLapSaving(level.fuelSavedPerLap)
-			effectiveVE := ve.withPerLapSaving(level.veSavedPerLap)
-			maxLaps := runnableLaps(input.RaceLaps-node.lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
-			for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
-				next, err := appendStint(node, stintLaps, input, costs, level)
-				if err != nil {
-					t.Fatalf("appendStint: %v", err)
-				}
-				next.lap = node.lap + stintLaps
-				next.fuel -= effectiveFuel.perLap * stintLaps
-				next.ve -= effectiveVE.perLap * stintLaps
-				if next.lap == input.RaceLaps {
-					if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds) < best {
-						best = next.total(input.Formation.Seconds)
+		drivers, err := newDriverDecisionModel(input, saving)
+		if err != nil {
+			t.Fatalf("newDriverDecisionModel: %v", err)
+		}
+		for _, driver := range drivers.order {
+			for _, level := range saving.levels {
+				effectiveFuel := fuel.withPerLap(driver.fuelPerLap - level.fuelSavedPerLap)
+				effectiveVE := ve.withPerLap(driver.vePerLap - level.veSavedPerLap)
+				maxLaps := runnableLaps(input.RaceLaps-node.lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+				for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
+					next, err := appendStint(node, stintLaps, input, costs, level, driver)
+					if err != nil {
+						t.Fatalf("appendStint: %v", err)
 					}
-					continue
-				}
-				if _, closed := input.firstClosedWindow(next.lap, next.windowMask); closed {
-					continue
-				}
-				if input.EventRules.MaxPitStops != nil && len(next.decision.PitStops) >= *input.EventRules.MaxPitStops {
-					continue
-				}
-				for _, tyreOption := range tyreModel.nextChoices(next.tyre) {
-					for _, fuelAmount := range serviceAmounts(next.fuel, fuel) {
-						for _, veAmount := range serviceAmounts(next.ve, ve) {
-							afterPit, err := appendPit(next, fuelAmount, veAmount, tyreOption, input)
-							if err != nil {
-								t.Fatalf("appendPit: %v", err)
+					next.lap = node.lap + stintLaps
+					next.fuel -= effectiveFuel.perLap * stintLaps
+					next.ve -= effectiveVE.perLap * stintLaps
+					if allowed, _, _ := input.applyDriverConstraints(node, &next, driver); !allowed {
+						continue
+					}
+					if next.lap == input.RaceLaps {
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds) < best {
+							best = next.total(input.Formation.Seconds)
+						}
+						continue
+					}
+					if _, closed := input.firstClosedWindow(next.lap, next.windowMask); closed {
+						continue
+					}
+					if input.EventRules.MaxPitStops != nil && len(next.decision.PitStops) >= *input.EventRules.MaxPitStops {
+						continue
+					}
+					for _, tyreOption := range tyreModel.nextChoices(next.tyre) {
+						for _, fuelAmount := range serviceAmounts(next.fuel, fuel) {
+							for _, veAmount := range serviceAmounts(next.ve, ve) {
+								afterPit, err := appendPit(next, fuelAmount, veAmount, tyreOption, input)
+								if err != nil {
+									t.Fatalf("appendPit: %v", err)
+								}
+								afterPit.fuel += fuelAmount
+								afterPit.ve += veAmount
+								walk(afterPit)
 							}
-							afterPit.fuel += fuelAmount
-							afterPit.ve += veAmount
-							walk(afterPit)
 						}
 					}
 				}
@@ -703,10 +712,10 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
 		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false, false) {
 		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false, false) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }

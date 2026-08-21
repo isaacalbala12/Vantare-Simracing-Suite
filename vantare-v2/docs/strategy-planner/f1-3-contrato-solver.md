@@ -237,10 +237,68 @@ demuestra ambos sentidos: con blandos solo 0,4 s/vuelta más rápidos gana el
 doble stint duro sin servicio; con 2 s/vuelta de ventaja compensa pagar el
 cambio a blandos.
 
+### Piloto por stint F4-6
+
+`DriverProfiles[]` fija el orden determinista de pilotos que el solver explora.
+Cada entrada enlaza `driverId` con exactamente una autoridad:
+
+- `profile: PilotProfileV1`, validado por su owner
+  `internal/strategy/pilotprofile`; o
+- `manual: ManualDriverProfile`, con ritmo base, consumo Fuel/VE y
+  procedencia/confianza `manual` o `reference`.
+
+Dos autoridades, IDs repetidos, un límite para un piloto inexistente o un
+ahorro superior al consumo de cualquiera de los pilotos fallan cerrados. El
+resultado devuelve `DriverProfileCost[]` con la fuente, ID de origen, cifras y
+procedencia usadas. `StintDecision.driver` identifica al piloto y el pit
+anterior conserva el piloto del stint siguiente.
+
+El ritmo base y el consumo efectivo se seleccionan antes de evaluar cada
+stint. Por tanto, el piloto cambia tanto el tiempo por vuelta como la autonomía,
+las cantidades de servicio y el coste de peso Fuel; curva de stint, compuesto
+y ahorro siguen aplicándose sobre esa misma evaluación. Sin `DriverProfiles`
+existe un único piloto implícito con los campos globales de F4-1..5: no añade
+ramas, no cambia los números ni el golden Orbit.
+
+`EventRules.DriverLimits[driverId]` aplica restricciones duras:
+
+- `unavailable[{fromLap,toLap}]` son tramos inclusivos ya resueltos a vueltas;
+  un piloto debe estar disponible durante todo su stint. La API F2(a) conserva
+  los tramos `ok/no` del documento v2 en minutos del día; la capa que prepare
+  el cálculo debe resolverlos contra el inicio/duración confirmados del evento
+  y nunca inventar esa conversión dentro del solver;
+- `maxContinuousTimeSeconds` acumula todo el tiempo efectivo al volante aunque
+  el mismo piloto atraviese una parada; cambiar de piloto reinicia el continuo;
+- `maxTotalTimeSeconds` acumula todos sus stints;
+- `minLaps/maxLaps` conservan los límites ya declarados por F1.3.
+
+El tiempo al volante incluye ritmo base, curva/degradación, delta de compuesto,
+peso Fuel y coste de ahorro. Excluye formación y servicio de pit. Una violación
+produce candidato inviable con motivo tipado: `driver_unavailable`,
+`driver_continuous_time`, `driver_total_time`, `driver_minimum_laps` o
+`driver_maximum_laps`.
+
+#### Espacio, poda, oráculo y sensibilidad
+
+La dimensión nueva multiplica cada frontera de stint por el número de pilotos;
+no genera permutaciones fuera de esas fronteras. La dominancia solo compara
+estados con el mismo piloto actual, tiempo continuo y mapa exacto de
+vueltas/segundos totales por piloto, además del estado Fuel/VE/neumáticos/reglas
+de F4-1..5. Es una poda conservadora: conserva todos los futuros distintos por
+disponibilidad o límites y todavía elimina servicios dominados.
+
+El oráculo pequeño recorre sin poda la misma dimensión piloto × ahorro × largo
+de stint × servicios × neumáticos. La prueba de paridad exige el mismo óptimo y
+`prunedStates > 0`. El caso de negocio asigna al rápido donde está disponible y
+fuerza al más lento en una ventana intermedia; otro caso demuestra que el menor
+consumo puede compensar el peor ritmo. La sensibilidad publica
+`driverPaceDeltaSeconds.<driverId>` con `delta=+0,20 s/vuelta` e impacto igual a
+las vueltas asignadas por el plan.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
-- **EventRules** (`eventRules`): `min/maxPitStops`, `requiredWindows [fromLap,toLap]`, `mandatoryCompounds`, `driverLimits{Min/MaxLaps, MaxTimeSeconds, unavailableWindows}`.
+- **EventRules** (`eventRules`): `min/maxPitStops`, `requiredWindows [fromLap,toLap]`, `mandatoryCompounds`, `driverLimits{min/maxLaps, maxContinuousTimeSeconds, maxTotalTimeSeconds, unavailable}`.
 - **ComputeBudget** (`budget.p95Millis`, `maxCandidates`, `maxIterations`): presupuesto p95 como parámetro.
 - **Projection/Observed**: familias degradadas D19 referenciadas sin duplicar tipos.
 
@@ -257,8 +315,8 @@ cambio a blandos.
 - `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido;
   `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente.
   F4-2 selecciona la curva de stint, F4-3 suma el peso de Fuel, F4-4 elige el
-  ahorro y F4-5 añade compuesto/inventario/reglas. Pilotos y clima permanecen
-  en sus extensiones F4 posteriores. Se mantiene
+  ahorro, F4-5 añade compuesto/inventario/reglas y F4-6 asigna piloto. Clima
+  permanece en su extensión F4 posterior. Se mantiene
   `tiempo_total = Σ ritmo base + Σ delta compuesto + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ pit + formación`.
 - F4-4 añade el ahorro y su procedencia sin cambiar el wire de
   Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.

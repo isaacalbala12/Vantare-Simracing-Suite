@@ -62,6 +62,33 @@ type immediateAudioPlayer struct{}
 
 func (immediateAudioPlayer) PlayContext(context.Context, string) error { return nil }
 
+type firstStartedAudioGate struct {
+	once    sync.Once
+	started chan struct{}
+	release chan struct{}
+	result  chan error
+}
+
+func (gate *firstStartedAudioGate) PlayContext(ctx context.Context, _ string) error {
+	first := false
+	gate.once.Do(func() {
+		first = true
+		close(gate.started)
+	})
+	if !first {
+		return nil
+	}
+	select {
+	case <-gate.release:
+		gate.result <- nil
+		return nil
+	case <-ctx.Done():
+		err := context.Cause(ctx)
+		gate.result <- err
+		return err
+	}
+}
+
 func TestCanonicalPresentationIsIdenticalForWailsAndSSEFanout(t *testing.T) {
 	emitter := &mockEmitter{}
 	svc := service.NewEngineerService(emitter)
@@ -567,6 +594,63 @@ func TestFamilyFuelRefuelBeforeStartedCancelsObsoleteOneShotsAndRearms(t *testin
 	}
 
 refuelDelivered:
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 4, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	waitForIntent(t, notifications, "fuel.low_1l")
+}
+
+func TestFamilyStartedFuelSurvivesSemanticResetAndNextCycleDelivers(t *testing.T) {
+	player := &firstStartedAudioGate{
+		started: make(chan struct{}), release: make(chan struct{}), result: make(chan error, 1),
+	}
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetAudioResolver(staticResolver{path: "cached.wav"})
+	svc.SetAudioPlayer(player)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 1, 100, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-player.started:
+	case <-time.After(time.Second):
+		t.Fatal("low-fuel delivery did not reach audio after started and UI")
+	}
+	waitForIntent(t, notifications, "fuel.low_2l")
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 3, 1, 15, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-player.result:
+		t.Fatalf("semantic reset cancelled delivery after started: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(player.release)
+	select {
+	case err := <-player.result:
+		if err != nil {
+			t.Fatalf("started delivery completion = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("started delivery did not complete after semantic reset")
+	}
+
+	waitForIntent(t, notifications, "fuel.low_half_tank")
 	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 4, 1, 0.5, 100)); err != nil {
 		t.Fatal(err)
 	}

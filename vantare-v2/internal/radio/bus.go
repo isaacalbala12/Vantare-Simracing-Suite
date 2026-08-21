@@ -56,16 +56,17 @@ func (item *Item) Started() {
 
 // Bus is a bounded deterministic scheduler safe for concurrent submissions.
 type Bus struct {
-	mu          sync.Mutex
-	limits      Limits
-	clock       Clock
-	pending     []queued
-	cooldowns   map[string]int64
-	seq         uint64
-	priorityRun int
-	activeSeq   uint64
-	active      RadioMessage
-	cancel      context.CancelCauseFunc
+	mu            sync.Mutex
+	limits        Limits
+	clock         Clock
+	pending       []queued
+	cooldowns     map[string]int64
+	seq           uint64
+	priorityRun   int
+	activeSeq     uint64
+	active        RadioMessage
+	activeStarted bool
+	cancel        context.CancelCauseFunc
 }
 
 // NewBus creates an empty bus. Nil clock selects the system clock.
@@ -174,10 +175,11 @@ func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 	ctx, cancel := context.WithCancelCause(parent)
 	bus.activeSeq = selected.seq
 	bus.active = selected.message
+	bus.activeStarted = false
 	bus.cancel = cancel
 	var once, startOnce sync.Once
 	item := &Item{Message: selected.message, Context: ctx}
-	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.message) }) }
+	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.seq, selected.message) }) }
 	item.done = func() { once.Do(func() { bus.finish(selected.seq) }) }
 	return item, true
 }
@@ -192,9 +194,12 @@ func (bus *Bus) dropExpired(now int64) {
 	}
 }
 
-func (bus *Bus) markStarted(message RadioMessage) {
+func (bus *Bus) markStarted(seq uint64, message RadioMessage) {
 	bus.mu.Lock()
 	defer bus.mu.Unlock()
+	if bus.activeSeq == seq {
+		bus.activeStarted = true
+	}
 	bus.cooldowns[message.Intent] = bus.clock.NowMS()
 	for index := 0; index < len(bus.pending); {
 		pending := bus.pending[index].message
@@ -214,6 +219,7 @@ func (bus *Bus) finish(seq uint64) {
 		bus.cancel = nil
 		bus.active = RadioMessage{}
 		bus.activeSeq = 0
+		bus.activeStarted = false
 	}
 }
 
@@ -256,7 +262,7 @@ func (bus *Bus) ResetIntents(cause error, intents ...string) {
 		delete(bus.cooldowns, intent)
 	}
 	bus.priorityRun = 0
-	if bus.cancel != nil {
+	if bus.cancel != nil && !bus.activeStarted {
 		if _, reset := set[bus.active.Intent]; reset {
 			bus.cancel(cause)
 		}

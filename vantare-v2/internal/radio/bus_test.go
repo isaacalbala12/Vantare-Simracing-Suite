@@ -340,6 +340,28 @@ func TestResetIntentsPreservesUnrelatedActivePendingAndCooldown(t *testing.T) {
 	}
 }
 
+func TestResetIntentsPreservesMatchingActiveAfterStarted(t *testing.T) {
+	limits := DefaultLimits()
+	limits.Cooldowns = map[string]time.Duration{"fuel.low_1l": time.Second}
+	clock := newFakeClock(100)
+	bus := newTestBus(t, limits, clock)
+	_, _ = bus.Submit(testMessage("active", "fuel.low_1l", "player", PriorityP2, 100))
+	active, ok := bus.Next(context.Background())
+	if !ok {
+		t.Fatal("missing active fuel delivery")
+	}
+	active.Started()
+	bus.ResetIntents(ErrPolicyRejected, "fuel.low_1l")
+	if cause := context.Cause(active.Context); cause != nil {
+		t.Fatalf("matching active was cancelled after started: %v", cause)
+	}
+	active.Done()
+	retry := testMessage("retry", "fuel.low_1l", "player", PriorityP2, 101)
+	if result, err := bus.Submit(retry); err != nil || !result.Accepted {
+		t.Fatalf("semantic reset did not clear matching cooldown: %+v, %v", result, err)
+	}
+}
+
 func TestStartedACKRemovesDuplicateQueuedBeforeOneShotCommit(t *testing.T) {
 	clock := newFakeClock(100)
 	bus := newTestBus(t, DefaultLimits(), clock)

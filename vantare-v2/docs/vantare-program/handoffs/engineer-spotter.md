@@ -22,12 +22,14 @@ CrewChief, Pit Manager y wake word.
 ## Estado
 
 ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
-aislado: PTT Windows F24, ventana máxima de 5 s, host hijo con PID/nonce y
-teardown total, router `engineer.dialogue.v1` query-only, presentación
-registrable en `radio.v1` y health agregado sin texto. El backend distribuido
-declara `available:false`: WASAPI, artefactos Whisper, QueryPort canónico y
-wake acústico siguen pendientes. Los fakes demuestran el flujo completo, pero
-no son evidencia de micrófono/STT real ni cambian el NO-GO humano ENG-13.
+aislado. La corrección de la review adversarial cierra payloads por intent,
+acota readiness/STT, arranca host y poller sin bloquear Telemetry Core,
+reconcilia timeout PTT antes de release, elimina toda superficie con flag OFF
+y valida F24 contra hotkeys configuradas antes de construir recursos. El
+reader Windows se sondea con ON aunque el hijo declare `available:false`;
+WASAPI, Whisper, QueryPort canónico y wake acústico siguen pendientes. Los
+fakes demuestran el flujo completo, pero no son evidencia de micrófono/STT ni
+pulsación física y no cambian el NO-GO humano ENG-13.
 Contrato y gates: `docs/engineer/voice-input-isa-719.md`. PR draft #756.
 
 ISA-718 / F4 implementa el motor declarativo de familias sobre `radio.v1` para
@@ -115,11 +117,10 @@ productivo sin crear un segundo reader.
 - Rama activa: `vantareapp/isa-719-voz-entrada-experimental`.
 - Base inicial: `origin/nightly@4a697b6a3697ae404302acd5bcc5caf67624a59c`.
 - Entrega: F5 #719 implementada en la rama aislada; PR draft #756 abierto a
-  `nightly`. El backend real sigue unavailable; vet, focal, race, internal,
-  global, frontend build y diff-check pasan localmente. CI remoto verde sobre
-  el head de implementación `a1099e71`: run 32520821870, gate bloqueante,
-  política de promoción y GitGuardian PASS. El único cambio posterior registra
-  ese resultado. F3/F4 permanecen como entregas separadas incluidas en esta base.
+  `nightly`. La review independiente rechazó el primer corte con 5 P1 y 2 P2;
+  los siete tienen regresión y corrección local. El backend real sigue
+  unavailable; gates globales y CI del nuevo HEAD quedan por ejecutar. F3/F4
+  permanecen como entregas separadas incluidas en esta base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -373,15 +374,14 @@ integración en `nightly` o promoción.
 
 ## Última actualización
 
-2026-08-21, ISA-719 / F5 implementa el contrato inyectable de voz de entrada
-tras `-engineer-voice-input`, default OFF. PTT F24 real, límite de 5 s,
-proceso hijo oculto/de prioridad baja con PID+nonce, router query-only, salida
-registrable por `radio.v1`, health agregado y teardown tienen regresiones
-normales y race focal. El hijo distribuido declara unavailable porque no hay
-backend WASAPI/Whisper empaquetado; wake es un placeholder sintético exacto y
-el QueryPort productivo sigue fail-closed. ENG-13 continúa NO-GO; sin micrófono
-real demostrado, merge ni promoción. Commits `549f36f4` y `fe20fa35`; PR
-draft #756, CI remoto pendiente.
+2026-08-21, ISA-719 / F5 corrige los 5 P1 y 2 P2 de la review adversarial del
+PR #756: output allowlist por intent, límite honesto ante dumps, readiness y
+STT acotados, inicio asíncrono, timeout/release PTT reconciliado, polling F24
+real aunque el helper esté unavailable, cero superficie OFF y detección de
+conflictos con hotkeys cargadas. WASAPI, Whisper, wake acústico, QueryPort,
+pulsación física y ENG-13 continúan pendientes/NO-GO. Regresiones focales y
+race focal pasan; gates globales y CI del nuevo HEAD aún pendientes. Sin merge
+ni promoción.
 
 2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
 el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia

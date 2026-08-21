@@ -4,20 +4,22 @@
   "type": "feature",
   "summary": "La app incorpora un carril experimental y aislado para probar entrada de voz tras un único flag.",
   "technicalNotes": [
-    "-engineer-voice-input está desactivado por defecto y su estado agregado aparece como experimental en /api/engineer/health.",
-    "PTT reutiliza los readers Windows existentes; F24 abre una ventana memoria-only de hasta cinco segundos y soltarla la cierra.",
-    "El host hijo verifica PID y nonce, usa prioridad baja y se recolecta por completo durante cancelación o shutdown.",
-    "engineer.dialogue.v1 permanece query-only: las acciones de voz fallan cerradas y los resultados usan la presentación registrable de radio.v1.",
-    "Audio y transcripciones no se escriben a disco ni aparecen en logs o health."
+    "-engineer-voice-input está desactivado por defecto; sin el flag no se construye ni se expone ninguna superficie de voz en health.",
+    "Con el flag, el reader Windows sondea F24 aunque el backend de micrófono no esté disponible; un conflicto con hotkeys configuradas degrada el carril antes de construir recursos.",
+    "El host hijo verifica PID y nonce, tiene deadlines propios de readiness y STT, arranca sin bloquear telemetría y se recolecta por completo durante cancelación o shutdown.",
+    "engineer.dialogue.v1 permanece query-only: las acciones fallan cerradas y radio.v1 solo recibe claves de respuesta permitidas por cada intent, nunca slots pronunciados.",
+    "Audio y transcripciones no se escriben a disco ni aparecen en logs o health; los buffers mutables se ponen a cero tras uso, sin prometer control sobre dumps del sistema."
   ],
   "testing": [
-    "Sin el flag, comprobar voiceInput.state=disabled y ausencia de proceso hijo.",
-    "Con el flag en este corte, comprobar voiceInput.state=unavailable y que el hijo termina, porque WASAPI/Whisper aún no están empaquetados.",
-    "Ejecutar los tests focales normales y -race para probar PTT, wake sintético, límite de cinco segundos, router, radio y teardown."
+    "Sin el flag, comprobar que health omite voiceInput y no se construye el proceso hijo.",
+    "Con el flag en este corte, comprobar voiceInput.state=unavailable, polling de F24 y que el hijo termina, porque WASAPI/Whisper aún no están empaquetados.",
+    "Ejecutar los tests focales normales y -race para probar conflictos, timeout antes de release, deadlines, wake sintético, router, allowlists, radio y teardown."
   ],
   "knownLimitations": [
     "El backend WASAPI y whisper.cpp real no están operativos ni empaquetados en este corte; la ruta real falla cerrada.",
     "El wake detector actual es solo un placeholder exacto para eventos sintéticos, no un detector acústico.",
+    "La prueba automática acredita composición y polling del reader F24, no una pulsación física ni captura de micrófono.",
+    "Los dumps de proceso configurados por el usuario o Windows quedan fuera del control de la política memory-only.",
     "ENG-13 FAR/FRR humano sigue NO-GO; no se autoriza release ni beta pública de voz de entrada."
   ]
 }

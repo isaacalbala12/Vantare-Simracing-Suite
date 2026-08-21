@@ -18,6 +18,8 @@ import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
 } from "../telemetry-transport/source-status";
+import { createOrbitCalculationTestClient } from "../hub/strategy-orbit/strategy-orbit-calculation.test-support";
+import type { StrategyApplicationCommandV1 } from "../strategy/strategy-application-client";
 
 setWailsRuntimeMockActive(true);
 licenseDebugWarn(
@@ -126,6 +128,13 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   const fail = (code: string, field: string, message: string) => {
     broadcast("strategy:application:error", { commandId, code, field, message });
   };
+
+  if (operation === "calculate_orbit") {
+    void createOrbitCalculationTestClient()
+      .execute(command as unknown as StrategyApplicationCommandV1<unknown>)
+      .then((result) => broadcast("strategy:application:result", result));
+    return;
+  }
 
   if (operation === "open" || operation === "restore") {
     const draftId = typeof command.draftId === "string" ? command.draftId : "";

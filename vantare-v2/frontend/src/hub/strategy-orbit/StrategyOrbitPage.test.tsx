@@ -7,13 +7,16 @@ import type { StrategyRoster } from "./strategy-orbit-bridge";
 import { createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import type {
   StrategyApplicationCommandV1,
+  StrategyApplicationClient,
   StrategyApplicationResultV1,
 } from "../../strategy/strategy-application-client";
+import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
   createDefaultStrategyEditorDocument,
   type StrategyEditorDocument,
 } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft } from "../../strategy/strategy-editor-store";
+import { createOrbitCalculationTestClient } from "./strategy-orbit-calculation.test-support";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
@@ -107,14 +110,21 @@ const ROSTER: StrategyRoster = {
   ],
 };
 
-function mount(roster: StrategyRoster | null = ROSTER) {
+function mount(
+  roster: StrategyRoster | null = ROSTER,
+  applicationClient: StrategyApplicationClient<unknown> = createOrbitCalculationTestClient(),
+) {
   const slot = document.createElement("div");
   slot.id = STRATEGY_CONTEXT_SLOT_ID;
   document.body.append(slot);
   return render(
     <I18nProvider>
       <ToastProvider>
-        <StrategyOrbitPage roster={roster} runtimeFactory={memoryRuntime} />
+        <StrategyOrbitPage
+          applicationClient={applicationClient}
+          roster={roster}
+          runtimeFactory={memoryRuntime}
+        />
       </ToastProvider>
     </I18nProvider>,
   );
@@ -148,6 +158,28 @@ afterEach(() => {
 });
 
 describe("StrategyOrbitPage · Resumen", () => {
+  it("muestra loading y después el error tipado del motor sin cifras de fallback", async () => {
+    let rejectCalculation: (error: Error) => void = () => undefined;
+    const client: StrategyApplicationClient<unknown> = {
+      execute: () => new Promise((_resolve, reject) => { rejectCalculation = reject; }),
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    mount(ROSTER, client);
+    expect(await screen.findByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-stint-0")).toBeNull();
+
+    rejectCalculation(new StrategyApplicationError(
+      "calculation_invalid",
+      "input.variants.0.order.1",
+      "The Strategy calculation input is invalid.",
+    ));
+    const error = await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(error.textContent).toContain("The Strategy calculation input is invalid.");
+    expect(error.textContent).toContain("calculation_invalid · input.variants.0.order.1");
+    expect(screen.queryByTestId("orbit-stint-0")).toBeNull();
+  });
+
   it("entra directa a la última estrategia con cabecera de evento y stints", async () => {
     await mounted();
 

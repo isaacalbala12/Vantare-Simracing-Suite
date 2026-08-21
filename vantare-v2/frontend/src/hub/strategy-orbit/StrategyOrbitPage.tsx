@@ -51,6 +51,7 @@ import {
 import type { StrategyEditorDocument, StrategyTyre } from "../../strategy/strategy-editor";
 import { assertPlannable, StrategyTyreError, type StrategyCorner } from "../../strategy/strategy-tyre";
 import {
+  calculateStrategyOrbit,
   createStrategyOrbitApplicationClient,
   subscribeToStrategyRoster,
   type StrategyRoster,
@@ -87,7 +88,11 @@ import {
   rollbackOrbitLegacyMigration,
   type PreparedOrbitLegacyMigration,
 } from "./strategy-orbit-migration";
-import type { StrategyLegacyMigrationPreviewV1 } from "../../strategy/strategy-application-client";
+import type {
+  StrategyApplicationClient,
+  StrategyLegacyMigrationPreviewV1,
+  StrategyOrbitCalculationResultV1,
+} from "../../strategy/strategy-application-client";
 import {
   buildRecommendedEvents,
   type RecommendedEvent,
@@ -97,17 +102,13 @@ import {
   addAvailability,
   AVAILABILITY_FROM,
   AVAILABILITY_TO,
-  buildPlan,
   clockTime,
-  compareStrategies,
-  distribution,
+  distributionView,
   hhmm,
   lapTime,
+  orbitCalculationInput,
   ORBIT_CORNERS,
   parseHhmm,
-  pitWindowClock,
-  pitWindowLap,
-  rotateOrder,
   stintClock,
   tyreCondition,
   tyreUses,
@@ -115,7 +116,6 @@ import {
   type AvailabilityState,
   type OrbitCorner,
   type StrategyDriver,
-  type StrategyPlan,
   type StrategyVariant,
   type TyreAssignments,
 } from "./strategy-orbit-model";
@@ -238,24 +238,35 @@ export interface StrategyOrbitPageProps {
   runtimeFactory?: () => StrategyEditorRuntime;
   /** Evento y pilotos ya resueltos (tests y harness); si no, llega por el puente. */
   roster?: StrategyRoster | null;
+  /** Cliente inyectable para tests; producción usa siempre el cliente v2 Wails. */
+  applicationClient?: StrategyApplicationClient<unknown>;
 }
 
 /**
  * Estrategia de Command Orbit (`15-briefings/07-estrategia.md`, parte A).
  *
- * El inventario de neumáticos, su legalidad y su condición son del dominio
- * real (`strategy/strategy-editor.ts`, `strategy-tyre.ts`); el reparto de
- * vueltas y la rotación de pilotos, que el contrato no modela, viven en
- * `strategy-orbit-model.ts` con los casos a–d de `13.5`.
+ * El inventario de neumáticos y su legalidad son del dominio real
+ * (`strategy/strategy-editor.ts`, `strategy-tyre.ts`). Vueltas, stints,
+ * rotación, Fuel, ventanas y comparaciones llegan del motor Go por el cliente
+ * de aplicación v2; esta página solo conserva interacción y presentación.
  */
-export function StrategyOrbitPage({ runtimeFactory, roster: injected }: StrategyOrbitPageProps) {
+export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFactory, roster: injected }: StrategyOrbitPageProps) {
   const { t, locale } = useI18n();
   const toast = useToast();
   const contextSlot = useOrbitSlot(STRATEGY_CONTEXT_SLOT_ID);
   const calendar = useCalendarStarts();
 
-  const [migrationClient] = useState(() => createStrategyOrbitApplicationClient<unknown>());
-  useEffect(() => () => migrationClient.dispose(), [migrationClient]);
+  const [applicationClient] = useState(() => injectedClient ?? createStrategyOrbitApplicationClient<unknown>());
+  const applicationMounted = useRef(false);
+  useEffect(() => {
+    applicationMounted.current = true;
+    return () => {
+      applicationMounted.current = false;
+      queueMicrotask(() => {
+        if (!injectedClient && !applicationMounted.current) applicationClient.dispose();
+      });
+    };
+  }, [applicationClient, injectedClient]);
   const [migration, setMigration] = useState<
     | { status: "idle" }
     | { status: "loading"; message: string }
@@ -313,36 +324,36 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const previewMigration = useCallback(async () => {
     setMigration({ status: "loading", message: t("strategy.migration.reading") });
     try {
-      const prepared = await previewOrbitLegacyMigration(migrationClient);
+      const prepared = await previewOrbitLegacyMigration(applicationClient);
       setMigration(prepared.preview.alreadyImported
         ? { status: "success", result: prepared.preview }
         : { status: "preview", prepared });
     } catch (error) {
       setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
     }
-  }, [migrationClient, t]);
+  }, [applicationClient, t]);
 
   const confirmMigration = useCallback(async (prepared: PreparedOrbitLegacyMigration) => {
     setMigration({ status: "loading", message: t("strategy.migration.committing") });
     try {
-      const result = await commitOrbitLegacyMigration(migrationClient, prepared);
+      const result = await commitOrbitLegacyMigration(applicationClient, prepared);
       setLegacyReadOnly(true);
       setMigration({ status: "success", result });
     } catch (error) {
       setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
     }
-  }, [migrationClient, t]);
+  }, [applicationClient, t]);
 
   const rollbackMigration = useCallback(async (journalId: string) => {
     setMigration({ status: "loading", message: t("strategy.migration.rollingBack") });
     try {
-      const result = await rollbackOrbitLegacyMigration(migrationClient, journalId);
+      const result = await rollbackOrbitLegacyMigration(applicationClient, journalId);
       setLegacyReadOnly(false);
       setMigration({ status: "success", result });
     } catch (error) {
       setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
     }
-  }, [migrationClient, t]);
+  }, [applicationClient, t]);
 
   // El roster del puente entra como un evento más y ya no manda sobre la vista.
   const imported = useRef<string | null>(null);
@@ -371,28 +382,81 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     [eventRecord],
   );
 
-  // ── estrategias (reparto, overrides y neumáticos) ───────────────────────
-  // El inventario llega después del evento: mientras una estrategia no tenga
-  // reparto propio se le calcula el de partida al vuelo, sin persistir nada
-  // (se guarda en cuanto el usuario toca una esquina).
+  // ── estrategias editables ────────────────────────────────────────────────
   const variants = useMemo<Record<string, StrategyVariant>>(() => {
     const list = eventRecord?.strategies ?? [];
-    return Object.fromEntries(
-      list.map((item) => {
-        if (Object.keys(item.tyres).length > 0 || !strategyEvent || inventory.length === 0) {
-          return [item.id, item];
-        }
-        const stints = buildPlan(strategyEvent, driversById, item).stints.length;
-        return [item.id, { ...item, tyres: defaultTyres(stints, inventory) }];
-      }),
-    );
-  }, [driversById, eventRecord, inventory, strategyEvent]);
+    return Object.fromEntries(list.map((item) => [item.id, item]));
+  }, [eventRecord]);
   const activeId = eventRecord
     ? (eventRecord.activeStrategyId && variants[eventRecord.activeStrategyId]
         ? eventRecord.activeStrategyId
         : (eventRecord.strategies[0]?.id ?? null))
     : null;
-  const active = activeId ? variants[activeId] : undefined;
+  const storedActive = activeId ? variants[activeId] : undefined;
+
+  // ── cálculo Go (manual + solver) ─────────────────────────────────────────
+  const calculationSequence = useRef(0);
+  const [calculationRetry, setCalculationRetry] = useState(0);
+  const calculationInput = useMemo(
+    () => strategyEvent && eventRecord && activeId
+      ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId)
+      : null,
+    [activeId, eventRecord, strategyEvent, variants],
+  );
+  const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
+  const [calculation, setCalculation] = useState<
+    | { status: "idle" | "loading" }
+    | { status: "success"; key: string; result: StrategyOrbitCalculationResultV1 }
+    | { status: "error"; key: string; message: string; code?: string; field?: string }
+  >({ status: "idle" });
+  useEffect(() => {
+    if (!calculationInput) {
+      setCalculation({ status: "idle" });
+      return;
+    }
+    const commandId = `orbit-calculate-${++calculationSequence.current}`;
+    let current = true;
+    setCalculation({ status: "loading" });
+    void calculateStrategyOrbit(
+      applicationClient,
+      commandId,
+      calculationInput,
+    ).then(
+      (result) => {
+        if (current) setCalculation({ status: "success", key: calculationKey, result });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const typed = error instanceof Error ? error : new Error(String(error));
+        const metadata = typed as Error & { code?: string; field?: string };
+        setCalculation({
+          status: "error",
+          key: calculationKey,
+          message: typed.message,
+          ...(typeof metadata.code === "string"
+            ? { code: metadata.code }
+            : {}),
+          ...(typeof metadata.field === "string"
+            ? { field: metadata.field }
+            : {}),
+        });
+      },
+    );
+    return () => {
+      current = false;
+      applicationClient.cancel(commandId);
+    };
+  }, [applicationClient, calculationInput, calculationKey, calculationRetry]);
+
+  const calculationCurrent = "key" in calculation && calculation.key === calculationKey;
+  const plansById = calculation.status === "success" && calculationCurrent ? calculation.result.plans : {};
+  const plan = activeId ? plansById[activeId] ?? null : null;
+  const active = useMemo(() => {
+    if (!storedActive || !plan || Object.keys(storedActive.tyres).length > 0 || inventory.length === 0) {
+      return storedActive;
+    }
+    return { ...storedActive, tyres: defaultTyres(plan.stints.length, inventory) };
+  }, [inventory, plan, storedActive]);
 
   const eventId = eventRecord?.id ?? null;
   const patchStrategies = useCallback(
@@ -417,19 +481,13 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           if (item.id !== activeId) return item;
           // El reparto de neumáticos de partida se calcula al vuelo: al
           // escribir hay que partir de la estrategia efectiva, no de la guardada.
-          const patched = change(variants[item.id] ?? item);
+          const patched = change(item.id === activeId ? (active ?? item) : item);
           return dirty ? { ...patched, state: "draft" as const } : patched;
         }),
       );
     },
-    [activeId, patchStrategies, variants],
+    [active, activeId, patchStrategies],
   );
-
-  // ── plan derivado ───────────────────────────────────────────────────────
-  const plan = useMemo(() => {
-    if (!strategyEvent || !active) return null;
-    return buildPlan(strategyEvent, driversById, active);
-  }, [active, driversById, strategyEvent]);
 
   // ── interacción ─────────────────────────────────────────────────────────
   const [tab, setTab] = useState<StrategyTab>("overview");
@@ -477,7 +535,6 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       const name = formatMessage(t("strategy.cards.newName"), {
         n: Object.keys(variants).length + 1,
       });
-      const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order: base, overrides: {} });
       patchStrategies(
         (list) => [
           ...list,
@@ -489,7 +546,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             order: base,
             state: "draft" as const,
             overrides: {},
-            tyres: defaultTyres(fresh.stints.length, inventory),
+            tyres: {},
           },
         ],
         newId,
@@ -500,7 +557,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         toast.show(t("strategy.cards.created"), formatMessage(t("strategy.cards.createdHint"), { name }));
       }
     },
-    [driversById, eventRecord, inventory, patchStrategies, strategyEvent, t, toast, variants],
+    [eventRecord, patchStrategies, strategyEvent, t, toast, variants],
   );
 
   // ── comparación ─────────────────────────────────────────────────────────
@@ -645,13 +702,12 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     if (!strategyEvent || !activeId) return;
     const order = baseOrder(activeId);
     if (order.length === 0) return;
-    const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order, overrides: {} });
     update(
       (variant) => ({
         ...variant,
         order,
         overrides: {},
-        tyres: defaultTyres(fresh.stints.length, inventory),
+        tyres: {},
         state: "ok",
       }),
       false,
@@ -659,20 +715,20 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     setEditing(-1);
     setPicked(null);
     toast.show(t("strategy.reset"), t("strategy.resetHint"));
-  }, [activeId, baseOrder, driversById, inventory, strategyEvent, t, toast, update]);
+  }, [activeId, baseOrder, strategyEvent, t, toast, update]);
 
   const spread = useCallback(() => {
     if (!plan || !activeId) return;
     const order = baseOrder(activeId);
     if (order.length === 0) return;
-    update((variant) => ({ ...variant, order: rotateOrder(order, plan.stints.length) }));
+    update((variant) => ({ ...variant, order: plan.stints.map((stint) => stint.d) }));
   }, [activeId, baseOrder, plan, update]);
 
   const setDriver = useCallback(
     (index: number, driverId: string) => {
       if (!plan) return;
       update((variant) => {
-        const order = rotateOrder(variant.order, plan.stints.length);
+        const order = plan.stints.map((stint) => stint.d);
         order[index] = driverId;
         return { ...variant, order };
       });
@@ -1704,12 +1760,44 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   );
 
   // ── entrada: menú, asistente o formulario ───────────────────────────────
-  if (!eventRecord || !strategyEvent || !active || !plan) {
+  if (!eventRecord || !strategyEvent || !storedActive) {
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         {form ? eventForm : (wizardView ?? entryMenu)}
         {deleteDialog}
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (!calculationCurrent) {
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
+          <p role="status">{t("strategy.calculation.loadingHint")}</p>
+        </Surface>
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (calculation.status === "error" || !active || !plan) {
+    const message = calculation.status === "error" ? calculation.message : t("strategy.calculation.missing");
+    const detail = calculation.status === "error"
+      ? [calculation.code, calculation.field].filter(Boolean).join(" · ")
+      : "";
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        <Surface data-testid="orbit-strategy-calculation-error" title={t("strategy.calculation.error")}>
+          <p role="alert">{message}</p>
+          {detail ? <p className="orbit-strategy__meta">{detail}</p> : null}
+          <Button onClick={() => setCalculationRetry((value) => value + 1)} variant="primary">
+            {t("strategy.calculation.retry")}
+          </Button>
+        </Surface>
         {migrationDialog}
       </div>
     );
@@ -1723,18 +1811,10 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
-  const plansById: Record<string, StrategyPlan> = Object.fromEntries(
-    cards.map((variant) => [variant.id, buildPlan(event, driversById, variant)]),
-  );
   const others = cards.filter((variant) => variant.id !== active.id);
   const compare = others.find((variant) => variant.id === compareId) ?? others[0];
-  const verdict = compare
-    ? compareStrategies(
-        { id: active.id, plan },
-        { id: compare.id, plan: plansById[compare.id] },
-        event.pitS,
-        drivers,
-      )
+  const verdict = compare && calculation.status === "success" && calculationCurrent
+    ? calculation.result.comparisons[compare.id] ?? null
     : null;
   const verdictText = verdict
     ? formatMessage(t("strategy.cards.verdict"), {
@@ -1774,7 +1854,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         return base;
       })();
   const spanMin = Math.ceil(event.durationMin * 1.02);
-  const slices = distribution(plan, drivers);
+  const slices = distributionView(plan, drivers);
   const donutSlices: DonutSlice[] = slices.map((slice) => ({
     id: slice.driver.id,
     label: `${slice.driver.name.split(" ")[0]} · ${
@@ -2269,7 +2349,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                           <span className="orbit-stint__k">{t("strategy.stints.pitWindow")}</span>
                           <span className="orbit-stint__v orbit-stint__v--num">
                             {index < plan.stints.length - 1
-                              ? `${hhmm(pitWindowClock(event, stint))} (~V${pitWindowLap(stint)})`
+                              ? `${hhmm(stintClock(event, stint.pitWindowSeconds))} (~V${stint.pitWindowLap})`
                               : "—"}
                           </span>
                         </span>

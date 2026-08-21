@@ -133,7 +133,7 @@ describe("curation ingestion adversarial protocol", () => {
     expect(await list("bundles/")).toHaveLength(0);
   });
 
-  it("closes IP/global quota abuse even when every identity is new", async () => {
+  it("closes IP quota abuse even when every identity is new", async () => {
     const sharedIP = "203.0.113.7";
     for (let index = 0; index < 2; index++) {
       const owner = identity(`quota-${index}`);

@@ -7,7 +7,8 @@ param(
     [ValidateSet('overtake', 'full', 'enter', 'retirement', 'stress')]
     [string[]]$Scenarios = @('overtake', 'full', 'enter', 'retirement'),
     [string]$StressReplay = '',
-    [string]$StressManifest = ''
+    [string]$StressManifest = '',
+    [ValidateRange(1, 120)][int]$TimeoutSeconds = 45
 )
 
 $ErrorActionPreference = 'Stop'
@@ -75,10 +76,10 @@ try {
             $process = [Diagnostics.Process]::Start($startInfo)
             $stdout = $process.StandardOutput.ReadToEndAsync()
             $stderr = $process.StandardError.ReadToEndAsync()
-            if (-not $process.WaitForExit(30000)) {
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
                 $process.Kill($true)
                 $process.WaitForExit()
-                throw "candidate timed out after 30 seconds: $scenario/$repetition"
+                throw "candidate timed out after $TimeoutSeconds seconds: $scenario/$repetition"
             }
             $exitCode = $process.ExitCode
             $console = @($stdout.Result, $stderr.Result) | Where-Object { $_.Length -gt 0 }
@@ -121,6 +122,7 @@ $runManifest = [ordered]@{
     createdAt = [DateTimeOffset]::UtcNow.ToString('O')
     commit = $commit
     repetitions = $Repetitions
+    timeoutSeconds = $TimeoutSeconds
     scenarios = @($Scenarios)
     executable = [ordered]@{ file = [IO.Path]::GetFileName($exe); sha256 = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant() }
     corpora = @(

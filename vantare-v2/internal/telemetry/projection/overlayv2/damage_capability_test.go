@@ -56,25 +56,25 @@ func TestDamageIsNotACapabilityBecauseTheCanonicalHasNoDamageSignal(t *testing.T
 	}
 }
 
-// TestCanonicalVehicleStateStillCarriesNoDamage is the tripwire on the verdict
-// above: the day a damage field lands in the canonical vehicle state, this
-// test fails and the v2 contract owes it a builder.
-func TestCanonicalVehicleStateStillCarriesNoDamage(t *testing.T) {
+// TestCanonicalVehicleStateNowCarriesDamage verifies the ISA-696 promotion:
+// damage is now observed from LMU SHM and carried in the canonical vehicle state.
+// The tripwire from F8 is retired; T3 will publish it as a capability and builder.
+func TestCanonicalVehicleStateNowCarriesDamage(t *testing.T) {
 	t.Parallel()
 
 	fields := canonicalStructFields(t, "../../core/reducer.go", "VehicleState")
 	if len(fields) == 0 {
 		t.Fatal("could not read core.VehicleState; the verdict on damage cannot be checked")
 	}
-	// The names damage would arrive under: the concept itself, or the two
-	// shapes Engineer already reads from LMU (mDentSeverity, detached wheels).
+	found := false
 	for _, field := range fields {
-		lowered := strings.ToLower(field)
-		for _, marker := range []string{"damage", "dentseverity", "detached"} {
-			if strings.Contains(lowered, marker) {
-				t.Fatalf("core.VehicleState now carries %q: v2 owes damage a builder", field)
-			}
+		if field == "Damage" {
+			found = true
+			break
 		}
+	}
+	if !found {
+		t.Fatalf("core.VehicleState does not carry Damage after ISA-696 T1/T2")
 	}
 }
 

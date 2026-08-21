@@ -5,9 +5,9 @@
   "summary": "La app incorpora un carril experimental y aislado para probar entrada de voz tras un único flag.",
   "technicalNotes": [
     "-engineer-voice-input está desactivado por defecto; sin el flag no se construye ni se expone ninguna superficie de voz en health.",
-    "Con el flag, el reader Windows sondea F24 aunque el backend de micrófono no esté disponible; un conflicto con hotkeys configuradas degrada el carril antes de construir recursos.",
+    "Con el flag, el reader Windows sondea F24 aunque el backend de micrófono no esté disponible; la reserva se revalida al guardar hotkeys globales o de perfiles, degrada el carril ante conflicto y se recupera al retirarlo.",
     "El host hijo verifica PID y nonce, tiene deadlines propios de readiness y STT, arranca sin bloquear telemetría y se recolecta por completo durante cancelación o shutdown.",
-    "engineer.dialogue.v1 permanece query-only: las acciones fallan cerradas y radio.v1 solo recibe claves de respuesta permitidas por cada intent, nunca slots pronunciados.",
+    "engineer.dialogue.v1 permanece query-only: las acciones fallan cerradas y radio.v1 solo recibe campos cuyo valor cumple el rango numérico o enum cerrado declarado por el intent, nunca slots pronunciados.",
     "Audio y transcripciones no se escriben a disco ni aparecen en logs o health; los buffers mutables se ponen a cero tras uso, sin prometer control sobre dumps del sistema."
   ],
   "testing": [

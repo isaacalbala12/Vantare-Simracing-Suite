@@ -23,6 +23,7 @@ CrewChief, Pit Manager y wake word.
 
 ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
 aislado. La corrección de la review adversarial cierra payloads por intent,
+clave y forma de valor, revalida F24 tras cambios de hotkeys,
 acota readiness/STT, arranca host y poller sin bloquear Telemetry Core,
 reconcilia timeout PTT antes de release, elimina toda superficie con flag OFF
 y valida F24 contra hotkeys configuradas antes de construir recursos. El
@@ -379,6 +380,15 @@ Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
 integración en `nightly` o promoción.
 
 ## Última actualización
+
+2026-08-22, ronda final de review de ISA-719 / PR #756: la frontera radio
+rechaza y degrada toda respuesta con un valor fuera del rango/enum declarado,
+incluido `status=jamie smith`, y conserva valores legítimos como `status=ok`.
+La reserva F24 se revalida tanto después de `settings:save` como de
+`launcher:profile:hotkey:set`; el conflicto pone reader/host detrás de una
+compuerta unavailable con diagnóstico agregado y el carril se recupera al
+retirar el último conflicto. Gates del nuevo HEAD pendientes de ejecutar. Sin
+merge ni promoción.
 
 2026-08-21, ISA-719 / F5 corrige los 5 P1 y 2 P2 de la review adversarial del
 PR #756: output allowlist por intent, límite honesto ante dumps, readiness y

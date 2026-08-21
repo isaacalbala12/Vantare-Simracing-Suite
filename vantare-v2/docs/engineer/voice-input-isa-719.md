@@ -25,7 +25,8 @@ Por tanto:
 
 - corre de verdad: flag/default OFF sin superficie residual; composición ON
   pre-Start; reader Windows F24 sondeado aunque el host esté unavailable;
-  detector de conflictos contra hotkeys configuradas; protocolo/ownership
+  detector de conflictos inicial y dinámico contra hotkeys configuradas;
+  protocolo/ownership
   PID+nonce sobre pipes privados; prioridad baja, readiness/teardown acotados,
   límite de captura de 5 s, deadline STT, router determinista query-only,
   presentación registrable con payload cerrado por intent y health agregado;
@@ -66,7 +67,11 @@ experimental inicial es teclado global `keyboard-0` / `f24`: press ejecuta
 5 s. Antes de construir reader/host se compara F24 mediante
 `ptt.FindBindingConflicts` con hotkeys globales y de perfiles cargadas; un
 conflicto deja el carril `unavailable` y genera diagnóstico agregado/log sin
-crear esos recursos. El timeout inyecta la misma transición release hacia
+crear esos recursos. `settings:save` y `launcher:profile:hotkey:set` vuelven a
+validar la reserva: si introducen F24, una compuerta delante del reader y del
+host impide nuevas capturas y health pasa a `unavailable`; al retirar el último
+conflicto, la misma composición vuelve a habilitarse sin reiniciar la app. El
+timeout inyecta la misma transición release hacia
 `processing`, de modo que una liberación física posterior no puede dejar el
 controller ocupado. Hotplug, pérdida de foco, cancelación y shutdown conservan
 la semántica fail-closed de `engineer.ptt.v1`.
@@ -87,9 +92,12 @@ la transcripción— se transforma en uno de tres intents registrables:
 - `voice.action_disabled`.
 
 Los tres atraviesan el `radio.v1` compartido con prioridad P2, UI y audio
-cache-only. La frontera de publicación tiene una allowlist de claves por cada
-intent de consulta y descarta toda clave no declarada; en particular nunca
-reenvía slots pronunciados como `driver_name`, `car_number` o `target`.
+cache-only. La frontera de publicación tiene un contrato por intent y campo:
+además de descartar claves no declaradas, cada valor debe cumplir un rango
+numérico con formato estricto o un enum cerrado. Un valor inválido bajo una
+clave válida —por ejemplo `status=jamie smith`— degrada toda la respuesta a
+`voice.unavailable`; nunca se publica parcialmente. Tampoco se reenvían slots
+pronunciados como `driver_name`, `car_number` o `target`.
 Spotter P0 puede cancelarlos; Spotter, familias, radio e ingesta no esperan
 nunca al host de voz.
 

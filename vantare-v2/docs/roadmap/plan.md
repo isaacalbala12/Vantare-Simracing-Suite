@@ -321,10 +321,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Experimental voice-input lane
 - titulo.pt: Carril experimental de entrada de voz
 - titulo.it: Corsia sperimentale di input vocale
-- cuerpo: El flag experimental aísla PTT, host hijo asíncrono, diálogo de solo lectura y radio con salidas cerradas por intent; WASAPI, Whisper, wake acústico y validación física/humana siguen pendientes y fallan cerrados.
-- cuerpo.en: The experimental flag isolates PTT, an asynchronous child host, read-only dialogue and per-intent closed radio output; WASAPI, Whisper, acoustic wake and physical/human validation remain pending and fail closed.
-- cuerpo.pt: O flag experimental isola PTT, host filho assíncrono, diálogo somente leitura e saída de rádio fechada por intent; WASAPI, Whisper, wake acústico e validação física/humana continuam pendentes e falham de forma fechada.
-- cuerpo.it: Il flag sperimentale isola PTT, processo figlio asincrono, dialogo in sola lettura e uscita radio chiusa per intent; WASAPI, Whisper, wake acustico e validazione fisica/umana restano pendenti e falliscono in modo chiuso.
+- cuerpo: El flag experimental aísla PTT, revalida su reserva F24, usa un host hijo asíncrono y solo publica valores con formato cerrado; WASAPI, Whisper, wake acústico y validación física/humana siguen pendientes y fallan cerrados.
+- cuerpo.en: The experimental flag isolates PTT, revalidates its F24 reservation, uses an asynchronous child host and only publishes closed-format values; WASAPI, Whisper, acoustic wake and physical/human validation remain pending and fail closed.
+- cuerpo.pt: O flag experimental isola PTT, revalida a reserva F24, usa um host filho assíncrono e só publica valores de formato fechado; WASAPI, Whisper, wake acústico e validação física/humana continuam pendentes e falham de forma fechada.
+- cuerpo.it: Il flag sperimentale isola PTT, rivalida la riserva F24, usa un processo figlio asincrono e pubblica solo valori dal formato chiuso; WASAPI, Whisper, wake acustico e validazione fisica/umana restano pendenti e falliscono in modo chiuso.
 - etiqueta: En revisión
 - etiqueta.en: In review
 - etiqueta.pt: Em revisão

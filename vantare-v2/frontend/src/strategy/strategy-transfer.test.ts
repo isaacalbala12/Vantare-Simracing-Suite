@@ -87,6 +87,26 @@ describe("strategy package transfer", () => {
     expect(exported.suggestedFileName).toBe("plan-1-2026-08-08.vantareplan.json");
   });
 
+  it("carries the exact visible revision to the export service", async () => {
+    const seen: StrategyApplicationCommandV1<unknown>[] = [];
+    const revision = {
+      planId: "plan-1",
+      variantId: "variant-1",
+      revisionId: "revision-visible",
+      contentHash: "a".repeat(64),
+    };
+    await exportStrategyPackage(
+      clientReturning({ package: encodeBase64(new Uint8Array([1])) }, seen),
+      "export-visible",
+      { plans: [{ planId: "plan-1", variantId: "variant-1", revision }], provenance },
+    );
+
+    expect(seen[0]).toMatchObject({
+      operation: "export",
+      plans: [{ planId: "plan-1", variantId: "variant-1", revision }],
+    });
+  });
+
   it("refuses an empty selection before sending a command", async () => {
     const seen: StrategyApplicationCommandV1<unknown>[] = [];
     await expect(

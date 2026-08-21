@@ -1,3 +1,25 @@
+Nota ISA-735 / ISA-694 F2(e) (2026-08-21, implementada en rama de issue):
+- `Guardar revisión` custodia el plan visible en el lifecycle canónico y crea
+  una revisión inmutable. Orbit muestra `revisionId` y hash; los fallos llegan
+  con mensaje, código y campo tipados, sin catches silenciosos.
+- `Activar revisión` opera sobre esa referencia exacta y verifica el
+  `ActivePlan` devuelto. Seleccionar una tarjeta solo la hace visible y ya no
+  se presenta como activación; el estado activo pintado procede del backend.
+- `Exportar` selecciona la revisión visible exacta. Application/packaging
+  admite el selector mínimo por revisión y prueba un import/re-export idéntico
+  sin incluir el draft global ni otras revisiones.
+- El mock Wails persiste draft, revisiones y ActivePlan en localStorage; una
+  prueba recrea cliente/runtime y confirma los tres tras la recarga. Se
+  invirtieron las caracterizaciones de guardado, activación y apertura
+  silenciosos dentro de este alcance.
+- Gates locales: Go Strategy+app, frontend 377 archivos/2.896 tests,
+  typecheck, build, ESLint focal, diff-check y visual Orbit PASS. El cambio
+  visible regenera 12 capturas por los botones `Guardar revisión`, `Activar
+  revisión` y `Seleccionar`; no hay cambios CSS ni dependencias nuevas.
+- Commits de producto/prueba: `946c341e`, `b8f577c7`, `706039d7` y
+  `de2f04fb`. Sin PR, merge, promoción ni release. Siguiente: review del
+  orquestador de #735; F2(f) no se asume iniciada.
+
 Nota ISA-734 / ISA-694 F2(d) (2026-08-21, implementada en rama de issue):
 - Orbit calcula ahora todas las variantes por `strategy:application:calculate_orbit`.
   La aplicación reutiliza `manual.CalculateRace` para la duración por vueltas y

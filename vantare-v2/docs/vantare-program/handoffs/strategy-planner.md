@@ -17,6 +17,26 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-735 / F2(e) (2026-08-21, lista para review):
+
+- Orbit guarda el plan visible como revisión inmutable del lifecycle canónico
+  y enseña su identidad; activación y exportación usan exactamente esa
+  referencia. El `ActivePlan` mostrado procede del backend, mientras que
+  seleccionar una tarjeta se etiqueta honestamente como selección local.
+- Los fallos de guardado, activación y apertura muestran mensaje, código y
+  campo tipados. Las respuestas obsoletas se descartan. Exportar una revisión
+  concreta atraviesa application/packaging y su import/re-export es idéntico.
+- El mock Wails persiste draft, revisiones y activación; una recreación del
+  cliente/runtime demuestra que sobreviven a la recarga. Las caracterizaciones
+  de los tres flujos silenciosos se invirtieron con pruebas de comportamiento.
+- Gates: Go Strategy+app, frontend 377/2.896, typecheck, build, ESLint focal,
+  diff-check y visual Orbit verdes. Se actualizaron 12 capturas porque la
+  cabecera y las tarjetas muestran los nuevos verbos; no cambió CSS ni se
+  añadieron dependencias.
+- Commits `946c341e`, `b8f577c7`, `706039d7` y `de2f04fb`. Sin PR, merge,
+  promoción o release. Siguiente acción: review del orquestador de #735;
+  después F2(f).
+
 Actualización ISA-734 / F2(d) (2026-08-21, lista para review):
 
 - Orbit ya no calcula planes en TypeScript: la página pide todas las variantes

@@ -392,6 +392,8 @@ export type StrategyPlanSummaryV1 = {
 export type StrategyPlanSelectorV1 = {
   readonly planId: string;
   readonly variantId: string;
+  /** When present, export includes only this immutable revision and no draft. */
+  readonly revision?: RevisionRefV1;
 };
 
 /**

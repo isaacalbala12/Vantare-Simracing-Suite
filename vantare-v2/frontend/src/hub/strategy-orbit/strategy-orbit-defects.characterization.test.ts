@@ -1,9 +1,8 @@
 /**
  * Caracterizaciones verdes de los defectos de Orbit — F1-4 · issue #727 · parte de ISA-694.
  *
- * F2(c) invierte aquí las caracterizaciones que pertenecen a la migración:
- * el frontend conserva raw y el store queda read-only. Las de cálculo,
- * roster y apertura siguen caracterizando el defecto hasta F2(d-f).
+ * F2(c) invierte las de migración; F2(d), cálculo; F2(e), guardado,
+ * activación y apertura. Roster y sintéticos siguen hasta su corte propio.
  *
  * Defectos cubiertos (ver matriz-migracion-orbit.csv y brief §8):
  * 1) eliminar piloto deja ID colgante en order → el cálculo productivo debe rechazarlo tipado
@@ -137,7 +136,7 @@ describe("inversión F2(d) · un piloto colgante se rechaza de forma tipada sin 
 
 // ── (2) Fallos silenciosos ────────────────────────────────────────────────
 
-describe("defecto · fallos silenciosos de guardado/bridge/apertura — F2 debe mostrar error visible", () => {
+describe("inversión F2(e) · guardado y apertura dejan de fallar en silencio", () => {
   it("F2(c): tras el commit, el flag impide cualquier escritura en el store antiguo", () => {
     // INVERSIÓN F2(c): esta issue no repara el escritor legacy (se retira en
     // F2(d)); lo vuelve read-only después del commit canónico confirmado.
@@ -190,10 +189,9 @@ describe("defecto · fallos silenciosos de guardado/bridge/apertura — F2 debe 
     Events.On = origOn;
   });
 
-  it("openOrCreateStrategyEditor envuelto en .catch(()=>undefined) traga error de apertura (silencioso en la página)", async () => {
-    // DEFECTO: StrategyOrbitPage.tsx hace `void openOrCreateStrategyEditor(...).catch(()=>undefined)` — cualquier
-    // fallo de bridge/Wails queda sin toast ni estado de error.
-    // F2 invertirá: propagar error visible al usuario.
+  it("openOrCreateStrategyEditor conserva el error tipado que la página presenta", async () => {
+    // INVERSIÓN F2(e): la página ya no envuelve esta promesa en un catch vacío;
+    // StrategyOrbitPage.test.tsx prueba el alert con código y campo visibles.
     const { openOrCreateStrategyEditor } = await import("../../strategy/strategy-editor-store");
     const { StrategyApplicationError } = await import("../../strategy/strategy-application-client");
     const failingStore = {
@@ -203,16 +201,7 @@ describe("defecto · fallos silenciosos de guardado/bridge/apertura — F2 debe 
       getSnapshot: vi.fn(() => ({})),
     } as unknown as Parameters<typeof openOrCreateStrategyEditor>[0];
 
-    // La función sí lanza para errores no-draft_not_found (correcto aislado),
-    // pero la PÁGINA lo traga con .catch(()=>undefined) — aquí mostramos ambos lados:
     await expect(openOrCreateStrategyEditor(failingStore)).rejects.toThrow("bridge caído");
-
-    // Simulación del wrapper silencioso de la página:
-    let swallowed = false;
-    await openOrCreateStrategyEditor(failingStore).catch(() => {
-      swallowed = true;
-    });
-    expect(swallowed).toBe(true); // defecto: se traga sin UI
 
     // draft_not_found sí se recupera silenciosamente creando draft — también sin aviso
     const draftNotFound = new StrategyApplicationError("draft_not_found", "not found");

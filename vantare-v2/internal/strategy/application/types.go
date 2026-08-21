@@ -140,6 +140,9 @@ type PlanSummary struct {
 type PlanSelector struct {
 	PlanID    contract.PlanID    `json:"planId"`
 	VariantID contract.VariantID `json:"variantId"`
+	// Revision narrows the package to one immutable snapshot. When omitted,
+	// export keeps the library behaviour and includes the whole plan bundle.
+	Revision *contract.RevisionRef `json:"revision,omitempty"`
 }
 
 // ExportCommand asks for a package containing the selected plans. Exporting is

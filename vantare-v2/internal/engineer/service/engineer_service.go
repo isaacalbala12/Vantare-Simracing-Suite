@@ -185,6 +185,9 @@ func (s *EngineerService) SetAudioRouter(r *audio.AudioRouter) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.audioRouter = r
+	if s.audioRouter != nil && s.audioConfig != nil {
+		s.audioRouter.SetConfig(s.audioConfig)
+	}
 }
 
 // SetLegacySpotterRollback restores the former projectioninput/messagepolicy
@@ -280,6 +283,10 @@ func (s *EngineerService) SetLocale(value string) error {
 	if err != nil {
 		return err
 	}
+	audioConfig, err := audio.DefaultAudioConfigForLocale(string(locale))
+	if err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.running {
@@ -289,6 +296,10 @@ func (s *EngineerService) SetLocale(value string) error {
 		if err := s.spotterProducer.SetLocale(radio.Locale(locale)); err != nil {
 			return err
 		}
+	}
+	s.audioConfig = audioConfig
+	if s.audioRouter != nil {
+		s.audioRouter.SetConfig(audioConfig)
 	}
 	s.presentationLocale = locale
 	return nil

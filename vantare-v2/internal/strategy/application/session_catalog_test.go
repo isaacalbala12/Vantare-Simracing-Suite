@@ -6,13 +6,16 @@ import (
 	"testing"
 	"time"
 
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 type sessionCatalogStub struct {
-	entries []telemetryanalysis.CombinationCatalogEntry
+	entries    []telemetryanalysis.CombinationCatalogEntry
+	projection strategyprojection.StrategyInputProjectionV2
+	projected  *[]string
 }
 
 type sessionCatalogRepository[T any] struct {
@@ -31,6 +34,54 @@ func (repo *sessionCatalogRepository[T]) Commit(context.Context, uint64, reposit
 
 func (stub sessionCatalogStub) ListSessionCombinations(context.Context) ([]telemetryanalysis.CombinationCatalogEntry, error) {
 	return stub.entries, nil
+}
+
+func (stub sessionCatalogStub) ProjectStrategyInputs(_ context.Context, _ string, sessions []string, _ time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
+	if stub.projected != nil {
+		*stub.projected = append([]string(nil), sessions...)
+	}
+	return stub.projection, nil
+}
+
+func TestGetEventPlanningInputsUsesOnlyIncludedSessionsAndPreservesOverride(t *testing.T) {
+	generatedAt := time.Date(2026, 8, 22, 12, 0, 0, 123456789, time.UTC)
+	projection := strategyprojection.StrategyInputProjectionV2{CombinationID: "lmu:combo"}
+	override := strategydocument.NumericInputOverride{
+		Value: 3.2, Presence: strategyprojection.PresenceValid,
+		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1"},
+		Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-input.v1"},
+	}
+	document := &strategydocument.StrategyDocumentV2{Events: []strategydocument.Event{{
+		ID: "event-1",
+		Combination: &strategydocument.CombinationReference{CombinationID: "lmu:combo", Sessions: []strategydocument.SessionSelection{
+			{SessionID: "race-1", Included: true}, {SessionID: "practice-1", Included: false},
+		}},
+		PlanningInputs: &strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{
+			strategydocument.PlanningInputFuelPerLap: override,
+		}},
+	}}}
+	repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 9, StrategyDocument: document}}
+	var projected []string
+	service := NewServiceWithSessionCatalog[any](repo, sessionCatalogStub{projection: projection, projected: &projected})
+	result, err := service.GetEventPlanningInputs(context.Background(), GetEventPlanningInputsCommand{
+		CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "inputs", Operation: OperationGetEventPlanningInputs, ExpectedRepositoryVersion: 9},
+		EventID:       "event-1", GeneratedAt: generatedAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.PlanningInputStatus != PlanningInputAvailable || result.PlanningInputs == nil || result.PlanningInputs.Projection != &projection && result.PlanningInputs.Projection.CombinationID != projection.CombinationID {
+		t.Fatalf("result = %+v", result)
+	}
+	if len(projected) != 1 || projected[0] != "race-1" {
+		t.Fatalf("projected sessions = %v", projected)
+	}
+	if got := result.PlanningInputs.Overrides[strategydocument.PlanningInputFuelPerLap]; got != override {
+		t.Fatalf("override = %+v", got)
+	}
+	if repo.commitCalls != 0 {
+		t.Fatalf("query committed %d times", repo.commitCalls)
+	}
 }
 
 func TestListSessionCombinationsAdaptsAnalysisAndKeepsRepositoryReadOnly(t *testing.T) {

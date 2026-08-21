@@ -18,7 +18,10 @@ var ErrInvalidAuthorizedSession = errors.New("invalid authorized historical sess
 type AuthorizedSessionModel struct {
 	Artifact    AuthorizedHistoricalArtifact
 	Session     HistoricalSession
+	Validity    *LapValidityAnalysis
 	Consumption *SessionConsumptionPace
+	Curves      *SessionDerivedCurves
+	Pit         *SessionPitObservation
 }
 
 type ClimateBucketCount struct {
@@ -69,6 +72,77 @@ func (catalog *SessionCatalog) ListSessionCombinations(ctx context.Context) ([]C
 		return nil, err
 	}
 	return ListAuthorizedSessionCombinations(ctx, models)
+}
+
+// ProjectStrategyInputs composes the public Analysis projection for exactly
+// the sessions selected by Strategy. Selection is non-destructive: excluded
+// sessions remain in the authorized source and are simply not passed to the
+// producer.
+func (catalog *SessionCatalog) ProjectStrategyInputs(
+	ctx context.Context,
+	combinationID string,
+	sessionIDs []string,
+	generatedAt time.Time,
+) (strategyprojection.StrategyInputProjectionV2, error) {
+	if catalog == nil || catalog.source == nil || strings.TrimSpace(combinationID) == "" || len(sessionIDs) == 0 {
+		return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidProjectionProductionInput
+	}
+	models, err := catalog.source.ListAuthorizedSessions(ctx)
+	if err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, err
+	}
+	requested := make(map[string]struct{}, len(sessionIDs))
+	for _, sessionID := range sessionIDs {
+		if strings.TrimSpace(sessionID) == "" {
+			return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidProjectionProductionInput
+		}
+		if _, duplicate := requested[sessionID]; duplicate {
+			return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidProjectionProductionInput
+		}
+		requested[sessionID] = struct{}{}
+	}
+	selected := make([]ProjectionSessionDerivations, 0, len(requested))
+	var combination CombinationIdentity
+	for _, model := range models {
+		if err := ctx.Err(); err != nil {
+			return strategyprojection.StrategyInputProjectionV2{}, err
+		}
+		if _, ok := requested[model.Session.ID]; !ok {
+			continue
+		}
+		manifest := model.Artifact.Manifest()
+		if !validAuthorizedHistoricalArtifact(model.Artifact) ||
+			model.Session.Provenance.Source != manifest.Source ||
+			model.Session.Provenance.Parser != manifest.Parser {
+			return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidAuthorizedSession
+		}
+		classified, classifyErr := ClassifyHistoricalSession(model.Session)
+		if classifyErr != nil {
+			return strategyprojection.StrategyInputProjectionV2{}, classifyErr
+		}
+		if classified.Combination.ID != combinationID {
+			return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidProjectionProductionInput
+		}
+		if len(selected) == 0 {
+			combination = classified.Combination
+		}
+		selected = append(selected, ProjectionSessionDerivations{
+			Classified:  classified,
+			Validity:    model.Validity,
+			Consumption: model.Consumption,
+			Curves:      model.Curves,
+			Pit:         model.Pit,
+		})
+		delete(requested, model.Session.ID)
+	}
+	if len(requested) != 0 || len(selected) == 0 {
+		return strategyprojection.StrategyInputProjectionV2{}, ErrInvalidProjectionProductionInput
+	}
+	return ProduceStrategyInputProjectionV2(ProjectionProductionRequest{
+		GeneratedAt: generatedAt,
+		Combination: combination,
+		Sessions:    selected,
+	})
 }
 
 // ListAuthorizedSessionCombinations is the Analysis-owned application query.

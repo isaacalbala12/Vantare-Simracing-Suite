@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 // CalculateOrbit performs the historical Orbit use case through the Go
@@ -53,6 +55,8 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 		Plans:       make(map[string]OrbitCalculationPlan, len(input.Variants)),
 		Comparisons: make(map[string]OrbitCalculationComparison),
 	}
+	input.Event.TankLiters = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputTank, input.Event.TankLiters)
+	input.Event.PitLossSeconds = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPitLoss, input.Event.PitLossSeconds)
 	variants := make(map[string]OrbitCalculationVariant, len(input.Variants))
 	for index, variant := range input.Variants {
 		if strings.TrimSpace(variant.ID) == "" {
@@ -61,7 +65,7 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 		if _, duplicate := variants[variant.ID]; duplicate {
 			return OrbitCalculationResult{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.id", index), ErrCalculationInvalid)
 		}
-		plan, err := calculateOrbitPlan(input.Event, drivers, variant, index)
+		plan, err := calculateOrbitPlan(input.Event, drivers, variant, index, input.PlanningInputs)
 		if err != nil {
 			return OrbitCalculationResult{}, err
 		}
@@ -89,7 +93,7 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 	return result, nil
 }
 
-func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int) (OrbitCalculationPlan, error) {
+func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs) (OrbitCalculationPlan, error) {
 	if len(variant.Order) == 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), ErrCalculationInvalid)
 	}
@@ -99,7 +103,7 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		if !ok {
 			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order.%d", variantIndex, orderIndex), ErrCalculationInvalid)
 		}
-		pace, err := orbitPace(driver, variant.Mode)
+		pace, err := effectiveOrbitPace(driver, variant.Mode, planning)
 		if err != nil {
 			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.mode", variantIndex), err)
 		}
@@ -146,6 +150,8 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 			UsableCapacity: event.TankLiters,
 			PerLap:         averageFuel,
 		},
+		TyreLifeLaps:             effectivePlanningInt64(planning, strategydocument.PlanningInputTyreLife, 0),
+		DegradationPerLapSeconds: effectivePlanningValue(planning, strategydocument.PlanningInputDegradation, 0),
 	})
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
@@ -181,7 +187,7 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 	byDriver := make(map[string]*OrbitCalculationDistribution)
 	for index, count := range laps {
 		driverID := variant.Order[index%len(variant.Order)]
-		driverPace, _ := orbitPace(drivers[driverID], variant.Mode)
+		driverPace, _ := effectiveOrbitPace(drivers[driverID], variant.Mode, planning)
 		wantedFuel := float64(count) * driverPace.FuelLitersPerLap
 		override, manualOverride := variant.Overrides[index]
 		if override.Fuel != nil && *override.Fuel > 0 {
@@ -290,6 +296,54 @@ func orbitPace(driver OrbitCalculationDriver, mode string) (OrbitCalculationPace
 	default:
 		return OrbitCalculationPace{}, ErrCalculationInvalid
 	}
+}
+
+func effectiveOrbitPace(driver OrbitCalculationDriver, mode string, planning *strategydocument.PlanningInputs) (OrbitCalculationPace, error) {
+	pace, err := orbitPace(driver, mode)
+	if err != nil {
+		return OrbitCalculationPace{}, err
+	}
+	pace.PaceSeconds = effectivePlanningValue(planning, strategydocument.PlanningInputPace, pace.PaceSeconds)
+	pace.FuelLitersPerLap = effectivePlanningValue(planning, strategydocument.PlanningInputFuelPerLap, pace.FuelLitersPerLap)
+	return pace, nil
+}
+
+func effectivePlanningValue(planning *strategydocument.PlanningInputs, field strategydocument.PlanningInputField, fallback float64) float64 {
+	if planning == nil {
+		return fallback
+	}
+	if override, ok := planning.Overrides[field]; ok && override.Presence == strategyprojection.PresenceValid {
+		return override.Value
+	}
+	if planning.Projection == nil {
+		return fallback
+	}
+	switch field {
+	case strategydocument.PlanningInputFuelPerLap:
+		family := planning.Projection.FuelConsumption
+		if family.Presence == strategyprojection.PresenceValid && family.MeanPerLap > 0 {
+			return family.MeanPerLap
+		}
+	case strategydocument.PlanningInputVEPerLap:
+		family := planning.Projection.VirtualEnergyConsumption
+		if family.Presence == strategyprojection.PresenceValid && family.MeanPerLap > 0 {
+			return family.MeanPerLap
+		}
+	case strategydocument.PlanningInputTyreLife:
+		family := planning.Projection.TyreDegradation
+		if family.Presence == strategyprojection.PresenceValid && family.LifeLapsEstimate != nil {
+			return float64(*family.LifeLapsEstimate)
+		}
+	}
+	return fallback
+}
+
+func effectivePlanningInt64(planning *strategydocument.PlanningInputs, field strategydocument.PlanningInputField, fallback int64) int64 {
+	value := effectivePlanningValue(planning, field, float64(fallback))
+	if value <= 0 || value > math.MaxInt64 || math.Trunc(value) != value {
+		return fallback
+	}
+	return int64(value)
 }
 
 func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID string, other OrbitCalculationPlan, pitLoss float64, drivers []OrbitCalculationDriver) OrbitCalculationComparison {

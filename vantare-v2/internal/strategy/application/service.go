@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const maxSafeRepositoryVersion = uint64(1<<53 - 1)
@@ -22,6 +24,7 @@ type repositoryPort[T any] interface {
 
 type sessionCatalogPort interface {
 	ListSessionCombinations(context.Context) ([]telemetryanalysis.CombinationCatalogEntry, error)
+	ProjectStrategyInputs(context.Context, string, []string, time.Time) (strategyprojection.StrategyInputProjectionV2, error)
 }
 
 // Service is the only application facade for Strategy documents. The

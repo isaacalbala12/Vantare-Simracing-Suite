@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 // ContractVersion v2 — el documento v2 debe poder representar todo lo que la
@@ -331,6 +333,46 @@ type CombinationReference struct {
 	Sessions      []SessionSelection `json:"sessions"`
 }
 
+type PlanningInputField string
+
+const (
+	PlanningInputFuelPerLap     PlanningInputField = "fuel_per_lap_liters"
+	PlanningInputVEPerLap       PlanningInputField = "ve_per_lap_percent"
+	PlanningInputPace           PlanningInputField = "base_pace_seconds"
+	PlanningInputTank           PlanningInputField = "tank_liters"
+	PlanningInputPitLoss        PlanningInputField = "pit_loss_seconds"
+	PlanningInputTyreLife       PlanningInputField = "tyre_life_laps"
+	PlanningInputDegradation    PlanningInputField = "degradation_per_lap_seconds"
+	PlanningInputSavingFuel     PlanningInputField = "saving_fuel_per_lap"
+	PlanningInputSavingTimeCost PlanningInputField = "saving_time_cost_per_lap"
+)
+
+func (field PlanningInputField) Valid() bool {
+	switch field {
+	case PlanningInputFuelPerLap, PlanningInputVEPerLap, PlanningInputPace,
+		PlanningInputTank, PlanningInputPitLoss, PlanningInputTyreLife,
+		PlanningInputDegradation, PlanningInputSavingFuel, PlanningInputSavingTimeCost:
+		return true
+	default:
+		return false
+	}
+}
+
+// NumericInputOverride lives beside, never instead of, the Analysis
+// projection. Reverting an edit removes this value and reveals the unchanged
+// derived value again.
+type NumericInputOverride struct {
+	Value      float64       `json:"value"`
+	Presence   sp.Presence   `json:"presence"`
+	Provenance sp.Provenance `json:"provenance"`
+	Confidence sp.Confidence `json:"confidence"`
+}
+
+type PlanningInputs struct {
+	Projection *sp.StrategyInputProjectionV2               `json:"projection,omitempty"`
+	Overrides  map[PlanningInputField]NumericInputOverride `json:"overrides"`
+}
+
 type Event struct {
 	ID               EventID                           `json:"id"`
 	Name             Sourced[string]                   `json:"name"`
@@ -352,6 +394,7 @@ type Event struct {
 	LastOpenedAt     *Sourced[*time.Time]              `json:"lastOpenedAt,omitempty"`
 	TyreInventory    TyreInventory                     `json:"tyreInventory"`
 	Combination      *CombinationReference             `json:"combination,omitempty"`
+	PlanningInputs   *PlanningInputs                   `json:"planningInputs,omitempty"`
 	// RawLegacy preserva los bytes originales del backup, incluso cuando el
 	// JSON está corrupto y debe ir a cuarentena. encoding/json lo representa
 	// como base64, evitando la compactación destructiva de json.RawMessage.
@@ -501,6 +544,53 @@ func (d StrategyDocumentV2) Validate() error {
 					return fmt.Errorf("event %q duplicate combination session %q", ev.ID, session.SessionID)
 				}
 				sessions[session.SessionID] = struct{}{}
+			}
+		}
+		if ev.PlanningInputs != nil {
+			if ev.PlanningInputs.Projection != nil {
+				if err := ev.PlanningInputs.Projection.Validate(); err != nil {
+					return fmt.Errorf("event %q planning projection: %w", ev.ID, err)
+				}
+				if ev.Combination == nil || ev.PlanningInputs.Projection.CombinationID != ev.Combination.CombinationID {
+					return fmt.Errorf("event %q planning projection combination mismatch", ev.ID)
+				}
+				included := make(map[string]struct{})
+				for _, session := range ev.Combination.Sessions {
+					if session.Included {
+						included[session.SessionID] = struct{}{}
+					}
+				}
+				if len(included) != len(ev.PlanningInputs.Projection.SourceSessions) {
+					return fmt.Errorf("event %q planning projection selection mismatch", ev.ID)
+				}
+				for _, sessionID := range ev.PlanningInputs.Projection.SourceSessions {
+					if _, ok := included[sessionID]; !ok {
+						return fmt.Errorf("event %q planning projection session %q is not included", ev.ID, sessionID)
+					}
+				}
+			}
+			for field, override := range ev.PlanningInputs.Overrides {
+				if !field.Valid() || math.IsNaN(override.Value) || math.IsInf(override.Value, 0) || override.Value < 0 {
+					return fmt.Errorf("event %q planning override %q invalid", ev.ID, field)
+				}
+				if override.Presence != sp.PresenceValid {
+					return fmt.Errorf("event %q planning override %q must be valid", ev.ID, field)
+				}
+				switch field {
+				case PlanningInputFuelPerLap, PlanningInputVEPerLap, PlanningInputPace, PlanningInputTank, PlanningInputTyreLife:
+					if override.Value <= 0 {
+						return fmt.Errorf("event %q planning override %q must be >0", ev.ID, field)
+					}
+				}
+				if override.Provenance.Kind != sp.ProvenanceManual && override.Provenance.Kind != sp.ProvenanceReference {
+					return fmt.Errorf("event %q planning override %q provenance invalid", ev.ID, field)
+				}
+				if err := override.Provenance.Validate(); err != nil {
+					return fmt.Errorf("event %q planning override %q provenance: %w", ev.ID, field, err)
+				}
+				if err := override.Confidence.Validate(); err != nil {
+					return fmt.Errorf("event %q planning override %q confidence: %w", ev.ID, field, err)
+				}
 			}
 		}
 		if ev.PitLossSeconds.Value < 0 || math.IsNaN(ev.PitLossSeconds.Value) || math.IsInf(ev.PitLossSeconds.Value, 0) {

@@ -8,6 +8,12 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
+type authorizedSessionSourceStub struct{ models []AuthorizedSessionModel }
+
+func (stub authorizedSessionSourceStub) ListAuthorizedSessions(context.Context) ([]AuthorizedSessionModel, error) {
+	return stub.models, nil
+}
+
 func TestListAuthorizedSessionCombinationsGroupsWithoutExposingStorage(t *testing.T) {
 	models := []AuthorizedSessionModel{
 		catalogModel(t, "race-1", "Race", true, time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketDry),
@@ -40,6 +46,43 @@ func TestListAuthorizedSessionCombinationsRejectsModelFromAnotherArtifact(t *tes
 	if _, err := ListAuthorizedSessionCombinations(context.Background(), []AuthorizedSessionModel{model}); err != ErrInvalidAuthorizedSession {
 		t.Fatalf("error = %v", err)
 	}
+}
+
+func TestProjectStrategyInputsUsesExactAuthorizedSelection(t *testing.T) {
+	first := catalogModel(t, "race-1", "Race", true, time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketDry)
+	second := catalogModel(t, "race-2", "Race", true, time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketDry)
+	classified, err := ClassifyHistoricalSession(first.Session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metric := DerivedMetric{
+		Presence:   strategyprojection.PresenceValid,
+		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "race-1"},
+		Confidence: strategyprojection.Confidence{SampleSize: 1, RangeLower: floatPointer(3), RangeUpper: floatPointer(3), ComputationVersion: consumptionPaceComputationVersion},
+		Value:      3,
+	}
+	first.Consumption = &SessionConsumptionPace{
+		SessionID: "race-1", CombinationID: classified.Combination.ID,
+		Laps: []LapConsumptionPace{{Number: 1, ClimateBucket: climateBucketPointer(strategyprojection.ClimateBucketDry), FuelConsumption: &metric}},
+		ByClimateBucket: map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace{
+			strategyprojection.ClimateBucketDry: {FuelConsumption: summarizeResource("race-1", strategyprojection.ClimateBucketDry, []metricSample{{value: 3, presence: strategyprojection.PresenceValid}})},
+		},
+	}
+	catalog := NewSessionCatalog(authorizedSessionSourceStub{models: []AuthorizedSessionModel{first, second}})
+	projection, err := catalog.ProjectStrategyInputs(context.Background(), classified.Combination.ID, []string{"race-1"}, time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.SourceSessions) != 1 || projection.SourceSessions[0] != "race-1" || projection.FuelConsumption.MeanPerLap != 3 {
+		t.Fatalf("projection = %+v", projection)
+	}
+	if projection.FuelConsumption.Provenance.SourceID != "aggregate:"+classified.Combination.ID {
+		t.Fatalf("provenance = %+v", projection.FuelConsumption.Provenance)
+	}
+}
+
+func climateBucketPointer(value strategyprojection.ClimateBucket) *strategyprojection.ClimateBucket {
+	return &value
 }
 
 func catalogModel(t *testing.T, id, sessionType string, completed bool, modified time.Time, bucket strategyprojection.ClimateBucket) AuthorizedSessionModel {

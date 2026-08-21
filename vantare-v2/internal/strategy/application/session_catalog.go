@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"time"
 
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
 
@@ -71,4 +73,65 @@ func adaptClimateBuckets(source []telemetryanalysis.ClimateBucketCount) []Sessio
 		result = append(result, SessionClimateBucket{Bucket: string(bucket.Bucket), Laps: bucket.Laps})
 	}
 	return result
+}
+
+// GetEventPlanningInputs is read-only. Analysis owns production; Strategy
+// adapts the event selection and preserves any canonical overrides beside the
+// newly produced projection.
+func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command GetEventPlanningInputsCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationGetEventPlanningInputs); err != nil {
+		return Result[T]{}, err
+	}
+	if command.GeneratedAt.IsZero() {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "generatedAt", ErrInvalidCommand)
+	}
+	snapshot, event, err := service.readEvent(ctx, command.EventID)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	planning := strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{}}
+	if event.PlanningInputs != nil {
+		planning = *event.PlanningInputs
+		planning.Overrides = clonePlanningOverrides(event.PlanningInputs.Overrides)
+	}
+	result := documentResult[T](command.CommandID, snapshot)
+	result.PlanningInputStatus = PlanningInputManualOnly
+	result.PlanningInputs = &planning
+	if event.Combination == nil {
+		planning.Projection = nil
+		return result, nil
+	}
+	included := make([]string, 0, len(event.Combination.Sessions))
+	for _, session := range event.Combination.Sessions {
+		if session.Included {
+			included = append(included, session.SessionID)
+		}
+	}
+	if len(included) == 0 {
+		planning.Projection = nil
+		result.PlanningInputStatus = PlanningInputNoIncludedSessions
+		return result, nil
+	}
+	if service.sessionCatalog == nil {
+		return result, nil
+	}
+	projection, err := service.sessionCatalog.ProjectStrategyInputs(ctx, event.Combination.CombinationID, included, canonicalMillisecond(command.GeneratedAt))
+	if err != nil {
+		return Result[T]{}, err
+	}
+	planning.Projection = &projection
+	result.PlanningInputStatus = PlanningInputAvailable
+	return result, nil
+}
+
+func clonePlanningOverrides(source map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride) map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride {
+	result := make(map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride, len(source))
+	for field, override := range source {
+		result[field] = override
+	}
+	return result
+}
+
+func canonicalMillisecond(value time.Time) time.Time {
+	return value.UTC().Truncate(time.Millisecond)
 }

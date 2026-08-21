@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
@@ -99,6 +100,24 @@ func TestExportRefusesAPlanThatIsNotThere(t *testing.T) {
 	}
 }
 
+func TestExportRefusesAnExactRevisionThatIsNotThere(t *testing.T) {
+	service, _ := populated(t)
+	missing := contract.RevisionRef{
+		PlanID:      "plan-1",
+		VariantID:   "variant-1",
+		RevisionID:  "revision-missing",
+		ContentHash: strings.Repeat("a", 64),
+	}
+	_, err := service.Export(context.Background(), ExportCommand{
+		CommandHeader: commandHeader("export-revision-missing", OperationExport, 0),
+		Plans:         []PlanSelector{{PlanID: "plan-1", VariantID: "variant-1", Revision: &missing}},
+		Provenance:    transferProvenance(),
+	})
+	if !errors.Is(err, ErrRevisionNotFound) {
+		t.Fatalf("expected a revision-not-found refusal, got %v", err)
+	}
+}
+
 func TestAPackageRoundTripsIntoAFreshRepository(t *testing.T) {
 	_, encoded := populated(t)
 	destination := libraryService(t)
@@ -132,6 +151,80 @@ func TestAPackageRoundTripsIntoAFreshRepository(t *testing.T) {
 	}
 	if !bytes.Equal(reexported.Package, encoded) {
 		t.Fatal("a package that round trips must come back byte-identical")
+	}
+}
+
+func TestAnExactRevisionExportRoundTripsWithoutLeakingTheDraftOrOtherRevisions(t *testing.T) {
+	service := libraryService(t)
+	firstDraft := validDraft("draft-exact", "plan-exact", 10)
+	createPlan(t, service, firstDraft, 0)
+	first, err := service.SaveRevision(context.Background(), SaveRevisionCommand[testPayload]{
+		CommandHeader: commandHeader("save-exact-1", OperationSaveRevision, 1),
+		Draft:         firstDraft,
+		RevisionID:    "revision-exact-1",
+		CreatedAt:     canonicalTime(5),
+	})
+	if err != nil || first.Revision == nil {
+		t.Fatalf("first SaveRevision: result=%+v err=%v", first, err)
+	}
+	firstRef := first.Revision.Ref()
+	secondDraft := validDraft("draft-exact", "plan-exact", 20)
+	secondDraft.BaseRevision = &firstRef
+	if _, err := service.SaveRevision(context.Background(), SaveRevisionCommand[testPayload]{
+		CommandHeader: commandHeader("save-exact-2", OperationSaveRevision, 2),
+		Draft:         secondDraft,
+		RevisionID:    "revision-exact-2",
+		CreatedAt:     canonicalTime(6),
+	}); err != nil {
+		t.Fatalf("second SaveRevision: %v", err)
+	}
+
+	selector := PlanSelector{
+		PlanID:    "plan-exact",
+		VariantID: "variant-1",
+		Revision:  &firstRef,
+	}
+	exported, err := service.Export(context.Background(), ExportCommand{
+		CommandHeader: commandHeader("export-exact", OperationExport, 0),
+		Plans:         []PlanSelector{selector},
+		Provenance:    transferProvenance(),
+	})
+	if err != nil {
+		t.Fatalf("exact Export: %v", err)
+	}
+	decoded, err := packaging.Decode[testPayload](exported.Package)
+	if err != nil {
+		t.Fatalf("decode exact export: %v", err)
+	}
+	if len(decoded.Bundles) != 1 || decoded.Bundles[0].Draft != nil || len(decoded.Bundles[0].Revisions) != 1 {
+		t.Fatalf("exact export must contain one revision and no draft: %+v", decoded.Bundles)
+	}
+	if got := decoded.Bundles[0].Revisions[0].Ref(); got != *selector.Revision {
+		t.Fatalf("exported revision = %+v, want %+v", got, *selector.Revision)
+	}
+	payload, err := decoded.Bundles[0].Revisions[0].Payload()
+	if err != nil || payload.Laps != 10 {
+		t.Fatalf("exported the wrong visible payload: %+v (err=%v)", payload, err)
+	}
+
+	destination := libraryService(t)
+	imported, err := destination.Import(context.Background(), ImportCommand{
+		CommandHeader: commandHeader("import-exact", OperationImport, 0),
+		Package:       exported.Package,
+	})
+	if err != nil || !imported.Imported {
+		t.Fatalf("exact Import: result=%+v err=%v", imported, err)
+	}
+	reexported, err := destination.Export(context.Background(), ExportCommand{
+		CommandHeader: commandHeader("reexport-exact", OperationExport, 0),
+		Plans:         []PlanSelector{selector},
+		Provenance:    transferProvenance(),
+	})
+	if err != nil {
+		t.Fatalf("exact re-export: %v", err)
+	}
+	if !bytes.Equal(reexported.Package, exported.Package) {
+		t.Fatal("an exact revision package must remain byte-identical after import/export")
 	}
 }
 

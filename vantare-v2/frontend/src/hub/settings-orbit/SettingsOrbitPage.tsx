@@ -64,6 +64,7 @@ import {
 } from "../settings/diagnostics/diagnostics-client";
 import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
+import { CurationPrivacySection } from "./CurationPrivacySection";
 import {
   applyReduceMotion,
   conflictingHotkeys,
@@ -165,6 +166,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         ) : null}
         {section === "updates" ? <UpdatesSection /> : null}
         {section === "hotkeys" ? <HotkeysSection /> : null}
+        {section === "privacy" ? <CurationPrivacySection /> : null}
         {section === "diagnostics" ? <DiagnosticsSection /> : null}
       </div>
 

@@ -661,6 +661,64 @@
 
 /* ----------------------------------------------------------- DIAGNÓSTICO */
 
+.orbit-set-privacy {
+  display: grid;
+  gap: 14px;
+}
+
+.orbit-set-privacy__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.orbit-set-privacy__columns ul,
+.orbit-set-privacy__history {
+  color: var(--orbit-ink-2);
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.orbit-set-privacy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.orbit-set-privacy__queue {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.orbit-set-privacy__queue li {
+  background: var(--orbit-line-row);
+  border-radius: 7px;
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.orbit-set-privacy__queue time {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+}
+
+.orbit-set-privacy__queue summary {
+  color: var(--orbit-ink-2);
+  cursor: pointer;
+}
+
+.orbit-set-privacy__queue pre {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .orbit-set-log {
   display: flex;
   flex-direction: column;
@@ -774,6 +832,10 @@ body[data-reduce-motion="true"] * {
   .orbit-set__hero,
   .orbit-set__grid2,
   .orbit-set-hk__groups {
+    grid-template-columns: 1fr;
+  }
+
+  .orbit-set-privacy__columns {
     grid-template-columns: 1fr;
   }
 }

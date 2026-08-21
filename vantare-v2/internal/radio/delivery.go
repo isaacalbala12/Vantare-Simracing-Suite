@@ -19,6 +19,7 @@ var (
 	ErrInvalidTransition = errors.New("radio delivery transition is invalid")
 	ErrLifecycleBoundary = errors.New("radio delivery cancelled by lifecycle boundary")
 	ErrSourceUnavailable = errors.New("radio delivery cancelled because source is unavailable")
+	ErrPolicyRejected    = errors.New("radio delivery cancelled because current evidence rejects it")
 )
 
 // State describes the queued, started and terminal delivery lifecycle.
@@ -294,6 +295,9 @@ func cancellationReason(ctx context.Context, expires, now int64) Reason {
 	}
 	if errors.Is(context.Cause(ctx), ErrSourceUnavailable) {
 		return ReasonSourceUnavailable
+	}
+	if errors.Is(context.Cause(ctx), ErrPolicyRejected) {
+		return ReasonPolicyRejected
 	}
 	if ctx.Err() != nil {
 		return ReasonLifecycleBoundary

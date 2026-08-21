@@ -70,6 +70,10 @@ func (producer *Producer) Reset() {
 func (producer *Producer) Evaluate(snapshot engineer.ObservationSnapshotV1) (radio.RadioMessage, bool, error) {
 	producer.mu.Lock()
 	defer producer.mu.Unlock()
+	if !validContext(snapshot.Context) {
+		producer.policy.Reset()
+		return radio.RadioMessage{}, false, ErrObservationNotReady
+	}
 	activeLeft, activeRight := producer.policy.ActiveSides()
 	left, right, ready := classify(snapshot, producer.sensitivity, activeLeft, activeRight)
 	if !ready {
@@ -90,6 +94,11 @@ func (producer *Producer) Evaluate(snapshot engineer.ObservationSnapshotV1) (rad
 		CreatedAtMS: nowMS, ExpiresAtMS: expiresAtMS, Locale: producer.locale,
 		Payload: map[string]string{}, CoalesceRevision: revision, CoalesceValue: value,
 	}, true, nil
+}
+
+func validContext(context engineer.Context) bool {
+	return context.Epoch != 0 && context.Identity.Event != "" && context.Identity.Session != "" &&
+		context.Identity.Vehicle != "" && context.Identity.Driver != ""
 }
 
 func (producer *Producer) AcknowledgeStarted(message radio.RadioMessage, atMS int64) error {

@@ -780,7 +780,12 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 					s.signalDeliveryLocked()
 				}
 			}
-		} else if !errors.Is(err, radiospotter.ErrObservationNotReady) {
+		} else if errors.Is(err, radiospotter.ErrObservationNotReady) {
+			// Capability/identity loss invalidates both policy context and any
+			// already selected radio item. Keeping the bus would let old evidence
+			// reach started after the producer has failed closed.
+			s.resetRadioLocked(radio.ErrPolicyRejected)
+		} else {
 			s.connected = false
 			s.lastError = err.Error()
 			s.emitStatusLocked()

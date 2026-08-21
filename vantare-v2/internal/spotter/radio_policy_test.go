@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/radio"
+	engineer "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
 func newSpotterHarness(t testing.TB, capacity int) (*benchmarkClock, *Producer, *radio.Bus) {
@@ -327,5 +328,15 @@ func TestSpotterClearContextExpiryIsRevalidatedBeforeDispatch(t *testing.T) {
 	clock.now = antecedent.ExpiresAtMS
 	if item, ok := bus.Next(context.Background()); ok || item != nil {
 		t.Fatalf("clear survived antecedent deadline: %+v", item)
+	}
+}
+
+func TestSpotterRejectsInvalidCanonicalIdentity(t *testing.T) {
+	_, producer, _ := newSpotterHarness(t, 4)
+	observation := benchmarkObservation(t, 2.8)
+	observation.Context = engineer.Context{}
+	message, emit, err := producer.Evaluate(observation)
+	if !errors.Is(err, ErrObservationNotReady) || emit || message.ID != "" {
+		t.Fatalf("invalid identity = %+v/%t/%v", message, emit, err)
 	}
 }

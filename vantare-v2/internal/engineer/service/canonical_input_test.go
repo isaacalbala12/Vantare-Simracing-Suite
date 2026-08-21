@@ -31,6 +31,7 @@ type firstSpotterResolveGate struct {
 	once    sync.Once
 	started chan struct{}
 	release chan struct{}
+	done    chan error
 }
 
 func (gate *firstSpotterResolveGate) ResolvePresentationCached(ctx context.Context, _ audio.PresentationRequest) (string, error) {
@@ -46,6 +47,9 @@ func (gate *firstSpotterResolveGate) ResolvePresentationCached(ctx context.Conte
 	case <-gate.release:
 		return "cached.wav", nil
 	case <-ctx.Done():
+		if gate.done != nil {
+			gate.done <- ctx.Err()
+		}
 		return "", ctx.Err()
 	}
 }
@@ -212,6 +216,52 @@ func TestRadioSpotterRevalidatesAfterCacheResolveBeforeStarted(t *testing.T) {
 	}
 	if samples := svc.Health().RadioDelivery.Samples; samples != 1 {
 		t.Fatalf("started samples = %d, want only current three-wide", samples)
+	}
+}
+
+func TestRadioSpotterCapabilityLossCancelsSelectedDelivery(t *testing.T) {
+	gate := &firstSpotterResolveGate{
+		started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1),
+	}
+	svc := service.NewEngineerService(&mockEmitter{})
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("Spotter cache lookup did not block")
+	}
+
+	lost := canonicalSpotterObservationAt(t, 1, 2, 2.8)
+	manifest, err := engineerprojection.NewManifest([]engineerprojection.Capability{
+		{ID: engineerprojection.CapabilitySession, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityStandings, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityControls, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityPit, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityFuel, State: engineerprojection.CapabilitySupported},
+		{ID: engineerprojection.CapabilityGaps, State: engineerprojection.CapabilitySupported},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lost.Manifest = manifest
+	_ = svc.ConsumeObservation(lost)
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("cache cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("capability loss did not cancel selected Spotter delivery")
 	}
 }
 

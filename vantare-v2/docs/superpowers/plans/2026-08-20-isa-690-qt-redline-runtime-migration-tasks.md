@@ -448,15 +448,15 @@ presentación física con clocks correlacionables.
 
 **Aceptación:**
 
-- [ ] Trace contiene sequence, scene/frame/logicalMs, QPC y evento.
-- [ ] No hay logger por frame en camino normal; modo benchmark explícito.
-- [ ] El medidor no usa DOM ni una métrica autodeclarada por el candidate para
+- [x] Trace contiene sequence, scene/frame/logicalMs, QPC y evento.
+- [x] No hay logger por frame en camino normal; modo benchmark explícito.
+- [x] El medidor no usa DOM ni una métrica autodeclarada por el candidate para
   la evidencia física.
 
 **Verificación:**
 
-- [ ] Test del trace con monotonicidad, completitud, bounds y hash.
-- [ ] Control negativo de evento omitido y clock inválido.
+- [x] Test del trace con monotonicidad, completitud, bounds y hash.
+- [x] Control negativo de evento omitido y clock inválido.
 
 **Dependencias:** P0-B.
 

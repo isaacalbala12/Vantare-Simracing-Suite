@@ -12,6 +12,19 @@
 
 ## Estado
 
+- **OS-QT-04 / GitHub #693 — T17 instrumentación cerrada; T18 siguiente
+  (2026-08-21):** trace Qt opt-in, QPC nativo y self-hash en commit `67b47620`.
+  Smoke `standings-overtake` publica 115 updates, 113 presentaciones reales,
+  frame final 114 y residual cero; trace SHA `2ED4F519...A16A148E`, EXE SHA
+  `A4BDA5A4...7ED685D0`. La lectura inicial da model-apply p50 2,31 ms,
+  p95 78,93 ms y max 95,84 ms: es señal RED, no baseline cerrado. T18 debe
+  repetir los cinco escenarios y congelar raw antes de optimizar. WGC/pixels
+  permanece autoridad física. Build `/W4 /WX`, qmllint y los gates core,
+  Delta/Pedals/motion pasan; Relative conserva una flake heredada focal
+  2 PASS/1 FAIL sin cambios Relative. Rama
+  `vantareapp/isa-693-qt-standings-gate`, sin push, PR, CI remoto, integración,
+  promoción ni release.
+
 - **OS-QT-03 / GitHub #692 — candidate Qt Redline P0-B cerrado localmente
   (2026-08-21):** seis diseños y 15 escenas/2.466 records en candidate portable;
   Qt 6.10.2 x64 Release `/W4 /WX`, CTest 3/3, QtTest y `qmllint` verdes. Replay,

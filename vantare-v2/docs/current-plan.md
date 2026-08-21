@@ -1,3 +1,27 @@
+Nota OS-QT-04 / GitHub #693 (2026-08-21, T17 cerrado; T18 siguiente):
+- El candidate incorpora un trace opt-in por `VANTARE_QT_MOTION_TRACE`; el
+  camino normal no serializa eventos. Custodia `sequence`, escena/frame,
+  `logicalMs`, QPC nativo, fronteras model-apply y pares QML sync/present.
+- TDD RED cubrió ausencia del productor, coalescencia de updates antes de una
+  presentación, preroll negativo e idempotencia de cierre. GREEN valida
+  completitud, monotonicidad, bounds, self-hash, evento omitido y reloj no
+  monótono. Commit de código `67b47620`.
+- Smoke físico `standings-overtake`: 115/115 updates, 113 pares sync/present,
+  último frame lógico 114 presentado, salida 0 y residual 0. Trace SHA-256
+  `2ED4F519E01EE39C5A917091EC475128C99E3FE2EA111BB9D49175D3A16A148E`;
+  EXE SHA-256 `A4BDA5A4D4A203896DAF5B87F39B00079A0543ECFDF65626493489BC7ED685D0`.
+- Lectura exploratoria, todavía no baseline T18: model apply p50 2,31 ms,
+  p95 78,93 ms y max 95,84 ms. WGC/comparador externo sigue siendo la
+  autoridad física; el trace del candidate solo aporta clocks y eventos.
+- Build Qt 6.10.2 Release `/W4 /WX`, `qmllint`, core, Delta/Pedals y motion
+  trace pasan. El gate completo detectó una inestabilidad heredada en
+  `Relative::trafficThreatFollowsTheFoundation`: 2 PASS/1 FAIL en tres runs
+  focales del mismo binario, sin archivos Relative en el diff. Se conserva
+  como límite y no se mezcla su fix en T17.
+- Rama `vantareapp/isa-693-qt-standings-gate`, base documental #692
+  `e5e61d48`; sin producto, push, PR, CI remoto, integración, promoción o
+  release. T18 debe publicar el baseline RED reproducible antes de optimizar.
+
 Nota OS-QT-03 / GitHub #692 (2026-08-21, P0-B cerrado localmente):
 - El candidate Qt Quick Redline portable integra los seis diseños oficiales y
   las 15 escenas/2.466 records materializados desde los ViewModels TS

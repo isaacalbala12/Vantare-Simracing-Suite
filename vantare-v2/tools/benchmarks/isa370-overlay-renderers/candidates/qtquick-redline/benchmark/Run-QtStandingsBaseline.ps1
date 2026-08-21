@@ -4,8 +4,10 @@ param(
     [Parameter(Mandatory)][string]$QtRoot,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateRange(1, 100)][int]$Repetitions = 10,
-    [ValidateSet('overtake', 'full', 'enter', 'retirement')]
-    [string[]]$Scenarios = @('overtake', 'full', 'enter', 'retirement')
+    [ValidateSet('overtake', 'full', 'enter', 'retirement', 'stress')]
+    [string[]]$Scenarios = @('overtake', 'full', 'enter', 'retirement'),
+    [string]$StressReplay = '',
+    [string]$StressManifest = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +21,12 @@ $replay = Join-Path $release 'replay\redline-viewmodels-v1.jsonl'
 $manifest = Join-Path $release 'replay\redline-viewmodels-v1.manifest.json'
 foreach ($required in @($replay, $manifest)) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "packaged custody file is absent: $required" }
+}
+$stressReplayPath = $null
+$stressManifestPath = $null
+if ($Scenarios -contains 'stress') {
+    $stressReplayPath = (Resolve-Path -LiteralPath $StressReplay).Path
+    $stressManifestPath = (Resolve-Path -LiteralPath $StressManifest).Path
 }
 $repo = (& git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Git root is unavailable' }
@@ -38,6 +46,8 @@ $oldPluginPath = $env:QT_PLUGIN_PATH
 $oldForceLogging = $env:QT_FORCE_STDERR_LOGGING
 $oldScene = $env:VANTARE_REDLINE_SCENE
 $oldTrace = $env:VANTARE_QT_MOTION_TRACE
+$oldReplay = $env:VANTARE_REDLINE_REPLAY
+$oldManifest = $env:VANTARE_REDLINE_MANIFEST
 $entries = @()
 try {
     $env:PATH = "$(Join-Path $qt 'bin');$env:PATH"
@@ -53,6 +63,8 @@ try {
             $tracePath = Join-Path $output $traceName
             $env:VANTARE_REDLINE_SCENE = $sceneByScenario[$scenario]
             $env:VANTARE_QT_MOTION_TRACE = $tracePath
+            $env:VANTARE_REDLINE_REPLAY = if ($scenario -eq 'stress') { $stressReplayPath } else { $replay }
+            $env:VANTARE_REDLINE_MANIFEST = if ($scenario -eq 'stress') { $stressManifestPath } else { $manifest }
             $started = [DateTimeOffset]::UtcNow
             $startInfo = [Diagnostics.ProcessStartInfo]::new($exe)
             $startInfo.UseShellExecute = $false
@@ -97,6 +109,8 @@ finally {
     $env:QT_FORCE_STDERR_LOGGING = $oldForceLogging
     $env:VANTARE_REDLINE_SCENE = $oldScene
     $env:VANTARE_QT_MOTION_TRACE = $oldTrace
+    $env:VANTARE_REDLINE_REPLAY = $oldReplay
+    $env:VANTARE_REDLINE_MANIFEST = $oldManifest
 }
 
 $cpu = @(Get-CimInstance Win32_Processor | ForEach-Object Name)
@@ -108,8 +122,12 @@ $runManifest = [ordered]@{
     repetitions = $Repetitions
     scenarios = @($Scenarios)
     executable = [ordered]@{ file = [IO.Path]::GetFileName($exe); sha256 = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant() }
-    replay = [ordered]@{ file = [IO.Path]::GetFileName($replay); sha256 = (Get-FileHash $replay -Algorithm SHA256).Hash.ToLowerInvariant() }
-    manifest = [ordered]@{ file = [IO.Path]::GetFileName($manifest); sha256 = (Get-FileHash $manifest -Algorithm SHA256).Hash.ToLowerInvariant() }
+    corpora = @(
+        [ordered]@{ id = 'canonical'; replaySha256 = (Get-FileHash $replay -Algorithm SHA256).Hash.ToLowerInvariant(); manifestSha256 = (Get-FileHash $manifest -Algorithm SHA256).Hash.ToLowerInvariant() }
+        if ($null -ne $stressReplayPath) {
+            [ordered]@{ id = 'standings-stress104-v1'; replaySha256 = (Get-FileHash $stressReplayPath -Algorithm SHA256).Hash.ToLowerInvariant(); manifestSha256 = (Get-FileHash $stressManifestPath -Algorithm SHA256).Hash.ToLowerInvariant() }
+        }
+    )
     qtCore = [ordered]@{ file = 'Qt6Core.dll'; sha256 = (Get-FileHash (Join-Path $qt 'bin\Qt6Core.dll') -Algorithm SHA256).Hash.ToLowerInvariant() }
     runnerSha256 = (Get-FileHash $MyInvocation.MyCommand.Path -Algorithm SHA256).Hash.ToLowerInvariant()
     environment = [ordered]@{

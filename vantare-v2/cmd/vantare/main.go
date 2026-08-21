@@ -22,9 +22,9 @@ import (
 	"github.com/vantare/overlays/v2/configs"
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
-	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -613,11 +613,19 @@ func installerURL(release updater.Release) string {
 	return release.HTMLURL
 }
 
+// discoverApps is the injectable seam for the launcher discovery used by
+// handleDiscoverApps. Production points at svc.DiscoverApps; tests replace it
+// with a deterministic fake so the handler suite never touches the Windows
+// registry, installed paths or icon extraction.
+var discoverApps = func(svc *launcher.Service) ([]app.LauncherAppEntry, error) {
+	return svc.DiscoverApps()
+}
+
 // handleDiscoverApps runs discovery, persists the merged app set and emits the
 // canonical launcher snapshot. On error it falls back to
 // launcher:error so the UI can surface a message.
 func handleDiscoverApps(svc *launcher.Service, emitter app.EventEmitter) {
-	if _, err := svc.DiscoverApps(); err != nil {
+	if _, err := discoverApps(svc); err != nil {
 		log.Printf("launcher:discover error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		handleLauncherSnapshot(svc, emitter)

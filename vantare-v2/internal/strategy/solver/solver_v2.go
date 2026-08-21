@@ -32,11 +32,15 @@ type PitStopDecision struct {
 }
 
 type StintDecision struct {
-	Index       int          `json:"index"`
-	Laps        int64        `json:"laps"`
-	Compound    TyreCompound `json:"compound"`
-	Driver      string       `json:"driver"`
-	SavingLevel SavingLevel  `json:"savingLevel"`
+	Index             int          `json:"index"`
+	Laps              int64        `json:"laps"`
+	Compound          TyreCompound `json:"compound"`
+	Driver            string       `json:"driver"`
+	SavingLevel       SavingLevel  `json:"savingLevel"`
+	FuelSavedPerLap   float64      `json:"fuelSavedPerLap"`
+	VESavedPerLap     float64      `json:"veSavedPerLap"`
+	TimeCostPerLap    float64      `json:"timeCostPerLap"`
+	SavingCostSeconds float64      `json:"savingCostSeconds"`
 }
 
 type TyreCompound string
@@ -154,7 +158,24 @@ type SolverInputV2 struct {
 	VEPerLapPercent   float64               `json:"vePerLapPercent"`
 	DegradationPerLap float64               `json:"degradationPerLapSeconds"`
 	FuelWeight        *FuelWeightParameter  `json:"fuelWeight,omitempty"`
+	SavingCost        *SavingCostParameter  `json:"savingCost,omitempty"`
 	Discretization    ServiceDiscretization `json:"serviceDiscretization"`
+}
+
+// SavingCostParameter transporta niveles manuales o de referencia. El nivel
+// none es siempre implicito y no se declara aqui.
+type SavingCostParameter struct {
+	Presence   sp.Presence         `json:"presence"`
+	Provenance sp.Provenance       `json:"provenance"`
+	Confidence sp.Confidence       `json:"confidence"`
+	Levels     []SavingLevelOption `json:"levels"`
+}
+
+type SavingLevelOption struct {
+	Level           SavingLevel `json:"level"`
+	FuelSavedPerLap float64     `json:"fuelSavedPerLap"`
+	VESavedPerLap   float64     `json:"veSavedPerLap"`
+	TimeCostPerLap  float64     `json:"timeCostPerLap"`
 }
 
 // FuelWeightParameter transporta el fallback manual o de referencia para el
@@ -246,6 +267,11 @@ func (in SolverInputV2) Validate() error {
 			return fmt.Errorf("fuelWeight: %w", err)
 		}
 	}
+	if in.SavingCost != nil {
+		if err := in.SavingCost.Validate(); err != nil {
+			return fmt.Errorf("savingCost: %w", err)
+		}
+	}
 	// Projection puede ser nil (arranque en frío): se usa reference del catálogo o manual.
 	if in.Projection != nil {
 		if err := in.Projection.Validate(); err != nil {
@@ -253,6 +279,22 @@ func (in SolverInputV2) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (parameter SavingCostParameter) Validate() error {
+	if parameter.Presence != sp.PresenceValid {
+		return fmt.Errorf("presence must be valid")
+	}
+	if parameter.Provenance.Kind != sp.ProvenanceManual && parameter.Provenance.Kind != sp.ProvenanceReference {
+		return fmt.Errorf("provenance.kind must be manual or reference")
+	}
+	if err := parameter.Provenance.Validate(); err != nil {
+		return err
+	}
+	if err := parameter.Confidence.Validate(); err != nil {
+		return err
+	}
+	return validateSavingLevelOptions(parameter.Levels)
 }
 
 func (parameter FuelWeightParameter) Validate() error {
@@ -280,6 +322,8 @@ type SolverResultV2 struct {
 	InputHash        string               `json:"inputHash"`
 	StintPaceCost    StintPaceCostSource  `json:"stintPaceCost"`
 	FuelWeightCost   FuelWeightCostSource `json:"fuelWeightCost"`
+	SavingCost       SavingCostSource     `json:"savingCost"`
+	SavingPlan       SavingPlan           `json:"savingPlan"`
 	Best             DecisionVector       `json:"best"`
 	Binding          BindingConstraint    `json:"binding"`
 	Sensitivities    []SolverSensitivity  `json:"sensitivities"`
@@ -291,6 +335,32 @@ type SolverResultV2 struct {
 	Reasons          []SolverReason       `json:"reasons,omitempty"`
 	Assumptions      []SolverReason       `json:"assumptions"`
 	ComputeStats     ComputeStats         `json:"computeStats"`
+}
+
+type SavingCostSource struct {
+	Presence   sp.Presence         `json:"presence"`
+	Provenance sp.Provenance       `json:"provenance"`
+	Confidence sp.Confidence       `json:"confidence"`
+	Levels     []SavingLevelOption `json:"levels"`
+}
+
+type SavingPlan struct {
+	Stints           []SavingPlanStint `json:"stints"`
+	TotalFuelSaved   float64           `json:"totalFuelSaved"`
+	TotalVESaved     float64           `json:"totalVESaved"`
+	TotalCostSeconds float64           `json:"totalCostSeconds"`
+}
+
+type SavingPlanStint struct {
+	StintIndex       int         `json:"stintIndex"`
+	Laps             int64       `json:"laps"`
+	Level            SavingLevel `json:"level"`
+	FuelSavedPerLap  float64     `json:"fuelSavedPerLap"`
+	VESavedPerLap    float64     `json:"veSavedPerLap"`
+	TimeCostPerLap   float64     `json:"timeCostPerLap"`
+	TotalFuelSaved   float64     `json:"totalFuelSaved"`
+	TotalVESaved     float64     `json:"totalVESaved"`
+	TotalCostSeconds float64     `json:"totalCostSeconds"`
 }
 
 type FuelWeightCostSource struct {
@@ -326,6 +396,7 @@ type ScenarioEvaluation struct {
 	GreenSeconds       float64 `json:"greenSeconds"`
 	DegradationSeconds float64 `json:"degradationSeconds"`
 	FuelWeightSeconds  float64 `json:"fuelWeightSeconds"`
+	SavingSeconds      float64 `json:"savingSeconds"`
 	PitSeconds         float64 `json:"pitSeconds"`
 	FormationSeconds   float64 `json:"formationSeconds"`
 }

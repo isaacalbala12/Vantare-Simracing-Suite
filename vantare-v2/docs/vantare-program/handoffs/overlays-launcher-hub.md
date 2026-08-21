@@ -876,3 +876,24 @@ Evidencia Task 4 y cierre acumulado:
 - Review propio en cinco ejes: Approve, sin Critical/Required pendientes. PR
   draft #279 abierto a `nightly`; `01-shell` permanece bloqueado hasta la
   aceptación de este briefing.
+
+## ISA-760 — baseline Wails Redline comparable con Qt (2026-08-22)
+
+- Issue GitHub #760, rama `vantareapp/isa-760-wails-redline-baseline`, worktree
+  `C:\tmp\vantare-isa760-wails-redline-baseline\vantare-v2` y base exacta
+  `origin/nightly@f71a43aceef39df0aee3cd9f69ab52efeeac31c8`.
+- Objetivo: medir el renderer Standings Redline productivo dentro de
+  Wails/WebView2 real con los corpus canonical y stress104 custodiados por
+  ISA-738. Wails continúa como único runtime principal y Qt no se modifica.
+- Contrato vigente: input/hash puede ser equivalente; commit/layout entre React
+  y QML se declara `DEGRADED`; rAF WebView2 no equivale a `frameSwapped` Qt y
+  queda `UNRESOLVED` para presentación real. No se afirmará superioridad desde
+  métricas no equivalentes.
+- Plan activo:
+  `docs/superpowers/plans/2026-08-22-isa-760-wails-redline-baseline.md`.
+- Write set previsto: entry Vite aislado, host Wails de benchmark, runner,
+  agregador, tests, corpus y evidencia. No se tocan `WidgetVisualHost`,
+  Telemetry Core, proyecciones, cadencias ni ventanas productivas.
+- Estado: planificación cerrada y lista para checkpoint documental;
+  implementación del harness pendiente. Sin push, PR, CI, integración,
+  promoción ni release.

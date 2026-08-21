@@ -349,7 +349,9 @@ void RedlineReplayTest::identicalStandingsSnapshotKeepsCadenceAndProjection()
     QCOMPARE(visualClassesChanged.count(), 2);
     QCOMPARE(rowsChanged.count(), 0);
     QCOMPARE(model.rowCount(), 1);
-    QCOMPARE(model.visualClasses(), firstProjection);
+    const QVariantList secondProjection = model.visualClasses();
+    QCOMPARE(secondProjection, firstProjection);
+    QVERIFY(!secondProjection.isSharedWith(firstProjection));
 }
 
 void RedlineReplayTest::keyedModelsMatchEveryPackagedReplayFrameWithoutReset()

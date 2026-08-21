@@ -205,8 +205,16 @@ void StandingsModel::apply(const ReplayRecord &record)
 
 QVariantList StandingsModel::visualClasses() const
 {
+    const auto projectionCopy = [this] {
+        QVariantList projection;
+        projection.reserve(m_visualClasses.size());
+        for (const QVariant &visualClass : m_visualClasses) {
+            projection.append(visualClass);
+        }
+        return projection;
+    };
     if (!m_visualClassesDirty) {
-        return m_visualClasses;
+        return projectionCopy();
     }
     double fastestSeconds = std::numeric_limits<double>::infinity();
     for (const QJsonObject &row : rows()) {
@@ -274,7 +282,7 @@ QVariantList StandingsModel::visualClasses() const
     }
     m_visualClasses = classes.toVariantList();
     m_visualClassesDirty = false;
-    return m_visualClasses;
+    return projectionCopy();
 }
 
 RelativeModel::RelativeModel(QObject *parent)

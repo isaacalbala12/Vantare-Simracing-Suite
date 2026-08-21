@@ -71,6 +71,16 @@ const ROSTER: StrategyRoster = {
 
 const goldenClient: StrategyApplicationClient<unknown> = {
   async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
+    if (command.operation === "list") {
+      return {
+        protocolVersion: "strategy.application.v1",
+        commandId: command.commandId,
+        repositoryVersion: 0,
+        plans: [],
+        recoveredFromBackup: false,
+        closed: false,
+      };
+    }
     if (command.operation !== "calculate_orbit") throw new Error(`unexpected ${command.operation}`);
     expect(command.input.event).toEqual({ durationMinutes: 240, tankLiters: 90, pitLossSeconds: 64 });
     expect(command.input.variants[0].order).toEqual(["isaac", "sol", "diego", "marta"]);

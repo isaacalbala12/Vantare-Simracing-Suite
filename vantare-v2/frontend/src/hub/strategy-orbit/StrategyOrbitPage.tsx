@@ -93,11 +93,22 @@ import type {
   StrategyLegacyMigrationPreviewV1,
   StrategyOrbitCalculationResultV1,
 } from "../../strategy/strategy-application-client";
+import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
   buildRecommendedEvents,
   type RecommendedEvent,
 } from "./strategy-recommended";
 import { exportStrategyPackage } from "../../strategy/strategy-transfer";
+import {
+  STRATEGY_ORBIT_REVISION_CONTRACT_V1,
+  activateOrbitRevision,
+  loadOrbitLifecycle,
+  orbitLifecycleIdentity,
+  sameRevision,
+  saveOrbitRevision,
+  type OrbitLifecycleState,
+  type StrategyOrbitRevisionPayloadV1,
+} from "./strategy-orbit-lifecycle";
 import {
   addAvailability,
   AVAILABILITY_FROM,
@@ -127,6 +138,25 @@ export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 type StrategyTab = "overview" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */
 type PickerPath = "none" | "series";
+
+type VisibleApplicationFailure = {
+  readonly message: string;
+  readonly code?: string;
+  readonly field?: string;
+};
+
+type OrbitLifecycleView = {
+  readonly status: "idle" | "loading" | "ready" | "busy" | "error";
+  readonly state?: OrbitLifecycleState;
+  readonly failure?: VisibleApplicationFailure;
+};
+
+function visibleApplicationFailure(error: unknown): VisibleApplicationFailure {
+  if (error instanceof StrategyApplicationError) {
+    return { message: error.message, code: error.code, field: error.field };
+  }
+  return { message: error instanceof Error ? error.message : String(error) };
+}
 
 /**
  * Pasos del asistente de creación (ISA-377): de dónde salen los datos, si se
@@ -287,13 +317,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [runtime] = useState<StrategyEditorRuntime>(
     () => (runtimeFactory ?? createWailsStrategyEditorRuntime)(),
   );
+  const [editorOpenFailure, setEditorOpenFailure] = useState<VisibleApplicationFailure | null>(null);
   // StrictMode monta, desmonta y vuelve a montar: si el cierre del efecto
   // desechara el runtime en el acto, el segundo montaje encontraría un cliente
   // muerto y el inventario nunca llegaría (mismo patrón que el planificador).
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
-    void openOrCreateStrategyEditor(runtime.store).catch(() => undefined);
+    void openOrCreateStrategyEditor(runtime.store).then(
+      () => {
+        if (mounted.current) setEditorOpenFailure(null);
+      },
+      (error: unknown) => {
+        if (mounted.current) setEditorOpenFailure(visibleApplicationFailure(error));
+      },
+    );
     return () => {
       mounted.current = false;
       queueMicrotask(() => {
@@ -458,6 +496,113 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return { ...storedActive, tyres: defaultTyres(plan.stints.length, inventory) };
   }, [inventory, plan, storedActive]);
 
+  // ── custodia canónica de la revisión visible ───────────────────────────
+  const lifecycleClient = applicationClient as StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>;
+  const lifecyclePayload = useMemo<StrategyOrbitRevisionPayloadV1 | null>(() => {
+    if (!eventRecord || !active || !plan) return null;
+    return {
+      contractVersion: STRATEGY_ORBIT_REVISION_CONTRACT_V1,
+      event: {
+        id: eventRecord.id,
+        name: eventRecord.name,
+        source: eventRecord.source,
+        ...(eventRecord.seriesId ? { seriesId: eventRecord.seriesId } : {}),
+        track: eventRecord.track,
+        cls: eventRecord.cls,
+        durationMin: eventRecord.durationMin,
+        startAt: eventRecord.startAt,
+        ...(eventRecord.team ? { team: eventRecord.team } : {}),
+        drivers: eventRecord.drivers,
+        tankL: eventRecord.tankL,
+        pitLossSec: eventRecord.pitLossSec,
+        availability: eventRecord.availability ?? {},
+        teamMode: eventRecord.teamMode ?? "team",
+        fillMode: eventRecord.fillMode ?? "manual",
+      },
+      variant: active,
+      calculatedPlan: plan,
+    };
+  }, [active, eventRecord, plan]);
+  const lifecycleKey = lifecyclePayload ? JSON.stringify(lifecyclePayload) : "";
+  const lifecycleSequence = useRef(0);
+  const [lifecycleRetry, setLifecycleRetry] = useState(0);
+  const [lifecycle, setLifecycle] = useState<OrbitLifecycleView>({ status: "idle" });
+  useEffect(() => {
+    if (!lifecyclePayload) {
+      setLifecycle({ status: "idle" });
+      return;
+    }
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    setLifecycle({ status: "loading" });
+    void loadOrbitLifecycle(lifecycleClient, lifecyclePayload, String(sequence)).then(
+      (state) => {
+        if (sequence !== lifecycleSequence.current) return;
+        setLifecycle({ status: "ready", state });
+      },
+      (error: unknown) => {
+        if (sequence !== lifecycleSequence.current) return;
+        setLifecycle({ status: "error", failure: visibleApplicationFailure(error) });
+      },
+    );
+  }, [lifecycleClient, lifecycleKey, lifecyclePayload, lifecycleRetry]);
+
+  const saveVisibleRevision = useCallback(async () => {
+    if (!lifecyclePayload || !active || !eventRecord) return;
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    setLifecycle({ status: "busy", state: lifecycle.state });
+    try {
+      const saved = await saveOrbitRevision(
+        lifecycleClient,
+        lifecyclePayload,
+        `${eventRecord.name} · ${active.name}`,
+      );
+      if (sequence !== lifecycleSequence.current) return;
+      setLifecycle({ status: "ready", state: saved });
+      toast.show(
+        t("strategy.lifecycle.saved"),
+        formatMessage(t("strategy.lifecycle.savedHint"), {
+          revision: saved.revision.revisionId,
+          hash: saved.revision.contentHash.slice(0, 12),
+        }),
+      );
+    } catch (error) {
+      if (sequence !== lifecycleSequence.current) return;
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.lifecycle.saveFailed"), failure.message);
+    }
+  }, [active, eventRecord, lifecycle.state, lifecycleClient, lifecyclePayload, t, toast]);
+
+  const activateVisibleRevision = useCallback(async () => {
+    if (!lifecycle.state?.savedRevision) return;
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    setLifecycle({ status: "busy", state: lifecycle.state });
+    try {
+      const activated = await activateOrbitRevision(lifecycleClient, lifecycle.state);
+      if (sequence !== lifecycleSequence.current) return;
+      setLifecycle({ status: "ready", state: activated });
+      toast.show(
+        t("strategy.lifecycle.activated"),
+        formatMessage(t("strategy.lifecycle.activatedHint"), {
+          revision: activated.activePlan?.revision.revisionId ?? "",
+        }),
+      );
+    } catch (error) {
+      if (sequence !== lifecycleSequence.current) return;
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.lifecycle.activateFailed"), failure.message);
+    }
+  }, [lifecycle.state, lifecycleClient, t, toast]);
+
+  const visibleRevisionIsActive = sameRevision(
+    lifecycle.state?.activePlan?.revision,
+    lifecycle.state?.savedRevision,
+  );
+
   const eventId = eventRecord?.id ?? null;
   const patchStrategies = useCallback(
     (change: (list: StrategyVariant[]) => StrategyVariant[], nextActive?: string) => {
@@ -498,8 +643,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [picked, setPicked] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // ── estrategias: activar, duplicar, crear ───────────────────────────────
-  const activate = useCallback(
+  // ── estrategias: seleccionar, duplicar, crear ───────────────────────────
+  const selectVariant = useCallback(
     (id: string, silent = false) => {
       patchStrategies((list) => list, id);
       setEditing(-1);
@@ -507,8 +652,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       if (silent) return;
       const name = variants[id]?.name ?? "";
       toast.show(
-        t("strategy.cards.activated"),
-        formatMessage(t("strategy.cards.activatedHint"), { name }),
+        t("strategy.lifecycle.selected"),
+        formatMessage(t("strategy.lifecycle.selectedHint"), { name }),
       );
     },
     [patchStrategies, t, toast, variants],
@@ -608,16 +753,20 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   // ── ⚙ Ajustes ───────────────────────────────────────────────────────────
   const exportPlan = useCallback(async () => {
-    const draft = snapshot.draft;
-    if (!draft) {
-      toast.show(t("strategy.menu.exportFailed"), t("strategy.menu.soon"));
+    const revision = lifecycle.state?.savedRevision;
+    if (!revision || !lifecyclePayload) {
+      const failure = new StrategyApplicationError(
+        "revision_not_found",
+        "revision",
+        t("strategy.lifecycle.saveFirst"),
+      );
+      setLifecycle({ status: "error", state: lifecycle.state, failure: visibleApplicationFailure(failure) });
       return;
     }
     try {
-      // Exportación real del dominio (`strategy-transfer.ts`): el paquete lo
-      // arma el servicio, esta pantalla solo dice qué plan y cuánto pesa.
-      const pack = await exportStrategyPackage(runtime.client, `orbit-export-${draft.draftId}`, {
-        plans: [{ planId: draft.planId, variantId: draft.variantId }],
+      const identity = orbitLifecycleIdentity(lifecyclePayload.event.id);
+      const pack = await exportStrategyPackage(applicationClient, `orbit-export-${revision.revisionId}`, {
+        plans: [{ planId: identity.planId, variantId: identity.variantId, revision }],
         provenance: {
           application: "Vantare",
           applicationVersion: "orbit-v0.3",
@@ -632,12 +781,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         }),
       );
     } catch (error) {
-      toast.show(
-        t("strategy.menu.exportFailed"),
-        error instanceof Error ? error.message : String(error),
-      );
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.menu.exportFailed"), failure.message);
     }
-  }, [runtime, snapshot.draft, t, toast]);
+  }, [applicationClient, lifecycle.state, lifecyclePayload, t, toast]);
 
   const scrollToStint = useCallback((index: number) => {
     window.requestAnimationFrame(() => {
@@ -1078,7 +1226,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             <ListRow
               ariaSelected={variant.id === activeId}
               key={variant.id}
-              onClick={() => activate(variant.id, true)}
+              onClick={() => selectVariant(variant.id, true)}
               selected={variant.id === activeId}
               subtitle={variant.note}
               title={variant.name}
@@ -1468,6 +1616,15 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       </section>
     </div>
   );
+  const editorFailureView = editorOpenFailure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-editor-open-error" role="alert">
+      <b>{t("strategy.lifecycle.openFailed")}</b>
+      <span>{editorOpenFailure.message}</span>
+      {[editorOpenFailure.code, editorOpenFailure.field].filter(Boolean).join(" · ") ? (
+        <small>{[editorOpenFailure.code, editorOpenFailure.field].filter(Boolean).join(" · ")}</small>
+      ) : null}
+    </div>
+  ) : null;
 
   /** Lista del calendario y recomendados: el punto de partida «desde evento». */
   const calendarStep = (
@@ -1765,6 +1922,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         {form ? eventForm : (wizardView ?? entryMenu)}
+        {editorFailureView}
         {deleteDialog}
         {migrationDialog}
       </div>
@@ -1778,6 +1936,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
           <p role="status">{t("strategy.calculation.loadingHint")}</p>
         </Surface>
+        {editorFailureView}
         {migrationDialog}
       </div>
     );
@@ -1798,6 +1957,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             {t("strategy.calculation.retry")}
           </Button>
         </Surface>
+        {editorFailureView}
         {migrationDialog}
       </div>
     );
@@ -1902,6 +2062,30 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       : active.mode === "eco"
         ? t("strategy.stints.eco")
         : t("strategy.stints.dry");
+  const lifecycleReference = lifecycle.state?.savedRevision ?? lifecycle.state?.activePlan?.revision;
+  const lifecycleStatus = lifecycle.status === "loading" || lifecycleReference || lifecycle.failure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-revision-status">
+      {lifecycle.status === "loading" ? <span role="status">{t("strategy.lifecycle.loading")}</span> : null}
+      {lifecycleReference ? (
+        <>
+          <b>{visibleRevisionIsActive ? t("strategy.lifecycle.active") : t("strategy.lifecycle.saved")}</b>
+          <span>{lifecycleReference.revisionId} · {lifecycleReference.contentHash.slice(0, 12)}</span>
+        </>
+      ) : null}
+      {lifecycle.status === "error" && lifecycle.failure ? (
+        <div data-testid="orbit-strategy-lifecycle-error" role="alert">
+          <b>{t("strategy.lifecycle.error")}</b>
+          <span>{lifecycle.failure.message}</span>
+          {[lifecycle.failure.code, lifecycle.failure.field].filter(Boolean).join(" · ") ? (
+            <small>{[lifecycle.failure.code, lifecycle.failure.field].filter(Boolean).join(" · ")}</small>
+          ) : null}
+          <Button onClick={() => setLifecycleRetry((value) => value + 1)} size="sm" variant="ghost">
+            {t("strategy.lifecycle.retry")}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
@@ -1948,6 +2132,22 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           >
             {t("strategy.backToMenu")}
           </Button>
+          <Button
+            data-testid="orbit-strategy-save-revision"
+            disabled={lifecycle.status === "loading" || lifecycle.status === "busy"}
+            onClick={() => void saveVisibleRevision()}
+            variant="primary"
+          >
+            {t("strategy.lifecycle.save")}
+          </Button>
+          <Button
+            data-testid="orbit-strategy-activate-revision"
+            disabled={!lifecycle.state?.savedRevision || lifecycle.status === "busy" || visibleRevisionIsActive}
+            onClick={() => void activateVisibleRevision()}
+            variant="ghost"
+          >
+            {visibleRevisionIsActive ? t("strategy.lifecycle.active") : t("strategy.lifecycle.activate")}
+          </Button>
           <Menu
             items={[
               {
@@ -1988,6 +2188,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </div>
       </header>
 
+      {editorFailureView}
+      {lifecycleStatus}
+
       <UnderlineTabs<StrategyTab>
         className="orbit-strategy__tabs"
         label={t("strategy.tabs.label")}
@@ -2009,7 +2212,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               return (
                 <article
                   className="orbit-strat-card"
-                  data-active={variant.id === active.id ? "true" : undefined}
+                  data-active={variant.id === active.id && visibleRevisionIsActive ? "true" : undefined}
                   data-testid={`orbit-strat-${variant.id}`}
                   key={variant.id}
                 >
@@ -2037,22 +2240,22 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   <div className="orbit-strat-card__acts">
                     {variant.id === active.id ? (
                       <Button
-                        data-tip={t("strategy.cards.activeTip")}
+                        data-tip={visibleRevisionIsActive ? t("strategy.cards.activeTip") : t("strategy.lifecycle.selectedTip")}
                         data-tip-side="top"
                         disabled
                         size="sm"
                         variant="ghost"
                       >
-                        {t("strategy.cards.active")}
+                        {visibleRevisionIsActive ? t("strategy.cards.active") : t("strategy.lifecycle.selected")}
                       </Button>
                     ) : (
                       <Button
-                        data-testid={`orbit-strat-activate-${variant.id}`}
-                        onClick={() => activate(variant.id)}
+                        data-testid={`orbit-strat-select-${variant.id}`}
+                        onClick={() => selectVariant(variant.id)}
                         size="sm"
                         variant="primary"
                       >
-                        {t("strategy.cards.activate")}
+                        {t("strategy.lifecycle.select")}
                       </Button>
                     )}
                     <Button

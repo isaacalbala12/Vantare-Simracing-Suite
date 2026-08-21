@@ -17,6 +17,8 @@ import {
 } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft } from "../../strategy/strategy-editor-store";
 import { createOrbitCalculationTestClient } from "./strategy-orbit-calculation.test-support";
+import type { PlanDraftV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
+import type { StrategyOrbitRevisionPayloadV1 } from "./strategy-orbit-lifecycle";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
@@ -113,6 +115,7 @@ const ROSTER: StrategyRoster = {
 function mount(
   roster: StrategyRoster | null = ROSTER,
   applicationClient: StrategyApplicationClient<unknown> = createOrbitCalculationTestClient(),
+  runtimeFactory: () => ReturnType<typeof memoryRuntime> = memoryRuntime,
 ) {
   const slot = document.createElement("div");
   slot.id = STRATEGY_CONTEXT_SLOT_ID;
@@ -123,7 +126,7 @@ function mount(
         <StrategyOrbitPage
           applicationClient={applicationClient}
           roster={roster}
-          runtimeFactory={memoryRuntime}
+          runtimeFactory={runtimeFactory}
         />
       </ToastProvider>
     </I18nProvider>,
@@ -133,6 +136,112 @@ function mount(
 async function mounted() {
   mount();
   await screen.findByTestId("orbit-stint-0");
+}
+
+function lifecycleClient() {
+  const calculation = createOrbitCalculationTestClient();
+  const seen: StrategyApplicationCommandV1<unknown>[] = [];
+  let version = 0;
+  let draft: PlanDraftV1<StrategyOrbitRevisionPayloadV1> | undefined;
+  let revision: RevisionRefV1 | undefined;
+  let activePlan: StrategyApplicationResultV1<unknown>["activePlan"];
+  const client: StrategyApplicationClient<unknown> = {
+    async execute(command) {
+      seen.push(command);
+      if (command.operation === "calculate_orbit") return calculation.execute(command);
+      const base = {
+        protocolVersion: "strategy.application.v1" as const,
+        commandId: command.commandId,
+        repositoryVersion: version,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "list") {
+        return {
+          ...base,
+          activePlan,
+          plans: draft ? [{
+            planId: draft.planId,
+            variantId: draft.variantId,
+            draftId: draft.draftId,
+            name: draft.name,
+            mode: draft.mode,
+            updatedAt: draft.updatedAt,
+            hasDraft: true,
+            revisionCount: revision ? 1 : 0,
+            ...(revision ? { latestRevision: revision, latestRevisionAt: draft.updatedAt } : {}),
+          }] : [],
+        };
+      }
+      if (command.operation === "create") {
+        draft = structuredClone(command.draft) as PlanDraftV1<StrategyOrbitRevisionPayloadV1>;
+        version += 1;
+        return { ...base, repositoryVersion: version, draft, savedDraft: draft };
+      }
+      if (command.operation === "open") {
+        if (!draft) throw new StrategyApplicationError("draft_not_found", "draftId", "missing");
+        return { ...base, draft, savedDraft: draft };
+      }
+      if (command.operation === "save_revision") {
+        revision = {
+          planId: command.draft.planId,
+          variantId: command.draft.variantId,
+          revisionId: command.revisionId,
+          contentHash: "b".repeat(64),
+        };
+        draft = { ...command.draft, baseRevision: revision } as PlanDraftV1<StrategyOrbitRevisionPayloadV1>;
+        version += 1;
+        return {
+          ...base,
+          repositoryVersion: version,
+          draft,
+          savedDraft: draft,
+          revision: {
+            contractVersion: "strategy.v1",
+            hashAlgorithm: "sha256:strategy-c14n-v1",
+            revisionId: revision.revisionId,
+            sourceDraftId: draft.draftId,
+            planId: revision.planId,
+            variantId: revision.variantId,
+            name: draft.name,
+            mode: draft.mode,
+            capabilities: draft.capabilities,
+            provenance: draft.provenance,
+            confidence: draft.confidence,
+            createdAt: command.createdAt,
+            payload: draft.payload,
+            contentHash: revision.contentHash,
+          } as never,
+        };
+      }
+      if (command.operation === "activate") {
+        activePlan = {
+          contractVersion: "strategy.v1",
+          activationId: command.activationId,
+          revision: command.revision,
+          activatedAt: command.activatedAt,
+        };
+        version += 1;
+        return { ...base, repositoryVersion: version, activePlan };
+      }
+      if (command.operation === "export") {
+        return { ...base, package: btoa("exact revision") };
+      }
+      throw new Error(`unexpected ${command.operation}`);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+  return { client, seen };
+}
+
+function failingOpenRuntime() {
+  const client: StrategyApplicationClient<StrategyEditorDocument> = {
+    execute: async () => { throw new StrategyApplicationError("stale_command", "draftId", "bridge caído"); },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+  return createStrategyEditorRuntime(client);
 }
 
 /**
@@ -316,6 +425,86 @@ describe("StrategyOrbitPage · ⚙ Ajustes", () => {
 });
 
 describe("StrategyOrbitPage · Estrategias", () => {
+
+  it("Guardar confirma la revisión visible y Activar usa exactamente esa identidad", async () => {
+    const backend = lifecycleClient();
+    mount(ROSTER, backend.client);
+    await screen.findByTestId("orbit-stint-0");
+
+    const save = await screen.findByTestId("orbit-strategy-save-revision");
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(save);
+
+    const saved = await screen.findByTestId("orbit-strategy-revision-status");
+    expect(saved.textContent).toContain("orbit-revision-");
+    const saveCommand = backend.seen.find((command) => command.operation === "save_revision");
+    expect(saveCommand).toMatchObject({ operation: "save_revision" });
+
+    const activate = screen.getByTestId("orbit-strategy-activate-revision");
+    fireEvent.click(activate);
+    await waitFor(() => expect(saved.textContent).toContain("Activa"));
+    const activation = backend.seen.find((command) => command.operation === "activate");
+    const savedCommand = saveCommand as Extract<StrategyApplicationCommandV1<unknown>, { operation: "save_revision" }>;
+    expect(activation).toMatchObject({
+      operation: "activate",
+      revision: {
+        planId: savedCommand.draft.planId,
+        variantId: savedCommand.draft.variantId,
+        revisionId: savedCommand.revisionId,
+        contentHash: "b".repeat(64),
+      },
+    });
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-settings"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Exportar plan/ }));
+    await waitFor(() => expect(backend.seen.some((command) => command.operation === "export")).toBe(true));
+    const exported = backend.seen.find((command) => command.operation === "export");
+    expect(exported).toMatchObject({
+      operation: "export",
+      plans: [{
+        planId: savedCommand.draft.planId,
+        variantId: savedCommand.draft.variantId,
+        revision: {
+          revisionId: savedCommand.revisionId,
+          contentHash: "b".repeat(64),
+        },
+      }],
+    });
+  });
+
+  it("muestra código y campo cuando Guardar falla", async () => {
+    const backend = lifecycleClient();
+    const failing: StrategyApplicationClient<unknown> = {
+      ...backend.client,
+      async execute(command) {
+        if (command.operation === "save_revision") {
+          throw new StrategyApplicationError(
+            "stale_command",
+            "expectedRepositoryVersion",
+            "El documento cambió",
+          );
+        }
+        return backend.client.execute(command);
+      },
+    };
+    mount(ROSTER, failing);
+    const save = await screen.findByTestId("orbit-strategy-save-revision");
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(save);
+
+    const error = await screen.findByTestId("orbit-strategy-lifecycle-error");
+    expect(error.textContent).toContain("El documento cambió");
+    expect(error.textContent).toContain("stale_command");
+    expect(error.textContent).toContain("expectedRepositoryVersion");
+  });
+
+  it("muestra el fallo tipado al abrir el borrador canónico", async () => {
+    mount(ROSTER, createOrbitCalculationTestClient(), failingOpenRuntime);
+    const error = await screen.findByTestId("orbit-strategy-editor-open-error");
+    expect(error.textContent).toContain("bridge caído");
+    expect(error.textContent).toContain("stale_command");
+    expect(error.textContent).toContain("draftId");
+  });
   async function strategiesTab() {
     await mounted();
     fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));
@@ -347,22 +536,22 @@ describe("StrategyOrbitPage · Estrategias", () => {
     expect(verdict).toContain("dobla turno");
   });
 
-  it("Activar cambia la estrategia del panel y del crumb", async () => {
+  it("Seleccionar cambia la estrategia visible sin fingir que está activa", async () => {
     await strategiesTab();
 
     fireEvent.click(screen.getByTestId("orbit-strat-duplicate-s1"));
-    fireEvent.click(await screen.findByTestId("orbit-strat-activate-local-1"));
+    fireEvent.click(await screen.findByTestId("orbit-strat-select-local-1"));
 
     await waitFor(() =>
       expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #1 (copia)"),
     );
-    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBeNull();
     expect(screen.getByTestId("orbit-strat-s1").getAttribute("data-active")).toBeNull();
-    // La activa ya no ofrece Activar, y la anterior sí.
-    expect(screen.getByTestId("orbit-strat-activate-s1")).toBeTruthy();
+    // La seleccionada no se llama activa; la anterior ofrece Seleccionar.
+    expect(screen.getByTestId("orbit-strat-select-s1")).toBeTruthy();
   });
 
-  it("«+ Nueva estrategia» la crea y la deja activa", async () => {
+  it("«+ Nueva estrategia» la crea y la deja seleccionada, no activa", async () => {
     await strategiesTab();
 
     fireEvent.click(screen.getByTestId("orbit-strategy-new-card"));
@@ -370,7 +559,7 @@ describe("StrategyOrbitPage · Estrategias", () => {
     await waitFor(() =>
       expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #2"),
     );
-    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBeNull();
   });
 });
 

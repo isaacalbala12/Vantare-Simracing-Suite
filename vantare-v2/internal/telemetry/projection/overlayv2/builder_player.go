@@ -43,6 +43,15 @@ type SourceContextV2 struct {
 	DescriptorCapabilities []string
 	LastFrameAgeMS         int64
 	DegradedReason         string
+	// Modes says how the active driver resolved each capability for this
+	// session: world coordinates or a lap distance, which delta references
+	// carry data, whether the order and the gaps are the simulator's own.
+	//
+	// It arrives already resolved because the resolution needs the driver's
+	// compiled declaration, and ADR 0004 keeps projection free of any
+	// capability or driver import. The builder publishes it verbatim and never
+	// learns which simulator produced it.
+	Modes CapabilityModesV2
 }
 
 func DefaultPreferencesV2() PreferencesV2 {
@@ -88,7 +97,7 @@ func ProjectV2(
 		Delta:        BuildDelta(final, preferences),
 		Fuel:         BuildFuel(final, preferences),
 		Spotter:      BuildSpotter(final),
-		Capabilities: BuildCapabilities(final, source.DescriptorCapabilities),
+		Capabilities: BuildCapabilities(final, source),
 	}
 	return UpdateV2{
 		DeliveryRevision: deliveryRevision,
@@ -128,39 +137,56 @@ func BuildPlayerInstruments(final derive.FinalState, preferences PreferencesV2) 
 	return result
 }
 
-func BuildCapabilities(final derive.FinalState, descriptorCapabilities []string) CapabilitiesV2 {
-	supported := supportedCapabilities(descriptorCapabilities)
+func BuildCapabilities(final derive.FinalState, source SourceContextV2) CapabilitiesV2 {
+	supported := supportedCapabilities(source.DescriptorCapabilities)
 	player := BuildPlayerInstruments(final, DefaultPreferencesV2())
 	sessionView := BuildSession(final)
 	available := make(map[string]Quality, len(supported))
-	for _, capability := range supported {
-		switch capability {
+	for _, id := range supported {
+		switch id {
 		case capabilitySession:
-			available[capability] = bestQuality(sessionView.Track.Q, sessionView.Phase.Q, sessionView.RemainingSeconds.Q)
+			available[id] = bestQuality(sessionView.Track.Q, sessionView.Phase.Q, sessionView.RemainingSeconds.Q)
 		case capabilityControls:
-			available[capability] = bestQuality(player.Speed.Q, player.RPM.Q, player.Gear.Q, player.Throttle.Q, player.Brake.Q, player.Clutch.Q)
+			available[id] = bestQuality(player.Speed.Q, player.RPM.Q, player.Gear.Q, player.Throttle.Q, player.Brake.Q, player.Clutch.Q)
 		case capabilityStandings:
-			available[capability] = standingsQuality(final)
+			available[id] = standingsQuality(final)
 		case capabilityGaps:
-			available[capability] = qualityFromFreshness(final.Derived.Gaps.Freshness)
+			available[id] = qualityFromFreshness(final.Derived.Gaps.Freshness)
 		case capabilityFuel:
-			available[capability] = playerFuelQuality(final)
+			available[id] = playerFuelQuality(final)
 		case capabilityDelta:
-			available[capability] = qualityFromFreshness(final.Derived.Delta.Freshness)
+			available[id] = qualityFromFreshness(final.Derived.Delta.Freshness)
 		case capabilitySpatialLongitudinal, capabilitySpatialLateral, capabilitySpotter:
-			available[capability] = spatialQuality(final)
+			available[id] = spatialQuality(final)
 		default:
-			available[capability] = QualityMissing
+			available[id] = QualityMissing
 		}
 	}
 	return CapabilitiesV2{
 		Supported: supported,
 		Available: available,
-		Modes: CapabilityModesV2{
-			Spatial: make([]string, 0), Delta: make([]string, 0),
-			Standings: ModeNone, Gaps: ModeNone,
-		},
+		Modes:     normalizedCapabilityModes(source.Modes),
 	}
+}
+
+// normalizedCapabilityModes publishes the modes the composition root resolved,
+// with the explicit "none" vocabulary as the safe zero: an absent declaration
+// (no active driver, or a harness that wires none) must publish "this session
+// resolves nothing", never a silent empty string.
+func normalizedCapabilityModes(modes CapabilityModesV2) CapabilityModesV2 {
+	if modes.Spatial == nil {
+		modes.Spatial = make([]string, 0)
+	}
+	if modes.Delta == nil {
+		modes.Delta = make([]string, 0)
+	}
+	if modes.Standings == "" {
+		modes.Standings = ModeNone
+	}
+	if modes.Gaps == "" {
+		modes.Gaps = ModeNone
+	}
+	return modes
 }
 
 func supportedCapabilities(descriptorCapabilities []string) []string {

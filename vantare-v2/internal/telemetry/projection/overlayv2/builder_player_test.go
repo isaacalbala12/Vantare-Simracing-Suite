@@ -106,11 +106,11 @@ func TestBuildCapabilitiesUsesDescriptorAndActualQuality(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
-	withoutDriverSupport := BuildCapabilities(final, nil)
+	withoutDriverSupport := BuildCapabilities(final, SourceContextV2{})
 	if len(withoutDriverSupport.Supported) != 0 || len(withoutDriverSupport.Available) != 0 {
 		t.Fatalf("capabilities invented without descriptor support: %#v", withoutDriverSupport)
 	}
-	withLMU := BuildCapabilities(final, builderSourceContext().DescriptorCapabilities)
+	withLMU := BuildCapabilities(final, builderSourceContext())
 	if withLMU.Available[capabilityControls] != QualityFresh || withLMU.Available[capabilitySession] != QualityFresh {
 		t.Fatalf("actual availability not derived from fields: %#v", withLMU.Available)
 	}
@@ -232,10 +232,20 @@ func builderField[T comparable](tb testing.TB, value T, freshness schema.Freshne
 	return field
 }
 
+// builderSourceContext mirrors the context the composition root builds for a
+// simulator that publishes world positions and official standings and gaps.
+// The modes arrive already resolved: ADR 0004 keeps this package free of any
+// capability or driver import, so the builder only ever republishes them.
 func builderSourceContext() SourceContextV2 {
 	return SourceContextV2{
 		State:                  "live",
 		DescriptorCapabilities: []string{"shared-memory", "rest"},
+		Modes: CapabilityModesV2{
+			Spatial:   []string{"xyz"},
+			Delta:     []string{DeltaReferencePersonalBest},
+			Standings: ModeOfficial,
+			Gaps:      ModeOfficial,
+		},
 	}
 }
 

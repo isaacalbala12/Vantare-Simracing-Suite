@@ -208,6 +208,7 @@ type TelemetryCoreRuntime struct {
 	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
 	capabilities             capability.Set
+	capabilityDeclaration    capability.Declaration
 	descriptorCapabilities   []string
 
 	statusState     driver.State
@@ -338,6 +339,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		engineer:               config.Engineer,
 		engineerManifest:       engineerManifest,
 		capabilities:           capabilities,
+		capabilityDeclaration:  simulatorConfig.Capabilities,
 		descriptorCapabilities: descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
 		now:                    now,
 		watchdogDelay:          watchdogDelay,
@@ -1026,10 +1028,15 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	if age < 0 {
 		age = 0
 	}
+	value, ok := final.Value()
+	if !ok {
+		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
+	}
 	started := time.Now()
 	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
 		DescriptorCapabilities: runtime.descriptorCapabilities,
+		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
 	}, overlayv2.DefaultPreferencesV2(), revision)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {
@@ -1038,10 +1045,6 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	encoded, err := json.Marshal(update)
 	if err != nil {
 		return fmt.Errorf("%w: encode Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
-	}
-	value, ok := final.Value()
-	if !ok {
-		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
 	}
 	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
 	if err := publisher.PublishSnapshot(revision, json.RawMessage(encoded)); err != nil {

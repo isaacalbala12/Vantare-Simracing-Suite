@@ -43,8 +43,12 @@ func DefaultLimits() Limits {
 		MaxRepositoryBytes: 64 << 20,
 		MaxDrafts:          512,
 		MaxRevisions:       8192,
-		MaxDocumentBytes:   4 << 20,
-		MaxActivations:     4096,
+		// A migration document retains the byte-exact localStorage roots and
+		// the raw event fragments. The command boundary remains capped at 4 MiB;
+		// 12 MiB only prevents that deliberate backup duplication from making a
+		// valid migration impossible inside the 64 MiB repository cap.
+		MaxDocumentBytes: 12 << 20,
+		MaxActivations:   4096,
 	}
 }
 

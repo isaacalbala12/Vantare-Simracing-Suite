@@ -356,13 +356,51 @@ type StrategyDocumentV2 struct {
 	Events          []Event         `json:"events"`
 	ActiveEventID   *EventID        `json:"activeEventId,omitempty"`
 	// MigrationMeta registra fingerprint/journal para idempotencia.
-	MigrationMeta *MigrationMeta `json:"migrationMeta,omitempty"`
+	MigrationMeta     *MigrationMeta     `json:"migrationMeta,omitempty"`
+	MigrationArchives []MigrationArchive `json:"migrationArchives,omitempty"`
 }
 
 type MigrationMeta struct {
-	SourceFingerprint string    `json:"sourceFingerprint"`
-	JournalID         string    `json:"journalId"`
-	MigratedAt        time.Time `json:"migratedAt"`
+	SourceFingerprint     string                 `json:"sourceFingerprint"`
+	JournalID             string                 `json:"journalId"`
+	MigratedAt            time.Time              `json:"migratedAt"`
+	Status                string                 `json:"status"`
+	Sources               []LegacyStorageBackup  `json:"sources"`
+	Quarantine            []LegacyQuarantineItem `json:"quarantine,omitempty"`
+	Warnings              []string               `json:"warnings,omitempty"`
+	PreviousGeneratedAt   *time.Time             `json:"previousGeneratedAt,omitempty"`
+	PreviousEvents        []Event                `json:"previousEvents,omitempty"`
+	PreviousActiveEventID *EventID               `json:"previousActiveEventId,omitempty"`
+	SupersededJournals    []LegacyJournalBackup  `json:"supersededJournals,omitempty"`
+}
+
+type LegacyJournalBackup struct {
+	SourceFingerprint string                `json:"sourceFingerprint"`
+	JournalID         string                `json:"journalId"`
+	BackedUpAt        time.Time             `json:"backedUpAt"`
+	Sources           []LegacyStorageBackup `json:"sources"`
+}
+
+type LegacyStorageBackup struct {
+	Key     string `json:"key"`
+	Present bool   `json:"present"`
+	Raw     []byte `json:"raw"`
+}
+
+type LegacyQuarantineItem struct {
+	SourceKey string `json:"sourceKey"`
+	Path      string `json:"path"`
+	Code      string `json:"code"`
+	Message   string `json:"message"`
+	Raw       []byte `json:"raw,omitempty"`
+}
+
+type MigrationArchive struct {
+	JournalID     string    `json:"journalId"`
+	ArchivedAt    time.Time `json:"archivedAt"`
+	GeneratedAt   time.Time `json:"generatedAt"`
+	Events        []Event   `json:"events"`
+	ActiveEventID *EventID  `json:"activeEventId,omitempty"`
 }
 
 func (d StrategyDocumentV2) Validate() error {
@@ -547,6 +585,40 @@ func (d StrategyDocumentV2) Validate() error {
 		}
 		if d.MigrationMeta.MigratedAt.IsZero() {
 			return fmt.Errorf("migrationMeta.migratedAt is required")
+		}
+		if d.MigrationMeta.Status != "backed_up" && d.MigrationMeta.Status != "committed" && d.MigrationMeta.Status != "rolled_back" {
+			return fmt.Errorf("migrationMeta.status invalid %q", d.MigrationMeta.Status)
+		}
+		if len(d.MigrationMeta.Sources) == 0 {
+			return fmt.Errorf("migrationMeta.sources is required")
+		}
+		for index, source := range d.MigrationMeta.Sources {
+			if strings.TrimSpace(source.Key) == "" {
+				return fmt.Errorf("migrationMeta.sources[%d].key is required", index)
+			}
+			if !source.Present && len(source.Raw) != 0 {
+				return fmt.Errorf("migrationMeta.sources[%d] absent source has bytes", index)
+			}
+		}
+		for index, journal := range d.MigrationMeta.SupersededJournals {
+			if strings.TrimSpace(journal.SourceFingerprint) == "" || strings.TrimSpace(journal.JournalID) == "" || journal.BackedUpAt.IsZero() || len(journal.Sources) == 0 {
+				return fmt.Errorf("migrationMeta.supersededJournals[%d] is invalid", index)
+			}
+		}
+	}
+	for index, archive := range d.MigrationArchives {
+		if strings.TrimSpace(archive.JournalID) == "" || archive.ArchivedAt.IsZero() || archive.GeneratedAt.IsZero() {
+			return fmt.Errorf("migrationArchives[%d] metadata is invalid", index)
+		}
+		archived := StrategyDocumentV2{
+			ContractVersion: ContractVersionV2,
+			SchemaVersion:   SchemaVersionV2,
+			GeneratedAt:     archive.GeneratedAt,
+			Events:          archive.Events,
+			ActiveEventID:   archive.ActiveEventID,
+		}
+		if err := archived.Validate(); err != nil {
+			return fmt.Errorf("migrationArchives[%d]: %w", index, err)
 		}
 	}
 	return nil

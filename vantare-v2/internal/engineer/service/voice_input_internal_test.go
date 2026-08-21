@@ -41,6 +41,22 @@ func TestVoiceTurnPresentationDropsQuerySlotsAndUnknownValues(t *testing.T) {
 			forbidden:  []string{"jamie smith", "driver_name", "car_number", "51"},
 		},
 		{
+			name: "permitted status key rejects spoken text as its value",
+			turn: commands.Turn{Outcome: commands.OutcomeQueryAnswered, IntentID: "query.tyres", ResponseKey: "response.tyres", Values: map[string]string{
+				"status": "jamie smith",
+			}},
+			wantIntent: voiceIntentUnavailable,
+			forbidden:  []string{"jamie smith"},
+		},
+		{
+			name: "permitted status key accepts a declared enum value",
+			turn: commands.Turn{Outcome: commands.OutcomeQueryAnswered, IntentID: "query.tyres", ResponseKey: "response.tyres", Values: map[string]string{
+				"status": "ok",
+			}},
+			wantIntent: voiceIntentAnswer,
+			want:       "status ok",
+		},
+		{
 			name:       "unknown query intent fails closed",
 			turn:       commands.Turn{Outcome: commands.OutcomeQueryAnswered, IntentID: "query.future", ResponseKey: "response.future", Values: map[string]string{"value": "private"}},
 			wantIntent: voiceIntentUnavailable,
@@ -76,9 +92,12 @@ func TestVoiceQueryOutputContractsCoverCatalogWithoutInputSlots(t *testing.T) {
 		if !ok || contract.responseKey != intent.ResponseKey {
 			t.Fatalf("missing or mismatched output contract for %q", intent.ID)
 		}
-		allowed := make(map[string]struct{}, len(contract.keys))
-		for _, key := range contract.keys {
-			allowed[key] = struct{}{}
+		allowed := make(map[string]struct{}, len(contract.fields))
+		for _, field := range contract.fields {
+			allowed[field.key] = struct{}{}
+			if field.rule.kind == 0 {
+				t.Fatalf("output contract %q has no value rule for %q", intent.ID, field.key)
+			}
 		}
 		for _, slot := range intent.Slots {
 			if _, leaked := allowed[slot.Name]; leaked {

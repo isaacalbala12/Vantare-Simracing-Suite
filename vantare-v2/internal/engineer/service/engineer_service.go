@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -381,12 +383,18 @@ func voiceTurnPresentation(turn commands.Turn, locale commands.Locale) (string, 
 	if !ok || turn.ResponseKey != contract.responseKey {
 		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
 	}
-	parts := make([]string, 0, len(contract.keys)+1)
+	parts := make([]string, 0, len(contract.fields)+1)
 	parts = append(parts, turn.ResponseKey)
-	for _, key := range contract.keys {
-		if value, present := turn.Values[key]; present {
-			parts = append(parts, key+" "+value)
+	for _, field := range contract.fields {
+		if value, present := turn.Values[field.key]; present {
+			if !field.rule.valid(value) {
+				return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+			}
+			parts = append(parts, field.key+" "+value)
 		}
+	}
+	if len(parts) == 1 {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
 	}
 	response := strings.Join(parts, ", ")
 	if len(response) > 256 {
@@ -397,28 +405,137 @@ func voiceTurnPresentation(turn commands.Turn, locale commands.Locale) (string, 
 
 type voiceQueryOutputContract struct {
 	responseKey string
-	keys        []string
+	fields      []voiceQueryOutputField
+}
+
+type voiceQueryOutputField struct {
+	key  string
+	rule voiceQueryValueRule
+}
+
+type voiceQueryValueKind uint8
+
+const (
+	voiceValueInteger voiceQueryValueKind = iota + 1
+	voiceValueDecimal
+	voiceValueEnum
+)
+
+type voiceQueryValueRule struct {
+	kind   voiceQueryValueKind
+	min    float64
+	max    float64
+	values map[string]struct{}
+}
+
+var (
+	voiceIntegerPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,8})$`)
+	voiceDecimalPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]{0,7})(\.[0-9]{1,3})?$`)
+)
+
+func (rule voiceQueryValueRule) valid(value string) bool {
+	if value == "" || strings.TrimSpace(value) != value {
+		return false
+	}
+	switch rule.kind {
+	case voiceValueInteger, voiceValueDecimal:
+		pattern := voiceDecimalPattern
+		if rule.kind == voiceValueInteger {
+			pattern = voiceIntegerPattern
+		}
+		if !pattern.MatchString(value) {
+			return false
+		}
+		number, err := strconv.ParseFloat(value, 64)
+		return err == nil && number >= rule.min && number <= rule.max
+	case voiceValueEnum:
+		_, ok := rule.values[value]
+		return ok
+	default:
+		return false
+	}
+}
+
+func voiceIntegerField(key string, min, max float64) voiceQueryOutputField {
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueInteger, min: min, max: max}}
+}
+
+func voiceDecimalField(key string, min, max float64) voiceQueryOutputField {
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueDecimal, min: min, max: max}}
+}
+
+func voiceEnumField(key string, values ...string) voiceQueryOutputField {
+	allowed := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		allowed[value] = struct{}{}
+	}
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueEnum, values: allowed}}
 }
 
 // voiceQueryOutputContracts is the closed public boundary from dialogue to
-// radio.v1. Query slots such as target, driver_name and car_number are
-// deliberately absent: a QueryPort cannot echo spoken input through Values.
+// radio.v1. Every field declares a numeric range or a closed enum. Query slots
+// such as target, driver_name and car_number are deliberately absent, and a
+// permitted key carrying an invalid value fails the whole response closed.
 // A future QueryPort must extend the applicable intent contract explicitly.
 var voiceQueryOutputContracts = map[string]voiceQueryOutputContract{
-	"query.fuel":            {responseKey: "response.fuel", keys: []string{"litres", "laps"}},
-	"query.virtual_energy":  {responseKey: "response.virtual_energy", keys: []string{"percent", "laps"}},
-	"query.position":        {responseKey: "response.position", keys: []string{"position", "class_position", "total"}},
-	"query.lap":             {responseKey: "response.lap", keys: []string{"lap", "total_laps"}},
-	"query.gap":             {responseKey: "response.gap", keys: []string{"seconds", "position"}},
-	"query.tyres":           {responseKey: "response.tyres", keys: []string{"status", "front_left", "front_right", "rear_left", "rear_right"}},
-	"query.damage":          {responseKey: "response.damage", keys: []string{"status", "aero", "engine", "suspension"}},
-	"query.race_time":       {responseKey: "response.race_time", keys: []string{"remaining_ms", "remaining_laps"}},
-	"query.rival.by_number": {responseKey: "response.rival", keys: []string{"position", "class_position", "gap_seconds", "status"}},
-	"query.rival.by_name":   {responseKey: "response.rival", keys: []string{"position", "class_position", "gap_seconds", "status"}},
-	"query.strategy":        {responseKey: "response.strategy", keys: []string{"status", "next_stop_lap", "fuel_litres", "compound"}},
-	"query.pit_status":      {responseKey: "response.pit_status", keys: []string{"status", "requested", "fuel_litres", "compound"}},
-	"query.car_status":      {responseKey: "response.car_status", keys: []string{"status", "fuel_litres", "virtual_energy", "damage", "tyre_status"}},
-	"query.penalties":       {responseKey: "response.penalties", keys: []string{"count", "status"}},
+	"query.fuel": {responseKey: "response.fuel", fields: []voiceQueryOutputField{
+		voiceDecimalField("litres", 0, 500), voiceDecimalField("laps", 0, 10_000),
+	}},
+	"query.virtual_energy": {responseKey: "response.virtual_energy", fields: []voiceQueryOutputField{
+		voiceDecimalField("percent", 0, 100), voiceDecimalField("laps", 0, 10_000),
+	}},
+	"query.position": {responseKey: "response.position", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceIntegerField("total", 1, 1_000),
+	}},
+	"query.lap": {responseKey: "response.lap", fields: []voiceQueryOutputField{
+		voiceIntegerField("lap", 0, 100_000), voiceIntegerField("total_laps", 0, 100_000),
+	}},
+	"query.gap": {responseKey: "response.gap", fields: []voiceQueryOutputField{
+		voiceDecimalField("seconds", -86_400, 86_400), voiceIntegerField("position", 1, 1_000),
+	}},
+	"query.tyres": {responseKey: "response.tyres", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceTyreStatusField("front_left"), voiceTyreStatusField("front_right"), voiceTyreStatusField("rear_left"), voiceTyreStatusField("rear_right"),
+	}},
+	"query.damage": {responseKey: "response.damage", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceDamageStatusField("aero"), voiceDamageStatusField("engine"), voiceDamageStatusField("suspension"),
+	}},
+	"query.race_time": {responseKey: "response.race_time", fields: []voiceQueryOutputField{
+		voiceIntegerField("remaining_ms", 0, 604_800_000), voiceIntegerField("remaining_laps", 0, 100_000),
+	}},
+	"query.rival.by_number": {responseKey: "response.rival", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceDecimalField("gap_seconds", -86_400, 86_400), voiceStatusField("status"),
+	}},
+	"query.rival.by_name": {responseKey: "response.rival", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceDecimalField("gap_seconds", -86_400, 86_400), voiceStatusField("status"),
+	}},
+	"query.strategy": {responseKey: "response.strategy", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceIntegerField("next_stop_lap", 0, 100_000), voiceDecimalField("fuel_litres", 0, 500), voiceCompoundField("compound"),
+	}},
+	"query.pit_status": {responseKey: "response.pit_status", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceEnumField("requested", "true", "false"), voiceDecimalField("fuel_litres", 0, 500), voiceCompoundField("compound"),
+	}},
+	"query.car_status": {responseKey: "response.car_status", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceDecimalField("fuel_litres", 0, 500), voiceDecimalField("virtual_energy", 0, 100), voiceDamageStatusField("damage"), voiceTyreStatusField("tyre_status"),
+	}},
+	"query.penalties": {responseKey: "response.penalties", fields: []voiceQueryOutputField{
+		voiceIntegerField("count", 0, 100), voiceStatusField("status"),
+	}},
+}
+
+func voiceStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "ok", "warning", "critical", "unavailable", "clear", "active", "inactive", "pending", "open", "closed")
+}
+
+func voiceTyreStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "ok", "cold", "hot", "worn", "critical", "puncture", "unknown")
+}
+
+func voiceDamageStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "none", "minor", "major", "critical", "unknown")
+}
+
+func voiceCompoundField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "soft", "medium", "hard", "intermediate", "wet", "unknown")
 }
 
 func localizedVoiceStatus(locale commands.Locale, es, en, it, pt string) string {

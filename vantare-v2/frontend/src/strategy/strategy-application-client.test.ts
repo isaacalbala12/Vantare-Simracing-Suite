@@ -153,6 +153,51 @@ describe("createStrategyApplicationClient", () => {
     });
   });
 
+  it("parses the classified session catalog exposed to Orbit", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "session-catalog-1",
+      operation: "list_session_combinations",
+      expectedRepositoryVersion: 0,
+    };
+    const pending = client.execute(command);
+
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: command.commandId,
+      repositoryVersion: 4,
+      sessionCatalogStatus: "available",
+      sessionCombinations: [{
+        combinationId: "lmu:imola:mustang-gt3",
+        simId: "lmu",
+        trackName: "Imola",
+        trackLayout: "gp",
+        carName: "Ford Mustang GT3",
+        carClass: "GT3",
+        sessionCount: 1,
+        raceCount: 1,
+        lastActivity: "2026-08-21T18:00:00Z",
+        climateBuckets: [{ bucket: "dry", laps: 54 }],
+        sessions: [{
+          sessionId: "race-1",
+          type: "race",
+          status: "identified_usable",
+          defaultIncluded: true,
+          lastActivity: "2026-08-21T18:00:00Z",
+          climateBuckets: [{ bucket: "dry", laps: 54 }],
+        }],
+      }],
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      sessionCatalogStatus: "available",
+      sessionCombinations: [{ combinationId: "lmu:imola:mustang-gt3", sessions: [{ sessionId: "race-1" }] }],
+    });
+  });
+
   it("ignores another command and exposes stable application errors", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

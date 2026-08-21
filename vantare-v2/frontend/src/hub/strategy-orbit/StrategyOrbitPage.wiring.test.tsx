@@ -10,6 +10,7 @@ import type {
   StrategyApplicationCommandV1,
   StrategyApplicationResultV1,
   StrategyOrbitCalculationResultV1,
+  StrategyEventV2,
 } from "../../strategy/strategy-application-client";
 
 vi.mock("@wailsio/runtime", () => ({
@@ -144,5 +145,45 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(within(home).getByTestId("orbit-strategy-continue").textContent).toContain(
       "4 Horas de Imola",
     );
+  });
+
+  it("vincula una combinación y persiste el toggle de sesión en el documento canónico", async () => {
+    window.localStorage.clear();
+    let saved: StrategyEventV2 | undefined;
+    let version = 0;
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
+        const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{
+          combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3",
+          sessionCount: 1, raceCount: 1, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }],
+          sessions: [{ sessionId: "race-1", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }] }],
+        }] };
+        if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+        if (command.operation === "create_event" || command.operation === "edit_event") {
+          saved = command.event;
+          version += 1;
+          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+        }
+        if (command.operation === "calculate_orbit") return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
+        if (command.operation === "list") return { ...base, plans: [] };
+        throw new Error(`unexpected ${command.operation}`);
+      },
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    const slot = document.createElement("div");
+    slot.id = STRATEGY_CONTEXT_SLOT_ID;
+    document.body.append(slot);
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+
+    expect(await screen.findByTestId("orbit-strategy-session-picker")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
+    expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Sesiones" }));
+    const sessions = await screen.findByTestId("orbit-strategy-sessions");
+    fireEvent.click(within(sessions).getByRole("button", { name: "Excluir" }));
+    await screen.findByText("Excluida por ti");
+    expect(saved?.combination?.sessions).toEqual([{ sessionId: "race-1", included: false }]);
   });
 });

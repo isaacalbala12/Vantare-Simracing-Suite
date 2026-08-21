@@ -106,6 +106,18 @@ try {
     await page.clock.install({ time: FROZEN_CLOCK });
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-strategy").waitFor();
+    const sessionPicker = page.getByTestId("orbit-strategy-session-picker");
+    if ((await sessionPicker.count()) > 0) {
+      await sessionPicker.waitFor();
+      if (viewport.editor) {
+        await settle(page);
+        await page.screenshot({
+          path: path.join(output, `orbit-estrategia-selector-combinacion-${viewport.name}.png`),
+          fullPage: false,
+        });
+      }
+      await page.locator('[data-testid^="orbit-session-combination-"]').first().click();
+    }
     await page.getByTestId("orbit-strategy-overview").waitFor();
     await page.getByTestId("orbit-stint-0").waitFor();
     await hideToasts(page);
@@ -382,6 +394,11 @@ try {
     }
 
     await page.getByTestId("orbit-strategy-form-submit").click();
+    const createdSessionPicker = page.getByTestId("orbit-strategy-session-picker");
+    if ((await createdSessionPicker.count()) > 0) {
+      await createdSessionPicker.waitFor();
+      await page.locator('[data-testid^="orbit-session-combination-"]').first().click();
+    }
     await page.getByTestId("orbit-strategy-overview").waitFor();
     await page.getByTestId("orbit-stint-0").waitFor();
     const created = await page.evaluate(() => ({

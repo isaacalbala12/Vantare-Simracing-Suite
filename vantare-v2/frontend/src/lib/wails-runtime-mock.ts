@@ -53,6 +53,7 @@ type HarnessStrategyRepository = {
   drafts: Record<string, Record<string, unknown>>;
   revisions: Record<string, Record<string, unknown>>;
   activePlan?: Record<string, unknown>;
+  events?: Record<string, Record<string, unknown>>;
 };
 
 
@@ -102,14 +103,14 @@ function readHarnessPayload(data: unknown): Record<string, unknown> {
 function loadHarnessStrategyRepository(): HarnessStrategyRepository {
   try {
     const raw = globalThis.localStorage?.getItem(strategyRepositoryKey);
-    if (!raw) return { version: 0, drafts: {}, revisions: {} };
+    if (!raw) return { version: 0, drafts: {}, revisions: {}, events: {} };
     const parsed = JSON.parse(raw) as HarnessStrategyRepository;
     if (!Number.isSafeInteger(parsed.version) || parsed.version < 0 || !parsed.drafts || typeof parsed.drafts !== "object") {
       throw new Error("invalid harness Strategy repository");
     }
-    return { ...parsed, revisions: parsed.revisions ?? {} };
+    return { ...parsed, revisions: parsed.revisions ?? {}, events: parsed.events ?? {} };
   } catch {
-    return { version: 0, drafts: {}, revisions: {} };
+    return { version: 0, drafts: {}, revisions: {}, events: {} };
   }
 }
 
@@ -166,6 +167,55 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
       ...baseResult,
       plans,
       ...(repository.activePlan ? { activePlan: repository.activePlan } : {}),
+    });
+    return;
+  }
+
+  if (operation === "list_session_combinations") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      sessionCatalogStatus: "available",
+      sessionCombinations: [{
+        combinationId: "lmu:imola-lmgt3",
+        simId: "lmu",
+        trackName: "Imola",
+        trackLayout: "GP",
+        carName: "Ford Mustang GT3",
+        carClass: "LMGT3",
+        sessionCount: 3,
+        raceCount: 1,
+        lastActivity: "2026-08-21T18:00:00Z",
+        climateBuckets: [{ bucket: "dry", laps: 54 }, { bucket: "humid", laps: 12 }],
+        sessions: [
+          { sessionId: "imola-race", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-21T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 32 }] },
+          { sessionId: "imola-practice", type: "practice", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 22 }, { bucket: "humid", laps: 12 }] },
+          { sessionId: "imola-short", type: "practice", status: "identified_not_usable", defaultIncluded: false, exclusionReason: "no_completed_lap", lastActivity: "2026-08-19T18:00:00Z", climateBuckets: [] },
+        ],
+      }],
+    });
+    return;
+  }
+  if (operation === "list_events") {
+    broadcast("strategy:application:result", { ...baseResult, events: Object.values(repository.events ?? {}) });
+    return;
+  }
+  if (operation === "create_event" || operation === "edit_event") {
+    const event = readHarnessPayload(command.event);
+    const eventId = typeof event.id === "string" ? event.id : "";
+    if (!eventId) return fail("invalid_command", "event.id", "Invalid Strategy event");
+    repository.events ??= {};
+    repository.events[eventId] = structuredClone(event);
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      strategyDocument: {
+        contractVersion: "strategy.v2",
+        schemaVersion: "2.0.0",
+        generatedAt: command.updatedAt,
+        events: Object.values(repository.events),
+      },
     });
     return;
   }

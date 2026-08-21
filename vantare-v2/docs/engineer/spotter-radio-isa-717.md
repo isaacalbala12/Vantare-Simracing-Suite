@@ -28,8 +28,10 @@ Base: `origin/nightly@df6ef2e14c861bae2f153b452df3b9b2b8e785b4`.
   y el router cache-only. El adaptador Go vuelve a publicar
   `EngineerNotification`, por lo que se conservan `engineer:notification`,
   `engineer:stream` y `/engineer/stream` sin cambios frontend. El locale de
-  audio se deriva del locale de presentación y las métricas health conservan
-  las claves JSON documentadas `samples`, `p95MS` y `maximumMS`.
+  audio se deriva del locale de presentación. `SetLocale`, `SetAudioConfig` y
+  `SetAudioRouter` mantienen esa alineación también durante la composición
+  pre-`Start`. Las métricas health conservan las claves JSON documentadas
+  `samples`, `p95MS` y `maximumMS`.
 
 ## Desconexión legacy y rollback
 
@@ -82,7 +84,10 @@ de audio real ni una sesión LMU.
 - `go test ./... -count=1`: PASS.
 - Matriz nueva del camino productor/bus: supersession y degradaciones,
   clears absent/pending/started, expiración, revalidación tardía, identidad,
-  capacidades 1/4/64 y determinismo: PASS.
+  capacidades 1/4/64 y determinismo: PASS. Incluye reset epoch/identidad con
+  estado igual/distinto, identidad inválida tras `started`, deadline heredado
+  just-before/exact/after y decisiones expiradas/invalidadas/canceladas antes
+  de selección.
 - Digest del roadmap reproducible y fragmento `ISA-717.json` válido contra su
   schema. Se generó `frontend/dist` desde el lockfile existente solo como
   precondición local de `go:embed`; no hay cambios frontend versionados.

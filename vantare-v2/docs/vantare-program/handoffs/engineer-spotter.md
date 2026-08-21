@@ -350,6 +350,17 @@ retirar más stack viejo solo mediante su propia issue.
 
 ## Última actualización
 
+2026-08-21, ronda final del re-review ISA-717 / PR #733: `SetLocale` pre-Start
+rederiva `AudioConfig` y actualiza el router ya instalado, por lo que audio y
+presentación no pueden quedar en locales distintos por orden de composición.
+La matriz del productor/bus añade los cuatro grupos boundary restantes: epoch
+o identidad con estado igual/distinto en capacidades 1/4/64; cambio de
+identidad inválido en el mismo epoch tras `started`; deadline heredado
+just-before/exact/after; y antecedente expirado, invalidado o cancelado antes de
+selección sin autorizar clear. Focal, `-race` focal, vet, suite Go global y
+`git diff --check` pasan sin flaky. Pendientes solo re-review remoto y gate LMU
+humano; sin merge ni promoción.
+
 2026-08-21, corrección del re-review adversarial de ISA-717 / PR #733: los
 cuatro P1 y tres P2 tienen regresiones RED→GREEN en el camino nuevo. El ACK
 `started` puede rechazar una decisión obsoleta después de resolver caché; la

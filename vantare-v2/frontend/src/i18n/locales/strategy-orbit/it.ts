@@ -134,6 +134,9 @@ export const strategyOrbitIt: Record<string, string> = {
 
   "strategy.tyres.free": "libera",
   "strategy.tyres.rejected": "Questa gomma non può andare qui",
+  "strategy.tyres.emptyTitle": "Nessun inventario gomme",
+  "strategy.tyres.empty": "Questo evento non ha ancora gomme. Creale nel documento v2 dell'evento.",
+  "strategy.meta.manual": "Manuale — in attesa",
 
   "strategy.cards.active": "Attiva",
   "strategy.cards.duplicate": "Duplica",

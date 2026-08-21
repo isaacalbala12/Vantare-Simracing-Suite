@@ -134,6 +134,9 @@ export const strategyOrbitEn: Record<string, string> = {
 
   "strategy.tyres.free": "free",
   "strategy.tyres.rejected": "That tyre cannot go there",
+  "strategy.tyres.emptyTitle": "No tyre inventory",
+  "strategy.tyres.empty": "This event has no tyres yet. Create them in the v2 event document.",
+  "strategy.meta.manual": "Manual — pending",
 
   "strategy.cards.active": "Active",
   "strategy.cards.duplicate": "Duplicate",

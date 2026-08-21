@@ -48,7 +48,7 @@ import {
   openOrCreateStrategyEditor,
   type StrategyEditorRuntime,
 } from "../../strategy/strategy-editor-store";
-import type { StrategyEditorDocument, StrategyTyre } from "../../strategy/strategy-editor";
+import type { StrategyTyre } from "../../strategy/strategy-editor";
 import { assertPlannable, StrategyTyreError, type StrategyCorner } from "../../strategy/strategy-tyre";
 import {
   calculateStrategyOrbit,
@@ -118,7 +118,6 @@ import {
   hhmm,
   lapTime,
   orbitCalculationInput,
-  ORBIT_CORNERS,
   parseHhmm,
   stintClock,
   tyreCondition,
@@ -128,7 +127,6 @@ import {
   type OrbitCorner,
   type StrategyDriver,
   type StrategyVariant,
-  type TyreAssignments,
 } from "./strategy-orbit-model";
 import "../../styles/orbit-strategy.css";
 
@@ -189,18 +187,7 @@ function chipCompound(tyre: StrategyTyre): TyreView["compound"] {
   return tyre.compound === "wet" ? "soft" : tyre.compound;
 }
 
-/** Reparto inicial: cuatro juegos por stint en orden de inventario. */
-function defaultTyres(stints: number, tyres: readonly StrategyTyre[]): TyreAssignments {
-  if (tyres.length === 0) return {};
-  const map: Record<number, Partial<Record<OrbitCorner, string>>> = {};
-  for (let i = 0; i < stints; i += 1) {
-    map[i] = {};
-    ORBIT_CORNERS.forEach((corner, k) => {
-      map[i][corner] = tyres[(i * ORBIT_CORNERS.length + k) % tyres.length].id;
-    });
-  }
-  return map;
-}
+/** Reparto inicial retirado en F2-f: el inventario sale del documento v2 por evento. */
 
 /** Formulario del evento: todo texto, se valida al enviar. */
 interface EventForm {
@@ -340,8 +327,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     };
   }, [runtime]);
   const snapshot = useSyncExternalStore(runtime.store.subscribe, runtime.store.getSnapshot);
-  const document_: StrategyEditorDocument | undefined = snapshot.draft?.payload;
-  const inventory = useMemo(() => document_?.tyres ?? [], [document_]);
+  // F2-f: inventario global sintético (Spa) retirado de rutas productivas.
+  // El inventario pertenece al documento v2 por evento (StrategyDocumentV2.TyreInventory,
+  // cliente API ya disponible). Mientras el evento no tenga inventario, vacío honesto.
+  void snapshot;
+  const inventory: StrategyTyre[] = [];
 
   // ── eventos locales ─────────────────────────────────────────────────────
   const [store, setStore] = useState<StrategyEventsState>(() => readStrategyEvents());
@@ -494,12 +484,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const calculationCurrent = "key" in calculation && calculation.key === calculationKey;
   const plansById = calculation.status === "success" && calculationCurrent ? calculation.result.plans : {};
   const plan = activeId ? plansById[activeId] ?? null : null;
-  const active = useMemo(() => {
-    if (!storedActive || !plan || Object.keys(storedActive.tyres).length > 0 || inventory.length === 0) {
-      return storedActive;
-    }
-    return { ...storedActive, tyres: defaultTyres(plan.stints.length, inventory) };
-  }, [inventory, plan, storedActive]);
+  // F2-f: sin inventario sintético global. El reparto sale del documento v2 por evento;
+  // donde no hay inventario se muestra vacío honesto, sin fabricar asignación.
+  const active = storedActive;
 
   // ── custodia canónica de la revisión visible ───────────────────────────
   const lifecycleClient = applicationClient as StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>;
@@ -1374,6 +1361,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="L"
               value={form.draft.tankL}
             />
+            <small className="orbit-field__hint">{t("strategy.meta.manual")}</small>
           </Field>
           <Field htmlFor="orbit-ev-pit" label={t("strategy.form.pit")}>
             <Input
@@ -1384,6 +1372,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="s"
               value={form.draft.pitLossSec}
             />
+            <small className="orbit-field__hint">{t("strategy.meta.manual")}</small>
           </Field>
           <Field htmlFor="orbit-ev-team" label={t("strategy.form.team")}>
             <Input
@@ -2409,15 +2398,15 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             />
             <StatTile
               label={t("strategy.kpi.tank")}
-              sub={formatMessage(t("strategy.kpi.tankHint"), {
+              sub={`${formatMessage(t("strategy.kpi.tankHint"), {
                 laps: plan.maxLaps,
                 l: plan.avgFuel.toFixed(2),
-              })}
+              })} · ${t("strategy.meta.manual")}`}
               value={`${event.tankL} L`}
             />
             <StatTile
               label={t("strategy.kpi.pit")}
-              sub={t("strategy.kpi.pitHint")}
+              sub={`${t("strategy.kpi.pitHint")} · ${t("strategy.meta.manual")}`}
               value={lapTime(event.pitS)}
             />
             <StatTile
@@ -2794,7 +2783,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                               {label}
                             </span>
                             <b>{lapTime(driver[mode][0])}</b>
-                            <em>{driver[mode][1].toFixed(2)} L/v</em>
+                            <em>{driver[mode][1].toFixed(2)} L/v · {t("strategy.meta.manual")}</em>
                           </div>
                         ))}
                       </div>
@@ -2879,33 +2868,39 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 </div>
               ) : (
                 <div className="orbit-strategy__tyres" data-testid="orbit-strategy-tyres">
-                  <p className="orbit-strategy__tyre-hint">{t("strategy.drivers.hint")}</p>
-                  <div className="orbit-strategy__tyre-list">
-                    {inventory.map((tyre) => {
-                      const used = uses[tyre.id] ?? [];
-                      const condition = tyreCondition(tyre, used.length);
-                      return (
-                        <TyreItem
-                          key={tyre.id}
-                          onPick={() => {
-                            const next = picked === tyre.id ? null : tyre.id;
-                            setPicked(next);
-                            if (next && editing < 0) {
-                              toast.show(t("strategy.drivers.picked"), t("strategy.drivers.pickedHint"));
-                            }
-                          }}
-                          picked={picked === tyre.id}
-                          tyre={{
-                            id: tyre.id,
-                            compound: chipCompound(tyre),
-                            condition: condition.max,
-                            label: t("strategy.tyres.free"),
-                          }}
-                          used={used.map((use) => ({ stint: use.stint + 1, corner: use.corner }))}
-                        />
-                      );
-                    })}
-                  </div>
+                  {inventory.length === 0 ? (
+                    <Note title={t("strategy.tyres.emptyTitle")}>{t("strategy.tyres.empty")}</Note>
+                  ) : (
+                    <>
+                      <p className="orbit-strategy__tyre-hint">{t("strategy.drivers.hint")}</p>
+                      <div className="orbit-strategy__tyre-list">
+                        {inventory.map((tyre) => {
+                          const used = uses[tyre.id] ?? [];
+                          const condition = tyreCondition(tyre, used.length);
+                          return (
+                            <TyreItem
+                              key={tyre.id}
+                              onPick={() => {
+                                const next = picked === tyre.id ? null : tyre.id;
+                                setPicked(next);
+                                if (next && editing < 0) {
+                                  toast.show(t("strategy.drivers.picked"), t("strategy.drivers.pickedHint"));
+                                }
+                              }}
+                              picked={picked === tyre.id}
+                              tyre={{
+                                id: tyre.id,
+                                compound: chipCompound(tyre),
+                                condition: condition.max,
+                                label: t("strategy.tyres.free"),
+                              }}
+                              used={used.map((use) => ({ stint: use.stint + 1, corner: use.corner }))}
+                            />
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </Surface>

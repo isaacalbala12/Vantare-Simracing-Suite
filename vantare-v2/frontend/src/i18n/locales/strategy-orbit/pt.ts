@@ -134,6 +134,9 @@ export const strategyOrbitPt: Record<string, string> = {
 
   "strategy.tyres.free": "livre",
   "strategy.tyres.rejected": "Esse pneu não pode ir aqui",
+  "strategy.tyres.emptyTitle": "Sem inventário de pneus",
+  "strategy.tyres.empty": "Este evento ainda não tem pneus. Crie-os no documento v2 do evento.",
+  "strategy.meta.manual": "Manual — pendente",
 
   "strategy.cards.active": "Ativa",
   "strategy.cards.duplicate": "Duplicar",

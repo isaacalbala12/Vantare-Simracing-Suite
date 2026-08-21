@@ -74,6 +74,8 @@ func TestStrategyApplicationBridgePropagatesEveryTypedDocumentError(t *testing.T
 		{name: "driver in use", code: strategyapplication.ErrorDriverInUse},
 		{name: "variant not found", code: strategyapplication.ErrorVariantNotFound},
 		{name: "variant conflict", code: strategyapplication.ErrorVariantConflict},
+		{name: "legacy migration conflict", code: strategyapplication.ErrorLegacyMigrationConflict},
+		{name: "legacy migration not found", code: strategyapplication.ErrorLegacyMigrationNotFound},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

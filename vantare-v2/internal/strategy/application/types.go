@@ -15,29 +15,32 @@ type CommandID string
 type Operation string
 
 const (
-	OperationCreate          Operation = "create"
-	OperationOpen            Operation = "open"
-	OperationEdit            Operation = "edit"
-	OperationSaveRevision    Operation = "save_revision"
-	OperationDuplicate       Operation = "duplicate"
-	OperationActivate        Operation = "activate"
-	OperationDeactivate      Operation = "deactivate"
-	OperationRestore         Operation = "restore"
-	OperationClose           Operation = "close"
-	OperationList            Operation = "list"
-	OperationExport          Operation = "export"
-	OperationImport          Operation = "import"
-	OperationCreateEvent     Operation = "create_event"
-	OperationEditEvent       Operation = "edit_event"
-	OperationListEvents      Operation = "list_events"
-	OperationCreateDriver    Operation = "create_driver"
-	OperationEditDriver      Operation = "edit_driver"
-	OperationDeleteDriver    Operation = "delete_driver"
-	OperationListDrivers     Operation = "list_drivers"
-	OperationCreateVariant   Operation = "create_variant"
-	OperationEditVariant     Operation = "edit_variant"
-	OperationListVariants    Operation = "list_variants"
-	OperationCompareVariants Operation = "compare_variants"
+	OperationCreate                  Operation = "create"
+	OperationOpen                    Operation = "open"
+	OperationEdit                    Operation = "edit"
+	OperationSaveRevision            Operation = "save_revision"
+	OperationDuplicate               Operation = "duplicate"
+	OperationActivate                Operation = "activate"
+	OperationDeactivate              Operation = "deactivate"
+	OperationRestore                 Operation = "restore"
+	OperationClose                   Operation = "close"
+	OperationList                    Operation = "list"
+	OperationExport                  Operation = "export"
+	OperationImport                  Operation = "import"
+	OperationCreateEvent             Operation = "create_event"
+	OperationEditEvent               Operation = "edit_event"
+	OperationListEvents              Operation = "list_events"
+	OperationCreateDriver            Operation = "create_driver"
+	OperationEditDriver              Operation = "edit_driver"
+	OperationDeleteDriver            Operation = "delete_driver"
+	OperationListDrivers             Operation = "list_drivers"
+	OperationCreateVariant           Operation = "create_variant"
+	OperationEditVariant             Operation = "edit_variant"
+	OperationListVariants            Operation = "list_variants"
+	OperationCompareVariants         Operation = "compare_variants"
+	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
+	OperationMigrateLegacy           Operation = "migrate_legacy"
+	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
 )
 
 var commandIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -210,6 +213,37 @@ type CompareVariantsCommand struct {
 	RightVariantID strategydocument.VariantID `json:"rightVariantId"`
 }
 
+type LegacyStorageSource struct {
+	Key     string `json:"key"`
+	Present bool   `json:"present"`
+	Raw     []byte `json:"raw"`
+}
+
+type LegacyMigrationCommand struct {
+	CommandHeader
+	Sources              []LegacyStorageSource `json:"sources"`
+	ConfirmedFingerprint string                `json:"confirmedFingerprint,omitempty"`
+	MigratedAt           time.Time             `json:"migratedAt"`
+}
+
+type RollbackLegacyMigrationCommand struct {
+	CommandHeader
+	JournalID    string    `json:"journalId"`
+	RolledBackAt time.Time `json:"rolledBackAt"`
+}
+
+type LegacyMigrationPreview struct {
+	Fingerprint     string                                  `json:"fingerprint"`
+	JournalID       string                                  `json:"journalId"`
+	Document        strategydocument.StrategyDocumentV2     `json:"document"`
+	Quarantine      []strategydocument.LegacyQuarantineItem `json:"quarantine"`
+	Warnings        []string                                `json:"warnings"`
+	ActiveEventID   *strategydocument.EventID               `json:"activeEventId,omitempty"`
+	Imported        bool                                    `json:"imported"`
+	AlreadyImported bool                                    `json:"alreadyImported"`
+	RolledBack      bool                                    `json:"rolledBack"`
+}
+
 type VariantComparison struct {
 	EventID         strategydocument.EventID `json:"eventId"`
 	Left            strategydocument.Variant `json:"left"`
@@ -234,6 +268,7 @@ type Result[T any] struct {
 	Drivers          []strategydocument.Driver            `json:"drivers,omitempty"`
 	Variants         []strategydocument.Variant           `json:"variants,omitempty"`
 	Comparison       *VariantComparison                   `json:"comparison,omitempty"`
+	LegacyMigration  *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`
 	// Preview is what an import would do. It is present on a dry run and on a

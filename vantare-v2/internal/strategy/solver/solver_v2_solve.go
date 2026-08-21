@@ -165,7 +165,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 							break
 						}
 					}
+					if budgetExhausted {
+						break
+					}
 				}
+				if budgetExhausted {
+					break
+				}
+			}
+			if budgetExhausted {
+				break
 			}
 		}
 	}

@@ -288,6 +288,24 @@ func TestSolveV2SavingSourcesFailClosed(t *testing.T) {
 	})
 }
 
+func TestSolveV2SavingStopsImmediatelyWhenCandidateBudgetIsExhausted(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 6
+	input.Budget.MaxCandidates = 1
+	input.SavingCost = savingCostParameter(
+		SavingLevelOption{Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1},
+		SavingLevelOption{Level: SavingHigh, FuelSavedPerLap: 0.5, TimeCostPerLap: 0.2},
+	)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if result.Feasible || result.ComputeStats.EvaluatedCandidates != 2 {
+		t.Fatalf("budget must stop at the first candidate over the limit: %+v", result.ComputeStats)
+	}
+}
+
 func curveProjection(points []sp.PacePoint, sampleSize int, lower, upper float64) *sp.StrategyInputProjectionV2 {
 	return &sp.StrategyInputProjectionV2{
 		ContractVersion:    sp.ContractVersionStrategyInputProjectionV2,

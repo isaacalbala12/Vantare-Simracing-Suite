@@ -1,7 +1,7 @@
 # ADR 0009 — Pipeline editorial, subida opt-in y catálogo firmado de Strategy
 
-**Estado:** Proposed (rev. 2 tras threat-model adversarial; pendiente de
-aceptación de Isaac)
+**Estado:** Accepted (Isaac, 2026-08-22; rev. 2 tras threat-model adversarial
+de dos rondas en #724)
 **Fecha:** 2026-08-21
 **Decisores:** Isaac y Vantare engineering
 **Contexto:** ISA-694, decisiones D10–D16, D18–D19 del spec

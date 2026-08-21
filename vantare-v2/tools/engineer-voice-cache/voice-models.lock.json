@@ -9,17 +9,17 @@
   "model": {
     "id": "kokoro-v1.0",
     "filename": "kokoro-v1.0.onnx",
-    "bytes": 310000000,
-    "sha256": "PENDING_DOWNLOAD_VERIFICATION_SEE_README",
-    "sourceUrl": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
+    "bytes": 325532387,
+    "sha256": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+    "sourceUrl": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
     "license": "Apache-2.0",
     "licenseUrl": "https://huggingface.co/hexgrad/Kokoro-82M/blob/main/LICENSE"
   },
   "voicesBin": {
     "filename": "voices-v1.0.bin",
-    "bytes": 0,
-    "sha256": "PENDING_DOWNLOAD_VERIFICATION_SEE_README",
-    "sourceUrl": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
+    "bytes": 28214398,
+    "sha256": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+    "sourceUrl": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin",
     "license": "Apache-2.0"
   },
   "voicesPerLocale": {
@@ -48,7 +48,7 @@
       "note": "Voz femenina portugués brasileño"
     }
   },
-  "pinnedAt": "2026-08-21T00:00:00Z",
-  "status": "PENDING_VERIFICATION",
-  "notes": "Pesos Apache-2.0 (modelo + voces) de hexgrad/Kokoro-82M. Los SHA-256 y tamaños exactos deben verificarse tras descarga y pegarse aquí. Hasta entonces la síntesis real queda PENDIENTE y el pipeline usa MockProvider para smoke tests (ver README). No commitear pesos ni audios: van fuera de Git (ver .gitignore)."
+  "pinnedAt": "2026-08-21T15:30:00Z",
+  "status": "VERIFIED",
+  "notes": "Pesos Apache-2.0 (modelo + voces) verificados 2026-08-21 desde github.com/thewh1teagle/kokoro-onnx release model-files-v1.0 (canónica original hexgrad/Kokoro-82M, espejo HuggingFace no contiene el .onnx con ese nombre). SHA-256 calculados localmente sobre ficheros en C:\\tmp\\kokoro-models fuera de Git. Runtime local kokoro_onnx 0.4.9 + onnxruntime CPU + phonemizer-fork (GPL, solo entorno local de generación, no distribuido). Ver README §3."
 }

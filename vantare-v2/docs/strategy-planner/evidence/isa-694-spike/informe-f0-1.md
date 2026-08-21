@@ -1,8 +1,11 @@
 # ISA-701 / F0-1 — Spike empírico de telemetría LMU
 
-Fecha de ejecución: 2026-08-21  
-Issue: #701, parte de ISA-694  
-Rama: `vantareapp/isa-701-f0-spike-telemetria`  
+Fecha de ejecución: 2026-08-21
+
+Issue: #701, parte de ISA-694
+
+Rama: `vantareapp/isa-701-f0-spike-telemetria`
+
 Base recibida: ISA-694 `af41f14dfa0c979e1c02b62a852c58d6946bfe19`
 
 ## 1. Resumen ejecutivo

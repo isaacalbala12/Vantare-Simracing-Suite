@@ -17,6 +17,15 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-737 / ISA-694 F3-a1 está implementada en su rama aislada: el modelo
+`HistoricalSession` se clasifica por combinación LMU, tipo y clima; las
+sesiones sin vuelta completa permanecen identificadas con usabilidad por
+familia; y cada carrera se agrupa con las prácticas de la misma combinación.
+Las fixtures sanitizadas cubren las seis candidatas de F0-1 y el spot-check
+8/8, sin DuckDB, fechas, hashes ni nombres de equipos reales. El gate
+`go test ./internal/telemetryanalysis/... -count=1`, vet, gofmt y diff-check
+pasa. Pendiente: review del orquestador; no hay PR ni promoción.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

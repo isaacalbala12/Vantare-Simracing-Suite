@@ -6178,3 +6178,20 @@ Nota ISA-334 / Broadcast Tower horizontal (2026-08-14, promovida a Nightly):
   manual sigue pendiente. PR #224 fusionada por squash en `nightly` como
   `04c3ac3cabcc6cb8cc86617ba88e0676f5f802d7`; Linear está en `Nightly`.
   No hubo promoción a `testers`/`master` ni release.
+Nota ISA-737 / ISA-694 F3-a1 (2026-08-21, implementada en rama de issue):
+- Telemetry Analysis clasifica `HistoricalSession` LMU por identidad de
+  combinación (`simId` + pista + layout + coche + clase), tipo y clima, sin
+  abrir DuckDB, rutas ni storage directamente.
+- Las capturas sin vuelta completa permanecen identificadas y agrupables, con
+  usabilidad negativa y motivo por cada familia de derivación. El agrupador
+  conserva todas las sesiones y asocia cada carrera con las prácticas de su
+  misma combinación.
+- Una fixture JSON sanitizada representa las seis candidatas del spike y las
+  ocho sesiones del spot-check, sin fechas, hashes ni equipos reales. Tests
+  table-driven reproducen la metadata y el 8/8 confirmado.
+- Gates locales: `go test ./internal/telemetryanalysis/... -count=1`, `go vet`,
+  `gofmt -l` y `git diff --check` PASS. La suite Go global no pudo arrancar los
+  paquetes con embed porque `frontend/dist` y `frontend/node_modules` no están
+  presentes en este worktree; no afecta al gate contractual de #737.
+- Commits de producto: `554a1b80` y `22fa23e4`. Sin PR, merge, promoción ni
+  release. Siguiente: review del orquestador de #737.

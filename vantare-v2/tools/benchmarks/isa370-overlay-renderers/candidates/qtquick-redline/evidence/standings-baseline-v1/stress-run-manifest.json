@@ -1,0 +1,142 @@
+{
+  "schema": "vantare.qt-standings-baseline-run.v1",
+  "createdAt": "2026-08-21T01:24:30.0899587+00:00",
+  "commit": "d1509f2d493916fdd3f8e498d8cce2568c35110e",
+  "repetitions": 10,
+  "scenarios": [
+    "stress"
+  ],
+  "executable": {
+    "file": "isa370_qtquick_redline.exe",
+    "sha256": "755a84a5e8ead98b40206c510866527714e527d8d880c1a188e3f6bf40fcc00f"
+  },
+  "corpora": [
+    {
+      "id": "canonical",
+      "replaySha256": "9e7f791ab831762909ac832f4f7d0c19e5d012558cd0d2bc0a5505cd6f637059",
+      "manifestSha256": "165e70fd918b5a93694f71e7be3846c306e9cd41a24e02243d5a368c575b5bcb"
+    },
+    {
+      "id": "standings-stress104-v1",
+      "replaySha256": "4b084cfb72078d837e1f2bb489a8d82d597d412c78c40180cd75c61b0ccbb60a",
+      "manifestSha256": "fb8d4f980c4f268bc14b3d96aec4a2e13838133484245c3dbb527ccd400487bf"
+    }
+  ],
+  "qtCore": {
+    "file": "Qt6Core.dll",
+    "sha256": "b98eea394a95563879b614dbd4432ce074b0fceeb154c3bae252f4e7a9376a40"
+  },
+  "runnerSha256": "0b69e3d4f30f148f962bd63efad6439d08a1cbbf49cfc4b6f0bcedf8b94f6f63",
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "cpu": [
+      "AMD Ryzen 7 3700X 8-Core Processor             "
+    ],
+    "gpu": [
+      "Meta Virtual Monitor",
+      "AMD Radeon RX 7800 XT"
+    ]
+  },
+  "traces": [
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 1,
+      "startedAt": "2026-08-21T01:20:40.7532926+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r01.trace.json",
+      "traceBytes": 130378,
+      "traceSha256": "caeab0ddc0cb4f3c6bb73ce57ccf25eace3e0c0069c3a542c0911a5fd9b573f6"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 2,
+      "startedAt": "2026-08-21T01:21:04.3028139+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r02.trace.json",
+      "traceBytes": 130342,
+      "traceSha256": "e210c2aabde38ee8c979451d9b756a6aefb6f9d9aeeb47314cc05a7342c730be"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 3,
+      "startedAt": "2026-08-21T01:21:25.7433813+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r03.trace.json",
+      "traceBytes": 129522,
+      "traceSha256": "2843b0084374f693191397daf67babdc25d1b086e29d97f0f1c7629bcd6cd9ec"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 4,
+      "startedAt": "2026-08-21T01:21:49.5162229+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r04.trace.json",
+      "traceBytes": 130785,
+      "traceSha256": "fac855f2f96e6c9057b272df31ea952cccf26eef45aeb9d7e53b530be3671aa0"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 5,
+      "startedAt": "2026-08-21T01:22:13.2588403+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r05.trace.json",
+      "traceBytes": 131238,
+      "traceSha256": "c16dd801f38d2ba3bfc37959b1932dc6419f3a3890b6860c9bf85025d17093c0"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 6,
+      "startedAt": "2026-08-21T01:22:34.2535299+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r06.trace.json",
+      "traceBytes": 129907,
+      "traceSha256": "81ec96453bb4a708779bce8f3627f1220f0078e1843f08e6a4fd47c648011cde"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 7,
+      "startedAt": "2026-08-21T01:22:55.6903354+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r07.trace.json",
+      "traceBytes": 129488,
+      "traceSha256": "e31a8fcf7f91a786b5bb21b3d72d56edcb0aeb26773c75c3b99e24c7c785ff33"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 8,
+      "startedAt": "2026-08-21T01:23:21.8746418+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r08.trace.json",
+      "traceBytes": 130813,
+      "traceSha256": "02768a4fc2f83483db783f2c813dc6094e7871152d87695ecedb78bcd8169a65"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 9,
+      "startedAt": "2026-08-21T01:23:41.4171521+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r09.trace.json",
+      "traceBytes": 130372,
+      "traceSha256": "ee856b4bed083dd803a80625759203992c53611c8f8202ee9af61a59d5d03231"
+    },
+    {
+      "scenario": "stress",
+      "sceneId": "standings-full",
+      "repetition": 10,
+      "startedAt": "2026-08-21T01:24:06.7058228+00:00",
+      "exitCode": 0,
+      "traceFile": "stress-r10.trace.json",
+      "traceBytes": 130282,
+      "traceSha256": "7c9799913a4ec80746f8d72a9c1216053535da7518435b6e56abc0c679d466d3"
+    }
+  ]
+}

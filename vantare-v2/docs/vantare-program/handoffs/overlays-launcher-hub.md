@@ -12,14 +12,22 @@
 
 ## Estado
 
-- **OS-QT-04 / GitHub #693 — T17 instrumentación cerrada; T18 siguiente
-  (2026-08-21):** trace Qt opt-in, QPC nativo y self-hash en commit `67b47620`.
+- **OS-QT-04 / GitHub #693 — T18 baseline RED cerrado; T19 siguiente
+  (2026-08-21):** 50 runs seriales (10 por overtake/full/enter/retirement/
+  stress104) quedan custodiados y reproducidos por un agregador independiente.
+  p95: 38,65/37,69/3,28/2,98/268,07 ms; máximos:
+  56,41/80,75/61,27/50,12/1001,93 ms. El estado es FAIL, sin reinterpretar.
+  `stress104` es un corpus Standings determinista, no el perfil simultáneo de
+  cuatro widgets. Evidencia versionada en
+  `candidates/qtquick-redline/evidence/standings-baseline-v1/`; resumen raw SHA
+  `493D948D...40B6EBA`. T19 queda autorizado para optimizar solo el modelo
+  keyed y medir contra este baseline.
+  El trace Qt opt-in, QPC nativo y self-hash nació en commit `67b47620`.
   Smoke `standings-overtake` publica 115 updates, 113 presentaciones reales,
   frame final 114 y residual cero; trace SHA `2ED4F519...A16A148E`, EXE SHA
-  `A4BDA5A4...7ED685D0`. La lectura inicial da model-apply p50 2,31 ms,
-  p95 78,93 ms y max 95,84 ms: es señal RED, no baseline cerrado. T18 debe
-  repetir los cinco escenarios y congelar raw antes de optimizar. WGC/pixels
-  permanece autoridad física. Build `/W4 /WX`, qmllint y los gates core,
+  `A4BDA5A4...7ED685D0`. WGC/pixels permanece autoridad física para paridad
+  visual; este baseline mide exclusivamente model-apply. Build `/W4 /WX`,
+  qmllint y los gates core,
   Delta/Pedals/motion pasan; Relative conserva una flake heredada focal
   2 PASS/1 FAIL sin cambios Relative. Rama
   `vantareapp/isa-693-qt-standings-gate`, sin push, PR, CI remoto, integración,

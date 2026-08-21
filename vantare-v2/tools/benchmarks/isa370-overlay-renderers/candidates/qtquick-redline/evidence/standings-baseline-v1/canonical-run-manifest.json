@@ -1,0 +1,441 @@
+{
+  "schema": "vantare.qt-standings-baseline-run.v1",
+  "createdAt": "2026-08-21T01:07:06.2394054+00:00",
+  "commit": "b4e3cef75c595b4f24d06754899c96cac0c0ddb7",
+  "repetitions": 10,
+  "scenarios": [
+    "overtake",
+    "full",
+    "enter",
+    "retirement"
+  ],
+  "executable": {
+    "file": "isa370_qtquick_redline.exe",
+    "sha256": "755a84a5e8ead98b40206c510866527714e527d8d880c1a188e3f6bf40fcc00f"
+  },
+  "replay": {
+    "file": "redline-viewmodels-v1.jsonl",
+    "sha256": "9e7f791ab831762909ac832f4f7d0c19e5d012558cd0d2bc0a5505cd6f637059"
+  },
+  "manifest": {
+    "file": "redline-viewmodels-v1.manifest.json",
+    "sha256": "165e70fd918b5a93694f71e7be3846c306e9cd41a24e02243d5a368c575b5bcb"
+  },
+  "qtCore": {
+    "file": "Qt6Core.dll",
+    "sha256": "b98eea394a95563879b614dbd4432ce074b0fceeb154c3bae252f4e7a9376a40"
+  },
+  "runnerSha256": "66ce1d9222e766b340aaf88305c6e09942ed1f44bf28c3c5342809484abb5557",
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "cpu": [
+      "AMD Ryzen 7 3700X 8-Core Processor             "
+    ],
+    "gpu": [
+      "Meta Virtual Monitor",
+      "AMD Radeon RX 7800 XT"
+    ]
+  },
+  "traces": [
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 1,
+      "startedAt": "2026-08-21T00:59:42.8087229+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r01.trace.json",
+      "traceBytes": 130052,
+      "traceSha256": "3d6fb3f66c907963fca0a27d036abb556792ed934630a09cbd7ef9f989f524f9"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 2,
+      "startedAt": "2026-08-21T00:59:51.9025921+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r02.trace.json",
+      "traceBytes": 127063,
+      "traceSha256": "52efaec429d3c7a402cbceb2fc01cfcdc7692ef5bb5e1ece288973beed87d2bf"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 3,
+      "startedAt": "2026-08-21T01:00:00.8445987+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r03.trace.json",
+      "traceBytes": 121817,
+      "traceSha256": "5d548e7990de4cdbbcc0da1f8546f7a7291849579a3d59e73b7bfcbb06b91806"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 4,
+      "startedAt": "2026-08-21T01:00:10.0740272+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r04.trace.json",
+      "traceBytes": 127011,
+      "traceSha256": "ecd0879ffd0d55810dd3c4bc6ed340fcc4802c43efff94c52dfa697cd30c820a"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 5,
+      "startedAt": "2026-08-21T01:00:19.2654905+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r05.trace.json",
+      "traceBytes": 129609,
+      "traceSha256": "cfe7b7c0837c8043b0cfe53cd8761652f8215dbe7ee2c6ea5567da65caadb49b"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 6,
+      "startedAt": "2026-08-21T01:00:28.1771603+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r06.trace.json",
+      "traceBytes": 125293,
+      "traceSha256": "f30d5b6e24eee253364e3ae00631646eb473167fd966a258ed15673ac1bff286"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 7,
+      "startedAt": "2026-08-21T01:00:37.1919662+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r07.trace.json",
+      "traceBytes": 126596,
+      "traceSha256": "fe945113ea8c8f8abe8e7361885259621c970306d93602e99da8691ad6b22113"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 8,
+      "startedAt": "2026-08-21T01:00:46.2764101+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r08.trace.json",
+      "traceBytes": 121767,
+      "traceSha256": "bf4a57545903b67b3ded76ceb2b9e8bd2542160f853d950448003dcda716bda4"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 9,
+      "startedAt": "2026-08-21T01:00:55.3224987+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r09.trace.json",
+      "traceBytes": 127424,
+      "traceSha256": "e7b853e5a1225ebaf1a7f9a768052b38841f275741991fe51612b4a2d478b4a6"
+    },
+    {
+      "scenario": "overtake",
+      "sceneId": "standings-overtake",
+      "repetition": 10,
+      "startedAt": "2026-08-21T01:01:04.1970048+00:00",
+      "exitCode": 0,
+      "traceFile": "overtake-r10.trace.json",
+      "traceBytes": 130874,
+      "traceSha256": "f3e0c149fda27a9c2f523352f5a9f144d0cf3a2c1711c73e4393346d71ccb2bc"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 1,
+      "startedAt": "2026-08-21T01:01:13.1662150+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r01.trace.json",
+      "traceBytes": 326790,
+      "traceSha256": "f761bae694a86f8fdcad14c70360e098bf1b923942262f1544667e3edb60d93c"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 2,
+      "startedAt": "2026-08-21T01:01:31.0356345+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r02.trace.json",
+      "traceBytes": 334546,
+      "traceSha256": "8bfdda0f240f70f853c7f37c45a9ab878edbd89c08bb3936aaece1c6f3c72a21"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 3,
+      "startedAt": "2026-08-21T01:01:48.8194352+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r03.trace.json",
+      "traceBytes": 337852,
+      "traceSha256": "d4e84f694e4f98684194225a2473dd7d3dea0dfa8625be59d470760c8eac5d47"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 4,
+      "startedAt": "2026-08-21T01:02:06.4717636+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r04.trace.json",
+      "traceBytes": 325010,
+      "traceSha256": "87954a6114d5f01a02addbeff49491de4d5c7c1bf58a8778414b86133f7440dc"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 5,
+      "startedAt": "2026-08-21T01:02:24.4543837+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r05.trace.json",
+      "traceBytes": 331160,
+      "traceSha256": "2979f32dd9362ae9808b8ba1384a92532ab89f27f544cfc3d2a4d21a870af86d"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 6,
+      "startedAt": "2026-08-21T01:02:42.1500557+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r06.trace.json",
+      "traceBytes": 333281,
+      "traceSha256": "083c0d28abd472e5c607aea36dd50c2f9209c8f5a0a4d81b3422ffb33586c282"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 7,
+      "startedAt": "2026-08-21T01:02:59.9755130+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r07.trace.json",
+      "traceBytes": 336651,
+      "traceSha256": "fc29c8049860f41cf142b8f3131f665db69dd2e982d011f07e15fd654e0e06f3"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 8,
+      "startedAt": "2026-08-21T01:03:17.8798994+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r08.trace.json",
+      "traceBytes": 321099,
+      "traceSha256": "33c0e769a0ecb1c3f087b013a9ba20a50acf0dc87adef70fd9ac8acf4441ce45"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 9,
+      "startedAt": "2026-08-21T01:03:35.9673020+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r09.trace.json",
+      "traceBytes": 323009,
+      "traceSha256": "a89ba711446cbc60ebba0bbfded30fdb22a41a078b382ef41af478e6c2207b53"
+    },
+    {
+      "scenario": "full",
+      "sceneId": "standings-full",
+      "repetition": 10,
+      "startedAt": "2026-08-21T01:03:54.5182661+00:00",
+      "exitCode": 0,
+      "traceFile": "full-r10.trace.json",
+      "traceBytes": 337799,
+      "traceSha256": "79c937c4f93245f02e6220c4a5cd838159227909f9713838fa79ac2747f3b1c8"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 1,
+      "startedAt": "2026-08-21T01:04:12.3017363+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r01.trace.json",
+      "traceBytes": 67194,
+      "traceSha256": "9174e67c5bafca7f38151932940a47f6dcaa0104150c3fce2ee605a572683d5b"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 2,
+      "startedAt": "2026-08-21T01:04:21.0168215+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r02.trace.json",
+      "traceBytes": 66733,
+      "traceSha256": "aaf1c4090de27028bca603833d2fcb3b63cb3e829e6b2cd3c59c60efb35bf7f9"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 3,
+      "startedAt": "2026-08-21T01:04:29.6517995+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r03.trace.json",
+      "traceBytes": 67172,
+      "traceSha256": "8ac0d3aaa468a00e844b89d751d4de12f5907036cf43b45c0539947e038d0239"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 4,
+      "startedAt": "2026-08-21T01:04:38.2863844+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r04.trace.json",
+      "traceBytes": 66312,
+      "traceSha256": "8a3b59ef5a78b1188594e81b959ce240650e07c450f7ff5821c48b5c3728d835"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 5,
+      "startedAt": "2026-08-21T01:04:46.9090889+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r05.trace.json",
+      "traceBytes": 68072,
+      "traceSha256": "e2d3c922a7585d52488e4eabd4da7eb692fa20ddb8c2d93d71cfacc704623ba6"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 6,
+      "startedAt": "2026-08-21T01:04:55.5844407+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r06.trace.json",
+      "traceBytes": 67156,
+      "traceSha256": "45d73b75b383b47d91e3670043ebab35eb60b4678aa9bb3d2154027d4a5f5da2"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 7,
+      "startedAt": "2026-08-21T01:05:04.3856222+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r07.trace.json",
+      "traceBytes": 67154,
+      "traceSha256": "7111614dbe41679d884bd2d91a74c6851cd1aef3bb027ba9a27b71c722f1de41"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 8,
+      "startedAt": "2026-08-21T01:05:13.1374570+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r08.trace.json",
+      "traceBytes": 67156,
+      "traceSha256": "ee29572d7676549ad44c40e1be28758ce6b5469236c2f01cd6e3b8c9e7766433"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 9,
+      "startedAt": "2026-08-21T01:05:21.7383129+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r09.trace.json",
+      "traceBytes": 66314,
+      "traceSha256": "0f4106b53e09e77296c04fc1bdb844c0d6f3f1a25829fe70c7bfcbaf3e66496d"
+    },
+    {
+      "scenario": "enter",
+      "sceneId": "standings-car-enters",
+      "repetition": 10,
+      "startedAt": "2026-08-21T01:05:30.2872707+00:00",
+      "exitCode": 0,
+      "traceFile": "enter-r10.trace.json",
+      "traceBytes": 66759,
+      "traceSha256": "be873f6c0729750a661c83d11e17cf318f89e2da27053b4c9fdb85daa7374047"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 1,
+      "startedAt": "2026-08-21T01:05:38.8052916+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r01.trace.json",
+      "traceBytes": 83455,
+      "traceSha256": "e40e769b3fc1d9d37a857ac1a32be7ade00199b5d5750075686b3b7ab5f7679e"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 2,
+      "startedAt": "2026-08-21T01:05:47.5006157+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r02.trace.json",
+      "traceBytes": 83441,
+      "traceSha256": "e6041dbc713a85cd6edd52e3b765bcb8e7c52282cddd63403c50853c4036a82f"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 3,
+      "startedAt": "2026-08-21T01:05:56.1303465+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r03.trace.json",
+      "traceBytes": 83505,
+      "traceSha256": "a8f438421e5808d9c119216aaea36c72306ad253d29c4fccf19ad37aeee83447"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 4,
+      "startedAt": "2026-08-21T01:06:04.7313452+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r04.trace.json",
+      "traceBytes": 83804,
+      "traceSha256": "4fd96aa90a8213218f1a5125babfe2d39b79c284f62ad9f08658d2c49ddf1768"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 5,
+      "startedAt": "2026-08-21T01:06:13.4222610+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r05.trace.json",
+      "traceBytes": 83467,
+      "traceSha256": "2ec5fe9b8a662252da3a0cb1f8321552a3de5f85a60e5b0b46285cb931806d77"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 6,
+      "startedAt": "2026-08-21T01:06:22.0496140+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r06.trace.json",
+      "traceBytes": 83467,
+      "traceSha256": "6c3092ef0b85ce8b4c9c2580ea2afe56104bf3261705778ff4feb2fd296c43df"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 7,
+      "startedAt": "2026-08-21T01:06:30.7261120+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r07.trace.json",
+      "traceBytes": 83455,
+      "traceSha256": "d7a19391046f0c26a5882cdecc6deab75c0b9264e1b084d68986c6fae219f7d1"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 8,
+      "startedAt": "2026-08-21T01:06:39.3794315+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r08.trace.json",
+      "traceBytes": 83898,
+      "traceSha256": "d4161e8fe3ca732de90cc9716574151d4510159da3676722f0f4ae6de1445362"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 9,
+      "startedAt": "2026-08-21T01:06:47.9501817+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r09.trace.json",
+      "traceBytes": 83886,
+      "traceSha256": "177af897f9746fb5569505b750eed295034a5713c70998ad8bc5c0cffaa2827e"
+    },
+    {
+      "scenario": "retirement",
+      "sceneId": "standings-retirement",
+      "repetition": 10,
+      "startedAt": "2026-08-21T01:06:56.4740283+00:00",
+      "exitCode": 0,
+      "traceFile": "retirement-r10.trace.json",
+      "traceBytes": 83898,
+      "traceSha256": "37f4073d8c82eb7a43f9e053ead113b8b0a53ea2387f5e0436d8b79c7f0c366a"
+    }
+  ]
+}

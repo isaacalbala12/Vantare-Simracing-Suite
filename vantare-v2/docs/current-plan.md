@@ -1,4 +1,20 @@
-Nota OS-QT-04 / GitHub #693 (2026-08-21, T17 cerrado; T18 siguiente):
+Nota OS-QT-04 / GitHub #693 (2026-08-21, T18 cerrado; T19 siguiente):
+- Baseline RED reproducible congelado: 10 repeticiones de `overtake`, `full`,
+  `enter`, `retirement` y `stress`, 50 traces y 9.730 muestras model-apply.
+  El agregador independiente reproduce el FAIL sin suavizar umbrales.
+- Resultados p50/p95/max: enter 1,40/3,28/61,27 ms; full
+  1,60/37,69/80,75; overtake 1,68/38,65/56,41; retirement
+  1,31/2,98/50,12; stress104 8,82/268,07/1001,93.
+- `stress104` expande de forma determinista `standings-full` a 104 filas;
+  replay SHA `4b084cfb...bb60a`. Es el gate dominante de Standings, no el perfil
+  simultáneo de cuatro widgets, que requiere el sidecar integrado.
+- Evidencia versionada en `candidates/qtquick-redline/evidence/standings-baseline-v1/`;
+  resumen externo SHA `493D948D...40B6EBA`, manifests y hashes de las 50 trazas.
+- T18 no modifica QML ni producto. T19 debe optimizar únicamente el modelo
+  keyed, preservar insert/move/remove/dataChanged y comparar 10 runs contra
+  este baseline antes de cualquier ajuste visual.
+
+Nota OS-QT-04 / GitHub #693 (2026-08-21, T17 cerrado):
 - El candidate incorpora un trace opt-in por `VANTARE_QT_MOTION_TRACE`; el
   camino normal no serializa eventos. Custodia `sequence`, escena/frame,
   `logicalMs`, QPC nativo, fronteras model-apply y pares QML sync/present.
@@ -10,9 +26,9 @@ Nota OS-QT-04 / GitHub #693 (2026-08-21, T17 cerrado; T18 siguiente):
   último frame lógico 114 presentado, salida 0 y residual 0. Trace SHA-256
   `2ED4F519E01EE39C5A917091EC475128C99E3FE2EA111BB9D49175D3A16A148E`;
   EXE SHA-256 `A4BDA5A4D4A203896DAF5B87F39B00079A0543ECFDF65626493489BC7ED685D0`.
-- Lectura exploratoria, todavía no baseline T18: model apply p50 2,31 ms,
-  p95 78,93 ms y max 95,84 ms. WGC/comparador externo sigue siendo la
-  autoridad física; el trace del candidate solo aporta clocks y eventos.
+- La lectura exploratoria previa fue sustituida por el baseline T18 versionado.
+  WGC/comparador externo sigue siendo la autoridad física; el trace del
+  candidate solo aporta clocks y eventos.
 - Build Qt 6.10.2 Release `/W4 /WX`, `qmllint`, core, Delta/Pedals y motion
   trace pasan. El gate completo detectó una inestabilidad heredada en
   `Relative::trafficThreatFollowsTheFoundation`: 2 PASS/1 FAIL en tres runs
@@ -20,7 +36,7 @@ Nota OS-QT-04 / GitHub #693 (2026-08-21, T17 cerrado; T18 siguiente):
   como límite y no se mezcla su fix en T17.
 - Rama `vantareapp/isa-693-qt-standings-gate`, base documental #692
   `e5e61d48`; sin producto, push, PR, CI remoto, integración, promoción o
-  release. T18 debe publicar el baseline RED reproducible antes de optimizar.
+  release. T18 ya publicó el baseline RED; T19 es el siguiente corte.
 
 Nota OS-QT-03 / GitHub #692 (2026-08-21, P0-B cerrado localmente):
 - El candidate Qt Quick Redline portable integra los seis diseños oficiales y

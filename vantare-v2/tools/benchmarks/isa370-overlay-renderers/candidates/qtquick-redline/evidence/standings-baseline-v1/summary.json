@@ -1,0 +1,705 @@
+{
+  "schema": "vantare.qt-standings-baseline.v1",
+  "status": "FAIL",
+  "thresholds": {
+    "modelApplyP95Ms": 8.0,
+    "modelApplyMaxMs": 16.67,
+    "hitchMs": 50.0
+  },
+  "repetitions": 10,
+  "replaySha256": [
+    "4b084cfb72078d837e1f2bb489a8d82d597d412c78c40180cd75c61b0ccbb60a",
+    "9e7f791ab831762909ac832f4f7d0c19e5d012558cd0d2bc0a5505cd6f637059"
+  ],
+  "scenarios": [
+    {
+      "id": "enter",
+      "sceneId": "standings-car-enters",
+      "runs": 10,
+      "samples": 1090,
+      "modelApply": {
+        "p50Ms": 1.4006,
+        "p95Ms": 3.2811,
+        "maxMs": 61.2656
+      },
+      "failures": [
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "enter-r01.trace.json",
+          "traceSha256": "9174e67c5bafca7f38151932940a47f6dcaa0104150c3fce2ee605a572683d5b",
+          "records": 109,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 1.4628,
+            "p95Ms": 3.0188,
+            "maxMs": 40.8577
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "enter-r02.trace.json",
+          "traceSha256": "aaf1c4090de27028bca603833d2fcb3b63cb3e829e6b2cd3c59c60efb35bf7f9",
+          "records": 109,
+          "presentations": 37,
+          "modelApply": {
+            "p50Ms": 1.3327,
+            "p95Ms": 3.1722,
+            "maxMs": 39.3903
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "enter-r03.trace.json",
+          "traceSha256": "8ac0d3aaa468a00e844b89d751d4de12f5907036cf43b45c0539947e038d0239",
+          "records": 109,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 1.3257,
+            "p95Ms": 2.862,
+            "maxMs": 53.6376
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "enter-r04.trace.json",
+          "traceSha256": "8a3b59ef5a78b1188594e81b959ce240650e07c450f7ff5821c48b5c3728d835",
+          "records": 109,
+          "presentations": 36,
+          "modelApply": {
+            "p50Ms": 1.219,
+            "p95Ms": 3.2332,
+            "maxMs": 37.9401
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "enter-r05.trace.json",
+          "traceSha256": "e2d3c922a7585d52488e4eabd4da7eb692fa20ddb8c2d93d71cfacc704623ba6",
+          "records": 109,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 1.4006,
+            "p95Ms": 3.1528,
+            "maxMs": 44.3126
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "enter-r06.trace.json",
+          "traceSha256": "45d73b75b383b47d91e3670043ebab35eb60b4678aa9bb3d2154027d4a5f5da2",
+          "records": 109,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 1.5155,
+            "p95Ms": 3.7787,
+            "maxMs": 61.2656
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "enter-r07.trace.json",
+          "traceSha256": "7111614dbe41679d884bd2d91a74c6851cd1aef3bb027ba9a27b71c722f1de41",
+          "records": 109,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 1.5513,
+            "p95Ms": 3.6357,
+            "maxMs": 48.8508
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "enter-r08.trace.json",
+          "traceSha256": "ee29572d7676549ad44c40e1be28758ce6b5469236c2f01cd6e3b8c9e7766433",
+          "records": 109,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 1.3527,
+            "p95Ms": 3.8317,
+            "maxMs": 57.2601
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "enter-r09.trace.json",
+          "traceSha256": "0f4106b53e09e77296c04fc1bdb844c0d6f3f1a25829fe70c7bfcbaf3e66496d",
+          "records": 109,
+          "presentations": 36,
+          "modelApply": {
+            "p50Ms": 1.2714,
+            "p95Ms": 2.9703,
+            "maxMs": 36.6087
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "enter-r10.trace.json",
+          "traceSha256": "be873f6c0729750a661c83d11e17cf318f89e2da27053b4c9fdb85daa7374047",
+          "records": 109,
+          "presentations": 37,
+          "modelApply": {
+            "p50Ms": 1.4031,
+            "p95Ms": 3.187,
+            "maxMs": 42.2383
+          }
+        }
+      ]
+    },
+    {
+      "id": "full",
+      "sceneId": "standings-full",
+      "runs": 10,
+      "samples": 2500,
+      "modelApply": {
+        "p50Ms": 1.605,
+        "p95Ms": 37.6902,
+        "maxMs": 80.7535
+      },
+      "failures": [
+        "MODEL_APPLY_P95",
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "full-r01.trace.json",
+          "traceSha256": "f761bae694a86f8fdcad14c70360e098bf1b923942262f1544667e3edb60d93c",
+          "records": 250,
+          "presentations": 492,
+          "modelApply": {
+            "p50Ms": 1.6693,
+            "p95Ms": 40.3834,
+            "maxMs": 50.2592
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "full-r02.trace.json",
+          "traceSha256": "8bfdda0f240f70f853c7f37c45a9ab878edbd89c08bb3936aaece1c6f3c72a21",
+          "records": 250,
+          "presentations": 510,
+          "modelApply": {
+            "p50Ms": 1.4808,
+            "p95Ms": 36.3434,
+            "maxMs": 62.8902
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "full-r03.trace.json",
+          "traceSha256": "d4e84f694e4f98684194225a2473dd7d3dea0dfa8625be59d470760c8eac5d47",
+          "records": 250,
+          "presentations": 518,
+          "modelApply": {
+            "p50Ms": 1.3594,
+            "p95Ms": 33.1163,
+            "maxMs": 38.7402
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "full-r04.trace.json",
+          "traceSha256": "87954a6114d5f01a02addbeff49491de4d5c7c1bf58a8778414b86133f7440dc",
+          "records": 250,
+          "presentations": 488,
+          "modelApply": {
+            "p50Ms": 1.764,
+            "p95Ms": 41.7008,
+            "maxMs": 53.9978
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "full-r05.trace.json",
+          "traceSha256": "2979f32dd9362ae9808b8ba1384a92532ab89f27f544cfc3d2a4d21a870af86d",
+          "records": 250,
+          "presentations": 502,
+          "modelApply": {
+            "p50Ms": 1.4812,
+            "p95Ms": 38.6266,
+            "maxMs": 61.6058
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "full-r06.trace.json",
+          "traceSha256": "083c0d28abd472e5c607aea36dd50c2f9209c8f5a0a4d81b3422ffb33586c282",
+          "records": 250,
+          "presentations": 507,
+          "modelApply": {
+            "p50Ms": 1.4364,
+            "p95Ms": 27.9668,
+            "maxMs": 40.2727
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "full-r07.trace.json",
+          "traceSha256": "fc29c8049860f41cf142b8f3131f665db69dd2e982d011f07e15fd654e0e06f3",
+          "records": 250,
+          "presentations": 515,
+          "modelApply": {
+            "p50Ms": 1.5061,
+            "p95Ms": 33.7594,
+            "maxMs": 50.3528
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "full-r08.trace.json",
+          "traceSha256": "33c0e769a0ecb1c3f087b013a9ba20a50acf0dc87adef70fd9ac8acf4441ce45",
+          "records": 250,
+          "presentations": 479,
+          "modelApply": {
+            "p50Ms": 1.8933,
+            "p95Ms": 44.1136,
+            "maxMs": 57.5679
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "full-r09.trace.json",
+          "traceSha256": "a89ba711446cbc60ebba0bbfded30fdb22a41a078b382ef41af478e6c2207b53",
+          "records": 250,
+          "presentations": 483,
+          "modelApply": {
+            "p50Ms": 1.6851,
+            "p95Ms": 38.0442,
+            "maxMs": 80.7535
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "full-r10.trace.json",
+          "traceSha256": "79c937c4f93245f02e6220c4a5cd838159227909f9713838fa79ac2747f3b1c8",
+          "records": 250,
+          "presentations": 517,
+          "modelApply": {
+            "p50Ms": 1.5468,
+            "p95Ms": 31.8226,
+            "maxMs": 42.0157
+          }
+        }
+      ]
+    },
+    {
+      "id": "overtake",
+      "sceneId": "standings-overtake",
+      "runs": 10,
+      "samples": 1150,
+      "modelApply": {
+        "p50Ms": 1.6824,
+        "p95Ms": 38.645,
+        "maxMs": 56.4107
+      },
+      "failures": [
+        "MODEL_APPLY_P95",
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "overtake-r01.trace.json",
+          "traceSha256": "3d6fb3f66c907963fca0a27d036abb556792ed934630a09cbd7ef9f989f524f9",
+          "records": 115,
+          "presentations": 178,
+          "modelApply": {
+            "p50Ms": 1.6439,
+            "p95Ms": 32.2704,
+            "maxMs": 41.3022
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "overtake-r02.trace.json",
+          "traceSha256": "52efaec429d3c7a402cbceb2fc01cfcdc7692ef5bb5e1ece288973beed87d2bf",
+          "records": 115,
+          "presentations": 171,
+          "modelApply": {
+            "p50Ms": 1.5814,
+            "p95Ms": 31.1113,
+            "maxMs": 41.6224
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "overtake-r03.trace.json",
+          "traceSha256": "5d548e7990de4cdbbcc0da1f8546f7a7291849579a3d59e73b7bfcbb06b91806",
+          "records": 115,
+          "presentations": 159,
+          "modelApply": {
+            "p50Ms": 2.0177,
+            "p95Ms": 44.311,
+            "maxMs": 48.842
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "overtake-r04.trace.json",
+          "traceSha256": "ecd0879ffd0d55810dd3c4bc6ed340fcc4802c43efff94c52dfa697cd30c820a",
+          "records": 115,
+          "presentations": 171,
+          "modelApply": {
+            "p50Ms": 1.6225,
+            "p95Ms": 36.02,
+            "maxMs": 56.4107
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "overtake-r05.trace.json",
+          "traceSha256": "cfe7b7c0837c8043b0cfe53cd8761652f8215dbe7ee2c6ea5567da65caadb49b",
+          "records": 115,
+          "presentations": 177,
+          "modelApply": {
+            "p50Ms": 1.4815,
+            "p95Ms": 32.012,
+            "maxMs": 38.4631
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "overtake-r06.trace.json",
+          "traceSha256": "f30d5b6e24eee253364e3ae00631646eb473167fd966a258ed15673ac1bff286",
+          "records": 115,
+          "presentations": 167,
+          "modelApply": {
+            "p50Ms": 1.7592,
+            "p95Ms": 41.4629,
+            "maxMs": 51.3725
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "overtake-r07.trace.json",
+          "traceSha256": "fe945113ea8c8f8abe8e7361885259621c970306d93602e99da8691ad6b22113",
+          "records": 115,
+          "presentations": 170,
+          "modelApply": {
+            "p50Ms": 1.4438,
+            "p95Ms": 35.7533,
+            "maxMs": 42.7433
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "overtake-r08.trace.json",
+          "traceSha256": "bf4a57545903b67b3ded76ceb2b9e8bd2542160f853d950448003dcda716bda4",
+          "records": 115,
+          "presentations": 159,
+          "modelApply": {
+            "p50Ms": 2.2636,
+            "p95Ms": 49.2966,
+            "maxMs": 52.2999
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "overtake-r09.trace.json",
+          "traceSha256": "e7b853e5a1225ebaf1a7f9a768052b38841f275741991fe51612b4a2d478b4a6",
+          "records": 115,
+          "presentations": 172,
+          "modelApply": {
+            "p50Ms": 1.6544,
+            "p95Ms": 35.5041,
+            "maxMs": 41.0066
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "overtake-r10.trace.json",
+          "traceSha256": "f3e0c149fda27a9c2f523352f5a9f144d0cf3a2c1711c73e4393346d71ccb2bc",
+          "records": 115,
+          "presentations": 180,
+          "modelApply": {
+            "p50Ms": 1.5984,
+            "p95Ms": 33.2988,
+            "maxMs": 42.2938
+          }
+        }
+      ]
+    },
+    {
+      "id": "retirement",
+      "sceneId": "standings-retirement",
+      "runs": 10,
+      "samples": 1090,
+      "modelApply": {
+        "p50Ms": 1.3108,
+        "p95Ms": 2.9832,
+        "maxMs": 50.1192
+      },
+      "failures": [
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "retirement-r01.trace.json",
+          "traceSha256": "e40e769b3fc1d9d37a857ac1a32be7ade00199b5d5750075686b3b7ab5f7679e",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.3237,
+            "p95Ms": 2.759,
+            "maxMs": 50.1192
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "retirement-r02.trace.json",
+          "traceSha256": "e6041dbc713a85cd6edd52e3b765bcb8e7c52282cddd63403c50853c4036a82f",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.2656,
+            "p95Ms": 2.7926,
+            "maxMs": 44.3565
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "retirement-r03.trace.json",
+          "traceSha256": "a8f438421e5808d9c119216aaea36c72306ad253d29c4fccf19ad37aeee83447",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.3108,
+            "p95Ms": 3.0402,
+            "maxMs": 35.0881
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "retirement-r04.trace.json",
+          "traceSha256": "4fd96aa90a8213218f1a5125babfe2d39b79c284f62ad9f08658d2c49ddf1768",
+          "records": 109,
+          "presentations": 76,
+          "modelApply": {
+            "p50Ms": 1.3925,
+            "p95Ms": 2.9675,
+            "maxMs": 44.1943
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "retirement-r05.trace.json",
+          "traceSha256": "2ec5fe9b8a662252da3a0cb1f8321552a3de5f85a60e5b0b46285cb931806d77",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.2073,
+            "p95Ms": 2.8903,
+            "maxMs": 41.7596
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "retirement-r06.trace.json",
+          "traceSha256": "6c3092ef0b85ce8b4c9c2580ea2afe56104bf3261705778ff4feb2fd296c43df",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.5724,
+            "p95Ms": 3.7155,
+            "maxMs": 42.3586
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "retirement-r07.trace.json",
+          "traceSha256": "d7a19391046f0c26a5882cdecc6deab75c0b9264e1b084d68986c6fae219f7d1",
+          "records": 109,
+          "presentations": 75,
+          "modelApply": {
+            "p50Ms": 1.4164,
+            "p95Ms": 3.8313,
+            "maxMs": 45.971
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "retirement-r08.trace.json",
+          "traceSha256": "d4161e8fe3ca732de90cc9716574151d4510159da3676722f0f4ae6de1445362",
+          "records": 109,
+          "presentations": 76,
+          "modelApply": {
+            "p50Ms": 1.2716,
+            "p95Ms": 3.2958,
+            "maxMs": 45.1381
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "retirement-r09.trace.json",
+          "traceSha256": "177af897f9746fb5569505b750eed295034a5713c70998ad8bc5c0cffaa2827e",
+          "records": 109,
+          "presentations": 76,
+          "modelApply": {
+            "p50Ms": 1.2633,
+            "p95Ms": 2.6944,
+            "maxMs": 40.1179
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "retirement-r10.trace.json",
+          "traceSha256": "37f4073d8c82eb7a43f9e053ead113b8b0a53ea2387f5e0436d8b79c7f0c366a",
+          "records": 109,
+          "presentations": 76,
+          "modelApply": {
+            "p50Ms": 1.2113,
+            "p95Ms": 2.6202,
+            "maxMs": 36.7348
+          }
+        }
+      ]
+    },
+    {
+      "id": "stress",
+      "sceneId": "standings-full",
+      "runs": 10,
+      "samples": 2500,
+      "modelApply": {
+        "p50Ms": 8.8172,
+        "p95Ms": 268.0703,
+        "maxMs": 1001.9299
+      },
+      "failures": [
+        "MODEL_APPLY_P95",
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "stress-r01.trace.json",
+          "traceSha256": "caeab0ddc0cb4f3c6bb73ce57ccf25eace3e0c0069c3a542c0911a5fd9b573f6",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 8.7072,
+            "p95Ms": 283.0913,
+            "maxMs": 643.6439
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "stress-r02.trace.json",
+          "traceSha256": "e210c2aabde38ee8c979451d9b756a6aefb6f9d9aeeb47314cc05a7342c730be",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 8.2492,
+            "p95Ms": 261.418,
+            "maxMs": 511.1297
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "stress-r03.trace.json",
+          "traceSha256": "2843b0084374f693191397daf67babdc25d1b086e29d97f0f1c7629bcd6cd9ec",
+          "records": 250,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 8.9598,
+            "p95Ms": 291.7399,
+            "maxMs": 694.3872
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "stress-r04.trace.json",
+          "traceSha256": "fac855f2f96e6c9057b272df31ea952cccf26eef45aeb9d7e53b530be3671aa0",
+          "records": 250,
+          "presentations": 41,
+          "modelApply": {
+            "p50Ms": 8.9311,
+            "p95Ms": 271.1963,
+            "maxMs": 685.7893
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "stress-r05.trace.json",
+          "traceSha256": "c16dd801f38d2ba3bfc37959b1932dc6419f3a3890b6860c9bf85025d17093c0",
+          "records": 250,
+          "presentations": 42,
+          "modelApply": {
+            "p50Ms": 7.7216,
+            "p95Ms": 255.6076,
+            "maxMs": 1001.9299
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "stress-r06.trace.json",
+          "traceSha256": "81ec96453bb4a708779bce8f3627f1220f0078e1843f08e6a4fd47c648011cde",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.4314,
+            "p95Ms": 269.5265,
+            "maxMs": 453.5505
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "stress-r07.trace.json",
+          "traceSha256": "e31a8fcf7f91a786b5bb21b3d72d56edcb0aeb26773c75c3b99e24c7c785ff33",
+          "records": 250,
+          "presentations": 38,
+          "modelApply": {
+            "p50Ms": 9.1294,
+            "p95Ms": 359.7404,
+            "maxMs": 738.221
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "stress-r08.trace.json",
+          "traceSha256": "02768a4fc2f83483db783f2c813dc6094e7871152d87695ecedb78bcd8169a65",
+          "records": 250,
+          "presentations": 41,
+          "modelApply": {
+            "p50Ms": 6.7109,
+            "p95Ms": 207.9242,
+            "maxMs": 443.6265
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "stress-r09.trace.json",
+          "traceSha256": "ee856b4bed083dd803a80625759203992c53611c8f8202ee9af61a59d5d03231",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 9.2273,
+            "p95Ms": 353.3811,
+            "maxMs": 786.3515
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "stress-r10.trace.json",
+          "traceSha256": "7c9799913a4ec80746f8d72a9c1216053535da7518435b6e56abc0c679d466d3",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 9.4602,
+            "p95Ms": 245.6542,
+            "maxMs": 755.5794
+          }
+        }
+      ]
+    }
+  ],
+  "toolingSha256": "9b8a9d84f2a7979d32a763cca17504555b6dbe5b85fa5e34ae08f95dd513f269"
+}

@@ -471,14 +471,14 @@ fallo exacto de Standings.
 
 **Aceptación:**
 
-- [ ] 10 repeticiones por escenario y corpus/hash exactos.
-- [ ] Reporta p50/p95/max por overtake, full, enter, retirement y stress.
-- [ ] Demuestra el fallo actual sin reinterpretarlo como PASS.
+- [x] 10 repeticiones por escenario y corpus/hash exactos.
+- [x] Reporta p50/p95/max por overtake, full, enter, retirement y stress.
+- [x] Demuestra el fallo actual sin reinterpretarlo como PASS.
 
 **Verificación:**
 
-- [ ] Agregador independiente reproduce números desde raw.
-- [ ] Evidencia contiene binario/source/replay/environment hashes.
+- [x] Agregador independiente reproduce números desde raw.
+- [x] Evidencia contiene binario/source/replay/environment hashes.
 
 **Dependencias:** T17.
 

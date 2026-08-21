@@ -39,6 +39,20 @@ func (*unavailableCompositionHost) Cancel(context.Context, voiceinput.Capture) e
 func (*unavailableCompositionHost) Stop(context.Context) error                       { return nil }
 func (*unavailableCompositionHost) WakeEvents() <-chan string                        { return nil }
 
+type availableCompositionHost struct{ started chan struct{} }
+
+func (host *availableCompositionHost) Start(context.Context) error {
+	close(host.started)
+	return nil
+}
+func (*availableCompositionHost) Begin(context.Context, voiceinput.Capture) error { return nil }
+func (*availableCompositionHost) Finish(context.Context, voiceinput.Capture) ([]byte, error) {
+	return []byte("combustible"), nil
+}
+func (*availableCompositionHost) Cancel(context.Context, voiceinput.Capture) error { return nil }
+func (*availableCompositionHost) Stop(context.Context) error                       { return nil }
+func (*availableCompositionHost) WakeEvents() <-chan string                        { return nil }
+
 type discardVoicePublisher struct{}
 
 func (discardVoicePublisher) PublishVoiceTurn(context.Context, commands.Turn, commands.Locale) error {
@@ -125,5 +139,60 @@ func TestComposeEngineerVoiceInputPollsPTTWhenBackendIsUnavailable(t *testing.T)
 	}
 	if err := runtime.Stop(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEngineerVoiceInputSettingsSaveConflictMakesLaneUnavailable(t *testing.T) {
+	reader := &compositionReader{read: make(chan struct{})}
+	host := &availableCompositionHost{started: make(chan struct{})}
+	lane, err := composeEngineerVoiceInput(true, app.DefaultAppSettings(), commands.LocaleSpanish, compositionDependencies(
+		func() ptt.Reader { return reader }, func() voiceinput.Host { return host },
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := lane.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer lane.Stop(context.Background())
+	select {
+	case <-host.started:
+	case <-time.After(time.Second):
+		t.Fatal("voice host did not start")
+	}
+
+	settings := app.DefaultAppSettings()
+	settings.Hotkeys["toggleOverlay"] = "ctrl+f24"
+	if err := revalidateEngineerVoiceSettings(lane, settings); !errors.Is(err, errEngineerVoiceBindingConflict) {
+		t.Fatalf("settings revalidation error = %v", err)
+	}
+	if health := lane.Health(); health.State != voiceinput.StateUnavailable || health.Errors == 0 {
+		t.Fatalf("conflicting lane health = %+v", health)
+	}
+
+	delete(settings.Hotkeys, "toggleOverlay")
+	if err := revalidateEngineerVoiceSettings(lane, settings); err != nil {
+		t.Fatal(err)
+	}
+	if health := lane.Health(); health.State != voiceinput.StateIdle {
+		t.Fatalf("restored lane health = %+v", health)
+	}
+}
+
+func TestEngineerVoiceInputProfileHotkeyConflictMakesLaneUnavailable(t *testing.T) {
+	lane, err := composeEngineerVoiceInput(true, app.DefaultAppSettings(), commands.LocaleSpanish, compositionDependencies(
+		func() ptt.Reader { return &compositionReader{read: make(chan struct{})} },
+		func() voiceinput.Host { return &availableCompositionHost{started: make(chan struct{})} },
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := revalidateEngineerVoiceProfile(lane, app.DefaultAppSettings(), "profile-1", "alt+f24"); !errors.Is(err, errEngineerVoiceBindingConflict) {
+		t.Fatalf("profile revalidation error = %v", err)
+	}
+	if health := lane.Health(); health.State != voiceinput.StateUnavailable || health.Errors == 0 {
+		t.Fatalf("conflicting lane health = %+v", health)
 	}
 }

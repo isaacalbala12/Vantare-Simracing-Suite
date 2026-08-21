@@ -1032,10 +1032,13 @@ func handleProfileStatsSave(profileID string, durationMs int64, settingsSvc *app
 // a profile. When combo is empty the existing hotkey (if any) is unregistered.
 // On registration failure (reserved combo, Windows conflict, or syscall error)
 // it emits launcher:profile:hotkey:error with the failure reason.
-func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter) {
+func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter, onChanged func(string, string)) {
 	if combo == "" {
 		profileHkMgr.Unregister(profileID)
 		emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": ""})
+		if onChanged != nil {
+			onChanged(profileID, combo)
+		}
 		return
 	}
 	if err := profileHkMgr.Register(profileID, combo); err != nil {
@@ -1044,6 +1047,9 @@ func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.Hotk
 		return
 	}
 	emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": combo})
+	if onChanged != nil {
+		onChanged(profileID, combo)
+	}
 }
 
 // handleAutostartToggle registers or unregisters a Windows Run key entry for
@@ -1194,7 +1200,7 @@ func main() {
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
 	var engSvc *engineerservice.EngineerService
-	var engineerVoiceRuntime *voiceinput.Runtime
+	var engineerVoiceRuntime *engineerVoiceInputLane
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var notifySvc *notify.Service
@@ -2289,6 +2295,11 @@ func main() {
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
+		if engineerVoiceRuntime != nil {
+			if err := revalidateEngineerVoiceSettings(engineerVoiceRuntime, settingsSvc.Settings()); err != nil {
+				log.Printf("engineer experimental voice-input PTT reservation unavailable after settings save: %v", err)
+			}
+		}
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
 	})
 
@@ -2836,7 +2847,14 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter)
+		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter, func(profileID, combo string) {
+			if engineerVoiceRuntime == nil {
+				return
+			}
+			if err := revalidateEngineerVoiceProfile(engineerVoiceRuntime, settingsSvc.Settings(), profileID, combo); err != nil {
+				log.Printf("engineer experimental voice-input PTT reservation unavailable after launcher profile hotkey change: %v", err)
+			}
+		})
 	})
 
 	wailsApp.Event.On("launcher:autostart:toggle", func(event *application.CustomEvent) {

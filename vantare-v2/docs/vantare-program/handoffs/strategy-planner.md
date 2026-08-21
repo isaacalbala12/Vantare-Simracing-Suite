@@ -17,6 +17,29 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-729 / F2(a) (2026-08-21, lista para review):
+
+- El repositorio canónico evoluciona a `strategy.repository.v2` y custodia un
+  único `StrategyDocumentV2` junto al lifecycle v1 existente. La migración
+  valida el hash v1 antes de conservar drafts, revisiones, activaciones y plan
+  activo; el documento soporta eventos, pilotos/orden/disponibilidad,
+  variantes, inventario y `legacy_synthetic_default`.
+- La fachada de aplicación y el bridge JSON ofrecen `create/edit/list` de
+  eventos, pilotos y variantes, `delete_driver` y `compare_variants`, con
+  generación optimista, validación estricta y errores tipados visibles.
+- Política de borrado: sanea availability/órdenes y renumera; si una variante
+  quedaría vacía, `driver_in_use` aborta toda la transacción. Property test de
+  64 casos y regresión de lifecycle ampliado verdes.
+- Commits de entrega: `1cf337d4`, `f1f052b5`, `f9c06a39`. Gates Strategy y
+  vet focal completos PASS. Sin frontend, Wails, solver, telemetría, PR,
+  integración, promoción ni release.
+- El `go test -count=1 ./...` adicional no fue gate verde: faltaba el artefacto
+  ignorado `frontend/dist` para `go:embed` y falló el test temporal ajeno de
+  SQLite recording; los paquetes Strategy pasaron dentro de esa misma corrida
+  y la repetición focal aislada del test SQLite pasó.
+- Siguiente acción: review del orquestador de #729; F2(b) solo después de
+  aceptar esta API exacta.
+
 Actualización ISA-694 (2026-08-21, auditoría en curso):
 
 - Briefing autocontenido:
@@ -356,5 +379,6 @@ sintético; ninguna implementación de producto fuera de tasks aprobados.
 
 ## Última actualización
 
-2026-08-21, ISA-694: spec y plan técnico del rework A+B commiteados en la rama
-de la issue tras review adversarial; pendiente gate PLAN, Claude Fable.
+2026-08-21, ISA-729: F2(a) implementada en rama propia con documento v2
+durable, migración v1→v2, API exacta para Orbit y property test de referencias;
+pendiente review del orquestador, sin integración ni promoción.

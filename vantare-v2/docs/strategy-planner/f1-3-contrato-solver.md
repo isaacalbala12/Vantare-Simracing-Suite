@@ -75,6 +75,35 @@ y publica `parameter=combinedStintPaceCurve`; en manual perturba la pendiente
 lineal y publica `parameter=degradationPerLapSeconds`. `WorstCase` incorpora ese
 impacto sin cambiar la decisión elegida.
 
+### Peso de combustible F4-3
+
+Cada vuelta suma `litros a bordo al inicio de la vuelta * secondsPerLiter` al
+ritmo base y a la curva de stint de F4-2. El nivel parte de la carga inicial
+del candidato —en F4-1, la capacidad utilizable—, resta el consumo después de
+cada vuelta y añade exactamente los litros elegidos en cada parada. El resultado
+separa este término como `fuelWeightSeconds`; `totalSeconds` conserva la suma
+aditiva completa.
+
+El coeficiente acepta una sola autoridad:
+
+- `SolverInputV2.FuelWeight` para `manual` o `reference`, con
+  `presence=valid`, `secondsPerLiter`, `provenance` y `confidence`;
+- `Projection.FuelWeightCurve.slopeSecondsPerUnit` para `derived`, solo cuando
+  Analysis materializó la curva tras `identifiability=separable`. Una fuente
+  derivada no se puede introducir por el fallback manual y dos autoridades
+  simultáneas fallan cerradas.
+
+`SolverResultV2.FuelWeightCost` conserva presencia, valor, procedencia y
+confianza; `Assumptions` declara la fuente usada o que el término no estaba
+configurado. La sensibilidad pesimista aumenta el coeficiente un 20 % sobre el
+mismo plan y publica `parameter=fuelWeightSecondsPerLiter`.
+
+Con peso activo, la poda solo compara estados con el mismo nivel de Fuel: un
+estado con más litros ya no es automáticamente mejor porque arrastra coste en
+las vueltas futuras. El oráculo exhaustivo suma el mismo nivel vuelta a vuelta
+sin poda. El caso de negocio versionado cubre una carrera donde el modelo sin
+peso llena una vez y el modelo con peso prefiere dos repostajes splash.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
@@ -84,15 +113,22 @@ impacto sin cambiar la decisión elegida.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, ComputeStats{WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, FuelWeightCost FuelWeightCostSource, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{WithinBudget}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
-- **Esperado/caso-malo**: `ScenarioEvaluation{total, green, degradation, pit, formation}` rankea por esperado y expone riesgo (spec §5: variantes = misma función objetivo, distinta tolerancia).
+- **Esperado/caso-malo**: `ScenarioEvaluation{total, green, degradation, fuelWeight, pit, formation}` rankea por esperado y expone riesgo (spec §5: variantes = misma función objetivo, distinta tolerancia).
 
 ## Compatibilidad
 
-- `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido; `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente. F4-2 sustituye dentro de `SolveV2` la degradación lineal por la curva combinada cuando está disponible; compuestos, pilotos, ahorro y clima permanecen en sus extensiones F4 posteriores. Se mantiene `tiempo_total = Σ stints + Σ pit + formación`.
+- `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido;
+  `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente.
+  F4-2 selecciona la curva de stint y F4-3 suma el peso de Fuel cuando existe
+  una fuente admitida; compuestos, pilotos, ahorro y clima permanecen en sus
+  extensiones F4 posteriores. Se mantiene
+  `tiempo_total = Σ ritmo base + Σ curva stint + Σ peso Fuel + Σ pit + formación`.
+- F4-3 añade el peso de Fuel por vuelta y su procedencia sin cambiar el wire de
+  Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
 
 ## Verificación

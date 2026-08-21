@@ -82,6 +82,9 @@ Trabajo (2 issues, worker Codex `gpt-5.6-sol` high; scripts desechables en
 **Issue F0-1 — telemetría:**
 
 1. Inventario del corpus: sesiones, combos, tipos, metadata disponible (A3).
+   Isaac etiqueta a mano una muestra de sesiones (qué carrera/práctica/combo
+   son realmente) como **ground truth**; la clasificación automática de F3a se
+   acepta solo si coincide con ese etiquetado en la tasa fijada aquí.
 2. Calidad de **todos** los canales de A1: `Tyres Wear`, `Fuel Level`,
    `Virtual Energy`, mezcla, `Path Wetness`, `CloudDarkness`, temperaturas,
    presiones y compuesto.
@@ -158,9 +161,10 @@ Trabajo (4 issues tras F0):
    comportamiento observable a corregir; se invierten en F2 con cada fix.
    Freeze: ninguna feature nueva sobre el store localStorage.
 
-**Checkpoint:** ADR 0009 accepted por Isaac (incluida la decisión D18);
-contratos compilan bajo su owner con contract tests old/new; suites verdes.
-Review Codex sol del conjunto.
+**Checkpoint:** ADR 0009 accepted por Isaac **con las dos ramas de D18
+modeladas** (la decisión en sí no bloquea F1 ni el gate PLAN: su único punto
+de bloqueo es el arranque de F6a); contratos compilan bajo su owner con
+contract tests old/new; suites verdes. Review Codex sol del conjunto.
 
 ### F2 — Custodia: API de aplicación, cutover Orbit→Go, migración
 
@@ -213,7 +217,9 @@ muse-spark salvo curvas con Codex sol):
 
 **F3b — forecast en Core** (1 issue, muse-spark; tras F0-2): el driver LMU
 añade la consulta REST de forecast descubierta en F0 y Core la expone como
-señal con presencia/freshness. Solo si A2 no quedó `UNRESOLVED`.
+señal con presencia/freshness. **Solo si A2 quedó `VALID`**, o con una
+degradación de alcance aceptada expresamente por Isaac; `UNRESOLVED` o
+`INVALID` dejan F3b/F3c sin arrancar.
 
 **F3c — captura en Strategy** (1 issue, muse-spark; depende de F2a y F3b):
 comando de captura que persiste `WeatherScenario v1` en el repositorio
@@ -285,7 +291,9 @@ Codex sol.
 ### F6 — Pipeline editorial
 
 **Objetivo:** bundles → Worker → curación en PC de Isaac → catálogo GitHub,
-con la seguridad del ADR 0009. F6(a–c) puede ir en paralelo con F4/F5.
+con la seguridad del ADR 0009. **F6(a–b) puede ir en paralelo con F4/F5; F6c
+depende del contrato y resultados de backtest de F4.9** (su scoring los
+consume), y F6(d–f) van detrás de F6c.
 
 Trabajo (6 issues; Worker y firma con Codex sol, resto muse-spark):
 

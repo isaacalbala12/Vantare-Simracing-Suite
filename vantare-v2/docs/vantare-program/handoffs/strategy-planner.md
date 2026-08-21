@@ -347,11 +347,11 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Cerrar el gate PLAN de ISA-694 (verificación delta de la review Codex +
-decisión D18 de Isaac sobre el consentimiento de subida) y derivar los TASKS
+Cerrar el gate PLAN de ISA-694 con la aprobación de Isaac y derivar los TASKS
 como issues de GitHub empezando por F0 (spike empírico sobre el corpus DuckDB
-de Isaac). No inventar un plan sintético; ninguna implementación sin tasks
-aprobados.
+de Isaac). La decisión D18 (consentimiento de subida) queda abierta sin
+bloquear PLAN ni F1–F5: su único punto de bloqueo es el arranque de F6a. No
+inventar un plan sintético; ninguna implementación sin tasks aprobados.
 
 ## Última actualización
 

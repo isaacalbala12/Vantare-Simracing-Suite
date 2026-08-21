@@ -159,9 +159,13 @@ tiempo_total = Σ stints [ Σ vueltas ( ritmo_base(piloto asignado)
 - **Explicabilidad:** todo resultado expone inputs, asunciones, procedencia,
   restricción vinculante y sensibilidades.
 
-## 6. Familias de derivación (Telemetry Analysis → proyección)
+## 6. Familias de derivación
 
-Sobre N sesiones agrupadas por combinación (selección manual o automática):
+Las familias 1–9 y 11 las produce **Telemetry Analysis** en su paquete público
+(`StrategyInputProjection v2` / `ObservedStrategy v1`), sobre N sesiones
+agrupadas por combinación (selección manual o automática). La familia 10
+(forecast) tiene otro owner: **Telemetry Core expone la señal REST y Strategy
+persiste `WeatherScenario` cuando el usuario captura**; Analysis no interviene.
 
 1. Validez de vueltas: exclusión con motivo; **etiqueta** out/in-lap, pit,
    incidente, tráfico (D7).
@@ -181,12 +185,14 @@ Sobre N sesiones agrupadas por combinación (selección manual o automática):
 Todo dato viaja con **tres ejes independientes**, alineados con el contrato
 Strategy existente (`internal/strategy/contract/metadata.go`):
 
-- **presencia/calidad:** `present | missing | invalid | stale | unsupported`
-  (la ausencia no es una procedencia);
-- **procedencia:** `observed | derived | manual | reference | estimated`
-  (compatibles con el vocabulario vigente `observed|corrected|manual|derived|
-  estimated|range|unknown`; "measured" del lenguaje de producto mapea a
-  `observed`);
+- **presencia/calidad:** el enum exacto se congela en F1 tomando como base el
+  del contrato Strategy vigente (`valid | missing | invalid | stale |
+  unsupported | unknown`); la ausencia o invalidez no es una procedencia;
+- **procedencia:** el vocabulario vigente del contrato (`observed | corrected
+  | manual | derived | estimated | range | unknown`) **más el valor nuevo
+  `reference`** que v2 introduce para datos del catálogo comunitario; la
+  adición se declara en la matriz v1→v2. "Measured" del lenguaje de producto
+  mapea a `observed`;
 - **confianza:** muestra, rango, varianza y versión de cálculo.
 
 El paso de los contratos v1 existentes a v2 exige una matriz explícita
@@ -278,9 +284,14 @@ Medibles, verificables por Isaac, previos a la campaña de testers (D14):
      propuesta inicial: < 2 % en tiempo total y paradas exactas en seco);
    - **factibilidad:** ningún plan recomendado viola restricciones al
      reproducirse contra los datos reales;
-   - **calidad de ranking:** en las carreras donde el piloto corrió una
-     estrategia distinta a la recomendada, el modelo explica la diferencia
-     prevista; la optimalidad se afirma solo dentro del modelo validado.
+   - **calidad de ranking (PASS/FAIL objetivo):** sobre las carreras holdout
+     donde la estrategia corrida difiere de la recomendada, el signo de la
+     diferencia de tiempo total predicha (recomendada vs corrida) coincide con
+     el resultado simulado contra los datos reales en al menos el porcentaje
+     prerregistrado en F0, con su N mínimo; y el tiempo predicho del plan
+     recomendado no supera al del mejor candidato enumerado por el propio
+     motor (regret interno cero dentro del modelo). La optimalidad se afirma
+     solo dentro del modelo validado.
    El solver además cumple un presupuesto de cómputo p95 fijado en F1.
 6. Forecast capturado en práctica y aplicado a la carrera de la misma
    combinación (A2 validada).

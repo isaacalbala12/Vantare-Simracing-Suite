@@ -12,10 +12,16 @@ Nota ISA-694 / auditoría Strategy Planner (2026-08-21, diagnóstico sin impleme
   TypeScript; su activación/exportación no equivalen al lifecycle canónico.
 - El motor live no está compuesto desde una revisión activa ejecutable en
   Nightly. PR #280 sigue draft y no debe integrarse sin portado.
-- Veredicto provisional: Strategy no es candidato a `testers`. Próximo gate:
-  Isaac debe fijar si el rework llega al nivel manual, histórico o live antes
-  de convertir el briefing en plan e issues de implementación.
-- No hubo cambio de producto, PR, merge, promoción ni release.
+- Veredicto: Strategy no es candidato a `testers` hasta el gate F7a del plan.
+- Actualización 2026-08-21 (misma rama): Isaac fijó el objetivo en **A+B**
+  (manual = caso degenerado de asistido; live = corte C posterior). Spec SDD
+  aprobado (`docs/strategy-planner/isa-694-spec.md`, D1–D18, A1–A6) y plan
+  técnico F0–F7b (`docs/strategy-planner/isa-694-plan.md`) revisados
+  adversarialmente por Codex `gpt-5.6-sol` high y corregidos. Pendiente:
+  cierre del gate PLAN y decisión D18 (consentimiento de subida, bloquea solo
+  F6a); después, TASKS como issues empezando por F0 (spike sobre corpus
+  DuckDB real).
+- No hubo cambio de producto, merge, promoción ni release.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

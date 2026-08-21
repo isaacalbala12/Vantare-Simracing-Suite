@@ -70,6 +70,33 @@ func TestSynth_MockSmoke(t *testing.T) {
 	if cache.Get(key2) == "" {
 		t.Fatal("expected number clip 42 en")
 	}
+	// spotter WAV PCM: debe existir segundo artefacto .wav además del .mp3
+	spotterKey := cache.Key("es", "ef_dora", "Coche a la izquierda")
+	wavPath := filepath.Join(cache.Root(), spotterKey+".wav")
+	wavData, err := os.ReadFile(wavPath)
+	if err != nil {
+		t.Fatalf("spotter wav missing at %s: %v", wavPath, err)
+	}
+	if len(wavData) < 44 || string(wavData[0:4]) != "RIFF" || string(wavData[8:12]) != "WAVE" {
+		t.Fatalf("wav header invalid: %q", wavData[:12])
+	}
+	// must be PCM (audioFormat 1 at offset 20)
+	if wavData[20] != 1 || wavData[21] != 0 {
+		t.Fatalf("wav not PCM: %v", wavData[20:22])
+	}
+	// lock must count wavs
+	wavCount := 0
+	for _, c := range lock.Clips {
+		if c.Format == "wav" {
+			wavCount++
+			if c.Intent != "spotter.car_left" && c.Intent != "spotter.car_right" && c.Intent != "spotter.still_there" && c.Intent != "spotter.clear_left" && c.Intent != "spotter.clear_right" && c.Intent != "spotter.all_clear" && c.Intent != "spotter.three_wide" {
+				t.Fatalf("wav intent unexpected %q", c.Intent)
+			}
+		}
+	}
+	if wavCount != 28 {
+		t.Fatalf("expected 28 spotter wavs (7*4), got %d", wavCount)
+	}
 	// ensure legacy fallback behavior not required: hash cache is authoritative
 }
 
@@ -87,8 +114,8 @@ func TestSynth_Deduplication(t *testing.T) {
 	var lock CacheLock
 	b, _ := os.ReadFile(cacheLock)
 	_ = json.Unmarshal(b, &lock)
-	// rough bound: static 184 + numbers ~ 444 + literals ~ <100 => <700, >300
-	if lock.TotalClips < 300 || lock.TotalClips > 800 {
+	// rough bound: static 184 + wavs 28 + numbers ~ 444 + literals ~155 => 807
+	if lock.TotalClips < 700 || lock.TotalClips > 900 {
 		t.Fatalf("unexpected totalClips %d", lock.TotalClips)
 	}
 	if lock.TotalBytes == 0 {

@@ -8,12 +8,12 @@ Herramienta batch **reproducible** que deriva del catálogo cerrado `docs/engine
 
 1. **Manifiesto machine-readable** `catalog-voice.v1.json` (intent → `VoiceText` por locale + lista de placeholders `{n}/{gap}/{pos}/{lap}`...). Parser markdown estricto: si una tabla no parsea, falla, no adivina. Incluye `sourceSha256`, `numberClips` y `concatenation`.
 2. **Síntesis Kokoro LOCAL** (pesos Apache-2.0) de:
-   - Textos de voz **sin placeholders** (184 clips estáticos: 46 intents × 4 locales).
-   - **Clips numéricos por locale** estilo CrewChief para mensajes con placeholders: `0-99`, centenas `100-900`, y la palabra de la coma decimal (`es:coma`, `en:point`, `it:virgola`, `pt-BR:vírgula`) → ~111 tokens por locale × 4 = 444 clips numéricos + literales intermedios.
-   - Total aprox **~480-500 clips** antes de deduplicación.
+   - Textos de voz **sin placeholders** (184 clips estáticos: 46 intents × 4 locales) + spotter WAV (28 adicionales).
+   - **Clips numéricos por locale** estilo CrewChief para mensajes con placeholders: `0-99`, centenas `100-900`, y la palabra de la coma decimal (`es:coma`, `en:point`, `it:virgola`, `pt-BR:vírgula`) → ~111 tokens por locale × 4 = 444 clips numéricos + literales intermedios (155).
+   - Total aprox **779 mp3 + 28 wav = 807 clips** (mock smoke; ver `voice-cache.lock.json`).
 3. **Layout de caché** compatible con producción:
    - **Hash** `tts.Cache.Key(lang,voice,text)` → `%CACHE%/kokoro/<sha256>.mp3` (authoritative, usado por `ResolvePresentationCached`).
-   - Spotter (P0) debe ser **WAV PCM** sin decode para <150ms; el resto puede ser mp3/wav según `player_windows.go` (MediaPlayer soporta ambos). **Estado actual:** todos los clips se escriben como `mp3` via `Cache.Put`; la variante WAV para spotter queda PENDIENTE hasta que el provider Kokoro soporte `response_format=wav` y se añada un segundo `Cache` con extensión `.wav` (ver § Pendientes).
+   - **Spotter (P0) en WAV PCM** sin decode para <150ms: `--synth` genera para los 7 intents `spotter.*` un segundo artefacto `.wav` PCM (mismo `Key`, extensión `.wav`) además del `.mp3`. Mock produce WAV RIFF PCM 16-bit 24kHz válido; Kokoro real usa `response_format=wav`. El resto puede ser mp3/wav según `player_windows.go` (MediaPlayer soporta ambos). Verificación del `.wav` en `TestSynth_MockSmoke` (cabecera RIFF/PCM). El router actual (`internal/engineer/audio/router.go: ResolvePresentationCached`) solo indexa por `Key` sin extensión y hoy lee `.mp3`; el consumidor P0 debe preferir `.wav` si existe (`key.wav` → fallback `.mp3`), propuesta documentada sin tocar `internal/` en este corte.
 4. **Lockfiles**:
    - `voice-models.lock.json` — modelo y voces pineados por locale con hashes (ver § Modelos).
    - `voice-cache.lock.json` — hashes de salida de cada clip (sha256 + bytes + key) para verificación reproducible.
@@ -102,10 +102,10 @@ Incluye: parser estricto (70 intents, placeholders iguales, falla si tabla rota)
 
 ## Pendientes y gates
 
-- **Síntesis real PENDIENTE:** Kokoro no está instalado en esta máquina / falta G2P permisivo. El gate humano A2 (escucha perceptual de Isaac, 4 idiomas con números correctos, `docs/engineer/rework-spec.md` § A2) queda para después. El pipeline + smoke con mock es el entregable de F2.
-- **Spotter WAV PCM:** hoy mock/kokoro produce mp3; la variante wav para P0 requiere provider con `response_format=wav` (PCM 24kHz) y un segundo Put con extensión `.wav` o un `Cache` que soporte ambos. Documentado, no bloquea el resto.
+- **Síntesis real PENDIENTE:** Kokoro no está instalado en esta máquina / falta G2P permisivo. El gate humano A2 (escucha perceptual de Isaac, 4 idiomas con números correctos, `docs/engineer/rework-spec.md` § A2) queda para después. El pipeline + smoke con mock es el entregable de F2. Para audio real, ver §3 y `voice-models.lock.json` (con `mock` se genera WAV mock PCM válido; con `kokoro` se usa `response_format=wav` real).
 - **Hashes reales:** `voice-models.lock.json` tiene `PENDING_...` hasta descarga y verificación local.
 - **Gate humano:** no se afirma calidad perceptual sin escucha de Isaac.
+- **Router WAV preferente:** `internal/engineer/audio` aún lee solo `.mp3` por `Key`; la propuesta para P0 es `key.wav` preferente → fallback `.mp3` (cambio mínimo futuro en `ResolvePresentationCached`/`ResolveCached`, no aplicado en este corte).
 
 ## Verificación manual
 

@@ -5,7 +5,7 @@
   "manifestSha256": "7ba1a7f7948b48e0016bc12e681a6a65d58086327a9a272a91057e0ce473dfd1",
   "modelsLock": "tools/engineer-voice-cache/voice-models.lock.json",
   "modelsLockSha256": "ceba676571d6c3380ee67cdd9468fd2f556da3aa864b1f88c33c5c9ab537e385",
-  "generatedAt": "2026-08-21T11:49:58Z",
+  "generatedAt": "2026-08-21T12:12:39Z",
   "cacheRoot": "C:\\tmp\\vantare-tts-cache",
   "provider": "mock",
   "voices": {
@@ -1141,6 +1141,17 @@
     {
       "lang": "en",
       "voice": "af_bella",
+      "text": "All clear",
+      "key": "564e1096c61d4a43d8ee1b9844a365541ba59c244a3b266fa4da53334ff27575",
+      "sha256": "f27aad045fa61fd9c315690005d09a7e195ba845a0fd4f1915c63cbfbe0fc5bd",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.all_clear"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
       "text": "Average",
       "key": "de7f67bfab0abb22dbf478d73e951fb0436a0a6a2f26e488b3a4622d4be10a69",
       "sha256": "f0b47e707a3a0fca61dde24dab962f18fabcdafc66d5a50f4d7d65b56c547b90",
@@ -1196,11 +1207,33 @@
     {
       "lang": "en",
       "voice": "af_bella",
+      "text": "Car left",
+      "key": "b02f71a4c58e0828fc4cb2d21a086794df273b40b14d6e9c53063c16d32c4fd8",
+      "sha256": "19bd9e6842bfd1069ce629f22af92c4409ab05d4ddd95dc39b9fb6b5c9b5ec76",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.car_left"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
       "text": "Car right",
       "key": "3d3239846095aa3317dd6d233a424e28aa6d09e5953cd8ff232fa6064e02ce33",
       "sha256": "e65ac4b29530b7fb40db2e9821757cd701f9af50fe3f9e514ff1fe9b52d2fa3c",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.car_right"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
+      "text": "Car right",
+      "key": "3d3239846095aa3317dd6d233a424e28aa6d09e5953cd8ff232fa6064e02ce33",
+      "sha256": "5bce2bee3047422ec041a9c58e9c9500c93e6320736990ebf0266b940232c8c6",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.car_right"
     },
@@ -1240,11 +1273,33 @@
     {
       "lang": "en",
       "voice": "af_bella",
+      "text": "Clear on the left",
+      "key": "f1a15bb35863ceb3866fee95db6a333f48316eff0f31388e34379bfce19b5816",
+      "sha256": "8affc33b3fc4b0f35e3b66979c047ee2e678995530dd356779bc1bd117b62f23",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.clear_left"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
       "text": "Clear on the right",
       "key": "9280949905180fa6cedd15ce81b98e6e7a525d5ea91b84f1df2dce61082d6aff",
       "sha256": "865617bd08dc78bec9af78841b89b78fa0f165aa91b2422704038fe92c176ee3",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.clear_right"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
+      "text": "Clear on the right",
+      "key": "9280949905180fa6cedd15ce81b98e6e7a525d5ea91b84f1df2dce61082d6aff",
+      "sha256": "109863f61ce102c12cbb0046f60ccc5df90dc566b9b6d2237682f9245e5e772a",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.clear_right"
     },
@@ -1724,6 +1779,17 @@
     {
       "lang": "en",
       "voice": "af_bella",
+      "text": "Still there",
+      "key": "014e8580c7b3a21858a6bde6a7f53b87f27c4ea6069104904a2ee0a71663c8cd",
+      "sha256": "3a8d334235a66852b04db5331d0d019bbf3329949d9eed2dc3f86e87a08ed59d",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.still_there"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
       "text": "Stop completed,",
       "key": "39bdabe4989eee37c7403bceefdfdeefac449d27fe61bbbe0ce212010bfc8e5b",
       "sha256": "e6113ffea6e18839619aff2fa49f31cc0f779751f319f67dcedcbbfcd5874e4d",
@@ -1762,6 +1828,17 @@
       "sha256": "77de5a4c9d05a98899f7ff2f1296ee8e4f550d99fcc18a6aeb2edce9a9baa261",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.three_wide"
+    },
+    {
+      "lang": "en",
+      "voice": "af_bella",
+      "text": "Three wide",
+      "key": "36f26efc45364fc4fa903623fb5a8f7cda2cc27ea7dddda5a7ac082e6ed909a8",
+      "sha256": "a3db6c8b3a70ee653b51d4abfaa43d697aaaba97bf8ee515bbf9949778a2f5bd",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.three_wide"
     },
@@ -3209,11 +3286,33 @@
     {
       "lang": "es",
       "voice": "ef_dora",
+      "text": "Coche a la derecha",
+      "key": "4eb9c0a028ff50558b40aca6e7902ceaf90a41c408cdd626d89478a7a6b9bb34",
+      "sha256": "9e1b4056d29ae62d13f814f2d0a8fc86d1c2127f6da7d07d5b47fcf3de9932fe",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.car_right"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
       "text": "Coche a la izquierda",
       "key": "ac150ff613b7b760bc86bcfaaefdc6796c286661d9987cfe545628ab2251f4dc",
       "sha256": "f1b3fbaf584eefad698a2e9e4aa327efbde26f232bf753d9c6f300c5eace0118",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.car_left"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
+      "text": "Coche a la izquierda",
+      "key": "ac150ff613b7b760bc86bcfaaefdc6796c286661d9987cfe545628ab2251f4dc",
+      "sha256": "19bf43a971383d50164170380a343c7d8098a671f1fc4e94dd572957657050d7",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.car_left"
     },
@@ -3440,11 +3539,33 @@
     {
       "lang": "es",
       "voice": "ef_dora",
+      "text": "Libre por la derecha",
+      "key": "561dd3b9b10d78f28679a3c90cd479a271538578f47c52c52114ac58ffac9431",
+      "sha256": "e908d08e1f3861d8548483dabbc4ff9ea5a731654dfb37d0e2b3f269a3fd4052",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.clear_right"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
       "text": "Libre por la izquierda",
       "key": "d33e1140e4fff85951aa8138266716c47baa27ea747bcfb48d80c270edaa6094",
       "sha256": "ffc81218ba6b190a5b1643d5127753bd71c0322adaadfb99a799f6d4846f11c3",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.clear_left"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
+      "text": "Libre por la izquierda",
+      "key": "d33e1140e4fff85951aa8138266716c47baa27ea747bcfb48d80c270edaa6094",
+      "sha256": "eaa87d746f050cc675a3110c4778a99d3e9c154a3e7f1fe389c0c3e5b49f1096",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.clear_left"
     },
@@ -3759,6 +3880,17 @@
     {
       "lang": "es",
       "voice": "ef_dora",
+      "text": "Sigue ahí",
+      "key": "5579f6858ad70257cda3817e39d740487066506f51b093b07b39c0bb5f5a2279",
+      "sha256": "b4dd30621fbf1afa96a80b7905a2326fb24f19b44ddd3b029b15d7a33cdfef80",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.still_there"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
       "text": "Suspensión con daño grave",
       "key": "55cb542621d8310f8338d3ae42aa91a9fbdfae6dba9847679b26b806104085cb",
       "sha256": "4d7bfa22a99b0bd17055cdd3e967a906b74b04df1664fadc1cdacad6841c901c",
@@ -3847,11 +3979,33 @@
     {
       "lang": "es",
       "voice": "ef_dora",
+      "text": "Todo libre",
+      "key": "fdca2ddd05c12d589979c1a7c65f97372e02a8b58ce11620d7d1c99f6f30d9a0",
+      "sha256": "1908ae42816df8f56824e1e6daa5b55bb8b93ebc81e7dd09ca38c5ce6d267090",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.all_clear"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
       "text": "Tres coches en paralelo",
       "key": "6e3309f3b2d2e82a19d9dcc145b222a045548e69e6311cf4823ae2398cb8d81c",
       "sha256": "bd85ee441fce16225d9bdc290389f5ec3d3b961f6d24116d47a34238b9dcb1dd",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.three_wide"
+    },
+    {
+      "lang": "es",
+      "voice": "ef_dora",
+      "text": "Tres coches en paralelo",
+      "key": "6e3309f3b2d2e82a19d9dcc145b222a045548e69e6311cf4823ae2398cb8d81c",
+      "sha256": "cdd03a6363b08d6485d147f2758821afa030112d66d454e66d7bf688d3b4d3c2",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.three_wide"
     },
@@ -5200,11 +5354,33 @@
     {
       "lang": "it",
       "voice": "if_sara",
+      "text": "Auto a destra",
+      "key": "13b7eb2d4a08a180f6751865373e7f6e28c20183ae27afb67d17dc6c6f6a3bdd",
+      "sha256": "4c8713d015f7a9d9a8ef3f2f338b32ae66d9973139621be2847fea81bb12ab14",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.car_right"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
       "text": "Auto a sinistra",
       "key": "eb2dc6c889c7170356c58a3f649fa82e2bef8777efa16b485d7b0f8d90afbe92",
       "sha256": "6a5a4626521e141f837c71c353bc00e22e8f3dd83a8686cc746cb048fbc38728",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.car_left"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
+      "text": "Auto a sinistra",
+      "key": "eb2dc6c889c7170356c58a3f649fa82e2bef8777efa16b485d7b0f8d90afbe92",
+      "sha256": "eb8f04090e9c210ae9d26dc84b7304540a293303368e0ee1810a41f3211519b3",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.car_left"
     },
@@ -5530,11 +5706,33 @@
     {
       "lang": "it",
       "voice": "if_sara",
+      "text": "Libero a destra",
+      "key": "7ab27dd89b30548f6162488f6d97ee16beed7bc766df5471c2abce3f283de762",
+      "sha256": "60304ea9827ee26d5f692550d2f793461034dde44a8058bd14df9ea52c65931d",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.clear_right"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
       "text": "Libero a sinistra",
       "key": "39bd2a75c1b4d3916890caf5f6c14400dfe80e2dbe4ed5c5e0c1eb639ef2ced8",
       "sha256": "e1f343add6df680fabd666a709210b44b394cbc351ee5441f6f29c67a072a86c",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.clear_left"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
+      "text": "Libero a sinistra",
+      "key": "39bd2a75c1b4d3916890caf5f6c14400dfe80e2dbe4ed5c5e0c1eb639ef2ced8",
+      "sha256": "5aa89b2010a4c037cb2d88097d84328d91918a6af5b364580eb8f46f937f7e1c",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.clear_left"
     },
@@ -5871,11 +6069,33 @@
     {
       "lang": "it",
       "voice": "if_sara",
+      "text": "Tre auto affiancate",
+      "key": "c387d424ae2c9c020cd2910b65def1389ea165767447fd48dff60b2820f4ffa7",
+      "sha256": "35f84ce0c323be19e2e6844e31631691827985c31d682fb0777d8b5958920e87",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.three_wide"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
       "text": "Tutto libero",
       "key": "4423f1b1bc2cac4788e345383b9e225f7dd64c4d6133ebbce81a63ffb73f0067",
       "sha256": "bff9a4a2b76bc9560b01cc2bf47c10257441dab72bc3c12e79fa356a1409a5b5",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.all_clear"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
+      "text": "Tutto libero",
+      "key": "4423f1b1bc2cac4788e345383b9e225f7dd64c4d6133ebbce81a63ffb73f0067",
+      "sha256": "f777261aadcad333e911e968d7b27a8e2adb404e844a6e22eccf64296fa68410",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.all_clear"
     },
@@ -6106,6 +6326,17 @@
       "sha256": "94ee3d6c8cf0617b5c005884af3403fb849b481262f8d8b3ef34b2ce110c5b86",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.still_there"
+    },
+    {
+      "lang": "it",
+      "voice": "if_sara",
+      "text": "È ancora lì",
+      "key": "f3a2f75dd6c3cc3deb49687e2dc04ed858ca6ce25bb425c09b5ea600b74d7657",
+      "sha256": "4a89d0f3ea4676a876b7313c03d9cb56dae1f14b1c5f971dfb64d86c1e58f440",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.still_there"
     },
@@ -7235,6 +7466,17 @@
     {
       "lang": "pt-BR",
       "voice": "pf_dora",
+      "text": "Ainda está aí",
+      "key": "944757381db8940bcf508828e3ca639eecd062062189c7bbb0d3aceba19558c8",
+      "sha256": "b8a83083b77434cb8a196c9bb027021a57b537cd5e8966952c80441476e49698",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.still_there"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
       "text": "Bandeira amarela à frente, atenção",
       "key": "e9f803cbcd11baffb89c6e7136758142f5e131efd3d2b326b5988714b540beaa",
       "sha256": "bb2a77a22ac5f706ecaacc4019b99210a95f92f00b3b4fcac6262c0261cb4757",
@@ -7301,11 +7543,33 @@
     {
       "lang": "pt-BR",
       "voice": "pf_dora",
+      "text": "Carro à direita",
+      "key": "aa63a61b7605ad0e79c22291459a1fb1211feccff0ce31588d576e3b11ac8d97",
+      "sha256": "0bddc495f2b1091fdc3f49a9f3e543985f488e77844f32c64d7777a591a88c88",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.car_right"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
       "text": "Carro à esquerda",
       "key": "90ca7e0155d5d387c4e1f60d1a4ab626a0d3a0ca4a4e52924bf20088885c8842",
       "sha256": "8640da6178b0c569fc6360b996cbfa49fe25c9ef485fc9a6fefb469a7d8e6580",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.car_left"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
+      "text": "Carro à esquerda",
+      "key": "90ca7e0155d5d387c4e1f60d1a4ab626a0d3a0ca4a4e52924bf20088885c8842",
+      "sha256": "a1c2ae8bf4c5388f997fbc79c2428d00a3d69d014a53106f49cc0970ed5238aa",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.car_left"
     },
@@ -7598,11 +7862,33 @@
     {
       "lang": "pt-BR",
       "voice": "pf_dora",
+      "text": "Livre à direita",
+      "key": "0908ee6c61d2b63202bfd29ae6a9890f9f23645373e1b1abd17268dd0322b90b",
+      "sha256": "24aa20b2f58a13c70bd1b3145a005e43b5099c27ca49be3363fe04c9ff1c6c55",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.clear_right"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
       "text": "Livre à esquerda",
       "key": "16dea7dfd510273388c63e9ff622e7b0212e0b6bb02c21dff8a9a658e3148f8c",
       "sha256": "4b67521375099cb046a1ae9fc453ead70f6e6b85a7d67bdb247e1a2c807a1640",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.clear_left"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
+      "text": "Livre à esquerda",
+      "key": "16dea7dfd510273388c63e9ff622e7b0212e0b6bb02c21dff8a9a658e3148f8c",
+      "sha256": "98f6b208960ce361ffc15536b48d22bb54623ff6d82733edb72eb45db0205734",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.clear_left"
     },
@@ -7895,11 +8181,33 @@
     {
       "lang": "pt-BR",
       "voice": "pf_dora",
+      "text": "Três carros lado a lado",
+      "key": "f498f309a60b1078586f60a97a94ad6fb970aef1903520e9f82e7623e86a79f4",
+      "sha256": "f631fe9c6bc9700a982087a5935b68817f0d943c2781462a40cb5edf72cbd911",
+      "bytes": 5804,
+      "format": "wav",
+      "kind": "static",
+      "intent": "spotter.three_wide"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
       "text": "Tudo livre",
       "key": "f3651d0bf3150dca0184335ec95185ee3a4dc7705b3465eb32b43a2c80eaf6cc",
       "sha256": "54e3d33ab36e9907b38743f1ec899fa466d01bd5693fb1d25b858b8b993fe225",
       "bytes": 256,
       "format": "mp3",
+      "kind": "static",
+      "intent": "spotter.all_clear"
+    },
+    {
+      "lang": "pt-BR",
+      "voice": "pf_dora",
+      "text": "Tudo livre",
+      "key": "f3651d0bf3150dca0184335ec95185ee3a4dc7705b3465eb32b43a2c80eaf6cc",
+      "sha256": "b761138cc50c4c0e90ef27a44ecb71603775b06b9b73f0e4b22ff3e3019ae1b5",
+      "bytes": 5804,
+      "format": "wav",
       "kind": "static",
       "intent": "spotter.all_clear"
     },
@@ -8145,8 +8453,8 @@
       "intent": "laps.last_lap_report"
     }
   ],
-  "totalClips": 779,
-  "totalBytes": 199424,
+  "totalClips": 807,
+  "totalBytes": 361936,
   "pendingRealSynthesis": true,
   "pendingNote": "Audio generado con MockProvider (no es Kokoro real). Para audio real, instalar Kokoro (ver voice-models.lock.json) y ejecutar con --provider kokoro --kokoro-url http://localhost:8880/v1/audio/speech. Gate de síntesis real PENDIENTE hasta Kokoro instalable sin red."
 }

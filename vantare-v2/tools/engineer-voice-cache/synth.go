@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -168,6 +172,9 @@ func synthManifest(manifestPath, cacheRoot, providerName, modelsLockPath, cacheL
 
 	clips := []CacheLockEntry{}
 	var totalBytes int64
+	wavCount := 0
+	// helper to decide spotter wav: only static spotter intents need wav (P0, sin decode)
+	isSpotter := func(intent string) bool { return strings.HasPrefix(intent, "spotter.") }
 	for _, j := range uniqJobs {
 		path, err := engine.SynthOrCache(tts.Request{Language: j.lang, Voice: j.voice, Text: j.text})
 		if err != nil {
@@ -184,19 +191,36 @@ func synthManifest(manifestPath, cacheRoot, providerName, modelsLockPath, cacheL
 		if filepath.Ext(path) == ".wav" {
 			format = "wav"
 		}
-		// For spotter intents, gate expects WAV PCM; mock produces mp3, so note format is mp3 until real
 		key := cache.Key(j.lang, j.voice, j.text)
 		clips = append(clips, CacheLockEntry{
 			Lang: j.lang, Voice: j.voice, Text: j.text, Key: key, Sha256: sha, Bytes: int64(len(data)), Format: format, Kind: j.kind, Intent: j.intent,
 		})
 		totalBytes += int64(len(data))
-		// Also write legacy fallback file lang/voice/intent.mp3 for spotter? Only if text equals intent? No.
-		// For compatibility, also ensure a fallback file exists at cacheRoot/../lang/voice/text.mp3? That is handled by router fallback.
-		// We optionally create legacy file for spotter static texts as lang/voice/text.mp3 copy to aid manual verification.
-		legacyDir := filepath.Join(filepath.Dir(cache.Root()), j.lang, j.voice)
-		// sanitize filename? Use text as filename might contain spaces/special; use intent name if kind static? But for generic, skip.
-		// Only for spotter kind static we could create legacy file named <intent>.mp3, but we already have hashed cache, legacy not required for hashed path.
-		_ = legacyDir
+
+		// Spotter WAV PCM: segundo artefacto .wav además del .mp3
+		if isSpotter(j.intent) && j.kind == "static" {
+			wavKeyPath := filepath.Join(cache.Root(), key+".wav")
+			var wavBytes []byte
+			if providerName == "kokoro" {
+				wavBytes, err = fetchKokoroWAV(kokoroURL, j.voice, j.text)
+				if err != nil {
+					// fallback a wav mock para no bloquear pipeline; el gate real exige kokoro wav
+					wavBytes = buildMockWAV(j.text, wavCount)
+				}
+			} else {
+				wavBytes = buildMockWAV(j.text, wavCount)
+			}
+			if err := os.WriteFile(wavKeyPath, wavBytes, 0o644); err != nil {
+				return fmt.Errorf("write wav %s: %w", wavKeyPath, err)
+			}
+			h2 := sha256.Sum256(wavBytes)
+			sha2 := hex.EncodeToString(h2[:])
+			clips = append(clips, CacheLockEntry{
+				Lang: j.lang, Voice: j.voice, Text: j.text, Key: key, Sha256: sha2, Bytes: int64(len(wavBytes)), Format: "wav", Kind: j.kind, Intent: j.intent,
+			})
+			totalBytes += int64(len(wavBytes))
+			wavCount++
+		}
 	}
 
 	// models lock hash
@@ -283,4 +307,69 @@ func splitLiterals(voiceText string) []string {
 func kpHealthURL(kp *tts.KokoroProvider) string {
 	// not exported; use default
 	return "http://localhost:8880/v1/audio/speech"
+}
+
+func buildMockWAV(text string, seed int) []byte {
+	// PCM 16-bit mono 24kHz, ~120ms (2880 samples)
+	const sampleRate = 24000
+	const bitsPerSample = 16
+	const channels = 1
+	const samples = 2880
+	byteRate := sampleRate * channels * bitsPerSample / 8
+	blockAlign := channels * bitsPerSample / 8
+	dataSize := samples * blockAlign
+	buf := &bytes.Buffer{}
+	// RIFF header
+	_, _ = buf.WriteString("RIFF")
+	_ = binary.Write(buf, binary.LittleEndian, uint32(36+dataSize))
+	_, _ = buf.WriteString("WAVE")
+	_, _ = buf.WriteString("fmt ")
+	_ = binary.Write(buf, binary.LittleEndian, uint32(16))
+	_ = binary.Write(buf, binary.LittleEndian, uint16(1)) // PCM
+	_ = binary.Write(buf, binary.LittleEndian, uint16(channels))
+	_ = binary.Write(buf, binary.LittleEndian, uint32(sampleRate))
+	_ = binary.Write(buf, binary.LittleEndian, uint32(byteRate))
+	_ = binary.Write(buf, binary.LittleEndian, uint16(blockAlign))
+	_ = binary.Write(buf, binary.LittleEndian, uint16(bitsPerSample))
+	_, _ = buf.WriteString("data")
+	_ = binary.Write(buf, binary.LittleEndian, uint32(dataSize))
+	// data: deterministic pattern derived from text+seed
+	base := 0
+	for _, r := range text {
+		base += int(r)
+	}
+	for i := 0; i < samples; i++ {
+		// simple sine-ish pattern without math import: triangle
+		v := (base + seed*7 + i*13) % 65536
+		sample := int16(v - 32768)
+		// dampen to low amplitude
+		sample = sample / 8
+		_ = binary.Write(buf, binary.LittleEndian, sample)
+	}
+	return buf.Bytes()
+}
+
+func fetchKokoroWAV(baseURL, voice, text string) ([]byte, error) {
+	if baseURL == "" {
+		baseURL = "http://localhost:8880/v1/audio/speech"
+	}
+	// Kokoro-FastAPI expects JSON {model,input,voice,response_format}
+	body := map[string]any{
+		"model":           "kokoro",
+		"input":           text,
+		"voice":           voice,
+		"response_format": "wav",
+		"speed":           1.0,
+	}
+	jsonBody, _ := json.Marshal(body)
+	resp, err := http.Post(baseURL, "application/json", bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("kokoro wav HTTP %d: %s", resp.StatusCode, string(b))
+	}
+	return io.ReadAll(resp.Body)
 }

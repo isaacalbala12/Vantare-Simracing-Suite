@@ -3,6 +3,7 @@ package document
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -198,6 +199,9 @@ func (w AvailabilityWindow) Validate() error {
 	if w.From >= w.To {
 		return fmt.Errorf("availability from must be < to")
 	}
+	if w.From < 0 || w.To > 24*60 {
+		return fmt.Errorf("availability must be within a day")
+	}
 	return nil
 }
 
@@ -244,6 +248,49 @@ func (v Variant) Validate() error {
 	}
 	if len(v.Order) == 0 {
 		return fmt.Errorf("variant order must be non-empty")
+	}
+	if err := v.Name.Evidence.Validate(); err != nil {
+		return fmt.Errorf("name evidence: %w", err)
+	}
+	if strings.TrimSpace(v.Name.Value) == "" {
+		return fmt.Errorf("variant name is required")
+	}
+	if err := v.Note.Evidence.Validate(); err != nil {
+		return fmt.Errorf("note evidence: %w", err)
+	}
+	if err := v.Mode.Evidence.Validate(); err != nil {
+		return fmt.Errorf("mode evidence: %w", err)
+	}
+	switch v.Mode.Value {
+	case VariantModeDry, VariantModeWet, VariantModeEco, VariantModeHumid:
+	default:
+		return fmt.Errorf("unknown variant mode %q", v.Mode.Value)
+	}
+	if err := v.State.Evidence.Validate(); err != nil {
+		return fmt.Errorf("state evidence: %w", err)
+	}
+	if v.State.Value != VariantStateDraft && v.State.Value != VariantStateOK {
+		return fmt.Errorf("unknown variant state %q", v.State.Value)
+	}
+	seen := make(map[DriverID]struct{}, len(v.Order))
+	for _, driverID := range v.Order {
+		if strings.TrimSpace(string(driverID)) == "" {
+			return fmt.Errorf("variant order contains empty driver id")
+		}
+		if _, duplicate := seen[driverID]; duplicate {
+			return fmt.Errorf("variant order contains duplicate driver %q", driverID)
+		}
+		seen[driverID] = struct{}{}
+	}
+	for field, raw := range v.Overrides {
+		if !json.Valid(raw) {
+			return fmt.Errorf("override %q is invalid JSON", field)
+		}
+	}
+	for field, raw := range v.Tyres {
+		if !json.Valid(raw) {
+			return fmt.Errorf("tyre %q is invalid JSON", field)
+		}
 	}
 	return nil
 }
@@ -338,8 +385,22 @@ func (d StrategyDocumentV2) Validate() error {
 		if err := ev.Name.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q name evidence: %w", ev.ID, err)
 		}
+		if strings.TrimSpace(ev.Name.Value) == "" {
+			return fmt.Errorf("event %q name is required", ev.ID)
+		}
 		if !ev.Source.Value.Valid() {
 			return fmt.Errorf("event %q source invalid %q", ev.ID, ev.Source.Value)
+		}
+		if err := ev.Source.Evidence.Validate(); err != nil {
+			return fmt.Errorf("event %q source evidence: %w", ev.ID, err)
+		}
+		if ev.SeriesID != nil {
+			if strings.TrimSpace(ev.SeriesID.Value) == "" {
+				return fmt.Errorf("event %q seriesId is empty", ev.ID)
+			}
+			if err := ev.SeriesID.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q seriesId evidence: %w", ev.ID, err)
+			}
 		}
 		if err := ev.Track.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q track evidence: %w", ev.ID, err)
@@ -353,69 +414,172 @@ func (d StrategyDocumentV2) Validate() error {
 		if ev.DurationMin.Value <= 0 {
 			return fmt.Errorf("event %q durationMin must be >0", ev.ID)
 		}
+		if err := ev.StartAt.Evidence.Validate(); err != nil {
+			return fmt.Errorf("event %q startAt evidence: %w", ev.ID, err)
+		}
+		if ev.StartAt.Value != nil && ev.StartAt.Value.IsZero() {
+			return fmt.Errorf("event %q startAt is zero", ev.ID)
+		}
+		if ev.Team != nil {
+			if err := ev.Team.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q team evidence: %w", ev.ID, err)
+			}
+		}
 		if err := ev.TankLiters.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q tankLiters evidence: %w", ev.ID, err)
+		}
+		if ev.TankLiters.Value <= 0 || math.IsNaN(ev.TankLiters.Value) || math.IsInf(ev.TankLiters.Value, 0) {
+			return fmt.Errorf("event %q tankLiters must be finite and >0", ev.ID)
 		}
 		if err := ev.PitLossSeconds.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q pitLossSeconds evidence: %w", ev.ID, err)
 		}
+		if ev.PitLossSeconds.Value < 0 || math.IsNaN(ev.PitLossSeconds.Value) || math.IsInf(ev.PitLossSeconds.Value, 0) {
+			return fmt.Errorf("event %q pitLossSeconds must be finite and >=0", ev.ID)
+		}
 		// drivers: validar shape completo (matriz exige no solo id).
+		driverIDs := make(map[DriverID]struct{}, len(ev.Drivers))
+		driverOrders := make(map[int]struct{}, len(ev.Drivers))
 		for _, dr := range ev.Drivers {
 			if strings.TrimSpace(string(dr.ID)) == "" {
 				return fmt.Errorf("event %q driver id required", ev.ID)
 			}
+			if _, duplicate := driverIDs[dr.ID]; duplicate {
+				return fmt.Errorf("event %q duplicate driver id %q", ev.ID, dr.ID)
+			}
+			driverIDs[dr.ID] = struct{}{}
+			if dr.Order < 0 || dr.Order >= len(ev.Drivers) {
+				return fmt.Errorf("event %q driver %q order out of range", ev.ID, dr.ID)
+			}
+			if _, duplicate := driverOrders[dr.Order]; duplicate {
+				return fmt.Errorf("event %q duplicate driver order %d", ev.ID, dr.Order)
+			}
+			driverOrders[dr.Order] = struct{}{}
+			for field, sourced := range map[string]*Sourced[string]{"name": dr.Name, "ini": dr.Ini, "color": dr.Color, "cls": dr.Class} {
+				if sourced != nil {
+					if err := sourced.Evidence.Validate(); err != nil {
+						return fmt.Errorf("event %q driver %q %s evidence: %w", ev.ID, dr.ID, field, err)
+					}
+				}
+			}
+			for field, raw := range dr.RawExtra {
+				if !json.Valid(raw) {
+					return fmt.Errorf("event %q driver %q rawExtra %q is invalid JSON", ev.ID, dr.ID, field)
+				}
+			}
 		}
+		variantIDs := make(map[VariantID]struct{}, len(ev.Strategies))
 		for _, v := range ev.Strategies {
 			if err := v.Validate(); err != nil {
 				return fmt.Errorf("event %q variant %q: %w", ev.ID, v.ID, err)
 			}
+			if _, duplicate := variantIDs[v.ID]; duplicate {
+				return fmt.Errorf("event %q duplicate variant id %q", ev.ID, v.ID)
+			}
+			variantIDs[v.ID] = struct{}{}
 			// referencias a pilotos deben existir en drivers.
 			for _, pid := range v.Order {
-				found := false
-				for _, dr := range ev.Drivers {
-					if dr.ID == pid {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if _, found := driverIDs[pid]; !found {
 					return fmt.Errorf("event %q variant %q order references unknown driver %q", ev.ID, v.ID, pid)
 				}
 			}
 		}
 		if ev.ActiveStrategyID != nil {
-			found := false
-			for _, v := range ev.Strategies {
-				if v.ID == *ev.ActiveStrategyID {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, found := variantIDs[*ev.ActiveStrategyID]; !found {
 				return fmt.Errorf("event %q activeStrategyId %q not found", ev.ID, *ev.ActiveStrategyID)
 			}
 		}
 		for driverID, wins := range ev.Availability {
-			found := false
-			for _, dr := range ev.Drivers {
-				if dr.ID == driverID {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if _, found := driverIDs[driverID]; !found {
 				return fmt.Errorf("event %q availability references unknown driver %q", ev.ID, driverID)
 			}
-			for _, w := range wins {
+			for index, w := range wins {
 				if err := w.Validate(); err != nil {
 					return fmt.Errorf("event %q availability %q: %w", ev.ID, driverID, err)
 				}
+				for previous := 0; previous < index; previous++ {
+					other := wins[previous]
+					if w.From < other.To && other.From < w.To {
+						return fmt.Errorf("event %q availability %q has overlapping windows", ev.ID, driverID)
+					}
+				}
 			}
+		}
+		if ev.TeamMode != nil {
+			if err := ev.TeamMode.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q teamMode evidence: %w", ev.ID, err)
+			}
+			if ev.TeamMode.Value != TeamModeSolo && ev.TeamMode.Value != TeamModeTeam {
+				return fmt.Errorf("event %q teamMode invalid %q", ev.ID, ev.TeamMode.Value)
+			}
+		}
+		if err := ev.FillMode.Evidence.Validate(); err != nil {
+			return fmt.Errorf("event %q fillMode evidence: %w", ev.ID, err)
+		}
+		if !ev.FillMode.Value.Valid() {
+			return fmt.Errorf("event %q fillMode invalid %q", ev.ID, ev.FillMode.Value)
+		}
+		if ev.LastOpenedAt != nil {
+			if err := ev.LastOpenedAt.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q lastOpenedAt evidence: %w", ev.ID, err)
+			}
+			if ev.LastOpenedAt.Value != nil && ev.LastOpenedAt.Value.IsZero() {
+				return fmt.Errorf("event %q lastOpenedAt is zero", ev.ID)
+			}
+		}
+		if err := ev.TyreInventory.Validate(); err != nil {
+			return fmt.Errorf("event %q tyreInventory: %w", ev.ID, err)
+		}
+		if len(ev.RawLegacy) > 0 && !json.Valid(ev.RawLegacy) {
+			return fmt.Errorf("event %q rawLegacy is invalid JSON", ev.ID)
 		}
 	}
 	if d.ActiveEventID != nil {
 		if _, ok := seen[*d.ActiveEventID]; !ok {
 			return fmt.Errorf("activeEventId %q not found", *d.ActiveEventID)
+		}
+	}
+	if d.MigrationMeta != nil {
+		if strings.TrimSpace(d.MigrationMeta.SourceFingerprint) == "" {
+			return fmt.Errorf("migrationMeta.sourceFingerprint is required")
+		}
+		if strings.TrimSpace(d.MigrationMeta.JournalID) == "" {
+			return fmt.Errorf("migrationMeta.journalId is required")
+		}
+		if d.MigrationMeta.MigratedAt.IsZero() {
+			return fmt.Errorf("migrationMeta.migratedAt is required")
+		}
+	}
+	return nil
+}
+
+func (inventory TyreInventory) Validate() error {
+	for index, set := range inventory.Sets {
+		if set.CompoundRaw == nil && set.Compound == nil {
+			return fmt.Errorf("set %d compound is required", index)
+		}
+		if set.CompoundRaw != nil && (*set.CompoundRaw < 0 || *set.CompoundRaw > 2) {
+			return fmt.Errorf("set %d compoundRaw must be between 0 and 2", index)
+		}
+		if set.Compound != nil && strings.TrimSpace(string(*set.Compound)) == "" {
+			return fmt.Errorf("set %d compound is empty", index)
+		}
+		if set.Count <= 0 {
+			return fmt.Errorf("set %d count must be >0", index)
+		}
+		if !set.Presence.Valid() {
+			return fmt.Errorf("set %d presence invalid %q", index, set.Presence)
+		}
+		if err := set.Provenance.Validate(); err != nil {
+			return fmt.Errorf("set %d provenance: %w", index, err)
+		}
+	}
+	for compound, count := range inventory.ByCompound {
+		if strings.TrimSpace(string(compound)) == "" {
+			return fmt.Errorf("byCompound contains empty compound")
+		}
+		if count < 0 {
+			return fmt.Errorf("byCompound %q count must be >=0", compound)
 		}
 	}
 	return nil

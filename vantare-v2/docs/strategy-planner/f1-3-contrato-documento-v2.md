@@ -39,3 +39,27 @@ go test ./internal/strategy/document/... -run TestStrategyDocumentV2
 gofmt -l ./internal/strategy/document/
 ```
 Fixtures: `events-full.json`, `events-sparse-defaults.json`, `legacy-wrapped.json` deben decodificar vía `StrictDecode` de F2 (no aquí) y producir `legacy_synthetic_default` visible.
+
+## Corrección de realización en F2(a) (#729)
+
+El contrato compile-only original declaraba validación completa, pero su
+`Validate` inicial solo comprobaba una parte de la shape: no rechazaba IDs u
+órdenes duplicados, ventanas solapadas, enums/evidencias de variante, valores
+no finitos, inventario inválido ni JSON raw malformado. Eso contradecía este
+documento y la matriz de migración. F2(a) corrige el defecto sin cambiar el
+wire ni añadir campos: `StrategyDocumentV2.Validate` realiza ahora esas
+invariantes antes de que el repositorio acepte el documento.
+
+La eliminación de un piloto queda fijada así para Orbit: se retira también de
+`availability` y de todos los órdenes de variantes, y se renumera el orden de
+pilotos. Si alguna variante quedaría sin piloto, toda la operación falla sin
+escribir con el error tipado `driver_in_use`. De este modo ninguna mutación
+puede producir referencias colgantes y se conserva la invariante ya declarada
+de que `Variant.order` no puede estar vacío.
+
+El repositorio evoluciona de `strategy.repository.v1` a
+`strategy.repository.v2`. Esta migración es distinta de la futura importación
+Orbit de F2(c): conserva lógicamente los drafts, revisiones, activaciones y
+plan activo v1; el campo `strategyDocument` queda ausente hasta el primer
+comando de evento. F2(c) será quien construya el documento desde el backup
+Orbit y sus marcas `legacy_synthetic_default`.

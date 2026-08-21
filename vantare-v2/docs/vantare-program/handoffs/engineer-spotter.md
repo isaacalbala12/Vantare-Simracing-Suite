@@ -93,8 +93,8 @@ productivo sin crear un segundo reader.
 - Rama activa:
   `vantareapp/isa-715-radio-bus-lean`.
 - Base: `origin/nightly@4ec98fea3546fbef5afd0c4a6ff09f7e01097652`.
-- Entrega: spec aprobada #713 y F1 #715 en commits atómicos; sin wiring
-  productivo del servicio antiguo.
+- Entrega: spec aprobada #713 y F1 #715 en commits atómicos; PR draft #723 a
+  `nightly`, sin wiring productivo del servicio antiguo.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -338,7 +338,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar el PR draft de ISA-715 sin promoverlo. Tras aceptación humana, la
+Revisar el PR draft #723 de ISA-715 sin promoverlo. Tras aceptación humana, la
 promoción a `nightly` pertenece a su corte de integración; F2 prepara el audio
 Kokoro y F3 cablea Spotter y demuestra p95 real en Wails/LMU. El stack viejo no
 se retira antes de F4 y la semántica Spotter ganada requiere regresiones
@@ -354,9 +354,9 @@ productivas ni dependencias nuevas. Focal x10, vet focal, build frontend y suite
 Go global pasan; el primer global expuso un timeout SQLite ajeno que pasó
 aislado x10 y en la repetición global. `go build ./...` conserva el fallo base
 de `build/ios`, paquete `main` sin función `main`, registrado en #722.
-Benchmark local con ocho
-submissions concurrentes: 33.217-41.345 ns/op, 25.299-25.398 B/op y 133
-allocs/op. Sin Wails real, LMU real, merge ni promoción.
+Benchmark local con ocho submissions concurrentes: 33.217-41.345 ns/op,
+25.299-25.398 B/op y 133 allocs/op. PR draft #723; sin Wails real, LMU real,
+merge ni promoción.
 
 2026-08-02, ISA-201 compone ENG-01..ENG-12 con los dos cortes
 hermanos ENG-14 y ENG-15 sobre `nightly`. ENG-14 aporta PTT físico Windows

@@ -120,7 +120,6 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.hk.lead":
     "They work while Vantare is in the background. Click a row and then press the combination to rebind it; conflicts are marked in amber.",
   "settings.hk.reset": "Reset all",
-  "settings.hk.save": "Save",
   "settings.hk.noConflicts": "No conflicts",
   "settings.hk.conflicts": "{{n}} in conflict",
   "settings.hk.recording": "Press the combination · Esc cancels",

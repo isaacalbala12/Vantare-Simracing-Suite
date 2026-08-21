@@ -301,6 +301,22 @@ describe("SettingsOrbitPage", () => {
     });
   });
 
+  it("grabar una combinación la guarda al instante, sin botón de guardar", async () => {
+    const emit = vi.spyOn(Events, "Emit");
+    mount("hotkeys");
+    emit.mockClear();
+
+    fireEvent.click(screen.getAllByTestId("orbit-keycap-row")[0]);
+    fireEvent.keyDown(document, { key: "j", ctrlKey: true, shiftKey: true });
+
+    await waitFor(() => {
+      expect(emit.mock.calls.some(([name]) => name === "settings:save")).toBe(true);
+    });
+    // El guardado manual desapareció: la pantalla autoguarda como el resto
+    // de secciones y no puede quedar un botón muerto.
+    expect(screen.queryByTestId("orbit-settings-hk-save")).toBeNull();
+  });
+
   it("un conflicto marca las dos filas y el contador lo dice", async () => {
     mount("hotkeys");
     expect(screen.getByTestId("orbit-settings-hk-status").textContent).toBe("Sin conflictos");

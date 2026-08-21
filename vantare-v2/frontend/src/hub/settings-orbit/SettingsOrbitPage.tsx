@@ -810,14 +810,6 @@ function HotkeysSection() {
           <Button data-testid="orbit-settings-hk-reset" onClick={app.resetHotkeys} size="sm">
             {t("settings.hk.reset")}
           </Button>
-          <Button
-            data-testid="orbit-settings-hk-save"
-            onClick={app.saveHotkeys}
-            size="sm"
-            variant="primary"
-          >
-            {t("settings.hk.save")}
-          </Button>
           <span data-testid="orbit-settings-hk-status">
             <SubtleStatus tone={conflicts.size > 0 ? "attn" : "ok"}>
               {conflicts.size > 0

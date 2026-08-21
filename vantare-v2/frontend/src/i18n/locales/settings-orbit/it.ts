@@ -120,7 +120,6 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.hk.lead":
     "Funzionano anche con Vantare in secondo piano. Premi una riga e poi la combinazione per riassegnarla; i conflitti sono in ambra.",
   "settings.hk.reset": "Ripristina tutte",
-  "settings.hk.save": "Salva",
   "settings.hk.noConflicts": "Nessun conflitto",
   "settings.hk.conflicts": "{{n}} in conflitto",
   "settings.hk.recording": "Premi la combinazione · Esc annulla",

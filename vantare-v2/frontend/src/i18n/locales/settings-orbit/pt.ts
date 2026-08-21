@@ -120,7 +120,6 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.hk.lead":
     "Funcionam mesmo com o Vantare em segundo plano. Carrega numa linha e depois na combinação para a reatribuir; os conflitos ficam a âmbar.",
   "settings.hk.reset": "Repor todos",
-  "settings.hk.save": "Guardar",
   "settings.hk.noConflicts": "Sem conflitos",
   "settings.hk.conflicts": "{{n}} em conflito",
   "settings.hk.recording": "Carrega na combinação · Esc cancela",

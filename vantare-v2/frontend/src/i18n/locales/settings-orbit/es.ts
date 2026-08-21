@@ -129,7 +129,6 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.hk.lead":
     "Funcionan aunque Vantare esté en segundo plano. Pulsa una fila y después la combinación para reasignarla; los conflictos se marcan en ámbar.",
   "settings.hk.reset": "Restablecer todos",
-  "settings.hk.save": "Guardar",
   "settings.hk.noConflicts": "Sin conflictos",
   "settings.hk.conflicts": "{{n}} en conflicto",
   "settings.hk.recording": "Pulsa la combinación · Esc cancela",

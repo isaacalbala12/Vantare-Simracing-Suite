@@ -161,6 +161,41 @@ func TestDualPortCancellationBeforeStarted(t *testing.T) {
 	}
 }
 
+func TestDualPortLatePolicyRejectionCancelsBeforeOutput(t *testing.T) {
+	message, resolver := deliveryFixture(t)
+	clock := newFakeClock(100)
+	request := Request{Version: VersionV1, DeliveryID: "delivery", DecidedAtMS: 100, Message: message}
+	ui := &recordingUI{}
+	player := &fakePlayer{}
+	var acks []Acknowledgement
+	session, err := NewSession(request, clock, NewMetrics(8), func(ack Acknowledgement) error {
+		acks = append(acks, ack)
+		if ack.State == StateStarted {
+			return errors.New("obsolete decision")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := DualPort{
+		Resolver: resolver, UI: ui, Audio: fakeAudioResolver{path: "cached.wav"}, Player: player, Clock: clock,
+	}
+	if err := port.Deliver(context.Background(), request, session); err != nil {
+		t.Fatal(err)
+	}
+	if len(acks) != 3 || acks[0].State != StateQueued || acks[1].State != StateStarted ||
+		acks[2].State != StateCancelled || acks[2].Reason != ReasonPolicyRejected {
+		t.Fatalf("acks = %+v", acks)
+	}
+	if len(ui.presentations) != 0 || player.played != 0 {
+		t.Fatalf("obsolete output escaped: UI=%d audio=%d", len(ui.presentations), player.played)
+	}
+	if metrics := session.metrics.Snapshot(); metrics.Samples != 0 {
+		t.Fatalf("rejected started reached metrics: %+v", metrics)
+	}
+}
+
 type blockingPlayer struct{ started chan struct{} }
 
 func (player blockingPlayer) PlayContext(ctx context.Context, _ string) error {

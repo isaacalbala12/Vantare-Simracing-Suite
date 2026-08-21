@@ -130,6 +130,60 @@ func TestSpotterRadioQueueSupersessionIsDeterministicAtAllCapacities(t *testing.
 	}
 }
 
+func TestSpotterRadioSupersessionMatrixIsExhaustiveAtAllCapacities(t *testing.T) {
+	t.Parallel()
+	for _, capacity := range []int{1, 4, 64} {
+		for situation := SituationAllClear; situation <= SituationThreeWide; situation++ {
+			for _, currentIntent := range allIntents() {
+				currentValue := messageValues[situation][kindForIntent(currentIntent)]
+				if currentValue == radio.CoalesceUnspecified {
+					continue
+				}
+				for _, nextIntent := range allIntents() {
+					nextValue := messageValues[situation][kindForIntent(nextIntent)]
+					if nextValue == radio.CoalesceUnspecified {
+						continue
+					}
+					name := fmt.Sprintf("capacity=%d/situation=%d/%s-to-%s", capacity, situation, currentIntent, nextIntent)
+					t.Run(name, func(t *testing.T) {
+						t.Parallel()
+						clock := &benchmarkClock{now: 1_000}
+						limits := radio.DefaultLimits()
+						limits.MaxPending = capacity
+						bus, err := radio.NewBus(limits, clock)
+						if err != nil {
+							t.Fatal(err)
+						}
+						current := radio.RadioMessage{
+							Version: radio.VersionV1, ID: "current", Source: "telemetry-core", Intent: currentIntent,
+							Subject: "player", Priority: radio.PriorityP0, CreatedAtMS: 1_000, ExpiresAtMS: 4_000,
+							Locale: radio.LocaleES, Payload: map[string]string{}, CoalesceRevision: 7, CoalesceValue: currentValue,
+						}
+						next := current
+						next.ID, next.Intent, next.CreatedAtMS, next.ExpiresAtMS, next.CoalesceValue = "next", nextIntent, 1_001, 4_001, nextValue
+						submitSpotter(t, bus, current)
+						result := submitSpotter(t, bus, next)
+						wantID := "current"
+						if nextValue > currentValue {
+							wantID = "next"
+							if !result.Accepted {
+								t.Fatalf("upgrade rejected: %+v", result)
+							}
+						} else if result.Accepted {
+							t.Fatalf("equal/degraded state displaced current: %+v", result)
+						}
+						item, ok := bus.Next(context.Background())
+						if !ok || item.Message.ID != wantID {
+							t.Fatalf("next = %+v/%t, want %s", item, ok, wantID)
+						}
+						item.Done()
+					})
+				}
+			}
+		}
+	}
+}
+
 func TestExpiredSpecificPendingDoesNotSuppressCurrentReminder(t *testing.T) {
 	clock := &benchmarkClock{now: 1_000}
 	producer, err := NewProducer(clock, radio.LocaleES)

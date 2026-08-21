@@ -1,0 +1,21 @@
+html,
+body,
+#root {
+  height: 1080px;
+  margin: 0;
+  overflow: hidden;
+  width: 1920px;
+}
+
+body {
+  background: transparent;
+}
+
+.isa760-benchmark-stage {
+  align-items: center;
+  display: flex;
+  height: 1080px;
+  justify-content: center;
+  overflow: hidden;
+  width: 1920px;
+}

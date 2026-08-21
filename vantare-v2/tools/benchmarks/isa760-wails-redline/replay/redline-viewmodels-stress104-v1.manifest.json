@@ -1,0 +1,171 @@
+{
+  "manifestVersion": "redline-viewmodels-manifest-v1",
+  "contractVersion": "redline-viewmodels-v1",
+  "encoding": "UTF-8",
+  "lineEnding": "LF",
+  "bom": false,
+  "replay": {
+    "path": "redline-viewmodels-stress104-v1.jsonl",
+    "sha256": "4b084cfb72078d837e1f2bb489a8d82d597d412c78c40180cd75c61b0ccbb60a",
+    "records": 2466
+  },
+  "authorities": {
+    "frontend/src/overlay/authoring/fixtures/animation-scenes.ts": "cd2fe147fd8941473d8780e84804411c4713bdbaba1064f130201e441eb99aa0",
+    "frontend/src/overlay/authoring/fixtures/authoring-fixtures.ts": "572a8016a824a51e510a7875b65cf820d121f57f1283900a3cf5e66abc5a755e",
+    "frontend/src/overlay/authoring/fixtures/redline-viewmodel-replay.ts": "6dceba83baddf2b32358bc4f0b2930d106eafef1fb1ca3c082142a1eb1b2830e",
+    "frontend/src/overlay/authoring/fixtures/scene-interpolation.ts": "c3596ce53f3a739475ae562783286d5cc26419abc7e6fc55c26362af65524f0a",
+    "frontend/src/overlay/core/widget-registry.ts": "a404dfd7d0d38aecfdc86185fe0de042ac180246964044d2d11d59f456699007",
+    "frontend/src/overlay/widget-types/delta/delta-definition.ts": "0a9b87de1b745c236253556f515718bc8c0c364255c206f44b73c5cfc8355a72",
+    "frontend/src/overlay/widget-types/delta/delta-view-model.ts": "44a1bf4c3e300f8ef38a0d9244e22a8bc944bfda58e9cf9c3fd13150da60d702",
+    "frontend/src/overlay/widget-types/pedals/pedals-definition.ts": "1e60128165722d446dff3e3413770824039b16efcef2668dc37f59fb0ae1a225",
+    "frontend/src/overlay/widget-types/pedals/pedals-view-model.ts": "0a43dd83c56f323825ce7dde2f78dc0cb59a53e4793bd29dfcab0d5d724b819b",
+    "frontend/src/overlay/widget-types/relative/relative-definition.ts": "0820d23e271aeeca9a81843650baaa41b375f9f4430a554c7e119cbd68bb545d",
+    "frontend/src/overlay/widget-types/relative/relative-view-model.ts": "fb7a73141322d90175ddaaca848a245cc5938af661de4f19afb7448ceaef7250",
+    "frontend/src/overlay/widget-types/standings/standings-definition.ts": "269e86f369542a119e4be9674691a866f0ad43d8617e34905d0fb1db9750b405",
+    "frontend/src/overlay/widget-types/standings/standings-view-model.ts": "4e075266871f8c79c0dd639df5f9c88aa7c1e26329e786586e6ad17216c0c64a"
+  },
+  "scenes": [
+    {
+      "id": "standings-overtake",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 115,
+      "firstSequence": 0,
+      "lastSequence": 114,
+      "sha256": "8a33f549283bbcbc11124ef786c2e469a592b9174d986a269b6a20c94dc19459"
+    },
+    {
+      "id": "standings-battle",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 181,
+      "firstSequence": 115,
+      "lastSequence": 295,
+      "sha256": "94dc5f8ce259a10ff4158322733863c1ffc0ae6f3f72442bc7b1957e47aac092"
+    },
+    {
+      "id": "standings-fastest-lap",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 133,
+      "firstSequence": 296,
+      "lastSequence": 428,
+      "sha256": "6d8208bada6947c307c1e9f9bd87cfbcd4951f7ac58d25ed3426990fb4b457f1"
+    },
+    {
+      "id": "standings-tire-change",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 169,
+      "firstSequence": 429,
+      "lastSequence": 597,
+      "sha256": "58b86835da64d43271c7f6697c7158cb64481676b536aa337031777edd641adc"
+    },
+    {
+      "id": "standings-delta-chip",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 109,
+      "firstSequence": 598,
+      "lastSequence": 706,
+      "sha256": "38cd1481ec7060687692a0efe85369a0bf914c69e24a2c3db1e4303234a25c76"
+    },
+    {
+      "id": "standings-car-enters",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 109,
+      "firstSequence": 707,
+      "lastSequence": 815,
+      "sha256": "4e74504aff5f708c9f11e360572e28b06715739047e1aed5530df6aa75160b00"
+    },
+    {
+      "id": "standings-retirement",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 109,
+      "firstSequence": 816,
+      "lastSequence": 924,
+      "sha256": "5c70008428c23d5523b3f630637facb82bc57e9a999e3fca68f04034dfe85c4c"
+    },
+    {
+      "id": "standings-final-minutes",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 133,
+      "firstSequence": 925,
+      "lastSequence": 1057,
+      "sha256": "a63682b68ca5ac13ab234e5b5c7b9ff69611a5b85a8881829918eb2b1009b522"
+    },
+    {
+      "id": "standings-full",
+      "widget": "standings",
+      "updateHz": 15,
+      "records": 250,
+      "firstSequence": 1058,
+      "lastSequence": 1307,
+      "sha256": "5138ac88cbbc15ffc6152db260849a844291b8a05999ff19084fa6152802a0a0"
+    },
+    {
+      "id": "relative-cross",
+      "widget": "relative",
+      "updateHz": 15,
+      "records": 124,
+      "firstSequence": 1308,
+      "lastSequence": 1431,
+      "sha256": "a95b1e43245af315c84fd15c43a59e191f1e4db32f675b97d4327605bda2bfdf"
+    },
+    {
+      "id": "relative-enter",
+      "widget": "relative",
+      "updateHz": 15,
+      "records": 106,
+      "firstSequence": 1432,
+      "lastSequence": 1537,
+      "sha256": "e53a77fd7a65fb6679df185f2f2a6b679cf7037cefbdfa662e618810b15498fa"
+    },
+    {
+      "id": "delta-cross-zero",
+      "widget": "delta",
+      "updateHz": 30,
+      "records": 277,
+      "firstSequence": 1538,
+      "lastSequence": 1814,
+      "sha256": "318f4a41adeb0dc784d185c15e1d102ed8f9239dcb4bcbc0e0b77160f7ca4da7"
+    },
+    {
+      "id": "delta-new-best",
+      "widget": "delta",
+      "updateHz": 30,
+      "records": 211,
+      "firstSequence": 1815,
+      "lastSequence": 2025,
+      "sha256": "3c3b493a315654ba7a3bbddbfa343984d7b2e09406286a8578e761adc64edf2c"
+    },
+    {
+      "id": "pedals-lap",
+      "widget": "pedals",
+      "updateHz": 30,
+      "records": 247,
+      "firstSequence": 2026,
+      "lastSequence": 2272,
+      "sha256": "d54557fa86e3180057bce9654aa5cbc5dae407fe8f7dc2be3a3e4371490217ef"
+    },
+    {
+      "id": "pedals-clutch",
+      "widget": "pedals",
+      "updateHz": 30,
+      "records": 193,
+      "firstSequence": 2273,
+      "lastSequence": 2465,
+      "sha256": "e93d4d2063056919a28f5c2f7a6677f16a7d33a679e2e2776a3d9030f6fc28a4"
+    }
+  ],
+  "benchmarkProfile": {
+    "id": "standings-stress104-v1",
+    "sourceReplaySha256": "9e7f791ab831762909ac832f4f7d0c19e5d012558cd0d2bc0a5505cd6f637059",
+    "transformedScene": "standings-full",
+    "rows": 104,
+    "generatorSha256": "5f2e84fcc27da2df22bb829e1bc9323cbaed4236eb35a17fbcf7f0014217d25e"
+  }
+}

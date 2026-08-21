@@ -134,6 +134,9 @@ export const strategyOrbitEs: Record<string, string> = {
 
   "strategy.tyres.free": "libre",
   "strategy.tyres.rejected": "Neumático no válido aquí",
+  "strategy.tyres.emptyTitle": "Sin inventario de neumáticos",
+  "strategy.tyres.empty": "Este evento aún no tiene neumáticos. Créalo desde el documento v2 del evento.",
+  "strategy.meta.manual": "Manual — pendiente",
 
   "strategy.cards.active": "Activa",
   "strategy.cards.duplicate": "Duplicar",

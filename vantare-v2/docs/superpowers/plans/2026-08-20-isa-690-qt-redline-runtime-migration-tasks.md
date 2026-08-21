@@ -516,11 +516,11 @@ T18.
 
 ### T20 — Optimizar bindings/delegates Standings de forma acotada
 
-**Estado 2026-08-21:** GREEN local parcial en `fca5d9d3`. La deteccion de la
-primera pareja de adelantamiento pasa de O(n^2) a O(n), sin recrear el arbol ni
-eliminar filas, materiales o animaciones. RED causal y suite Standings 8/8.
-Fresh build Qt 6.10.2, CTest 4/4, `qmllint` y custodia portable PASS. La
-medicion antes/despues permanece abierta mientras LMU este ejecutandose.
+**Estado 2026-08-21:** STOP medido. El indice lineal de `fca5d9d3` conservo el
+contrato y paso Standings 8/8, fresh build, CTest 4/4 y `qmllint`, pero 10 runs
+`stress104` dieron p50/p95/max 9,2699/330,7235/1203,6608 ms, peores que T18.
+El cambio fue rechazado y revertido en `a36b9a52`; la suite restaurada pasa
+7/7. Evidencia: `standings-t20-linear-v1`.
 
 **Descripción:** corregir únicamente bindings o efectos señalados por el
 profiler, preservando visual y motion.
@@ -543,6 +543,11 @@ profiler, preservando visual y motion.
 **Tamaño:** S–M.
 
 ### T21 — Calibrar ruido Wails/Wails y comparar Qt/Wails
+
+**Estado 2026-08-21:** OMITIDA por fail-fast. T20 no cumple el presupuesto
+interno p95/max (330,72/1203,66 ms frente a 8/16,67 ms). Ejecutar la captura
+visual final no puede corregir ese fallo y anadiria coste sin cambiar la
+decision.
 
 **Descripción:** ejecutar la evidencia física final con capturador y comparador
 canónicos, no una matriz exhaustiva innecesaria.
@@ -568,6 +573,10 @@ canónicos, no una matriz exhaustiva innecesaria.
 **Tamaño:** M.
 
 ### T22 — Decisión GO/STOP y cierre P1
+
+**Estado 2026-08-21:** STOP propuesto por T18/T20, pendiente solo de la revision
+independiente exigida por esta tarea. #693 puede cerrarse como gate completado;
+#690 no se cierra ni promociona hasta esa revision.
 
 **Descripción:** revisión adversarial de código, evidencia y complejidad.
 

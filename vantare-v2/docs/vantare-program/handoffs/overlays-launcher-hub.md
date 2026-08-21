@@ -12,6 +12,18 @@
 
 ## Estado
 
+- **OS-QT-04 / GitHub #693 — T20 STOP medido y revertido
+  (2026-08-21):** 10/10 runs nuevos `stress104` sobre el indice lineal
+  completaron, pero p50/p95/max fueron 9,2699/330,7235/1203,6608 ms frente a
+  T18 8,8172/268,0703/1001,9299. El cambio no reduce el gate y fue revertido
+  en `a36b9a52`; Standings vuelve al QML T18 con suite 7/7 PASS. Evidencia
+  `standings-t20-linear-v1`, resumen raw SHA `133FC6D...D682A2`, manifest raw
+  SHA `455E0C95...BE1736`. T21 queda omitido por fail-fast: el presupuesto
+  8/16,67 ms ya falla materialmente antes de la comparacion visual. Cerrar
+  #693 como STOP; mantener #690 abierto hasta la revision independiente T22.
+  Wails/producto sin cambios; sin push, PR, CI remoto, integracion, promocion
+  ni release.
+
 - **OS-QT-04 / GitHub #693 — T19 STOP; T20 GREEN local pendiente de medicion
   (2026-08-21):** los intentos acotados del modelo keyed no produjeron una
   mejora segura: omitir proyecciones altero cadencia/liveness y parsear la

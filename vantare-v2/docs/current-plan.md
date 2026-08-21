@@ -1,3 +1,19 @@
+Nota OS-QT-04 / GitHub #693 (2026-08-21, T20 STOP medido y revertido):
+- Diez repeticiones nuevas de `stress104` sobre `fca5d9d3` terminaron 10/10 y
+  el agregador independiente reproduce FAIL: p50/p95/max
+  9,2699/330,7235/1203,6608 ms frente a T18
+  8,8172/268,0703/1001,9299 ms (+5,13%/+23,37%/+20,13%).
+- El indice lineal conservaba el contrato, pero no reduce el gate end-to-end.
+  Se rechazo y revirtio en `a36b9a52`; Standings vuelve al QML T18 y su suite
+  queda 7/7 PASS. No se apilan mas microoptimizaciones sin señal.
+- Evidencia versionada en
+  `candidates/qtquick-redline/evidence/standings-t20-linear-v1/`; resumen raw
+  SHA `133FC6D...D682A2` y manifest raw SHA `455E0C95...BE1736`.
+- T21 no se ejecuta: el prerequisito T20 no pasa y una comparacion visual final
+  no puede convertir p95 330,72/max 1203,66 ms en el presupuesto 8/16,67 ms.
+  #693 puede cerrarse como gate fail-fast STOP. #690 permanece abierto hasta
+  la revision independiente T22; Wails y producto siguen sin cambios.
+
 Nota OS-QT-04 / GitHub #693 (2026-08-21, T19 STOP; T20 GREEN local pendiente de medicion):
 - T19 probo dos familias pequenas sobre `ReplayModel`: evitar proyecciones
   iguales y parsear la vuelta una vez. La primera rompio cadencia/liveness y

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
+	"github.com/vantare/overlays/v2/internal/strategy/tyres"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
@@ -29,21 +30,24 @@ type PitStopDecision struct {
 	ServiceMode  manual.PitServiceMode `json:"serviceMode"`
 	PitCostInput *manual.PitStopInput  `json:"pitCostInput,omitempty"`
 	PitBreakdown *manual.PitBreakdown  `json:"pitBreakdown,omitempty"`
+	ChangeTyres  bool                  `json:"changeTyres"`
+	TyreFitment  *tyres.Fitment        `json:"tyreFitment,omitempty"`
 }
 
 type StintDecision struct {
-	Index             int          `json:"index"`
-	Laps              int64        `json:"laps"`
-	Compound          TyreCompound `json:"compound"`
-	Driver            string       `json:"driver"`
-	SavingLevel       SavingLevel  `json:"savingLevel"`
-	FuelSavedPerLap   float64      `json:"fuelSavedPerLap"`
-	VESavedPerLap     float64      `json:"veSavedPerLap"`
-	TimeCostPerLap    float64      `json:"timeCostPerLap"`
-	SavingCostSeconds float64      `json:"savingCostSeconds"`
+	Index             int            `json:"index"`
+	Laps              int64          `json:"laps"`
+	Compound          TyreCompound   `json:"compound"`
+	Driver            string         `json:"driver"`
+	SavingLevel       SavingLevel    `json:"savingLevel"`
+	FuelSavedPerLap   float64        `json:"fuelSavedPerLap"`
+	VESavedPerLap     float64        `json:"veSavedPerLap"`
+	TimeCostPerLap    float64        `json:"timeCostPerLap"`
+	SavingCostSeconds float64        `json:"savingCostSeconds"`
+	TyreFitment       *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
-type TyreCompound string
+type TyreCompound = tyres.Compound
 type SavingLevel string
 
 const (
@@ -154,12 +158,14 @@ type SolverInputV2 struct {
 	TyreLifeLaps       int64   `json:"tyreLifeLaps"`
 	// Consumos manuales usados cuando la familia correspondiente de Projection
 	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
-	FuelPerLapLiters  float64               `json:"fuelPerLapLiters"`
-	VEPerLapPercent   float64               `json:"vePerLapPercent"`
-	DegradationPerLap float64               `json:"degradationPerLapSeconds"`
-	FuelWeight        *FuelWeightParameter  `json:"fuelWeight,omitempty"`
-	SavingCost        *SavingCostParameter  `json:"savingCost,omitempty"`
-	Discretization    ServiceDiscretization `json:"serviceDiscretization"`
+	FuelPerLapLiters  float64                 `json:"fuelPerLapLiters"`
+	VEPerLapPercent   float64                 `json:"vePerLapPercent"`
+	DegradationPerLap float64                 `json:"degradationPerLapSeconds"`
+	FuelWeight        *FuelWeightParameter    `json:"fuelWeight,omitempty"`
+	SavingCost        *SavingCostParameter    `json:"savingCost,omitempty"`
+	TyreInventory     *TyreInventoryInput     `json:"tyreInventory,omitempty"`
+	CompoundPace      []CompoundPaceParameter `json:"compoundPace,omitempty"`
+	Discretization    ServiceDiscretization   `json:"serviceDiscretization"`
 }
 
 // SavingCostParameter transporta niveles manuales o de referencia. El nivel
@@ -272,6 +278,13 @@ func (in SolverInputV2) Validate() error {
 			return fmt.Errorf("savingCost: %w", err)
 		}
 	}
+	compoundPace, err := in.compoundPaceCosts()
+	if err != nil {
+		return fmt.Errorf("compoundPace: %w", err)
+	}
+	if err := in.validateF45(compoundPace); err != nil {
+		return err
+	}
 	// Projection puede ser nil (arranque en frío): se usa reference del catálogo o manual.
 	if in.Projection != nil {
 		if err := in.Projection.Validate(); err != nil {
@@ -318,23 +331,24 @@ func (parameter FuelWeightParameter) Validate() error {
 
 // SolverResultV2 es el resultado con binding, sensibilidades y esperado/caso-malo.
 type SolverResultV2 struct {
-	ContractVersion  ContractVersion      `json:"contractVersion"`
-	InputHash        string               `json:"inputHash"`
-	StintPaceCost    StintPaceCostSource  `json:"stintPaceCost"`
-	FuelWeightCost   FuelWeightCostSource `json:"fuelWeightCost"`
-	SavingCost       SavingCostSource     `json:"savingCost"`
-	SavingPlan       SavingPlan           `json:"savingPlan"`
-	Best             DecisionVector       `json:"best"`
-	Binding          BindingConstraint    `json:"binding"`
-	Sensitivities    []SolverSensitivity  `json:"sensitivities"`
-	Expected         ScenarioEvaluation   `json:"expected"`
-	WorstCase        ScenarioEvaluation   `json:"worstCase"`
-	Candidates       []DecisionVector     `json:"candidates,omitempty"`
-	CandidateDetails []SolverCandidateV2  `json:"candidateDetails,omitempty"`
-	Feasible         bool                 `json:"feasible"`
-	Reasons          []SolverReason       `json:"reasons,omitempty"`
-	Assumptions      []SolverReason       `json:"assumptions"`
-	ComputeStats     ComputeStats         `json:"computeStats"`
+	ContractVersion  ContractVersion          `json:"contractVersion"`
+	InputHash        string                   `json:"inputHash"`
+	StintPaceCost    StintPaceCostSource      `json:"stintPaceCost"`
+	FuelWeightCost   FuelWeightCostSource     `json:"fuelWeightCost"`
+	SavingCost       SavingCostSource         `json:"savingCost"`
+	CompoundPaceCost []CompoundPaceCostSource `json:"compoundPaceCost,omitempty"`
+	SavingPlan       SavingPlan               `json:"savingPlan"`
+	Best             DecisionVector           `json:"best"`
+	Binding          BindingConstraint        `json:"binding"`
+	Sensitivities    []SolverSensitivity      `json:"sensitivities"`
+	Expected         ScenarioEvaluation       `json:"expected"`
+	WorstCase        ScenarioEvaluation       `json:"worstCase"`
+	Candidates       []DecisionVector         `json:"candidates,omitempty"`
+	CandidateDetails []SolverCandidateV2      `json:"candidateDetails,omitempty"`
+	Feasible         bool                     `json:"feasible"`
+	Reasons          []SolverReason           `json:"reasons,omitempty"`
+	Assumptions      []SolverReason           `json:"assumptions"`
+	ComputeStats     ComputeStats             `json:"computeStats"`
 }
 
 type SavingCostSource struct {
@@ -395,6 +409,7 @@ type ScenarioEvaluation struct {
 	TotalSeconds       float64 `json:"totalSeconds"`
 	GreenSeconds       float64 `json:"greenSeconds"`
 	DegradationSeconds float64 `json:"degradationSeconds"`
+	CompoundSeconds    float64 `json:"compoundSeconds"`
 	FuelWeightSeconds  float64 `json:"fuelWeightSeconds"`
 	SavingSeconds      float64 `json:"savingSeconds"`
 	PitSeconds         float64 `json:"pitSeconds"`
@@ -403,6 +418,7 @@ type ScenarioEvaluation struct {
 
 type ComputeStats struct {
 	EvaluatedCandidates int           `json:"evaluatedCandidates"`
+	PrunedStates        int           `json:"prunedStates"`
 	Duration            time.Duration `json:"duration"`
 	WithinBudget        bool          `json:"withinBudget"`
 }

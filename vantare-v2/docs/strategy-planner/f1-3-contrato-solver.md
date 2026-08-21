@@ -166,6 +166,77 @@ los litros repostados y elimina una parada; con el mismo ahorro a 2 s/vuelta,
 el solver conserva la parada. El fixture mantiene el peso activo para probar la
 interacción completa y no solo `coste_ahorro < tránsito`.
 
+### Compuesto, inventario físico y ventanas F4-5
+
+`SolverInputV2.TyreInventory` transporta `maximum + []tyres.Tyre` y se valida
+con `internal/strategy/tyres.NewInventory`. El solver no redefine identidad,
+estado, compuesto, esquina bloqueada ni suficiencia. Los fitments los obtiene
+exclusivamente con `SelectFitment`/`SelectFitmentExcluding`, que asignan cuatro
+identidades distintas y respetan las esquinas persistentes y los descartes.
+
+Mientras `TyresCompound` real siga `unsupported` sin mapping semántico (D19),
+`CompoundPace[]` declara por cada compuesto:
+
+- `presence=valid`, `provenance` y `confidence`; la procedencia solo puede ser
+  `manual` o `reference`;
+- `paceDeltaSeconds`, sumado una vez por vuelta como diferencia de ritmo base;
+- una curva explícita `{lapInStint, deltaSeconds}` o la pendiente lineal
+  `degradationPerLapSeconds`, nunca ambas.
+
+Dos autoridades de ritmo fallan cerradas: `CompoundPace` no se combina con
+`DegradationPerLap` global ni con una `CombinedStintPaceCurve` derivada. Los
+parámetros y curvas usados se devuelven en `CompoundPaceCost`, con su
+procedencia intacta. `ScenarioEvaluation.compoundSeconds` separa el delta base
+del coste de degradación. La sensibilidad añade 0,20 s/vuelta al delta de cada
+compuesto elegido y publica `compoundPaceDeltaSeconds.<compound>`.
+
+El primer stint explora un fitment canónico por compuesto disponible. En cada
+parada el candidato elige entre:
+
+- **no cambiar:** conserva compuesto, identidades y edad; la duración
+  `manual.PitStopInput.Tyres` es cero;
+- **cambiar:** selecciona otro juego físico canónico, puede cambiar de
+  compuesto y paga `PitCost.TyreSeconds` dentro del solape paralelo/secuencial
+  de F4-1.
+
+El uso dentro del candidato se acumula por identidad física durante toda la
+carrera. Quitar un juego y volver a montarlo no reinicia `TyreLifeLaps`; otro
+juego que aún no ha rodado en ese candidato sí conserva toda su vida declarada.
+La reutilización entre stints continúa permitida por el dominio físico, pero
+ninguna identidad ocupa dos esquinas del mismo stint.
+
+`RequiredWindows` es una lista de ventanas inclusivas `[fromLap,toLap]`, con
+`1 <= from <= to < raceLaps`. Cada ventana exige al menos una parada; una misma
+parada puede satisfacer varias ventanas solapadas. Cuando una ventana cierra
+sin parada el candidato se poda como inviable con
+`reason=required_pit_window`. Al completar también se aplican `min/maxPitStops`
+y `MandatoryCompounds`; la ausencia de un compuesto obligatorio produce
+`reason=mandatory_compound`.
+
+#### Espacio finito, simetría y poda
+
+Antes de buscar, el inventario produce una lista determinista y disjunta de
+juegos por compuesto. Como dos juegos del mismo compuesto tienen el mismo
+modelo de coste en F4-5, el inicio usa un representante canónico; después de
+cada parada se enumeran todos los juegos alternativos. No se generan
+permutaciones de las cuatro ruedas que son equivalentes para la función
+objetivo.
+
+La dominancia solo compara estados con el mismo futuro posible. Además de las
+condiciones de F4-1..4, deben coincidir el fitment actual, el uso acumulado por
+identidad, las ventanas ya satisfechas y, si hay compuestos obligatorios, el
+conjunto ya usado. `ComputeStats.prunedStates` cuenta los estados descartados;
+`MaxCandidates` sigue contando la dimensión compuesto/cambio/servicios y corta
+sin afirmar óptimo cuando se agota.
+
+El oráculo pequeño enumera sin poda exactamente las mismas longitudes, ahorro,
+cantidades, compuestos, juegos, cambios y reglas. La paridad cubre dos
+compuestos, ventana obligatoria y hasta dos paradas, y exige además que el
+solver haya podado al menos un estado. El caso de negocio de ocho vueltas
+demuestra ambos sentidos: con blandos solo 0,4 s/vuelta más rápidos gana el
+doble stint duro sin servicio; con 2 s/vuelta de ventaja compensa pagar el
+cambio a blandos.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
@@ -175,7 +246,7 @@ interacción completa y no solo `coste_ahorro < tránsito`.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
@@ -185,10 +256,10 @@ interacción completa y no solo `coste_ahorro < tránsito`.
 
 - `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido;
   `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente.
-  F4-2 selecciona la curva de stint, F4-3 suma el peso de Fuel y F4-4 elige el
-  ahorro; compuestos, pilotos y clima permanecen en sus extensiones F4
-  posteriores. Se mantiene
-  `tiempo_total = Σ ritmo base + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ pit + formación`.
+  F4-2 selecciona la curva de stint, F4-3 suma el peso de Fuel, F4-4 elige el
+  ahorro y F4-5 añade compuesto/inventario/reglas. Pilotos y clima permanecen
+  en sus extensiones F4 posteriores. Se mantiene
+  `tiempo_total = Σ ritmo base + Σ delta compuesto + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ pit + formación`.
 - F4-4 añade el ahorro y su procedencia sin cambiar el wire de
   Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
@@ -197,8 +268,9 @@ interacción completa y no solo `coste_ahorro < tránsito`.
 
 ```bash
 go vet ./internal/strategy/solver/...
-go test -count=100 ./internal/strategy/solver
+go test -count=100 ./internal/strategy/solver ./internal/strategy/tyres
 go test ./internal/strategy/... ./internal/app
 go test ./internal/strategy/application -run TestCalculateOrbitUsesGoEngineForGoldenPlan
-gofmt -l ./internal/strategy/solver/
+$goFiles = Get-ChildItem internal/strategy/solver,internal/strategy/tyres -Filter *.go
+gofmt -l $goFiles.FullName
 ```

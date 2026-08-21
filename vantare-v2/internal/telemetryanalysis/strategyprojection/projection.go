@@ -144,18 +144,33 @@ type PitFamily struct {
 	Provenance           Provenance                `json:"provenance"`
 	Confidence           Confidence                `json:"confidence"`
 	ObservedIntervals    []ObservedPitLaneInterval `json:"observedIntervals"`
+	FuelRate             ObservedRateFamily        `json:"fuelRate"`
+	VERate               ObservedRateFamily        `json:"veRate"`
 	TransitSecondsManual *float64                  `json:"transitSecondsManual,omitempty"`
 	ServiceSecondsManual *float64                  `json:"serviceSecondsManual,omitempty"`
 	RatesNote            string                    `json:"ratesNote"`
 }
 
+type ObservedRateFamily struct {
+	Presence   Presence   `json:"presence"`
+	Provenance Provenance `json:"provenance"`
+	Confidence Confidence `json:"confidence"`
+	Mean       float64    `json:"mean"`
+}
+
 type ObservedPitLaneInterval struct {
-	PitNumber       int      `json:"pitNumber"`
-	DurationSeconds float64  `json:"durationSeconds"`
-	FuelRateLPerS   *float64 `json:"fuelRateLPerS,omitempty"`
-	VERatePPerS     *float64 `json:"veRatePPerS,omitempty"`
-	HasFuelRise     bool     `json:"hasFuelRise"`
-	HasVERise       bool     `json:"hasVERise"`
+	PitNumber       int        `json:"pitNumber"`
+	StartTimestamp  *time.Time `json:"startTimestamp,omitempty"`
+	EndTimestamp    *time.Time `json:"endTimestamp,omitempty"`
+	DurationSeconds float64    `json:"durationSeconds"`
+	FuelAddedLiters *float64   `json:"fuelAddedLiters,omitempty"`
+	VEAddedPercent  *float64   `json:"veAddedPercent,omitempty"`
+	FuelRateLPerS   *float64   `json:"fuelRateLPerS,omitempty"`
+	VERatePPerS     *float64   `json:"veRatePPerS,omitempty"`
+	HasFuelRise     bool       `json:"hasFuelRise"`
+	HasVERise       bool       `json:"hasVERise"`
+	Ambiguous       bool       `json:"ambiguous"`
+	AmbiguityReason string     `json:"ambiguityReason,omitempty"`
 }
 
 // SavingCostFamily: A5 INVALID -> procedencia manual, derivable solo via protocolo A/B.

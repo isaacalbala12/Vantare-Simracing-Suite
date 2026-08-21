@@ -13,6 +13,7 @@ type ObservedStrategyV1 struct {
 	Confidence      Confidence        `json:"confidence"`
 	Stints          []ObservedStint   `json:"stints"`
 	PitStops        []ObservedPitStop `json:"pitStops"`
+	Changes         []ObservedChange  `json:"changes"`
 	Result          *ObservedResult   `json:"result,omitempty"`
 }
 
@@ -36,9 +37,26 @@ type ObservedPitStop struct {
 }
 
 type ObservedResult struct {
+	CompletedLaps    int     `json:"completedLaps"`
 	TotalTimeSeconds float64 `json:"totalTimeSeconds"`
 	Position         *int    `json:"position,omitempty"`
 	Completed        bool    `json:"completed"`
+}
+
+type ObservedChangeKind string
+
+const (
+	ObservedChangeFuelRise   ObservedChangeKind = "fuel_rise"
+	ObservedChangeWearRise   ObservedChangeKind = "wear_rise"
+	ObservedChangeTyreChange ObservedChangeKind = "tyre_change"
+)
+
+type ObservedChange struct {
+	LapNumber  int                `json:"lapNumber"`
+	Kind       ObservedChangeKind `json:"kind"`
+	Delta      *float64           `json:"delta,omitempty"`
+	Presence   Presence           `json:"presence"`
+	Provenance Provenance         `json:"provenance"`
 }
 
 func (o ObservedStrategyV1) Validate() error {

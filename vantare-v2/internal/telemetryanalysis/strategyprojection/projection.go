@@ -83,6 +83,7 @@ type CombinedStintPaceCurve struct {
 	Provenance      Provenance      `json:"provenance"`
 	Confidence      Confidence      `json:"confidence"`
 	Identifiability Identifiability `json:"identifiability"`
+	Reason          string          `json:"reason,omitempty"`
 	Points          []PacePoint     `json:"points"`
 }
 
@@ -95,21 +96,29 @@ type SeparableCurve struct {
 }
 
 type PacePoint struct {
-	LapInStint   int     `json:"lapInStint"`
-	DeltaSeconds float64 `json:"deltaSeconds"`
-	SampleSize   int     `json:"sampleSize"`
+	LapInStint   int      `json:"lapInStint"`
+	DeltaSeconds float64  `json:"deltaSeconds"`
+	SampleSize   int      `json:"sampleSize"`
+	RangeLower   *float64 `json:"rangeLower,omitempty"`
+	RangeUpper   *float64 `json:"rangeUpper,omitempty"`
 }
 
 // TyreDegradationFamily por eje/rueda (corner futuro condicionado).
 type TyreDegradationFamily struct {
-	Presence            Presence              `json:"presence"`
-	Provenance          Provenance            `json:"provenance"`
-	Confidence          Confidence            `json:"confidence"`
-	ByAxle              map[TyreAxle]float64  `json:"byAxle,omitempty"`
-	ByWheel             map[TyreWheel]float64 `json:"byWheel,omitempty"`
-	ByCorner            map[string]float64    `json:"byCorner,omitempty"`
-	LifeLapsEstimate    *int                  `json:"lifeLapsEstimate,omitempty"`
-	CompoundMappingNote string                `json:"compoundMappingNote"`
+	Presence             Presence              `json:"presence"`
+	Provenance           Provenance            `json:"provenance"`
+	Confidence           Confidence            `json:"confidence"`
+	Reason               string                `json:"reason,omitempty"`
+	ByAxle               map[TyreAxle]float64  `json:"byAxle,omitempty"`
+	ByWheel              map[TyreWheel]float64 `json:"byWheel,omitempty"`
+	ByCorner             map[string]float64    `json:"byCorner,omitempty"`
+	LifeLapsEstimate     *int                  `json:"lifeLapsEstimate,omitempty"`
+	LifeLapsByWheel      map[TyreWheel]float64 `json:"lifeLapsByWheel,omitempty"`
+	LifeLapsRangeLower   *float64              `json:"lifeLapsRangeLower,omitempty"`
+	LifeLapsRangeUpper   *float64              `json:"lifeLapsRangeUpper,omitempty"`
+	LifeThresholdPercent float64               `json:"lifeThresholdPercent,omitempty"`
+	CompoundPresence     Presence              `json:"compoundPresence"`
+	CompoundMappingNote  string                `json:"compoundMappingNote"`
 }
 
 type TyreAxle string

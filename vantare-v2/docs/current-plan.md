@@ -1,3 +1,23 @@
+Nota ISA-743 / ISA-694 F3-a4 (2026-08-21, implementada en rama de issue):
+- Telemetry Analysis publica la curva combinada por stint y su mediana por
+  índice de vuelta para combinación+bucket, reutilizando vueltas limpias,
+  fronteras y stints de F3-a2/F3-a3. Cada punto conserva rango y N.
+- Fuel y edad solo se separan tras un gate numérico de diseño cruzado. La
+  fixture cruzada pasa y recupera los efectos esperados; la fixture sintética
+  tipo corpus real queda `combined_only` con motivo.
+- `Tyres Wear` produce pendiente por rueda/eje y vida al umbral del 20 %, con
+  rango y confianza. Por compuesto permanece `unsupported` porque los códigos
+  0–2 no tienen mapping semántico.
+- El coste del ahorro solo se deriva con 5+5 vueltas limpias estrictamente
+  alternadas dentro del mismo stint, compuesto y clima. En cualquier otro caso
+  queda `missing` con razón estable.
+- Contrato numérico: `docs/strategy-planner/isa-743-curvas-derivadas.md`.
+- Gates focal, race, vet, gofmt y diff-check PASS. La suite Go global pasa en
+  todos los paquetes compilables y queda roja solo en `frontend` y
+  `cmd/vantare` porque este worktree no contiene `frontend/dist` para
+  `go:embed`. Pendiente: review del orquestador. Sin PR, merge,
+  promoción ni release.
+
 Nota ISA-742 / ISA-694 F3-a3 (2026-08-21, implementada en rama de issue):
 - Telemetry Analysis deriva Fuel/vuelta, Virtual Energy/vuelta y ritmo
   representativo por sesión usando exclusivamente las fronteras, segmentos y

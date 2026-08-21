@@ -22,6 +22,7 @@ const (
 	pitAmbiguityClockUnaligned = "resource_clock_unaligned"
 	pitAmbiguityNoRise         = "no_resource_rise_detected"
 	pitRatesNote               = "degraded: pit lane interval only; no transit/service breakdown"
+	reasonDegradedPit          = "degraded_no_transit_service_breakdown"
 )
 
 var (
@@ -85,6 +86,7 @@ func DeriveSessionPitObservation(
 	}
 
 	result.Family.Presence = strategyprojection.PresenceUnknown
+	result.Family.Reason = reasonDegradedPit
 	result.Family.RatesNote = pitRatesNote
 	result.Family.Confidence = confidenceForValues(
 		pitDurations(intervals),
@@ -178,6 +180,7 @@ func AggregatePitObservations(
 	}
 	if len(durations) > 0 {
 		result.Family.Presence = strategyprojection.PresenceUnknown
+		result.Family.Reason = reasonDegradedPit
 		result.Family.RatesNote = pitRatesNote
 		result.Family.Confidence = confidenceForValues(durations, len(durations), pitObservationComputationVersion)
 	}
@@ -191,6 +194,7 @@ func missingPitFamily(sourceID, reason string) strategyprojection.PitFamily {
 		Presence:          strategyprojection.PresenceMissing,
 		Provenance:        strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID},
 		Confidence:        strategyprojection.Confidence{ComputationVersion: pitObservationComputationVersion},
+		Reason:            reason,
 		ObservedIntervals: []strategyprojection.ObservedPitLaneInterval{},
 		FuelRate:          summarizeObservedRate(sourceID, nil),
 		VERate:            summarizeObservedRate(sourceID, nil),
@@ -268,11 +272,13 @@ func summarizeObservedRate(sourceID string, values []float64) strategyprojection
 		Presence:   strategyprojection.PresenceMissing,
 		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID},
 		Confidence: strategyprojection.Confidence{ComputationVersion: pitObservationComputationVersion},
+		Reason:     "missing_observed_rate",
 	}
 	if len(values) == 0 {
 		return result
 	}
 	result.Presence = strategyprojection.PresenceUnknown
+	result.Reason = ""
 	result.Mean = meanFloat(values)
 	result.Confidence = confidenceForValues(values, len(values), pitObservationComputationVersion)
 	return result

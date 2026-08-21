@@ -41,6 +41,7 @@ type SessionClassificationFamily struct {
 	Presence          Presence   `json:"presence"`
 	Provenance        Provenance `json:"provenance"`
 	Confidence        Confidence `json:"confidence"`
+	Reason            string     `json:"reason,omitempty"`
 	TrackName         string     `json:"trackName"`
 	TrackLayout       string     `json:"trackLayout"`
 	CarName           string     `json:"carName"`
@@ -55,10 +56,12 @@ type LapValidityFamily struct {
 	Presence   Presence      `json:"presence"`
 	Provenance Provenance    `json:"provenance"`
 	Confidence Confidence    `json:"confidence"`
+	Reason     string        `json:"reason,omitempty"`
 	Laps       []LapValidity `json:"laps"`
 }
 
 type LapValidity struct {
+	SessionID string   `json:"sessionId,omitempty"`
 	LapNumber int      `json:"lapNumber"`
 	Included  bool     `json:"included"`
 	Reason    string   `json:"reason"`
@@ -70,6 +73,7 @@ type ResourceConsumptionFamily struct {
 	Presence        Presence                  `json:"presence"`
 	Provenance      Provenance                `json:"provenance"`
 	Confidence      Confidence                `json:"confidence"`
+	Reason          string                    `json:"reason,omitempty"`
 	MeanPerLap      float64                   `json:"meanPerLap"`
 	RangeLower      float64                   `json:"rangeLower"`
 	RangeUpper      float64                   `json:"rangeUpper"`
@@ -143,6 +147,7 @@ type PitFamily struct {
 	Presence             Presence                  `json:"presence"`
 	Provenance           Provenance                `json:"provenance"`
 	Confidence           Confidence                `json:"confidence"`
+	Reason               string                    `json:"reason,omitempty"`
 	ObservedIntervals    []ObservedPitLaneInterval `json:"observedIntervals"`
 	FuelRate             ObservedRateFamily        `json:"fuelRate"`
 	VERate               ObservedRateFamily        `json:"veRate"`
@@ -155,6 +160,7 @@ type ObservedRateFamily struct {
 	Presence   Presence   `json:"presence"`
 	Provenance Provenance `json:"provenance"`
 	Confidence Confidence `json:"confidence"`
+	Reason     string     `json:"reason,omitempty"`
 	Mean       float64    `json:"mean"`
 }
 
@@ -178,6 +184,7 @@ type SavingCostFamily struct {
 	Presence   Presence      `json:"presence"`
 	Provenance Provenance    `json:"provenance"`
 	Confidence Confidence    `json:"confidence"`
+	Reason     string        `json:"reason,omitempty"`
 	ManualNote string        `json:"manualNote"`
 	Levels     []SavingLevel `json:"levels,omitempty"`
 }
@@ -193,6 +200,7 @@ type ClimateBucketsFamily struct {
 	Presence   Presence             `json:"presence"`
 	Provenance Provenance           `json:"provenance"`
 	Confidence Confidence           `json:"confidence"`
+	Reason     string               `json:"reason,omitempty"`
 	Buckets    []ClimateBucketPoint `json:"buckets"`
 }
 

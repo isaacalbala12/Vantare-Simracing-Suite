@@ -24,8 +24,16 @@ se publican como `invalid`; nunca se convierten en cero válido.
   entra en estado, fingerprint ni error. Cuando FileVersion y ProductVersion
   existen, ambas deben normalizar al mismo valor allowlisted; una contradicción
   degrada fail-closed. Si solo existe una, esa única fuente puede validarse
-  contra la allowlist. Build ausente/no soportado queda
-  `unknown`, fingerprint `insufficient` y todos los campos de offsets `missing`;
+  contra la allowlist. Build ausente o no soportada queda `unknown` con todos
+  los campos de offsets `missing`, y el fingerprint distingue ambos casos
+  (ISA-680): `LMU_Data/size=324820/evidence=unavailable` cuando no hay
+  evidencia utilizable, y
+  `LMU_Data/size=324820/evidence=unsupported;build=<version>` cuando la build
+  se leyó pero no está pinneada. El log del driver emite la misma distinción
+  una vez por `Run`. La evidencia de build se busca, en orden, en el proceso,
+  en Steam (raíz por defecto y `libraryfolders.vdf`), en las claves de
+  desinstalación del registro de Windows y en la variable de entorno
+  `VANTARE_LMU_PATH`; ninguna ruta entra en estado, fingerprint ni log;
 - scoring y telemetry se prueban aparte: menú requiere build + invariantes
   de conteo, fase, índice, booleano y tiempo finito, y puede ser `live` sin
   vehículo aunque el buffer o el nombre de piloto estén vacíos. Sin evidencia

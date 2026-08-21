@@ -30,7 +30,18 @@ const (
 	scoringInPitsOffset    = 198
 	maxVehicles            = 104
 	knownFingerprintFormat = "LMU_Data/runtime:build=%s;size=324820;evidence=%s;telemetry=%s"
-	unknownFingerprint     = "LMU_Data/size=324820/evidence=insufficient"
+	// Las dos formas desconocidas se distinguen a proposito (ISA-680): antes
+	// una unica cadena `evidence=insufficient` cubria los dos fallos y desvio
+	// el diagnostico de la 1.4.1.3 hacia el proceso protegido cuando la causa
+	// real era el gate de builds soportadas.
+	//
+	// - `evidence=unavailable`: no hay ninguna evidencia de build utilizable
+	//   (proceso, disco, registro y variable de entorno fallaron, o la
+	//   evidencia leida es contradictoria o no normalizable).
+	// - `evidence=unsupported;build=<version>`: la build se conoce y esta
+	//   normalizada, pero no figura pinneada en `supportedLMUVersions`.
+	unavailableFingerprint       = "LMU_Data/size=324820/evidence=unavailable"
+	unsupportedFingerprintFormat = "LMU_Data/size=324820/evidence=unsupported;build=%s"
 )
 
 var ErrIncompatibleBuffer = errors.New("LMU_Data buffer is structurally incompatible")
@@ -145,7 +156,7 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 		Source:        SourceSharedMemory,
 		ReceivedUTC:   received.Round(0).UTC(),
 		Compatibility: CompatibilityUnknown,
-		Fingerprint:   unknownFingerprint,
+		Fingerprint:   profile.unknownFingerprint(),
 	}
 	if !profile.supported {
 		return result, nil

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-680",
+  "type": "fix",
+  "summary": "Vantare distingue si no encuentra la versión de Le Mans Ultimate o si la versión encontrada no está soportada, y ahora también la detecta fuera de Steam.",
+  "technicalNotes": [
+    "El fingerprint de la memoria compartida deja de usar una única cadena ambigua: publica `evidence=unavailable` cuando no hay evidencia de build y `evidence=unsupported;build=<versión>` cuando la build se leyó pero no está pinneada.",
+    "El log del driver emite la misma distinción una vez por ejecución y nunca registra rutas de instalación.",
+    "La evidencia de build se busca en orden: proceso en ejecución, Steam, claves de desinstalación del registro de Windows y la variable de entorno VANTARE_LMU_PATH."
+  ],
+  "testing": [
+    "Con Le Mans Ultimate instalado fuera de Steam, arrancar Vantare y comprobar que la telemetría se conecta igualmente.",
+    "Definir VANTARE_LMU_PATH apuntando a la carpeta de instalación y confirmar que la telemetría funciona sin Steam ni registro.",
+    "Sin Le Mans Ultimate instalado, comprobar que el log indica que no hay evidencia de build en vez de un mensaje ambiguo."
+  ],
+  "knownLimitations": [
+    "La lectura del registro depende de que el instalador declare InstallLocation; si no lo hace, queda la variable de entorno como último recurso.",
+    "Sigue abierta la detección del frame congelado durante la transición a menú descrita en la evidencia de la 1.4.1.3."
+  ]
+}

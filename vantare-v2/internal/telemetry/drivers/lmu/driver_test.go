@@ -359,6 +359,55 @@ func TestDriverCachesBuildEvidenceOncePerRunAndFailsClosed(t *testing.T) {
 	}
 }
 
+func TestDriverLogDistinguishesMissingEvidenceFromUnsupportedBuild(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		build    BuildEvidence
+		buildErr error
+		want     string
+	}{
+		{name: "sin evidencia", want: "sin evidencia de build utilizable"},
+		{name: "error del proveedor", buildErr: errors.New("version unavailable"), want: "sin evidencia de build utilizable"},
+		{name: "build no soportada", build: BuildEvidence{FileVersion: "9.9.9.9", ProductVersion: "9.9.9.9"}, want: "build 9.9.9.9 leida pero no soportada"},
+		{name: "build soportada no registra", build: BuildEvidence{FileVersion: supportedLMUVersion, ProductVersion: supportedLMUVersion}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var lines []string
+			var mu sync.Mutex
+			reader := &testReader{data: knownBuffer(t)}
+			ticks := &manualTicker{ticks: make(chan time.Time, 1)}
+			driver := newDriver(config{
+				open:      func() (memoryReader, error) { return reader, nil },
+				build:     func() (BuildEvidence, error) { return tt.build, tt.buildErr },
+				newTicker: func(time.Duration) ticker { return ticks },
+				logf: func(format string, args ...any) {
+					mu.Lock()
+					defer mu.Unlock()
+					lines = append(lines, fmt.Sprintf(format, args...))
+				},
+			})
+			sink := &collectingSink{values: make(chan Observation, 2)}
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan error, 1)
+			go func() { done <- driver.Run(ctx, sink) }()
+			<-sink.values
+			cancel()
+			<-done
+			mu.Lock()
+			defer mu.Unlock()
+			if tt.want == "" {
+				if len(lines) != 0 {
+					t.Fatalf("log = %#v, want empty", lines)
+				}
+				return
+			}
+			if len(lines) != 1 || !strings.Contains(lines[0], tt.want) {
+				t.Fatalf("log = %#v, want one line containing %q", lines, tt.want)
+			}
+		})
+	}
+}
+
 func TestRuntimeSnapshotIsConcurrentAndDefensive(t *testing.T) {
 	driver := New()
 	driver.setRuntime(drivercontract.StateLive)

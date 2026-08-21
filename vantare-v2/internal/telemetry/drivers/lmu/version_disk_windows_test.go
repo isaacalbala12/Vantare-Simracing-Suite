@@ -90,6 +90,93 @@ func TestDiskBuildFallbackRejectsPartialEvidence(t *testing.T) {
 	}
 }
 
+// Precedencia del fallback (ISA-680): Steam, registro y variable de entorno,
+// en ese orden y sin consultar la siguiente cuando una aporta evidencia.
+func TestDiskBuildFallbackAppliesSourcePrecedence(t *testing.T) {
+	const registryLocation = `D:\Games\LMU`
+	const envLocation = `E:\Manual\LMU`
+	steamExecutable := filepath.Join(defaultSteamLibraryRoot, lmuRelativeExecutablePath)
+	registryExecutable := filepath.Join(registryLocation, lmuExecutableName)
+	envExecutable := filepath.Join(envLocation, lmuExecutableName)
+
+	for _, testCase := range []struct {
+		name    string
+		present string
+		env     string
+		want    string
+	}{
+		{name: "steam gana al registro y al entorno", present: steamExecutable, env: envLocation, want: steamExecutable},
+		{name: "registro cuando steam falla", present: registryExecutable, env: envLocation, want: registryExecutable},
+		{name: "entorno como ultimo recurso", present: envExecutable, env: envLocation, want: envExecutable},
+		{name: "entorno con ruta de ejecutable", present: envExecutable, env: envExecutable, want: envExecutable},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var read string
+			api := diskBuildAPI{
+				exists:           func(path string) bool { return path == testCase.present },
+				readFile:         func(string) ([]byte, error) { return nil, errors.New("absent") },
+				installLocations: func() []string { return []string{registryLocation} },
+				lookupEnv: func(name string) (string, bool) {
+					if name != lmuPathEnvVar {
+						t.Fatalf("variable consultada = %q", name)
+					}
+					return testCase.env, true
+				},
+				versionInfo: func(path string) (BuildEvidence, error) {
+					read = path
+					return BuildEvidence{FileVersion: diagnosticLMUVersion1, ProductVersion: diagnosticLMUVersion1}, nil
+				},
+			}
+			evidence, err := findLMUDiskBuildEvidence(api)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if read != testCase.want {
+				t.Fatalf("ejecutable leido = %q want %q", read, testCase.want)
+			}
+			if evidence.FileVersion != diagnosticLMUVersion1 {
+				t.Fatalf("evidence = %#v", evidence)
+			}
+		})
+	}
+}
+
+func TestDiskBuildFallbackWithoutRegistryNorEnvIsUnavailable(t *testing.T) {
+	api := diskBuildAPI{
+		exists:           func(string) bool { return false },
+		readFile:         func(string) ([]byte, error) { return nil, errors.New("absent") },
+		installLocations: func() []string { return nil },
+		lookupEnv:        func(string) (string, bool) { return "", false },
+		versionInfo: func(string) (BuildEvidence, error) {
+			t.Fatal("version info read for a missing executable")
+			return BuildEvidence{}, nil
+		},
+	}
+	if _, err := findLMUDiskBuildEvidence(api); !errors.Is(err, ErrBuildUnavailable) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExecutablePathFromAcceptsFolderOrExecutable(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "carpeta", value: `D:\Games\LMU`, want: filepath.Join(`D:\Games\LMU`, lmuExecutableName)},
+		{name: "carpeta con barra final", value: `D:\Games\LMU\`, want: filepath.Join(`D:\Games\LMU`, lmuExecutableName)},
+		{name: "ejecutable", value: `D:\Games\LMU\Le Mans Ultimate.exe`, want: `D:\Games\LMU\Le Mans Ultimate.exe`},
+		{name: "entrecomillado", value: `"D:\Games\LMU"`, want: filepath.Join(`D:\Games\LMU`, lmuExecutableName)},
+		{name: "vacio", value: "   ", want: ""},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := executablePathFrom(testCase.value); got != testCase.want {
+				t.Fatalf("executablePathFrom(%q) = %q want %q", testCase.value, got, testCase.want)
+			}
+		})
+	}
+}
+
 func TestParseSteamLibraryPathsUnescapesAndSkipsOtherKeys(t *testing.T) {
 	document := `"libraryfolders"
 {
@@ -169,8 +256,13 @@ func TestResolveBuildEvidencePrefersProcessAndSkipsDisk(t *testing.T) {
 		close: func(uintptr) (uintptr, error) { return 1, nil },
 	}
 	disk := diskBuildAPI{
-		exists:   func(string) bool { t.Fatal("disk fallback used while the process supplied evidence"); return false },
-		readFile: func(string) ([]byte, error) { t.Fatal("disk fallback read libraryfolders.vdf"); return nil, nil },
+		exists:           func(string) bool { t.Fatal("disk fallback used while the process supplied evidence"); return false },
+		readFile:         func(string) ([]byte, error) { t.Fatal("disk fallback read libraryfolders.vdf"); return nil, nil },
+		installLocations: func() []string { t.Fatal("registry read while the process supplied evidence"); return nil },
+		lookupEnv: func(string) (string, bool) {
+			t.Fatal("environment read while the process supplied evidence")
+			return "", false
+		},
 		versionInfo: func(string) (BuildEvidence, error) {
 			t.Fatal("disk fallback read a file version")
 			return BuildEvidence{}, nil

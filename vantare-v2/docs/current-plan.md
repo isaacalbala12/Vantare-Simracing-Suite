@@ -1,3 +1,20 @@
+Nota ISA-755 / ISA-694 F4-9 (2026-08-21, implementada en rama de issue):
+- `internal/strategy/backtest` reproduce con la autoridad de `SolveV2` una
+  decisión fija: la observada para calibración y la recomendada contra los
+  datos realizados. Publica error total y por stint, factibilidad, coherencia
+  de signo y regret interno.
+- El holdout usa cutoff explícito por combinación+fecha, rechaza datos de
+  entrenamiento posteriores al corte y la propia carrera en la proyección
+  predictiva, exige N configurado y publica intervalos deterministas.
+- Los umbrales iniciales `<2 %` y paradas secas exactas están en configuración
+  y marcados provisionales hasta #702; el porcentaje de ranking también es
+  parámetro, sin atribuirle un valor definitivo.
+- Fixtures versionadas conservan las formas sanitizadas S026/S125/S266/S287 y
+  un end-to-end derivadas→plan→replay→tres gates. Strategy+Analysis, vet,
+  repetición x20, gofmt y diff-check pasan. Sin frontend, dependencias, PR,
+  merge, promoción ni release. Pendiente: push y review del orquestador de
+  #755; este corte cierra técnicamente F4, no la integra.
+
 Nota ISA-753 / ISA-694 F4-8 (2026-08-21, implementada en rama de issue):
 - `SolveV2` evalua cada candidato en esperado y en un unico caso malo
   coherente: extremos desfavorables de consumo/ritmo/degradacion y vida de

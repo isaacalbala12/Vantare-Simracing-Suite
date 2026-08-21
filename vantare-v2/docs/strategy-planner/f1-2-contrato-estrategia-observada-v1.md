@@ -3,7 +3,7 @@
 **Fecha:** 2026-08-21
 **Issue:** #725
 **Owner:** Telemetry Analysis (`internal/telemetryanalysis/strategyprojection`)
-**Estado:** compile-only `observedstrategy.v1`
+**Estado:** derivado por F3-a5; ampliación aditiva F4-9
 
 ## Objetivo
 
@@ -18,12 +18,15 @@ backtest.
 `ObservedStrategyV1`:
 
 - `sessionId`, `generatedAt`, tres ejes (`Presence`/`Provenance`/`Confidence`)
-- `stints[]` con `startLap`/`endLap`, `compoundRaw` (0-2) + `compoundNote`
-  (sin mapping semantico, ver A1 degradado), y tres ejes por stint
+- `stints[]` con `startLap`/`endLap`, `totalTimeSeconds` opcional cuando todas
+  sus vueltas completas tienen tiempo observado, `compoundRaw` (0-2) +
+  `compoundNote` (sin mapping semantico, ver A1 degradado), y tres ejes por
+  stint
 - `pitStops[]` con `lapNumber`, `pitLaneSeconds` (ObservedPitLaneInterval),
   `fuelAddedLiters`/`veAddedPercent` opcionales (solo si hubo salto observado),
   y tres ejes
-- `result` opcional con `totalTimeSeconds`, `position`, `completed`
+- `result` opcional con `completedLaps`, `totalTimeSeconds`, `position`,
+  `completed`
 
 Decisiones simples donde el spec no fija:
 
@@ -32,13 +35,19 @@ Decisiones simples donde el spec no fija:
 - `fuelAddedLiters`/`veAddedPercent` solo se rellenan si el intervalo de pit
   mostro `hasFuelRise`/`hasVERise` (tasas 1.9-4.0 L/s, ~2.5 pp/s); si no, `nil`
   y no se inventa un desglose.
+- `totalTimeSeconds` por stint solo se publica si el rango completo
+  `startLap..endLap` tiene tiempos positivos; un hueco queda `nil` y el
+  backtest no fabrica un reparto del total.
 - `stints` se derivan de `StintBoundary` (ver contrato de segmentos); si la
   identidad de stint es `INVALID` (informe F0-1 §5), la proyeccion entera queda
   `Presence=missing` con `Provenance=derived` y `Confidence.sampleSize=0`.
 
 ## Fixtures
 
-- `testdata/observedstrategy_v1.json` — 3 stints, 2 pits, con compoundRaw y tasas.
+- `internal/telemetryanalysis/strategyprojection/testdata/observedstrategy_v1.json`
+  — 3 stints, 2 pits, con compoundRaw y tasas.
+- `internal/telemetryanalysis/testdata/observed-strategy-derived-v1.json` —
+  derivación F3-a5 con tiempo observado por stint para el replay de calibración.
 - Validado por `TestFixturesDecode`.
 
 ## Relación con StrategyInputProjection

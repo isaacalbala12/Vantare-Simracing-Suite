@@ -8,7 +8,9 @@ Nota OS-QT-04 / GitHub #693 (2026-08-21, T19 STOP; T20 GREEN local pendiente de 
   `StandingsRedline.applySnapshot()` por un indice lineal por clase/posicion.
   Conserva la primera pareja observable y reduce ese tramo de O(n^2) a O(n).
   TDD: RED por seam ausente; GREEN focal 2/2 y suite Standings 8/8, incluido
-  corpus de 104 filas; `git diff --check` PASS. Commit `fca5d9d3`.
+  corpus de 104 filas; `git diff --check` PASS. Fresh build Qt 6.10.2,
+  CTest 4/4, `qmllint`, replay portable de 15 escenas y cuatro fuentes Barlow
+  exactas PASS. Commit `fca5d9d3`.
 - La comparacion fisica T20 queda pendiente deliberadamente: LMU esta abierto
   por el usuario y contaminaría CPU/GPU. No se publican los 7 traces parciales
   anteriores ni se reinterpretan como evidencia. Al quedar libre el host se

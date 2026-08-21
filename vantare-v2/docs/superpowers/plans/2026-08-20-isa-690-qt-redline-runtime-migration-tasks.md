@@ -519,7 +519,8 @@ T18.
 **Estado 2026-08-21:** GREEN local parcial en `fca5d9d3`. La deteccion de la
 primera pareja de adelantamiento pasa de O(n^2) a O(n), sin recrear el arbol ni
 eliminar filas, materiales o animaciones. RED causal y suite Standings 8/8.
-La medicion antes/despues permanece abierta mientras LMU este ejecutandose.
+Fresh build Qt 6.10.2, CTest 4/4, `qmllint` y custodia portable PASS. La
+medicion antes/despues permanece abierta mientras LMU este ejecutandose.
 
 **Descripción:** corregir únicamente bindings o efectos señalados por el
 profiler, preservando visual y motion.

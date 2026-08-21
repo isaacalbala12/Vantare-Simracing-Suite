@@ -19,9 +19,10 @@
   modelo vuelve exactamente a T18. T20 elimina solo la busqueda O(n^2) de la
   pareja de adelantamiento y conserva la primera pareja mediante un indice
   lineal por clase/posicion. RED causal y GREEN Standings 8/8; commit
-  `fca5d9d3`. La medicion de 10 runs `stress104` sigue pendiente porque LMU
-  esta abierto; no ejecutar ni promover benchmarks contaminados. Sin push,
-  PR, CI remoto, integracion, promocion ni release.
+  `fca5d9d3`. Fresh build Qt 6.10.2, CTest 4/4, `qmllint`, 15 escenas y fuentes
+  portables PASS. La medicion de 10 runs `stress104` sigue pendiente porque
+  LMU esta abierto; no ejecutar ni promover benchmarks contaminados. Sin
+  push, PR, CI remoto, integracion, promocion ni release.
 
 - **OS-QT-04 / GitHub #693 — T18 baseline RED cerrado; T19 siguiente
   (2026-08-21):** 50 runs seriales (10 por overtake/full/enter/retirement/

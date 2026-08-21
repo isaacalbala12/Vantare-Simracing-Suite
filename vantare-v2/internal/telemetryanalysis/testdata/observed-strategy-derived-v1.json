@@ -6,9 +6,9 @@
   "provenance": {"kind": "derived", "sourceId": "race-observed"},
   "confidence": {"sampleSize": 6, "computationVersion": "observed-strategy.v1"},
   "stints": [
-    {"stintNumber": 1, "startLap": 1, "endLap": 2, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
-    {"stintNumber": 2, "startLap": 3, "endLap": 4, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
-    {"stintNumber": 3, "startLap": 5, "endLap": 6, "compoundRaw": 1, "compoundNote": "raw 1 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}}
+    {"stintNumber": 1, "startLap": 1, "endLap": 2, "totalTimeSeconds": 200, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
+    {"stintNumber": 2, "startLap": 3, "endLap": 4, "totalTimeSeconds": 200, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
+    {"stintNumber": 3, "startLap": 5, "endLap": 6, "totalTimeSeconds": 200, "compoundRaw": 1, "compoundNote": "raw 1 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}}
   ],
   "pitStops": [
     {"lapNumber": 2, "pitLaneSeconds": 4, "fuelAddedLiters": 20, "presence": "unknown", "provenance": {"kind": "observed", "sourceId": "race-observed"}}

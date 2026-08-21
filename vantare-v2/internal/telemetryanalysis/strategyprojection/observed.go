@@ -21,13 +21,14 @@ type ObservedStrategyV1 struct {
 }
 
 type ObservedStint struct {
-	StintNumber  int        `json:"stintNumber"`
-	StartLap     int        `json:"startLap"`
-	EndLap       int        `json:"endLap"`
-	CompoundRaw  *int       `json:"compoundRaw,omitempty"`
-	CompoundNote string     `json:"compoundNote"`
-	Presence     Presence   `json:"presence"`
-	Provenance   Provenance `json:"provenance"`
+	StintNumber      int        `json:"stintNumber"`
+	StartLap         int        `json:"startLap"`
+	EndLap           int        `json:"endLap"`
+	TotalTimeSeconds *float64   `json:"totalTimeSeconds,omitempty"`
+	CompoundRaw      *int       `json:"compoundRaw,omitempty"`
+	CompoundNote     string     `json:"compoundNote"`
+	Presence         Presence   `json:"presence"`
+	Provenance       Provenance `json:"provenance"`
 }
 
 type ObservedPitStop struct {
@@ -84,6 +85,9 @@ func (o ObservedStrategyV1) Validate() error {
 	for _, s := range o.Stints {
 		if s.EndLap < s.StartLap {
 			return contractError("invalid_document", "stints", "endLap must be >= startLap")
+		}
+		if s.TotalTimeSeconds != nil && (*s.TotalTimeSeconds <= 0 || math.IsNaN(*s.TotalTimeSeconds) || math.IsInf(*s.TotalTimeSeconds, 0)) {
+			return contractError("invalid_document", "stints.totalTimeSeconds", "must be positive and finite")
 		}
 		if !s.Presence.Valid() {
 			return contractError("invalid_document", "stints.presence", "unknown presence")

@@ -441,14 +441,31 @@ func observedStints(
 			}
 		}
 		compound, compoundPresence, note := observedCompoundAt(compounds, startSeconds)
+		totalTimeSeconds := observedStintTime(laps, startLap, endLap)
 		result = append(result, strategyprojection.ObservedStint{
-			StintNumber: index + 1, StartLap: startLap, EndLap: endLap,
+			StintNumber: index + 1, StartLap: startLap, EndLap: endLap, TotalTimeSeconds: totalTimeSeconds,
 			CompoundRaw: compound, CompoundNote: note, Presence: compoundPresence,
 			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceObserved, SourceID: sessionID},
 		})
 		startLap = endLap + 1
 	}
 	return result
+}
+
+func observedStintTime(laps []AnalyzedLap, startLap, endLap int) *float64 {
+	total := 0.0
+	count := 0
+	for _, lap := range laps {
+		if lap.Number < startLap || lap.Number > endLap || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 {
+			continue
+		}
+		total += *lap.LapTimeSeconds
+		count++
+	}
+	if count != endLap-startLap+1 {
+		return nil
+	}
+	return floatPointer(total)
 }
 
 func observedCompoundAt(samples []vectorMetricSample, seconds float64) (*int, strategyprojection.Presence, string) {

@@ -1757,6 +1757,11 @@ func main() {
 
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
 	engSvc = engineerservice.NewEngineerService(emitter)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
@@ -1779,20 +1784,24 @@ func main() {
 	} else if engineerAudioConfig != nil {
 		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
 	}
-	voiceBinding := ptt.Binding{DeviceKind: ptt.DeviceKeyboard, DeviceID: "keyboard-0", Control: "f24", Scope: ptt.ScopeGlobal}
-	engineerVoiceRuntime, err = voiceinput.New(voiceinput.Config{
-		Enabled: *engineerVoiceInput, Locale: commands.Locale(engSvc.Locale()), Binding: voiceBinding,
-		Reader: ptt.NewPlatformReader(0), Host: voiceinput.NewProcessHost(nil), QueryPort: voiceinput.UnavailableQueryPort{},
-		Publisher: engSvc, MaxWindow: voiceinput.DefaultMaxWindow,
-		Lifecycle: func() commands.DialogueLifecycle {
-			return commands.DialogueLifecycle{SessionID: "voice-experimental", DriverID: "local-driver", SourceID: "telemetry-core", Epoch: 1}
-		},
-	})
-	if err != nil {
-		log.Printf("engineer experimental voice-input composition error: %v", err)
-		engineerVoiceRuntime = nil
-	} else if err := engSvc.SetVoiceInputHealth(engineerVoiceRuntime.Health); err != nil {
-		log.Printf("engineer experimental voice-input health error: %v", err)
+	if *engineerVoiceInput {
+		engineerVoiceRuntime, err = composeEngineerVoiceInput(true, settingsSvc.Settings(), commands.Locale(engSvc.Locale()), engineerVoiceInputDependencies{
+			readerFactory: func() ptt.Reader { return ptt.NewPlatformReader(0) },
+			hostFactory:   func() voiceinput.Host { return voiceinput.NewProcessHost(nil) },
+			queryPort:     voiceinput.UnavailableQueryPort{}, publisher: engSvc,
+			lifecycle: func() commands.DialogueLifecycle {
+				return commands.DialogueLifecycle{SessionID: "voice-experimental", DriverID: "local-driver", SourceID: "telemetry-core", Epoch: 1}
+			},
+		})
+		if err != nil {
+			log.Printf("engineer experimental voice-input unavailable: %v", err)
+			if healthErr := engSvc.SetVoiceInputHealth(unavailableEngineerVoiceHealth); healthErr != nil {
+				log.Printf("engineer experimental voice-input health error: %v", healthErr)
+			}
+			engineerVoiceRuntime = nil
+		} else if healthErr := engSvc.SetVoiceInputHealth(engineerVoiceRuntime.Health); healthErr != nil {
+			log.Printf("engineer experimental voice-input health error: %v", healthErr)
+		}
 	}
 	if err := engSvc.Start(ctx); err != nil {
 		log.Printf("engineer service start error: %v", err)
@@ -1900,9 +1909,8 @@ func main() {
 	})
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
-	// App settings service (delta mode, hotkeys, cpu sampling toggle)
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	// App settings service (delta mode, hotkeys, cpu sampling toggle) was loaded
+	// before Engineer so the experimental PTT binding can fail closed on conflicts.
 	notifySvc = notify.New(
 		wailsNotifier{service: notificationService},
 		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
@@ -1910,9 +1918,6 @@ func main() {
 		// signal the window layer can give us.
 		func() bool { return hubW.IsMinimised() },
 	)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
 
 	// Calendar service for the local LMU race calendar (CALENDAR-02).
 	// Data is persisted to cfgDir/calendar-lmu.json, not app-settings.json.

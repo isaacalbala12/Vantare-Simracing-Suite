@@ -119,6 +119,15 @@ Trabajo (2 issues, worker Codex `gpt-5.6-sol` high; scripts desechables en
 para `testdata/` + umbrales y protocolo de backtest + matriz de migración.
 Lo reviso yo; Isaac decide umbrales y degradaciones de alcance.
 
+**Estado (2026-08-21):** F0-1 (#701) **completada** — informe en
+`evidence/isa-694-spike/informe-f0-1.md`; veredictos A1 DEGRADED, A3 VALID
+(spot-check 8/8 de Isaac), A4 INVALID→rama degradada, A5 INVALID→manual+A/B,
+A6 VALID; degradaciones aceptadas por Isaac como D19. F0-2 (#702)
+**parcial**: endpoint de forecast descubierto y verificado en vivo
+(`/rest/sessions/weather`, PRACTICE/QUALIFY/RACE × 5 nodos; el forecast de
+RACE es visible desde la práctica); pendientes la pareja práctica→carrera
+(A2) y el protocolo de backtest con umbrales.
+
 ### F1 — Contratos en su owner, ADR 0009, caracterizaciones
 
 **Objetivo:** congelar **todas** las superficies que F2–F6 consumirán, cada
@@ -141,9 +150,13 @@ Trabajo (4 issues tras F0):
 2. **Contratos de Analysis** (worker muse-spark): `StrategyInputProjection v2`
    y `ObservedStrategy v1` viven en un **paquete público propiedad de
    Telemetry Analysis** (Analysis no importa dominio privado de Strategy;
-   Strategy solo consume). Incluye la **matriz v1→v2**: productores,
+   Strategy solo consume). Incluye la **matriz v1→v2** (productores,
    consumidores, compatibilidad, retirada y fixtures old/new contra el
-   contrato v1 existente.
+   contrato v1 existente) y el **contrato de segmentos temporales** exigido
+   por F0-1: `ContinuousSegment`, `LapBoundary` (con fuente y calidad),
+   `StintBoundary` (con causa y confianza) y `TrackLocation` por distancia
+   normalizada — sin comprimir huecos en silencio. Las familias reflejan las
+   degradaciones D19 (curva combinada, pit degradado, ahorro manual).
 3. **Contratos de Strategy** (worker muse-spark): documento Strategy v2 (lo
    que Orbit necesita: evento, pilotos, variantes, inventario por evento —
    diseñado con la matriz de migración de F0), **vector de decisión e I/O del

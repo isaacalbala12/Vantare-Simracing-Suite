@@ -54,18 +54,34 @@ modelo de tráfico/rivales, Monte Carlo, replanning autónomo, multi-sim.
 | D16 | La **estrategia observada** (qué corrió realmente cada piloto: vueltas de parada, compuestos, stints, resultado) se extrae de cada sesión de carrera como familia de derivación de primera clase. El corpus de carreras reales es la base de datos de estrategias. |
 | D17 | Desarrollo mediante SDD con gates humanos. Workers: `muse-spark-1.2-contributor` vía MCP T3 Code; tareas complejas y review adversarial con Codex `gpt-5.6-sol` razonamiento high; checks sencillos con Codex `gpt-5.6-terra` high. Claude planifica, orquesta y revisa. |
 | D18 | **Decidido (Isaac, 2026-08-21): subida automática.** Se modifica el contrato de producto (`docs/vantare-program/product-contract.md`) dentro del ADR 0009 para permitir consentimiento permanente **opt-in y revocable**, con cola de subida visible, historial, pausa y borrado; el bundle sigue siendo anonimizado y sin telemetría cruda. Los DuckDB de LMU viven en la misma ruta estándar en todos los PCs, lo que habilita el descubrimiento automático. |
+| D19 | **Decidido (Isaac, 2026-08-21, gate F0-1):** se aceptan las degradaciones de A1/A4/A5 (ver §3) y, en paralelo, las familias bloqueadas se recuperarán mediante una **campaña de capturas controladas** (sesiones diseñadas por Isaac y por los testers en F7b: vueltas A/B de mezcla, paradas cronometradas). No se invierte en resolver la alineación de relojes dentro de este corte; si algún día se necesita, la vía será que Vantare capture sus propios marcadores en vivo — decisión aparte. |
 
 ## 3. Asunciones explícitas (a validar en el spike de Fase 0)
 
 Estas asunciones sostienen el diseño. Si alguna cae, se revisa el spec antes de
 seguir (documento vivo).
 
-1. **A1:** Los canales DuckDB de LMU (`Fuel Level`, `Virtual Energy`,
-   `Tyres Wear` ×4, temperaturas, presiones, compuesto, mezcla, `Path
-   Wetness`, `CloudDarkness`) tienen resolución y fiabilidad suficientes para
-   derivar consumo, degradación, efecto del peso de fuel y buckets de clima.
-   Isaac confirma que la separación peso-fuel/edad-neumático está validada en
-   la práctica; el spike lo demuestra sobre su corpus propio (ya suficiente).
+1. **A1 — resuelta en F0-1 (2026-08-21): DEGRADED, en dos mitades.**
+   *Calidad intracanal:* PASS — Fuel, VE, wear ×4, presiones y temperaturas
+   presentes en 336/336 sesiones con cadencia estable, resolución sobrada y
+   cero nulos. *Derivabilidad cruzada:* FAIL por causa raíz única — los
+   canales continuos y los eventos no comparten reloj (`TimeOriginUnknown`,
+   desfases de hasta miles de segundos; en carreras largas el continuo solo
+   cubre la ventana del piloto local). Consecuencias aceptadas por Isaac:
+   - la **curva combinada de ritmo por stint** (`CombinedStintPaceCurve`,
+     `identifiability=combined_only`) es el entregable estándar; curvas
+     separadas peso-fuel / edad-neumático solo si un gate de
+     identificabilidad pasa sobre datos que lo permitan;
+   - degradación por **eje/rueda**, no por esquina (requiere `LapBoundary`
+     reconciliado y mapping de esquina versionado, futuro);
+   - `TyresCompound` llega con códigos 0–2 sin mapping semántico: curvas por
+     compuesto condicionadas a resolver ese mapping;
+   - clima: `Minimum Path Wetness` como buckets de evento; `CloudDarkness` y
+     `OffpathWetness` son booleanos no informativos y no se convierten en
+     porcentajes;
+   - antes de F3a se congela el contrato de segmentos temporales
+     (`ContinuousSegment`, `LapBoundary`, `StintBoundary`, `TrackLocation`)
+     sin comprimir huecos en silencio.
 2. **A2:** El REST local de LMU expone el forecast de la sesión y ese forecast
    es **estable entre la práctica y la carrera** de la misma combinación. El
    cliente REST actual solo consulta standings/sessionInfo: el endpoint de
@@ -73,17 +89,25 @@ seguir (documento vivo).
    real práctica→carrera; sin esa pareja queda `UNRESOLVED` y **bloquea el
    contrato de forecast** (no el resto del corte). Si LMU regenera clima por
    split, el flujo de captura se rediseña.
-3. **A3:** La metadata de sesión (coche, clase, pista, tipo de sesión,
-   `weatherconditions`) permite clasificar automáticamente "carrera diaria X
-   en combinación Y" y agrupar sus prácticas.
-4. **A4:** El pit loss real (tránsito, servicios, ritmo de repostaje/recarga
-   VE) es medible desde los eventos de paradas registrados.
-5. **A5:** La curva coste-del-ahorro (litros o % VE ganados vs segundos
-   perdidos por vuelta, por nivel de mezcla/lift) es derivable donde haya
-   datos de mezcla; donde no, el usuario la introduce con procedencia manual.
-6. **A6:** El volumen de un bundle derivado (sin telemetría cruda) es lo
-   bastante pequeño para subida opt-in por Worker y para el análisis en el PC
-   de Isaac.
+3. **A3 — resuelta en F0-1: VALID.** Los seis campos de identidad presentes
+   en 336/336 sesiones; spot-check de 8 sesiones confirmado por Isaac
+   (2026-08-21, 8/8 correctas). La clasificación automática por metadata es
+   viable; las sesiones cortas/sin vuelta se clasifican como "identificadas
+   pero no utilizables" por familia.
+4. **A4 — resuelta en F0-1: INVALID como desglose; degradada con dos ramas.**
+   `In Pits` cubre el carril completo, sin marcadores de cajón/servicio ni
+   reloj común. Rama degradada aceptada: `ObservedPitLaneInterval` + tasas
+   observadas (repostaje 1,9–4,0 L/s; VE ~2,5 pp/s) con calidad degradada, y
+   tránsito/servicio como input manual. El breakdown observado exacto queda
+   condicionado a reloj común y marcadores (futuro).
+5. **A5 — resuelta en F0-1: INVALID como derivada del corpus actual.** Solo
+   una sesión tiene dos mezclas utilizables (N=2, confundida). La curva
+   coste-del-ahorro entra con procedencia **manual**, y su derivación queda
+   condicionada al protocolo A/B de capturas controladas (≥5 vueltas limpias
+   alternadas por nivel, mismo stint/compuesto/clima, repetida).
+6. **A6 — resuelta en F0-1: VALID.** Bundle por sesión: mediana 3,96 KB JSON /
+   1,28 KB gzip (p95 5,0/1,5 KB); corpus completo de Isaac ~0,45 MB gzip. El
+   volumen no bloquea la subida automática ni la predigestión.
 
 ## 4. Arquitectura objetivo
 
@@ -172,11 +196,18 @@ persiste `WeatherScenario` cuando el usuario captura**; Analysis no interviene.
 2. Consumo Fuel y VE por vuelta: media, rango, varianza, confianza; por
    condición de clima y, si hay datos, por mezcla.
 3. Ritmo representativo y percentil del piloto (D9).
-4. Efecto del peso del fuel en el ritmo.
-5. Degradación por compuesto y esquina: curva real de pérdida de ritmo vs
-   edad; vida útil estimada.
-6. Pit loss real desglosado.
-7. Curva coste-del-ahorro (A5).
+4. `CombinedStintPaceCurve`: curva combinada de ritmo por stint
+   (`identifiability=combined_only`, rango y N); las curvas separadas
+   peso-fuel / edad-neumático solo tras pasar el gate de identificabilidad
+   (A1/D19).
+5. Degradación por eje/rueda y vida útil estimada; por compuesto cuando el
+   mapping semántico de `TyresCompound` esté resuelto; por esquina, futuro
+   condicionado (A1).
+6. Pit degradado: `ObservedPitLaneInterval` + tasas observadas, con
+   tránsito/servicio manual; breakdown exacto condicionado a marcadores
+   (A4/D19).
+7. Curva coste-del-ahorro: procedencia manual, derivable solo vía protocolo
+   A/B de capturas controladas (A5/D19).
 8. Buckets de clima seco/húmedo/mojado vía `Path Wetness` (D5).
 9. Clasificación de sesión y combinación (A3).
 10. Captura y persistencia del forecast (A2).

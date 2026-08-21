@@ -197,8 +197,11 @@ void StandingsModel::apply(const ReplayRecord &record)
 QVariantList StandingsModel::visualClasses() const
 {
     double fastestSeconds = std::numeric_limits<double>::infinity();
+    QVector<double> rowLapSeconds;
+    rowLapSeconds.reserve(rows().size());
     for (const QJsonObject &row : rows()) {
         const double candidate = lapSeconds(row.value(QStringLiteral("bestLapText")).toString());
+        rowLapSeconds.append(candidate);
         if (candidate < fastestSeconds) {
             fastestSeconds = candidate;
         }
@@ -212,6 +215,7 @@ QVariantList StandingsModel::visualClasses() const
     };
     QVector<VisualClass> groups;
     QHash<QString, qsizetype> groupIndexes;
+    qsizetype rowIndex = 0;
     for (const QJsonObject &sourceRow : rows()) {
         QString vehicleClass = sourceRow.value(QStringLiteral("vehicleClass")).toString();
         if (vehicleClass.isEmpty()) {
@@ -227,7 +231,7 @@ QVariantList StandingsModel::visualClasses() const
         QJsonObject visualRow = sourceRow;
         visualRow.insert(QStringLiteral("inPit"),
                          !sourceRow.value(QStringLiteral("pitText")).toString().trimmed().isEmpty());
-        const double candidate = lapSeconds(sourceRow.value(QStringLiteral("bestLapText")).toString());
+        const double candidate = rowLapSeconds.at(rowIndex++);
         visualRow.insert(QStringLiteral("isSessionBest"),
                          std::isfinite(candidate) && candidate == fastestSeconds);
         VisualClass &group = groups[*groupIndex];

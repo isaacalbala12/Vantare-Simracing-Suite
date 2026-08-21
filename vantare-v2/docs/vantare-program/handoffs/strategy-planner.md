@@ -17,6 +17,22 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-751 / F4-6 (2026-08-21, lista para review):
+
+- `SolveV2` elige piloto por stint. Cada piloto usa `PilotProfile v1` o cifras
+  manual/reference con procedencia; su ritmo y consumo participan en la
+  autonomía, servicio, peso Fuel y tiempo total común de F4-1..5.
+- Disponibilidad por vueltas y máximos de conducción continuo/total son duros
+  y explicados. El continuo no se reinicia si el mismo piloto sigue tras el
+  pit; sí al relevarlo. Min/max de vueltas también quedan ejecutados.
+- El caso canónico usa al rápido en stints 3/3 alrededor de una ventana de 2
+  vueltas del lento y prueba el coste frente al óptimo de ritmo puro. El
+  oráculo amplía el espacio sin poda, conserva paridad y demuestra poda
+  efectiva; la salida preserva procedencia y sensibilidad de ritmo por piloto.
+- Gates verdes: solver x100, Strategy+app, golden Orbit, vet focal, gofmt y
+  diff-check. Sin frontend, dependencia, PR, merge, promoción ni release.
+  Siguiente gate: review del orquestador de #751.
+
 Actualización ISA-750 / F4-5 (2026-08-21, lista para review):
 
 - `SolveV2` elige compuesto y juego físico por stint contra el inventario

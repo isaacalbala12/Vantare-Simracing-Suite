@@ -116,8 +116,10 @@ productivo sin crear un segundo reader.
 - Base inicial: `origin/nightly@4a697b6a3697ae404302acd5bcc5caf67624a59c`.
 - Entrega: F5 #719 implementada en la rama aislada; PR draft #756 abierto a
   `nightly`. El backend real sigue unavailable; vet, focal, race, internal,
-  global, frontend build y diff-check pasan localmente. CI remoto está
-  pendiente. F3/F4 permanecen como entregas separadas incluidas en esta base.
+  global, frontend build y diff-check pasan localmente. CI remoto verde sobre
+  el head de implementación `a1099e71`: run 32520821870, gate bloqueante,
+  política de promoción y GitGuardian PASS. El único cambio posterior registra
+  ese resultado. F3/F4 permanecen como entregas separadas incluidas en esta base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,

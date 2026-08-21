@@ -261,7 +261,7 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 		player = s.audioPlayer
 	}
 	port := radio.DualPort{
-		Resolver: s.radioResolver, UI: radioUIPublisher{service: s, family: family, priority: radioNotificationPriority(item.Message.Priority), visual: outputHasVisual(mode)},
+		Resolver: s.radioResolver, UI: radioUIPublisher{service: s, family: family, priority: radioNotificationPriority(item.Message.Priority), source: item.Message.Source, visual: outputHasVisual(mode)},
 		Audio: cachedAudio, Player: player, Clock: s.policyClock,
 	}
 	cancel := func(cause error) {
@@ -269,7 +269,11 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 			s.radioBus.ResetIntents(radioCancellationCause(cause), radiospotter.Intents()...)
 			return
 		}
-		s.radioBus.ResetIntents(radioCancellationCause(cause), families.IntentsForFamily(string(family))...)
+		intents := families.IntentsForFamily(string(family))
+		if len(intents) == 0 {
+			intents = []string{item.Message.Intent}
+		}
+		s.radioBus.ResetIntents(radioCancellationCause(cause), intents...)
 	}
 	s.activeDelivery = &activeDelivery{id: deliveryID, radio: true, radioFamily: family, radioPriority: item.Message.Priority, cancel: cancel}
 	s.wg.Add(1)
@@ -477,6 +481,7 @@ type radioUIPublisher struct {
 	service  *EngineerService
 	family   messagepolicy.Family
 	priority messagepolicy.Priority
+	source   string
 	visual   bool
 }
 
@@ -489,7 +494,7 @@ func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented ra
 		Severity: presented.Severity, TextKey: presented.Intent, Text: presented.VisualText,
 		VoiceText: presented.VoiceText, Locale: string(presented.Locale), Role: presented.Role,
 		Channel: string(presented.Channel), Priority: int(publisher.priority),
-		CreatedAt: presented.CreatedAtMS, ExpiresAt: presented.ExpiresAtMS, Source: "telemetry-core",
+		CreatedAt: presented.CreatedAtMS, ExpiresAt: presented.ExpiresAtMS, Source: publisher.source,
 	}
 	publisher.service.mu.Lock()
 	defer publisher.service.mu.Unlock()
@@ -502,6 +507,9 @@ func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented ra
 }
 
 func radioMessageFamily(message radio.RadioMessage) messagepolicy.Family {
+	if message.Source == "voice-input" {
+		return familyVoice
+	}
 	if family, ok := families.FamilyForIntent(message.Intent); ok {
 		return messagepolicy.Family(family)
 	}

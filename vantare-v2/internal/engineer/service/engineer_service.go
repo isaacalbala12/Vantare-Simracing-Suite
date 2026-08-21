@@ -3,10 +3,16 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/core"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
@@ -14,6 +20,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	legacyspotter "github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	"github.com/vantare/overlays/v2/internal/engineer/voiceinput"
 	"github.com/vantare/overlays/v2/internal/families"
 	"github.com/vantare/overlays/v2/internal/radio"
 	radiospotter "github.com/vantare/overlays/v2/internal/spotter"
@@ -121,6 +128,8 @@ type EngineerService struct {
 	radioMetrics    *radio.Metrics
 	spotterProducer *radiospotter.Producer
 	familyEngine    *families.Engine
+	voiceHealth     func() voiceinput.Health
+	voiceTurnNext   uint64
 
 	presentationResolver *presentation.Resolver
 	presentationLocale   presentation.Locale
@@ -279,6 +288,267 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		}
 	}
 	return s
+}
+
+// SetVoiceInputHealth installs the aggregate-only experimental health source.
+// It must be composed before Start and never exposes text or audio.
+func (s *EngineerService) SetVoiceInputHealth(provider func() voiceinput.Health) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		return errors.New("engineer voice-input health cannot change while running")
+	}
+	if provider == nil {
+		return errors.New("engineer voice-input health provider is required")
+	}
+	if s.voiceHealth == nil {
+		if err := registerVoiceInputCatalog(s.radioResolver); err != nil {
+			return fmt.Errorf("register voice-input radio catalog: %w", err)
+		}
+	}
+	s.voiceHealth = provider
+	return nil
+}
+
+// PublishVoiceTurn is the only F5 ingress into radio.v1. It accepts the
+// deterministic router result, never a transcript, and uses the same
+// registrable presentation/delivery path as every other producer.
+func (s *EngineerService) PublishVoiceTurn(ctx context.Context, turn commands.Turn, locale commands.Locale) error {
+	if ctx == nil {
+		return errors.New("voice turn context is required")
+	}
+	intent, response := voiceTurnPresentation(turn, locale)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled || s.radioBus == nil || s.voiceHealth == nil {
+		return errors.New("engineer radio bus is unavailable")
+	}
+	s.voiceTurnNext++
+	now := time.Now().UnixMilli()
+	message := radio.RadioMessage{
+		Version: radio.VersionV1, ID: fmt.Sprintf("voice-turn-%d-%d", now, s.voiceTurnNext), Source: "voice-input",
+		Intent: intent, Subject: "driver", Priority: radio.PriorityP2,
+		CreatedAtMS: now, ExpiresAtMS: now + 5_000, Locale: radio.Locale(locale),
+		Payload: map[string]string{"response": response},
+	}
+	result, err := s.radioBus.Submit(message)
+	if err != nil {
+		return err
+	}
+	if !result.Accepted {
+		return errors.New("engineer radio bus rejected voice turn")
+	}
+	s.signalDeliveryLocked()
+	return nil
+}
+
+const (
+	voiceIntentAnswer      = "voice.query_answered"
+	voiceIntentUnavailable = "voice.unavailable"
+	voiceIntentActionOff   = "voice.action_disabled"
+)
+
+func registerVoiceInputCatalog(resolver *radio.Resolver) error {
+	definitions := []struct {
+		intent  string
+		phrases map[radio.Locale]radio.Phrase
+	}{
+		{voiceIntentAnswer, voicePhrases("Respuesta del ingeniero: {response}", "Engineer response: {response}", "Risposta dell'ingegnere: {response}", "Resposta do engenheiro: {response}")},
+		{voiceIntentUnavailable, voicePhrases("No puedo responder esa consulta ahora: {response}", "I cannot answer that query now: {response}", "Non posso rispondere ora: {response}", "Não posso responder a essa consulta agora: {response}")},
+		{voiceIntentActionOff, voicePhrases("Las acciones por voz están desactivadas: {response}", "Voice actions are disabled: {response}", "Le azioni vocali sono disattivate: {response}", "As ações por voz estão desativadas: {response}")},
+	}
+	for _, entry := range definitions {
+		if err := resolver.Register(entry.intent, radio.Definition{Family: "voice", Priority: radio.PriorityP2, Role: "engineer", Channel: audio.ChannelEngineer, Severity: "info", ParamKeys: []string{"response"}}, entry.phrases); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func voicePhrases(es, en, it, pt string) map[radio.Locale]radio.Phrase {
+	return map[radio.Locale]radio.Phrase{
+		radio.LocaleES: {Visual: es, Voice: es}, radio.LocaleEN: {Visual: en, Voice: en},
+		radio.LocaleIT: {Visual: it, Voice: it}, radio.LocalePTBR: {Visual: pt, Voice: pt},
+	}
+}
+
+func voiceTurnPresentation(turn commands.Turn, locale commands.Locale) (string, string) {
+	if strings.HasPrefix(turn.IntentID, "action.") || turn.Reason == commands.ReasonActionUnavailable {
+		return voiceIntentActionOff, localizedVoiceStatus(locale, "solo lectura", "read only", "sola lettura", "somente leitura")
+	}
+	if turn.Outcome != commands.OutcomeQueryAnswered {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+	}
+	contract, ok := voiceQueryOutputContracts[turn.IntentID]
+	if !ok || turn.ResponseKey != contract.responseKey {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+	}
+	parts := make([]string, 0, len(contract.fields)+1)
+	parts = append(parts, turn.ResponseKey)
+	for _, field := range contract.fields {
+		if value, present := turn.Values[field.key]; present {
+			if !field.rule.valid(value) {
+				return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+			}
+			parts = append(parts, field.key+" "+value)
+		}
+	}
+	if len(parts) == 1 {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
+	}
+	response := strings.Join(parts, ", ")
+	if len(response) > 256 {
+		response = response[:256]
+	}
+	return voiceIntentAnswer, response
+}
+
+type voiceQueryOutputContract struct {
+	responseKey string
+	fields      []voiceQueryOutputField
+}
+
+type voiceQueryOutputField struct {
+	key  string
+	rule voiceQueryValueRule
+}
+
+type voiceQueryValueKind uint8
+
+const (
+	voiceValueInteger voiceQueryValueKind = iota + 1
+	voiceValueDecimal
+	voiceValueEnum
+)
+
+type voiceQueryValueRule struct {
+	kind   voiceQueryValueKind
+	min    float64
+	max    float64
+	values map[string]struct{}
+}
+
+var (
+	voiceIntegerPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,8})$`)
+	voiceDecimalPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]{0,7})(\.[0-9]{1,3})?$`)
+)
+
+func (rule voiceQueryValueRule) valid(value string) bool {
+	if value == "" || strings.TrimSpace(value) != value {
+		return false
+	}
+	switch rule.kind {
+	case voiceValueInteger, voiceValueDecimal:
+		pattern := voiceDecimalPattern
+		if rule.kind == voiceValueInteger {
+			pattern = voiceIntegerPattern
+		}
+		if !pattern.MatchString(value) {
+			return false
+		}
+		number, err := strconv.ParseFloat(value, 64)
+		return err == nil && number >= rule.min && number <= rule.max
+	case voiceValueEnum:
+		_, ok := rule.values[value]
+		return ok
+	default:
+		return false
+	}
+}
+
+func voiceIntegerField(key string, min, max float64) voiceQueryOutputField {
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueInteger, min: min, max: max}}
+}
+
+func voiceDecimalField(key string, min, max float64) voiceQueryOutputField {
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueDecimal, min: min, max: max}}
+}
+
+func voiceEnumField(key string, values ...string) voiceQueryOutputField {
+	allowed := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		allowed[value] = struct{}{}
+	}
+	return voiceQueryOutputField{key: key, rule: voiceQueryValueRule{kind: voiceValueEnum, values: allowed}}
+}
+
+// voiceQueryOutputContracts is the closed public boundary from dialogue to
+// radio.v1. Every field declares a numeric range or a closed enum. Query slots
+// such as target, driver_name and car_number are deliberately absent, and a
+// permitted key carrying an invalid value fails the whole response closed.
+// A future QueryPort must extend the applicable intent contract explicitly.
+var voiceQueryOutputContracts = map[string]voiceQueryOutputContract{
+	"query.fuel": {responseKey: "response.fuel", fields: []voiceQueryOutputField{
+		voiceDecimalField("litres", 0, 500), voiceDecimalField("laps", 0, 10_000),
+	}},
+	"query.virtual_energy": {responseKey: "response.virtual_energy", fields: []voiceQueryOutputField{
+		voiceDecimalField("percent", 0, 100), voiceDecimalField("laps", 0, 10_000),
+	}},
+	"query.position": {responseKey: "response.position", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceIntegerField("total", 1, 1_000),
+	}},
+	"query.lap": {responseKey: "response.lap", fields: []voiceQueryOutputField{
+		voiceIntegerField("lap", 0, 100_000), voiceIntegerField("total_laps", 0, 100_000),
+	}},
+	"query.gap": {responseKey: "response.gap", fields: []voiceQueryOutputField{
+		voiceDecimalField("seconds", -86_400, 86_400), voiceIntegerField("position", 1, 1_000),
+	}},
+	"query.tyres": {responseKey: "response.tyres", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceTyreStatusField("front_left"), voiceTyreStatusField("front_right"), voiceTyreStatusField("rear_left"), voiceTyreStatusField("rear_right"),
+	}},
+	"query.damage": {responseKey: "response.damage", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceDamageStatusField("aero"), voiceDamageStatusField("engine"), voiceDamageStatusField("suspension"),
+	}},
+	"query.race_time": {responseKey: "response.race_time", fields: []voiceQueryOutputField{
+		voiceIntegerField("remaining_ms", 0, 604_800_000), voiceIntegerField("remaining_laps", 0, 100_000),
+	}},
+	"query.rival.by_number": {responseKey: "response.rival", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceDecimalField("gap_seconds", -86_400, 86_400), voiceStatusField("status"),
+	}},
+	"query.rival.by_name": {responseKey: "response.rival", fields: []voiceQueryOutputField{
+		voiceIntegerField("position", 1, 1_000), voiceIntegerField("class_position", 1, 1_000), voiceDecimalField("gap_seconds", -86_400, 86_400), voiceStatusField("status"),
+	}},
+	"query.strategy": {responseKey: "response.strategy", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceIntegerField("next_stop_lap", 0, 100_000), voiceDecimalField("fuel_litres", 0, 500), voiceCompoundField("compound"),
+	}},
+	"query.pit_status": {responseKey: "response.pit_status", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceEnumField("requested", "true", "false"), voiceDecimalField("fuel_litres", 0, 500), voiceCompoundField("compound"),
+	}},
+	"query.car_status": {responseKey: "response.car_status", fields: []voiceQueryOutputField{
+		voiceStatusField("status"), voiceDecimalField("fuel_litres", 0, 500), voiceDecimalField("virtual_energy", 0, 100), voiceDamageStatusField("damage"), voiceTyreStatusField("tyre_status"),
+	}},
+	"query.penalties": {responseKey: "response.penalties", fields: []voiceQueryOutputField{
+		voiceIntegerField("count", 0, 100), voiceStatusField("status"),
+	}},
+}
+
+func voiceStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "ok", "warning", "critical", "unavailable", "clear", "active", "inactive", "pending", "open", "closed")
+}
+
+func voiceTyreStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "ok", "cold", "hot", "worn", "critical", "puncture", "unknown")
+}
+
+func voiceDamageStatusField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "none", "minor", "major", "critical", "unknown")
+}
+
+func voiceCompoundField(key string) voiceQueryOutputField {
+	return voiceEnumField(key, "soft", "medium", "hard", "intermediate", "wet", "unknown")
+}
+
+func localizedVoiceStatus(locale commands.Locale, es, en, it, pt string) string {
+	switch locale {
+	case commands.LocaleEnglish:
+		return en
+	case commands.LocaleItalian:
+		return it
+	case commands.LocalePortugueseBrazil:
+		return pt
+	default:
+		return es
+	}
 }
 
 // Start launches the background loops for the service.
@@ -1027,6 +1297,7 @@ type EngineerHealth struct {
 	Policy         EngineerPolicyMetrics    `json:"policy"`
 	Delivery       delivery.MetricsSnapshot `json:"delivery"`
 	RadioDelivery  radio.MetricsSnapshot    `json:"radioDelivery"`
+	VoiceInput     *voiceinput.Health       `json:"voiceInput,omitempty"`
 	LastError      string                   `json:"lastError,omitempty"`
 }
 
@@ -1060,6 +1331,11 @@ func (s *EngineerService) Health() EngineerHealth {
 	if !s.legacyFamilies && s.familyEngine != nil {
 		activeFamilies = s.familyEngine.ActiveCount()
 	}
+	var voiceHealth *voiceinput.Health
+	if s.voiceHealth != nil {
+		snapshot := s.voiceHealth()
+		voiceHealth = &snapshot
+	}
 	return EngineerHealth{
 		OK:             s.engineerSvcOKLocked(),
 		Source:         s.source,
@@ -1076,7 +1352,8 @@ func (s *EngineerService) Health() EngineerHealth {
 			}
 			return s.radioMetrics.Snapshot()
 		}(),
-		LastError: s.lastError,
+		VoiceInput: voiceHealth,
+		LastError:  s.lastError,
 	}
 }
 

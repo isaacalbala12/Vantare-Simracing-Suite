@@ -1674,7 +1674,7 @@ func TestHandleProfileHotkeySet(t *testing.T) {
 	emitter := &spyMainEmitter{}
 
 	// Empty combo = unregister; must succeed even if not registered.
-	handleProfileHotkeySet("test-profile", "", hkMgr, emitter)
+	handleProfileHotkeySet("test-profile", "", hkMgr, emitter, nil)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:hotkey:set" {
 		t.Fatalf("expected launcher:profile:hotkey:set on unregister, got %v", emitter.events)
 	}

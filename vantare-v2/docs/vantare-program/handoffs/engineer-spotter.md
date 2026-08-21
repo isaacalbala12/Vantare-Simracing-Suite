@@ -21,6 +21,18 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
+aislado. La corrección de la review adversarial cierra payloads por intent,
+clave y forma de valor, revalida F24 tras cambios de hotkeys,
+acota readiness/STT, arranca host y poller sin bloquear Telemetry Core,
+reconcilia timeout PTT antes de release, elimina toda superficie con flag OFF
+y valida F24 contra hotkeys configuradas antes de construir recursos. El
+reader Windows se sondea con ON aunque el hijo declare `available:false`;
+WASAPI, Whisper, QueryPort canónico y wake acústico siguen pendientes. Los
+fakes demuestran el flujo completo, pero no son evidencia de micrófono/STT ni
+pulsación física y no cambian el NO-GO humano ENG-13.
+Contrato y gates: `docs/engineer/voice-input-isa-719.md`. PR draft #756.
+
 ISA-718 / F4 implementa el motor declarativo de familias sobre `radio.v1` para
 fuel (8 intents), penalties, laps, timings y pitstops (13 intents totales). Las
 cinco familias comparten una tabla de prioridad/cooldown/TTL/subject y catálogo
@@ -103,12 +115,19 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa: `vantareapp/isa-718-motor-familias`.
-- Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
-- Entrega: F4 #718 y su corrección adversarial `86c3105a` + `138c9d9e` están
-  en la rama aislada; PR draft #739 abierto a `nightly`, sin integración. Los
-  dos jobs requeridos del run remoto `32503134920` pasan. F3 permanece en PR
-  draft #733.
+- Rama activa: `vantareapp/isa-719-voz-entrada-experimental`.
+- Base inicial: `origin/nightly@4a697b6a3697ae404302acd5bcc5caf67624a59c`.
+- Entrega: F5 #719 implementada en la rama aislada; PR draft #756 abierto a
+  `nightly`. La review independiente rechazó el primer corte con 5 P1 y 2 P2;
+  los siete tienen regresión y corrección local. El backend real sigue
+  unavailable. Vet focal, focal, race focal, suite `internal`, suite Go global,
+  build frontend, roadmap/changelog y diff-check pasan. La primera suite
+  `internal` ejecutada en paralelo agotó el deadline de un test SQLite ajeno;
+  pasó aislada y el mismo paquete ya había pasado en la suite global. CI del
+  head de código `9f0bc6bb` verde en run 32527254256: gate bloqueante,
+  política de promoción y GitGuardian PASS. El único cambio posterior registra
+  esa evidencia. F3/F4 permanecen como entregas separadas incluidas en esta
+  base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -327,6 +346,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-719 / F5, carril experimental tras flag; backend WASAPI/Whisper y ENG-13 pendientes |
 | En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
 | En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
@@ -360,6 +380,30 @@ Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
 integración en `nightly` o promoción.
 
 ## Última actualización
+
+2026-08-22, ronda final de review de ISA-719 / PR #756: la frontera radio
+rechaza y degrada toda respuesta con un valor fuera del rango/enum declarado,
+incluido `status=jamie smith`, y conserva valores legítimos como `status=ok`.
+La reserva F24 se revalida tanto después de `settings:save` como de
+`launcher:profile:hotkey:set`; el conflicto pone reader/host detrás de una
+compuerta unavailable con diagnóstico agregado y el carril se recupera al
+retirar el último conflicto. Gofmt, vet y tests focales, race focal, suites
+`internal` y global, build frontend, roadmap/changelog y diff-check pasan en
+local. El head de código `19fac5e9` queda verde en el run 32532100759: gate
+bloqueante, política de promoción y GitGuardian PASS; el único cambio posterior
+registra esa evidencia. Sin merge ni promoción.
+
+2026-08-21, ISA-719 / F5 corrige los 5 P1 y 2 P2 de la review adversarial del
+PR #756: output allowlist por intent, límite honesto ante dumps, readiness y
+STT acotados, inicio asíncrono, timeout/release PTT reconciliado, polling F24
+real aunque el helper esté unavailable, cero superficie OFF y detección de
+conflictos con hotkeys cargadas. WASAPI, Whisper, wake acústico, QueryPort,
+pulsación física y ENG-13 continúan pendientes/NO-GO. Regresiones focales y
+race focal, suite `internal`, suite global, build frontend y validadores
+documentales pasan. Hubo un timeout SQLite solo bajo la primera ejecución
+paralela; el rerun aislado fue PASS. CI verde sobre `9f0bc6bb` en run
+32527254256; el único delta posterior documenta ese resultado. Sin merge ni
+promoción.
 
 2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
 el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia

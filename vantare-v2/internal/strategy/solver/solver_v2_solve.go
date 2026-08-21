@@ -140,7 +140,11 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if len(initialChoices) == 0 {
 		result.Reasons = append(result.Reasons, SolverReason{Code: "tyre_inventory_insufficient", Message: "el inventario fisico no puede formar ningun juego declarado"})
 		result.addRejected(initial, input, "tyre_inventory_insufficient", "ningun compuesto declarado dispone de cuatro neumaticos compatibles")
-		result.ComputeStats = ComputeStats{Duration: time.Since(started), WithinBudget: true}
+		duration := time.Since(started)
+		result.ComputeStats = ComputeStats{
+			Duration:     duration,
+			WithinBudget: duration <= time.Duration(input.Budget.P95Millis)*time.Millisecond,
+		}
 		return result, nil
 	}
 

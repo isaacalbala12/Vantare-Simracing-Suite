@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T12:12:46Z",
+  "generatedAt": "2026-08-21T15:00:23Z",
   "digest": {
-    "lastCommit": "df6ef2e14c861bae2f153b452df3b9b2b8e785b4"
+    "lastCommit": "ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9"
   },
   "phases": [
     {
@@ -414,16 +414,16 @@
       "id": "engineer-radio-spotter",
       "type": "feature",
       "title": {
-        "es": "Radio bus y Spotter unificado",
-        "en": "Radio bus and unified Spotter",
-        "pt": "Radio bus e Spotter unificado",
-        "it": "Radio bus e Spotter unificato"
+        "es": "Radio bus, Spotter y motor de familias",
+        "en": "Radio bus, Spotter and family engine",
+        "pt": "Radio bus, Spotter e motor de famílias",
+        "it": "Radio bus, Spotter e motore di famiglie"
       },
       "body": {
-        "es": "El Spotter consume la telemetría canónica, usa una única geometría y entrega avisos P0 por el bus con audio cacheado y el evento visual existente.",
-        "en": "Spotter consumes canonical telemetry, uses one geometry and delivers P0 alerts through the bus with cached audio and the existing visual event.",
-        "pt": "O Spotter consome a telemetria canónica, usa uma única geometria e entrega avisos P0 pelo bus com áudio em cache e o evento visual existente.",
-        "it": "Lo Spotter consuma la telemetria canonica, usa un'unica geometria e consegna avvisi P0 sul bus con audio in cache e l'evento visivo esistente."
+        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
+        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
+        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
+        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
       },
       "label": {
         "es": "En revisión",
@@ -645,6 +645,11 @@
           "kind": "change",
           "scope": "",
           "text": "Aislar discovery real en tests de handlers"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Spotter unificado sobre el radio bus (F3 rework Ingeniero)"
         }
       ]
     },

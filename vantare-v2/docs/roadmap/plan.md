@@ -298,17 +298,17 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
-### Radio bus y Spotter unificado
+### Radio bus, Spotter y motor de familias
 
 - id: engineer-radio-spotter
 - tipo: feature
-- titulo.en: Radio bus and unified Spotter
-- titulo.pt: Radio bus e Spotter unificado
-- titulo.it: Radio bus e Spotter unificato
-- cuerpo: El Spotter consume la telemetría canónica, usa una única geometría y entrega avisos P0 por el bus con audio cacheado y el evento visual existente.
-- cuerpo.en: Spotter consumes canonical telemetry, uses one geometry and delivers P0 alerts through the bus with cached audio and the existing visual event.
-- cuerpo.pt: O Spotter consome a telemetria canónica, usa uma única geometria e entrega avisos P0 pelo bus com áudio em cache e o evento visual existente.
-- cuerpo.it: Lo Spotter consuma la telemetria canonica, usa un'unica geometria e consegna avvisi P0 sul bus con audio in cache e l'evento visivo esistente.
+- titulo.en: Radio bus, Spotter and family engine
+- titulo.pt: Radio bus, Spotter e motor de famílias
+- titulo.it: Radio bus, Spotter e motore di famiglie
+- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.
+- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.
+- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.
+- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente.
 - etiqueta: En revisión
 - etiqueta.en: In review
 - etiqueta.pt: Em revisão

@@ -83,8 +83,10 @@ func BenchmarkObservationToRadioStarted(b *testing.B) {
 		request := radio.Request{Version: radio.VersionV1, DeliveryID: "benchmark", DecidedAtMS: clock.NowMS(), Message: item.Message}
 		session, err := radio.NewSession(request, clock, metrics, func(ack radio.Acknowledgement) error {
 			if ack.State == radio.StateStarted {
+				if err := producer.AcknowledgeStarted(item.Message, ack.AtMS); err != nil {
+					return err
+				}
 				item.Started()
-				producer.AcknowledgeStarted(item.Message, ack.AtMS)
 			}
 			return nil
 		})

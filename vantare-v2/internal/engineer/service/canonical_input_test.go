@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
@@ -23,6 +26,33 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
+
+type firstSpotterResolveGate struct {
+	once    sync.Once
+	started chan struct{}
+	release chan struct{}
+}
+
+func (gate *firstSpotterResolveGate) ResolvePresentationCached(ctx context.Context, _ audio.PresentationRequest) (string, error) {
+	wait := false
+	gate.once.Do(func() {
+		wait = true
+		close(gate.started)
+	})
+	if !wait {
+		return "", nil
+	}
+	select {
+	case <-gate.release:
+		return "cached.wav", nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+type immediateAudioPlayer struct{}
+
+func (immediateAudioPlayer) PlayContext(context.Context, string) error { return nil }
 
 func TestCanonicalPresentationIsIdenticalForWailsAndSSEFanout(t *testing.T) {
 	emitter := &mockEmitter{}
@@ -142,6 +172,46 @@ func TestRadioSpotterDoesNotDuplicateLegacyProjection(t *testing.T) {
 	}
 	if samples := svc.Health().RadioDelivery.Samples; samples != 1 {
 		t.Fatalf("radio started samples = %d, want 1", samples)
+	}
+}
+
+func TestRadioSpotterRevalidatesAfterCacheResolveBeforeStarted(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{})}
+	svc := service.NewEngineerService(&mockEmitter{})
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("car-left cache lookup did not block")
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8, -2.8)); err != nil {
+		t.Fatal(err)
+	}
+	close(gate.release)
+
+	select {
+	case notification := <-notifications:
+		if notification.TextKey != "spotter.three_wide" {
+			t.Fatalf("obsolete notification reached started: %+v", notification)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("current three-wide notification was not delivered")
+	}
+	if samples := svc.Health().RadioDelivery.Samples; samples != 1 {
+		t.Fatalf("started samples = %d, want only current three-wide", samples)
 	}
 }
 
@@ -319,11 +389,11 @@ func TestEngineerServiceReconnectAttemptAdvanceRequiresObservationAfterBoundary(
 	}
 }
 
-func canonicalSpotterObservation(t *testing.T, epoch uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
-	return canonicalSpotterObservationAt(t, epoch, 1, rivalX)
+func canonicalSpotterObservation(t *testing.T, epoch uint64, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	return canonicalSpotterObservationAt(t, epoch, 1, rivalX...)
 }
 
-func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX float64) engineerprojection.ObservationSnapshotV1 {
+func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	clock := schema.NewClock(observedField(t, time.Second), observedField(t, time.Second), time.Now().UTC())
@@ -349,15 +419,19 @@ func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX 
 		LocalVelocity: observedField(t, spatial.LocalVelocity{Z: 40}),
 		Orientation:   observedField(t, orientation),
 	}
-	rival := player
-	rival.Identity.Vehicle = "rival"
-	rival.Player = observedField(t, false)
-	rival.WorldPosition = observedField(t, spatial.Position{X: 100 + rivalX, Z: 100})
+	vehicles := []telemetrycore.VehicleState{player}
+	for index, offset := range rivalX {
+		rival := player
+		rival.Identity.Vehicle = identity.VehicleID(fmt.Sprintf("rival-%d", index))
+		rival.Player = observedField(t, false)
+		rival.WorldPosition = observedField(t, spatial.Position{X: 100 + offset, Z: 100})
+		vehicles = append(vehicles, rival)
+	}
 	state := derive.FinalState{Observed: telemetrycore.ObservedState{
 		SourceTime:    observedField(t, time.Second),
 		PlayerPresent: observedField(t, true),
-		VehicleCount:  observedField(t, schema.Count(2)),
-		Vehicles:      []telemetrycore.VehicleState{player, rival},
+		VehicleCount:  observedField(t, schema.Count(len(vehicles))),
+		Vehicles:      vehicles,
 	}}
 	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)

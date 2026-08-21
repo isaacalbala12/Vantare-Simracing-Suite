@@ -120,13 +120,20 @@ func (policy *Policy) Evaluate(nowMS int64, currentLeft, currentRight bool) (str
 	}
 }
 
-// Started records only a message that actually reached the transport started
-// ACK. still_there never renews delivery context.
-func (policy *Policy) Started(intent string, expiresAtMS, nowMS int64) {
+// Start revalidates a selected message at the transport started boundary.
+// It records only self-contained/current or delivery-authorized context;
+// still_there may start while occupied but never renews that context.
+func (policy *Policy) Start(intent string, expiresAtMS, nowMS int64) bool {
+	if nowMS >= expiresAtMS {
+		return false
+	}
+	if intent == IntentStillThere {
+		return policy.situation == SituationLeft || policy.situation == SituationRight || policy.situation == SituationThreeWide
+	}
 	current, ok := selfContainedIntent(policy.situation)
 	contextualClear := policy.clearCanDeliver(intent, nowMS)
 	if !contextualClear && (!ok || intent != current) {
-		return
+		return false
 	}
 	policy.startedSituation = policy.situation
 	policy.startedGeneration = policy.generation
@@ -137,6 +144,7 @@ func (policy *Policy) Started(intent string, expiresAtMS, nowMS int64) {
 	if intent == IntentClearRight {
 		policy.clearRightGen, policy.clearRightFrom, policy.clearRightUntilMS = 0, SituationUnknown, 0
 	}
+	return true
 }
 
 func (policy *Policy) transition(next Situation, nowMS int64) {

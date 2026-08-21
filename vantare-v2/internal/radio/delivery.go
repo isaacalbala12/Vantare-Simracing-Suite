@@ -252,7 +252,13 @@ func (port DualPort) Deliver(ctx context.Context, request Request, reporter Repo
 		return reporter.Acknowledge(StateCancelled, reason)
 	}
 	if err := reporter.Acknowledge(StateStarted, ReasonNone); err != nil {
-		return err
+		// A late policy observer can reject a decision after cache resolution.
+		// Keep it queued until this point, then close it as policy-rejected so
+		// no UI or audio can escape with obsolete semantics.
+		if cancelErr := reporter.Acknowledge(StateCancelled, ReasonPolicyRejected); cancelErr != nil {
+			return errors.Join(err, cancelErr)
+		}
+		return nil
 	}
 	if err := port.UI.PublishRadio(ctx, presentation); err != nil {
 		if reason := cancellationReason(ctx, request.Message.ExpiresAtMS, now.NowMS()); reason != ReasonNone {

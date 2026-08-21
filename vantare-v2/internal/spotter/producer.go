@@ -11,7 +11,10 @@ import (
 	engineer "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
-var ErrObservationNotReady = errors.New("spotter observation is not ready")
+var (
+	ErrObservationNotReady = errors.New("spotter observation is not ready")
+	ErrDecisionObsolete    = errors.New("spotter decision is obsolete")
+)
 
 const messageTTL = 3 * time.Second
 
@@ -87,10 +90,13 @@ func (producer *Producer) Evaluate(snapshot engineer.ObservationSnapshotV1) (rad
 	}, true, nil
 }
 
-func (producer *Producer) AcknowledgeStarted(message radio.RadioMessage, atMS int64) {
+func (producer *Producer) AcknowledgeStarted(message radio.RadioMessage, atMS int64) error {
 	producer.mu.Lock()
 	defer producer.mu.Unlock()
-	producer.policy.Started(message.Intent, message.ExpiresAtMS, atMS)
+	if !producer.policy.Start(message.Intent, message.ExpiresAtMS, atMS) {
+		return ErrDecisionObsolete
+	}
+	return nil
 }
 
 func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sensitivity, activeLeft, activeRight bool) (bool, bool, bool) {

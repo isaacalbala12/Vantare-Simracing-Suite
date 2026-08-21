@@ -210,10 +210,12 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 	request := radio.Request{Version: radio.VersionV1, DeliveryID: deliveryID, DecidedAtMS: s.policyClock.NowMS(), Message: item.Message}
 	session, err := radio.NewSession(request, s.policyClock, s.radioMetrics, func(ack radio.Acknowledgement) error {
 		if ack.State == radio.StateStarted {
-			item.Started()
 			if s.spotterProducer != nil {
-				s.spotterProducer.AcknowledgeStarted(item.Message, ack.AtMS)
+				if err := s.spotterProducer.AcknowledgeStarted(item.Message, ack.AtMS); err != nil {
+					return err
+				}
 			}
+			item.Started()
 		}
 		return nil
 	})

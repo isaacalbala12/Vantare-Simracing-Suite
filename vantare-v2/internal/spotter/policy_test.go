@@ -97,7 +97,9 @@ func TestClearRequiresStartedAcknowledgement(t *testing.T) {
 
 			var started Policy
 			intent, _ = started.Evaluate(1_000, test.beforeLeft, test.beforeRight)
-			started.Started(intent, 4_000, 1_001)
+			if !started.Start(intent, 4_000, 1_001) {
+				t.Fatal("started antecedent was rejected")
+			}
 			started.Evaluate(1_400, test.afterLeft, test.afterRight)
 			intent, ok = started.Evaluate(1_550, test.afterLeft, test.afterRight)
 			if !ok || intent != test.wantClear {
@@ -111,12 +113,16 @@ func TestStillThereDoesNotRenewStartedContext(t *testing.T) {
 	t.Parallel()
 	var policy Policy
 	intent, _ := policy.Evaluate(1_000, true, false)
-	policy.Started(intent, 4_500, 1_001)
+	if !policy.Start(intent, 4_500, 1_001) {
+		t.Fatal("started antecedent was rejected")
+	}
 	intent, ok := policy.Evaluate(4_000, true, false)
 	if !ok || intent != IntentStillThere {
 		t.Fatalf("reminder = %q/%t", intent, ok)
 	}
-	policy.Started(intent, 8_000, 4_001)
+	if !policy.Start(intent, 8_000, 4_001) {
+		t.Fatal("still-there was rejected")
+	}
 	policy.Evaluate(4_900, false, false)
 	intent, ok = policy.Evaluate(5_050, false, false)
 	if !ok || intent != IntentAllClear {
@@ -128,7 +134,9 @@ func TestResetExpiresDeliveryAndOccupancyContext(t *testing.T) {
 	t.Parallel()
 	var policy Policy
 	intent, _ := policy.Evaluate(1_000, true, true)
-	policy.Started(intent, 5_000, 1_001)
+	if !policy.Start(intent, 5_000, 1_001) {
+		t.Fatal("started antecedent was rejected")
+	}
 	policy.Reset()
 	intent, ok := policy.Evaluate(1_100, true, false)
 	if !ok || intent != IntentCarLeft {

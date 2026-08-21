@@ -104,6 +104,68 @@ las vueltas futuras. El oráculo exhaustivo suma el mismo nivel vuelta a vuelta
 sin poda. El caso de negocio versionado cubre una carrera donde el modelo sin
 peso llena una vez y el modelo con peso prefiere dos repostajes splash.
 
+### Ahorro como variable de decisión F4-4 (D6)
+
+Cada stint elige un nivel de ahorro completo: Fuel ahorrado en L/vuelta, VE
+ahorrada en puntos porcentuales/vuelta y coste en s/vuelta. `none` siempre
+existe y cuesta cero. Los demás niveles llegan por una sola autoridad:
+
+- `SolverInputV2.SavingCost` acepta exclusivamente `manual` o `reference`;
+- `Projection.SavingCost` acepta la familia `valid` de Analysis. Si su
+  procedencia es `derived`, el solver exige el método
+  `derived_from_controlled_ab_protocol` emitido por F3-a4; una curva derivada
+  no puede entrar por el fallback manual;
+- dos autoridades simultáneas, identificadores repetidos, valores no finitos o
+  negativos, o un ahorro mayor que el consumo base fallan cerrados.
+
+La cifra de `manual.CalculateFuel/VirtualEnergy(...).Saving.PerLap` es una
+semilla útil para declarar un nivel manual, pero no fuerza el plan. El solver
+la compara con `none` y con los demás niveles bajo la función objetivo común.
+
+El consumo efectivo del stint es
+`consumo_base - ahorro_del_nivel`. Ese valor decide cuántas vueltas caben,
+cuánto Fuel/VE queda y cuánto debe añadirse en la siguiente parada. F4-3 usa el
+mismo consumo efectivo al reconstruir los litros a bordo de cada vuelta, de
+modo que ahorro, cantidad repostada y peso no son términos independientes.
+El coste de ritmo es aditivo (`vueltas * secondsPerLap`) y se expone separado
+como `ScenarioEvaluation.savingSeconds`.
+
+#### Discretización y poda
+
+El espacio no interpola ni mezcla campos de niveles distintos:
+
+- `none` más la lista declarada, con máximo 16 niveles adicionales;
+- cada nivel es un punto indivisible `(Fuel L/vuelta, VE pp/vuelta,
+  s/vuelta)` y usa la precisión interna de servicios de `10^-6`;
+- en cada frontera de stint se exploran todos los niveles y todas las
+  longitudes factibles; luego se exploran las cantidades de servicio de F4-1;
+- el presupuesto `MaxCandidates` cuenta también esta dimensión y, si se agota,
+  el resultado no afirma que demostró el óptimo.
+
+No se añade una poda específica de ahorro. Después de aplicar el nivel, el
+estado vuelve a ser `(vuelta, Fuel, VE, nº paradas si hay regla, coste)`, por lo
+que se conserva la poda de dominancia de F4-1. Con peso activo solo se comparan
+estados con Fuel idéntico, como exige F4-3. El oráculo de tests añade la misma
+dimensión pero enumera sin poda todos los niveles, largos y servicios en
+carreras pequeñas; cubre Fuel y VE, dos niveles declarados y peso activo. La
+igualdad con el oráculo demuestra que esta poda no pierde el óptimo en esos
+tamaños.
+
+`SolverResultV2.SavingCost` conserva presencia, procedencia, confianza y
+niveles. `SavingPlan` lista solo los stints que ahorran, indicando nivel,
+vueltas, Fuel/VE ahorrado por vuelta y total, coste por vuelta y coste total.
+Cada `StintDecision` conserva los mismos datos y el pit anterior identifica el
+nivel del stint siguiente. La sensibilidad pesimista aumenta un 20 % el coste
+de los niveles elegidos sobre el mismo plan y publica
+`parameter=savingTimeCostPerLap`.
+
+El test canónico D6 usa 25 vueltas, 10 L de capacidad y 1 L/vuelta: `none`
+necesita dos paradas y deja una necesidad final equivalente a unas 5 vueltas.
+Ahorrar 0,25 L/vuelta en los dos stints restantes cuesta 0,20 s/vuelta, reduce
+los litros repostados y elimina una parada; con el mismo ahorro a 2 s/vuelta,
+el solver conserva la parada. El fixture mantiene el peso activo para probar la
+interacción completa y no solo `coste_ahorro < tránsito`.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
@@ -113,21 +175,21 @@ peso llena una vez y el modelo con peso prefiere dos repostajes splash.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, FuelWeightCost FuelWeightCostSource, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{WithinBudget}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
-- **Esperado/caso-malo**: `ScenarioEvaluation{total, green, degradation, fuelWeight, pit, formation}` rankea por esperado y expone riesgo (spec §5: variantes = misma función objetivo, distinta tolerancia).
+- **Esperado/caso-malo**: `ScenarioEvaluation{total, green, degradation, fuelWeight, saving, pit, formation}` rankea por esperado y expone riesgo (spec §5: variantes = misma función objetivo, distinta tolerancia).
 
 ## Compatibilidad
 
 - `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido;
   `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente.
-  F4-2 selecciona la curva de stint y F4-3 suma el peso de Fuel cuando existe
-  una fuente admitida; compuestos, pilotos, ahorro y clima permanecen en sus
-  extensiones F4 posteriores. Se mantiene
-  `tiempo_total = Σ ritmo base + Σ curva stint + Σ peso Fuel + Σ pit + formación`.
-- F4-3 añade el peso de Fuel por vuelta y su procedencia sin cambiar el wire de
+  F4-2 selecciona la curva de stint, F4-3 suma el peso de Fuel y F4-4 elige el
+  ahorro; compuestos, pilotos y clima permanecen en sus extensiones F4
+  posteriores. Se mantiene
+  `tiempo_total = Σ ritmo base + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ pit + formación`.
+- F4-4 añade el ahorro y su procedencia sin cambiar el wire de
   Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
 

@@ -64,3 +64,29 @@ func TestVoiceTurnPresentationDropsQuerySlotsAndUnknownValues(t *testing.T) {
 		})
 	}
 }
+
+func TestVoiceQueryOutputContractsCoverCatalogWithoutInputSlots(t *testing.T) {
+	queries := 0
+	for _, intent := range commands.DefaultCatalogV1().Intents {
+		if intent.Kind != commands.KindQuery {
+			continue
+		}
+		queries++
+		contract, ok := voiceQueryOutputContracts[intent.ID]
+		if !ok || contract.responseKey != intent.ResponseKey {
+			t.Fatalf("missing or mismatched output contract for %q", intent.ID)
+		}
+		allowed := make(map[string]struct{}, len(contract.keys))
+		for _, key := range contract.keys {
+			allowed[key] = struct{}{}
+		}
+		for _, slot := range intent.Slots {
+			if _, leaked := allowed[slot.Name]; leaked {
+				t.Fatalf("output contract %q permits query slot %q", intent.ID, slot.Name)
+			}
+		}
+	}
+	if queries != len(voiceQueryOutputContracts) {
+		t.Fatalf("catalog has %d queries, output contracts have %d", queries, len(voiceQueryOutputContracts))
+	}
+}

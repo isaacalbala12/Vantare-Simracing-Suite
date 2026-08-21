@@ -84,6 +84,18 @@ func TestComposeEngineerVoiceInputRejectsConfiguredF24ConflictBeforeFactories(t 
 	}
 }
 
+func TestComposeEngineerVoiceInputRejectsLauncherProfileF24Conflict(t *testing.T) {
+	settings := app.DefaultAppSettings()
+	settings.LauncherProfiles = append(settings.LauncherProfiles, app.LaunchProfile{Hotkey: "alt+f24"})
+	runtime, err := composeEngineerVoiceInput(true, settings, commands.LocaleSpanish, compositionDependencies(
+		func() ptt.Reader { t.Fatal("conflict constructed reader"); return nil },
+		func() voiceinput.Host { t.Fatal("conflict constructed host"); return nil },
+	))
+	if runtime != nil || !errors.Is(err, errEngineerVoiceBindingConflict) {
+		t.Fatalf("conflicting profile composition = runtime %v, err %v", runtime, err)
+	}
+}
+
 func TestComposeEngineerVoiceInputPollsPTTWhenBackendIsUnavailable(t *testing.T) {
 	reader := &compositionReader{read: make(chan struct{})}
 	host := &unavailableCompositionHost{started: make(chan struct{})}

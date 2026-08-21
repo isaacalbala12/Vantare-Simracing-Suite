@@ -124,7 +124,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 						}
 						next.fuel += fuelAmount
 						next.ve += veAmount
-						byLap[next.lap] = insertNondominated(byLap[next.lap], next, input.Formation.Seconds)
+						byLap[next.lap] = insertNondominated(byLap[next.lap], next, input.Formation.Seconds, input.hasStopCountRules())
 					}
 					if budgetExhausted {
 						break
@@ -183,6 +183,10 @@ func (input SolverInputV2) stopCountAllowed(stops int) (bool, string, string) {
 		return false, "maximum_pit_stops", fmt.Sprintf("el plan hace %d paradas y el evento permite como maximo %d", stops, *input.EventRules.MaxPitStops)
 	}
 	return true, "", ""
+}
+
+func (input SolverInputV2) hasStopCountRules() bool {
+	return input.EventRules.MinPitStops != nil || input.EventRules.MaxPitStops != nil
 }
 
 func (input SolverInputV2) serviceResources() (serviceResource, serviceResource, error) {
@@ -336,22 +340,29 @@ func solverPitInput(input SolverInputV2, fuelAmount, veAmount int64) (manual.Pit
 
 func serviceValue(units int64) float64 { return float64(units) / float64(serviceScale) }
 
-func insertNondominated(nodes []searchNode, candidate searchNode, formation float64) []searchNode {
+func insertNondominated(nodes []searchNode, candidate searchNode, formation float64, stopRulesActive bool) []searchNode {
 	for _, existing := range nodes {
-		if dominates(existing, candidate, formation) {
+		if dominates(existing, candidate, formation, stopRulesActive) {
 			return nodes
 		}
 	}
 	kept := nodes[:0]
 	for _, existing := range nodes {
-		if !dominates(candidate, existing, formation) {
+		if !dominates(candidate, existing, formation, stopRulesActive) {
 			kept = append(kept, existing)
 		}
 	}
 	return append(kept, candidate)
 }
 
-func dominates(left, right searchNode, formation float64) bool {
+func dominates(left, right searchNode, formation float64, stopRulesActive bool) bool {
+	leftStops, rightStops := len(left.decision.PitStops), len(right.decision.PitStops)
+	if stopRulesActive && leftStops != rightStops {
+		return false
+	}
+	if !stopRulesActive && leftStops > rightStops {
+		return false
+	}
 	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
 }
 

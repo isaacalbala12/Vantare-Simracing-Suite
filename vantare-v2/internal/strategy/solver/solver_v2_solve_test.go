@@ -190,3 +190,20 @@ func TestSolveV2RankingIsDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
+	equalWithMoreStops := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
+		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 1}, {Lap: 2}}},
+	}
+	equalWithFewerStops := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
+		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
+	}
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true) {
+		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
+	}
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false) {
+		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
+	}
+}

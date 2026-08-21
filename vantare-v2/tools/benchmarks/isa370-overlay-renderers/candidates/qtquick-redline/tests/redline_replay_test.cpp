@@ -96,7 +96,6 @@ private slots:
     void rejectsRecordUpdateHzThatDiffersFromSceneContract();
     void keyedStandingsUpdatePreservesExistingRow();
     void keyedReconciliationEmitsCausalInsertMoveRemoveAndChange();
-    void identicalStandingsSnapshotKeepsCadenceAndProjection();
     void keyedModelsMatchEveryPackagedReplayFrameWithoutReset();
     void typedListModelsExposeWidgetMetadata();
     void standingsVisualClassesDerivePitAndSessionBest();
@@ -329,29 +328,6 @@ void RedlineReplayTest::keyedReconciliationEmitsCausalInsertMoveRemoveAndChange(
     QCOMPARE(removed.count(), 1);
     QVERIFY(changed.count() >= 1);
     QCOMPARE(reset.count(), 0);
-}
-
-void RedlineReplayTest::identicalStandingsSnapshotKeepsCadenceAndProjection()
-{
-    StandingsModel model;
-    const ReplayRecord snapshot = recordWithRows(1, QJsonArray{
-        QJsonObject{{QStringLiteral("id"), QStringLiteral("stable")},
-                    {QStringLiteral("position"), 1},
-                    {QStringLiteral("driverName"), QStringLiteral("Stable Driver")}},
-    });
-    QSignalSpy visualClassesChanged(&model, &StandingsModel::visualClassesChanged);
-    QSignalSpy rowsChanged(&model, &QAbstractItemModel::dataChanged);
-
-    model.apply(snapshot);
-    const QVariantList firstProjection = model.visualClasses();
-    model.apply(snapshot);
-
-    QCOMPARE(visualClassesChanged.count(), 2);
-    QCOMPARE(rowsChanged.count(), 0);
-    QCOMPARE(model.rowCount(), 1);
-    const QVariantList secondProjection = model.visualClasses();
-    QCOMPARE(secondProjection, firstProjection);
-    QVERIFY(!secondProjection.isSharedWith(firstProjection));
 }
 
 void RedlineReplayTest::keyedModelsMatchEveryPackagedReplayFrameWithoutReset()

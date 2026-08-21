@@ -46,7 +46,7 @@ signals:
 
 protected:
     explicit KeyedRowsModel(QString widget, QObject *parent = nullptr);
-    [[nodiscard]] bool applyRows(const ReplayRecord &record);
+    void applyRows(const ReplayRecord &record);
     [[nodiscard]] const QVector<QJsonObject> &rows() const { return m_rows; }
 
 private:
@@ -87,8 +87,6 @@ private:
     QString m_remainingText;
     QString m_lapText;
     QVariantList m_columns;
-    mutable QVariantList m_visualClasses;
-    mutable bool m_visualClassesDirty = true;
 };
 
 class RelativeModel final : public KeyedRowsModel

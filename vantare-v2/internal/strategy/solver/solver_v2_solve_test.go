@@ -35,8 +35,8 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 		t.Fatalf("serviceResources: %v", err)
 	}
 	best := math.Inf(1)
-	var walk func(lap, fuelLeft, veLeft int64, total float64)
-	walk = func(lap, fuelLeft, veLeft int64, total float64) {
+	var walk func(lap, fuelLeft, veLeft int64, stops int, total float64)
+	walk = func(lap, fuelLeft, veLeft int64, stops int, total float64) {
 		node := searchNode{lap: lap, fuel: fuelLeft, ve: veLeft}
 		maxLaps := runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps)
 		for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
@@ -49,7 +49,7 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 			nextVE := veLeft - ve.perLap*stintLaps
 			nextTotal := total + stint.TotalSeconds
 			if nextLap == input.RaceLaps {
-				if nextTotal < best {
+				if allowed, _, _ := input.stopCountAllowed(stops); allowed && nextTotal < best {
 					best = nextTotal
 				}
 				continue
@@ -64,12 +64,14 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 					if err != nil {
 						t.Fatalf("CalculatePitStop: %v", err)
 					}
-					walk(nextLap, nextFuel+fuelAmount, nextVE+veAmount, nextTotal+pit.TotalSeconds.Value())
+					if input.EventRules.MaxPitStops == nil || stops < *input.EventRules.MaxPitStops {
+						walk(nextLap, nextFuel+fuelAmount, nextVE+veAmount, stops+1, nextTotal+pit.TotalSeconds.Value())
+					}
 				}
 			}
 		}
 	}
-	walk(0, fuel.capacity, ve.capacity, input.Formation.Seconds)
+	walk(0, fuel.capacity, ve.capacity, 0, input.Formation.Seconds)
 	return best
 }
 
@@ -140,6 +142,35 @@ func TestSolveV2KeepsInfeasibleCandidateReason(t *testing.T) {
 	}
 	if result.CandidateDetails[0].Feasible || len(result.CandidateDetails[0].Reasons) == 0 {
 		t.Fatalf("infeasible candidate = %+v", result.CandidateDetails[0])
+	}
+}
+
+func TestSolveV2AppliesPitStopCountRulesWithoutHidingRejections(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 2
+	input.FuelCapacityLiters = 2
+	minimum := 1
+	maximum := 1
+	input.EventRules.MinPitStops = &minimum
+	input.EventRules.MaxPitStops = &maximum
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if !result.Feasible || len(result.Best.PitStops) != 1 {
+		t.Fatalf("event-constrained best = %+v", result)
+	}
+	var sawMinimumRejection bool
+	for _, candidate := range result.CandidateDetails {
+		for _, reason := range candidate.Reasons {
+			if reason.Code == "minimum_pit_stops" {
+				sawMinimumRejection = true
+			}
+		}
+	}
+	if !sawMinimumRejection {
+		t.Fatalf("no-stop candidate was hidden: %+v", result.CandidateDetails)
 	}
 }
 

@@ -207,6 +207,18 @@ func (in SolverInputV2) Validate() error {
 	if in.VECapacityPercent < 0 || in.VECapacityPercent > 100 || math.IsNaN(in.VECapacityPercent) || math.IsInf(in.VECapacityPercent, 0) {
 		return fmt.Errorf("veCapacityPercent invalid")
 	}
+	if in.TyreLifeLaps < 0 || in.TyreLifeLaps > maxSupportedLaps {
+		return fmt.Errorf("tyreLifeLaps out of range")
+	}
+	if in.EventRules.MinPitStops != nil && *in.EventRules.MinPitStops < 0 {
+		return fmt.Errorf("eventRules.minPitStops invalid")
+	}
+	if in.EventRules.MaxPitStops != nil && *in.EventRules.MaxPitStops < 0 {
+		return fmt.Errorf("eventRules.maxPitStops invalid")
+	}
+	if in.EventRules.MinPitStops != nil && in.EventRules.MaxPitStops != nil && *in.EventRules.MinPitStops > *in.EventRules.MaxPitStops {
+		return fmt.Errorf("eventRules pit stop range invalid")
+	}
 	for field, value := range map[string]float64{
 		"fuelPerLapLiters":           in.FuelPerLapLiters,
 		"vePerLapPercent":            in.VEPerLapPercent,

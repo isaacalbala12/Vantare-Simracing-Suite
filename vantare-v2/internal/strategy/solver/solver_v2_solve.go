@@ -97,7 +97,15 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 				afterStint.fuel -= fuel.perLap * stintLaps
 				afterStint.ve -= ve.perLap * stintLaps
 				if afterStint.lap == input.RaceLaps {
-					completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+					if allowed, code, message := input.stopCountAllowed(len(afterStint.decision.PitStops)); allowed {
+						completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+					} else {
+						result.addRejected(afterStint, input, code, message)
+					}
+					continue
+				}
+				if input.EventRules.MaxPitStops != nil && len(afterStint.decision.PitStops) >= *input.EventRules.MaxPitStops {
+					result.addRejected(afterStint, input, "maximum_pit_stops", "el maximo de paradas impide anadir el servicio necesario")
 					continue
 				}
 
@@ -165,6 +173,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil
+}
+
+func (input SolverInputV2) stopCountAllowed(stops int) (bool, string, string) {
+	if input.EventRules.MinPitStops != nil && stops < *input.EventRules.MinPitStops {
+		return false, "minimum_pit_stops", fmt.Sprintf("el plan hace %d paradas y el evento exige al menos %d", stops, *input.EventRules.MinPitStops)
+	}
+	if input.EventRules.MaxPitStops != nil && stops > *input.EventRules.MaxPitStops {
+		return false, "maximum_pit_stops", fmt.Sprintf("el plan hace %d paradas y el evento permite como maximo %d", stops, *input.EventRules.MaxPitStops)
+	}
+	return true, "", ""
 }
 
 func (input SolverInputV2) serviceResources() (serviceResource, serviceResource, error) {

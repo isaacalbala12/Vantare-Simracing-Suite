@@ -9,8 +9,8 @@ import (
 type PitServiceMode string
 
 const (
-	// PitServiceParallel overlaps only refuelling and tyre work. Repair remains
-	// an explicit sequential addition; a served penalty never overlaps work.
+	// PitServiceParallel overlaps refuelling, virtual-energy charging and tyre
+	// work. Repair remains sequential; a served penalty never overlaps work.
 	PitServiceParallel   PitServiceMode = "parallel"
 	PitServiceSequential PitServiceMode = "sequential"
 )

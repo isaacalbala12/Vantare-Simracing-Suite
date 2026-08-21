@@ -78,6 +78,48 @@ func TestSolveV2WorstCaseMarksTyreLifeViolation(t *testing.T) {
 	}
 }
 
+func TestSolveV2P95BudgetDegradesDiscretizationDeterministically(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 5
+	input.FuelCapacityLiters = 10
+	input.FuelPerLapLiters = 1
+	input.Discretization.FuelLiters = 0.1
+	input.Budget.P95Millis = 1
+
+	first, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	degradation := first.ComputeStats.Degradation
+	if !degradation.Applied || degradation.Reason != "p95_budget_reduced_service_discretization" {
+		t.Fatalf("budget degradation was silent: %+v", degradation)
+	}
+	if degradation.Effective.FuelLiters <= degradation.Requested.FuelLiters {
+		t.Fatalf("effective grid was not coarser: %+v", degradation)
+	}
+	if !hasSolverReason(first.Assumptions, "compute_budget_degraded") {
+		t.Fatalf("result did not declare degradation: %+v", first.Assumptions)
+	}
+	for attempt := 0; attempt < 20; attempt++ {
+		again, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("SolveV2 repeat: %v", err)
+		}
+		if again.ComputeStats.Degradation != degradation || !reflect.DeepEqual(again.Best, first.Best) || !reflect.DeepEqual(again.Variants, first.Variants) {
+			t.Fatalf("degradation changed on attempt %d: first=%+v again=%+v", attempt, first.ComputeStats.Degradation, again.ComputeStats.Degradation)
+		}
+	}
+
+	input.Budget.P95Millis = 500
+	full, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2 full budget: %v", err)
+	}
+	if full.ComputeStats.Degradation.Applied {
+		t.Fatalf("ample budget unexpectedly degraded: %+v", full.ComputeStats.Degradation)
+	}
+}
+
 func rangedFuelInput(mean, upper float64) SolverInputV2 {
 	input := baseInputV2()
 	input.RaceLaps = 8
@@ -119,6 +161,15 @@ func hasRisk(risks []SolverRisk, code string) bool {
 func hasRiskSensitivity(sensitivities []SolverSensitivity, parameter string) bool {
 	for _, sensitivity := range sensitivities {
 		if sensitivity.Parameter == parameter {
+			return true
+		}
+	}
+	return false
+}
+
+func hasSolverReason(reasons []SolverReason, code string) bool {
+	for _, reason := range reasons {
+		if reason.Code == code {
 			return true
 		}
 	}

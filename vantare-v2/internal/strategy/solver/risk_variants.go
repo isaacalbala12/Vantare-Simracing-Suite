@@ -319,6 +319,31 @@ func consumptionSensitivities(input SolverInputV2, expected, worst ScenarioEvalu
 	return result
 }
 
+func rainChanceSensitivity(input SolverInputV2, decision DecisionVector, expected ScenarioEvaluation) (SolverSensitivity, bool) {
+	if input.Weather == nil {
+		return SolverSensitivity{}, false
+	}
+	perturbed := input
+	weatherInput := *input.Weather
+	for index := range weatherInput.Scenario.Nodes {
+		weatherInput.Scenario.Nodes[index].RainChance = math.Min(100, weatherInput.Scenario.Nodes[index].RainChance+thresholdSensitivityPP)
+	}
+	perturbed.Weather = &weatherInput
+	evaluation, feasible, err := evaluateDecisionV2(perturbed, decision)
+	if err != nil {
+		feasible = false
+	}
+	ok := feasible
+	impact := 0.0
+	if feasible {
+		impact = evaluation.TotalSeconds - expected.TotalSeconds
+	}
+	return SolverSensitivity{
+		Parameter: "rainChancePercent", Delta: thresholdSensitivityPP,
+		ImpactSeconds: impact, Feasible: &ok,
+	}, true
+}
+
 func variantByKind(variants []SolverVariantV2, kind SolverVariantKind) (SolverVariantV2, bool) {
 	for _, variant := range variants {
 		if variant.Kind == kind {

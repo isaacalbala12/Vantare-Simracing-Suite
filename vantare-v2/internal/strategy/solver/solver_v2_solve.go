@@ -76,11 +76,12 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if err := input.Validate(); err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "input", err.Error())
 	}
-	fuel, ve, err := input.serviceResources()
+	inputHash, err := hashSolverInputV2(input)
 	if err != nil {
 		return SolverResultV2{}, err
 	}
-	inputHash, err := hashSolverInputV2(input)
+	input, budgetDegradation := effectiveInputForBudget(input)
+	fuel, ve, err := input.serviceResources()
 	if err != nil {
 		return SolverResultV2{}, err
 	}
@@ -155,6 +156,13 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		Reasons:           []SolverReason{},
 		Assumptions:       []SolverReason{fuelWeight.assumption(), saving.assumption()},
 		Sensitivities:     []SolverSensitivity{},
+		ComputeStats:      ComputeStats{Degradation: budgetDegradation},
+	}
+	if budgetDegradation.Applied {
+		result.Assumptions = append(result.Assumptions, SolverReason{
+			Code:    "compute_budget_degraded",
+			Message: "el presupuesto p95 redujo de forma determinista los niveles de servicio evaluados",
+		})
 	}
 	for _, source := range result.CompoundPaceCost {
 		result.Assumptions = append(result.Assumptions, SolverReason{
@@ -185,6 +193,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		result.ComputeStats = ComputeStats{
 			Duration:     duration,
 			WithinBudget: duration <= time.Duration(input.Budget.P95Millis)*time.Millisecond,
+			Degradation:  budgetDegradation,
 		}
 		return result, nil
 	}
@@ -321,6 +330,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		PrunedStates:        pruned,
 		Duration:            duration,
 		WithinBudget:        !budgetExhausted && duration <= time.Duration(input.Budget.P95Millis)*time.Millisecond,
+		Degradation:         budgetDegradation,
 	}
 	if budgetExhausted {
 		result.Reasons = append(result.Reasons, SolverReason{Code: "candidate_budget_exhausted", Message: "el limite de candidatos termino la busqueda antes de demostrar el optimo"})
@@ -412,6 +422,9 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		result.WorstCase = fast.WorstCase
 		result.Sensitivities = append(result.Sensitivities,
 			consumptionSensitivities(input, fast.Expected, fast.WorstCase, fast.WorstCaseFeasible)...)
+	}
+	if sensitivity, ok := rainChanceSensitivity(input, result.Best, result.Expected); ok {
+		result.Sensitivities = append(result.Sensitivities, sensitivity)
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil

@@ -234,6 +234,9 @@ func TestRainAtNode50PitsForWetsAndRobustBeatsDryPlanWhenRainArrivesEarly(t *tes
 	if len(result.ThresholdSensitivity) != 2 {
 		t.Fatalf("rain threshold sensitivity missing: %+v", result.ThresholdSensitivity)
 	}
+	if !hasRiskSensitivity(result.Plans[1].Result.Sensitivities, "rainChancePercent") {
+		t.Fatalf("rain chance sensitivity was not consolidated in the solver result: %+v", result.Plans[1].Result.Sensitivities)
+	}
 }
 
 func TestSolveV2WeatherScenarioMatchesExhaustiveOracle(t *testing.T) {

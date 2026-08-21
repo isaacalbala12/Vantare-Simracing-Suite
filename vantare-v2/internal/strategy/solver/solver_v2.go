@@ -513,10 +513,18 @@ type WeatherBucketCostSource struct {
 }
 
 type ComputeStats struct {
-	EvaluatedCandidates int           `json:"evaluatedCandidates"`
-	PrunedStates        int           `json:"prunedStates"`
-	Duration            time.Duration `json:"duration"`
-	WithinBudget        bool          `json:"withinBudget"`
+	EvaluatedCandidates int               `json:"evaluatedCandidates"`
+	PrunedStates        int               `json:"prunedStates"`
+	Duration            time.Duration     `json:"duration"`
+	WithinBudget        bool              `json:"withinBudget"`
+	Degradation         BudgetDegradation `json:"degradation"`
+}
+
+type BudgetDegradation struct {
+	Applied   bool                  `json:"applied"`
+	Reason    string                `json:"reason,omitempty"`
+	Requested ServiceDiscretization `json:"requested"`
+	Effective ServiceDiscretization `json:"effective"`
 }
 
 // SolverReason explica inviabilidad o asunción.

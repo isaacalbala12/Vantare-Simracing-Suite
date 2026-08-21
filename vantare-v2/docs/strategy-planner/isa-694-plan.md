@@ -324,11 +324,14 @@ Trabajo (6 issues; Worker y firma con Codex sol, resto muse-spark):
   predigestión determinista (agregación por combo, dedupe, scoring por
   backtest, clustering de estrategias observadas) → resumen compacto; el LLM
   nunca ve tablas crudas (D12).
-- **(d) Generador de perfiles de referencia** (D15): agregación anonimizada
-  por combinación con métricas de muestra y calidad, como entrega del
+- **(d) Generador de perfiles de referencia** (D15): agregación
+  **seudonimizada con k-anonimato y supresión de cohortes raras** (ADR 0009
+  §5–6) por combinación, con métricas de muestra y calidad, como entrega del
   curador.
 - **(e) Ciclo editorial:** tarea programada en el PC de Isaac + análisis LLM
-  del resumen + flujo de decisión simple; skills acumulables de curación.
+  del resumen (aislado según ADR 0009 §2) + flujo de decisión simple de
+  Isaac; la automatización por skills es una decisión posterior y solo se
+  adopta si reduce trabajo editorial medido (ADR 0009 §3).
 - **(f) Publicación:** builder del catálogo firmado (el mismo formato/builder
   del fixture de F1.3) + publicación a GitHub. **Primer catálogo público =
   segundo gate explícito de Isaac.**

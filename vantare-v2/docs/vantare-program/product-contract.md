@@ -56,8 +56,10 @@ la primera variante de Engineer. El tono es profesional y cercano.
   rutas sin acción explícita **o** sin un consentimiento permanente opt-in,
   versionado y registrado (ADR 0009). Bajo ese consentimiento, cada envío
   automático es inspeccionable antes del despacho en una cola visible con
-  historial; pausar cancela reintentos y envíos en vuelo; la revocación y el
-  borrado remoto son acciones separadas y siempre disponibles. Los paquetes
+  historial; pausar detiene la cola y cancela reintentos y todo envío aún no
+  aceptado por el servidor (lo ya aceptado cuenta como enviado y puede
+  eliminarse mediante el borrado remoto); la revocación y el borrado remoto
+  son acciones separadas y siempre disponibles. Los paquetes
   automáticos son derivados seudonimizados con allowlist cerrada de campos:
   nunca telemetría cruda, voz, nombres ni rutas.
 - Cuenta, compras y entitlement son remotos; los datos de producto son locales.

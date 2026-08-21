@@ -42,8 +42,11 @@ Este ADR fija fronteras, seguridad y privacidad con presupuesto mínimo
 4. El contrato de producto se actualiza **en este mismo cambio** (no en F6):
    consentimiento permanente **opt-in, versionado, registrado y revocable**
    (D18), con cola de subida visible e inspeccionable antes del despacho,
-   historial, pausa que cancela reintentos y envíos en vuelo, y revocación y
-   borrado remoto como acciones separadas.
+   historial, pausa y revocación y borrado remoto como acciones separadas.
+   **Semántica exacta de pausa (sin promesas imposibles):** pausar detiene la
+   cola y cancela reintentos y todo request aún no aceptado por el Worker; un
+   request ya aceptado cuenta como enviado, aparece en el historial y su
+   eliminación se hace por la vía de borrado remoto (§11), no por la pausa.
 5. **El bundle es seudonimizado, no "anónimo".** `CurationBundle v1` se
    define por **allowlist cerrada campo a campo** (`additionalProperties`
    false en todos los niveles): identidad de combinación desde catálogo
@@ -96,7 +99,7 @@ Este ADR fija fronteras, seguridad y privacidad con presupuesto mínimo
     |---|---|---|
     | Cliente → upload | uploadSecret (+ token build) | escribir su objeto |
     | Usuario → delete | deleteSecret | tombstone de lo suyo |
-    | Curador → pull | credencial de lectura | leer bundles y tombstones |
+    | Curador → pull | credencial lectura + delete acotado | leer bundles/tombstones y borrar únicamente objetos de bundle ya procesados o marcados por tombstone |
     | Publicador → GitHub | token limitado al artefacto | publicar catálogo |
     | Operador → storage | credencial admin auditada | mantenimiento |
 
@@ -105,11 +108,14 @@ Este ADR fija fronteras, seguridad y privacidad con presupuesto mínimo
 ### Borrado remoto de ciclo completo
 
 11. El borrado genera una **tombstone autenticada** que el curador consume en
-    su siguiente pull: elimina bundles del storage, copias locales del PC de
-    Isaac e índices; los agregados afectados se recalculan y, si el catálogo
-    publicado dependía de ellos, se republica. Política de backups alineada
-    (sin backups fuera de la retención). El usuario recibe recibo de
-    finalización. Las salidas agregadas irreversibles (cohortes ya
+    su siguiente pull: elimina bundles del storage (con su credencial de
+    delete acotado, §10), copias locales del PC de Isaac, índices, **cachés
+    descargadas y los informes/resúmenes LLM derivados de esos bundles**; los
+    agregados afectados se recalculan y, si el catálogo publicado dependía de
+    ellos, se republica. **SLA:** la tombstone se aplica en el siguiente ciclo
+    del curador y como máximo en 7 días; el recibo de finalización se emite al
+    completarse todo el alcance. Política de backups alineada (sin backups
+    fuera de la retención). Las salidas agregadas irreversibles (cohortes ya
     publicadas que cumplen §6) se declaran antes del consentimiento.
 
 ### Catálogo firmado

@@ -12,6 +12,19 @@
 
 ## Estado
 
+- **OS-QT-03 / GitHub #692 — candidate Qt Redline P0-B cerrado localmente
+  (2026-08-21):** seis diseños y 15 escenas/2.466 records en candidate portable;
+  Qt 6.10.2 x64 Release `/W4 /WX`, CTest 3/3, QtTest y `qmllint` verdes. Replay,
+  manifest, QML y cuatro pesos Barlow/OFL se despliegan junto al ejecutable sin
+  rutas del checkout. Smoke Windows confirma topmost, click-through,
+  no-activate/no-focus y residual cero. La recaptura WGC con el capturador
+  endurecido actual conserva alpha real por frame (1.737.832 transparentes,
+  209.310 parciales, 126.458 opacos; cuatro esquinas alpha 0), queueDrops=0 y
+  target HWND/PID/título exactos. El `0xC0000409` anterior era un harness
+  histórico, no un fallo Qt. P1/OS-QT-04 #693 queda desbloqueado. Rama
+  `vantareapp/isa-692-qt-redline-candidate`, commit de candidate `c43251f2`;
+  sin producto, push, PR, CI remoto, merge, promoción ni release todavía.
+
 - **OS-QT-02 / GitHub #691 — ADR 0009 Accepted y P0-A cerrado (2026-08-20):** la
   excepción Qt se decide antes de crear la ventana ingame Desktop y solo para
   perfiles Redline completos. Studio, Workshop, OBS y fallback Desktop

@@ -1,3 +1,24 @@
+Nota OS-QT-03 / GitHub #692 (2026-08-21, P0-B cerrado localmente):
+- El candidate Qt Quick Redline portable integra los seis diseños oficiales y
+  las 15 escenas/2.466 records materializados desde los ViewModels TS
+  productivos. El loader falla cerrado sobre encoding, inventario, cadencia,
+  secuencias y hashes; el playback no-loop entrega todos los records vencidos.
+- Fresh build autónomo Qt 6.10.2 x64 Release `/W4 /WX`, CTest 3/3, QtTest y
+  `qmllint` pasan. Replay, manifest, cuatro pesos Barlow/OFL y QML quedan junto
+  al ejecutable; el scan del binario no contiene el path del checkout.
+- Smoke físico Windows PASS: topmost, click-through, no-activate/no-focus y
+  residual cero. WGC del binario actual produjo 14 frames BGRA, queueDrops=0,
+  sourceClosed=false y sourceResized=false. Cada frame conserva 1.737.832
+  píxeles alpha 0, 209.310 parciales y 126.458 alpha 255; las cuatro esquinas
+  son alpha 0 y el PNG RGBA reproduce exactamente esos conteos. Manifest
+  SHA-256 `C34E6BC0EF532DA2FA2750527755558BDB7443F3DC34D9F39840564671690D38`;
+  EXE candidate `A9134BEFB138771C896DD6D1594D41607E9E33AD251E3F5A7E98CDAA583447FF`.
+- La incidencia previa `0xC0000409` pertenecía a un capturador histórico; el
+  capturador endurecido actual (SHA `71FC8799ABF79D504A27E8DA5F1564021BF07886CE6CA7C393EC890F227C97C6`)
+  completa el mismo caso. No se modifica producto, Telemetry, Wails,
+  packaging ni settings. P1/#693 queda desbloqueado; sin push, PR, CI remoto,
+  integración, promoción o release en este checkpoint local.
+
 Nota OS-QT-01 / GitHub #690 (2026-08-20, SDD en fase TASKS/IMPLEMENT):
 - SPECIFY y PLAN aprobados explícitamente por Isaac; la primera ola P0/P1 se
   descompone y ejecuta para evaluar una migración gradual y reversible del

@@ -138,14 +138,14 @@ build que descubra una instalación válida sin rutas absolutas compiladas.
 
 **Aceptación:**
 
-- [ ] `.gitignore` excluye todo directorio de build, logs y resultados locales.
-- [ ] El helper configura x64 Release, `/W4 /WX`, CTest y `qmllint`.
-- [ ] Una copia del árbol en otra ruta configura igual.
+- [x] `.gitignore` excluye todo directorio de build, logs y resultados locales.
+- [x] El helper configura x64 Release, `/W4 /WX`, CTest y `qmllint`.
+- [x] Una copia del árbol en otra ruta configura igual.
 
 **Verificación:**
 
-- [ ] `powershell -NoProfile -ExecutionPolicy Bypass -File tools/benchmarks/isa370-overlay-renderers/candidates/qtquick-redline/build-test.ps1 -BuildOnly`.
-- [ ] El binario no contiene el path del checkout.
+- [x] `powershell -NoProfile -ExecutionPolicy Bypass -File tools/benchmarks/isa370-overlay-renderers/candidates/qtquick-redline/build-test.ps1 -BuildOnly`.
+- [x] El binario no contiene el path del checkout.
 
 **Dependencias:** P0-A.
 
@@ -161,15 +161,15 @@ ViewModels completos y un manifest ordenado de 15 escenas.
 
 **Aceptación:**
 
-- [ ] 15 escenas y 2466 records, sequence global 0..2465.
-- [ ] Manifest fija widget, `updateHz`, first/last, count y SHA por slice.
-- [ ] UTF-8 sin BOM, LF, hashes globales y reproducción determinista.
-- [ ] El productor falla si una escena no usa el ViewModel productivo.
+- [x] 15 escenas y 2466 records, sequence global 0..2465.
+- [x] Manifest fija widget, `updateHz`, first/last, count y SHA por slice.
+- [x] UTF-8 sin BOM, LF, hashes globales y reproducción determinista.
+- [x] El productor falla si una escena no usa el ViewModel productivo.
 
 **Verificación:**
 
-- [ ] Test frontend focal del productor y escenas productivas.
-- [ ] Regenerar deja bytes idénticos y árbol limpio.
+- [x] Test frontend focal del productor y escenas productivas.
+- [x] Regenerar deja bytes idénticos y árbol limpio.
 
 **Dependencias:** T04.
 
@@ -183,15 +183,15 @@ ViewModels completos y un manifest ordenado de 15 escenas.
 
 **Aceptación:**
 
-- [ ] Rechaza BOM, CRLF, UTF-8 inválido, inventario duplicado/omitido, sequence
+- [x] Rechaza BOM, CRLF, UTF-8 inválido, inventario duplicado/omitido, sequence
   rota, widget/updateHz/cadencia incorrectos y hash distinto.
-- [ ] Carga las 15 escenas desde assets junto al ejecutable.
-- [ ] No usa rutas de source tree como fallback silencioso.
+- [x] Carga las 15 escenas desde assets junto al ejecutable.
+- [x] No usa rutas de source tree como fallback silencioso.
 
 **Verificación:**
 
-- [ ] QtTest 6.10.2 con positivos 15/15 y todos los negativos.
-- [ ] Ejecución portable desde directorio temporal.
+- [x] QtTest 6.10.2 con positivos 15/15 y todos los negativos.
+- [x] Ejecución portable desde directorio temporal.
 
 **Dependencias:** T05.
 
@@ -206,14 +206,14 @@ si el timer llega tarde, y detenerse al final.
 
 **Aceptación:**
 
-- [ ] Un avance 0→70→150 ms emite todas las secuencias vencidas en orden.
-- [ ] Nunca omite, reordena o repite records.
-- [ ] Lead/tail y fin no-loop son deterministas.
+- [x] Un avance 0→70→150 ms emite todas las secuencias vencidas en orden.
+- [x] Nunca omite, reordena o repite records.
+- [x] Lead/tail y fin no-loop son deterministas.
 
 **Verificación:**
 
-- [ ] QtTest 6.10.2 con reloj controlado e hitch causal.
-- [ ] CTest del candidate verde.
+- [x] QtTest 6.10.2 con reloj controlado e hitch causal.
+- [x] CTest del candidate verde.
 
 **Dependencias:** T06.
 
@@ -227,14 +227,14 @@ si el timer llega tarde, y detenerse al final.
 
 **Aceptación:**
 
-- [ ] Standings/Relative emiten inserts, moves, removes y dataChanged correctos.
-- [ ] Una fila retenida no pierde identidad ni delegate por un cambio de dato.
-- [ ] Los roles coinciden con el replay materializado, sin flags inventados.
+- [x] Standings/Relative emiten inserts, moves, removes y dataChanged correctos.
+- [x] Una fila retenida no pierde identidad ni delegate por un cambio de dato.
+- [x] Los roles coinciden con el replay materializado, sin flags inventados.
 
 **Verificación:**
 
-- [ ] QtTest exacto: insert1/move1/remove1/dataChanged≥1/modelReset0.
-- [ ] Casos intercalados de clase, session-best empatado y gaps null.
+- [x] QtTest exacto: insert1/move1/remove1/dataChanged≥1/modelReset0.
+- [x] Casos intercalados de clase, session-best empatado y gaps null.
 
 **Dependencias:** T06.
 
@@ -248,14 +248,14 @@ si el timer llega tarde, y detenerse al final.
 
 **Aceptación:**
 
-- [ ] Preserva status/statusMessage, referencia Delta, valores de pedales,
+- [x] Preserva status/statusMessage, referencia Delta, valores de pedales,
   colores y brake peak.
-- [ ] Ausencia/null no se coacciona a cero semántico.
-- [ ] Cambios de frame actualizan solo propiedades afectadas.
+- [x] Ausencia/null no se coacciona a cero semántico.
+- [x] Cambios de frame actualizan solo propiedades afectadas.
 
 **Verificación:**
 
-- [ ] QtTest 6.10.2 con ready/stale/error/missing y null.
+- [x] QtTest 6.10.2 con ready/stale/error/missing y null.
 
 **Dependencias:** T06.
 
@@ -271,14 +271,14 @@ y cargar Barlow desde assets aprobados.
 
 **Aceptación:**
 
-- [ ] Shell compila sin abrir HWND en tests headless.
-- [ ] Fuente requerida se carga por ID y falla cerrada si falta.
-- [ ] Assets incluyen OFL, procedencia y hashes; no se copian builds históricos.
+- [x] Shell compila sin abrir HWND en tests headless.
+- [x] Fuente requerida se carga por ID y falla cerrada si falta.
+- [x] Assets incluyen OFL, procedencia y hashes; no se copian builds históricos.
 
 **Verificación:**
 
-- [ ] Tests unitarios/headless de flags y font registry.
-- [ ] Smoke físico serial: alpha/click-through/topmost/no-focus; residual cero.
+- [x] Tests unitarios/headless de flags y font registry.
+- [x] Smoke físico serial: alpha/click-through/topmost/no-focus; residual cero.
 
 **Dependencias:** T04.
 
@@ -294,14 +294,14 @@ widget concreto.
 
 **Aceptación:**
 
-- [ ] Tokens, Panel, Status y Slot reflejan materiales Redline aprobados.
-- [ ] Panel permite variantes compactas sin duplicar el componente.
-- [ ] Fuente/tamaños/letter spacing son explícitos.
+- [x] Tokens, Panel, Status y Slot reflejan materiales Redline aprobados.
+- [x] Panel permite variantes compactas sin duplicar el componente.
+- [x] Fuente/tamaños/letter spacing son explícitos.
 
 **Verificación:**
 
-- [ ] `qmllint --max-warnings 0` Qt 6.10.2.
-- [ ] QQmlEngine instancia los cuatro componentes.
+- [x] `qmllint --max-warnings 0` Qt 6.10.2.
+- [x] QQmlEngine instancia los cuatro componentes.
 
 **Dependencias:** T10.
 
@@ -317,16 +317,16 @@ battle wrapper y estados desde el modelo real.
 
 **Aceptación:**
 
-- [ ] Geometría 420 px y grid/headers/materiales coinciden con TSX/CSS.
-- [ ] Clases intercaladas se agrupan por clase y la clase del player queda al
+- [x] Geometría 420 px y grid/headers/materiales coinciden con TSX/CSS.
+- [x] Clases intercaladas se agrupan por clase y la clase del player queda al
   final.
-- [ ] Empates session-best y tiempos `ss.xxx`/`m:ss.xxx` funcionan.
-- [ ] No existe helper de test que sustituya al adapter/modelo ejecutable.
+- [x] Empates session-best y tiempos `ss.xxx`/`m:ss.xxx` funcionan.
+- [x] No existe helper de test que sustituya al adapter/modelo ejecutable.
 
 **Verificación:**
 
-- [ ] QtTest 6.10.2 contra `StandingsModel` real.
-- [ ] Offscreen fixture de leader/player/PIT/best/battle/final-minutes.
+- [x] QtTest 6.10.2 contra `StandingsModel` real.
+- [x] Offscreen fixture de leader/player/PIT/best/battle/final-minutes.
 
 **Dependencias:** T08, T11.
 
@@ -342,15 +342,15 @@ la asimetría reduced-motion productiva.
 
 **Aceptación:**
 
-- [ ] Duraciones/easings/eventos coinciden con el contrato productivo.
-- [ ] Battle solo RACE; tire exige PIT→out y cambio de compound; crown vuela de
+- [x] Duraciones/easings/eventos coinciden con el contrato productivo.
+- [x] Battle solo RACE; tire exige PIT→out y cambio de compound; crown vuela de
   owner viejo a nuevo.
-- [ ] Reduced motion neutraliza solo lo que neutraliza el producto.
+- [x] Reduced motion neutraliza solo lo que neutraliza el producto.
 
 **Verificación:**
 
-- [ ] QtTest causal prev→next por evento.
-- [ ] `qmllint` y frame grabs de momentos semánticos.
+- [x] QtTest causal prev→next por evento.
+- [x] `qmllint` y frame grabs de momentos semánticos.
 
 **Dependencias:** T12.
 
@@ -366,16 +366,16 @@ compartidos.
 
 **Aceptación:**
 
-- [ ] Ready→ready gatea add/move/remove/cross/ghost.
-- [ ] Player no se vuelve ghost; gaps null permanecen ausentes.
-- [ ] Crossing budget asigna los tres primeros eventos, no las tres primeras
+- [x] Ready→ready gatea add/move/remove/cross/ghost.
+- [x] Player no se vuelve ghost; gaps null permanecen ausentes.
+- [x] Crossing budget asigna los tres primeros eventos, no las tres primeras
   posiciones finales.
-- [ ] Mirror/Proximity/Traffic muestran materiales y estados propios.
+- [x] Mirror/Proximity/Traffic muestran materiales y estados propios.
 
 **Verificación:**
 
-- [ ] QtTest 6.10.2 con `RelativeModel` real y las tres variantes.
-- [ ] Stress de destrucción/creación sin `QObject::doSetProperty` ni HWND.
+- [x] QtTest 6.10.2 con `RelativeModel` real y las tres variantes.
+- [x] Stress de destrucción/creación sin `QObject::doSetProperty` ni HWND.
 
 **Dependencias:** T08, T11.
 
@@ -390,15 +390,15 @@ surfaces/materiales (≤5); tests en commit propio.
 
 **Aceptación:**
 
-- [ ] Geometría interior descuenta border+padding una vez.
-- [ ] Delta fill/cross/best y Pedals scaleY/halo/peak son causales.
-- [ ] Reduced motion detiene y hace snap en el mismo tick.
-- [ ] Status está antes del panel y no es una tarjeta.
+- [x] Geometría interior descuenta border+padding una vez.
+- [x] Delta fill/cross/best y Pedals scaleY/halo/peak son causales.
+- [x] Reduced motion detiene y hace snap en el mismo tick.
+- [x] Status está antes del panel y no es una tarjeta.
 
 **Verificación:**
 
-- [ ] `qmltestrunner` Qt/QTest 6.10.2 y `qmllint` verdes.
-- [ ] Render offscreen 280×96 y 120×160.
+- [x] `qmltestrunner` Qt/QTest 6.10.2 y `qmllint` verdes.
+- [x] Render offscreen 280×96 y 120×160.
 
 **Dependencias:** T09, T11.
 
@@ -414,15 +414,15 @@ los componentes finales, no placeholders.
 
 **Aceptación:**
 
-- [ ] Main puede seleccionar/reproducir cualquiera de las 15 escenas.
-- [ ] CMake empaqueta replay, manifest, fuente y QML junto a ambos ejecutables.
-- [ ] Cero QML final queda sin caller o solo cubierto por regex.
+- [x] Main puede seleccionar/reproducir cualquiera de las 15 escenas.
+- [x] CMake empaqueta replay, manifest, fuente y QML junto a ambos ejecutables.
+- [x] Cero QML final queda sin caller o solo cubierto por regex.
 
 **Verificación:**
 
-- [ ] Fresh `build-test.ps1`: Release `/W4 /WX`, CTest, QtTest y qmllint.
-- [ ] Ejecutable portable carga 15/15 escenas.
-- [ ] Scan binario: cero paths absolutos de checkout.
+- [x] Fresh `build-test.ps1`: Release `/W4 /WX`, CTest, QtTest y qmllint.
+- [x] Ejecutable portable carga 15/15 escenas.
+- [x] Scan binario: cero paths absolutos de checkout.
 
 **Dependencias:** T07–T15.
 
@@ -433,11 +433,11 @@ helper build.
 
 ## Checkpoint P0-B
 
-- [ ] Seis diseños y 15 escenas en candidate portable.
-- [ ] Qt 6.10.2 exacto, fresh build y tests verdes.
-- [ ] Alpha/click-through/topmost/no-focus físicos PASS.
-- [ ] Corpus/manifest/fuente/binario custodiados.
-- [ ] Ningún archivo de producto o packaging modificado.
+- [x] Seis diseños y 15 escenas en candidate portable.
+- [x] Qt 6.10.2 exacto, fresh build y tests verdes.
+- [x] Alpha/click-through/topmost/no-focus físicos PASS.
+- [x] Corpus/manifest/fuente/binario custodiados.
+- [x] Ningún archivo de producto o packaging modificado.
 
 ## 5. P1 — Gate fail-fast de Standings
 

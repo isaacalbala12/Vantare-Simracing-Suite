@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/radio"
@@ -83,13 +84,16 @@ func (s *EngineerService) SetOutputMode(familyValue, modeValue string) error {
 		if s.scheduler != nil {
 			s.scheduler.CancelFamily(family, messagepolicy.ReasonDecisionNotApproved)
 		}
+		s.queue.ClearCategory(audio.Category(family))
 	}
 	if (mode == OutputDisabled || (outputHasAudio(previous) && !outputHasAudio(mode))) &&
 		s.activeDelivery != nil && s.activeDelivery.family() == family {
 		s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
 	}
 	if family == messagepolicy.FamilySpotter && mode == OutputDisabled {
-		s.resetRadioLocked(radio.ErrLifecycleBoundary)
+		s.resetSpotterRadioLocked(radio.ErrLifecycleBoundary)
+	} else if mode == OutputDisabled {
+		s.resetFamilyRadioLocked(family, radio.ErrLifecycleBoundary)
 	}
 	if outputHasVisual(previous) && !outputHasVisual(mode) &&
 		s.activePresentation != nil && s.activePresentation.Category == string(family) {

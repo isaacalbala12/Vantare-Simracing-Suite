@@ -236,6 +236,7 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 
 	vehicles := make([]telemetrycore.VehicleState, len(observation.Vehicles))
 	var observedPlayer identity.VehicleID
+	var observedDriver identity.DriverID
 	for index, source := range observation.Vehicles {
 		fingerprint := slotFingerprint(source)
 		outcome := state.slots.Observe(source.SourceID, fingerprint, state.frame)
@@ -249,6 +250,7 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 		vehicles[index] = mapVehicle(source, mappedVehicleID, state.sessionID)
 		if playerSlot != nil && source.SourceID == *playerSlot {
 			observedPlayer = mappedVehicleID
+			observedDriver = vehicles[index].Identity.Driver
 		}
 	}
 
@@ -269,7 +271,7 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 		state.hasFresh = true
 	}
 
-	headerIdentity := identity.RunIdentity{Event: batchEventID, Session: state.sessionID, Vehicle: state.playerID}
+	headerIdentity := identity.RunIdentity{Event: batchEventID, Session: state.sessionID, Vehicle: state.playerID, Driver: observedDriver}
 	return telemetrycore.Batch{
 		Header: envelope.Header{
 			Source:   batchSource,

@@ -15,6 +15,12 @@ const (
 	IntentThreeWide  = "spotter.three_wide"
 )
 
+// Intents returns the closed Spotter producer surface used for selective bus
+// cancellation. The returned slice is owned by the caller.
+func Intents() []string {
+	return []string{IntentCarLeft, IntentCarRight, IntentStillThere, IntentClearLeft, IntentClearRight, IntentAllClear, IntentThreeWide}
+}
+
 var catalog = map[string]map[radio.Locale]radio.Phrase{
 	IntentCarLeft:    phrases("Coche a la izquierda", "Car left", "Auto a sinistra", "Carro à esquerda"),
 	IntentCarRight:   phrases("Coche a la derecha", "Car right", "Auto a destra", "Carro à direita"),

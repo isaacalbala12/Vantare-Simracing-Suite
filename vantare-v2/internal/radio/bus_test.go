@@ -317,6 +317,71 @@ func TestResetClearsPendingCooldownAndCancelsActive(t *testing.T) {
 	}
 }
 
+func TestResetIntentsPreservesUnrelatedActivePendingAndCooldown(t *testing.T) {
+	limits := DefaultLimits()
+	limits.Cooldowns = map[string]time.Duration{"laps.lap_completed": time.Second, "fuel.low_1l": time.Second}
+	clock := newFakeClock(100)
+	bus := newTestBus(t, limits, clock)
+	_, _ = bus.Submit(testMessage("fuel-active", "fuel.low_1l", "player", PriorityP2, 100))
+	active, _ := bus.Next(context.Background())
+	active.Started()
+	_, _ = bus.Submit(testMessage("laps-pending", "laps.lap_completed", "player", PriorityP3, 101))
+	bus.ResetIntents(ErrLifecycleBoundary, "laps.lap_completed")
+	if cause := context.Cause(active.Context); cause != nil {
+		t.Fatalf("unrelated active family was cancelled: %v", cause)
+	}
+	active.Done()
+	if next, ok := bus.Next(context.Background()); ok || next != nil {
+		t.Fatalf("selected producer pending survived reset: %+v", next)
+	}
+	retry := testMessage("fuel-retry", "fuel.low_1l", "player", PriorityP2, 102)
+	if result, err := bus.Submit(retry); err != nil || result.Accepted {
+		t.Fatalf("unrelated family cooldown was cleared: %+v, %v", result, err)
+	}
+}
+
+func TestResetIntentsPreservesMatchingActiveAfterStarted(t *testing.T) {
+	limits := DefaultLimits()
+	limits.Cooldowns = map[string]time.Duration{"fuel.low_1l": time.Second}
+	clock := newFakeClock(100)
+	bus := newTestBus(t, limits, clock)
+	_, _ = bus.Submit(testMessage("active", "fuel.low_1l", "player", PriorityP2, 100))
+	active, ok := bus.Next(context.Background())
+	if !ok {
+		t.Fatal("missing active fuel delivery")
+	}
+	active.Started()
+	bus.ResetIntents(ErrPolicyRejected, "fuel.low_1l")
+	if cause := context.Cause(active.Context); cause != nil {
+		t.Fatalf("matching active was cancelled after started: %v", cause)
+	}
+	active.Done()
+	retry := testMessage("retry", "fuel.low_1l", "player", PriorityP2, 101)
+	if result, err := bus.Submit(retry); err != nil || !result.Accepted {
+		t.Fatalf("semantic reset did not clear matching cooldown: %+v, %v", result, err)
+	}
+}
+
+func TestStartedACKRemovesDuplicateQueuedBeforeOneShotCommit(t *testing.T) {
+	clock := newFakeClock(100)
+	bus := newTestBus(t, DefaultLimits(), clock)
+	first := testMessage("first", "fuel.low_1l", "player", PriorityP2, 100)
+	_, _ = bus.Submit(first)
+	active, ok := bus.Next(context.Background())
+	if !ok {
+		t.Fatal("first one-shot was not selected")
+	}
+	retry := testMessage("retry", "fuel.low_1l", "player", PriorityP2, 101)
+	if result, err := bus.Submit(retry); err != nil || !result.Accepted {
+		t.Fatalf("pre-ACK retry submit = %+v, %v", result, err)
+	}
+	active.Started()
+	active.Done()
+	if next, ok := bus.Next(context.Background()); ok || next != nil {
+		t.Fatalf("duplicate queued before ACK survived commit: %+v", next)
+	}
+}
+
 func TestConcurrentSubmissionsRemainBounded(t *testing.T) {
 	limits := DefaultLimits()
 	limits.MaxPending = 8

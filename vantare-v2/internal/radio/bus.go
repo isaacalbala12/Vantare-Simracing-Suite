@@ -56,16 +56,17 @@ func (item *Item) Started() {
 
 // Bus is a bounded deterministic scheduler safe for concurrent submissions.
 type Bus struct {
-	mu          sync.Mutex
-	limits      Limits
-	clock       Clock
-	pending     []queued
-	cooldowns   map[string]int64
-	seq         uint64
-	priorityRun int
-	activeSeq   uint64
-	active      RadioMessage
-	cancel      context.CancelCauseFunc
+	mu            sync.Mutex
+	limits        Limits
+	clock         Clock
+	pending       []queued
+	cooldowns     map[string]int64
+	seq           uint64
+	priorityRun   int
+	activeSeq     uint64
+	active        RadioMessage
+	activeStarted bool
+	cancel        context.CancelCauseFunc
 }
 
 // NewBus creates an empty bus. Nil clock selects the system clock.
@@ -174,10 +175,11 @@ func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 	ctx, cancel := context.WithCancelCause(parent)
 	bus.activeSeq = selected.seq
 	bus.active = selected.message
+	bus.activeStarted = false
 	bus.cancel = cancel
 	var once, startOnce sync.Once
 	item := &Item{Message: selected.message, Context: ctx}
-	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.message.Intent) }) }
+	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.seq, selected.message) }) }
 	item.done = func() { once.Do(func() { bus.finish(selected.seq) }) }
 	return item, true
 }
@@ -192,10 +194,22 @@ func (bus *Bus) dropExpired(now int64) {
 	}
 }
 
-func (bus *Bus) markStarted(intent string) {
+func (bus *Bus) markStarted(seq uint64, message RadioMessage) {
 	bus.mu.Lock()
 	defer bus.mu.Unlock()
-	bus.cooldowns[intent] = bus.clock.NowMS()
+	if bus.activeSeq == seq {
+		bus.activeStarted = true
+	}
+	bus.cooldowns[message.Intent] = bus.clock.NowMS()
+	for index := 0; index < len(bus.pending); {
+		pending := bus.pending[index].message
+		if dedupKey(pending) == dedupKey(message) &&
+			(message.Priority != PriorityP0 && (pending.CoalesceRevision == 0 || pending.CoalesceRevision <= message.CoalesceRevision)) {
+			bus.remove(index)
+			continue
+		}
+		index++
+	}
 }
 
 func (bus *Bus) finish(seq uint64) {
@@ -205,6 +219,7 @@ func (bus *Bus) finish(seq uint64) {
 		bus.cancel = nil
 		bus.active = RadioMessage{}
 		bus.activeSeq = 0
+		bus.activeStarted = false
 	}
 }
 
@@ -218,6 +233,39 @@ func (bus *Bus) Reset(cause error) {
 	bus.priorityRun = 0
 	if bus.cancel != nil {
 		bus.cancel(cause)
+	}
+}
+
+// ResetIntents invalidates only work owned by the supplied closed intent set.
+// It is used by producer/family toggles and capability loss so unrelated
+// radio work and cooldowns survive.
+func (bus *Bus) ResetIntents(cause error, intents ...string) {
+	if len(intents) == 0 {
+		return
+	}
+	set := make(map[string]struct{}, len(intents))
+	for _, intent := range intents {
+		if intent != "" {
+			set[intent] = struct{}{}
+		}
+	}
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+	for index := 0; index < len(bus.pending); {
+		if _, reset := set[bus.pending[index].message.Intent]; reset {
+			bus.remove(index)
+			continue
+		}
+		index++
+	}
+	for intent := range set {
+		delete(bus.cooldowns, intent)
+	}
+	bus.priorityRun = 0
+	if bus.cancel != nil && !bus.activeStarted {
+		if _, reset := set[bus.active.Intent]; reset {
+			bus.cancel(cause)
+		}
 	}
 }
 

@@ -60,6 +60,9 @@ type RadioMessage struct {
 	// alter radio.v1 JSON or the Wails/SSE presentation contract.
 	CoalesceRevision uint64        `json:"-"`
 	CoalesceValue    CoalesceValue `json:"-"`
+	// ProducerRevision binds a pre-started message to the producer evidence
+	// cycle that created it. It prevents a late ACK from mutating newer state.
+	ProducerRevision uint64 `json:"-"`
 }
 
 // Limits bounds memory, identity and fairness state owned by a Bus.

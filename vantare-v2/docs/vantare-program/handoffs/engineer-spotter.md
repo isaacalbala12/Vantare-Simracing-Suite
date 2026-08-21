@@ -21,6 +21,16 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-718 / F4 implementa el motor declarativo de familias sobre `radio.v1` para
+fuel (8 intents), penalties, laps, timings y pitstops (13 intents totales). Las
+cinco familias comparten una tabla de prioridad/cooldown/TTL/subject y catálogo
+en cuatro locales, conservan estado mínimo propio y se resetean fail-closed con
+el bus. El camino normal ya no recorre los cinco monitores legacy;
+`-engineer-legacy-families` los restaura de forma exclusiva y pre-Start. El
+stack viejo no se borra: su retirada espera el gate LMU humano de Isaac. Health
+expone solo `activeFamilies` (5 nuevo, 0 rollback). Evidencia y mapeo de paridad:
+`docs/engineer/families-radio-isa-718.md`.
+
 ISA-717 / F3 conecta el primer productor productivo a `radio.v1`: Spotter
 consume la observación canónica del puerto asíncrono F7, comparte player
 cancelable, audio cache-only y el contrato visual existente. La geometría vive
@@ -93,11 +103,12 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa: `vantareapp/isa-717-spotter-unificado`.
-- Base inicial: `origin/nightly@df6ef2e14c861bae2f153b452df3b9b2b8e785b4`.
-- Entrega: F3 #717 implementada en commits atómicos; documentación de diseño y
-  gate en `docs/engineer/spotter-radio-isa-717.md`. PR draft #733 abierto a
-  `nightly`, sin integración.
+- Rama activa: `vantareapp/isa-718-motor-familias`.
+- Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
+- Entrega: F4 #718 y su corrección adversarial `86c3105a` + `138c9d9e` están
+  en la rama aislada; PR draft #739 abierto a `nightly`, sin integración. Los
+  dos jobs requeridos del run remoto `32503134920` pasan. F3 permanece en PR
+  draft #733.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -316,6 +327,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
 | En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
@@ -342,13 +354,60 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar de nuevo el PR draft #733 de ISA-717 sin promoverlo y ejecutar el gate humano descrito
-en `docs/engineer/spotter-radio-isa-717.md`: LMU real, tráfico left/right/
-three-wide/clears, preempción, lifecycle y `radioDelivery.p95MS < 150`. Hasta
-esa evidencia no se declara validación LMU ni se integra en `nightly`. F4 puede
-retirar más stack viejo solo mediante su propia issue.
+Revisar de nuevo la corrección adversarial de ISA-718 y ejecutar el gate LMU descrito en
+`docs/engineer/families-radio-isa-718.md`, además del gate Spotter de ISA-717.
+Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
+integración en `nightly` o promoción.
 
 ## Última actualización
+
+2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
+el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia
+pendientes/cooldowns pero no cancela una activa que ya recibió `started`, por
+lo que UI/audio completan; `Bus.Reset` global sigue cancelando todo. La
+regresión integrada fuerza `started → repostaje → finalización de UI/audio →
+nuevo aviso real`, y el test focal del bus fija la frontera. Vet, focal, race
+focal, repetición x20 y suite Go global pasan localmente. El run remoto
+`32514739803` pasa `Validate promotion path` y `Validate Vantare blocking
+gates` sobre `f6bcac12`. Pendientes: re-review y gate LMU humano; sin merge ni
+promoción.
+
+2026-08-21, ronda final del re-review de ISA-718 / PR #739: P1-A y P1-B se
+corrigen en `39e84316`. Los intents fuel dependientes de capacity requieren
+capacity fresca y positiva; su pérdida cancela en el bus únicamente esos
+intents. Repostaje y retirada de sanción devuelven `ResetIntents` antes de que
+un aviso obsoleto alcance `started`. Cada mensaje lleva una revisión interna
+de evidencia, por lo que un ACK anterior no muta el estado actual. Cuatro
+regresiones atraviesan servicio, bus y delivery con cancelación/reentrega real;
+una quinta fuerza el ACK tardío. Vet, focal, race focal, repeticiones y suite Go
+global pasan localmente. El run remoto `32508779364` pasa `Validate promotion
+path` y `Validate Vantare blocking gates` sobre `d3ebbf78`. Pendientes:
+re-review y gate LMU humano; sin merge ni promoción.
+
+2026-08-21, corrección del review adversarial de ISA-718 / PR #739: los cuatro
+P1 y cuatro P2 quedan cubiertos por regresiones RED→GREEN. Las cinco familias
+exigen capabilities y campos frescos, comparten la identidad completa de
+Spotter, resetean solo sus intents al perder evidencia y confirman one-shots o
+cursores únicamente con ACK `started`. Los toggles de Spotter ya no cancelan
+familias nuevas ni apagan el rollback legacy; la matriz 2×2 demuestra entrega
+real y exclusiva. Pit entry/exit vuelve a P3 Information, timings deja el
+cooldown al bus y fuel exige capacity positiva para autonomía. El mapper LMU
+propaga el driver observado al header. Commits `86c3105a` y `138c9d9e`;
+focal, vet, race focal, repetición de regresiones y suite Go global pasan
+localmente. El run remoto `32503134920` pasa `Validate promotion path` y
+`Validate Vantare blocking gates` sobre `138c9d9e`. Pendientes: re-review y
+gate LMU humano; sin merge ni promoción.
+
+2026-08-21, ISA-718 / F4 implementa cinco familias declarativas sobre el radio
+bus con 13 intents, textos exactos del catálogo, prioridades P2/P3, cooldowns,
+TTLs, reset de lifecycle y health sanitizado. El cutover retira las cinco
+familias de la ruta legacy por defecto, pero conserva físicamente sus paquetes
+y ofrece `-engineer-legacy-families` como rollback exclusivo pre-Start. Las
+regresiones focales, vet, build frontend, race focal y suite Go global pasan.
+Commits de implementación `5481aca5`, `17be1248`, `712e6944`; PR draft #739
+abierto y push verificado. En el HEAD `fee46734`, `Validate promotion path`,
+`Validate Vantare blocking gates` y GitGuardian quedaron verdes (run
+32496181832). Solo sigue pendiente el gate LMU humano; sin merge ni promoción.
 
 2026-08-21, ronda final del re-review ISA-717 / PR #733: `SetLocale` pre-Start
 rederiva `AudioConfig` y actualiza el router ya instalado, por lo que audio y

@@ -1126,6 +1126,7 @@ func main() {
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
 	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
+	legacyEngineerFamilies := flag.Bool("engineer-legacy-families", false, "rollback to the five legacy Engineer family monitors instead of radio.v1")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
@@ -1742,6 +1743,9 @@ func main() {
 	engSvc = engineerservice.NewEngineerService(emitter)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
+	}
+	if err := engSvc.SetLegacyFamiliesRollback(*legacyEngineerFamilies); err != nil {
+		log.Printf("engineer legacy families rollback configuration error: %v", err)
 	}
 	engineerAudioConfig, audioConfigErr := engineerAudioConfigFor(engSvc)
 	engSvc.SetAudioPlayer(engineeraudio.NewPlayer())

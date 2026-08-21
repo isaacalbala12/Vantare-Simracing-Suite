@@ -26,10 +26,12 @@ consume la observación canónica del puerto asíncrono F7, comparte player
 cancelable, audio cache-only y el contrato visual existente. La geometría vive
 solo en `internal/spotter/geometry` y sirve también al frame v2 y al wrapper
 legacy. Los siete intents están registrados en cuatro locales. La policy nueva
-conserva supersession, clears ligados al ACK `started`, `still_there` sin
-renovar contexto y reset por lifecycle. El Spotter antiguo está fuera de
+conserva supersession sin degradaciones, revalidación antes de `started`, clears
+ligados al ACK `started` y a su deadline antecedente, `still_there` sin renovar
+contexto y reset fail-closed por identidad, capacidad y lifecycle. El locale de
+audio se deriva del de presentación. El Spotter antiguo está fuera de
 `approvedProjectionFamilies`; `-engineer-legacy-spotter` lo restaura de forma
-exclusiva. Benchmark Go: 12.076-12.368 ns/op hasta `PlayContext`; el gate LMU/Wails
+exclusiva. Benchmark Go corregido: 11.583-12.591 ns/op hasta `PlayContext`; el gate LMU/Wails
 real p95 <150 ms sigue pendiente de Isaac.
 
 ISA-123 completó la investigación primaria y una auditoría read-only del
@@ -340,13 +342,26 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar el PR draft #733 de ISA-717 sin promoverlo y ejecutar el gate humano descrito
+Revisar de nuevo el PR draft #733 de ISA-717 sin promoverlo y ejecutar el gate humano descrito
 en `docs/engineer/spotter-radio-isa-717.md`: LMU real, tráfico left/right/
 three-wide/clears, preempción, lifecycle y `radioDelivery.p95MS < 150`. Hasta
 esa evidencia no se declara validación LMU ni se integra en `nightly`. F4 puede
 retirar más stack viejo solo mediante su propia issue.
 
 ## Última actualización
+
+2026-08-21, corrección del re-review adversarial de ISA-717 / PR #733: los
+cuatro P1 y tres P2 tienen regresiones RED→GREEN en el camino nuevo. El ACK
+`started` puede rechazar una decisión obsoleta después de resolver caché; la
+cola usa valor semántico tipado y no degrada `three_wide`; los clears heredan y
+revalidan el deadline del antecedente; identidad inválida o pérdida espacial
+resetea policy y radio bus. Las métricas publican `samples/p95MS/maximumMS` y
+el audio deriva su locale de presentación. La matriz migrada cubre
+supersession, clears, expiración, cancelación, capacidades 1/4/64 y orden
+determinista. `gofmt`, vet focal, focal normal y `-race`, overlay v2, build
+`internal/...`, suite Go global y `git diff --check` pasan localmente. Benchmark
+observación→`PlayContext`: 11.583-12.591 ns/op, 1.870 B/op, 24 allocs/op. Quedan
+pendientes el re-review remoto y el gate LMU humano; sin merge ni promoción.
 
 2026-08-21, ISA-717 / F3 unifica la geometría, registra los siete intents
 Spotter `es/en/it/pt-BR` y conecta un productor P0 a `EngineerService` sobre la

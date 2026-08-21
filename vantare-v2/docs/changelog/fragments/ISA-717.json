@@ -6,6 +6,8 @@
   "technicalNotes": [
     "Los siete avisos Spotter conservan sus textos en español, inglés, italiano y portugués brasileño.",
     "Coche a izquierda/derecha, tres en paralelo, sigue ahí y clears conservan contexto ligado al inicio real del audio.",
+    "Las decisiones se revalidan tras resolver el clip y los clears heredan el límite temporal de su aviso antecedente.",
+    "La cola impide degradar avisos específicos y se vacía ante identidad inválida o pérdida de capacidad espacial.",
     "El evento visual mantiene engineer:notification, engineer:stream y SSE; el audio sigue siendo cache-only y cancelable.",
     "El flag -engineer-legacy-spotter restaura de forma exclusiva el camino anterior durante un ciclo de rollback."
   ],

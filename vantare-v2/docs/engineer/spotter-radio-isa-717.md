@@ -15,16 +15,21 @@ Base: `origin/nightly@df6ef2e14c861bae2f153b452df3b9b2b8e785b4`.
 - Los siete intents del catálogo se registran en el resolver de `internal/radio`
   con los textos exactos `es`, `en`, `it` y `pt-BR`. Todos son P0, tienen TTL de
   tres segundos y comparten el sujeto `player`.
-- La policy conserva la matriz `all-clear/left/right/three-wide`, debounce de
-  350 ms, clear diferido 150 ms y `still_there` a 3 s. Un estado P0 pendiente
-  menos específico se sustituye por el estado actual. Un clear contextual solo
-  puede apoyarse en un antecedente cuyo ACK `started` haya llegado; seleccionar
-  o encolar no comunica. `still_there` no renueva ese contexto. Source, epoch,
-  sesión, disable y stop borran estado, cola y cooldowns.
+- La policy conserva la matriz tipada `all-clear/left/right/three-wide`, debounce
+  de 350 ms, clear diferido 150 ms y `still_there` a 3 s. La cola admite una
+  mejora semántica, pero nunca degrada un aviso específico pendiente con el
+  mismo contexto. Un clear solo puede apoyarse en un antecedente cuyo ACK
+  `started` haya llegado y hereda su deadline; seleccionar o encolar no
+  comunica. `still_there` no renueva ese contexto. La decisión se revalida
+  semántica y temporalmente después de resolver caché y antes de publicar
+  `started`. Identidad inválida, pérdida de capacidad espacial, source, epoch,
+  sesión, disable y stop borran policy, cola, sesión activa y cooldowns.
 - La entrega usa el mismo slot activo de `EngineerService`, el player cancelable
   y el router cache-only. El adaptador Go vuelve a publicar
   `EngineerNotification`, por lo que se conservan `engineer:notification`,
-  `engineer:stream` y `/engineer/stream` sin cambios frontend.
+  `engineer:stream` y `/engineer/stream` sin cambios frontend. El locale de
+  audio se deriva del locale de presentación y las métricas health conservan
+  las claves JSON documentadas `samples`, `p95MS` y `maximumMS`.
 
 ## Desconexión legacy y rollback
 
@@ -59,9 +64,9 @@ Resultado local, Windows amd64, AMD Ryzen 7 3700X:
 
 | repetición | ns/op | B/op | allocs/op |
 | ---: | ---: | ---: | ---: |
-| 1 | 12.076 | 1.837 | 26 |
-| 2 | 12.265 | 1.837 | 26 |
-| 3 | 12.368 | 1.837 | 26 |
+| 1 | 12.591 | 1.870 | 24 |
+| 2 | 11.718 | 1.870 | 24 |
+| 3 | 11.583 | 1.870 | 24 |
 
 Esto demuestra el carril Go sintético, no el p95 del binario Wails, el driver
 de audio real ni una sesión LMU.
@@ -71,9 +76,13 @@ de audio real ni una sesión LMU.
 - `gofmt` sobre los archivos Go modificados: limpio.
 - `go vet ./internal/radio/... ./internal/spotter/... ./internal/engineer/... ./cmd/vantare`: PASS.
 - `go test ./internal/radio/... ./internal/spotter/... ./internal/engineer/... -count=1`: PASS.
+- `go test -race ./internal/radio/... ./internal/spotter/... ./internal/engineer/service ./internal/engineer/audio -count=1`: PASS.
 - `go test ./internal/telemetry/projection/overlayv2 -count=1`: PASS.
 - `go build ./internal/...`: PASS.
 - `go test ./... -count=1`: PASS.
+- Matriz nueva del camino productor/bus: supersession y degradaciones,
+  clears absent/pending/started, expiración, revalidación tardía, identidad,
+  capacidades 1/4/64 y determinismo: PASS.
 - Digest del roadmap reproducible y fragmento `ISA-717.json` válido contra su
   schema. Se generó `frontend/dist` desde el lockfile existente solo como
   precondición local de `go:embed`; no hay cambios frontend versionados.

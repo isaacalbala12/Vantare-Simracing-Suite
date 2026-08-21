@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T10:32:43Z",
+  "generatedAt": "2026-08-21T10:42:41Z",
   "digest": {
-    "lastCommit": "508c355916b5fef21845da7c35e719b754f5ca29"
+    "lastCommit": "b774f693921f4d9fcfa31c820c03b17770917e9c"
   },
   "phases": [
     {
@@ -630,6 +630,11 @@
           "kind": "change",
           "scope": "",
           "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Endurece TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles contra flaky de handles bajo carga"
         }
       ]
     },

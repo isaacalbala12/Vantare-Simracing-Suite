@@ -1,14 +1,16 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$InputDirectory,
+    [Parameter(Mandatory)][string[]]$InputDirectory,
     [Parameter(Mandatory)][string]$OutputPath,
     [ValidateRange(1, 100)][int]$ExpectedRepetitions = 10
 )
 
 $ErrorActionPreference = 'Stop'
-$inputRoot = [IO.Path]::GetFullPath($InputDirectory)
+$inputRoots = @($InputDirectory | ForEach-Object { [IO.Path]::GetFullPath($_) })
 $output = [IO.Path]::GetFullPath($OutputPath)
-if (-not (Test-Path -LiteralPath $inputRoot -PathType Container)) { throw "input directory is absent: $inputRoot" }
+foreach ($inputRoot in $inputRoots) {
+    if (-not (Test-Path -LiteralPath $inputRoot -PathType Container)) { throw "input directory is absent: $inputRoot" }
+}
 if (Test-Path -LiteralPath $output) { throw "output already exists: $output" }
 if (-not (Test-Path -LiteralPath (Split-Path -Parent $output) -PathType Container)) { throw 'output parent is absent' }
 
@@ -39,7 +41,7 @@ function Get-Metrics([double[]]$Values) {
     }
 }
 
-$traceFiles = @(Get-ChildItem -LiteralPath $inputRoot -File -Filter '*.trace.json' | Sort-Object Name)
+$traceFiles = @($inputRoots | ForEach-Object { Get-ChildItem -LiteralPath $_ -File -Filter '*.trace.json' } | Sort-Object Name)
 if ($traceFiles.Count -eq 0) { throw 'no raw traces found' }
 $runs = @()
 foreach ($file in $traceFiles) {

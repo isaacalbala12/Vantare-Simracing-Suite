@@ -5,9 +5,10 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 ## Lectura rapida
 
 - `../AGENTS.md`: reglas obligatorias para cualquier agente.
-- `current-plan.md`: estado actual, alcance vivo y proximas tareas.
-- `master-feature-plan.md`: plan maestro de features y orden de desarrollo.
-- `roadmap-execution-board.md`: tablero ejecutable/orquestable de minifases y workers.
+- `roadmap/plan.md`: fuente publica de fases, areas, hitos y entregas del roadmap.
+- `master-feature-plan.md`: mapa de producto y contexto historico.
+- `current-plan.md`: registro historico de ejecucion; no es fuente de planificacion.
+- `roadmap-execution-board.md`: tablero historico; no es fuente operativa actual.
 - `versioning-and-release-gates.md`: versionado `X.X.X.X` y gates de salida por fase.
 - `feature-architecture-map.md`: limites de arquitectura por feature.
 - `product-decisions.md`: decisiones cerradas y pendientes.
@@ -19,7 +20,7 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 - `manual-verification.md`: pasos manuales para validar sin leer codigo.
 - `widget-preview-bug-log.md`: bugs, causas raiz y reglas para no romper la preview aislada de WidgetStudio.
 - `resolved-bugs.md`: indice de bugs importantes ya solucionados y reglas para no reabrirlos.
-- `alpha-beta-roadmap.md`: resumen de estrategia alpha/beta; la fuente operativa es `master-feature-plan.md`.
+- `alpha-beta-roadmap.md`: resumen historico de estrategia alpha/beta.
 - `agent-workflow.md`: flujo orquestador -> worker -> reviewer.
 - `operations.md`: comandos basicos del repo.
 - `go-review-checklist.md`: checklist para revisar Go.
@@ -29,7 +30,7 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 Antes de programar, leer siempre:
 
 1. `../AGENTS.md`
-2. `current-plan.md`
+2. `roadmap/plan.md`
 3. Documento especifico de la tarea
 4. Tests relacionados
 
@@ -41,7 +42,7 @@ Si cambia comportamiento, leer `testing-strategy.md` y `manual-verification.md`.
 Leer:
 
 1. `../AGENTS.md`
-2. `current-plan.md`
+2. `roadmap/plan.md`
 3. `agent-workflow.md`
 4. Diff del worker
 5. Tests y comandos ejecutados por el worker
@@ -68,4 +69,4 @@ El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, e
 
 ## Estado de roadmap
 
-La documentacion viva actual deja constancia de que Fase A, Fase A2, Fase B de preview/widgets, la restauracion de controles live, `Standings` configurable y el rework visual acotado de `WidgetStudio` estan implementados. La estabilizacion de la preview aislada queda documentada en `widget-preview-bug-log.md` y los bugs cerrados en `resolved-bugs.md`. El plan maestro operativo vive en `master-feature-plan.md`; `alpha-beta-roadmap.md` queda como resumen de estrategia.
+La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de una issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` mantiene la ejecucion especifica del release.

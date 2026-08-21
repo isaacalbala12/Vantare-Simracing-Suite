@@ -5,9 +5,9 @@ Fuente de verdad operativa para llevar Vantare Simracing Suite desde la beta pub
 Este indice consolida:
 
 - las decisiones cerradas en el chat de orquestacion;
-- `docs/current-plan.md`;
+- `docs/roadmap/plan.md`;
 - `docs/master-feature-plan.md`;
-- `docs/roadmap-execution-board.md`;
+- `docs/roadmap-maintenance.md`;
 - `Roadmap - Vantare Overlays.md`;
 - `Roadmap Dia a Dia - Vantare Overlays.md`;
 - `Features por desarrollar.md`.
@@ -212,9 +212,9 @@ Actua como worker senior de Vantare Simracing Suite.
 
 Lee obligatoriamente:
 - AGENTS.md
-- docs/current-plan.md
+- docs/roadmap/plan.md
 - docs/release-roadmap-execution-index.md
-- docs/roadmap-execution-board.md
+- la issue de GitHub asignada
 - docs/feature-architecture-map.md
 - el plan release-* asignado
 
@@ -242,9 +242,9 @@ Review only. No edites codigo.
 
 Lee:
 - AGENTS.md
-- docs/current-plan.md
+- docs/roadmap/plan.md
 - docs/release-roadmap-execution-index.md
-- docs/roadmap-execution-board.md
+- la issue de GitHub asignada
 - plan release-* correspondiente
 - diff del worker
 - reporte del worker

@@ -38,7 +38,7 @@ configuración propietaria. Assets y sound packs se licencian por separado.
 - HTML interactivo;
 - plan por microcortes;
 - handoff vivo;
-- backlog Linear.
+- backlog de GitHub Issues.
 
 Conclusiones funcionales similares son legítimas cuando el problema y las
 matemáticas coinciden. Código, contratos, UI, textos, audio y assets son propios.

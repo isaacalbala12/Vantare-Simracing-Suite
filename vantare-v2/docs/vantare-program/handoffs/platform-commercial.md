@@ -20,9 +20,9 @@
 
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `execution-policy.md`.
-- Billing: proyecto Linear, `docs/licensing-auth-architecture.md` y auditoría
+- Billing: issue/proyecto de GitHub, `docs/licensing-auth-architecture.md` y auditoría
   Polar/Supabase vigente.
-- Roadmap/Discord: `docs/discord-communications.md` y workflows actuales.
+- Roadmap publico: `docs/roadmap/plan.md`; Discord: `docs/discord-communications.md` y workflows actuales.
 - Root: informe ISA-14 y su matriz de worktrees/rutas.
 - La issue activa y su plan prevalecen sobre releases históricas.
 

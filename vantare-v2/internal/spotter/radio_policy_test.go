@@ -386,11 +386,25 @@ func TestSpotterClearContextExpiryIsRevalidatedBeforeDispatch(t *testing.T) {
 }
 
 func TestSpotterRejectsInvalidCanonicalIdentity(t *testing.T) {
-	_, producer, _ := newSpotterHarness(t, 4)
-	observation := benchmarkObservation(t, 2.8)
-	observation.Context = engineer.Context{}
-	message, emit, err := producer.Evaluate(observation)
-	if !errors.Is(err, ErrObservationNotReady) || emit || message.ID != "" {
-		t.Fatalf("invalid identity = %+v/%t/%v", message, emit, err)
+	t.Parallel()
+	tests := map[string]func(*engineer.Context){
+		"epoch":   func(context *engineer.Context) { context.Epoch = 0 },
+		"event":   func(context *engineer.Context) { context.Identity.Event = "" },
+		"session": func(context *engineer.Context) { context.Identity.Session = "" },
+		"vehicle": func(context *engineer.Context) { context.Identity.Vehicle = "" },
+		"driver":  func(context *engineer.Context) { context.Identity.Driver = "" },
+	}
+	for name, invalidate := range tests {
+		name, invalidate := name, invalidate
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, producer, _ := newSpotterHarness(t, 4)
+			observation := benchmarkObservation(t, 2.8)
+			invalidate(&observation.Context)
+			message, emit, err := producer.Evaluate(observation)
+			if !errors.Is(err, ErrObservationNotReady) || emit || message.ID != "" {
+				t.Fatalf("invalid %s identity = %+v/%t/%v", name, message, emit, err)
+			}
+		})
 	}
 }

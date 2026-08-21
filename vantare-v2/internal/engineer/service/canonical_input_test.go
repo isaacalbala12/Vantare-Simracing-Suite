@@ -254,7 +254,9 @@ func TestRadioSpotterCapabilityLossCancelsSelectedDelivery(t *testing.T) {
 		t.Fatal(err)
 	}
 	lost.Manifest = manifest
-	_ = svc.ConsumeObservation(lost)
+	if err := svc.ConsumeObservation(lost); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case err := <-gate.done:
 		if !errors.Is(err, context.Canceled) {

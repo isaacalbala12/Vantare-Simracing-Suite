@@ -1,0 +1,17 @@
+{
+  "storageKey": "vantare.v03orbit.strategy.events",
+  "shape": "events-state-mixed-silent-discard",
+  "value": {
+    "events": [
+      {"id": "no-drivers", "drivers": [], "strategies": []},
+      {"name": "no-id", "drivers": [{"id": "driver-1"}], "strategies": []},
+      {"id": "valid-1", "drivers": [{"id": "driver-1"}], "strategies": []}
+    ],
+    "activeId": "no-drivers"
+  },
+  "observedResult": {
+    "remainingEventIds": ["valid-1"],
+    "activeId": null,
+    "warningShown": false
+  }
+}

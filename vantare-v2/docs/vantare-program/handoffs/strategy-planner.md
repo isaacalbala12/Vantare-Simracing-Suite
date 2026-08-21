@@ -17,6 +17,22 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-755 / F4-9 (2026-08-21, lista para review):
+
+- El paquete nuevo `internal/strategy/backtest` separa los tres gates del spec:
+  calibración de la estrategia corrida, factibilidad de la recomendada contra
+  datos realizados y ranking por signo más regret interno cero.
+- El solver expone replay determinista de una decisión fija y el contrato
+  `ObservedStrategy v1` conserva tiempo observado por stint. El backtest no
+  usa la carrera observada como verdad de un contrafactual.
+- El holdout se corta por combinación+fecha, falla ante leakage o N bajo y
+  devuelve resultados por carrera/agregados con intervalos. `<2 %` y paradas
+  secas exactas siguen marcados provisionales hasta #702.
+- Fixtures versionadas S026/S125/S266/S287 y el flujo
+  derivadas→plan→replay→métricas pasan junto con Strategy+Analysis, vet, gofmt
+  y diff-check. Sin frontend, dependencias, PR, merge, promoción ni release.
+  F4 queda técnicamente completa en esta rama; falta review/aceptación.
+
 Actualizacion ISA-753 / F4-8 (2026-08-21, lista para review):
 
 - Cada candidato de `SolveV2` conserva esperado, caso malo coherente,
@@ -604,13 +620,13 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-753 / F4-8 y sus gates. Tras la aceptación
-del orquestador, el siguiente corte estricto de F4 es F4-9 (backtesting) en su
-issue propia. No integrar ni promover esta rama sin la autorización de Isaac.
+Revisar la entrega aislada de ISA-755 / F4-9 y sus tres gates. Tras la
+aceptación del orquestador, F4 queda cerrada técnicamente y el siguiente corte
+estricto es F5 según `isa-694-plan.md`. No integrar ni promover esta rama sin
+la autorización de Isaac.
 
 ## Última actualización
 
-2026-08-21, ISA-753: F4-8 implementada y verificada en rama propia con
-evaluación esperado/caso-malo, variantes por tolerancia y degradación p95
-declarada; pendiente push y review del orquestador, sin integración ni
-promoción.
+2026-08-21, ISA-755: F4-9 implementada y verificada en rama propia con replay
+de calibración, factibilidad realizada, ranking objetivo y holdout sin
+leakage; pendiente push y review del orquestador, sin integración ni promoción.

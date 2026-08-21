@@ -92,7 +92,9 @@ productivo sin crear un segundo reader.
 
 - Rama activa:
   `vantareapp/isa-715-radio-bus-lean`.
-- Base: `origin/nightly@4ec98fea3546fbef5afd0c4a6ff09f7e01097652`.
+- Base inicial: `origin/nightly@4ec98fea3546fbef5afd0c4a6ff09f7e01097652`;
+  Isaac rebasó la rama para revisión sobre
+  `origin/nightly@b774f693921f4d9fcfa31c820c03b17770917e9c`.
 - Entrega: spec aprobada #713 y F1 #715 en commits atómicos; PR #723 abierto y
   listo para revisión a `nightly`, sin wiring productivo del servicio antiguo.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
@@ -361,6 +363,8 @@ resolución cache-only a 100 ms en `abe88776`. Focal x10, vet, benchmark y los
 tres checks remotos pasan sobre ese head. Benchmark local con ocho submissions
 concurrentes: 29.645-50.645 ns/op, 26.244-26.358 B/op y 143 allocs/op. PR #723
 listo para revisión; sin Wails real, LMU real, merge ni promoción.
+Isaac actualizó la rama sobre `nightly@b774f693`; el primer commit conserva
+exactamente los dos documentos aprobados y el stack viejo sigue intacto.
 
 2026-08-02, ISA-201 compone ENG-01..ENG-12 con los dos cortes
 hermanos ENG-14 y ENG-15 sobre `nightly`. ENG-14 aporta PTT físico Windows

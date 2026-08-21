@@ -136,9 +136,6 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.tyres.rejected": "Questa gomma non può andare qui",
 
   "strategy.cards.active": "Attiva",
-  "strategy.cards.activate": "Attiva",
-  "strategy.cards.activated": "Strategia attiva",
-  "strategy.cards.activatedHint": "{{name}} diventa quella dell'evento.",
   "strategy.cards.duplicate": "Duplica",
   "strategy.cards.duplicated": "Strategia duplicata",
   "strategy.cards.duplicatedHint": "{{name}} nasce come bozza con lo stesso schieramento.",

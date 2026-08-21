@@ -136,9 +136,6 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.tyres.rejected": "Neumático no válido aquí",
 
   "strategy.cards.active": "Activa",
-  "strategy.cards.activate": "Activar",
-  "strategy.cards.activated": "Estrategia activa",
-  "strategy.cards.activatedHint": "{{name}} pasa a ser la del evento.",
   "strategy.cards.duplicate": "Duplicar",
   "strategy.cards.duplicated": "Estrategia duplicada",
   "strategy.cards.duplicatedHint": "{{name}} nace como borrador con el mismo reparto.",

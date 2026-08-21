@@ -136,9 +136,6 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.tyres.rejected": "Esse pneu não pode ir aqui",
 
   "strategy.cards.active": "Ativa",
-  "strategy.cards.activate": "Ativar",
-  "strategy.cards.activated": "Estratégia ativa",
-  "strategy.cards.activatedHint": "{{name}} passa a ser a do evento.",
   "strategy.cards.duplicate": "Duplicar",
   "strategy.cards.duplicated": "Estratégia duplicada",
   "strategy.cards.duplicatedHint": "{{name}} nasce como rascunho com a mesma escalação.",

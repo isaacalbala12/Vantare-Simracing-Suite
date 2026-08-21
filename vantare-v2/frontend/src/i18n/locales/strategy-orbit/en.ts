@@ -136,9 +136,6 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.tyres.rejected": "That tyre cannot go there",
 
   "strategy.cards.active": "Active",
-  "strategy.cards.activate": "Activate",
-  "strategy.cards.activated": "Active strategy",
-  "strategy.cards.activatedHint": "{{name}} is now the one for this event.",
   "strategy.cards.duplicate": "Duplicate",
   "strategy.cards.duplicated": "Strategy duplicated",
   "strategy.cards.duplicatedHint": "{{name}} starts as a draft with the same line-up.",

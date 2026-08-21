@@ -448,13 +448,18 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     | { status: "error"; key: string; message: string; code?: string; field?: string }
   >({ status: "idle" });
   useEffect(() => {
+    const sequence = ++calculationSequence.current;
     if (!calculationInput) {
-      setCalculation({ status: "idle" });
+      void Promise.resolve().then(() => {
+        if (sequence === calculationSequence.current) setCalculation({ status: "idle" });
+      });
       return;
     }
-    const commandId = `orbit-calculate-${++calculationSequence.current}`;
+    const commandId = `orbit-calculate-${sequence}`;
     let current = true;
-    setCalculation({ status: "loading" });
+    void Promise.resolve().then(() => {
+      if (current) setCalculation({ status: "loading" });
+    });
     void calculateStrategyOrbit(
       applicationClient,
       commandId,
@@ -528,13 +533,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [lifecycleRetry, setLifecycleRetry] = useState(0);
   const [lifecycle, setLifecycle] = useState<OrbitLifecycleView>({ status: "idle" });
   useEffect(() => {
-    if (!lifecyclePayload) {
-      setLifecycle({ status: "idle" });
-      return;
-    }
     lifecycleSequence.current += 1;
     const sequence = lifecycleSequence.current;
-    setLifecycle({ status: "loading" });
+    if (!lifecyclePayload) {
+      void Promise.resolve().then(() => {
+        if (sequence === lifecycleSequence.current) setLifecycle({ status: "idle" });
+      });
+      return;
+    }
+    void Promise.resolve().then(() => {
+      if (sequence === lifecycleSequence.current) setLifecycle({ status: "loading" });
+    });
     void loadOrbitLifecycle(lifecycleClient, lifecyclePayload, String(sequence)).then(
       (state) => {
         if (sequence !== lifecycleSequence.current) return;

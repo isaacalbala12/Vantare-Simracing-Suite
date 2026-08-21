@@ -21,6 +21,16 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-715 / F1 reconstruye el radio bus lean en `internal/radio` sobre el contrato
+`radio.v1`, sin conectar todavía `EngineerService`, monitores, Wails ni LMU. El
+nuevo núcleo acotado conserva orden total, coalescing, cooldowns, presión de
+cola, fairness no crítica, TTL y preempción Spotter; presentación y delivery
+quedan registrables y aislados de Evidence, SemanticClaim, Manifest y
+capabilities. La salida con fakes publica UI siempre y usa audio cache-only de
+forma opcional. El benchmark Go cubre ocho submissions concurrentes,
+cancelación activa Spotter y ACK `started`; el p95 Wails/LMU real sigue siendo
+un gate de F3. El stack Engineer anterior permanece intacto y compilable.
+
 ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
 `ACCEPT` sin P0/P1/P2/P3. ISA-127 / ENG-03 integró ENG-02 sobre TC-05A y
@@ -81,11 +91,13 @@ conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
 - Rama activa:
-  `vantareapp/isa-201-eng-n01-promocion-acumulativa-eng-01eng-15-a-nightly`.
-- Base: `nightly@4e549bb59fd0b76398985cd28e5aa30aaaa85c32`.
-- Composición: ENG-01..ENG-12, ENG-14 y ENG-15 se integran sobre la base
-  canónica de `nightly`; ENG-13 continúa como gate humano de voz real.
-- Promoción: en validación técnica para `nightly`; `testers` y `master` no se
+  `vantareapp/isa-715-radio-bus-lean`.
+- Base inicial: `origin/nightly@4ec98fea3546fbef5afd0c4a6ff09f7e01097652`;
+  Isaac rebasó la rama para revisión sobre
+  `origin/nightly@b774f693921f4d9fcfa31c820c03b17770917e9c`.
+- Entrega: spec aprobada #713 y F1 #715 en commits atómicos; PR #723 abierto y
+  listo para revisión a `nightly`, sin wiring productivo del servicio antiguo.
+- Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
   polling de 8 ms cancelable, hotplug y errores explícitos. Win32 keyboard y
@@ -303,6 +315,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
 | Cerrada técnicamente | ISA-127 / ENG-03, adaptación pura TC-05A -> ENG-02; re-review independiente `ACCEPT` |
@@ -327,14 +340,31 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Abrir el PR de la composición acumulativa ENG-01..ENG-15 hacia `nightly` y
-promoverla únicamente si pasa el CI protegido; los gates locales de Go,
-frontend, visuales, PTT, tooling de voz y carrera focal ya están verdes.
-Después continuar ENG-16..19 según el DAG. ISA-184 / ENG-13
-sigue siendo un gate humano: ENG-20/21 no empiezan productivamente hasta disponer
-de corpus consentido y métricas reales de intent, slots, FAR/FRR y wake word.
+Revisar el PR #723 de ISA-715 sin promoverlo. Sus tres checks remotos están
+verdes; cualquier integración sigue requiriendo autorización humana. Tras esa
+aceptación, la
+promoción a `nightly` pertenece a su corte de integración; F2 prepara el audio
+Kokoro y F3 cablea Spotter y demuestra p95 real en Wails/LMU. El stack viejo no
+se retira antes de F4 y la semántica Spotter ganada requiere regresiones
+equivalentes antes del cutover.
 
 ## Última actualización
+
+2026-08-21, ISA-715 / F1 añade `internal/radio` sin tocar el stack Engineer
+existente: mensaje acotado `radio.v1`, scheduler determinista, preempción P0,
+resolver externo `es/en/it/pt-BR`, lifecycle ACK y salida UI + audio cache-only
+opcional. El núcleo `message.go` + `bus.go` suma 343 líneas; no hay goroutines
+productivas ni dependencias nuevas. Focal x10, vet focal, build frontend y suite
+Go global pasan; el primer global expuso un timeout SQLite ajeno que pasó
+aislado x10 y en la repetición global. `go build ./...` conserva el fallo base
+de `build/ios`, paquete `main` sin función `main`, registrado en #722.
+El review corrigió el cooldown para avanzar solo con ACK `started` y acotó la
+resolución cache-only a 100 ms en `abe88776`. Focal x10, vet, benchmark y los
+tres checks remotos pasan sobre ese head. Benchmark local con ocho submissions
+concurrentes: 29.645-50.645 ns/op, 26.244-26.358 B/op y 143 allocs/op. PR #723
+listo para revisión; sin Wails real, LMU real, merge ni promoción.
+Isaac actualizó la rama sobre `nightly@b774f693`; el primer commit conserva
+exactamente los dos documentos aprobados y el stack viejo sigue intacto.
 
 2026-08-02, ISA-201 compone ENG-01..ENG-12 con los dos cortes
 hermanos ENG-14 y ENG-15 sobre `nightly`. ENG-14 aporta PTT físico Windows

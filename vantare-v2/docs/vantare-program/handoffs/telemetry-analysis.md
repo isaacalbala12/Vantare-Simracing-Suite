@@ -17,6 +17,23 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-742 / ISA-694 F3-a3 está implementada en su rama aislada: Fuel y Virtual
+Energy por vuelta se calculan como delta entre fronteras válidas dentro del
+mismo `ContinuousSegment`, sin cruzar `CoverageGap` ni pit. El ritmo
+representativo usa mediana y varianza de vueltas limpias; tráfico conserva su
+etiqueta y consumo, pero no entra en ritmo. Los eventos `Minimum Path Wetness`
+producen buckets seco/húmedo/mojado sin usar `CloudDarkness` ni
+`OffpathWetness`.
+
+La agregación mezcla solo la misma combinación+bucket, pondera calidad y N, y
+calcula el percentil de la sesión actual contra el histórico suministrado del
+mismo piloto. Observaciones, familias y percentil llevan presencia,
+procedencia `derived` y confianza completas. Fixtures versionadas cubren seco
+y llovizna estilo S040. Gates focal, race, vet, gofmt y diff-check pasan; la
+suite global pasa salvo los dos paquetes bloqueados por `frontend/dist`
+ausente. Pendiente: review del orquestador de #742; no hay PR, integración ni
+promoción.
+
 ISA-740 / ISA-694 F3-a2 está implementada en su rama aislada: vueltas y
 fronteras se reconcilian desde `Lap` + resets de `Lap Dist` con calidad
 explícita; las vueltas incompletas permanecen visibles y las etiquetas

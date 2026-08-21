@@ -1,3 +1,23 @@
+Nota ISA-742 / ISA-694 F3-a3 (2026-08-21, implementada en rama de issue):
+- Telemetry Analysis deriva Fuel/vuelta, Virtual Energy/vuelta y ritmo
+  representativo por sesión usando exclusivamente las fronteras, segmentos y
+  etiquetas de F3-a2. Los deltas no cruzan `CoverageGap` ni vueltas de pit.
+- El clima se condiciona solo con eventos `Minimum Path Wetness`: 0 % seco,
+  hasta 5 % húmedo y más de 5 % mojado. `CloudDarkness` y `OffpathWetness` no
+  participan. Tráfico conserva consumo y etiqueta, pero queda fuera de la
+  mediana de ritmo.
+- Cada observación, agregado y percentil conserva presencia, procedencia
+  `derived` y confianza. La agregación ignora otras combinaciones, pondera la
+  calidad y N, y compara el ritmo actual con el histórico suministrado del
+  mismo piloto en combinación+bucket.
+- Fixtures versionadas cubren seco y llovizna estilo S040. Gates focal, race,
+  vet, gofmt y diff-check PASS. `go test ./...` pasó todos los paquetes salvo
+  `frontend` y `cmd/vantare`, que no compilan porque este worktree no contiene
+  el `frontend/dist` requerido por `go:embed`.
+- Commits de prueba/producto: `a714ac1c` y `032b2077`. Sin PR, merge,
+  promoción ni release. Siguiente: review del orquestador de #742; F3-a4 no se
+  asume iniciada.
+
 Nota ISA-740 / ISA-694 F3-a2 (2026-08-21, implementada en rama de issue):
 - Telemetry Analysis reconstruye vueltas desde eventos `Lap` y resets reales
   de `Lap Dist` sin inventar un offset entre sus relojes. Cada `LapBoundary`

@@ -1,10 +1,10 @@
 # Plan técnico ISA-694 — Strategy Planner definitivo (corte A+B)
 
-Fecha: 2026-08-21
+Fecha: 2026-08-21 (rev. 2 tras review adversarial Codex `gpt-5.6-sol` high)
 Fase SDD: **PLAN** (el spec aprobado es `isa-694-spec.md`; los TASKS se
 derivan de este plan como issues de GitHub).
-Estado: pendiente de review adversarial (Codex `gpt-5.6-sol`) y gate de Isaac.
-No autoriza implementación.
+Estado: hallazgos de la review incorporados; pendiente de verificación delta y
+gate de Isaac. No autoriza implementación.
 
 ## 1. Principios de ejecución
 
@@ -13,306 +13,367 @@ No autoriza implementación.
 2. **Datos antes que código.** Ninguna derivación se implementa sin haberse
    demostrado sobre el corpus real en F0; ningún contrato se congela antes.
 3. **Incremental con paridad.** Cada extensión del solver se valida contra
-   enumeración exhaustiva en tamaños pequeños antes de confiar en podas.
+   enumeración exhaustiva en tamaños pequeños que cubre **exactamente el mismo
+   espacio de decisión**, antes de confiar en podas.
 4. **Un worker, una issue, un worktree.** Sin paralelismo sobre la misma rama.
-   Claude orquesta, trocea y revisa; review técnica con Codex `gpt-5.6-sol`
-   high; checks sencillos con `gpt-5.6-terra` high; grueso con
-   `muse-spark-1.2-contributor` vía T3 Code.
+   Claude planifica, orquesta y revisa; review técnica con Codex `gpt-5.6-sol`
+   high; checks sencillos con Codex `gpt-5.6-terra` high; grueso con
+   `muse-spark-1.2-contributor` vía T3 Code (D17).
 5. **Documento vivo.** Si un descubrimiento invalida una asunción A1–A6, se
    actualiza spec y plan antes de seguir implementando.
+6. **Ningún checkpoint acepta suites rojas.** Los defectos actuales se
+   documentan con tests de caracterización **verdes** que demuestran el
+   comportamiento defectuoso observable; cada test se invierte en la misma
+   issue/PR que corrige su defecto (F2).
 
 ## 2. Mapa de componentes y dependencias
 
 ```text
-                         ┌──────────── F0 spike (corpus real) ────────────┐
-                         ▼                                                ▼
-        F1 contratos v2 + ADR 0009 + regresiones/freeze          umbral backtest
-              │                       │
-     ┌────────┴─────────┐             │
-     ▼                  ▼             │
-F2 custodia        F3 derivación      │        (F2 ∥ F3: módulos disjuntos,
-(Strategy app +    (Telemetry         │         workers y worktrees separados)
- Orbit cutover +    Analysis)         │
- migración)             │             │
-     │                  ▼             │
-     │             F4 motor ampliado ◄┘  (consume curvas/proyección de F3;
-     │                  │                 arranca antes contra fixtures F0/F1)
-     └──────┬───────────┘
-            ▼
-      F5 producto asistido (Orbit)      F6 pipeline editorial
-      (proyección visible, escenarios,  (exportador, Worker, curador, catálogo)
-       catálogo con datos de muestra)   (F6a ∥ F4/F5; F6b tras F5)
-            │                                │
-            └──────────────┬─────────────────┘
-                           ▼
-              F7 endurecimiento + campaña testers (2 semanas)
+                    ┌──────────── F0 spike (corpus real) ────────────┐
+                    ▼                                                ▼
+     F1 contratos + ADR 0009 + caracterizaciones           umbrales backtest
+          │                          │
+   ┌──────┴───────┐                  │
+   ▼              ▼                  │
+F2 custodia   F3a derivaciones       │   (solo F3a es paralelizable con F2:
+(Strategy +    puras (Analysis)      │    derivación pura sobre Analysis;
+ Orbit +           │                 │    F3b/F3c dependen de Core y de F2a)
+ migración)        │                 │
+   │          F3b forecast Core      │
+   │          F3c captura Strategy ◄─┼── (F3c depende de F2a: repositorio/API)
+   │               │                 │
+   └──────┬────────┘                 │
+          ▼                          │
+    F4 motor ampliado ◄──────────────┘
+          │
+    F5 producto asistido (Orbit) ◄── consumidor único de catálogo
+          │                          (envelope+fixture firmado desde F1)
+    F6 pipeline editorial ─────────► usa el mismo builder/formato de F1
+          │
+    F7a gate release-candidate (#1–#9) ── GO de Isaac ──► F7b campaña testers
 ```
 
 Módulos afectados por fase:
 
 | Fase | Go | Frontend | Otro |
 |---|---|---|---|
-| F0 | scripts de spike (fuera de producto) | — | corpus DuckDB de Isaac |
-| F1 | `internal/strategy/contract` (tipos compile-only) | — | `docs/adr/0009`, specs de contratos |
-| F2 | `internal/strategy/{application,repository,contract}`, bindings Wails | `strategy-orbit/*` (bridge, stores, page) | migración localStorage |
-| F3 | `internal/telemetryanalysis/*` (nuevos paquetes de derivación), señal forecast en Core | selector de sesiones (mínimo) | fixtures reales en `testdata/` |
+| F0 | scripts de spike (fuera de producto) | inventario localStorage | corpus DuckDB de Isaac, REST LMU vivo |
+| F1 | contratos en su owner correcto (ver F1.2), ADR 0009 | tests de caracterización Orbit | specs de contratos, fixture de catálogo firmado |
+| F2 | `internal/strategy/{contract,application,repository}`, bindings Wails | `strategy-orbit/*` | migración localStorage |
+| F3a | `internal/telemetryanalysis/*` (derivación) | — | fixtures reales en `testdata/` |
+| F3b | `internal/telemetry/drivers/lmu` (REST forecast), señal en Core | — | — |
+| F3c | comando/repositorio `WeatherScenario` en Strategy | — | — |
 | F4 | `internal/strategy/{solver,manual,backtest}` | — | corpus holdout |
-| F5 | read models / API de aplicación | `strategy-orbit/*` UI asistida | catálogo de muestra |
-| F6 | `cmd/vantare-curator` (CLI), exportador | export UI + fetch catálogo | Worker Cloudflare (subproyecto), tarea programada PC Isaac |
+| F5 | read models / API de aplicación | `strategy-orbit/*` UI asistida, overlay clima | catálogo fixture |
+| F6 | `cmd/vantare-curator`, exportador | export UI + cola de subida | Worker Cloudflare, tarea programada PC Isaac |
 | F7 | endurecimiento transversal | ídem | campaña, evidencia Wails/LMU |
 
 ## 3. Fases en detalle
 
 ### F0 — Spike empírico sobre corpus real
 
-**Objetivo:** validar A1–A6 con los DuckDB de Isaac (corpus declarado
-suficiente) y fijar el umbral de backtest del criterio de éxito #5.
+**Objetivo:** validar A1–A6 con los DuckDB de Isaac y fijar los umbrales y el
+protocolo de backtest. Incluye los prerrequisitos estructurales que las once
+derivaciones necesitan, no solo los canales.
 
-Trabajo (1 issue, worker Codex `gpt-5.6-sol` high; scripts desechables fuera
-del árbol de producto, p. ej. `docs/strategy-planner/evidence/isa-694-spike/`):
+Trabajo (2 issues, worker Codex `gpt-5.6-sol` high; scripts desechables en
+`docs/strategy-planner/evidence/isa-694-spike/`):
+
+**Issue F0-1 — telemetría:**
 
 1. Inventario del corpus: sesiones, combos, tipos, metadata disponible (A3).
-2. Calidad de canales: resolución/ruido de `Tyres Wear`, `Fuel Level`,
-   `Virtual Energy`, mezcla, `Path Wetness` (A1).
-3. Separabilidad peso-fuel vs edad-neumático entre stints; si la muestra no
-   separa, medir la curva combinada de decaimiento por stint y documentar la
-   pérdida de identificabilidad (A1).
-4. Pit events: ¿se puede desglosar tránsito/servicio/ritmo de repostaje y
-   recarga VE? (A4).
-5. Curva coste-del-ahorro desde datos de mezcla, si existen vueltas con
-   mezclas distintas (A5).
-6. REST local: forma del endpoint de forecast; captura durante una práctica
-   real con ayuda de Isaac; estabilidad práctica→carrera si el corpus o una
-   sesión doble lo permite (A2).
+2. Calidad de **todos** los canales de A1: `Tyres Wear`, `Fuel Level`,
+   `Virtual Energy`, mezcla, `Path Wetness`, `CloudDarkness`, temperaturas,
+   presiones y compuesto.
+3. **Prerrequisitos estructurales:** alineación temporal entre canales
+   continuos y eventos (el modelo actual declara `TimeOriginUnknown` para
+   continuos), segmentación fiable de vueltas (`HistoricalSession.Laps` hoy no
+   se rellena — `internal/telemetryanalysis/historical.go`), identidad de
+   stint y piloto, localización por vuelta/esquina. Sin esto no hay pit loss,
+   estrategia observada ni degradación por esquina: veredicto explícito.
+4. Separabilidad peso-fuel vs edad-neumático entre stints; si no separa,
+   medir la curva combinada y documentar la pérdida de identificabilidad.
+5. Pit events: desglose tránsito/servicio/ritmo de repostaje y recarga VE (A4).
+6. Curva coste-del-ahorro desde datos de mezcla si existen (A5).
 7. Estimación de tamaño de bundle derivado (A6).
-8. Backtest manual de una carrera real contra un plan reconstruido a mano →
-   propuesta de umbral.
+
+**Issue F0-2 — forecast y backtest:**
+
+8. REST local: descubrir el endpoint de forecast (el cliente actual solo
+   consulta standings/sessionInfo); captura en práctica real con Isaac.
+   **A2 solo pasa con una pareja práctica→carrera real; si no existe, queda
+   `UNRESOLVED` y bloquea el contrato de forecast**, no el resto del corte.
+9. Protocolo de backtest prerregistrado: N mínimo, split por combinación y
+   fecha (sin leakage), métricas de calibración, agregación e intervalos;
+   backtest manual de al menos una carrera → propuesta de umbrales.
+10. Inventario y matriz campo-a-campo del `localStorage` Orbit real
+    (`strategy-events-store.ts` tiene dos claves, descarta entradas inválidas
+    y aplica defaults silenciosos de 90 L / 60 s): corpus golden de todas las
+    shapes legacy para la migración de F2.
 
 **Checkpoint:** informe en `evidence/` con veredicto por asunción
-(válida / degradada / inválida) + selección de sesiones sanitizables para
-`testdata/` + umbral propuesto. Lo reviso yo; Isaac decide el umbral y
-cualquier degradación de alcance. **Si A2 falla**, el flujo forecast pasa a
-escenario manual (el spec se actualiza).
+(válida / degradada / inválida / unresolved) + fixtures sanitizadas elegidas
+para `testdata/` + umbrales y protocolo de backtest + matriz de migración.
+Lo reviso yo; Isaac decide umbrales y degradaciones de alcance.
 
-### F1 — Contratos v2, ADR 0009, freeze y regresiones
+### F1 — Contratos en su owner, ADR 0009, caracterizaciones
 
-**Objetivo:** congelar el lenguaje común antes de tocar producto.
+**Objetivo:** congelar **todas** las superficies que F2–F6 consumirán, cada
+una bajo su propietario correcto, para que ninguna fase posterior rehaga
+contratos.
 
-Trabajo (3 issues paralelizables tras F0):
+Trabajo (4 issues tras F0):
 
-1. **ADR 0009** (yo redacto, Codex revisa): pipeline editorial y sus
-   fronteras (predigestión determinista, LLM cura/redacta, Isaac decide),
-   Worker de subida opt-in anonimizada, catálogo firmado en GitHub con
-   procedencia `reference`, alcance de clima por escenarios, perfiles de
-   piloto, y el punto fino de ownership del forecast: **Telemetry Core
-   expone la señal forecast del REST (adquisición live); Strategy persiste
-   `WeatherScenario` cuando el usuario captura** — Analysis no interviene.
-2. **Contratos** (worker muse-spark, tipos Go compile-only + spec doc cada
-   uno): `StrategyInputProjection v2` (11 familias del spec §6),
-   `WeatherScenario v1`, `PilotProfile v1`, `ObservedStrategy v1`,
-   `CurationBundle v1`, `Catalog v1`. Todos con `simId`, procedencia
-   (`measured|derived|manual|reference|missing`), muestra, rango, confianza,
-   unidad y versión de cálculo. Contract tests productor/consumidor.
-3. **Freeze + regresiones** (worker muse-spark): tests de caracterización de
-   los defectos actuales de Orbit (eliminación de piloto rompe `buildPlan`,
-   guardado/activación silenciosos), marcados como comportamiento a corregir
-   en F2; nota de freeze: ninguna feature nueva sobre el store localStorage.
+1. **ADR 0009** (yo redacto, Codex sol revisa como threat model): pipeline
+   editorial (predigestión determinista, LLM cura/redacta, Isaac decide),
+   modelo de consentimiento de subida según D18 (decisión de Isaac sobre el
+   contrato de producto), seguridad del Worker (idempotencia/replay,
+   validación estricta de schema, cuotas, dedupe, retención y borrado,
+   redacción de logs, abuso de storage), catálogo firmado (envelope con
+   `keyId`, rotación y revocación, expiración, versión monotónica, protección
+   rollback/freeze, bytes canónicos, política ante firma válida con schema
+   incompatible, runbook de compromiso de clave), custodia de la clave,
+   ownership del forecast (Core produce la señal; Strategy persiste
+   `WeatherScenario` al capturar), y perfiles de piloto.
+2. **Contratos de Analysis** (worker muse-spark): `StrategyInputProjection v2`
+   y `ObservedStrategy v1` viven en un **paquete público propiedad de
+   Telemetry Analysis** (Analysis no importa dominio privado de Strategy;
+   Strategy solo consume). Incluye la **matriz v1→v2**: productores,
+   consumidores, compatibilidad, retirada y fixtures old/new contra el
+   contrato v1 existente.
+3. **Contratos de Strategy** (worker muse-spark): documento Strategy v2 (lo
+   que Orbit necesita: evento, pilotos, variantes, inventario por evento —
+   diseñado con la matriz de migración de F0), **vector de decisión e I/O del
+   solver** (paradas en vueltas arbitrarias, cantidades Fuel/VE por servicio,
+   compuesto, piloto, nivel de ahorro por stint; modelo de coste de pit
+   dependiente de servicios; formación; reglas de evento y ventanas;
+   presupuesto p95 de cómputo), comando de captura `WeatherScenario v1`,
+   `StrategyWeatherReadModel v1` para el overlay (Overlays jamás lee Core,
+   REST ni repositorios directamente), `PilotProfile v1`, `CurationBundle v1`
+   y `Catalog v1` con su envelope de firma + **fixture de catálogo firmado**
+   para que F5 tenga consumidor único y F6 use el mismo builder.
+4. **Caracterizaciones verdes + freeze** (worker muse-spark): tests verdes
+   que documentan los defectos actuales de Orbit (eliminación de piloto rompe
+   `buildPlan`, guardado/activación silenciosos, defaults sintéticos) como
+   comportamiento observable a corregir; se invierten en F2 con cada fix.
+   Freeze: ninguna feature nueva sobre el store localStorage.
 
-**Checkpoint:** ADR accepted por Isaac; contratos compilan con tests de
-contrato; regresiones rojas documentadas. Review Codex del conjunto.
+**Checkpoint:** ADR 0009 accepted por Isaac (incluida la decisión D18);
+contratos compilan bajo su owner con contract tests old/new; suites verdes.
+Review Codex sol del conjunto.
 
 ### F2 — Custodia: API de aplicación, cutover Orbit→Go, migración
 
 **Objetivo:** una sola autoridad de persistencia y cálculo. Elimina el P0.
 Entregable a nightly por sí misma.
 
-Trabajo (6 issues secuenciadas, workers muse-spark; la (a) con Codex sol por
-ser modelado de dominio):
+Trabajo (6 issues secuenciadas; la (a) con Codex sol por ser dominio):
 
-- **(a) Modelo de documento ampliado + API de aplicación.** El documento
-  Strategy canónico incorpora lo que Orbit necesita y hoy vive en
-  localStorage: evento, pilotos (orden/disponibilidad), variantes por evento,
-  inventario de neumáticos por evento (no ejemplo global). Queries y comandos
-  de aplicación que Orbit consumirá tal cual (crear/editar/listar/comparar).
-  Migración de schema con versión.
-- **(b) Bindings Wails + cliente TS fino** (`strategy-orbit-bridge` deja de
-  ser puente a localStorage y pasa a ser el único acceso).
-- **(c) Migración localStorage→canónico:** inventario, preview visible,
-  backup exportado automático, import idempotente, verificación, rollback.
-  El store viejo queda read-only tras migrar; se borra en F7.
+- **(a) Documento v2 + API de aplicación** implementando el contrato de F1.3
+  sobre el repositorio canónico (migración de schema interna versionada —
+  `repository/migration.go` hoy declara v1 sin predecesor migrable y debe
+  evolucionar).
+- **(b) Bindings Wails + cliente TS fino** (`strategy-orbit-bridge` pasa a
+  ser el único acceso).
+- **(c) Migración localStorage→canónico** conforme a la matriz de F0:
+  transaccional con journal y fingerprint, dry-run con preview exacto, backup
+  exportado automático, políticas de colisión de IDs y de corruptos
+  parciales, distinción dato real vs default sintético legacy (90 L/60 s no
+  se migran como si fueran datos del usuario), reintentos tras crash, y
+  **rollback semántico definido**: restaura el backup sin destruir revisiones
+  creadas después (se archivan, nunca se borran silenciosamente). El store
+  viejo queda read-only tras migrar; se retira en F7 con OK de Isaac.
 - **(d) Cutover de cálculo:** "Calcular" llama a manual+solver Go; retirar
   rutas productivas de `buildPlan`/`strategy-orbit-model` (queda solo shaping
-  de presentación); las regresiones de F1 pasan a verde.
-- **(e) Guardar/Activar/Exportar honestos:** guardar crea revisión inmutable,
-  activar referencia una revisión exacta, exportar exporta la revisión
-  visible; errores visibles, nunca silenciosos.
-- **(f) Limpieza de sintéticos:** fuera datos Spa de ejemplo y fallbacks
-  fabricados; donde falte dato, `missing` con procedencia visible.
+  de presentación); las caracterizaciones de F1 se invierten con cada fix.
+- **(e) Guardar/Activar/Exportar honestos:** revisión inmutable, activación
+  de revisión exacta, export de lo visible, errores visibles.
+- **(f) Limpieza de sintéticos:** fuera datos Spa y fallbacks fabricados;
+  donde falte dato, `missing` con presencia/procedencia visibles.
 
 **Checkpoint (gate de fase, candidato a nightly):** criterios #1 y #2 del
-spec; suites Go/frontend/build/visual verdes; evidencia manual Wails
-(migración real del localStorage de Isaac). Review Codex del diff completo.
+spec; suites verdes; evidencia manual Wails con la migración real del
+localStorage de Isaac. Review Codex sol del diff completo.
 
-### F3 — Derivación en Telemetry Analysis
+### F3 — Derivación (a: Analysis puro; b: forecast Core; c: captura Strategy)
 
-**Objetivo:** producir `StrategyInputProjection v2` real desde multi-sesión.
-Corre en paralelo con F2 (módulos disjuntos, worktrees separados).
+**F3a — derivaciones puras de Analysis** (paralelizable con F2; 5 issues,
+muse-spark salvo curvas con Codex sol):
 
-Trabajo (6 issues, muse-spark salvo curvas con Codex sol):
+- **(a1)** Clasificación de sesiones y combos (A3).
+- **(a2)** Validez y etiquetado de vueltas (out/in, pit, incidente, tráfico
+  — etiqueta, no solo exclusión —, outliers; motivo por exclusión), sobre la
+  segmentación de vueltas validada en F0.
+- **(a3)** Consumo Fuel/VE, ritmo representativo y percentil por bucket de
+  clima, con rango y confianza.
+- **(a4)** Curvas: peso-fuel, degradación por compuesto/esquina (al nivel de
+  identificabilidad demostrado en F0), vida útil, coste-del-ahorro.
+- **(a5)** Pit loss real + `ObservedStrategy` + agregación multi-sesión +
+  productor `StrategyInputProjection v2` en el paquete público de Analysis.
 
-- **(a) Clasificación de sesiones y combos** (A3): agrupación automática
-  coche/clase/pista/tipo/clima; "carrera diaria X en combinación Y" con sus
-  prácticas.
-- **(b) Validez y etiquetado de vueltas:** out/in, pit, incidente, tráfico
-  (etiqueta, no solo exclusión — D7), outliers; motivo por exclusión.
-- **(c) Consumo, ritmo y percentil:** Fuel/VE por vuelta con rango y
-  confianza por bucket de clima; ritmo representativo; percentil vs histórico
-  propio (equipo cuando haya perfiles importados).
-- **(d) Curvas:** efecto peso-fuel, degradación por compuesto/esquina, vida
-  útil, coste-del-ahorro — con el método validado en F0 y sus límites de
-  identificabilidad documentados en el resultado.
-- **(e) Pit loss real + ObservedStrategy:** desglose de paradas; extracción
-  de la estrategia corrida de cada sesión de carrera con resultado.
-- **(f) Agregación multi-sesión + productor de proyección:** combinación
-  ponderada por calidad/frescura, confianza creciente con muestra, salida
-  `StrategyInputProjection v2` versionada. Señal forecast en Core +
-  persistencia `WeatherScenario` al capturar (según ADR 0009).
+**F3b — forecast en Core** (1 issue, muse-spark; tras F0-2): el driver LMU
+añade la consulta REST de forecast descubierta en F0 y Core la expone como
+señal con presencia/freshness. Solo si A2 no quedó `UNRESOLVED`.
 
-**Checkpoint:** cada derivación reproduce resultados esperados sobre fixtures
-reales de `testdata/` (seleccionadas en F0); integración `duckdb_integration`
-verde con runtime real; cero acceso de Strategy a DuckDB. Review Codex.
+**F3c — captura en Strategy** (1 issue, muse-spark; depende de F2a y F3b):
+comando de captura que persiste `WeatherScenario v1` en el repositorio
+Strategy, según contrato F1.3.
+
+**Checkpoint:** derivaciones reproducen resultados esperados sobre fixtures
+reales de `testdata/`; integración `duckdb_integration` verde con runtime
+real; guard: cero acceso de Strategy a DuckDB. Review Codex sol.
 
 ### F4 — Motor ampliado y backtesting
 
-**Objetivo:** el solver decide sobre el espacio completo del spec §5.
-Depende de F3 para inputs reales, pero arranca contra fixtures de F0/F1.
+**Objetivo:** implementar el **vector de decisión completo congelado en F1.3**
+(el spec §5 manda; nada se redefine aquí). Depende de F3a para inputs reales;
+arranca contra fixtures de F0/F1.
 
-Orden estricto, una extensión por issue, paridad exhaustiva en cada una
-(worker Codex `gpt-5.6-sol` high en solver y backtest; muse-spark en arneses):
+Orden estricto, una extensión por issue, paridad exhaustiva sobre el mismo
+espacio de decisión en cada una (Codex sol en solver/backtest; muse-spark en
+arneses):
 
-1. Curvas de degradación no lineales (por tramos) en coste de stint.
-2. Efecto peso-fuel en el tiempo por vuelta (litros a bordo por vuelta).
-3. **Ahorro como variable de decisión** (D6): niveles de ahorro por stint con
-   su coste de ritmo; test canónico "último stint de 5 vueltas → repartir el
-   ahorro elimina la parada y gana tiempo total"; y el caso inverso donde no
-   compensa.
-4. Compuesto por stint contra inventario físico (`internal/strategy/tyres`).
-5. Asignación de pilotos a stints: perfiles por piloto, disponibilidad y
-   límites de tiempo de conducción como restricciones duras.
-6. Escenarios de clima: plan por escenario + recomendación robusta (mínima
-   pérdida si el escenario falla); compuestos wet/dry.
-7. Evaluación esperado/caso-malo desde rangos; variantes
-   rápida/equilibrada/conservadora como tolerancia al caso malo.
-8. **Backtesting:** replay de carrera real contra plan; error por stint y
-   total; arnés de holdout con las carreras reservadas; métrica del gate.
+1. **Modelo de coste de pit dependiente de servicios:** el solver deja el
+   `PitLossSeconds` escalar y pasa al desglose real (tránsito + repostaje por
+   cantidad + neumáticos + solape paralelo/secuencial), reutilizando el
+   modelo pit de `internal/strategy/manual`; cantidades Fuel/VE por servicio
+   como variable, formación incluida.
+2. Curvas de degradación no lineales (por tramos) en coste de stint.
+3. Efecto peso-fuel en el tiempo por vuelta.
+4. **Ahorro como variable de decisión** (D6) con su test canónico (último
+   stint corto absorbido por ahorro) y el caso inverso.
+5. Compuesto por stint contra inventario físico + reglas de evento y
+   ventanas obligatorias del contrato F1.3.
+6. Asignación de pilotos a stints (perfiles, disponibilidad, límites de
+   conducción como restricciones duras).
+7. Escenarios de clima: plan por escenario + recomendación robusta.
+8. Evaluación esperado/caso-malo desde rangos; variantes como tolerancia al
+   caso malo; presupuesto p95 de cómputo verificado.
+9. **Backtesting** (`internal/strategy/backtest`, nuevo): replay contra
+   carrera real según el protocolo prerregistrado de F0; gates separados de
+   calibración, factibilidad y calidad de ranking (spec criterio #5).
 
-**Checkpoint:** paridad exhaustiva verde en cada extensión; determinismo
-(mismos inputs ⇒ mismo ranking); explicabilidad (restricción vinculante y
-sensibilidades en cada resultado); backtest holdout bajo el umbral fijado en
-F0. Review Codex por extensión, no al final.
+**Checkpoint:** paridad exhaustiva verde por extensión; determinismo;
+explicabilidad (restricción vinculante y sensibilidades); holdout bajo los
+umbrales de F0; p95 dentro de presupuesto. Review Codex sol por extensión.
 
 ### F5 — Producto asistido en Orbit
 
-**Objetivo:** el flujo B visible: sesiones → derivados → plan, con verdad de
-procedencia. Pantallas negociables, features intactas (D3).
+**Objetivo:** el flujo B visible con verdad de procedencia. Pantallas
+negociables, features intactas (D3).
 
 Trabajo (5 issues, muse-spark; propuesta UX previa mía para lo negociable):
 
 - **(a)** Selector de combinación/sesiones con agrupación automática y
   exclusiones explicadas.
-- **(b)** Inputs derivados visibles con procedencia, rango y confianza;
-  overrides no destructivos (el dato original se conserva).
-- **(c)** Escenarios de clima en el flujo de plan; captura de forecast desde
-  práctica ("métete en una práctica de la combinación"); mini-overlay ingame
-  de clima previsto (módulo Overlays, issue propia pequeña).
-- **(d)** Ejemplos validados propios: backtests de tus carreras visibles por
-  combinación.
-- **(e)** Catálogo en la app: fetch+verificación+caché del formato `Catalog
-  v1` con datos de muestra; perfiles de referencia como arranque en frío
-  (procedencia `reference`, sustituidos por datos propios al existir);
-  importación inicial de DuckDB ya presentes en disco.
+- **(b)** Inputs derivados con presencia/procedencia/rango/confianza;
+  overrides no destructivos.
+- **(c)** Escenarios de clima en el flujo de plan; UI de captura de forecast
+  (consume F3c); **overlay de clima previsto consumiendo exclusivamente
+  `StrategyWeatherReadModel v1`** (issue propia en Overlays, con guard
+  arquitectónico).
+- **(d)** Ejemplos validados propios: backtests visibles por combinación.
+- **(e)** **Consumidor único de catálogo:** fetch + verificación de firma +
+  caché del envelope de F1.3, probado contra el fixture firmado; perfiles de
+  referencia como arranque en frío (procedencia `reference`); importación
+  inicial de DuckDB ya presentes en disco.
 
 **Checkpoint:** flujo end-to-end con DuckDB reales en Wails (criterio #3);
-visual tests actualizados; ningún dato sin procedencia. Review Codex.
+visual tests actualizados; ningún dato sin presencia/procedencia. Review
+Codex sol.
 
 ### F6 — Pipeline editorial
 
-**Objetivo:** bundles → Worker → curación en PC de Isaac → catálogo GitHub.
-F6a puede ir en paralelo con F4/F5; F6b (curador completo) tras F5.
+**Objetivo:** bundles → Worker → curación en PC de Isaac → catálogo GitHub,
+con la seguridad del ADR 0009. F6(a–c) puede ir en paralelo con F4/F5.
 
-Trabajo (5 issues; Worker y firma con Codex sol, resto muse-spark):
+Trabajo (6 issues; Worker y firma con Codex sol, resto muse-spark):
 
-- **(a) Exportador anonimizado** en la app: `CurationBundle v1` (derivados,
-  estrategias observadas, backtests; sin telemetría cruda, sin nombres; ID de
-  instalación opt-in).
-- **(b) Worker Cloudflare** (subproyecto mínimo, p. ej. `infra/curation-worker`):
-  endpoint de subida con token opt-in y rate-limit, storage de objetos, coste
-  ~cero; **publicarlo requiere OK explícito de Isaac** (boundaries).
-- **(c) Curador CLI** (`cmd/vantare-curator`, Go): sincroniza bundles,
+- **(a) Exportador anonimizado** (`CurationBundle v1`): sin telemetría cruda,
+  sin nombres, ID de instalación opt-in; **UX de consentimiento según D18**:
+  preview exacto por bundle y acción explícita, o —si Isaac modifica el
+  contrato de producto— consentimiento permanente revocable con cola visible,
+  historial, pausa y borrado.
+- **(b) Worker Cloudflare** (`infra/curation-worker`): implementa el
+  protocolo del ADR 0009 (idempotencia, validación de schema, cuotas, dedupe,
+  retención, redacción de logs). **Publicarlo = gate explícito de Isaac.**
+- **(c) Curador CLI** (`cmd/vantare-curator`): sincroniza bundles,
   predigestión determinista (agregación por combo, dedupe, scoring por
-  backtest, clustering de estrategias observadas) → resumen compacto. El LLM
+  backtest, clustering de estrategias observadas) → resumen compacto; el LLM
   nunca ve tablas crudas (D12).
-- **(d) Ciclo editorial:** tarea programada en el PC de Isaac (sus
-  suscripciones) que ejecuta curador + análisis LLM sobre el resumen + flujo
-  de decisión simple para Isaac; skills que codifican qué es bueno/malo se
-  acumulan aquí para automatización progresiva.
-- **(e) Publicación:** builder del catálogo firmado + publicación a GitHub +
-  verificación de firma en la app (mecanismo de firma decidido en ADR 0009).
+- **(d) Generador de perfiles de referencia** (D15): agregación anonimizada
+  por combinación con métricas de muestra y calidad, como entrega del
+  curador.
+- **(e) Ciclo editorial:** tarea programada en el PC de Isaac + análisis LLM
+  del resumen + flujo de decisión simple; skills acumulables de curación.
+- **(f) Publicación:** builder del catálogo firmado (el mismo formato/builder
+  del fixture de F1.3) + publicación a GitHub. **Primer catálogo público =
+  segundo gate explícito de Isaac.**
 
-**Checkpoint (criterio #7):** ciclo completo en frío con bundles de prueba,
-de exportar hasta ver el resultado curado en la app. Review Codex de la
-superficie de seguridad (Worker, firma, anonimización).
+**Checkpoint (criterio #7):** ciclo completo en frío con bundles de prueba;
+pruebas adversariales de la superficie Worker/firma según ADR 0009. Review
+Codex sol de seguridad.
 
-### F7 — Endurecimiento y campaña de testers
+### F7 — Release candidate y campaña de testers
 
-**Objetivo:** cerrar gates, correr la campaña, decidir promoción.
+**F7a — gate release-candidate:** barrido de los criterios #1–#9 del spec;
+retirada del store legacy (con OK de Isaac); checklist de evidencia Wails/LMU
+reproducible; guía de onboarding de testers. Termina con **GO/NO-GO explícito
+de Isaac**. Ningún tester ni bundle real antes de ese GO.
 
-Trabajo: barrido de los criterios #1–#9 del spec; borrado del store legacy
-(tras verificación de migración, con OK de Isaac); checklist de evidencia
-Wails/LMU reproducible; guía de onboarding de testers; campaña de 2 semanas
-con el ciclo editorial funcionando en vivo (curación LLM + decisión de
-Isaac); ventana de fixes; actualización de `docs/roadmap/plan.md`, handoff e
-issues. **La promoción a testers la dispara Isaac, nunca el plan.**
+**F7b — campaña (2 semanas):** testers generan corpus y ejemplos; el ciclo
+editorial corre en vivo (curación LLM + decisión de Isaac); ventana de fixes;
+al cierre, decisión de promoción a `testers` — **la dispara Isaac, nunca el
+plan**. Actualización final de roadmap, handoff e issues.
 
 ## 4. Riesgos y mitigaciones
 
 | Riesgo | Prob. | Mitigación |
 |---|---|---|
-| A2 falla (forecast inestable o no expuesto) | media | F0 lo detecta; fallback: escenario manual; el resto del corte no depende |
-| Separabilidad fuel/neumático débil en datos reales | media | F0 mide; degradar a curva combinada por stint y acotar claims de compuesto (spec vivo) |
-| Migración pierde datos de Isaac/testers | baja | backup automático exportado + preview + store viejo read-only hasta F7 + rollback probado |
-| Explosión combinatoria del solver | media | extensiones incrementales con paridad exhaustiva; presupuesto de cómputo por búsqueda; si hace falta poda mayor, decisión explícita |
-| Calidad de workers (muse-spark) irregular | media | issues pequeñas, aceptación precisa, review Codex sol de cada PR + mi revisión de diff y evidencia |
-| Deriva de alcance ("ya que estamos") | alta | gates SDD; todo hallazgo fuera de alcance → issue nueva, jamás se cuela |
-| LMU cambia schema DuckDB/REST en un update | media | contratos versionados; corpus versionado; clasificador tolerante con `unknown` |
-| Límites free-tier del Worker | baja | bundles pequeños (A6 lo valida), rate-limit, tamaño máximo |
-| Divergencia temporal F2∥F3 | baja | módulos disjuntos; integración en F4/F5 con contract tests de F1 |
+| A2 falla o queda UNRESOLVED | media | F0 lo fija; fallback: escenario manual; F3b/F3c no arrancan |
+| Prerrequisitos estructurales (relojes, vueltas, stints) débiles | media | F0-1.3 los mide antes de contratos; degradar familias afectadas explícitamente |
+| Separabilidad fuel/neumático débil | media | curva combinada por stint + claims de compuesto acotados (spec vivo) |
+| Migración pierde o inventa datos | baja | matriz F0 + golden corpus + journal/fingerprint/dry-run + defaults legacy no migrados como datos + rollback semántico |
+| Explosión combinatoria del solver | media | vector congelado en F1, extensiones incrementales con paridad sobre el mismo espacio, presupuesto p95 |
+| Backtest optimista (leakage, N bajo) | media | protocolo prerregistrado en F0; gates de calibración/factibilidad/ranking separados |
+| Superficie pública Worker/catálogo | media | ADR 0009 como threat model con pruebas adversariales; dos gates de Isaac; runbook de compromiso de clave |
+| Privacidad de subidas vs contrato de producto | alta | decisión D18 explícita de Isaac antes de F6a; sin ella, preview manual por bundle |
+| Calidad de workers irregular | media | issues pequeñas, aceptación precisa, review Codex sol por PR + mi revisión |
+| Deriva de alcance | alta | gates SDD; hallazgos fuera de alcance → issue nueva |
+| LMU cambia schema DuckDB/REST | media | contratos versionados con matriz old/new; clasificador tolerante |
+| Divergencia F2∥F3a | baja | solo F3a corre en paralelo; F3c espera a F2a; contract tests de F1 |
 
 ## 5. Checkpoints de verificación (resumen)
 
 ```text
-F0: informe de asunciones + umbral fijado          → gate Isaac
-F1: ADR 0009 accepted + contratos compilan          → gate Isaac (ADR)
-F2: custodia única, migración probada               → candidato nightly
-F3: derivación reproducible sobre fixtures reales   → review Codex + yo
-F4: paridad + holdout bajo umbral                   → review Codex + yo
-F5: E2E asistido en Wails con DuckDB reales         → candidato nightly
-F6: ciclo editorial completo en frío                → OK Isaac (Worker público)
-F7: gates #1–#9 + campaña                           → decisión promoción Isaac
+F0: veredicto A1–A6 + umbrales/protocolo backtest + matriz migración → gate Isaac
+F1: ADR 0009 accepted (incl. D18) + contratos en su owner + fixture firmado → gate Isaac
+F2: custodia única, migración probada                                → candidato nightly
+F3: derivación reproducible + forecast/captura si A2 ok              → review Codex + yo
+F4: paridad por extensión + holdout bajo umbral + p95                → review Codex + yo
+F5: E2E asistido en Wails con DuckDB reales                          → candidato nightly
+F6: ciclo editorial en frío + seguridad adversarial                  → gates Isaac (Worker, catálogo)
+F7a: criterios #1–#9                                                 → GO/NO-GO Isaac
+F7b: campaña 2 semanas                                               → decisión promoción Isaac
 ```
 
-Cada fase repite internamente el ciclo SDD (plan de fase ya aquí → tasks como
-issues → implementación TDD) y termina con: diff revisado por mí, review
-Codex, evidencia según AGENTS, handoff actualizado.
+## 6. Obligaciones documentales del expediente (AGENTS)
 
-## 6. Trabajo que me reservo como orquestador
+- El PR de ISA-694 que introduce este rumbo **actualiza en el mismo PR**
+  `docs/roadmap/plan.md` (hito de plan del rework — hecho en esta rama), el
+  handoff de Strategy y `docs/current-plan.md`.
+- La issue #694 se sincroniza: base real del worktree
+  (`origin/nightly@2ab9741d`; el cuerpo declaraba `64a33318`), alcance A+B,
+  decisiones D1–D18 y estado del gate PLAN, antes de derivar TASKS.
+
+## 7. Trabajo que me reservo como orquestador
 
 - Redactar ADR 0009 y las issues (TASKS) de cada fase.
 - Propuestas UX de lo negociable en F5 antes de tocar pantallas.
 - Revisión final de cada PR (diff + evidencia + coherencia con spec).
 - Mantener spec/plan/handoff/roadmap vivos.
 
-## 7. Fuera de este plan
+## 8. Fuera de este plan
 
 Todo lo listado en spec §11. El corte C (live) se planificará con su propio
 ciclo SDD sobre la base A+B, rescatando de ISA-340/PR #280 tests y diseño de

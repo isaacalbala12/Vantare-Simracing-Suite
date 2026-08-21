@@ -52,7 +52,8 @@ modelo de tráfico/rivales, Monte Carlo, replanning autónomo, multi-sim.
 | D14 | Campaña de testers de ~2 semanas generando corpus y ejemplos, **después** de que A+B cumpla sus gates. Testers prueba el producto completo y lo alimenta. |
 | D15 | El catálogo también publica **perfiles de referencia por combinación** (consumo/ritmo/degradación típicos, anonimizados) para el arranque en frío; se sustituyen por los datos propios cuando existen. Además, el primer arranque descubre e importa los DuckDB que LMU ya tiene en disco. |
 | D16 | La **estrategia observada** (qué corrió realmente cada piloto: vueltas de parada, compuestos, stints, resultado) se extrae de cada sesión de carrera como familia de derivación de primera clase. El corpus de carreras reales es la base de datos de estrategias. |
-| D17 | Desarrollo mediante SDD con gates humanos. Workers: `muse-spark-1.2-contributor` vía MCP T3 Code; tareas complejas con Codex CLI `gpt-5.6-sol` razonamiento high. Claude orquesta y revisa. |
+| D17 | Desarrollo mediante SDD con gates humanos. Workers: `muse-spark-1.2-contributor` vía MCP T3 Code; tareas complejas y review adversarial con Codex `gpt-5.6-sol` razonamiento high; checks sencillos con Codex `gpt-5.6-terra` high. Claude planifica, orquesta y revisa. |
+| D18 | **Pendiente de Isaac:** modelo de consentimiento de subida. El contrato de producto vigente (`docs/vantare-program/product-contract.md`) exige preview del paquete exacto y acción explícita antes de enviar estrategias o perfiles; la automatización deseada en D10 requiere o bien mantener envío manual por bundle, o bien modificar el contrato para permitir consentimiento permanente revocable con cola visible, historial, pausa y borrado. Ver pregunta abierta #5. |
 
 ## 3. Asunciones explícitas (a validar en el spike de Fase 0)
 
@@ -66,8 +67,12 @@ seguir (documento vivo).
    Isaac confirma que la separación peso-fuel/edad-neumático está validada en
    la práctica; el spike lo demuestra sobre su corpus propio (ya suficiente).
 2. **A2:** El REST local de LMU expone el forecast de la sesión y ese forecast
-   es **estable entre la práctica y la carrera** de la misma combinación. Si
-   LMU regenera clima por split, el flujo de captura se rediseña.
+   es **estable entre la práctica y la carrera** de la misma combinación. El
+   cliente REST actual solo consulta standings/sessionInfo: el endpoint de
+   forecast hay que descubrirlo. A2 solo puede darse por válida con una pareja
+   real práctica→carrera; sin esa pareja queda `UNRESOLVED` y **bloquea el
+   contrato de forecast** (no el resto del corte). Si LMU regenera clima por
+   split, el flujo de captura se rediseña.
 3. **A3:** La metadata de sesión (coche, clase, pista, tipo de sesión,
    `weatherconditions`) permite clasificar automáticamente "carrera diaria X
    en combinación Y" y agrupar sus prácticas.
@@ -173,8 +178,19 @@ Sobre N sesiones agrupadas por combinación (selección manual o automática):
 10. Captura y persistencia del forecast (A2).
 11. **Estrategia observada** de cada carrera (D16).
 
-Todo con procedencia (`measured | derived | manual | reference | missing`),
-muestra, rango, confianza, unidad y versión de cálculo.
+Todo dato viaja con **tres ejes independientes**, alineados con el contrato
+Strategy existente (`internal/strategy/contract/metadata.go`):
+
+- **presencia/calidad:** `present | missing | invalid | stale | unsupported`
+  (la ausencia no es una procedencia);
+- **procedencia:** `observed | derived | manual | reference | estimated`
+  (compatibles con el vocabulario vigente `observed|corrected|manual|derived|
+  estimated|range|unknown`; "measured" del lenguaje de producto mapea a
+  `observed`);
+- **confianza:** muestra, rango, varianza y versión de cálculo.
+
+El paso de los contratos v1 existentes a v2 exige una matriz explícita
+productor/consumidor old→new con compatibilidad, retirada y fixtures.
 
 ## 7. Stack y comandos
 
@@ -193,7 +209,10 @@ Editorial:  CLI Go en el repo, ejecutada por tarea programada en PC de Isaac
 go test ./internal/strategy/... ./internal/telemetryanalysis/...
 go test -count=100 ./internal/strategy/manual ./internal/strategy/solver
 go test -tags "duckdb_integration windows" ...   # con runtime+fixture reales
-pnpm --dir frontend test | typecheck | build | lint
+pnpm --dir frontend test
+pnpm --dir frontend typecheck
+pnpm --dir frontend build
+pnpm --dir frontend lint
 pnpm --dir frontend visual:orbit-strategy
 ```
 
@@ -251,14 +270,25 @@ Medibles, verificables por Isaac, previos a la campaña de testers (D14):
    elimina una parada corta (ejemplo canónico D6), parada extra que compensa
    por degradación, cambio de compuesto por escenario de clima, asignación de
    pilotos bajo restricciones.
-5. Backtest holdout por debajo del umbral fijado tras el spike (propuesta
-   inicial: error < 2 % en tiempo total y paradas exactas en seco; el spike
-   confirma o ajusta el número).
+5. Backtest con **tres gates separados y prerregistrados** (el backtest de la
+   estrategia observada valida calibración del modelo, no el contrafactual de
+   estrategias no corridas; no se afirma más de lo que demuestra):
+   - **calibración:** error de predicción sobre carreras holdout reservadas
+     (split por combinación y fecha, N mínimo y métricas fijados en F0;
+     propuesta inicial: < 2 % en tiempo total y paradas exactas en seco);
+   - **factibilidad:** ningún plan recomendado viola restricciones al
+     reproducirse contra los datos reales;
+   - **calidad de ranking:** en las carreras donde el piloto corrió una
+     estrategia distinta a la recomendada, el modelo explica la diferencia
+     prevista; la optimalidad se afirma solo dentro del modelo validado.
+   El solver además cumple un presupuesto de cómputo p95 fijado en F1.
 6. Forecast capturado en práctica y aplicado a la carrera de la misma
    combinación (A2 validada).
 7. Pipeline editorial completo en frío: bundles de prueba → Worker → tarea
    programada → informe predigerido → decisión de Isaac → catálogo firmado →
-   visible en la app con procedencia "referencia comunitaria".
+   visible en la app con procedencia "referencia comunitaria". La publicación
+   del Worker y la publicación del primer catálogo son **dos gates explícitos
+   e independientes de Isaac**.
 8. Suites Go, frontend, build, lint, visuales e integración DuckDB verdes;
    evidencia Wails/LMU manual documentada.
 9. Ningún copy presenta un dato sintético o de referencia como propio.
@@ -304,6 +334,12 @@ F7  Endurecimiento + campaña de testers (2 semanas) + decisión de promoción
    rate-limit; propuesta en F1 con coste como criterio).
 4. Qué pantallas de Orbit se renegocian al introducir el flujo asistido
    (propuesta de UX en F5, features intactas por D3).
+5. **Consentimiento de subida (D18, decide Isaac):** ¿envío manual con preview
+   por bundle según el contrato de producto vigente, o modificación del
+   contrato para permitir subida automática con consentimiento permanente
+   revocable, cola visible, historial, pausa y borrado? La recomendación del
+   plan es la segunda con todas esas salvaguardas, pero cambia el contrato de
+   producto y solo Isaac puede autorizarlo.
 
 ## 15. Siguientes pasos
 

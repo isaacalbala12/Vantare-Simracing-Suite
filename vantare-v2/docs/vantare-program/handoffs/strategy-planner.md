@@ -329,12 +329,31 @@ Actualización ISA-134 / STR-00:
 - Issue activa: ISA-144 / STR-09, implementación lista para review independiente
   sobre el commit aceptado de STR-08.
 
+## Rework definitivo (ISA-694)
+
+El producto entero se replanifica bajo ISA-694 mediante SDD. Documentos
+canónicos del expediente, que prevalecen sobre las secciones históricas de
+este handoff:
+
+- Diagnóstico: `docs/strategy-planner/isa-694-current-state-and-rework-brief.md`.
+- Spec (SPECIFY, aprobado por Isaac 2026-08-21):
+  `docs/strategy-planner/isa-694-spec.md` — decisiones D1–D18, asunciones
+  A1–A6, criterios de éxito del corte A+B.
+- Plan técnico (PLAN, rev. 2 tras review adversarial Codex gpt-5.6-sol):
+  `docs/strategy-planner/isa-694-plan.md` — fases F0–F7b.
+
+Corte A+B (manual = caso degenerado de asistido; live queda para un corte C
+posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
+
 ## Siguiente acción exacta
 
-Definir mediante issue/decisión la fuente normalizada de stints y objetivos
-desde la revisión activa antes de cablear el motor al arranque. No inventar un
-plan sintético. STR-18 continúa separado y no autoriza saltarse esa frontera.
+Cerrar el gate PLAN de ISA-694 (verificación delta de la review Codex +
+decisión D18 de Isaac sobre el consentimiento de subida) y derivar los TASKS
+como issues de GitHub empezando por F0 (spike empírico sobre el corpus DuckDB
+de Isaac). No inventar un plan sintético; ninguna implementación sin tasks
+aprobados.
 
 ## Última actualización
 
-2026-08-14, ISA-152 / STR-17 integrada en Nightly, Codex.
+2026-08-21, ISA-694: spec y plan técnico del rework A+B commiteados en la rama
+de la issue tras review adversarial; pendiente gate PLAN, Claude Fable.

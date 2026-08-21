@@ -378,6 +378,21 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Estrategia definitiva sobre telemetría real
+
+- id: strategy-rework-ab
+- tipo: plan
+- titulo.en: Definitive strategy over real telemetry
+- titulo.pt: Estratégia definitiva sobre telemetria real
+- titulo.it: Strategia definitiva su telemetria reale
+- cuerpo: El planificador de estrategia se reconstruye sobre una única autoridad de cálculo y guardado, alimentada por las sesiones DuckDB que LMU ya graba: consumo, ritmo, desgaste y clima derivados de tus carreras, ahorro de combustible como decisión del motor y mejores estrategias curadas por combinación.
+- cuerpo.en: The strategy planner is being rebuilt on a single calculation and storage authority, fed by the DuckDB sessions LMU already records; consumption, pace, wear and weather derived from your races, fuel saving as an engine decision and curated best strategies per combo.
+- cuerpo.pt: O planejador de estratégia está sendo reconstruído sobre uma única autoridade de cálculo e gravação, alimentada pelas sessões DuckDB que o LMU já grava; consumo, ritmo, desgaste e clima derivados das suas corridas, economia de combustível como decisão do motor e melhores estratégias curadas por combinação.
+- cuerpo.it: Il pianificatore di strategia viene ricostruito su un'unica autorità di calcolo e salvataggio, alimentata dalle sessioni DuckDB che LMU già registra; consumo, ritmo, usura e meteo derivati dalle tue gare, risparmio di carburante come decisione del motore e migliori strategie curate per combinazione.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Registros y últimos eventos en Diagnóstico
 
 - id: diagnostics-logs

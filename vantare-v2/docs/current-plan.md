@@ -1,3 +1,21 @@
+Nota ISA-757 / ISA-694 F6-c (2026-08-21, implementada en rama de issue):
+- `cmd/vantare-curator` valida estrictamente `CurationBundle v1`, registra
+  rechazos motivados y predigiere por combinación sin mezclar `test`,
+  `controlled-capture` ni `production-community`.
+- El pipeline deduplica el payload analítico normalizado, conserva la cohorte
+  por credencial estable, agrupa estrategias con paradas similares y aplica
+  `k=3` tanto a combinaciones como a clusters.
+- El ranking llama a `internal/strategy/backtest.RunRace` y publica
+  `strategy.backtest.v1` más el hash SHA-256 de su fuente autoritativa. Como
+  `CurationBundle v1` no contiene ritmo, el score declara su escala normalizada
+  y el perfil de referencia marca pace como no disponible en vez de inventarlo.
+- El JSON compacto no contiene hora de ejecución ni mapas sin ordenar. Un
+  golden end-to-end prueba igualdad byte a byte, dedupe, clustering, rechazo,
+  separación de entornos y cohorte. El gate pedido
+  `go test ./cmd/vantare-curator/... ./internal/... -count=1`, vet focal,
+  gofmt y diff-check pasan. Sin frontend, dependencias, Worker, PR, merge,
+  promoción ni release. Pendiente: review del orquestador de #757.
+
 Nota ISA-755 / ISA-694 F4-9 (2026-08-21, implementada en rama de issue):
 - `internal/strategy/backtest` reproduce con la autoridad de `SolveV2` una
   decisión fija: la observada para calibración y la recomendada contra los

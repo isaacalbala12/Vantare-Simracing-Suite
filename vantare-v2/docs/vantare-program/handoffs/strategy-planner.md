@@ -17,6 +17,24 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-757 / F6-c (2026-08-21, lista para review):
+
+- El nuevo `cmd/vantare-curator` convierte los tres árboles de procedencia en
+  un resumen compacto sin mezclar entornos. Valida fail-closed, registra cada
+  rechazo con código estable y deduplica por digest del payload normalizado.
+- Cada combinación agrega Fuel, Virtual Energy, pits y calidad; pace queda
+  explícitamente ausente porque `CurationBundle v1` no lo transporta. Los
+  clusters admiten paradas a ±1 vuelta con igual forma/compuestos.
+- La cohorte cuenta credenciales administrativas estables distintas y exige
+  `k=3`; combinación, perfil y estrategia bajo k quedan no publicables con
+  motivo. Ningún hash o identificador administrativo sale en el resumen.
+- El score usa `backtest.RunRace`, publica versión/hash F4-9 y declara la
+  normalización necesaria por falta de ritmo. El golden end-to-end fija los
+  bytes y cubre dedupe, clustering, separación y k.
+- El gate de #757 sobre CLI+`internal`, vet focal, gofmt y diff-check pasa.
+  Sin frontend, dependencia, Worker, PR, merge, promoción ni release; falta
+  review del orquestador.
+
 Actualización ISA-755 / F4-9 (2026-08-21, lista para review):
 
 - El paquete nuevo `internal/strategy/backtest` separa los tres gates del spec:
@@ -620,13 +638,13 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-755 / F4-9 y sus tres gates. Tras la
-aceptación del orquestador, F4 queda cerrada técnicamente y el siguiente corte
-estricto es F5 según `isa-694-plan.md`. No integrar ni promover esta rama sin
-la autorización de Isaac.
+Revisar la entrega aislada de ISA-757 / F6-c, en especial la adaptación
+normalizada al backtest, el conteo de cohorte por credencial estable y el
+golden byte a byte. No integrar ni promover esta rama sin la autorización de
+Isaac; F6(d-e) consumen este resumen después de su aceptación.
 
 ## Última actualización
 
-2026-08-21, ISA-755: F4-9 implementada y verificada en rama propia con replay
-de calibración, factibilidad realizada, ranking objetivo y holdout sin
-leakage; pendiente push y review del orquestador, sin integración ni promoción.
+2026-08-21, ISA-757: F6-c implementada y verificada en rama propia con curador
+determinista, separación estricta de entornos, dedupe, clustering, scoring
+F4-9 y k=3; pendiente review, sin integración ni promoción.

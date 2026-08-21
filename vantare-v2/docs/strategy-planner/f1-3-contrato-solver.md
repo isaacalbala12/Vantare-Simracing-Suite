@@ -295,16 +295,103 @@ consumo puede compensar el peor ritmo. La sensibilidad publica
 `driverPaceDeltaSeconds.<driverId>` con `delta=+0,20 s/vuelta` e impacto igual a
 las vueltas asignadas por el plan.
 
+### Escenarios de clima F4-7 (D5)
+
+`SolveV2` acepta de forma aditiva `WeatherPlanInput`; sin ese campo ejecuta
+exactamente el espacio y las formulas F4-1..6. `SolveWeatherScenarios` recibe
+entre 1 y 16 `WeightedWeatherScenario`, normaliza sus pesos y ejecuta el mismo
+solver una vez por escenario. Un unico escenario completamente seco sin
+parametros climaticos es el caso degenerado: conserva `Best` y todas las cifras
+de `Expected` del `SolveV2` actual.
+
+#### Forecast a condicion por vuelta
+
+Los cinco nodos verificados en vivo de `WeatherScenario v1`
+`START/25/50/75/FINISH` ocupan respectivamente el 0/25/50/75/100 % de la
+carrera. La vuelta 1 usa 0 % y la ultima 100 %; para las intermedias se usa
+`(lap-1)/(raceLaps-1)`. `RainChance` se interpola linealmente entre los dos
+nodos vecinos. No se interpola por indice de vuelta entero ni se adelanta un
+nodo completo.
+
+La traduccion default y configurable (`RainChanceThresholds`) es:
+
+- `< 20 %`: `dry`;
+- `>= 20 % y < 60 %`: `humid`;
+- `>= 60 %`: `wet`.
+
+Debe cumplirse `0 < humid < wet <= 100`. `Sky`, temperatura de aire y pista se
+conservan en el escenario como contexto, pero no fuerzan un bucket: el forecast
+capturado aporta probabilidad, no `Path Wetness` observado. Cambiar ese criterio
+requiere evidencia y contrato nuevos. La salida publica `WeatherTimeline[]`
+con vuelta, probabilidad interpolada y bucket; la sensibilidad vuelve a evaluar
+el plan robusto con el umbral wet a `-5/+5` puntos porcentuales, e informa
+vueltas reclasificadas, impacto y factibilidad.
+
+#### Parametros seleccionados vuelta a vuelta
+
+Cada bucket no seco encontrado exige un `WeatherBucketParameter` explicito con
+procedencia `manual` o `reference`; faltar el bucket falla cerrado. El seco
+puede omitirlo para preservar el caso degenerado. Cada parametro transporta:
+
+- `paceDeltaSeconds`, el `delta_clima` aditivo de spec §5;
+- fallback opcional de Fuel/VE por vuelta. Si
+  `Projection.{Fuel,VirtualEnergy}Consumption.ByClimateBucket` publica el mismo
+  bucket `valid`, la familia derivada de Analysis es la autoridad y declarar a
+  la vez el fallback se rechaza;
+- `CompoundPace[]` opcional por bucket, con el mismo contrato de curva/delta y
+  procedencia F4-5. Solo puede sustituir compuestos presentes en la lista global
+  que define el inventario y el espacio de eleccion.
+
+La busqueda suma consumo, `delta_clima` y parametros/curva de compuesto para la
+condicion de **cada vuelta absoluta**. Por tanto, un stint que cruza una
+transicion no queda etiquetado entero por la condicion inicial: cambia de
+consumo y coste al cruzarla. El ahorro se resta despues de seleccionar el
+consumo del bucket y no puede superar el consumo de ninguna vuelta. El peso
+Fuel reconstruye tambien el nivel vuelta a vuelta con ese consumo.
+
+`EventRules.AllowedCompoundsByClimate` permite una regla dura opcional por
+bucket. Un compuesto fijo debe ser valido durante todas las vueltas del stint;
+si deja de serlo, el candidato solo puede seguir mediante una parada previa a
+la primera vuelta incompatible. La eleccion usa el inventario fisico F4-5,
+conserva edad/identidades y paga el servicio real. Sin regla dura, los deltas y
+curvas hacen que dry/wet compitan por tiempo total.
+
+#### Planes por escenario y recomendacion robusta
+
+`WeatherScenarioResult.Plans[]` expone para cada escenario su peso normalizado,
+timeline y `SolverResultV2` optimo. La recomendacion se elige sobre la union
+determinista de los planes y candidatos rankeados de esos escenarios. Cada plan
+se reproduce sin reoptimizar bajo todos los timelines, aplicando de nuevo
+recursos, compuestos, inventario, pilotos, ventanas y reglas.
+
+El criterio primario elegido es **minimax regret**:
+
+`regret(plan, scenario) = time(plan, scenario) - time(optimo_scenario)`
+
+Se minimiza el mayor regret porque D5 pide la opcion que menos pierde cuando el
+forecast falla. En empate se minimiza la perdida esperada ponderada
+`sum(weight * regret)` y despues se usa identidad canonica del plan para
+determinismo. `RobustRecommendation` expone `method=minimax_regret`,
+`maxRegretSeconds`, `weightedExpectedLossSeconds` y la evaluacion/factibilidad
+por escenario. Un candidato inviable en cualquier escenario no puede ser la
+recomendacion robusta.
+
+El caso de negocio versionado usa lluvia desde `NODE_50`: el optimo para lluvia
+para en la vuelta anterior a la primera vuelta `wet` y monta el juego fisico de
+wets. Con una variacion donde la lluvia se adelanta, la recomendacion minimax
+pierde menos tiempo que ejecutar el plan seco puro. El oraculo exhaustivo
+enumera sin poda el mismo escenario pequeno y conserva paridad.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
-- **EventRules** (`eventRules`): `min/maxPitStops`, `requiredWindows [fromLap,toLap]`, `mandatoryCompounds`, `driverLimits{min/maxLaps, maxContinuousTimeSeconds, maxTotalTimeSeconds, unavailable}`.
+- **EventRules** (`eventRules`): `min/maxPitStops`, `requiredWindows [fromLap,toLap]`, `mandatoryCompounds`, `driverLimits{min/maxLaps, maxContinuousTimeSeconds, maxTotalTimeSeconds, unavailable}`, `allowedCompoundsByClimate`.
 - **ComputeBudget** (`budget.p95Millis`, `maxCandidates`, `maxIterations`): presupuesto p95 como parámetro.
 - **Projection/Observed**: familias degradadas D19 referenciadas sin duplicar tipos.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, WeatherBucketCost[] WeatherBucketCostSource, WeatherTimeline[], Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
@@ -315,9 +402,9 @@ las vueltas asignadas por el plan.
 - `SolverInputV1` (`Input` con `PitLossSeconds` escalar) sigue válido;
   `SolverInputV2` y `SolveV2()` son aditivos y no rompen `Solve()` existente.
   F4-2 selecciona la curva de stint, F4-3 suma el peso de Fuel, F4-4 elige el
-  ahorro, F4-5 añade compuesto/inventario/reglas y F4-6 asigna piloto. Clima
-  permanece en su extensión F4 posterior. Se mantiene
-  `tiempo_total = Σ ritmo base + Σ delta compuesto + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ pit + formación`.
+  ahorro, F4-5 añade compuesto/inventario/reglas, F4-6 asigna piloto y F4-7
+  selecciona clima por vuelta y compara escenarios. Se mantiene
+  `tiempo_total = Σ ritmo base + Σ delta compuesto + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ delta_clima + Σ pit + formación`.
 - F4-4 añade el ahorro y su procedencia sin cambiar el wire de
   Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).

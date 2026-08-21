@@ -361,6 +361,15 @@ integración en `nightly` o promoción.
 
 ## Última actualización
 
+2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
+el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia
+pendientes/cooldowns pero no cancela una activa que ya recibió `started`, por
+lo que UI/audio completan; `Bus.Reset` global sigue cancelando todo. La
+regresión integrada fuerza `started → repostaje → finalización de UI/audio →
+nuevo aviso real`, y el test focal del bus fija la frontera. Vet, focal, race
+focal, repetición x20 y suite Go global pasan localmente. Pendientes: push, CI
+remoto, re-review y gate LMU humano; sin merge ni promoción.
+
 2026-08-21, ronda final del re-review de ISA-718 / PR #739: P1-A y P1-B se
 corrigen en `39e84316`. Los intents fuel dependientes de capacity requieren
 capacity fresca y positiva; su pérdida cancela en el bus únicamente esos

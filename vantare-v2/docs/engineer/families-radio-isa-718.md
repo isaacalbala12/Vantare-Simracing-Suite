@@ -1,7 +1,7 @@
 # ISA-718 · Motor de familias sobre radio.v1
 
-Estado: ronda final de re-review corregida; gates locales y CI remoto verdes;
-pendiente de re-review y gate LMU humano.
+Estado: último P1 quirúrgico corregido; gates locales verdes; pendiente de CI
+remoto, re-review y gate LMU humano.
 
 ## Diseño
 
@@ -46,6 +46,7 @@ vacío y no se inventan parámetros fuera del catálogo.
 | retirada de sanción pre-ACK cancela el aviso y permite el siguiente flanco 0→1 | `TestFamilyPenaltyWithdrawalBeforeStartedCancelsAndAllowsNextRise` |
 | P0 elimina el primer intento fuel y el segundo llega realmente a `started` | `TestFamilyFuelRetriesAfterP0DropAndSecondAttemptReachesStarted` |
 | un ACK tardío de evidencia invalidada no muta el ciclo actual | `TestInvalidatedEvidenceRevisionRejectsLateFuelAndPenaltyStartedACK` |
+| invalidación selectiva después de `started` deja completar UI/audio y no pierde el aviso del ciclo nuevo | `TestFamilyStartedFuelSurvivesSemanticResetAndNextCycleDelivers`, `TestResetIntentsPreservesMatchingActiveAfterStarted` |
 
 Los resets de source, identidad, epoch y facts de lifecycle siguen llamando a
 `radio.Bus.Reset`. La pérdida de capability o campo requerido usa
@@ -61,6 +62,12 @@ adicional (`FuelCapacityKnown && capacity > 0`). Su pérdida invalida solo
 ocho intents fuel y una reducción del contador invalida
 `penalties.count_increased`. `ProducerRevision`, metadato interno no
 serializado, liga cada ACK a la revisión de evidencia que creó el mensaje.
+
+El bus registra si la entrega activa alcanzó `started`. `ResetIntents` sigue
+eliminando pendientes y cooldowns, pero solo cancela la activa antes de ese
+ACK; después deja completar UI/audio. `Bus.Reset` conserva su semántica global:
+source y lifecycle cancelan también una entrega ya iniciada. Lo protege
+`TestResetClearsPendingCooldownAndCancelsActive`.
 
 Los toggles de Spotter resetean exclusivamente sus siete intents y su cola
 legacy. No cancelan mensajes ni estado de fuel/laps/pit, y el runtime legacy

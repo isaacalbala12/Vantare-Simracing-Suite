@@ -60,6 +60,34 @@ func TestCalculatePitStopSeparatesFixedVariableAndOverlap(t *testing.T) {
 	}
 }
 
+func TestCalculatePitStopIncludesVirtualEnergyInServiceOverlap(t *testing.T) {
+	t.Parallel()
+	manual := evidence(contract.ProvenanceManual, "user", contract.ConfidenceHigh, "timed manually")
+	virtualEnergy := sourcedDuration(t, 25, manual)
+	input := PitStopInput{
+		Entry: sourcedDuration(t, 5, manual), Transit: sourcedDuration(t, 10, manual), Exit: sourcedDuration(t, 5, manual),
+		Refuel: sourcedDuration(t, 30, manual), VirtualEnergy: &virtualEnergy, Tyres: sourcedDuration(t, 20, manual),
+		ServiceMode: PitServiceParallel, ModeSelection: manual,
+	}
+
+	parallel, err := CalculatePitStop(input)
+	if err != nil {
+		t.Fatalf("CalculatePitStop parallel: %v", err)
+	}
+	if parallel.CoreServiceSeconds.Value() != 30 || parallel.OverlapSavedSeconds.Value() != 45 || parallel.TotalSeconds.Value() != 50 {
+		t.Fatalf("parallel breakdown = %+v", parallel)
+	}
+
+	input.ServiceMode = PitServiceSequential
+	sequential, err := CalculatePitStop(input)
+	if err != nil {
+		t.Fatalf("CalculatePitStop sequential: %v", err)
+	}
+	if sequential.CoreServiceSeconds.Value() != 75 || sequential.OverlapSavedSeconds.Value() != 0 || sequential.TotalSeconds.Value() != 95 {
+		t.Fatalf("sequential breakdown = %+v", sequential)
+	}
+}
+
 func TestCalculatePitScheduleSumsEachStopOnce(t *testing.T) {
 	t.Parallel()
 	manual := evidence(contract.ProvenanceManual, "user", contract.ConfidenceMedium, "estimated pit timings")

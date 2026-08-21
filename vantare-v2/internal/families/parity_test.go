@@ -201,6 +201,46 @@ func TestEdgeCursorsCommitOnlyWhenStarted(t *testing.T) {
 	})
 }
 
+func TestInvalidatedEvidenceRevisionRejectsLateFuelAndPenaltyStartedACK(t *testing.T) {
+	t.Run("fuel_refuel", func(t *testing.T) {
+		state := &fuelState{}
+		e := baseEvidence(1_000)
+		e.FuelLitres = 0.5
+		first := fuelFamily{}.Evaluate(e, state)
+		var oldOneLitre radio.RadioMessage
+		for _, current := range first {
+			if current.Intent == IntentFuelOneLitre {
+				oldOneLitre = current
+			}
+		}
+		if oldOneLitre.Intent == "" {
+			t.Fatal("missing first one-litre message")
+		}
+		e.NowMS, e.FuelLitres = 2_000, 15
+		fuelFamily{}.Evaluate(e, state)
+		state.Started(oldOneLitre)
+		e.NowMS, e.FuelLitres = 3_000, 0.5
+		if got := intents((fuelFamily{}).Evaluate(e, state)); !got[IntentFuelOneLitre] {
+			t.Fatalf("late pre-refuel ACK consumed current one-shot: %v", got)
+		}
+	})
+
+	t.Run("penalty_withdrawal", func(t *testing.T) {
+		state := &penaltiesState{}
+		e := baseEvidence(1_000)
+		penaltiesFamily{}.Evaluate(e, state)
+		e.NowMS, e.PenaltyCount = 2_000, 1
+		oldIncrease := penaltiesFamily{}.Evaluate(e, state)[0]
+		e.NowMS, e.PenaltyCount = 3_000, 0
+		penaltiesFamily{}.Evaluate(e, state)
+		state.Started(oldIncrease)
+		e.NowMS, e.PenaltyCount = 4_000, 1
+		if got := (penaltiesFamily{}).Evaluate(e, state); len(got) != 1 || got[0].Intent != IntentPenaltyCountIncreased {
+			t.Fatalf("late withdrawn-penalty ACK consumed next rise: %#v", got)
+		}
+	})
+}
+
 func TestLapParityRisingEdgeAndReset(t *testing.T) {
 	state := &lapsState{}
 	family := lapsFamily{}

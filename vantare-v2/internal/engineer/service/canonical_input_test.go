@@ -456,6 +456,241 @@ func TestFamilyCapabilityLossCancelsSelectedAndReseedsState(t *testing.T) {
 	}
 }
 
+func TestFamilyFuelCapacityLossCancelsSelectedCapacityIntentThroughDelivery(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 1, 40, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("capacity-dependent half-tank message did not reach selected delivery")
+	}
+
+	lost := canonicalObservationAt(t, 1, 2, 1, 40, 100)
+	lost.Player.FuelCapacity = engineerprojection.Field[float64]{}
+	if err := svc.ConsumeObservation(lost); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("selected capacity intent cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("capacity loss did not cancel selected capacity-dependent delivery")
+	}
+	deadline := time.After(50 * time.Millisecond)
+	for {
+		select {
+		case notification := <-notifications:
+			switch notification.TextKey {
+			case "fuel.low_half_tank", "fuel.laps_remaining_4", "fuel.laps_remaining_3",
+				"fuel.laps_remaining_2", "fuel.laps_remaining_1", "fuel.for_pit_now":
+				t.Fatalf("capacity-dependent intent reached started after capacity loss: %+v", notification)
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
+func TestFamilyFuelRefuelBeforeStartedCancelsObsoleteOneShotsAndRearms(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 1, 100, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("low-fuel one-shot did not reach selected delivery")
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 3, 1, 15, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("obsolete low-fuel cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("refuel did not cancel the selected obsolete low-fuel delivery")
+	}
+
+	// The current 15 L half-tank notice may legitimately start; obsolete 1 L
+	// and 2 L notices from the previous evidence cycle may not.
+	for {
+		select {
+		case notification := <-notifications:
+			switch notification.TextKey {
+			case "fuel.low_1l", "fuel.low_2l":
+				t.Fatalf("obsolete low-fuel notice reached started after refuel: %+v", notification)
+			case "fuel.low_half_tank":
+				goto refuelDelivered
+			}
+		case <-time.After(time.Second):
+			t.Fatal("current post-refuel half-tank notice did not reach started")
+		}
+	}
+
+refuelDelivered:
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 4, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	waitForIntent(t, notifications, "fuel.low_1l")
+}
+
+func TestFamilyPenaltyWithdrawalBeforeStartedCancelsAndAllowsNextRise(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalPenaltyObservationAt(t, 1, 1, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalPenaltyObservationAt(t, 1, 2, 1)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("penalty increase did not reach selected delivery")
+	}
+	if err := svc.ConsumeObservation(canonicalPenaltyObservationAt(t, 1, 3, 0)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("withdrawn penalty cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("penalty withdrawal did not cancel the selected obsolete delivery")
+	}
+	deadline := time.After(50 * time.Millisecond)
+	for {
+		select {
+		case notification := <-notifications:
+			if notification.TextKey == "penalties.count_increased" {
+				t.Fatalf("withdrawn penalty reached started: %+v", notification)
+			}
+		case <-deadline:
+			goto penaltyWithdrawn
+		}
+	}
+
+penaltyWithdrawn:
+	if err := svc.ConsumeObservation(canonicalPenaltyObservationAt(t, 1, 4, 1)); err != nil {
+		t.Fatal(err)
+	}
+	waitForIntent(t, notifications, "penalties.count_increased")
+}
+
+func TestFamilyFuelRetriesAfterP0DropAndSecondAttemptReachesStarted(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}
+	svc := service.NewEngineerService(nil)
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 0, 100, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 100, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("lap delivery did not block the bus before low-fuel submission")
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 3, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 4, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("P0 preemption cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("P0 did not cancel the active family delivery")
+	}
+	for {
+		select {
+		case notification := <-notifications:
+			if strings.HasPrefix(notification.TextKey, "fuel.") {
+				t.Fatalf("first low-fuel attempt escaped after P0 drop: %+v", notification)
+			}
+			if notification.TextKey == "spotter.car_left" {
+				goto spotterDelivered
+			}
+		case <-time.After(time.Second):
+			t.Fatal("P0 Spotter notice did not reach started")
+		}
+	}
+
+spotterDelivered:
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 5, 1, 0.5, 100)); err != nil {
+		t.Fatal(err)
+	}
+	waitForIntent(t, notifications, "fuel.low_1l")
+}
+
 func TestFamilyEngineRejectsFreshFuelWhenManifestSaysUnsupported(t *testing.T) {
 	svc := service.NewEngineerService(nil)
 	if err := svc.SetSpotterEnabled(false); err != nil {
@@ -802,7 +1037,15 @@ func canonicalObservationAt(t *testing.T, epoch, sequence uint64, lap int, fuel,
 	return canonicalObservation(t, epoch, sequence, lap, fuel, capacity, true, rivalX...)
 }
 
+func canonicalPenaltyObservationAt(t *testing.T, epoch, sequence uint64, penaltyCount int) engineerprojection.ObservationSnapshotV1 {
+	return canonicalObservationWithPenalty(t, epoch, sequence, 1, 100, 100, true, penaltyCount)
+}
+
 func canonicalObservation(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	return canonicalObservationWithPenalty(t, epoch, sequence, lap, fuel, capacity, familySignals, 0, rivalX...)
+}
+
+func canonicalObservationWithPenalty(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, penaltyCount int, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	sourceTime := time.Duration(sequence) * time.Second
@@ -834,7 +1077,7 @@ func canonicalObservation(t *testing.T, epoch, sequence uint64, lap int, fuel, c
 	if familySignals {
 		player.LastLapTime = observedField(t, standings.LapTime(90))
 		player.Position = observedField(t, standings.Position(1))
-		player.PenaltyCount = observedField(t, standings.PenaltyCount(0))
+		player.PenaltyCount = observedField(t, standings.PenaltyCount(penaltyCount))
 		player.TimeBehindNext = observedField(t, standings.TimeGap(2))
 		player.TimeBehindLeader = observedField(t, standings.TimeGap(5))
 		player.Fuel = observedField(t, energy.Fuel{Amount: energy.FuelAmount(fuel), Capacity: energy.FuelCapacity(capacity)})

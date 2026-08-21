@@ -20,6 +20,11 @@ type State interface{ Reset() }
 
 type startedState interface{ Started(radio.RadioMessage) }
 
+type invalidatingState interface {
+	InvalidateIntents(...string)
+	TakeResetIntents() []string
+}
+
 type Family interface {
 	Evaluate(Evidence, State) []radio.RadioMessage
 }
@@ -53,6 +58,13 @@ type registration struct {
 	intents      []string
 	ready        func(Evidence) bool
 	wasReady     bool
+	authorizers  []intentAuthorization
+}
+
+type intentAuthorization struct {
+	intents  []string
+	ready    func(Evidence) bool
+	wasReady bool
 }
 
 func familyTable() []registration {
@@ -61,6 +73,10 @@ func familyTable() []registration {
 			name: "fuel", family: fuelFamily{}, state: &fuelState{}, intents: familyIntents("fuel"),
 			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityFuel},
 			ready:        func(e Evidence) bool { return e.FuelKnown && e.LapKnown },
+			authorizers: []intentAuthorization{{
+				intents: fuelCapacityIntents(),
+				ready:   func(e Evidence) bool { return e.FuelCapacityKnown && e.FuelCapacity > 0 },
+			}},
 		},
 		{
 			name: "penalties", family: penaltiesFamily{}, state: &penaltiesState{}, intents: familyIntents("penalties"),
@@ -131,6 +147,7 @@ func (engine *Engine) Reset() {
 	for index := range engine.families {
 		engine.families[index].state.Reset()
 		engine.families[index].wasReady = false
+		resetAuthorizers(&engine.families[index])
 	}
 }
 
@@ -153,11 +170,31 @@ func (engine *Engine) Evaluate(snapshot engineer.ObservationSnapshotV1) (Evaluat
 				result.ResetIntents = append(result.ResetIntents, registration.intents...)
 			}
 			registration.wasReady = false
+			resetAuthorizers(registration)
 			continue
 		}
 		registration.wasReady = true
-		result.Messages = append(result.Messages, registration.family.Evaluate(evidence, registration.state)...)
+		for authIndex := range registration.authorizers {
+			authorizer := &registration.authorizers[authIndex]
+			ready := authorizer.ready(evidence)
+			if authorizer.wasReady && !ready {
+				if state, ok := registration.state.(invalidatingState); ok {
+					state.InvalidateIntents(authorizer.intents...)
+				}
+			}
+			authorizer.wasReady = ready
+		}
+		messages := registration.family.Evaluate(evidence, registration.state)
+		for _, current := range messages {
+			if intentAuthorized(current.Intent, registration) {
+				result.Messages = append(result.Messages, current)
+			}
+		}
+		if state, ok := registration.state.(invalidatingState); ok {
+			result.ResetIntents = append(result.ResetIntents, state.TakeResetIntents()...)
+		}
 	}
+	result.ResetIntents = uniqueStrings(result.ResetIntents)
 	for index := range result.Messages {
 		engine.nextID++
 		result.Messages[index].ID = fmt.Sprintf("families-%d-%s", engine.nextID, result.Messages[index].Intent)
@@ -175,6 +212,7 @@ func (engine *Engine) resetReadyFamiliesLocked() Evaluation {
 			result.ResetIntents = append(result.ResetIntents, registration.intents...)
 		}
 		registration.wasReady = false
+		resetAuthorizers(registration)
 	}
 	return result
 }
@@ -220,6 +258,7 @@ func (engine *Engine) ResetFamily(family string) []string {
 		if registration.name == family {
 			registration.state.Reset()
 			registration.wasReady = false
+			resetAuthorizers(registration)
 			return append([]string(nil), registration.intents...)
 		}
 	}
@@ -273,6 +312,39 @@ func familyIntents(family string) []string {
 }
 
 func IntentsForFamily(family string) []string { return familyIntents(family) }
+
+func intentAuthorized(intent string, registration *registration) bool {
+	for index := range registration.authorizers {
+		authorizer := &registration.authorizers[index]
+		if !authorizer.wasReady {
+			for _, current := range authorizer.intents {
+				if current == intent {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func resetAuthorizers(registration *registration) {
+	for index := range registration.authorizers {
+		registration.authorizers[index].wasReady = false
+	}
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
 
 func Cooldowns() map[string]time.Duration {
 	result := make(map[string]time.Duration, len(intentTable))

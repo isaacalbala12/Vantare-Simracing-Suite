@@ -44,38 +44,47 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	if err != nil {
 		t.Fatalf("fuelWeightCost: %v", err)
 	}
+	saving, err := input.savingCost()
+	if err != nil {
+		t.Fatalf("savingCost: %v", err)
+	}
 	best := math.Inf(1)
 	var walk func(lap, fuelLeft, veLeft int64, stops int, total float64)
 	walk = func(lap, fuelLeft, veLeft int64, stops int, total float64) {
-		node := searchNode{lap: lap, fuel: fuelLeft, ve: veLeft}
-		maxLaps := runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps)
-		for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
-			stint, err := paceCost.stint(stintLaps, input.BaseLapSeconds)
-			if err != nil {
-				t.Fatalf("paceCost.stint: %v", err)
-			}
-			nextLap := lap + stintLaps
-			nextFuel := fuelLeft - fuel.perLap*stintLaps
-			nextVE := veLeft - ve.perLap*stintLaps
-			nextTotal := total + stint.TotalSeconds + fuelWeight.stint(fuelLeft, fuel.perLap, stintLaps)
-			if nextLap == input.RaceLaps {
-				if allowed, _, _ := input.stopCountAllowed(stops); allowed && nextTotal < best {
-					best = nextTotal
+		for _, level := range saving.levels {
+			effectiveFuel := fuel.withPerLapSaving(level.fuelSavedPerLap)
+			effectiveVE := ve.withPerLapSaving(level.veSavedPerLap)
+			node := searchNode{lap: lap, fuel: fuelLeft, ve: veLeft}
+			maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+			for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
+				stint, err := paceCost.stint(stintLaps, input.BaseLapSeconds)
+				if err != nil {
+					t.Fatalf("paceCost.stint: %v", err)
 				}
-				continue
-			}
-			for _, fuelAmount := range serviceAmounts(nextFuel, fuel) {
-				for _, veAmount := range serviceAmounts(nextVE, ve) {
-					pitInput, err := solverPitInput(input, fuelAmount, veAmount)
-					if err != nil {
-						t.Fatalf("solverPitInput: %v", err)
+				nextLap := lap + stintLaps
+				nextFuel := fuelLeft - effectiveFuel.perLap*stintLaps
+				nextVE := veLeft - effectiveVE.perLap*stintLaps
+				nextTotal := total + stint.TotalSeconds +
+					fuelWeight.stint(fuelLeft, effectiveFuel.perLap, stintLaps) + level.timeCostPerLap*float64(stintLaps)
+				if nextLap == input.RaceLaps {
+					if allowed, _, _ := input.stopCountAllowed(stops); allowed && nextTotal < best {
+						best = nextTotal
 					}
-					pit, err := manual.CalculatePitStop(pitInput)
-					if err != nil {
-						t.Fatalf("CalculatePitStop: %v", err)
-					}
-					if input.EventRules.MaxPitStops == nil || stops < *input.EventRules.MaxPitStops {
-						walk(nextLap, nextFuel+fuelAmount, nextVE+veAmount, stops+1, nextTotal+pit.TotalSeconds.Value())
+					continue
+				}
+				for _, fuelAmount := range serviceAmounts(nextFuel, fuel) {
+					for _, veAmount := range serviceAmounts(nextVE, ve) {
+						pitInput, err := solverPitInput(input, fuelAmount, veAmount)
+						if err != nil {
+							t.Fatalf("solverPitInput: %v", err)
+						}
+						pit, err := manual.CalculatePitStop(pitInput)
+						if err != nil {
+							t.Fatalf("CalculatePitStop: %v", err)
+						}
+						if input.EventRules.MaxPitStops == nil || stops < *input.EventRules.MaxPitStops {
+							walk(nextLap, nextFuel+fuelAmount, nextVE+veAmount, stops+1, nextTotal+pit.TotalSeconds.Value())
+						}
 					}
 				}
 			}
@@ -83,6 +92,218 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	}
 	walk(0, fuel.capacity, ve.capacity, 0, input.Formation.Seconds)
 	return best
+}
+
+func savingCostParameter(levels ...SavingLevelOption) *SavingCostParameter {
+	return &SavingCostParameter{
+		Presence:   sp.PresenceValid,
+		Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "solver-test:saving"},
+		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "solver-test.v1"},
+		Levels:     levels,
+	}
+}
+
+func TestSolveV2D6SavingEliminatesShortFinalStintOnlyWhenCheaper(t *testing.T) {
+	base := baseInputV2()
+	base.RaceLaps = 25
+	base.Formation.Seconds = 0
+	base.FuelCapacityLiters = 10
+	base.FuelPerLapLiters = 1
+	base.PitCost.TransitSeconds = 20
+	base.PitCost.RefuelRateLPerS = 100
+	base.PitCost.TyreSeconds = 0
+	base.FuelWeight = fuelWeightParameter(0.02, sp.ProvenanceManual)
+
+	withoutSaving, err := SolveV2(base)
+	if err != nil {
+		t.Fatalf("SolveV2(without saving): %v", err)
+	}
+	if len(withoutSaving.Best.PitStops) != 2 {
+		t.Fatalf("base plan must need the short third stint: %+v", withoutSaving.Best)
+	}
+
+	cheap := base
+	cheap.SavingCost = savingCostParameter(SavingLevelOption{
+		Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.20,
+	})
+	cheapResult, err := SolveV2(cheap)
+	if err != nil {
+		t.Fatalf("SolveV2(cheap saving): %v", err)
+	}
+	if len(cheapResult.Best.PitStops) != 1 || len(cheapResult.Best.Stints) != 2 {
+		t.Fatalf("cheap saving did not absorb the short final stint: %+v", cheapResult.Best)
+	}
+	if len(cheapResult.SavingPlan.Stints) != 2 || math.Abs(cheapResult.SavingPlan.TotalCostSeconds-5) > epsilon {
+		t.Fatalf("explicit saving plan = %+v, want two stints and 5 seconds", cheapResult.SavingPlan)
+	}
+	if math.Abs(cheapResult.SavingPlan.TotalFuelSaved-6.25) > epsilon || cheapResult.Expected.FuelWeightSeconds <= 0 {
+		t.Fatalf("saving/weight interaction = plan:%+v evaluation:%+v", cheapResult.SavingPlan, cheapResult.Expected)
+	}
+	baseRefuel := withoutSaving.Best.PitStops[0].FuelLiters + withoutSaving.Best.PitStops[1].FuelLiters
+	if cheapResult.Best.PitStops[0].FuelLiters >= baseRefuel || cheapResult.Expected.PitSeconds >= withoutSaving.Expected.PitSeconds {
+		t.Fatalf("saving did not reduce refuel/pit: base=%+v cheap=%+v", withoutSaving.Expected, cheapResult.Expected)
+	}
+	for _, stint := range cheapResult.SavingPlan.Stints {
+		if stint.Level != SavingLow || stint.FuelSavedPerLap != 0.25 || stint.TimeCostPerLap != 0.20 {
+			t.Fatalf("saving stint not explicit: %+v", stint)
+		}
+	}
+
+	expensive := base
+	expensive.SavingCost = savingCostParameter(SavingLevelOption{
+		Level: SavingHigh, FuelSavedPerLap: 0.25, TimeCostPerLap: 2,
+	})
+	expensiveResult, err := SolveV2(expensive)
+	if err != nil {
+		t.Fatalf("SolveV2(expensive saving): %v", err)
+	}
+	if len(expensiveResult.Best.PitStops) != 2 || expensiveResult.SavingPlan.TotalCostSeconds != 0 {
+		t.Fatalf("expensive saving should keep the stop: best=%+v saving=%+v", expensiveResult.Best, expensiveResult.SavingPlan)
+	}
+}
+
+func TestSolveV2SavingMatchesExhaustiveOracleAndExposesSensitivity(t *testing.T) {
+	for _, resource := range []ResourceKind{ResourceFuel, ResourceVirtualEnergy} {
+		for _, raceLaps := range []int64{3, 4, 5, 6} {
+			input := baseInputV2()
+			input.RaceLaps = raceLaps
+			level := SavingLevelOption{Level: SavingMid, TimeCostPerLap: 0.15}
+			if resource == ResourceFuel {
+				level.FuelSavedPerLap = 0.5
+			} else {
+				input.FuelCapacityLiters, input.FuelPerLapLiters = 0, 0
+				input.VECapacityPercent, input.VEPerLapPercent = 2, 1
+				level.VESavedPerLap = 0.5
+			}
+			lower := level
+			lower.Level = SavingLow
+			lower.FuelSavedPerLap /= 2
+			lower.VESavedPerLap /= 2
+			lower.TimeCostPerLap /= 3
+			input.SavingCost = savingCostParameter(lower, level)
+			if resource == ResourceFuel {
+				input.FuelWeight = fuelWeightParameter(0.03, sp.ProvenanceManual)
+			}
+
+			got, err := SolveV2(input)
+			if err != nil {
+				t.Fatalf("SolveV2(resource=%s laps=%d): %v", resource, raceLaps, err)
+			}
+			want := exhaustiveV2Best(t, input)
+			if !got.Feasible || math.Abs(got.Expected.TotalSeconds-want) > epsilon {
+				t.Fatalf("resource=%s laps=%d: solver=%v exhaustive=%v", resource, raceLaps, got.Expected.TotalSeconds, want)
+			}
+		}
+	}
+
+	input := baseInputV2()
+	input.RaceLaps = 5
+	input.SavingCost = savingCostParameter(SavingLevelOption{
+		Level: SavingLow, FuelSavedPerLap: 0.5, TimeCostPerLap: 0.10,
+	})
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(sensitivity): %v", err)
+	}
+	var sensitivity *SolverSensitivity
+	for index := range result.Sensitivities {
+		if result.Sensitivities[index].Parameter == "savingTimeCostPerLap" {
+			sensitivity = &result.Sensitivities[index]
+		}
+	}
+	if sensitivity == nil || math.Abs(sensitivity.ImpactSeconds-result.Expected.SavingSeconds*defaultSavingCostSensitivity) > epsilon {
+		t.Fatalf("saving sensitivity = %+v expected=%+v", result.Sensitivities, result.Expected)
+	}
+}
+
+func TestSolveV2AcceptsDerivedSavingOnlyFromABFamily(t *testing.T) {
+	input := baseInputV2()
+	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 10)}, 10, 0, 0)
+	input.Projection.SavingCost = sp.SavingCostFamily{
+		Presence:   sp.PresenceValid,
+		Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "session-ab"},
+		Confidence: sp.Confidence{SampleSize: 10, ComputationVersion: "derived-curves.v1"},
+		ManualNote: "derived_from_controlled_ab_protocol",
+		Levels: []sp.SavingLevel{
+			{MixtureCode: 0},
+			{MixtureCode: 1, FuelSavedPerLap: 0.5, TimeCostPerLap: 0.1},
+		},
+	}
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(valid A/B): %v", err)
+	}
+	if result.SavingCost.Provenance.SourceID != "session-ab" {
+		t.Fatalf("saving source = %+v", result.SavingCost)
+	}
+
+	input.Projection.SavingCost.ManualNote = "not_an_ab_protocol"
+	if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
+		t.Fatalf("invalid derived saving error = %v, want invalid_input", err)
+	}
+}
+
+func TestSolveV2SavingSourcesFailClosed(t *testing.T) {
+	t.Run("reference accepted", func(t *testing.T) {
+		input := baseInputV2()
+		input.SavingCost = savingCostParameter(SavingLevelOption{
+			Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1,
+		})
+		input.SavingCost.Provenance.Kind = sp.ProvenanceReference
+		result, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("SolveV2(reference): %v", err)
+		}
+		if result.SavingCost.Provenance.Kind != sp.ProvenanceReference {
+			t.Fatalf("saving source = %+v", result.SavingCost)
+		}
+	})
+
+	t.Run("two authorities rejected", func(t *testing.T) {
+		input := baseInputV2()
+		input.SavingCost = savingCostParameter(SavingLevelOption{
+			Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1,
+		})
+		input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 10)}, 10, 0, 0)
+		input.Projection.SavingCost = sp.SavingCostFamily{
+			Presence:   sp.PresenceValid,
+			Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "session-ab"},
+			Confidence: sp.Confidence{SampleSize: 10, ComputationVersion: "derived-curves.v1"},
+			ManualNote: derivedABSavingMethod,
+			Levels:     []sp.SavingLevel{{MixtureCode: 1, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1}},
+		}
+		if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
+			t.Fatalf("two-authority error = %v, want invalid_input", err)
+		}
+	})
+
+	t.Run("saving above base consumption rejected", func(t *testing.T) {
+		input := baseInputV2()
+		input.SavingCost = savingCostParameter(SavingLevelOption{
+			Level: SavingHigh, FuelSavedPerLap: 1.01, TimeCostPerLap: 0.1,
+		})
+		if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
+			t.Fatalf("over-saving error = %v, want invalid_input", err)
+		}
+	})
+}
+
+func TestSolveV2SavingStopsImmediatelyWhenCandidateBudgetIsExhausted(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 6
+	input.Budget.MaxCandidates = 1
+	input.SavingCost = savingCostParameter(
+		SavingLevelOption{Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1},
+		SavingLevelOption{Level: SavingHigh, FuelSavedPerLap: 0.5, TimeCostPerLap: 0.2},
+	)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if result.Feasible || result.ComputeStats.EvaluatedCandidates != 2 {
+		t.Fatalf("budget must stop at the first candidate over the limit: %+v", result.ComputeStats)
+	}
 }
 
 func curveProjection(points []sp.PacePoint, sampleSize int, lower, upper float64) *sp.StrategyInputProjectionV2 {

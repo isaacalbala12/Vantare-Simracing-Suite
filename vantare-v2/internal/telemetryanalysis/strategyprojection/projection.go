@@ -196,6 +196,7 @@ type SavingCostFamily struct {
 type SavingLevel struct {
 	MixtureCode     int     `json:"mixtureCode"`
 	FuelSavedPerLap float64 `json:"fuelSavedPerLap"`
+	VESavedPerLap   float64 `json:"veSavedPerLap,omitempty"`
 	TimeCostPerLap  float64 `json:"timeCostPerLap"`
 }
 

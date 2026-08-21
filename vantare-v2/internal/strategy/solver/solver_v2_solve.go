@@ -35,12 +35,13 @@ type searchNode struct {
 	green       float64
 	degradation float64
 	fuelWeight  float64
+	saving      float64
 	pit         float64
 	decision    DecisionVector
 }
 
 func (node searchNode) total(formation float64) float64 {
-	return formation + node.green + node.degradation + node.fuelWeight + node.pit
+	return formation + node.green + node.degradation + node.fuelWeight + node.saving + node.pit
 }
 
 type lapCostModel struct {
@@ -75,17 +76,22 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "fuelWeight", err.Error())
 	}
+	saving, err := input.savingCost()
+	if err != nil {
+		return SolverResultV2{}, solveError(ErrorInvalidInput, "savingCost", err.Error())
+	}
 	lapCosts := lapCostModel{pace: paceCost, fuelWeight: fuelWeight, fuelPerLap: fuel.perLap}
 	result := SolverResultV2{
 		ContractVersion:  SolverContractVersionV2,
 		InputHash:        inputHash,
 		StintPaceCost:    paceCost.source,
 		FuelWeightCost:   fuelWeight.source,
+		SavingCost:       saving.source,
 		Binding:          binding,
 		Candidates:       []DecisionVector{},
 		CandidateDetails: []SolverCandidateV2{},
 		Reasons:          []SolverReason{},
-		Assumptions:      []SolverReason{fuelWeight.assumption()},
+		Assumptions:      []SolverReason{fuelWeight.assumption(), saving.assumption()},
 		Sensitivities:    []SolverSensitivity{},
 	}
 
@@ -98,64 +104,77 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 
 	for lap := int64(0); lap < input.RaceLaps && !budgetExhausted; lap++ {
 		for _, node := range byLap[lap] {
-			maxLaps := runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps)
-			if maxLaps < 1 {
-				result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
-				continue
-			}
-			for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
-				evaluated++
-				if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
-					budgetExhausted = true
-					break
+			for _, savingLevel := range saving.levels {
+				effectiveFuel := fuel.withPerLapSaving(savingLevel.fuelSavedPerLap)
+				effectiveVE := ve.withPerLapSaving(savingLevel.veSavedPerLap)
+				maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+				if maxLaps < 1 {
+					result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
+					continue
 				}
-				afterStint, err := appendStint(node, stintLaps, input, lapCosts)
-				if err != nil {
-					return SolverResultV2{}, err
-				}
-				afterStint.lap = lap + stintLaps
-				afterStint.fuel -= fuel.perLap * stintLaps
-				afterStint.ve -= ve.perLap * stintLaps
-				if afterStint.lap == input.RaceLaps {
-					if allowed, code, message := input.stopCountAllowed(len(afterStint.decision.PitStops)); allowed {
-						completed = insertRanked(completed, afterStint, input.Formation.Seconds)
-					} else {
-						result.addRejected(afterStint, input, code, message)
+				for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
+					evaluated++
+					if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+						budgetExhausted = true
+						break
 					}
-					continue
-				}
-				if input.EventRules.MaxPitStops != nil && len(afterStint.decision.PitStops) >= *input.EventRules.MaxPitStops {
-					result.addRejected(afterStint, input, "maximum_pit_stops", "el maximo de paradas impide anadir el servicio necesario")
-					continue
-				}
+					afterStint, err := appendStint(node, stintLaps, input, lapCosts, savingLevel)
+					if err != nil {
+						return SolverResultV2{}, err
+					}
+					afterStint.lap = lap + stintLaps
+					afterStint.fuel -= effectiveFuel.perLap * stintLaps
+					afterStint.ve -= effectiveVE.perLap * stintLaps
+					if afterStint.lap == input.RaceLaps {
+						if allowed, code, message := input.stopCountAllowed(len(afterStint.decision.PitStops)); allowed {
+							completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+						} else {
+							result.addRejected(afterStint, input, code, message)
+						}
+						continue
+					}
+					if input.EventRules.MaxPitStops != nil && len(afterStint.decision.PitStops) >= *input.EventRules.MaxPitStops {
+						result.addRejected(afterStint, input, "maximum_pit_stops", "el maximo de paradas impide anadir el servicio necesario")
+						continue
+					}
 
-				fuelAmounts := serviceAmounts(afterStint.fuel, fuel)
-				veAmounts := serviceAmounts(afterStint.ve, ve)
-				for _, fuelAmount := range fuelAmounts {
-					for _, veAmount := range veAmounts {
-						evaluated++
-						if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
-							budgetExhausted = true
+					fuelAmounts := serviceAmounts(afterStint.fuel, fuel)
+					veAmounts := serviceAmounts(afterStint.ve, ve)
+					for _, fuelAmount := range fuelAmounts {
+						for _, veAmount := range veAmounts {
+							evaluated++
+							if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+								budgetExhausted = true
+								break
+							}
+							next, err := appendPit(afterStint, fuelAmount, veAmount, input)
+							if err != nil {
+								return SolverResultV2{}, err
+							}
+							next.fuel += fuelAmount
+							next.ve += veAmount
+							byLap[next.lap] = insertNondominated(
+								byLap[next.lap],
+								next,
+								input.Formation.Seconds,
+								input.hasStopCountRules(),
+								fuelWeight.secondsPerLiter > 0,
+							)
+						}
+						if budgetExhausted {
 							break
 						}
-						next, err := appendPit(afterStint, fuelAmount, veAmount, input)
-						if err != nil {
-							return SolverResultV2{}, err
-						}
-						next.fuel += fuelAmount
-						next.ve += veAmount
-						byLap[next.lap] = insertNondominated(
-							byLap[next.lap],
-							next,
-							input.Formation.Seconds,
-							input.hasStopCountRules(),
-							fuelWeight.secondsPerLiter > 0,
-						)
 					}
 					if budgetExhausted {
 						break
 					}
 				}
+				if budgetExhausted {
+					break
+				}
+			}
+			if budgetExhausted {
+				break
 			}
 		}
 	}
@@ -182,6 +201,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	best := completed[0]
 	result.Feasible = true
 	result.Best = cloneDecision(best.decision)
+	result.SavingPlan = savingPlanForDecision(result.Best)
 	result.Expected = evaluationForNode(best, input.Formation.Seconds)
 	result.WorstCase = result.Expected
 	perturbed := paceCost.perturbed(defaultCurveSensitivity)
@@ -204,6 +224,14 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 			Parameter:     "fuelWeightSecondsPerLiter",
 			Delta:         defaultFuelWeightSensitivity,
 			ImpactSeconds: fuelWeightImpact,
+		})
+	}
+	if saving.source.Presence == sp.PresenceValid {
+		savingImpact := best.saving * defaultSavingCostSensitivity
+		result.WorstCase.SavingSeconds += savingImpact
+		result.WorstCase.TotalSeconds += savingImpact
+		result.Sensitivities = append(result.Sensitivities, SolverSensitivity{
+			Parameter: "savingTimeCostPerLap", Delta: defaultSavingCostSensitivity, ImpactSeconds: savingImpact,
 		})
 	}
 	feasibleDetails := make([]SolverCandidateV2, 0, len(completed))
@@ -255,6 +283,11 @@ func (input SolverInputV2) serviceResources() (serviceResource, serviceResource,
 		return serviceResource{}, serviceResource{}, err
 	}
 	return fuel, ve, nil
+}
+
+func (resource serviceResource) withPerLapSaving(saving int64) serviceResource {
+	resource.perLap -= saving
+	return resource
 }
 
 func newServiceResource(field string, capacity, perLap, step float64) (serviceResource, error) {
@@ -316,7 +349,7 @@ func serviceAmounts(current int64, resource serviceResource) []int64 {
 	return result
 }
 
-func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCostModel) (searchNode, error) {
+func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCostModel, saving savingLevelCost) (searchNode, error) {
 	next := cloneNode(node)
 	stint, err := costs.pace.stint(laps, input.BaseLapSeconds)
 	if err != nil {
@@ -324,8 +357,18 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	}
 	next.green += stint.GreenSeconds
 	next.degradation += stint.DegradationSeconds
-	next.fuelWeight += costs.fuelWeight.stint(node.fuel, costs.fuelPerLap, laps)
-	next.decision.Stints = append(next.decision.Stints, StintDecision{Index: len(next.decision.Stints), Laps: laps, SavingLevel: SavingNone})
+	effectiveFuelPerLap := costs.fuelPerLap - saving.fuelSavedPerLap
+	next.fuelWeight += costs.fuelWeight.stint(node.fuel, effectiveFuelPerLap, laps)
+	savingSeconds := saving.timeCostPerLap * float64(laps)
+	next.saving += savingSeconds
+	next.decision.Stints = append(next.decision.Stints, StintDecision{
+		Index: len(next.decision.Stints), Laps: laps, SavingLevel: saving.level,
+		FuelSavedPerLap: serviceValue(saving.fuelSavedPerLap), VESavedPerLap: serviceValue(saving.veSavedPerLap),
+		TimeCostPerLap: saving.timeCostPerLap, SavingCostSeconds: savingSeconds,
+	})
+	if len(next.decision.PitStops) > 0 {
+		next.decision.PitStops[len(next.decision.PitStops)-1].SavingLevel = saving.level
+	}
 	return next, nil
 }
 
@@ -495,7 +538,7 @@ func cloneDecision(decision DecisionVector) DecisionVector {
 func evaluationForNode(node searchNode, formation float64) ScenarioEvaluation {
 	return ScenarioEvaluation{
 		TotalSeconds: node.total(formation), GreenSeconds: node.green, DegradationSeconds: node.degradation,
-		FuelWeightSeconds: node.fuelWeight, PitSeconds: node.pit, FormationSeconds: formation,
+		FuelWeightSeconds: node.fuelWeight, SavingSeconds: node.saving, PitSeconds: node.pit, FormationSeconds: formation,
 	}
 }
 

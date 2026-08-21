@@ -1,3 +1,20 @@
+Nota ISA-749 / ISA-694 F4-4 (2026-08-21, implementada en rama de issue):
+- `SolveV2` elige por stint entre `none` y hasta 16 niveles declarados de
+  ahorro Fuel/VE con coste s/vuelta. El consumo efectivo alimenta autonomía,
+  litros/VE de servicio y el peso de Fuel de F4-3.
+- La fuente es manual/reference o la familia `valid` de Analysis; una fuente
+  derivada exige el protocolo A/B de F3-a4 y dos autoridades fallan cerradas.
+  El resultado expone fuente, coste separado, sensibilidad y plan explícito.
+- El test D6 de 25 vueltas elimina una parada al ahorrar 0,25 L/vuelta a
+  0,20 s/vuelta y la conserva a 2 s/vuelta. El oráculo sin poda cubre dos
+  niveles, Fuel/VE y peso activo en tamaños pequeños.
+- Gates verdes: solver x100, Strategy+app, Telemetry Analysis, golden Orbit,
+  vet focal, gofmt y diff-check. El gate global pasa todo lo compilable y solo
+  falla el setup de `frontend`/`cmd/vantare` porque el worktree no contiene
+  `frontend/dist` ni `frontend/node_modules` para regenerarlo. Sin frontend,
+  dependencias, PR, merge, promoción ni release. Pendiente: push y review del
+  orquestador de #749.
+
 Nota ISA-747 / ISA-694 F4-3 (2026-08-21, implementada en rama de issue):
 - `SolveV2` suma por vuelta `litros al inicio * segundos/L` al ritmo base y
   a la curva de stint. El nivel parte de la capacidad, resta consumo tras cada

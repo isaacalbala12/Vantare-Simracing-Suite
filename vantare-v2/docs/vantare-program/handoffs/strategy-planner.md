@@ -17,6 +17,24 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-749 / F4-4 (2026-08-21, lista para review):
+
+- `SolveV2` incorpora el nivel de ahorro Fuel/VE como decisión de cada stint;
+  el consumo efectivo cambia autonomía, servicios y peso, y el coste de ritmo
+  queda separado en la evaluación.
+- Acepta una sola fuente manual/reference o la familia A/B válida de Analysis,
+  conserva procedencia/confianza y publica un plan explícito por stint con
+  totales y sensibilidad del 20 %.
+- D6 prueba ambos lados de la decisión: ahorro barato elimina la parada corta
+  y ahorro caro la conserva. El oráculo exhaustivo comparte la dimensión sin
+  poda y cubre Fuel, VE, dos niveles y peso activo en carreras pequeñas.
+- Gates verdes: solver x100, Strategy+app, Telemetry Analysis, golden Orbit,
+  vet focal, gofmt y diff-check. El gate global pasa todo lo compilable y solo
+  falla el setup de `frontend`/`cmd/vantare` por `frontend/dist` ausente; no hay
+  `frontend/node_modules` para regenerarlo. Sin frontend, dependencias, PR,
+  merge, promoción ni release. Pendiente: push y review del orquestador de
+  #749.
+
 Actualización ISA-747 / F4-3 (2026-08-21, lista para review):
 
 - `SolveV2` suma por vuelta `litros al inicio * segundos/L` al ritmo base y a

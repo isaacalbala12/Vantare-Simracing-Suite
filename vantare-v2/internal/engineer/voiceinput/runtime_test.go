@@ -315,6 +315,9 @@ func TestRuntimeDefaultOffDoesNotStartHost(t *testing.T) {
 	if health := runtime.Health(); health.State != StateDisabled || health.Enabled {
 		t.Fatalf("health = %+v", health)
 	}
+	if runtime.detector.Match("Engineer") {
+		t.Fatal("disabled runtime constructed the wake detector")
+	}
 	host.mu.Lock()
 	defer host.mu.Unlock()
 	if host.started {

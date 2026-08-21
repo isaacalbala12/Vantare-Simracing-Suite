@@ -251,22 +251,32 @@ func readLine(ctx context.Context, reader io.Reader) ([]byte, error) {
 	go func() {
 		line := make([]byte, 0, 256)
 		defer zeroBytes(line)
-		var single [1]byte
-		for len(line) <= maxProtocolLine {
-			count, err := reader.Read(single[:])
+		var chunk [4096]byte
+		defer zeroBytes(chunk[:])
+		for {
+			count, err := reader.Read(chunk[:])
 			if count != 0 {
-				line = append(line, single[0])
-				if single[0] == '\n' {
+				newline := bytes.IndexByte(chunk[:count], '\n')
+				if newline >= 0 {
+					if newline != count-1 || len(line)+newline+1 > maxProtocolLine {
+						done <- result{err: ErrHostProtocol}
+						return
+					}
+					line = append(line, chunk[:newline+1]...)
 					done <- result{line: append([]byte(nil), line...)}
 					return
 				}
+				if len(line)+count > maxProtocolLine {
+					done <- result{err: ErrHostProtocol}
+					return
+				}
+				line = append(line, chunk[:count]...)
 			}
 			if err != nil {
 				done <- result{err: err}
 				return
 			}
 		}
-		done <- result{err: ErrHostProtocol}
 	}()
 	select {
 	case <-ctx.Done():

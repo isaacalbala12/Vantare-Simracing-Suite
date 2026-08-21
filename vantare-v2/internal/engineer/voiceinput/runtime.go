@@ -54,10 +54,11 @@ func New(config Config) (*Runtime, error) {
 	if config.TranscriptionTimeout <= 0 || config.TranscriptionTimeout > DefaultTranscriptionTimeout {
 		config.TranscriptionTimeout = DefaultTranscriptionTimeout
 	}
-	runtime := &Runtime{config: config, health: Health{Experimental: true, Enabled: config.Enabled, State: StateDisabled}, detector: NewKeywordDetector(commands.DefaultCatalogV1())}
+	runtime := &Runtime{config: config, health: Health{Experimental: true, Enabled: config.Enabled, State: StateDisabled}}
 	if !config.Enabled {
 		return runtime, nil
 	}
+	runtime.detector = NewKeywordDetector(commands.DefaultCatalogV1())
 	if config.Host == nil || config.Reader == nil || config.QueryPort == nil || config.Publisher == nil || config.Lifecycle == nil {
 		return nil, errors.New("engineer voice-input dependencies are incomplete")
 	}

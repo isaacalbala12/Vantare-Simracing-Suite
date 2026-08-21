@@ -141,7 +141,7 @@ func (reducer *Reducer) Prepare(batch Batch) (ReducerCandidate, error) {
 	}
 
 	owned := cloneObservedState(batch.State)
-	snapshot, err := envelope.NewSnapshot(batch.Header, owned, cloneObservedState)
+	snapshot, err := envelope.NewSnapshotOwned(batch.Header, owned, cloneObservedState)
 	if err != nil {
 		return ReducerCandidate{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
 	}
@@ -154,6 +154,9 @@ func (candidate ReducerCandidate) Snapshot() envelope.Snapshot[ObservedState] {
 }
 
 // Commit publishes a candidate prepared by this reducer.
+// Candidate state is already owned; direct assignment is safe because the
+// candidate is ephemeral and its slice is not mutated after Prepare. A deep
+// copy would allocate another Vehicles slice per frame with identical bytes.
 func (reducer *Reducer) Commit(candidate ReducerCandidate) {
 	if candidate.reducer != reducer {
 		return
@@ -161,7 +164,7 @@ func (reducer *Reducer) Commit(candidate ReducerCandidate) {
 	reducer.mu.Lock()
 	defer reducer.mu.Unlock()
 	reducer.header = candidate.header
-	reducer.state = cloneObservedState(candidate.state)
+	reducer.state = candidate.state
 	reducer.initialized = true
 }
 

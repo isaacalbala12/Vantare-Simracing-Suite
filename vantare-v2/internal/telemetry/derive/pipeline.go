@@ -152,7 +152,7 @@ func (pipeline *Pipeline) Prepare(
 	if err := ctx.Err(); err != nil {
 		return PipelineCandidate{}, err
 	}
-	observedState, ok := observed.Value()
+	observedState, ok := observed.Peek()
 	if !ok {
 		return PipelineCandidate{}, fmt.Errorf("%w: observed snapshot has no owned value", ErrInvalidDefinition)
 	}
@@ -176,7 +176,7 @@ func (pipeline *Pipeline) Prepare(
 	deltaTracker := cloneSelfDeltaTracker(pipeline.delta)
 	fuelTracker := cloneFuelUsageTracker(pipeline.fuel)
 	next := FinalState{
-		Observed: cloneObserved(observedState),
+		Observed: observedState,
 		Derived: DerivedState{
 			SessionRemaining: deriveSessionRemaining(observedState.SourceTime, observedState.EndTime),
 			Gaps:             deriveRelativeGaps(header.Identity.Vehicle, observedState.PlayerPresent, observedState.Vehicles),
@@ -189,7 +189,7 @@ func (pipeline *Pipeline) Prepare(
 	if err := ctx.Err(); err != nil {
 		return PipelineCandidate{}, err
 	}
-	snapshot, err := envelope.NewSnapshot(header, next, cloneFinal)
+	snapshot, err := envelope.NewSnapshotOwned(header, next, cloneFinal)
 	if err != nil {
 		return PipelineCandidate{}, fmt.Errorf("create final derived snapshot: %w", err)
 	}
@@ -202,6 +202,8 @@ func (candidate PipelineCandidate) Snapshot() envelope.Snapshot[FinalState] {
 }
 
 // Commit publishes a candidate prepared by this pipeline.
+// Direct assignment is safe: candidate.state is already owned and candidate
+// is ephemeral. This avoids cloning all derived slices per frame.
 func (pipeline *Pipeline) Commit(candidate PipelineCandidate) {
 	if candidate.pipeline != pipeline {
 		return
@@ -209,7 +211,7 @@ func (pipeline *Pipeline) Commit(candidate PipelineCandidate) {
 	pipeline.mu.Lock()
 	defer pipeline.mu.Unlock()
 	pipeline.header = candidate.header
-	pipeline.state = cloneFinal(candidate.state)
+	pipeline.state = candidate.state
 	pipeline.delta = candidate.delta
 	pipeline.fuel = candidate.fuel
 	pipeline.initialized = true

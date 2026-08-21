@@ -1,3 +1,8 @@
+Nota ISA-697 / Deuda #677 Tanda 2 (2026-08-21, implementada en rama, sin promoción):
+- `TelemetryEngine.Apply` baja de 650190 B/op y 344 allocs/op @104 a 168400 B/op y 327 allocs/op (-74% bytes, -5% allocs) mediante `NewSnapshotOwned` + `Peek` + `Commit` directo y validación sin map.
+- Cambios en `envelope/types.go` (Owned/Peek), `core/reducer.go` y `core/session_coordinator.go` (Owned + commit directo), `derive/pipeline.go` (Peek + Owned). `core/validateObservedState` pasa de `map` a `sort`.
+- Semántica idéntica: goldens v1/v2 y replay parity verdes; el snapshot sigue siendo value-semantic (Value() clona) y Peek() es solo lectura interna.
+- Rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` con 5 commits (1 benchmark + 4 perf); evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md` y fragmento `ISA-697.json`. Queda ~150KB/B/op de techo sin COW en envelope; gaps aún aloca 104 gaps por frame. Sin promoción ni merge.
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

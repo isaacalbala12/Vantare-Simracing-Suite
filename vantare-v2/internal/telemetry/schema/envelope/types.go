@@ -53,6 +53,17 @@ func NewSnapshot[T any](header Header, value T, clone Clone[T]) (Snapshot[T], er
 	return Snapshot[T]{header: header, value: clone(value), clone: clone}, nil
 }
 
+// NewSnapshotOwned stores an already-owned value without an extra clone.
+// The caller transfers ownership and must not mutate the value after the call.
+// Reads via Value() still clone, so the snapshot remains value-semantic for
+// consumers and no mutable slice is shared between frames.
+func NewSnapshotOwned[T any](header Header, value T, clone Clone[T]) (Snapshot[T], error) {
+	if clone == nil {
+		return Snapshot[T]{}, ErrCloneRequired
+	}
+	return Snapshot[T]{header: header, value: value, clone: clone}, nil
+}
+
 func (snapshot Snapshot[T]) Header() Header { return snapshot.header }
 
 func (snapshot Snapshot[T]) Value() (T, bool) {
@@ -61,6 +72,17 @@ func (snapshot Snapshot[T]) Value() (T, bool) {
 		return zero, false
 	}
 	return snapshot.clone(snapshot.value), true
+}
+
+// Peek returns the internal value without cloning. The caller must not mutate
+// the returned value: the snapshot and its owner share the same mutable
+// collections until the next frame clones them. Use for read-only derives.
+func (snapshot Snapshot[T]) Peek() (T, bool) {
+	if snapshot.clone == nil {
+		var zero T
+		return zero, false
+	}
+	return snapshot.value, true
 }
 
 // Fact carries one ordered, value-semantic discrete occurrence.

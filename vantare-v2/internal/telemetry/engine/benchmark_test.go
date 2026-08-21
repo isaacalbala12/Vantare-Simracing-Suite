@@ -14,6 +14,10 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 )
 
+// BenchmarkEngineApply104 es la línea base de churn @104 coches.
+// Baseline medido 2026-08-21 (AMD Ryzen 7 3700X, Windows):
+//   650190 B/op  344 allocs/op  (~p99 1.1ms) con -benchtime 1000x -count=5 mediana.
+// ReportAllocs fijo para tracking de ISA-697.
 func BenchmarkEngineApply20(b *testing.B)  { benchmarkEngineApply(b, 20) }
 func BenchmarkEngineApply64(b *testing.B)  { benchmarkEngineApply(b, 64) }
 func BenchmarkEngineApply104(b *testing.B) { benchmarkEngineApply(b, 104) }

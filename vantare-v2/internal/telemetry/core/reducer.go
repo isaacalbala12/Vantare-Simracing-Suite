@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -141,7 +142,7 @@ func (reducer *Reducer) Prepare(batch Batch) (ReducerCandidate, error) {
 	}
 
 	owned := cloneObservedState(batch.State)
-	snapshot, err := envelope.NewSnapshot(batch.Header, owned, cloneObservedState)
+	snapshot, err := envelope.NewSnapshotOwned(batch.Header, owned, cloneObservedState)
 	if err != nil {
 		return ReducerCandidate{}, fmt.Errorf("create owned telemetry snapshot: %w", err)
 	}
@@ -154,6 +155,9 @@ func (candidate ReducerCandidate) Snapshot() envelope.Snapshot[ObservedState] {
 }
 
 // Commit publishes a candidate prepared by this reducer.
+// Candidate state is already owned; direct assignment is safe because the
+// candidate is ephemeral and its slice is not mutated after Prepare. A deep
+// copy would allocate another Vehicles slice per frame with identical bytes.
 func (reducer *Reducer) Commit(candidate ReducerCandidate) {
 	if candidate.reducer != reducer {
 		return
@@ -161,7 +165,7 @@ func (reducer *Reducer) Commit(candidate ReducerCandidate) {
 	reducer.mu.Lock()
 	defer reducer.mu.Unlock()
 	reducer.header = candidate.header
-	reducer.state = cloneObservedState(candidate.state)
+	reducer.state = candidate.state
 	reducer.initialized = true
 }
 
@@ -227,8 +231,14 @@ func validateObservedState(run identity.RunIdentity, state ObservedState) error 
 		int(count) != len(state.Vehicles) {
 		return ErrVehicleCountMismatch
 	}
-	vehicles := make(map[identity.VehicleID]struct{}, len(state.Vehicles))
-	for _, current := range state.Vehicles {
+	if len(state.Vehicles) == 0 {
+		return nil
+	}
+	// Evita el map por frame: con 104 coches el sort es barato y no aloca
+	// buckets de hash. Recolecta IDs, valida missing/mismatch en la pasada,
+	// y detecta duplicados por orden.
+	ids := make([]identity.VehicleID, len(state.Vehicles))
+	for index, current := range state.Vehicles {
 		id := current.Identity.Vehicle
 		if id == "" {
 			return ErrMissingVehicleID
@@ -236,10 +246,13 @@ func validateObservedState(run identity.RunIdentity, state ObservedState) error 
 		if stateIdentityMismatch(current.Identity, run) {
 			return ErrVehicleRunMismatch
 		}
-		if _, exists := vehicles[id]; exists {
+		ids[index] = id
+	}
+	slices.Sort(ids)
+	for index := 1; index < len(ids); index++ {
+		if ids[index] == ids[index-1] {
 			return ErrDuplicateVehicle
 		}
-		vehicles[id] = struct{}{}
 	}
 	return nil
 }

@@ -204,7 +204,7 @@ func (coordinator *SessionCoordinator) Prepare(
 	if err != nil {
 		return CoordinatorCandidate{}, err
 	}
-	observed, err := envelope.NewSnapshot(header, value, cloneObservedState)
+	observed, err := envelope.NewSnapshotOwned(header, value, cloneObservedState)
 	if err != nil {
 		return CoordinatorCandidate{}, err
 	}
@@ -222,12 +222,14 @@ func (candidate CoordinatorCandidate) Snapshot() envelope.Snapshot[ObservedState
 }
 
 // Commit publishes a candidate prepared by this coordinator.
+// Direct assignment is safe: candidate.next is already an owned copy from
+// Prepare and the candidate is ephemeral.
 func (coordinator *SessionCoordinator) Commit(candidate CoordinatorCandidate) {
 	if candidate.coordinator != coordinator {
 		return
 	}
 	coordinator.mu.Lock()
-	coordinator.state = cloneCoordinatorState(candidate.next)
+	coordinator.state = candidate.next
 	coordinator.mu.Unlock()
 }
 

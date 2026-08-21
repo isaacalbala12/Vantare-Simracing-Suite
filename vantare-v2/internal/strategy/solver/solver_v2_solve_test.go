@@ -706,7 +706,7 @@ func TestSolveV2RankingIsDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SolveV2 repeat: %v", err)
 		}
-		if first.InputHash != again.InputHash || !reflect.DeepEqual(first.Best, again.Best) || !reflect.DeepEqual(first.Candidates, again.Candidates) || !reflect.DeepEqual(first.CandidateDetails, again.CandidateDetails) {
+		if first.InputHash != again.InputHash || !reflect.DeepEqual(first.Best, again.Best) || !reflect.DeepEqual(first.Candidates, again.Candidates) || !reflect.DeepEqual(first.CandidateDetails, again.CandidateDetails) || !reflect.DeepEqual(first.Variants, again.Variants) || !reflect.DeepEqual(first.Sensitivities, again.Sensitivities) {
 			t.Fatalf("ranking changed on attempt %d", attempt)
 		}
 	}
@@ -721,10 +721,10 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
 		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false, false, false) {
 		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false, false, false) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }

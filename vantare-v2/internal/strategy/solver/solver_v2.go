@@ -7,6 +7,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	"github.com/vantare/overlays/v2/internal/strategy/tyres"
+	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
@@ -104,6 +105,10 @@ type EventRules struct {
 	MandatoryCompounds []TyreCompound `json:"mandatoryCompounds,omitempty"`
 	// Límites de conducción por piloto (min/max laps or time).
 	DriverLimits map[string]DriverLimit `json:"driverLimits,omitempty"`
+	// AllowedCompoundsByClimate restringe el compuesto durante cada vuelta de
+	// una condicion. Si un stint cruza una transicion debe ser valido en ambos
+	// buckets o parar antes de la primera vuelta incompatible.
+	AllowedCompoundsByClimate map[sp.ClimateBucket][]TyreCompound `json:"allowedCompoundsByClimate,omitempty"`
 }
 
 type PitWindow struct {
@@ -167,7 +172,38 @@ type SolverInputV2 struct {
 	TyreInventory     *TyreInventoryInput     `json:"tyreInventory,omitempty"`
 	CompoundPace      []CompoundPaceParameter `json:"compoundPace,omitempty"`
 	DriverProfiles    []DriverProfileInput    `json:"driverProfiles,omitempty"`
+	Weather           *WeatherPlanInput       `json:"weather,omitempty"`
 	Discretization    ServiceDiscretization   `json:"serviceDiscretization"`
+}
+
+// RainChanceThresholds traduce la probabilidad interpolada del forecast a los
+// buckets observados por Analysis. Los defaults son 20 % (humid) y 60 % (wet).
+type RainChanceThresholds struct {
+	HumidPercent float64 `json:"humidPercent"`
+	WetPercent   float64 `json:"wetPercent"`
+}
+
+// WeatherPlanInput fija un escenario para una ejecucion concreta de SolveV2.
+// SolveWeatherScenarios construye uno por escenario y compara sus planes.
+type WeatherPlanInput struct {
+	Scenario         weather.WeatherScenarioV1 `json:"scenario"`
+	Thresholds       RainChanceThresholds      `json:"thresholds"`
+	BucketParameters []WeatherBucketParameter  `json:"bucketParameters,omitempty"`
+}
+
+// WeatherBucketParameter es el fallback manual/reference por condicion. Los
+// consumos son punteros porque cero es un valor valido; si Projection publica
+// el mismo bucket, esa familia derivada es la autoridad y el fallback se omite.
+// CompoundPace reemplaza, vuelta a vuelta, los parametros globales declarados
+// para esos mismos compuestos.
+type WeatherBucketParameter struct {
+	Bucket           sp.ClimateBucket        `json:"bucket"`
+	PaceDeltaSeconds float64                 `json:"paceDeltaSeconds"`
+	FuelPerLapLiters *float64                `json:"fuelPerLapLiters,omitempty"`
+	VEPerLapPercent  *float64                `json:"vePerLapPercent,omitempty"`
+	CompoundPace     []CompoundPaceParameter `json:"compoundPace,omitempty"`
+	Provenance       sp.Provenance           `json:"provenance"`
+	Confidence       sp.Confidence           `json:"confidence"`
 }
 
 // SavingCostParameter transporta niveles manuales o de referencia. El nivel
@@ -287,6 +323,9 @@ func (in SolverInputV2) Validate() error {
 	if err := in.validateF45(compoundPace); err != nil {
 		return err
 	}
+	if len(in.EventRules.AllowedCompoundsByClimate) > 0 && in.Weather == nil {
+		return fmt.Errorf("eventRules.allowedCompoundsByClimate requires weather")
+	}
 	// Projection puede ser nil (arranque en frío): se usa reference del catálogo o manual.
 	if in.Projection != nil {
 		if err := in.Projection.Validate(); err != nil {
@@ -333,25 +372,27 @@ func (parameter FuelWeightParameter) Validate() error {
 
 // SolverResultV2 es el resultado con binding, sensibilidades y esperado/caso-malo.
 type SolverResultV2 struct {
-	ContractVersion   ContractVersion          `json:"contractVersion"`
-	InputHash         string                   `json:"inputHash"`
-	StintPaceCost     StintPaceCostSource      `json:"stintPaceCost"`
-	FuelWeightCost    FuelWeightCostSource     `json:"fuelWeightCost"`
-	SavingCost        SavingCostSource         `json:"savingCost"`
-	CompoundPaceCost  []CompoundPaceCostSource `json:"compoundPaceCost,omitempty"`
-	DriverProfileCost []DriverProfileSource    `json:"driverProfileCost,omitempty"`
-	SavingPlan        SavingPlan               `json:"savingPlan"`
-	Best              DecisionVector           `json:"best"`
-	Binding           BindingConstraint        `json:"binding"`
-	Sensitivities     []SolverSensitivity      `json:"sensitivities"`
-	Expected          ScenarioEvaluation       `json:"expected"`
-	WorstCase         ScenarioEvaluation       `json:"worstCase"`
-	Candidates        []DecisionVector         `json:"candidates,omitempty"`
-	CandidateDetails  []SolverCandidateV2      `json:"candidateDetails,omitempty"`
-	Feasible          bool                     `json:"feasible"`
-	Reasons           []SolverReason           `json:"reasons,omitempty"`
-	Assumptions       []SolverReason           `json:"assumptions"`
-	ComputeStats      ComputeStats             `json:"computeStats"`
+	ContractVersion   ContractVersion           `json:"contractVersion"`
+	InputHash         string                    `json:"inputHash"`
+	StintPaceCost     StintPaceCostSource       `json:"stintPaceCost"`
+	FuelWeightCost    FuelWeightCostSource      `json:"fuelWeightCost"`
+	SavingCost        SavingCostSource          `json:"savingCost"`
+	CompoundPaceCost  []CompoundPaceCostSource  `json:"compoundPaceCost,omitempty"`
+	DriverProfileCost []DriverProfileSource     `json:"driverProfileCost,omitempty"`
+	WeatherBucketCost []WeatherBucketCostSource `json:"weatherBucketCost,omitempty"`
+	WeatherTimeline   []WeatherLapCondition     `json:"weatherTimeline,omitempty"`
+	SavingPlan        SavingPlan                `json:"savingPlan"`
+	Best              DecisionVector            `json:"best"`
+	Binding           BindingConstraint         `json:"binding"`
+	Sensitivities     []SolverSensitivity       `json:"sensitivities"`
+	Expected          ScenarioEvaluation        `json:"expected"`
+	WorstCase         ScenarioEvaluation        `json:"worstCase"`
+	Candidates        []DecisionVector          `json:"candidates,omitempty"`
+	CandidateDetails  []SolverCandidateV2       `json:"candidateDetails,omitempty"`
+	Feasible          bool                      `json:"feasible"`
+	Reasons           []SolverReason            `json:"reasons,omitempty"`
+	Assumptions       []SolverReason            `json:"assumptions"`
+	ComputeStats      ComputeStats              `json:"computeStats"`
 }
 
 type SavingCostSource struct {
@@ -415,8 +456,25 @@ type ScenarioEvaluation struct {
 	CompoundSeconds    float64 `json:"compoundSeconds"`
 	FuelWeightSeconds  float64 `json:"fuelWeightSeconds"`
 	SavingSeconds      float64 `json:"savingSeconds"`
+	WeatherSeconds     float64 `json:"weatherSeconds"`
 	PitSeconds         float64 `json:"pitSeconds"`
 	FormationSeconds   float64 `json:"formationSeconds"`
+}
+
+type WeatherLapCondition struct {
+	Lap        int64            `json:"lap"`
+	RainChance float64          `json:"rainChance"`
+	Bucket     sp.ClimateBucket `json:"bucket"`
+}
+
+type WeatherBucketCostSource struct {
+	Bucket           sp.ClimateBucket         `json:"bucket"`
+	PaceDeltaSeconds float64                  `json:"paceDeltaSeconds"`
+	FuelPerLapLiters *float64                 `json:"fuelPerLapLiters,omitempty"`
+	VEPerLapPercent  *float64                 `json:"vePerLapPercent,omitempty"`
+	CompoundPace     []CompoundPaceCostSource `json:"compoundPace,omitempty"`
+	Provenance       sp.Provenance            `json:"provenance"`
+	Confidence       sp.Confidence            `json:"confidence"`
 }
 
 type ComputeStats struct {

@@ -1,3 +1,16 @@
+Nota ISA-758 / ISA-694 F5-a (2026-08-22, implementada en rama de issue):
+- Analysis enumera únicamente modelos históricos ya autorizados, reutiliza su
+  clasificación y agrupación, y Strategy los adapta por su API sin abrir
+  DuckDB. Sin fuente autorizada el estado es explícitamente vacío.
+- Orbit ofrece un selector opcional de combinación al crear o abrir un evento;
+  saltarlo conserva el flujo manual puro. El panel Sesiones explica inclusiones
+  y exclusiones y guarda cada toggle en el documento canónico v2.
+- La referencia a combinación es una ampliación aditiva compatible. Binding,
+  cliente estricto e i18n ES/EN/IT/PT quedan cubiertos por pruebas Go y
+  frontend, build y visual de Orbit. La captura nueva documenta la pantalla
+  aprobada del selector. Sin banner de arranque en frío, PR, integración,
+  promoción ni release; la importación inicial de F5-e sigue pendiente.
+
 Nota ISA-757 / ISA-694 F6-c (2026-08-21, implementada en rama de issue):
 - `cmd/vantare-curator` valida estrictamente `CurationBundle v1`, registra
   rechazos motivados y predigiere por combinación sin mezclar `test`,

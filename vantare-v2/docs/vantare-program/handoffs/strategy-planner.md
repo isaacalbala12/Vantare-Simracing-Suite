@@ -17,6 +17,22 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-758 / F5-a (2026-08-22, lista para review):
+
+- Analysis publica combinaciones y sesiones desde modelos históricos ya
+  autorizados usando la clasificación/agrupación existente; Strategy solo
+  adapta esa salida y nunca abre DuckDB. Sin fuente autorizada responde con un
+  vacío honesto hasta que F5-e conecte la importación inicial.
+- Orbit pregunta opcionalmente la combinación al crear o abrir un evento. Se
+  puede saltar para seguir en manual puro; el panel Sesiones muestra el motivo
+  de inclusión/exclusión y permite cambiarlo sin borrar datos.
+- Combinación y toggles se persisten en el documento canónico v2 mediante una
+  migración aditiva compatible. Binding, cliente estricto, cuatro idiomas y
+  estados vacíos están cubiertos por pruebas, build y captura visual.
+- Gates verdes: `go test ./internal/... ./cmd/vantare`, 2.898 pruebas frontend,
+  typecheck, build y `visual:orbit-strategy`. Sin banner F5-e, dependencia,
+  PR, integración, promoción ni release; falta review de #758.
+
 Actualización ISA-757 / F6-c (2026-08-21, lista para review):
 
 - El nuevo `cmd/vantare-curator` convierte los tres árboles de procedencia en
@@ -638,13 +654,13 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-757 / F6-c, en especial la adaptación
-normalizada al backtest, el conteo de cohorte por credencial estable y el
-golden byte a byte. No integrar ni promover esta rama sin la autorización de
-Isaac; F6(d-e) consumen este resumen después de su aceptación.
+Revisar la entrega aislada de ISA-758 / F5-a, en especial el límite de ownership
+Analysis→Strategy, la persistencia canónica de combinación/sesiones y el flujo
+opcional de Orbit. No integrar ni promover esta rama sin la autorización de
+Isaac; F5-e conectará después la fuente autorizada y su arranque en frío.
 
 ## Última actualización
 
-2026-08-21, ISA-757: F6-c implementada y verificada en rama propia con curador
-determinista, separación estricta de entornos, dedupe, clustering, scoring
-F4-9 y k=3; pendiente review, sin integración ni promoción.
+2026-08-22, ISA-758: F5-a implementada y verificada en rama propia con selector
+opcional de combinación, panel de sesiones y decisión persistida en documento
+v2; pendiente review, sin integración ni promoción.

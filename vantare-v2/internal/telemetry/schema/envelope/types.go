@@ -74,6 +74,17 @@ func (snapshot Snapshot[T]) Value() (T, bool) {
 	return snapshot.clone(snapshot.value), true
 }
 
+// Peek returns the internal value without cloning. The caller must not mutate
+// the returned value: the snapshot and its owner share the same mutable
+// collections until the next frame clones them. Use for read-only derives.
+func (snapshot Snapshot[T]) Peek() (T, bool) {
+	if snapshot.clone == nil {
+		var zero T
+		return zero, false
+	}
+	return snapshot.value, true
+}
+
 // Fact carries one ordered, value-semantic discrete occurrence.
 type Fact[T comparable] struct {
 	header Header

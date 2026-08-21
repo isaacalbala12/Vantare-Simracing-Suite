@@ -366,33 +366,24 @@ describe("StrategyOrbitPage · neumáticos", () => {
     expect(screen.queryByTestId("orbit-strategy-drivers")).toBeNull();
   });
 
-  it("tocar-y-tocar con Enter monta el juego y el segundo uso baja la condición", async () => {
+  it("F2-f: inventario vacío honesto — sin Spa sintético, muestra estado vacío (no fabrica asignación)", async () => {
     await mounted();
 
     fireEvent.click(screen.getByRole("button", { name: "Neumáticos" }));
-    const condition = () => {
-      const text = screen.getByTestId("orbit-tyre-item-S-05").textContent ?? "";
-      return Number(/(\d+) %/.exec(text)?.[1]);
-    };
-    const before = condition();
-    fireEvent.click(await screen.findByTestId("orbit-tyre-item-S-05"));
+    const tyres = await screen.findByTestId("orbit-strategy-tyres");
+    // El inventario global Spa fue retirado: donde el evento no tiene inventario
+    // per-event (documento v2), se muestra vacío honesto con copy claro.
+    expect(tyres.textContent).toContain("Sin inventario");
+    expect(screen.queryByTestId("orbit-tyre-item-S-05")).toBeNull();
 
+    // Incluso intentando asignar, no se fabrica inventario sintético.
     fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
     const fr = await screen.findByTestId("orbit-corner-slot-FR");
     fireEvent.keyDown(fr, { key: "Enter" });
-
-    await waitFor(() => expect(fr.getAttribute("data-state")).toBe("filled"));
-    expect(fr.textContent).toContain("S-05");
-    // Un uso más: la condición baja 12 puntos (`13.5`).
-    await waitFor(() => expect(condition()).toBe(before - 12));
-
-    // Y otro uso más en la misma tarjeta vuelve a bajarla.
-    fireEvent.click(screen.getByTestId("orbit-tyre-item-S-05"));
-    fireEvent.keyDown(await screen.findByTestId("orbit-corner-slot-RR"), { key: "Enter" });
-    await waitFor(() => expect(condition()).toBe(before - 24));
+    expect(fr.getAttribute("data-state")).not.toBe("filled");
   });
 
-  it("arrastrar un juego a una esquina lo monta", async () => {
+  it("F2-f: arrastrar sin inventario no fabrica montaje", async () => {
     await mounted();
 
     fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
@@ -401,7 +392,9 @@ describe("StrategyOrbitPage · neumáticos", () => {
       dataTransfer: { getData: () => "S-06", types: ["text/plain"] },
     });
 
-    await waitFor(() => expect(rl.textContent).toContain("S-06"));
+    // Sin inventario per-event no hay neumático que montar: permanece vacío
+    expect(rl.getAttribute("data-state")).not.toBe("filled");
+    expect(rl.textContent).not.toContain("S-06");
   });
 });
 

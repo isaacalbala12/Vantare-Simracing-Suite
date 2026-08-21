@@ -137,39 +137,43 @@ try {
     });
 
     if (viewport.editor) {
-      // Neumáticos → elegir un juego → abrir el stint 1 → soltarlo en FL.
+      // F2-f: inventario global Spa sintético retirado — estado vacío honesto per-evento (documento v2). Captura refleja vacío.
       await page.getByRole("button", { name: "Neumáticos", exact: true }).click();
       await page.getByTestId("orbit-strategy-tyres").waitFor();
-      const tyre = page.locator('[data-testid^="orbit-tyre-item-"]').last();
-      const tyreId = await tyre.getAttribute("data-testid");
-      await tyre.click();
+      const tyreCount = await page.locator('[data-testid^="orbit-tyre-item-"]').count();
+      if (tyreCount === 0) {
+        // Vacío honesto: sin inventario sintético, muestra copy Manual/Missing (i18n 4 idiomas)
+        await page.getByText("Sin inventario").waitFor();
+      } else {
+        const tyre = page.locator('[data-testid^="orbit-tyre-item-"]').last();
+        const tyreId = await tyre.getAttribute("data-testid");
+        await tyre.click();
 
-      await page.getByTestId("orbit-stint-edit-0").click();
-      const slot = page.getByTestId("orbit-corner-slot-FL");
-      await slot.waitFor();
-      await slot.press("Enter");
-      // El cutover F2(d) recalcula de forma asíncrona en Go: espera a que la
-      // respuesta vuelva a montar el editor antes de auditar su estado.
-      await page.getByTestId("orbit-stint-editor-0").waitFor();
+        await page.getByTestId("orbit-stint-edit-0").click();
+        const slot = page.getByTestId("orbit-corner-slot-FL");
+        await slot.waitFor();
+        await slot.press("Enter");
+        await page.getByTestId("orbit-stint-editor-0").waitFor();
 
-      const mounted = await page.evaluate(() => {
-        const node = document.querySelector('[data-testid="orbit-corner-slot-FL"]');
-        return {
-          state: node?.getAttribute("data-state") ?? null,
-          text: node?.textContent ?? "",
-          editorVisible: document.querySelectorAll('[data-testid="orbit-stint-editor-0"]').length,
-          nativeTitles: document.querySelector(".orbit-strategy")?.querySelectorAll("[title]").length ?? -1,
-        };
-      });
-      const wanted = (tyreId ?? "").replace("orbit-tyre-item-", "");
-      if (mounted.editorVisible !== 1) {
-        throw new Error(`${viewport.name}: el editor del stint 1 no está montado`);
-      }
-      if (mounted.state !== "filled" || !mounted.text.includes(wanted)) {
-        throw new Error(`${viewport.name}: FL no recibió ${wanted} (estado ${mounted.state})`);
-      }
-      if (mounted.nativeTitles !== 0) {
-        throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
+        const mounted = await page.evaluate(() => {
+          const node = document.querySelector('[data-testid="orbit-corner-slot-FL"]');
+          return {
+            state: node?.getAttribute("data-state") ?? null,
+            text: node?.textContent ?? "",
+            editorVisible: document.querySelectorAll('[data-testid="orbit-stint-editor-0"]').length,
+            nativeTitles: document.querySelector(".orbit-strategy")?.querySelectorAll("[title]").length ?? -1,
+          };
+        });
+        const wanted = (tyreId ?? "").replace("orbit-tyre-item-", "");
+        if (mounted.editorVisible !== 1) {
+          throw new Error(`${viewport.name}: el editor del stint 1 no está montado`);
+        }
+        if (mounted.state !== "filled" || !mounted.text.includes(wanted)) {
+          throw new Error(`${viewport.name}: FL no recibió ${wanted} (estado ${mounted.state})`);
+        }
+        if (mounted.nativeTitles !== 0) {
+          throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
+        }
       }
 
       await hideToasts(page);

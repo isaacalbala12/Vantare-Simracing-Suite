@@ -20,9 +20,10 @@
   `standings-t20-linear-v1`, resumen raw SHA `133FC6D...D682A2`, manifest raw
   SHA `455E0C95...BE1736`. T21 queda omitido por fail-fast: el presupuesto
   8/16,67 ms ya falla materialmente antes de la comparacion visual. #693 esta
-  cerrado `COMPLETED` y el Project Vantare en `Done`; #690 permanece abierto
-  hasta la revision independiente T22. Wails/producto sin cambios; sin push,
-  PR, CI remoto, integracion, promocion ni release.
+  cerrado `COMPLETED` y el Project Vantare en `Done`. T22 independiente acepta
+  el STOP con P0/P1=0; sus dos P2 y un P3 documentales quedaron corregidos en
+  roadmap, labels y rutas raw. #690 esta listo para cierre STOP. Wails/producto
+  sin cambios; sin push, PR, CI remoto, integracion, promocion ni release.
 
 - **OS-QT-04 / GitHub #693 — T19 STOP; T20 GREEN local pendiente de medicion
   (2026-08-21):** los intentos acotados del modelo keyed no produjeron una

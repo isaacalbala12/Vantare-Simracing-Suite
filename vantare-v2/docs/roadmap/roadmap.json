@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20T17:48:00Z",
+  "generatedAt": "2026-08-21T10:32:43Z",
   "digest": {
-    "lastCommit": "64a33318a8a852c0e089b221357b8e4e8e3c442c"
+    "lastCommit": "508c355916b5fef21845da7c35e719b754f5ca29"
   },
   "phases": [
     {
@@ -390,24 +390,24 @@
     },
     {
       "id": "redline-qt-runtime",
-      "type": "plan",
+      "type": "fix",
       "title": {
-        "es": "Runtime Redline Qt Quick en evaluación",
-        "en": "Qt Quick Redline runtime under evaluation",
-        "pt": "Runtime Redline Qt Quick em avaliação",
-        "it": "Runtime Redline Qt Quick in valutazione"
+        "es": "Wails continúa como runtime Redline",
+        "en": "Wails remains the Redline runtime",
+        "pt": "Wails continua como runtime Redline",
+        "it": "Wails resta il runtime Redline"
       },
       "body": {
-        "es": "Evaluación gradual del runtime ingame Redline en Qt Quick, con Wails como motor por defecto y fallback hasta superar paridad, rendimiento, hardware y estabilidad.",
-        "en": "Gradual evaluation of the Redline in-game runtime in Qt Quick, with Wails as the default engine and fallback until parity, performance, hardware and stability gates pass.",
-        "pt": "Avaliação gradual do runtime Redline ingame em Qt Quick, com Wails como motor predefinido e fallback até superar os gates de paridade, desempenho, hardware e estabilidade.",
-        "it": "Valutazione graduale del runtime Redline in-game in Qt Quick, con Wails come motore predefinito e fallback finché non supera i gate di parità, prestazioni, hardware e stabilità."
+        "es": "La evaluación Qt Quick terminó en STOP al no alcanzar Standings el presupuesto temporal sin aumentar la complejidad; Wails continúa como único runtime Redline productivo.",
+        "en": "The Qt Quick evaluation ended in STOP because Standings missed the timing budget without added complexity; Wails remains the only production Redline runtime.",
+        "pt": "A avaliação do Qt Quick terminou em STOP porque o Standings não atingiu o orçamento temporal sem aumentar a complexidade; Wails continua como o único runtime Redline em produção.",
+        "it": "La valutazione Qt Quick si è conclusa con STOP perché Standings non ha rispettato il budget temporale senza aumentare la complessità; Wails resta l'unico runtime Redline in produzione."
       },
       "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "Decisión técnica",
+        "en": "Technical decision",
+        "pt": "Decisão técnica",
+        "it": "Decisione tecnica"
       }
     },
     {
@@ -588,6 +588,51 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-21",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "tests",
+          "text": "Eliminar carrera del emitter en tests de perfiles"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Unificar gobernanza de planning en el roadmap"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Aislar discovery real en tests de handlers"
+        },
+        {
+          "kind": "feat",
+          "scope": "telemetry",
+          "text": "Señales finas de suciedad para standings y relative"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Reducir churn de asignaciones de Apply (-74% bytes/frame)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fingerprint LMU sin ambiguedad y fallback de version no-Steam"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Derivacion canonica de fuel.perLap y estimacion de vueltas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+        }
+      ]
+    },
     {
       "date": "2026-08-20",
       "entries": [

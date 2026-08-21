@@ -282,20 +282,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
-### Runtime Redline Qt Quick en evaluación
+### Wails continúa como runtime Redline
 
 - id: redline-qt-runtime
-- tipo: plan
-- titulo.en: Qt Quick Redline runtime under evaluation
-- titulo.pt: Runtime Redline Qt Quick em avaliação
-- titulo.it: Runtime Redline Qt Quick in valutazione
-- cuerpo: Evaluación gradual del runtime ingame Redline en Qt Quick, con Wails como motor por defecto y fallback hasta superar paridad, rendimiento, hardware y estabilidad.
-- cuerpo.en: Gradual evaluation of the Redline in-game runtime in Qt Quick, with Wails as the default engine and fallback until parity, performance, hardware and stability gates pass.
-- cuerpo.pt: Avaliação gradual do runtime Redline ingame em Qt Quick, com Wails como motor predefinido e fallback até superar os gates de paridade, desempenho, hardware e estabilidade.
-- cuerpo.it: Valutazione graduale del runtime Redline in-game in Qt Quick, con Wails come motore predefinito e fallback finché non supera i gate di parità, prestazioni, hardware e stabilità.
-- etiqueta: Plan
-- etiqueta.pt: Plano
-- etiqueta.it: Piano
+- tipo: fix
+- titulo.en: Wails remains the Redline runtime
+- titulo.pt: Wails continua como runtime Redline
+- titulo.it: Wails resta il runtime Redline
+- cuerpo: La evaluación Qt Quick terminó en STOP al no alcanzar Standings el presupuesto temporal sin aumentar la complejidad; Wails continúa como único runtime Redline productivo.
+- cuerpo.en: The Qt Quick evaluation ended in STOP because Standings missed the timing budget without added complexity; Wails remains the only production Redline runtime.
+- cuerpo.pt: A avaliação do Qt Quick terminou em STOP porque o Standings não atingiu o orçamento temporal sem aumentar a complexidade; Wails continua como o único runtime Redline em produção.
+- cuerpo.it: La valutazione Qt Quick si è conclusa con STOP perché Standings non ha rispettato il budget temporale senza aumentare la complessità; Wails resta l'unico runtime Redline in produzione.
+- etiqueta: Decisión técnica
+- etiqueta.en: Technical decision
+- etiqueta.pt: Decisão técnica
+- etiqueta.it: Decisione tecnica
 
 ### Telemetría LMU en vivo
 

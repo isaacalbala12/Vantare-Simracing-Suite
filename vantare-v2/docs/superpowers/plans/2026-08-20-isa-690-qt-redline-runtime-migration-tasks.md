@@ -574,9 +574,10 @@ canónicos, no una matriz exhaustiva innecesaria.
 
 ### T22 — Decisión GO/STOP y cierre P1
 
-**Estado 2026-08-21:** STOP propuesto por T18/T20, pendiente solo de la revision
-independiente exigida por esta tarea. #693 esta cerrado `COMPLETED` y su item
-del Project en `Done`; #690 no se cierra ni promociona hasta esa revision.
+**Estado 2026-08-21:** STOP aceptado por revision independiente. Resultado
+inicial P0=0/P1=0/P2=2/P3=1; las observaciones documentales de roadmap, label
+GitHub y rutas raw quedaron corregidas. Severidades finales P0=P1=P2=P3=0.
+#693 esta cerrado/Done y #690 queda listo para cierre STOP, sin promocion.
 
 **Descripción:** revisión adversarial de código, evidencia y complejidad.
 
@@ -588,14 +589,14 @@ del Project en `Done`; #690 no se cierra ni promociona hasta esa revision.
 
 **Aceptación STOP:**
 
-- [ ] Fallos y raw custodiados.
-- [ ] No se crean P2+ ni se integra candidate en producto.
-- [ ] Wails continúa sin cambio y #690 se cierra con recomendación STOP.
+- [x] Fallos y raw custodiados.
+- [x] No se crean P2+ ni se integra candidate en producto.
+- [x] Wails continúa sin cambio y #690 se cierra con recomendación STOP.
 
 **Verificación:**
 
-- [ ] Revisión independiente P0/P1/P2/P3.
-- [ ] `git diff origin/nightly...HEAD --check`, árbol limpio, GitHub Project y
+- [x] Revisión independiente P0/P1/P2/P3.
+- [x] `git diff origin/nightly...HEAD --check`, árbol limpio, GitHub Project y
   handoff coherentes.
 
 **Dependencias:** T21.

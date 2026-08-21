@@ -27,8 +27,12 @@ Custodia externa original:
 - manifest stress: `F302B7E427DD87A1B857539DB11B209F60D982C1431238C57F5B6A2BB96322C7`;
 - candidate EXE: `755a84a5e8ead98b40206c510866527714e527d8d880c1a188e3f6bf40fcc00f`.
 
-Las trazas raw permanecen en la custodia local indicada por ambos manifests;
-no se versionan sus aproximadamente 9 MB. Los manifests versionados incluyen
-nombre, tamaño y hash de cada trace, además de binario, corpus, Qt, entorno y
-commit. El agregador independiente falla cerrado ante inventario, orden,
-completitud o self-hash incorrectos.
+Las trazas raw permanecen en estas rutas de custodia local y no se versionan
+sus aproximadamente 9 MB:
+
+- canonical: `C:\tmp\isa693-qt-standings-baseline-20260821-real4-v2`;
+- stress104: `C:\tmp\isa693-qt-standings-baseline-20260821-stress-v2`.
+
+Los manifests versionados incluyen nombre, tamaño y hash de cada trace, además
+de binario, corpus, Qt, entorno y commit. El agregador independiente falla
+cerrado ante inventario, orden, completitud o self-hash incorrectos.

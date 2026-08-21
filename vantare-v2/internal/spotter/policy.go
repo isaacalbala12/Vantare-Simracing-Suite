@@ -91,6 +91,24 @@ func (policy *Policy) Coalescing(intent string) (uint64, radio.CoalesceValue) {
 	return policy.generation, messageValues[policy.situation][kindForIntent(intent)]
 }
 
+func (policy *Policy) Deadline(intent string, fallbackMS int64) int64 {
+	contextDeadline := int64(0)
+	switch intent {
+	case IntentClearLeft:
+		if policy.clearLeftGen == policy.generation {
+			contextDeadline = policy.clearLeftUntilMS
+		}
+	case IntentClearRight:
+		if policy.clearRightGen == policy.generation {
+			contextDeadline = policy.clearRightUntilMS
+		}
+	}
+	if contextDeadline > 0 && contextDeadline < fallbackMS {
+		return contextDeadline
+	}
+	return fallbackMS
+}
+
 // Evaluate returns at most one intent for the proven situation at nowMS.
 func (policy *Policy) Evaluate(nowMS int64, currentLeft, currentRight bool) (string, bool) {
 	if currentLeft {

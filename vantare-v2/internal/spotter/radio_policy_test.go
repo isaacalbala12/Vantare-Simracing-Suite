@@ -284,3 +284,48 @@ func TestSpotterDecisionsExpireAndCancelDeterministically(t *testing.T) {
 	}
 	item.Done()
 }
+
+func TestSpotterDispatchedContextExpiresAtAntecedentDeadline(t *testing.T) {
+	clock, producer, bus := newSpotterHarness(t, 4)
+	antecedent, emit, err := producer.Evaluate(benchmarkObservation(t, 2.8))
+	if err != nil || !emit {
+		t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
+	}
+	submitSpotter(t, bus, antecedent)
+	startSpotter(t, producer, bus, IntentCarLeft, 1_001)
+
+	clock.now = 1_400
+	if message, emitted, err := producer.Evaluate(benchmarkObservation(t)); err != nil || emitted {
+		t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, err)
+	}
+	clock.now = 1_550
+	clear, emit, err := producer.Evaluate(benchmarkObservation(t))
+	if err != nil || !emit || clear.Intent != IntentClearLeft {
+		t.Fatalf("clear = %+v/%t/%v", clear, emit, err)
+	}
+	if clear.ExpiresAtMS != antecedent.ExpiresAtMS {
+		t.Fatalf("clear deadline = %d, want antecedent %d", clear.ExpiresAtMS, antecedent.ExpiresAtMS)
+	}
+}
+
+func TestSpotterClearContextExpiryIsRevalidatedBeforeDispatch(t *testing.T) {
+	clock, producer, bus := newSpotterHarness(t, 4)
+	antecedent, emit, err := producer.Evaluate(benchmarkObservation(t, 2.8))
+	if err != nil || !emit {
+		t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
+	}
+	submitSpotter(t, bus, antecedent)
+	startSpotter(t, producer, bus, IntentCarLeft, 1_001)
+	clock.now = 1_400
+	_, _, _ = producer.Evaluate(benchmarkObservation(t))
+	clock.now = 1_550
+	clear, emit, err := producer.Evaluate(benchmarkObservation(t))
+	if err != nil || !emit || clear.Intent != IntentClearLeft {
+		t.Fatalf("clear = %+v/%t/%v", clear, emit, err)
+	}
+	submitSpotter(t, bus, clear)
+	clock.now = antecedent.ExpiresAtMS
+	if item, ok := bus.Next(context.Background()); ok || item != nil {
+		t.Fatalf("clear survived antecedent deadline: %+v", item)
+	}
+}

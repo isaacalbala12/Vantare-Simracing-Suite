@@ -1,0 +1,154 @@
+{
+  "schema": "vantare.qt-standings-baseline.v1",
+  "status": "FAIL",
+  "thresholds": {
+    "modelApplyP95Ms": 8.0,
+    "modelApplyMaxMs": 16.67,
+    "hitchMs": 50.0
+  },
+  "repetitions": 10,
+  "replaySha256": [
+    "4b084cfb72078d837e1f2bb489a8d82d597d412c78c40180cd75c61b0ccbb60a"
+  ],
+  "scenarios": [
+    {
+      "id": "stress",
+      "sceneId": "standings-full",
+      "runs": 10,
+      "samples": 2500,
+      "modelApply": {
+        "p50Ms": 9.2699,
+        "p95Ms": 330.7235,
+        "maxMs": 1203.6608
+      },
+      "failures": [
+        "MODEL_APPLY_P95",
+        "MODEL_APPLY_MAX",
+        "HITCH_GT_50"
+      ],
+      "raw": [
+        {
+          "repetition": 1,
+          "traceFile": "stress-r01.trace.json",
+          "traceSha256": "b43d153cc8c60552a274354917285510962637f22d92f6c6fbccfa80fd4ead5b",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.0342,
+            "p95Ms": 322.2518,
+            "maxMs": 624.713
+          }
+        },
+        {
+          "repetition": 2,
+          "traceFile": "stress-r02.trace.json",
+          "traceSha256": "7154a9d8aecde96014ba265ca66a1f3aec8d6ea51cf42e8d543e66d663efd41d",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.4862,
+            "p95Ms": 265.9441,
+            "maxMs": 627.8467
+          }
+        },
+        {
+          "repetition": 3,
+          "traceFile": "stress-r03.trace.json",
+          "traceSha256": "c7c38bd7decc7b7994f2931dd7331a2d30a3416d4347db125c27e49aad85ab74",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 11.5197,
+            "p95Ms": 320.2629,
+            "maxMs": 1203.6608
+          }
+        },
+        {
+          "repetition": 4,
+          "traceFile": "stress-r04.trace.json",
+          "traceSha256": "2d9c8cb0d870d7da6e3ae38fbd801d40628d8bd073acb84a6a70216f9a900edf",
+          "records": 250,
+          "presentations": 41,
+          "modelApply": {
+            "p50Ms": 8.4652,
+            "p95Ms": 314.6766,
+            "maxMs": 891.548
+          }
+        },
+        {
+          "repetition": 5,
+          "traceFile": "stress-r05.trace.json",
+          "traceSha256": "d7f27d1dfa3b0cf9baf4e1b0013f1ef4de868fc1048268b48c5b9c3761f97c72",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.6973,
+            "p95Ms": 274.9816,
+            "maxMs": 630.701
+          }
+        },
+        {
+          "repetition": 6,
+          "traceFile": "stress-r06.trace.json",
+          "traceSha256": "aa75d284573ad2c90ed99a127a2f9917959614d48d5a1c43d6aab28df56f733f",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 8.6997,
+            "p95Ms": 292.8726,
+            "maxMs": 569.5781
+          }
+        },
+        {
+          "repetition": 7,
+          "traceFile": "stress-r07.trace.json",
+          "traceSha256": "ce43626772685237a41313885856e383ce17f5cf8befa0408447e5f7cda650ce",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.9971,
+            "p95Ms": 278.8475,
+            "maxMs": 751.2034
+          }
+        },
+        {
+          "repetition": 8,
+          "traceFile": "stress-r08.trace.json",
+          "traceSha256": "366907f35667c3d33003470a770bfff4f96192fe202e4875bbfe7b7704007ba0",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 8.7632,
+            "p95Ms": 349.6866,
+            "maxMs": 730.8382
+          }
+        },
+        {
+          "repetition": 9,
+          "traceFile": "stress-r09.trace.json",
+          "traceSha256": "e9391a263271211ef56954c62f1c041026c0e25efd1333c6305b8870b18eefee",
+          "records": 250,
+          "presentations": 39,
+          "modelApply": {
+            "p50Ms": 9.1916,
+            "p95Ms": 299.6376,
+            "maxMs": 788.2601
+          }
+        },
+        {
+          "repetition": 10,
+          "traceFile": "stress-r10.trace.json",
+          "traceSha256": "07341b1f1ba4abfe16b604574d3ffd292a92f62f2a8d01ea172b96e442b00fa8",
+          "records": 250,
+          "presentations": 40,
+          "modelApply": {
+            "p50Ms": 11.5491,
+            "p95Ms": 513.0688,
+            "maxMs": 1082.0303
+          }
+        }
+      ]
+    }
+  ],
+  "toolingSha256": "9b8a9d84f2a7979d32a763cca17504555b6dbe5b85fa5e34ae08f95dd513f269"
+}

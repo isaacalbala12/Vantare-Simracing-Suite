@@ -453,6 +453,10 @@ func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *test
 					if emit {
 						t.Fatalf("different state emitted inherited message: %+v", current)
 					}
+					clock.now += clearDelayMS
+					if message, emitted, evalErr := producer.Evaluate(after); evalErr != nil || emitted {
+						t.Fatalf("different state inherited clear: %+v/%t/%v", message, emitted, evalErr)
+					}
 					return
 				}
 				if !emit || current.Intent != IntentCarLeft {
@@ -471,6 +475,12 @@ func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *test
 				if evalErr != nil || !emitted || replacement.Intent != IntentAllClear {
 					t.Fatalf("previous lifecycle authorized clear: %+v/%t/%v", replacement, emitted, evalErr)
 				}
+				submitSpotter(t, bus, replacement)
+				item, ok := bus.Next(context.Background())
+				if !ok || item.Message.Intent != IntentAllClear {
+					t.Fatalf("boundary replacement = %+v/%t", item, ok)
+				}
+				item.Done()
 			})
 		}
 	}
@@ -534,7 +544,9 @@ func TestSpotterRadioUnstartedDecisionNeverAuthorizesClearAtAllCapacities(t *tes
 				if err != nil || !emit {
 					t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
 				}
-				antecedent.ExpiresAtMS = 1_500
+				if mode == "expired-before-selection" {
+					antecedent.ExpiresAtMS = 1_500
+				}
 				submitSpotter(t, bus, antecedent)
 
 				switch mode {

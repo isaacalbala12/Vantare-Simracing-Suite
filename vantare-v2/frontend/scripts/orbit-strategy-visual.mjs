@@ -235,6 +235,8 @@ try {
     await page.getByLabel("Desde").fill("15:00");
     await page.getByLabel("Hasta").fill("16:00");
     await page.getByRole("button", { name: "Añadir tramo" }).click();
+    // Añadir disponibilidad dispara un nuevo cálculo Go y sustituye brevemente el panel.
+    await page.getByTestId("orbit-strategy-availability").waitFor();
     const cells = await page.getByTestId("orbit-availability-cell").count();
     if (cells < 5) {
       throw new Error(`${viewport.name}: el recorte no partió el tramo (${cells} segmentos)`);

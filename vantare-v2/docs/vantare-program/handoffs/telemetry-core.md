@@ -28,6 +28,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Pendiente: ningún widget consume todavía los modos, y la procedencia
   `official`/`estimated` de gaps sigue siendo declarativa por driver.
 
+- ISA-678 cierra el follow-up de consumo de combustible que ISA-372 / F8 lote 2a
+  dejó por escrito: `derive.FuelUsage` es ahora la autoridad única del consumo
+  por vuelta (media de las últimas 3 vueltas válidas, reset por sesión y stint,
+  `fuel.per-lap@1`), `fuel.perLap` queda poblado y `fuel.estimatedLaps` prefiere
+  `floor(remaining / perLap)` publicando su base en el campo aditivo
+  `fuel.basis`. `requiredFuel` sigue ausente con motivo. La media canónica
+  **difiere a propósito** de la de Overlay v1 —otra ventana y otro criterio de
+  validez—, así que el comparador de sombra la declara diferencia intencional en
+  vez de compararla. Evidencia:
+  `docs/telemetry-core/evidence/isa-678-fuel-perlap.md`. Rama
+  `vantareapp/isa-678-fuel-perlap-canonico` sobre `nightly@e2d67180`, en PR; sin
+  merge ni promoción.
 - ISA-372/F10 está implementada localmente sobre `tc-integration@74e1a5a6` en
   `vantareapp/isa-372-tc-f10-capabilities-multisim`. La fusión se promovió a
   `internal/telemetry/fusion` (N slots, índice por señal, `ErrRuleMissing` en

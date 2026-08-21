@@ -45,7 +45,10 @@ import type { FuelStrategyContent } from "../widget-types/fuel-strategy/fuel-str
 import type { FuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
 import { buildFuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
 import { buildFuelStrategyViewModelV2 } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
-export { OVERLAY_V2_FUEL_DECLARED_GAPS } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
+export {
+  OVERLAY_V2_FUEL_DECLARED_GAPS,
+  OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES,
+} from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
 import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
 import type { RelativeContent } from "../widget-types/relative/relative-content";
 import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
@@ -352,6 +355,8 @@ export const OVERLAY_V2_RELATIVE_GAP_TOLERANCE = 1e-6;
 export const OVERLAY_V2_FUEL_TOLERANCES = Object.freeze({
   fuelLiters: 1e-6,
   // Both sides publish a whole number of laps: any difference is a real one.
+  // Only comparable while the frame answers the same question as v1, that is
+  // while `fuel.basis` is "session"; see compareFuelModels.
   lapsRemaining: 0,
 });
 /**
@@ -518,17 +523,25 @@ const COMPARABLE_RELATIVE_FIELDS = [
 ] as const satisfies readonly (keyof RelativeRowViewModel)[];
 
 /**
- * Compares the fuel slice. Only the tank and the laps projection have a
- * canonical authority; everything the v1 widget derived from `fuelHistory`
- * is a declared gap until that derivation exists in derive/.
+ * Compares the fuel slice.
+ *
+ * `avgPerLap` is never compared as a value: both sides publish one, but over
+ * different windows, and the canonical one is the authority (ISA-678).
+ *
+ * `lapsRemaining` is compared only while the frame publishes basis "session",
+ * the same session projection v1 shows. Under basis "fuel" the frame answers a
+ * different question, the laps the tank allows, so comparing the two would
+ * gate on a difference that is intended.
  */
 export function compareFuelModels(
   legacy: FuelStrategyViewModel,
   overlayV2: FuelStrategyViewModel,
+  basis?: string,
 ): string[] {
   const mismatch = new Set<string>();
   if (legacy.status !== overlayV2.status) mismatch.add("status");
   for (const field of Object.keys(OVERLAY_V2_FUEL_TOLERANCES) as (keyof typeof OVERLAY_V2_FUEL_TOLERANCES)[]) {
+    if (field === "lapsRemaining" && basis === "fuel") continue;
     if (!numbersWithin(legacy[field], overlayV2[field], OVERLAY_V2_FUEL_TOLERANCES[field])) {
       mismatch.add(field);
     }
@@ -623,7 +636,7 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     compareFuel(input) {
       const legacy = buildFuelStrategyViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildFuelStrategyViewModelV2(input.frame, input.source, input.content);
-      return record(accumulator, "fuel", input, compareFuelModels(legacy, overlayV2));
+      return record(accumulator, "fuel", input, compareFuelModels(legacy, overlayV2, input.frame.fuel.basis));
     },
     compareControls(input) {
       const legacy = buildInputTelemetryViewModel(input.legacySnapshot, input.content, input.legacyHistory);

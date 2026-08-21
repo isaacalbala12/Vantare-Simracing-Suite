@@ -55,6 +55,7 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 		{ID: DerivationSessionRemaining, Version: 1},
 		{ID: DerivationRelativeGaps, Version: 1},
 		{ID: DerivationSelfDelta, Version: 1},
+		{ID: DerivationFuelUsage, Version: 1},
 	}) {
 		t.Fatalf("snapshot algorithms = %+v", got.Derived.Algorithms)
 	}

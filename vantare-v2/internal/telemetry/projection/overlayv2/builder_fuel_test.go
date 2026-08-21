@@ -3,6 +3,7 @@ package overlayv2
 import (
 	"testing"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
@@ -32,9 +33,12 @@ func TestBuildFuelPublishesTheCanonicalTankAndTheSessionProjection(t *testing.T)
 	if view.EstimatedLaps.Q != QualityFresh || view.EstimatedLaps.V != 79 {
 		t.Fatalf("estimatedLaps = %#v, want ceil(%v/%v)", view.EstimatedLaps, remaining, lastLap)
 	}
+	if view.Basis != FuelBasisSession {
+		t.Fatalf("basis = %q, want the session projection without a canonical consumption", view.Basis)
+	}
 }
 
-func TestBuildFuelLeavesPerLapMissingBecauseNoCanonicalHistoryExists(t *testing.T) {
+func TestBuildFuelLeavesPerLapMissingWithoutTheCanonicalDerivation(t *testing.T) {
 	t.Parallel()
 
 	final, ok := builderFinalState(t, 20).Value()
@@ -43,7 +47,83 @@ func TestBuildFuelLeavesPerLapMissingBecauseNoCanonicalHistoryExists(t *testing.
 	}
 	view := BuildFuel(final, DefaultPreferencesV2())
 	if view.PerLap.Q != QualityMissing || view.PerLap.V != 0 {
-		t.Fatalf("per-lap consumption has no canonical authority and must stay missing: %#v", view.PerLap)
+		t.Fatalf("without a measured lap the consumption stays missing: %#v", view.PerLap)
+	}
+}
+
+func TestBuildFuelPublishesTheCanonicalConsumptionAndPrefersTheFuelBasis(t *testing.T) {
+	t.Parallel()
+
+	final, ok := builderFinalState(t, 20).Value()
+	if !ok {
+		t.Fatal("missing final state")
+	}
+	final.Derived.Fuel = builderFuelUsage(t, 3.5, schema.FreshnessFresh)
+	view := BuildFuel(final, DefaultPreferencesV2())
+	if view.PerLap.Q != QualityFresh || view.PerLap.V != 3.5 {
+		t.Fatalf("perLap = %#v, want the canonical derivation", view.PerLap)
+	}
+	// The fixture leaves 42 litres in the tank: floor(42 / 3.5) = 12 laps.
+	if view.EstimatedLaps.Q != QualityFresh || view.EstimatedLaps.V != 12 {
+		t.Fatalf("estimatedLaps = %#v, want floor(42/3.5)", view.EstimatedLaps)
+	}
+	if view.Basis != FuelBasisFuel {
+		t.Fatalf("basis = %q, want the fuel basis when the consumption exists", view.Basis)
+	}
+}
+
+func TestBuildFuelConvertsTheConsumptionToThePreferredUnit(t *testing.T) {
+	t.Parallel()
+
+	final, ok := builderFinalState(t, 20).Value()
+	if !ok {
+		t.Fatal("missing final state")
+	}
+	final.Derived.Fuel = builderFuelUsage(t, 3.5, schema.FreshnessFresh)
+	preferences := DefaultPreferencesV2()
+	preferences.Fuel = FuelUnitGallonsUS
+	view := BuildFuel(final, preferences)
+	if want := convertFuel(3.5, FuelUnitGallonsUS); view.PerLap.V != want {
+		t.Fatalf("perLap = %v gal, want %v", view.PerLap.V, want)
+	}
+	// Both sides of the division are converted, so the laps are unit agnostic.
+	if view.EstimatedLaps.V != 12 {
+		t.Fatalf("estimatedLaps = %v, want the same 12 laps in any unit", view.EstimatedLaps.V)
+	}
+}
+
+func TestBuildFuelKeepsTheWorstQualityOfTheFuelBasis(t *testing.T) {
+	t.Parallel()
+
+	final, ok := builderFinalState(t, 20).Value()
+	if !ok {
+		t.Fatal("missing final state")
+	}
+	final.Derived.Fuel = builderFuelUsage(t, 3.5, schema.FreshnessStale)
+	view := BuildFuel(final, DefaultPreferencesV2())
+	if view.Basis != FuelBasisFuel || view.EstimatedLaps.Q != QualityStale {
+		t.Fatalf("a stale consumption must publish a stale estimate: %#v / %q", view.EstimatedLaps, view.Basis)
+	}
+
+	final.Derived.Fuel = builderFuelUsage(t, 0, schema.FreshnessFresh)
+	view = BuildFuel(final, DefaultPreferencesV2())
+	if view.Basis != FuelBasisSession {
+		t.Fatalf("a zero consumption cannot divide and must fall back to the session basis: %q", view.Basis)
+	}
+}
+
+func builderFuelUsage(t *testing.T, perLap float64, freshness schema.Freshness) derive.FuelUsage {
+	t.Helper()
+	field, err := schema.NewField(energy.FuelAmount(perLap), schema.ProvenanceDerived, freshness)
+	if err != nil {
+		t.Fatal(err)
+	}
+	window, err := schema.NewField(schema.Count(3), schema.ProvenanceDerived, freshness)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return derive.FuelUsage{
+		Freshness: freshness, PerLap: field, LastLap: field, WindowLaps: window,
 	}
 }
 
@@ -68,7 +148,7 @@ func TestBuildFuelAppliesTheUnitPreferenceWithoutTouchingQuality(t *testing.T) {
 	}
 }
 
-func TestBuildFuelKeepsTheWorstQualityOfTheProjectionInputs(t *testing.T) {
+func TestBuildFuelKeepsTheWorstQualityOfTheSessionProjectionInputs(t *testing.T) {
 	t.Parallel()
 
 	final, ok := builderFinalState(t, 20).Value()

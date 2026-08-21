@@ -15,11 +15,20 @@ import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
  * builder now publishes the result as `fuel.estimatedLaps` with the worst
  * quality of the two inputs, and this module only reads it.
  *
- * `avgPerLap`, `requiredFuel` and `history` stay undefined: they all derive
- * from a per-lap consumption series that today exists only in the TypeScript
- * snapshot (`derived.fuelHistory`). There is no canonical fuel history and no
- * derivation producing one, so they are declared missing rather than
- * reconstructed in the projection layer — that derivation belongs in derive/.
+ * `avgPerLap` is `fuel.perLap`, read and never recomputed. ISA-678 put the
+ * per-lap consumption derivation in derive/, so the value now has a single
+ * canonical authority. It is an INTENTIONAL DIFFERENCE against Overlay v1, not
+ * a port: v1 averaged `derived.fuelHistory` over the widget's own
+ * `historyRows` window, accumulated in the browser from the moment the widget
+ * mounted; the canonical value averages the last valid laps measured from the
+ * stream since the stint began. The two windows are different, so the two
+ * numbers can differ, and the canonical one is the authority. See
+ * docs/telemetry-core/evidence/isa-678-fuel-perlap.md.
+ *
+ * `requiredFuel` and `history` stay undefined. `requiredFuel` needs the laps
+ * left *of the session*, which `estimatedLaps` no longer always carries once
+ * the frame prefers the fuel basis; `history` is the per-lap series itself,
+ * which the frame does not publish, only its average.
  *
  * `fuelPercent` is left undefined to match Overlay v1, which never populated
  * it, even though the frame does carry the tank capacity.
@@ -36,7 +45,7 @@ export function buildFuelStrategyViewModelV2(
     status,
     statusMessage: source.reason || undefined,
     fuelLiters: unavailable ? undefined : displayedNumber(frame.fuel.remaining),
-    avgPerLap: undefined,
+    avgPerLap: unavailable ? undefined : displayedNumber(frame.fuel.perLap),
     lapsRemaining: unavailable || !content.showProjection
       ? undefined
       : displayedNumber(frame.fuel.estimatedLaps),
@@ -53,6 +62,7 @@ export function fuelStrategyDisplayedValues(
   return Object.freeze({
     status: model.status,
     fuelLiters: model.fuelLiters === undefined ? "" : model.fuelLiters.toFixed(6),
+    avgPerLap: model.avgPerLap === undefined ? "" : model.avgPerLap.toFixed(6),
     lapsRemaining: model.lapsRemaining === undefined ? "" : String(model.lapsRemaining),
     historyRows: String(model.history.length),
   });
@@ -61,9 +71,21 @@ export function fuelStrategyDisplayedValues(
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_FUEL_DECLARED_GAPS: readonly string[] = Object.freeze([
   "fuelPercent",
-  "avgPerLap",
   "requiredFuel",
   "history",
+]);
+
+/**
+ * Fields both contracts populate with a different, deliberate criterion. They
+ * are accounted and never compared as values, because a difference here is not
+ * a defect: it is the canonical authority replacing a browser-side estimate.
+ */
+export const OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES: readonly string[] = Object.freeze([
+  // Different averaging window; see the module comment above.
+  "avgPerLap",
+  // Only when the frame publishes basis "fuel": v1 always shows the session
+  // projection, the frame prefers the laps the tank allows.
+  "lapsRemaining",
 ]);
 
 function resolveStatus(state: string): FuelStrategyViewModel["status"] {

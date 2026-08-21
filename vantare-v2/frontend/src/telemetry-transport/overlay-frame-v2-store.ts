@@ -350,8 +350,11 @@ function delta(value: unknown, path: string): void {
 }
 
 function fuel(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"]);
+  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"], ["basis"]);
   for (const key of ["remaining", "capacity", "perLap", "estimatedLaps"] as const) qvalue(value[key], `${path}.${key}`, "number");
+  // `basis` names the arithmetic behind `estimatedLaps`; Go elides it when
+  // neither projection produced a value.
+  if (value.basis !== undefined) enumValue(value.basis, `${path}.basis`, ["fuel", "session"]);
   Object.freeze(value);
 }
 

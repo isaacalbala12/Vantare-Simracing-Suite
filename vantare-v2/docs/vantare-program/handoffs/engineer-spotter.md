@@ -21,15 +21,16 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
-ISA-715 / F1 reconstruye el radio bus lean en `internal/radio` sobre el contrato
-`radio.v1`, sin conectar todavía `EngineerService`, monitores, Wails ni LMU. El
-nuevo núcleo acotado conserva orden total, coalescing, cooldowns, presión de
-cola, fairness no crítica, TTL y preempción Spotter; presentación y delivery
-quedan registrables y aislados de Evidence, SemanticClaim, Manifest y
-capabilities. La salida con fakes publica UI siempre y usa audio cache-only de
-forma opcional. El benchmark Go cubre ocho submissions concurrentes,
-cancelación activa Spotter y ACK `started`; el p95 Wails/LMU real sigue siendo
-un gate de F3. El stack Engineer anterior permanece intacto y compilable.
+ISA-717 / F3 conecta el primer productor productivo a `radio.v1`: Spotter
+consume la observación canónica del puerto asíncrono F7, comparte player
+cancelable, audio cache-only y el contrato visual existente. La geometría vive
+solo en `internal/spotter/geometry` y sirve también al frame v2 y al wrapper
+legacy. Los siete intents están registrados en cuatro locales. La policy nueva
+conserva supersession, clears ligados al ACK `started`, `still_there` sin
+renovar contexto y reset por lifecycle. El Spotter antiguo está fuera de
+`approvedProjectionFamilies`; `-engineer-legacy-spotter` lo restaura de forma
+exclusiva. Benchmark Go: 12.076-12.368 ns/op hasta `PlayContext`; el gate LMU/Wails
+real p95 <150 ms sigue pendiente de Isaac.
 
 ISA-123 completó la investigación primaria y una auditoría read-only del
 runtime. ISA-125 / ENG-02 está técnicamente cerrada tras review independiente
@@ -90,13 +91,11 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa:
-  `vantareapp/isa-715-radio-bus-lean`.
-- Base inicial: `origin/nightly@4ec98fea3546fbef5afd0c4a6ff09f7e01097652`;
-  Isaac rebasó la rama para revisión sobre
-  `origin/nightly@b774f693921f4d9fcfa31c820c03b17770917e9c`.
-- Entrega: spec aprobada #713 y F1 #715 en commits atómicos; PR #723 abierto y
-  listo para revisión a `nightly`, sin wiring productivo del servicio antiguo.
+- Rama activa: `vantareapp/isa-717-spotter-unificado`.
+- Base inicial: `origin/nightly@df6ef2e14c861bae2f153b452df3b9b2b8e785b4`.
+- Entrega: F3 #717 implementada en commits atómicos; documentación de diseño y
+  gate en `docs/engineer/spotter-radio-isa-717.md`. PR draft a `nightly`
+  pendiente de crear tras los gates finales.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -315,6 +314,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
 | En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
 | En revisión | ISA-123 / ENG-01, investigación aprobada técnicamente |
 | Cerrada técnicamente | ISA-125 / ENG-02, ADR y contratos compilables; review independiente `ACCEPT` |
@@ -340,15 +340,24 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar el PR #723 de ISA-715 sin promoverlo. Sus tres checks remotos están
-verdes; cualquier integración sigue requiriendo autorización humana. Tras esa
-aceptación, la
-promoción a `nightly` pertenece a su corte de integración; F2 prepara el audio
-Kokoro y F3 cablea Spotter y demuestra p95 real en Wails/LMU. El stack viejo no
-se retira antes de F4 y la semántica Spotter ganada requiere regresiones
-equivalentes antes del cutover.
+Revisar el PR draft de ISA-717 sin promoverlo y ejecutar el gate humano descrito
+en `docs/engineer/spotter-radio-isa-717.md`: LMU real, tráfico left/right/
+three-wide/clears, preempción, lifecycle y `radioDelivery.p95MS < 150`. Hasta
+esa evidencia no se declara validación LMU ni se integra en `nightly`. F4 puede
+retirar más stack viejo solo mediante su propia issue.
 
 ## Última actualización
+
+2026-08-21, ISA-717 / F3 unifica la geometría, registra los siete intents
+Spotter `es/en/it/pt-BR` y conecta un productor P0 a `EngineerService` sobre la
+observación canónica asíncrona. `engineer:notification`, `engineer:stream` y SSE
+mantienen `EngineerNotification`; audio usa el router cache-only y el player
+cancelable. La policy nueva conserva la matriz y el contexto delivery-aware.
+El camino legacy queda desconectado por defecto y vuelve solo con
+`-engineer-legacy-spotter`. Benchmark local observación→`PlayContext`: 12.076-
+12.368 ns/op, 1.837 B/op, 26 allocs/op. Gate LMU real pendiente de Isaac; sin
+merge ni promoción. `gofmt`, vet focal, tests focales y completos, regresiones
+overlay v2 y build de `internal/...` pasan localmente.
 
 2026-08-21, ISA-715 / F1 añade `internal/radio` sin tocar el stack Engineer
 existente: mensaje acotado `radio.v1`, scheduler determinista, preempción P0,

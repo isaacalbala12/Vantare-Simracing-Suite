@@ -209,8 +209,8 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ### Ingeniero
 
 - id: engineer
-- estado: planned
-- progreso: 25
+- estado: in-progress
+- progreso: 50
 - titulo.en: Engineer
 - titulo.pt: Engenheiro
 - titulo.it: Engineer
@@ -297,6 +297,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
+
+### Radio bus y Spotter unificado
+
+- id: engineer-radio-spotter
+- tipo: feature
+- titulo.en: Radio bus and unified Spotter
+- titulo.pt: Radio bus e Spotter unificado
+- titulo.it: Radio bus e Spotter unificato
+- cuerpo: El Spotter consume la telemetría canónica, usa una única geometría y entrega avisos P0 por el bus con audio cacheado y el evento visual existente.
+- cuerpo.en: Spotter consumes canonical telemetry, uses one geometry and delivers P0 alerts through the bus with cached audio and the existing visual event.
+- cuerpo.pt: O Spotter consome a telemetria canónica, usa uma única geometria e entrega avisos P0 pelo bus com áudio em cache e o evento visual existente.
+- cuerpo.it: Lo Spotter consuma la telemetria canonica, usa un'unica geometria e consegna avvisi P0 sul bus con audio in cache e l'evento visivo esistente.
+- etiqueta: En revisión
+- etiqueta.en: In review
+- etiqueta.pt: Em revisão
+- etiqueta.it: In revisione
 
 ### Licencias con credencial offline
 

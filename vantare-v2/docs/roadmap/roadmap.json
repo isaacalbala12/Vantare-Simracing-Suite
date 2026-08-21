@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T01:58:26Z",
+  "generatedAt": "2026-08-21T12:12:46Z",
   "digest": {
-    "lastCommit": "7735f098bb810559d12c48c5a1994cddaa335fc4"
+    "lastCommit": "df6ef2e14c861bae2f153b452df3b9b2b8e785b4"
   },
   "phases": [
     {
@@ -286,8 +286,8 @@
         "pt": "Engenheiro",
         "it": "Engineer"
       },
-      "progress": 25,
-      "status": "planned",
+      "progress": 50,
+      "status": "in-progress",
       "projects": [
         "engineer-spotter"
       ]
@@ -408,6 +408,28 @@
         "en": "In progress",
         "pt": "Em desenvolvimento",
         "it": "In corso"
+      }
+    },
+    {
+      "id": "engineer-radio-spotter",
+      "type": "feature",
+      "title": {
+        "es": "Radio bus y Spotter unificado",
+        "en": "Radio bus and unified Spotter",
+        "pt": "Radio bus e Spotter unificado",
+        "it": "Radio bus e Spotter unificato"
+      },
+      "body": {
+        "es": "El Spotter consume la telemetría canónica, usa una única geometría y entrega avisos P0 por el bus con audio cacheado y el evento visual existente.",
+        "en": "Spotter consumes canonical telemetry, uses one geometry and delivers P0 alerts through the bus with cached audio and the existing visual event.",
+        "pt": "O Spotter consome a telemetria canónica, usa uma única geometria e entrega avisos P0 pelo bus com áudio em cache e o evento visual existente.",
+        "it": "Lo Spotter consuma la telemetria canonica, usa un'unica geometria e consegna avvisi P0 sul bus con audio in cache e l'evento visivo esistente."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
       }
     },
     {
@@ -593,6 +615,36 @@
           "kind": "change",
           "scope": "",
           "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Radio bus lean internal/radio (F1 rework Ingeniero)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Catálogo v1 del Ingeniero (F0 rework)"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Endurece TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles contra flaky de handles bajo carga"
+        },
+        {
+          "kind": "fix",
+          "scope": "tests",
+          "text": "Eliminar carrera del emitter en tests de perfiles"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Unificar gobernanza de planning en el roadmap"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Aislar discovery real en tests de handlers"
         }
       ]
     },

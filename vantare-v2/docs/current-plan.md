@@ -1,3 +1,19 @@
+Nota ISA-753 / ISA-694 F4-8 (2026-08-21, implementada en rama de issue):
+- `SolveV2` evalua cada candidato en esperado y en un unico caso malo
+  coherente: extremos desfavorables de consumo/ritmo/degradacion y vida de
+  neumatico, sin producto cartesiano. La poda conserva el estado pesimista.
+- Fuel, VE y vida de neumatico que fallan en el caso malo quedan como riesgos
+  duros tipados. Rapida los admite con aviso; equilibrada y conservadora los
+  excluyen bajo tolerancias documentadas de 5 % y 2 % sobre el mismo ranking.
+- `p95Millis` reduce deterministamente la discretizacion Fuel/VE por potencias
+  de dos y publica requested/effective/reason; el test repite plan, variantes y
+  degradacion. Sensibilidades consolidadas incluyen consumo y rain chance junto
+  a degradacion, ahorro, compuestos y pilotos.
+- Casos de negocio: plan rapido dependiente del percentil favorable frente a
+  conservador con margen; riesgo por vida de neumatico; convergencia con rangos
+  estrechos. Sin frontend, dependencia, PR, merge, promocion ni release.
+  Pendiente: gates finales, push y review del orquestador de #753.
+
 Nota ISA-752 / ISA-694 F4-7 (2026-08-21, implementada en rama de issue):
 - `WeatherScenario v1` se interpola entre START/25/50/75/FINISH para producir
   una condicion por vuelta. Defaults explicitos: `<20 %` seco, `20-<60 %`

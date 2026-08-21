@@ -382,6 +382,66 @@ wets. Con una variacion donde la lluvia se adelanta, la recomendacion minimax
 pierde menos tiempo que ejecutar el plan seco puro. El oraculo exhaustivo
 enumera sin poda el mismo escenario pequeno y conserva paridad.
 
+### Esperado, caso malo y variantes F4-8
+
+Cada candidato completo de la busqueda se evalua dos veces sin reoptimizar su
+vector: esperado con los valores centrales y caso malo con una unica
+perturbacion coherente de extremos desfavorables. No existe producto cartesiano
+ni Monte Carlo. La perturbacion usa:
+
+- `RangeUpper` de Fuel/VE y escala en la misma proporcion todos sus buckets de
+  clima;
+- `RangeUpper` de cada punto de la curva combinada cuando supera su delta
+  central;
+- `LifeLapsRangeLower` como vida util derivada;
+- el extremo superior de confianza declarado para coste de ahorro, peso Fuel y
+  delta de compuesto cuando esas fuentes manuales/reference lo aportan.
+
+La poda conserva tambien Fuel, VE, edad/uso de neumatico y factibilidad del
+caso malo. Un estado rapido pero ya inviable en ese escenario no puede borrar
+otro estado esperado algo mas lento que conserva margen. La salida de cada
+`SolverCandidateV2` mantiene `Evaluation`, `WorstCase`,
+`WorstCaseFeasible` y riesgos tipados. Los riesgos duros actuales son
+`worst_case_fuel_shortfall`, `worst_case_virtual_energy_shortfall` y
+`worst_case_tyre_life_exceeded`; otras restricciones del replay usan
+`worst_case_constraint_violation`.
+
+Las tres variantes recorren **el mismo ranking esperado de la misma busqueda**;
+no ejecutan tres solvers ni cambian la funcion objetivo:
+
+- `fast`: admite riesgo duro y no impone tope de empeoramiento temporal;
+- `balanced`: excluye riesgo duro y admite hasta 5 %;
+- `conservative`: excluye riesgo duro y admite hasta 2 %.
+
+Dentro de cada tolerancia gana siempre el primer candidato del ranking
+esperado. Por eso, con rangos estrechos las tres variantes convergen. Con un
+plan que solo llega usando el percentil favorable de consumo, `fast` lo
+conserva con aviso y `conservative` elige el primer plan que termina el caso
+malo.
+
+`Sensitivities` queda consolidado en el resultado del solver: consumo Fuel/VE
+publica delta de media a extremo superior y factibilidad; degradacion, ahorro,
+compuestos y pilotos conservan sus sensibilidades existentes; un escenario de
+clima anade `rainChancePercent=+5 pp` sobre el mismo plan. Una perturbacion que
+rompe una restriccion se declara con `feasible=false`, no como impacto cero
+silencioso.
+
+#### Presupuesto p95 efectivo
+
+`p95Millis` limita deterministamente los niveles de servicio por recurso antes
+de buscar: admite `clamp(p95Millis, 4, 200)` niveles. Si el paso solicitado
+produce mas niveles, Fuel y VE duplican su paso por potencias de dos hasta
+entrar en el presupuesto; nunca aumentan precision. Desde 200 ms se conserva el
+maximo contractual de 200 niveles.
+
+La degradacion se publica en
+`ComputeStats.Degradation{Applied,Reason,Requested,Effective}` con reason
+`p95_budget_reduced_service_discretization`, y tambien como assumption
+`compute_budget_degraded`. `Duration/WithinBudget` conserva la observacion de
+pared para medir el p95 real sobre un corpus; no decide ramas de forma
+no determinista. `MaxCandidates` sigue siendo un guardarrail independiente: si
+se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
+
 ## Otros campos del I/O
 
 - **Formation** (`formation.seconds`): coste de formación antes de vuelta 1.
@@ -391,7 +451,7 @@ enumera sin poda el mismo escenario pequeno y conserva paridad.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, WeatherBucketCost[] WeatherBucketCostSource, WeatherTimeline[], Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget}}`
+`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, WeatherBucketCost[] WeatherBucketCostSource, WeatherTimeline[], Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], CandidateDetails[], Variants[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget, Degradation}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.

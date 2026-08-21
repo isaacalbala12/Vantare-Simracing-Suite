@@ -15,6 +15,7 @@ import type {
   StrategyOrbitCalculatedPlanV1,
   StrategyOrbitCalculatedStintV1,
   StrategyOrbitCalculationInputV1,
+  StrategyPlanningInputsV2,
 } from "../../strategy/strategy-application-client";
 
 /** Modo de la estrategia: el ritmo y el consumo del piloto que se usan. */
@@ -85,6 +86,7 @@ export function orbitCalculationInput(
   drivers: readonly StrategyDriver[],
   variants: readonly StrategyVariant[],
   activeVariantId: string,
+  planningInputs?: StrategyPlanningInputsV2,
 ): StrategyOrbitCalculationInputV1 {
   const pace = (value: StrategyPace) => ({ paceSeconds: value[0], fuelLitersPerLap: value[1] });
   return {
@@ -107,6 +109,7 @@ export function orbitCalculationInput(
       overrides: variant.overrides,
     })),
     activeVariantId,
+    ...(planningInputs ? { planningInputs } : {}),
   };
 }
 

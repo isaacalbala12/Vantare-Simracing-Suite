@@ -198,6 +198,44 @@ describe("createStrategyApplicationClient", () => {
     });
   });
 
+  it("parses derived planning inputs together with a non-destructive override", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "planning-inputs-1",
+      operation: "get_event_planning_inputs", expectedRepositoryVersion: 4,
+      eventId: "event-1", generatedAt: "2026-08-22T12:00:00Z",
+    };
+    const pending = client.execute(command);
+    const emptyConfidence = { sampleSize: 0, computationVersion: "producer.v1" };
+    const missing = { presence: "missing", provenance: { kind: "derived" }, confidence: emptyConfidence, reason: "missing" };
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 4,
+      planningInputStatus: "available",
+      planningInputs: {
+        projection: {
+          contractVersion: "strategyinputprojection.v2", generatedAt: command.generatedAt,
+          computationVersion: "producer.v1", sourceSessions: ["race-1"], combinationId: "lmu:imola",
+          fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: { sampleSize: 20, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+          virtualEnergyConsumption: { ...missing, meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+          combinedStintPaceCurve: { ...missing, identifiability: "combined_only", points: [] },
+          tyreDegradation: missing, pit: missing, savingCost: missing,
+        },
+        overrides: {
+          fuel_per_lap_liters: { value: 3.5, presence: "valid", provenance: { kind: "manual", sourceId: "orbit:event-1:fuel" }, confidence: { sampleSize: 1, computationVersion: "orbit-input.v1" } },
+        },
+      },
+      recoveredFromBackup: false, closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      planningInputStatus: "available",
+      planningInputs: {
+        projection: { fuelConsumption: { meanPerLap: 2.75, confidence: { sampleSize: 20 } } },
+        overrides: { fuel_per_lap_liters: { value: 3.5, provenance: { kind: "manual" } } },
+      },
+    });
+  });
+
   it("ignores another command and exposes stable application errors", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

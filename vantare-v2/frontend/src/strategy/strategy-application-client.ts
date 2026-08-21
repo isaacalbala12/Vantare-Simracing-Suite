@@ -39,6 +39,7 @@ export type StrategyApplicationOperation =
   | "compare_variants"
   | "calculate_orbit"
   | "list_session_combinations"
+  | "get_event_planning_inputs"
   | "preview_legacy_migration"
   | "migrate_legacy"
   | "rollback_legacy_migration";
@@ -112,6 +113,85 @@ export type StrategyTyreInventoryV2 = {
   readonly note?: string;
 };
 
+export type StrategyPlanningInputFieldV2 =
+  | "fuel_per_lap_liters"
+  | "ve_per_lap_percent"
+  | "base_pace_seconds"
+  | "tank_liters"
+  | "pit_loss_seconds"
+  | "tyre_life_laps"
+  | "degradation_per_lap_seconds"
+  | "saving_fuel_per_lap"
+  | "saving_time_cost_per_lap";
+
+export type StrategyProjectionConfidenceV2 = {
+  readonly sampleSize: number;
+  readonly rangeLower?: number;
+  readonly rangeUpper?: number;
+  readonly variance?: number;
+  readonly computationVersion: string;
+};
+
+export type StrategyProjectionFamilyV2 = {
+  readonly presence: "valid" | "missing" | "invalid" | "stale" | "unsupported" | "unknown";
+  readonly provenance: StrategyEvidenceV2["provenance"];
+  readonly confidence: StrategyProjectionConfidenceV2;
+  readonly reason?: string;
+};
+
+export type StrategyInputProjectionV2 = {
+  readonly contractVersion: "strategyinputprojection.v2";
+  readonly generatedAt: string;
+  readonly computationVersion: string;
+  readonly sourceSessions: readonly string[];
+  readonly combinationId: string;
+  readonly fuelConsumption: StrategyProjectionFamilyV2 & {
+    readonly meanPerLap: number;
+    readonly rangeLower: number;
+    readonly rangeUpper: number;
+  };
+  readonly virtualEnergyConsumption: StrategyProjectionFamilyV2 & {
+    readonly meanPerLap: number;
+    readonly rangeLower: number;
+    readonly rangeUpper: number;
+  };
+  readonly combinedStintPaceCurve: StrategyProjectionFamilyV2 & {
+    readonly identifiability: "combined_only" | "separable";
+    readonly points: readonly {
+      readonly lapInStint: number;
+      readonly deltaSeconds: number;
+      readonly sampleSize: number;
+      readonly rangeLower?: number;
+      readonly rangeUpper?: number;
+    }[];
+  };
+  readonly tyreDegradation: StrategyProjectionFamilyV2 & {
+    readonly lifeLapsEstimate?: number;
+    readonly lifeLapsRangeLower?: number;
+    readonly lifeLapsRangeUpper?: number;
+  };
+  readonly pit: StrategyProjectionFamilyV2;
+  readonly savingCost: StrategyProjectionFamilyV2 & {
+    readonly levels?: readonly {
+      readonly mixtureCode: number;
+      readonly fuelSavedPerLap: number;
+      readonly veSavedPerLap?: number;
+      readonly timeCostPerLap: number;
+    }[];
+  };
+  readonly [family: string]: unknown;
+};
+
+export type StrategyPlanningInputsV2 = {
+  readonly projection?: StrategyInputProjectionV2;
+  readonly overrides: Readonly<Partial<Record<StrategyPlanningInputFieldV2, {
+    readonly value: number;
+    readonly presence: "valid";
+    readonly provenance: StrategyEvidenceV2["provenance"] & { readonly kind: "manual" | "reference" };
+    readonly confidence: StrategyProjectionConfidenceV2;
+  }>>>;
+};
+
 export type StrategyEventV2 = {
   readonly id: string;
   readonly name: StrategySourcedV2<string>;
@@ -136,6 +216,7 @@ export type StrategyEventV2 = {
     readonly combinationId: string;
     readonly sessions: readonly { readonly sessionId: string; readonly included: boolean }[];
   };
+  readonly planningInputs?: StrategyPlanningInputsV2;
   /** Go encodes the byte-exact legacy backup as base64. */
   readonly rawLegacy?: string;
 };
@@ -227,6 +308,7 @@ export type StrategyOrbitCalculationInputV1 = {
     readonly overrides: Readonly<Record<number, { readonly laps?: number; readonly fuel?: number }>>;
   }[];
   readonly activeVariantId: string;
+  readonly planningInputs?: StrategyPlanningInputsV2;
 };
 
 export type StrategyOrbitCalculationPaceV1 = {
@@ -336,6 +418,7 @@ export type StrategyApplicationCommandV1<TPayload> =
     })
   | CommandHeader<"list_events">
   | CommandHeader<"list_session_combinations">
+  | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
   | (CommandHeader<"create_driver" | "edit_driver"> & {
       eventId: string;
       driver: StrategyDriverV2;
@@ -461,6 +544,8 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly orbitCalculation?: StrategyOrbitCalculationResultV1;
   readonly sessionCatalogStatus?: "available" | "no_authorized_telemetry";
   readonly sessionCombinations?: readonly StrategySessionCombinationV1[];
+  readonly planningInputStatus?: "available" | "manual_only" | "no_included_sessions";
+  readonly planningInputs?: StrategyPlanningInputsV2;
   readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
@@ -778,6 +863,12 @@ async function parseResult<TPayload>(
     ...(payload.sessionCombinations === undefined
       ? {}
       : { sessionCombinations: parseSessionCombinations(payload.sessionCombinations) }),
+    ...(payload.planningInputStatus === undefined
+      ? {}
+      : { planningInputStatus: parsePlanningInputStatus(payload.planningInputStatus) }),
+    ...(payload.planningInputs === undefined
+      ? {}
+      : { planningInputs: parsePlanningInputs(payload.planningInputs, "planningInputs") }),
     ...(payload.legacyMigration === undefined
       ? {}
       : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
@@ -941,8 +1032,75 @@ function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
       if (typeof session.included !== "boolean") throw new Error(`Invalid Strategy ${field}.combination.sessions.${index}.included`);
     }
   }
+  if (event.planningInputs !== undefined) parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
   parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
   return { ...event, drivers, strategies, availability } as StrategyEventV2;
+}
+
+function parsePlanningInputStatus(value: unknown): "available" | "manual_only" | "no_included_sessions" {
+  strategyEnum(value, "planningInputStatus", ["available", "manual_only", "no_included_sessions"]);
+  return value as "available" | "manual_only" | "no_included_sessions";
+}
+
+const planningInputFields: readonly StrategyPlanningInputFieldV2[] = [
+  "fuel_per_lap_liters", "ve_per_lap_percent", "base_pace_seconds", "tank_liters",
+  "pit_loss_seconds", "tyre_life_laps", "degradation_per_lap_seconds",
+  "saving_fuel_per_lap", "saving_time_cost_per_lap",
+];
+
+function parsePlanningInputs(value: unknown, field: string): StrategyPlanningInputsV2 {
+  const planning = strategyRecord(value, field);
+  const overrides = strategyRecord(planning.overrides, `${field}.overrides`);
+  for (const [name, candidate] of Object.entries(overrides)) {
+    if (!planningInputFields.includes(name as StrategyPlanningInputFieldV2)) throw new Error(`Invalid Strategy ${field}.overrides.${name}`);
+    const override = strategyRecord(candidate, `${field}.overrides.${name}`);
+    strategyNumber(override.value, `${field}.overrides.${name}.value`);
+    strategyEnum(override.presence, `${field}.overrides.${name}.presence`, ["valid"]);
+    const provenance = strategyRecord(override.provenance, `${field}.overrides.${name}.provenance`);
+    strategyEnum(provenance.kind, `${field}.overrides.${name}.provenance.kind`, ["manual", "reference"]);
+    strategyString(provenance.sourceId, `${field}.overrides.${name}.provenance.sourceId`);
+    parseProjectionConfidence(override.confidence, `${field}.overrides.${name}.confidence`);
+  }
+  const projection = planning.projection === undefined ? undefined : parseInputProjection(planning.projection, `${field}.projection`);
+  return { ...(projection ? { projection } : {}), overrides: overrides as StrategyPlanningInputsV2["overrides"] };
+}
+
+function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
+  const projection = strategyRecord(value, field);
+  strategyEnum(projection.contractVersion, `${field}.contractVersion`, ["strategyinputprojection.v2"]);
+  for (const name of ["generatedAt", "computationVersion", "combinationId"] as const) strategyString(projection[name], `${field}.${name}`);
+  if (!Array.isArray(projection.sourceSessions) || projection.sourceSessions.some((id) => typeof id !== "string" || id === "")) throw new Error(`Invalid Strategy ${field}.sourceSessions`);
+  for (const name of ["fuelConsumption", "virtualEnergyConsumption"] as const) {
+    const family = parseProjectionFamily(projection[name], `${field}.${name}`);
+    for (const numeric of ["meanPerLap", "rangeLower", "rangeUpper"] as const) strategyNumber(family[numeric], `${field}.${name}.${numeric}`);
+  }
+  const pace = parseProjectionFamily(projection.combinedStintPaceCurve, `${field}.combinedStintPaceCurve`);
+  strategyEnum(pace.identifiability, `${field}.combinedStintPaceCurve.identifiability`, ["combined_only", "separable"]);
+  if (!Array.isArray(pace.points)) throw new Error(`Invalid Strategy ${field}.combinedStintPaceCurve.points`);
+  const tyre = parseProjectionFamily(projection.tyreDegradation, `${field}.tyreDegradation`);
+  for (const name of ["lifeLapsEstimate", "lifeLapsRangeLower", "lifeLapsRangeUpper"] as const) if (tyre[name] !== undefined) strategyNumber(tyre[name], `${field}.tyreDegradation.${name}`);
+  parseProjectionFamily(projection.pit, `${field}.pit`);
+  const saving = parseProjectionFamily(projection.savingCost, `${field}.savingCost`);
+  if (saving.levels !== undefined && !Array.isArray(saving.levels)) throw new Error(`Invalid Strategy ${field}.savingCost.levels`);
+  return projection as StrategyInputProjectionV2;
+}
+
+function parseProjectionFamily(value: unknown, field: string): Record<string, unknown> {
+  const family = strategyRecord(value, field);
+  strategyEnum(family.presence, `${field}.presence`, ["valid", "missing", "invalid", "stale", "unsupported", "unknown"]);
+  const provenance = strategyRecord(family.provenance, `${field}.provenance`);
+  strategyEnum(provenance.kind, `${field}.provenance.kind`, ["unknown", "observed", "corrected", "manual", "derived", "estimated", "range", "reference"]);
+  if (provenance.sourceId !== undefined) strategyString(provenance.sourceId, `${field}.provenance.sourceId`);
+  parseProjectionConfidence(family.confidence, `${field}.confidence`);
+  if (family.reason !== undefined) strategyAnyString(family.reason, `${field}.reason`);
+  return family;
+}
+
+function parseProjectionConfidence(value: unknown, field: string): void {
+  const confidence = strategyRecord(value, field);
+  strategyInteger(confidence.sampleSize, `${field}.sampleSize`);
+  strategyString(confidence.computationVersion, `${field}.computationVersion`);
+  for (const name of ["rangeLower", "rangeUpper", "variance"] as const) if (confidence[name] !== undefined) strategyNumber(confidence[name], `${field}.${name}`);
 }
 
 function parseSessionCombinations(value: unknown): readonly StrategySessionCombinationV1[] {

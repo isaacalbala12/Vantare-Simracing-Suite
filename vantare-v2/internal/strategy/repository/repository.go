@@ -13,15 +13,17 @@ import (
 	"sort"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 )
 
 const (
-	RepositoryVersion = "strategy.repository.v1"
-	stateFileName     = "strategy-repository.json"
-	backupFileName    = "strategy-repository.bak"
-	leaseFileName     = ".strategy-repository.lock"
-	repositoryHashV1  = "sha256:strategy-repository-json-v1"
-	maxSafeGeneration = uint64(1<<53 - 1)
+	RepositoryVersionV1 = "strategy.repository.v1"
+	RepositoryVersion   = "strategy.repository.v2"
+	stateFileName       = "strategy-repository.json"
+	backupFileName      = "strategy-repository.bak"
+	leaseFileName       = ".strategy-repository.lock"
+	repositoryHashV1    = "sha256:strategy-repository-json-v1"
+	maxSafeGeneration   = uint64(1<<53 - 1)
 )
 
 type Limits struct {
@@ -73,6 +75,10 @@ type Snapshot[T any] struct {
 	Version   uint64
 	Drafts    []contract.PlanDraft[T]
 	Revisions []contract.PlanRevision[T]
+	// StrategyDocument is the event-oriented v2 authority consumed by Orbit.
+	// It is nil only for a new repository or one migrated from v1 before the
+	// first event command.
+	StrategyDocument *strategydocument.StrategyDocumentV2
 	// ActivePlan is the revision currently driving the race, or nil. It is
 	// persisted, so it survives a restart mid-session.
 	ActivePlan *contract.ActivePlan
@@ -87,6 +93,9 @@ type ChangeSet[T any] struct {
 	Drafts      []contract.PlanDraft[T]
 	Revisions   []contract.PlanRevision[T]
 	DeletePlans []contract.PlanID
+	// StrategyDocument replaces the whole event document in the same atomic
+	// commit as any lifecycle changes included in this change set.
+	StrategyDocument *strategydocument.StrategyDocumentV2
 	// Activate makes a revision the active plan. Activating what is already
 	// active changes nothing, so a retry is safe.
 	Activate *contract.ActivePlan
@@ -112,6 +121,7 @@ type diskEnvelope struct {
 	Revisions         []json.RawMessage `json:"revisions"`
 	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
 	Activations       []json.RawMessage `json:"activations,omitempty"`
+	StrategyDocument  json.RawMessage   `json:"strategyDocument,omitempty"`
 	ContentHash       string            `json:"contentHash"`
 }
 
@@ -123,6 +133,7 @@ type repositoryHashInput struct {
 	Revisions         []json.RawMessage `json:"revisions"`
 	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
 	Activations       []json.RawMessage `json:"activations,omitempty"`
+	StrategyDocument  json.RawMessage   `json:"strategyDocument,omitempty"`
 }
 
 type repositoryState[T any] struct {
@@ -131,6 +142,7 @@ type repositoryState[T any] struct {
 	revisions   []contract.PlanRevision[T]
 	activePlan  *contract.ActivePlan
 	activations []contract.ActivePlan
+	document    *strategydocument.StrategyDocumentV2
 }
 
 // Open prepares a private repository root without creating an empty state.
@@ -424,6 +436,24 @@ func (repository *Repository[T]) decodeState(data []byte) (repositoryState[T], e
 		}
 		state.activePlan = &activePlan
 	}
+	if len(envelope.StrategyDocument) > 0 {
+		if len(envelope.StrategyDocument) > repository.limits.MaxDocumentBytes {
+			return repositoryState[T]{}, fmt.Errorf("%w: strategy document exceeds configured limit", ErrLimitExceeded)
+		}
+		var strategyDocument strategydocument.StrategyDocumentV2
+		decoder := json.NewDecoder(bytes.NewReader(envelope.StrategyDocument))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&strategyDocument); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: decode strategy document: %v", ErrCorruptRepository, err)
+		}
+		if err := ensureJSONEOF(decoder); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: decode strategy document: %v", ErrCorruptRepository, err)
+		}
+		if err := strategyDocument.Validate(); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: validate strategy document: %v", ErrCorruptRepository, err)
+		}
+		state.document = &strategyDocument
+	}
 	if err := validateUniqueState(state); err != nil {
 		return repositoryState[T]{}, err
 	}
@@ -479,6 +509,19 @@ func (repository *Repository[T]) encodeState(state repositoryState[T]) ([]byte, 
 		}
 		envelope.Activations = append(envelope.Activations, raw)
 	}
+	if state.document != nil {
+		if err := state.document.Validate(); err != nil {
+			return nil, fmt.Errorf("validate strategy document before persistence: %w", err)
+		}
+		raw, err := json.Marshal(state.document)
+		if err != nil {
+			return nil, fmt.Errorf("encode strategy document: %w", err)
+		}
+		if len(raw) > repository.limits.MaxDocumentBytes {
+			return nil, fmt.Errorf("%w: strategy document exceeds configured limit", ErrLimitExceeded)
+		}
+		envelope.StrategyDocument = raw
+	}
 	var err error
 	envelope.ContentHash, err = hashEnvelope(envelope)
 	if err != nil {
@@ -530,6 +573,7 @@ func hashEnvelope(envelope diskEnvelope) (string, error) {
 		Revisions:         envelope.Revisions,
 		ActivePlan:        envelope.ActivePlan,
 		Activations:       envelope.Activations,
+		StrategyDocument:  envelope.StrategyDocument,
 	}
 	encoded, err := json.Marshal(input)
 	if err != nil {
@@ -571,6 +615,19 @@ func (repository *Repository[T]) applyChanges(state *repositoryState[T], changes
 		}
 	}
 	changed := deletedPlans > 0
+	if changes.StrategyDocument != nil {
+		if err := changes.StrategyDocument.Validate(); err != nil {
+			return 0, false, fmt.Errorf("validate strategy document: %w", err)
+		}
+		cloned, err := cloneStrategyDocument(*changes.StrategyDocument)
+		if err != nil {
+			return 0, false, err
+		}
+		if state.document == nil || !equalStrategyDocument(*state.document, cloned) {
+			state.document = &cloned
+			changed = true
+		}
+	}
 	for _, draft := range changes.Drafts {
 		if err := draft.Validate(); err != nil {
 			return 0, false, err
@@ -726,12 +783,20 @@ func snapshotFromState[T any](state repositoryState[T], recovered bool) (Snapsho
 		Revisions:           clone.revisions,
 		ActivePlan:          clone.activePlan,
 		Activations:         clone.activations,
+		StrategyDocument:    clone.document,
 		RecoveredFromBackup: recovered,
 	}, nil
 }
 
 func cloneState[T any](state repositoryState[T]) (repositoryState[T], error) {
 	clone := repositoryState[T]{generation: state.generation}
+	if state.document != nil {
+		documentClone, err := cloneStrategyDocument(*state.document)
+		if err != nil {
+			return repositoryState[T]{}, err
+		}
+		clone.document = &documentClone
+	}
 	// The active plan is copied rather than aliased so a concurrent reader
 	// cannot reach into the repository's own state through the snapshot.
 	if state.activePlan != nil {
@@ -765,6 +830,24 @@ func cloneState[T any](state repositoryState[T]) (repositoryState[T], error) {
 		clone.revisions = append(clone.revisions, copied)
 	}
 	return clone, nil
+}
+
+func cloneStrategyDocument(value strategydocument.StrategyDocumentV2) (strategydocument.StrategyDocumentV2, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return strategydocument.StrategyDocumentV2{}, fmt.Errorf("clone strategy document: %w", err)
+	}
+	var clone strategydocument.StrategyDocumentV2
+	if err := json.Unmarshal(raw, &clone); err != nil {
+		return strategydocument.StrategyDocumentV2{}, fmt.Errorf("clone strategy document: %w", err)
+	}
+	return clone, nil
+}
+
+func equalStrategyDocument(left, right strategydocument.StrategyDocumentV2) bool {
+	leftJSON, leftErr := json.Marshal(left)
+	rightJSON, rightErr := json.Marshal(right)
+	return leftErr == nil && rightErr == nil && bytes.Equal(leftJSON, rightJSON)
 }
 
 func clonePreviousRevision(ref *contract.RevisionRef) *contract.RevisionRef {

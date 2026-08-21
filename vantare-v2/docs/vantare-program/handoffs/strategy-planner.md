@@ -17,6 +17,26 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-746 / F4-2 (2026-08-21, lista para review):
+
+- `SolveV2` usa la curva combinada `valid/combined_only` producida por Analysis
+  como coste por edad de vuelta y conserva procedencia/confianza en el
+  resultado. La pendiente manual sigue siendo el caso lineal y queda marcada
+  como `manual`.
+- Interpola linealmente entre puntos y extrapola el tail con la mayor pendiente
+  entre el último tramo no negativo y rango/sqrt(N). La sensibilidad del 20 %
+  perturba todos los puntos y el rango; el oráculo exhaustivo evalúa el mismo
+  modelo por tramos.
+- El caso canónico de cliff tardío cambia el óptimo desde cero paradas con la
+  aproximación lineal a una parada en vuelta 4. Los costes acumulados mantienen
+  O(1) por stint.
+- Gates verdes: solver x100, Strategy+app, golden Orbit, vet focal, gofmt y
+  diff-check. La suite Go global pasa todo lo compilable y solo falla el setup
+  de `frontend`/`cmd/vantare` por `frontend/dist` ausente; tampoco existe
+  `frontend/node_modules` para regenerarlo en este worktree. Sin frontend,
+  dependencia, PR, merge, promoción ni release. Siguiente: push y review del
+  orquestador de #746.
+
 Actualización ISA-745 / F4-1 (2026-08-21, lista para review):
 
 - `SolveV2` deja ejecutable el primer corte del vector F1.3: posiciones de pit

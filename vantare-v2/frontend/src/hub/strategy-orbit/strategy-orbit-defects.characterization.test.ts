@@ -1,9 +1,9 @@
 /**
  * Caracterizaciones verdes de los defectos de Orbit — F1-4 · issue #727 · parte de ISA-694.
  *
- * Cada test documenta el comportamiento defectuoso ACTUAL tal cual es (verde).
- * Incluye comentario con referencia al defecto y nota de que en F2 se invertirá
- * con el fix. Cero cambios productivos: solo afirman lo que hoy pasa.
+ * F2(c) invierte aquí las caracterizaciones que pertenecen a la migración:
+ * el frontend conserva raw y el store queda read-only. Las de cálculo,
+ * roster y apertura siguen caracterizando el defecto hasta F2(d-f).
  *
  * Defectos cubiertos (ver matriz-migracion-orbit.csv y brief §8):
  * 1) eliminar piloto deja ID colgante en order → buildPlan rompe
@@ -14,14 +14,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildPlan } from "./strategy-orbit-model";
 import {
-  readLegacyStrategyState,
   readStrategyEvents,
   STRATEGY_EVENTS_KEY,
   STRATEGY_LEGACY_KEY,
+  STRATEGY_MIGRATED_KEY,
   writeStrategyEvents,
   type StrategyEventRecord,
   type StrategyEventsState,
 } from "./strategy-events-store";
+import { readOrbitLegacySources } from "./strategy-orbit-migration";
 import type { StrategyDriver, StrategyEvent } from "./strategy-orbit-model";
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -121,39 +122,30 @@ describe("defecto 8.3 · eliminar piloto deja ID colgante y buildPlan rompe — 
 // ── (2) Fallos silenciosos ────────────────────────────────────────────────
 
 describe("defecto · fallos silenciosos de guardado/bridge/apertura — F2 debe mostrar error visible", () => {
-  it("writeStrategyEvents traga QuotaExceededError sin lanzar ni avisar (dato solo en memoria)", () => {
-    // DEFECTO matriz fila writeStrategyEvents: setItem en catch vacío.
-    // F2 invertirá: confirmar persistencia y mostrar error/toast + journal.
+  it("F2(c): tras el commit, el flag impide cualquier escritura en el store antiguo", () => {
+    // INVERSIÓN F2(c): esta issue no repara el escritor legacy (se retira en
+    // F2(d)); lo vuelve read-only después del commit canónico confirmado.
     const evt = makeEvent();
     const state: StrategyEventsState = { events: [evt], activeId: evt.id };
-
+    window.localStorage.setItem(STRATEGY_MIGRATED_KEY, "{\"fingerprint\":\"fp\"}");
     const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
       throw new DOMException("quota", "QuotaExceededError");
     });
-
-    expect(() => writeStrategyEvents(state)).not.toThrow();
-    // No hay error visible — el caller cree que guardó, pero no hay dato
-    // (aquí verificamos que no lanzó; el UI no muestra toast de error).
-    expect(spy).toHaveBeenCalled();
+    expect(writeStrategyEvents(state)).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 
-  it("readStrategyEvents con JSON corrupto devuelve vacío sin aviso (warningShown=false conceptual)", () => {
-    // DEFECTO matriz: corrupción y causa se pierden sin aviso.
-    // Fixture events-corrupt-json.json → observedResult events=[], activeId=null, warningShown=false
-    // F2 invertirá: backup byte-a-byte + cuarentena tipada + aviso visible.
+  it("F2(c): el JSON de eventos corrupto llega byte a byte a Go sin parsearse en frontend", () => {
+    // INVERSIÓN F2(c): el store viejo sigue leyendo como antes hasta F2(d),
+    // pero el flujo nuevo no lo usa para migrar: entrega el raw al motor Go.
     window.localStorage.setItem(STRATEGY_EVENTS_KEY, "{no json");
-    const read = readStrategyEvents();
-    expect(read).toEqual({ events: [], activeId: null });
-    // No lanza, no hay flag de warning ni toast — silencioso
+    expect(decodeSource(STRATEGY_EVENTS_KEY)).toBe("{no json");
   });
 
-  it("readLegacyStrategyState con JSON corrupto también devuelve vacío silencioso", () => {
-    // DEFECTO matriz legacy-corrupt: raw "[broken" → variants={}
-    // F2 invertirá: misma cuarentena visible.
+  it("F2(c): el JSON legacy corrupto también llega byte a byte al motor Go", () => {
     window.localStorage.setItem(STRATEGY_LEGACY_KEY, "[broken");
-    const legacy = readLegacyStrategyState();
-    expect(legacy.variants).toEqual({});
+    expect(decodeSource(STRATEGY_LEGACY_KEY)).toBe("[broken");
   });
 
   it("bridge con payload inválido no llama al listener y no avisa (fallo silencioso)", async () => {
@@ -222,35 +214,17 @@ describe("defecto · fallos silenciosos de guardado/bridge/apertura — F2 debe 
 // ── (3) Fixtures golden → defaults sintéticos sin provenance ──────────────
 
 describe("defecto · fixtures golden producen defaults sintéticos sin provenance — F2 debe marcar legacy_synthetic_default", () => {
-  it("sparse: evento mínimo materializa 90L/60s/60min/startAt=now sin marca de procedencia", () => {
+  it("F2(c): sparse se envía intacto y ya no se materializa startAt=now en frontend", () => {
     // Fixture events-sparse-defaults.json
     const raw = JSON.stringify({
       events: [{ id: "sparse-1", drivers: [{ id: "driver-1" }], strategies: [{ id: "s1" }] }],
       activeId: "sparse-1",
     });
     window.localStorage.setItem(STRATEGY_EVENTS_KEY, raw);
-    const before = Date.now();
-    const read = readStrategyEvents();
-    const after = Date.now();
-
-    // DEFECTO matriz: tankL=90, pitLossSec=60, durationMin=60, startAt=now, name=id, todos indistinguibles de dato real
-    expect(read.events).toHaveLength(1);
-    const e = read.events[0];
-    expect(e.tankL).toBe(90);
-    expect(e.pitLossSec).toBe(60);
-    expect(e.durationMin).toBe(60);
-    expect(e.name).toBe("sparse-1");
-    expect(e.track).toBe("");
-    // startAt es now no-determinístico, sin marca de synthetic
-    const ts = new Date(e.startAt).getTime();
-    expect(ts).toBeGreaterThanOrEqual(before - 1000);
-    expect(ts).toBeLessThanOrEqual(after + 1000);
-    // No existe campo provenance / flag legacy_synthetic
-    expect((e as unknown as Record<string, unknown>).provenance).toBeUndefined();
-    // F2 invertirá: defaults con provenance legacy_synthetic_default y startAt missing
+    expect(decodeSource(STRATEGY_EVENTS_KEY)).toBe(raw);
   });
 
-  it("mixed: eventos inválidos se descartan silenciosamente y activeId colgante se limpia sin aviso", () => {
+  it("F2(c): mixed se conserva completo para cuarentena y aviso del motor Go", () => {
     // Fixture events-mixed-discard.json
     const raw = JSON.stringify({
       events: [
@@ -261,13 +235,10 @@ describe("defecto · fixtures golden producen defaults sintéticos sin provenanc
       activeId: "no-drivers",
     });
     window.localStorage.setItem(STRATEGY_EVENTS_KEY, raw);
-    const read = readStrategyEvents();
-    // DEFECTO: solo queda valid-1, activeId null, warningShown false conceptual (sin toast)
-    expect(read.events.map((e) => e.id)).toEqual(["valid-1"]);
-    expect(read.activeId).toBeNull();
+    expect(decodeSource(STRATEGY_EVENTS_KEY)).toBe(raw);
   });
 
-  it("legacy wrapped: variantes sin validación shape — solo id filtrado, resto pasa", () => {
+  it("F2(c): legacy wrapped se conserva íntegro para validación estricta en Go", () => {
     // Fixture legacy-wrapped.json — parse laxo que conserva order/overrides sin validar shape completo
     const raw = JSON.stringify({
       variants: {
@@ -277,21 +248,16 @@ describe("defecto · fixtures golden producen defaults sintéticos sin provenanc
       availability: { "driver-1": [{ state: "no", from: 900, to: 960 }] },
     });
     window.localStorage.setItem(STRATEGY_LEGACY_KEY, raw);
-    const legacy = readLegacyStrategyState();
-    // DEFECTO: no valida que variants sea mapa ni que las variantes sean completas — todo pasa
-    expect(legacy.variants["s1"]).toBeDefined();
-    expect(legacy.variants["local-1"]).toBeDefined();
-    expect(legacy.availability).toBeDefined();
+    expect(decodeSource(STRATEGY_LEGACY_KEY)).toBe(raw);
   });
 
-  it("legacy flat: raíz sin clave variants se interpreta como mapa de variantes (propiedad accidental = variante)", () => {
+  it("F2(c): legacy flat se conserva sin reinterpretarlo en frontend", () => {
     const raw = JSON.stringify({ s1: { state: "draft", order: ["driver-1"], overrides: { "0": { laps: 20 } } } });
     window.localStorage.setItem(STRATEGY_LEGACY_KEY, raw);
-    const legacy = readLegacyStrategyState();
-    expect(legacy.variants["s1"]).toBeDefined();
+    expect(decodeSource(STRATEGY_LEGACY_KEY)).toBe(raw);
   });
 
-  it("event activeStrategyId colgante se conserva sin validar contra strategies", () => {
+  it("F2(c): activeStrategyId colgante llega intacto para que Go lo cuarentene", () => {
     // DEFECTO matriz: activeStrategyId string opcional sin comprobar que exista en strategies
     const raw = JSON.stringify({
       events: [
@@ -305,24 +271,17 @@ describe("defecto · fixtures golden producen defaults sintéticos sin provenanc
       activeId: "evt-1",
     });
     window.localStorage.setItem(STRATEGY_EVENTS_KEY, raw);
-    const read = readStrategyEvents();
-    // Se conserva colgante — F2 debe validar contra strategies migradas
-    expect(read.events[0].activeStrategyId).toBe("fantasma");
-    expect(read.events[0].strategies.map((s) => s.id)).not.toContain("fantasma");
+    expect(decodeSource(STRATEGY_EVENTS_KEY)).toBe(raw);
   });
 });
 
 // ── (4) fillMode telemetry se borra ───────────────────────────────────────
 
 describe("defecto · fillMode='telemetry' se borra al leer (solo sobrevive manual) — F2 debe preservar/mapear raw", () => {
-  it("un evento guardado con fillMode telemetry se lee como undefined", () => {
-    // DEFECTO matriz fila fillMode: solo manual sobrevive
+  it("F2(c): fillMode telemetry se preserva raw y no pasa por el parser legacy", () => {
     const evt = makeEvent({ fillMode: "telemetry" as unknown as StrategyEventRecord["fillMode"] });
     writeStrategyEvents({ events: [evt], activeId: evt.id });
-    const read = readStrategyEvents();
-    // DEFECTO actual: se borra
-    expect(read.events[0].fillMode).toBeUndefined();
-    // F2 invertirá: preservar raw y bloquear hasta contrato v2 con provenance
+    expect(decodeSource(STRATEGY_EVENTS_KEY)).toContain('"fillMode":"telemetry"');
   });
 
   it("fillMode manual sí sobrevive (control)", () => {
@@ -331,3 +290,9 @@ describe("defecto · fillMode='telemetry' se borra al leer (solo sobrevive manua
     expect(readStrategyEvents().events[0].fillMode).toBe("manual");
   });
 });
+
+function decodeSource(key: string): string {
+  const source = readOrbitLegacySources(window.localStorage).find((candidate) => candidate.key === key);
+  if (!source) throw new Error(`missing source ${key}`);
+  return new TextDecoder().decode(Uint8Array.from(atob(source.raw), (char) => char.charCodeAt(0)));
+}

@@ -1,137 +1,186 @@
 # ADR 0009 — Pipeline editorial, subida opt-in y catálogo firmado de Strategy
 
-**Estado:** Proposed (pendiente de aceptación de Isaac)
+**Estado:** Proposed (rev. 2 tras threat-model adversarial; pendiente de
+aceptación de Isaac)
 **Fecha:** 2026-08-21
 **Decisores:** Isaac y Vantare engineering
 **Contexto:** ISA-694, decisiones D10–D16, D18–D19 del spec
-(`docs/strategy-planner/isa-694-spec.md`)
+(`docs/strategy-planner/isa-694-spec.md`); review adversarial en issue #724
 
 ## Contexto
 
 El corte A+B de Strategy Planner añade un ciclo comunitario: los usuarios
-suben derivados anonimizados de su telemetría, un pipeline editorial en el PC
-de Isaac los analiza, e Isaac publica un catálogo curado (mejores estrategias
-y perfiles de referencia por combinación) que la app descarga. Nada de esto
-existía; ADR 0006 fijó galerías como concepto pero no el mecanismo. Este ADR
-fija fronteras, seguridad y privacidad. El presupuesto de infraestructura es
-el mínimo posible (D10/D11).
+suben derivados seudonimizados de su telemetría, un pipeline editorial en el
+PC de Isaac los analiza, e Isaac publica un catálogo curado (mejores
+estrategias y perfiles de referencia por combinación) que la app descarga.
+Este ADR fija fronteras, seguridad y privacidad con presupuesto mínimo
+(D10/D11). La rev. 2 incorpora el threat model adversarial (#724).
 
 ## Decisión
 
 ### Roles y autoridad
 
-1. **La predigestión es determinista.** El curador (`cmd/vantare-curator`)
-   agrega bundles por combinación, deduplica, puntúa por métricas de backtest
-   y agrupa estrategias observadas. El LLM del pipeline **solo recibe esos
-   resúmenes compactos** — nunca tablas crudas — y **solo redacta y cura**:
-   no calcula, no ordena el ranking objetivo, no inventa estrategias
-   (coherente con ADR 0006).
-2. **Isaac decide qué se publica.** Las primeras semanas mediante un flujo de
-   decisión simple sobre el informe del LLM; la automatización posterior es
-   progresiva vía skills, siempre con las métricas deterministas como
-   autoridad del ranking (D12).
-3. El pipeline corre como tarea programada en el PC de Isaac usando sus
-   suscripciones; no hay coste de API por review (D13).
+1. **La predigestión es determinista y reutiliza la autoridad única.** El
+   curador (`cmd/vantare-curator`) agrega bundles por combinación, deduplica,
+   puntúa **llamando al mismo motor y backtest versionados de Strategy**
+   (publica versión y hash del motor usado; prohibida cualquier fórmula
+   paralela) y agrupa estrategias observadas.
+2. **El LLM solo redacta y cura, aislado.** Recibe exclusivamente estructura
+   allowlisted de los resúmenes deterministas (sin texto libre de terceros:
+   los strings de combinación se normalizan desde catálogos internos), no
+   dispone de herramientas de escritura, firma ni publicación, y su salida se
+   trata como no confiable hasta la decisión humana. No calcula, no ordena el
+   ranking, no inventa estrategias (ADR 0006).
+3. **Isaac decide qué se publica.** Flujo de decisión simple sobre el informe;
+   la automatización posterior vía skills es una decisión futura separada y
+   se adoptará solo si reduce trabajo editorial medido (mitiga
+   sobre-ingeniería). El pipeline corre como tarea programada en el PC de
+   Isaac con sus suscripciones (D13).
 
-### Consentimiento y privacidad (modifica el contrato de producto)
+### Consentimiento y privacidad
 
-4. El contrato de producto (`docs/vantare-program/product-contract.md`) se
-   modifica: además del envío manual con preview, se permite la **subida
-   automática bajo consentimiento permanente opt-in y revocable** (D18) con,
-   como mínimo: cola de subida visible, historial de lo enviado, pausa
-   inmediata y borrado (local y solicitud de borrado remoto por
-   `installId`). La revocación detiene futuros envíos sin borrar lo local.
-5. El bundle (`CurationBundle v1`) contiene **solo** identidad de combinación
-   permitida, agregados de stint/pit, curvas derivadas, estrategias
-   observadas y calidad de canal. **Nunca:** telemetría cruda, nombres de
-   piloto o equipo, SteamID, rutas locales ni fechas absolutas más finas de
-   lo necesario. El identificador es un `installId` aleatorio opt-in, no
-   ligado a la licencia. El presupuesto empírico es ~1,3 KB gzip por sesión
-   (F0-1), lo que permite validación estricta de tamaño.
+4. El contrato de producto se actualiza **en este mismo cambio** (no en F6):
+   consentimiento permanente **opt-in, versionado, registrado y revocable**
+   (D18), con cola de subida visible e inspeccionable antes del despacho,
+   historial, pausa que cancela reintentos y envíos en vuelo, y revocación y
+   borrado remoto como acciones separadas.
+5. **El bundle es seudonimizado, no "anónimo".** `CurationBundle v1` se
+   define por **allowlist cerrada campo a campo** (`additionalProperties`
+   false en todos los niveles): identidad de combinación desde catálogo
+   interno, agregados de stint/pit, curvas derivadas cuantizadas, estrategias
+   observadas y calidad de canal. Sin fechas absolutas (solo épocas
+   cuantizadas, p. ej. semana ISO), sin telemetría cruda, nombres, SteamID ni
+   rutas. El identificador administrativo (borrado/cuota) viaja separado del
+   payload analítico. Presupuesto empírico ~1,3 KB gzip/sesión (F0-1).
+6. **k-anonimato editorial:** ningún perfil de referencia ni estrategia
+   curada se publica si su cohorte tiene menos de `k` instalaciones
+   distintas (k inicial: 3) o depende de un único origen; las combinaciones
+   raras se suprimen. Los fixtures sintéticos y las capturas controladas
+   jamás se mezclan con el corpus de producción (ver §9).
 
-### Worker de ingesta (superficie pública mínima)
+### Identidad y credenciales de subida
 
-6. Un Cloudflare Worker (`infra/curation-worker`) con almacenamiento de
-   objetos expone un único endpoint de subida. Protocolo:
-   - autenticación por token de subida emitido por build/canal (no es un
-     secreto fuerte: el control real son cuotas y validación);
-   - **idempotencia** por hash de contenido: reenvíos y replays no duplican;
-   - validación estricta de schema y de tamaño máximo por bundle y por día
-     por `installId`; lo inválido se rechaza, no se almacena "por si acaso";
-   - rate-limit por IP e `installId`; dedupe por hash;
-   - retención definida (propuesta: 180 días para bundles crudos; los
-     agregados curados no caducan) y borrado por `installId` bajo petición;
-   - logs sin payload y con `installId` truncado;
-   - TLS de extremo a extremo (Cloudflare) y sin CORS abierto.
-7. **Publicar el Worker requiere autorización explícita de Isaac** (gate 1).
-   El curador sincroniza los bundles del storage al PC de Isaac por pull.
+7. El token de build **solo es filtro de admisión**, nunca identidad. Al
+   activar el opt-in, la app genera localmente dos secretos aleatorios
+   independientes: `uploadSecret` y `deleteSecret`. El Worker almacena solo
+   sus hashes. Toda subida, consulta de cuota o borrado exige prueba de
+   posesión del secreto correspondiente; rotación y revocación soportadas.
+   Nadie puede consumir cuota ajena ni borrar datos ajenos.
+
+### Worker de ingesta
+
+8. Un Cloudflare Worker (`infra/curation-worker`) con storage de objetos
+   **privado** (sin lectura ni listado público). Protocolo de subida:
+   - validación estricta de schema con allowlist cerrada, cero coerción,
+     rechazo de campos desconocidos, `NaN`/infinitos y strings anómalos;
+     límites por campo, profundidad, cardinalidad y tamaño **comprimido y
+     descomprimido**; rechazo antes de escribir;
+   - **idempotencia por digest semántico** del payload normalizado tras
+     validación (reordenar JSON o regzipear no burla el dedupe);
+   - cuotas por credencial, por IP y **globales** (objetos y bytes por día y
+     mes) con fail-closed y alerta de presupuesto;
+   - retención de bundles crudos: 180 días; logs sin payload y con
+     identificadores truncados;
+   - **procedencia inmutable por entorno** (§9) registrada en cada objeto.
+9. **Separación de entornos y anti-poisoning:** `test`,
+   `controlled-capture` (campaña D19) y `production-community` son espacios
+   físicamente separados con credenciales distintas; en la campaña cerrada
+   cada tester recibe credenciales individuales emitidas por Isaac. Límites
+   de contribución por credencial y combinación, mínimo de contribuidores
+   distintos (§6), agregación robusta con detección de outliers y
+   consistencia entre sesiones en el curador. El ranking determinista no
+   protege por sí solo: la defensa es procedencia + cohortes + robustez.
+10. **Control plane explícito** (mínimo privilegio, credenciales separadas):
+
+    | Frontera | Credencial | Permiso |
+    |---|---|---|
+    | Cliente → upload | uploadSecret (+ token build) | escribir su objeto |
+    | Usuario → delete | deleteSecret | tombstone de lo suyo |
+    | Curador → pull | credencial de lectura | leer bundles y tombstones |
+    | Publicador → GitHub | token limitado al artefacto | publicar catálogo |
+    | Operador → storage | credencial admin auditada | mantenimiento |
+
+    **Publicar el Worker requiere autorización explícita de Isaac (gate 1).**
+
+### Borrado remoto de ciclo completo
+
+11. El borrado genera una **tombstone autenticada** que el curador consume en
+    su siguiente pull: elimina bundles del storage, copias locales del PC de
+    Isaac e índices; los agregados afectados se recalculan y, si el catálogo
+    publicado dependía de ellos, se republica. Política de backups alineada
+    (sin backups fuera de la retención). El usuario recibe recibo de
+    finalización. Las salidas agregadas irreversibles (cohortes ya
+    publicadas que cumplen §6) se declaran antes del consentimiento.
 
 ### Catálogo firmado
 
-8. El catálogo (`Catalog v1`) se publica como artefacto estático en GitHub
-   (D11) firmado con **Ed25519**. Envelope:
-   - `keyId` explícito; la clave pública viaja embebida en la app con una
-     lista de claves aceptadas (permite rotación superpuesta);
-   - `version` **monotónica** + `publishedAt`; la app rechaza retrocesos
-     (anti-rollback) y avisa si el catálogo supera una edad máxima
-     (anti-freeze, propuesta: 45 días);
-   - la firma cubre los **bytes canónicos** del payload; firma válida con
-     schema incompatible ⇒ el catálogo se ignora con aviso, jamás se parsea
-     "lo que se pueda";
-   - contenido: estrategias curadas y perfiles de referencia por combinación,
-     siempre con procedencia `reference` y métricas de muestra/calidad.
-9. La clave privada vive únicamente en el PC de Isaac (archivo protegido por
-   el sistema; nunca en el repo, CI ni el Worker). **Runbook de compromiso:**
-   revocar `keyId` en la lista embebida vía release de la app, rotar clave,
-   republicar catálogo con la nueva; mientras tanto la app conserva el último
-   catálogo válido en caché. **Publicar el primer catálogo requiere
-   autorización explícita de Isaac** (gate 2).
+12. `Catalog v1` se publica en GitHub (D11) firmado con **Ed25519 con
+    separación de dominio**. **La firma cubre el envelope completo**, no solo
+    el payload: `domain`, `catalogId/channel`, `schemaId+schemaVersion`,
+    `keyEpoch`, `version` (monotónica dentro de la época), `publishedAt`,
+    `expiresAt` y `payloadDigest`. Serialización canónica **RFC 8785 (JCS)**;
+    claves duplicadas o desconocidas ⇒ rechazo; sin formato criptográfico ad
+    hoc más allá de esa composición estándar.
+13. Cliente: épocas de clave confiadas embebidas por release (con vigencia
+    por clave y **versión/época mínima aceptable** embebida), persistencia
+    atómica de época+versión máxima vista, anti-rollback entre y dentro de
+    épocas, y purga del caché firmado por claves revocadas. **`expiresAt` es
+    duro:** un catálogo expirado deja de usarse para recomendaciones y la app
+    degrada a datos locales/vacío con aviso (anti-freeze real). Firma válida
+    con schema incompatible ⇒ se ignora completo con aviso.
+14. **Cadena de firma aislada del repo:** el pipeline genera el catálogo SIN
+    firmar; tras la revisión de Isaac, una herramienta de firma mínima,
+    fijada y sin acceso a red (proceso separado del curador y de todo lo que
+    toca dependencias del repo) produce el envelope; un tercer paso publica
+    con un token GitHub limitado. La clave privada vive cifrada con ACL
+    exclusiva y backup protegido en el PC de Isaac; nunca en repo, CI ni
+    Worker. **Runbook de compromiso:** revocar época en release, rotar clave,
+    republicar; los clientes purgan el caché de la época revocada.
+    **Publicar el primer catálogo requiere autorización explícita de Isaac
+    (gate 2).**
 
-### Ownership del forecast
+### Ownership del forecast y perfiles
 
-10. **Telemetry Core** posee la adquisición del forecast: el driver LMU añade
-    la consulta REST (`GET /rest/sessions/weather`, verificada en #702) y la
-    expone como señal con presencia/freshness. **Strategy** persiste
-    `WeatherScenario v1` cuando el usuario captura. Telemetry Analysis no
-    interviene. Overlays consume exclusivamente `StrategyWeatherReadModel v1`
-    producido por Strategy (nunca Core, REST ni repositorios).
-
-### Perfiles de piloto
-
-11. `PilotProfile v1` (ritmo, consumo, percentiles derivados, por
-    combinación y condición) es propiedad de Strategy, alimentado desde la
-    proyección de Analysis. Es exportable/importable como archivo (puente de
-    equipo sin servidor) y es la unidad que la subida opt-in comparte con el
-    pipeline, anonimizada.
+15. **Telemetry Core** posee la adquisición del forecast (REST
+    `GET /rest/sessions/weather`, verificado en #702) y la expone como señal
+    con presencia/freshness. **Strategy** persiste `WeatherScenario v1` al
+    capturar. Overlays consume exclusivamente `StrategyWeatherReadModel v1`
+    de Strategy.
+16. `PilotProfile v1` es propiedad de Strategy, exportable/importable como
+    archivo (puente de equipo sin servidor) y es la unidad que la subida
+    opt-in comparte, seudonimizada según §5.
 
 ## Alternativas descartadas
 
-- **Envío manual por bundle como único modo:** contradice D10/D18; fricción
-  que mataría el corpus.
-- **Backend con cuentas y API propia:** coste y superficie innecesarios para
-  el volumen real (~KB por sesión); Cloudflare Worker + storage basta.
-- **Firmar con la infraestructura de release existente / sin firma:** el
-  catálogo cambia más rápido que las releases y sin firma un repositorio
-  comprometido podría inyectar estrategias; Ed25519 con claves embebidas es
-  barato y suficiente.
-- **LLM como autoridad de ranking:** rompe ADR 0006 y la reproducibilidad.
+- Envío manual por bundle como único modo: contradice D10/D18.
+- Backend con cuentas: coste y superficie innecesarios para ~KB por sesión.
+- Sin firma o firma solo del payload: deja versión/fechas/schema falsificables
+  (hallazgo #1 del threat model).
+- `installId` autodeclarado como identidad: suplantación y borrado ajeno
+  (hallazgo #2).
+- LLM como autoridad de ranking o con herramientas: rompe ADR 0006 y abre
+  prompt injection (hallazgo #13).
 
 ## Consecuencias
 
-- Positivas: corpus comunitario desde el día uno de testers; catálogo
-  auditable y reproducible; privacidad por construcción; coste ~cero.
-- Costes: gestión de clave en el PC de Isaac; dos gates humanos de
-  publicación; el contrato de producto debe actualizarse en el mismo PR que
-  implemente la subida automática (F6a).
+- Positivas: corpus con procedencia y resistencia a poisoning; privacidad
+  verificable por allowlist; catálogo con anti-rollback/freeze reales; coste
+  ~cero mantenido.
+- Costes: gestión de credenciales por tester en la campaña; firma en dos
+  pasos con herramienta aislada; k-anonimato retrasa la publicación de
+  combinaciones poco pobladas; dos gates humanos de publicación.
 
 ## Verificación
 
-- Tests adversariales del Worker: replay, payload inválido, sobre-tamaño,
-  abuso de cuota, `installId` ajeno.
-- Tests del consumidor de catálogo: firma inválida, `keyId` desconocido,
-  rollback de versión, catálogo caducado, schema incompatible — todos
-  degradan al último catálogo válido o a vacío con aviso.
-- Auditoría del bundle: fixture que demuestra ausencia de PII y de telemetría
-  cruda; el exportador tiene test de denylist de campos.
-- Los gates 1 y 2 quedan registrados en la issue correspondiente antes de
-  cualquier publicación.
+- Worker: tests adversariales de replay, payload inválido/desconocido,
+  sobre-tamaño comprimido y descomprimido, abuso de cuota por identidades
+  nuevas, prueba de posesión (subida y borrado con secreto ajeno fallan).
+- Catálogo: firma inválida, `keyId`/época desconocidos, rollback entre y
+  dentro de épocas, expiración dura, schema incompatible — degradan a local
+  con aviso; property tests del envelope JCS.
+- Privacidad: corpus de canarios PII + fuzz sobre el exportador; test de
+  allowlist con `additionalProperties=false`; test de cuantización de fechas.
+- Curación: test de que el score procede del motor/backtest versionado de
+  Strategy (hash publicado); test de cohorte mínima k y de separación de
+  entornos.
+- Los gates 1 y 2 quedan registrados en la issue antes de publicar.

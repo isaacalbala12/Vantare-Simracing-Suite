@@ -174,10 +174,10 @@ Trabajo (4 issues tras F0):
    comportamiento observable a corregir; se invierten en F2 con cada fix.
    Freeze: ninguna feature nueva sobre el store localStorage.
 
-**Checkpoint:** ADR 0009 accepted por Isaac **con las dos ramas de D18
-modeladas** (la decisión en sí no bloquea F1 ni el gate PLAN: su único punto
-de bloqueo es el arranque de F6a); contratos compilan bajo su owner con
-contract tests old/new; suites verdes. Review Codex sol del conjunto.
+**Checkpoint:** ADR 0009 accepted por Isaac (D18 ya decidida: subida
+automática; el contrato de producto se actualizó en el mismo cambio que la
+rev. 2 del ADR); contratos compilan bajo su owner con contract tests old/new;
+suites verdes. Review Codex sol del conjunto.
 
 ### F2 — Custodia: API de aplicación, cutover Orbit→Go, migración
 
@@ -310,11 +310,13 @@ consume), y F6(d–f) van detrás de F6c.
 
 Trabajo (6 issues; Worker y firma con Codex sol, resto muse-spark):
 
-- **(a) Exportador anonimizado** (`CurationBundle v1`): sin telemetría cruda,
-  sin nombres, ID de instalación opt-in; **UX de consentimiento según D18**:
-  preview exacto por bundle y acción explícita, o —si Isaac modifica el
-  contrato de producto— consentimiento permanente revocable con cola visible,
-  historial, pausa y borrado.
+- **(a) Exportador seudonimizado** (`CurationBundle v1`): allowlist cerrada
+  según ADR 0009 §5 (sin telemetría cruda, nombres ni fechas absolutas;
+  identificador administrativo separado del payload). UX de consentimiento
+  D18 ya fijada en el contrato de producto: consentimiento permanente
+  versionado y revocable, cola visible e inspeccionable, historial, pausa
+  que cancela envíos en vuelo, borrado remoto separado. Credenciales
+  `uploadSecret`/`deleteSecret` generadas al opt-in (ADR 0009 §7).
 - **(b) Worker Cloudflare** (`infra/curation-worker`): implementa el
   protocolo del ADR 0009 (idempotencia, validación de schema, cuotas, dedupe,
   retención, redacción de logs). **Publicarlo = gate explícito de Isaac.**

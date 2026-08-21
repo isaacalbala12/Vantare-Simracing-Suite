@@ -22,14 +22,14 @@ corpus de 250 snapshots y 104 filas:
 | Delta | +34.20 % | -93.82 % | -78.15 % |
 
 El resultado es materialmente mejor, pero sigue fallando el gate stress
-artificial de p95 <= 8 ms y max <= 16.67 ms. Sin contar los cinco primeros
-No se relaja el gate ni se presenta como paridad productiva.
+artificial de p95 <= 8 ms y max <= 16.67 ms. No se relaja el gate ni se
+presenta como paridad productiva.
 
 La latencia desde inicio de apply hasta la primera presentación observable
 también mejora: p50 39.48 -> 21.48 ms y p95 657.96 -> 34.41 ms. La base solo
 alcanzó primera presentación en 52 frames de las tres ejecuciones; el nuevo
-corte la alcanzó en 498, por lo que esta comparación se conserva como diagnóstico y no
-como un gate de pacing independiente.
+corte la alcanzó en 498, por lo que esta comparación se conserva como
+diagnóstico y no como un gate de pacing independiente.
 
 ## Escenarios canónicos con slots
 

@@ -30,21 +30,24 @@ type serviceResource struct {
 }
 
 type searchNode struct {
-	lap          int64
-	fuel         int64
-	ve           int64
-	tyreAge      int64
-	tyre         tyreChoice
-	tyreUsage    map[tyres.TyreID]int64
-	windowMask   uint64
-	compoundMask uint64
-	green        float64
-	degradation  float64
-	compound     float64
-	fuelWeight   float64
-	saving       float64
-	pit          float64
-	decision     DecisionVector
+	lap                     int64
+	fuel                    int64
+	ve                      int64
+	tyreAge                 int64
+	tyre                    tyreChoice
+	tyreUsage               map[tyres.TyreID]int64
+	windowMask              uint64
+	compoundMask            uint64
+	currentDriver           string
+	driverUsage             map[string]driverUsage
+	continuousDriverSeconds float64
+	green                   float64
+	degradation             float64
+	compound                float64
+	fuelWeight              float64
+	saving                  float64
+	pit                     float64
+	decision                DecisionVector
 }
 
 func (node searchNode) total(formation float64) float64 {
@@ -55,7 +58,6 @@ type lapCostModel struct {
 	pace       stintPaceCost
 	compounds  compoundPaceCosts
 	fuelWeight fuelWeightCost
-	fuelPerLap int64
 }
 
 // SolveV2 optimiza el vector F1.3 con coste de pit por cantidades de servicio.
@@ -103,20 +105,25 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "savingCost", err.Error())
 	}
-	lapCosts := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, fuelPerLap: fuel.perLap}
+	drivers, err := newDriverDecisionModel(input, saving)
+	if err != nil {
+		return SolverResultV2{}, solveError(ErrorInvalidInput, "driverProfiles", err.Error())
+	}
+	lapCosts := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight}
 	result := SolverResultV2{
-		ContractVersion:  SolverContractVersionV2,
-		InputHash:        inputHash,
-		StintPaceCost:    paceCost.source,
-		FuelWeightCost:   fuelWeight.source,
-		SavingCost:       saving.source,
-		CompoundPaceCost: compoundPace.sources(),
-		Binding:          binding,
-		Candidates:       []DecisionVector{},
-		CandidateDetails: []SolverCandidateV2{},
-		Reasons:          []SolverReason{},
-		Assumptions:      []SolverReason{fuelWeight.assumption(), saving.assumption()},
-		Sensitivities:    []SolverSensitivity{},
+		ContractVersion:   SolverContractVersionV2,
+		InputHash:         inputHash,
+		StintPaceCost:     paceCost.source,
+		FuelWeightCost:    fuelWeight.source,
+		SavingCost:        saving.source,
+		CompoundPaceCost:  compoundPace.sources(),
+		DriverProfileCost: drivers.sources(),
+		Binding:           binding,
+		Candidates:        []DecisionVector{},
+		CandidateDetails:  []SolverCandidateV2{},
+		Reasons:           []SolverReason{},
+		Assumptions:       []SolverReason{fuelWeight.assumption(), saving.assumption()},
+		Sensitivities:     []SolverSensitivity{},
 	}
 	for _, source := range result.CompoundPaceCost {
 		result.Assumptions = append(result.Assumptions, SolverReason{
@@ -150,73 +157,83 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 
 	for lap := int64(0); lap < input.RaceLaps && !budgetExhausted; lap++ {
 		for _, node := range byLap[lap] {
-			for _, savingLevel := range saving.levels {
-				effectiveFuel := fuel.withPerLapSaving(savingLevel.fuelSavedPerLap)
-				effectiveVE := ve.withPerLapSaving(savingLevel.veSavedPerLap)
-				maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
-				if maxLaps < 1 {
-					result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
-					continue
-				}
-				for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
-					evaluated++
-					if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
-						budgetExhausted = true
-						break
+			for _, driver := range drivers.order {
+				for _, savingLevel := range saving.levels {
+					effectiveFuel := fuel.withPerLap(driver.fuelPerLap - savingLevel.fuelSavedPerLap)
+					effectiveVE := ve.withPerLap(driver.vePerLap - savingLevel.veSavedPerLap)
+					maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+					if maxLaps < 1 {
+						result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
+						continue
 					}
-					afterStint, err := appendStint(node, stintLaps, input, lapCosts, savingLevel)
-					if err != nil {
-						return SolverResultV2{}, err
-					}
-					afterStint.lap = lap + stintLaps
-					afterStint.fuel -= effectiveFuel.perLap * stintLaps
-					afterStint.ve -= effectiveVE.perLap * stintLaps
-					if afterStint.lap == input.RaceLaps {
-						if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
-							completed = insertRanked(completed, afterStint, input.Formation.Seconds)
-						} else {
-							result.addRejected(afterStint, input, code, message)
+					for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
+						evaluated++
+						if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+							budgetExhausted = true
+							break
 						}
-						continue
-					}
-					if index, closed := input.firstClosedWindow(afterStint.lap, afterStint.windowMask); closed {
-						window := input.EventRules.RequiredWindows[index]
-						result.addRejected(afterStint, input, "required_pit_window", fmt.Sprintf("ninguna parada ocurrio en la ventana obligatoria [%d,%d]", window.FromLap, window.ToLap))
-						continue
-					}
-					if input.EventRules.MaxPitStops != nil && len(afterStint.decision.PitStops) >= *input.EventRules.MaxPitStops {
-						result.addRejected(afterStint, input, "maximum_pit_stops", "el maximo de paradas impide anadir el servicio necesario")
-						continue
-					}
+						afterStint, err := appendStint(node, stintLaps, input, lapCosts, savingLevel, driver)
+						if err != nil {
+							return SolverResultV2{}, err
+						}
+						afterStint.lap = lap + stintLaps
+						afterStint.fuel -= effectiveFuel.perLap * stintLaps
+						afterStint.ve -= effectiveVE.perLap * stintLaps
+						if allowed, code, message := input.applyDriverConstraints(node, &afterStint, driver); !allowed {
+							result.addRejected(afterStint, input, code, message)
+							continue
+						}
+						if afterStint.lap == input.RaceLaps {
+							if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
+								completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+							} else {
+								result.addRejected(afterStint, input, code, message)
+							}
+							continue
+						}
+						if index, closed := input.firstClosedWindow(afterStint.lap, afterStint.windowMask); closed {
+							window := input.EventRules.RequiredWindows[index]
+							result.addRejected(afterStint, input, "required_pit_window", fmt.Sprintf("ninguna parada ocurrio en la ventana obligatoria [%d,%d]", window.FromLap, window.ToLap))
+							continue
+						}
+						if input.EventRules.MaxPitStops != nil && len(afterStint.decision.PitStops) >= *input.EventRules.MaxPitStops {
+							result.addRejected(afterStint, input, "maximum_pit_stops", "el maximo de paradas impide anadir el servicio necesario")
+							continue
+						}
 
-					fuelAmounts := serviceAmounts(afterStint.fuel, fuel)
-					veAmounts := serviceAmounts(afterStint.ve, ve)
-					for _, tyreOption := range tyreModel.nextChoices(afterStint.tyre) {
-						for _, fuelAmount := range fuelAmounts {
-							for _, veAmount := range veAmounts {
-								evaluated++
-								if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
-									budgetExhausted = true
+						fuelAmounts := serviceAmounts(afterStint.fuel, fuel)
+						veAmounts := serviceAmounts(afterStint.ve, ve)
+						for _, tyreOption := range tyreModel.nextChoices(afterStint.tyre) {
+							for _, fuelAmount := range fuelAmounts {
+								for _, veAmount := range veAmounts {
+									evaluated++
+									if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+										budgetExhausted = true
+										break
+									}
+									next, err := appendPit(afterStint, fuelAmount, veAmount, tyreOption, input)
+									if err != nil {
+										return SolverResultV2{}, err
+									}
+									next.fuel += fuelAmount
+									next.ve += veAmount
+									var prunedNow int
+									byLap[next.lap], prunedNow = insertNondominated(
+										byLap[next.lap],
+										next,
+										input.Formation.Seconds,
+										input.hasStopCountRules(),
+										fuelWeight.secondsPerLiter > 0,
+										tyreModel.enabled,
+										len(input.EventRules.RequiredWindows) > 0,
+										len(input.EventRules.MandatoryCompounds) > 0,
+										drivers.enabled,
+									)
+									pruned += prunedNow
+								}
+								if budgetExhausted {
 									break
 								}
-								next, err := appendPit(afterStint, fuelAmount, veAmount, tyreOption, input)
-								if err != nil {
-									return SolverResultV2{}, err
-								}
-								next.fuel += fuelAmount
-								next.ve += veAmount
-								var prunedNow int
-								byLap[next.lap], prunedNow = insertNondominated(
-									byLap[next.lap],
-									next,
-									input.Formation.Seconds,
-									input.hasStopCountRules(),
-									fuelWeight.secondsPerLiter > 0,
-									tyreModel.enabled,
-									len(input.EventRules.RequiredWindows) > 0,
-									len(input.EventRules.MandatoryCompounds) > 0,
-								)
-								pruned += prunedNow
 							}
 							if budgetExhausted {
 								break
@@ -285,6 +302,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	result.Sensitivities = append(result.Sensitivities, SolverSensitivity{
 		Parameter: parameter, Delta: defaultCurveSensitivity, ImpactSeconds: impact,
 	})
+	result.Sensitivities = append(result.Sensitivities, drivers.sensitivities(result.Best)...)
 	if fuelWeight.source.Presence == sp.PresenceValid {
 		fuelWeightImpact := best.fuelWeight * defaultFuelWeightSensitivity
 		result.WorstCase.FuelWeightSeconds += fuelWeightImpact
@@ -349,6 +367,12 @@ func (input SolverInputV2) completedAllowed(node searchNode, tyreModel tyreDecis
 			}
 		}
 	}
+	for _, driverID := range input.sortedDriverLimitIDs() {
+		limit := input.EventRules.DriverLimits[driverID]
+		if limit.MinLaps != nil && node.driverUsage[driverID].laps < *limit.MinLaps {
+			return false, "driver_minimum_laps", fmt.Sprintf("el piloto %s hace %d vueltas y debe hacer al menos %d", driverID, node.driverUsage[driverID].laps, *limit.MinLaps)
+		}
+	}
 	return true, "", ""
 }
 
@@ -365,23 +389,24 @@ func (input SolverInputV2) serviceResources() (serviceResource, serviceResource,
 	if veStep == 0 {
 		veStep = defaultVEStep
 	}
-	fuel, err := newServiceResource("fuel", input.FuelCapacityLiters, input.resourcePerLap(ResourceFuel), fuelStep)
+	allowProfileConsumption := len(input.DriverProfiles) > 0
+	fuel, err := newServiceResource("fuel", input.FuelCapacityLiters, input.resourcePerLap(ResourceFuel), fuelStep, allowProfileConsumption)
 	if err != nil {
 		return serviceResource{}, serviceResource{}, err
 	}
-	ve, err := newServiceResource("virtualEnergy", input.VECapacityPercent, input.resourcePerLap(ResourceVirtualEnergy), veStep)
+	ve, err := newServiceResource("virtualEnergy", input.VECapacityPercent, input.resourcePerLap(ResourceVirtualEnergy), veStep, allowProfileConsumption)
 	if err != nil {
 		return serviceResource{}, serviceResource{}, err
 	}
 	return fuel, ve, nil
 }
 
-func (resource serviceResource) withPerLapSaving(saving int64) serviceResource {
-	resource.perLap -= saving
+func (resource serviceResource) withPerLap(perLap int64) serviceResource {
+	resource.perLap = perLap
 	return resource
 }
 
-func newServiceResource(field string, capacity, perLap, step float64) (serviceResource, error) {
+func newServiceResource(field string, capacity, perLap, step float64, allowZeroPerLap bool) (serviceResource, error) {
 	if capacity == 0 && perLap == 0 {
 		return serviceResource{}, nil
 	}
@@ -397,7 +422,7 @@ func newServiceResource(field string, capacity, perLap, step float64) (serviceRe
 	if err != nil {
 		return serviceResource{}, err
 	}
-	if capacityUnits <= 0 || perLapUnits <= 0 || stepUnits <= 0 {
+	if capacityUnits <= 0 || (!allowZeroPerLap && perLapUnits <= 0) || stepUnits <= 0 {
 		return serviceResource{}, solveError(ErrorInvalidInput, field, "capacity, consumption and step must be positive")
 	}
 	if capacityUnits/stepUnits > maxServiceLevels {
@@ -447,9 +472,9 @@ func serviceAmounts(current int64, resource serviceResource) []int64 {
 	return result
 }
 
-func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCostModel, saving savingLevelCost) (searchNode, error) {
+func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCostModel, saving savingLevelCost, driver driverCost) (searchNode, error) {
 	next := cloneNode(node)
-	stint, compoundSeconds, err := costs.stint(node.tyre.compound, laps, input.BaseLapSeconds)
+	stint, compoundSeconds, err := costs.stint(node.tyre.compound, laps, driver.baseLap)
 	if err != nil {
 		return searchNode{}, err
 	}
@@ -466,12 +491,13 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	} else {
 		next.tyreAge += laps
 	}
-	effectiveFuelPerLap := costs.fuelPerLap - saving.fuelSavedPerLap
+	effectiveFuelPerLap := driver.fuelPerLap - saving.fuelSavedPerLap
 	next.fuelWeight += costs.fuelWeight.stint(node.fuel, effectiveFuelPerLap, laps)
 	savingSeconds := saving.timeCostPerLap * float64(laps)
 	next.saving += savingSeconds
 	decision := StintDecision{
 		Index: len(next.decision.Stints), Laps: laps, SavingLevel: saving.level,
+		Driver:          driver.id,
 		FuelSavedPerLap: serviceValue(saving.fuelSavedPerLap), VESavedPerLap: serviceValue(saving.veSavedPerLap),
 		TimeCostPerLap: saving.timeCostPerLap, SavingCostSeconds: savingSeconds,
 	}
@@ -483,6 +509,7 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	next.decision.Stints = append(next.decision.Stints, decision)
 	if len(next.decision.PitStops) > 0 {
 		next.decision.PitStops[len(next.decision.PitStops)-1].SavingLevel = saving.level
+		next.decision.PitStops[len(next.decision.PitStops)-1].Driver = driver.id
 	}
 	return next, nil
 }
@@ -605,16 +632,17 @@ func insertNondominated(
 	tyresActive bool,
 	windowsActive bool,
 	mandatoryCompoundsActive bool,
+	driversActive bool,
 ) ([]searchNode, int) {
 	for _, existing := range nodes {
-		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive) {
+		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive) {
 			return nodes, 1
 		}
 	}
 	kept := nodes[:0]
 	pruned := 0
 	for _, existing := range nodes {
-		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive) {
+		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive) {
 			kept = append(kept, existing)
 		} else {
 			pruned++
@@ -626,7 +654,7 @@ func insertNondominated(
 func dominates(
 	left, right searchNode,
 	formation float64,
-	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive bool,
+	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive bool,
 ) bool {
 	leftStops, rightStops := len(left.decision.PitStops), len(right.decision.PitStops)
 	if stopRulesActive && leftStops != rightStops {
@@ -645,6 +673,9 @@ func dominates(
 		return false
 	}
 	if mandatoryCompoundsActive && left.compoundMask != right.compoundMask {
+		return false
+	}
+	if driversActive && (left.currentDriver != right.currentDriver || left.continuousDriverSeconds != right.continuousDriverSeconds || !sameDriverUsage(left.driverUsage, right.driverUsage)) {
 		return false
 	}
 	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
@@ -697,6 +728,12 @@ func cloneNode(node searchNode) searchNode {
 		clone.tyreUsage = make(map[tyres.TyreID]int64, len(node.tyreUsage))
 		for id, laps := range node.tyreUsage {
 			clone.tyreUsage[id] = laps
+		}
+	}
+	if node.driverUsage != nil {
+		clone.driverUsage = make(map[string]driverUsage, len(node.driverUsage))
+		for id, usage := range node.driverUsage {
+			clone.driverUsage[id] = usage
 		}
 	}
 	return clone

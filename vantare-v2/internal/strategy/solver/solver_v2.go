@@ -112,10 +112,11 @@ type PitWindow struct {
 }
 
 type DriverLimit struct {
-	MinLaps        *int64              `json:"minLaps,omitempty"`
-	MaxLaps        *int64              `json:"maxLaps,omitempty"`
-	MaxTimeSeconds *float64            `json:"maxTimeSeconds,omitempty"`
-	Unavailable    []UnavailableWindow `json:"unavailable,omitempty"`
+	MinLaps                  *int64              `json:"minLaps,omitempty"`
+	MaxLaps                  *int64              `json:"maxLaps,omitempty"`
+	MaxContinuousTimeSeconds *float64            `json:"maxContinuousTimeSeconds,omitempty"`
+	MaxTotalTimeSeconds      *float64            `json:"maxTotalTimeSeconds,omitempty"`
+	Unavailable              []UnavailableWindow `json:"unavailable,omitempty"`
 }
 
 type UnavailableWindow struct {
@@ -165,6 +166,7 @@ type SolverInputV2 struct {
 	SavingCost        *SavingCostParameter    `json:"savingCost,omitempty"`
 	TyreInventory     *TyreInventoryInput     `json:"tyreInventory,omitempty"`
 	CompoundPace      []CompoundPaceParameter `json:"compoundPace,omitempty"`
+	DriverProfiles    []DriverProfileInput    `json:"driverProfiles,omitempty"`
 	Discretization    ServiceDiscretization   `json:"serviceDiscretization"`
 }
 
@@ -331,24 +333,25 @@ func (parameter FuelWeightParameter) Validate() error {
 
 // SolverResultV2 es el resultado con binding, sensibilidades y esperado/caso-malo.
 type SolverResultV2 struct {
-	ContractVersion  ContractVersion          `json:"contractVersion"`
-	InputHash        string                   `json:"inputHash"`
-	StintPaceCost    StintPaceCostSource      `json:"stintPaceCost"`
-	FuelWeightCost   FuelWeightCostSource     `json:"fuelWeightCost"`
-	SavingCost       SavingCostSource         `json:"savingCost"`
-	CompoundPaceCost []CompoundPaceCostSource `json:"compoundPaceCost,omitempty"`
-	SavingPlan       SavingPlan               `json:"savingPlan"`
-	Best             DecisionVector           `json:"best"`
-	Binding          BindingConstraint        `json:"binding"`
-	Sensitivities    []SolverSensitivity      `json:"sensitivities"`
-	Expected         ScenarioEvaluation       `json:"expected"`
-	WorstCase        ScenarioEvaluation       `json:"worstCase"`
-	Candidates       []DecisionVector         `json:"candidates,omitempty"`
-	CandidateDetails []SolverCandidateV2      `json:"candidateDetails,omitempty"`
-	Feasible         bool                     `json:"feasible"`
-	Reasons          []SolverReason           `json:"reasons,omitempty"`
-	Assumptions      []SolverReason           `json:"assumptions"`
-	ComputeStats     ComputeStats             `json:"computeStats"`
+	ContractVersion   ContractVersion          `json:"contractVersion"`
+	InputHash         string                   `json:"inputHash"`
+	StintPaceCost     StintPaceCostSource      `json:"stintPaceCost"`
+	FuelWeightCost    FuelWeightCostSource     `json:"fuelWeightCost"`
+	SavingCost        SavingCostSource         `json:"savingCost"`
+	CompoundPaceCost  []CompoundPaceCostSource `json:"compoundPaceCost,omitempty"`
+	DriverProfileCost []DriverProfileSource    `json:"driverProfileCost,omitempty"`
+	SavingPlan        SavingPlan               `json:"savingPlan"`
+	Best              DecisionVector           `json:"best"`
+	Binding           BindingConstraint        `json:"binding"`
+	Sensitivities     []SolverSensitivity      `json:"sensitivities"`
+	Expected          ScenarioEvaluation       `json:"expected"`
+	WorstCase         ScenarioEvaluation       `json:"worstCase"`
+	Candidates        []DecisionVector         `json:"candidates,omitempty"`
+	CandidateDetails  []SolverCandidateV2      `json:"candidateDetails,omitempty"`
+	Feasible          bool                     `json:"feasible"`
+	Reasons           []SolverReason           `json:"reasons,omitempty"`
+	Assumptions       []SolverReason           `json:"assumptions"`
+	ComputeStats      ComputeStats             `json:"computeStats"`
 }
 
 type SavingCostSource struct {

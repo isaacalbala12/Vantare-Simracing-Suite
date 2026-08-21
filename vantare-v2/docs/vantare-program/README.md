@@ -16,14 +16,14 @@ sigue vigente y registra el estado operativo.
 5. `execution-policy.md`.
 6. `../branch-channels.md` cuando haya ramas, promociones o releases.
 7. El handoff del proyecto asignado en `handoffs/`.
-8. La issue de Linear, el ADR y el plan o microplan activo.
+8. La issue de GitHub, el ADR, `../roadmap/plan.md` y el plan o microplan activo.
 
 Si dos documentos se contradicen:
 
 1. prevalecen las decisiones más recientes de este directorio;
 2. después, la evidencia comprobable del código y del runtime;
 3. después, ADR y planes vigentes;
-4. Linear decide estado, dependencias, rama y entrega;
+4. GitHub Issues decide estado, dependencias, rama y entrega;
 5. los documentos históricos se conservan como contexto, no como orden de
    ejecución.
 
@@ -33,7 +33,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras, dependencias y estado.
-- `execution-policy.md`: flujo Linear/Git, autonomía, reviews y promoción.
+- `execution-policy.md`: flujo GitHub/Git, autonomía, reviews y promoción.
+- `../roadmap/plan.md`: fuente manual del planning y del roadmap público.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
 - `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
@@ -53,9 +54,9 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   tomar una decision material; no se espera al final de una fase larga.
 - Los workers no crean subagentes por defecto. La delegacion anidada requiere
   autorizacion expresa y acotada del orquestador.
-- El comentario final de Linear enlaza el handoff y enumera evidencia real.
+- El comentario final de la issue de GitHub enlaza el handoff y enumera evidencia real.
 - Mocks, capturas y tests no pueden presentarse como prueba de runtime real.
-- Los hallazgos fuera de alcance se registran en Linear.
+- Los hallazgos fuera de alcance se registran como issues de GitHub.
 - Contenido pertenece a Isaac y queda fuera de la ejecución autónoma. Los
   agentes solo preparan borradores cuando se les solicita.
 
@@ -66,7 +67,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   issue conserva rama y worktree propios.
 - `develop` y `refactor` son historia y no reciben trabajo nuevo. Los checkouts
   historicos sucios se preservan hasta una limpieza trazada.
-- Los handoffs de este directorio, Linear y `docs/current-plan.md` contienen el
-  estado por proyecto; este indice no duplica listas de issues que caducan.
+- Los handoffs de este directorio, GitHub Issues y `../roadmap/plan.md` contienen
+  respectivamente la continuidad técnica, el estado operativo y el planning
+  público; este índice no duplica listas de issues que caducan.
 - Testing Center es un proyecto independiente y no se mezcla con la
   orquestacion de los modulos de producto salvo que una issue lo indique.

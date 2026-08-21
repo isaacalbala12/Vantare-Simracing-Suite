@@ -1,3 +1,11 @@
+# Registro histórico de ejecución
+
+> **Histórico — no es una fuente normativa.** El planning, el alcance futuro y
+> el estado público viven en `docs/roadmap/plan.md`; el estado operativo vive en
+> la issue de GitHub y la continuidad técnica en el handoff correspondiente.
+> Este archivo se conserva para evidencia y contexto. No se deben añadir aquí
+> nuevas decisiones de planning ni usarlo como sustituto del roadmap.
+
 Nota ISA-697 / Deuda #677 Tanda 2 (2026-08-21, implementada en rama, sin promoción):
 - `TelemetryEngine.Apply` baja de 650190 B/op y 344 allocs/op @104 a 168400 B/op y 327 allocs/op (-74% bytes, -5% allocs) mediante `NewSnapshotOwned` + `Peek` + `Commit` directo y validación sin map.
 - Cambios en `envelope/types.go` (Owned/Peek), `core/reducer.go` y `core/session_coordinator.go` (Owned + commit directo), `derive/pipeline.go` (Peek + Owned). `core/validateObservedState` pasa de `map` a `sort`.

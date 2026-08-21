@@ -29,7 +29,7 @@ y simplifica antes de ampliarla.
 Antes de interpretar o ejecutar una tarea:
 
 1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
-2. Lee este archivo y `docs/current-plan.md`.
+2. Lee este archivo y `docs/roadmap/plan.md`.
 3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
    Git, el tracker, CI, releases o estados.
 4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
@@ -154,7 +154,9 @@ Requieren autorizacion explicita de Isaac:
 6. Ejecuta los checks aplicables.
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza el handoff, la issue de GitHub y `docs/current-plan.md` si cambia el estado.
+9. Actualiza el handoff y la issue de GitHub después de cada worker o cambio
+   material. Si cambia el alcance, el plan futuro o el estado público, actualiza
+   `docs/roadmap/plan.md` en el mismo PR.
 
 ## Stop conditions
 

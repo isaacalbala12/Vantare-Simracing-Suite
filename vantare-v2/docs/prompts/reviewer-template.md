@@ -9,7 +9,7 @@ No edites archivos.
 
 Contexto:
 - Lee `AGENTS.md`.
-- Lee `docs/current-plan.md`.
+- Lee `docs/roadmap/plan.md`.
 - Lee los docs relevantes de la tarea.
 - Revisa el diff del worker.
 

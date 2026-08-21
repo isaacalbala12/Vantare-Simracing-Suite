@@ -39,11 +39,13 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 
 import {
+  calculateStrategyOrbit,
   createStrategyOrbitApplicationClient,
   StrategyApplicationError,
   type StrategyApplicationCommandV1,
   type StrategyEventV2,
 } from "./strategy-orbit-bridge";
+import orbitGolden from "./testdata/orbit-go-golden.json";
 
 const evidence = {
   provenance: { kind: "manual", sourceId: "user" },
@@ -98,6 +100,12 @@ describe("strategy-orbit-bridge application client", () => {
       { ...header("edit_variant", "edit-variant"), eventId: "event-1", variant: { id: "variant-1", name: { value: "Base", evidence }, note: { value: "", evidence }, mode: { value: "dry", evidence }, order: ["driver-1"], state: { value: "draft", evidence } }, updatedAt: "2026-08-21T18:06:00Z" },
       { ...header("list_variants", "list-variants"), eventId: "event-1" },
       { ...header("compare_variants", "compare-variants"), eventId: "event-1", leftVariantId: "variant-1", rightVariantId: "variant-2" },
+      { ...header("calculate_orbit", "calculate-orbit"), input: {
+        event: { durationMinutes: 120, tankLiters: 90, pitLossSeconds: 60 },
+        drivers: [{ id: "driver-1", name: "Driver", dry: { paceSeconds: 100, fuelLitersPerLap: 2 }, wet: { paceSeconds: 110, fuelLitersPerLap: 1.8 }, eco: { paceSeconds: 101, fuelLitersPerLap: 1.9 } }],
+        variants: [{ id: "variant-1", mode: "dry", order: ["driver-1"], overrides: {} }],
+        activeVariantId: "variant-1",
+      } },
     ];
     const client = createStrategyOrbitApplicationClient<unknown>();
 
@@ -131,6 +139,39 @@ describe("strategy-orbit-bridge application client", () => {
       field: "driverId",
       message: "Driver is used by the variant.",
     } satisfies Partial<StrategyApplicationError>);
+  });
+
+  it("decodifica el resultado real de cálculo y conserva la correlación v2", async () => {
+    emit.mockImplementationOnce((_name: string, payload?: unknown) => {
+      const command = payload as { commandId: string };
+      for (const handler of handlers.get("strategy:application:result") ?? []) {
+        handler({ data: [{
+          protocolVersion: "strategy.application.v1",
+          commandId: command.commandId,
+          repositoryVersion: 0,
+          orbitCalculation: orbitGolden,
+          imported: false,
+          recoveredFromBackup: false,
+          closed: false,
+        }] });
+      }
+    });
+    const client = createStrategyOrbitApplicationClient<unknown>();
+    const result = await calculateStrategyOrbit(client, "orbit-golden", {
+      event: { durationMinutes: 240, tankLiters: 90, pitLossSeconds: 64 },
+      drivers: ["isaac", "sol", "diego", "marta"].map((id) => ({
+        id,
+        name: id,
+        dry: { paceSeconds: 104, fuelLitersPerLap: 2.75 },
+        wet: { paceSeconds: 112, fuelLitersPerLap: 2.4 },
+        eco: { paceSeconds: 105, fuelLitersPerLap: 2.55 },
+      })),
+      variants: [{ id: "s1", mode: "dry", order: ["isaac", "sol", "diego", "marta"], overrides: {} }],
+      activeVariantId: "s1",
+    });
+
+    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([28, 28, 28, 28, 27]);
+    expect(Object.isFrozen(result.plans.s1)).toBe(true);
   });
 
   it("decodifica el documento v2 y lo entrega inmutable", async () => {

@@ -166,6 +166,9 @@ func knownStrategyApplicationError(code strategyapplication.ErrorCode) bool {
 		strategyapplication.ErrorVariantConflict,
 		strategyapplication.ErrorLegacyMigrationConflict,
 		strategyapplication.ErrorLegacyMigrationNotFound,
+		strategyapplication.ErrorCalculationInvalid,
+		strategyapplication.ErrorCalculationInfeasible,
+		strategyapplication.ErrorCalculationOverflow,
 		strategyapplication.ErrorImportRefused:
 		return true
 	default:
@@ -207,6 +210,12 @@ func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) string
 		return "The Orbit migration changed or conflicts with another migration. Run the preview again."
 	case strategyapplication.ErrorLegacyMigrationNotFound:
 		return "The Orbit migration journal was not found."
+	case strategyapplication.ErrorCalculationInvalid:
+		return "The Strategy calculation input is invalid."
+	case strategyapplication.ErrorCalculationInfeasible:
+		return "The Strategy cannot be completed with the current limits."
+	case strategyapplication.ErrorCalculationOverflow:
+		return "The Strategy calculation exceeded its safe limits."
 	case strategyapplication.ErrorImportRefused:
 		return "The Strategy package was refused."
 	default:

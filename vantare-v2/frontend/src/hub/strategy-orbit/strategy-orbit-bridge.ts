@@ -14,6 +14,8 @@ import {
   createStrategyApplicationClient,
   createWailsStrategyApplicationTransport,
   type StrategyApplicationClient,
+  type StrategyOrbitCalculationInputV1,
+  type StrategyOrbitCalculationResultV1,
 } from "../../strategy/strategy-application-client";
 import type {
   StrategyDriver,
@@ -50,6 +52,25 @@ export interface StrategyRoster {
  */
 export function createStrategyOrbitApplicationClient<TPayload>(): StrategyApplicationClient<TPayload> {
   return createStrategyApplicationClient<TPayload>(createWailsStrategyApplicationTransport());
+}
+
+/** Ejecuta el cálculo productivo de Orbit en manual+solver Go. */
+export async function calculateStrategyOrbit(
+  client: StrategyApplicationClient<unknown>,
+  commandId: string,
+  input: StrategyOrbitCalculationInputV1,
+): Promise<StrategyOrbitCalculationResultV1> {
+  const result = await client.execute({
+    protocolVersion: "strategy.application.v1",
+    commandId,
+    operation: "calculate_orbit",
+    expectedRepositoryVersion: 0,
+    input,
+  });
+  if (!result.orbitCalculation) {
+    throw new Error("Strategy calculation result is missing");
+  }
+  return result.orbitCalculation;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -37,6 +37,7 @@ export type StrategyApplicationOperation =
   | "edit_variant"
   | "list_variants"
   | "compare_variants"
+  | "calculate_orbit"
   | "preview_legacy_migration"
   | "migrate_legacy"
   | "rollback_legacy_migration";
@@ -201,6 +202,85 @@ export type StrategyVariantComparisonV2 = {
   readonly differentFields: readonly string[];
 };
 
+export type StrategyOrbitCalculationInputV1 = {
+  readonly event: {
+    readonly durationMinutes: number;
+    readonly tankLiters: number;
+    readonly pitLossSeconds: number;
+  };
+  readonly drivers: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly dry: StrategyOrbitCalculationPaceV1;
+    readonly wet: StrategyOrbitCalculationPaceV1;
+    readonly eco: StrategyOrbitCalculationPaceV1;
+  }[];
+  readonly variants: readonly {
+    readonly id: string;
+    readonly mode: "dry" | "wet" | "eco";
+    readonly order: readonly string[];
+    readonly overrides: Readonly<Record<number, { readonly laps?: number; readonly fuel?: number }>>;
+  }[];
+  readonly activeVariantId: string;
+};
+
+export type StrategyOrbitCalculationPaceV1 = {
+  readonly paceSeconds: number;
+  readonly fuelLitersPerLap: number;
+};
+
+export type StrategyOrbitCalculatedStintV1 = {
+  readonly i: number;
+  readonly d: string;
+  readonly laps: number;
+  readonly fuel: number;
+  readonly pace: number;
+  readonly start: number;
+  readonly end: number;
+  readonly lap0: number;
+  readonly lap1: number;
+  readonly pitWindowLap: number;
+  readonly pitWindowSeconds: number;
+  readonly over: boolean;
+  readonly manual: boolean;
+};
+
+export type StrategyOrbitCalculatedPlanV1 = {
+  readonly stints: readonly StrategyOrbitCalculatedStintV1[];
+  readonly totalLaps: number;
+  readonly total: number;
+  readonly stops: number;
+  readonly maxLaps: number;
+  readonly avgFuel: number;
+  readonly avgPace: number;
+  readonly distribution: readonly {
+    readonly driverId: string;
+    readonly laps: number;
+    readonly seconds: number;
+  }[];
+};
+
+export type StrategyOrbitCalculationComparisonV1 = {
+  readonly winnerId: string;
+  readonly loserId: string;
+  readonly winnerLaps: number;
+  readonly loserLaps: number;
+  readonly diff: number;
+  readonly savedStops: number;
+  readonly savedS: number;
+  readonly costS: number;
+  readonly pays: boolean;
+  readonly sameStops: boolean;
+  readonly stints: number;
+  readonly driverCount: number;
+  readonly doubles: readonly string[];
+};
+
+export type StrategyOrbitCalculationResultV1 = {
+  readonly plans: Readonly<Record<string, StrategyOrbitCalculatedPlanV1>>;
+  readonly comparisons: Readonly<Record<string, StrategyOrbitCalculationComparisonV1>>;
+};
+
 type CommandHeader<T extends StrategyApplicationOperation> = {
   protocolVersion: typeof STRATEGY_APPLICATION_PROTOCOL_V1;
   commandId: string;
@@ -271,6 +351,9 @@ export type StrategyApplicationCommandV1<TPayload> =
       eventId: string;
       leftVariantId: string;
       rightVariantId: string;
+    })
+  | (CommandHeader<"calculate_orbit"> & {
+      input: StrategyOrbitCalculationInputV1;
     })
   | (CommandHeader<"preview_legacy_migration" | "migrate_legacy"> & {
       sources: readonly StrategyLegacyStorageSourceV1[];
@@ -367,6 +450,7 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly drivers?: readonly StrategyDriverV2[];
   readonly variants?: readonly StrategyVariantV2[];
   readonly comparison?: StrategyVariantComparisonV2;
+  readonly orbitCalculation?: StrategyOrbitCalculationResultV1;
   readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
@@ -395,6 +479,9 @@ export type StrategyApplicationErrorCode =
   | "variant_conflict"
   | "legacy_migration_conflict"
   | "legacy_migration_not_found"
+  | "calculation_invalid"
+  | "calculation_infeasible"
+  | "calculation_overflow"
   | "import_refused"
   // Refusals raised by the package format itself.
   | "invalid_package"
@@ -459,6 +546,9 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "variant_conflict",
   "legacy_migration_conflict",
   "legacy_migration_not_found",
+  "calculation_invalid",
+  "calculation_infeasible",
+  "calculation_overflow",
   "import_refused",
   "invalid_package",
   "unsupported_package_version",
@@ -640,6 +730,9 @@ async function parseResult<TPayload>(
     ...(payload.comparison === undefined
       ? {}
       : { comparison: parseStrategyVariantComparisonV2(payload.comparison) }),
+    ...(payload.orbitCalculation === undefined
+      ? {}
+      : { orbitCalculation: parseStrategyOrbitCalculation(payload.orbitCalculation) }),
     ...(payload.legacyMigration === undefined
       ? {}
       : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
@@ -840,6 +933,76 @@ function parseStrategyVariantComparisonV2(value: unknown): StrategyVariantCompar
     throw new Error("Invalid Strategy comparison.differentFields");
   }
   return { eventId: comparison.eventId as string, left, right, differentFields: comparison.differentFields as string[] };
+}
+
+function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculationResultV1 {
+  const calculation = strategyRecord(value, "orbitCalculation");
+  const rawPlans = strategyRecord(calculation.plans, "orbitCalculation.plans");
+  const rawComparisons = strategyRecord(calculation.comparisons, "orbitCalculation.comparisons");
+  const plans: Record<string, StrategyOrbitCalculatedPlanV1> = {};
+  for (const [id, candidate] of Object.entries(rawPlans)) {
+    const plan = strategyRecord(candidate, `orbitCalculation.plans.${id}`);
+    for (const field of ["total", "avgFuel", "avgPace"] as const) {
+      strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
+    }
+    for (const field of ["totalLaps", "stops", "maxLaps"] as const) {
+      strategyInteger(plan[field], `orbitCalculation.plans.${id}.${field}`);
+    }
+    if (!Array.isArray(plan.stints) || !Array.isArray(plan.distribution)) {
+      throw new Error(`Invalid Strategy orbitCalculation.plans.${id}`);
+    }
+    const stints = plan.stints.map((entry, index) => {
+      const stint = strategyRecord(entry, `orbitCalculation.plans.${id}.stints.${index}`);
+      strategyString(stint.d, `orbitCalculation.plans.${id}.stints.${index}.d`);
+      for (const field of ["i", "laps", "lap0", "lap1", "pitWindowLap"] as const) {
+        strategyInteger(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
+      }
+      for (const field of ["fuel", "pace", "start", "end", "pitWindowSeconds"] as const) {
+        strategyNumber(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
+      }
+      if (typeof stint.over !== "boolean" || typeof stint.manual !== "boolean") {
+        throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stints.${index}`);
+      }
+      return stint as StrategyOrbitCalculatedStintV1;
+    });
+    const distribution = plan.distribution.map((entry, index) => {
+      const slice = strategyRecord(entry, `orbitCalculation.plans.${id}.distribution.${index}`);
+      strategyString(slice.driverId, `orbitCalculation.plans.${id}.distribution.${index}.driverId`);
+      strategyInteger(slice.laps, `orbitCalculation.plans.${id}.distribution.${index}.laps`);
+      strategyNumber(slice.seconds, `orbitCalculation.plans.${id}.distribution.${index}.seconds`);
+      return slice as StrategyOrbitCalculatedPlanV1["distribution"][number];
+    });
+    plans[id] = {
+      stints,
+      distribution,
+      totalLaps: plan.totalLaps as number,
+      total: plan.total as number,
+      stops: plan.stops as number,
+      maxLaps: plan.maxLaps as number,
+      avgFuel: plan.avgFuel as number,
+      avgPace: plan.avgPace as number,
+    };
+  }
+  const comparisons: Record<string, StrategyOrbitCalculationComparisonV1> = {};
+  for (const [id, candidate] of Object.entries(rawComparisons)) {
+    const comparison = strategyRecord(candidate, `orbitCalculation.comparisons.${id}`);
+    strategyString(comparison.winnerId, `orbitCalculation.comparisons.${id}.winnerId`);
+    strategyString(comparison.loserId, `orbitCalculation.comparisons.${id}.loserId`);
+    for (const field of ["winnerLaps", "loserLaps", "diff", "savedStops", "stints", "driverCount"] as const) {
+      strategyInteger(comparison[field], `orbitCalculation.comparisons.${id}.${field}`);
+    }
+    for (const field of ["savedS", "costS"] as const) {
+      strategyNumber(comparison[field], `orbitCalculation.comparisons.${id}.${field}`);
+    }
+    if (typeof comparison.pays !== "boolean" || typeof comparison.sameStops !== "boolean") {
+      throw new Error(`Invalid Strategy orbitCalculation.comparisons.${id}`);
+    }
+    if (!Array.isArray(comparison.doubles) || comparison.doubles.some((name) => typeof name !== "string")) {
+      throw new Error(`Invalid Strategy orbitCalculation.comparisons.${id}.doubles`);
+    }
+    comparisons[id] = comparison as StrategyOrbitCalculationComparisonV1;
+  }
+  return { plans, comparisons };
 }
 
 function parseStrategySourcedV2(value: unknown, field: string): unknown {

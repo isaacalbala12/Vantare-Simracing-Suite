@@ -1,3 +1,23 @@
+Nota ISA-734 / ISA-694 F2(d) (2026-08-21, implementada en rama de issue):
+- Orbit calcula ahora todas las variantes por `strategy:application:calculate_orbit`.
+  La aplicación reutiliza `manual.CalculateRace` para la duración por vueltas y
+  `solver.Solve` para el plan; no se han recreado fórmulas de dominio en TS.
+- `StrategyOrbitPage` presenta carga y errores tipados (código y campo), descarta
+  respuestas obsoletas y no conserva cifras anteriores como fallback. Un piloto
+  colgante falla como `calculation_invalid`; `buildPlan` ya no tiene llamadores
+  ni definición en producto.
+- Un fixture golden compartido prueba el resultado real Go (139 vueltas, stints
+  28/28/28/28/27 y 4:05:12) y el wiring que lo pinta en la página. Se invirtió
+  la caracterización del piloto colgante; guardado/activación/export quedan para
+  F2(e), y datos sintéticos para F2(f).
+- Gates locales: `go test ./internal/strategy/... ./internal/app -count=1`,
+  frontend 375 archivos/2.888 tests, `typecheck`, `build`, `git diff --check` y
+  `visual:orbit-strategy` PASS. El harness visual solo añadió una espera al
+  recálculo asíncrono; no cambió CSS ni se conservaron capturas regeneradas.
+- Commits: `bddccd4c`, `0ae806eb`, `d90c7f13` y `32ab7b69`. Sin dependencias,
+  PR, merge, promoción ni release. Siguiente: review del orquestador de #734;
+  F2(e) no se asume iniciada.
+
 Nota ISA-732 / ISA-694 F2(c) (2026-08-21, implementada en rama de issue):
 - La API de aplicación añade preview, commit y rollback de las dos claves
   localStorage de Orbit. El primer commit guarda raw+fingerprint+journal antes

@@ -17,6 +17,25 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-734 / F2(d) (2026-08-21, lista para review):
+
+- Orbit ya no calcula planes en TypeScript: la página pide todas las variantes
+  a `strategy:application:calculate_orbit`, que compone el cálculo manual y el
+  solver Go existentes. El frontend se limita a validar el wire y formar los
+  ViewModels de presentación.
+- El ciclo asíncrono muestra carga, oculta cifras antiguas, descarta respuestas
+  obsoletas y expone el error tipado con código/campo y reintento. Referencias a
+  pilotos inexistentes fallan como `calculation_invalid`, sin fallback.
+- El golden compartido entre Go y el test de página demuestra 139 vueltas,
+  cinco stints 28/28/28/28/27 y 4:05:12 desde el motor real. La caracterización
+  de cálculo/piloto colgante queda invertida; persistencia, activación y export
+  siguen en F2(e), y la eliminación de datos sintéticos en F2(f).
+- Gates: Go Strategy+app, frontend 375/2.888, typecheck, build, diff-check y
+  visual Orbit verdes. El harness visual espera el recálculo asíncrono; no hay
+  cambios CSS ni capturas nuevas. Sin dependencia, PR, merge o promoción.
+- Commits de producto/prueba: `bddccd4c`, `0ae806eb`, `d90c7f13` y
+  `32ab7b69`. Siguiente acción: review del orquestador de #734; después F2(e).
+
 Actualización ISA-732 / F2(c) (2026-08-21, lista para review):
 
 - El motor Go importa las dos claves localStorage mediante un journal durable
@@ -422,6 +441,6 @@ sintético; ninguna implementación de producto fuera de tasks aprobados.
 
 ## Última actualización
 
-2026-08-21, ISA-732: F2(c) implementada en rama propia con migración
-transaccional 28/28, cuarentena, idempotencia/crash retry, rollback semántico y
-diálogo mínimo; pendiente review del orquestador, sin integración ni promoción.
+2026-08-21, ISA-734: F2(d) implementada en rama propia; cálculo Orbit cortado al
+motor Go con estados tipados, golden de paridad y guardia sin `buildPlan`;
+pendiente review del orquestador, sin integración ni promoción.

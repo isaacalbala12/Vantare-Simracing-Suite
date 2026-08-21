@@ -289,6 +289,12 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.form.savedTitle": "Evento aggiornato",
   "strategy.form.savedHint": "{{name}} conserva i dati nuovi.",
 
+  "strategy.calculation.loading": "Calcolo della strategia",
+  "strategy.calculation.loadingHint": "Il motore Go sta calcolando giri, stint e carburante.",
+  "strategy.calculation.error": "Impossibile calcolare la strategia",
+  "strategy.calculation.missing": "Il motore non ha restituito un piano per la strategia attiva.",
+  "strategy.calculation.retry": "Ricalcola",
+
   "strategy.drivers.name": "Nome",
   "strategy.drivers.paceOf": "Ritmo {{mode}}",
   "strategy.drivers.fuelOf": "Consumo {{mode}}",

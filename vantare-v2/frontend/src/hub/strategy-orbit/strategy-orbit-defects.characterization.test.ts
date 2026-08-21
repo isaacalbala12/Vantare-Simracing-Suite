@@ -6,13 +6,18 @@
  * roster y apertura siguen caracterizando el defecto hasta F2(d-f).
  *
  * Defectos cubiertos (ver matriz-migracion-orbit.csv y brief §8):
- * 1) eliminar piloto deja ID colgante en order → buildPlan rompe
+ * 1) eliminar piloto deja ID colgante en order → el cálculo productivo debe rechazarlo tipado
  * 2) fallos silenciosos de guardado/activación/apertura (setItem/bridge)
  * 3) fixtures golden sparse/mixed/legacy → defaults sintéticos sin provenance
  * 4) fillMode='telemetry' se borra al leer
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildPlan } from "./strategy-orbit-model";
+import { calculateStrategyOrbit } from "./strategy-orbit-bridge";
+import { orbitCalculationInput } from "./strategy-orbit-model";
+import {
+  StrategyApplicationError,
+  type StrategyApplicationClient,
+} from "../../strategy/strategy-application-client";
 import {
   readStrategyEvents,
   STRATEGY_EVENTS_KEY,
@@ -73,13 +78,12 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-// ── (1) ID colgante tras eliminar piloto → buildPlan roto ─────────────────
+// ── (1) ID colgante tras eliminar piloto → rechazo Go tipado ───────────────
 
-describe("defecto 8.3 · eliminar piloto deja ID colgante y buildPlan rompe — F2 debe validar y no romper UI", () => {
-  it("buildPlan lanza TypeError si el order contiene un piloto eliminado (ID colgante)", () => {
-    // DEFECTO ISA-694 §8.3: al eliminar driver-2, el order aún puede contener
-    // "driver-2". buildPlan accede a drivers[id] sin validar y rompe.
-    // F2 invertirá: buildPlan/filtrado debe validar IDs y degradar sin throw.
+describe("inversión F2(d) · un piloto colgante se rechaza de forma tipada sin ejecutar cálculo TS", () => {
+  it("envía el ID al dominio Go y conserva calculation_invalid + campo para la UI", async () => {
+    // INVERSIÓN F2(d): ya no existe acceso TS a drivers[id]. El input cruza el
+    // cliente v2 y el dominio Go devuelve un rechazo tipado y visible.
     const event: StrategyEvent = {
       startMin: 14 * 60,
       durationMin: 120,
@@ -93,13 +97,25 @@ describe("defecto 8.3 · eliminar piloto deja ID colgante y buildPlan rompe — 
       dayLabel: "sáb 12",
       startISO: "2026-08-21T14:00:00.000Z",
     };
-    // Solo queda driver-1 en el mapa, pero el order aún referencia driver-2
-    const driversById: Record<string, StrategyDriver> = { "driver-1": DRIVER_A };
-    const danglingOrder = ["driver-1", "driver-2"];
+    const input = orbitCalculationInput(event, [DRIVER_A], [{
+      id: "s1", name: "Base", note: "", mode: "dry", order: ["driver-1", "driver-2"],
+      state: "ok", overrides: {}, tyres: {},
+    }], "s1");
+    const rejected = new StrategyApplicationError(
+      "calculation_invalid",
+      "input.variants.0.order.1",
+      "The Strategy calculation input is invalid.",
+    );
+    const client = {
+      execute: vi.fn().mockRejectedValue(rejected),
+      cancel: () => false,
+      dispose: () => undefined,
+    } as unknown as StrategyApplicationClient<unknown>;
 
-    expect(() =>
-      buildPlan(event, driversById, { mode: "dry", order: danglingOrder, overrides: {} }),
-    ).toThrow();
+    await expect(calculateStrategyOrbit(client, "dangling-driver", input)).rejects.toMatchObject({
+      code: "calculation_invalid",
+      field: "input.variants.0.order.1",
+    });
   });
 
   it("persistir evento con piloto eliminado mantiene el ID colgante en storage (no se limpia al guardar)", () => {

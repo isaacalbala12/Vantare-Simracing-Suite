@@ -76,6 +76,9 @@ func TestStrategyApplicationBridgePropagatesEveryTypedDocumentError(t *testing.T
 		{name: "variant conflict", code: strategyapplication.ErrorVariantConflict},
 		{name: "legacy migration conflict", code: strategyapplication.ErrorLegacyMigrationConflict},
 		{name: "legacy migration not found", code: strategyapplication.ErrorLegacyMigrationNotFound},
+		{name: "calculation invalid", code: strategyapplication.ErrorCalculationInvalid},
+		{name: "calculation infeasible", code: strategyapplication.ErrorCalculationInfeasible},
+		{name: "calculation overflow", code: strategyapplication.ErrorCalculationOverflow},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

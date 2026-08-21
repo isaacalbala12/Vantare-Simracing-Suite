@@ -288,6 +288,12 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.form.savedTitle": "Event updated",
   "strategy.form.savedHint": "{{name}} keeps the new details.",
 
+  "strategy.calculation.loading": "Calculating strategy",
+  "strategy.calculation.loadingHint": "The Go engine is calculating laps, stints, and fuel.",
+  "strategy.calculation.error": "The strategy could not be calculated",
+  "strategy.calculation.missing": "The engine did not return a plan for the active strategy.",
+  "strategy.calculation.retry": "Retry calculation",
+
   "strategy.drivers.name": "Name",
   "strategy.drivers.paceOf": "{{mode}} pace",
   "strategy.drivers.fuelOf": "{{mode}} fuel",

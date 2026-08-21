@@ -27,6 +27,9 @@ const (
 	ErrorVariantConflict         ErrorCode = "variant_conflict"
 	ErrorLegacyMigrationConflict ErrorCode = "legacy_migration_conflict"
 	ErrorLegacyMigrationNotFound ErrorCode = "legacy_migration_not_found"
+	ErrorCalculationInvalid      ErrorCode = "calculation_invalid"
+	ErrorCalculationInfeasible   ErrorCode = "calculation_infeasible"
+	ErrorCalculationOverflow     ErrorCode = "calculation_overflow"
 	// ErrorImportRefused means the package was readable and intact but would
 	// have collided with what is already stored. Nothing was written.
 	ErrorImportRefused ErrorCode = "import_refused"
@@ -50,6 +53,9 @@ var (
 	ErrVariantConflict         = errors.New("strategy variant conflicts with an existing variant")
 	ErrLegacyMigrationConflict = errors.New("legacy migration fingerprint or journal conflicts with persisted state")
 	ErrLegacyMigrationNotFound = errors.New("legacy migration journal not found")
+	ErrCalculationInvalid      = errors.New("strategy calculation input is invalid")
+	ErrCalculationInfeasible   = errors.New("strategy calculation is infeasible")
+	ErrCalculationOverflow     = errors.New("strategy calculation overflowed")
 	ErrImportRefused           = errors.New("strategy package import refused")
 )
 

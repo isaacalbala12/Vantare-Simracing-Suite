@@ -292,4 +292,9 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.drivers.name": "Nome",
   "strategy.drivers.paceOf": "Ritmo {{mode}}",
   "strategy.drivers.fuelOf": "Consumo {{mode}}",
+  "strategy.calculation.loading": "A calcular estratégia",
+  "strategy.calculation.loadingHint": "O motor Go está a calcular voltas, stints e combustível.",
+  "strategy.calculation.error": "Não foi possível calcular a estratégia",
+  "strategy.calculation.missing": "O motor não devolveu um plano para a estratégia ativa.",
+  "strategy.calculation.retry": "Repetir cálculo",
 };

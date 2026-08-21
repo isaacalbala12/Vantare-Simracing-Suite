@@ -17,6 +17,26 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-745 / F4-1 (2026-08-21, lista para review):
+
+- `SolveV2` deja ejecutable el primer corte del vector F1.3: posiciones de pit
+  arbitrarias y cantidades Fuel/VE discretizadas, con coste por tránsito,
+  repostaje, recarga VE y neumáticos en modo paralelo/secuencial delegado al
+  modelo `manual` existente.
+- La poda por dominancia conserva el óptimo y se compara con enumeración total
+  del mismo espacio pequeño. Hay ranking estable, desglose por parada, binding,
+  min/max de paradas y candidatos inviables explicados. La discretización y
+  los dos fallos corregidos del contrato compile-only están documentados en
+  `f1-3-contrato-solver.md`.
+- Gates locales: solver+manual x100, Strategy+app, golden Orbit, vet focal,
+  gofmt y diff-check verdes. El golden permanece en 139 vueltas,
+  28/28/28/28/27, cuatro paradas y 14.712 s; Orbit aún consume el solver v1
+  escalar porque no dispone de inputs de servicios y no se inventaron.
+- Commits de producto/prueba: `429649da`, `26a1db11`, `fa37dbe8` y
+  `632903e0`. Sin cambio
+  frontend, dependencia, PR, merge, promoción ni release. Siguiente: review
+  del orquestador de #745; después F4-2, no antes.
+
 Actualización ISA-735 / F2(e) (2026-08-21, lista para review):
 
 - Orbit guarda el plan visible como revisión inmutable del lifecycle canónico

@@ -1,3 +1,24 @@
+Nota ISA-745 / ISA-694 F4-1 (2026-08-21, implementada en rama de issue):
+- `SolveV2` ejecuta el vector F1.3 con paradas en vueltas arbitrarias y
+  cantidades Fuel/VE discretizadas por servicio. El coste de cada parada se
+  delega en `manual`: tránsito + repostaje + recarga VE + neumáticos, con
+  solape paralelo o suma secuencial.
+- La búsqueda poda únicamente estados dominados y el test oráculo enumera sin
+  poda el mismo espacio pequeño. El ranking es determinista, cada parada lleva
+  input y desglose, el resultado declara binding y conserva candidatos
+  inviables con motivo. Se aplican min/max de paradas; ventanas, compuestos,
+  pilotos y ahorro permanecen en las extensiones F4 posteriores.
+- Se corrigieron dos huecos del contrato compile-only: consumo manual de
+  fallback en `SolverInputV2` y recarga VE opcional en `manual.PitStopInput`.
+  La discretización documentada usa defaults 1 L/1 %, precisión interna 1e-6
+  y máximo 200 niveles por recurso.
+- Gates: solver+manual x100, Strategy+app, golden Orbit focal, vet focal,
+  gofmt y diff-check PASS. Orbit conserva 139 vueltas, cinco stints
+  28/28/28/28/27, cuatro paradas y 14.712 s: continúa sobre `Solve` v1 porque
+  su contrato de evento solo aporta `PitLossSeconds`, no servicios inventados.
+- Sin frontend modificado, dependencia, PR, merge, promoción ni release.
+  Pendiente: review del orquestador de #745.
+
 Nota ISA-744 / ISA-694 F3-a5 (2026-08-21, implementada en rama de issue):
 - Telemetry Analysis conserva cada intervalo cerrado `In Pits` y deriva Fuel/VE
   solo cuando el canal declara un reloj común. Con reloj desconocido o sin

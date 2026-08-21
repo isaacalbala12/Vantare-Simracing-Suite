@@ -1,0 +1,26 @@
+{
+  "fixtureVersion": "consumption-pace-fixture.v1",
+  "fixtureId": "dry-baseline",
+  "combinationId": "lmu:dry-combination",
+  "pathWetnessPercent": 0,
+  "laps": [
+    {"number": 1, "start": 0, "end": 10, "labels": ["out_lap"], "fuelStart": 100, "fuelEnd": 98, "veStart": 100, "veEnd": 99},
+    {"number": 2, "start": 10, "end": 20, "labels": [], "fuelStart": 98, "fuelEnd": 96, "veStart": 99, "veEnd": 98},
+    {"number": 3, "start": 20, "end": 31, "labels": ["traffic"], "fuelStart": 96, "fuelEnd": 93.8, "veStart": 98, "veEnd": 96.9},
+    {"number": 4, "start": 31, "end": 43, "labels": [], "fuelStart": 93.8, "fuelEnd": 91.4, "veStart": 96.9, "veEnd": 95.7},
+    {"number": 5, "start": 43, "end": 56, "labels": ["pit", "in_lap"], "fuelStart": 91.4, "fuelEnd": 99, "veStart": 95.7, "veEnd": 100}
+  ],
+  "expected": {
+    "bucket": "dry",
+    "fuelSampleSize": 3,
+    "fuelMean": 2.2,
+    "fuelVariance": 0.04,
+    "veSampleSize": 3,
+    "veMean": 1.1,
+    "veVariance": 0.01,
+    "paceSampleSize": 2,
+    "paceMedian": 11,
+    "paceVariance": 2,
+    "trafficLap": 3
+  }
+}

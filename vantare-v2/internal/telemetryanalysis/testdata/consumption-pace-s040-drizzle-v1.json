@@ -1,0 +1,26 @@
+{
+  "fixtureVersion": "consumption-pace-fixture.v1",
+  "fixtureId": "s040-drizzle-sanitized",
+  "combinationId": "lmu:s040-combination",
+  "pathWetnessPercent": 5,
+  "laps": [
+    {"number": 1, "start": 0, "end": 10, "labels": ["out_lap"], "fuelStart": 70, "fuelEnd": 67.8, "veStart": 80, "veEnd": 78.9},
+    {"number": 2, "start": 10, "end": 22, "labels": [], "fuelStart": 67.8, "fuelEnd": 65.4, "veStart": 78.9, "veEnd": 77.7},
+    {"number": 3, "start": 22, "end": 35, "labels": ["incident_offtrack"], "fuelStart": 65.4, "fuelEnd": 62.9, "veStart": 77.7, "veEnd": 76.4},
+    {"number": 4, "start": 35, "end": 49, "labels": [], "fuelStart": 62.9, "fuelEnd": 60.1, "veStart": 76.4, "veEnd": 75},
+    {"number": 5, "start": 49, "end": 62, "labels": ["traffic"], "fuelStart": 60.1, "fuelEnd": 57.1, "veStart": 75, "veEnd": 73.5}
+  ],
+  "expected": {
+    "bucket": "humid",
+    "fuelSampleSize": 3,
+    "fuelMean": 2.7333333333333334,
+    "fuelVariance": 0.09333333333333334,
+    "veSampleSize": 3,
+    "veMean": 1.3666666666666665,
+    "veVariance": 0.02333333333333333,
+    "paceSampleSize": 2,
+    "paceMedian": 13,
+    "paceVariance": 2,
+    "trafficLap": 5
+  }
+}

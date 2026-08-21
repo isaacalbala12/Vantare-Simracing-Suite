@@ -414,6 +414,54 @@ mientras Coherent conserva estado Nakama histórico.
 El archivo real, sus valores, hashes y rutas absolutas no se versionaron. Las
 capturas temporales de control de ventana se eliminaron al terminar.
 
+## Experimento de ticket Steam y doX — 2026-08-21
+
+Una segunda prueba, con LMU dentro de RaceControl y después en una práctica
+online propia, identifica la credencial activa sin leer memoria de proceso ni
+descifrar TLS:
+
+- el frontend público actual de RaceCenter lee exactamente
+  `http://localhost:6397` → `nakama.session.auth-token` del archivo Coherent y
+  contempla explícitamente los errores `nakama_token_invalid` y
+  `steamid_mismatch`;
+- ese campo exacto existe localmente, pero su JWT estaba expirado y el archivo
+  no se modificó al entrar en RaceControl;
+- el REST local actual de LMU expone
+  `/rest/profile/getAuthSessionTicket`, con un único campo no vacío
+  `authSessionTicket`;
+- el análisis estático del plugin doX instalado, versión 1.9.1, confirma que
+  `AuthenticateNakama` lee ese endpoint local y envía el ticket a
+  `/v2/account/authenticate/steam?create=false&sync=false`;
+- ya autenticado, el plugin contiene el flujo de evento actual mediante
+  `/v2/rpc/event_get` y consulta perfiles con `/v2/user?usernames=`. No se
+  encontró en ese binario una ruta de histórico personal;
+- al reiniciar SimHub con doX habilitado mientras LMU permanecía en la práctica,
+  se observó una conexión TLS del proceso al host Nakama oficial unos doce
+  segundos después. doX se ejecutó dentro del uso personal permitido por su
+  instalación; Vantare no copió, mostró ni reutilizó su clave embebida;
+- la traza de la práctica añadió la ruta RaceOS sanitizada
+  `/api/v1/event/<id>/<id>/<id>`, además de notificaciones globales.
+
+Esta evidencia corrige dos hipótesis anteriores: el ticket Steam sí está
+disponible por una superficie REST local explícita y la autenticación Nakama
+funciona actualmente. También delimita lo demostrado: doX acredita acceso a
+evento y perfiles/rating de sus participantes, no el backfill completo de las
+carreras anteriores del usuario. El contrato adicional que usa el backend de
+RaceCenter para sincronizar histórico continúa sin estar publicado ni
+identificado. No se enumerarán RPC desconocidos ni se reutilizará una clave de
+terceros para intentar descubrirlo.
+
+### Veredicto actualizado
+
+- **GO técnico probado:** un conector local puede obtener un ticket Steam
+  efímero cuando LMU está abierto y alcanzar Nakama con el contrato correcto.
+- **GO condicional:** ratings de participantes del evento actual, sujeto a
+  autorización y a disponer de una clave/contrato propios o sancionados.
+- **Aún no probado:** importación histórica completa por usuario, paginación,
+  retención y deltas de carreras anteriores.
+- **NO-GO:** copiar la clave propietaria de doX, enumerar RPC o enviar tickets a
+  un backend de Vantare sin autorización y diseño de custodia aprobado.
+
 ## Verificación del checkpoint
 
 Checks del experimento de sesión del 2026-08-21:

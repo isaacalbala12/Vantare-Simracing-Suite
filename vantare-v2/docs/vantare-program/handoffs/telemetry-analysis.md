@@ -88,6 +88,20 @@ identidad fiable para unir rivales de sesión con esos perfiles. Solo se
 conservaron rutas, esquemas y agregados; ningún identificador fue guardado o
 versionado.
 
+El experimento activo del 2026-08-21 resuelve el origen de la autenticación que
+faltaba. Con LMU dentro de RaceControl, el REST local
+`/rest/profile/getAuthSessionTicket` devolvió un ticket Steam presente; el JWT
+Nakama del archivo Coherent seguía expirado y sin reescritura. La revisión
+estática del doX 1.9.1 instalado confirma el flujo ticket local →
+`authenticate/steam` → evento actual → perfiles. Reiniciar SimHub con doX
+habilitado durante una práctica produjo una conexión TLS observable al host
+Nakama oficial. No se copió, registró o reutilizó la clave propietaria del
+plugin. Resultado: `GO` técnico probado para obtener credencial efímera y llegar
+a Nakama; ratings de rivales siguen condicionados a contrato/clave autorizados.
+No se ha probado el histórico completo por usuario: doX usa evento y perfiles,
+no muestra un RPC de backfill, y el contrato adicional de RaceCenter permanece
+opaco.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

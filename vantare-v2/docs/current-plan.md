@@ -57,6 +57,16 @@ Nota ISA-688 (2026-08-21, spike Nakama/RaceOS iniciado, sin promoción):
   la práctica local observada entregó 24 Steam IDs vacíos/a cero, por lo que el
   enlace fiable con rivales de la sesión sigue pendiente. La auditoría conserva
   solo esquemas y agregados; no se guardaron ni versionaron identificadores.
+- El experimento activo posterior identificó la credencial vigente: LMU expone
+  un `authSessionTicket` no vacío en
+  `/rest/profile/getAuthSessionTicket`. El doX 1.9.1 instalado lee ese ticket,
+  autentica por `authenticate/steam`, obtiene el evento actual y consulta
+  perfiles; al reiniciar SimHub dentro de una práctica se observó una conexión
+  TLS real al host Nakama oficial. No se copió ni reutilizó su clave. Esto prueba
+  acceso técnico a ratings de participantes, pero no un backfill histórico por
+  usuario: el binario no expone una ruta de histórico y el contrato adicional
+  de RaceCenter sigue opaco. Pendiente: autorización/clave propia y descubrir
+  por vía sancionada paginación, retención y deltas históricos.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

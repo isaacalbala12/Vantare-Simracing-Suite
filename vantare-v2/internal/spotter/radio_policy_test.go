@@ -408,3 +408,176 @@ func TestSpotterRejectsInvalidCanonicalIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		boundary  func(*engineer.Context)
+		after     []float64
+		sameState bool
+	}{
+		{name: "epoch/same-state", boundary: func(context *engineer.Context) { context.Epoch++ }, after: []float64{2.8}, sameState: true},
+		{name: "epoch/different-state", boundary: func(context *engineer.Context) { context.Epoch++ }},
+		{name: "identity/same-state", boundary: func(context *engineer.Context) { context.Identity.Driver = "driver-b" }, after: []float64{2.8}, sameState: true},
+		{name: "identity/different-state", boundary: func(context *engineer.Context) { context.Identity.Driver = "driver-b" }},
+	}
+	for _, capacity := range []int{1, 4, 64} {
+		for _, test := range tests {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, test.name), func(t *testing.T) {
+				t.Parallel()
+				clock, producer, bus := newSpotterHarness(t, capacity)
+				before := benchmarkObservation(t, 2.8)
+				antecedent, emit, err := producer.Evaluate(before)
+				if err != nil || !emit {
+					t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
+				}
+				submitSpotter(t, bus, antecedent)
+				startSpotter(t, producer, bus, IntentCarLeft, 1_001)
+
+				after := benchmarkObservation(t, test.after...)
+				test.boundary(&after.Context)
+				boundary, err := engineer.ClassifyBoundary(before.Context, after.Context)
+				if err != nil || !boundary.CancelsPending() {
+					t.Fatalf("boundary = %d/%v", boundary, err)
+				}
+				producer.Reset()
+				bus.Reset(radio.ErrLifecycleBoundary)
+
+				clock.now = 1_200
+				current, emit, err := producer.Evaluate(after)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !test.sameState {
+					if emit {
+						t.Fatalf("different state emitted inherited message: %+v", current)
+					}
+					return
+				}
+				if !emit || current.Intent != IntentCarLeft {
+					t.Fatalf("fresh current state = %+v/%t", current, emit)
+				}
+				submitSpotter(t, bus, current) // A fresh but unstarted warning cannot authorize a clear.
+
+				empty := benchmarkObservation(t)
+				empty.Context = after.Context
+				clock.now = 1_600
+				if message, emitted, evalErr := producer.Evaluate(empty); evalErr != nil || emitted {
+					t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
+				}
+				clock.now = 1_750
+				replacement, emitted, evalErr := producer.Evaluate(empty)
+				if evalErr != nil || !emitted || replacement.Intent != IntentAllClear {
+					t.Fatalf("previous lifecycle authorized clear: %+v/%t/%v", replacement, emitted, evalErr)
+				}
+			})
+		}
+	}
+}
+
+func TestSpotterRadioInheritedDeadlineBoundaryAtAllCapacities(t *testing.T) {
+	t.Parallel()
+	for _, capacity := range []int{1, 4, 64} {
+		for _, timing := range []struct {
+			name      string
+			now       int64
+			wantClear bool
+		}{
+			{name: "just-before", now: 1_999, wantClear: true},
+			{name: "exact", now: 2_000},
+			{name: "after", now: 2_001},
+		} {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, timing.name), func(t *testing.T) {
+				t.Parallel()
+				clock, producer, bus := newSpotterHarness(t, capacity)
+				antecedent, emit, err := producer.Evaluate(benchmarkObservation(t, 2.8))
+				if err != nil || !emit {
+					t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
+				}
+				antecedent.ExpiresAtMS = 2_000
+				submitSpotter(t, bus, antecedent)
+				startSpotter(t, producer, bus, IntentCarLeft, 1_001)
+
+				clock.now = timing.now - clearDelayMS
+				if message, emitted, evalErr := producer.Evaluate(benchmarkObservation(t)); evalErr != nil || emitted {
+					t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
+				}
+				clock.now = timing.now
+				message, emitted, evalErr := producer.Evaluate(benchmarkObservation(t))
+				if evalErr != nil || !emitted {
+					t.Fatalf("deadline decision = %+v/%t/%v", message, emitted, evalErr)
+				}
+				want := IntentAllClear
+				if timing.wantClear {
+					want = IntentClearLeft
+					if message.ExpiresAtMS != antecedent.ExpiresAtMS {
+						t.Fatalf("clear deadline = %d, want %d", message.ExpiresAtMS, antecedent.ExpiresAtMS)
+					}
+				}
+				if message.Intent != want {
+					t.Fatalf("deadline intent = %s, want %s", message.Intent, want)
+				}
+			})
+		}
+	}
+}
+
+func TestSpotterRadioUnstartedDecisionNeverAuthorizesClearAtAllCapacities(t *testing.T) {
+	t.Parallel()
+	for _, capacity := range []int{1, 4, 64} {
+		for _, mode := range []string{"expired-before-selection", "invalidated-before-selection", "cancelled-before-selection"} {
+			t.Run(fmt.Sprintf("capacity=%d/%s", capacity, mode), func(t *testing.T) {
+				t.Parallel()
+				clock, producer, bus := newSpotterHarness(t, capacity)
+				antecedent, emit, err := producer.Evaluate(benchmarkObservation(t, 2.8))
+				if err != nil || !emit {
+					t.Fatalf("antecedent = %+v/%t/%v", antecedent, emit, err)
+				}
+				antecedent.ExpiresAtMS = 1_500
+				submitSpotter(t, bus, antecedent)
+
+				switch mode {
+				case "expired-before-selection":
+					clock.now = antecedent.ExpiresAtMS
+					if item, ok := bus.Next(context.Background()); ok || item != nil {
+						t.Fatalf("expired antecedent selected: %+v", item)
+					}
+				case "invalidated-before-selection":
+					clock.now = 1_400
+					if message, emitted, evalErr := producer.Evaluate(benchmarkObservation(t)); evalErr != nil || emitted {
+						t.Fatalf("semantic invalidation = %+v/%t/%v", message, emitted, evalErr)
+					}
+				case "cancelled-before-selection":
+					producer.Reset()
+					bus.Reset(radio.ErrLifecycleBoundary)
+					clock.now = 1_200
+					fresh, freshEmit, evalErr := producer.Evaluate(benchmarkObservation(t, 2.8))
+					if evalErr != nil || !freshEmit {
+						t.Fatalf("fresh unstarted state = %+v/%t/%v", fresh, freshEmit, evalErr)
+					}
+					submitSpotter(t, bus, fresh)
+				}
+
+				if mode != "invalidated-before-selection" {
+					clock.now += 400
+
+					if message, emitted, evalErr := producer.Evaluate(benchmarkObservation(t)); evalErr != nil || emitted {
+						t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
+					}
+				}
+				clock.now += clearDelayMS
+				replacement, emitted, evalErr := producer.Evaluate(benchmarkObservation(t))
+				if evalErr != nil || !emitted || replacement.Intent != IntentAllClear {
+					t.Fatalf("unstarted antecedent authorized clear: %+v/%t/%v", replacement, emitted, evalErr)
+				}
+				submitSpotter(t, bus, replacement)
+				item, ok := bus.Next(context.Background())
+				if !ok || item.Message.Intent != IntentAllClear {
+					t.Fatalf("replacement = %+v/%t", item, ok)
+				}
+				item.Done()
+			})
+		}
+	}
+}

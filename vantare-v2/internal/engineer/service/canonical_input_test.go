@@ -267,6 +267,47 @@ func TestRadioSpotterCapabilityLossCancelsSelectedDelivery(t *testing.T) {
 	}
 }
 
+func TestRadioSpotterSameEpochIdentityChangeAfterStartedDoesNotClear(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalSpotterObservationAt(t, 1, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case notification := <-notifications:
+		if notification.TextKey != "spotter.car_left" {
+			t.Fatalf("antecedent notification = %+v", notification)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("communicated antecedent was not delivered")
+	}
+
+	invalid := canonicalSpotterObservationAt(t, 1, 2)
+	invalid.Context.Identity.Session = "session-b"
+	if err := svc.ConsumeObservation(invalid); !errors.Is(err, engineerprojection.ErrProjectionIdentityChange) {
+		t.Fatalf("same-epoch identity change error = %v", err)
+	}
+	recovered := canonicalSpotterObservationAt(t, 2, 3)
+	recovered.Context.Identity.Session = "session-b"
+	if err := svc.ConsumeObservation(recovered); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case notification := <-notifications:
+		t.Fatalf("previous identity authorized notification: %+v", notification)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
 func TestLegacySpotterRollbackIsExclusiveAndPreStartOnly(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	if err := svc.SetLegacySpotterRollback(true); err != nil {

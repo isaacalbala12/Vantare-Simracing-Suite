@@ -57,7 +57,7 @@ type Capture struct {
 type Host interface {
 	Start(context.Context) error
 	Begin(context.Context, Capture) error
-	Finish(context.Context, Capture) (string, error)
+	Finish(context.Context, Capture) ([]byte, error)
 	Cancel(context.Context, Capture) error
 	Stop(context.Context) error
 	WakeEvents() <-chan string

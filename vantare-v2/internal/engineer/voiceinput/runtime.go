@@ -224,15 +224,25 @@ func (runtime *Runtime) finish(ctx context.Context, capture Capture) {
 	runtime.health.State = StateTranscribing
 	runtime.mu.Unlock()
 
-	text, err := runtime.config.Host.Finish(ctx, capture)
+	transcript, err := runtime.config.Host.Finish(ctx, capture)
 	if err != nil {
 		runtime.complete(capture, false, err)
 		return
 	}
-	text = strings.TrimSpace(text)
-	if text == "" || len(text) > 1024 {
-		runtime.complete(capture, false, errors.New("voice-input transcript is empty or oversized"))
+	if err := runtime.routeTranscript(ctx, transcript); err != nil {
+		runtime.complete(capture, false, err)
 		return
+	}
+	runtime.complete(capture, true, nil)
+}
+
+func (runtime *Runtime) routeTranscript(ctx context.Context, transcript []byte) error {
+	defer zeroBytes(transcript)
+
+	text := strings.TrimSpace(string(transcript))
+	defer func() { text = "" }()
+	if text == "" || len(text) > 1024 {
+		return errors.New("voice-input transcript is empty or oversized")
 	}
 	lifecycle := runtime.config.Lifecycle()
 	match, matchErr := runtime.harness.Match(runtime.config.Locale, text)
@@ -245,8 +255,7 @@ func (runtime *Runtime) finish(ctx context.Context, capture Capture) {
 		runtime.mu.Unlock()
 	}
 	if err := runtime.config.Publisher.PublishVoiceTurn(ctx, turn, runtime.config.Locale); err != nil {
-		runtime.complete(capture, false, err)
-		return
+		return err
 	}
 	runtime.mu.Lock()
 	runtime.health.Transcriptions++
@@ -254,7 +263,7 @@ func (runtime *Runtime) finish(ctx context.Context, capture Capture) {
 		runtime.health.Queries++
 	}
 	runtime.mu.Unlock()
-	runtime.complete(capture, true, nil)
+	return nil
 }
 
 func (runtime *Runtime) complete(capture Capture, success bool, err error) {

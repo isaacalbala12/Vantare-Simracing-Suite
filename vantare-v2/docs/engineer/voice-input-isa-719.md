@@ -89,6 +89,17 @@ añade únicamente:
 El flag no habilita recording ni diagnóstico de texto. La política dura es
 cero archivos de audio y cero transcripciones persistidas.
 
+El proceso minimiza la retención y pone a cero los buffers mutables de
+protocolo y transcripción al terminar cada uso; el backend WASAPI futuro deberá
+hacer lo mismo con todos sus buffers PCM. Esto reduce exposición ordinaria,
+pero no constituye una garantía frente a un volcado completo del proceso:
+Windows Error Reporting/LocalDumps, un depurador o un dump configurado por el
+usuario operan fuera del control de Vantare y pueden capturar memoria antes del
+borrado. Las copias internas inmutables que pueda crear el runtime de Go
+tampoco permiten prometer un borrado físico verificable. El contrato
+memory-only significa que Vantare no persiste, registra ni transmite ese
+contenido fuera de la ruta efímera; no afirma poder impedir dumps del sistema.
+
 ## Gate pendiente y NO-GO
 
 ENG-13 sigue **NO-GO**. F5 no autoriza beta pública, testers ni release de voz

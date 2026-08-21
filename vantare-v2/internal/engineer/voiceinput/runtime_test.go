@@ -12,22 +12,25 @@ import (
 
 type fakeHost struct {
 	mu         sync.Mutex
-	text       string
+	transcript []byte
 	wake       chan string
 	started    bool
 	active     bool
+	startedCh  chan struct{}
+	startOnce  sync.Once
 	finish     chan struct{}
 	finishOnce sync.Once
 }
 
 func newFakeHost(text string) *fakeHost {
-	return &fakeHost{text: text, wake: make(chan string, 1), finish: make(chan struct{})}
+	return &fakeHost{transcript: []byte(text), wake: make(chan string, 1), startedCh: make(chan struct{}), finish: make(chan struct{})}
 }
 
 func (host *fakeHost) Start(context.Context) error {
 	host.mu.Lock()
 	host.started = true
 	host.mu.Unlock()
+	host.startOnce.Do(func() { close(host.startedCh) })
 	return nil
 }
 func (host *fakeHost) Begin(context.Context, Capture) error {
@@ -36,12 +39,49 @@ func (host *fakeHost) Begin(context.Context, Capture) error {
 	host.mu.Unlock()
 	return nil
 }
-func (host *fakeHost) Finish(context.Context, Capture) (string, error) {
+func (host *fakeHost) Finish(context.Context, Capture) ([]byte, error) {
 	host.mu.Lock()
 	host.active = false
+	transcript := host.transcript
 	host.mu.Unlock()
 	host.finishOnce.Do(func() { close(host.finish) })
-	return host.text, nil
+	return transcript, nil
+}
+
+func TestRuntimeClearsTranscriptBufferAfterPublishing(t *testing.T) {
+	host := newFakeHost("dime el combustible")
+	publisher := recordingPublisher{turns: make(chan commands.Turn, 1)}
+	runtime, err := New(testConfig(host, &readyReader{ready: make(chan struct{})}, publisher))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	<-host.startedCh
+	binding := runtime.config.Binding
+	if _, err := runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputDeviceConnected, Device: ptt.Device{Kind: binding.DeviceKind, ID: binding.DeviceID}}); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding})
+	select {
+	case <-publisher.turns:
+	case <-time.After(time.Second):
+		t.Fatal("turn was not published")
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	for index, value := range host.transcript {
+		if value != 0 {
+			t.Fatalf("transcript byte %d retained value %d", index, value)
+		}
+	}
 }
 func (host *fakeHost) Cancel(context.Context, Capture) error {
 	host.mu.Lock()

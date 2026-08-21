@@ -109,6 +109,7 @@ func (host *ProcessHost) Start(ctx context.Context) error {
 		host.stopLocked(time.Second)
 		return fmt.Errorf("read voice-host readiness: %w", err)
 	}
+	defer zeroBytes(readyLine)
 	var ready hostReady
 	if decodeStrict(readyLine, &ready) != nil || ready.Protocol != ProtocolV1 || ready.PID != cmd.Process.Pid || ready.Nonce != nonce {
 		host.stopLocked(time.Second)
@@ -126,9 +127,14 @@ func (host *ProcessHost) Begin(ctx context.Context, capture Capture) error {
 	return err
 }
 
-func (host *ProcessHost) Finish(ctx context.Context, capture Capture) (string, error) {
+func (host *ProcessHost) Finish(ctx context.Context, capture Capture) ([]byte, error) {
 	response, err := host.request(ctx, hostRequest{Operation: "finish", CaptureID: capture.ID})
-	return response.Text, err
+	if err != nil {
+		return nil, err
+	}
+	transcript := []byte(response.Text)
+	response.Text = ""
+	return transcript, nil
 }
 
 func (host *ProcessHost) Cancel(ctx context.Context, capture Capture) error {
@@ -172,6 +178,7 @@ func (host *ProcessHost) request(ctx context.Context, request hostRequest) (host
 	if err != nil {
 		return hostResponse{}, ErrHostProtocol
 	}
+	defer zeroBytes(data)
 	if _, err := host.stdin.Write(append(data, '\n')); err != nil {
 		return hostResponse{}, fmt.Errorf("write voice-host request: %w", err)
 	}
@@ -180,12 +187,19 @@ func (host *ProcessHost) request(ctx context.Context, request hostRequest) (host
 		_ = host.stopLocked(time.Second)
 		return hostResponse{}, fmt.Errorf("read voice-host response: %w", err)
 	}
+	defer zeroBytes(line)
 	var response hostResponse
 	if decodeStrict(line, &response) != nil || response.Protocol != ProtocolV1 || response.Nonce != host.nonce || !response.OK {
 		_ = host.stopLocked(time.Second)
 		return hostResponse{}, ErrHostProtocol
 	}
 	return response, nil
+}
+
+func zeroBytes(value []byte) {
+	for index := range value {
+		value[index] = 0
+	}
 }
 
 func (host *ProcessHost) stopLocked(timeout time.Duration) error {

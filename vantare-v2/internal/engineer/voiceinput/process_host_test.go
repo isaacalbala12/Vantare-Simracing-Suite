@@ -26,7 +26,7 @@ func TestProcessHostOwnsNoncePIDAndJoinsChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	text, err := host.Finish(ctx, capture)
-	if err != nil || text != "dime el combustible" {
+	if err != nil || string(text) != "dime el combustible" {
 		t.Fatalf("Finish() = %q, %v", text, err)
 	}
 	if err := host.Stop(ctx); err != nil {

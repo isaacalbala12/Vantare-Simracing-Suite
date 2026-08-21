@@ -1,0 +1,54 @@
+{
+  "schema": "vantare.engineer.voice-models.v1",
+  "version": 1,
+  "engine": "kokoro",
+  "engineVersion": "kokoro-82M v1.0",
+  "runtime": "kokoro_onnx 0.4.x / onnxruntime CPU",
+  "licenseModel": "Apache-2.0",
+  "licenseVoices": "Apache-2.0",
+  "model": {
+    "id": "kokoro-v1.0",
+    "filename": "kokoro-v1.0.onnx",
+    "bytes": 310000000,
+    "sha256": "PENDING_DOWNLOAD_VERIFICATION_SEE_README",
+    "sourceUrl": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
+    "license": "Apache-2.0",
+    "licenseUrl": "https://huggingface.co/hexgrad/Kokoro-82M/blob/main/LICENSE"
+  },
+  "voicesBin": {
+    "filename": "voices-v1.0.bin",
+    "bytes": 0,
+    "sha256": "PENDING_DOWNLOAD_VERIFICATION_SEE_README",
+    "sourceUrl": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
+    "license": "Apache-2.0"
+  },
+  "voicesPerLocale": {
+    "es": {
+      "voice": "ef_dora",
+      "gender": "female",
+      "lang": "es",
+      "note": "Voz femenina español (hexgrad/Kokoro-82M VOICES.md)"
+    },
+    "en": {
+      "voice": "af_bella",
+      "gender": "female",
+      "lang": "en-us",
+      "note": "Voz femenina inglés US"
+    },
+    "it": {
+      "voice": "if_sara",
+      "gender": "female",
+      "lang": "it",
+      "note": "Voz femenina italiano"
+    },
+    "pt-BR": {
+      "voice": "pf_dora",
+      "gender": "female",
+      "lang": "pt-br",
+      "note": "Voz femenina portugués brasileño"
+    }
+  },
+  "pinnedAt": "2026-08-21T00:00:00Z",
+  "status": "PENDING_VERIFICATION",
+  "notes": "Pesos Apache-2.0 (modelo + voces) de hexgrad/Kokoro-82M. Los SHA-256 y tamaños exactos deben verificarse tras descarga y pegarse aquí. Hasta entonces la síntesis real queda PENDIENTE y el pipeline usa MockProvider para smoke tests (ver README). No commitear pesos ni audios: van fuera de Git (ver .gitignore)."
+}

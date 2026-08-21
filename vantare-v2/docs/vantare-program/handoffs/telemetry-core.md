@@ -15,6 +15,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-20, ISA-679: `CapabilityModesV2` deja de ser un hueco. Los modos se
+  resuelven por tick con `capability.ResolveModes` (declaración del driver ×
+  evidencia de la sesión) en la raíz de composición, y `BuildCapabilities` los
+  republica sin importar `capability` ni ningún driver, respetando ADR 0004.
+  LMU publica `spatial: ["xyz"]` con posición del mundo fresca y degrada a
+  `lap-distance` y luego a `none`; SimX publica `lap-distance`, sin
+  `personal-best`, con `gaps: estimated`. Goldens v2 regenerados solo en el
+  bloque `modes`; centinelas byte-a-byte y de 64 KiB verdes; contrato TS sin
+  cambios. Evidencia:
+  `docs/telemetry-core/evidence/isa-679-capability-modes.md`.
+  Pendiente: ningún widget consume todavía los modos, y la procedencia
+  `official`/`estimated` de gaps sigue siendo declarativa por driver.
+
 - ISA-372/F10 está implementada localmente sobre `tc-integration@74e1a5a6` en
   `vantareapp/isa-372-tc-f10-capabilities-multisim`. La fusión se promovió a
   `internal/telemetry/fusion` (N slots, índice por señal, `ErrRuleMissing` en

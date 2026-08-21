@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-679",
+  "type": "feature",
+  "summary": "Overlay v2 publica modos de capacidad reales: el frame dice si la posicion es geometrica o de distancia de vuelta, que referencias de delta hay y si el orden y los gaps son del simulador.",
+  "technicalNotes": [
+    "Los modos se resuelven por tick contra la declaracion del driver activo y el estado real de la sesion: solo pueden degradar, nunca ampliar lo que el driver declara.",
+    "La geometria cae a distancia de vuelta cuando las posiciones del mundo dejan de ser frescas, y a none cuando tampoco hay distancia de vuelta.",
+    "delta.modes lista solo las referencias con dato utilizable y comparte autoridad con la vista de delta, asi que ambas no pueden discrepar.",
+    "La resolucion vive en la raiz de composicion: ADR 0004 mantiene projection sin importar capability ni drivers, y el builder republica los modos sin saber que simulador los produjo.",
+    "SourceContextV2 gana un campo aditivo con los modos ya resueltos; el contrato de red y sus tipos generados no cambian."
+  ],
+  "testing": [
+    "Con LMU en pista, comprobar que los widgets que dependen de posicion lateral funcionan y que el frame declara la posicion como geometrica.",
+    "Interrumpir brevemente la fuente y confirmar que el modo espacial cae a distancia de vuelta en lugar de mostrar posiciones viejas como buenas.",
+    "En una sesion sin vuelta rapida personal todavia, confirmar que la referencia de delta publicada es una de las reconstruidas y no personal-best."
+  ],
+  "knownLimitations": [
+    "La procedencia de los gaps se toma de la declaracion del driver: LMU los declara oficiales y SimX estimados; todavia no hay una senal por sesion que distinga ambos casos dentro de un mismo driver.",
+    "Los modos xy y lap-distance quedan definidos para drivers futuros; hoy solo LMU (xyz) y SimX (lap-distance) los ejercitan.",
+    "Ningun widget consume todavia los modos publicados: esta entrega los hace ciertos, no los cablea a la UI."
+  ]
+}

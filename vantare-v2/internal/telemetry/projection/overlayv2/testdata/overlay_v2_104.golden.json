@@ -2073,10 +2073,14 @@
         "standings": "fresh"
       },
       "modes": {
-        "spatial": [],
-        "delta": [],
-        "standings": "none",
-        "gaps": "none"
+        "spatial": [
+          "xyz"
+        ],
+        "delta": [
+          "personal-best"
+        ],
+        "standings": "official",
+        "gaps": "official"
       }
     }
   }

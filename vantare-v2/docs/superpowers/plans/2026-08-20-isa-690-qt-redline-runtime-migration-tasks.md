@@ -577,7 +577,8 @@ canónicos, no una matriz exhaustiva innecesaria.
 **Estado 2026-08-21:** STOP aceptado por revision independiente. Resultado
 inicial P0=0/P1=0/P2=2/P3=1; las observaciones documentales de roadmap, label
 GitHub y rutas raw quedaron corregidas. Severidades finales P0=P1=P2=P3=0.
-#693 esta cerrado/Done y #690 queda listo para cierre STOP, sin promocion.
+#693 y #690 estan cerrados `COMPLETED` y sus items del Project Vantare estan
+en `Done`; el cierre STOP no incluye promocion.
 
 **Descripción:** revisión adversarial de código, evidencia y complejidad.
 

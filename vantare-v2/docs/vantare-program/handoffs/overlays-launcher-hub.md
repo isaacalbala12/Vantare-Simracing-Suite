@@ -22,8 +22,9 @@
   8/16,67 ms ya falla materialmente antes de la comparacion visual. #693 esta
   cerrado `COMPLETED` y el Project Vantare en `Done`. T22 independiente acepta
   el STOP con P0/P1=0; sus dos P2 y un P3 documentales quedaron corregidos en
-  roadmap, labels y rutas raw. #690 esta listo para cierre STOP. Wails/producto
-  sin cambios; sin push, PR, CI remoto, integracion, promocion ni release.
+  roadmap, labels y rutas raw. #690 esta cerrado `COMPLETED` y su item del
+  Project Vantare esta en `Done`. Wails/producto sin cambios; sin PR, CI remoto,
+  integracion, promocion ni release.
 
 - **OS-QT-04 / GitHub #693 — T19 STOP; T20 GREEN local pendiente de medicion
   (2026-08-21):** los intentos acotados del modelo keyed no produjeron una

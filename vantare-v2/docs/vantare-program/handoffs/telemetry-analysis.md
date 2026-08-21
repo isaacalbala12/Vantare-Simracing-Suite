@@ -22,8 +22,8 @@ Energy por vuelta se calculan como delta entre fronteras válidas dentro del
 mismo `ContinuousSegment`, sin cruzar `CoverageGap` ni pit. El ritmo
 representativo usa mediana y varianza de vueltas limpias; tráfico conserva su
 etiqueta y consumo, pero no entra en ritmo. Los eventos `Minimum Path Wetness`
-producen buckets seco/húmedo/mojado sin usar `CloudDarkness` ni
-`OffpathWetness`.
+producen buckets seco/húmedo/mojado; una vuelta que cambia de bucket no se
+atribuye entera a ninguno. No se usan `CloudDarkness` ni `OffpathWetness`.
 
 La agregación mezcla solo la misma combinación+bucket, pondera calidad y N, y
 calcula el percentil de la sesión actual contra el histórico suministrado del

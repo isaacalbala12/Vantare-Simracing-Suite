@@ -11,8 +11,9 @@ Nota OS-QT-04 / GitHub #693 (2026-08-21, T20 STOP medido y revertido):
   SHA `133FC6D...D682A2` y manifest raw SHA `455E0C95...BE1736`.
 - T21 no se ejecuta: el prerequisito T20 no pasa y una comparacion visual final
   no puede convertir p95 330,72/max 1203,66 ms en el presupuesto 8/16,67 ms.
-  #693 puede cerrarse como gate fail-fast STOP. #690 permanece abierto hasta
-  la revision independiente T22; Wails y producto siguen sin cambios.
+  #693 esta cerrado `COMPLETED` y el Project Vantare en `Done` como gate
+  fail-fast STOP. #690 permanece abierto hasta la revision independiente T22;
+  Wails y producto siguen sin cambios.
 
 Nota OS-QT-04 / GitHub #693 (2026-08-21, T19 STOP; T20 GREEN local pendiente de medicion):
 - T19 probo dos familias pequenas sobre `ReplayModel`: evitar proyecciones

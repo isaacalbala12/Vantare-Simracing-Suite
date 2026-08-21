@@ -575,8 +575,8 @@ canónicos, no una matriz exhaustiva innecesaria.
 ### T22 — Decisión GO/STOP y cierre P1
 
 **Estado 2026-08-21:** STOP propuesto por T18/T20, pendiente solo de la revision
-independiente exigida por esta tarea. #693 puede cerrarse como gate completado;
-#690 no se cierra ni promociona hasta esa revision.
+independiente exigida por esta tarea. #693 esta cerrado `COMPLETED` y su item
+del Project en `Done`; #690 no se cierra ni promociona hasta esa revision.
 
 **Descripción:** revisión adversarial de código, evidencia y complejidad.
 

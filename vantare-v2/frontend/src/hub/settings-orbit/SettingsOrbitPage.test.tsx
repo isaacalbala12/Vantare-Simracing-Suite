@@ -6,6 +6,7 @@ import { LicenseProvider } from "../../lib/license";
 import { SETTINGS_CONTEXT_SLOT_ID, SettingsOrbitPage } from "./SettingsOrbitPage";
 import { conflictingHotkeys, keycapsOf, maskEmail, resolveSettingsSection } from "./settings-orbit-model";
 import { UPDATER_CHANNEL_EVENT } from "../settings/updater-channel";
+import { fixturePrepared } from "../settings/diagnostics/test-fixtures";
 
 /** La shell reserva el hueco de la columna; en los tests lo monta el propio test. */
 function mount(target?: string) {
@@ -479,5 +480,50 @@ describe("SettingsOrbitPage", () => {
       expect(within(row).queryByRole("button")).toBeNull();
       expect(row.textContent?.length).toBeGreaterThan(0);
     });
+  });
+
+  // El informe preparado tenía estado «listo» pero ninguna salida: la acción
+  // de descarga existía y estaba probada, la pantalla Orbit no la ofrecía.
+  it("un informe preparado se puede descargar como archivo JSON", async () => {
+    const handlers = new Map<string, (event: { data: unknown }) => void>();
+    vi.spyOn(Events, "On").mockImplementation(((name: string, cb: unknown) => {
+      handlers.set(name, cb as (event: { data: unknown }) => void);
+      return () => handlers.delete(name);
+    }) as never);
+    vi.spyOn(Events, "Emit").mockImplementation(((name: string, data: unknown) => {
+      if (name === "diagnostics:prepare") {
+        // Formato de cable: sin `report`, que el decoder reconstruye del payload.
+        const { report: _report, ...wire } = fixturePrepared;
+        handlers.get("diagnostics:prepared")?.({
+          data: {
+            requestId: (data as { requestId: string }).requestId,
+            prepared: wire,
+          },
+        });
+      }
+      return Promise.resolve(true);
+    }) as never);
+
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:test");
+    URL.revokeObjectURL = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    try {
+      mount("diagnostics");
+      // El informe se prepara con un gesto del usuario, no al abrir la sección.
+      fireEvent.click(await screen.findByTestId("orbit-settings-prepare-report"));
+      fireEvent.click(await screen.findByTestId("orbit-settings-report-download"));
+
+      expect(click).toHaveBeenCalledTimes(1);
+      const anchor = click.mock.instances[0] as HTMLAnchorElement;
+      expect(anchor.download).toContain("vantare-diagnostics-");
+    } finally {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
   });
 });

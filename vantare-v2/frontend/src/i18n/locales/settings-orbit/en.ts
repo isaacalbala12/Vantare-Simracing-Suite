@@ -164,6 +164,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.diag.prepare": "Prepare",
   "settings.diag.preparing": "Preparing…",
   "settings.diag.reportReady": "Report ready · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Download report",
   "settings.diag.reportError": "The report could not be prepared.",
   "settings.diag.events": "Latest events",
   "settings.diag.eventsMeta": "current session",

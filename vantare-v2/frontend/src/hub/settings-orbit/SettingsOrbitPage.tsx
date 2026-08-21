@@ -62,6 +62,7 @@ import {
   createDiagnosticsClient,
   type DiagnosticsEventTransport,
 } from "../settings/diagnostics/diagnostics-client";
+import { createBrowserDiagnosticsActions } from "../settings/diagnostics/diagnostics-actions";
 import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
 import {
@@ -987,6 +988,7 @@ function DiagnosticsSection() {
       } satisfies DiagnosticsEventTransport),
     [],
   );
+  const diagnosticsActions = useMemo(() => createBrowserDiagnosticsActions(), []);
 
   // `ops:metrics` lo emite el backend cada pocos segundos (`internal/app/ops_bridge.go`).
   useEffect(() => {
@@ -1137,14 +1139,28 @@ function DiagnosticsSection() {
             />
           </div>
           {report.kind === "ready" ? (
-            <SubtleStatus tone="ok">
-              {formatMessage(t("settings.diag.reportReady"), {
-                bytes: formatBytes(report.prepared.byteSize),
-                date: new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(
-                  new Date(report.prepared.generatedAtUtc),
-                ),
-              })}
-            </SubtleStatus>
+            <>
+              <SubtleStatus tone="ok">
+                {formatMessage(t("settings.diag.reportReady"), {
+                  bytes: formatBytes(report.prepared.byteSize),
+                  date: new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(
+                    new Date(report.prepared.generatedAtUtc),
+                  ),
+                })}
+              </SubtleStatus>
+              {/* El informe solo sirve si puede salir de la app: la acción de
+                  descarga ya existía y estaba probada, esta fila es quien la
+                  ofrecía y había quedado sin dueño en el porte a Orbit. */}
+              <div>
+                <Button
+                  data-testid="orbit-settings-report-download"
+                  onClick={() => diagnosticsActions.download(report.prepared)}
+                  size="sm"
+                >
+                  {t("settings.diag.reportDownload")}
+                </Button>
+              </div>
+            </>
           ) : null}
           {report.kind === "error" ? (
             <SubtleStatus tone="attn">{t("settings.diag.reportError")}</SubtleStatus>

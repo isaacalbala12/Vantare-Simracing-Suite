@@ -164,6 +164,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.diag.prepare": "Preparar",
   "settings.diag.preparing": "A preparar…",
   "settings.diag.reportReady": "Relatório pronto · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Descarregar relatório",
   "settings.diag.reportError": "Não foi possível preparar o relatório.",
   "settings.diag.events": "Últimos eventos",
   "settings.diag.eventsMeta": "sessão atual",

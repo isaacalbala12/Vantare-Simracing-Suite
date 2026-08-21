@@ -172,7 +172,7 @@ func repositoryDocumentFixture(name string) strategydocument.StrategyDocumentV2 
 				ByCompound: map[strategydocument.TyreCompound]int{"2": 3},
 				Note:       "mapping legacy crudo",
 			},
-			RawLegacy: json.RawMessage(`{"id":"event-1","durationMin":60}`),
+			RawLegacy: []byte(`{ "id": "event-1", "durationMin": 60 }`),
 		}},
 	}
 }

@@ -50,6 +50,13 @@ documento y la matriz de migración. F2(a) corrige el defecto sin cambiar el
 wire ni añadir campos: `StrategyDocumentV2.Validate` realiza ahora esas
 invariantes antes de que el repositorio acepte el documento.
 
+También se corrige un defecto de representación: `json.RawMessage` no podía
+cumplir “backup byte a byte” porque `encoding/json` compacta su contenido al
+persistir. `RawLegacy` pasa a ser `[]byte`, codificado como base64 en el wire,
+para conservar exactamente espacios, orden y también bytes de un JSON corrupto
+destinado a cuarentena. Es el único cambio de shape respecto al compile-only y
+queda fijado por un round-trip con whitespace significativo.
+
 La eliminación de un piloto queda fijada así para Orbit: se retira también de
 `availability` y de todos los órdenes de variantes, y se renumera el orden de
 pilotos. Si alguna variante quedaría sin piloto, toda la operación falla sin

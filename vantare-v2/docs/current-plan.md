@@ -11,11 +11,13 @@ Nota ISA-729 / ISA-694 F2(a) (2026-08-21, implementada en rama de issue):
   prueba sobre 64 documentos generados de forma determinista.
 - Se corrigió el defecto del contrato compile-only de F1.3: su validación no
   realizaba varias invariantes que el propio documento prometía. El wire no
-  cambia; ahora rechaza duplicados, solapes, refs/enums/evidencias, inventario,
-  números no finitos y JSON raw inválido.
+  cambia salvo `RawLegacy`: pasa de `json.RawMessage` a bytes/base64 porque el
+  tipo anterior compactaba y perdía el backup byte a byte. Además rechaza
+  duplicados, solapes, refs/enums/evidencias, inventario, números no finitos y
+  JSON raw inválido en campos estructurados.
 - Gates locales: `go test -count=1 ./internal/strategy/...`,
-  `go vet ./internal/strategy/...` y `git diff --check` PASS. Commits
-  `1cf337d4`, `f1f052b5`, `f9c06a39`; sin PR, merge, promoción ni release.
+  `go vet ./internal/strategy/...` y `git diff --check` PASS. Entrega en
+  commits convencionales pequeños; sin PR, merge, promoción ni release.
 - Gate global adicional intentado: `go test -count=1 ./...` no queda verde por
   `frontend/dist` ausente en el worktree (`go:embed`) y por el presupuesto
   temporal ajeno `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles`; todo

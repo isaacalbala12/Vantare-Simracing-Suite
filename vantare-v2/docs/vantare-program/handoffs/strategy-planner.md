@@ -23,16 +23,17 @@ Actualización ISA-729 / F2(a) (2026-08-21, lista para review):
   único `StrategyDocumentV2` junto al lifecycle v1 existente. La migración
   valida el hash v1 antes de conservar drafts, revisiones, activaciones y plan
   activo; el documento soporta eventos, pilotos/orden/disponibilidad,
-  variantes, inventario y `legacy_synthetic_default`.
+  variantes, inventario y `legacy_synthetic_default`. `RawLegacy` usa
+  bytes/base64 para conservar el backup exacto sin compactarlo.
 - La fachada de aplicación y el bridge JSON ofrecen `create/edit/list` de
   eventos, pilotos y variantes, `delete_driver` y `compare_variants`, con
   generación optimista, validación estricta y errores tipados visibles.
 - Política de borrado: sanea availability/órdenes y renumera; si una variante
   quedaría vacía, `driver_in_use` aborta toda la transacción. Property test de
   64 casos y regresión de lifecycle ampliado verdes.
-- Commits de entrega: `1cf337d4`, `f1f052b5`, `f9c06a39`. Gates Strategy y
-  vet focal completos PASS. Sin frontend, Wails, solver, telemetría, PR,
-  integración, promoción ni release.
+- Entrega en commits convencionales pequeños. Gates Strategy y vet focal
+  completos PASS. Sin frontend, Wails, solver, telemetría, PR, integración,
+  promoción ni release.
 - El `go test -count=1 ./...` adicional no fue gate verde: faltaba el artefacto
   ignorado `frontend/dist` para `go:embed` y falló el test temporal ajeno de
   SQLite recording; los paquetes Strategy pasaron dentro de esa misma corrida

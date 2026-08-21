@@ -338,8 +338,10 @@ type Event struct {
 	FillMode         Sourced[FillMode]                 `json:"fillMode"`
 	LastOpenedAt     *Sourced[*time.Time]              `json:"lastOpenedAt,omitempty"`
 	TyreInventory    TyreInventory                     `json:"tyreInventory"`
-	// RawLegacy preserva el json original del backup byte a byte para auditoría.
-	RawLegacy json.RawMessage `json:"rawLegacy,omitempty"`
+	// RawLegacy preserva los bytes originales del backup, incluso cuando el
+	// JSON está corrupto y debe ir a cuarentena. encoding/json lo representa
+	// como base64, evitando la compactación destructiva de json.RawMessage.
+	RawLegacy []byte `json:"rawLegacy,omitempty"`
 }
 
 // StrategyDocumentV2 es el documento del evento para Orbit tras la migración.
@@ -529,9 +531,6 @@ func (d StrategyDocumentV2) Validate() error {
 		}
 		if err := ev.TyreInventory.Validate(); err != nil {
 			return fmt.Errorf("event %q tyreInventory: %w", ev.ID, err)
-		}
-		if len(ev.RawLegacy) > 0 && !json.Valid(ev.RawLegacy) {
-			return fmt.Errorf("event %q rawLegacy is invalid JSON", ev.ID)
 		}
 	}
 	if d.ActiveEventID != nil {

@@ -457,7 +457,9 @@ def inspect_inventory(candidate: Candidate, runtime: Path) -> None:
                 if event_count:
                     last = helper.read_rows("Current LapTime", event_count - 1, 1)
                     if last["timestamps"]:
-                        candidate.duration_s = float(last["timestamps"][0])
+                        candidate.duration_s = max(
+                            float(last["timestamps"][0]), candidate.continuous_span_s or 0.0
+                        )
             if "Lap" in channels:
                 candidate.lap_rows = read_all(helper, "Lap", max_rows=10_000)
                 values = [first_numeric(row) for row in candidate.lap_rows]
@@ -891,7 +893,8 @@ def presence_summary(candidates: list[Candidate]) -> list[dict[str, Any]]:
 
 def choose_analysis_sessions(candidates: list[Candidate], limit: int) -> list[Candidate]:
     races = [candidate for candidate in candidates if "race" in candidate.metadata.get("SessionType", "").casefold()]
-    pool = races or candidates
+    usable_races = [candidate for candidate in races if (candidate.laps or 0) >= 5]
+    pool = usable_races or races or candidates
     by_combo: dict[tuple[str, str, str], list[Candidate]] = defaultdict(list)
     for candidate in pool:
         key = (
@@ -1033,6 +1036,37 @@ def build_bundle(session: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def combined_stint_decay(analyses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    buckets: dict[int, list[float]] = defaultdict(list)
+    for session in analyses:
+        by_stint: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for row in session.get("lap_records", []):
+            if row.get("pit") or row.get("lap_time_s") is None:
+                continue
+            by_stint[int(row.get("stint", 0))].append(row)
+        for rows in by_stint.values():
+            rows.sort(key=lambda row: int(row.get("stint_lap", 0)))
+            if len(rows) < 3:
+                continue
+            baseline = statistics.median(float(row["lap_time_s"]) for row in rows[: min(3, len(rows))])
+            for row in rows:
+                age = int(row.get("stint_lap", 0))
+                if age > 0:
+                    buckets[age].append(float(row["lap_time_s"]) - baseline)
+    return [
+        {
+            "stint_lap": age,
+            "n": len(values),
+            "mean_delta_s": statistics.fmean(values),
+            "median_delta_s": statistics.median(values),
+            "p25_delta_s": quantile(values, 0.25),
+            "p75_delta_s": quantile(values, 0.75),
+        }
+        for age, values in sorted(buckets.items())
+        if len(values) >= 3
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
@@ -1089,6 +1123,7 @@ def main() -> int:
         session_regression = regression(regression_rows)
         session_regression["session_id"] = session["session_id"]
         session_regressions.append(session_regression)
+    combined_decay = combined_stint_decay(analyses)
 
     bundles = [build_bundle(session) for session in analyses]
     bundle_sizes = []
@@ -1121,6 +1156,7 @@ def main() -> int:
         "analyses": analyses,
         "metadata_quality": metadata_summary,
         "fuel_vs_tyre_regressions": session_regressions,
+        "combined_stint_decay_curve": combined_decay,
         "bundle_size": bundle_summary,
     })
     dump_json(OUTPUT_DIR / "bundle-derivado-ejemplo.json", bundles[0] if bundles else {})

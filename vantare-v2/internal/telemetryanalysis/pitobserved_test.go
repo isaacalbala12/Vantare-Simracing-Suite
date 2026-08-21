@@ -50,7 +50,13 @@ func TestDeriveSessionPitObservationKeepsDegradedBoundary(t *testing.T) {
 			}
 			interval := got.Family.ObservedIntervals[0]
 			if interval.Ambiguous != tc.Ambiguous || interval.AmbiguityReason != tc.AmbiguityReason {
-				t.Fatalf("ambiguity = %v/%q, want %v/%q", interval.Ambiguous, interval.AmbiguityReason, tc.Ambiguous, tc.AmbiguityReason)
+				t.Fatalf(
+					"ambiguity = %v/%q, want %v/%q",
+					interval.Ambiguous,
+					interval.AmbiguityReason,
+					tc.Ambiguous,
+					tc.AmbiguityReason,
+				)
 			}
 			assertOptionalFloat(t, "fuel added", interval.FuelAddedLiters, tc.FuelAddedLiters)
 			assertOptionalFloat(t, "fuel rate", interval.FuelRateLPerS, tc.FuelRateLPerS)
@@ -82,7 +88,9 @@ func TestAggregatePitObservationsFiltersCombinationAndKeepsRateAxes(t *testing.T
 		got.Family.FuelRate.Confidence.RangeUpper == nil || *got.Family.FuelRate.Confidence.RangeUpper != 4.0 {
 		t.Fatalf("fuel range = %#v", got.Family.FuelRate.Confidence)
 	}
-	if got.Family.VERate.Confidence.SampleSize != 2 || got.Family.VERate.Provenance.Kind != strategyprojection.ProvenanceDerived {
+	wrongVESampleSize := got.Family.VERate.Confidence.SampleSize != 2
+	wrongVEProvenance := got.Family.VERate.Provenance.Kind != strategyprojection.ProvenanceDerived
+	if wrongVESampleSize || wrongVEProvenance {
 		t.Fatalf("VE rate axes = %#v", got.Family.VERate)
 	}
 }
@@ -125,7 +133,11 @@ func TestDeriveObservedStrategyFromRaceStintsAndObservableChanges(t *testing.T) 
 	}
 }
 
-func pitFixtureSession(origin TimeOrigin, fuelValues, veValues []float64) (HistoricalSession, ClassifiedSession, []HistoricalPage) {
+func pitFixtureSession(
+	origin TimeOrigin,
+	fuelValues []float64,
+	veValues []float64,
+) (HistoricalSession, ClassifiedSession, []HistoricalPage) {
 	channels := []HistoricalChannel{
 		pitEventChannel("pit", "In Pits"),
 		pitContinuousChannel("fuel", "Fuel Level", origin),
@@ -157,7 +169,13 @@ func pitObservationFixture(sessionID, combinationID string, fuelRate, veRate flo
 	}
 }
 
-func observedStrategyFixture() (HistoricalSession, ClassifiedSession, []HistoricalPage, LapValidityAnalysis, SessionPitObservation) {
+func observedStrategyFixture() (
+	HistoricalSession,
+	ClassifiedSession,
+	[]HistoricalPage,
+	LapValidityAnalysis,
+	SessionPitObservation,
+) {
 	origin := TimeOriginSourceTimestamp
 	session := HistoricalSession{
 		ID: "race-observed",
@@ -168,7 +186,11 @@ func observedStrategyFixture() (HistoricalSession, ClassifiedSession, []Historic
 			pitContinuousChannelAtFrequency("lap-dist", "Lap Dist", origin, 1),
 		},
 	}
-	classified := ClassifiedSession{SessionID: session.ID, Combination: CombinationIdentity{ID: "combo-a"}, Type: SessionTypeRace}
+	classified := ClassifiedSession{
+		SessionID:   session.ID,
+		Combination: CombinationIdentity{ID: "combo-a"},
+		Type:        SessionTypeRace,
+	}
 	pages := []HistoricalPage{
 		{
 			ChannelID: "compound", Sampling: session.Channels[0].Sampling,
@@ -235,7 +257,14 @@ type pitEventValue struct {
 }
 
 func pitEventChannel(id, name string) HistoricalChannel {
-	return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{Kind: SamplingEventTimestamped, Origin: TimeOriginSourceTimestamp}}
+	return HistoricalChannel{
+		ID:         id,
+		SourceName: name,
+		Sampling: HistoricalSampling{
+			Kind:   SamplingEventTimestamped,
+			Origin: TimeOriginSourceTimestamp,
+		},
+	}
 }
 
 func pitContinuousChannel(id, name string, origin TimeOrigin) HistoricalChannel {
@@ -243,7 +272,15 @@ func pitContinuousChannel(id, name string, origin TimeOrigin) HistoricalChannel 
 }
 
 func pitContinuousChannelAtFrequency(id, name string, origin TimeOrigin, frequency int) HistoricalChannel {
-	return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: frequency, Origin: origin}}
+	return HistoricalChannel{
+		ID:         id,
+		SourceName: name,
+		Sampling: HistoricalSampling{
+			Kind:        SamplingContinuousImplicitFrequency,
+			FrequencyHz: frequency,
+			Origin:      origin,
+		},
+	}
 }
 
 func pitEventPage(id string, values []pitEventValue) HistoricalPage {
@@ -252,10 +289,21 @@ func pitEventPage(id string, values []pitEventValue) HistoricalPage {
 		seconds := value.seconds
 		samples = append(samples, HistoricalSample{
 			Index: int64(index), TimestampSeconds: &seconds,
-			Values: []HistoricalValue{{Present: true, Quality: QualityValid, Scalar: HistoricalScalar{Kind: ScalarBoolean, Boolean: value.value}}},
+			Values: []HistoricalValue{{
+				Present: true,
+				Quality: QualityValid,
+				Scalar:  HistoricalScalar{Kind: ScalarBoolean, Boolean: value.value},
+			}},
 		})
 	}
-	return HistoricalPage{ChannelID: id, Sampling: HistoricalSampling{Kind: SamplingEventTimestamped, Origin: TimeOriginSourceTimestamp}, Samples: samples}
+	return HistoricalPage{
+		ChannelID: id,
+		Sampling: HistoricalSampling{
+			Kind:   SamplingEventTimestamped,
+			Origin: TimeOriginSourceTimestamp,
+		},
+		Samples: samples,
+	}
 }
 
 func pitContinuousPage(id string, origin TimeOrigin, values []float64) HistoricalPage {
@@ -263,7 +311,11 @@ func pitContinuousPage(id string, origin TimeOrigin, values []float64) Historica
 	for index, value := range values {
 		samples = append(samples, HistoricalSample{
 			Index: int64(index), RelativeTimeSeconds: float64(index) / 2,
-			Values: []HistoricalValue{{Present: true, Quality: QualityValid, Scalar: HistoricalScalar{Kind: ScalarNumber, Number: value}}},
+			Values: []HistoricalValue{{
+				Present: true,
+				Quality: QualityValid,
+				Scalar:  HistoricalScalar{Kind: ScalarNumber, Number: value},
+			}},
 		})
 	}
 	return HistoricalPage{
@@ -276,7 +328,11 @@ func pitContinuousPage(id string, origin TimeOrigin, values []float64) Historica
 func pitVectorEventSample(seconds float64, values ...float64) HistoricalSample {
 	historical := make([]HistoricalValue, 0, len(values))
 	for _, value := range values {
-		historical = append(historical, HistoricalValue{Present: true, Quality: QualityValid, Scalar: HistoricalScalar{Kind: ScalarNumber, Number: value}})
+		historical = append(historical, HistoricalValue{
+			Present: true,
+			Quality: QualityValid,
+			Scalar:  HistoricalScalar{Kind: ScalarNumber, Number: value},
+		})
 	}
 	return HistoricalSample{TimestampSeconds: &seconds, Values: historical}
 }

@@ -146,7 +146,9 @@ func AggregatePitObservations(
 	sessions := []SessionPitObservation{current}
 	seen := map[string]bool{current.SessionID: true}
 	for _, candidate := range history {
-		if candidate.CombinationID != current.CombinationID || strings.TrimSpace(candidate.SessionID) == "" || seen[candidate.SessionID] {
+		wrongCombination := candidate.CombinationID != current.CombinationID
+		invalidSession := strings.TrimSpace(candidate.SessionID) == "" || seen[candidate.SessionID]
+		if wrongCombination || invalidSession {
 			continue
 		}
 		seen[candidate.SessionID] = true
@@ -357,10 +359,13 @@ func DeriveObservedStrategy(
 		GeneratedAt:     generatedAt,
 		Presence:        strategyprojection.PresenceMissing,
 		Provenance:      strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: session.ID},
-		Confidence:      strategyprojection.Confidence{SampleSize: len(laps), ComputationVersion: observedStrategyComputationVersion},
-		Stints:          []strategyprojection.ObservedStint{},
-		PitStops:        []strategyprojection.ObservedPitStop{},
-		Changes:         []strategyprojection.ObservedChange{},
+		Confidence: strategyprojection.Confidence{
+			SampleSize:         len(laps),
+			ComputationVersion: observedStrategyComputationVersion,
+		},
+		Stints:   []strategyprojection.ObservedStint{},
+		PitStops: []strategyprojection.ObservedPitStop{},
+		Changes:  []strategyprojection.ObservedChange{},
 	}
 	if len(laps) == 0 {
 		return result, nil

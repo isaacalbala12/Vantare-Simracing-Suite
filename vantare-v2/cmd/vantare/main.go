@@ -58,6 +58,13 @@ var version = "v0.1.0.7"
 // closed as master so the internal Testing Center cannot appear accidentally.
 var buildChannel = "master"
 
+func engineerAudioConfigFor(service *engineerservice.EngineerService) (*engineeraudio.AudioConfig, error) {
+	if service == nil {
+		return nil, errors.New("engineer audio configuration requires a service")
+	}
+	return engineeraudio.DefaultAudioConfigForLocale(string(service.Locale()))
+}
+
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
@@ -1118,6 +1125,7 @@ func main() {
 
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
+	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
@@ -1732,15 +1740,22 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
-	engineerAudioConfig := engineeraudio.DefaultAudioConfig()
+	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
+		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
+	}
+	engineerAudioConfig, audioConfigErr := engineerAudioConfigFor(engSvc)
 	engSvc.SetAudioPlayer(engineeraudio.NewPlayer())
-	engSvc.SetAudioConfig(engineerAudioConfig)
+	if audioConfigErr != nil {
+		log.Printf("engineer audio locale configuration unavailable; using visual delivery only: %v", audioConfigErr)
+	} else {
+		engSvc.SetAudioConfig(engineerAudioConfig)
+	}
 	// ENG-06 is cache-only: a miss remains a visual notification. TTS
 	// synthesis stays outside the preemptible product delivery path.
 	engineerAudioCache, cacheErr := tts.NewCache(tts.DefaultCacheRoot(), "kokoro")
 	if cacheErr != nil {
 		log.Printf("engineer audio cache unavailable; using visual delivery only: %v", cacheErr)
-	} else {
+	} else if engineerAudioConfig != nil {
 		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
 	}
 	if err := engSvc.Start(ctx); err != nil {

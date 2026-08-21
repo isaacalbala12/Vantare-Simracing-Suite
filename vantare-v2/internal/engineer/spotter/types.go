@@ -1,10 +1,12 @@
 package spotter
 
-type Side string
+import "github.com/vantare/overlays/v2/internal/spotter/geometry"
+
+type Side = geometry.Side
 
 const (
-	SideLeft  Side = "left"
-	SideRight Side = "right"
+	SideLeft  = geometry.SideLeft
+	SideRight = geometry.SideRight
 )
 
 type Zone struct {
@@ -14,12 +16,12 @@ type Zone struct {
 	ForwardM  float64
 }
 
-type Sensitivity string
+type Sensitivity = geometry.Sensitivity
 
 const (
-	SensitivityConservative Sensitivity = "conservative"
-	SensitivityNormal       Sensitivity = "normal"
-	SensitivityAggressive   Sensitivity = "aggressive"
+	SensitivityConservative = geometry.SensitivityConservative
+	SensitivityNormal       = geometry.SensitivityNormal
+	SensitivityAggressive   = geometry.SensitivityAggressive
 )
 
 type ActiveSides struct {

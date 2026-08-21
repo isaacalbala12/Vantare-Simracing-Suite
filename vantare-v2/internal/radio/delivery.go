@@ -19,6 +19,7 @@ var (
 	ErrInvalidTransition = errors.New("radio delivery transition is invalid")
 	ErrLifecycleBoundary = errors.New("radio delivery cancelled by lifecycle boundary")
 	ErrSourceUnavailable = errors.New("radio delivery cancelled because source is unavailable")
+	ErrPolicyRejected    = errors.New("radio delivery cancelled because current evidence rejects it")
 )
 
 // State describes the queued, started and terminal delivery lifecycle.
@@ -144,8 +145,9 @@ func validStateReason(state State, reason Reason) bool {
 
 // MetricsSnapshot reports observed decision-to-start latency; Wails p95 remains an F3 gate.
 type MetricsSnapshot struct {
-	Samples          int
-	P95MS, MaximumMS int64
+	Samples   int   `json:"samples"`
+	P95MS     int64 `json:"p95MS"`
+	MaximumMS int64 `json:"maximumMS"`
 }
 
 // Metrics keeps a bounded rolling latency sample.
@@ -252,7 +254,13 @@ func (port DualPort) Deliver(ctx context.Context, request Request, reporter Repo
 		return reporter.Acknowledge(StateCancelled, reason)
 	}
 	if err := reporter.Acknowledge(StateStarted, ReasonNone); err != nil {
-		return err
+		// A late policy observer can reject a decision after cache resolution.
+		// Keep it queued until this point, then close it as policy-rejected so
+		// no UI or audio can escape with obsolete semantics.
+		if cancelErr := reporter.Acknowledge(StateCancelled, ReasonPolicyRejected); cancelErr != nil {
+			return errors.Join(err, cancelErr)
+		}
+		return nil
 	}
 	if err := port.UI.PublishRadio(ctx, presentation); err != nil {
 		if reason := cancellationReason(ctx, request.Message.ExpiresAtMS, now.NowMS()); reason != ReasonNone {
@@ -288,6 +296,9 @@ func cancellationReason(ctx context.Context, expires, now int64) Reason {
 	}
 	if errors.Is(context.Cause(ctx), ErrSourceUnavailable) {
 		return ReasonSourceUnavailable
+	}
+	if errors.Is(context.Cause(ctx), ErrPolicyRejected) {
+		return ReasonPolicyRejected
 	}
 	if ctx.Err() != nil {
 		return ReasonLifecycleBoundary

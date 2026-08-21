@@ -387,8 +387,9 @@ incluido `status=jamie smith`, y conserva valores legítimos como `status=ok`.
 La reserva F24 se revalida tanto después de `settings:save` como de
 `launcher:profile:hotkey:set`; el conflicto pone reader/host detrás de una
 compuerta unavailable con diagnóstico agregado y el carril se recupera al
-retirar el último conflicto. Gates del nuevo HEAD pendientes de ejecutar. Sin
-merge ni promoción.
+retirar el último conflicto. Gofmt, vet y tests focales, race focal, suites
+`internal` y global, build frontend, roadmap/changelog y diff-check pasan en
+local. CI del nuevo HEAD queda pendiente. Sin merge ni promoción.
 
 2026-08-21, ISA-719 / F5 corrige los 5 P1 y 2 P2 de la review adversarial del
 PR #756: output allowlist por intent, límite honesto ante dumps, readiness y

@@ -254,6 +254,28 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
         ))
         self.assertTrue(self.child(root, "retirementCleanup").property("running"))
 
+    def test_overtake_resolver_preserves_first_pair_across_104_rows(self):
+        root = self.component("standings/StandingsRedline.qml")
+        self.assertTrue(hasattr(root, "deriveOvertake"))
+        rows = [
+            {
+                "id": f"stress-{index:03d}", "driverNumber": str(index),
+                "driverName": f"Driver {index}", "bestLapText": "1:50.000",
+                "gapText": "INT" if index == 1 else f"+{index / 10:.1f}",
+                "pitText": "", "isLeader": index == 1,
+            }
+            for index in range(1, 105)
+        ]
+        next_rows = list(rows)
+        next_rows[10], next_rows[11] = next_rows[11], next_rows[10]
+        next_rows[70], next_rows[71] = next_rows[71], next_rows[70]
+        before = variant(root.positions(visual_classes(rows)))
+        after = variant(root.positions(visual_classes(next_rows)))
+
+        result = variant(root.deriveOvertake(before, after))
+
+        self.assertEqual(("stress-012", "stress-011"), (result["gainer"], result["loser"]))
+
     def test_battle_is_a_real_two_row_wrapper_and_reduced_motion_is_asymmetric(self):
         battle = self.component("standings/Battle.qml", {
             "width": 408, "aheadRow": ROW_1, "behindRow": ROW_2,

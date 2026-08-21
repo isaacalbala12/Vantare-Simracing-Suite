@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -371,21 +370,48 @@ func voiceTurnPresentation(turn commands.Turn, locale commands.Locale) (string, 
 	if turn.Outcome != commands.OutcomeQueryAnswered {
 		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
 	}
-	keys := make([]string, 0, len(turn.Values))
-	for key := range turn.Values {
-		keys = append(keys, key)
+	contract, ok := voiceQueryOutputContracts[turn.IntentID]
+	if !ok || turn.ResponseKey != contract.responseKey {
+		return voiceIntentUnavailable, localizedVoiceStatus(locale, "datos no disponibles", "data unavailable", "dati non disponibili", "dados indisponíveis")
 	}
-	sort.Strings(keys)
-	parts := make([]string, 0, len(keys)+1)
+	parts := make([]string, 0, len(contract.keys)+1)
 	parts = append(parts, turn.ResponseKey)
-	for _, key := range keys {
-		parts = append(parts, key+" "+turn.Values[key])
+	for _, key := range contract.keys {
+		if value, present := turn.Values[key]; present {
+			parts = append(parts, key+" "+value)
+		}
 	}
 	response := strings.Join(parts, ", ")
 	if len(response) > 256 {
 		response = response[:256]
 	}
 	return voiceIntentAnswer, response
+}
+
+type voiceQueryOutputContract struct {
+	responseKey string
+	keys        []string
+}
+
+// voiceQueryOutputContracts is the closed public boundary from dialogue to
+// radio.v1. Query slots such as target, driver_name and car_number are
+// deliberately absent: a QueryPort cannot echo spoken input through Values.
+// A future QueryPort must extend the applicable intent contract explicitly.
+var voiceQueryOutputContracts = map[string]voiceQueryOutputContract{
+	"query.fuel":            {responseKey: "response.fuel", keys: []string{"litres", "laps"}},
+	"query.virtual_energy":  {responseKey: "response.virtual_energy", keys: []string{"percent", "laps"}},
+	"query.position":        {responseKey: "response.position", keys: []string{"position", "class_position", "total"}},
+	"query.lap":             {responseKey: "response.lap", keys: []string{"lap", "total_laps"}},
+	"query.gap":             {responseKey: "response.gap", keys: []string{"seconds", "position"}},
+	"query.tyres":           {responseKey: "response.tyres", keys: []string{"status", "front_left", "front_right", "rear_left", "rear_right"}},
+	"query.damage":          {responseKey: "response.damage", keys: []string{"status", "aero", "engine", "suspension"}},
+	"query.race_time":       {responseKey: "response.race_time", keys: []string{"remaining_ms", "remaining_laps"}},
+	"query.rival.by_number": {responseKey: "response.rival", keys: []string{"position", "class_position", "gap_seconds", "status"}},
+	"query.rival.by_name":   {responseKey: "response.rival", keys: []string{"position", "class_position", "gap_seconds", "status"}},
+	"query.strategy":        {responseKey: "response.strategy", keys: []string{"status", "next_stop_lap", "fuel_litres", "compound"}},
+	"query.pit_status":      {responseKey: "response.pit_status", keys: []string{"status", "requested", "fuel_litres", "compound"}},
+	"query.car_status":      {responseKey: "response.car_status", keys: []string{"status", "fuel_litres", "virtual_energy", "damage", "tyre_status"}},
+	"query.penalties":       {responseKey: "response.penalties", keys: []string{"count", "status"}},
 }
 
 func localizedVoiceStatus(locale commands.Locale, es, en, it, pt string) string {

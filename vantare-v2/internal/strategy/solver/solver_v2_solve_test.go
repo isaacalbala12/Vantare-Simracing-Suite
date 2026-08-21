@@ -48,49 +48,64 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	if err != nil {
 		t.Fatalf("savingCost: %v", err)
 	}
+	compoundPace, err := input.compoundPaceCosts()
+	if err != nil {
+		t.Fatalf("compoundPaceCosts: %v", err)
+	}
+	tyreModel, err := newTyreDecisionModel(input, compoundPace)
+	if err != nil {
+		t.Fatalf("newTyreDecisionModel: %v", err)
+	}
+	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, fuelPerLap: fuel.perLap}
 	best := math.Inf(1)
-	var walk func(lap, fuelLeft, veLeft int64, stops int, total float64)
-	walk = func(lap, fuelLeft, veLeft int64, stops int, total float64) {
+	var walk func(searchNode)
+	walk = func(node searchNode) {
 		for _, level := range saving.levels {
 			effectiveFuel := fuel.withPerLapSaving(level.fuelSavedPerLap)
 			effectiveVE := ve.withPerLapSaving(level.veSavedPerLap)
-			node := searchNode{lap: lap, fuel: fuelLeft, ve: veLeft}
-			maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+			maxLaps := runnableLaps(input.RaceLaps-node.lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
 			for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
-				stint, err := paceCost.stint(stintLaps, input.BaseLapSeconds)
+				next, err := appendStint(node, stintLaps, input, costs, level)
 				if err != nil {
-					t.Fatalf("paceCost.stint: %v", err)
+					t.Fatalf("appendStint: %v", err)
 				}
-				nextLap := lap + stintLaps
-				nextFuel := fuelLeft - effectiveFuel.perLap*stintLaps
-				nextVE := veLeft - effectiveVE.perLap*stintLaps
-				nextTotal := total + stint.TotalSeconds +
-					fuelWeight.stint(fuelLeft, effectiveFuel.perLap, stintLaps) + level.timeCostPerLap*float64(stintLaps)
-				if nextLap == input.RaceLaps {
-					if allowed, _, _ := input.stopCountAllowed(stops); allowed && nextTotal < best {
-						best = nextTotal
+				next.lap = node.lap + stintLaps
+				next.fuel -= effectiveFuel.perLap * stintLaps
+				next.ve -= effectiveVE.perLap * stintLaps
+				if next.lap == input.RaceLaps {
+					if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds) < best {
+						best = next.total(input.Formation.Seconds)
 					}
 					continue
 				}
-				for _, fuelAmount := range serviceAmounts(nextFuel, fuel) {
-					for _, veAmount := range serviceAmounts(nextVE, ve) {
-						pitInput, err := solverPitInput(input, fuelAmount, veAmount)
-						if err != nil {
-							t.Fatalf("solverPitInput: %v", err)
-						}
-						pit, err := manual.CalculatePitStop(pitInput)
-						if err != nil {
-							t.Fatalf("CalculatePitStop: %v", err)
-						}
-						if input.EventRules.MaxPitStops == nil || stops < *input.EventRules.MaxPitStops {
-							walk(nextLap, nextFuel+fuelAmount, nextVE+veAmount, stops+1, nextTotal+pit.TotalSeconds.Value())
+				if _, closed := input.firstClosedWindow(next.lap, next.windowMask); closed {
+					continue
+				}
+				if input.EventRules.MaxPitStops != nil && len(next.decision.PitStops) >= *input.EventRules.MaxPitStops {
+					continue
+				}
+				for _, tyreOption := range tyreModel.nextChoices(next.tyre) {
+					for _, fuelAmount := range serviceAmounts(next.fuel, fuel) {
+						for _, veAmount := range serviceAmounts(next.ve, ve) {
+							afterPit, err := appendPit(next, fuelAmount, veAmount, tyreOption, input)
+							if err != nil {
+								t.Fatalf("appendPit: %v", err)
+							}
+							afterPit.fuel += fuelAmount
+							afterPit.ve += veAmount
+							walk(afterPit)
 						}
 					}
 				}
 			}
 		}
 	}
-	walk(0, fuel.capacity, ve.capacity, 0, input.Formation.Seconds)
+	for _, choice := range tyreModel.initialChoices() {
+		walk(searchNode{
+			fuel: fuel.capacity, ve: ve.capacity, tyre: choice,
+			decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
+		})
+	}
 	return best
 }
 
@@ -688,10 +703,10 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
 		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false) {
 		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }

@@ -365,9 +365,10 @@ TTLs, reset de lifecycle y health sanitizado. El cutover retira las cinco
 familias de la ruta legacy por defecto, pero conserva físicamente sus paquetes
 y ofrece `-engineer-legacy-families` como rollback exclusivo pre-Start. Las
 regresiones focales, vet, build frontend, race focal y suite Go global pasan.
-Commits `5481aca5`, `17be1248`, `712e6944`; PR draft #739 abierto y push
-verificado. CI remoto y gate LMU humano siguen pendientes; sin merge ni
-promoción.
+Commits de implementación `5481aca5`, `17be1248`, `712e6944`; PR draft #739
+abierto y push verificado. En el HEAD `fee46734`, `Validate promotion path`,
+`Validate Vantare blocking gates` y GitGuardian quedaron verdes (run
+32496181832). Solo sigue pendiente el gate LMU humano; sin merge ni promoción.
 
 2026-08-21, ronda final del re-review ISA-717 / PR #733: `SetLocale` pre-Start
 rederiva `AudioConfig` y actualiza el router ya instalado, por lo que audio y

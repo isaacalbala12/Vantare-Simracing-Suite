@@ -132,6 +132,64 @@ a permiso de republicación masiva. Antes de guardar nombres o perfiles de
 terceros en una base pública se necesita revisión de términos, finalidad RGPD,
 retención, rectificación, borrado y mecanismo de exclusión.
 
+### Cómo está implementado RaceControl — comprobación 2026-08-21
+
+La superficie pública permite separar dos sistemas que comparten marca, pero no
+la misma fuente de rating:
+
+1. **Hosted y comunidad:** las páginas `/events/{id}`, `/drivers`, `/results` y
+   `/standings` se renderizan en servidor y comparten el modelo de SimGrid. El
+   propio sitio enlaza los perfiles de piloto a SimGrid, muestra `Grid Rating`,
+   declara «Website powered by SimGrid» y sirve la aplicación desde Heroku. El
+   anuncio oficial de la integración confirma que SimGrid gestiona catálogo,
+   inscripciones, resultados y standings de estos eventos. No es DR/SR de LMU.
+2. **Cuenta y competición oficial:** el botón de acceso público envía un `POST`
+   a `/users/auth/race_os`. En una sesión HTTP desechable, sin cuenta ni
+   credenciales, respondió `302` hacia `steamcommunity.com/openid/login` con
+   las claves estándar de Steam OpenID y retorno a
+   `/users/auth/race_os/callback`. Esto confirma Steam OpenID como entrada web
+   y una estrategia de servidor denominada `race_os`; no confirma su contrato
+   interno posterior.
+3. **RaceOS:** LMU V1.4 y RaceControl comparten la capa first-party RaceOS. La
+   documentación oficial afirma que RaceOS sustenta daily races, championships,
+   hosted servers y RaceControl. Por tanto, RaceControl puede obtener datos
+   oficiales por integración interna servidor a servidor, sin necesitar el
+   mecanismo de token local que usa RaceCenter.
+
+El JavaScript público inspeccionado no contiene endpoints de DR/SR, histórico
+oficial o RaceOS. Las páginas públicas son HTML renderizado en servidor y la
+parte posterior al callback requiere autenticación. No puede confirmarse desde
+fuera si RaceControl consulta una API privada, una base compartida o eventos
+internos de RaceOS. La inferencia de mayor confianza es una integración
+first-party no pública; presentarla como API utilizable por Vantare sería
+incorrecto.
+
+Consecuencia práctica:
+
+- un worker diario sí puede leer, sujeto a permiso y política de datos, el HTML
+  público de hosted/community para calendario, inscritos, vueltas, resultados y
+  standings;
+- ese worker no consigue el histórico oficial completo ni DR/SR de LMU;
+- la paridad oficial requiere autorización para RaceOS o un conector local
+  opt-in que consulte únicamente la sesión propia sin exportar credenciales;
+- la autenticación web de RaceControl no es un precedente para automatizar
+  cuentas: sus términos rechazan entradas automatizadas y su acceso posterior
+  no es público.
+
+Fuentes primarias: anuncio de
+[RaceControl powered by SimGrid](https://news.racecontrol.gg/news/your-brand-new-racecontrol-gg-for-le-mans-ultimate-powered-by-simgrid-is-coming-on-december-10th/),
+[LMU V1.4 y RaceOS](https://lemansultimate.com/le-mans-ultimate-goes-stateside-with-us-track-dlc-and-v1-4-update/)
+y [reglas de RaceControl](https://www.racecontrol.gg/rules).
+
+### Observación pasiva adicional — 2026-08-21
+
+Con LMU abierto en menú se repitió el probe sanitizado sobre ocho trazas. Todas
+mantuvieron `raceos.gg/api/v1/notifications/global`, cero menciones Nakama,
+cero Bearer/JWT y ningún join de evento. El REST local indicó estado de usuario
+sin identidad deportiva; `teams` estaba vacío y `sessionInfo`/`standings` sin
+cuerpo. Esta repetición confirma el patrón anterior, pero no añade una ruta de
+histórico o rating porque no había una sesión de pista activa.
+
 ## Arquitectura viable sin custodiar credenciales
 
 La opción recomendada para Vantare es híbrida:

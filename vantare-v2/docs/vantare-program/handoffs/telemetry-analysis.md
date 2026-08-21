@@ -62,6 +62,18 @@ estado Nakama histórico; no identifica la autenticación activa de RaceOS ni
 autoriza reutilizar esas credenciales. No se conservaron valores, hashes, copias
 o capturas.
 
+La comprobación específica de RaceControl aclara su frontera. Las páginas
+hosted/community son HTML de servidor sobre SimGrid, con Grid Rating y enlaces
+al mismo modelo de pilotos/resultados. La entrada de cuenta hace `POST` a
+`/users/auth/race_os`, redirige a Steam OpenID y retorna a
+`/users/auth/race_os/callback`; después de ese callback la integración oficial
+con RaceOS es interna y no aparece en el cliente público. RaceControl, como
+plataforma first-party, no demuestra una API reutilizable por Vantare. El worker
+diario queda limitado a hosted/community público autorizado; DR/SR e histórico
+oficial siguen exigiendo permiso RaceOS o conector local opt-in. Una nueva
+captura pasiva con LMU abierto en menú repitió solo
+`/api/v1/notifications/global`, sin Nakama, credenciales o sesión de pista.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

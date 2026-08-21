@@ -37,6 +37,16 @@ Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
   no apareció ninguna sesión vigente. Esto confirma estado Nakama histórico,
   no una credencial activa actual ni paridad RaceCenter. No se guardaron
   valores, hashes, copias o capturas; queda prohibido usar o subir esos JWT.
+- La comprobación pública de RaceControl separa dos backends: hosted/community
+  se renderiza en servidor sobre el modelo de SimGrid y usa Grid Rating; la
+  cuenta oficial inicia con `POST /users/auth/race_os`, redirige a Steam OpenID
+  y vuelve a `/users/auth/race_os/callback`. El intercambio posterior con
+  RaceOS es first-party y no está publicado en el JavaScript o HTML anónimo.
+  Por tanto, un worker puede cubrir páginas públicas autorizadas, pero no DR/SR
+  ni el histórico oficial completo sin permiso RaceOS o conector local opt-in.
+- Una repetición pasiva con LMU abierto en menú mantuvo únicamente
+  `/api/v1/notifications/global`, cero Nakama/Bearer/JWT/joins y REST local sin
+  sesión activa. No apareció una nueva superficie de rating o histórico.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

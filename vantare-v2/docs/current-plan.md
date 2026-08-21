@@ -1,3 +1,23 @@
+Nota ISA-752 / ISA-694 F4-7 (2026-08-21, implementada en rama de issue):
+- `WeatherScenario v1` se interpola entre START/25/50/75/FINISH para producir
+  una condicion por vuelta. Defaults explicitos: `<20 %` seco, `20-<60 %`
+  humedo y `>=60 %` mojado; el umbral wet se reevalua a -5/+5 puntos.
+- Cada vuelta selecciona `delta_clima`, consumo Fuel/VE de los buckets validos
+  de Analysis o fallback manual/reference, y curva/delta de compuesto. Un stint
+  que cruza una transicion cambia de parametros dentro del propio stint.
+- Wet/dry compiten contra el inventario fisico F4-5; una regla opcional por
+  condicion puede forzar el cambio antes de la primera vuelta incompatible y
+  conserva ventanas, edad, identidades y coste real del servicio.
+- `SolveWeatherScenarios` devuelve el optimo de cada escenario y recomienda
+  sobre sus candidatos por minimax regret, con perdida esperada ponderada como
+  desempate. Expone ambas metricas y el replay del plan bajo cada escenario.
+- El caso NODE_50 para justo antes de la primera vuelta wet y monta wets; con
+  lluvia adelantada la robusta pierde menos que el plan seco. Oraculo sin poda
+  por escenario, fail-closed, determinismo y caso seco degenerado quedan
+  probados. Gates verdes: solver x100, Strategy+app, vet focal, gofmt y
+  diff-check. Sin frontend, dependencias, PR, merge, promocion ni release.
+  Siguiente gate: review del orquestador de #752.
+
 Nota ISA-751 / ISA-694 F4-6 (2026-08-21, implementada en rama de issue):
 - `SolveV2` asigna piloto por stint desde `PilotProfile v1` o entrada
   manual/reference con procedencia. Ritmo base y consumo Fuel/VE del piloto

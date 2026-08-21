@@ -44,6 +44,7 @@ type searchNode struct {
 	green                   float64
 	degradation             float64
 	compound                float64
+	weather                 float64
 	fuelWeight              float64
 	saving                  float64
 	pit                     float64
@@ -51,13 +52,14 @@ type searchNode struct {
 }
 
 func (node searchNode) total(formation float64) float64 {
-	return formation + node.green + node.degradation + node.compound + node.fuelWeight + node.saving + node.pit
+	return formation + node.green + node.degradation + node.compound + node.weather + node.fuelWeight + node.saving + node.pit
 }
 
 type lapCostModel struct {
 	pace       stintPaceCost
 	compounds  compoundPaceCosts
 	fuelWeight fuelWeightCost
+	weather    weatherCostModel
 }
 
 // SolveV2 optimiza el vector F1.3 con coste de pit por cantidades de servicio.
@@ -109,7 +111,11 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	if err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "driverProfiles", err.Error())
 	}
-	lapCosts := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight}
+	weatherCost, err := newWeatherCostModel(input)
+	if err != nil {
+		return SolverResultV2{}, solveError(ErrorInvalidInput, "weather", err.Error())
+	}
+	lapCosts := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, weather: weatherCost}
 	result := SolverResultV2{
 		ContractVersion:   SolverContractVersionV2,
 		InputHash:         inputHash,
@@ -118,6 +124,8 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		SavingCost:        saving.source,
 		CompoundPaceCost:  compoundPace.sources(),
 		DriverProfileCost: drivers.sources(),
+		WeatherBucketCost: weatherCost.sources(),
+		WeatherTimeline:   append([]WeatherLapCondition(nil), weatherCost.timeline...),
 		Binding:           binding,
 		Candidates:        []DecisionVector{},
 		CandidateDetails:  []SolverCandidateV2{},
@@ -159,9 +167,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		for _, node := range byLap[lap] {
 			for _, driver := range drivers.order {
 				for _, savingLevel := range saving.levels {
-					effectiveFuel := fuel.withPerLap(driver.fuelPerLap - savingLevel.fuelSavedPerLap)
-					effectiveVE := ve.withPerLap(driver.vePerLap - savingLevel.veSavedPerLap)
-					maxLaps := runnableLaps(input.RaceLaps-lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+					maxLaps := weatherCost.runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps, driver, savingLevel)
 					if maxLaps < 1 {
 						result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
 						continue
@@ -172,13 +178,21 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 							budgetExhausted = true
 							break
 						}
+						if allowed, condition := weatherCost.compoundAllowed(node.tyre.compound, lap+1, stintLaps); !allowed {
+							result.addRejected(node, input, "compound_not_allowed_for_climate", fmt.Sprintf("el compuesto %s no esta permitido en %s desde la vuelta %d", node.tyre.compound, condition.Bucket, condition.Lap))
+							continue
+						}
 						afterStint, err := appendStint(node, stintLaps, input, lapCosts, savingLevel, driver)
 						if err != nil {
 							return SolverResultV2{}, err
 						}
 						afterStint.lap = lap + stintLaps
-						afterStint.fuel -= effectiveFuel.perLap * stintLaps
-						afterStint.ve -= effectiveVE.perLap * stintLaps
+						fuelUsed, veUsed, err := weatherCost.usage(lap+1, stintLaps, driver, savingLevel)
+						if err != nil {
+							return SolverResultV2{}, solveError(ErrorInvalidInput, "weather", err.Error())
+						}
+						afterStint.fuel -= fuelUsed
+						afterStint.ve -= veUsed
 						if allowed, code, message := input.applyDriverConstraints(node, &afterStint, driver); !allowed {
 							result.addRejected(afterStint, input, code, message)
 							continue
@@ -284,18 +298,24 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	result.Expected = evaluationForNode(best, input.Formation.Seconds)
 	result.WorstCase = result.Expected
 	perturbedDegradation := 0.0
+	baseDegradation := 0.0
 	parameter := "degradationPerLapSeconds"
 	if compoundPace.enabled {
+		baseDegradation = compoundPace.perturbedDegradation(best.decision, 0)
 		perturbedDegradation = compoundPace.perturbedDegradation(best.decision, defaultCurveSensitivity)
 		parameter = "compoundPaceCurve"
 		result.Sensitivities = append(result.Sensitivities, compoundDeltaSensitivities(result.Best)...)
 	} else {
+		baseDegradation = decisionDegradation(best.decision, paceCost)
 		perturbed := paceCost.perturbed(defaultCurveSensitivity)
 		perturbedDegradation = decisionDegradation(best.decision, perturbed)
 		if paceCost.source.Model == StintPaceModelCombinedCurve {
 			parameter = "combinedStintPaceCurve"
 		}
 	}
+	// La sensibilidad perturba la curva base, no elimina el delta de curva que
+	// el bucket climatico selecciono vuelta a vuelta.
+	perturbedDegradation += best.degradation - baseDegradation
 	impact := perturbedDegradation - best.degradation
 	result.WorstCase.DegradationSeconds = perturbedDegradation
 	result.WorstCase.TotalSeconds += impact
@@ -481,6 +501,9 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	next.green += stint.GreenSeconds
 	next.degradation += stint.DegradationSeconds
 	next.compound += compoundSeconds
+	weatherSeconds, weatherDegradation := costs.weather.weatherAdjustment(costs.compounds, node.tyre.compound, node.lap+1, laps)
+	next.weather += weatherSeconds
+	next.degradation += weatherDegradation
 	if costs.compounds.enabled {
 		if next.tyreUsage == nil {
 			next.tyreUsage = make(map[tyres.TyreID]int64, 4)
@@ -491,8 +514,16 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	} else {
 		next.tyreAge += laps
 	}
-	effectiveFuelPerLap := driver.fuelPerLap - saving.fuelSavedPerLap
-	next.fuelWeight += costs.fuelWeight.stint(node.fuel, effectiveFuelPerLap, laps)
+	if costs.weather.enabled {
+		fuelLevel := node.fuel
+		for offset := int64(0); offset < laps; offset++ {
+			next.fuelWeight += serviceValue(fuelLevel) * costs.fuelWeight.secondsPerLiter
+			fuelLevel -= costs.weather.resourcePerLap(ResourceFuel, node.lap+offset+1, driver.fuelPerLap) - saving.fuelSavedPerLap
+		}
+	} else {
+		effectiveFuelPerLap := driver.fuelPerLap - saving.fuelSavedPerLap
+		next.fuelWeight += costs.fuelWeight.stint(node.fuel, effectiveFuelPerLap, laps)
+	}
 	savingSeconds := saving.timeCostPerLap * float64(laps)
 	next.saving += savingSeconds
 	decision := StintDecision{
@@ -773,7 +804,8 @@ func evaluationForNode(node searchNode, formation float64) ScenarioEvaluation {
 	return ScenarioEvaluation{
 		TotalSeconds: node.total(formation), GreenSeconds: node.green, DegradationSeconds: node.degradation,
 		CompoundSeconds: node.compound, FuelWeightSeconds: node.fuelWeight, SavingSeconds: node.saving,
-		PitSeconds: node.pit, FormationSeconds: formation,
+		WeatherSeconds: node.weather,
+		PitSeconds:     node.pit, FormationSeconds: formation,
 	}
 }
 

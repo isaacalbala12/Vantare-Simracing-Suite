@@ -17,6 +17,26 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-752 / F4-7 (2026-08-21, lista para review):
+
+- Los cinco nodos de `WeatherScenario v1` se convierten en timeline por vuelta
+  mediante interpolación lineal. Los umbrales default 20/60 separan
+  seco/húmedo/mojado y la salida expone sensibilidad wet a -5/+5 puntos.
+- Cada vuelta selecciona `delta_clima`, consumo por bucket de Analysis o
+  fallback manual/reference y parámetros/curva de compuesto. Los cruces dentro
+  de un stint cambian de condición sin fabricar una frontera de stint.
+- Compuestos dry/wet usan el inventario físico F4-5. Las reglas opcionales por
+  bucket fuerzan una parada antes de una condición incompatible y conservan
+  ventanas, servicio, edad e identidades.
+- Se entrega óptimo por escenario y recomendación `minimax_regret`; la pérdida
+  esperada ponderada desempata y ambas métricas se publican con replay por
+  escenario. NODE_50 monta wets justo antes de la primera vuelta mojada y la
+  robusta supera al plan seco cuando la lluvia se adelanta.
+- Oráculo exhaustivo por escenario, caso seco degenerado, fail-closed y gates
+  solver x100, Strategy+app, vet, gofmt y diff-check verdes. Sin frontend,
+  dependencia, PR, merge, promoción ni release. Siguiente gate: review del
+  orquestador de #752.
+
 Actualización ISA-751 / F4-6 (2026-08-21, lista para review):
 
 - `SolveV2` elige piloto por stint. Cada piloto usa `PilotProfile v1` o cifras

@@ -56,7 +56,11 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 	if err != nil {
 		t.Fatalf("newTyreDecisionModel: %v", err)
 	}
-	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight}
+	weatherCost, err := newWeatherCostModel(input)
+	if err != nil {
+		t.Fatalf("newWeatherCostModel: %v", err)
+	}
+	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, weather: weatherCost}
 	best := math.Inf(1)
 	var walk func(searchNode)
 	walk = func(node searchNode) {
@@ -66,17 +70,22 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 		}
 		for _, driver := range drivers.order {
 			for _, level := range saving.levels {
-				effectiveFuel := fuel.withPerLap(driver.fuelPerLap - level.fuelSavedPerLap)
-				effectiveVE := ve.withPerLap(driver.vePerLap - level.veSavedPerLap)
-				maxLaps := runnableLaps(input.RaceLaps-node.lap, node, effectiveFuel, effectiveVE, input.TyreLifeLaps)
+				maxLaps := weatherCost.runnableLaps(input.RaceLaps-node.lap, node, fuel, ve, input.TyreLifeLaps, driver, level)
 				for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
+					if allowed, _ := weatherCost.compoundAllowed(node.tyre.compound, node.lap+1, stintLaps); !allowed {
+						continue
+					}
 					next, err := appendStint(node, stintLaps, input, costs, level, driver)
 					if err != nil {
 						t.Fatalf("appendStint: %v", err)
 					}
 					next.lap = node.lap + stintLaps
-					next.fuel -= effectiveFuel.perLap * stintLaps
-					next.ve -= effectiveVE.perLap * stintLaps
+					fuelUsed, veUsed, err := weatherCost.usage(node.lap+1, stintLaps, driver, level)
+					if err != nil {
+						t.Fatalf("weather usage: %v", err)
+					}
+					next.fuel -= fuelUsed
+					next.ve -= veUsed
 					if allowed, _, _ := input.applyDriverConstraints(node, &next, driver); !allowed {
 						continue
 					}

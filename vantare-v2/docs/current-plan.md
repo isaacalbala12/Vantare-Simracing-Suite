@@ -1,3 +1,21 @@
+Nota ISA-750 / ISA-694 F4-5 (2026-08-21, implementada en rama de issue):
+- `SolveV2` elige compuesto y juego físico por stint con parámetros de curva y
+  delta `manual`/`reference` de D19. Reutiliza `internal/strategy/tyres` para
+  identidad, esquinas y suficiencia; la edad se conserva incluso tras desmontar
+  y volver a montar un juego.
+- Cada parada decide cambio/no cambio. Solo un cambio físico paga neumáticos en
+  el modelo paralelo/secuencial de F4-1. Ventanas obligatorias y compuestos
+  requeridos son restricciones duras con motivo observable.
+- El caso de negocio cubre doble stint duro frente a pagar blandos en ambos
+  sentidos. El oráculo sin poda incluye compuestos, juegos y ventanas; la
+  paridad exige poda efectiva y el resultado expone sensibilidad al delta.
+- Gates verdes: solver+tyres x100, Strategy+app, golden Orbit, vet focal,
+  gofmt y diff-check. El gate Go global pasa todos los paquetes compilables y
+  solo falla el setup de `frontend`/`cmd/vantare` porque el worktree no contiene
+  `frontend/dist` ni `frontend/node_modules` para regenerarlo. Sin frontend,
+  dependencias, PR, merge, promoción ni release. Pendiente: commit documental,
+  push y review del orquestador de #750.
+
 Nota ISA-749 / ISA-694 F4-4 (2026-08-21, implementada en rama de issue):
 - `SolveV2` elige por stint entre `none` y hasta 16 niveles declarados de
   ahorro Fuel/VE con coste s/vuelta. El consumo efectivo alimenta autonomía,

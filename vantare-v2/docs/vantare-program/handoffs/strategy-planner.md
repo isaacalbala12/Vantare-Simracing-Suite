@@ -17,6 +17,29 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-750 / F4-5 (2026-08-21, lista para review):
+
+- `SolveV2` elige compuesto y juego físico por stint contra el inventario
+  canónico de `internal/strategy/tyres`. Los parámetros de curva/delta son
+  exclusivamente manual/reference con procedencia mientras D19 no tenga
+  mapping semántico real.
+- Cambiar o conservar neumáticos forma parte del candidato: conservar mantiene
+  identidades y edad y no paga servicio; cambiar exige otro juego compatible y
+  usa el coste paralelo/secuencial de F4-1. Remontar un juego usado no restaura
+  su vida.
+- Ventanas obligatorias, min/max de paradas y compuestos requeridos son
+  restricciones duras explicadas. El caso canónico demuestra cuándo gana el
+  doble stint duro y cuándo compensa pagar blandos.
+- El oráculo exhaustivo incorpora compuestos, juegos y ventanas en tamaños
+  pequeños. La poda conserva estado físico/reglas, publica `prunedStates` y la
+  sensibilidad expone el impacto de +0,20 s/vuelta por compuesto elegido.
+- Gates verdes: solver+tyres x100, Strategy+app, golden Orbit, vet focal,
+  gofmt y diff-check. El gate Go global pasa todos los paquetes compilables y
+  solo falla el setup de `frontend`/`cmd/vantare` por `frontend/dist` ausente;
+  tampoco hay `frontend/node_modules` para regenerarlo. Sin frontend,
+  dependencias, PR, merge, promoción ni release. Pendiente: commit documental,
+  push y review del orquestador de #750.
+
 Actualización ISA-749 / F4-4 (2026-08-21, lista para review):
 
 - `SolveV2` incorpora el nivel de ahorro Fuel/VE como decisión de cada stint;

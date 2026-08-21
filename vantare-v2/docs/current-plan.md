@@ -30,6 +30,13 @@ Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
   memoria, subida de registros sanitizados y un worker diario separado para la
   superficie pública de RaceControl. La paridad sigue condicional hasta probar
   identidad, paginación, histórico y deltas DR/SR en la superficie actual.
+- El experimento autorizado de `coherent_local_storage.json` se completó con un
+  analizador local sin red: antes de abrir LMU, al entrar en Online y después de
+  cerrar normalmente aparecieron cuatro JWT expirados con un mismo esquema
+  `uid`/`usn`/`exp` compatible con Nakama. El cierre reescribió el archivo, pero
+  no apareció ninguna sesión vigente. Esto confirma estado Nakama histórico,
+  no una credencial activa actual ni paridad RaceCenter. No se guardaron
+  valores, hashes, copias o capturas; queda prohibido usar o subir esos JWT.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

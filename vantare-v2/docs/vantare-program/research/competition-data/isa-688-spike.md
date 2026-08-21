@@ -210,13 +210,88 @@ sesión y presencia del campo `badge`, pero no identifica la representación ni
 fuente de DR/SR exactos o histórico; por tanto, la paridad global permanece
 `condicional`.
 
-El siguiente experimento permitido es un analizador local de esquema para
-`coherent_local_storage.json` que opere con consentimiento explícito y emita
-solo nombres de claves, tipos y contadores. Requiere antes una revisión de
-seguridad específica porque el archivo contiene una credencial. No se leerá ni
-se implementará el intercambio remoto del token como parte de este checkpoint.
+El siguiente experimento autorizado era un analizador local de esquema para
+`coherent_local_storage.json` con consentimiento explícito y salida limitada a
+nombres de claves, tipos y contadores. La revisión de seguridad y su ejecución
+se completaron en el checkpoint siguiente. No se expuso ni se implementó el
+intercambio remoto del token.
+
+## Experimento de almacenamiento de sesión — 2026-08-21
+
+Se implementó `cmd/lmu-session-schema-probe` como herramienta independiente,
+sin red y fail-closed. Exige ruta explícita, nombre exacto del archivo y
+`-confirm-sensitive-file`; rechaza enlaces/junctions, archivos no regulares,
+JSON múltiple, más de 4 MiB, profundidad mayor de 32, más de 100.000 nodos o
+2.048 rutas de esquema. Lee mediante un único handle y comprueba identidad,
+tamaño y fecha antes/después. No descubre rutas, no crea copias ni escribe
+informes en disco.
+
+La salida conserva únicamente:
+
+- tipos y rutas de una allowlist estática, con el resto como `<field>`;
+- contadores de marcadores y candidatos sensibles;
+- nombres y tipos de claims JWT de una allowlist estática, nunca sus valores;
+- conteo de JWT expirados/vigentes, nunca la fecha exacta ni una huella.
+
+Observación propia reproducible:
+
+```powershell
+go run ./cmd/lmu-session-schema-probe `
+  -file "<LMU>\coherent_local_storage.json" `
+  -confirm-sensitive-file
+```
+
+Resultados sanitizados:
+
+1. Antes de abrir LMU, el archivo tenía 4.097 bytes, cuatro valores con forma
+   JWT y un único esquema de payload repetido cuatro veces: `uid:string`,
+   `usn:string`, `exp:number` y una claim de nombre redactado. Los cuatro
+   figuraban expirados.
+2. Tras abrir LMU 1.4, entrar en Online/RaceControl y ver el catálogo, el archivo
+   no había sido reescrito y el informe seguía mostrando cuatro JWT expirados.
+3. El cierre normal de LMU sí reescribió el archivo, conservando los mismos
+   tamaño, estructura, número de JWT y estado expirado. No se conservaron hashes
+   ni valores, por lo que no se afirma que los bytes o tokens fueran idénticos.
+
+La documentación oficial de Nakama muestra precisamente `uid`, `usn` y `exp`
+como claims de su sesión JWT. La coincidencia de esquema confirma material de
+sesión Nakama en el almacenamiento local con alta confianza. No confirma una
+sesión utilizable: LMU pudo abrir Online con esos cuatro JWT expirados y no creó
+uno vigente en el archivo. La inferencia más consistente con las trazas es que
+la autenticación activa actual reside en RaceOS, memoria u otro almacenamiento,
+mientras Coherent conserva estado Nakama histórico.
+
+### Veredicto del experimento
+
+- **Confirmado:** `coherent_local_storage.json` contiene cuatro JWT con esquema
+  de sesión Nakama y LMU lo reescribe al cerrar.
+- **Confirmado:** entrar en Online no dejó ningún JWT Nakama vigente en el
+  archivo observado.
+- **No confirmado:** qué claim fue redactada, qué función tiene cada uno de los
+  cuatro JWT, si RaceCenter usa aún esos valores o cómo consigue una vinculación
+  persistente.
+- **Bloqueado por custodia:** no se intentará enviar, refrescar, validar ni usar
+  ningún JWT contra Nakama/RaceOS, y no se copiará el modelo del activador de
+  RaceCenter.
+
+El archivo real, sus valores, hashes y rutas absolutas no se versionaron. Las
+capturas temporales de control de ventana se eliminaron al terminar.
 
 ## Verificación del checkpoint
+
+Checks del experimento de sesión del 2026-08-21:
+
+- `go test -count=20 ./cmd/lmu-session-schema-probe`: PASS.
+- `go vet ./cmd/lmu-session-schema-probe`: PASS.
+- `go test -race ./cmd/lmu-session-schema-probe`: no ejecutable porque el
+  toolchain del repo mantiene CGO desactivado; el comando es secuencial y no se
+  cambió el toolchain para este spike.
+- `go test ./...`: todos los paquetes ejecutados pasan salvo el mismo
+  `TestBranchDiffContainsNoFrontendFile` heredado. La prueba compara contra la
+  rama fija `vantareapp/isa-372-tc-integration` y atribuye a ISA-688 el
+  `frontend/.eslintignore` ya presente en su base `origin/nightly`; el diff de
+  ISA-688 contra su base no contiene frontend y no se modificó esa prueba.
+- `git diff --check`: PASS.
 
 - `go test ./cmd/lmu-online-surface-probe`: PASS.
 - `go vet ./cmd/lmu-online-surface-probe`: PASS.
@@ -238,6 +313,7 @@ se implementará el intercambio remoto del token como parte de este checkpoint.
 - Racecenter, política de privacidad: https://racecenter.fr/politique-de-confidentialite
 - LMU V1.4 / RaceOS: https://lemansultimate.com/le-mans-ultimate-goes-stateside-with-us-track-dlc-and-v1-4-update/
 - Nakama Authentication: https://heroiclabs.com/docs/nakama/concepts/authentication/
+- Nakama Session Management: https://heroiclabs.com/docs/nakama/concepts/session/management/
 - Steamworks `ISteamUser`: https://partner.steamgames.com/doc/api/ISteamUser
 - Nakama RPC: https://heroiclabs.com/docs/nakama/server-framework/typescript-runtime/code-samples/
 - RaceControl, reglas y términos: https://www.racecontrol.gg/rules

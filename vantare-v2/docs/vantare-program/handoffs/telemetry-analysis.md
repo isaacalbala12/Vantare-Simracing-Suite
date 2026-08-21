@@ -52,6 +52,16 @@ rating visible allí es Grid Rating de SimGrid, no DR/SR oficial de LMU. Aún no
 se ha demostrado cobertura de todo el calendario oficial ni permiso de
 republicación masiva.
 
+El experimento local autorizado del 2026-08-21 añadió
+`cmd/lmu-session-schema-probe`, sin red y con salida exclusivamente estructural.
+En tres cortes —antes de abrir, dentro de Online y tras el cierre normal— el
+archivo de Coherent mostró cuatro JWT expirados con el mismo esquema
+`uid`/`usn`/`exp`, coincidente con la sesión documentada de Nakama. El cierre
+reescribió el archivo, pero no dejó ningún JWT vigente. Confirma persistencia de
+estado Nakama histórico; no identifica la autenticación activa de RaceOS ni
+autoriza reutilizar esas credenciales. No se conservaron valores, hashes, copias
+o capturas.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

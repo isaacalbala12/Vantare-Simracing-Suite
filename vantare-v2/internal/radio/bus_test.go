@@ -274,6 +274,26 @@ func TestSpotterPendingStateSupersedesLessSpecificIntent(t *testing.T) {
 	}
 }
 
+func TestSpotterPendingThreeWideRejectsStillThereDegradation(t *testing.T) {
+	clock := newFakeClock(100)
+	bus := newTestBus(t, DefaultLimits(), clock)
+	both := testMessage("both", "spotter.three_wide", "player", PriorityP0, 100)
+	both.CoalesceRevision, both.CoalesceValue = 1, CoalesceCurrent
+	_, _ = bus.Submit(both)
+	reminder := testMessage("reminder", "spotter.still_there", "player", PriorityP0, 101)
+	reminder.CoalesceRevision, reminder.CoalesceValue = 1, CoalesceReminder
+	result, err := bus.Submit(reminder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Accepted {
+		t.Fatalf("semantic degradation accepted: %+v", result)
+	}
+	if got := nextID(t, bus); got != "both" {
+		t.Fatalf("Next = %q, want retained three-wide", got)
+	}
+}
+
 func TestResetClearsPendingCooldownAndCancelsActive(t *testing.T) {
 	limits := DefaultLimits()
 	limits.Cooldowns = map[string]time.Duration{"spotter.car_left": time.Second}

@@ -81,12 +81,13 @@ func (producer *Producer) Evaluate(snapshot engineer.ObservationSnapshotV1) (rad
 	if !emit {
 		return radio.RadioMessage{}, false, nil
 	}
+	revision, value := producer.policy.Coalescing(intent)
 	producer.nextID++
 	return radio.RadioMessage{
 		Version: radio.VersionV1, ID: fmt.Sprintf("spotter-%d-%s", producer.nextID, intent),
 		Source: "telemetry-core", Intent: intent, Subject: "player", Priority: radio.PriorityP0,
 		CreatedAtMS: nowMS, ExpiresAtMS: nowMS + messageTTL.Milliseconds(), Locale: producer.locale,
-		Payload: map[string]string{},
+		Payload: map[string]string{}, CoalesceRevision: revision, CoalesceValue: value,
 	}, true, nil
 }
 

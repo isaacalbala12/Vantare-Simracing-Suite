@@ -1,5 +1,7 @@
 package spotter
 
+import "github.com/vantare/overlays/v2/internal/radio"
+
 const (
 	detectionHoldMS    int64 = 350
 	clearDelayMS       int64 = 150
@@ -15,6 +17,42 @@ const (
 	SituationRight
 	SituationThreeWide
 )
+
+type messageKind uint8
+
+const (
+	messageUnknown messageKind = iota
+	messageCarLeft
+	messageCarRight
+	messageStillThere
+	messageClearLeft
+	messageClearRight
+	messageAllClear
+	messageThreeWide
+	messageKindCount
+)
+
+// messageValues is the auditable supersession contract for one unchanged
+// evidence revision. A reminder or compatible warning cannot displace the
+// most specific current state.
+var messageValues = [SituationThreeWide + 1][messageKindCount]radio.CoalesceValue{
+	SituationAllClear: {
+		messageClearLeft: radio.CoalesceCompatible, messageClearRight: radio.CoalesceCompatible,
+		messageAllClear: radio.CoalesceCurrent,
+	},
+	SituationLeft: {
+		messageCarLeft: radio.CoalesceCompatible, messageStillThere: radio.CoalesceReminder,
+		messageClearRight: radio.CoalesceCurrent,
+	},
+	SituationRight: {
+		messageCarRight: radio.CoalesceCompatible, messageStillThere: radio.CoalesceReminder,
+		messageClearLeft: radio.CoalesceCurrent,
+	},
+	SituationThreeWide: {
+		messageCarLeft: radio.CoalesceCompatible, messageCarRight: radio.CoalesceCompatible,
+		messageStillThere: radio.CoalesceReminder, messageThreeWide: radio.CoalesceCurrent,
+	},
+}
 
 type pendingClear struct {
 	intent string
@@ -47,6 +85,10 @@ func (policy *Policy) Reset() { *policy = Policy{} }
 
 func (policy *Policy) ActiveSides() (left, right bool) {
 	return hasLeft(policy.situation), hasRight(policy.situation)
+}
+
+func (policy *Policy) Coalescing(intent string) (uint64, radio.CoalesceValue) {
+	return policy.generation, messageValues[policy.situation][kindForIntent(intent)]
 }
 
 // Evaluate returns at most one intent for the proven situation at nowMS.
@@ -245,4 +287,25 @@ func hasLeft(situation Situation) bool {
 }
 func hasRight(situation Situation) bool {
 	return situation == SituationRight || situation == SituationThreeWide
+}
+
+func kindForIntent(intent string) messageKind {
+	switch intent {
+	case IntentCarLeft:
+		return messageCarLeft
+	case IntentCarRight:
+		return messageCarRight
+	case IntentStillThere:
+		return messageStillThere
+	case IntentClearLeft:
+		return messageClearLeft
+	case IntentClearRight:
+		return messageClearRight
+	case IntentAllClear:
+		return messageAllClear
+	case IntentThreeWide:
+		return messageThreeWide
+	default:
+		return messageUnknown
+	}
 }

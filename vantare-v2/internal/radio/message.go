@@ -31,6 +31,17 @@ const (
 	LocalePTBR Locale = "pt-BR"
 )
 
+// CoalesceValue orders messages that describe the same subject and evidence
+// revision. Producers use a finite table; the bus only compares typed values.
+type CoalesceValue uint8
+
+const (
+	CoalesceUnspecified CoalesceValue = iota
+	CoalesceReminder
+	CoalesceCompatible
+	CoalesceCurrent
+)
+
 // RadioMessage is the bounded, versioned unit accepted by the radio bus.
 // Subject scopes coalescing without giving the bus knowledge of producers.
 type RadioMessage struct {
@@ -45,6 +56,10 @@ type RadioMessage struct {
 	ExpiresAtMS int64             `json:"expiresAtMs"`
 	Locale      Locale            `json:"locale"`
 	Payload     map[string]string `json:"payload"`
+	// CoalesceRevision/Value are internal scheduling metadata. They never
+	// alter radio.v1 JSON or the Wails/SSE presentation contract.
+	CoalesceRevision uint64        `json:"-"`
+	CoalesceValue    CoalesceValue `json:"-"`
 }
 
 // Limits bounds memory, identity and fairness state owned by a Bus.

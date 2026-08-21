@@ -88,6 +88,9 @@ func (bus *Bus) Submit(message RadioMessage) (SubmitResult, error) {
 	if err != nil {
 		return SubmitResult{}, err
 	}
+	// Expired work has no semantic value and must not participate in dedup:
+	// otherwise a valid reminder could be rejected behind a dead specific state.
+	bus.dropExpired(now)
 	if duration := bus.limits.Cooldowns[message.Intent]; duration > 0 {
 		if emitted, ok := bus.cooldowns[message.Intent]; ok && (now < emitted || now-emitted < duration.Milliseconds()) {
 			return SubmitResult{}, nil
@@ -98,6 +101,10 @@ func (bus *Bus) Submit(message RadioMessage) (SubmitResult, error) {
 	for index := range bus.pending {
 		if dedupKey(bus.pending[index].message) == key {
 			result.Coalesced = true
+			if !canReplaceCoalesced(bus.pending[index].message, message) {
+				result.Accepted = false
+				return result, nil
+			}
 			result.Dropped = append(result.Dropped, bus.remove(index).message)
 			break
 		}
@@ -128,6 +135,17 @@ func (bus *Bus) Submit(message RadioMessage) (SubmitResult, error) {
 	return result, nil
 }
 
+func canReplaceCoalesced(current, next RadioMessage) bool {
+	if current.Priority != PriorityP0 || next.Priority != PriorityP0 ||
+		current.CoalesceRevision == 0 || next.CoalesceRevision == 0 {
+		return true
+	}
+	if current.CoalesceRevision != next.CoalesceRevision {
+		return next.CoalesceRevision > current.CoalesceRevision
+	}
+	return next.CoalesceValue > current.CoalesceValue
+}
+
 // Next selects one non-expired message and marks it active.
 func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 	bus.mu.Lock()
@@ -136,13 +154,7 @@ func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 		return nil, false
 	}
 	now := bus.clock.NowMS()
-	for index := 0; index < len(bus.pending); {
-		if now >= bus.pending[index].message.ExpiresAtMS {
-			bus.remove(index)
-			continue
-		}
-		index++
-	}
+	bus.dropExpired(now)
 	if len(bus.pending) == 0 {
 		return nil, false
 	}
@@ -168,6 +180,16 @@ func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.message.Intent) }) }
 	item.done = func() { once.Do(func() { bus.finish(selected.seq) }) }
 	return item, true
+}
+
+func (bus *Bus) dropExpired(now int64) {
+	for index := 0; index < len(bus.pending); {
+		if now >= bus.pending[index].message.ExpiresAtMS {
+			bus.remove(index)
+			continue
+		}
+		index++
+	}
 }
 
 func (bus *Bus) markStarted(intent string) {

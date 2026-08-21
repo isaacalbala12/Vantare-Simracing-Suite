@@ -2,6 +2,7 @@ package spotter
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -58,7 +59,7 @@ func BenchmarkObservationToRadioStarted(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
 	for index := 0; index < b.N; index++ {
-		clock := benchmarkClock{now: 1_000}
+		clock := &benchmarkClock{now: 1_000}
 		producer, err := NewProducer(clock, radio.LocaleES)
 		if err != nil {
 			b.Fatal(err)
@@ -104,7 +105,7 @@ func BenchmarkObservationToRadioStarted(b *testing.B) {
 	}
 }
 
-func benchmarkObservation(tb testing.TB, rivalX float64) engineer.ObservationSnapshotV1 {
+func benchmarkObservation(tb testing.TB, rivalX ...float64) engineer.ObservationSnapshotV1 {
 	tb.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	clock := schema.NewClock(benchmarkField(tb, time.Second), benchmarkField(tb, time.Second), time.Now().UTC())
@@ -116,13 +117,17 @@ func benchmarkObservation(tb testing.TB, rivalX float64) engineer.ObservationSna
 		WorldPosition: benchmarkField(tb, spatial.Position{X: 100, Z: 100}),
 		LocalVelocity: benchmarkField(tb, spatial.LocalVelocity{Z: 40}), Orientation: benchmarkField(tb, orientation),
 	}
-	rival := player
-	rival.Identity.Vehicle = "rival"
-	rival.Player = benchmarkField(tb, false)
-	rival.WorldPosition = benchmarkField(tb, spatial.Position{X: 100 + rivalX, Z: 100})
+	vehicles := []telemetrycore.VehicleState{player}
+	for index, offset := range rivalX {
+		rival := player
+		rival.Identity.Vehicle = identity.VehicleID(fmt.Sprintf("rival-%d", index))
+		rival.Player = benchmarkField(tb, false)
+		rival.WorldPosition = benchmarkField(tb, spatial.Position{X: 100 + offset, Z: 100})
+		vehicles = append(vehicles, rival)
+	}
 	state := derive.FinalState{Observed: telemetrycore.ObservedState{
 		SourceTime: benchmarkField(tb, time.Second), PlayerPresent: benchmarkField(tb, true),
-		VehicleCount: benchmarkField(tb, schema.Count(2)), Vehicles: []telemetrycore.VehicleState{player, rival},
+		VehicleCount: benchmarkField(tb, schema.Count(len(vehicles))), Vehicles: vehicles,
 	}}
 	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)

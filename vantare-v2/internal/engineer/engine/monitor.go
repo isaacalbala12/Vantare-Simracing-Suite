@@ -107,8 +107,8 @@ type Monitor struct {
 	lastStalledFire int64
 
 	// Oil pressure low detection (iter-4, placeholder).
-	// Lee del buffer Extended de LMU si el reader esta configurado.
-	extendedReader       *lmu.ExtendedReader
+	// Lee del buffer Extended via interfaz; LMU es una implementacion registrada.
+	extendedReader       lmu.ExtendedSource
 	lastOilPressureFire  int64
 	lastOilPressureMsg   string
 	lastFuelPressureFire int64
@@ -122,17 +122,18 @@ func NewMonitor() *Monitor {
 	}
 }
 
-// SetExtendedReader asigna un ExtendedReader opcional para leer la senal
-// de advertencia de presion de aceite desde el buffer Extended de LMU.
-//
-// NOTA: El offset actual de mOilPressureWarning (OilPressureWarningOffset)
-// es un placeholder. No hay datos reales de presion de aceite en el buffer
-// Extended de LMU. Esta configuracion prepara la infraestructura para cuando
-// el plugin exponga este campo.
-func (m *Monitor) SetExtendedReader(reader *lmu.ExtendedReader) {
+// SetExtendedReader asigna un ExtendedSource opcional para leer la senal
+// de advertencia de presion de aceite. Acepta cualquier implementacion de
+// lmu.ExtendedSource; la implementacion LMU se registra en el composition root.
+func (m *Monitor) SetExtendedReader(reader lmu.ExtendedSource) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.extendedReader = reader
+}
+
+// SetExtendedSource es alias neutral de SetExtendedReader para inversion de dependencia.
+func (m *Monitor) SetExtendedSource(source lmu.ExtendedSource) {
+	m.SetExtendedReader(source)
 }
 
 // sessionPhaseOK checks whether the current session phase allows engine

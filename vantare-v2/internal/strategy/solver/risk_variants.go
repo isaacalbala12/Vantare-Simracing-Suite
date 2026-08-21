@@ -11,7 +11,6 @@ import (
 const (
 	balancedWorstCaseSlowdown     = 0.05
 	conservativeWorstCaseSlowdown = 0.02
-	fastWorstCaseSlowdown         = 1.00
 )
 
 type uncertaintyEnvelope struct {
@@ -53,7 +52,7 @@ func coherentWorstCase(input SolverInputV2) uncertaintyEnvelope {
 	if full.Projection != nil {
 		perturbProjection(full.Projection, true)
 		perturbProjection(cost.Projection, false)
-		if lower := full.Projection.TyreDegradation.LifeLapsRangeLower; lower != nil && *lower > 0 {
+		if lower := full.Projection.TyreDegradation.LifeLapsRangeLower; full.Projection.TyreDegradation.Presence == sp.PresenceValid && lower != nil && *lower > 0 {
 			full.TyreLifeLaps = int64(math.Floor(*lower))
 		}
 	}
@@ -103,7 +102,7 @@ func perturbProjection(projection *sp.StrategyInputProjectionV2, includeResource
 	if includeResources {
 		perturbConsumption(&projection.FuelConsumption)
 		perturbConsumption(&projection.VirtualEnergyConsumption)
-		if lower := projection.TyreDegradation.LifeLapsRangeLower; lower != nil && *lower > 0 {
+		if lower := projection.TyreDegradation.LifeLapsRangeLower; projection.TyreDegradation.Presence == sp.PresenceValid && lower != nil && *lower > 0 {
 			life := int(math.Floor(*lower))
 			projection.TyreDegradation.LifeLapsEstimate = &life
 		}
@@ -146,10 +145,13 @@ func perturbDeclaredCosts(input *SolverInputV2) {
 	}
 }
 
-func evaluateCandidateEnvelope(envelope uncertaintyEnvelope, decision DecisionVector) (ScenarioEvaluation, bool, []SolverRisk, error) {
+func evaluateCandidateEnvelope(envelope uncertaintyEnvelope, decision DecisionVector, expected ScenarioEvaluation) (ScenarioEvaluation, bool, []SolverRisk, error) {
 	worst, _, err := evaluateDecisionV2(envelope.cost, decision)
 	if err != nil {
 		return ScenarioEvaluation{}, false, nil, err
+	}
+	if worst.TotalSeconds == 0 {
+		worst = expected
 	}
 	_, feasible, err := evaluateDecisionV2(envelope.full, decision)
 	if err != nil {
@@ -263,13 +265,15 @@ func fitmentRiskAge(fitment tyres.Fitment, usage map[string]int64) int64 {
 }
 
 func deriveVariants(candidates []SolverCandidateV2) []SolverVariantV2 {
+	balanced := balancedWorstCaseSlowdown
+	conservative := conservativeWorstCaseSlowdown
 	policies := []struct {
 		kind      SolverVariantKind
 		tolerance WorstCaseTolerance
 	}{
-		{SolverVariantFast, WorstCaseTolerance{AllowHardRisk: true, MaxExpectedSlowdownRatio: fastWorstCaseSlowdown}},
-		{SolverVariantBalanced, WorstCaseTolerance{MaxExpectedSlowdownRatio: balancedWorstCaseSlowdown}},
-		{SolverVariantConservative, WorstCaseTolerance{MaxExpectedSlowdownRatio: conservativeWorstCaseSlowdown}},
+		{SolverVariantFast, WorstCaseTolerance{AllowHardRisk: true}},
+		{SolverVariantBalanced, WorstCaseTolerance{MaxExpectedSlowdownRatio: &balanced}},
+		{SolverVariantConservative, WorstCaseTolerance{MaxExpectedSlowdownRatio: &conservative}},
 	}
 	variants := make([]SolverVariantV2, 0, len(policies))
 	for _, policy := range policies {
@@ -281,7 +285,7 @@ func deriveVariants(candidates []SolverCandidateV2) []SolverVariantV2 {
 			if candidate.Evaluation.TotalSeconds > 0 {
 				slowdown = (candidate.WorstCase.TotalSeconds - candidate.Evaluation.TotalSeconds) / candidate.Evaluation.TotalSeconds
 			}
-			if slowdown > policy.tolerance.MaxExpectedSlowdownRatio {
+			if policy.tolerance.MaxExpectedSlowdownRatio != nil && slowdown > *policy.tolerance.MaxExpectedSlowdownRatio {
 				continue
 			}
 			variants = append(variants, SolverVariantV2{

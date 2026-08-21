@@ -452,8 +452,8 @@ const (
 // WorstCaseTolerance documenta el unico parametro que diferencia variantes.
 // Todas parten del mismo ranking esperado y del mismo conjunto de candidatos.
 type WorstCaseTolerance struct {
-	AllowHardRisk            bool    `json:"allowHardRisk"`
-	MaxExpectedSlowdownRatio float64 `json:"maxExpectedSlowdownRatio"`
+	AllowHardRisk            bool     `json:"allowHardRisk"`
+	MaxExpectedSlowdownRatio *float64 `json:"maxExpectedSlowdownRatio,omitempty"`
 }
 
 type SolverVariantV2 struct {

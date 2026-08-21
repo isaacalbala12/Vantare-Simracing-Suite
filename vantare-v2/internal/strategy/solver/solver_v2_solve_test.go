@@ -706,7 +706,7 @@ func TestSolveV2RankingIsDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SolveV2 repeat: %v", err)
 		}
-		if first.InputHash != again.InputHash || !reflect.DeepEqual(first.Best, again.Best) || !reflect.DeepEqual(first.Candidates, again.Candidates) || !reflect.DeepEqual(first.CandidateDetails, again.CandidateDetails) {
+		if first.InputHash != again.InputHash || !reflect.DeepEqual(first.Best, again.Best) || !reflect.DeepEqual(first.Candidates, again.Candidates) || !reflect.DeepEqual(first.CandidateDetails, again.CandidateDetails) || !reflect.DeepEqual(first.Variants, again.Variants) || !reflect.DeepEqual(first.Sensitivities, again.Sensitivities) {
 			t.Fatalf("ranking changed on attempt %d", attempt)
 		}
 	}

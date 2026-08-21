@@ -20,7 +20,7 @@ const (
 	defaultVEStep       = 1.0
 	maxServiceLevels    = int64(200)
 	maxRejectedDetails  = 8
-	maxRankedCandidates = 32
+	maxRankedCandidates = 8
 )
 
 type serviceResource struct {
@@ -183,6 +183,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		byLap[0] = append(byLap[0], node)
 	}
 	completed := make([]searchNode, 0, maxRankedCandidates)
+	completedWorstFeasible := make([]searchNode, 0, maxRankedCandidates)
 	evaluated := 0
 	pruned := 0
 	budgetExhausted := false
@@ -247,6 +248,9 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 						if afterStint.lap == input.RaceLaps {
 							if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
 								completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+								if afterStint.worstFeasible {
+									completedWorstFeasible = insertRanked(completedWorstFeasible, afterStint, input.Formation.Seconds)
+								}
 							} else {
 								result.addRejected(afterStint, input, code, message)
 							}
@@ -346,6 +350,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	}
 
 	best := completed[0]
+	rankedCompleted := mergeRankedCandidates(completed, completedWorstFeasible, input.Formation.Seconds)
 	result.Feasible = true
 	result.Best = cloneDecision(best.decision)
 	result.SavingPlan = savingPlanForDecision(result.Best)
@@ -395,8 +400,8 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 			Parameter: "savingTimeCostPerLap", Delta: defaultSavingCostSensitivity, ImpactSeconds: savingImpact,
 		})
 	}
-	feasibleDetails := make([]SolverCandidateV2, 0, len(completed))
-	for index, candidate := range completed {
+	feasibleDetails := make([]SolverCandidateV2, 0, len(rankedCompleted))
+	for index, candidate := range rankedCompleted {
 		decision := cloneDecision(candidate.decision)
 		result.Candidates = append(result.Candidates, decision)
 		reason := SolverReason{Code: "ranked_feasible", Message: fmt.Sprintf("candidato factible en posicion %d", index+1)}
@@ -404,7 +409,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 			reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
 		}
 		expected := evaluationForNode(candidate, input.Formation.Seconds)
-		worst, worstFeasible, risks, err := evaluateCandidateEnvelope(envelope, decision)
+		worst, worstFeasible, risks, err := evaluateCandidateEnvelope(envelope, decision, expected)
 		if err != nil {
 			return SolverResultV2{}, err
 		}
@@ -784,7 +789,9 @@ func dominates(
 	}
 	if riskActive {
 		if left.worstFeasible != right.worstFeasible {
-			return left.worstFeasible
+			if !left.worstFeasible {
+				return false
+			}
 		}
 		if left.worstFeasible && (left.worstFuel < right.worstFuel || left.worstVE < right.worstVE || left.worstTyreAge > right.worstTyreAge || !sameTyreUsage(left.worstTyreUsage, right.worstTyreUsage)) {
 			return false
@@ -831,6 +838,32 @@ func insertRanked(nodes []searchNode, candidate searchNode, formation float64) [
 		nodes = nodes[:maxRankedCandidates]
 	}
 	return nodes
+}
+
+func mergeRankedCandidates(expected, worstFeasible []searchNode, formation float64) []searchNode {
+	result := append([]searchNode(nil), expected...)
+	seen := make(map[string]bool, len(result)+len(worstFeasible))
+	for _, node := range result {
+		seen[decisionKey(node.decision)] = true
+	}
+	for _, node := range worstFeasible {
+		key := decisionKey(node.decision)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		index := len(result)
+		for current, existing := range result {
+			if betterNode(node, existing, formation) {
+				index = current
+				break
+			}
+		}
+		result = append(result, searchNode{})
+		copy(result[index+1:], result[index:])
+		result[index] = node
+	}
+	return result
 }
 
 func cloneNode(node searchNode) searchNode {

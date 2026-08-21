@@ -17,6 +17,30 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-732 / F2(c) (2026-08-21, lista para review):
+
+- El motor Go importa las dos claves localStorage mediante un journal durable
+  de dos commits: backup raw antes de parsear y publicación canónica después
+  de confirmar el fingerprint. Los siete fixtures golden atraviesan el flujo
+  completo; una property de 32 casos prueba `dos veces = una`, y el crash
+  simulado entre commits se recupera sin duplicar.
+- Las 28 filas de la matriz tienen política explícita y comprobada. Corruptos,
+  colisiones, shapes parciales y referencias colgantes se conservan en
+  cuarentena; defaults sintéticos llevan `legacy_synthetic_default` y nunca se
+  materializa `startAt=now`. Documento detallado:
+  `docs/strategy-planner/isa-732-migracion-localstorage.md`.
+- Rollback restaura el snapshot canónico anterior y archiva el documento
+  posterior. No toca el lifecycle v1. Orbit aporta diálogo accesible de
+  preview/confirmación/resultado/rollback; tras éxito el store legacy queda
+  read-only, pero la página sigue leyéndolo hasta F2(d).
+- Gates: Go Strategy+app, frontend 375/2.899, typecheck, build y diff-check
+  verdes. Sin dependencia nueva. El smoke visual browser no es evidencia
+  Wails: la app completa fuera de Wails activó un error runtime preexistente y
+  T3 Preview no devolvió snapshot. El localStorage real de Isaac se reserva al
+  gate F2.
+- Sin PR, merge, promoción ni release. Siguiente acción: review del
+  orquestador de #732; después continúa F2(d), no antes.
+
 Actualización ISA-730 / F2(b) (2026-08-21, lista para review):
 
 - `internal/app.StrategyApplicationBridge` posee el binding Wails
@@ -398,6 +422,6 @@ sintético; ninguna implementación de producto fuera de tasks aprobados.
 
 ## Última actualización
 
-2026-08-21, ISA-729: F2(a) implementada en rama propia con documento v2
-durable, migración v1→v2, API exacta para Orbit y property test de referencias;
-pendiente review del orquestador, sin integración ni promoción.
+2026-08-21, ISA-732: F2(c) implementada en rama propia con migración
+transaccional 28/28, cuarentena, idempotencia/crash retry, rollback semántico y
+diálogo mínimo; pendiente review del orquestador, sin integración ni promoción.

@@ -85,6 +85,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     // El roster entra como un evento más, no como el único posible.
     expect(within(events).getByText("4 Horas de Imola")).toBeTruthy();
     expect(screen.queryByTestId("orbit-strategy-others")).toBeNull();
+    expect(screen.getByTestId("orbit-strategy-migrate").textContent).toContain("Migrar");
 
     // Y «Mis estrategias» devuelve al menú de entrada (ISA-377).
     fireEvent.click(screen.getByTestId("orbit-strategy-new-event"));

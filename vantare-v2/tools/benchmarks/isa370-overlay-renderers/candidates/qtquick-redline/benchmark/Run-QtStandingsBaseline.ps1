@@ -39,6 +39,7 @@ $sceneByScenario = [ordered]@{
     full = 'standings-full'
     enter = 'standings-car-enters'
     retirement = 'standings-retirement'
+    stress = 'standings-full'
 }
 New-Item -ItemType Directory -Path $output | Out-Null
 $oldPath = $env:PATH

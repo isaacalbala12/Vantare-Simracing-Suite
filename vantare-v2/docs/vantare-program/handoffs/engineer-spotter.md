@@ -105,8 +105,9 @@ productivo sin crear un segundo reader.
 
 - Rama activa: `vantareapp/isa-718-motor-familias`.
 - Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
-- Entrega: F4 #718 implementada en tres commits atómicos; PR draft #739 abierto
-  a `nightly`, sin integración. F3 permanece en PR draft #733.
+- Entrega: F4 #718 y su corrección adversarial `86c3105a` están en la rama
+  aislada; PR draft #739 abierto a `nightly`, sin integración. F3 permanece en
+  PR draft #733.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -352,12 +353,25 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada ISA-718 y ejecutar el gate LMU descrito en
+Revisar de nuevo la corrección adversarial de ISA-718 y ejecutar el gate LMU descrito en
 `docs/engineer/families-radio-isa-718.md`, además del gate Spotter de ISA-717.
 Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
 integración en `nightly` o promoción.
 
 ## Última actualización
+
+2026-08-21, corrección del review adversarial de ISA-718 / PR #739: los cuatro
+P1 y cuatro P2 quedan cubiertos por regresiones RED→GREEN. Las cinco familias
+exigen capabilities y campos frescos, comparten la identidad completa de
+Spotter, resetean solo sus intents al perder evidencia y confirman one-shots o
+cursores únicamente con ACK `started`. Los toggles de Spotter ya no cancelan
+familias nuevas ni apagan el rollback legacy; la matriz 2×2 demuestra entrega
+real y exclusiva. Pit entry/exit vuelve a P3 Information, timings deja el
+cooldown al bus y fuel exige capacity positiva para autonomía. El mapper LMU
+propaga el driver observado al header. Commit de código `86c3105a`; focal,
+vet, race focal, repetición de regresiones y suite Go global pasan localmente.
+Pendientes: push, CI remoto, re-review y gate LMU humano; sin merge ni
+promoción.
 
 2026-08-21, ISA-718 / F4 implementa cinco familias declarativas sobre el radio
 bus con 13 intents, textos exactos del catálogo, prioridades P2/P3, cooldowns,

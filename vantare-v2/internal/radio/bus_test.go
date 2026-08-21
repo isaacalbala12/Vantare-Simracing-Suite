@@ -115,15 +115,19 @@ func TestSubmitPolicies(t *testing.T) {
 			t.Fatalf("subject-scoped dedup Next = %q", got)
 		}
 	})
-	t.Run("cooldown is per intent", func(t *testing.T) {
+	t.Run("cooldown is per intent and starts on the started ACK", func(t *testing.T) {
 		limits := DefaultLimits()
 		limits.Cooldowns = map[string]time.Duration{"gap": time.Second}
 		clock := newFakeClock(100)
 		bus := newTestBus(t, limits, clock)
 		_, _ = bus.Submit(testMessage("first", "gap", "a", PriorityP2, 100))
-		if got := nextID(t, bus); got != "first" {
-			t.Fatal(got)
+		item, ok := bus.Next(context.Background())
+		if !ok || item.Message.ID != "first" {
+			t.Fatalf("Next = %+v, %v", item, ok)
 		}
+		item.Started()
+		item.Started()
+		item.Done()
 		result, err := bus.Submit(testMessage("blocked", "gap", "b", PriorityP2, 101))
 		if err != nil || result.Accepted {
 			t.Fatalf("cooldown Submit = %+v, %v", result, err)
@@ -134,6 +138,28 @@ func TestSubmitPolicies(t *testing.T) {
 		result, err = bus.Submit(allowed)
 		if err != nil || !result.Accepted {
 			t.Fatalf("post-cooldown Submit = %+v, %v", result, err)
+		}
+	})
+	t.Run("delivery cancelled before start leaves no cooldown", func(t *testing.T) {
+		limits := DefaultLimits()
+		limits.Cooldowns = map[string]time.Duration{"gap": time.Second}
+		clock := newFakeClock(100)
+		bus := newTestBus(t, limits, clock)
+		_, _ = bus.Submit(testMessage("victim", "gap", "a", PriorityP2, 100))
+		item, ok := bus.Next(context.Background())
+		if !ok {
+			t.Fatal("Next() returned no item")
+		}
+		if _, err := bus.Submit(testMessage("spotter", "spotter.car_left", "car", PriorityP0, 101)); err != nil {
+			t.Fatalf("spotter Submit error = %v", err)
+		}
+		if !errors.Is(context.Cause(item.Context), ErrPreemptedBySpotter) {
+			t.Fatal("expected active delivery preempted by spotter")
+		}
+		item.Done()
+		result, err := bus.Submit(testMessage("retry", "gap", "a", PriorityP2, 102))
+		if err != nil || !result.Accepted {
+			t.Fatalf("resubmit after preemption = %+v, %v (no debe haber cooldown sin started)", result, err)
 		}
 	})
 	t.Run("queue pressure evicts only worse", func(t *testing.T) {

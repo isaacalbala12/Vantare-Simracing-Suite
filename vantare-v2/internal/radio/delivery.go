@@ -5,9 +5,14 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 )
+
+// audioResolveTimeout bounds the cache lookup so a slow cache can never delay
+// the radio: a timeout is an audio miss and the delivery stays visual.
+const audioResolveTimeout = 100 * time.Millisecond
 
 var (
 	ErrInvalidRequest    = errors.New("radio delivery request is invalid")
@@ -239,7 +244,9 @@ func (port DualPort) Deliver(ctx context.Context, request Request, reporter Repo
 	}
 	path := ""
 	if port.Audio != nil && port.Player != nil {
-		path, _ = port.Audio.ResolveCached(ctx, presentation.VoiceText, presentation.Channel)
+		resolveCtx, cancelResolve := context.WithTimeout(ctx, audioResolveTimeout)
+		path, _ = port.Audio.ResolveCached(resolveCtx, presentation.VoiceText, presentation.Channel)
+		cancelResolve()
 	}
 	if reason := cancellationReason(ctx, request.Message.ExpiresAtMS, now.NowMS()); reason != ReasonNone {
 		return reporter.Acknowledge(StateCancelled, reason)

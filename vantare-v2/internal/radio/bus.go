@@ -34,6 +34,7 @@ type SubmitResult struct {
 type Item struct {
 	Message RadioMessage
 	Context context.Context
+	started func()
 	done    func()
 }
 
@@ -41,6 +42,15 @@ type Item struct {
 func (item *Item) Done() {
 	if item != nil && item.done != nil {
 		item.done()
+	}
+}
+
+// Started records the intent cooldown. Call it on the `started` ACK: a
+// delivery cancelled or preempted before starting must never advance a
+// cooldown, so a legitimate resubmission is not suppressed.
+func (item *Item) Started() {
+	if item != nil && item.started != nil {
+		item.started()
 	}
 }
 
@@ -149,15 +159,21 @@ func (bus *Bus) Next(parent context.Context) (*Item, bool) {
 	index := bus.nextIndex()
 	selected := bus.remove(index)
 	bus.recordChoice(index, selected.message.Priority)
-	bus.cooldowns[selected.message.Intent] = now
 	ctx, cancel := context.WithCancelCause(parent)
 	bus.activeSeq = selected.seq
 	bus.active = selected.message
 	bus.cancel = cancel
-	var once sync.Once
+	var once, startOnce sync.Once
 	item := &Item{Message: selected.message, Context: ctx}
+	item.started = func() { startOnce.Do(func() { bus.markStarted(selected.message.Intent) }) }
 	item.done = func() { once.Do(func() { bus.finish(selected.seq) }) }
 	return item, true
+}
+
+func (bus *Bus) markStarted(intent string) {
+	bus.mu.Lock()
+	defer bus.mu.Unlock()
+	bus.cooldowns[intent] = bus.clock.NowMS()
 }
 
 func (bus *Bus) finish(seq uint64) {

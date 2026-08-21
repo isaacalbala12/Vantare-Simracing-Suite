@@ -111,6 +111,25 @@ func TestRunRequiresOutputOutsideInput(t *testing.T) {
 	}
 }
 
+func TestRunWritesCompactDeterministicSummary(t *testing.T) {
+	input := filepath.Join("testdata", "input")
+	output := filepath.Join(t.TempDir(), "summary.json")
+	if err := run([]string{"--in", input, "--out", output}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	got, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	want, err := buildSummary(input)
+	if err != nil {
+		t.Fatalf("build expected summary: %v", err)
+	}
+	if !bytes.Equal(got, want) || bytes.Contains(got, []byte{'\n'}) {
+		t.Fatal("CLI output is not the exact compact deterministic summary")
+	}
+}
+
 func findEnvironment(t *testing.T, value summary, environment string) environmentSummary {
 	t.Helper()
 	for _, candidate := range value.Environments {

@@ -181,6 +181,9 @@ void StandingsModel::apply(const ReplayRecord &record)
         return;
     }
     const bool rowsChanged = applyRows(record);
+    if (rowsChanged) {
+        m_visualClassesDirty = true;
+    }
     const QJsonObject &value = record.viewModel;
     const QString activeClass = stringValue(value, "activeClass");
     const QString sessionLabel = stringValue(value, "sessionLabel");
@@ -197,13 +200,14 @@ void StandingsModel::apply(const ReplayRecord &record)
         m_columns = columns;
         emit metadataChanged();
     }
-    if (rowsChanged) {
-        emit visualClassesChanged();
-    }
+    emit visualClassesChanged();
 }
 
 QVariantList StandingsModel::visualClasses() const
 {
+    if (!m_visualClassesDirty) {
+        return m_visualClasses;
+    }
     double fastestSeconds = std::numeric_limits<double>::infinity();
     for (const QJsonObject &row : rows()) {
         const double candidate = lapSeconds(row.value(QStringLiteral("bestLapText")).toString());
@@ -268,7 +272,9 @@ QVariantList StandingsModel::visualClasses() const
         classes.append(QJsonObject{{QStringLiteral("vehicleClass"), group.vehicleClass},
                                    {QStringLiteral("rows"), group.rows}});
     }
-    return classes.toVariantList();
+    m_visualClasses = classes.toVariantList();
+    m_visualClassesDirty = false;
+    return m_visualClasses;
 }
 
 RelativeModel::RelativeModel(QObject *parent)

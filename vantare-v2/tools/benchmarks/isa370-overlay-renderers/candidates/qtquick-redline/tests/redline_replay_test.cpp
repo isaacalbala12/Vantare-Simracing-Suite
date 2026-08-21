@@ -96,7 +96,7 @@ private slots:
     void rejectsRecordUpdateHzThatDiffersFromSceneContract();
     void keyedStandingsUpdatePreservesExistingRow();
     void keyedReconciliationEmitsCausalInsertMoveRemoveAndChange();
-    void identicalStandingsSnapshotDoesNotRepublishRows();
+    void identicalStandingsSnapshotKeepsCadenceAndProjection();
     void keyedModelsMatchEveryPackagedReplayFrameWithoutReset();
     void typedListModelsExposeWidgetMetadata();
     void standingsVisualClassesDerivePitAndSessionBest();
@@ -331,7 +331,7 @@ void RedlineReplayTest::keyedReconciliationEmitsCausalInsertMoveRemoveAndChange(
     QCOMPARE(reset.count(), 0);
 }
 
-void RedlineReplayTest::identicalStandingsSnapshotDoesNotRepublishRows()
+void RedlineReplayTest::identicalStandingsSnapshotKeepsCadenceAndProjection()
 {
     StandingsModel model;
     const ReplayRecord snapshot = recordWithRows(1, QJsonArray{
@@ -343,11 +343,13 @@ void RedlineReplayTest::identicalStandingsSnapshotDoesNotRepublishRows()
     QSignalSpy rowsChanged(&model, &QAbstractItemModel::dataChanged);
 
     model.apply(snapshot);
+    const QVariantList firstProjection = model.visualClasses();
     model.apply(snapshot);
 
-    QCOMPARE(visualClassesChanged.count(), 1);
+    QCOMPARE(visualClassesChanged.count(), 2);
     QCOMPARE(rowsChanged.count(), 0);
     QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.visualClasses(), firstProjection);
 }
 
 void RedlineReplayTest::keyedModelsMatchEveryPackagedReplayFrameWithoutReset()

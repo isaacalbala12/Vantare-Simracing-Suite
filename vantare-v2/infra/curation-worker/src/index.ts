@@ -201,10 +201,11 @@ async function requireBuildAdmission(request: Request, env: Env): Promise<Respon
 async function coordinator(env: Env, command: UploadCommand | DeleteCommand | RotateCommand | QuotaCommand): Promise<Response> {
   try {
     const stub = env.INGEST_COORDINATOR.getByName("global");
-    return await stub.fetch("https://coordinator.internal/", {
+    const result = await stub.fetch("https://coordinator.internal/", {
       method: "POST",
       body: JSON.stringify(command),
     });
+    return secureResponse(result);
   } catch {
     return response(503, { error: "security_state_unavailable" });
   }
@@ -248,4 +249,14 @@ function response(status: number, body: Record<string, unknown>): Response {
       "x-frame-options": "DENY",
     },
   });
+}
+
+function secureResponse(source: Response): Response {
+  const headers = new Headers(source.headers);
+  headers.set("cache-control", "no-store");
+  headers.set("content-security-policy", "default-src 'none'");
+  headers.set("referrer-policy", "no-referrer");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  return new Response(source.body, { status: source.status, headers });
 }

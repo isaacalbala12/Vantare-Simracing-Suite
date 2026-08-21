@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
@@ -92,6 +93,7 @@ type Observation struct {
 	PitStopCount   schema.Field[pit.StopCount]
 	InPit          schema.Field[pit.InPit]
 	Fuel           schema.Field[energy.Fuel]
+	Damage         schema.Field[damage.State]
 	Vehicles       []VehicleObservation
 	REST           RESTObservation
 	MatrixVersion  uint16
@@ -137,6 +139,7 @@ type VehicleObservation struct {
 	WorldPosition    schema.Field[spatial.Position]
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
+	Damage           schema.Field[damage.State]
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -380,6 +383,7 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 		// native comparison is not available yet, rather than a real 0.000 s.
 		row.DeltaBest = schema.MissingField[session.DeltaSeconds]()
 	}
+	row.Damage = readDamageField(buf, base)
 }
 
 func readPositionField(buf []byte, offset int) schema.Field[spatial.Position] {
@@ -469,6 +473,51 @@ func publishPlayer(result *Observation, player VehicleObservation) {
 	result.PitStopCount = player.PitStopCount
 	result.InPit = player.InPit
 	result.Fuel = player.Fuel
+	result.Damage = player.Damage
+}
+
+func readDamageField(buf []byte, base int) schema.Field[damage.State] {
+	overheatingRaw := buf[base+lmu13Layout.Telemetry.Overheating.Offset]
+	detachedRaw := buf[base+lmu13Layout.Telemetry.Detached.Offset]
+	if overheatingRaw > 1 || detachedRaw > 1 {
+		return invalid[damage.State]()
+	}
+	var dents [8]damage.Severity
+	for i := 0; i < 8; i++ {
+		dents[i] = damage.Severity(buf[base+lmu13Layout.Telemetry.DentSeverity.Offset+i])
+	}
+	wheelFL := buf[base+lmu13Layout.Telemetry.WheelDetachedFL.Offset]
+	wheelFR := buf[base+lmu13Layout.Telemetry.WheelDetachedFR.Offset]
+	wheelRL := buf[base+lmu13Layout.Telemetry.WheelDetachedRL.Offset]
+	wheelRR := buf[base+lmu13Layout.Telemetry.WheelDetachedRR.Offset]
+	for _, v := range []byte{wheelFL, wheelFR, wheelRL, wheelRR} {
+		if v > 1 {
+			return invalid[damage.State]()
+		}
+	}
+	count := uint8(0)
+	if wheelFL == 1 {
+		count++
+	}
+	if wheelFR == 1 {
+		count++
+	}
+	if wheelRL == 1 {
+		count++
+	}
+	if wheelRR == 1 {
+		count++
+	}
+	state := damage.State{
+		Dents:              dents,
+		Overheating:        overheatingRaw == 1,
+		Detached:           detachedRaw == 1,
+		WheelDetachedCount: count,
+	}
+	if !state.Valid() {
+		return invalid[damage.State]()
+	}
+	return observed(state)
 }
 
 func parseSector(value int8) (schema.Field[standings.Sector], bool) {

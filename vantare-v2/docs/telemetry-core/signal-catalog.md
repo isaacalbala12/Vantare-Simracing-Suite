@@ -50,6 +50,10 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 44 | `spatial.local_velocity` | spatial | m/s | unknown | appended | Vehicle-local XYZ velocity in m/s; axes are +X left, +Y up and +Z rearward. |
 | 45 | `session.native_delta_best` | session | seconds | unknown | appended | Signed simulator-provided player delta to the personal best lap; validity remains explicit. |
 | 46 | `session.previous_lap_delta` | session | seconds | unknown | appended | Signed player delta against the most recent complete valid lap observed in the current session. |
+| 47 | `damage.dents` | vehicle | count | [0,255] | appended | Eight dent severities (0=none) from LMU mDentSeverity[8]; observed on the player telemetry row. |
+| 48 | `damage.overheating` | vehicle | boolean | unsupported | appended | Whether the overheating icon is shown (LMU mOverheating). |
+| 49 | `damage.detached` | vehicle | boolean | unsupported | appended | Whether any non-wheel parts are detached (LMU mDetached). |
+| 50 | `damage.wheel_detached_count` | vehicle | count | [0,4] | appended | Count of detached wheels (0..4) from LMU wheel mDetached. |
 
 ## Tombstoned IDs
 

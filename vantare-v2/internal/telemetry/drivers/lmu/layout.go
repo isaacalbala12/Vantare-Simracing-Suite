@@ -122,6 +122,13 @@ type telemetryLayout struct {
 	FuelLiters         layoutField
 	FuelCapacityLiters layoutField
 	DeltaBest          layoutField
+	Overheating        layoutField
+	Detached           layoutField
+	DentSeverity       layoutField
+	WheelDetachedFL    layoutField
+	WheelDetachedFR    layoutField
+	WheelDetachedRL    layoutField
+	WheelDetachedRR    layoutField
 }
 
 type layoutContract struct {
@@ -200,6 +207,13 @@ var lmu13Layout = layoutContract{
 		FuelLiters:         telemetryField("telemetry.fuel_liters", 524, sourceFloat64, 1),
 		FuelCapacityLiters: telemetryField("telemetry.fuel_capacity_liters", 608, sourceFloat64, 1),
 		DeltaBest:          telemetryField("telemetry.delta_best", 696, sourceFloat64, 1),
+		Overheating:        telemetryField("telemetry.overheating", 541, sourceUint8, 1),
+		Detached:           telemetryField("telemetry.detached", 542, sourceUint8, 1),
+		DentSeverity:       telemetryField("telemetry.dent_severity", 544, sourceUint8, 8),
+		WheelDetachedFL:    telemetryField("telemetry.wheel_detached_fl", 1026, sourceUint8, 1),
+		WheelDetachedFR:    telemetryField("telemetry.wheel_detached_fr", 1286, sourceUint8, 1),
+		WheelDetachedRL:    telemetryField("telemetry.wheel_detached_rl", 1546, sourceUint8, 1),
+		WheelDetachedRR:    telemetryField("telemetry.wheel_detached_rr", 1806, sourceUint8, 1),
 	},
 }
 
@@ -246,5 +260,12 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Telemetry.FuelLiters,
 		layout.Telemetry.FuelCapacityLiters,
 		layout.Telemetry.DeltaBest,
+		layout.Telemetry.Overheating,
+		layout.Telemetry.Detached,
+		layout.Telemetry.DentSeverity,
+		layout.Telemetry.WheelDetachedFL,
+		layout.Telemetry.WheelDetachedFR,
+		layout.Telemetry.WheelDetachedRL,
+		layout.Telemetry.WheelDetachedRR,
 	}
 }

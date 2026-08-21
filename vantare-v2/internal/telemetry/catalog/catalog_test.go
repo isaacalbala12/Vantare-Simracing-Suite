@@ -111,6 +111,10 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalSpatialLocalVelocity, "spatial.local_velocity", schema.DomainSpatial},
 		{SignalSessionNativeDeltaBest, "session.native_delta_best", schema.DomainSession},
 		{SignalSessionPreviousLapDelta, "session.previous_lap_delta", schema.DomainSession},
+		{SignalDamageDents, "damage.dents", schema.DomainVehicle},
+		{SignalDamageOverheating, "damage.overheating", schema.DomainVehicle},
+		{SignalDamageDetached, "damage.detached", schema.DomainVehicle},
+		{SignalDamageWheelDetachedCount, "damage.wheel_detached_count", schema.DomainVehicle},
 	}
 
 	got := All()
@@ -155,14 +159,18 @@ func TestCatalogISA129IDsAreStableAndAppendOnly(t *testing.T) {
 		SignalSpatialLocalVelocity,
 		SignalSessionNativeDeltaBest,
 		SignalSessionPreviousLapDelta,
+		SignalDamageDents,
+		SignalDamageOverheating,
+		SignalDamageDetached,
+		SignalDamageWheelDetachedCount,
 	}
 	for index, id := range appended {
 		if want := SignalID(25 + index); id != want {
 			t.Fatalf("appended ID at index %d = %d, want %d", index, id, want)
 		}
 	}
-	if got := len(All()); got != 46 {
-		t.Fatalf("catalog definitions = %d, want 46", got)
+	if got := len(All()); got != 50 {
+		t.Fatalf("catalog definitions = %d, want 50", got)
 	}
 }
 
@@ -221,6 +229,10 @@ func TestCatalogISA129ReuseHardenAppendMatrix(t *testing.T) {
 		{SignalSpatialLocalVelocity, LedgerAppended, schema.UnitMetersPerSecond, schema.UnknownRange()},
 		{SignalSessionNativeDeltaBest, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
 		{SignalSessionPreviousLapDelta, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
+		{SignalDamageDents, LedgerAppended, schema.UnitCount, schema.ClosedRange(0, 255)},
+		{SignalDamageOverheating, LedgerAppended, schema.UnitBoolean, schema.UnsupportedRange()},
+		{SignalDamageDetached, LedgerAppended, schema.UnitBoolean, schema.UnsupportedRange()},
+		{SignalDamageWheelDetachedCount, LedgerAppended, schema.UnitCount, schema.ClosedRange(0, 4)},
 	}
 
 	for _, tt := range tests {

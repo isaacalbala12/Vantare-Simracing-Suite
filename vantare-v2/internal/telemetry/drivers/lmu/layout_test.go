@@ -84,6 +84,13 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Telemetry.FuelLiters, scopeTelemetryRow, 524, sourceFloat64, 1},
 		{lmu13Layout.Telemetry.FuelCapacityLiters, scopeTelemetryRow, 608, sourceFloat64, 1},
 		{lmu13Layout.Telemetry.DeltaBest, scopeTelemetryRow, 696, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.Overheating, scopeTelemetryRow, 541, sourceUint8, 1},
+		{lmu13Layout.Telemetry.Detached, scopeTelemetryRow, 542, sourceUint8, 1},
+		{lmu13Layout.Telemetry.DentSeverity, scopeTelemetryRow, 544, sourceUint8, 8},
+		{lmu13Layout.Telemetry.WheelDetachedFL, scopeTelemetryRow, 1026, sourceUint8, 1},
+		{lmu13Layout.Telemetry.WheelDetachedFR, scopeTelemetryRow, 1286, sourceUint8, 1},
+		{lmu13Layout.Telemetry.WheelDetachedRL, scopeTelemetryRow, 1546, sourceUint8, 1},
+		{lmu13Layout.Telemetry.WheelDetachedRR, scopeTelemetryRow, 1806, sourceUint8, 1},
 	}
 
 	if lmu13Layout.Version != "1.3.0.0" || lmu13Layout.ObjectSize != 324820 {
@@ -271,7 +278,6 @@ func TestLMU13LayoutAdmitsNoExcludedFields(t *testing.T) {
 		"vehicle.car_number",
 		"vehicle.tyre_compound",
 		"vehicle.virtual_energy",
-		"vehicle.damage",
 		"weather",
 	} {
 		if _, ok := admitted[excluded]; ok {

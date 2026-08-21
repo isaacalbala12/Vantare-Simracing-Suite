@@ -1,0 +1,122 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vantare-curation-worker-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-20",
+  "workers_dev": false,
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  "vars": {
+    "CURATION_ENV": "test",
+    "QUOTA_CREDENTIAL_DAY_OBJECTS": "20",
+    "QUOTA_CREDENTIAL_MONTH_OBJECTS": "200",
+    "QUOTA_CREDENTIAL_DAY_BYTES": "1310720",
+    "QUOTA_CREDENTIAL_MONTH_BYTES": "13107200",
+    "QUOTA_IP_DAY_OBJECTS": "2",
+    "QUOTA_IP_MONTH_OBJECTS": "1000",
+    "QUOTA_IP_DAY_BYTES": "1310720",
+    "QUOTA_IP_MONTH_BYTES": "65536000",
+    "QUOTA_GLOBAL_DAY_OBJECTS": "1000",
+    "QUOTA_GLOBAL_MONTH_OBJECTS": "10000",
+    "QUOTA_GLOBAL_DAY_BYTES": "65536000",
+    "QUOTA_GLOBAL_MONTH_BYTES": "655360000",
+    "QUOTA_CREDENTIAL_COMBINATION_MONTH_OBJECTS": "20"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "INGEST_COORDINATOR", "class_name": "IngestCoordinator" }
+    ]
+  },
+  "r2_buckets": [
+    { "binding": "CURATION_BUCKET", "bucket_name": "vantare-curation-test" }
+  ],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["IngestCoordinator"] }
+  ],
+  "triggers": { "crons": ["17 3 * * *"] },
+  "env": {
+    "test": {
+      "name": "vantare-curation-worker-test",
+      "vars": {
+        "CURATION_ENV": "test",
+        "QUOTA_CREDENTIAL_DAY_OBJECTS": "20",
+        "QUOTA_CREDENTIAL_MONTH_OBJECTS": "200",
+        "QUOTA_CREDENTIAL_DAY_BYTES": "1310720",
+        "QUOTA_CREDENTIAL_MONTH_BYTES": "13107200",
+        "QUOTA_IP_DAY_OBJECTS": "100",
+        "QUOTA_IP_MONTH_OBJECTS": "1000",
+        "QUOTA_IP_DAY_BYTES": "6553600",
+        "QUOTA_IP_MONTH_BYTES": "65536000",
+        "QUOTA_GLOBAL_DAY_OBJECTS": "1000",
+        "QUOTA_GLOBAL_MONTH_OBJECTS": "10000",
+        "QUOTA_GLOBAL_DAY_BYTES": "65536000",
+        "QUOTA_GLOBAL_MONTH_BYTES": "655360000",
+        "QUOTA_CREDENTIAL_COMBINATION_MONTH_OBJECTS": "20"
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "INGEST_COORDINATOR", "class_name": "IngestCoordinator" }
+        ]
+      },
+      "r2_buckets": [
+        { "binding": "CURATION_BUCKET", "bucket_name": "vantare-curation-test" }
+      ],
+      "triggers": { "crons": ["17 3 * * *"] }
+    },
+    "controlled-capture": {
+      "name": "vantare-curation-worker-controlled-capture",
+      "vars": {
+        "CURATION_ENV": "controlled-capture",
+        "QUOTA_CREDENTIAL_DAY_OBJECTS": "20",
+        "QUOTA_CREDENTIAL_MONTH_OBJECTS": "200",
+        "QUOTA_CREDENTIAL_DAY_BYTES": "1310720",
+        "QUOTA_CREDENTIAL_MONTH_BYTES": "13107200",
+        "QUOTA_IP_DAY_OBJECTS": "100",
+        "QUOTA_IP_MONTH_OBJECTS": "1000",
+        "QUOTA_IP_DAY_BYTES": "6553600",
+        "QUOTA_IP_MONTH_BYTES": "65536000",
+        "QUOTA_GLOBAL_DAY_OBJECTS": "1000",
+        "QUOTA_GLOBAL_MONTH_OBJECTS": "10000",
+        "QUOTA_GLOBAL_DAY_BYTES": "65536000",
+        "QUOTA_GLOBAL_MONTH_BYTES": "655360000",
+        "QUOTA_CREDENTIAL_COMBINATION_MONTH_OBJECTS": "20"
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "INGEST_COORDINATOR", "class_name": "IngestCoordinator" }
+        ]
+      },
+      "r2_buckets": [
+        { "binding": "CURATION_BUCKET", "bucket_name": "vantare-curation-controlled-capture" }
+      ],
+      "triggers": { "crons": ["17 3 * * *"] }
+    },
+    "production-community": {
+      "name": "vantare-curation-worker-production-community",
+      "vars": {
+        "CURATION_ENV": "production-community",
+        "QUOTA_CREDENTIAL_DAY_OBJECTS": "20",
+        "QUOTA_CREDENTIAL_MONTH_OBJECTS": "200",
+        "QUOTA_CREDENTIAL_DAY_BYTES": "1310720",
+        "QUOTA_CREDENTIAL_MONTH_BYTES": "13107200",
+        "QUOTA_IP_DAY_OBJECTS": "100",
+        "QUOTA_IP_MONTH_OBJECTS": "1000",
+        "QUOTA_IP_DAY_BYTES": "6553600",
+        "QUOTA_IP_MONTH_BYTES": "65536000",
+        "QUOTA_GLOBAL_DAY_OBJECTS": "1000",
+        "QUOTA_GLOBAL_MONTH_OBJECTS": "10000",
+        "QUOTA_GLOBAL_DAY_BYTES": "65536000",
+        "QUOTA_GLOBAL_MONTH_BYTES": "655360000",
+        "QUOTA_CREDENTIAL_COMBINATION_MONTH_OBJECTS": "20"
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "INGEST_COORDINATOR", "class_name": "IngestCoordinator" }
+        ]
+      },
+      "r2_buckets": [
+        { "binding": "CURATION_BUCKET", "bucket_name": "vantare-curation-production-community" }
+      ],
+      "triggers": { "crons": ["17 3 * * *"] }
+    }
+  }
+}

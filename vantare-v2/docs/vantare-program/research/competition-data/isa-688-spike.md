@@ -102,8 +102,8 @@ La interfaz pública actual de RaceCenter aporta una pieza adicional:
   `coherent_local_storage.json`, extrae el token de sesión actual de LMU y lo
   envía a RaceCenter para efectuar una vinculación persistente;
 - el frontend consulta su propio `/api/nakama/events` sin autenticación y lo
-  refresca cada 30 segundos; ese endpoint entrega catálogo de eventos, no el
-  histórico completo de cada piloto.
+  refresca cada 30 segundos. Una primera lectura solo había caracterizado ese
+  catálogo; la auditoría profunda posterior identifica más rutas públicas.
 
 Esto explica cómo RaceCenter salva el hueco de credenciales, pero no convierte
 el mecanismo en un contrato oficial ni demuestra que el backend actual de LMU
@@ -111,6 +111,79 @@ sea Nakama de extremo a extremo. LMU 1.4 anunció que RaceOS sustituyó una capa
 de terceros, y la observación local actual solo vio RaceOS. Los nombres internos
 de RaceCenter pueden ser heredados o describir una capa aún situada detrás de
 RaceOS.
+
+### Auditoría profunda de RaceCenter — 2026-08-21
+
+RaceCenter no es únicamente una interfaz HTML. Sus bundles públicos y las
+peticiones de su propia UI revelan endpoints JSON sin autenticación suficientes
+para reproducir gran parte de su experiencia visible:
+
+- `/api/rankings` devuelve ranking paginado, nacionalidad, DR/SR actuales,
+  cambios, número de carreras y última carrera. La consulta global observada
+  contenía unos 225.000 pilotos clasificados;
+- `/api/drivers/{id}/racecontrol` devuelve perfil DR/SR y agregados de carreras,
+  victorias, podios, poles, vueltas y abandonos;
+- `/api/drivers/{id}/race-history` devuelve histórico paginado con evento,
+  circuito, posiciones general/de clase, split, vueltas, coche, equipo y deltas
+  DR/SR;
+- `/api/ratings/history` devuelve las series históricas DR y SR y sus estados
+  actuales;
+- `/api/live-players` devuelve pilotos activos con rating y última carrera;
+- `/api/nakama/events` devuelve el catálogo actual de eventos, horarios,
+  clases, vehículos y registros cuando existen;
+- `/api/members-map` enlaza Steam IDs con perfiles internos de RaceCenter para
+  aproximadamente 7.500 miembros.
+
+Las respuestas comprobadas usan caché pública de 60 a 300 segundos y no
+mostraron autenticación, contrato de versión, ETag, cabecera CORS ni límites de
+consumo publicados. La UI pública de pilotos mostraba 7.494 perfiles en el
+momento de la comprobación. Son cifras variables, no un compromiso de
+cobertura. Una prueba sobre un perfil público devolvió tantas observaciones de
+DR y SR como carreras históricas; esto demuestra profundidad histórica para
+ese perfil, no para todos los pilotos.
+
+La auditoría conserva solo rutas, esquemas y agregados. `/api/members-map` usa
+Steam IDs como nombres dinámicos de propiedades JSON: un primer recorrido
+genérico llegó a mostrarlos en la salida temporal de diagnóstico antes de
+detectar esa forma. No se guardaron, copiaron ni versionaron esos valores. Todo
+probe futuro debe tratar también las claves dinámicas como datos personales y
+redactarlas antes de recorrer o imprimir el documento.
+
+#### Qué permitiría técnicamente
+
+Un worker servidor a servidor podría consultar estas rutas una vez al día y
+mantener una réplica barata de rankings, perfiles, deltas, histórico y eventos.
+La ausencia de CORS no afecta a ese worker. Esto ofrece una vía técnica para
+paridad casi exacta con las funciones públicas de RaceCenter sin conocer su
+backend Nakama/RaceOS y corrige la hipótesis anterior de que su API pública solo
+exponía catálogo.
+
+La unión con los rivales presentes en LMU continúa sin demostrarse. En la
+práctica local observada, los 24 campos Steam ID de `standings` estaban vacíos o
+a cero. El matching por nombre sería ambiguo y no es aceptable para asignar
+rating. Debe probarse si una carrera clasificada entrega identidad estable o si
+existe otra señal local autorizada.
+
+#### Por qué no debe ser la fuente productiva sin permiso
+
+- No existe una API pública documentada, versionada o con SLA; cualquier ruta,
+  esquema, bloqueo o política de caché puede cambiar sin aviso.
+- Las menciones legales de RaceCenter reservan su contenido y código y
+  prohíben su reproducción sin autorización. Que una ruta responda sin login no
+  concede licencia de copia o republicación.
+- Una réplica global contendría identificadores, perfiles y rendimiento de
+  terceros. Requiere base jurídica, finalidad, minimización, retención,
+  rectificación, borrado y exclusión; el consentimiento de un usuario de
+  Vantare no cubre al resto de pilotos ni licencia la base de RaceCenter.
+- RaceCenter se declara no afiliado con Motorsport Games o LMU y advierte que
+  los datos procedentes de terceros pueden ser incompletos o tardíos. Añadirlo
+  como única fuente crea dependencia operativa y de calidad.
+
+Veredicto: **GO técnico para un prototipo sin persistencia personal; NO-GO para
+ingestión y republicación productiva sin autorización escrita de RaceCenter**.
+Con autorización, el contrato debe fijar rutas o feed, atribución, frecuencia,
+límites, rectificaciones/borrados y derecho de conservar histórico. Sin ella,
+RaceCenter solo puede servir de referencia funcional y validación manual.
 
 ### Superficie pública de RaceControl
 
@@ -192,7 +265,7 @@ histórico o rating porque no había una sesión de pista activa.
 
 ## Arquitectura viable sin custodiar credenciales
 
-La opción recomendada para Vantare es híbrida:
+La opción recomendada para Vantare sigue siendo híbrida:
 
 1. Un conector local, voluntario y visible, se ejecuta únicamente cuando el
    usuario abre LMU. El token de sesión nunca sale del equipo, no se registra y
@@ -216,11 +289,17 @@ demostrada si una prueba local identifica, sin extraer ni subir credenciales,
 que la sesión actual permite obtener `event_get` o su equivalente RaceOS con
 identidad estable, paginación y deltas DR/SR.
 
+Si RaceCenter concede autorización escrita, su feed público puede sustituir en
+este diseño la recolección de RaceControl para DR/SR e histórico y reducir la
+necesidad de abrir LMU diariamente. Hasta entonces, la viabilidad técnica de
+sus endpoints no cambia la frontera de custodia ni de permiso.
+
 ### Límites de implementación
 
 - No copiar el modelo de RaceCenter de enviar el token LMU a un servidor.
 - No almacenar token, refresh token, server key o respuesta de sesión.
-- No usar `/api/nakama/*` de RaceCenter como fuente de Vantare.
+- No usar ninguna ruta interna de RaceCenter como fuente productiva de Vantare
+  sin permiso escrito y contrato de uso.
 - No reutilizar una credencial de LMU en un worker Cloudflare.
 - No presentar el nombre histórico `event_get` como endpoint actual confirmado.
 
@@ -368,7 +447,9 @@ Checks del experimento de sesión del 2026-08-21:
 
 ## Fuentes
 
+- Racecenter, directorio público de pilotos: https://racecenter.fr/drivers
 - Racecenter, política de privacidad: https://racecenter.fr/politique-de-confidentialite
+- Racecenter, menciones legales: https://racecenter.fr/mentions-legales
 - LMU V1.4 / RaceOS: https://lemansultimate.com/le-mans-ultimate-goes-stateside-with-us-track-dlc-and-v1-4-update/
 - Nakama Authentication: https://heroiclabs.com/docs/nakama/concepts/authentication/
 - Nakama Session Management: https://heroiclabs.com/docs/nakama/concepts/session/management/

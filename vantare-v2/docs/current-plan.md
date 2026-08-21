@@ -1,4 +1,4 @@
-Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
+Nota ISA-688 (2026-08-21, spike Nakama/RaceOS iniciado, sin promoción):
 - GitHub Issue `#688` sustituye el antiguo flujo Linear y fija la rama
   `vantareapp/isa-688-spike-nakama-raceos-historico-ratings` sobre la punta
   remota verificada `origin/nightly@3ee6d726`.
@@ -47,6 +47,16 @@ Nota ISA-688 (2026-08-20, spike Nakama/RaceOS iniciado, sin promoción):
 - Una repetición pasiva con LMU abierto en menú mantuvo únicamente
   `/api/v1/notifications/global`, cero Nakama/Bearer/JWT/joins y REST local sin
   sesión activa. No apareció una nueva superficie de rating o histórico.
+- Una auditoría profunda corrige la caracterización inicial de RaceCenter: sus
+  rutas JSON públicas exponen ranking global, DR/SR actual e histórico,
+  resultados con deltas, estadísticas, pilotos live, eventos y un mapa de
+  identidad para unos 7.500 miembros. Técnicamente, un worker diario barato
+  permitiría paridad casi exacta con su UI. No existe API/versionado/SLA ni
+  licencia pública de reutilización y sus menciones legales restringen la
+  reproducción: queda en `NO-GO` productivo sin autorización escrita. Además,
+  la práctica local observada entregó 24 Steam IDs vacíos/a cero, por lo que el
+  enlace fiable con rivales de la sesión sigue pendiente. La auditoría conserva
+  solo esquemas y agregados; no se guardaron ni versionaron identificadores.
 
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan

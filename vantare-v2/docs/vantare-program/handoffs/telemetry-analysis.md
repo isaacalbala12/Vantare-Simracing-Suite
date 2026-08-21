@@ -74,6 +74,20 @@ oficial siguen exigiendo permiso RaceOS o conector local opt-in. Una nueva
 captura pasiva con LMU abierto en menú repitió solo
 `/api/v1/notifications/global`, sin Nakama, credenciales o sesión de pista.
 
+La auditoría profunda de RaceCenter del 2026-08-21 cambia una hipótesis del
+spike: además de `/api/nakama/events`, su cliente público consume JSON para
+ranking global, perfiles DR/SR, históricos con deltas, estadísticas, pilotos
+live y un mapa Steam ID-perfil de unos 7.500 miembros. Un worker diario podría
+replicar técnicamente casi toda la UI a coste bajo. No se adopta como fuente:
+no hay API pública documentada, versionado, SLA o licencia de reutilización y
+sus menciones legales restringen la reproducción sin autorización. El veredicto
+es `GO` solo para prototipo sin persistencia personal y `NO-GO` productivo hasta
+obtener permiso escrito y condiciones de rectificación/borrado. La práctica
+local, además, entregó los 24 Steam IDs vacíos/a cero, así que aún falta una
+identidad fiable para unir rivales de sesión con esos perfiles. Solo se
+conservaron rutas, esquemas y agregados; ningún identificador fue guardado o
+versionado.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable

@@ -105,9 +105,10 @@ productivo sin crear un segundo reader.
 
 - Rama activa: `vantareapp/isa-718-motor-familias`.
 - Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
-- Entrega: F4 #718 y su corrección adversarial `86c3105a` están en la rama
-  aislada; PR draft #739 abierto a `nightly`, sin integración. F3 permanece en
-  PR draft #733.
+- Entrega: F4 #718 y su corrección adversarial `86c3105a` + `138c9d9e` están
+  en la rama aislada; PR draft #739 abierto a `nightly`, sin integración. Los
+  dos jobs requeridos del run remoto `32503134920` pasan. F3 permanece en PR
+  draft #733.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -368,10 +369,11 @@ cursores únicamente con ACK `started`. Los toggles de Spotter ya no cancelan
 familias nuevas ni apagan el rollback legacy; la matriz 2×2 demuestra entrega
 real y exclusiva. Pit entry/exit vuelve a P3 Information, timings deja el
 cooldown al bus y fuel exige capacity positiva para autonomía. El mapper LMU
-propaga el driver observado al header. Commit de código `86c3105a`; focal,
-vet, race focal, repetición de regresiones y suite Go global pasan localmente.
-Pendientes: push, CI remoto, re-review y gate LMU humano; sin merge ni
-promoción.
+propaga el driver observado al header. Commits `86c3105a` y `138c9d9e`;
+focal, vet, race focal, repetición de regresiones y suite Go global pasan
+localmente. El run remoto `32503134920` pasa `Validate promotion path` y
+`Validate Vantare blocking gates` sobre `138c9d9e`. Pendientes: re-review y
+gate LMU humano; sin merge ni promoción.
 
 2026-08-21, ISA-718 / F4 implementa cinco familias declarativas sobre el radio
 bus con 13 intents, textos exactos del catálogo, prioridades P2/P3, cooldowns,

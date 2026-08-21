@@ -45,6 +45,32 @@ type CombinationCatalogEntry struct {
 	Sessions       []SessionCatalogEntry `json:"sessions"`
 }
 
+type AuthorizedSessionSource interface {
+	ListAuthorizedSessions(context.Context) ([]AuthorizedSessionModel, error)
+}
+
+// SessionCatalog is the Analysis-owned query facade. A nil source means the
+// user has not authorized any historical telemetry yet; it is an honest empty
+// state, not a synthetic catalog.
+type SessionCatalog struct {
+	source AuthorizedSessionSource
+}
+
+func NewSessionCatalog(source AuthorizedSessionSource) *SessionCatalog {
+	return &SessionCatalog{source: source}
+}
+
+func (catalog *SessionCatalog) ListSessionCombinations(ctx context.Context) ([]CombinationCatalogEntry, error) {
+	if catalog == nil || catalog.source == nil {
+		return []CombinationCatalogEntry{}, nil
+	}
+	models, err := catalog.source.ListAuthorizedSessions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ListAuthorizedSessionCombinations(ctx, models)
+}
+
 // ListAuthorizedSessionCombinations is the Analysis-owned application query.
 // It classifies and groups only models carrying an unforgeable authorization
 // token issued by BuildAuthorizedHistoricalArtifact.

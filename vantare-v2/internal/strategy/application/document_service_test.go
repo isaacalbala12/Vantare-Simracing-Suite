@@ -375,6 +375,40 @@ func TestDocumentV2CoexistsWithDraftRevisionAndActivePlanLifecycle(t *testing.T)
 	}
 }
 
+func TestEventCombinationSelectionPersistsAcrossRepositoryReload(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	event := validEvent("event-sessions", []strategydocument.Driver{{ID: "driver-1", Order: 0}})
+	event.Combination = &strategydocument.CombinationReference{
+		CombinationID: "lmu:combo",
+		Sessions:      []strategydocument.SessionSelection{{SessionID: "race-1", Included: true}, {SessionID: "practice-1", Included: false}},
+	}
+	created, err := service.CreateEvent(ctx, CreateEventCommand{
+		CommandHeader: documentHeader("create-sessions", OperationCreateEvent, 0),
+		Event:         event, UpdatedAt: time.Date(2026, 8, 22, 8, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed, err := NewService[testPayload](reopened).ListEvents(ctx, ListEventsCommand{CommandHeader: documentHeader("reload-sessions", OperationListEvents, created.RepositoryVersion)})
+	if err != nil || len(listed.Events) != 1 || listed.Events[0].Combination == nil {
+		t.Fatalf("listed = %+v, error = %v", listed.Events, err)
+	}
+	if listed.Events[0].Combination.Sessions[1].Included {
+		t.Fatal("excluded session was lost after reload")
+	}
+}
+
 func documentService(t *testing.T) *Service[testPayload] {
 	t.Helper()
 	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})

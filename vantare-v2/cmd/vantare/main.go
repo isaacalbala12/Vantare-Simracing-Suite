@@ -41,6 +41,7 @@ import (
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
 	strategytyres "github.com/vantare/overlays/v2/internal/strategy/tyres"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -1233,7 +1234,7 @@ func main() {
 	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
-		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
+		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSessionCatalog(repo, telemetryanalysis.NewSessionCatalog(nil)))
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	strategySolverBridge := strategysolver.JSONBridge{}

@@ -39,6 +39,7 @@ const (
 	OperationListVariants            Operation = "list_variants"
 	OperationCompareVariants         Operation = "compare_variants"
 	OperationCalculateOrbit          Operation = "calculate_orbit"
+	OperationListSessionCombinations Operation = "list_session_combinations"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"
 	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
@@ -115,6 +116,46 @@ type CloseCommand[T any] struct {
 // expected version to check against.
 type ListCommand struct {
 	CommandHeader
+}
+
+type ListSessionCombinationsCommand struct {
+	CommandHeader
+}
+
+type SessionCatalogStatus string
+
+const (
+	SessionCatalogAvailable             SessionCatalogStatus = "available"
+	SessionCatalogNoAuthorizedTelemetry SessionCatalogStatus = "no_authorized_telemetry"
+)
+
+type SessionCombination struct {
+	CombinationID  string                          `json:"combinationId"`
+	SimID          string                          `json:"simId"`
+	TrackName      string                          `json:"trackName"`
+	TrackLayout    string                          `json:"trackLayout"`
+	CarName        string                          `json:"carName"`
+	CarClass       string                          `json:"carClass"`
+	SessionCount   int                             `json:"sessionCount"`
+	RaceCount      int                             `json:"raceCount"`
+	LastActivity   time.Time                       `json:"lastActivity"`
+	ClimateBuckets []SessionClimateBucket          `json:"climateBuckets"`
+	Sessions       []SessionCombinationCatalogItem `json:"sessions"`
+}
+
+type SessionClimateBucket struct {
+	Bucket string `json:"bucket"`
+	Laps   int    `json:"laps"`
+}
+
+type SessionCombinationCatalogItem struct {
+	SessionID       string                 `json:"sessionId"`
+	Type            string                 `json:"type"`
+	Status          string                 `json:"status"`
+	DefaultIncluded bool                   `json:"defaultIncluded"`
+	ExclusionReason string                 `json:"exclusionReason,omitempty"`
+	LastActivity    time.Time              `json:"lastActivity"`
+	ClimateBuckets  []SessionClimateBucket `json:"climateBuckets"`
 }
 
 // PlanSummary is what "My plans" needs to find and choose a plan. It carries no
@@ -366,15 +407,17 @@ type Result[T any] struct {
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
 	// Activations is the audit trail, oldest first: what was activated, when,
 	// and what it replaced. It is append-only and never rewritten.
-	Activations      []contract.ActivePlan                `json:"activations,omitempty"`
-	Plans            []PlanSummary                        `json:"plans,omitempty"`
-	StrategyDocument *strategydocument.StrategyDocumentV2 `json:"strategyDocument,omitempty"`
-	Events           []strategydocument.Event             `json:"events,omitempty"`
-	Drivers          []strategydocument.Driver            `json:"drivers,omitempty"`
-	Variants         []strategydocument.Variant           `json:"variants,omitempty"`
-	Comparison       *VariantComparison                   `json:"comparison,omitempty"`
-	OrbitCalculation *OrbitCalculationResult              `json:"orbitCalculation,omitempty"`
-	LegacyMigration  *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
+	Activations          []contract.ActivePlan                `json:"activations,omitempty"`
+	Plans                []PlanSummary                        `json:"plans,omitempty"`
+	StrategyDocument     *strategydocument.StrategyDocumentV2 `json:"strategyDocument,omitempty"`
+	Events               []strategydocument.Event             `json:"events,omitempty"`
+	Drivers              []strategydocument.Driver            `json:"drivers,omitempty"`
+	Variants             []strategydocument.Variant           `json:"variants,omitempty"`
+	Comparison           *VariantComparison                   `json:"comparison,omitempty"`
+	OrbitCalculation     *OrbitCalculationResult              `json:"orbitCalculation,omitempty"`
+	SessionCatalogStatus SessionCatalogStatus                 `json:"sessionCatalogStatus,omitempty"`
+	SessionCombinations  []SessionCombination                 `json:"sessionCombinations,omitempty"`
+	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`
 	// Preview is what an import would do. It is present on a dry run and on a

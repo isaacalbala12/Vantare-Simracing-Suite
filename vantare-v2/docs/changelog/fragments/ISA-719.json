@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-719",
+  "type": "feature",
+  "summary": "La app incorpora un carril experimental y aislado para probar entrada de voz tras un único flag.",
+  "technicalNotes": [
+    "-engineer-voice-input está desactivado por defecto y su estado agregado aparece como experimental en /api/engineer/health.",
+    "PTT reutiliza los readers Windows existentes; F24 abre una ventana memoria-only de hasta cinco segundos y soltarla la cierra.",
+    "El host hijo verifica PID y nonce, usa prioridad baja y se recolecta por completo durante cancelación o shutdown.",
+    "engineer.dialogue.v1 permanece query-only: las acciones de voz fallan cerradas y los resultados usan la presentación registrable de radio.v1.",
+    "Audio y transcripciones no se escriben a disco ni aparecen en logs o health."
+  ],
+  "testing": [
+    "Sin el flag, comprobar voiceInput.state=disabled y ausencia de proceso hijo.",
+    "Con el flag en este corte, comprobar voiceInput.state=unavailable y que el hijo termina, porque WASAPI/Whisper aún no están empaquetados.",
+    "Ejecutar los tests focales normales y -race para probar PTT, wake sintético, límite de cinco segundos, router, radio y teardown."
+  ],
+  "knownLimitations": [
+    "El backend WASAPI y whisper.cpp real no están operativos ni empaquetados en este corte; la ruta real falla cerrada.",
+    "El wake detector actual es solo un placeholder exacto para eventos sintéticos, no un detector acústico.",
+    "ENG-13 FAR/FRR humano sigue NO-GO; no se autoriza release ni beta pública de voz de entrada."
+  ]
+}

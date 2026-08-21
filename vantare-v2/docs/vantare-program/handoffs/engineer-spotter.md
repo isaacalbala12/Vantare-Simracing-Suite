@@ -21,6 +21,15 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
+aislado: PTT Windows F24, ventana máxima de 5 s, host hijo con PID/nonce y
+teardown total, router `engineer.dialogue.v1` query-only, presentación
+registrable en `radio.v1` y health agregado sin texto. El backend distribuido
+declara `available:false`: WASAPI, artefactos Whisper, QueryPort canónico y
+wake acústico siguen pendientes. Los fakes demuestran el flujo completo, pero
+no son evidencia de micrófono/STT real ni cambian el NO-GO humano ENG-13.
+Contrato y gates: `docs/engineer/voice-input-isa-719.md`.
+
 ISA-718 / F4 implementa el motor declarativo de familias sobre `radio.v1` para
 fuel (8 intents), penalties, laps, timings y pitstops (13 intents totales). Las
 cinco familias comparten una tabla de prioridad/cooldown/TTL/subject y catálogo
@@ -103,12 +112,12 @@ fail-closed: solo seis escenarios acotados pueden atravesarlo; no existe
 conversión general. ISA-112 conecta ya esa entrada pura al único runtime LMU
 productivo sin crear un segundo reader.
 
-- Rama activa: `vantareapp/isa-718-motor-familias`.
-- Base inicial: `origin/nightly@ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9`.
-- Entrega: F4 #718 y su corrección adversarial `86c3105a` + `138c9d9e` están
-  en la rama aislada; PR draft #739 abierto a `nightly`, sin integración. Los
-  dos jobs requeridos del run remoto `32503134920` pasan. F3 permanece en PR
-  draft #733.
+- Rama activa: `vantareapp/isa-719-voz-entrada-experimental`.
+- Base inicial: `origin/nightly@4a697b6a3697ae404302acd5bcc5caf67624a59c`.
+- Entrega: F5 #719 implementada en la rama aislada; PR draft pendiente de
+  apertura a `nightly`. El backend real sigue unavailable y los gates locales
+  están en ejecución. F3/F4 permanecen como entregas separadas ya incluidas en
+  esta base.
 - Promoción: rama de issue aislada; `nightly`, `testers` y `master` no se
   modifican.
 - Evidencia ENG-14: contrato/versionado, conflictos físicos, controller serial,
@@ -327,6 +336,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-719 / F5, carril experimental tras flag; backend WASAPI/Whisper y ENG-13 pendientes |
 | En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
 | En revisión | ISA-715 / F1, radio bus `radio.v1` lean, resolver registrable, delivery dual y benchmark Go; p95 Wails/LMU pendiente F3 |
@@ -360,6 +370,15 @@ Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
 integración en `nightly` o promoción.
 
 ## Última actualización
+
+2026-08-21, ISA-719 / F5 implementa el contrato inyectable de voz de entrada
+tras `-engineer-voice-input`, default OFF. PTT F24 real, límite de 5 s,
+proceso hijo oculto/de prioridad baja con PID+nonce, router query-only, salida
+registrable por `radio.v1`, health agregado y teardown tienen regresiones
+normales y race focal. El hijo distribuido declara unavailable porque no hay
+backend WASAPI/Whisper empaquetado; wake es un placeholder sintético exacto y
+el QueryPort productivo sigue fail-closed. ENG-13 continúa NO-GO; sin micrófono
+real demostrado, merge ni promoción.
 
 2026-08-21, último P1 quirúrgico de ISA-718 / PR #739 corregido en `75abd6e6`:
 el bus registra `activeStarted` desde `Item.Started`. `ResetIntents` limpia

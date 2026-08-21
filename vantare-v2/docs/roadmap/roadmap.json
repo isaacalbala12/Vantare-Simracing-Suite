@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T15:00:23Z",
+  "generatedAt": "2026-08-21T19:52:40Z",
   "digest": {
-    "lastCommit": "ebd5704095fcfbcd8ad2f561339dda1f47d9c9a9"
+    "lastCommit": "f71a43aceef39df0aee3cd9f69ab52efeeac31c8"
   },
   "phases": [
     {
@@ -424,6 +424,28 @@
         "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
         "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
         "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
+      }
+    },
+    {
+      "id": "engineer-voice-input-experimental",
+      "type": "feature",
+      "title": {
+        "es": "Carril experimental de voz de entrada",
+        "en": "Experimental voice-input lane",
+        "pt": "Carril experimental de entrada de voz",
+        "it": "Corsia sperimentale di input vocale"
+      },
+      "body": {
+        "es": "El flag experimental aísla PTT, host hijo, diálogo de solo lectura y radio con privacidad memoria-only; el backend WASAPI, Whisper y el wake acústico siguen pendientes y fallan cerrados.",
+        "en": "The experimental flag isolates PTT, child host, read-only dialogue and radio with memory-only privacy; WASAPI, Whisper and acoustic wake remain pending and fail closed.",
+        "pt": "O flag experimental isola PTT, host filho, diálogo somente leitura e rádio com privacidade apenas em memória; WASAPI, Whisper e wake acústico continuam pendentes e falham de forma fechada.",
+        "it": "Il flag sperimentale isola PTT, processo figlio, dialogo in sola lettura e radio con privacy solo in memoria; WASAPI, Whisper e wake acustico restano pendenti e falliscono in modo chiuso."
       },
       "label": {
         "es": "En revisión",

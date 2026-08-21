@@ -22,9 +22,9 @@ import (
 	"github.com/vantare/overlays/v2/configs"
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
-	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
@@ -251,61 +251,15 @@ type strategyCommandExecutor interface {
 }
 
 func executeStrategyApplicationCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
-	document, err := json.Marshal(data)
-	if err != nil {
-		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy command"}
+	result, failure := app.ExecuteStrategyApplicationCommand(ctx, executor, data)
+	if failure == nil {
+		return result, nil
 	}
-	var header struct {
-		CommandID string `json:"commandId"`
-	}
-	_ = json.Unmarshal(document, &header)
-	if header.CommandID == "" {
-		header.CommandID = "invalid-command"
-	}
-	encoded, err := executor.Execute(ctx, document)
-	if err != nil {
-		code := strategyapplication.ErrorInvalidCommand
-		field := ""
-		var applicationErr *strategyapplication.ApplicationError
-		if errors.As(err, &applicationErr) {
-			if _, known := publicStrategyApplicationMessage(applicationErr.Code); known {
-				code = applicationErr.Code
-				field = applicationErr.Field
-			}
-		}
-		message, _ := publicStrategyApplicationMessage(code)
-		return nil, map[string]any{
-			"commandId": header.CommandID,
-			"code":      string(code),
-			"field":     field,
-			"message":   message,
-		}
-	}
-	var result any
-	if err := json.Unmarshal(encoded, &result); err != nil {
-		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy result"}
-	}
-	return result, nil
-}
-
-func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) (string, bool) {
-	switch code {
-	case strategyapplication.ErrorInvalidCommand:
-		return "The Strategy request could not be completed.", true
-	case strategyapplication.ErrorStaleCommand:
-		return "The Strategy document changed. Reopen it and try again.", true
-	case strategyapplication.ErrorDraftNotFound:
-		return "The Strategy draft was not found.", true
-	case strategyapplication.ErrorDraftConflict:
-		return "The Strategy draft conflicts with another saved document.", true
-	case strategyapplication.ErrorRevisionNotFound:
-		return "The Strategy revision was not found.", true
-	case strategyapplication.ErrorActiveConflict:
-		return "The active Strategy plan changed. Reopen it and try again.", true
-	case strategyapplication.ErrorUnsavedChanges:
-		return "The Strategy draft has unsaved changes.", true
-	default:
-		return "The Strategy request could not be completed.", false
+	return nil, map[string]any{
+		"commandId": failure.CommandID,
+		"code":      string(failure.Code),
+		"field":     failure.Field,
+		"message":   failure.Message,
 	}
 }
 
@@ -1281,30 +1235,7 @@ func main() {
 	} else {
 		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
 	}
-	wailsApp.Event.On("strategy:application:command", func(event *application.CustomEvent) {
-		if strategyBridge == nil {
-			commandID := "unavailable"
-			if document, marshalErr := json.Marshal(event.Data); marshalErr == nil {
-				var header struct {
-					CommandID string `json:"commandId"`
-				}
-				if json.Unmarshal(document, &header) == nil && header.CommandID != "" {
-					commandID = header.CommandID
-				}
-			}
-			emitter.Emit("strategy:application:error", map[string]any{
-				"commandId": commandID, "code": string(strategyapplication.ErrorInvalidCommand),
-				"field": "", "message": "Strategy repository is unavailable",
-			})
-			return
-		}
-		result, failure := executeStrategyApplicationCommand(ctx, strategyBridge, event.Data)
-		if failure != nil {
-			emitter.Emit("strategy:application:error", failure)
-			return
-		}
-		emitter.Emit("strategy:application:result", result)
-	})
+	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	strategySolverBridge := strategysolver.JSONBridge{}
 	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {
 		result, failure := executeStrategySolverCommand(ctx, strategySolverBridge, event.Data)

@@ -1,0 +1,209 @@
+package app
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	"github.com/vantare/overlays/v2/internal/strategy/packaging"
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+const (
+	StrategyApplicationCommandEvent = "strategy:application:command"
+	StrategyApplicationResultEvent  = "strategy:application:result"
+	StrategyApplicationErrorEvent   = "strategy:application:error"
+)
+
+const invalidStrategyApplicationCommandID = "invalid-command"
+
+type StrategyApplicationPublicErrorCode string
+
+type StrategyApplicationErrorResponse struct {
+	CommandID string                             `json:"commandId"`
+	Code      StrategyApplicationPublicErrorCode `json:"code"`
+	Field     string                             `json:"field"`
+	Message   string                             `json:"message"`
+}
+
+type strategyApplicationExecutor interface {
+	Execute(context.Context, []byte) ([]byte, error)
+}
+
+// StrategyApplicationBridge is the Wails boundary for the versioned Strategy
+// application protocol. Domain validation and dispatch stay in application.JSONBridge.
+type StrategyApplicationBridge struct {
+	ctx      context.Context
+	executor strategyApplicationExecutor
+	emitter  EventEmitter
+}
+
+func NewStrategyApplicationBridge(
+	ctx context.Context,
+	executor strategyApplicationExecutor,
+	emitter EventEmitter,
+) *StrategyApplicationBridge {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &StrategyApplicationBridge{ctx: ctx, executor: executor, emitter: emitter}
+}
+
+func (bridge *StrategyApplicationBridge) RegisterHandlers(wailsApp *application.App) {
+	if bridge == nil || wailsApp == nil {
+		return
+	}
+	wailsApp.Event.On(StrategyApplicationCommandEvent, func(event *application.CustomEvent) {
+		bridge.HandleCommand(event.Data)
+	})
+}
+
+func (bridge *StrategyApplicationBridge) HandleCommand(data any) {
+	if bridge == nil || bridge.emitter == nil {
+		return
+	}
+	result, failure := ExecuteStrategyApplicationCommand(bridge.ctx, bridge.executor, data)
+	if failure != nil {
+		bridge.emitter.Emit(StrategyApplicationErrorEvent, *failure)
+		return
+	}
+	bridge.emitter.Emit(StrategyApplicationResultEvent, result)
+}
+
+func ExecuteStrategyApplicationCommand(
+	ctx context.Context,
+	executor strategyApplicationExecutor,
+	data any,
+) (any, *StrategyApplicationErrorResponse) {
+	document, err := json.Marshal(data)
+	if err != nil {
+		return nil, strategyApplicationFailure(invalidStrategyApplicationCommandID, strategyapplication.ErrorInvalidCommand, "")
+	}
+	commandID := strategyApplicationCommandID(document)
+	if executor == nil {
+		return nil, &StrategyApplicationErrorResponse{
+			CommandID: commandID,
+			Code:      StrategyApplicationPublicErrorCode(strategyapplication.ErrorInvalidCommand),
+			Message:   "Strategy repository is unavailable.",
+		}
+	}
+	encoded, err := executor.Execute(ctx, document)
+	if err != nil {
+		return nil, strategyApplicationError(commandID, err)
+	}
+	var result any
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		return nil, &StrategyApplicationErrorResponse{
+			CommandID: commandID,
+			Code:      StrategyApplicationPublicErrorCode(strategyapplication.ErrorInvalidCommand),
+			Message:   "The Strategy result was invalid.",
+		}
+	}
+	return result, nil
+}
+
+func strategyApplicationCommandID(document []byte) string {
+	var header struct {
+		CommandID string `json:"commandId"`
+	}
+	if json.Unmarshal(document, &header) != nil || header.CommandID == "" {
+		return invalidStrategyApplicationCommandID
+	}
+	return header.CommandID
+}
+
+func strategyApplicationError(commandID string, err error) *StrategyApplicationErrorResponse {
+	var applicationErr *strategyapplication.ApplicationError
+	if errors.As(err, &applicationErr) && knownStrategyApplicationError(applicationErr.Code) {
+		return strategyApplicationFailure(commandID, applicationErr.Code, applicationErr.Field)
+	}
+	var refused *strategyapplication.ImportRefusedError
+	if errors.As(err, &refused) {
+		return strategyApplicationFailure(commandID, strategyapplication.ErrorImportRefused, "")
+	}
+	var packagingErr *packaging.PackagingError
+	if errors.As(err, &packagingErr) {
+		return &StrategyApplicationErrorResponse{
+			CommandID: commandID,
+			Code:      StrategyApplicationPublicErrorCode(packagingErr.Code),
+			Field:     packagingErr.Field,
+			Message:   "The Strategy package was refused.",
+		}
+	}
+	return strategyApplicationFailure(commandID, strategyapplication.ErrorInvalidCommand, "")
+}
+
+func strategyApplicationFailure(
+	commandID string,
+	code strategyapplication.ErrorCode,
+	field string,
+) *StrategyApplicationErrorResponse {
+	return &StrategyApplicationErrorResponse{
+		CommandID: commandID,
+		Code:      StrategyApplicationPublicErrorCode(code),
+		Field:     field,
+		Message:   publicStrategyApplicationMessage(code),
+	}
+}
+
+func knownStrategyApplicationError(code strategyapplication.ErrorCode) bool {
+	switch code {
+	case strategyapplication.ErrorInvalidCommand,
+		strategyapplication.ErrorStaleCommand,
+		strategyapplication.ErrorDraftNotFound,
+		strategyapplication.ErrorDraftConflict,
+		strategyapplication.ErrorRevisionNotFound,
+		strategyapplication.ErrorActiveConflict,
+		strategyapplication.ErrorUnsavedChanges,
+		strategyapplication.ErrorPlanNotFound,
+		strategyapplication.ErrorEventNotFound,
+		strategyapplication.ErrorEventConflict,
+		strategyapplication.ErrorDriverNotFound,
+		strategyapplication.ErrorDriverConflict,
+		strategyapplication.ErrorDriverInUse,
+		strategyapplication.ErrorVariantNotFound,
+		strategyapplication.ErrorVariantConflict,
+		strategyapplication.ErrorImportRefused:
+		return true
+	default:
+		return false
+	}
+}
+
+func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) string {
+	switch code {
+	case strategyapplication.ErrorStaleCommand:
+		return "The Strategy document changed. Reopen it and try again."
+	case strategyapplication.ErrorDraftNotFound:
+		return "The Strategy draft was not found."
+	case strategyapplication.ErrorDraftConflict:
+		return "The Strategy draft conflicts with another saved document."
+	case strategyapplication.ErrorRevisionNotFound:
+		return "The Strategy revision was not found."
+	case strategyapplication.ErrorActiveConflict:
+		return "The active Strategy plan changed. Reopen it and try again."
+	case strategyapplication.ErrorUnsavedChanges:
+		return "The Strategy draft has unsaved changes."
+	case strategyapplication.ErrorPlanNotFound:
+		return "The Strategy plan was not found."
+	case strategyapplication.ErrorEventNotFound:
+		return "The Strategy event was not found."
+	case strategyapplication.ErrorEventConflict:
+		return "The Strategy event conflicts with another saved event."
+	case strategyapplication.ErrorDriverNotFound:
+		return "The Strategy driver was not found."
+	case strategyapplication.ErrorDriverConflict:
+		return "The Strategy driver conflicts with another saved driver."
+	case strategyapplication.ErrorDriverInUse:
+		return "The Strategy driver is required by a variant."
+	case strategyapplication.ErrorVariantNotFound:
+		return "The Strategy variant was not found."
+	case strategyapplication.ErrorVariantConflict:
+		return "The Strategy variant conflicts with another saved variant."
+	case strategyapplication.ErrorImportRefused:
+		return "The Strategy package was refused."
+	default:
+		return "The Strategy request could not be completed."
+	}
+}

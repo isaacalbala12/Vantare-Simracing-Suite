@@ -1,3 +1,22 @@
+Nota ISA-694 / auditoría Strategy Planner (2026-08-21, diagnóstico sin implementación):
+- Briefing completo en
+  `docs/strategy-planner/isa-694-current-state-and-rework-brief.md`, sobre
+  `origin/nightly@2ab9741d`.
+- El backend manual de Fuel y Virtual Energy y el solver pasan 100
+  repeticiones. El desgaste actual agrega entradas manuales; no deriva una
+  curva predictiva.
+- DuckDB dispone de discovery, staging, helper y lectura histórica segura,
+  pero no existe aún `StrategyInputProjection v1` ni el puente automático a
+  Strategy. ISA-159, ISA-145 e ISA-146 continúan en backlog.
+- Command Orbit mantiene una autoridad paralela en `localStorage` y cálculo
+  TypeScript; su activación/exportación no equivalen al lifecycle canónico.
+- El motor live no está compuesto desde una revisión activa ejecutable en
+  Nightly. PR #280 sigue draft y no debe integrarse sin portado.
+- Veredicto provisional: Strategy no es candidato a `testers`. Próximo gate:
+  Isaac debe fijar si el rework llega al nivel manual, histórico o live antes
+  de convertir el briefing en plan e issues de implementación.
+- No hubo cambio de producto, PR, merge, promoción ni release.
+
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

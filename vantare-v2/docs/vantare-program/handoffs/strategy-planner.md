@@ -9,12 +9,36 @@ son fases históricas.
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Este handoff y `Strategy Planner — Race Strategy Suite` en Linear.
+- Este handoff y la issue de GitHub activa. Linear fue retirado el 2026-08-20;
+  las referencias posteriores a Linear se conservan solo como historial.
 - `docs/superpowers/specs/2026-07-13-strategy-planner-product-b-design.md` y
   `strategy-base.html` son referencias históricas que deben reauditarse.
 - El próximo informe de rescate y plan unificado sustituirán los planes PB.
 
 ## Estado
+
+Actualización ISA-694 (2026-08-21, auditoría en curso):
+
+- Briefing autocontenido:
+  `docs/strategy-planner/isa-694-current-state-and-rework-brief.md`.
+- Base auditada: `origin/nightly@2ab9741d`. La rama es
+  `vantareapp/isa-694-auditoria-rework-strategy-planner` y no modifica código
+  de producto.
+- El cálculo manual Go de Fuel y Virtual Energy y el solver determinista pasan
+  100 repeticiones. El desgaste manual agrega valores introducidos; no es un
+  modelo predictivo histórico.
+- Telemetry Analysis puede descubrir, autorizar, copiar y leer DuckDB de forma
+  normalizada, pero aún no produce `StrategyInputProjection v1`. ISA-159,
+  ISA-145 e ISA-146 siguen en backlog; por tanto DuckDB no alimenta Strategy.
+- Command Orbit conserva valor visual, pero usa persistencia y cálculo
+  TypeScript paralelos. Activar, guardar y exportar no representan todavía el
+  lifecycle canónico completo.
+- El motor live existe, pero Nightly no resuelve aún la revisión activa a
+  objetivos ejecutables. PR #280 permanece draft y requiere portado sobre la
+  base actual.
+- Veredicto: bloquear promoción a `testers`; planificar un cutover incremental
+  que conserve Orbit y recupere una sola autoridad. No implementar hasta que
+  Isaac apruebe el nivel objetivo manual, histórico y live.
 
 Actualización ISA-309 / STR-N02 (2026-08-10):
 

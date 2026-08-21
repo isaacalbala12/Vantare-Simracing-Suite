@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
@@ -31,6 +32,9 @@ func (service *Service[T]) CreateEvent(ctx context.Context, command CreateEventC
 
 func (service *Service[T]) EditEvent(ctx context.Context, command EditEventCommand) (Result[T], error) {
 	if err := validateDocumentCommand(command.CommandHeader, OperationEditEvent, command.UpdatedAt); err != nil {
+		return Result[T]{}, err
+	}
+	if err := validateDocumentIdentifier("event.id", string(command.Event.ID)); err != nil {
 		return Result[T]{}, err
 	}
 	return service.changeDocument(ctx, command.CommandHeader, command.UpdatedAt, func(value *strategydocument.StrategyDocumentV2) error {
@@ -77,6 +81,9 @@ func (service *Service[T]) EditDriver(ctx context.Context, command EditDriverCom
 	if err := validateDocumentCommand(command.CommandHeader, OperationEditDriver, command.UpdatedAt); err != nil {
 		return Result[T]{}, err
 	}
+	if err := validateDocumentIdentifier("driver.id", string(command.Driver.ID)); err != nil {
+		return Result[T]{}, err
+	}
 	return service.changeEvent(ctx, command.CommandHeader, command.EventID, command.UpdatedAt, func(event *strategydocument.Event) error {
 		index := driverIndex(event.Drivers, command.Driver.ID)
 		if index < 0 {
@@ -92,6 +99,9 @@ func (service *Service[T]) EditDriver(ctx context.Context, command EditDriverCom
 
 func (service *Service[T]) DeleteDriver(ctx context.Context, command DeleteDriverCommand) (Result[T], error) {
 	if err := validateDocumentCommand(command.CommandHeader, OperationDeleteDriver, command.UpdatedAt); err != nil {
+		return Result[T]{}, err
+	}
+	if err := validateDocumentIdentifier("driverId", string(command.DriverID)); err != nil {
 		return Result[T]{}, err
 	}
 	return service.changeEvent(ctx, command.CommandHeader, command.EventID, command.UpdatedAt, func(event *strategydocument.Event) error {
@@ -154,6 +164,9 @@ func (service *Service[T]) EditVariant(ctx context.Context, command EditVariantC
 	if err := validateDocumentCommand(command.CommandHeader, OperationEditVariant, command.UpdatedAt); err != nil {
 		return Result[T]{}, err
 	}
+	if err := validateDocumentIdentifier("variant.id", string(command.Variant.ID)); err != nil {
+		return Result[T]{}, err
+	}
 	return service.changeEvent(ctx, command.CommandHeader, command.EventID, command.UpdatedAt, func(event *strategydocument.Event) error {
 		index := variantIndex(event.Strategies, command.Variant.ID)
 		if index < 0 {
@@ -183,6 +196,12 @@ func (service *Service[T]) CompareVariants(ctx context.Context, command CompareV
 	}
 	if command.LeftVariantID == command.RightVariantID {
 		return Result[T]{}, applicationError(ErrorInvalidCommand, "rightVariantId", ErrInvalidCommand)
+	}
+	if err := validateDocumentIdentifier("leftVariantId", string(command.LeftVariantID)); err != nil {
+		return Result[T]{}, err
+	}
+	if err := validateDocumentIdentifier("rightVariantId", string(command.RightVariantID)); err != nil {
+		return Result[T]{}, err
 	}
 	snapshot, event, err := service.readEvent(ctx, command.EventID)
 	if err != nil {
@@ -214,6 +233,9 @@ func (service *Service[T]) changeEvent(
 	updatedAt time.Time,
 	change func(*strategydocument.Event) error,
 ) (Result[T], error) {
+	if err := validateDocumentIdentifier("eventId", string(eventID)); err != nil {
+		return Result[T]{}, err
+	}
 	return service.changeDocument(ctx, header, updatedAt, func(value *strategydocument.StrategyDocumentV2) error {
 		index := eventIndex(value.Events, eventID)
 		if index < 0 {
@@ -289,6 +311,9 @@ func (service *Service[T]) readEvent(
 	ctx context.Context,
 	eventID strategydocument.EventID,
 ) (repository.Snapshot[T], strategydocument.Event, error) {
+	if err := validateDocumentIdentifier("eventId", string(eventID)); err != nil {
+		return repository.Snapshot[T]{}, strategydocument.Event{}, err
+	}
 	snapshot, err := service.repository.Snapshot(ctx)
 	if err != nil {
 		return repository.Snapshot[T]{}, strategydocument.Event{}, err
@@ -309,6 +334,13 @@ func validateDocumentCommand(header CommandHeader, operation Operation, updatedA
 	}
 	if updatedAt.IsZero() {
 		return applicationError(ErrorInvalidCommand, "updatedAt", ErrInvalidCommand)
+	}
+	return nil
+}
+
+func validateDocumentIdentifier(field, value string) error {
+	if strings.TrimSpace(value) == "" {
+		return applicationError(ErrorInvalidCommand, field, ErrInvalidCommand)
 	}
 	return nil
 }

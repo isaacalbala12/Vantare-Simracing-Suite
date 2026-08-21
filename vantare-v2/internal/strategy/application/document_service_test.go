@@ -201,6 +201,17 @@ func TestDocumentApplicationRejectsInvalidAndMissingReferences(t *testing.T) {
 			},
 			want: ErrEventNotFound, wantCode: ErrorEventNotFound,
 		},
+		{
+			name: "empty event identifier",
+			run: func() error {
+				_, err := service.ListDrivers(ctx, ListDriversCommand{
+					CommandHeader: documentHeader("empty-event", OperationListDrivers, 0),
+					EventID:       " ",
+				})
+				return err
+			},
+			want: ErrInvalidCommand, wantCode: ErrorInvalidCommand,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

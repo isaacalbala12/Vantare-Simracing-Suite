@@ -1,8 +1,10 @@
 package overlayv2
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -396,4 +398,113 @@ func mustRelativeLaps(value standings.RelativeLaps) schema.Field[standings.Relat
 		panic(err)
 	}
 	return field
+}
+
+func TestStandingsRelativeStayFreshUnderRegulatedCadence(t *testing.T) {
+	t.Parallel()
+
+	cadence := SectionCadence{
+		Fast: 10 * time.Millisecond, Mid: 10 * time.Millisecond,
+		Slow: 10 * time.Millisecond, DirtyCeiling: time.Second,
+	}
+	regulated := NewCachedProjector(cadence)
+	fresh := NewCachedProjector(DefaultSectionCadence())
+	baseSnapshot := builderFinalState(t, 44)
+	baseHeader := baseSnapshot.Header()
+	baseFinal, ok := baseSnapshot.Value()
+	if !ok {
+		t.Fatal("missing final state")
+	}
+	source := builderSourceContext()
+	preferences := DefaultPreferencesV2()
+	origin := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+	// Mutations that touch standings and relative window, each on a distinct tick.
+	type mutation struct {
+		name string
+		apply func(state *derive.FinalState)
+	}
+	mutations := []mutation{
+		{name: "standings order swaps 1 and 2", apply: func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].Position = builderPresent(standings.Position(9))
+			state.Observed.Vehicles[8].Position = builderPresent(standings.Position(2))
+		}},
+		{name: "relative gap inside window", apply: func(state *derive.FinalState) {
+			for index := range state.Derived.Gaps.Vehicles {
+				if string(state.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-001" {
+					field, _ := schema.NewField(standings.RelativeTime(9.9), schema.ProvenanceDerived, schema.FreshnessFresh)
+					state.Derived.Gaps.Vehicles[index].Time = field
+				}
+			}
+		}},
+		{name: "player switches to vehicle-010", apply: func(state *derive.FinalState) {
+			for index := range state.Observed.Vehicles {
+				state.Observed.Vehicles[index].Player = builderPresent(false)
+			}
+			for index := range state.Observed.Vehicles {
+				if string(state.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-010" {
+					state.Observed.Vehicles[index].Player = builderPresent(true)
+				}
+			}
+			state.Derived.Gaps = rebuildGapsForTest(t, state.Observed.Vehicles, "vehicle-010")
+		}},
+		{name: "class change inside window", apply: func(state *derive.FinalState) {
+			for index := range state.Observed.Vehicles {
+				if string(state.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-002" {
+					state.Observed.Vehicles[index].VehicleClass = builderPresent(standings.VehicleClass("gte"))
+				}
+			}
+		}},
+	}
+	current := cloneFinalState(baseFinal)
+	for tick := range 40 {
+		now := origin.Add(time.Duration(tick) * 16 * time.Millisecond)
+		sequence := uint64(tick + 1)
+		mutated := false
+		if tick > 0 && tick < len(mutations)+1 {
+			mutations[tick-1].apply(&current)
+			mutated = true
+		} else if tick%9 == 0 && tick != 0 {
+			// occasional far-vehicle noise that should NOT dirty relative
+			for index := range current.Derived.Gaps.Vehicles {
+				if string(current.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-040" {
+					field, _ := schema.NewField(standings.RelativeTime(-999.0), schema.ProvenanceDerived, schema.FreshnessFresh)
+					current.Derived.Gaps.Vehicles[index].Time = field
+				}
+			}
+		}
+		header := baseHeader
+		header.Cursor.Sequence = schema.Sequence(sequence)
+		snapshot, err := envelope.NewSnapshot(header, current, func(value derive.FinalState) derive.FinalState {
+			return cloneFinalState(value)
+		})
+		if err != nil {
+			t.Fatalf("tick %d snapshot: %v", tick, err)
+		}
+		gotRegulated, err := regulated.Project(snapshot, source, preferences, sequence, now)
+		if err != nil {
+			t.Fatalf("tick %d regulated: %v", tick, err)
+		}
+		gotFresh, err := fresh.Project(snapshot, source, preferences, sequence, now)
+		if err != nil {
+			t.Fatalf("tick %d fresh: %v", tick, err)
+		}
+		if !equalStandingRows(gotRegulated.Frame.Standings, gotFresh.Frame.Standings) {
+			regulatedJSON, _ := json.Marshal(gotRegulated.Frame.Standings)
+			freshJSON, _ := json.Marshal(gotFresh.Frame.Standings)
+			if mutated {
+				t.Fatalf("tick %d (%s) standings mismatch after material change\n got: %s\nwant: %s", tick, mutations[tick-1].name, regulatedJSON, freshJSON)
+			} else {
+				t.Fatalf("tick %d standings mismatch on clean tick\n got: %s\nwant: %s", tick, regulatedJSON, freshJSON)
+			}
+		}
+		if !equalRelativeRows(gotRegulated.Frame.Relative, gotFresh.Frame.Relative) {
+			regulatedJSON, _ := json.Marshal(gotRegulated.Frame.Relative)
+			freshJSON, _ := json.Marshal(gotFresh.Frame.Relative)
+			if mutated {
+				t.Fatalf("tick %d (%s) relative mismatch after material change\n got: %s\nwant: %s", tick, mutations[tick-1].name, regulatedJSON, freshJSON)
+			} else {
+				t.Fatalf("tick %d relative mismatch on clean tick\n got: %s\nwant: %s", tick, regulatedJSON, freshJSON)
+			}
+		}
+	}
 }

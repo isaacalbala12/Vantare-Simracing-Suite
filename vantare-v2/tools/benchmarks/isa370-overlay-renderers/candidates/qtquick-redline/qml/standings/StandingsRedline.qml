@@ -74,33 +74,6 @@ Item {
         return ""
     }
 
-    function deriveOvertake(before, after) {
-        var losersByClass = {}
-        for (var loserId in after) {
-            if (before[loserId] === undefined ||
-                    before[loserId].vehicleClass !== after[loserId].vehicleClass ||
-                    after[loserId].index <= before[loserId].index)
-                continue
-            var loserClass = String(after[loserId].vehicleClass)
-            if (losersByClass[loserClass] === undefined)
-                losersByClass[loserClass] = {}
-            losersByClass[loserClass][before[loserId].index] = loserId
-        }
-        for (var candidateId in after) {
-            if (before[candidateId] === undefined ||
-                    before[candidateId].vehicleClass !== after[candidateId].vehicleClass ||
-                    after[candidateId].index >= before[candidateId].index)
-                continue
-            var candidateClass = String(after[candidateId].vehicleClass)
-            var classLosers = losersByClass[candidateClass]
-            var loser = classLosers === undefined ? undefined
-                                                  : classLosers[after[candidateId].index]
-            if (loser !== undefined)
-                return { gainer: candidateId, loser: loser }
-        }
-        return { gainer: "", loser: "" }
-    }
-
     function numericGap(row, index) {
         if (index === 0 || String(row.gapText || "").toUpperCase() === "INT")
             return 0
@@ -207,9 +180,28 @@ Item {
             hotCleanup.restart()
         }
 
-        var overtake = deriveOvertake(before, after)
-        var newOvertakeGainer = overtake.gainer
-        var newOvertakeLoser = overtake.loser
+        var newOvertakeGainer = ""
+        var newOvertakeLoser = ""
+
+        for (var candidateId in after) {
+            if (before[candidateId] === undefined || before[candidateId].vehicleClass !== after[candidateId].vehicleClass)
+                continue
+            if (after[candidateId].index >= before[candidateId].index)
+                continue
+            for (var loserId in after) {
+                if (loserId === candidateId || before[loserId] === undefined)
+                    continue
+                if (before[loserId].vehicleClass === after[candidateId].vehicleClass &&
+                        before[loserId].index === after[candidateId].index &&
+                        after[loserId].index > before[loserId].index) {
+                    newOvertakeGainer = candidateId
+                    newOvertakeLoser = loserId
+                    break
+                }
+            }
+            if (newOvertakeGainer)
+                break
+        }
         if (newOvertakeGainer) {
             lastOvertakeGainer = newOvertakeGainer
             lastOvertakeLoser = newOvertakeLoser

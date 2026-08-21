@@ -135,8 +135,10 @@ func DeriveSessionConsumptionPace(
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
-		bucket, ok := climateBucket(wetnessValue)
-		if !ok {
+		endWetnessValue, endWetnessPresence, endWetnessOK := valueAt(wetness, timestampSeconds(lap.End))
+		bucket, startBucketOK := climateBucket(wetnessValue)
+		endBucket, endBucketOK := climateBucket(endWetnessValue)
+		if !endWetnessOK || !startBucketOK || !endBucketOK || bucket != endBucket {
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
@@ -150,6 +152,7 @@ func DeriveSessionConsumptionPace(
 		lapPresence := weakestPresence(
 			segmentPresence,
 			wetnessPresence,
+			endWetnessPresence,
 			boundaryPresence(boundaries, *lap.Start),
 			boundaryPresence(boundaries, lap.End),
 		)

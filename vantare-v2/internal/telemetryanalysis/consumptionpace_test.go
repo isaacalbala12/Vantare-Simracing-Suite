@@ -145,6 +145,22 @@ func TestDeriveSessionConsumptionPaceRejectsInvalidSegmentQuality(t *testing.T) 
 	}
 }
 
+func TestDeriveSessionConsumptionPaceExcludesWeatherTransitionLap(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	pages[2].Samples = append(pages[2].Samples, fixtureEventSample(15, 12.5))
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transitionLap := findDerivedLap(t, got.Laps, 2)
+	if transitionLap.ClimateBucket != nil || transitionLap.FuelConsumption != nil ||
+		transitionLap.VirtualEnergyConsumption != nil || transitionLap.RepresentativePace != nil {
+		t.Fatalf("weather transition lap was assigned to one bucket: %+v", transitionLap)
+	}
+}
+
 func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 	current := aggregateFixtureSession("current", "combo", strategyprojection.PresenceValid, 2, 10)
 	historyUnknown := aggregateFixtureSession("history-unknown", "combo", strategyprojection.PresenceUnknown, 4, 12)

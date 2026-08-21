@@ -1,3 +1,23 @@
+Nota ISA-730 / ISA-694 F2(b) (2026-08-21, implementada en rama de issue):
+- El namespace Wails existente `strategy:application:*` se registra ahora
+  mediante `internal/app.StrategyApplicationBridge`; el composition root deja
+  de contener el binding inline. La frontera solo codifica/decodifica y
+  sanitiza: validación, dispatch y negocio siguen en la API exacta de F2(a).
+- El binding conserva correlación y propaga códigos/campos públicos de
+  lifecycle, eventos, pilotos, variantes, importación y packaging. Las causas
+  internas se convierten en mensajes cerrados y no salen al frontend.
+- `strategy-orbit-bridge` expone la fachada Wails única para el futuro cutover
+  de Orbit. El cliente TS conoce las 23 operaciones del protocolo vigente,
+  `StrategyDocumentV2`, eventos/pilotos/variantes/comparación y activaciones;
+  valida respuestas y entrega errores `StrategyApplicationError` con código,
+  campo y mensaje, sin lógica de negocio ni catches silenciosos.
+- `StrategyOrbitPage` y los stores no cambian en este corte. Gates: Go de
+  `internal/app`, `cmd/vantare` y `internal/strategy/application`; frontend
+  374 archivos/2.894 tests, typecheck, build y ESLint focal, todos PASS.
+- Commits: `31dd0709` (binding Wails) y `9487fad8` (cliente Orbit v2). Sin PR,
+  merge, promoción ni release; la prueba manual dentro de Wails queda para el
+  cutover F2(d-f).
+
 Nota ISA-729 / ISA-694 F2(a) (2026-08-21, implementada en rama de issue):
 - `strategy.repository.v2` persiste el `StrategyDocumentV2` por eventos en el
   mismo envelope, generación, hash, commit atómico y backup que drafts,

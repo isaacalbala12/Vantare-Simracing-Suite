@@ -17,6 +17,24 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-730 / F2(b) (2026-08-21, lista para review):
+
+- `internal/app.StrategyApplicationBridge` posee el binding Wails
+  `strategy:application:*`; el composition root solo lo registra. La capa
+  prueba encode/decode, correlación, sanitización y propagación de errores
+  tipados, incluidos `event_*`, `driver_*` y `variant_*`.
+- `strategy-orbit-bridge` es la fachada de Orbit sobre el cliente TS fino. La
+  unión cubre las 23 operaciones de la API de aplicación existente y decodifica
+  el documento v2 ampliado, listas, comparación, lifecycle y activaciones.
+  Los errores llegan con código, campo y mensaje y las respuestas mal formadas
+  se rechazan; no hay cálculo ni decisiones de dominio en TS.
+- Cero cambios en `StrategyOrbitPage` y stores. Commits `31dd0709` y
+  `9487fad8`. Go focal, vet, frontend 374/2.894, typecheck, build y ESLint focal
+  verdes. Sin dependencia nueva.
+- No hay smoke de aplicación Wails viva en F2(b): las pruebas demuestran las
+  dos fronteras aisladas, no una sesión instalada. Siguiente acción: review del
+  orquestador de #730; después continúa F2(c), no el cutover de UI F2(d-f).
+
 Actualización ISA-729 / F2(a) (2026-08-21, lista para review):
 
 - El repositorio canónico evoluciona a `strategy.repository.v2` y custodia un

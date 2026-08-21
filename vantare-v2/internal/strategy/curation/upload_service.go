@@ -379,6 +379,9 @@ func (service *UploadService) RequestRemoteDeletion(ctx context.Context) (Deleti
 	}
 	client, err := NewWorkerClient(endpoint, token, httpClient)
 	if err != nil {
+		if persistErr := service.recordDeletionFailure(); persistErr != nil {
+			return DeletionReceipt{}, persistErr
+		}
 		return DeletionReceipt{}, err
 	}
 	receipt, requestErr := client.Delete(ctx, credentials)
@@ -395,6 +398,15 @@ func (service *UploadService) RequestRemoteDeletion(ctx context.Context) (Deleti
 		return DeletionReceipt{}, persistErr
 	}
 	return receipt, requestErr
+}
+
+func (service *UploadService) recordDeletionFailure() error {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.state.Deletions = append(service.state.Deletions, RemoteDeletion{
+		RequestedAt: service.now().UTC(), State: "failed", LastError: "deletion_failed",
+	})
+	return service.persistLocked()
 }
 
 func (service *UploadService) snapshotLocked() UploadSnapshot {

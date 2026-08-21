@@ -134,6 +134,53 @@ func TestUploadServicePauseKeepsAcceptedRequestSent(t *testing.T) {
 	}
 }
 
+func TestUploadServiceRevocationAndRemoteDeletionRemainSeparate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v1/tombstones" {
+			http.NotFound(writer, request)
+			return
+		}
+		writer.WriteHeader(http.StatusCreated)
+		_, _ = writer.Write([]byte(`{"status":"accepted","tombstoneRef":"tomb-1","applyWithinDays":7}`))
+	}))
+	defer server.Close()
+	secrets := &memoryCredentialStore{}
+	service := openTestUploadService(t, secrets, server.URL)
+	if _, err := service.OptIn("curation-consent.v1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Enqueue(validBundle()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Revoke(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := secrets.Load(); err != nil {
+		t.Fatalf("revocation deleted the credential needed for remote deletion: %v", err)
+	}
+	if _, err := service.RequestRemoteDeletion(context.Background()); err != nil {
+		t.Fatalf("remote deletion after revocation: %v", err)
+	}
+	snapshot := service.Snapshot()
+	if snapshot.Consent.Active || snapshot.Queue[0].State != QueuePaused || len(snapshot.Deletions) != 1 || snapshot.Deletions[0].State != "accepted" {
+		t.Fatalf("separate actions snapshot = %+v", snapshot)
+	}
+}
+
+func TestUploadServiceRecordsDisabledRemoteDeletionAttemptWithoutNetwork(t *testing.T) {
+	service := openTestUploadService(t, &memoryCredentialStore{}, "")
+	if _, err := service.OptIn("curation-consent.v1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.RequestRemoteDeletion(context.Background()); !errors.Is(err, ErrUploadDisabled) {
+		t.Fatalf("deletion error = %v", err)
+	}
+	snapshot := service.Snapshot()
+	if len(snapshot.Deletions) != 1 || snapshot.Deletions[0].State != "failed" {
+		t.Fatalf("deletion history = %+v", snapshot.Deletions)
+	}
+}
+
 func TestWorkerClientUsesF6BProtocolOnlyAgainstConfiguredLocalServer(t *testing.T) {
 	var sawUpload, sawDelete bool
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

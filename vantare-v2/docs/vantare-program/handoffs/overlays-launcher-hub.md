@@ -12,8 +12,8 @@
 
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
-  `origin/nightly@4ec98fea`, rama `vantareapp/settings-overhaul-corte-1-fundamentos`,
-  PR draft **#761** hacia `nightly`: (1) los atajos se guardan al grabarlos sin
+  `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,
+  PR draft **#768** hacia `nightly`: (1) los atajos se guardan al grabarlos sin
   botón «Guardar»; (2) botón de descarga del informe de diagnóstico preparado
   (la acción `download` existía testeada pero ninguna pantalla la ofrecía);
   (3) búsqueda de ajustes en la columna de contexto con índice de filas reales,

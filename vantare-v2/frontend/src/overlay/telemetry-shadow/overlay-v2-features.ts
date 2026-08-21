@@ -5,6 +5,7 @@ export const OVERLAY_V2_DELTA = "delta" as const;
 export const OVERLAY_V2_RELATIVE = "relative" as const;
 export const OVERLAY_V2_FUEL = "fuel" as const;
 export const OVERLAY_V2_CONTROLS = "controls" as const;
+export const OVERLAY_V2_DAMAGE = "damage" as const;
 
 export type OverlayV2Feature =
   | typeof OVERLAY_V2_PLAYER_INSTRUMENTS
@@ -13,7 +14,8 @@ export type OverlayV2Feature =
   | typeof OVERLAY_V2_DELTA
   | typeof OVERLAY_V2_RELATIVE
   | typeof OVERLAY_V2_FUEL
-  | typeof OVERLAY_V2_CONTROLS;
+  | typeof OVERLAY_V2_CONTROLS
+  | typeof OVERLAY_V2_DAMAGE;
 
 export const DEFAULT_OVERLAY_V2_FEATURES: readonly OverlayV2Feature[] = Object.freeze([]);
 

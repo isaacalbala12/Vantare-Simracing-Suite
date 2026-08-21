@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-695",
+  "type": "change",
+  "summary": "Telemetry Core: dirty-signals finos para standings y relative (ventana 8+1+8) sin activar cadencias por defecto.",
+  "technicalNotes": [
+    "Standings hashea solo los campos que BuildStandings proyecta (identidad, posición con freshness, clase, piloto, gaps tiempo/vueltas, pit, vueltas completadas y último tiempo); señales no proyectadas no ensucian.",
+    "Relative hashea la ventana publicada (8 delante / player / 8 detrás) con gaps derivados (Time/Laps + freshness/provenance), DriverName y VehicleClass de los vecinos dentro de la ventana; fuera de la ventana no ensucia.",
+    "Dirty gating desacoplado: standings depende de standingsMark+len, relative solo de relativeMark; un cambio de player o de vecino dentro de la ventana marca dirty aunque el resto no cambie.",
+    "Sin cambio de defaults: DefaultSectionCadence sigue en cero, sin regulación hasta medición en binario Wails/OBS y decisión del orquestador.",
+    "Benchmark sintético @104 (60 Hz, proyección+marshal): plana 220.963 ns/op, regulada 20 Hz/10 Hz/4 Hz 181.370 ns/op; builds/s 480→78, B/s idéntico (frame completo), 26 allocs/op menos."
+  ],
+  "testing": [
+    "go test ./internal/telemetry/... -count=1 verde, vet solo dos unsafe.Pointer heredados en drivers/lmu.",
+    "TestStandingsDirtySignalIgnoresUnprojectedChanges y TestRelativeDirtySignalIgnoresUnprojectedChanges: idéntico limpio, RPM/best lap fuera no ensucia, orden/identidad/gap bit a bit/clase/pit/freshness/driver/vueltas/laps sí.",
+    "TestRelativeWindowFarVehicleStaysClean: gap y clase de vehicle-090 fuera de la ventana no ensucia relative.",
+    "TestStandings/RelativeDirtySignalMatchesTheBuiltRows: si BuildStandings/BuildRelative cambian filas, la señal no se queda limpia.",
+    "TestStandingsRelativeStayFreshUnderRegulatedCadence: 40 ticks a 60 Hz con cadencia 10 ms, mutaciones de orden/gap/player/clase verifican standings+relative byte-idénticos a recompute completo.",
+    "TestCachedProjectorMatchesProjectV2ByteForByte sigue verde para 1/20/44/104 coches."
+  ],
+  "knownLimitations": [
+    "Las cadencias reguladas siguen inertes por defecto; activarlas exige cablear CachedProjector en telemetry_core_runtime.go y retirar la excepción de cadence.go en wiring_guard.",
+    "Si un futuro builder añade campos a standings/relative (p. ej., dorsal), hay que ampliar el hash en el mismo PR o el centinela byte-a-byte lo señalará.",
+    "El ahorro medido es sintético; la validación real de CPU/bytes en Wails/OBS pendiente."
+  ]
+}

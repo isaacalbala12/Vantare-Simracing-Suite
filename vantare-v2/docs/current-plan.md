@@ -3,6 +3,14 @@ Nota ISA-697 / Deuda #677 Tanda 2 (2026-08-21, implementada en rama, sin promoci
 - Cambios en `envelope/types.go` (Owned/Peek), `core/reducer.go` y `core/session_coordinator.go` (Owned + commit directo), `derive/pipeline.go` (Peek + Owned). `core/validateObservedState` pasa de `map` a `sort`.
 - Semántica idéntica: goldens v1/v2 y replay parity verdes; el snapshot sigue siendo value-semantic (Value() clona) y Peek() es solo lectura interna.
 - Rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` con 5 commits (1 benchmark + 4 perf); evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md` y fragmento `ISA-697.json`. Queda ~150KB/B/op de techo sin COW en envelope; gaps aún aloca 104 gaps por frame. Sin promoción ni merge.
+Nota ISA-677 / ISA-695 — dirty-signals finos para standings/relative (2026-08-21, rama `vantareapp/isa-695-dirty-signals-standings-relative` sobre `origin/nightly@64a33318`, 4 commits, sin promoción):
+- `cadence.go` + `cadence_dirty.go` cierran señales finas para `standings` (FNV sobre 9 campos proyectados por vehículo: identidad, posición+freshness, clase, piloto, gaps, pit, vueltas, último tiempo) y para `relative` (ventana 8+1+8 con gaps derivados + freshness/provenance, `DriverName`/`VehicleClass` de los vecinos dentro de la ventana). Fuera de la ventana no ensucia; cambiar player o vecino sí.
+- `relativeMark` desacopla `SectionRelative` de `standingsMark`/`gapsFreshness`; `SectionStandings` sigue dependiendo de `standingsMark`+len. Señales no proyectadas (`EngineRPM`, `BestLapTime`, `Speed`, `WorldPosition`) permanecen limpias.
+- Tests: `TestStandingsDirtySignal*`, `TestRelativeDirtySignal*`, `TestRelativeWindowFarVehicleStaysClean`, `TestStandingsRelativeStayFreshUnderRegulatedCadence` (40 ticks a 60 Hz con cadencia 10 ms, mutaciones de orden/gap/player/clase; standings+relative byte-idénticos a recompute). `TestCachedProjectorMatchesProjectV2ByteForByte` verde para 1/20/44/104.
+- Coste @104 sintético (proyección+marshal, 60 Hz, Ryzen 7 3700X): plana 220.963 ns/op, regulada 20/10/4 Hz 181.370 ns/op; builds/s 480→78, B/s idéntico (frame completo), -26 allocs/op. Señales <5 µs por tick.
+- Defaults siguen en cero (sin regulación); activar exige cablear `CachedProjector` en `telemetry_core_runtime.go` y retirar `cadence.go` de `wiringGuardAllowed`. Goldens y `frame.go`/contrato TS intactos. Evidencia `docs/telemetry-core/evidence/isa-677-dirty-signals.md` + fragmento `ISA-695.json`.
+- Rama lista para PR a `nightly`; sin push previo, sin integración, promoción ni release. Gates: `go vet` solo dos `unsafe.Pointer` heredados en `drivers/lmu`, `go test ./internal/telemetry/... -count=1` verde, `git diff --check` limpio.
+
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

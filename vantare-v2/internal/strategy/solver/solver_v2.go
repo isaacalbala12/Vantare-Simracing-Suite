@@ -28,6 +28,7 @@ type PitStopDecision struct {
 	SavingLevel  SavingLevel           `json:"savingLevel"`
 	ServiceMode  manual.PitServiceMode `json:"serviceMode"`
 	PitCostInput *manual.PitStopInput  `json:"pitCostInput,omitempty"`
+	PitBreakdown *manual.PitBreakdown  `json:"pitBreakdown,omitempty"`
 }
 
 type StintDecision struct {
@@ -147,6 +148,36 @@ type SolverInputV2 struct {
 	FuelCapacityLiters float64 `json:"fuelCapacityLiters"`
 	VECapacityPercent  float64 `json:"veCapacityPercent"`
 	TyreLifeLaps       int64   `json:"tyreLifeLaps"`
+	// Consumos manuales usados cuando la familia correspondiente de Projection
+	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
+	FuelPerLapLiters  float64               `json:"fuelPerLapLiters"`
+	VEPerLapPercent   float64               `json:"vePerLapPercent"`
+	DegradationPerLap float64               `json:"degradationPerLapSeconds"`
+	Discretization    ServiceDiscretization `json:"serviceDiscretization"`
+}
+
+// ServiceDiscretization fija el espacio finito de cantidades que exploran
+// tanto SolveV2 como el oraculo exhaustivo: cero y multiplos enteros del paso
+// que no superen el hueco disponible. Los ceros eligen los defaults 1 L/1 %.
+type ServiceDiscretization struct {
+	FuelLiters float64 `json:"fuelLiters"`
+	VEPercent  float64 `json:"vePercent"`
+}
+
+func (in SolverInputV2) resourcePerLap(kind ResourceKind) float64 {
+	if in.Projection != nil {
+		family := in.Projection.FuelConsumption
+		if kind == ResourceVirtualEnergy {
+			family = in.Projection.VirtualEnergyConsumption
+		}
+		if family.Presence == sp.PresenceValid && family.MeanPerLap > 0 {
+			return family.MeanPerLap
+		}
+	}
+	if kind == ResourceVirtualEnergy {
+		return in.VEPerLapPercent
+	}
+	return in.FuelPerLapLiters
 }
 
 type ContractVersion string
@@ -161,6 +192,9 @@ func (in SolverInputV2) Validate() error {
 	if in.BaseLapSeconds <= 0 || math.IsNaN(in.BaseLapSeconds) || math.IsInf(in.BaseLapSeconds, 0) {
 		return fmt.Errorf("baseLapSeconds invalid")
 	}
+	if in.Formation.Seconds < 0 || math.IsNaN(in.Formation.Seconds) || math.IsInf(in.Formation.Seconds, 0) {
+		return fmt.Errorf("formation.seconds invalid")
+	}
 	if err := in.PitCost.Validate(); err != nil {
 		return fmt.Errorf("pitCost: %w", err)
 	}
@@ -173,6 +207,17 @@ func (in SolverInputV2) Validate() error {
 	if in.VECapacityPercent < 0 || in.VECapacityPercent > 100 || math.IsNaN(in.VECapacityPercent) || math.IsInf(in.VECapacityPercent, 0) {
 		return fmt.Errorf("veCapacityPercent invalid")
 	}
+	for field, value := range map[string]float64{
+		"fuelPerLapLiters":           in.FuelPerLapLiters,
+		"vePerLapPercent":            in.VEPerLapPercent,
+		"degradationPerLapSeconds":   in.DegradationPerLap,
+		"serviceDiscretization.fuel": in.Discretization.FuelLiters,
+		"serviceDiscretization.ve":   in.Discretization.VEPercent,
+	} {
+		if value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+			return fmt.Errorf("%s invalid", field)
+		}
+	}
 	// Projection puede ser nil (arranque en frío): se usa reference del catálogo o manual.
 	if in.Projection != nil {
 		if err := in.Projection.Validate(); err != nil {
@@ -184,17 +229,27 @@ func (in SolverInputV2) Validate() error {
 
 // SolverResultV2 es el resultado con binding, sensibilidades y esperado/caso-malo.
 type SolverResultV2 struct {
-	ContractVersion ContractVersion     `json:"contractVersion"`
-	InputHash       string              `json:"inputHash"`
-	Best            DecisionVector      `json:"best"`
-	Binding         BindingConstraint   `json:"binding"`
-	Sensitivities   []SolverSensitivity `json:"sensitivities"`
-	Expected        ScenarioEvaluation  `json:"expected"`
-	WorstCase       ScenarioEvaluation  `json:"worstCase"`
-	Candidates      []DecisionVector    `json:"candidates,omitempty"`
-	Feasible        bool                `json:"feasible"`
-	Reasons         []SolverReason      `json:"reasons,omitempty"`
-	ComputeStats    ComputeStats        `json:"computeStats"`
+	ContractVersion  ContractVersion     `json:"contractVersion"`
+	InputHash        string              `json:"inputHash"`
+	Best             DecisionVector      `json:"best"`
+	Binding          BindingConstraint   `json:"binding"`
+	Sensitivities    []SolverSensitivity `json:"sensitivities"`
+	Expected         ScenarioEvaluation  `json:"expected"`
+	WorstCase        ScenarioEvaluation  `json:"worstCase"`
+	Candidates       []DecisionVector    `json:"candidates,omitempty"`
+	CandidateDetails []SolverCandidateV2 `json:"candidateDetails,omitempty"`
+	Feasible         bool                `json:"feasible"`
+	Reasons          []SolverReason      `json:"reasons,omitempty"`
+	ComputeStats     ComputeStats        `json:"computeStats"`
+}
+
+// SolverCandidateV2 conserva tanto planes completos como intentos inviables;
+// estos ultimos nunca desaparecen sin un motivo observable.
+type SolverCandidateV2 struct {
+	Decision   DecisionVector     `json:"decision"`
+	Evaluation ScenarioEvaluation `json:"evaluation"`
+	Feasible   bool               `json:"feasible"`
+	Reasons    []SolverReason     `json:"reasons,omitempty"`
 }
 
 type BindingConstraint struct {

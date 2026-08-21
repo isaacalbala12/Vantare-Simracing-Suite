@@ -1,7 +1,9 @@
 package curation
 
 import (
+	"bytes"
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -13,14 +15,14 @@ func validBundle() CurationBundleV1 {
 	return CurationBundleV1{
 		Admin: AdminEnvelope{UploadID: "upload-1", DeleteHash: "delete-hash"},
 		Payload: BundlePayload{
-			ContractVersion: ContractVersionV1,
-			BundleID:        "bundle-1",
-			CombinationID:   "spa-lmgt3",
-			Epoch:           epoch,
-			StintAggregates: []StintAggregate{{StintNumber: 1, Laps: 12, AvgFuelPerLap: 2.8, AvgVEPerLap: 1.1}},
-			PitAggregates:   &PitAggregates{Count: 1, AvgDurationSeconds: 32},
+			ContractVersion:    ContractVersionV1,
+			BundleID:           "bundle-1",
+			CombinationID:      "spa-lmgt3",
+			Epoch:              epoch,
+			StintAggregates:    []StintAggregate{{StintNumber: 1, Laps: 12, AvgFuelPerLap: 2.8, AvgVEPerLap: 1.1}},
+			PitAggregates:      &PitAggregates{Count: 1, AvgDurationSeconds: 32},
 			ObservedStrategies: []ObservedStrategyRef{{StintCount: 2, PitLaps: []int{12}, Compounds: []string{"0"}}},
-			ChannelQuality:  ChannelQuality{ValidSessions: 10, InvalidSessions: 0},
+			ChannelQuality:     ChannelQuality{ValidSessions: 10, InvalidSessions: 0},
 		},
 	}
 }
@@ -92,5 +94,70 @@ func TestCurationBundle_EpochQuantized(t *testing.T) {
 	eq := QuantizeEpoch(now)
 	if eq != "2026-W34" {
 		t.Fatalf("quantize got %q want 2026-W34", eq)
+	}
+}
+
+func TestCurationBundle_StrictValidationTable(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*CurationBundleV1)
+	}{
+		{
+			name: "negative channel sample",
+			mutate: func(bundle *CurationBundleV1) {
+				bundle.Payload.ChannelQuality.InvalidSessions = -1
+			},
+		},
+		{
+			name: "unsorted pit laps",
+			mutate: func(bundle *CurationBundleV1) {
+				bundle.Payload.ObservedStrategies = []ObservedStrategyRef{{StintCount: 3, PitLaps: []int{8, 4}}}
+			},
+		},
+		{
+			name: "non finite consumption",
+			mutate: func(bundle *CurationBundleV1) {
+				bundle.Payload.StintAggregates[0].AvgFuelPerLap = math.Inf(1)
+			},
+		},
+		{
+			name: "unnormalized combination",
+			mutate: func(bundle *CurationBundleV1) {
+				bundle.Payload.CombinationID = "Spa LMGT3"
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			bundle := validBundle()
+			test.mutate(&bundle)
+			if err := bundle.Validate(); err == nil {
+				t.Fatal("invalid bundle was accepted")
+			}
+		})
+	}
+}
+
+func TestCurationBundle_StrictDecodeRejectsTrailingValue(t *testing.T) {
+	bundle := validBundle()
+	data, err := json.Marshal(bundle)
+	if err != nil {
+		t.Fatalf("marshal bundle: %v", err)
+	}
+	data = append(data, []byte(` {}`)...)
+	if _, err := StrictDecode(data); err == nil {
+		t.Fatal("trailing JSON value was accepted")
+	}
+}
+
+func TestCurationBundle_StrictDecodeRejectsDuplicateField(t *testing.T) {
+	bundle := validBundle()
+	data, err := json.Marshal(bundle)
+	if err != nil {
+		t.Fatalf("marshal bundle: %v", err)
+	}
+	data = bytes.Replace(data, []byte(`"bundleId":"bundle-1"`), []byte(`"bundleId":"bundle-1","bundleId":"bundle-2"`), 1)
+	if _, err := StrictDecode(data); err == nil {
+		t.Fatal("duplicate JSON field was accepted")
 	}
 }

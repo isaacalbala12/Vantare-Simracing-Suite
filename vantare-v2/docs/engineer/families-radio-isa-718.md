@@ -1,7 +1,7 @@
 # ISA-718 · Motor de familias sobre radio.v1
 
-Estado: ronda final de re-review corregida; gates locales verdes; pendiente de
-CI remoto, re-review y gate LMU humano.
+Estado: ronda final de re-review corregida; gates locales y CI remoto verdes;
+pendiente de re-review y gate LMU humano.
 
 ## Diseño
 

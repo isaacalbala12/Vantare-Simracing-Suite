@@ -23,8 +23,10 @@
   cerrado `COMPLETED` y el Project Vantare en `Done`. T22 independiente acepta
   el STOP con P0/P1=0; sus dos P2 y un P3 documentales quedaron corregidos en
   roadmap, labels y rutas raw. #690 esta cerrado `COMPLETED` y su item del
-  Project Vantare esta en `Done`. Wails/producto sin cambios; sin PR, CI remoto,
-  integracion, promocion ni release.
+  Project Vantare esta en `Done`. La rama de archivo esta publicada sin PR; el
+  push activo el fallo de arranque sin jobs del workflow inerte de Testing
+  Center, problema transversal registrado en #728. Wails/producto sin cambios;
+  sin integracion, promocion ni release.
 
 - **OS-QT-04 / GitHub #693 — T19 STOP; T20 GREEN local pendiente de medicion
   (2026-08-21):** los intentos acotados del modelo keyed no produjeron una

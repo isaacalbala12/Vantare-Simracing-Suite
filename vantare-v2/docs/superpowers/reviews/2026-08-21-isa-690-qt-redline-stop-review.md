@@ -41,4 +41,7 @@ supervisor, sidecar productivo, packaging ni issues P2+.
 ## Límites
 
 No se ejecutó T21, una nueva ventana/HWND, otro benchmark físico, integración,
-promoción ni release. La decisión STOP termina el programa antes de P2.
+promoción ni release. El push de archivo activó un fallo de arranque sin jobs
+del workflow inerte de Testing Center, reproducido en ramas no relacionadas y
+registrado fuera de alcance en GitHub #728. No fue un gate del candidate. La
+decisión STOP termina el programa antes de P2.

@@ -578,7 +578,9 @@ canónicos, no una matriz exhaustiva innecesaria.
 inicial P0=0/P1=0/P2=2/P3=1; las observaciones documentales de roadmap, label
 GitHub y rutas raw quedaron corregidas. Severidades finales P0=P1=P2=P3=0.
 #693 y #690 estan cerrados `COMPLETED` y sus items del Project Vantare estan
-en `Done`; el cierre STOP no incluye promocion.
+en `Done`; la rama de archivo esta publicada sin PR. El fallo remoto sin jobs
+del workflow inerte de Testing Center queda separado en GitHub #728. El cierre
+STOP no incluye promocion.
 
 **Descripción:** revisión adversarial de código, evidencia y complejidad.
 

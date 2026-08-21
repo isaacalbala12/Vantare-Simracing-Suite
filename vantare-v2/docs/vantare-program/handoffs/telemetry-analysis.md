@@ -17,6 +17,21 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-744 / ISA-694 F3-a5 está implementada en su rama aislada y cierra el
+desarrollo F3a pendiente de review. El pit degradado conserva intervalos de
+carril; Fuel/VE solo se asocian con reloj declarado común. Reloj desconocido o
+ausencia de subida quedan ambiguos con motivo y jamás producen desglose de
+tránsito/servicio. Las tasas observadas agregan N, rango, varianza y versión.
+
+`ObservedStrategy v1` publica stints, vueltas de parada, compuesto raw, cambios
+Fuel/neumático/desgaste y resultado observable de cada carrera. El productor
+multi-sesión compone F3-a1..a5 en `StrategyInputProjection v2`; todas las
+familias llevan presencia, procedencia, confianza y motivo, y las ausentes no
+bloquean las demostradas. El contract test cubre wire nuevo→consumidor v2 y
+rechazo fail-closed del fixture v1. Gates Analysis/Strategy, race, vet, gofmt y
+diff-check PASS; el gate Go global sigue no ejecutable sin el `frontend/dist`
+embebido. Sin PR, integración ni promoción.
+
 ISA-743 / ISA-694 F3-a4 está implementada en su rama aislada. La salida
 estándar es `CombinedStintPaceCurve`: cero local por mediana de las tres
 primeras vueltas limpias del stint y agregación por índice para la misma
@@ -244,6 +259,13 @@ lectura LMU local, pero sí cualquier import externo o comunitario. TA-05 public
 la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
+
+2026-08-21, ISA-744 / ISA-694 F3-a5 implementada en rama propia: pit degradado,
+`ObservedStrategy v1`, agregación multi-sesión y productor final
+`StrategyInputProjection v2`; pendiente review, sin PR ni promoción. Evidencia:
+`docs/strategy-planner/isa-744-pit-observed-producer.md`.
+
+Historial previo:
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

@@ -13,16 +13,17 @@ import (
 )
 
 type Config struct {
-	Enabled      bool
-	Locale       commands.Locale
-	Binding      ptt.Binding
-	Reader       ptt.Reader
-	Host         Host
-	QueryPort    commands.QueryPort
-	Publisher    TurnPublisher
-	Lifecycle    LifecycleProvider
-	MaxWindow    time.Duration
-	PollInterval time.Duration
+	Enabled              bool
+	Locale               commands.Locale
+	Binding              ptt.Binding
+	Reader               ptt.Reader
+	Host                 Host
+	QueryPort            commands.QueryPort
+	Publisher            TurnPublisher
+	Lifecycle            LifecycleProvider
+	MaxWindow            time.Duration
+	PollInterval         time.Duration
+	TranscriptionTimeout time.Duration
 }
 
 type Runtime struct {
@@ -34,6 +35,7 @@ type Runtime struct {
 	controller *ptt.Controller
 	poller     *ptt.Poller
 	detector   KeywordDetector
+	hostReady  bool
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
@@ -48,6 +50,9 @@ func New(config Config) (*Runtime, error) {
 	}
 	if config.MaxWindow <= 0 || config.MaxWindow > DefaultMaxWindow {
 		config.MaxWindow = DefaultMaxWindow
+	}
+	if config.TranscriptionTimeout <= 0 || config.TranscriptionTimeout > DefaultTranscriptionTimeout {
+		config.TranscriptionTimeout = DefaultTranscriptionTimeout
 	}
 	runtime := &Runtime{config: config, health: Health{Experimental: true, Enabled: config.Enabled, State: StateDisabled}, detector: NewKeywordDetector(commands.DefaultCatalogV1())}
 	if !config.Enabled {
@@ -94,35 +99,48 @@ func (runtime *Runtime) Start(parent context.Context) error {
 		return errors.New("engineer voice-input runtime is already started")
 	}
 	runtime.mu.Unlock()
-	if err := runtime.config.Host.Start(parent); err != nil {
-		runtime.mu.Lock()
-		runtime.health.State = StateUnavailable
-		runtime.health.Errors++
-		runtime.mu.Unlock()
-		return err
-	}
 	ctx, cancel := context.WithCancel(parent)
 	runtime.mu.Lock()
 	runtime.ctx = ctx
 	runtime.cancel = cancel
-	runtime.health.State = StateIdle
+	runtime.health.State = StateUnavailable
 	runtime.mu.Unlock()
-	runtime.wg.Add(1)
+	runtime.wg.Add(2)
 	go func() {
 		defer runtime.wg.Done()
 		if err := runtime.poller.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			runtime.recordError()
 		}
 	}()
-	if wake := runtime.config.Host.WakeEvents(); wake != nil {
-		runtime.wg.Add(1)
-		go runtime.runWake(ctx, wake)
-	}
+	go runtime.startHost(ctx)
 	return nil
 }
 
-func (runtime *Runtime) runWake(ctx context.Context, events <-chan string) {
+func (runtime *Runtime) startHost(ctx context.Context) {
 	defer runtime.wg.Done()
+	if err := runtime.config.Host.Start(ctx); err != nil {
+		runtime.mu.Lock()
+		if context.Cause(ctx) == nil {
+			runtime.health.State = StateUnavailable
+			runtime.health.Errors++
+		}
+		runtime.mu.Unlock()
+		return
+	}
+	runtime.mu.Lock()
+	if context.Cause(ctx) != nil {
+		runtime.mu.Unlock()
+		return
+	}
+	runtime.hostReady = true
+	runtime.health.State = StateIdle
+	runtime.mu.Unlock()
+	if wake := runtime.config.Host.WakeEvents(); wake != nil {
+		runtime.runWake(ctx, wake)
+	}
+}
+
+func (runtime *Runtime) runWake(ctx context.Context, events <-chan string) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -164,6 +182,7 @@ func (runtime *Runtime) Stop(ctx context.Context) error {
 	}
 	runtime.mu.Lock()
 	runtime.active = nil
+	runtime.hostReady = false
 	runtime.health.State = StateDisabled
 	runtime.mu.Unlock()
 	return err
@@ -180,6 +199,10 @@ func (runtime *Runtime) Health() Health {
 
 func (runtime *Runtime) begin(ctx context.Context, wake bool, pttID string) error {
 	runtime.mu.Lock()
+	if !runtime.hostReady {
+		runtime.mu.Unlock()
+		return ErrHostUnavailable
+	}
 	if runtime.active != nil || (runtime.health.State != StateIdle && runtime.health.State != StateError) {
 		runtime.mu.Unlock()
 		return nil
@@ -205,10 +228,28 @@ func (runtime *Runtime) begin(ctx context.Context, wake bool, pttID string) erro
 	} else {
 		runtime.health.PTTCaptures++
 	}
-	finishCtx := runtime.ctx
-	runtime.timer = time.AfterFunc(capture.MaxWindow, func() { runtime.finish(finishCtx, capture) })
+	runtime.timer = time.AfterFunc(capture.MaxWindow, func() { runtime.expireCapture(capture) })
 	runtime.mu.Unlock()
 	return nil
+}
+
+func (runtime *Runtime) expireCapture(capture Capture) {
+	runtime.mu.Lock()
+	if runtime.active == nil || runtime.active.ID != capture.ID || runtime.health.State != StateCapturing {
+		runtime.mu.Unlock()
+		return
+	}
+	ctx := runtime.ctx
+	runtime.mu.Unlock()
+	if capture.PTTID == "" {
+		runtime.finish(ctx, capture)
+		return
+	}
+	releaseCtx, cancelRelease := context.WithTimeout(context.Background(), time.Second)
+	defer cancelRelease()
+	if _, err := runtime.controller.Handle(releaseCtx, ptt.Input{Kind: ptt.InputReleased, Binding: runtime.config.Binding}); err != nil {
+		runtime.recordError()
+	}
 }
 
 func (runtime *Runtime) finish(ctx context.Context, capture Capture) {
@@ -224,12 +265,14 @@ func (runtime *Runtime) finish(ctx context.Context, capture Capture) {
 	runtime.health.State = StateTranscribing
 	runtime.mu.Unlock()
 
-	transcript, err := runtime.config.Host.Finish(ctx, capture)
+	transcriptionCtx, cancelTranscription := context.WithTimeout(ctx, runtime.config.TranscriptionTimeout)
+	defer cancelTranscription()
+	transcript, err := runtime.config.Host.Finish(transcriptionCtx, capture)
 	if err != nil {
 		runtime.complete(capture, false, err)
 		return
 	}
-	if err := runtime.routeTranscript(ctx, transcript); err != nil {
+	if err := runtime.routeTranscript(transcriptionCtx, transcript); err != nil {
 		runtime.complete(capture, false, err)
 		return
 	}

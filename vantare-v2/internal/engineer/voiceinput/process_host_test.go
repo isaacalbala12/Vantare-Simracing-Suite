@@ -53,6 +53,25 @@ func TestProcessHostFailsClosedWhenShippedBackendIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestProcessHostReadinessHasOwnDeadline(t *testing.T) {
+	host := NewProcessHost(func(nonce string) (*exec.Cmd, error) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestHangingHostHelper", "--", nonce)
+		cmd.Env = append(os.Environ(), "VANTARE_VOICE_HOST_HANG_HELPER=1")
+		return cmd, nil
+	})
+	host.readinessTimeout = 25 * time.Millisecond
+	started := time.Now()
+	if err := host.Start(context.Background()); err == nil {
+		t.Fatal("Start() accepted a child that never sent readiness")
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("readiness timeout took %v", elapsed)
+	}
+	if host.cmd != nil || host.nonce != "" {
+		t.Fatal("timed-out child ownership remained")
+	}
+}
+
 func TestProcessHostHelper(t *testing.T) {
 	if os.Getenv("VANTARE_VOICE_HOST_HELPER") != "1" {
 		return
@@ -85,4 +104,11 @@ func TestUnavailableHostHelper(t *testing.T) {
 	if err := RunUnavailableChild(os.Args[len(os.Args)-1], os.Stdout); err != nil {
 		os.Exit(3)
 	}
+}
+
+func TestHangingHostHelper(t *testing.T) {
+	if os.Getenv("VANTARE_VOICE_HOST_HANG_HELPER") != "1" {
+		return
+	}
+	select {}
 }

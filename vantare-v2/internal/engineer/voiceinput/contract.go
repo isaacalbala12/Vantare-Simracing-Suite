@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	ProtocolV1       = "vantare.engineer.voice-input-host.v1"
-	DefaultMaxWindow = 5 * time.Second
+	ProtocolV1                  = "vantare.engineer.voice-input-host.v1"
+	DefaultMaxWindow            = 5 * time.Second
+	DefaultTranscriptionTimeout = 10 * time.Second
 )
 
 var (

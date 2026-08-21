@@ -2,6 +2,7 @@ package voiceinput
 
 import (
 	"context"
+	gort "runtime"
 	"sync"
 	"testing"
 	"time"
@@ -9,6 +10,30 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/ptt"
 )
+
+func waitRuntimeState(t *testing.T, voiceRuntime *Runtime, state State) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if voiceRuntime.Health().State == state {
+			return
+		}
+		gort.Gosched()
+	}
+	t.Fatalf("runtime state = %q, want %q", voiceRuntime.Health().State, state)
+}
+
+func waitControllerState(t *testing.T, controller *ptt.Controller, state ptt.State) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if controller.Snapshot().State == state {
+			return
+		}
+		gort.Gosched()
+	}
+	t.Fatalf("controller state = %q, want %q", controller.Snapshot().State, state)
+}
 
 type fakeHost struct {
 	mu         sync.Mutex
@@ -120,6 +145,152 @@ func (publisher recordingPublisher) PublishVoiceTurn(_ context.Context, turn com
 	return nil
 }
 
+type blockingStartHost struct {
+	startEntered chan struct{}
+	releaseStart chan struct{}
+}
+
+type deadlineHost struct {
+	*fakeHost
+	deadline chan bool
+}
+
+type timeoutFinishHost struct {
+	*fakeHost
+	finishEntered  chan struct{}
+	finishReturned chan struct{}
+}
+
+func (host *timeoutFinishHost) Finish(ctx context.Context, _ Capture) ([]byte, error) {
+	close(host.finishEntered)
+	<-ctx.Done()
+	close(host.finishReturned)
+	return nil, ctx.Err()
+}
+
+func (host *deadlineHost) Finish(ctx context.Context, capture Capture) ([]byte, error) {
+	_, ok := ctx.Deadline()
+	host.deadline <- ok
+	return host.fakeHost.Finish(ctx, capture)
+}
+
+func (host *blockingStartHost) Start(context.Context) error {
+	close(host.startEntered)
+	<-host.releaseStart
+	return ErrHostUnavailable
+}
+func (*blockingStartHost) Begin(context.Context, Capture) error { return ErrHostUnavailable }
+func (*blockingStartHost) Finish(context.Context, Capture) ([]byte, error) {
+	return nil, ErrHostUnavailable
+}
+func (*blockingStartHost) Cancel(context.Context, Capture) error { return nil }
+func (*blockingStartHost) Stop(context.Context) error            { return nil }
+func (*blockingStartHost) WakeEvents() <-chan string             { return nil }
+
+func TestRuntimeStartNeverWaitsForHostAndStartsPTTPoller(t *testing.T) {
+	host := &blockingStartHost{startEntered: make(chan struct{}), releaseStart: make(chan struct{})}
+	reader := &readyReader{ready: make(chan struct{})}
+	runtime, err := New(testConfig(host, reader, recordingPublisher{turns: make(chan commands.Turn, 1)}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	startDone := make(chan error, 1)
+	go func() { startDone <- runtime.Start(context.Background()) }()
+	select {
+	case err := <-startDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(50 * time.Millisecond):
+		close(host.releaseStart)
+		<-startDone
+		t.Fatal("Runtime.Start blocked on host readiness")
+	}
+	select {
+	case <-reader.ready:
+	case <-time.After(50 * time.Millisecond):
+		close(host.releaseStart)
+		t.Fatal("PTT poller did not start while host readiness was pending")
+	}
+	close(host.releaseStart)
+	select {
+	case <-host.startEntered:
+	case <-time.After(time.Second):
+		t.Fatal("host start was not attempted asynchronously")
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeFinishAlwaysCarriesTranscriptionDeadline(t *testing.T) {
+	host := &deadlineHost{fakeHost: newFakeHost("dime el combustible"), deadline: make(chan bool, 1)}
+	config := testConfig(host, &readyReader{ready: make(chan struct{})}, recordingPublisher{turns: make(chan commands.Turn, 1)})
+	config.TranscriptionTimeout = 25 * time.Millisecond
+	runtime, err := New(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	<-host.startedCh
+	binding := runtime.config.Binding
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputDeviceConnected, Device: ptt.Device{Kind: binding.DeviceKind, ID: binding.DeviceID}})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding})
+	select {
+	case bounded := <-host.deadline:
+		if !bounded {
+			t.Fatal("Host.Finish received an unbounded context")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Host.Finish was not called")
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeTranscriptionDeadlineReleasesPTTOwnership(t *testing.T) {
+	host := &timeoutFinishHost{fakeHost: newFakeHost("unused"), finishEntered: make(chan struct{}), finishReturned: make(chan struct{})}
+	config := testConfig(host, &readyReader{ready: make(chan struct{})}, recordingPublisher{turns: make(chan commands.Turn, 1)})
+	config.TranscriptionTimeout = 20 * time.Millisecond
+	runtime, err := New(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	<-host.startedCh
+	binding := runtime.config.Binding
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputDeviceConnected, Device: ptt.Device{Kind: binding.DeviceKind, ID: binding.DeviceID}})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding})
+	select {
+	case <-host.finishEntered:
+	case <-time.After(time.Second):
+		t.Fatal("Host.Finish was not called")
+	}
+	select {
+	case <-host.finishReturned:
+	case <-time.After(time.Second):
+		t.Fatal("Host.Finish did not stop at its transcription deadline")
+	}
+	waitControllerState(t, runtime.controller, ptt.StateListening)
+	if health := runtime.Health(); health.State != StateError || health.Errors == 0 {
+		t.Fatalf("health after STT timeout = %+v", health)
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func testConfig(host Host, reader ptt.Reader, publisher TurnPublisher) Config {
 	return Config{
 		Enabled: true, Locale: commands.LocaleSpanish,
@@ -223,6 +394,46 @@ func TestRuntimeWakePlaceholderAndMaximumWindowAreBounded(t *testing.T) {
 	}
 	if health := runtime.Health(); health.WakeCaptures != 1 || health.Transcriptions != 1 {
 		t.Fatalf("health = %+v", health)
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimePTTTimeoutBeforeReleaseCompletesControllerCycle(t *testing.T) {
+	host := newFakeHost("dime el combustible")
+	reader := &readyReader{ready: make(chan struct{})}
+	publisher := recordingPublisher{turns: make(chan commands.Turn, 2)}
+	config := testConfig(host, reader, publisher)
+	config.MaxWindow = 10 * time.Millisecond
+	runtime, err := New(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	<-host.startedCh
+	binding := runtime.config.Binding
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputDeviceConnected, Device: ptt.Device{Kind: binding.DeviceKind, ID: binding.DeviceID}})
+	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true})
+	select {
+	case <-publisher.turns:
+	case <-time.After(time.Second):
+		t.Fatal("timed capture was not transcribed")
+	}
+	waitRuntimeState(t, runtime, StateIdle)
+	if _, err := runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding}); err != nil {
+		t.Fatal(err)
+	}
+	waitControllerState(t, runtime.controller, ptt.StateListening)
+	if _, err := runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true}); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.Health().PTTCaptures != 2 {
+		t.Fatalf("PTT captures = %d, want a second capture after timeout/release", runtime.Health().PTTCaptures)
 	}
 	if err := runtime.Stop(context.Background()); err != nil {
 		t.Fatal(err)

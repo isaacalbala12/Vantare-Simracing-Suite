@@ -1,7 +1,6 @@
 package voiceinput
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -15,17 +14,21 @@ import (
 	"time"
 )
 
-const maxProtocolLine = 64 * 1024
+const (
+	maxProtocolLine         = 64 * 1024
+	defaultReadinessTimeout = 3 * time.Second
+)
 
 type CommandFactory func(nonce string) (*exec.Cmd, error)
 
 type ProcessHost struct {
-	mu      sync.Mutex
-	factory CommandFactory
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	reader  *bufio.Reader
-	nonce   string
+	mu               sync.Mutex
+	factory          CommandFactory
+	cmd              *exec.Cmd
+	stdin            io.WriteCloser
+	reader           io.ReadCloser
+	nonce            string
+	readinessTimeout time.Duration
 }
 
 func NewProcessHost(factory CommandFactory) *ProcessHost {
@@ -38,7 +41,7 @@ func NewProcessHost(factory CommandFactory) *ProcessHost {
 			return exec.Command(executable, "-engineer-voice-host-child", "-engineer-voice-host-nonce="+nonce), nil
 		}
 	}
-	return &ProcessHost{factory: factory}
+	return &ProcessHost{factory: factory, readinessTimeout: defaultReadinessTimeout}
 }
 
 type hostReady struct {
@@ -96,17 +99,22 @@ func (host *ProcessHost) Start(ctx context.Context) error {
 	prepareHiddenProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		_ = stdin.Close()
+		_ = stdout.Close()
 		return fmt.Errorf("start voice-host: %w", err)
 	}
 	if err := lowerProcessPriority(cmd.Process.Pid); err != nil {
+		_ = stdin.Close()
+		_ = stdout.Close()
 		_ = cmd.Process.Kill()
 		_ = waitProcessOnce(cmd, time.Second, false)
 		return fmt.Errorf("lower voice-host priority: %w", err)
 	}
-	host.cmd, host.stdin, host.reader, host.nonce = cmd, stdin, bufio.NewReaderSize(stdout, maxProtocolLine), nonce
-	readyLine, err := readLine(ctx, host.reader)
+	host.cmd, host.stdin, host.reader, host.nonce = cmd, stdin, stdout, nonce
+	readinessCtx, cancelReadiness := context.WithTimeout(ctx, host.readinessTimeout)
+	defer cancelReadiness()
+	readyLine, err := readLine(readinessCtx, host.reader)
 	if err != nil {
-		host.stopLocked(time.Second)
+		host.stopLocked(100 * time.Millisecond)
 		return fmt.Errorf("read voice-host readiness: %w", err)
 	}
 	defer zeroBytes(readyLine)
@@ -155,7 +163,10 @@ func (host *ProcessHost) Stop(ctx context.Context) error {
 	}
 	request := hostRequest{Protocol: ProtocolV1, Nonce: host.nonce, Operation: "shutdown"}
 	if data, err := json.Marshal(request); err == nil {
-		_, _ = host.stdin.Write(append(data, '\n'))
+		line := appendProtocolNewline(data)
+		_, _ = host.stdin.Write(line)
+		zeroBytes(line)
+		zeroBytes(data)
 	}
 	timeout := time.Second
 	if deadline, ok := ctx.Deadline(); ok {
@@ -179,7 +190,9 @@ func (host *ProcessHost) request(ctx context.Context, request hostRequest) (host
 		return hostResponse{}, ErrHostProtocol
 	}
 	defer zeroBytes(data)
-	if _, err := host.stdin.Write(append(data, '\n')); err != nil {
+	requestLine := appendProtocolNewline(data)
+	defer zeroBytes(requestLine)
+	if _, err := host.stdin.Write(requestLine); err != nil {
 		return hostResponse{}, fmt.Errorf("write voice-host request: %w", err)
 	}
 	line, err := readLine(ctx, host.reader)
@@ -208,6 +221,7 @@ func (host *ProcessHost) stopLocked(timeout time.Duration) error {
 		return nil
 	}
 	_ = host.stdin.Close()
+	_ = host.reader.Close()
 	err := waitProcessOnce(cmd, timeout, true)
 	host.cmd, host.stdin, host.reader, host.nonce = nil, nil, nil, ""
 	return err
@@ -221,21 +235,45 @@ func randomNonce() (string, error) {
 	return hex.EncodeToString(value), nil
 }
 
-func readLine(ctx context.Context, reader *bufio.Reader) ([]byte, error) {
+func appendProtocolNewline(data []byte) []byte {
+	line := make([]byte, len(data)+1)
+	copy(line, data)
+	line[len(data)] = '\n'
+	return line
+}
+
+func readLine(ctx context.Context, reader io.Reader) ([]byte, error) {
 	type result struct {
 		line []byte
 		err  error
 	}
 	done := make(chan result, 1)
 	go func() {
-		line, err := reader.ReadSlice('\n')
-		if err == bufio.ErrBufferFull || len(line) > maxProtocolLine {
-			err = ErrHostProtocol
+		line := make([]byte, 0, 256)
+		defer zeroBytes(line)
+		var single [1]byte
+		for len(line) <= maxProtocolLine {
+			count, err := reader.Read(single[:])
+			if count != 0 {
+				line = append(line, single[0])
+				if single[0] == '\n' {
+					done <- result{line: append([]byte(nil), line...)}
+					return
+				}
+			}
+			if err != nil {
+				done <- result{err: err}
+				return
+			}
 		}
-		done <- result{line: append([]byte(nil), line...), err: err}
+		done <- result{err: ErrHostProtocol}
 	}()
 	select {
 	case <-ctx.Done():
+		go func() {
+			result := <-done
+			zeroBytes(result.line)
+		}()
 		return nil, ctx.Err()
 	case result := <-done:
 		return result.line, result.err

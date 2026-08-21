@@ -121,8 +121,12 @@ func DeriveSessionConsumptionPace(
 	samplesByBucket := make(map[strategyprojection.ClimateBucket]*bucketSamples)
 	for _, lap := range validity.Laps {
 		derivedLap := LapConsumptionPace{Number: lap.Number, Labels: append([]LapLabel(nil), lap.Labels...)}
-		if lap.Start == nil || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
-			!lapInsideOneSegment(*lap.Start, lap.End, validity.Temporal.Segments, validity.Temporal.Gaps) {
+		if lap.Start == nil || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 {
+			result.Laps = append(result.Laps, derivedLap)
+			continue
+		}
+		segmentPresence, insideSegment := lapSegmentPresence(*lap.Start, lap.End, validity.Temporal.Segments, validity.Temporal.Gaps)
+		if !insideSegment {
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
@@ -144,10 +148,15 @@ func DeriveSessionConsumptionPace(
 		}
 
 		lapPresence := weakestPresence(
+			segmentPresence,
 			wetnessPresence,
 			boundaryPresence(boundaries, *lap.Start),
 			boundaryPresence(boundaries, lap.End),
 		)
+		if presenceWeight(lapPresence) == 0 {
+			result.Laps = append(result.Laps, derivedLap)
+			continue
+		}
 		if familyIncluded(lap, FamilyFuelConsumption) {
 			if metric, ok := resourceDeltaMetric(session.ID, fuel, *lap.Start, lap.End, lapPresence); ok {
 				derivedLap.FuelConsumption = &metric
@@ -302,21 +311,25 @@ func familyIncluded(lap AnalyzedLap, family DerivationFamily) bool {
 	return true
 }
 
-func lapInsideOneSegment(start, end time.Time, segments []strategyprojection.ContinuousSegment, gaps []strategyprojection.CoverageGap) bool {
+func lapSegmentPresence(
+	start, end time.Time,
+	segments []strategyprojection.ContinuousSegment,
+	gaps []strategyprojection.CoverageGap,
+) (strategyprojection.Presence, bool) {
 	if end.Before(start) {
-		return false
+		return strategyprojection.PresenceInvalid, false
 	}
 	for _, gap := range gaps {
 		if start.Before(gap.EndTs) && end.After(gap.StartTs) {
-			return false
+			return strategyprojection.PresenceMissing, false
 		}
 	}
 	for _, segment := range segments {
 		if !start.Before(segment.SessionStartTs) && !end.After(segment.SessionEndTs) {
-			return true
+			return segment.Presence, true
 		}
 	}
-	return false
+	return strategyprojection.PresenceMissing, false
 }
 
 func boundaryQualityByTimestamp(boundaries []strategyprojection.LapBoundary) map[int64]strategyprojection.Presence {

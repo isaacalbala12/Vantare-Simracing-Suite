@@ -123,6 +123,28 @@ func TestDeriveSessionConsumptionPaceNeverCrossesGapOrPit(t *testing.T) {
 	}
 }
 
+func TestDeriveSessionConsumptionPaceRejectsInvalidSegmentQuality(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	validity.Temporal.Segments[0].Presence = strategyprojection.PresenceInvalid
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket, ok := got.ByClimateBucket[strategyprojection.ClimateBucketDry]
+	if !ok || bucket.FuelConsumption.Presence != strategyprojection.PresenceMissing ||
+		bucket.VirtualEnergyConsumption.Presence != strategyprojection.PresenceMissing ||
+		bucket.RepresentativePace.Presence != strategyprojection.PresenceMissing {
+		t.Fatalf("invalid segment quality did not declare missing families: %+v", got.ByClimateBucket)
+	}
+	for _, lap := range got.Laps {
+		if lap.FuelConsumption != nil || lap.VirtualEnergyConsumption != nil || lap.RepresentativePace != nil {
+			t.Fatalf("invalid segment quality produced values: %+v", lap)
+		}
+	}
+}
+
 func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 	current := aggregateFixtureSession("current", "combo", strategyprojection.PresenceValid, 2, 10)
 	historyUnknown := aggregateFixtureSession("history-unknown", "combo", strategyprojection.PresenceUnknown, 4, 12)

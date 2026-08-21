@@ -32,6 +32,14 @@ type Context struct {
 	Identity Identity
 }
 
+// Complete reports the minimum stable identity required by every live
+// Engineer producer. Team may legitimately be unavailable; event, session,
+// vehicle and driver are cancellation boundaries and therefore mandatory.
+func (context Context) Complete() bool {
+	return context.Epoch != 0 && context.Identity.Event != "" && context.Identity.Session != "" &&
+		context.Identity.Vehicle != "" && context.Identity.Driver != ""
+}
+
 // Boundary describes the state that consumers must discard before processing
 // the next projection. Driver/team swaps cancel pending decisions even when
 // Telemetry Core legitimately keeps the same run epoch.

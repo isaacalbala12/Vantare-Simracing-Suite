@@ -204,6 +204,7 @@ func (s *EngineerService) SetLegacySpotterRollback(enabled bool) error {
 		return ErrLegacySpotterRunning
 	}
 	s.legacySpotter = enabled
+	s.syncLegacyRuntimeLocked()
 	return nil
 }
 
@@ -217,6 +218,7 @@ func (s *EngineerService) SetLegacyFamiliesRollback(enabled bool) error {
 		return ErrLegacyFamiliesRunning
 	}
 	s.legacyFamilies = enabled
+	s.syncLegacyRuntimeLocked()
 	return nil
 }
 
@@ -538,7 +540,7 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
-	s.runtime.SetEnabled(enabled && s.spotterEnabled)
+	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -559,18 +561,27 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.spotterEnabled = enabled
-	s.runtime.SetEnabled(s.enabled && enabled)
+	s.syncLegacyRuntimeLocked()
 	if !enabled {
-		s.advancePresentationLifecycleLocked()
-		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
-		if s.scheduler != nil {
-			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
+		if s.activeDelivery != nil && s.activeDelivery.isSpotter() {
+			s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
 		}
-		s.queue.Clear()
-		s.resetRadioLocked(radio.ErrLifecycleBoundary)
+		if s.scheduler != nil {
+			s.scheduler.CancelFamily(messagepolicy.FamilySpotter, messagepolicy.ReasonLifecycleBoundary)
+		}
+		s.queue.ClearCategory(audio.CategorySpotter)
+		s.resetSpotterRadioLocked(radio.ErrLifecycleBoundary)
+		if s.activePresentation != nil && s.activePresentation.Category == string(messagepolicy.FamilySpotter) {
+			s.advancePresentationLifecycleLocked()
+		}
 	}
 	s.emitStatusLocked()
 	return nil
+}
+
+func (s *EngineerService) syncLegacyRuntimeLocked() {
+	enabled := s.enabled && (s.legacyFamilies || (s.legacySpotter && s.spotterEnabled))
+	s.runtime.SetEnabled(enabled)
 }
 
 // SetSensitivity updates the spotter sensitivity setting.
@@ -822,7 +833,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			// Capability/identity loss invalidates both policy context and any
 			// already selected radio item. Keeping the bus would let old evidence
 			// reach started after the producer has failed closed.
-			s.resetRadioLocked(radio.ErrPolicyRejected)
+			s.resetSpotterRadioLocked(radio.ErrPolicyRejected)
 		} else {
 			s.connected = false
 			s.lastError = err.Error()
@@ -843,10 +854,13 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 		}
 	}
 	if !s.legacyFamilies && s.familyEngine != nil && s.radioBus != nil {
-		messages, err := s.familyEngine.Evaluate(snapshot)
+		evaluation, err := s.familyEngine.Evaluate(snapshot)
+		if len(evaluation.ResetIntents) > 0 {
+			s.radioBus.ResetIntents(radio.ErrPolicyRejected, evaluation.ResetIntents...)
+		}
 		if err == nil {
 			processed = true
-			for _, message := range messages {
+			for _, message := range evaluation.Messages {
 				result, submitErr := s.radioBus.Submit(message)
 				if submitErr != nil {
 					s.connected = false

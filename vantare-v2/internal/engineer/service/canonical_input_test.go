@@ -7,23 +7,27 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/presentation"
+	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
 	"github.com/vantare/overlays/v2/internal/engineer/service"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
@@ -370,6 +374,280 @@ func TestLegacyFamiliesRollbackIsExclusivePreStartAndVisibleInHealth(t *testing.
 	}
 }
 
+func TestFamilyEngineRejectsIncompleteCanonicalIdentityLikeSpotter(t *testing.T) {
+	svc := service.NewEngineerService(nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	incomplete := canonicalObservationAt(t, 1, 1, 1, 100, 100)
+	incomplete.Context.Identity.Driver = ""
+	if err := svc.ConsumeObservation(incomplete); !errors.Is(err, projectioninput.ErrObservationNotReady) {
+		t.Fatalf("incomplete identity error = %v, want ErrObservationNotReady", err)
+	}
+	if svc.Status().Connected {
+		t.Fatal("incomplete identity connected the family runtime")
+	}
+}
+
+func TestFamilyCapabilityLossCancelsSelectedAndReseedsState(t *testing.T) {
+	gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetAudioResolver(gate)
+	svc.SetAudioPlayer(immediateAudioPlayer{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 0, 100, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 90, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("lap message was not selected before capability loss")
+	}
+
+	lost := canonicalObservationAt(t, 1, 3, 3, 80, 100)
+	manifest := lost.Manifest.Entries()
+	for index := range manifest {
+		if manifest[index].ID == engineerprojection.CapabilityStandings {
+			manifest[index].State = engineerprojection.CapabilityUnsupported
+		}
+	}
+	var err error
+	lost.Manifest, err = engineerprojection.NewManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(lost); err != nil && !errors.Is(err, projectioninput.ErrObservationNotReady) {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-gate.done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("selected family cancellation = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("capability loss did not cancel selected family message")
+	}
+	close(gate.release)
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 4, 4, 70, 100)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case notification := <-notifications:
+		t.Fatalf("state was not reseeded after capability recovery: %+v", notification)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestFamilyEngineRejectsFreshFuelWhenManifestSaysUnsupported(t *testing.T) {
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+
+	unsupported := canonicalObservationAt(t, 1, 1, 1, 0.5, 100)
+	manifest := unsupported.Manifest.Entries()
+	for index := range manifest {
+		if manifest[index].ID == engineerprojection.CapabilityFuel {
+			manifest[index].State = engineerprojection.CapabilityUnsupported
+		}
+	}
+	var err error
+	unsupported.Manifest, err = engineerprojection.NewManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ConsumeObservation(unsupported); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(50 * time.Millisecond)
+	for {
+		select {
+		case notification := <-notifications:
+			if strings.HasPrefix(notification.TextKey, "fuel.") {
+				t.Fatalf("unsupported fuel capability authorized %+v", notification)
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
+func TestFuelLapFieldLossResetsConsumptionBeforeRecovery(t *testing.T) {
+	svc := service.NewEngineerService(nil)
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+	for _, observation := range []engineerprojection.ObservationSnapshotV1{
+		canonicalObservationAt(t, 1, 1, 1, 100, 100),
+		canonicalObservationAt(t, 1, 2, 2, 90, 100),
+		canonicalObservationAt(t, 1, 3, -1, 70, 100),
+		canonicalObservationAt(t, 1, 4, -1, 50, 100),
+		canonicalObservationAt(t, 1, 5, 4, 20, 100),
+	} {
+		if err := svc.ConsumeObservation(observation); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.After(100 * time.Millisecond)
+	for {
+		select {
+		case notification := <-notifications:
+			if strings.HasPrefix(notification.TextKey, "fuel.laps_remaining_") || notification.TextKey == "fuel.for_pit_now" {
+				t.Fatalf("missing lap field contaminated consumption state: %+v", notification)
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
+func TestSpotterToggleDoesNotResetOrDisableFamilies(t *testing.T) {
+	for _, toggle := range []string{"setting", "output"} {
+		for _, legacyFamilies := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s_legacy_families_%t", toggle, legacyFamilies), func(t *testing.T) {
+				svc := service.NewEngineerService(nil)
+				if err := svc.SetLegacyFamiliesRollback(legacyFamilies); err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if err := svc.Start(ctx); err != nil {
+					t.Fatal(err)
+				}
+				defer svc.Stop()
+				notifications, unsubscribe := svc.Subscribe()
+				defer unsubscribe()
+				if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 0, 100, 100)); err != nil {
+					t.Fatal(err)
+				}
+				if toggle == "setting" {
+					if err := svc.SetSpotterEnabled(false); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := svc.SetOutputMode("spotter", "disabled"); err != nil {
+					t.Fatal(err)
+				}
+				if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 90, 100)); err != nil {
+					t.Fatal(err)
+				}
+				waitForIntent(t, notifications, "laps.lap_completed")
+			})
+		}
+	}
+}
+
+func TestLegacyRollbackMatrixDeliversSpotterAndFamiliesExclusively(t *testing.T) {
+	for _, legacySpotter := range []bool{false, true} {
+		for _, legacyFamilies := range []bool{false, true} {
+			name := fmt.Sprintf("spotter_%t_families_%t", legacySpotter, legacyFamilies)
+			t.Run(name, func(t *testing.T) {
+				svc := service.NewEngineerService(nil)
+				if err := svc.SetLegacySpotterRollback(legacySpotter); err != nil {
+					t.Fatal(err)
+				}
+				if err := svc.SetLegacyFamiliesRollback(legacyFamilies); err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if err := svc.Start(ctx); err != nil {
+					t.Fatal(err)
+				}
+				defer svc.Stop()
+				notifications, unsubscribe := svc.Subscribe()
+				defer unsubscribe()
+				if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 1, 0, 100, 100)); err != nil {
+					t.Fatal(err)
+				}
+				if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 90, 100)); err != nil {
+					t.Fatal(err)
+				}
+				waitForIntent(t, notifications, "laps.lap_completed")
+				if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 3, 1, 90, 100, 2.8)); err != nil {
+					t.Fatal(err)
+				}
+				waitForIntent(t, notifications, "spotter.car_left")
+				assertNoIntentFor(t, notifications, 50*time.Millisecond, "laps.lap_completed", "spotter.car_left")
+				counts := map[string]int{}
+				for _, notification := range svc.RecentNotifications() {
+					counts[notification.TextKey]++
+				}
+				if counts["laps.lap_completed"] != 1 || counts["spotter.car_left"] != 1 {
+					t.Fatalf("rollback matrix duplicated or lost real delivery: %v", counts)
+				}
+			})
+		}
+	}
+}
+
+func waitForIntent(t *testing.T, notifications <-chan service.EngineerNotification, intent string) {
+	t.Helper()
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case notification := <-notifications:
+			if notification.TextKey == intent {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("notification %s was not delivered", intent)
+		}
+	}
+}
+
+func assertNoIntentFor(t *testing.T, notifications <-chan service.EngineerNotification, duration time.Duration, intents ...string) {
+	t.Helper()
+	forbidden := make(map[string]struct{}, len(intents))
+	for _, intent := range intents {
+		forbidden[intent] = struct{}{}
+	}
+	deadline := time.After(duration)
+	for {
+		select {
+		case notification := <-notifications:
+			if _, found := forbidden[notification.TextKey]; found {
+				t.Fatalf("unexpected duplicate notification: %+v", notification)
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
 func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -517,9 +795,18 @@ func canonicalSpotterObservation(t *testing.T, epoch uint64, rivalX ...float64) 
 }
 
 func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	return canonicalObservation(t, epoch, sequence, 1, 100, 100, false, rivalX...)
+}
+
+func canonicalObservationAt(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	return canonicalObservation(t, epoch, sequence, lap, fuel, capacity, true, rivalX...)
+}
+
+func canonicalObservation(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
-	clock := schema.NewClock(observedField(t, time.Second), observedField(t, time.Second), time.Now().UTC())
+	sourceTime := time.Duration(sequence) * time.Second
+	clock := schema.NewClock(observedField(t, sourceTime), observedField(t, sourceTime), time.Now().UTC())
 	header := envelope.Header{
 		Source:   "canonical-service-test",
 		Cursor:   schema.Cursor{Epoch: schema.Epoch(epoch), Sequence: schema.Sequence(sequence)},
@@ -534,13 +821,23 @@ func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX 
 	player := telemetrycore.VehicleState{
 		Identity:      run,
 		Player:        observedField(t, true),
-		LapNumber:     observedField(t, session.LapNumber(1)),
 		Gear:          observedField(t, vehicle.Gear(4)),
 		SpeedMPS:      observedField(t, 40.0),
 		InPit:         observedField(t, pit.InPit(false)),
 		WorldPosition: observedField(t, spatial.Position{X: 100, Z: 100}),
 		LocalVelocity: observedField(t, spatial.LocalVelocity{Z: 40}),
 		Orientation:   observedField(t, orientation),
+	}
+	if lap >= 0 {
+		player.LapNumber = observedField(t, session.LapNumber(lap))
+	}
+	if familySignals {
+		player.LastLapTime = observedField(t, standings.LapTime(90))
+		player.Position = observedField(t, standings.Position(1))
+		player.PenaltyCount = observedField(t, standings.PenaltyCount(0))
+		player.TimeBehindNext = observedField(t, standings.TimeGap(2))
+		player.TimeBehindLeader = observedField(t, standings.TimeGap(5))
+		player.Fuel = observedField(t, energy.Fuel{Amount: energy.FuelAmount(fuel), Capacity: energy.FuelCapacity(capacity)})
 	}
 	vehicles := []telemetrycore.VehicleState{player}
 	for index, offset := range rivalX {
@@ -551,7 +848,7 @@ func canonicalSpotterObservationAt(t *testing.T, epoch, sequence uint64, rivalX 
 		vehicles = append(vehicles, rival)
 	}
 	state := derive.FinalState{Observed: telemetrycore.ObservedState{
-		SourceTime:    observedField(t, time.Second),
+		SourceTime:    observedField(t, sourceTime),
 		PlayerPresent: observedField(t, true),
 		VehicleCount:  observedField(t, schema.Count(len(vehicles))),
 		Vehicles:      vehicles,

@@ -4,6 +4,7 @@ package families
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -16,6 +17,8 @@ var ErrObservationNotReady = errors.New("engineer family observation is not read
 type Clock interface{ NowMS() int64 }
 
 type State interface{ Reset() }
+
+type startedState interface{ Started(radio.RadioMessage) }
 
 type Family interface {
 	Evaluate(Evidence, State) []radio.RadioMessage
@@ -43,19 +46,48 @@ type Evidence struct {
 }
 
 type registration struct {
-	name   string
-	family Family
-	state  State
+	name         string
+	family       Family
+	state        State
+	capabilities []engineer.CapabilityID
+	intents      []string
+	ready        func(Evidence) bool
+	wasReady     bool
 }
 
 func familyTable() []registration {
 	return []registration{
-		{name: "fuel", family: fuelFamily{}, state: &fuelState{}},
-		{name: "penalties", family: penaltiesFamily{}, state: &penaltiesState{}},
-		{name: "laps", family: lapsFamily{}, state: &lapsState{}},
-		{name: "timings", family: timingsFamily{}, state: &timingsState{}},
-		{name: "pitstops", family: pitstopsFamily{}, state: &pitstopsState{}},
+		{
+			name: "fuel", family: fuelFamily{}, state: &fuelState{}, intents: familyIntents("fuel"),
+			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityFuel},
+			ready:        func(e Evidence) bool { return e.FuelKnown && e.LapKnown },
+		},
+		{
+			name: "penalties", family: penaltiesFamily{}, state: &penaltiesState{}, intents: familyIntents("penalties"),
+			capabilities: []engineer.CapabilityID{engineer.CapabilityStandings},
+			ready:        func(e Evidence) bool { return e.PenaltyKnown },
+		},
+		{
+			name: "laps", family: lapsFamily{}, state: &lapsState{}, intents: familyIntents("laps"),
+			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings},
+			ready:        func(e Evidence) bool { return e.LapKnown },
+		},
+		{
+			name: "timings", family: timingsFamily{}, state: &timingsState{}, intents: familyIntents("timings"),
+			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityGaps},
+			ready:        func(e Evidence) bool { return e.GapLeaderKnown || e.GapNextKnown },
+		},
+		{
+			name: "pitstops", family: pitstopsFamily{}, state: &pitstopsState{}, intents: familyIntents("pitstops"),
+			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityControls, engineer.CapabilityPit},
+			ready:        func(e Evidence) bool { return e.PitKnown },
+		},
 	}
+}
+
+type Evaluation struct {
+	Messages     []radio.RadioMessage
+	ResetIntents []string
 }
 
 type Engine struct {
@@ -98,41 +130,106 @@ func (engine *Engine) Reset() {
 	defer engine.mu.Unlock()
 	for index := range engine.families {
 		engine.families[index].state.Reset()
+		engine.families[index].wasReady = false
 	}
 }
 
-func (engine *Engine) Evaluate(snapshot engineer.ObservationSnapshotV1) ([]radio.RadioMessage, error) {
+func (engine *Engine) Evaluate(snapshot engineer.ObservationSnapshotV1) (Evaluation, error) {
 	engine.mu.Lock()
 	defer engine.mu.Unlock()
 	evidence := evidenceFromObservation(snapshot, engine.clock.NowMS())
 	if !evidence.Ready {
-		for index := range engine.families {
-			engine.families[index].state.Reset()
-		}
-		return nil, ErrObservationNotReady
+		return engine.resetReadyFamiliesLocked(), ErrObservationNotReady
 	}
 	if !evidence.PlayerReady {
-		for index := range engine.families {
-			engine.families[index].state.Reset()
-		}
-		return nil, nil
+		return engine.resetReadyFamiliesLocked(), ErrObservationNotReady
 	}
-	var messages []radio.RadioMessage
+	var result Evaluation
 	for index := range engine.families {
-		messages = append(messages, engine.families[index].family.Evaluate(evidence, engine.families[index].state)...)
+		registration := &engine.families[index]
+		if !registrationReady(snapshot, evidence, registration) {
+			registration.state.Reset()
+			if registration.wasReady {
+				result.ResetIntents = append(result.ResetIntents, registration.intents...)
+			}
+			registration.wasReady = false
+			continue
+		}
+		registration.wasReady = true
+		result.Messages = append(result.Messages, registration.family.Evaluate(evidence, registration.state)...)
 	}
-	for index := range messages {
+	for index := range result.Messages {
 		engine.nextID++
-		messages[index].ID = fmt.Sprintf("families-%d-%s", engine.nextID, messages[index].Intent)
-		messages[index].Locale = engine.locale
+		result.Messages[index].ID = fmt.Sprintf("families-%d-%s", engine.nextID, result.Messages[index].Intent)
+		result.Messages[index].Locale = engine.locale
 	}
-	return messages, nil
+	return result, nil
+}
+
+func (engine *Engine) resetReadyFamiliesLocked() Evaluation {
+	var result Evaluation
+	for index := range engine.families {
+		registration := &engine.families[index]
+		registration.state.Reset()
+		if registration.wasReady {
+			result.ResetIntents = append(result.ResetIntents, registration.intents...)
+		}
+		registration.wasReady = false
+	}
+	return result
+}
+
+func registrationReady(snapshot engineer.ObservationSnapshotV1, evidence Evidence, registration *registration) bool {
+	for _, capability := range registration.capabilities {
+		if snapshot.Manifest.State(capability) != engineer.CapabilitySupported {
+			return false
+		}
+	}
+	return registration.ready(evidence)
+}
+
+func (engine *Engine) AcknowledgeStarted(message radio.RadioMessage) {
+	if engine == nil {
+		return
+	}
+	engine.mu.Lock()
+	defer engine.mu.Unlock()
+	family, ok := FamilyForIntent(message.Intent)
+	if !ok {
+		return
+	}
+	for index := range engine.families {
+		registration := &engine.families[index]
+		if registration.name == family && registration.wasReady {
+			if state, ok := registration.state.(startedState); ok {
+				state.Started(message)
+			}
+			return
+		}
+	}
+}
+
+func (engine *Engine) ResetFamily(family string) []string {
+	if engine == nil {
+		return nil
+	}
+	engine.mu.Lock()
+	defer engine.mu.Unlock()
+	for index := range engine.families {
+		registration := &engine.families[index]
+		if registration.name == family {
+			registration.state.Reset()
+			registration.wasReady = false
+			return append([]string(nil), registration.intents...)
+		}
+	}
+	return nil
 }
 
 func evidenceFromObservation(snapshot engineer.ObservationSnapshotV1, nowMS int64) Evidence {
 	present, presentOK := usable(snapshot.PlayerPresent)
 	evidence := Evidence{NowMS: nowMS, Subject: string(snapshot.Player.ID)}
-	evidence.Ready = snapshot.Context.Epoch != 0 && evidence.Subject != ""
+	evidence.Ready = snapshot.Context.Complete()
 	evidence.PlayerReady = presentOK && present
 	evidence.FuelLitres, evidence.FuelKnown = usable(snapshot.Player.FuelLiters)
 	evidence.FuelCapacity, evidence.FuelCapacityKnown = usable(snapshot.Player.FuelCapacity)
@@ -163,6 +260,19 @@ func FamilyForIntent(intent string) (string, bool) {
 	definition, ok := intentTable[intent]
 	return definition.Family, ok
 }
+
+func familyIntents(family string) []string {
+	var result []string
+	for intent, definition := range intentTable {
+		if definition.Family == family {
+			result = append(result, intent)
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
+func IntentsForFamily(family string) []string { return familyIntents(family) }
 
 func Cooldowns() map[string]time.Duration {
 	result := make(map[string]time.Duration, len(intentTable))

@@ -65,3 +65,18 @@ func (q *Queue) Clear() {
 	clear(q.messages)
 	q.messages = q.messages[:0]
 }
+
+// ClearCategory removes only pending work owned by one legacy producer.
+func (q *Queue) ClearCategory(category Category) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	kept := q.messages[:0]
+	for _, message := range q.messages {
+		if message.Category == category {
+			continue
+		}
+		kept = append(kept, message)
+	}
+	clear(q.messages[len(kept):])
+	q.messages = kept
+}

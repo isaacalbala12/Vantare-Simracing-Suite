@@ -5,9 +5,17 @@ import "github.com/vantare/overlays/v2/internal/radio"
 type pitstopsState struct {
 	initialized bool
 	inPit       bool
+	generation  uint64
+	announced   uint64
 }
 
 func (state *pitstopsState) Reset() { *state = pitstopsState{} }
+
+func (state *pitstopsState) Started(message radio.RadioMessage) {
+	if message.CoalesceRevision > state.announced {
+		state.announced = message.CoalesceRevision
+	}
+}
 
 type pitstopsFamily struct{}
 
@@ -20,13 +28,18 @@ func (pitstopsFamily) Evaluate(e Evidence, raw State) []radio.RadioMessage {
 		state.initialized, state.inPit = true, e.InPit
 		return nil
 	}
-	previous := state.inPit
-	state.inPit = e.InPit
-	if !previous && e.InPit {
-		return []radio.RadioMessage{message(IntentPitEntry, e)}
+	if state.inPit != e.InPit {
+		state.inPit = e.InPit
+		state.generation++
 	}
-	if previous && !e.InPit {
-		return []radio.RadioMessage{message(IntentPitExit, e)}
+	if state.announced < state.generation {
+		intent := IntentPitExit
+		if state.inPit {
+			intent = IntentPitEntry
+		}
+		result := message(intent, e)
+		result.CoalesceRevision = state.generation
+		return []radio.RadioMessage{result}
 	}
 	return nil
 }

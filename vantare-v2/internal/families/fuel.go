@@ -12,12 +12,32 @@ type fuelState struct {
 	lastLap                                                             int
 	fuelAtLapStart                                                      float64
 	samples                                                             []float64
-	lastBatchMS                                                         int64
 	playedHalf, playedOne, playedTwo                                    bool
 	playedFour, playedThree, playedLapsTwo, playedLapsOne, playedPitNow bool
 }
 
 func (state *fuelState) Reset() { *state = fuelState{} }
+
+func (state *fuelState) Started(message radio.RadioMessage) {
+	switch message.Intent {
+	case IntentFuelHalfTank:
+		state.playedHalf = true
+	case IntentFuelOneLitre:
+		state.playedOne = true
+	case IntentFuelTwoLitres:
+		state.playedTwo = true
+	case IntentFuelLapsFour:
+		state.playedFour = true
+	case IntentFuelLapsThree:
+		state.playedThree = true
+	case IntentFuelLapsTwo:
+		state.playedLapsTwo = true
+	case IntentFuelLapsOne:
+		state.playedLapsOne = true
+	case IntentFuelPitNow:
+		state.playedPitNow = true
+	}
+}
 
 type fuelFamily struct{}
 
@@ -44,45 +64,31 @@ func (fuelFamily) Evaluate(e Evidence, raw State) []radio.RadioMessage {
 		}
 	}
 	state.lastFuel = e.FuelLitres
-	if state.lastBatchMS != 0 && e.NowMS-state.lastBatchMS < 30_000 {
-		return nil
-	}
 	var result []radio.RadioMessage
 	if e.FuelLitres <= 2 && !state.playedTwo {
 		result = append(result, message(IntentFuelTwoLitres, e))
-		state.playedTwo = true
 	}
 	if e.FuelLitres <= 1 && !state.playedOne {
 		result = append(result, message(IntentFuelOneLitre, e))
-		state.playedOne = true
 	}
 	if e.FuelCapacityKnown && e.FuelCapacity > 0 && e.FuelLitres <= e.FuelCapacity*0.5 && !state.playedHalf {
 		result = append(result, message(IntentFuelHalfTank, e))
-		state.playedHalf = true
 	}
-	if average := averageFuel(state.samples); average > 0 {
+	if average := averageFuel(state.samples); e.FuelCapacityKnown && e.FuelCapacity > 0 && average > 0 {
 		estimated := e.FuelLitres / average
 		switch {
 		case estimated <= 1 && !state.playedLapsOne:
 			result = append(result, message(IntentFuelLapsOne, e))
-			state.playedLapsOne = true
 		case estimated <= 2 && !state.playedLapsTwo:
 			result = append(result, message(IntentFuelLapsTwo, e))
-			state.playedLapsTwo = true
 		case estimated <= 3 && !state.playedThree:
 			result = append(result, message(IntentFuelLapsThree, e))
-			state.playedThree = true
 		case estimated <= 4 && !state.playedFour:
 			result = append(result, message(IntentFuelLapsFour, e))
-			state.playedFour = true
 		}
 		if estimated < 4 && !state.playedPitNow {
 			result = append(result, message(IntentFuelPitNow, e))
-			state.playedPitNow = true
 		}
-	}
-	if len(result) > 0 {
-		state.lastBatchMS = e.NowMS
 	}
 	return result
 }

@@ -45,16 +45,12 @@ var intentTable = map[string]intentDefinition{
 	IntentPenaltyCountIncreased: informationIntent("penalties", 30*time.Second, 20*time.Second, phrases("Hay una nueva penalización pendiente", "A new penalty is pending", "C'è una nuova penalità da scontare", "Há uma nova penalização pendente")),
 	IntentLapCompleted:          informationIntent("laps", 0, 10*time.Second, phrases("Vuelta completada", "Lap completed", "Giro completato", "Volta concluída")),
 	IntentTimingGapReport:       informationIntent("timings", 60*time.Second, 15*time.Second, phrases("Diferencias actualizadas", "Gaps updated", "Distacchi aggiornati", "Diferenças atualizadas")),
-	IntentPitEntry:              pitIntent(5*time.Second, 10*time.Second, phrases("Entrando en boxes", "Entering the pits", "Ingresso ai box", "Entrando nos boxes")),
-	IntentPitExit:               pitIntent(5*time.Second, 10*time.Second, phrases("Saliendo de boxes", "Leaving the pits", "Uscita dai box", "Saindo dos boxes")),
+	IntentPitEntry:              informationIntent("pitstops", 5*time.Second, 10*time.Second, phrases("Entrando en boxes", "Entering the pits", "Ingresso ai box", "Entrando nos boxes")),
+	IntentPitExit:               informationIntent("pitstops", 5*time.Second, 10*time.Second, phrases("Saliendo de boxes", "Leaving the pits", "Uscita dai box", "Saindo dos boxes")),
 }
 
 func fuelIntent(cooldown, ttl time.Duration, localized map[radio.Locale]radio.Phrase) intentDefinition {
 	return intentDefinition{Family: "fuel", Priority: radio.PriorityP2, Cooldown: cooldown, TTL: ttl, Subject: "player", Severity: "warning", Phrases: localized}
-}
-
-func pitIntent(cooldown, ttl time.Duration, localized map[radio.Locale]radio.Phrase) intentDefinition {
-	return intentDefinition{Family: "pitstops", Priority: radio.PriorityP2, Cooldown: cooldown, TTL: ttl, Subject: "player", Severity: "warning", Phrases: localized}
 }
 
 func informationIntent(family string, cooldown, ttl time.Duration, localized map[radio.Locale]radio.Phrase) intentDefinition {

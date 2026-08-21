@@ -73,8 +73,8 @@ func TestBatchMapperRealFixtureTraversesParseFusionMapperAndReducer(t *testing.T
 		seen[current.Identity.Vehicle] = struct{}{}
 		if player, present := current.Player.Value(); present && player {
 			players++
-			if snapshot.Header().Identity.Vehicle != current.Identity.Vehicle {
-				t.Fatalf("header player = %q, row player = %q", snapshot.Header().Identity.Vehicle, current.Identity.Vehicle)
+			if snapshot.Header().Identity.Vehicle != current.Identity.Vehicle || snapshot.Header().Identity.Driver != current.Identity.Driver {
+				t.Fatalf("header player = %+v, row player = %+v", snapshot.Header().Identity, current.Identity)
 			}
 		}
 	}

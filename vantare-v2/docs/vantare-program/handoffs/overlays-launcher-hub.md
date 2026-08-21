@@ -894,6 +894,22 @@ Evidencia Task 4 y cierre acumulado:
 - Write set previsto: entry Vite aislado, host Wails de benchmark, runner,
   agregador, tests, corpus y evidencia. No se tocan `WidgetVisualHost`,
   Telemetry Core, proyecciones, cadencias ni ventanas productivas.
-- Estado: planificación cerrada y lista para checkpoint documental;
-  implementación del harness pendiente. Sin push, PR, CI, integración,
-  promoción ni release.
+- Implementación cerrada en `066d3f14`: entry Vite aislado, host Wails real,
+  custodia SHA-256, runner con recursos/residuos y agregador independiente. El
+  renderer productivo y las ventanas de producto no fueron modificados.
+- Evidencia final: 15 runs seriales, 2499 snapshots y paridad de filas
+  2499/2499. Los cinco p95 de layout cumplen 8 ms (2.0--7.2 ms), pero los cinco
+  máximos superan 16.67 ms (19.5--44.0 ms); el gate completo queda `INVALID`
+  sin superar el hitch de 50 ms.
+- Frente al `modelApply` Qt de ISA-738, Wails presenta p95/máximos
+  direccionalmente menores en todas las escenas, pero la frontera es
+  `DEGRADED` y no autoriza una afirmación de superioridad. rAF versus
+  `frameSwapped` y CPU/RAM versus Qt permanecen `UNRESOLVED`.
+- Raw local `C:\tmp\isa760-wails-final-066d3f14`; manifest SHA-256
+  `4ac1d0ddeb5f6fd092d9ade0c8f626767b6dd92f82fb906ffd2c8cf53c999f0d`;
+  summary SHA-256
+  `c89f4b41059d041eed9ca9a0c5f6addcbf55e2f50c3d52029177bf53351d4f53`.
+  El agregador aceptó el runset y rechazó una traza manipulada.
+- Resultado: Wails continúa como único runtime principal por la decisión de
+  arquitectura existente; Qt sigue como laboratorio. Sin PR, CI, integración,
+  promoción ni release en este corte.

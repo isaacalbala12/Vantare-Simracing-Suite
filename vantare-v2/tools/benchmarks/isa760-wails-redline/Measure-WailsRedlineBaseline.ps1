@@ -41,16 +41,20 @@ $summaries = foreach ($scenario in @($manifest.scenarios)) {
     $raf = [double[]]@($frames.rafSubmitMs)
     $lateness = [double[]]@($frames.scheduleLatenessMs)
     $layoutP95 = Get-Percentile $layout 0.95
+    $layoutMax = ($layout | Measure-Object -Maximum).Maximum
     [ordered]@{
         scenario = $scenario
         runs = $group.Count
         frames = $frames.Count
         rowParity = 'VALID'
         commitMs = [ordered]@{ p50 = Get-Percentile $commit 0.50; p95 = Get-Percentile $commit 0.95; max = ($commit | Measure-Object -Maximum).Maximum }
-        layoutMs = [ordered]@{ p50 = Get-Percentile $layout 0.50; p95 = $layoutP95; max = ($layout | Measure-Object -Maximum).Maximum }
+        layoutMs = [ordered]@{ p50 = Get-Percentile $layout 0.50; p95 = $layoutP95; max = $layoutMax }
         rafSubmitMs = [ordered]@{ p50 = Get-Percentile $raf 0.50; p95 = Get-Percentile $raf 0.95; max = ($raf | Measure-Object -Maximum).Maximum; equivalenceToPresentation = 'UNRESOLVED' }
         scheduleLatenessMs = [ordered]@{ p50 = Get-Percentile $lateness 0.50; p95 = Get-Percentile $lateness 0.95; max = ($lateness | Measure-Object -Maximum).Maximum }
         layoutP95Gate8ms = $(if ($layoutP95 -le 8) { 'VALID' } else { 'INVALID' })
+        layoutMaxGate16_67ms = $(if ($layoutMax -le 16.67) { 'VALID' } else { 'INVALID' })
+        layoutHitch50ms = $(if ($layoutMax -le 50) { 'VALID' } else { 'INVALID' })
+        layoutGate = $(if ($layoutP95 -le 8 -and $layoutMax -le 16.67) { 'VALID' } else { 'INVALID' })
         normalizedCpuPercent = [ordered]@{ median = Get-Percentile ([double[]]@($group.resources.normalizedCpuPercent)) 0.50; comparisonToQt = 'UNRESOLVED' }
         peakWorkingSetBytes = [ordered]@{ median = Get-Percentile ([double[]]@($group.resources.peakWorkingSetBytes)) 0.50; comparisonToQt = 'UNRESOLVED' }
     }
@@ -65,6 +69,7 @@ $summary = [ordered]@{
         rafSubmitVsQtFrameSwapped = 'UNRESOLVED'
         cpuAndMemoryVsQt = 'UNRESOLVED'
     }
+    layoutGate = $(if (@($summaries | Where-Object { $_.layoutGate -eq 'INVALID' }).Count -eq 0) { 'VALID' } else { 'INVALID' })
     scenarios = $summaries
 }
 $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding utf8NoBOM

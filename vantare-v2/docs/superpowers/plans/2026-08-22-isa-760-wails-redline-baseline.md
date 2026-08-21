@@ -1,6 +1,6 @@
 # ISA-760 — baseline Wails Redline comparable con Qt
 
-Estado: en ejecución sobre `origin/nightly@f71a43aceef39df0aee3cd9f69ab52efeeac31c8`.
+Estado: completado sobre `origin/nightly@f71a43aceef39df0aee3cd9f69ab52efeeac31c8`.
 
 ## Objetivo
 
@@ -55,7 +55,8 @@ No se publicará una conclusión Wails versus Qt desde una fila `DEGRADED` o
 - Test PowerShell del agregador con fixtures PASS y corruptas.
 - `pnpm --dir frontend typecheck`, focales, build benchmark y build frontend.
 - `go test` focal y `go test ./...` si el host Go entra en el módulo.
-- Tres runs exploratorios; diez runs finales solo con preflight de host limpio.
+- Preflight de las cinco escenas y 15 runs finales (tres por escenario, igual
+  que la evidencia Qt) solo con host limpio.
 - Inspección manual de una ventana transparente con el Standings correcto.
 
 ## Archivos esperados
@@ -75,3 +76,13 @@ corte y se reevalúa el alcance.
 El baseline termina cuando raw, manifest y agregación reproducible permiten
 clasificar cada capa como `VALID`, `DEGRADED`, `INVALID` o `UNRESOLVED`. La rama
 puede publicarse como evidencia; no abre PR ni promueve a ningún canal.
+
+Baseline cerrado en `066d3f1403682c2da0f7516d6cb2787ac66643cb`:
+
+- Input, hashes y 2499/2499 cardinalidades: `VALID`.
+- Commit/layout React frente a QML model apply: `DEGRADED`.
+- Layout p95 <= 8 ms: `VALID` en cinco escenas; gate completo: `INVALID` por
+  máximos de 19.5--44.0 ms superiores a 16.67 ms.
+- rAF frente a presentación Qt: `UNRESOLVED`.
+- CPU/RAM frente a Qt: `UNRESOLVED`.
+- Evidencia: `tools/benchmarks/isa760-wails-redline/evidence/isa760-wails-v1/README.md`.

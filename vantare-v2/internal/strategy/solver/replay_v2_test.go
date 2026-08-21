@@ -22,6 +22,13 @@ func TestReplayDecisionV2MatchesSolvedRecommendation(t *testing.T) {
 	if math.Abs(replayed.Evaluation.TotalSeconds-solved.Expected.TotalSeconds) > 1e-9 {
 		t.Fatalf("total = %.12f, want %.12f", replayed.Evaluation.TotalSeconds, solved.Expected.TotalSeconds)
 	}
+	stintTotal := 0.0
+	for _, stint := range replayed.Stints {
+		stintTotal += stint.Evaluation.TotalSeconds
+	}
+	if math.Abs(stintTotal-replayed.Evaluation.TotalSeconds) > 1e-9 {
+		t.Fatalf("stint total = %.12f, want replay total %.12f", stintTotal, replayed.Evaluation.TotalSeconds)
+	}
 }
 
 func TestReplayDecisionV2ReportsFixedPlanConstraintViolation(t *testing.T) {

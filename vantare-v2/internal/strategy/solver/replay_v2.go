@@ -14,8 +14,15 @@ type ReplayResultV1 struct {
 	ContractVersion string             `json:"contractVersion"`
 	Decision        DecisionVector     `json:"decision"`
 	Evaluation      ScenarioEvaluation `json:"evaluation"`
+	Stints          []ReplayStintV1    `json:"stints"`
 	Feasible        bool               `json:"feasible"`
 	Reasons         []SolverReason     `json:"reasons,omitempty"`
+}
+
+type ReplayStintV1 struct {
+	Index      int                `json:"index"`
+	Laps       int64              `json:"laps"`
+	Evaluation ScenarioEvaluation `json:"evaluation"`
 }
 
 // ReplayDecisionV2 evaluates a fixed plan without searching or changing its
@@ -73,6 +80,7 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		fuel: fuel.capacity, ve: ve.capacity, tyre: initialTyre,
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
+	replayedStints := make([]ReplayStintV1, 0, len(decision.Stints))
 
 	for index, requestedStint := range decision.Stints {
 		driverID := requestedStint.Driver
@@ -113,6 +121,15 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		if allowed, code, message := input.applyDriverConstraints(before, &node, driver); !allowed {
 			return infeasibleReplay(decision, input.Formation.Seconds, node, code, message), nil
 		}
+		formation := 0.0
+		if index == 0 {
+			formation = input.Formation.Seconds
+		}
+		replayedStints = append(replayedStints, ReplayStintV1{
+			Index:      index,
+			Laps:       requestedStint.Laps,
+			Evaluation: evaluationDelta(before, node, formation),
+		})
 
 		if index == len(decision.Stints)-1 {
 			if allowed, code, message := input.completedAllowed(node, tyreModel); !allowed {
@@ -134,21 +151,40 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		if !ok {
 			return infeasibleReplay(decision, input.Formation.Seconds, node, "tyre_choice_invalid", "el cambio de neumaticos fijo no puede reproducirse con el inventario"), nil
 		}
+		pitBefore := node.pit
 		node, err = appendPit(node, fuelAmount, veAmount, tyreOption, input)
 		if err != nil {
 			return ReplayResultV1{}, err
 		}
 		node.fuel += fuelAmount
 		node.ve += veAmount
+		pitSeconds := node.pit - pitBefore
+		replayedStints[index].Evaluation.PitSeconds += pitSeconds
+		replayedStints[index].Evaluation.TotalSeconds += pitSeconds
 	}
 
 	return ReplayResultV1{
 		ContractVersion: ReplayContractVersionV1,
 		Decision:        cloneDecision(node.decision),
 		Evaluation:      evaluationForNode(node, input.Formation.Seconds),
+		Stints:          replayedStints,
 		Feasible:        true,
 		Reasons:         []SolverReason{},
 	}, nil
+}
+
+func evaluationDelta(before, after searchNode, formation float64) ScenarioEvaluation {
+	return ScenarioEvaluation{
+		TotalSeconds:       after.total(0) - before.total(0) + formation,
+		GreenSeconds:       after.green - before.green,
+		DegradationSeconds: after.degradation - before.degradation,
+		CompoundSeconds:    after.compound - before.compound,
+		FuelWeightSeconds:  after.fuelWeight - before.fuelWeight,
+		SavingSeconds:      after.saving - before.saving,
+		WeatherSeconds:     after.weather - before.weather,
+		PitSeconds:         after.pit - before.pit,
+		FormationSeconds:   formation,
+	}
 }
 
 func validateReplayShape(input SolverInputV2, decision DecisionVector) error {

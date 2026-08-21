@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
 )
 
@@ -14,18 +15,29 @@ type CommandID string
 type Operation string
 
 const (
-	OperationCreate       Operation = "create"
-	OperationOpen         Operation = "open"
-	OperationEdit         Operation = "edit"
-	OperationSaveRevision Operation = "save_revision"
-	OperationDuplicate    Operation = "duplicate"
-	OperationActivate     Operation = "activate"
-	OperationDeactivate   Operation = "deactivate"
-	OperationRestore      Operation = "restore"
-	OperationClose        Operation = "close"
-	OperationList         Operation = "list"
-	OperationExport       Operation = "export"
-	OperationImport       Operation = "import"
+	OperationCreate          Operation = "create"
+	OperationOpen            Operation = "open"
+	OperationEdit            Operation = "edit"
+	OperationSaveRevision    Operation = "save_revision"
+	OperationDuplicate       Operation = "duplicate"
+	OperationActivate        Operation = "activate"
+	OperationDeactivate      Operation = "deactivate"
+	OperationRestore         Operation = "restore"
+	OperationClose           Operation = "close"
+	OperationList            Operation = "list"
+	OperationExport          Operation = "export"
+	OperationImport          Operation = "import"
+	OperationCreateEvent     Operation = "create_event"
+	OperationEditEvent       Operation = "edit_event"
+	OperationListEvents      Operation = "list_events"
+	OperationCreateDriver    Operation = "create_driver"
+	OperationEditDriver      Operation = "edit_driver"
+	OperationDeleteDriver    Operation = "delete_driver"
+	OperationListDrivers     Operation = "list_drivers"
+	OperationCreateVariant   Operation = "create_variant"
+	OperationEditVariant     Operation = "edit_variant"
+	OperationListVariants    Operation = "list_variants"
+	OperationCompareVariants Operation = "compare_variants"
 )
 
 var commandIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -146,6 +158,65 @@ type ImportCommand struct {
 	DryRun  bool   `json:"dryRun"`
 }
 
+type CreateEventCommand struct {
+	CommandHeader
+	Event     strategydocument.Event `json:"event"`
+	UpdatedAt time.Time              `json:"updatedAt"`
+}
+
+type EditEventCommand = CreateEventCommand
+
+type ListEventsCommand struct{ CommandHeader }
+
+type CreateDriverCommand struct {
+	CommandHeader
+	EventID   strategydocument.EventID `json:"eventId"`
+	Driver    strategydocument.Driver  `json:"driver"`
+	UpdatedAt time.Time                `json:"updatedAt"`
+}
+
+type EditDriverCommand = CreateDriverCommand
+
+type DeleteDriverCommand struct {
+	CommandHeader
+	EventID   strategydocument.EventID  `json:"eventId"`
+	DriverID  strategydocument.DriverID `json:"driverId"`
+	UpdatedAt time.Time                 `json:"updatedAt"`
+}
+
+type ListDriversCommand struct {
+	CommandHeader
+	EventID strategydocument.EventID `json:"eventId"`
+}
+
+type CreateVariantCommand struct {
+	CommandHeader
+	EventID   strategydocument.EventID `json:"eventId"`
+	Variant   strategydocument.Variant `json:"variant"`
+	UpdatedAt time.Time                `json:"updatedAt"`
+}
+
+type EditVariantCommand = CreateVariantCommand
+
+type ListVariantsCommand struct {
+	CommandHeader
+	EventID strategydocument.EventID `json:"eventId"`
+}
+
+type CompareVariantsCommand struct {
+	CommandHeader
+	EventID        strategydocument.EventID   `json:"eventId"`
+	LeftVariantID  strategydocument.VariantID `json:"leftVariantId"`
+	RightVariantID strategydocument.VariantID `json:"rightVariantId"`
+}
+
+type VariantComparison struct {
+	EventID         strategydocument.EventID `json:"eventId"`
+	Left            strategydocument.Variant `json:"left"`
+	Right           strategydocument.Variant `json:"right"`
+	DifferentFields []string                 `json:"differentFields"`
+}
+
 type Result[T any] struct {
 	ProtocolVersion   string                    `json:"protocolVersion"`
 	CommandID         CommandID                 `json:"commandId"`
@@ -156,8 +227,13 @@ type Result[T any] struct {
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
 	// Activations is the audit trail, oldest first: what was activated, when,
 	// and what it replaced. It is append-only and never rewritten.
-	Activations []contract.ActivePlan `json:"activations,omitempty"`
-	Plans       []PlanSummary         `json:"plans,omitempty"`
+	Activations      []contract.ActivePlan                `json:"activations,omitempty"`
+	Plans            []PlanSummary                        `json:"plans,omitempty"`
+	StrategyDocument *strategydocument.StrategyDocumentV2 `json:"strategyDocument,omitempty"`
+	Events           []strategydocument.Event             `json:"events,omitempty"`
+	Drivers          []strategydocument.Driver            `json:"drivers,omitempty"`
+	Variants         []strategydocument.Variant           `json:"variants,omitempty"`
+	Comparison       *VariantComparison                   `json:"comparison,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`
 	// Preview is what an import would do. It is present on a dry run and on a

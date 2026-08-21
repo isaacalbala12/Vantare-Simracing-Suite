@@ -18,6 +18,13 @@ const (
 	ErrorActiveConflict   ErrorCode = "active_plan_conflict"
 	ErrorUnsavedChanges   ErrorCode = "unsaved_changes"
 	ErrorPlanNotFound     ErrorCode = "plan_not_found"
+	ErrorEventNotFound    ErrorCode = "event_not_found"
+	ErrorEventConflict    ErrorCode = "event_conflict"
+	ErrorDriverNotFound   ErrorCode = "driver_not_found"
+	ErrorDriverConflict   ErrorCode = "driver_conflict"
+	ErrorDriverInUse      ErrorCode = "driver_in_use"
+	ErrorVariantNotFound  ErrorCode = "variant_not_found"
+	ErrorVariantConflict  ErrorCode = "variant_conflict"
 	// ErrorImportRefused means the package was readable and intact but would
 	// have collided with what is already stored. Nothing was written.
 	ErrorImportRefused ErrorCode = "import_refused"
@@ -32,6 +39,13 @@ var (
 	ErrActiveConflict   = errors.New("strategy active plan conflict")
 	ErrUnsavedChanges   = errors.New("strategy draft has unsaved changes")
 	ErrPlanNotFound     = errors.New("strategy plan not found")
+	ErrEventNotFound    = errors.New("strategy event not found")
+	ErrEventConflict    = errors.New("strategy event conflicts with an existing event")
+	ErrDriverNotFound   = errors.New("strategy driver not found")
+	ErrDriverConflict   = errors.New("strategy driver conflicts with an existing driver")
+	ErrDriverInUse      = errors.New("strategy driver is the only driver in a variant")
+	ErrVariantNotFound  = errors.New("strategy variant not found")
+	ErrVariantConflict  = errors.New("strategy variant conflicts with an existing variant")
 	ErrImportRefused    = errors.New("strategy package import refused")
 )
 

@@ -173,3 +173,12 @@ o eliminarse solo mediante una migración/cutover explícitos.
   STR-03;
 - vet global conserva tres avisos `unsafe.Pointer` Win32 heredados fuera del
   diff.
+
+## Evolución F2(a) — documento por eventos
+
+ISA-729 añade `strategy.repository.v2` con un único `strategyDocument`
+opcional dentro del mismo envelope, hash, generación, commit atómico y backup
+que el lifecycle existente. La migración v1→v2 valida primero el hash v1,
+conserva drafts, revisiones, activaciones y plan activo, y solo entonces
+reescribe versión y hash. Reapertura y recuperación desde backup cubren el
+documento ampliado; una versión futura sigue fallando cerrada.

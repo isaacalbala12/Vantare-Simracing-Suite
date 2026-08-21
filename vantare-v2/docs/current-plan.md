@@ -1,3 +1,29 @@
+Nota ISA-729 / ISA-694 F2(a) (2026-08-21, implementada en rama de issue):
+- `strategy.repository.v2` persiste el `StrategyDocumentV2` por eventos en el
+  mismo envelope, generación, hash, commit atómico y backup que drafts,
+  revisiones y ActivePlan. La migración v1→v2 valida el hash anterior y
+  conserva todo el lifecycle; reapertura y recuperación están probadas.
+- La aplicación expone comandos/queries estrictos para crear, editar y listar
+  eventos, pilotos y variantes, borrar pilotos y comparar variantes. El bridge
+  JSON transport-neutral los acepta sin registrar bindings Wails.
+- Borrar un piloto sanea disponibilidad y órdenes, renumera pilotos y falla con
+  `driver_in_use` sin escribir si una variante quedaría vacía. La propiedad se
+  prueba sobre 64 documentos generados de forma determinista.
+- Se corrigió el defecto del contrato compile-only de F1.3: su validación no
+  realizaba varias invariantes que el propio documento prometía. El wire no
+  cambia salvo `RawLegacy`: pasa de `json.RawMessage` a bytes/base64 porque el
+  tipo anterior compactaba y perdía el backup byte a byte. Además rechaza
+  duplicados, solapes, refs/enums/evidencias, inventario, números no finitos y
+  JSON raw inválido en campos estructurados.
+- Gates locales: `go test -count=1 ./internal/strategy/...`,
+  `go vet ./internal/strategy/...` y `git diff --check` PASS. Entrega en
+  commits convencionales pequeños; sin PR, merge, promoción ni release.
+- Gate global adicional intentado: `go test -count=1 ./...` no queda verde por
+  `frontend/dist` ausente en el worktree (`go:embed`) y por el presupuesto
+  temporal ajeno `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles`; todo
+  `internal/strategy` pasó también dentro de esa ejecución y la repetición
+  focal aislada del test SQLite pasó.
+
 Nota ISA-694 / auditoría Strategy Planner (2026-08-21, diagnóstico sin implementación):
 - Briefing completo en
   `docs/strategy-planner/isa-694-current-state-and-rework-brief.md`, sobre

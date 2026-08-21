@@ -48,6 +48,16 @@ func (producer *Producer) SetSensitivity(sensitivity geometry.Sensitivity) {
 	producer.sensitivity = sensitivity
 }
 
+func (producer *Producer) SetLocale(locale radio.Locale) error {
+	if locale != radio.LocaleES && locale != radio.LocaleEN && locale != radio.LocaleIT && locale != radio.LocalePTBR {
+		return errors.New("spotter locale is unsupported")
+	}
+	producer.mu.Lock()
+	defer producer.mu.Unlock()
+	producer.locale = locale
+	return nil
+}
+
 func (producer *Producer) Reset() {
 	producer.mu.Lock()
 	defer producer.mu.Unlock()

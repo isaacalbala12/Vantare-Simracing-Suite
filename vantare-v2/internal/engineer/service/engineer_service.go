@@ -12,8 +12,11 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
 	"github.com/vantare/overlays/v2/internal/engineer/presentation"
 	"github.com/vantare/overlays/v2/internal/engineer/projectioninput"
-	"github.com/vantare/overlays/v2/internal/engineer/spotter"
+	legacyspotter "github.com/vantare/overlays/v2/internal/engineer/spotter"
 	"github.com/vantare/overlays/v2/internal/engineer/telemetry"
+	"github.com/vantare/overlays/v2/internal/radio"
+	radiospotter "github.com/vantare/overlays/v2/internal/spotter"
+	spottergeometry "github.com/vantare/overlays/v2/internal/spotter/geometry"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
@@ -28,6 +31,7 @@ var (
 )
 
 var ErrPresentationLocaleRunning = errors.New("engineer presentation locale cannot change while the service is running")
+var ErrLegacySpotterRunning = errors.New("engineer legacy spotter rollback cannot change while the service is running")
 
 // observationCursor is the ordering boundary captured when the canonical
 // source becomes unavailable. Sequence is monotonic inside an epoch; a newer
@@ -63,6 +67,7 @@ type EngineerService struct {
 	connected             bool
 	source                string
 	spotterEnabled        bool
+	legacySpotter         bool
 	sensitivity           string
 	outputModes           map[messagepolicy.Family]OutputMode
 	subtitlesEnabled      bool
@@ -108,6 +113,10 @@ type EngineerService struct {
 	deliveryDone    chan deliveryResult
 	activeDelivery  *activeDelivery
 	deliveryNext    uint64
+	radioBus        *radio.Bus
+	radioResolver   *radio.Resolver
+	radioMetrics    *radio.Metrics
+	spotterProducer *radiospotter.Producer
 
 	presentationResolver *presentation.Resolver
 	presentationLocale   presentation.Locale
@@ -178,16 +187,33 @@ func (s *EngineerService) SetAudioRouter(r *audio.AudioRouter) {
 	s.audioRouter = r
 }
 
+// SetLegacySpotterRollback restores the former projectioninput/messagepolicy
+// Spotter for one cycle. It is false by default and must be set before Start;
+// the radio producer is disabled while rollback is active to prevent doubles.
+func (s *EngineerService) SetLegacySpotterRollback(enabled bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.running {
+		return ErrLegacySpotterRunning
+	}
+	s.legacySpotter = enabled
+	return nil
+}
+
 // NewEngineerService creates a new instance of EngineerService.
 func NewEngineerService(emitter EventEmitter) *EngineerService {
 	queue := audio.NewQueue()
 	clock := wallClock{}
 	scheduler, schedulerErr := messagepolicy.NewScheduler(clock, messagepolicy.Limits{})
 	presentationResolver, presentationErr := presentation.NewResolver()
+	radioBus, radioBusErr := radio.NewBus(radio.DefaultLimits(), clock)
+	radioResolver := radio.NewResolver()
+	radioCatalogErr := radiospotter.RegisterCatalog(radioResolver)
+	spotterProducer, spotterProducerErr := radiospotter.NewProducer(clock, radio.LocaleES)
 	s := &EngineerService{
 		store:                NewNotificationStore(50),
 		queue:                queue,
-		runtime:              core.NewRuntime(queue, spotter.SensitivityNormal, true),
+		runtime:              core.NewRuntime(queue, legacyspotter.SensitivityNormal, true),
 		input:                projectioninput.NewAdapter(),
 		emitter:              emitter,
 		enabled:              true,
@@ -203,6 +229,10 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		deliveryMetrics:      delivery.NewMetrics(128),
 		deliveryWake:         make(chan struct{}, 1),
 		deliveryDone:         make(chan deliveryResult, 1),
+		radioBus:             radioBus,
+		radioResolver:        radioResolver,
+		radioMetrics:         radio.NewMetrics(128),
+		spotterProducer:      spotterProducer,
 		presentationResolver: presentationResolver,
 		presentationLocale:   presentation.LocaleSpanish,
 	}
@@ -213,6 +243,13 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 	if presentationErr != nil {
 		s.enabled = false
 		s.lastError = presentationErr.Error()
+	}
+	for _, initErr := range []error{radioBusErr, radioCatalogErr, spotterProducerErr} {
+		if initErr != nil {
+			s.enabled = false
+			s.lastError = initErr.Error()
+			break
+		}
 	}
 	return s
 }
@@ -248,6 +285,11 @@ func (s *EngineerService) SetLocale(value string) error {
 	if s.running {
 		return ErrPresentationLocaleRunning
 	}
+	if s.spotterProducer != nil {
+		if err := s.spotterProducer.SetLocale(radio.Locale(locale)); err != nil {
+			return err
+		}
+	}
 	s.presentationLocale = locale
 	return nil
 }
@@ -265,6 +307,7 @@ func (s *EngineerService) Stop() {
 		s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 	}
 	s.queue.Clear()
+	s.resetRadioLocked(radio.ErrLifecycleBoundary)
 	s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	if s.cancelFn != nil {
 		s.cancelFn()
@@ -466,6 +509,7 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 		}
 		s.queue.Clear()
+		s.resetRadioLocked(radio.ErrLifecycleBoundary)
 	}
 	s.emitStatusLocked()
 	return nil
@@ -485,6 +529,7 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 		}
 		s.queue.Clear()
+		s.resetRadioLocked(radio.ErrLifecycleBoundary)
 	}
 	s.emitStatusLocked()
 	return nil
@@ -500,16 +545,19 @@ func (s *EngineerService) SetSensitivity(value string) error {
 	}
 
 	s.sensitivity = value
-	var sensitivity spotter.Sensitivity
+	var sensitivity legacyspotter.Sensitivity
 	switch value {
 	case "conservative":
-		sensitivity = spotter.SensitivityConservative
+		sensitivity = legacyspotter.SensitivityConservative
 	case "aggressive":
-		sensitivity = spotter.SensitivityAggressive
+		sensitivity = legacyspotter.SensitivityAggressive
 	default:
-		sensitivity = spotter.SensitivityNormal
+		sensitivity = legacyspotter.SensitivityNormal
 	}
 	s.runtime.SetSensitivity(sensitivity)
+	if s.spotterProducer != nil {
+		s.spotterProducer.SetSensitivity(spottergeometry.Sensitivity(sensitivity))
+	}
 	s.emitStatusLocked()
 	return nil
 }
@@ -601,7 +649,6 @@ func (s *EngineerService) publishStatusLocked(status EngineerStatus) {
 }
 
 var approvedProjectionFamilies = []projectioninput.MonitorFamily{
-	projectioninput.FamilySpotter,
 	projectioninput.FamilyFuel,
 	projectioninput.FamilyPenalties,
 	projectioninput.FamilyLaps,
@@ -638,6 +685,7 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
+		s.resetRadioLocked(radio.ErrSourceUnavailable)
 		if s.scheduler != nil {
 			s.scheduler.Cancel(messagepolicy.ReasonSourceUnavailable)
 		}
@@ -682,6 +730,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			s.advancePresentationLifecycleLocked()
 			s.runtime.Reset()
 			s.queue.Clear()
+			s.resetRadioLocked(radio.ErrLifecycleBoundary)
 			if s.scheduler != nil {
 				s.scheduler.Cancel(messagepolicy.ReasonIdentityChanged)
 			}
@@ -693,6 +742,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			s.advancePresentationLifecycleLocked()
 			s.runtime.Reset()
 			s.queue.Clear()
+			s.resetRadioLocked(radio.ErrLifecycleBoundary)
 			s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 		}
 	}
@@ -701,17 +751,55 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if !source.Known() {
 		source = engineerprojection.SourceLive
 	}
-	evidence := projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000)
+	evidence := projectioninput.PolicyEvidenceWithoutSpotter(snapshot, s.input, source, s.policyClock.NowMS()+1_000)
+	if s.legacySpotter {
+		evidence = projectioninput.PolicyEvidence(snapshot, s.input, source, s.policyClock.NowMS()+1_000)
+	}
 	if s.scheduler == nil {
 		return errors.New("engineer message scheduler is unavailable")
 	}
 	s.scheduler.Observe(evidence)
 
 	processed := false
-	for _, family := range approvedProjectionFamilies {
-		if family == projectioninput.FamilySpotter && !s.spotterEnabled {
-			continue
+	if s.spotterEnabled && !s.legacySpotter && s.spotterProducer != nil && s.radioBus != nil {
+		message, emit, err := s.spotterProducer.Evaluate(snapshot)
+		if err == nil {
+			processed = true
+			if emit {
+				result, submitErr := s.radioBus.Submit(message)
+				if submitErr != nil {
+					s.connected = false
+					s.lastError = submitErr.Error()
+					s.emitStatusLocked()
+					return submitErr
+				}
+				if result.Accepted {
+					if s.activeDelivery != nil && !s.activeDelivery.isSpotter() {
+						s.activeDelivery.cancel(delivery.ErrPreemptedBySpotter)
+					}
+					s.signalDeliveryLocked()
+				}
+			}
+		} else if !errors.Is(err, radiospotter.ErrObservationNotReady) {
+			s.connected = false
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
 		}
+	}
+	if s.legacySpotter && s.spotterEnabled {
+		frame, err := s.input.FrameFor(projectioninput.FamilySpotter, snapshot)
+		if err == nil {
+			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
+			processed = true
+		} else if !errors.Is(err, projectioninput.ErrObservationNotReady) {
+			s.connected = false
+			s.lastError = err.Error()
+			s.emitStatusLocked()
+			return err
+		}
+	}
+	for _, family := range approvedProjectionFamilies {
 		frame, err := s.input.FrameFor(family, snapshot)
 		if errors.Is(err, projectioninput.ErrObservationNotReady) {
 			continue
@@ -721,11 +809,6 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 			s.lastError = err.Error()
 			s.emitStatusLocked()
 			return err
-		}
-		if family == projectioninput.FamilySpotter {
-			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
-			processed = true
-			continue
 		}
 		if !s.runtime.ProcessMonitorFrame(string(family), frame.TimestampUnixMS, frame) {
 			err := errors.New("approved engineer monitor family is not registered")
@@ -798,6 +881,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
+		s.resetRadioLocked(radio.ErrLifecycleBoundary)
 		if s.scheduler != nil {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 		}
@@ -808,6 +892,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
+		s.resetRadioLocked(radio.ErrLifecycleBoundary)
 		if s.scheduler != nil {
 			s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 		}
@@ -848,15 +933,16 @@ func (s *EngineerService) DropCount() uint64 {
 // EngineerHealth es un snapshot ligero para /api/engineer/health.
 // Incluye solo campos útiles para OBS/diagnóstico, no el historial completo.
 type EngineerHealth struct {
-	OK        bool                     `json:"ok"`
-	Source    string                   `json:"source"`
-	Connected bool                     `json:"connected"`
-	Enabled   bool                     `json:"enabled"`
-	Subs      int                      `json:"subscribers"`
-	DropCount uint64                   `json:"dropCount"`
-	Policy    EngineerPolicyMetrics    `json:"policy"`
-	Delivery  delivery.MetricsSnapshot `json:"delivery"`
-	LastError string                   `json:"lastError,omitempty"`
+	OK            bool                     `json:"ok"`
+	Source        string                   `json:"source"`
+	Connected     bool                     `json:"connected"`
+	Enabled       bool                     `json:"enabled"`
+	Subs          int                      `json:"subscribers"`
+	DropCount     uint64                   `json:"dropCount"`
+	Policy        EngineerPolicyMetrics    `json:"policy"`
+	Delivery      delivery.MetricsSnapshot `json:"delivery"`
+	RadioDelivery radio.MetricsSnapshot    `json:"radioDelivery"`
+	LastError     string                   `json:"lastError,omitempty"`
 }
 
 // EngineerPolicyMetrics exposes counters only. Candidate IDs, message text,
@@ -894,6 +980,12 @@ func (s *EngineerService) Health() EngineerHealth {
 		DropCount: s.dropCount.Load(),
 		Policy:    policyMetrics,
 		Delivery:  s.deliveryMetrics.Snapshot(),
+		RadioDelivery: func() radio.MetricsSnapshot {
+			if s.radioMetrics == nil {
+				return radio.MetricsSnapshot{}
+			}
+			return s.radioMetrics.Snapshot()
+		}(),
 		LastError: s.lastError,
 	}
 }

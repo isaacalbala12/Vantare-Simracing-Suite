@@ -20,9 +20,20 @@ const (
 // PolicyEvidence derives the one bounded proof consumed by message policy
 // from the same canonical observation used to feed the legacy monitors.
 func PolicyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, source engineer.SourceState, freshUntilMS int64) messagepolicy.Evidence {
+	return policyEvidence(snapshot, adapter, source, freshUntilMS, true)
+}
+
+// PolicyEvidenceWithoutSpotter disconnects the legacy Spotter geometry and
+// semantic claims while the remaining approved legacy families coexist with
+// the radio-bus Spotter. PolicyEvidence is the one-cycle rollback path.
+func PolicyEvidenceWithoutSpotter(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, source engineer.SourceState, freshUntilMS int64) messagepolicy.Evidence {
+	return policyEvidence(snapshot, adapter, source, freshUntilMS, false)
+}
+
+func policyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, source engineer.SourceState, freshUntilMS int64, includeSpotter bool) messagepolicy.Evidence {
 	ready := make([]messagepolicy.Family, 0, 6)
 	for _, contract := range monitorContracts {
-		if contract.State != ParityApproved {
+		if contract.State != ParityApproved || (!includeSpotter && contract.Family == FamilySpotter) {
 			continue
 		}
 		gate, err := Evaluate(snapshot, contract.Family)
@@ -38,14 +49,18 @@ func PolicyEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, s
 		Source:            source,
 		FreshUntilMS:      freshUntilMS,
 		ReadyFamilies:     ready,
-		Semantic:          SemanticEvidence(snapshot, adapter),
+		Semantic:          semanticEvidence(snapshot, adapter, includeSpotter),
 	}
 }
 
 // SemanticEvidence exposes only the fixed-size claims policy can revalidate.
 func SemanticEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter) messagepolicy.SemanticEvidence {
+	return semanticEvidence(snapshot, adapter, true)
+}
+
+func semanticEvidence(snapshot engineer.ObservationSnapshotV1, adapter *Adapter, includeSpotter bool) messagepolicy.SemanticEvidence {
 	var result messagepolicy.SemanticEvidence
-	if adapter != nil {
+	if includeSpotter && adapter != nil {
 		if frame, err := adapter.FrameFor(FamilySpotter, snapshot); err == nil {
 			result.SpotterKnown = true
 			for _, zone := range spotter.Classify(frame, spotter.SensitivityNormal) {

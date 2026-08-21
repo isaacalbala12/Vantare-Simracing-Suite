@@ -27,7 +27,7 @@ var catalog = map[string]map[radio.Locale]radio.Phrase{
 
 func RegisterCatalog(resolver *radio.Resolver) error {
 	definition := radio.Definition{
-		Family: "spotter", Priority: radio.PriorityP0, Role: "safety",
+		Family: "spotter", Priority: radio.PriorityP0, Role: "spotter",
 		Channel: audio.ChannelSpotter, Severity: "critical",
 	}
 	for _, intent := range allIntents() {

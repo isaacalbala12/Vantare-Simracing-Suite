@@ -31,11 +31,12 @@ type Phrase struct{ Visual, Voice string }
 
 // Presentation is the single resolved value shared by UI and audio output.
 type Presentation struct {
-	Intent, Family, Role, Severity string
-	Priority                       Priority
-	Channel                        audio.Channel
-	Locale                         Locale
-	VisualText, VoiceText          string
+	ID, Intent, Family, Role, Severity string
+	Priority                           Priority
+	Channel                            audio.Channel
+	Locale                             Locale
+	VisualText, VoiceText              string
+	CreatedAtMS, ExpiresAtMS           int64
 }
 
 type registered struct {
@@ -120,9 +121,10 @@ func (resolver *Resolver) Resolve(message RadioMessage) (Presentation, error) {
 	if len(visual) > maxPresentationBytes || len(voice) > maxPresentationBytes {
 		return Presentation{}, ErrInvalidParameters
 	}
-	return Presentation{Intent: message.Intent, Family: entry.definition.Family, Priority: entry.definition.Priority,
+	return Presentation{ID: message.ID, Intent: message.Intent, Family: entry.definition.Family, Priority: entry.definition.Priority,
 		Role: entry.definition.Role, Channel: entry.definition.Channel, Severity: entry.definition.Severity,
-		Locale: message.Locale, VisualText: visual, VoiceText: voice}, nil
+		Locale: message.Locale, VisualText: visual, VoiceText: voice,
+		CreatedAtMS: message.CreatedAtMS, ExpiresAtMS: message.ExpiresAtMS}, nil
 }
 
 func templatesMatch(phrase Phrase, keys map[string]struct{}) bool {

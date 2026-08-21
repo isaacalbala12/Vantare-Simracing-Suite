@@ -114,6 +114,69 @@ func TestEngineerServiceConsumesCanonicalObservationWithoutOwningSource(t *testi
 	t.Fatal("canonical observation did not reach Spotter notification queue")
 }
 
+func TestRadioSpotterDoesNotDuplicateLegacyProjection(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	notifications, unsubscribe := svc.Subscribe()
+	defer unsubscribe()
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case notification := <-notifications:
+		if notification.TextKey != "spotter.car_left" || notification.Source != "telemetry-core" {
+			t.Fatalf("notification = %+v", notification)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("radio Spotter did not publish")
+	}
+	select {
+	case duplicate := <-notifications:
+		t.Fatalf("legacy Spotter also published: %+v", duplicate)
+	case <-time.After(50 * time.Millisecond):
+	}
+	if samples := svc.Health().RadioDelivery.Samples; samples != 1 {
+		t.Fatalf("radio started samples = %d, want 1", samples)
+	}
+}
+
+func TestLegacySpotterRollbackIsExclusiveAndPreStartOnly(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	if err := svc.SetLegacySpotterRollback(true); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+	if err := svc.SetLegacySpotterRollback(false); !errors.Is(err, service.ErrLegacySpotterRunning) {
+		t.Fatalf("running rollback change error = %v", err)
+	}
+	if err := svc.ConsumeObservation(canonicalSpotterObservation(t, 1, 2.8)); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		for _, notification := range svc.RecentNotifications() {
+			if notification.TextKey == "spotter.car_left" {
+				if samples := svc.Health().RadioDelivery.Samples; samples != 0 {
+					t.Fatalf("radio producer ran during legacy rollback: %d samples", samples)
+				}
+				return
+			}
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("legacy rollback did not publish Spotter notification")
+}
+
 func TestEngineerServiceResetsAtEpochBoundaryAndFactsFailClosed(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	ctx, cancel := context.WithCancel(context.Background())

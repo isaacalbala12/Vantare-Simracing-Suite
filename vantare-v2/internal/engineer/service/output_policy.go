@@ -5,6 +5,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/engineer/delivery"
 	"github.com/vantare/overlays/v2/internal/engineer/messagepolicy"
+	"github.com/vantare/overlays/v2/internal/radio"
 )
 
 type OutputMode string
@@ -84,8 +85,11 @@ func (s *EngineerService) SetOutputMode(familyValue, modeValue string) error {
 		}
 	}
 	if (mode == OutputDisabled || (outputHasAudio(previous) && !outputHasAudio(mode))) &&
-		s.activeDelivery != nil && s.activeDelivery.decision.Family == family {
+		s.activeDelivery != nil && s.activeDelivery.family() == family {
 		s.activeDelivery.cancel(delivery.ErrLifecycleBoundary)
+	}
+	if family == messagepolicy.FamilySpotter && mode == OutputDisabled {
+		s.resetRadioLocked(radio.ErrLifecycleBoundary)
 	}
 	if outputHasVisual(previous) && !outputHasVisual(mode) &&
 		s.activePresentation != nil && s.activePresentation.Category == string(family) {

@@ -16,6 +16,8 @@ Item {
     property string lapText: ""
     property bool finalMinutes: false
     property bool reducedMotion: false
+    property var displayModel: []
+    property int slotCount: 0
 
     implicitWidth: tokens.panelWidth
     implicitHeight: panel.implicitHeight
@@ -58,6 +60,16 @@ Item {
         }
         return count
     }
+
+    function syncDisplayModel() {
+        var next = displayItems()
+        displayModel = next
+        slotCount = Math.max(slotCount, next.length)
+    }
+
+    onRowModelChanged: syncDisplayModel()
+    onBattleChanged: syncDisplayModel()
+    Component.onCompleted: syncDisplayModel()
 
     Common.Panel {
         id: panel
@@ -128,12 +140,25 @@ Item {
                 width: parent.width
 
                 Repeater {
-                    model: root.displayItems()
+                    model: root.slotCount
                     delegate: Loader {
-                        required property var modelData
+                        id: slot
+                        required property int index
+                        objectName: "standingsSlot-" + index
+                        property var itemData: index < root.displayModel.length
+                            ? root.displayModel[index] : null
                         width: visualRows.width
-                        sourceComponent: modelData.kind === "battle" ? battleDelegate : rowDelegate
-                        onLoaded: item.itemData = modelData
+                        visible: itemData !== null
+                        height: !visible ? 0 : itemData.kind === "battle"
+                            ? (String(root.battle.stage || "seam") === "box" ? 84 : 65)
+                            : 30
+                        sourceComponent: !itemData ? null
+                            : itemData.kind === "battle" ? battleDelegate : rowDelegate
+                        onItemDataChanged: {
+                            if (item)
+                                item.itemData = itemData
+                        }
+                        onLoaded: item.itemData = itemData
                     }
                 }
             }

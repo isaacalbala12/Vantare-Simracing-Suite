@@ -13,6 +13,7 @@ Item {
     property var incomingSnapshot: []
     property var previousSnapshot: []
     property var classModel: []
+    property int classSlotCount: 0
     property var baselinePositions: ({})
     property var retiredRowIds: []
     property var enteredRowIds: []
@@ -289,7 +290,7 @@ Item {
             })
         }
 
-        classModel = decoratedClasses
+        publishClasses(decoratedClasses)
         previousSnapshot = nextClasses
         if (retired.length > 0)
             retirementCleanup.restart()
@@ -321,6 +322,11 @@ Item {
         }
     }
 
+    function publishClasses(classes) {
+        classModel = classes
+        classSlotCount = Math.max(classSlotCount, classes.length)
+    }
+
     function clearRetiredRows() {
         retirementGhosts = []
         var cleaned = []
@@ -332,7 +338,7 @@ Item {
                 battle: group.battle
             })
         }
-        classModel = cleaned
+        publishClasses(cleaned)
     }
 
     function clearTires() {
@@ -363,7 +369,7 @@ Item {
             }
             remapped.push({ vehicleClass: group.vehicleClass, rows: rows, battle: group.battle })
         }
-        classModel = remapped
+        publishClasses(remapped)
     }
 
     function crystallizeBattle() {
@@ -380,7 +386,7 @@ Item {
             }
             remapped.push({ vehicleClass: group.vehicleClass, rows: group.rows, battle: battle })
         }
-        classModel = remapped
+        publishClasses(remapped)
     }
 
     function clearDissolvingBattles() {
@@ -393,7 +399,7 @@ Item {
                 battle: group.battle && group.battle.stage === "dissolve" ? null : group.battle
             })
         }
-        classModel = cleaned
+        publishClasses(cleaned)
     }
 
     Timer {
@@ -423,14 +429,16 @@ Item {
         spacing: 10
 
         Repeater {
-            model: root.classModel || []
+            model: root.classSlotCount
             delegate: ClassBlock {
                 required property int index
-                required property var modelData
                 width: blocks.width
-                vehicleClass: String(modelData.vehicleClass || "")
-                rowModel: modelData.rows || []
-                battle: modelData.battle || null
+                visible: index < root.classModel.length
+                height: visible ? implicitHeight : 0
+                property var classData: index < root.classModel.length ? root.classModel[index] : ({})
+                vehicleClass: String(classData.vehicleClass || "")
+                rowModel: classData.rows || []
+                battle: classData.battle || null
                 showSessionHeader: root.showSessionHeader && index === 0
                 sessionLabel: root.sessionLabel
                 remainingText: root.remainingText

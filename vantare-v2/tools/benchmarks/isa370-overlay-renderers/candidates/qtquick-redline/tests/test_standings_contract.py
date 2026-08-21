@@ -12,6 +12,7 @@ from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtQml import QQmlComponent, QQmlEngine, QJSValue
 from PySide6.QtTest import QTest
+from shiboken6 import getCppPointer
 
 CANDIDATE = Path(__file__).resolve().parents[1]
 QML = CANDIDATE / "qml"
@@ -253,6 +254,22 @@ class StandingsRedlineRuntimeTest(unittest.TestCase):
             root.property("lastCrownFromY"), root.property("lastCrownToY"),
         ))
         self.assertTrue(self.child(root, "retirementCleanup").property("running"))
+
+    def test_reorder_reuses_the_bounded_visual_slots(self):
+        root = self.component("standings/StandingsRedline.qml")
+        self.apply_snapshot(root, visual_classes([ROW_1, ROW_2, ROW_3]))
+        before = {
+            slot: getCppPointer(self.child(root, f"standingsSlot-{slot}"))[0]
+            for slot in range(3)
+        }
+
+        self.apply_snapshot(root, visual_classes([ROW_2, ROW_1, ROW_3]))
+        after = {
+            slot: getCppPointer(self.child(root, f"standingsSlot-{slot}"))[0]
+            for slot in range(3)
+        }
+
+        self.assertEqual(before, after)
 
     def test_battle_is_a_real_two_row_wrapper_and_reduced_motion_is_asymmetric(self):
         battle = self.component("standings/Battle.qml", {

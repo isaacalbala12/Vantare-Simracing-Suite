@@ -540,6 +540,110 @@
   opacity: 0.72;
 }
 
+.orbit-weather {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.orbit-weather__head,
+.orbit-weather__scenario > header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.orbit-weather__head > div,
+.orbit-weather__scenario > header label,
+.orbit-weather__nodes label {
+  display: grid;
+  gap: 4px;
+}
+
+.orbit-weather__head span,
+.orbit-weather__capture-copy,
+.orbit-weather__scenario > header span,
+.orbit-weather__nodes label > span,
+.orbit-weather__robust span,
+.orbit-weather__robust small {
+  color: var(--orbit-ink-3);
+  font-size: 10px;
+}
+
+.orbit-weather__scenario {
+  background: color-mix(in srgb, var(--orbit-surface-2) 84%, transparent);
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.orbit-weather__scenario > header label {
+  grid-template-columns: auto 72px;
+  margin-left: auto;
+}
+
+.orbit-weather__nodes {
+  display: grid;
+  gap: 8px;
+  grid-auto-columns: minmax(176px, 1fr);
+  grid-auto-flow: column;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.orbit-weather__nodes > div {
+  border-left: 2px solid color-mix(in srgb, var(--orbit-cyan) 55%, var(--orbit-line));
+  display: grid;
+  gap: 7px;
+  padding: 7px 8px;
+}
+
+.orbit-weather__nodes .orbit-select,
+.orbit-weather__nodes .orbit-input,
+.orbit-weather__nodes .orbit-input-wrap {
+  width: 100%;
+}
+
+.orbit-weather__plan {
+  border-top: 1px solid var(--orbit-line);
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+}
+
+.orbit-weather__plan details > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.orbit-weather__plan details span {
+  background: var(--orbit-surface-3);
+  border-radius: 999px;
+  font-size: 10px;
+  padding: 3px 6px;
+}
+
+.orbit-weather__robust {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--orbit-cyan) 17%, var(--orbit-surface-2)), var(--orbit-surface-2));
+  border: 1px solid color-mix(in srgb, var(--orbit-cyan) 58%, var(--orbit-line));
+  border-radius: var(--orbit-radius);
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+}
+
+.orbit-weather__robust > div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
 @media (max-width: 900px) {
   .orbit-session-picker__list {
     grid-template-columns: 1fr;

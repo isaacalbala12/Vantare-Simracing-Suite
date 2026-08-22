@@ -16,6 +16,7 @@ import type {
   StrategyOrbitCalculatedStintV1,
   StrategyOrbitCalculationInputV1,
   StrategyPlanningInputsV2,
+  StrategyWeightedWeatherScenarioV1,
 } from "../../strategy/strategy-application-client";
 
 /** Modo de la estrategia: el ritmo y el consumo del piloto que se usan. */
@@ -87,6 +88,7 @@ export function orbitCalculationInput(
   variants: readonly StrategyVariant[],
   activeVariantId: string,
   planningInputs?: StrategyPlanningInputsV2,
+  weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[],
 ): StrategyOrbitCalculationInputV1 {
   const pace = (value: StrategyPace) => ({ paceSeconds: value[0], fuelLitersPerLap: value[1] });
   return {
@@ -110,6 +112,7 @@ export function orbitCalculationInput(
     })),
     activeVariantId,
     ...(planningInputs ? { planningInputs } : {}),
+    ...(weatherScenarios?.length ? { weatherScenarios } : {}),
   };
 }
 

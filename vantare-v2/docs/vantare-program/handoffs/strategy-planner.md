@@ -17,6 +17,23 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-794 / F5-d (2026-08-22, implementada en rama de issue):
+
+- La query `get_validated_examples` resuelve la combinación del evento y
+  reproduce cada carrera autorizada con `internal/strategy/backtest`; Strategy
+  no abre DuckDB ni duplica sus métricas.
+- La salida neutral incluye error total y por stint, agregado y un resumen de
+  `ObservedStrategy`. Los resultados se ordenan del más reciente al más
+  antiguo y una combinación sin carreras conserva una lista vacía explícita.
+- Orbit presenta fecha relativa, estrategia corrida, predicho, real y
+  desviación en ES/EN/IT/PT. No presenta aprobado/suspenso mientras #702 siga
+  fijando los umbrales definitivos y no usa datos simulados.
+- Gates locales verdes: Strategy+app, 382 archivos/2916 tests frontend,
+  typecheck, build y visual Orbit. La captura dedicada justifica la nueva
+  evidencia predicho/real/desviación sin semáforo provisional. La entrega
+  queda lista para review en la rama de issue; sin PR, integración, promoción
+  ni release.
+
 Actualización ISA-786 / F5-c (2026-08-22, implementada en rama de issue):
 
 - El evento canónico guarda hasta 16 escenarios ponderados como

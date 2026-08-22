@@ -268,11 +268,13 @@ func summarizeCombination(combinationID string, state *combinationState) combina
 		Contributors:    len(state.contributors),
 		Publishable:     publishable,
 		Reference:       summarizeReference(state, publishable),
-		Strategies:      summarizeStrategies(combinationID, state),
+		Strategies:      []strategyClusterSummary{},
 	}
 	if !publishable {
 		result.Reason = "minimum_cohort_not_met"
+		return result
 	}
+	result.Strategies = summarizeStrategies(combinationID, state)
 	return result
 }
 
@@ -280,63 +282,103 @@ func summarizeReference(state *combinationState, publishable bool) referenceProf
 	result := referenceProfileSummary{
 		TargetContractVersion: string(pilotprofile.ContractVersionV1),
 		Publishable:           publishable,
-		Pace:                  presenceReason{Available: false, Reason: "pace_not_present_in_curationbundle_v1"},
 	}
 	if !publishable {
 		result.Reason = "minimum_cohort_not_met"
+		return result
 	}
-	var fuel, ve metricAccumulator
+	result.Pace = &presenceReason{Available: false, Reason: "pace_not_present_in_curationbundle_v1"}
+	result.StintPaceCurve = &presenceReason{Available: false, Reason: "stint_pace_curve_not_present_in_curationbundle_v1"}
+	var fuel, ve, pitDuration metricAccumulator
+	quality := qualitySummary{}
+	pitCount := 0
 	for _, record := range state.records {
 		for _, stint := range record.payload.StintAggregates {
 			fuel.add(stint.AvgFuelPerLap, stint.Laps)
 			ve.add(stint.AvgVEPerLap, stint.Laps)
 		}
-		quality := record.payload.ChannelQuality
-		result.Quality.ValidSessions += quality.ValidSessions
-		result.Quality.InvalidSessions += quality.InvalidSessions
+		recordQuality := record.payload.ChannelQuality
+		quality.ValidSessions += recordQuality.ValidSessions
+		quality.InvalidSessions += recordQuality.InvalidSessions
 		if pit := record.payload.PitAggregates; pit != nil && pit.Count > 0 {
-			result.Pit.AvgDurationSeconds += pit.AvgDurationSeconds * float64(pit.Count)
-			result.Pit.Count += pit.Count
+			pitDuration.add(pit.AvgDurationSeconds, pit.Count)
+			pitCount += pit.Count
 		}
 	}
-	result.Fuel = fuel.summary()
-	result.VirtualEnergy = ve.summary()
-	if result.Pit.Count > 0 {
-		result.Pit.AvgDurationSeconds /= float64(result.Pit.Count)
+	fuelSummary := fuel.summary()
+	veSummary := ve.summary()
+	result.Fuel = &fuelSummary
+	result.VirtualEnergy = &veSummary
+	if pitCount > 0 {
+		result.Pit = &pitSummary{Count: pitCount, TypicalDurationSeconds: pitDuration.median()}
 	}
-	qualityTotal := result.Quality.ValidSessions + result.Quality.InvalidSessions
+	qualityTotal := quality.ValidSessions + quality.InvalidSessions
+	quality.SampleSessions = qualityTotal
 	if qualityTotal > 0 {
-		result.Quality.ValidRatio = float64(result.Quality.ValidSessions) / float64(qualityTotal)
+		quality.ValidRatio = float64(quality.ValidSessions) / float64(qualityTotal)
 	}
+	result.Quality = &quality
 	return result
 }
 
 type metricAccumulator struct {
-	weighted float64
-	laps     int
-	lower    float64
-	upper    float64
-	seen     bool
+	values []weightedMetric
+	sample int
 }
 
-func (a *metricAccumulator) add(value float64, laps int) {
-	a.weighted += value * float64(laps)
-	a.laps += laps
-	if !a.seen || value < a.lower {
-		a.lower = value
+type weightedMetric struct {
+	value  float64
+	weight int
+}
+
+func (a *metricAccumulator) add(value float64, weight int) {
+	if weight <= 0 {
+		return
 	}
-	if !a.seen || value > a.upper {
-		a.upper = value
-	}
-	a.seen = true
+	a.values = append(a.values, weightedMetric{value: value, weight: weight})
+	a.sample += weight
 }
 
 func (a metricAccumulator) summary() metricSummary {
-	result := metricSummary{RangeLower: a.lower, RangeUpper: a.upper, SampleLaps: a.laps}
-	if a.laps > 0 {
-		result.MeanPerLap = a.weighted / float64(a.laps)
+	result := metricSummary{SampleLaps: a.sample}
+	if len(a.values) == 0 {
+		return result
 	}
+	values := a.sortedValues()
+	result.MedianPerLap = weightedMedian(values, a.sample)
+	result.RangeLower = values[0].value
+	result.RangeUpper = values[len(values)-1].value
 	return result
+}
+
+func (a metricAccumulator) median() float64 {
+	if len(a.values) == 0 {
+		return 0
+	}
+	return weightedMedian(a.sortedValues(), a.sample)
+}
+
+func (a metricAccumulator) sortedValues() []weightedMetric {
+	values := append([]weightedMetric(nil), a.values...)
+	sort.Slice(values, func(i, j int) bool { return values[i].value < values[j].value })
+	return values
+}
+
+func weightedMedian(values []weightedMetric, sample int) float64 {
+	left := valueAtWeight(values, (sample-1)/2)
+	right := valueAtWeight(values, sample/2)
+	return left + (right-left)/2
+}
+
+func valueAtWeight(values []weightedMetric, target int) float64 {
+	seen := 0
+	for _, value := range values {
+		seen += value.weight
+		if target < seen {
+			return value.value
+		}
+	}
+	return values[len(values)-1].value
 }
 
 type strategyOccurrence struct {

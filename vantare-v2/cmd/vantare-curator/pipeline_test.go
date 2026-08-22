@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,8 +22,8 @@ func TestBuildSummaryTableDriven(t *testing.T) {
 		{
 			name:           "synthetic test bundles",
 			input:          filepath.Join("testdata", "input"),
-			wantFiles:      5,
-			wantAccepted:   4,
+			wantFiles:      7,
+			wantAccepted:   6,
 			wantRejected:   1,
 			wantDuplicates: 1,
 			golden:         filepath.Join("testdata", "expected-summary.json"),
@@ -89,6 +90,98 @@ func TestBuildSummarySeparatesEnvironmentsAndAppliesCohort(t *testing.T) {
 	}
 }
 
+func TestBuildSummaryReferenceProfilesApplyKAnonymity(t *testing.T) {
+	encoded, err := buildSummary(filepath.Join("testdata", "input"))
+	if err != nil {
+		t.Fatalf("buildSummary: %v", err)
+	}
+	var got summary
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatalf("decode summary: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		environment  string
+		combination  string
+		contributors int
+		publishable  bool
+	}{
+		{name: "k=2 suppresses rare combination", environment: "production-community", combination: "lemans-hyper", contributors: 2},
+		{name: "k=3 publishes sample and quality", environment: "test", combination: "spa-lmgt3", contributors: 3, publishable: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			environment := findEnvironment(t, got, test.environment)
+			combination := findCombination(t, environment, test.combination)
+			if combination.Contributors != test.contributors || combination.Publishable != test.publishable {
+				t.Fatalf("cohort = %+v", combination)
+			}
+			if !test.publishable {
+				if combination.Reason != "minimum_cohort_not_met" || combination.Reference.Publishable ||
+					combination.Reference.Fuel != nil || combination.Reference.VirtualEnergy != nil ||
+					combination.Reference.Pace != nil || combination.Reference.StintPaceCurve != nil ||
+					combination.Reference.Pit != nil || combination.Reference.Quality != nil || len(combination.Strategies) != 0 {
+					t.Fatalf("rare combination was not suppressed: %+v", combination)
+				}
+				return
+			}
+			if !combination.Reference.Publishable || combination.Reference.Fuel == nil || combination.Reference.Fuel.SampleLaps == 0 ||
+				combination.Reference.VirtualEnergy == nil || combination.Reference.VirtualEnergy.SampleLaps == 0 ||
+				combination.Reference.Quality == nil || combination.Reference.Quality.ValidSessions == 0 ||
+				combination.Reference.Quality.SampleSessions == 0 {
+				t.Fatalf("published reference lacks sample or quality: %+v", combination.Reference)
+			}
+			if math.Abs(combination.Reference.Fuel.MedianPerLap-2.15) > 1e-12 ||
+				combination.Reference.Fuel.RangeLower != 2 || combination.Reference.Fuel.RangeUpper != 2.3 ||
+				combination.Reference.Fuel.SampleLaps != 20 || combination.Reference.Pit == nil ||
+				combination.Reference.Pit.Count != 2 || combination.Reference.Pit.TypicalDurationSeconds != 20.5 ||
+				combination.Reference.Quality.ValidSessions != 7 || combination.Reference.Quality.InvalidSessions != 1 ||
+				combination.Reference.Quality.SampleSessions != 8 || combination.Reference.Quality.ValidRatio != 0.875 {
+				t.Fatalf("published reference aggregates = %+v", combination.Reference)
+			}
+		})
+	}
+}
+
+func TestMetricAccumulatorUsesLapWeightedMedian(t *testing.T) {
+	var accumulator metricAccumulator
+	accumulator.add(1, 3)
+	accumulator.add(10, 1)
+
+	got := accumulator.summary()
+	if got.MedianPerLap != 1 || got.RangeLower != 1 || got.RangeUpper != 10 || got.SampleLaps != 4 {
+		t.Fatalf("weighted median summary = %+v", got)
+	}
+}
+
+func TestBuildSummaryUsesMedianAndDeclaresUnavailablePaceCurve(t *testing.T) {
+	encoded, err := buildSummary(filepath.Join("testdata", "input"))
+	if err != nil {
+		t.Fatalf("buildSummary: %v", err)
+	}
+	if bytes.Contains(encoded, []byte(`"meanPerLap"`)) || !bytes.Contains(encoded, []byte(`"medianPerLap"`)) {
+		t.Fatalf("reference consumption is not encoded as a median: %s", encoded)
+	}
+	if !bytes.Contains(encoded, []byte(`"stintPaceCurve":{"available":false,"reason":"stint_pace_curve_not_present_in_curationbundle_v1"}`)) {
+		t.Fatalf("missing explicit combined stint curve absence: %s", encoded)
+	}
+}
+
+func TestBuildSummaryDoesNotExposeAdministrativeIdentityOrAbsoluteDates(t *testing.T) {
+	encoded, err := buildSummary(filepath.Join("testdata", "input"))
+	if err != nil {
+		t.Fatalf("buildSummary: %v", err)
+	}
+	for _, forbidden := range [][]byte{
+		[]byte("uploadId"), []byte("deleteHash"), []byte("install-a"), []byte("delete-a"), []byte("2026-W34"),
+	} {
+		if bytes.Contains(encoded, forbidden) {
+			t.Fatalf("summary contains forbidden value %q", forbidden)
+		}
+	}
+}
+
 func TestBuildSummaryIsByteDeterministic(t *testing.T) {
 	first, err := buildSummary(filepath.Join("testdata", "input"))
 	if err != nil {
@@ -139,4 +232,15 @@ func findEnvironment(t *testing.T, value summary, environment string) environmen
 	}
 	t.Fatalf("environment %q not found", environment)
 	return environmentSummary{}
+}
+
+func findCombination(t *testing.T, environment environmentSummary, combination string) combinationSummary {
+	t.Helper()
+	for _, candidate := range environment.Combinations {
+		if candidate.CombinationID == combination {
+			return candidate
+		}
+	}
+	t.Fatalf("combination %q not found", combination)
+	return combinationSummary{}
 }

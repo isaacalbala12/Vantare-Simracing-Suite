@@ -3,7 +3,7 @@ package main
 import "github.com/vantare/overlays/v2/internal/strategy/curation"
 
 const (
-	summaryContractVersion = "vantare.curator.summary.v1"
+	summaryContractVersion = "vantare.curator.summary.v2"
 	minimumCohort          = 3
 )
 
@@ -46,21 +46,22 @@ type combinationSummary struct {
 }
 
 type referenceProfileSummary struct {
-	TargetContractVersion string         `json:"targetContractVersion"`
-	Publishable           bool           `json:"publishable"`
-	Reason                string         `json:"reason,omitempty"`
-	Fuel                  metricSummary  `json:"fuel"`
-	VirtualEnergy         metricSummary  `json:"virtualEnergy"`
-	Pace                  presenceReason `json:"pace"`
-	Pit                   pitSummary     `json:"pit"`
-	Quality               qualitySummary `json:"quality"`
+	TargetContractVersion string          `json:"targetContractVersion"`
+	Publishable           bool            `json:"publishable"`
+	Reason                string          `json:"reason,omitempty"`
+	Fuel                  *metricSummary  `json:"fuel,omitempty"`
+	VirtualEnergy         *metricSummary  `json:"virtualEnergy,omitempty"`
+	Pace                  *presenceReason `json:"pace,omitempty"`
+	StintPaceCurve        *presenceReason `json:"stintPaceCurve,omitempty"`
+	Pit                   *pitSummary     `json:"pit,omitempty"`
+	Quality               *qualitySummary `json:"quality,omitempty"`
 }
 
 type metricSummary struct {
-	MeanPerLap float64 `json:"meanPerLap"`
-	RangeLower float64 `json:"rangeLower"`
-	RangeUpper float64 `json:"rangeUpper"`
-	SampleLaps int     `json:"sampleLaps"`
+	MedianPerLap float64 `json:"medianPerLap"`
+	RangeLower   float64 `json:"rangeLower"`
+	RangeUpper   float64 `json:"rangeUpper"`
+	SampleLaps   int     `json:"sampleLaps"`
 }
 
 type presenceReason struct {
@@ -69,13 +70,14 @@ type presenceReason struct {
 }
 
 type pitSummary struct {
-	Count              int     `json:"count"`
-	AvgDurationSeconds float64 `json:"avgDurationSeconds"`
+	Count                  int     `json:"count"`
+	TypicalDurationSeconds float64 `json:"typicalDurationSeconds"`
 }
 
 type qualitySummary struct {
 	ValidSessions   int     `json:"validSessions"`
 	InvalidSessions int     `json:"invalidSessions"`
+	SampleSessions  int     `json:"sampleSessions"`
 	ValidRatio      float64 `json:"validRatio"`
 }
 

@@ -124,6 +124,12 @@ export async function persistStrategySessionSelection(
   const event: StrategyEventV2 = {
     ...(existing ?? strategyEventV2FromRecord(record)),
     combination: { combinationId: combination.combinationId, sessions },
+    ...(existing?.weatherScenarios ? {
+      weatherScenarios: existing.weatherScenarios.map((weighted) => ({
+        ...weighted,
+        scenario: { ...weighted.scenario, combinationId: combination.combinationId },
+      })),
+    } : {}),
   };
   const result = await client.execute({
     protocolVersion: "strategy.application.v1",
@@ -164,7 +170,7 @@ function sourced<T>(value: T): StrategySourcedV2<T> {
   return { value, evidence };
 }
 
-function strategyEventV2FromRecord(record: StrategyEventRecord): StrategyEventV2 {
+export function strategyEventV2FromRecord(record: StrategyEventRecord): StrategyEventV2 {
   return {
     id: record.id,
     name: sourced(record.name),

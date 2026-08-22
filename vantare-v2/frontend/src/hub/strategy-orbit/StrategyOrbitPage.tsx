@@ -139,6 +139,8 @@ import {
   type StrategySessionCatalogView,
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
+import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
+import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
@@ -259,7 +261,7 @@ interface WizardState {
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
 }
-type SidePanel = "inputs" | "drivers" | "tyres" | "sessions";
+type SidePanel = "inputs" | "drivers" | "tyres" | "sessions" | "weather";
 type DonutMode = "laps" | "time";
 
 /** `FL|FR|RL|RR` → esquina del dominio real (`strategy-tyre`). */
@@ -444,6 +446,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [sessionCatalogRetry, setSessionCatalogRetry] = useState(0);
   const [sessionPickerDismissed, setSessionPickerDismissed] = useState<string | null>(null);
   const [sessionSave, setSessionSave] = useState<"idle" | "saving" | "error">("idle");
+  const [weatherSave, setWeatherSave] = useState<"idle" | "saving" | "error">("idle");
 
   useEffect(() => {
     let current = true;
@@ -522,6 +525,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventPlanningInputs = eventRecord && catalogView
     ? catalogView.planningByEvent[eventRecord.id]
     : undefined;
+  const eventWeatherScenarios = eventRecord && catalogView
+    ? selectedWeatherScenarios(catalogView, eventRecord.id)
+    : EMPTY_WEATHER_SCENARIOS;
   const planningRequests = useRef(new Set<string>());
   useEffect(() => {
     if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
@@ -561,9 +567,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [calculationRetry, setCalculationRetry] = useState(0);
   const calculationInput = useMemo(
     () => strategyEvent && eventRecord && activeId
-      ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs)
+      ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios)
       : null,
-    [activeId, eventPlanningInputs, eventRecord, strategyEvent, variants],
+    [activeId, eventPlanningInputs, eventRecord, eventWeatherScenarios, strategyEvent, variants],
   );
   const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
   const [calculation, setCalculation] = useState<
@@ -1208,6 +1214,18 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       setSessionSave("idle");
     } catch {
       setSessionSave("error");
+    }
+  }, [applicationClient, catalogView, eventRecord]);
+
+  const commitWeatherScenarios = useCallback(async (scenarios: Parameters<typeof persistStrategyWeatherScenarios>[3]) => {
+    if (!eventRecord || !catalogView) return;
+    setWeatherSave("saving");
+    try {
+      const view = await persistStrategyWeatherScenarios(applicationClient, catalogView, eventRecord, scenarios);
+      setSessionCatalog({ status: "ready", view });
+      setWeatherSave("idle");
+    } catch {
+      setWeatherSave("error");
     }
   }, [applicationClient, catalogView, eventRecord]);
 
@@ -2411,6 +2429,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       ))}
     </div>
   );
+  const weatherPanel = (
+    <StrategyWeatherPanel
+      combinationId={eventCombination?.combinationId}
+      eventId={eventRecord.id}
+      onSave={(scenarios) => void commitWeatherScenarios(scenarios)}
+      result={calculation.status === "success" && calculationCurrent ? calculation.result.weather : undefined}
+      saving={weatherSave}
+      scenarios={eventWeatherScenarios}
+      t={t}
+    />
+  );
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
@@ -3065,6 +3094,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     { value: "drivers", label: t("strategy.drivers.title") },
                     { value: "tyres", label: t("strategy.drivers.tyres") },
                     { value: "sessions", label: t("strategy.sessions.title") },
+                    { value: "weather", label: t("strategy.weather.tab") },
                   ]}
                   value={panel}
                 />
@@ -3081,7 +3111,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                       n: inventory.length,
                       used: Object.keys(uses).length,
                     })
-                    : String(eventCombination?.sessions.length ?? 0)
+                    : panel === "sessions"
+                      ? String(eventCombination?.sessions.length ?? 0)
+                      : String(eventWeatherScenarios.length)
               }
             >
               {panel === "inputs" ? planningInputsPanel : panel === "drivers" ? (
@@ -3246,7 +3278,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     </>
                   )}
                 </div>
-              ) : sessionsPanel}
+              ) : panel === "sessions" ? sessionsPanel : weatherPanel}
             </Surface>
           </div>
         </div>

@@ -15,6 +15,7 @@ import {
   type StrategyEvent,
   type StrategyVariant,
 } from "./strategy-orbit-model";
+import type { StrategyWeightedWeatherScenarioV1 } from "../../strategy/strategy-application-client";
 
 const EVENT: StrategyEvent = {
   startMin: 14 * 60,
@@ -65,6 +66,27 @@ describe("shaping de Orbit", () => {
       variants: [{ id: "s1", mode: "dry", order: ["isaac"], overrides: {} }],
       activeVariantId: "s1",
     });
+  });
+
+  it("transporta WeatherScenario v1 al motor sin recalcular el timeline", () => {
+    const weatherScenarios = [{
+      weight: 1,
+      scenario: {
+        contractVersion: "weatherscenario.v1" as const,
+        scenarioId: "rain-node-50",
+        combinationId: "manual:event-1",
+        generatedAt: "2026-08-22T12:00:00.000Z",
+        nodes: ["START", "25", "50", "75", "FINISH"].map((progress, index) => ({
+          progress: progress as "START" | "25" | "50" | "75" | "FINISH",
+          rainChance: index < 2 ? 0 : 100,
+          sky: "overcast" as const,
+          airTempC: 18,
+          trackTempC: 22,
+        })) as StrategyWeightedWeatherScenarioV1["scenario"]["nodes"],
+        provenance: { source: "manual", capturedAt: "2026-08-22T12:00:00.000Z", freshUntil: "2026-08-22T12:00:00.001Z", sessionType: "manual", signalFreshness: "manual" },
+      },
+    }];
+    expect(orbitCalculationInput(EVENT, [DRIVER], [VARIANT], "s1", undefined, weatherScenarios).weatherScenarios).toEqual(weatherScenarios);
   });
 
   it("formatea reloj, vuelta y hora para la vista", () => {

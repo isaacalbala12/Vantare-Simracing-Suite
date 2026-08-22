@@ -283,11 +283,12 @@ type CalculateOrbitCommand struct {
 }
 
 type OrbitCalculationInput struct {
-	Event           OrbitCalculationEvent            `json:"event"`
-	Drivers         []OrbitCalculationDriver         `json:"drivers"`
-	Variants        []OrbitCalculationVariant        `json:"variants"`
-	ActiveVariantID string                           `json:"activeVariantId"`
-	PlanningInputs  *strategydocument.PlanningInputs `json:"planningInputs,omitempty"`
+	Event            OrbitCalculationEvent                      `json:"event"`
+	Drivers          []OrbitCalculationDriver                   `json:"drivers"`
+	Variants         []OrbitCalculationVariant                  `json:"variants"`
+	ActiveVariantID  string                                     `json:"activeVariantId"`
+	PlanningInputs   *strategydocument.PlanningInputs           `json:"planningInputs,omitempty"`
+	WeatherScenarios []strategydocument.WeightedWeatherScenario `json:"weatherScenarios,omitempty"`
 }
 
 type OrbitCalculationEvent struct {
@@ -373,6 +374,40 @@ type OrbitCalculationComparison struct {
 type OrbitCalculationResult struct {
 	Plans       map[string]OrbitCalculationPlan       `json:"plans"`
 	Comparisons map[string]OrbitCalculationComparison `json:"comparisons"`
+	Weather     *OrbitWeatherResult                   `json:"weather,omitempty"`
+}
+
+type OrbitWeatherLapCondition struct {
+	Lap        int64   `json:"lap"`
+	RainChance float64 `json:"rainChance"`
+	Bucket     string  `json:"bucket"`
+}
+
+type OrbitWeatherStint struct {
+	Index    int    `json:"index"`
+	Laps     int64  `json:"laps"`
+	Compound string `json:"compound,omitempty"`
+}
+
+type OrbitWeatherScenarioPlan struct {
+	ScenarioID   string                     `json:"scenarioId"`
+	Weight       float64                    `json:"weight"`
+	TotalSeconds float64                    `json:"totalSeconds"`
+	Stops        int                        `json:"stops"`
+	Stints       []OrbitWeatherStint        `json:"stints"`
+	Timeline     []OrbitWeatherLapCondition `json:"timeline"`
+}
+
+type OrbitWeatherRobustRecommendation struct {
+	Method                      string              `json:"method"`
+	MaxRegretSeconds            float64             `json:"maxRegretSeconds"`
+	WeightedExpectedLossSeconds float64             `json:"weightedExpectedLossSeconds"`
+	Stints                      []OrbitWeatherStint `json:"stints"`
+}
+
+type OrbitWeatherResult struct {
+	Plans  []OrbitWeatherScenarioPlan       `json:"plans"`
+	Robust OrbitWeatherRobustRecommendation `json:"robust"`
 }
 
 type LegacyStorageSource struct {

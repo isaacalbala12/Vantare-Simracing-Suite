@@ -231,4 +231,63 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     await screen.findByText("Excluida por ti");
     expect(saved?.combination?.sessions).toEqual([{ sessionId: "race-1", included: false }]);
   });
+
+  it("edita NODE_50 y muestra planes por escenario con recomendación robusta", async () => {
+    window.localStorage.clear();
+    let saved: StrategyEventV2 | undefined;
+    const calculatedInputs: unknown[] = [];
+    let version = 0;
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
+        const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "no_authorized_telemetry", sessionCombinations: [] };
+        if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+        if (command.operation === "create_event" || command.operation === "edit_event") {
+          saved = command.event;
+          version += 1;
+          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+        }
+        if (command.operation === "calculate_orbit") {
+          calculatedInputs.push(command.input);
+          const hasWeather = Boolean(command.input.weatherScenarios?.length);
+          return {
+            ...base,
+            orbitCalculation: {
+              ...(orbitGolden as StrategyOrbitCalculationResultV1),
+              ...(hasWeather ? { weather: {
+                plans: [{ scenarioId: command.input.weatherScenarios![0].scenario.scenarioId, weight: 1, totalSeconds: 15000, stops: 4, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }], timeline: [{ lap: 1, rainChance: 0, bucket: "dry" }, { lap: 70, rainChance: 100, bucket: "wet" }] }],
+                robust: { method: "minimax_regret", maxRegretSeconds: 6, weightedExpectedLossSeconds: 2.5, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }] },
+              } } : {}),
+            } as StrategyOrbitCalculationResultV1,
+          };
+        }
+        if (command.operation === "list") return { ...base, plans: [] };
+        throw new Error(`unexpected ${command.operation}`);
+      },
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    const slot = document.createElement("div");
+    slot.id = STRATEGY_CONTEXT_SLOT_ID;
+    document.body.append(slot);
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Seguir en manual" }));
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByRole("button", { name: "Clima" }));
+    expect(await screen.findByText("Sin escenarios: el cálculo usa seco declarado manualmente.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Capturar forecast" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Añadir escenario" }));
+    await waitFor(() => expect(saved?.weatherScenarios).toHaveLength(1));
+    const node50 = await screen.findByTestId("orbit-weather-node-0-2");
+    const rain = within(node50).getByLabelText("Lluvia");
+    fireEvent.change(rain, { target: { value: "100" } });
+    fireEvent.blur(rain);
+    await waitFor(() => expect(saved?.weatherScenarios?.[0].scenario.nodes[2].rainChance).toBe(100));
+    await screen.findByText("Minimax regret");
+    expect(screen.getByText("6.0 s")).toBeTruthy();
+    expect(screen.getByText("2.5 s")).toBeTruthy();
+    expect(screen.getByText("V70 · Mojado · 100%")).toBeTruthy();
+    expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"progress":"50","rainChance":100'))).toBe(true);
+  });
 });

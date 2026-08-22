@@ -192,6 +192,31 @@ export type StrategyPlanningInputsV2 = {
   }>>>;
 };
 
+export type StrategyWeatherNodeProgressV1 = "START" | "25" | "50" | "75" | "FINISH";
+export type StrategyWeatherSkyV1 = "clear" | "light_clouds" | "mostly_cloudy" | "overcast" | "partially_cloudy" | "drizzle";
+export type StrategyWeatherNodeV1 = {
+  readonly progress: StrategyWeatherNodeProgressV1;
+  readonly rainChance: number;
+  readonly sky: StrategyWeatherSkyV1;
+  readonly airTempC: number;
+  readonly trackTempC: number;
+};
+export type StrategyWeatherScenarioV1 = {
+  readonly contractVersion: "weatherscenario.v1";
+  readonly scenarioId: string;
+  readonly combinationId: string;
+  readonly generatedAt: string;
+  readonly nodes: readonly [StrategyWeatherNodeV1, StrategyWeatherNodeV1, StrategyWeatherNodeV1, StrategyWeatherNodeV1, StrategyWeatherNodeV1];
+  readonly provenance: {
+    readonly source: string;
+    readonly capturedAt: string;
+    readonly freshUntil: string;
+    readonly sessionType: string;
+    readonly signalFreshness: string;
+  };
+};
+export type StrategyWeightedWeatherScenarioV1 = { readonly scenario: StrategyWeatherScenarioV1; readonly weight: number };
+
 export type StrategyEventV2 = {
   readonly id: string;
   readonly name: StrategySourcedV2<string>;
@@ -217,6 +242,7 @@ export type StrategyEventV2 = {
     readonly sessions: readonly { readonly sessionId: string; readonly included: boolean }[];
   };
   readonly planningInputs?: StrategyPlanningInputsV2;
+  readonly weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[];
   /** Go encodes the byte-exact legacy backup as base64. */
   readonly rawLegacy?: string;
 };
@@ -309,6 +335,7 @@ export type StrategyOrbitCalculationInputV1 = {
   }[];
   readonly activeVariantId: string;
   readonly planningInputs?: StrategyPlanningInputsV2;
+  readonly weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[];
 };
 
 export type StrategyOrbitCalculationPaceV1 = {
@@ -366,6 +393,26 @@ export type StrategyOrbitCalculationComparisonV1 = {
 export type StrategyOrbitCalculationResultV1 = {
   readonly plans: Readonly<Record<string, StrategyOrbitCalculatedPlanV1>>;
   readonly comparisons: Readonly<Record<string, StrategyOrbitCalculationComparisonV1>>;
+  readonly weather?: StrategyOrbitWeatherResultV1;
+};
+
+export type StrategyOrbitWeatherStintV1 = { readonly index: number; readonly laps: number; readonly compound?: string };
+export type StrategyOrbitWeatherConditionV1 = { readonly lap: number; readonly rainChance: number; readonly bucket: "dry" | "humid" | "wet" };
+export type StrategyOrbitWeatherResultV1 = {
+  readonly plans: readonly {
+    readonly scenarioId: string;
+    readonly weight: number;
+    readonly totalSeconds: number;
+    readonly stops: number;
+    readonly stints: readonly StrategyOrbitWeatherStintV1[];
+    readonly timeline: readonly StrategyOrbitWeatherConditionV1[];
+  }[];
+  readonly robust: {
+    readonly method: "minimax_regret";
+    readonly maxRegretSeconds: number;
+    readonly weightedExpectedLossSeconds: number;
+    readonly stints: readonly StrategyOrbitWeatherStintV1[];
+  };
 };
 
 type CommandHeader<T extends StrategyApplicationOperation> = {
@@ -1033,8 +1080,30 @@ function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
     }
   }
   if (event.planningInputs !== undefined) parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
+  if (event.weatherScenarios !== undefined) parseWeatherScenarios(event.weatherScenarios, `${field}.weatherScenarios`);
   parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
   return { ...event, drivers, strategies, availability } as StrategyEventV2;
+}
+
+function parseWeatherScenarios(value: unknown, field: string): readonly StrategyWeightedWeatherScenarioV1[] {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  return value.map((candidate, index) => {
+    const weighted = strategyRecord(candidate, `${field}.${index}`);
+    strategyNumber(weighted.weight, `${field}.${index}.weight`);
+    const scenario = strategyRecord(weighted.scenario, `${field}.${index}.scenario`);
+    strategyEnum(scenario.contractVersion, `${field}.${index}.scenario.contractVersion`, ["weatherscenario.v1"]);
+    for (const name of ["scenarioId", "combinationId", "generatedAt"] as const) strategyString(scenario[name], `${field}.${index}.scenario.${name}`);
+    if (!Array.isArray(scenario.nodes) || scenario.nodes.length !== 5) throw new Error(`Invalid Strategy ${field}.${index}.scenario.nodes`);
+    scenario.nodes.forEach((nodeCandidate, nodeIndex) => {
+      const node = strategyRecord(nodeCandidate, `${field}.${index}.scenario.nodes.${nodeIndex}`);
+      strategyEnum(node.progress, `${field}.${index}.scenario.nodes.${nodeIndex}.progress`, ["START", "25", "50", "75", "FINISH"]);
+      strategyEnum(node.sky, `${field}.${index}.scenario.nodes.${nodeIndex}.sky`, ["clear", "light_clouds", "mostly_cloudy", "overcast", "partially_cloudy", "drizzle"]);
+      for (const name of ["rainChance", "airTempC", "trackTempC"] as const) strategyNumber(node[name], `${field}.${index}.scenario.nodes.${nodeIndex}.${name}`);
+    });
+    const provenance = strategyRecord(scenario.provenance, `${field}.${index}.scenario.provenance`);
+    for (const name of ["source", "capturedAt", "freshUntil", "sessionType", "signalFreshness"] as const) strategyString(provenance[name], `${field}.${index}.scenario.provenance.${name}`);
+    return weighted as StrategyWeightedWeatherScenarioV1;
+  });
 }
 
 function parsePlanningInputStatus(value: unknown): "available" | "manual_only" | "no_included_sessions" {
@@ -1269,7 +1338,51 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     }
     comparisons[id] = comparison as StrategyOrbitCalculationComparisonV1;
   }
-  return { plans, comparisons };
+  const weather = calculation.weather === undefined ? undefined : parseOrbitWeather(calculation.weather);
+  return { plans, comparisons, ...(weather ? { weather } : {}) };
+}
+
+function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {
+  const weather = strategyRecord(value, "orbitCalculation.weather");
+  if (!Array.isArray(weather.plans)) throw new Error("Invalid Strategy orbitCalculation.weather.plans");
+  const parseStints = (candidate: unknown, field: string): readonly StrategyOrbitWeatherStintV1[] => {
+    if (!Array.isArray(candidate)) throw new Error(`Invalid Strategy ${field}`);
+    return candidate.map((entry, index) => {
+      const stint = strategyRecord(entry, `${field}.${index}`);
+      strategyInteger(stint.index, `${field}.${index}.index`);
+      strategyInteger(stint.laps, `${field}.${index}.laps`);
+      if (stint.compound !== undefined) strategyString(stint.compound, `${field}.${index}.compound`);
+      return stint as StrategyOrbitWeatherStintV1;
+    });
+  };
+  const plans = weather.plans.map((candidate, index) => {
+    const plan = strategyRecord(candidate, `orbitCalculation.weather.plans.${index}`);
+    strategyString(plan.scenarioId, `orbitCalculation.weather.plans.${index}.scenarioId`);
+    for (const name of ["weight", "totalSeconds"] as const) strategyNumber(plan[name], `orbitCalculation.weather.plans.${index}.${name}`);
+    strategyInteger(plan.stops, `orbitCalculation.weather.plans.${index}.stops`);
+    const stints = parseStints(plan.stints, `orbitCalculation.weather.plans.${index}.stints`);
+    if (!Array.isArray(plan.timeline)) throw new Error(`Invalid Strategy orbitCalculation.weather.plans.${index}.timeline`);
+    const timeline = plan.timeline.map((entry, conditionIndex) => {
+      const condition = strategyRecord(entry, `orbitCalculation.weather.plans.${index}.timeline.${conditionIndex}`);
+      strategyInteger(condition.lap, `orbitCalculation.weather.plans.${index}.timeline.${conditionIndex}.lap`);
+      strategyNumber(condition.rainChance, `orbitCalculation.weather.plans.${index}.timeline.${conditionIndex}.rainChance`);
+      strategyEnum(condition.bucket, `orbitCalculation.weather.plans.${index}.timeline.${conditionIndex}.bucket`, ["dry", "humid", "wet"]);
+      return condition as StrategyOrbitWeatherConditionV1;
+    });
+    return {
+      scenarioId: plan.scenarioId as string,
+      weight: plan.weight as number,
+      totalSeconds: plan.totalSeconds as number,
+      stops: plan.stops as number,
+      stints,
+      timeline,
+    };
+  });
+  const robust = strategyRecord(weather.robust, "orbitCalculation.weather.robust");
+  strategyEnum(robust.method, "orbitCalculation.weather.robust.method", ["minimax_regret"]);
+  strategyNumber(robust.maxRegretSeconds, "orbitCalculation.weather.robust.maxRegretSeconds");
+  strategyNumber(robust.weightedExpectedLossSeconds, "orbitCalculation.weather.robust.weightedExpectedLossSeconds");
+  return { plans, robust: { ...robust, stints: parseStints(robust.stints, "orbitCalculation.weather.robust.stints") } as StrategyOrbitWeatherResultV1["robust"] };
 }
 
 function parseStrategySourcedV2(value: unknown, field: string): unknown {

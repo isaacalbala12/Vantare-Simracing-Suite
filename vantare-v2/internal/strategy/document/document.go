@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
@@ -333,6 +334,13 @@ type CombinationReference struct {
 	Sessions      []SessionSelection `json:"sessions"`
 }
 
+// WeightedWeatherScenario keeps the WeatherScenario v1 contract intact and
+// adds only the event-local probability used by the robust solver.
+type WeightedWeatherScenario struct {
+	Scenario weather.WeatherScenarioV1 `json:"scenario"`
+	Weight   float64                   `json:"weight"`
+}
+
 type PlanningInputField string
 
 const (
@@ -395,6 +403,7 @@ type Event struct {
 	TyreInventory    TyreInventory                     `json:"tyreInventory"`
 	Combination      *CombinationReference             `json:"combination,omitempty"`
 	PlanningInputs   *PlanningInputs                   `json:"planningInputs,omitempty"`
+	WeatherScenarios []WeightedWeatherScenario         `json:"weatherScenarios,omitempty"`
 	// RawLegacy preserva los bytes originales del backup, incluso cuando el
 	// JSON está corrupto y debe ir a cuarentena. encoding/json lo representa
 	// como base64, evitando la compactación destructiva de json.RawMessage.
@@ -544,6 +553,25 @@ func (d StrategyDocumentV2) Validate() error {
 					return fmt.Errorf("event %q duplicate combination session %q", ev.ID, session.SessionID)
 				}
 				sessions[session.SessionID] = struct{}{}
+			}
+		}
+		if len(ev.WeatherScenarios) > 16 {
+			return fmt.Errorf("event %q weather scenarios must contain at most 16 entries", ev.ID)
+		}
+		weatherIDs := make(map[string]struct{}, len(ev.WeatherScenarios))
+		for index, weighted := range ev.WeatherScenarios {
+			if math.IsNaN(weighted.Weight) || math.IsInf(weighted.Weight, 0) || weighted.Weight <= 0 {
+				return fmt.Errorf("event %q weather scenario %d weight must be finite and >0", ev.ID, index)
+			}
+			if err := weighted.Scenario.Validate(); err != nil {
+				return fmt.Errorf("event %q weather scenario %d: %w", ev.ID, index, err)
+			}
+			if _, duplicate := weatherIDs[weighted.Scenario.ScenarioID]; duplicate {
+				return fmt.Errorf("event %q duplicate weather scenario %q", ev.ID, weighted.Scenario.ScenarioID)
+			}
+			weatherIDs[weighted.Scenario.ScenarioID] = struct{}{}
+			if ev.Combination != nil && weighted.Scenario.CombinationID != ev.Combination.CombinationID {
+				return fmt.Errorf("event %q weather scenario %q combination mismatch", ev.ID, weighted.Scenario.ScenarioID)
 			}
 		}
 		if ev.PlanningInputs != nil {

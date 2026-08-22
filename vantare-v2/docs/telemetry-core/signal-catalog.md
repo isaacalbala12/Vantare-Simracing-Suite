@@ -13,7 +13,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 7 | `wheels.brake_temperature` | wheels | celsius | unknown | unproduced-existing | Existing contract; not produced by ISA-129. |
 | 8 | `energy.fuel_amount` | energy | liters | [0,+inf) | hardened | Liters; valid jointly only when 0 <= amount <= capacity. |
 | 9 | `pit.stop_count` | pit | count | [0,+inf) | hardened | Pit-stop count cannot be negative. |
-| 10 | `standings.position` | standings | count | [1,104] | hardened | One-based position within the demonstrated LMU vehicle bound. |
+| 10 | `standings.position` | standings | count | [1,104] | hardened | One-based position within the canonical vehicle bound (1..104). |
 | 11 | `weather.ambient_temperature` | weather | unknown | unknown | unproduced-existing | Existing contract; not produced by ISA-129. |
 | 12 | `spatial.position` | spatial | meters | unknown | hardened | World-space XYZ in meters; legitimate zero is preserved. |
 | 13 | `session.lap_number` | session | count | [0,+inf) | hardened | Session lap number preserves legitimate zero. |
@@ -24,7 +24,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 18 | `spatial.orientation` | spatial | unsupported | unknown | hardened | Right-handed orthonormal matrix; columns map local left/up/rearward axes into world space. |
 | 19 | `session.source_time` | session | seconds | [0,+inf) | hardened | Non-negative timestamp supplied by the source. |
 | 20 | `session.track_name` | session | text | unsupported | hardened | Canonical track display name. |
-| 21 | `session.vehicle_count` | session | count | [0,104] | reused | Existing demonstrated LMU vehicle-count bound. |
+| 21 | `session.vehicle_count` | session | count | [0,104] | reused | Canonical vehicle-count bound (0..104). |
 | 22 | `vehicle.player_present` | vehicle | boolean | unsupported | reused | Existing player-presence signal reused unchanged. |
 | 23 | `vehicle.speed_mps` | vehicle | m/s | [0,+inf) | hardened | Canonical non-negative vehicle speed. |
 | 24 | `pit.in_pit` | pit | boolean | unsupported | reused | Existing pit-state signal reused unchanged. |
@@ -47,7 +47,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 41 | `energy.fuel_capacity` | energy | liters | [0,+inf) | appended | Must be finite and > 0 when the joint fuel value is present. |
 | 42 | `session.self_delta_seconds` | session | seconds | unknown | appended | Signed player delta against the declared reference. |
 | 43 | `session.self_delta_reference` | session | text | unsupported | appended | Known canonical self-delta reference enum only. |
-| 44 | `spatial.local_velocity` | spatial | m/s | unknown | appended | Vehicle-local XYZ velocity in m/s; LMU axes are +X left, +Y up and +Z rearward. |
+| 44 | `spatial.local_velocity` | spatial | m/s | unknown | appended | Vehicle-local XYZ velocity in m/s; axes are +X left, +Y up and +Z rearward. |
 | 45 | `session.native_delta_best` | session | seconds | unknown | appended | Signed simulator-provided player delta to the personal best lap; validity remains explicit. |
 | 46 | `session.previous_lap_delta` | session | seconds | unknown | appended | Signed player delta against the most recent complete valid lap observed in the current session. |
 

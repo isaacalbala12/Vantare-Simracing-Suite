@@ -63,9 +63,9 @@ type Monitor struct {
 	lastEmitMS    int64
 	initialized   bool
 
-	// Opcional: lector del buffer Extended para clasificar penalizaciones
-	// mediante mLastHistoryMessage.
-	extendedReader *lmu.ExtendedReader
+	// Opcional: source del buffer Extended para clasificar penalizaciones
+	// mediante mLastHistoryMessage. Interfaz registrada por LMU.
+	extendedReader lmu.ExtendedSource
 	// Ultimo mensaje de historial procesado para evitar re-procesamiento.
 	lastHistoryMsg string
 }
@@ -75,13 +75,18 @@ func NewMonitor() *Monitor {
 	return &Monitor{}
 }
 
-// SetExtendedReader asigna un ExtendedReader opcional para leer mensajes
-// de historial del buffer Extended de LMU. Si se asigna, Trigger() puede
-// clasificar con mas precision el tipo de penalizacion.
-func (m *Monitor) SetExtendedReader(reader *lmu.ExtendedReader) {
+// SetExtendedReader asigna un ExtendedSource opcional para leer mensajes
+// de historial. Acepta cualquier implementacion de lmu.ExtendedSource;
+// la implementacion LMU se registra en el composition root.
+func (m *Monitor) SetExtendedReader(reader lmu.ExtendedSource) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.extendedReader = reader
+}
+
+// SetExtendedSource es alias neutral de SetExtendedReader.
+func (m *Monitor) SetExtendedSource(source lmu.ExtendedSource) {
+	m.SetExtendedReader(source)
 }
 
 // classifyFromHistoryMessage analiza el mensaje de historial del buffer

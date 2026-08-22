@@ -25,8 +25,8 @@ var (
 	ErrVehicleHistoryOverflow = errors.New("telemetry session vehicle history exceeds configured limit")
 )
 
-// MaxSessionVehicleHistory remains the LMU scoring-slot budget used by the
-// recording mapper. SessionCoordinator history uses a separate bounded LRU.
+// MaxSessionVehicleHistory is the canonical vehicle history budget (104) used
+// by the recording mapper. SessionCoordinator history uses a separate bounded LRU.
 const MaxSessionVehicleHistory = 104
 
 type FactKind uint8

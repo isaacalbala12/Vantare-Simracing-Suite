@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-771",
+  "type": "change",
+  "summary": "Orbit calcula sus estrategias con el motor completo y respeta los overrides del usuario por encima de los datos derivados.",
+  "technicalNotes": [
+    "Cada escalar del plan llega al motor con valor, procedencia, confianza y prioridad explícita.",
+    "Sin override se usa una familia derivada válida antes que el fallback manual o de referencia; con override se conserva exactamente la autoridad del usuario.",
+    "El cálculo mantiene los ViewModels de Orbit y retira el antiguo evento Wails del solver v1."
+  ],
+  "testing": [
+    "Vincular sesiones con consumo derivado, calcular y comprobar el chip Derivado.",
+    "Editar el consumo, recalcular y comprobar que cambia el máximo de vueltas sin perder la derivada guardada.",
+    "Revertir el override, recalcular y comprobar que vuelve el valor derivado."
+  ],
+  "knownLimitations": [
+    "La prueba manual dentro de Wails con sesiones DuckDB reales pertenece al gate posterior de F5."
+  ]
+}

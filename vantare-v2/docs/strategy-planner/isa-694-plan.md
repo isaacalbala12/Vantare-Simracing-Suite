@@ -301,6 +301,11 @@ Trabajo (5 issues, muse-spark; propuesta UX previa mía para lo negociable):
 visual tests actualizados; ningún dato sin presencia/procedencia. Review
 Codex sol.
 
+**Estado F5-b2 (2026-08-22):** #771 amplía los escalares de `SolverInputV2`
+con fuente y prioridad explícitas, corta el cálculo Orbit a `SolveV2` y deja
+`Solve` v1 sin wiring productivo. El golden compartido refleja el vector F4
+completo; quedan pendientes los demás cortes de F5 y el gate Wails/DuckDB real.
+
 ### F6 — Pipeline editorial
 
 **Objetivo:** bundles → Worker → curación en PC de Isaac → catálogo GitHub,

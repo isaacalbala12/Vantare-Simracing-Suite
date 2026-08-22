@@ -17,6 +17,18 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-771 / F5-b2 (2026-08-22, lista para review):
+
+- Los escalares del input F4 llevan valor, procedencia, confianza y rol. Un
+  override de usuario gana a la familia derivada; sin override, la derivada
+  válida gana al fallback manual/reference. El resultado expone la fuente
+  efectiva y los tests cubren Fuel, vida, degradación, pit y ahorro.
+- Orbit llama a `SolveV2` y mantiene el ViewModel existente. El golden de 139
+  vueltas usa cinco stints `11+32+32+32+32`, cuatro paradas y 14.712 s.
+- Se retiró el evento Wails productivo del solver v1. El código v1 queda para
+  tests/paridad histórica, sin consumidores productivos externos.
+- Sin PR, integración, promoción o release; faltan gates finales y review.
+
 Actualización ISA-766 / F6-a (2026-08-22, lista para review):
 
 - El exportador construye `CurationBundle v1` desde

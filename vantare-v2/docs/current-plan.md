@@ -1,3 +1,14 @@
+Nota ISA-771 / ISA-694 F5-b2 (2026-08-22, lista para review):
+
+- `SolverInputV2` transporta valor, procedencia, confianza y rol en sus
+  escalares de plan. La resolución queda fijada y testeada como override de
+  usuario > familia derivada válida > fallback manual/reference.
+- Orbit calcula con `SolveV2`; conserva sus ViewModels y el golden compartido
+  pasa de stints balanceados v1 a `11+32+32+32+32` del motor completo.
+- El evento Wails del solver v1 se retiró. `Solve`/bridge v1 permanecen solo
+  para tests y paridad histórica; no hay llamadores productivos externos.
+- Pendiente de esta rama: review. No hay PR, integración, promoción ni release.
+
 Nota ISA-766 / ISA-694 F6-a (2026-08-22, implementada en rama de issue):
 - Strategy genera `CurationBundle v1` solo desde proyecciones públicas, con
   allowlist cerrada, fechas por semana ISO y el identificador administrativo

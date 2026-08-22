@@ -1246,13 +1246,14 @@ func main() {
 	var curationUploadService *curation.UploadService
 	if strategyRootErr == nil {
 		curationTarget := fmt.Sprintf("Vantare/%s/CurationCredentialsV1", buildChannel)
-		curationUploadService, err = curation.OpenUploadService(curation.UploadServiceOptions{
+		var curationOpenErr error
+		curationUploadService, curationOpenErr = curation.OpenUploadService(curation.UploadServiceOptions{
 			StatePath:   filepath.Join(strategyRoot, "curation-upload.json"),
 			Credentials: curation.NewProtectedCredentialStore(curationTarget),
 			Endpoint:    curationWorkerURL,
 			BuildToken:  curationBuildAdmissionToken,
 		})
-		if err != nil {
+		if curationOpenErr != nil {
 			log.Printf("warning: Curation upload is unavailable")
 			curationUploadService = nil
 		}

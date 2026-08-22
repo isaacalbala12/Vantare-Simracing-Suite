@@ -17,6 +17,23 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-765 / F5-b (2026-08-22, lista para review):
+
+- La query de aplicación pide a Analysis una `StrategyInputProjection v2`
+  sobre el conjunto exacto de sesiones incluidas por F5-a. Strategy consume el
+  puerto público y no toma ownership de modelos históricos ni de DuckDB.
+- `StrategyDocumentV2` conserva proyección y overrides juntos. Manual y
+  referencia son procedencias explícitas; el cálculo usa el override válido y
+  revertir borra solo ese override, dejando intacto el derivado.
+- Orbit presenta nueve datos numéricos con chips Derivado/Manual/Referencia/
+  Falta. El tooltip derivado incluye N y rango; Falta explica el motivo. El
+  modo sin combinación sigue siendo manual puro y los cuatro idiomas están
+  completos.
+- Gates verdes: Go focal de Analysis/Strategy, suite frontend completa,
+  typecheck, build y `visual:orbit-strategy`. La captura de procedencias queda
+  en la evidencia de Orbit. Sin PR, integración, promoción ni release; falta
+  review de #765 y F5-e continúa siendo quien conecta la fuente inicial.
+
 Actualización ISA-758 / F5-a (2026-08-22, lista para review):
 
 - Analysis publica combinaciones y sesiones desde modelos históricos ya

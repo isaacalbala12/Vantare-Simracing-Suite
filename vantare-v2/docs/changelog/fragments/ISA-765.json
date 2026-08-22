@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-765",
+  "type": "feature",
+  "summary": "Estrategia identifica de dónde sale cada dato numérico y permite corregir un derivado sin perderlo.",
+  "technicalNotes": [
+    "Analysis proyecta los datos desde las sesiones incluidas y Strategy los consume por su API pública, sin abrir DuckDB.",
+    "El documento canónico conserva a la vez la proyección y los overrides manuales o de referencia; revertir elimina solo el override.",
+    "Orbit muestra procedencia, muestra, rango o motivo de ausencia en español, inglés, italiano y portugués."
+  ],
+  "testing": [
+    "Vincular una combinación y abrir Datos para comprobar chips Derivado y Falta con sus tooltips.",
+    "Cambiar el combustible por vuelta, comprobar el chip Manual y que el plan se recalcula.",
+    "Pulsar Volver al derivado y confirmar que reaparecen su valor, muestra y rango.",
+    "Abrir un evento sin combinación y confirmar que no aparecen valores derivados."
+  ],
+  "knownLimitations": [
+    "La conexión inicial con los archivos DuckDB autorizados y su arranque en frío pertenecen a F5-e."
+  ]
+}

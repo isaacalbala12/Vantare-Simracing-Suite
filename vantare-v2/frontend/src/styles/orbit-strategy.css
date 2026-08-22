@@ -1007,6 +1007,12 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.orbit-strategy__side .orbit-planning-inputs {
+  grid-template-columns: minmax(0, 1fr);
+  max-height: 100%;
+  overflow: auto;
+}
+
 .orbit-planning-input {
   align-items: end;
   background: color-mix(in srgb, var(--orbit-surface-2) 72%, transparent);

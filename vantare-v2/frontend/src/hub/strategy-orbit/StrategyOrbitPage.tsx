@@ -259,7 +259,7 @@ interface WizardState {
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
 }
-type SidePanel = "drivers" | "tyres" | "sessions";
+type SidePanel = "inputs" | "drivers" | "tyres" | "sessions";
 type DonutMode = "laps" | "time";
 
 /** `FL|FR|RL|RR` → esquina del dominio real (`strategy-tyre`). */
@@ -2386,6 +2386,31 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
     </div>
   );
+  const planningInputsPanel = (
+    <div className="orbit-planning-inputs" data-testid="orbit-planning-inputs">
+      {([
+        ["fuel_per_lap_liters", t("strategy.inputs.field.fuel"), "L/v", drivers[0]?.dry[1]],
+        ["ve_per_lap_percent", t("strategy.inputs.field.ve"), "%/v", undefined],
+        ["base_pace_seconds", t("strategy.inputs.field.pace"), "s", drivers[0]?.dry[0]],
+        ["tank_liters", t("strategy.inputs.field.tank"), "L", event.tankL],
+        ["pit_loss_seconds", t("strategy.inputs.field.pit"), "s", event.pitS],
+        ["tyre_life_laps", t("strategy.inputs.field.tyreLife"), t("strategy.inputs.unit.laps"), undefined],
+        ["degradation_per_lap_seconds", t("strategy.inputs.field.degradation"), "s/v", undefined],
+        ["saving_fuel_per_lap", t("strategy.inputs.field.savingFuel"), "L/v", undefined],
+        ["saving_time_cost_per_lap", t("strategy.inputs.field.savingCost"), "s/v", undefined],
+      ] as const).map(([field, label, unit, fallback]) => (
+        <PlanningInputRow
+          field={field}
+          key={field}
+          label={label}
+          onCommit={(changedField, value) => void commitPlanningInput(changedField, value)}
+          t={t}
+          unit={unit}
+          view={strategyInputProvenance(eventPlanningInputs, field, fallback)}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
@@ -2721,36 +2746,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             />
           </StatRow>
 
-          <Surface
-            aria-label={t("strategy.inputs.title")}
-            meta={eventCombination ? t("strategy.inputs.combinedHint") : t("strategy.inputs.manualHint")}
-            title={t("strategy.inputs.title")}
-          >
-            <div className="orbit-planning-inputs" data-testid="orbit-planning-inputs">
-              {([
-                ["fuel_per_lap_liters", t("strategy.inputs.field.fuel"), "L/v", drivers[0]?.dry[1]],
-                ["ve_per_lap_percent", t("strategy.inputs.field.ve"), "%/v", undefined],
-                ["base_pace_seconds", t("strategy.inputs.field.pace"), "s", drivers[0]?.dry[0]],
-                ["tank_liters", t("strategy.inputs.field.tank"), "L", event.tankL],
-                ["pit_loss_seconds", t("strategy.inputs.field.pit"), "s", event.pitS],
-                ["tyre_life_laps", t("strategy.inputs.field.tyreLife"), t("strategy.inputs.unit.laps"), undefined],
-                ["degradation_per_lap_seconds", t("strategy.inputs.field.degradation"), "s/v", undefined],
-                ["saving_fuel_per_lap", t("strategy.inputs.field.savingFuel"), "L/v", undefined],
-                ["saving_time_cost_per_lap", t("strategy.inputs.field.savingCost"), "s/v", undefined],
-              ] as const).map(([field, label, unit, fallback]) => (
-                <PlanningInputRow
-                  field={field}
-                  key={field}
-                  label={label}
-                  onCommit={(changedField, value) => void commitPlanningInput(changedField, value)}
-                  t={t}
-                  unit={unit}
-                  view={strategyInputProvenance(eventPlanningInputs, field, fallback)}
-                />
-              ))}
-            </div>
-          </Surface>
-
           <div className="orbit-strategy__grid">
             <Surface
               aria-label={t("strategy.timeline.title")}
@@ -3066,6 +3061,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   label={t("strategy.drivers.title")}
                   onChange={setPanel}
                   options={[
+                    { value: "inputs", label: t("strategy.inputs.tab") },
                     { value: "drivers", label: t("strategy.drivers.title") },
                     { value: "tyres", label: t("strategy.drivers.tyres") },
                     { value: "sessions", label: t("strategy.sessions.title") },
@@ -3077,7 +3073,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               className="orbit-strategy__side"
               fill
               meta={
-                panel === "drivers"
+                panel === "inputs"
+                  ? (eventCombination ? t("strategy.inputs.combinedShort") : t("strategy.inputs.manualShort"))
+                  : panel === "drivers"
                   ? String(drivers.length)
                   : panel === "tyres" ? formatMessage(t("strategy.drivers.inUse"), {
                       n: inventory.length,
@@ -3086,7 +3084,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     : String(eventCombination?.sessions.length ?? 0)
               }
             >
-              {panel === "drivers" ? (
+              {panel === "inputs" ? planningInputsPanel : panel === "drivers" ? (
                 <div className="orbit-strategy__drivers" data-testid="orbit-strategy-drivers">
                   {drivers.map((driver) => (
                     <article

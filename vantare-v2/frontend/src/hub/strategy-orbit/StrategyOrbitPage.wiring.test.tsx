@@ -207,6 +207,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(await screen.findByTestId("orbit-strategy-session-picker")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
     expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
     const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
     expect(within(fuel).getByLabelText(/Derivado: Calculado con 20 muestras/)).toBeTruthy();
     const fuelInput = within(fuel).getByRole("textbox");

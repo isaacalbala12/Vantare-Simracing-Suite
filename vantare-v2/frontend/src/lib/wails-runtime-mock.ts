@@ -199,6 +199,67 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     broadcast("strategy:application:result", { ...baseResult, events: Object.values(repository.events ?? {}) });
     return;
   }
+  if (operation === "get_event_planning_inputs") {
+    const eventId = typeof command.eventId === "string" ? command.eventId : "";
+    const event = readHarnessPayload(repository.events?.[eventId]);
+    const combination = readHarnessPayload(event.combination);
+    const sessions = Array.isArray(combination.sessions)
+      ? combination.sessions.filter((session) => readHarnessPayload(session).included === true)
+      : [];
+    const savedPlanning = readHarnessPayload(event.planningInputs);
+    const overrides = readHarnessPayload(savedPlanning.overrides);
+    if (typeof combination.combinationId !== "string") {
+      broadcast("strategy:application:result", {
+        ...baseResult, planningInputStatus: "manual_only", planningInputs: { overrides },
+      });
+      return;
+    }
+    if (sessions.length === 0) {
+      broadcast("strategy:application:result", {
+        ...baseResult, planningInputStatus: "no_included_sessions", planningInputs: { overrides },
+      });
+      return;
+    }
+    const sourceSessions = sessions
+      .map((session) => readHarnessPayload(session).sessionId)
+      .filter((sessionId): sessionId is string => typeof sessionId === "string");
+    const emptyConfidence = { sampleSize: 0, computationVersion: "projection-producer.v1" };
+    const missing = { presence: "missing", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` }, confidence: emptyConfidence };
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      planningInputStatus: "available",
+      planningInputs: {
+        projection: {
+          contractVersion: "strategyinputprojection.v2",
+          generatedAt: typeof command.generatedAt === "string" ? command.generatedAt : "2026-08-22T12:00:00Z",
+          computationVersion: "projection-producer.v1",
+          sourceSessions,
+          combinationId: combination.combinationId,
+          fuelConsumption: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 54, rangeLower: 2.61, rangeUpper: 2.88, computationVersion: "projection-producer.v1" },
+            meanPerLap: 2.74, rangeLower: 2.61, rangeUpper: 2.88,
+          },
+          virtualEnergyConsumption: { ...missing, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+          combinedStintPaceCurve: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 26, rangeLower: 0, rangeUpper: 1.2, computationVersion: "projection-producer.v1" },
+            identifiability: "combined_only", reason: "combined_only",
+            points: [{ lapInStint: 1, deltaSeconds: 0, sampleSize: 26 }, { lapInStint: 25, deltaSeconds: 1.2, sampleSize: 18 }],
+          },
+          tyreDegradation: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 18, rangeLower: 28, rangeUpper: 34, computationVersion: "projection-producer.v1" },
+            lifeLapsEstimate: 31, lifeLapsRangeLower: 28, lifeLapsRangeUpper: 34,
+          },
+          pit: { ...missing, presence: "unknown", reason: "degraded_no_transit_service_breakdown" },
+          savingCost: { ...missing, reason: "missing_fuel_mixture_levels" },
+        },
+        overrides,
+      },
+    });
+    return;
+  }
   if (operation === "create_event" || operation === "edit_event") {
     const event = readHarnessPayload(command.event);
     const eventId = typeof event.id === "string" ? event.id : "";

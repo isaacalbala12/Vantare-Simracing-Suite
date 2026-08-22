@@ -5,8 +5,8 @@ import { RELEASE_NEWS, normalizeReleaseNews, sortReleaseNews } from "./release-n
 describe("release news", () => {
   it("discovers the latest canonical manifest without a manual list", () => {
     expect(RELEASE_NEWS[0]).toMatchObject({
-      tag: "v0.1.0.7-nightly.11",
-      channel: "nightly",
+      tag: "v0.1.0.7-testers.1",
+      channel: "testers",
     });
   });
 

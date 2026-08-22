@@ -10,6 +10,19 @@
 
 ## Estado
 
+- **ISA-789 · Etiqueta de selección retrasada en drag (2026-08-22, en rama):**
+  bug preexistente reportado por Isaac en smoke: la etiqueta
+  `nombre · w × h` de la piel Orbit perseguía al marco durante el arrastre.
+  Causa demostrada: el marco se mueve con escritura directa de estilo y la
+  etiqueta seguía vía `setState` por frame (rAF → medir → setState → render
+  del stage completo), quedándose mínimo un pintado detrás. Fix en
+  `vantareapp/isa-789-etiqueta-seleccion-sigue-al-marco`, base
+  `origin/nightly@d0ad2196`: helper de módulo `readSelectionAnchor` compartido
+  y, durante el gesto, escritura imperativa de `left/top/data-place` en el
+  mismo tick rAF — cero `setState` por frame; el estado concilia solo al
+  soltar. Gates locales PASS: ESLint focal, typecheck, suite completa 372
+  archivos/2883 tests, build productivo. Verificación manual pendiente de
+  Isaac (smoke producción). PR draft hacia `nightly` tras push.
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

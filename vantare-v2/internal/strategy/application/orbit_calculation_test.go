@@ -137,6 +137,26 @@ func TestCalculateOrbitRejectsDanglingDriverAsTypedError(t *testing.T) {
 	}
 }
 
+func TestOrbitSavingOverridesReachSolveV2AsUserAuthority(t *testing.T) {
+	override := func(value float64, field string) strategydocument.NumericInputOverride {
+		return strategydocument.NumericInputOverride{
+			Value: value, Presence: strategyprojection.PresenceValid,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1:" + field},
+			Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-input.v1"},
+		}
+	}
+	planning := &strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{
+		strategydocument.PlanningInputSavingFuel:     override(0.2, "saving_fuel_per_lap"),
+		strategydocument.PlanningInputSavingTimeCost: override(0.1, "saving_time_cost_per_lap"),
+	}}
+
+	parameter := orbitSavingCost(planning)
+	if parameter == nil || parameter.Role != solver.ScalarRoleUserOverride || parameter.Provenance.SourceID != "orbit:event-1:saving_fuel_per_lap" ||
+		len(parameter.Levels) != 1 || parameter.Levels[0].FuelSavedPerLap != 0.2 || parameter.Levels[0].TimeCostPerLap != 0.1 {
+		t.Fatalf("saving override adapter = %+v", parameter)
+	}
+}
+
 func TestJSONBridgeDispatchesOrbitCalculation(t *testing.T) {
 	t.Parallel()
 	command := CalculateOrbitCommand{

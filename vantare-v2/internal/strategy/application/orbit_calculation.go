@@ -249,12 +249,39 @@ func orbitSolverInput(raceLaps int64, event OrbitCalculationEvent, averagePace, 
 		FuelPerLapLiters:   orbitScalarInput(planning, strategydocument.PlanningInputFuelPerLap, averageFuel, "strategy.orbit.fuel-per-lap"),
 		VEPerLapPercent:    orbitScalarInput(planning, strategydocument.PlanningInputVEPerLap, 0, "strategy.orbit.virtual-energy-not-configured"),
 		DegradationPerLap:  orbitScalarInput(planning, strategydocument.PlanningInputDegradation, 0, "strategy.orbit.degradation-not-configured"),
+		SavingCost:         orbitSavingCost(planning),
 		// Orbit expresa consumo por vuelta, no litros arbitrarios de servicio.
 		// Explorar multiplos de una vuelta conserva todas sus decisiones posibles
 		// y evita introducir precision que la pantalla no puede editar.
 		Discretization: solver.ServiceDiscretization{FuelLiters: averageFuel, VEPercent: 1},
 	}
 	return input
+}
+
+func orbitSavingCost(planning *strategydocument.PlanningInputs) *solver.SavingCostParameter {
+	if planning == nil {
+		return nil
+	}
+	fuel, fuelSet := planning.Overrides[strategydocument.PlanningInputSavingFuel]
+	timeCost, timeSet := planning.Overrides[strategydocument.PlanningInputSavingTimeCost]
+	if !fuelSet && !timeSet {
+		return nil
+	}
+	source := fuel
+	if !fuelSet {
+		source = timeCost
+	}
+	return &solver.SavingCostParameter{
+		Presence:   source.Presence,
+		Provenance: source.Provenance,
+		Confidence: source.Confidence,
+		Role:       solver.ScalarRoleUserOverride,
+		Levels: []solver.SavingLevelOption{{
+			Level:           solver.SavingLow,
+			FuelSavedPerLap: fuel.Value,
+			TimeCostPerLap:  timeCost.Value,
+		}},
+	}
 }
 
 func orbitVECapacity(planning *strategydocument.PlanningInputs) solver.ScalarInput {
@@ -404,14 +431,6 @@ func effectivePlanningValue(planning *strategydocument.PlanningInputs, field str
 		}
 	}
 	return fallback
-}
-
-func effectivePlanningInt64(planning *strategydocument.PlanningInputs, field strategydocument.PlanningInputField, fallback int64) int64 {
-	value := effectivePlanningValue(planning, field, float64(fallback))
-	if value <= 0 || value > math.MaxInt64 || math.Trunc(value) != value {
-		return fallback
-	}
-	return int64(value)
 }
 
 func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID string, other OrbitCalculationPlan, pitLoss float64, drivers []OrbitCalculationDriver) OrbitCalculationComparison {

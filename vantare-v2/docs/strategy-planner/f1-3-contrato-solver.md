@@ -67,6 +67,35 @@ mismo Fuel y VE domina al otro. El oráculo de tests enumera sin poda exactament
 las mismas vueltas y cantidades en carreras pequeñas. Los empates se ordenan
 por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
 
+### Escalares con procedencia F5-b2 (#771)
+
+Cada escalar manual del contrato pasa de `float64` desnudo a `ScalarInput{value,
+provenance, confidence, role}`: el valor y su evidencia son inseparables. Los
+campos cubiertos son ritmo base, capacidades Fuel/VE, vida de neumatico,
+consumos por vuelta, degradacion manual, formacion y los cuatro componentes de
+`PitCostModel`. El rol es deliberadamente independiente de la procedencia: un
+`fallback` y un `user_override` pueden ser ambos `manual`, pero solo el
+`user_override` puede ganarle a una familia derivada valida.
+
+Regla de resolucion por campo, testeada y cerrada:
+
+1. **Override del usuario** (`role=user_override`, procedencia `manual` o
+   `corrected`): gana siempre. Una familia derivada nunca pisa un override.
+2. **Familia derivada valida** de `Projection` (consumo Fuel/VE, vida via
+   `TyreDegradation.LifeLapsEstimate`, pit via familia `Pit`): gana al
+   fallback cuando existe y es `valid`.
+3. **Fallback** (`role=fallback`, procedencia `manual` o `reference`): el valor
+   manual/reference declarado en el propio input.
+
+La misma regla se aplica al ahorro F4-4: un `SavingCostParameter` con rol
+`user_override` desplaza a la familia `valid`; con rol `fallback`, la familia
+sigue siendo la autoridad. En todos los casos la fuente efectiva queda expuesta
+en `SolverResultV2.ResolvedInputs` (`ResolvedScalarInputs`), asi que un cambio
+silencioso de autoridad es imposible de auditar y por tanto no ocurre. La
+validacion rechaza roles desconocidos y combinaciones rol/procedencia invalidas;
+el rol interno `derived` solo lo fabrica el solver desde familias y nunca entra
+por input.
+
 ### Curva de ritmo por stint F4-2
 
 `SolveV2` selecciona una sola autoridad de coste de stint:

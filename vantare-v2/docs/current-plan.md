@@ -7,6 +7,8 @@ Nota ISA-771 / ISA-694 F5-b2 (2026-08-22, lista para review):
   pasa de stints balanceados v1 a `11+32+32+32+32` del motor completo.
 - El evento Wails del solver v1 se retiró. `Solve`/bridge v1 permanecen solo
   para tests y paridad histórica; no hay llamadores productivos externos.
+- Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /
+  2.907 tests), typecheck, build, visual Orbit y compilación de `cmd/vantare`.
 - Pendiente de esta rama: review. No hay PR, integración, promoción ni release.
 
 Nota ISA-766 / ISA-694 F6-a (2026-08-22, implementada en rama de issue):

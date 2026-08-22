@@ -27,7 +27,9 @@ Actualización ISA-771 / F5-b2 (2026-08-22, lista para review):
   vueltas usa cinco stints `11+32+32+32+32`, cuatro paradas y 14.712 s.
 - Se retiró el evento Wails productivo del solver v1. El código v1 queda para
   tests/paridad histórica, sin consumidores productivos externos.
-- Sin PR, integración, promoción o release; faltan gates finales y review.
+- Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /
+  2.907 tests), typecheck, build, visual Orbit y compilación de `cmd/vantare`.
+- Sin PR, integración, promoción o release; falta review.
 
 Actualización ISA-766 / F6-a (2026-08-22, lista para review):
 

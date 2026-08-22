@@ -17,6 +17,21 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-774 / F6-e (2026-08-22, lista para review):
+
+- El runner PowerShell deja por fecha resumen, informe allowlisted, plantilla
+  cerrada y log; después de la decisión de Isaac valida la selección y llama al
+  builder sin firma. El dry-run sintético cubre el mismo camino local sin red.
+- El LLM solo recibe Markdown de producción con `k>=3`, métricas agregadas y el
+  ranking ya calculado. No recibe bundles, JSON técnico, digests, identidades,
+  texto de terceros ni herramientas.
+- Isaac marca perfiles y rangos visibles. La validación liga la decisión al
+  digest exacto del resumen, resuelve los digests técnicos y produce el
+  contrato `vantare.catalog.selection.v1` consumido por F6-f.
+- Prompt y runbook conservan pendientes los gates del Worker, firma offline y
+  primera publicación. Sin PR, integración, promoción ni release; falta review
+  de #774.
+
 Actualización ISA-766 / F6-a (2026-08-22, lista para review):
 
 - El exportador construye `CurationBundle v1` desde

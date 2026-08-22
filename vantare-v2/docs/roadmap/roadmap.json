@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T23:58:08Z",
+  "generatedAt": "2026-08-22T18:54:48Z",
   "digest": {
-    "lastCommit": "8174d944fe1095e5e78e00c66eb52d53d84ef4d4"
+    "lastCommit": "d0ad2196f7981919928cf6bea2faa778c47cab99"
   },
   "phases": [
     {
@@ -565,6 +565,28 @@
       }
     },
     {
+      "id": "strategy-local-editorial-cycle",
+      "type": "feature",
+      "title": {
+        "es": "Ciclo editorial local de Strategy",
+        "en": "Local Strategy editorial cycle",
+        "pt": "Ciclo editorial local de Strategy",
+        "it": "Ciclo editoriale locale di Strategy"
+      },
+      "body": {
+        "es": "Un ciclo local predigiere los bundles, prepara para el LLM un informe sin datos crudos ni identificadores y deja a Isaac aprobar perfiles y estrategias antes de generar un catálogo sin firmar. La sincronización remota, la firma y la publicación siguen detrás de sus gates humanos.",
+        "en": "A local cycle predigests bundles, prepares an LLM report without raw data or identifiers, and lets Isaac approve profiles and strategies before generating an unsigned catalogue. Remote synchronization, signing and publication remain behind their human gates.",
+        "pt": "Um ciclo local pré-digere os bundles, prepara para o LLM um relatório sem dados brutos nem identificadores e deixa Isaac aprovar perfis e estratégias antes de gerar um catálogo sem assinatura. A sincronização remota, a assinatura e a publicação continuam atrás dos seus gates humanos.",
+        "it": "Un ciclo locale predigerisce i bundle, prepara per l'LLM un rapporto senza dati grezzi né identificatori e lascia a Isaac l'approvazione di profili e strategie prima di generare un catalogo non firmato. Sincronizzazione remota, firma e pubblicazione restano dietro i rispettivi gate umani."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
       "id": "diagnostics-logs",
       "type": "feature",
       "title": {
@@ -617,6 +639,16 @@
           "kind": "change",
           "scope": "",
           "text": "Carril experimental de voz de entrada tras flag (F5 rework Ingeniero)"
+        },
+        {
+          "kind": "feat",
+          "scope": "hub",
+          "text": "Ajustes Orbit - autosave de atajos, descarga de informe de diagnostico y busqueda"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fugas LMU 1-8, inversion 9d ExtendedReader y frame congelado"
         }
       ]
     },

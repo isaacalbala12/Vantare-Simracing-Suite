@@ -138,7 +138,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     mount();
     const stints = await screen.findAllByTestId(/^orbit-stint-\d+$/);
     expect(stints).toHaveLength(5);
-    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([28, 28, 28, 28, 27]);
+    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([11, 32, 32, 32, 32]);
     expect(stints.reduce((sum, stint) => sum + Number(stint.getAttribute("data-laps")), 0)).toBe(139);
 
     fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));

@@ -131,17 +131,18 @@ describe("marco de seleccion cenido al widget", () => {
   });
 });
 
-/** A2 — la etiqueta se ancla al widget y vive fuera del `scene` escalado. */
+/** A2 — la etiqueta se ancla al widget y vive dentro de su caja de seleccion. */
 describe("etiqueta de seleccion", () => {
-  it("se pinta en el lienzo, no dentro de la escena escalada", async () => {
+  it("se pinta dentro de la caja de seleccion y sin contra-escala", async () => {
     renderStudio(buildDocument([standingsDefinition.createDefault("standings-1")]));
     await select("standings-1");
 
     const tag = screen.getByTestId("orbit-studio-selection-tag");
     expect(tag.className).toContain("orbit-studio-stage__tag");
-    expect(tag.closest('[data-testid="orbit-studio-scene"]')).toBeNull();
-    expect(tag.closest('[data-testid="orbit-studio-stage"]')).toBeTruthy();
-    // Nada de contra-escalas: el estilo es posicion pura en pixeles del lienzo.
+    // Hija de la caja de seleccion via portal: el navegador la mueve con el
+    // marco durante el arrastre imperativo (movimiento atomico).
+    expect(tag.closest("[data-widget-selection]")).toBeTruthy();
+    // Nada de contra-escalas: coords logicas locales; la escena ya escala.
     expect(tag.style.transform).toBe("");
     expect(tag.style.left.endsWith("px")).toBe(true);
     expect(tag.style.top.endsWith("px")).toBe(true);

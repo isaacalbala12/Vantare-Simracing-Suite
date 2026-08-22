@@ -53,6 +53,12 @@ export type StudioWidgetFrameProps = {
    * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
    */
   fitSelectionToContent?: boolean;
+  /**
+   * Expone un div huesped dentro del envoltorio de seleccion. La piel Orbit
+   * monta ahi su etiqueta via portal: al vivir dentro del marco, el navegador
+   * la mueve con el de forma atomica durante el arrastre imperativo.
+   */
+  selectionPortalRef?: (node: HTMLDivElement | null) => void;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -68,6 +74,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onLostPointerCapture,
     diagnostics,
     fitSelectionToContent = false,
+    selectionPortalRef,
   } = props;
   const { t } = useI18n();
   const coordinator = useStudioTelemetryCoordinator();
@@ -169,6 +176,13 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             data-testid={`studio-widget-frame-chrome-${widget.id}`}
             className="osv3-widget-frame__chrome"
           />
+          {selectionPortalRef ? (
+            <div
+              ref={selectionPortalRef}
+              data-testid={`studio-widget-selection-portal-${widget.id}`}
+              className="osv3-widget-frame__tag-host"
+            />
+          ) : null}
           {onResizePointerDown
             ? resizeHandles.map((handle) => (
                 <button

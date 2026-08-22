@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
+import { createPortal } from 'react-dom';
 import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
 import type { WidgetInstanceV3 } from '../../../overlay/core/profile-document';
 import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
@@ -21,6 +22,48 @@ const SAFE_AREA_INSET = '4.5%';
 
 function sortByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
+}
+
+/**
+ * Caja de seleccion REAL del widget seleccionado (la que `useSelectionFit`
+ * cine a lo pintado), leida del DOM en coordenadas del `stage`.
+ */
+function readSelectionAnchor(
+  stage: HTMLElement,
+  selectedWidgetId: string,
+): TagAnchor | null {
+  const frame = stage.querySelector<HTMLElement>(
+    `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
+  );
+  const box = frame?.querySelector<HTMLElement>('[data-widget-selection]') ?? frame;
+  if (!box) {
+    return null;
+  }
+  const stageRect = stage.getBoundingClientRect();
+  const rect = box.getBoundingClientRect();
+  return {
+    left: rect.left - stageRect.left,
+    top: rect.top - stageRect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+/**
+ * Colocacion de la etiqueta en coords LOCALES de la caja. La caja vive dentro
+ * de la escena escalada, asi que el delta en pixeles del lienzo se expresa en
+ * pixeles LOGICOS (la escala de la escena lo devuelve a su sitio sin
+ * contra-transformaciones).
+ */
+function localTagPlacement(
+  anchor: TagAnchor,
+  placement: { left: number; top: number },
+  scale: number,
+): { left: number; top: number } {
+  return {
+    left: (placement.left - anchor.left) / scale,
+    top: (placement.top - anchor.top) / scale,
+  };
 }
 
 export type StudioOrbitStageProps = {
@@ -138,6 +181,13 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const [anchor, setAnchor] = useState<TagAnchor | null>(null);
   const [tagSize, setTagSize] = useState({ width: 0, height: 0 });
   const tagRef = useRef<HTMLDivElement>(null);
+  // Huesped del portal: vive dentro del envoltorio de seleccion del marco, asi
+  // que el navegador mueve la etiqueta con el de forma atomica. El seguidor
+  // solo corrige lo lento (clamp/lado), nunca el movimiento primario.
+  const [tagHost, setTagHost] = useState<HTMLDivElement | null>(null);
+  const handleTagHostRef = useCallback((node: HTMLDivElement | null) => {
+    setTagHost(node);
+  }, []);
 
   const measureAnchor = useCallback(() => {
     const stage = stageRef.current;
@@ -145,22 +195,11 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       setAnchor((current) => (current === null ? current : null));
       return;
     }
-    const frame = stage.querySelector<HTMLElement>(
-      `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
-    );
-    const box = frame?.querySelector<HTMLElement>('[data-widget-selection]') ?? frame;
-    if (!box) {
+    const next = readSelectionAnchor(stage, selectedWidgetId);
+    if (!next) {
       setAnchor((current) => (current === null ? current : null));
       return;
     }
-    const stageRect = stage.getBoundingClientRect();
-    const rect = box.getBoundingClientRect();
-    const next: TagAnchor = {
-      left: rect.left - stageRect.left,
-      top: rect.top - stageRect.top,
-      width: rect.width,
-      height: rect.height,
-    };
     setAnchor((current) =>
       current &&
       Math.abs(current.left - next.left) < 0.5 &&
@@ -176,18 +215,37 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     measureAnchor();
   }, [measureAnchor, selectedLayout, scale, stageWidth, preview.zoom]);
 
-  // Durante el arrastre/redimensionado el marco se mueve por estilo en linea:
-  // la unica forma de que la etiqueta lo siga es remedir por frame.
+  // Durante el arrastre/redimensionado el marco se mueve por estilo en linea y
+  // la etiqueta, al ser hija de su caja via portal, se mueve con el gratis.
+  // Este loop solo recoloca el clamp/lado en coords logicas locales y sin
+  // setState por frame (un setState aqui dejaria el stage entero
+  // re-renderizando durante todo el gesto). El estado concilia al soltar via
+  // `measureAnchor` en el efecto de layout sobre `selectedLayout`.
   useEffect(() => {
     if (!interacting || typeof requestAnimationFrame !== 'function') return;
     let raf = 0;
     const tick = () => {
-      measureAnchor();
+      const stage = stageRef.current;
+      const node = tagRef.current;
+      if (stage && node && selectedWidgetId && stageWidth > 0 && stageHeight > 0) {
+        const box = readSelectionAnchor(stage, selectedWidgetId);
+        if (box) {
+          const placement = placeSelectionTag({
+            anchor: box,
+            tag: tagSize,
+            stage: { width: stageWidth, height: stageHeight },
+          });
+          const local = localTagPlacement(box, placement, scale);
+          node.style.left = `${local.left}px`;
+          node.style.top = `${local.top}px`;
+          node.setAttribute('data-place', placement.side);
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [interacting, measureAnchor]);
+  }, [interacting, selectedWidgetId, tagSize, stageWidth, stageHeight, scale]);
 
   // La etiqueta se mide a si misma: su ancho depende del nombre del widget y
   // de si lleva el boton "Mostrar", y el recorte contra los bordes lo necesita.
@@ -213,6 +271,13 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
           tag: tagSize,
           stage: { width: stageWidth, height: stageHeight },
         })
+      : null;
+  // La etiqueta vive dentro de la caja de seleccion (portal): sus coords de
+  // estilo son LOCALES a la caja, no del stage. Mismo redondeo que el
+  // seguidor imperativo para que render e imperativo no discrepen.
+  const localPlacement =
+    anchor && tagPlacement && scale > 0
+      ? localTagPlacement(anchor, tagPlacement, scale)
       : null;
 
   // Sin `useCallback`: solo la usa la etiqueta, que no esta memoizada, y
@@ -296,6 +361,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
               onSelect={selectWidget}
               previewActive={interaction.isWidgetPreviewActive(widget.id)}
               selected={selectedWidgetId === widget.id}
+              selectionPortalRef={
+                selectedWidgetId === widget.id ? handleTagHostRef : undefined
+              }
               snapshotOverride={snapshotOverride}
               widget={widget}
               fitSelectionToContent
@@ -303,40 +371,45 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
           ))}
         </div>
 
-        {/* Fuera del `scene`: la etiqueta se mide y se coloca en pixeles del
-            lienzo, se cine al marco real del widget y se recorta contra los
-            bordes (`selection-tag-placement.ts`). */}
-        {selected && selectedLayout ? (
-          <div
-            className="orbit-studio-stage__tag"
-            data-hidden={selected.behavior.enabled ? undefined : 'true'}
-            data-place={tagPlacement?.side ?? 'above'}
-            data-testid="orbit-studio-selection-tag"
-            ref={tagRef}
-            style={{
-              left: `${tagPlacement?.left ?? 0}px`,
-              top: `${tagPlacement?.top ?? 0}px`,
-              visibility: tagPlacement ? undefined : 'hidden',
-            }}
-          >
-            <span data-testid="orbit-studio-selection-tag-copy">
-              {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{' '}
-              {Math.round(selectedLayout.h)}
-              {selected.behavior.enabled ? '' : ` · ${t('studio.stage.hiddenSuffix')}`}
-            </span>
-            {selected.behavior.enabled ? null : (
-              <button
-                className="orbit-studio-stage__tag-action"
-                data-testid="orbit-studio-selection-show"
-                onClick={showWidget}
-                onPointerDown={(event) => event.stopPropagation()}
-                type="button"
+        {/* La etiqueta se monta via portal DENTRO de la caja de seleccion del
+            marco: moverla es gratis (el navegador la mueve con el marco) y el
+            seguidor solo corrige clamp/lado en coords locales. Se sigue
+            midiendo y clampeando en pixeles del lienzo
+            (`selection-tag-placement.ts`). */}
+        {selected && selectedLayout && tagHost
+          ? createPortal(
+              <div
+                className="orbit-studio-stage__tag"
+                data-hidden={selected.behavior.enabled ? undefined : 'true'}
+                data-place={tagPlacement?.side ?? 'above'}
+                data-testid="orbit-studio-selection-tag"
+                ref={tagRef}
+                style={{
+                  left: `${localPlacement?.left ?? 0}px`,
+                  top: `${localPlacement?.top ?? 0}px`,
+                  visibility: localPlacement ? undefined : 'hidden',
+                }}
               >
-                {t('studio.stage.show')}
-              </button>
-            )}
-          </div>
-        ) : null}
+                <span data-testid="orbit-studio-selection-tag-copy">
+                  {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{' '}
+                  {Math.round(selectedLayout.h)}
+                  {selected.behavior.enabled ? '' : ` · ${t('studio.stage.hiddenSuffix')}`}
+                </span>
+                {selected.behavior.enabled ? null : (
+                  <button
+                    className="orbit-studio-stage__tag-action"
+                    data-testid="orbit-studio-selection-show"
+                    onClick={showWidget}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    type="button"
+                  >
+                    {t('studio.stage.show')}
+                  </button>
+                )}
+              </div>,
+              tagHost,
+            )
+          : null}
       </div>
     </div>
   );

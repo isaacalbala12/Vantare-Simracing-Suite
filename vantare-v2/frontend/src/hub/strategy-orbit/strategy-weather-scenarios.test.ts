@@ -13,6 +13,11 @@ import {
 } from "./strategy-weather-scenarios";
 
 describe("escenarios de clima de Orbit", () => {
+  it("mantiene estable el vacío para no relanzar el cálculo", () => {
+    const view = { status: "no_authorized_telemetry" as const, repositoryVersion: 0, combinations: [], events: [], planningByEvent: {}, planningStatusByEvent: {} };
+    expect(selectedWeatherScenarios(view, "missing")).toBe(selectedWeatherScenarios(view, "missing"));
+  });
+
   it("crea cinco nodos secos declarados como manuales", () => {
     const created = createManualWeatherScenario("event-1", "lmu:imola", "weather-1", new Date("2026-08-22T12:00:00.000Z"));
     expect(created.weight).toBe(1);

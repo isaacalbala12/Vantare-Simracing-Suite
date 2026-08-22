@@ -140,12 +140,11 @@ import {
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
-import { persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
+import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
-const EMPTY_WEATHER_SCENARIOS = [] as const;
 
 type StrategyTab = "overview" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */

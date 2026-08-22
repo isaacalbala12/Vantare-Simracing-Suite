@@ -8,6 +8,7 @@ import type { StrategyEventRecord } from "./strategy-events-store";
 import { strategyEventV2FromRecord, type StrategySessionCatalogView } from "./strategy-session-selection";
 
 const progress: readonly StrategyWeatherNodeProgressV1[] = ["START", "25", "50", "75", "FINISH"];
+export const EMPTY_WEATHER_SCENARIOS: readonly StrategyWeightedWeatherScenarioV1[] = [];
 
 export function createManualWeatherScenario(
   eventId: string,
@@ -36,7 +37,7 @@ export function createManualWeatherScenario(
 }
 
 export function selectedWeatherScenarios(view: StrategySessionCatalogView, eventId: string): readonly StrategyWeightedWeatherScenarioV1[] {
-  return view.events.find((event) => event.id === eventId)?.weatherScenarios ?? [];
+  return view.events.find((event) => event.id === eventId)?.weatherScenarios ?? EMPTY_WEATHER_SCENARIOS;
 }
 
 export async function persistStrategyWeatherScenarios(

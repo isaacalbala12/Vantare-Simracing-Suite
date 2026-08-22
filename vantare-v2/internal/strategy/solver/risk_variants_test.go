@@ -54,8 +54,8 @@ func TestSolveV2VariantsConvergeWhenRangesAreNarrow(t *testing.T) {
 func TestSolveV2WorstCaseMarksTyreLifeViolation(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.FuelCapacityLiters, input.FuelPerLapLiters = 0, 0
-	input.TyreLifeLaps = 4
+	input.FuelCapacityLiters.Value, input.FuelPerLapLiters.Value = 0, 0
+	input.TyreLifeLaps.Value = 4
 	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 20)}, 20, 0, 0)
 	lower, upper, estimate := 3.0, 4.0, 4
 	input.Projection.TyreDegradation = sp.TyreDegradationFamily{
@@ -81,8 +81,8 @@ func TestSolveV2WorstCaseMarksTyreLifeViolation(t *testing.T) {
 func TestSolveV2P95BudgetDegradesDiscretizationDeterministically(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 5
-	input.FuelCapacityLiters = 10
-	input.FuelPerLapLiters = 1
+	input.FuelCapacityLiters.Value = 10
+	input.FuelPerLapLiters.Value = 1
 	input.Discretization.FuelLiters = 0.1
 	input.Budget.P95Millis = 1
 
@@ -123,12 +123,12 @@ func TestSolveV2P95BudgetDegradesDiscretizationDeterministically(t *testing.T) {
 func rangedFuelInput(mean, upper float64) SolverInputV2 {
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 4.4
-	input.FuelPerLapLiters = mean
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 4.4
+	input.FuelPerLapLiters.Value = mean
 	input.Discretization.FuelLiters = 1
-	input.PitCost.RefuelRateLPerS = 100
-	input.PitCost.TyreSeconds = 0
+	input.PitCost.RefuelRateLPerS.Value = 100
+	input.PitCost.TyreSeconds.Value = 0
 	input.PitCost.ServiceMode = "sequential"
 	input.FuelWeight = fuelWeightParameter(0.0001, sp.ProvenanceManual)
 	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 20)}, 20, 0, 0)

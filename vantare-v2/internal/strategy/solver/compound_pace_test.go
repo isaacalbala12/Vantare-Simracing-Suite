@@ -47,13 +47,14 @@ func compoundBusinessInput(t *testing.T, softDelta float64) SolverInputV2 {
 	t.Helper()
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 4
-	input.FuelPerLapLiters = 1
-	input.TyreLifeLaps = 8
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 4
+	input.FuelPerLapLiters.Value = 1
+	input.TyreLifeLaps.Value = 8
 	input.PitCost = PitCostModel{
-		TransitSeconds: 0, RefuelRateLPerS: 100, VERatePPerS: 1,
-		TyreSeconds: 4, ServiceMode: manual.PitServiceSequential,
+		TransitSeconds: NewFallbackScalar(0, "test:pit-transit"), RefuelRateLPerS: NewFallbackScalar(100, "test:refuel-rate"),
+		VERatePPerS: NewFallbackScalar(1, "test:ve-rate"), TyreSeconds: NewFallbackScalar(4, "test:tyre-service"),
+		ServiceMode: manual.PitServiceSequential,
 	}
 	minimum, maximum := 1, 1
 	input.EventRules.MinPitStops = &minimum
@@ -104,10 +105,10 @@ func TestSolveV2DoubleStintsHardOrPaysForSoftByTotalRaceTime(t *testing.T) {
 func TestSolveV2UsesManualReferenceCurvePerCompound(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 3
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 0
-	input.FuelPerLapLiters = 0
-	input.TyreLifeLaps = 3
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 0
+	input.FuelPerLapLiters.Value = 0
+	input.TyreLifeLaps.Value = 3
 	input.TyreInventory = physicalInventory(t, tyres.CompoundHard)
 	parameter := compoundParameter(tyres.CompoundHard, 1, 0, sp.ProvenanceReference)
 	parameter.Curve = []CompoundPacePoint{
@@ -131,8 +132,8 @@ func TestSolveV2UsesManualReferenceCurvePerCompound(t *testing.T) {
 func TestSolveV2PhysicalInventoryRestrictsCandidatesAndTyreLifeDoesNotResetWithoutChange(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.FuelCapacityLiters = 4
-	input.TyreLifeLaps = 4
+	input.FuelCapacityLiters.Value = 4
+	input.TyreLifeLaps.Value = 4
 	input.TyreInventory = physicalInventory(t, tyres.CompoundHard)
 	input.CompoundPace = []CompoundPaceParameter{
 		compoundParameter(tyres.CompoundHard, 0, 0, sp.ProvenanceManual),
@@ -164,12 +165,12 @@ func TestSolveV2PhysicalInventoryRestrictsCandidatesAndTyreLifeDoesNotResetWitho
 func TestSolveV2RemountingAUsedSetDoesNotRestoreItsLife(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 12
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 4
-	input.FuelPerLapLiters = 1
-	input.TyreLifeLaps = 4
-	input.PitCost.TransitSeconds = 1
-	input.PitCost.TyreSeconds = 0
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 4
+	input.FuelPerLapLiters.Value = 1
+	input.TyreLifeLaps.Value = 4
+	input.PitCost.TransitSeconds.Value = 1
+	input.PitCost.TyreSeconds.Value = 0
 	minimum, maximum := 2, 2
 	input.EventRules.MinPitStops = &minimum
 	input.EventRules.MaxPitStops = &maximum
@@ -230,8 +231,8 @@ func TestSolveV2RequiredPitWindowRejectsCandidateWithReason(t *testing.T) {
 func TestSolveV2CompoundOracleParityPruningProvenanceAndSensitivity(t *testing.T) {
 	input := compoundBusinessInput(t, -1.2)
 	input.RaceLaps = 6
-	input.FuelCapacityLiters = 3
-	input.TyreLifeLaps = 6
+	input.FuelCapacityLiters.Value = 3
+	input.TyreLifeLaps.Value = 6
 	input.EventRules.RequiredWindows = []PitWindow{{FromLap: 2, ToLap: 4}}
 	maximum := 2
 	input.EventRules.MaxPitStops = &maximum
@@ -274,7 +275,7 @@ func TestSolveV2CompoundParametersFailClosedWithoutD19ManualOrReferenceSource(t 
 	}
 
 	input = compoundBusinessInput(t, -1)
-	input.DegradationPerLap = 0.1
+	input.DegradationPerLap.Value = 0.1
 	if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
 		t.Fatalf("two pace authorities error = %v, want invalid_input", err)
 	}

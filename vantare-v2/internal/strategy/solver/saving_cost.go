@@ -26,8 +26,8 @@ type savingCost struct {
 
 func (input SolverInputV2) savingCost() (savingCost, error) {
 	familySelected := input.Projection != nil && input.Projection.SavingCost.Presence == sp.PresenceValid
-	if familySelected && input.SavingCost != nil {
-		return savingCost{}, fmt.Errorf("manual/reference and projection saving sources cannot be combined")
+	if familySelected && input.SavingCost != nil && input.SavingCost.Role == ScalarRoleUserOverride {
+		familySelected = false
 	}
 
 	if familySelected {
@@ -43,6 +43,12 @@ func (input SolverInputV2) savingCost() (savingCost, error) {
 		}
 		if family.Provenance.Kind != sp.ProvenanceDerived && family.Provenance.Kind != sp.ProvenanceManual && family.Provenance.Kind != sp.ProvenanceReference {
 			return savingCost{}, fmt.Errorf("projection saving provenance must be manual, reference or derived")
+		}
+		if len(family.Levels) == 0 {
+			return savingCost{
+				levels: []savingLevelCost{{level: SavingNone}},
+				source: SavingCostSource{Presence: family.Presence, Provenance: family.Provenance, Confidence: family.Confidence, Levels: []SavingLevelOption{}},
+			}, nil
 		}
 		levels := make([]SavingLevelOption, 0, len(family.Levels))
 		for _, level := range family.Levels {

@@ -38,18 +38,18 @@ type stintPaceCost struct {
 }
 
 func (input SolverInputV2) stintPaceCost() (stintPaceCost, error) {
-	if input.Projection != nil {
+	if input.DegradationPerLap.Role != ScalarRoleUserOverride && input.Projection != nil {
 		curve := input.Projection.CombinedStintPaceCurve
 		if curve.Presence == sp.PresenceValid && curve.Identifiability == sp.IdentifiabilityCombinedOnly {
 			return newCombinedStintPaceCost(curve)
 		}
 	}
 	return stintPaceCost{
-		manualSlope: input.DegradationPerLap,
+		manualSlope: input.DegradationPerLap.Value,
 		source: StintPaceCostSource{
 			Model:      StintPaceModelManualLinear,
-			Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "solverInput.degradationPerLapSeconds"},
-			Confidence: sp.Confidence{ComputationVersion: "manual-linear.v1"},
+			Provenance: input.DegradationPerLap.Provenance,
+			Confidence: input.DegradationPerLap.Confidence,
 		},
 	}.withHorizon(input.RaceLaps), nil
 }

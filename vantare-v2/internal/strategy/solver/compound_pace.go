@@ -69,7 +69,7 @@ func (input SolverInputV2) compoundPaceCosts() (compoundPaceCosts, error) {
 	if input.TyreInventory == nil || len(input.CompoundPace) == 0 {
 		return compoundPaceCosts{}, fmt.Errorf("tyreInventory and compoundPace must be configured together")
 	}
-	if input.DegradationPerLap != 0 {
+	if input.DegradationPerLap.Value != 0 {
 		return compoundPaceCosts{}, fmt.Errorf("global degradationPerLapSeconds and compoundPace cannot be combined")
 	}
 	if input.Projection != nil && input.Projection.CombinedStintPaceCurve.Presence == sp.PresenceValid {
@@ -91,7 +91,7 @@ func (input SolverInputV2) compoundPaceCosts() (compoundPaceCosts, error) {
 			return compoundPaceCosts{}, fmt.Errorf("compoundPace[%d]: %w", index, err)
 		}
 		for lap := int64(1); lap <= input.RaceLaps; lap++ {
-			if input.BaseLapSeconds+parameter.PaceDeltaSeconds+curve.deltaAt(lap) <= 0 {
+			if input.BaseLapSeconds.Value+parameter.PaceDeltaSeconds+curve.deltaAt(lap) <= 0 {
 				return compoundPaceCosts{}, fmt.Errorf("compoundPace[%d] produces a non-positive lap time", index)
 			}
 		}

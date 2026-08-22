@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
@@ -37,7 +38,10 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	if plan.TotalLaps != 139 || plan.Stops != 4 || len(plan.Stints) != 5 {
 		t.Fatalf("plan = %#v", plan)
 	}
-	want := []int64{28, 28, 28, 28, 27}
+	// SolveV2 minimiza cinco stints bajo el limite de 32 vueltas. Sin coste por
+	// peso Fuel, las particiones factibles empatan y el orden determinista de
+	// busqueda conserva primero el stint corto: 11 + 4*32 = 139.
+	want := []int64{11, 32, 32, 32, 32}
 	for index := range want {
 		if plan.Stints[index].Laps != want[index] {
 			t.Fatalf("stint %d laps = %d, want %d", index, plan.Stints[index].Laps, want[index])
@@ -91,6 +95,13 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	if input.PlanningInputs.Projection.FuelConsumption.MeanPerLap != 3.047 {
 		t.Fatal("manual override destroyed the derived projection")
 	}
+	overriddenSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	if err != nil {
+		t.Fatalf("SolveV2(overridden adapter): %v", err)
+	}
+	if got := overriddenSolver.ResolvedInputs.FuelPerLapLiters; got.Value != 5 || got.Role != solver.ScalarRoleUserOverride || got.Provenance.SourceID != "orbit:event-1" {
+		t.Fatalf("override did not reach SolveV2 intact: %+v", got)
+	}
 	delete(input.PlanningInputs.Overrides, strategydocument.PlanningInputFuelPerLap)
 	reverted, err := calculateOrbit(input)
 	if err != nil {
@@ -98,6 +109,13 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	}
 	if derived.Plans["s1"].MaxLaps == overridden.Plans["s1"].MaxLaps || reverted.Plans["s1"].MaxLaps != derived.Plans["s1"].MaxLaps {
 		t.Fatalf("max laps derived=%d override=%d reverted=%d", derived.Plans["s1"].MaxLaps, overridden.Plans["s1"].MaxLaps, reverted.Plans["s1"].MaxLaps)
+	}
+	revertedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	if err != nil {
+		t.Fatalf("SolveV2(reverted adapter): %v", err)
+	}
+	if got := revertedSolver.ResolvedInputs.FuelPerLapLiters; got.Value != projection.FuelConsumption.MeanPerLap || got.Provenance.SourceID != projection.FuelConsumption.Provenance.SourceID {
+		t.Fatalf("revert did not restore derived source: %+v", got)
 	}
 }
 

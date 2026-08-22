@@ -140,19 +140,7 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
 	}
 
-	optimised, err := solver.Solve(solver.Input{
-		RaceLaps:       race.CompetitiveLaps.Value(),
-		BaseLapSeconds: averagePace,
-		PitLossSeconds: event.PitLossSeconds,
-		Fuel: solver.Resource{
-			Kind:           solver.ResourceFuel,
-			Used:           true,
-			UsableCapacity: event.TankLiters,
-			PerLap:         averageFuel,
-		},
-		TyreLifeLaps:             effectivePlanningInt64(planning, strategydocument.PlanningInputTyreLife, 0),
-		DegradationPerLapSeconds: effectivePlanningValue(planning, strategydocument.PlanningInputDegradation, 0),
-	})
+	optimised, err := solver.SolveV2(orbitSolverInput(race.CompetitiveLaps.Value(), event, averagePace, averageFuel, planning))
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
 	}
@@ -178,9 +166,9 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		Stints:       make([]OrbitCalculationStint, 0, len(laps)),
 		TotalLaps:    race.CompetitiveLaps.Value(),
 		Stops:        int64(len(laps) - 1),
-		MaxLaps:      optimised.MaxStintLaps,
-		AverageFuel:  averageFuel,
-		AveragePace:  averagePace,
+		MaxLaps:      orbitMaximumStintLaps(optimised, race.CompetitiveLaps.Value()),
+		AverageFuel:  optimised.ResolvedInputs.FuelPerLapLiters.Value,
+		AveragePace:  optimised.ResolvedInputs.BaseLapSeconds.Value,
 		Distribution: make([]OrbitCalculationDistribution, 0, len(drivers)),
 	}
 	clock, lap := 0.0, int64(0)
@@ -236,6 +224,86 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		}
 	}
 	return plan, nil
+}
+
+const orbitLegacyAllInServiceRate = 1e12
+
+func orbitSolverInput(raceLaps int64, event OrbitCalculationEvent, averagePace, averageFuel float64, planning *strategydocument.PlanningInputs) solver.SolverInputV2 {
+	input := solver.SolverInputV2{
+		ContractVersion: solver.SolverContractVersionV2,
+		RaceLaps:        raceLaps,
+		BaseLapSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPace, averagePace, "strategy.orbit.base-pace"),
+		Projection:      orbitProjection(planning),
+		PitCost: solver.PitCostModel{
+			TransitSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPitLoss, event.PitLossSeconds, "strategy.orbit.legacy-all-in-pit"),
+			RefuelRateLPerS: solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
+			VERatePPerS:     solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
+			TyreSeconds:     solver.NewFallbackScalar(0, "strategy.orbit.legacy-all-in-pit"),
+			ServiceMode:     manual.PitServiceParallel,
+		},
+		Formation:          solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
+		Budget:             solver.ComputeBudget{P95Millis: 10_000},
+		FuelCapacityLiters: orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
+		VECapacityPercent:  orbitVECapacity(planning),
+		TyreLifeLaps:       orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
+		FuelPerLapLiters:   orbitScalarInput(planning, strategydocument.PlanningInputFuelPerLap, averageFuel, "strategy.orbit.fuel-per-lap"),
+		VEPerLapPercent:    orbitScalarInput(planning, strategydocument.PlanningInputVEPerLap, 0, "strategy.orbit.virtual-energy-not-configured"),
+		DegradationPerLap:  orbitScalarInput(planning, strategydocument.PlanningInputDegradation, 0, "strategy.orbit.degradation-not-configured"),
+		// Orbit expresa consumo por vuelta, no litros arbitrarios de servicio.
+		// Explorar multiplos de una vuelta conserva todas sus decisiones posibles
+		// y evita introducir precision que la pantalla no puede editar.
+		Discretization: solver.ServiceDiscretization{FuelLiters: averageFuel, VEPercent: 1},
+	}
+	return input
+}
+
+func orbitVECapacity(planning *strategydocument.PlanningInputs) solver.ScalarInput {
+	configured := false
+	if planning != nil {
+		if override, ok := planning.Overrides[strategydocument.PlanningInputVEPerLap]; ok && override.Presence == strategyprojection.PresenceValid && override.Value > 0 {
+			configured = true
+		}
+		if planning.Projection != nil {
+			family := planning.Projection.VirtualEnergyConsumption
+			configured = configured || family.Presence == strategyprojection.PresenceValid && family.MeanPerLap > 0
+		}
+	}
+	if !configured {
+		return solver.NewFallbackScalar(0, "strategy.orbit.virtual-energy-not-configured")
+	}
+	return solver.NewSourcedScalar(
+		100,
+		strategyprojection.Provenance{Kind: strategyprojection.ProvenanceReference, SourceID: "strategy.orbit.ve-percent-scale"},
+		strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-adapter.v2"},
+		solver.ScalarRoleFallback,
+	)
+}
+
+func orbitProjection(planning *strategydocument.PlanningInputs) *strategyprojection.StrategyInputProjectionV2 {
+	if planning == nil {
+		return nil
+	}
+	return planning.Projection
+}
+
+func orbitScalarInput(planning *strategydocument.PlanningInputs, field strategydocument.PlanningInputField, fallback float64, sourceID string) solver.ScalarInput {
+	if planning != nil {
+		if override, ok := planning.Overrides[field]; ok && override.Presence == strategyprojection.PresenceValid {
+			role := solver.ScalarRoleFallback
+			if override.Provenance.Kind == strategyprojection.ProvenanceManual || override.Provenance.Kind == strategyprojection.ProvenanceCorrected {
+				role = solver.ScalarRoleUserOverride
+			}
+			return solver.NewSourcedScalar(override.Value, override.Provenance, override.Confidence, role)
+		}
+	}
+	return solver.NewFallbackScalar(fallback, sourceID)
+}
+
+func orbitMaximumStintLaps(result solver.SolverResultV2, raceLaps int64) int64 {
+	if result.Binding.Laps > 0 {
+		return result.Binding.Laps
+	}
+	return raceLaps
 }
 
 func hasOrbitLapOverrides(overrides map[int]OrbitCalculationOverride) bool {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T23:11:14Z",
+  "generatedAt": "2026-08-21T23:58:08Z",
   "digest": {
     "lastCommit": "8174d944fe1095e5e78e00c66eb52d53d84ef4d4"
   },
@@ -540,6 +540,28 @@
         "en": "Plan",
         "pt": "Plano",
         "it": "Piano"
+      }
+    },
+    {
+      "id": "strategy-pseudonymous-contribution",
+      "type": "feature",
+      "title": {
+        "es": "Contribución seudonimizada de Strategy",
+        "en": "Pseudonymous Strategy contribution",
+        "pt": "Contribuição pseudonimizada de Strategy",
+        "it": "Contributo pseudonimizzato di Strategy"
+      },
+      "body": {
+        "es": "Ajustes > Privacidad permite aceptar una versión del consentimiento, inspeccionar cada bundle y su historial, y pausar la cola. Pausar cancela lo aún no aceptado; lo ya aceptado queda enviado. Revocar el consentimiento y pedir el borrado remoto son acciones separadas. Los envíos nacen desactivados hasta configurar un Worker revisado.",
+        "en": "Settings > Privacy lets users accept a consent-text version, inspect every bundle and its history, and pause the queue. Pausing cancels anything not yet accepted; accepted items remain sent. Revoking consent and requesting remote deletion are separate actions. Uploads start disabled until a reviewed Worker is configured.",
+        "pt": "Ajustes > Privacidade permite aceitar uma versão do consentimento, inspecionar cada bundle e o seu histórico e pausar a fila. A pausa cancela o que ainda não foi aceite; o que já foi aceite permanece enviado. Revogar o consentimento e pedir a eliminação remota são ações separadas. Os envios começam desativados até configurar um Worker revisto.",
+        "it": "Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
       }
     },
     {

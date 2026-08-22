@@ -393,6 +393,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Contribución seudonimizada de Strategy
+
+- id: strategy-pseudonymous-contribution
+- tipo: feature
+- titulo.en: Pseudonymous Strategy contribution
+- titulo.pt: Contribuição pseudonimizada de Strategy
+- titulo.it: Contributo pseudonimizzato di Strategy
+- cuerpo: Ajustes > Privacidad permite aceptar una versión del consentimiento, inspeccionar cada bundle y su historial, y pausar la cola. Pausar cancela lo aún no aceptado; lo ya aceptado queda enviado. Revocar el consentimiento y pedir el borrado remoto son acciones separadas. Los envíos nacen desactivados hasta configurar un Worker revisado.
+- cuerpo.en: Settings > Privacy lets users accept a consent-text version, inspect every bundle and its history, and pause the queue. Pausing cancels anything not yet accepted; accepted items remain sent. Revoking consent and requesting remote deletion are separate actions. Uploads start disabled until a reviewed Worker is configured.
+- cuerpo.pt: Ajustes > Privacidade permite aceitar uma versão do consentimento, inspecionar cada bundle e o seu histórico e pausar a fila. A pausa cancela o que ainda não foi aceite; o que já foi aceite permanece enviado. Revogar o consentimento e pedir a eliminação remota são ações separadas. Os envios começam desativados até configurar um Worker revisto.
+- cuerpo.it: Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato.
+- etiqueta: Feature
+
 ### Registros y últimos eventos en Diagnóstico
 
 - id: diagnostics-logs

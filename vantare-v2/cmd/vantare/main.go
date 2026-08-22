@@ -36,6 +36,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
@@ -72,6 +73,10 @@ var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
+	// F6-a remains fail-closed: release tooling may inject a reviewed URL and
+	// build admission token later; normal builds contain neither and cannot send.
+	curationWorkerURL           = ""
+	curationBuildAdmissionToken = ""
 )
 
 func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
@@ -1229,14 +1234,31 @@ func main() {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
 	var strategyBridge strategyCommandExecutor
-	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
+	strategyRoot, strategyRootErr := strategyRepositoryRoot(cfgDir)
+	if strategyRootErr != nil {
 		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
 		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSessionCatalog(repo, telemetryanalysis.NewSessionCatalog(nil)))
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
+	var curationUploadService *curation.UploadService
+	if strategyRootErr == nil {
+		curationTarget := fmt.Sprintf("Vantare/%s/CurationCredentialsV1", buildChannel)
+		var curationOpenErr error
+		curationUploadService, curationOpenErr = curation.OpenUploadService(curation.UploadServiceOptions{
+			StatePath:   filepath.Join(strategyRoot, "curation-upload.json"),
+			Credentials: curation.NewProtectedCredentialStore(curationTarget),
+			Endpoint:    curationWorkerURL,
+			BuildToken:  curationBuildAdmissionToken,
+		})
+		if curationOpenErr != nil {
+			log.Printf("warning: Curation upload is unavailable")
+			curationUploadService = nil
+		}
+	}
+	app.NewCurationUploadBridge(ctx, curationUploadService, emitter).RegisterHandlers(wailsApp)
 	strategySolverBridge := strategysolver.JSONBridge{}
 	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {
 		result, failure := executeStrategySolverCommand(ctx, strategySolverBridge, event.Data)

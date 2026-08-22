@@ -17,6 +17,27 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-766 / F6-a (2026-08-22, lista para review):
+
+- El exportador construye `CurationBundle v1` desde
+  `StrategyInputProjectionV2` y `ObservedStrategyV1`: allowlist cerrada,
+  semana ISO, sin sesión, hora exacta, texto libre ni telemetría cruda. El
+  sobre administrativo viaja separado del payload analítico.
+- El consentimiento guarda versión y timestamp; el primer opt-in genera
+  `uploadSecret` y `deleteSecret` distintos en el almacén protegido de Windows.
+  La cola JSON atómica sobrevive al reinicio sin contener esos secretos.
+- Pausar cancela el envío/reintento que aún no fue aceptado y deja esos items
+  pausados; un recibo ya aceptado queda enviado en el historial. Reanudar no
+  implica consentir de nuevo. Revocar y pedir borrado remoto son independientes.
+- Ajustes > Privacidad muestra el bundle exacto, cola e historial y explica
+  explícitamente que los datos son seudónimos, no anónimos. Cliente y pruebas
+  hablan el protocolo F6-b solo contra `httptest`; la URL de producción y el
+  token de admisión permanecen vacíos, así que no hay envío real por defecto.
+- Gates de Strategy/app/cmd y frontend (2.904 tests, typecheck, build e i18n)
+  verdes. El barrido Go global tuvo un único timeout no reproducible en SQLite;
+  todos los paquetes tocados pasan. Sin PR, integración, promoción ni release;
+  falta review de #766.
+
 Actualización ISA-765 / F5-b (2026-08-22, bloqueada antes de review):
 
 - La query de aplicación pide a Analysis una `StrategyInputProjection v2`

@@ -299,5 +299,12 @@ func (b CurationBundleV1) MarshalStrict() ([]byte, error) {
 	if err := b.Validate(); err != nil {
 		return nil, err
 	}
-	return json.Marshal(b)
+	data, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := denylistCheck(data); err != nil {
+		return nil, err
+	}
+	return data, nil
 }

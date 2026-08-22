@@ -1,3 +1,17 @@
+Nota ISA-766 / ISA-694 F6-a (2026-08-22, implementada en rama de issue):
+- Strategy genera `CurationBundle v1` solo desde proyecciones públicas, con
+  allowlist cerrada, fechas por semana ISO y el identificador administrativo
+  separado del payload analítico. Los canarios PII se rechazan antes de salir.
+- El opt-in registra versión y hora del consentimiento y crea secretos locales
+  protegidos. La cola durable muestra bundle e historial; pausar cancela todo
+  lo aún no aceptado, mientras una aceptación del Worker permanece enviada.
+- Pausa, revocación y borrado remoto son acciones distintas. El cliente solo
+  admite HTTPS o un servidor loopback de test y nace apagado: URL y token están
+  vacíos, por lo que esta rama no puede efectuar envíos reales por defecto.
+- Ajustes > Privacidad explica en ES/EN/IT/PT qué se comparte y qué no. Gates
+  Go y frontend, persistencia tras recarga, pausa y servidor HTTP local quedan
+  cubiertos. Sin PR, integración, promoción ni release; falta review de #766.
+
 Nota ISA-765 / ISA-694 F5-b (2026-08-22, bloqueada antes de review):
 - Strategy consulta a Analysis los derivados de la combinación usando solo las
   sesiones incluidas en F5-a. Analysis reutiliza `StrategyInputProjection v2`

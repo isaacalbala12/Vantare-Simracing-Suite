@@ -3,7 +3,7 @@
 **Fecha:** 2026-08-21
 **Issue:** #726 (ISA-694 F1.3)
 **Owner:** Strategy (`internal/strategy/curation`)
-**Estado:** compile-only `curationbundle.v1`
+**Estado:** implementado por F6-a en rama de #766; pendiente de review
 
 ## Ubicación y justificación
 
@@ -27,6 +27,17 @@ Paquete `internal/strategy/curation` (subpaquete v2 idiomático). El bundle es l
 
 - Primer versionado; no hay predecesor. Futuros campos requieren nueva `contractVersion`; un Worker que reciba `curationbundle.v2` con `DisallowUnknownFields` lo rechazará fail-closed (ADR 0009 §8: cero coerción).
 - Si ADR vs spec: gana ADR rev.2 (ADR §5 fija fechas solo cuantizadas y allowlist cerrada; este contrato lo implementa al pie de la letra).
+
+## Realización F6-a
+
+- `GenerateBundleV1` consume únicamente las derivadas públicas de Strategy y
+  Analysis y vuelve a aplicar la denylist al JSON final antes de encolarlo.
+- Consentimiento, secretos protegidos y cola durable son estado local separado.
+  El archivo de cola nunca contiene `uploadSecret` ni `deleteSecret`.
+- Pausar cancela y marca como pausado todo request no aceptado. Un recibo del
+  Worker ya aceptado permanece `sent`, exactamente como exige ADR 0009 §4.
+- El cliente F6-b nace deshabilitado con URL vacía; HTTP solo se permite hacia
+  loopback para pruebas y fuera de loopback exige HTTPS.
 
 ## Verificación
 

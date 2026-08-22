@@ -144,8 +144,11 @@ describe("etiqueta de seleccion", () => {
     expect(tag.closest("[data-widget-selection]")).toBeTruthy();
     // Nada de contra-escalas: coords logicas locales; la escena ya escala.
     expect(tag.style.transform).toBe("");
-    expect(tag.style.left.endsWith("px")).toBe(true);
-    expect(tag.style.top.endsWith("px")).toBe(true);
+    // React nunca posiciona la etiqueta: la geometria es del seguidor
+    // imperativo. Si React la colocase, cualquier re-render ajeno al gesto
+    // (telemetria) reaplicaria posicion stale y se veria como un salto.
+    expect(tag.style.left).toBe("");
+    expect(tag.style.top).toBe("");
   });
 
   it("lleva el nombre y el tamano del widget seleccionado", async () => {

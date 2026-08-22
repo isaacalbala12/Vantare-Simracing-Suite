@@ -178,7 +178,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   // `stage`. Leerla del DOM es lo unico que sigue al widget durante un
   // arrastre: `resolveLayout` devuelve el layout comprometido y el marco se
   // mueve por estilo en linea, sin repintar React.
-  const [anchor, setAnchor] = useState<TagAnchor | null>(null);
   const [tagSize, setTagSize] = useState({ width: 0, height: 0 });
   const tagRef = useRef<HTMLDivElement>(null);
   // Huesped del portal: vive dentro del envoltorio de seleccion del marco, asi
@@ -189,63 +188,60 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     setTagHost(node);
   }, []);
 
-  const measureAnchor = useCallback(() => {
+  /**
+   * Unica fuente de verdad de la posicion de la etiqueta: medir la caja en el
+   * DOM y escribir coords logicas locales + lado. React NUNCA la coloca — si
+   * lo hiciera, cualquier re-render ajeno al gesto (telemetria incluida)
+   * reaplicaria una posicion stale y se veria como un salto.
+   */
+  const applyTagPosition = useCallback((): void => {
     const stage = stageRef.current;
-    if (!stage || !selectedWidgetId) {
-      setAnchor((current) => (current === null ? current : null));
+    const node = tagRef.current;
+    if (
+      !stage ||
+      !node ||
+      !selectedWidgetId ||
+      stageWidth <= 0 ||
+      stageHeight <= 0 ||
+      scale <= 0
+    ) {
       return;
     }
-    const next = readSelectionAnchor(stage, selectedWidgetId);
-    if (!next) {
-      setAnchor((current) => (current === null ? current : null));
+    const box = readSelectionAnchor(stage, selectedWidgetId);
+    if (!box) {
       return;
     }
-    setAnchor((current) =>
-      current &&
-      Math.abs(current.left - next.left) < 0.5 &&
-      Math.abs(current.top - next.top) < 0.5 &&
-      Math.abs(current.width - next.width) < 0.5 &&
-      Math.abs(current.height - next.height) < 0.5
-        ? current
-        : next,
-    );
-  }, [selectedWidgetId]);
+    const placement = placeSelectionTag({
+      anchor: box,
+      tag: tagSize,
+      stage: { width: stageWidth, height: stageHeight },
+    });
+    const local = localTagPlacement(box, placement, scale);
+    node.style.left = `${local.left}px`;
+    node.style.top = `${local.top}px`;
+    node.setAttribute('data-place', placement.side);
+    node.setAttribute('data-ready', 'true');
+  }, [selectedWidgetId, tagSize, stageWidth, stageHeight, scale]);
 
+  // Recoloca fuera del gesto: seleccion nueva, commit, zoom o resize del lienzo.
   useLayoutEffect(() => {
-    measureAnchor();
-  }, [measureAnchor, selectedLayout, scale, stageWidth, preview.zoom]);
+    applyTagPosition();
+  }, [applyTagPosition, selectedLayout, preview.zoom, tagHost]);
 
   // Durante el arrastre/redimensionado el marco se mueve por estilo en linea y
   // la etiqueta, al ser hija de su caja via portal, se mueve con el gratis.
-  // Este loop solo recoloca el clamp/lado en coords logicas locales y sin
-  // setState por frame (un setState aqui dejaria el stage entero
-  // re-renderizando durante todo el gesto). El estado concilia al soltar via
-  // `measureAnchor` en el efecto de layout sobre `selectedLayout`.
+  // Este loop solo refresca el clamp/lado; sin setState por frame (un setState
+  // aqui dejaria el stage entero re-renderizando durante todo el gesto).
   useEffect(() => {
     if (!interacting || typeof requestAnimationFrame !== 'function') return;
     let raf = 0;
     const tick = () => {
-      const stage = stageRef.current;
-      const node = tagRef.current;
-      if (stage && node && selectedWidgetId && stageWidth > 0 && stageHeight > 0) {
-        const box = readSelectionAnchor(stage, selectedWidgetId);
-        if (box) {
-          const placement = placeSelectionTag({
-            anchor: box,
-            tag: tagSize,
-            stage: { width: stageWidth, height: stageHeight },
-          });
-          const local = localTagPlacement(box, placement, scale);
-          node.style.left = `${local.left}px`;
-          node.style.top = `${local.top}px`;
-          node.setAttribute('data-place', placement.side);
-        }
-      }
+      applyTagPosition();
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [interacting, selectedWidgetId, tagSize, stageWidth, stageHeight, scale]);
+  }, [interacting, applyTagPosition]);
 
   // La etiqueta se mide a si misma: su ancho depende del nombre del widget y
   // de si lleva el boton "Mostrar", y el recorte contra los bordes lo necesita.
@@ -263,22 +259,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   useLayoutEffect(() => {
     measureTag();
   }, [measureTag, selectedWidgetId, selectedLayout, selected?.behavior.enabled, selected?.name]);
-
-  const tagPlacement =
-    anchor && stageWidth > 0 && stageHeight > 0
-      ? placeSelectionTag({
-          anchor,
-          tag: tagSize,
-          stage: { width: stageWidth, height: stageHeight },
-        })
-      : null;
-  // La etiqueta vive dentro de la caja de seleccion (portal): sus coords de
-  // estilo son LOCALES a la caja, no del stage. Mismo redondeo que el
-  // seguidor imperativo para que render e imperativo no discrepen.
-  const localPlacement =
-    anchor && tagPlacement && scale > 0
-      ? localTagPlacement(anchor, tagPlacement, scale)
-      : null;
 
   // Sin `useCallback`: solo la usa la etiqueta, que no esta memoizada, y
   // memoizarla sobre un widget de la lista rompe el compilador de React.
@@ -381,14 +361,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
               <div
                 className="orbit-studio-stage__tag"
                 data-hidden={selected.behavior.enabled ? undefined : 'true'}
-                data-place={tagPlacement?.side ?? 'above'}
+                data-place="above"
                 data-testid="orbit-studio-selection-tag"
                 ref={tagRef}
-                style={{
-                  left: `${localPlacement?.left ?? 0}px`,
-                  top: `${localPlacement?.top ?? 0}px`,
-                  visibility: localPlacement ? undefined : 'hidden',
-                }}
               >
                 <span data-testid="orbit-studio-selection-tag-copy">
                   {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{' '}

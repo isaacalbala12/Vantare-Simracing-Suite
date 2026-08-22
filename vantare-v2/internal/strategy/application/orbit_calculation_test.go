@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -61,6 +62,98 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	if !reflect.DeepEqual(*result.OrbitCalculation, golden) {
 		t.Fatalf("Go result differs from shared frontend golden\ngot: %#v\nwant: %#v", *result.OrbitCalculation, golden)
 	}
+}
+
+func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
+	event := OrbitCalculationEvent{DurationMinutes: 240, TankLiters: 90, PitLossSeconds: 64}
+	input := orbitSolverInput(139, event, 104, 2.75, nil)
+	balanced := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
+	shortFirst := replayOrbitPartition(t, input, []int64{11, 32, 32, 32, 32})
+	solved, err := solver.SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(golden): %v", err)
+	}
+
+	if balanced.Evaluation.GreenSeconds != 14_456 || shortFirst.Evaluation.GreenSeconds != 14_456 {
+		t.Fatalf("green seconds balanced=%.12f short-first=%.12f, want 14456", balanced.Evaluation.GreenSeconds, shortFirst.Evaluation.GreenSeconds)
+	}
+	if balanced.Evaluation.FuelWeightSeconds != 0 || shortFirst.Evaluation.FuelWeightSeconds != 0 {
+		t.Fatalf("golden must not invent fuel weight: balanced=%.12f short-first=%.12f", balanced.Evaluation.FuelWeightSeconds, shortFirst.Evaluation.FuelWeightSeconds)
+	}
+	// Ambos planes salen cuatro veces con el deposito lleno. El total repostado
+	// depende del fuel que queda al final, no de asumir que la carga inicial es
+	// exactamente la longitud del primer stint: 308 L frente a 294,25 L.
+	if got := replayedFuelLiters(balanced); got != 308 {
+		t.Fatalf("balanced refuel = %.12f L, want 308", got)
+	}
+	if got := replayedFuelLiters(shortFirst); got != 294.25 {
+		t.Fatalf("short-first refuel = %.12f L, want 294.25", got)
+	}
+	if !(shortFirst.Evaluation.TotalSeconds < balanced.Evaluation.TotalSeconds) {
+		t.Fatalf("short-first total=%.15f, want less than balanced=%.15f", shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds)
+	}
+	if !reflect.DeepEqual(solved.Best.Stints, shortFirst.Decision.Stints) || math.Abs(solved.Expected.TotalSeconds-shortFirst.Evaluation.TotalSeconds) > 1e-12 {
+		t.Fatalf("solver best=%+v total=%.15f, want replayed short-first=%+v total=%.15f", solved.Best.Stints, solved.Expected.TotalSeconds, shortFirst.Decision.Stints, shortFirst.Evaluation.TotalSeconds)
+	}
+	if delta := balanced.Evaluation.TotalSeconds - shortFirst.Evaluation.TotalSeconds; math.Abs(delta-13.75/orbitLegacyAllInServiceRate) > 2e-12 {
+		t.Fatalf("total delta = %.15f s, want %.15f s", delta, 13.75/orbitLegacyAllInServiceRate)
+	}
+	t.Logf("golden: balanced=%.15f s (308 L), short-first=%.15f s (294.25 L), delta=%.15f s", balanced.Evaluation.TotalSeconds, shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds-shortFirst.Evaluation.TotalSeconds)
+
+	// Contrafactual con peso configurado: al arrancar cada stint lleno, el
+	// termino es n*90 - 2,75*n*(n-1)/2. La suma de cuadrados mayor reduce el
+	// fuel medio; 6902,75 L*vuelta < 7386,75 L*vuelta por 484 L*vuelta.
+	input.FuelWeight = &solver.FuelWeightParameter{
+		Presence:        strategyprojection.PresenceValid,
+		SecondsPerLiter: 1,
+		Provenance:      strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "test:orbit-fuel-weight"},
+		Confidence:      strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-golden-proof.v1"},
+	}
+	balancedWeighted := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
+	shortFirstWeighted := replayOrbitPartition(t, input, []int64{11, 32, 32, 32, 32})
+	if balancedWeighted.Evaluation.FuelWeightSeconds != 7386.75 || shortFirstWeighted.Evaluation.FuelWeightSeconds != 6902.75 {
+		t.Fatalf("fuel-weight seconds balanced=%.2f short-first=%.2f", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds)
+	}
+	if delta := balancedWeighted.Evaluation.TotalSeconds - shortFirstWeighted.Evaluation.TotalSeconds; math.Abs(delta-484) > 1e-9 {
+		t.Fatalf("weighted total delta = %.12f s, want 484 s", delta)
+	}
+	t.Logf("fuel weight 1 s/L: balanced=%.2f L-lap, short-first=%.2f L-lap, delta=%.2f s", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds, balancedWeighted.Evaluation.TotalSeconds-shortFirstWeighted.Evaluation.TotalSeconds)
+}
+
+func replayOrbitPartition(t *testing.T, input solver.SolverInputV2, laps []int64) solver.ReplayResultV1 {
+	t.Helper()
+	decision := solver.DecisionVector{
+		Stints:   make([]solver.StintDecision, len(laps)),
+		PitStops: make([]solver.PitStopDecision, len(laps)-1),
+	}
+	lap := int64(0)
+	for index, count := range laps {
+		decision.Stints[index] = solver.StintDecision{Index: index, Laps: count, SavingLevel: solver.SavingNone}
+		lap += count
+		if index < len(decision.PitStops) {
+			decision.PitStops[index] = solver.PitStopDecision{
+				Lap:         lap,
+				FuelLiters:  float64(count) * input.FuelPerLapLiters.Value,
+				ServiceMode: input.PitCost.ServiceMode,
+			}
+		}
+	}
+	replayed, err := solver.ReplayDecisionV2(input, decision)
+	if err != nil {
+		t.Fatalf("ReplayDecisionV2(%v): %v", laps, err)
+	}
+	if !replayed.Feasible {
+		t.Fatalf("partition %v is infeasible: %+v", laps, replayed.Reasons)
+	}
+	return replayed
+}
+
+func replayedFuelLiters(replayed solver.ReplayResultV1) float64 {
+	total := 0.0
+	for _, stop := range replayed.Decision.PitStops {
+		total += stop.FuelLiters
+	}
+	return total
 }
 
 func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *testing.T) {

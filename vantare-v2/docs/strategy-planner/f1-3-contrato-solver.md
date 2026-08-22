@@ -64,8 +64,16 @@ El espacio finito queda fijado por `ServiceDiscretization`:
 El solver conserva exactitud mediante programación por vueltas y poda de
 dominancia: a igual vuelta, un estado de menor o igual coste con al menos el
 mismo Fuel y VE domina al otro. El oráculo de tests enumera sin poda exactamente
-las mismas vueltas y cantidades en carreras pequeñas. Los empates se ordenan
-por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
+las mismas vueltas y cantidades en carreras pequeñas. Dos tiempos se consideran
+empatados cuando `abs(a-b) <= 1e-12 * max(1, abs(a), abs(b))`. La tolerancia es
+relativa porque el error de acumulación crece con el total: en una carrera de
+14.712 s admite unos 14,7 ns, tres órdenes de magnitud por encima del ruido
+observado de 12,733 ps y muy por debajo de la resolución física de los inputs.
+El mismo comparador gobierna ranking y dominancia para que la poda no suprima
+el ganador del desempate. Los empatados se ordenan por menos paradas, vueltas
+de parada y cantidades Fuel/VE; si todo ello coincide, gana la identidad JSON
+lexicográficamente menor del `DecisionVector`, ya usada como clave observable y
+determinista por los escenarios meteorológicos.
 
 ### Escalares con procedencia F5-b2 (#771)
 
@@ -532,8 +540,9 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
   `139*104 + 4*64 = 14712 s`. El test de replay compara bajo exactamente el
   mismo input el plan balanceado `28+28+28+28+27`: reposta 308 L y obtiene
   `14712.000000000307409 s`; el elegido reposta 294,25 L y obtiene
-  `14712.000000000294676 s`. La diferencia float64 observada es 12,733 ps a
-  favor del elegido (13,75 ps en la fórmula ideal de la tasa técnica).
+  `14712.000000000294676 s`. La diferencia float64 observada es 12,733 ps
+  (13,75 ps en la fórmula ideal de la tasa técnica), dentro de la tolerancia
+  relativa de ~14,7 ns: los planes empatan por tiempo.
 - La carga inicial del modelo es siempre la capacidad de 90 L. Una parada tras
   11 vueltas conserva 59,75 L y solo reposta el hueco de 30,25 L; no reposta
   las 128 vueltas restantes. Además, si se configura peso Fuel, cada stint de
@@ -541,8 +550,11 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
   cuadrados mayor reduce, no aumenta, el fuel medio: con un coeficiente de
   prueba de `1 s/(L·vuelta)`, el balanceado suma 7.386,75 L·vuelta y el elegido
   6.902,75 L·vuelta, una ventaja adicional de 484 s. El golden real no
-  configura peso Fuel. El resultado de `SolveV2` coincide con el replay del
-  elegido, descartando una poda que hubiese eliminado el balanceado.
+  configura peso Fuel. Ambos planes tienen cuatro paradas; el golden
+  recalculado permanece `11+32+32+32+32` porque la siguiente regla compara las
+  vueltas de parada y `11 < 28`. `SolveV2` expone
+  `reason=optimal_after_time_tie_break`; el golden Go sigue coincidiendo byte a
+  byte con `frontend/src/hub/strategy-orbit/testdata/orbit-go-golden.json`.
 - `Solve` v1 y su bridge se conservan para tests/paridad histórica, pero ya no
   se registra el evento Wails `strategy:solver:compare` ni existe llamador
   productivo externo al paquete.

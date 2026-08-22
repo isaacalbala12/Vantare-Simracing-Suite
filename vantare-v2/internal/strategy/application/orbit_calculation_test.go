@@ -41,8 +41,9 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	}
 	// SolveV2 minimiza cinco stints bajo el limite de 32 vueltas. El replay
 	// numerico de ambos repartos se fija debajo: aun sin peso Fuel, el stint
-	// final largo deja menos fuel sin usar y requiere 13,75e-12 s menos de
-	// servicio ideal bajo la tasa tecnica del adaptador.
+	// final largo deja menos fuel sin usar y produce 13,75e-12 s de diferencia
+	// ideal, muy dentro de la tolerancia temporal; gana por la primera vuelta de
+	// parada canonica (11 antes que 28), no por ese ruido.
 	want := []int64{11, 32, 32, 32, 32}
 	for index := range want {
 		if plan.Stints[index].Laps != want[index] {

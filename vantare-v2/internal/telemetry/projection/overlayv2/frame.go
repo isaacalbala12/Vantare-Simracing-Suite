@@ -223,7 +223,7 @@ type SpotterViewV2 struct {
 }
 
 type DamageViewV2 struct {
-	Dents              QValue[[8]uint8] `json:"dents"`
+	Dents              QValue[[]uint16]  `json:"dents"`
 	Overheating        QValue[bool]     `json:"overheating"`
 	Detached           QValue[bool]     `json:"detached"`
 	WheelDetachedCount QValue[uint8]    `json:"wheelDetachedCount"`

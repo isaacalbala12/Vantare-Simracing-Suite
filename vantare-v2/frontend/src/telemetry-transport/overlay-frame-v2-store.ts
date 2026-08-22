@@ -239,7 +239,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities",
+    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -257,6 +257,7 @@ function frame(value: unknown, path: string): void {
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
   capabilities(value.capabilities, `${path}.capabilities`);
+  damage(value.damage, `${path}.damage`);
   Object.freeze(value);
 }
 
@@ -328,6 +329,30 @@ function validStanding(value: unknown): boolean {
     [value.gapLaps, value.laps].every(optionalIntegerValue);
   if (valid) Object.freeze(value);
   return valid;
+}
+
+function damage(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["dents", "overheating", "detached", "wheelDetachedCount"]);
+  dentsValue(value.dents, `${path}.dents`);
+  qvalue(value.overheating, `${path}.overheating`, "boolean");
+  qvalue(value.detached, `${path}.detached`, "boolean");
+  qvalue(value.wheelDetachedCount, `${path}.wheelDetachedCount`, "number");
+  Object.freeze(value);
+}
+
+/** dents is a QValue whose `v` (when present) is exactly eight severities 0..255. */
+function dentsValue(value: unknown, path: string): void {
+  if (!objectHasKeys(value, ["q"], ["v"])) invalid(path);
+  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) invalid(`${path}.q`);
+  if (value.q === "missing" && value.v !== undefined) invalid(`${path}.v`);
+  if (value.v !== undefined) {
+    if (!Array.isArray(value.v) || value.v.length !== 8) invalid(`${path}.v`);
+    for (const item of value.v) {
+      if (!Number.isSafeInteger(item) || (item as number) < 0 || (item as number) > 255) invalid(`${path}.v`);
+    }
+    Object.freeze(value.v);
+  }
+  Object.freeze(value);
 }
 
 function validRelative(value: unknown): boolean {

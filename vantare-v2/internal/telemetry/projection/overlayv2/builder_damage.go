@@ -16,7 +16,7 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		freshness := current.Damage.Freshness()
 		if freshness == schema.FreshnessMissing {
 			return DamageViewV2{
-				Dents:              missingValue[[8]uint8](),
+				Dents:              missingValue[[]uint16](),
 				Overheating:        missingValue[bool](),
 				Detached:           missingValue[bool](),
 				WheelDetachedCount: missingValue[uint8](),
@@ -25,7 +25,7 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		quality := qualityFromFreshness(freshness)
 		if freshness == schema.FreshnessInvalid {
 			return DamageViewV2{
-				Dents:              QValue[[8]uint8]{Q: QualityInvalid},
+				Dents:              QValue[[]uint16]{Q: QualityInvalid},
 				Overheating:        QValue[bool]{Q: QualityInvalid},
 				Detached:           QValue[bool]{Q: QualityInvalid},
 				WheelDetachedCount: QValue[uint8]{Q: QualityInvalid},
@@ -34,25 +34,25 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		value, present := current.Damage.Value()
 		if !present {
 			return DamageViewV2{
-				Dents:              missingValue[[8]uint8](),
+				Dents:              missingValue[[]uint16](),
 				Overheating:        missingValue[bool](),
 				Detached:           missingValue[bool](),
 				WheelDetachedCount: missingValue[uint8](),
 			}
 		}
-		var dents [8]uint8
+		dents := make([]uint16, 8)
 		for i, s := range value.Dents {
-			dents[i] = uint8(s)
+			dents[i] = uint16(s)
 		}
 		return DamageViewV2{
-			Dents:              QValue[[8]uint8]{V: dents, Q: quality},
+			Dents:              QValue[[]uint16]{V: dents, Q: quality},
 			Overheating:        QValue[bool]{V: value.Overheating, Q: quality},
 			Detached:           QValue[bool]{V: value.Detached, Q: quality},
 			WheelDetachedCount: QValue[uint8]{V: value.WheelDetachedCount, Q: quality},
 		}
 	}
 	return DamageViewV2{
-		Dents:              missingValue[[8]uint8](),
+		Dents:              missingValue[[]uint16](),
 		Overheating:        missingValue[bool](),
 		Detached:           missingValue[bool](),
 		WheelDetachedCount: missingValue[uint8](),

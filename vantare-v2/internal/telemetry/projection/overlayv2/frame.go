@@ -21,7 +21,7 @@ const (
 // QValue is the compact wire representation of one quality-bearing value.
 // A fresh zero may omit v; q still distinguishes it from a missing value.
 type QValue[T any] struct {
-	V T       `json:"v,omitempty"`
+	V T       `json:"v,omitempty,omitzero"`
 	Q Quality `json:"q"`
 }
 

@@ -112,6 +112,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{
 			Dents: QValue[[]uint16]{V: []uint16{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},
+		},
 		Weather: WeatherV2{
 			AmbientC: QValue[float64]{V: 22, Q: QualityFresh}, TrackC: QValue[float64]{V: 31, Q: QualityFresh},
 			RainPercent: QValue[float64]{V: 5, Q: QualityFresh}, WetnessPct: QValue[float64]{V: 12, Q: QualityFresh},

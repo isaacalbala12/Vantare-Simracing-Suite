@@ -98,6 +98,12 @@
         "lastLap": {
           "v": 91.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "q": "fresh"
         }
       }
     ],
@@ -169,6 +175,29 @@
       },
       "wheelDetachedCount": {
         "q": "fresh"
+      }
+    },
+    "weather": {
+      "ambientC": {
+        "q": "missing"
+      },
+      "trackC": {
+        "q": "missing"
+      },
+      "rainPercent": {
+        "q": "missing"
+      },
+      "wetnessPct": {
+        "q": "missing"
+      },
+      "windKph": {
+        "q": "missing"
+      },
+      "windDir": {
+        "q": "missing"
+      },
+      "pressureHpa": {
+        "q": "missing"
       }
     },
     "capabilities": {

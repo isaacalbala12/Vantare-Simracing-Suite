@@ -29,7 +29,7 @@ const (
 	SectionWeather
 	SectionCapabilities
 
-	sectionCount = 10
+	sectionCount = 11
 )
 
 var sectionNames = [sectionCount]string{
@@ -58,8 +58,7 @@ func (section Section) String() string {
 func AllSections() []Section {
 	return []Section{
 		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
-		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionCapabilities,
-		SectionSession, SectionStandings, SectionFuel, SectionWeather, SectionCapabilities,
+		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
 	}
 }
 
@@ -298,6 +297,7 @@ func DefaultSectionBuilders() SectionBuilders {
 		},
 		Damage: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) DamageViewV2 {
 			return BuildDamage(final)
+		},
 		Weather: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) WeatherV2 {
 			return BuildWeather(final)
 		},
@@ -369,6 +369,7 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 	}
 	if builders.Damage == nil {
 		builders.Damage = defaults.Damage
+	}
 	if builders.Weather == nil {
 		builders.Weather = defaults.Weather
 	}
@@ -472,6 +473,7 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionDamage) {
 		frame.Damage = projector.builders.Damage(final, preferences, source)
+	}
 	if plan.Rebuild(SectionWeather) {
 		frame.Weather = projector.builders.Weather(final, preferences, source)
 	}

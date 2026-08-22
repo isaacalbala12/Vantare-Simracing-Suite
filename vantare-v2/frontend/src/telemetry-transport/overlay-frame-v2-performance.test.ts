@@ -51,6 +51,8 @@ function syntheticFullUpdate(vehicles: number) {
     pit: "track",
     laps: 12,
     lastLap: fresh(92.125 + index / 1_000),
+    lapDistance: fresh(index * 37.5),
+    groundPosition: fresh({ x: index * 10, z: index * -5 }),
   }));
   const relative = standings.map((row, index) => ({
     id: row.id,
@@ -90,6 +92,10 @@ function syntheticFullUpdate(vehicles: number) {
       },
       damage: {
         dents: fresh([0, 1, 0, 2, 0, 0, 3, 0]), overheating: fresh(false), detached: fresh(false), wheelDetachedCount: fresh(0),
+      },
+      weather: {
+        ambientC: fresh(24.5), trackC: fresh(31.2), rainPercent: fresh(0), wetnessPct: fresh(0),
+        windKph: fresh(12), windDir: fresh("NW"), pressureHpa: fresh(1_013),
       },
     },
   };

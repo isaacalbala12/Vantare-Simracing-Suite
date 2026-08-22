@@ -239,7 +239,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage",
+    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -258,6 +258,7 @@ function frame(value: unknown, path: string): void {
   spotter(value.spotter, `${path}.spotter`);
   capabilities(value.capabilities, `${path}.capabilities`);
   damage(value.damage, `${path}.damage`);
+  weather(value.weather, `${path}.weather`);
   Object.freeze(value);
 }
 
@@ -321,10 +322,11 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
 }
 
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
     validQValue(value.gap, "number") && validQValue(value.lastLap, "number") &&
+    validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
     [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
     [value.gapLaps, value.laps].every(optionalIntegerValue);
   if (valid) Object.freeze(value);
@@ -352,6 +354,29 @@ function dentsValue(value: unknown, path: string): void {
     }
     Object.freeze(value.v);
   }
+  Object.freeze(value);
+}
+
+/** groundPosition is a QValue whose `v` (when present) is a plain {x, z} in metres. */
+function validGroundPosition(value: unknown): boolean {
+  if (!objectHasKeys(value, ["q"], ["v"])) return false;
+  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) return false;
+  if (value.q === "missing" && value.v !== undefined) return false;
+  if (value.v !== undefined) {
+    if (!objectHasKeys(value.v, ["x", "z"])) return false;
+    if (!Number.isFinite(value.v.x) || !Number.isFinite(value.v.z)) return false;
+    Object.freeze(value.v);
+  }
+  Object.freeze(value);
+  return true;
+}
+
+function weather(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["ambientC", "trackC", "rainPercent", "wetnessPct", "windKph", "windDir", "pressureHpa"]);
+  for (const key of ["ambientC", "trackC", "rainPercent", "wetnessPct", "windKph", "pressureHpa"] as const) {
+    qvalue(value[key], `${path}.${key}`, "number");
+  }
+  qvalue(value.windDir, `${path}.windDir`, "string");
   Object.freeze(value);
 }
 

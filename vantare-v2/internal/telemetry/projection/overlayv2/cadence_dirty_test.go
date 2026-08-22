@@ -408,7 +408,7 @@ func TestStandingsRelativeStayFreshUnderRegulatedCadence(t *testing.T) {
 		Slow: 10 * time.Millisecond, DirtyCeiling: time.Second,
 	}
 	regulated := NewCachedProjector(cadence)
-	fresh := NewCachedProjector(DefaultSectionCadence())
+	fresh := NewCachedProjector(SectionCadence{})
 	baseSnapshot := builderFinalState(t, 44)
 	baseHeader := baseSnapshot.Header()
 	baseFinal, ok := baseSnapshot.Value()

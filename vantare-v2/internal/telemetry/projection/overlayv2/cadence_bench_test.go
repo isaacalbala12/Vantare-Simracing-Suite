@@ -23,11 +23,8 @@ func BenchmarkOverlayV2ByCadence(b *testing.B) {
 		name    string
 		cadence SectionCadence
 	}{
-		{"plana", DefaultSectionCadence()},
-		{"regulada_20hz_4hz", SectionCadence{
-			Fast: time.Second / 20, Mid: time.Second / 10,
-			Slow: time.Second / 4, DirtyCeiling: time.Second / 4,
-		}},
+		{"plana", SectionCadence{}},
+		{"regulada_20hz_4hz", DefaultSectionCadence()},
 	}
 	for _, current := range cases {
 		b.Run(current.name, func(b *testing.B) {

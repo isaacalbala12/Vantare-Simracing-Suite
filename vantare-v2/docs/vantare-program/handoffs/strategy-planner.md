@@ -698,13 +698,14 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-758 / F5-a, en especial el límite de ownership
-Analysis→Strategy, la persistencia canónica de combinación/sesiones y el flujo
-opcional de Orbit. No integrar ni promover esta rama sin la autorización de
-Isaac; F5-e conectará después la fuente autorizada y su arranque en frío.
+Revisar la entrega aislada de ISA-773 / F6-f: comprobar el rechazo fail-closed
+de entornos no productivos/cohortes bajo k, el payload con procedencia y
+muestra/calidad, y la separación `build` → revisión → `sign`. No publicar el
+catálogo, integrar ni promover esta rama sin la autorización de Isaac.
 
 ## Última actualización
 
-2026-08-22, ISA-758: F5-a implementada y verificada en rama propia con selector
-opcional de combinación, panel de sesiones y decisión persistida en documento
-v2; pendiente review, sin integración ni promoción.
+2026-08-22, ISA-773: F6-f implementada en rama propia con builder determinista,
+firma offline separada y round-trip contra el verificador existente; publicar
+sigue fuera de alcance y reservado al gate de Isaac. Pendiente review, sin
+integración ni promoción.

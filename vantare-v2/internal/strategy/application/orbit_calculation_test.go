@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
@@ -53,6 +56,48 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	}
 	if !reflect.DeepEqual(*result.OrbitCalculation, golden) {
 		t.Fatalf("Go result differs from shared frontend golden\ngot: %#v\nwant: %#v", *result.OrbitCalculation, golden)
+	}
+}
+
+func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "telemetryanalysis", "strategyprojection", "testdata", "strategyinputprojection_v2_new.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projection strategyprojection.StrategyInputProjectionV2
+	if err := json.Unmarshal(raw, &projection); err != nil {
+		t.Fatal(err)
+	}
+	input := OrbitCalculationInput{
+		Event:           OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 10, PitLossSeconds: 30},
+		Drivers:         []OrbitCalculationDriver{{ID: "driver-1", Name: "Driver", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 2}}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}, Overrides: map[int]OrbitCalculationOverride{}}},
+		ActiveVariantID: "s1",
+		PlanningInputs:  &strategydocument.PlanningInputs{Projection: &projection, Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{}},
+	}
+	derived, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input.PlanningInputs.Overrides[strategydocument.PlanningInputFuelPerLap] = strategydocument.NumericInputOverride{
+		Value: 5, Presence: strategyprojection.PresenceValid,
+		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1"},
+		Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-input.v1"},
+	}
+	overridden, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if input.PlanningInputs.Projection.FuelConsumption.MeanPerLap != 3.047 {
+		t.Fatal("manual override destroyed the derived projection")
+	}
+	delete(input.PlanningInputs.Overrides, strategydocument.PlanningInputFuelPerLap)
+	reverted, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if derived.Plans["s1"].MaxLaps == overridden.Plans["s1"].MaxLaps || reverted.Plans["s1"].MaxLaps != derived.Plans["s1"].MaxLaps {
+		t.Fatalf("max laps derived=%d override=%d reverted=%d", derived.Plans["s1"].MaxLaps, overridden.Plans["s1"].MaxLaps, reverted.Plans["s1"].MaxLaps)
 	}
 }
 

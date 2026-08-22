@@ -2,6 +2,8 @@ import type {
   StrategyApplicationClient,
   StrategyEventV2,
   StrategySessionCombinationV1,
+  StrategyPlanningInputFieldV2,
+  StrategyPlanningInputsV2,
   StrategySourcedV2,
 } from "../../strategy/strategy-application-client";
 import type { StrategyEventRecord } from "./strategy-events-store";
@@ -11,6 +13,8 @@ export type StrategySessionCatalogView = {
   readonly repositoryVersion: number;
   readonly combinations: readonly StrategySessionCombinationV1[];
   readonly events: readonly StrategyEventV2[];
+  readonly planningByEvent: Readonly<Record<string, StrategyPlanningInputsV2>>;
+  readonly planningStatusByEvent: Readonly<Record<string, "available" | "manual_only" | "no_included_sessions">>;
 };
 
 let sessionCommandSequence = 0;
@@ -40,6 +44,72 @@ export async function loadStrategySessionCatalog(
     repositoryVersion: events.repositoryVersion,
     combinations: catalog.sessionCombinations ?? [],
     events: events.events ?? [],
+    planningByEvent: {},
+    planningStatusByEvent: {},
+  };
+}
+
+export async function refreshStrategyPlanningInputs(
+  client: StrategyApplicationClient<unknown>,
+  view: StrategySessionCatalogView,
+  eventId: string,
+): Promise<StrategySessionCatalogView> {
+  const result = await client.execute({
+    protocolVersion: "strategy.application.v1",
+    commandId: sessionCommandId("orbit-planning-inputs"),
+    operation: "get_event_planning_inputs",
+    expectedRepositoryVersion: view.repositoryVersion,
+    eventId,
+    generatedAt: new Date().toISOString(),
+  });
+  if (!result.planningInputs || !result.planningInputStatus) return view;
+  return {
+    ...view,
+    repositoryVersion: result.repositoryVersion,
+    planningByEvent: { ...view.planningByEvent, [eventId]: result.planningInputs },
+    planningStatusByEvent: { ...view.planningStatusByEvent, [eventId]: result.planningInputStatus },
+  };
+}
+
+export async function persistStrategyPlanningOverride(
+  client: StrategyApplicationClient<unknown>,
+  view: StrategySessionCatalogView,
+  record: StrategyEventRecord,
+  field: StrategyPlanningInputFieldV2,
+  value?: number,
+): Promise<StrategySessionCatalogView> {
+  const existing = view.events.find((event) => event.id === record.id);
+  const current = view.planningByEvent[record.id] ?? existing?.planningInputs ?? { overrides: {} };
+  const overrides = { ...current.overrides };
+  if (value === undefined) {
+    delete overrides[field];
+  } else {
+    overrides[field] = {
+      value,
+      presence: "valid",
+      provenance: { kind: "manual", sourceId: `orbit:${record.id}:${field}` },
+      confidence: { sampleSize: 1, computationVersion: "orbit-input.v1" },
+    };
+  }
+  const planningInputs: StrategyPlanningInputsV2 = { ...current, overrides };
+  const event: StrategyEventV2 = { ...(existing ?? strategyEventV2FromRecord(record)), planningInputs };
+  const result = await client.execute({
+    protocolVersion: "strategy.application.v1",
+    commandId: sessionCommandId("orbit-planning-save"),
+    operation: existing ? "edit_event" : "create_event",
+    expectedRepositoryVersion: view.repositoryVersion,
+    event,
+    updatedAt: new Date().toISOString(),
+  });
+  return {
+    ...view,
+    repositoryVersion: result.repositoryVersion,
+    events: result.strategyDocument?.events ?? result.events ?? [event],
+    planningByEvent: { ...view.planningByEvent, [record.id]: planningInputs },
+    planningStatusByEvent: {
+      ...view.planningStatusByEvent,
+      [record.id]: planningInputs.projection ? "available" : "manual_only",
+    },
   };
 }
 

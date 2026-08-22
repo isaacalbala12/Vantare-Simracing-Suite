@@ -40,6 +40,7 @@ const (
 	OperationCompareVariants         Operation = "compare_variants"
 	OperationCalculateOrbit          Operation = "calculate_orbit"
 	OperationListSessionCombinations Operation = "list_session_combinations"
+	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"
 	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
@@ -121,6 +122,20 @@ type ListCommand struct {
 type ListSessionCombinationsCommand struct {
 	CommandHeader
 }
+
+type GetEventPlanningInputsCommand struct {
+	CommandHeader
+	EventID     strategydocument.EventID `json:"eventId"`
+	GeneratedAt time.Time                `json:"generatedAt"`
+}
+
+type PlanningInputStatus string
+
+const (
+	PlanningInputAvailable          PlanningInputStatus = "available"
+	PlanningInputManualOnly         PlanningInputStatus = "manual_only"
+	PlanningInputNoIncludedSessions PlanningInputStatus = "no_included_sessions"
+)
 
 type SessionCatalogStatus string
 
@@ -268,10 +283,11 @@ type CalculateOrbitCommand struct {
 }
 
 type OrbitCalculationInput struct {
-	Event           OrbitCalculationEvent     `json:"event"`
-	Drivers         []OrbitCalculationDriver  `json:"drivers"`
-	Variants        []OrbitCalculationVariant `json:"variants"`
-	ActiveVariantID string                    `json:"activeVariantId"`
+	Event           OrbitCalculationEvent            `json:"event"`
+	Drivers         []OrbitCalculationDriver         `json:"drivers"`
+	Variants        []OrbitCalculationVariant        `json:"variants"`
+	ActiveVariantID string                           `json:"activeVariantId"`
+	PlanningInputs  *strategydocument.PlanningInputs `json:"planningInputs,omitempty"`
 }
 
 type OrbitCalculationEvent struct {
@@ -417,6 +433,8 @@ type Result[T any] struct {
 	OrbitCalculation     *OrbitCalculationResult              `json:"orbitCalculation,omitempty"`
 	SessionCatalogStatus SessionCatalogStatus                 `json:"sessionCatalogStatus,omitempty"`
 	SessionCombinations  []SessionCombination                 `json:"sessionCombinations,omitempty"`
+	PlanningInputStatus  PlanningInputStatus                  `json:"planningInputStatus,omitempty"`
+	PlanningInputs       *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
 	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`

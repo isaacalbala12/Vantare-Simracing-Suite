@@ -149,6 +149,14 @@ try {
     });
 
     if (viewport.editor) {
+      await page.getByRole("button", { name: "Datos", exact: true }).click();
+      await page.getByTestId("orbit-planning-inputs").waitFor();
+      await settle(page);
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-procedencia-${viewport.name}.png`),
+        fullPage: false,
+      });
+
       // F2-f: inventario global Spa sintético retirado — estado vacío honesto per-evento (documento v2). Captura refleja vacío.
       await page.getByRole("button", { name: "Neumáticos", exact: true }).click();
       await page.getByTestId("orbit-strategy-tyres").waitFor();

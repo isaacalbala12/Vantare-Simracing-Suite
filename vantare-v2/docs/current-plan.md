@@ -1,3 +1,23 @@
+Nota ISA-765 / ISA-694 F5-b (2026-08-22, bloqueada antes de review):
+- Strategy consulta a Analysis los derivados de la combinación usando solo las
+  sesiones incluidas en F5-a. Analysis reutiliza `StrategyInputProjection v2`
+  y Strategy conserva el límite de ownership: no abre DuckDB ni recalcula en
+  TypeScript.
+- El documento canónico v2 y Orbit ya conservan proyección/override en paralelo,
+  permiten revertir sin destruir el derivado y muestran los nueve chips con
+  muestra, rango o motivo.
+- Orbit muestra chips Derivado, Manual, Referencia y Falta para los datos
+  numéricos del asistente/plan, con muestra/rango o motivo en el tooltip. Sin
+  combinación permanece en manual puro. Cliente estricto, ES/EN/IT/PT, tests
+  Go/frontend, typecheck, build y protocolo visual quedan verdes.
+- Bloqueo: el cálculo Orbit vigente llama a `solver.Solve` v1. Aunque
+  `SolverInputV2` recibe una proyección, sus fallbacks numéricos de ritmo base,
+  capacidades, pit, vida, Fuel/VE y degradación no llevan procedencia; además
+  prioriza una familia derivada válida sobre el fallback manual. Por tanto un
+  override no puede llegar "tal cual" al solver F4 sin ampliar antes ese
+  contrato o falsear/mutar la proyección, ambas fuera del alcance autorizado.
+  Sin PR, integración, promoción ni release.
+
 Nota ISA-758 / ISA-694 F5-a (2026-08-22, implementada en rama de issue):
 - Analysis enumera únicamente modelos históricos ya autorizados, reutiliza su
   clasificación y agrupación, y Strategy los adapta por su API sin abrir

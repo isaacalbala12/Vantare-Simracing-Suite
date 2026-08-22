@@ -92,6 +92,7 @@ import type {
   StrategyApplicationClient,
   StrategyLegacyMigrationPreviewV1,
   StrategyOrbitCalculationResultV1,
+  StrategyPlanningInputFieldV2,
 } from "../../strategy/strategy-application-client";
 import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
@@ -130,11 +131,14 @@ import {
 } from "./strategy-orbit-model";
 import {
   loadStrategySessionCatalog,
+  persistStrategyPlanningOverride,
   persistStrategySessionSelection,
+  refreshStrategyPlanningInputs,
   selectedCombination,
   selectedSessions,
   type StrategySessionCatalogView,
 } from "./strategy-session-selection";
+import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
@@ -163,6 +167,83 @@ function visibleApplicationFailure(error: unknown): VisibleApplicationFailure {
   return { message: error instanceof Error ? error.message : String(error) };
 }
 
+function inputReasonLabel(reason: string | undefined, t: (key: string) => string): string {
+  if (!reason) return t("strategy.inputs.reason.unavailable");
+  const known = new Set([
+    "manual_input_required", "missing_fuel_consumption", "missing_virtual_energy_consumption",
+    "missing_combined_stint_pace_curve", "missing_representative_pace", "missing_tyre_degradation",
+    "missing_saving_cost", "combined_only",
+  ]);
+  return known.has(reason) ? t(`strategy.inputs.reason.${reason}`) : reason.replaceAll("_", " ");
+}
+
+function InputProvenanceChip({ view, t }: { view: StrategyInputProvenanceView; t: (key: string) => string }) {
+  const confidence = view.confidence;
+  const range = confidence?.rangeLower !== undefined && confidence.rangeUpper !== undefined
+    ? `${confidence.rangeLower}–${confidence.rangeUpper}`
+    : t("strategy.inputs.noRange");
+  const tooltip = view.kind === "derived"
+    ? formatMessage(t("strategy.inputs.tooltip.derived"), { n: confidence?.sampleSize ?? 0, range })
+    : view.kind === "missing"
+      ? formatMessage(t("strategy.inputs.tooltip.missing"), { reason: inputReasonLabel(view.reason, t) })
+      : t(`strategy.inputs.tooltip.${view.kind}`);
+  return (
+    <span
+      aria-label={`${t(`strategy.inputs.chip.${view.kind}`)}: ${tooltip}`}
+      className={`orbit-input-source orbit-input-source--${view.kind}`}
+      data-tip={tooltip}
+      data-tip-side="top"
+    >
+      <Chip caseNormal>{t(`strategy.inputs.chip.${view.kind}`)}</Chip>
+    </span>
+  );
+}
+
+function PlanningInputRow({
+  field, label, unit, view, t, onCommit,
+}: {
+  field: StrategyPlanningInputFieldV2;
+  label: string;
+  unit: string;
+  view: StrategyInputProvenanceView;
+  t: (key: string) => string;
+  onCommit: (field: StrategyPlanningInputFieldV2, value?: number) => void;
+}) {
+  const [draft, setDraft] = useState(view.value === undefined ? "" : String(view.value));
+  useEffect(() => setDraft(view.value === undefined ? "" : String(view.value)), [view.value]);
+  const commitDraft = () => {
+    const value = Number(draft);
+    const acceptsZero = field === "degradation_per_lap_seconds"
+      || field === "saving_fuel_per_lap"
+      || field === "saving_time_cost_per_lap";
+    if (draft.trim() !== "" && Number.isFinite(value) && (acceptsZero ? value >= 0 : value > 0) && value !== view.value) {
+      onCommit(field, value);
+    }
+  };
+  return (
+    <div className="orbit-planning-input" data-testid={`orbit-planning-input-${field}`}>
+      <label>
+        <span>{label}</span>
+        <Input
+          aria-label={label}
+          inputMode="decimal"
+          numeric
+          onBlur={commitDraft}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+          unit={unit}
+          value={draft}
+        />
+      </label>
+      <InputProvenanceChip t={t} view={view} />
+      {view.canRevert ? (
+        <Button onClick={() => onCommit(field, undefined)} size="sm" variant="ghost">
+          {t("strategy.inputs.revert")}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Pasos del asistente de creación (ISA-377): de dónde salen los datos, si se
  * corre solo o con equipo, y de qué punto de partida nace el evento.
@@ -178,7 +259,7 @@ interface WizardState {
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
 }
-type SidePanel = "drivers" | "tyres" | "sessions";
+type SidePanel = "inputs" | "drivers" | "tyres" | "sessions";
 type DonutMode = "laps" | "time";
 
 /** `FL|FR|RL|RR` → esquina del dominio real (`strategy-tyre`). */
@@ -438,6 +519,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventSessionDecisions = eventRecord && catalogView && eventCombination
     ? selectedSessions(catalogView, eventRecord.id, eventCombination)
     : [];
+  const eventPlanningInputs = eventRecord && catalogView
+    ? catalogView.planningByEvent[eventRecord.id]
+    : undefined;
+  const planningRequests = useRef(new Set<string>());
+  useEffect(() => {
+    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
+      || planningRequests.current.has(eventRecord.id)) return;
+    planningRequests.current.add(eventRecord.id);
+    let current = true;
+    void refreshStrategyPlanningInputs(applicationClient, catalogView, eventRecord.id).then(
+      (view) => { if (current) setSessionCatalog({ status: "ready", view }); },
+      () => { if (current) setSessionSave("error"); },
+    );
+    return () => { current = false; };
+  }, [applicationClient, catalogView, eventCombination, eventPlanningInputs, eventRecord]);
   const strategyEvent = useMemo(
     () => (eventRecord ? toStrategyEvent(eventRecord, locale) : null),
     [eventRecord, locale],
@@ -465,9 +561,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [calculationRetry, setCalculationRetry] = useState(0);
   const calculationInput = useMemo(
     () => strategyEvent && eventRecord && activeId
-      ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId)
+      ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs)
       : null,
-    [activeId, eventRecord, strategyEvent, variants],
+    [activeId, eventPlanningInputs, eventRecord, strategyEvent, variants],
   );
   const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
   const [calculation, setCalculation] = useState<
@@ -1065,13 +1161,14 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     if (!combination) return;
     setSessionSave("saving");
     try {
-      const view = await persistStrategySessionSelection(
+      const saved = await persistStrategySessionSelection(
         applicationClient,
         catalogView,
         eventRecord,
         combination,
         combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded })),
       );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
       setSessionCatalog({ status: "ready", view });
       setSessionPickerDismissed(eventRecord.id);
       setSessionSave("idle");
@@ -1087,19 +1184,32 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     );
     setSessionSave("saving");
     try {
-      const view = await persistStrategySessionSelection(
+      const saved = await persistStrategySessionSelection(
         applicationClient,
         catalogView,
         eventRecord,
         eventCombination,
         sessions,
       );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
       setSessionCatalog({ status: "ready", view });
       setSessionSave("idle");
     } catch {
       setSessionSave("error");
     }
   }, [applicationClient, catalogView, eventCombination, eventRecord, eventSessionDecisions]);
+
+  const commitPlanningInput = useCallback(async (field: StrategyPlanningInputFieldV2, value?: number) => {
+    if (!eventRecord || !catalogView) return;
+    setSessionSave("saving");
+    try {
+      const view = await persistStrategyPlanningOverride(applicationClient, catalogView, eventRecord, field, value);
+      setSessionCatalog({ status: "ready", view });
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  }, [applicationClient, catalogView, eventRecord]);
 
   /**
    * Crea el evento desde una salida del calendario. Acepta tanto una salida de
@@ -1430,6 +1540,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="min"
                 value={form.draft.durationMin}
               />
+              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: Number(form.draft.durationMin), canRevert: false }} />
             </div>
           </Field>
           <Field htmlFor="orbit-ev-tank" label={t("strategy.form.tank")}>
@@ -1441,7 +1552,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="L"
               value={form.draft.tankL}
             />
-            <small className="orbit-field__hint">{t("strategy.meta.manual")}</small>
+            <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "tank_liters", Number(form.draft.tankL))} />
           </Field>
           <Field htmlFor="orbit-ev-pit" label={t("strategy.form.pit")}>
             <Input
@@ -1452,7 +1563,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="s"
               value={form.draft.pitLossSec}
             />
-            <small className="orbit-field__hint">{t("strategy.meta.manual")}</small>
+            <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "pit_loss_seconds", Number(form.draft.pitLossSec))} />
           </Field>
           <Field htmlFor="orbit-ev-team" label={t("strategy.form.team")}>
             <Input
@@ -1538,6 +1649,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="s"
                 value={String(driver.dry[0])}
               />
+              <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver.dry[0])} />
               <Input
                 aria-label={formatMessage(t("strategy.form.driverFuel"), { n: index + 1 })}
                 inputMode="decimal"
@@ -1550,6 +1662,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="L/v"
                 value={String(driver.dry[1])}
               />
+              <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver.dry[1])} />
               <Button
                 aria-label={formatMessage(t("strategy.form.removeDriver"), { n: index + 1 })}
                 disabled={form.draft.drivers.length <= 1}
@@ -2273,6 +2386,31 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
     </div>
   );
+  const planningInputsPanel = (
+    <div className="orbit-planning-inputs" data-testid="orbit-planning-inputs">
+      {([
+        ["fuel_per_lap_liters", t("strategy.inputs.field.fuel"), "L/v", drivers[0]?.dry[1]],
+        ["ve_per_lap_percent", t("strategy.inputs.field.ve"), "%/v", undefined],
+        ["base_pace_seconds", t("strategy.inputs.field.pace"), "s", drivers[0]?.dry[0]],
+        ["tank_liters", t("strategy.inputs.field.tank"), "L", event.tankL],
+        ["pit_loss_seconds", t("strategy.inputs.field.pit"), "s", event.pitS],
+        ["tyre_life_laps", t("strategy.inputs.field.tyreLife"), t("strategy.inputs.unit.laps"), undefined],
+        ["degradation_per_lap_seconds", t("strategy.inputs.field.degradation"), "s/v", undefined],
+        ["saving_fuel_per_lap", t("strategy.inputs.field.savingFuel"), "L/v", undefined],
+        ["saving_time_cost_per_lap", t("strategy.inputs.field.savingCost"), "s/v", undefined],
+      ] as const).map(([field, label, unit, fallback]) => (
+        <PlanningInputRow
+          field={field}
+          key={field}
+          label={label}
+          onCommit={(changedField, value) => void commitPlanningInput(changedField, value)}
+          t={t}
+          unit={unit}
+          view={strategyInputProvenance(eventPlanningInputs, field, fallback)}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
@@ -2812,6 +2950,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 onBlur={(e) => setOverride(stint.i, "laps", e.currentTarget.value)}
                                 aria-label={t("strategy.editor.laps")}
                               />
+                              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.laps, canRevert: false }} />
                             </label>
                             <label className="orbit-stint-editor__field">
                               <span>{t("strategy.editor.fuel")}</span>
@@ -2824,6 +2963,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 unit="L"
                                 aria-label={t("strategy.editor.fuel")}
                               />
+                              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.fuel, canRevert: false }} />
                             </label>
                             <span className="orbit-stint-editor__field">
                               <span>{t("strategy.editor.pace")}</span>
@@ -2921,6 +3061,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   label={t("strategy.drivers.title")}
                   onChange={setPanel}
                   options={[
+                    { value: "inputs", label: t("strategy.inputs.tab") },
                     { value: "drivers", label: t("strategy.drivers.title") },
                     { value: "tyres", label: t("strategy.drivers.tyres") },
                     { value: "sessions", label: t("strategy.sessions.title") },
@@ -2932,7 +3073,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               className="orbit-strategy__side"
               fill
               meta={
-                panel === "drivers"
+                panel === "inputs"
+                  ? (eventCombination ? t("strategy.inputs.combinedShort") : t("strategy.inputs.manualShort"))
+                  : panel === "drivers"
                   ? String(drivers.length)
                   : panel === "tyres" ? formatMessage(t("strategy.drivers.inUse"), {
                       n: inventory.length,
@@ -2941,7 +3084,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     : String(eventCombination?.sessions.length ?? 0)
               }
             >
-              {panel === "drivers" ? (
+              {panel === "inputs" ? planningInputsPanel : panel === "drivers" ? (
                 <div className="orbit-strategy__drivers" data-testid="orbit-strategy-drivers">
                   {drivers.map((driver) => (
                     <article
@@ -2974,7 +3117,15 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                               {label}
                             </span>
                             <b>{lapTime(driver[mode][0])}</b>
-                            <em>{driver[mode][1].toFixed(2)} L/v · {t("strategy.meta.manual")}</em>
+                            <InputProvenanceChip
+                              t={t}
+                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])}
+                            />
+                            <em>{driver[mode][1].toFixed(2)} L/v</em>
+                            <InputProvenanceChip
+                              t={t}
+                              view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])}
+                            />
                           </div>
                         ))}
                       </div>
@@ -3030,6 +3181,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="s"
                                   value={String(driver[mode][0])}
                                 />
+                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])} />
                               </label>
                               <label className="orbit-driver__field">
                                 <span>
@@ -3049,6 +3201,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="L/v"
                                   value={String(driver[mode][1])}
                                 />
+                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])} />
                               </label>
                             </div>
                           ))}

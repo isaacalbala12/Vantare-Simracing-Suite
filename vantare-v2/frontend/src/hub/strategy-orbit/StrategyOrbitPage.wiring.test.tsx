@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
@@ -11,6 +11,7 @@ import type {
   StrategyApplicationResultV1,
   StrategyOrbitCalculationResultV1,
   StrategyEventV2,
+  StrategyPlanningInputsV2,
 } from "../../strategy/strategy-application-client";
 
 vi.mock("@wailsio/runtime", () => ({
@@ -68,6 +69,21 @@ const ROSTER: StrategyRoster = {
   strategies: [
     { id: "s1", name: "Estrategia #1", note: "Mínimo tiempo", mode: "dry", order: ["isaac", "sol", "diego", "marta"] },
   ],
+};
+
+const projectionConfidence = { sampleSize: 20, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" };
+const derivedPlanning: StrategyPlanningInputsV2 = {
+  projection: {
+    contractVersion: "strategyinputprojection.v2", generatedAt: "2026-08-22T12:00:00.000Z", computationVersion: "producer.v1",
+    sourceSessions: ["race-1"], combinationId: "lmu:imola",
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: projectionConfidence, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+    virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
+    tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
+    pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
+    savingCost: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_saving_cost" },
+  },
+  overrides: {},
 };
 
 const goldenClient: StrategyApplicationClient<unknown> = {
@@ -151,6 +167,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     window.localStorage.clear();
     let saved: StrategyEventV2 | undefined;
     let version = 0;
+    const calculatedInputs: unknown[] = [];
     const client: StrategyApplicationClient<unknown> = {
       async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
         const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
@@ -165,7 +182,17 @@ describe("StrategyOrbitPage · cableado auditado", () => {
           version += 1;
           return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
         }
-        if (command.operation === "calculate_orbit") return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
+        if (command.operation === "get_event_planning_inputs") return {
+          ...base,
+          planningInputStatus: saved?.combination?.sessions.some((session) => session.included) ? "available" : "no_included_sessions",
+          planningInputs: saved?.combination?.sessions.some((session) => session.included)
+            ? { ...derivedPlanning, overrides: saved.planningInputs?.overrides ?? {} }
+            : { overrides: saved?.planningInputs?.overrides ?? {} },
+        };
+        if (command.operation === "calculate_orbit") {
+          calculatedInputs.push(command.input);
+          return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
+        }
         if (command.operation === "list") return { ...base, plans: [] };
         throw new Error(`unexpected ${command.operation}`);
       },
@@ -180,6 +207,24 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(await screen.findByTestId("orbit-strategy-session-picker")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
     expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(within(fuel).getByLabelText(/Derivado: Calculado con 20 muestras/)).toBeTruthy();
+    const fuelInput = within(fuel).getByRole("textbox");
+    fireEvent.change(fuelInput, { target: { value: "3.5" } });
+    fireEvent.blur(fuelInput);
+    await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5));
+    const overriddenFuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(await within(overriddenFuel).findByRole("button", { name: "Volver al derivado" })).toBeTruthy();
+    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(2.75);
+    expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5);
+    expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"fuel_per_lap_liters":{"value":3.5'))).toBe(true);
+    fireEvent.click(within(overriddenFuel).getByRole("button", { name: "Volver al derivado" }));
+    await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined());
+    const revertedFuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    await within(revertedFuel).findByLabelText(/Derivado: Calculado con 20 muestras/);
+    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(2.75);
+    expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined();
     fireEvent.click(screen.getByRole("button", { name: "Sesiones" }));
     const sessions = await screen.findByTestId("orbit-strategy-sessions");
     fireEvent.click(within(sessions).getByRole("button", { name: "Excluir" }));

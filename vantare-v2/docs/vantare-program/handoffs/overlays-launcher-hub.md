@@ -10,18 +10,27 @@
 
 ## Estado
 
+- **ISA-776 · Rendimiento UI corte 1 (2026-08-22, en rama):** auditoría doble
+  (informe propio + segunda opinión adversarial) confirmó dos hallazgos y este
+  corte los corrige en `vantareapp/isa-776-ui-perf-corte-1`, base
+  `origin/nightly@d0ad2196`: (1) `use-calendar-starts` ya no hace `setState`
+  cada 15 s si el conjunto calculado no cambió — la shell entera dejaba de
+  re-renderizar en reposo; igualdad por campos de `RaceStart` e identidad de
+  `Calendar`; (2) `commitStudioCommand` guarda el documento previo por
+  referencia (structural sharing; `applyStudioCommand` clona su entrada y
+  nunca muta) y `dirty` del provider va memoizado por identidad de historial.
+  Gates locales PASS: suite frontend completa 373 archivos/2890 tests,
+  typecheck `tsc -b --noEmit`, ESLint focal y build productivo. El gate i18n
+  de Studio obligó a comentarios en inglés (regresión detectada y corregida en
+  el mismo corte). Pendiente: PR draft hacia `nightly`, review de Isaac.
+  Fuera de alcance deliberado (requiere medición o corte propio): RacesOrbitPage
+  1 Hz, lazy por página, A/B de blur, cadencia v2, fuentes legacy del bundle.
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
-  (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
-  `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,
-  PR draft **#768** hacia `nightly`: (1) los atajos se guardan al grabarlos sin
-  botón «Guardar»; (2) botón de descarga del informe de diagnóstico preparado
-  (la acción `download` existía testeada pero ninguna pantalla la ofrecía);
-  (3) búsqueda de ajustes en la columna de contexto con índice de filas reales,
-  matching sin diacríticos y navegación al resultado. Gates locales PASS:
-  frontend 2883/2883, typecheck, lint y build. Hallazgos diferidos documentados
-  como issues #762 (más hotkeys requieren backend Go), #763 (cerrar a bandeja,
-  no hay tray) y #764 (decidir telemetría de producto; no existe analytics).
-  Sin integración ni promoción; pendiente review de Isaac.
+  (2026-08-22, integrado en nightly):** tres mejoras de la pantalla Ajustes;
+  PR **#768** ya está en `origin/nightly@d0ad2196`. Hallazgos diferidos
+  documentados como issues #762 (más hotkeys requieren backend Go), #763
+  (cerrar a bandeja, no hay tray) y #764 (decidir telemetría de producto; no
+  existe analytics).
 - **Hub: porte Command Orbit completo en Nightly (2026-08-19).** El hub de
   escritorio migró a la shell **Command Orbit v0.3** (`docs/design/orbit-v03/`):
   integrado en `nightly` con el commit `af2c90d1` (PR #279) en la release

@@ -1,3 +1,22 @@
+Nota ISA-794 / ISA-694 F5-d (2026-08-22, implementada en rama de issue):
+
+- Strategy consulta por evento las carreras autorizadas de su combinación y
+  ejecuta `backtest.RunRace` de F4-9. La aplicación adapta tiempo predicho,
+  tiempo real, error total y por stint, estrategia observada resumida y el
+  agregado calculado por la misma autoridad de backtest.
+- Orbit muestra los ejemplos de más reciente a más antiguo con fecha relativa,
+  reparto de vueltas y paradas, predicho frente a real y desviación. Sin
+  carreras declara el vacío explícito; no hay datos simulados.
+- Los umbrales siguen provisionales en #702: el payload visible es neutral y
+  no expone ni pinta aprobado/suspenso. ES/EN/IT/PT y wiring con lista/vacío
+  quedan cubiertos por tests.
+- Gates locales verdes: Strategy+app, 382 archivos/2916 tests frontend,
+  typecheck, build y `visual:orbit-strategy`. La captura nueva
+  `orbit-estrategia-ejemplos-validados-1920x1080.png` justifica en una línea la
+  comparación predicho/real/desviación sin semáforo provisional. La entrega
+  queda lista para review en la rama de issue; sin PR, integración, promoción
+  ni release.
+
 Nota ISA-786 / ISA-694 F5-c (2026-08-22, implementada en rama de issue):
 
 - Orbit incorpora un panel de clima por evento con hasta 16 escenarios

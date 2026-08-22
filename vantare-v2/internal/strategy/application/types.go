@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/backtest"
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
@@ -41,6 +42,7 @@ const (
 	OperationCalculateOrbit          Operation = "calculate_orbit"
 	OperationListSessionCombinations Operation = "list_session_combinations"
 	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
+	OperationGetValidatedExamples    Operation = "get_validated_examples"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"
 	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
@@ -127,6 +129,47 @@ type GetEventPlanningInputsCommand struct {
 	CommandHeader
 	EventID     strategydocument.EventID `json:"eventId"`
 	GeneratedAt time.Time                `json:"generatedAt"`
+}
+
+type GetValidatedExamplesCommand struct {
+	CommandHeader
+	EventID strategydocument.EventID `json:"eventId"`
+}
+
+type ValidatedExamplesStatus string
+
+const (
+	ValidatedExamplesAvailable     ValidatedExamplesStatus = "available"
+	ValidatedExamplesNoCombination ValidatedExamplesStatus = "no_combination"
+	ValidatedExamplesNoRaces       ValidatedExamplesStatus = "no_races"
+)
+
+type ValidatedExampleStint struct {
+	StintNumber        int     `json:"stintNumber"`
+	Laps               int     `json:"laps"`
+	CompoundRaw        *int    `json:"compoundRaw,omitempty"`
+	PredictedSeconds   float64 `json:"predictedSeconds"`
+	ObservedSeconds    float64 `json:"observedSeconds"`
+	AbsoluteError      float64 `json:"absoluteErrorSeconds"`
+	AbsoluteErrorRatio float64 `json:"absoluteErrorRatio"`
+}
+
+type ValidatedRaceExample struct {
+	RaceID                string                  `json:"raceId"`
+	OccurredAt            time.Time               `json:"occurredAt"`
+	PredictedTotalSeconds float64                 `json:"predictedTotalSeconds"`
+	ObservedTotalSeconds  float64                 `json:"observedTotalSeconds"`
+	AbsoluteErrorSeconds  float64                 `json:"absoluteErrorSeconds"`
+	AbsoluteErrorRatio    float64                 `json:"absoluteErrorRatio"`
+	Stints                []ValidatedExampleStint `json:"stints"`
+	PitLaps               []int64                 `json:"pitLaps"`
+}
+
+type ValidatedExamplesResult struct {
+	Status        ValidatedExamplesStatus             `json:"status"`
+	CombinationID string                              `json:"combinationId,omitempty"`
+	Races         []ValidatedRaceExample              `json:"races"`
+	Aggregate     backtest.CalibrationAggregateResult `json:"aggregate"`
 }
 
 type PlanningInputStatus string
@@ -470,6 +513,7 @@ type Result[T any] struct {
 	SessionCombinations  []SessionCombination                 `json:"sessionCombinations,omitempty"`
 	PlanningInputStatus  PlanningInputStatus                  `json:"planningInputStatus,omitempty"`
 	PlanningInputs       *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
+	ValidatedExamples    *ValidatedExamplesResult             `json:"validatedExamples,omitempty"`
 	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`

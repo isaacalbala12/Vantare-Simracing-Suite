@@ -150,6 +150,21 @@ try {
     });
 
     if (viewport.editor) {
+      // F5-d: evidencia cuantitativa neutral; no debe aparecer ningún veredicto provisional.
+      const validatedExamples = page.getByTestId("orbit-validated-examples");
+      await validatedExamples.waitFor();
+      const validatedText = (await validatedExamples.textContent()) ?? "";
+      if (!validatedText.includes("Predicho") || !validatedText.includes("Real") || !validatedText.includes("Desviación")) {
+        throw new Error(`${viewport.name}: faltan cifras de ejemplos validados (${validatedText})`);
+      }
+      if (/aprob|suspens|pass|fail/i.test(validatedText)) {
+        throw new Error(`${viewport.name}: los ejemplos muestran un veredicto provisional (${validatedText})`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-ejemplos-validados-${viewport.name}.png`),
+        fullPage: false,
+      });
+
       await page.getByRole("button", { name: "Datos", exact: true }).click();
       await page.getByTestId("orbit-planning-inputs").waitFor();
       await settle(page);

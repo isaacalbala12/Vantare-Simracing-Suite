@@ -40,6 +40,7 @@ export type StrategyApplicationOperation =
   | "calculate_orbit"
   | "list_session_combinations"
   | "get_event_planning_inputs"
+  | "get_validated_examples"
   | "preview_legacy_migration"
   | "migrate_legacy"
   | "rollback_legacy_migration";
@@ -415,6 +416,41 @@ export type StrategyOrbitWeatherResultV1 = {
   };
 };
 
+export type StrategyBacktestIntervalV1 = {
+  readonly count: number;
+  readonly mean: number;
+  readonly lower: number;
+  readonly upper: number;
+};
+
+export type StrategyValidatedExamplesV1 = {
+  readonly status: "available" | "no_combination" | "no_races";
+  readonly combinationId?: string;
+  readonly races: readonly {
+    readonly raceId: string;
+    readonly occurredAt: string;
+    readonly predictedTotalSeconds: number;
+    readonly observedTotalSeconds: number;
+    readonly absoluteErrorSeconds: number;
+    readonly absoluteErrorRatio: number;
+    readonly stints: readonly {
+      readonly stintNumber: number;
+      readonly laps: number;
+      readonly compoundRaw?: number;
+      readonly predictedSeconds: number;
+      readonly observedSeconds: number;
+      readonly absoluteErrorSeconds: number;
+      readonly absoluteErrorRatio: number;
+    }[];
+    readonly pitLaps: readonly number[];
+  }[];
+  readonly aggregate: {
+    readonly raceCount: number;
+    readonly totalErrorRatio: StrategyBacktestIntervalV1;
+    readonly stintErrorRatio: StrategyBacktestIntervalV1;
+  };
+};
+
 type CommandHeader<T extends StrategyApplicationOperation> = {
   protocolVersion: typeof STRATEGY_APPLICATION_PROTOCOL_V1;
   commandId: string;
@@ -466,6 +502,7 @@ export type StrategyApplicationCommandV1<TPayload> =
   | CommandHeader<"list_events">
   | CommandHeader<"list_session_combinations">
   | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
+  | (CommandHeader<"get_validated_examples"> & { eventId: string })
   | (CommandHeader<"create_driver" | "edit_driver"> & {
       eventId: string;
       driver: StrategyDriverV2;
@@ -593,6 +630,7 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly sessionCombinations?: readonly StrategySessionCombinationV1[];
   readonly planningInputStatus?: "available" | "manual_only" | "no_included_sessions";
   readonly planningInputs?: StrategyPlanningInputsV2;
+  readonly validatedExamples?: StrategyValidatedExamplesV1;
   readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
@@ -916,6 +954,9 @@ async function parseResult<TPayload>(
     ...(payload.planningInputs === undefined
       ? {}
       : { planningInputs: parsePlanningInputs(payload.planningInputs, "planningInputs") }),
+    ...(payload.validatedExamples === undefined
+      ? {}
+      : { validatedExamples: parseValidatedExamples(payload.validatedExamples) }),
     ...(payload.legacyMigration === undefined
       ? {}
       : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
@@ -1109,6 +1150,45 @@ function parseWeatherScenarios(value: unknown, field: string): readonly Strategy
 function parsePlanningInputStatus(value: unknown): "available" | "manual_only" | "no_included_sessions" {
   strategyEnum(value, "planningInputStatus", ["available", "manual_only", "no_included_sessions"]);
   return value as "available" | "manual_only" | "no_included_sessions";
+}
+
+function parseValidatedExamples(value: unknown): StrategyValidatedExamplesV1 {
+  const examples = strategyRecord(value, "validatedExamples");
+  strategyEnum(examples.status, "validatedExamples.status", ["available", "no_combination", "no_races"]);
+  if (examples.combinationId !== undefined) strategyString(examples.combinationId, "validatedExamples.combinationId");
+  if (!Array.isArray(examples.races)) throw new Error("Invalid Strategy validatedExamples.races");
+  examples.races.forEach((candidate, index) => {
+    const field = `validatedExamples.races.${index}`;
+    const race = strategyRecord(candidate, field);
+    strategyString(race.raceId, `${field}.raceId`);
+    strategyString(race.occurredAt, `${field}.occurredAt`);
+    for (const name of ["predictedTotalSeconds", "observedTotalSeconds", "absoluteErrorSeconds", "absoluteErrorRatio"] as const) {
+      strategyNumber(race[name], `${field}.${name}`);
+    }
+    if (!Array.isArray(race.pitLaps)) throw new Error(`Invalid Strategy ${field}.pitLaps`);
+    race.pitLaps.forEach((lap, lapIndex) => strategyInteger(lap, `${field}.pitLaps.${lapIndex}`));
+    if (!Array.isArray(race.stints)) throw new Error(`Invalid Strategy ${field}.stints`);
+    race.stints.forEach((stintCandidate, stintIndex) => {
+      const stintField = `${field}.stints.${stintIndex}`;
+      const stint = strategyRecord(stintCandidate, stintField);
+      strategyInteger(stint.stintNumber, `${stintField}.stintNumber`);
+      strategyInteger(stint.laps, `${stintField}.laps`);
+      if (stint.compoundRaw !== undefined) strategyInteger(stint.compoundRaw, `${stintField}.compoundRaw`);
+      for (const name of ["predictedSeconds", "observedSeconds", "absoluteErrorSeconds", "absoluteErrorRatio"] as const) {
+        strategyNumber(stint[name], `${stintField}.${name}`);
+      }
+    });
+  });
+  const aggregate = strategyRecord(examples.aggregate, "validatedExamples.aggregate");
+  strategyInteger(aggregate.raceCount, "validatedExamples.aggregate.raceCount");
+  for (const name of ["totalErrorRatio", "stintErrorRatio"] as const) {
+    const interval = strategyRecord(aggregate[name], `validatedExamples.aggregate.${name}`);
+    strategyInteger(interval.count, `validatedExamples.aggregate.${name}.count`);
+    for (const metric of ["mean", "lower", "upper"] as const) {
+      strategyNumber(interval[metric], `validatedExamples.aggregate.${name}.${metric}`);
+    }
+  }
+  return examples as StrategyValidatedExamplesV1;
 }
 
 const planningInputFields: readonly StrategyPlanningInputFieldV2[] = [

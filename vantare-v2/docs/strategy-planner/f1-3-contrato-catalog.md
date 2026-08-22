@@ -3,7 +3,7 @@
 **Fecha:** 2026-08-21
 **Issue:** #726 (ISA-694 F1.3)
 **Owner:** Strategy (`internal/strategy/catalog`)
-**Estado:** compile-only + fixture firmado
+**Estado:** contrato + fixture firmado + builder/firma local (ISA-773)
 
 ## Ubicación y justificación
 
@@ -46,11 +46,37 @@ type SignedCatalog struct {
 - Primer versionado (`strategy.catalog/1.0.0`). Claves confiadas embebidas por release con vigencia y versión/época mínima aceptable (para F5). `expiresAt` duro.
 - Si ADR vs spec: gana ADR rev.2 (este contrato lo sigue al pie de la letra; anota cualquier detalle donde el spec fuera menos estricto).
 
+## Payload y cadena local de F6-f
+
+`cmd/vantare-catalog` amplía el contrato con dos formatos cerrados:
+
+- `vantare.catalog.selection.v1`: decisión aprobada por combinación, siempre
+  con `environment=production-community`, inclusión explícita del perfil y
+  digests exactos de clusters de estrategia;
+- `strategy.catalog.payload.v1`: fuente reproducible del resumen
+  (`summaryContractVersion`, digest JCS, versión/hash del motor y `minimumCohort`)
+  y combinaciones ordenadas. Cada perfil y cada estrategia lleva procedencia
+  `reference`, entorno `production-community`, muestra (bundles semánticos,
+  contribuidores y sesiones) y calidad de canal.
+
+El builder rechaza `test`, `controlled-capture`, cohortes bajo `k` y calidad
+ausente/inconsistente. Recibe `publishedAt`, `expiresAt`, época, versión y
+versión previa como parámetros, por lo que el payload/envelope es determinista
+y la monotonicidad se comprueba antes de generar el artefacto sin firma.
+
+La cadena usa dos procesos explícitos: `build` produce `{envelope,payload}` sin
+clave; después de revisión, `sign` lee por parámetro un seed Ed25519 hexadecimal
+de 32 bytes, recalcula el digest, llama a `SignEnvelope` y verifica la ida y
+vuelta con `VerifySignedCatalog`. El comando no contiene red ni publicación.
+Publicar el primer catálogo sigue fuera de F6-f y requiere el gate exclusivo de
+Isaac del ADR 0009 §14. Uso y runbook local: `cmd/vantare-catalog/README.md`.
+
 ## Verificación
 
 ```bash
 go vet ./internal/strategy/catalog/...
 go test ./internal/strategy/catalog/... -run TestCatalog
+go test ./cmd/vantare-catalog/... ./internal/strategy/catalog/...
 gofmt -l ./internal/strategy/catalog/
 ```
 F5 probará el fixture con fetch+verificación+caché del envelope.

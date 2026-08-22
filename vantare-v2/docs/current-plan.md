@@ -1,3 +1,18 @@
+Nota ISA-773 / ISA-694 F6-f (2026-08-22, implementada en rama de issue):
+- `cmd/vantare-catalog` compone un payload determinista desde el resumen v2
+  del curador y una selección cerrada aprobada; solo admite
+  `production-community`, `k>=3` y contenido con muestra/calidad consistente.
+- Perfiles y estrategias conservan procedencia `reference`, entorno, muestra y
+  calidad. `test`, `controlled-capture` y cohortes bajas fallan cerrados por
+  contrato y por tests table-driven.
+- `build` genera el envelope+payload sin firma y exige versión mayor que la
+  previa. `sign`, en otra invocación offline, lee el seed desde el fichero
+  indicado, recalcula el digest, reutiliza Ed25519/JCS existente y verifica la
+  ida y vuelta antes de escribir.
+- No hay clave real, red ni publicación. Publicar el primer catálogo sigue
+  reservado al gate explícito de Isaac. Pendiente review de #773; sin PR,
+  integración, promoción ni release.
+
 Nota ISA-766 / ISA-694 F6-a (2026-08-22, implementada en rama de issue):
 - Strategy genera `CurationBundle v1` solo desde proyecciones públicas, con
   allowlist cerrada, fechas por semana ISO y el identificador administrativo

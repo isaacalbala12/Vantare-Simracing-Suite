@@ -332,9 +332,10 @@ Trabajo (6 issues; Worker y firma con Codex sol, resto muse-spark):
   del resumen (aislado según ADR 0009 §2) + flujo de decisión simple de
   Isaac; la automatización por skills es una decisión posterior y solo se
   adopta si reduce trabajo editorial medido (ADR 0009 §3).
-- **(f) Publicación:** builder del catálogo firmado (el mismo formato/builder
-  del fixture de F1.3) + publicación a GitHub. **Primer catálogo público =
-  segundo gate explícito de Isaac.**
+- **(f) Builder y firma local:** builder del catálogo (el mismo
+  formato/verificador del fixture de F1.3) y firma offline separada. La
+  publicación a GitHub es un paso posterior fuera de la issue del builder.
+  **Primer catálogo público = segundo gate explícito de Isaac.**
 
 **Checkpoint (criterio #7):** ciclo completo en frío con bundles de prueba;
 pruebas adversariales de la superficie Worker/firma según ADR 0009. Review

@@ -118,3 +118,28 @@ func TestAudioConfig_RaceFree(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDefaultAudioConfigForLocaleKeepsBothChannelsCanonical(t *testing.T) {
+	t.Parallel()
+	wantVoice := map[string]string{
+		"es": "ef_dora", "en": "af_bella", "it": "if_sara", "pt-BR": "pf_dora",
+	}
+	for locale, voice := range wantVoice {
+		locale, voice := locale, voice
+		t.Run(locale, func(t *testing.T) {
+			t.Parallel()
+			config, err := DefaultAudioConfigForLocale(locale)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, channel := range []Channel{ChannelSpotter, ChannelEngineer} {
+				if config.Lang(channel) != locale || config.Voice(channel) != voice {
+					t.Fatalf("channel=%s lang/voice=%s/%s, want %s/%s", channel, config.Lang(channel), config.Voice(channel), locale, voice)
+				}
+			}
+		})
+	}
+	if _, err := DefaultAudioConfigForLocale("fr"); err == nil {
+		t.Fatal("unsupported product locale was accepted")
+	}
+}

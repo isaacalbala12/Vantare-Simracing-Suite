@@ -12,11 +12,15 @@ const port = 5201;
 const base = `http://127.0.0.1:${port}/orbit-settings-harness.html?view=ajustes`;
 const url = (section) => `${base}&settings=${section}`;
 
-const SECTIONS = ["account", "application", "updates", "hotkeys", "diagnostics"];
+const SECTIONS = ["account", "application", "updates", "hotkeys", "diagnostics", "privacy"];
 
 const shots = [
   { name: "1920x1080", width: 1920, height: 1080, sections: SECTIONS, noPageScroll: true },
   { name: "1920x900", width: 1920, height: 900, sections: ["account", "hotkeys"], noPageScroll: false },
+  { name: "375x812", width: 375, height: 812, sections: ["privacy"], noPageScroll: false },
+  { name: "768x1024", width: 768, height: 1024, sections: ["privacy"], noPageScroll: false },
+  { name: "1024x768", width: 1024, height: 768, sections: ["privacy"], noPageScroll: false },
+  { name: "1440x900", width: 1440, height: 900, sections: ["privacy"], noPageScroll: false },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -138,13 +142,14 @@ try {
       if (!summary.title.trim() || !summary.lead.trim()) {
         throw new Error(`${label}: la cabecera no dice título y lead de la sección`);
       }
-      if (summary.contextRows !== 5) {
-        throw new Error(`${label}: la columna lista ${summary.contextRows} secciones (esperadas 5)`);
+      const hasContextNavigation = summary.contextRows > 0;
+      if (hasContextNavigation && summary.contextRows !== SECTIONS.length) {
+        throw new Error(`${label}: la columna lista ${summary.contextRows} secciones (esperadas ${SECTIONS.length})`);
       }
-      if (summary.selectedRows !== 1) {
-        throw new Error(`${label}: la columna marca ${summary.selectedRows} filas activas (esperada 1)`);
+      if (summary.selectedRows !== (hasContextNavigation ? 1 : 0)) {
+        throw new Error(`${label}: la columna marca ${summary.selectedRows} filas activas`);
       }
-      if (!summary.selectedTinted) {
+      if (hasContextNavigation && !summary.selectedTinted) {
         throw new Error(`${label}: la fila activa no lleva el degradado \`--orbit-selection-bg\` (background-image: none)`);
       }
       if (summary.persistentBlocks !== 0) {

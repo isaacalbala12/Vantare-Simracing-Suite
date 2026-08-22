@@ -303,7 +303,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	}
 	reducer := telemetrycore.NewReducer()
 	coordinator := telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: now})
-	pipeline := derive.NewPipeline(derive.Config{})
+	pipeline := derive.NewPipeline(derive.Config{FuelUsageWindow: derive.DefaultFuelUsageWindowProduct})
 	var strategyHub *telemetrytransport.Hub
 	if config.StrategyPublicTransport {
 		strategyHub = telemetrytransport.NewHub(telemetrytransport.HubConfig{

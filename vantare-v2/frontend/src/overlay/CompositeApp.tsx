@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -18,6 +18,7 @@ import {
   OVERLAY_V2_SNAPSHOT_REQUEST_EVENT,
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
+import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -36,6 +37,14 @@ export function CompositeApp() {
   const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
   const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
   const overlayV2Shadow = useMemo(() => createOverlayV2ShadowRuntime(), []);
+  const [overlayV2Features, setOverlayV2Features] = useState<readonly OverlayV2Feature[]>(() =>
+    readDiagnosticOverlayV2Features(),
+  );
+  const overlayV2State = useSyncExternalStore(
+    overlayV2Store.subscribe,
+    overlayV2Store.getSnapshot,
+    overlayV2Store.getSnapshot,
+  );
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
   const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({
     store: engineerPresentations,
@@ -66,6 +75,16 @@ export function CompositeApp() {
   );
 
   useEffect(() => applyOverlayDocumentMode(), []);
+
+  useEffect(() => {
+    const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
+    window.addEventListener("vantare:overlay-v2-features-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("vantare:overlay-v2-features-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
@@ -178,6 +197,9 @@ export function CompositeApp() {
           layoutOrigin={layoutOrigin}
           telemetry={coordinator}
           engineerPresentations={engineerPresentations}
+          overlayV2Frame={overlayV2State.frame}
+          overlayV2Source={overlayV2State.source}
+          overlayV2Features={overlayV2Features}
         />
       )}
       {reminder && (

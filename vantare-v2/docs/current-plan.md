@@ -1,3 +1,29 @@
+Nota ISA-786 / ISA-694 F5-c (2026-08-22, implementada en rama de issue):
+
+- Orbit incorpora un panel de clima por evento con hasta 16 escenarios
+  manuales ponderados. Cada escenario conserva exactamente los cinco nodos
+  `START/25/50/75/FINISH` de `WeatherScenario v1` con lluvia, cielo y
+  temperaturas de aire/pista.
+- El documento canónico v2 persiste escenario y peso de forma aditiva. Sin
+  escenarios, la UI y el cálculo declaran seco manual; no se fabrica un
+  forecast. `Capturar forecast` queda visible, deshabilitado y explica que
+  estará disponible tras validar la captura LMU. El overlay ingame no forma
+  parte de esta entrega.
+- `calculate_orbit` pasa los escenarios a `SolveWeatherScenarios`. La salida
+  estrecha de aplicación expone plan y timeline aplicado por escenario, más
+  la recomendación `minimax_regret`, regret máximo y pérdida esperada
+  ponderada. Go conserva toda la aritmética; TypeScript solo valida,
+  transporta y presenta.
+- Un test de wiring crea lluvia desde NODE_50, verifica que cambia el plan
+  mostrado y que aparecen la vuelta mojada y ambas métricas robustas. Cuatro
+  idiomas, persistencia y parser estricto quedan cubiertos por tests focales.
+- Evidencia final: `go test ./internal/strategy/... ./internal/app -count=1`,
+  382 archivos/2913 tests frontend, typecheck, build y
+  `visual:orbit-strategy` verdes. La captura nueva
+  `orbit-estrategia-clima-1920x1080.png` justifica el vacío seco manual y la
+  futura captura LMU deshabilitada, sin forecast simulado. Lista para review;
+  sin PR, integración, promoción ni release.
+
 Nota ISA-771 / ISA-694 F5-b2 (2026-08-22, lista para review):
 
 - `SolverInputV2` transporta valor, procedencia, confianza y rol en sus

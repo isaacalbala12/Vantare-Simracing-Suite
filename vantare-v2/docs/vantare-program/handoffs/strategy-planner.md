@@ -17,6 +17,25 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-786 / F5-c (2026-08-22, implementada en rama de issue):
+
+- El evento canónico guarda hasta 16 escenarios ponderados como
+  `WeatherScenario v1`, cada uno con sus cinco nodos manuales de lluvia,
+  cielo y temperaturas. Cambiar de combinación vuelve a vincular esos
+  escenarios para no dejar un documento inválido.
+- Orbit presenta el editor y el plan de cada escenario con la condición
+  aplicada por vuelta. La recomendación robusta destaca minimax regret,
+  regret máximo y pérdida esperada ponderada; `SolveWeatherScenarios` sigue
+  siendo la única autoridad del cálculo.
+- Sin escenarios se declara seco manual. La captura LMU permanece
+  deshabilitada con copy honesto hasta su validación y no hay datos simulados;
+  el overlay ingame sigue fuera de alcance.
+- Evidencia final verde: `go test ./internal/strategy/... ./internal/app
+  -count=1`, 382 archivos/2913 tests frontend, typecheck, build y
+  `visual:orbit-strategy`. La captura nueva del panel justifica el vacío seco
+  manual y la futura captura LMU deshabilitada, sin forecast simulado. Sin PR,
+  integración, promoción ni release.
+
 Actualización ISA-771 / F5-b2 (2026-08-22, lista para review):
 
 - Los escalares del input F4 llevan valor, procedencia, confianza y rol. Un
@@ -735,14 +754,13 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-773 / F6-f: comprobar el rechazo fail-closed
-de entornos no productivos/cohortes bajo k, el payload con procedencia y
-muestra/calidad, y la separación `build` → revisión → `sign`. No publicar el
-catálogo, integrar ni promover esta rama sin la autorización de Isaac.
+Revisar la entrega aislada de ISA-786 / F5-c: comprobar
+persistencia, cálculo con lluvia desde NODE_50, métricas robustas, los cuatro
+idiomas y el estado deshabilitado de captura LMU. No integrar ni promover esta
+rama sin la autorización de Isaac.
 
 ## Última actualización
 
-2026-08-22, ISA-773: F6-f implementada en rama propia con builder determinista,
-firma offline separada y round-trip contra el verificador existente; publicar
-sigue fuera de alcance y reservado al gate de Isaac. Pendiente review, sin
-integración ni promoción.
+2026-08-22, ISA-786: F5-c implementada en rama propia con escenarios manuales,
+planes por escenario y recomendación robusta. Gates locales finales verdes;
+pendiente review, sin integración ni promoción.

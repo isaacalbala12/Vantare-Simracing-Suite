@@ -17,6 +17,24 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-796 / F5-e (2026-08-22, implementada en rama de issue):
+
+- El consumidor único acepta el fixture firmado TEST sin abrir red por
+  defecto. Firma inválida, época desconocida, rollback, vencimiento duro y
+  schema incompatible degradan a caché todavía válida o a vacío con aviso;
+  nunca generan referencia inventada.
+- Orbit muestra perfiles y estrategias en `Referencia`, ambos con etiqueta
+  `referencia` y `k>=3`. Al usarlos crea inputs o variantes del documento v2
+  con procedencia `reference` visible.
+- El banner de primer arranque descubre los DuckDB estables de la ruta LMU,
+  importa uno por comando con progreso a un store autorizado que alimenta
+  F5-a, o conserva el rechazo. No reaparece tras aceptar/rechazar.
+- Hay copy en ES/EN/IT/PT y evidencia automática de degradación, procedencia,
+  progreso, persistencia, discovery y UI. La captura dedicada demuestra la
+  sección separada sin romper el gate de scroll de Orbit.
+- Lista para review en la rama de issue; sin PR, integración, promoción,
+  primera publicación ni release.
+
 Actualización ISA-794 / F5-d (2026-08-22, implementada en rama de issue):
 
 - La query `get_validated_examples` resuelve la combinación del evento y

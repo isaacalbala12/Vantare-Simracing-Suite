@@ -381,17 +381,15 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 ### Estrategia definitiva sobre telemetría real
 
 - id: strategy-rework-ab
-- tipo: plan
+- tipo: feature
 - titulo.en: Definitive strategy over real telemetry
 - titulo.pt: Estratégia definitiva sobre telemetria real
 - titulo.it: Strategia definitiva su telemetria reale
-- cuerpo: El planificador de estrategia se reconstruye sobre una única autoridad de cálculo y guardado, alimentada por las sesiones DuckDB que LMU ya graba. Orbit ya vincula eventos con combinaciones y sesiones, aplica inputs derivados y escenarios de clima, y muestra backtests neutrales de las carreras reales; la importación inicial y las estrategias curadas completarán el flujo asistido.
-- cuerpo.en: The strategy planner is being rebuilt on a single calculation and storage authority, fed by the DuckDB sessions LMU already records. Orbit now links events to combinations and sessions, applies derived inputs and weather scenarios, and shows neutral backtests of real races; initial import and curated strategies will complete the assisted flow.
-- cuerpo.pt: O planeador de estratégia está a ser reconstruído sobre uma única autoridade de cálculo e gravação, alimentada pelas sessões DuckDB que o LMU já grava. O Orbit já associa eventos a combinações e sessões, aplica inputs derivados e cenários meteorológicos e mostra backtests neutros das corridas reais; a importação inicial e as estratégias curadas completarão o fluxo assistido.
-- cuerpo.it: Il pianificatore di strategia viene ricostruito su un'unica autorità di calcolo e salvataggio, alimentata dalle sessioni DuckDB che LMU già registra. Orbit ora collega eventi a combinazioni e sessioni, applica input derivati e scenari meteo e mostra backtest neutrali delle gare reali; l'importazione iniziale e le strategie curate completeranno il flusso assistito.
-- etiqueta: Plan
-- etiqueta.pt: Plano
-- etiqueta.it: Piano
+- cuerpo: El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. Orbit vincula eventos y sesiones, aplica inputs y clima, muestra backtests neutrales, ofrece un catálogo firmado de referencias con procedencia y puede importar el histórico local en el primer arranque sin datos simulados.
+- cuerpo.en: The planner uses one calculation and storage authority over real LMU DuckDB sessions. Orbit links events and sessions, applies inputs and weather, shows neutral backtests, offers a signed provenance-preserving reference catalogue, and can import local history on first launch without simulated data.
+- cuerpo.pt: O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. O Orbit associa eventos e sessões, aplica inputs e meteorologia, mostra backtests neutros, oferece um catálogo assinado de referências com procedência e pode importar o histórico local no primeiro arranque sem dados simulados.
+- cuerpo.it: Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. Orbit collega eventi e sessioni, applica input e meteo, mostra backtest neutrali, offre un catalogo firmato di riferimenti con provenienza e può importare lo storico locale al primo avvio senza dati simulati.
+- etiqueta: Feature
 
 ### Cálculo Orbit sobre el motor completo
 

@@ -1,3 +1,23 @@
+Nota ISA-796 / ISA-694 F5-e (2026-08-22, implementada en rama de issue):
+
+- Strategy consume un único catálogo: usa el fixture firmado TEST sin red por
+  defecto y una URL de build vacía/configurable. Verifica firma, época,
+  versión monotónica, vencimiento duro y schema con la autoridad de F1-3; ante
+  rechazo usa solo una caché aún válida o un vacío con aviso.
+- Orbit incorpora una sección separada `Referencia`. Perfiles y estrategias
+  muestran la etiqueta `referencia`, su muestra `k>=3` y pueden copiarse al
+  documento v2 como punto de partida con procedencia `reference`.
+- El primer arranque descubre de forma metadata-only los `.duckdb` estables de
+  `UserData\\Telemetry`. El usuario puede importarlos con progreso o rechazar;
+  ambas decisiones se guardan una sola vez. Las sesiones autorizadas alimentan
+  el selector de combinaciones de F5-a sin datos simulados.
+- ES/EN/IT/PT, consumidor y cinco degradaciones, persistencia/rechazo,
+  descubrimiento, transporte y procedencia quedan cubiertos por tests. La
+  captura nueva `orbit-estrategia-referencia-1920x1080.png` justifica en una
+  línea la sección separada con perfil/estrategia, etiqueta y `k=3`.
+- Entrega aislada lista para review; no hay PR, integración, promoción,
+  publicación del catálogo ni release.
+
 Nota ISA-794 / ISA-694 F5-d (2026-08-22, implementada en rama de issue):
 
 - Strategy consulta por evento las carreras autorizadas de su combinación y

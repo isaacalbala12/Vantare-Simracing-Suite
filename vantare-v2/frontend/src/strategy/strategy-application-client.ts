@@ -41,6 +41,10 @@ export type StrategyApplicationOperation =
   | "list_session_combinations"
   | "get_event_planning_inputs"
   | "get_validated_examples"
+  | "list_reference_catalog"
+  | "get_cold_start_status"
+  | "import_cold_start_next"
+  | "reject_cold_start"
   | "preview_legacy_migration"
   | "migrate_legacy"
   | "rollback_legacy_migration";
@@ -503,6 +507,7 @@ export type StrategyApplicationCommandV1<TPayload> =
   | CommandHeader<"list_session_combinations">
   | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
   | (CommandHeader<"get_validated_examples"> & { eventId: string })
+  | CommandHeader<"list_reference_catalog" | "get_cold_start_status" | "import_cold_start_next" | "reject_cold_start">
   | (CommandHeader<"create_driver" | "edit_driver"> & {
       eventId: string;
       driver: StrategyDriverV2;
@@ -631,6 +636,9 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly planningInputStatus?: "available" | "manual_only" | "no_included_sessions";
   readonly planningInputs?: StrategyPlanningInputsV2;
   readonly validatedExamples?: StrategyValidatedExamplesV1;
+  readonly referenceCatalog?: StrategyReferenceCatalogResultV1;
+  readonly coldStartStatus?: StrategyColdStartStatusV1;
+  readonly coldStartProgress?: StrategyColdStartProgressV1;
   readonly legacyMigration?: StrategyLegacyMigrationPreviewV1;
   /** Exported package bytes, base64-encoded. Import returns none. */
   readonly package?: string;
@@ -669,6 +677,53 @@ export type StrategySessionCombinationV1 = {
   readonly climateBuckets: readonly StrategySessionClimateBucketV1[];
   readonly sessions: readonly StrategySessionCatalogItemV1[];
 };
+
+export type StrategyReferenceSampleV1 = {
+  readonly semanticBundles: number;
+  readonly contributors: number;
+  readonly sessions: number;
+};
+
+export type StrategyReferenceProfileV1 = {
+  readonly targetContractVersion: string;
+  readonly provenance: { readonly kind: "reference"; readonly environment: string };
+  readonly sample: StrategyReferenceSampleV1;
+  readonly quality: { readonly validSessions: number; readonly invalidSessions: number; readonly sampleSessions: number; readonly validRatio: number };
+  readonly fuel?: { readonly medianPerLap: number; readonly rangeLower: number; readonly rangeUpper: number; readonly sampleLaps: number };
+  readonly virtualEnergy?: { readonly medianPerLap: number; readonly rangeLower: number; readonly rangeUpper: number; readonly sampleLaps: number };
+  readonly pit?: { readonly count: number; readonly typicalDurationSeconds: number };
+};
+
+export type StrategyReferenceStrategyV1 = {
+  readonly rank: number;
+  readonly clusterDigest: string;
+  readonly representative: { readonly stintCount: number; readonly pitLaps: readonly number[]; readonly compounds: readonly string[] };
+  readonly provenance: { readonly kind: "reference"; readonly environment: string };
+  readonly sample: StrategyReferenceSampleV1;
+};
+
+export type StrategyReferenceCatalogResultV1 = {
+  readonly source: "candidate" | "cache" | "empty";
+  readonly warning?: "invalid_signature" | "unknown_epoch" | "rollback" | "expired" | "schema_incompatible" | "unavailable";
+  readonly catalog: {
+    readonly contractVersion: string;
+    readonly source: { readonly minimumCohort: number };
+    readonly combinations: readonly {
+      readonly combinationId: string;
+      readonly referenceProfile?: StrategyReferenceProfileV1;
+      readonly strategies: readonly StrategyReferenceStrategyV1[];
+    }[];
+  };
+};
+
+export type StrategyColdStartStatusV1 = {
+  readonly shouldShow: boolean;
+  readonly found: number;
+  readonly imported: number;
+  readonly decision: "pending" | "accepted" | "rejected";
+};
+
+export type StrategyColdStartProgressV1 = { readonly imported: number; readonly total: number; readonly done: boolean };
 
 export type StrategyApplicationErrorCode =
   | "invalid_command"
@@ -957,6 +1012,15 @@ async function parseResult<TPayload>(
     ...(payload.validatedExamples === undefined
       ? {}
       : { validatedExamples: parseValidatedExamples(payload.validatedExamples) }),
+    ...(payload.referenceCatalog === undefined
+      ? {}
+      : { referenceCatalog: parseReferenceCatalog(payload.referenceCatalog) }),
+    ...(payload.coldStartStatus === undefined
+      ? {}
+      : { coldStartStatus: parseColdStartStatus(payload.coldStartStatus) }),
+    ...(payload.coldStartProgress === undefined
+      ? {}
+      : { coldStartProgress: parseColdStartProgress(payload.coldStartProgress) }),
     ...(payload.legacyMigration === undefined
       ? {}
       : { legacyMigration: parseLegacyMigrationPreview(payload.legacyMigration) }),
@@ -1294,6 +1358,58 @@ function parseSessionCombinations(value: unknown): readonly StrategySessionCombi
 function parseSessionCatalogStatus(value: unknown): "available" | "no_authorized_telemetry" {
   strategyEnum(value, "sessionCatalogStatus", ["available", "no_authorized_telemetry"]);
   return value as "available" | "no_authorized_telemetry";
+}
+
+function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
+  const status = strategyRecord(value, "coldStartStatus");
+  if (typeof status.shouldShow !== "boolean") throw new Error("Invalid Strategy coldStartStatus.shouldShow");
+  strategyInteger(status.found, "coldStartStatus.found");
+  strategyInteger(status.imported, "coldStartStatus.imported");
+  strategyEnum(status.decision, "coldStartStatus.decision", ["pending", "accepted", "rejected"]);
+  return status as StrategyColdStartStatusV1;
+}
+
+function parseColdStartProgress(value: unknown): StrategyColdStartProgressV1 {
+  const progress = strategyRecord(value, "coldStartProgress");
+  strategyInteger(progress.imported, "coldStartProgress.imported");
+  strategyInteger(progress.total, "coldStartProgress.total");
+  if (typeof progress.done !== "boolean") throw new Error("Invalid Strategy coldStartProgress.done");
+  return progress as StrategyColdStartProgressV1;
+}
+
+function parseReferenceCatalog(value: unknown): StrategyReferenceCatalogResultV1 {
+  const result = strategyRecord(value, "referenceCatalog");
+  strategyEnum(result.source, "referenceCatalog.source", ["candidate", "cache", "empty"]);
+  if (result.warning !== undefined) strategyEnum(result.warning, "referenceCatalog.warning", ["invalid_signature", "unknown_epoch", "rollback", "expired", "schema_incompatible", "unavailable"]);
+  const catalog = strategyRecord(result.catalog, "referenceCatalog.catalog");
+  if (result.source === "empty") {
+    if (typeof catalog.contractVersion !== "string") throw new Error("Invalid Strategy referenceCatalog.catalog.contractVersion");
+  } else {
+    strategyString(catalog.contractVersion, "referenceCatalog.catalog.contractVersion");
+  }
+  const source = strategyRecord(catalog.source, "referenceCatalog.catalog.source");
+  strategyInteger(source.minimumCohort, "referenceCatalog.catalog.source.minimumCohort");
+  if (!Array.isArray(catalog.combinations)) throw new Error("Invalid Strategy referenceCatalog.catalog.combinations");
+  for (const [index, candidate] of catalog.combinations.entries()) {
+    const combination = strategyRecord(candidate, `referenceCatalog.catalog.combinations.${index}`);
+    strategyString(combination.combinationId, `referenceCatalog.catalog.combinations.${index}.combinationId`);
+    if (combination.referenceProfile !== undefined) parseReferenceItem(combination.referenceProfile, `referenceCatalog.catalog.combinations.${index}.referenceProfile`);
+    if (!Array.isArray(combination.strategies)) throw new Error(`Invalid Strategy referenceCatalog.catalog.combinations.${index}.strategies`);
+    combination.strategies.forEach((strategy, strategyIndex) => parseReferenceItem(strategy, `referenceCatalog.catalog.combinations.${index}.strategies.${strategyIndex}`));
+  }
+  return result as StrategyReferenceCatalogResultV1;
+}
+
+function parseReferenceItem(value: unknown, field: string): void {
+  const item = strategyRecord(value, field);
+  const provenance = strategyRecord(item.provenance, `${field}.provenance`);
+  strategyEnum(provenance.kind, `${field}.provenance.kind`, ["reference"]);
+  strategyString(provenance.environment, `${field}.provenance.environment`);
+  const sample = strategyRecord(item.sample, `${field}.sample`);
+  strategyInteger(sample.semanticBundles, `${field}.sample.semanticBundles`);
+  strategyInteger(sample.contributors, `${field}.sample.contributors`);
+  strategyInteger(sample.sessions, `${field}.sample.sessions`);
+  if ((sample.contributors as number) < 3) throw new Error(`Invalid Strategy ${field}.sample.contributors`);
 }
 
 function parseSessionClimateBuckets(value: unknown, field: string): readonly StrategySessionClimateBucketV1[] {

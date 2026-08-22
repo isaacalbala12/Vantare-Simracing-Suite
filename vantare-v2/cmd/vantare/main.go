@@ -36,6 +36,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
+	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -77,6 +79,9 @@ var (
 	// build admission token later; normal builds contain neither and cannot send.
 	curationWorkerURL           = ""
 	curationBuildAdmissionToken = ""
+	// Empty by default: F5-e consumes the signed TEST fixture locally until
+	// Isaac explicitly publishes and configures the first real catalog.
+	strategyCatalogURL = ""
 )
 
 func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
@@ -1240,7 +1245,35 @@ func main() {
 	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
-		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSessionCatalog(repo, telemetryanalysis.NewSessionCatalog(nil)))
+		referenceCatalog := strategycatalog.NewConsumer(strategycatalog.ConsumerOptions{
+			StatePath: filepath.Join(strategyRoot, "reference-catalog-state.json"),
+			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
+			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
+		})
+		var sessionCatalog *telemetryanalysis.SessionCatalog
+		var coldStart *strategycoldstart.Service
+		sessionStore, storeErr := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Join(strategyRoot, "authorized-sessions.json"))
+		if storeErr != nil {
+			log.Printf("warning: authorized Strategy sessions are unavailable")
+			sessionCatalog = telemetryanalysis.NewSessionCatalog(nil)
+		} else {
+			sessionCatalog = telemetryanalysis.NewSessionCatalog(sessionStore)
+			if executable, executableErr := os.Executable(); executableErr == nil {
+				importer, importerErr := strategycoldstart.NewLMUImporter(filepath.Dir(executable), filepath.Join(strategyRoot, "telemetry-staging"))
+				if importerErr == nil {
+					coldStart = strategycoldstart.NewService(strategycoldstart.ServiceOptions{
+						StatePath: filepath.Join(strategyRoot, "cold-start.json"),
+						Discover: func(ctx context.Context) ([]telemetryanalysis.Candidate, error) {
+							return strategycoldstart.DiscoverStandardLMU(ctx, strategycoldstart.StandardLMUTelemetryRoot(), time.Second)
+						},
+						Importer: importer, Store: sessionStore,
+					})
+				} else {
+					log.Printf("warning: Strategy cold start importer is unavailable")
+				}
+			}
+		}
+		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart))
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	var curationUploadService *curation.UploadService

@@ -41,6 +41,10 @@ var requiredOperationFields = map[Operation][]string{
 	OperationListSessionCombinations: {},
 	OperationGetEventPlanningInputs:  {"eventId", "generatedAt"},
 	OperationGetValidatedExamples:    {"eventId"},
+	OperationListReferenceCatalog:    {},
+	OperationGetColdStartStatus:      {},
+	OperationImportColdStartNext:     {},
+	OperationRejectColdStart:         {},
 	OperationPreviewLegacyMigration:  {"sources", "migratedAt"},
 	OperationMigrateLegacy:           {"sources", "confirmedFingerprint", "migratedAt"},
 	OperationRollbackLegacyMigration: {"journalId", "rolledBackAt"},
@@ -223,6 +227,26 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command GetValidatedExamplesCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.GetValidatedExamples(ctx, command)
+		}
+	case OperationListReferenceCatalog:
+		var command ListReferenceCatalogCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListReferenceCatalog(ctx, command)
+		}
+	case OperationGetColdStartStatus:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetColdStartStatus(ctx, command)
+		}
+	case OperationImportColdStartNext:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ImportColdStartNext(ctx, command)
+		}
+	case OperationRejectColdStart:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RejectColdStart(ctx, command)
 		}
 	case OperationPreviewLegacyMigration:
 		var command LegacyMigrationCommand

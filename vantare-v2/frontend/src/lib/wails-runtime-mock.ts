@@ -133,6 +133,35 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     broadcast("strategy:application:error", { commandId, code, field, message });
   };
 
+  if (operation === "get_cold_start_status") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      coldStartStatus: { shouldShow: false, found: 0, imported: 0, decision: "pending" },
+    });
+    return;
+  }
+
+  if (operation === "list_reference_catalog") {
+    const sample = { semanticBundles: 3, contributors: 3, sessions: 6 };
+    const provenance = { kind: "reference", environment: "TEST" };
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      referenceCatalog: {
+        source: "candidate",
+        catalog: {
+          contractVersion: "strategy.catalog.payload.v1",
+          source: { minimumCohort: 3 },
+          combinations: [{
+            combinationId: "lmu:imola-lmgt3",
+            referenceProfile: { targetContractVersion: "strategyinputprojection.v2", provenance, sample, quality: {}, fuel: { medianPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9, sampleLaps: 54 } },
+            strategies: [{ rank: 1, clusterDigest: "visual-reference-cluster", representative: { stintCount: 4, pitLaps: [32, 64, 96], compounds: ["medium"] }, provenance, sample, quality: {}, score: {} }],
+          }],
+        },
+      },
+    });
+    return;
+  }
+
   if (operation === "calculate_orbit") {
     void createOrbitCalculationTestClient()
       .execute(command as unknown as StrategyApplicationCommandV1<unknown>)

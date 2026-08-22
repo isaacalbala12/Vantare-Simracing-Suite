@@ -7,10 +7,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
+)
+
+var (
+	ErrUnknownKeyEpoch    = errors.New("unknown catalog key epoch")
+	ErrCatalogRollback    = errors.New("catalog rollback")
+	ErrCatalogExpired     = errors.New("catalog expired")
+	ErrSchemaIncompatible = errors.New("catalog schema incompatible")
+	ErrInvalidSignature   = errors.New("invalid catalog signature")
 )
 
 // Envelope es el envelope EXACTO del ADR 0009 §12.
@@ -223,7 +232,7 @@ func VerifyEnvelope(pub ed25519.PublicKey, env Envelope, sigB64 string) error {
 	}
 	msg := domainSeparatedMessage(env.Domain, canon)
 	if !ed25519.Verify(pub, msg, sig) {
-		return fmt.Errorf("invalid signature")
+		return ErrInvalidSignature
 	}
 	return nil
 }
@@ -256,26 +265,26 @@ type VerificationInput struct {
 func VerifySignedCatalog(in VerificationInput) error {
 	pub, ok := in.TrustedKeys[in.Signed.Envelope.KeyEpoch]
 	if !ok {
-		return fmt.Errorf("keyEpoch desconocida %q", in.Signed.Envelope.KeyEpoch)
+		return fmt.Errorf("%w: keyEpoch desconocida %q", ErrUnknownKeyEpoch, in.Signed.Envelope.KeyEpoch)
 	}
 	if in.Signed.Envelope.KeyEpoch < in.MinEpoch {
-		return fmt.Errorf("keyEpoch %q below minimum %q", in.Signed.Envelope.KeyEpoch, in.MinEpoch)
+		return fmt.Errorf("%w: keyEpoch %q below minimum %q", ErrCatalogRollback, in.Signed.Envelope.KeyEpoch, in.MinEpoch)
 	}
 	if in.Signed.Envelope.Version < in.MinVersion {
-		return fmt.Errorf("version %d below minimum %d", in.Signed.Envelope.Version, in.MinVersion)
+		return fmt.Errorf("%w: version %d below minimum %d", ErrCatalogRollback, in.Signed.Envelope.Version, in.MinVersion)
 	}
 	// anti-rollback entre y dentro de épocas
 	if in.Signed.Envelope.KeyEpoch == in.SeenEpoch && in.Signed.Envelope.Version < in.SeenVersion {
-		return fmt.Errorf("rollback: seen %d, got %d", in.SeenVersion, in.Signed.Envelope.Version)
+		return fmt.Errorf("%w: seen %d, got %d", ErrCatalogRollback, in.SeenVersion, in.Signed.Envelope.Version)
 	}
 	if in.Signed.Envelope.KeyEpoch < in.SeenEpoch {
-		return fmt.Errorf("rollback epoch: seen %q, got %q", in.SeenEpoch, in.Signed.Envelope.KeyEpoch)
+		return fmt.Errorf("%w epoch: seen %q, got %q", ErrCatalogRollback, in.SeenEpoch, in.Signed.Envelope.KeyEpoch)
 	}
 	if !in.Signed.Envelope.ExpiresAt.After(in.Now) {
-		return fmt.Errorf("catalog expired at %s", in.Signed.Envelope.ExpiresAt)
+		return fmt.Errorf("%w at %s", ErrCatalogExpired, in.Signed.Envelope.ExpiresAt)
 	}
 	if in.Signed.Envelope.SchemaID != SchemaIDV1 || in.Signed.Envelope.SchemaVersion != SchemaVersionV1 {
-		return fmt.Errorf("schema incompatible %s/%s", in.Signed.Envelope.SchemaID, in.Signed.Envelope.SchemaVersion)
+		return fmt.Errorf("%w %s/%s", ErrSchemaIncompatible, in.Signed.Envelope.SchemaID, in.Signed.Envelope.SchemaVersion)
 	}
 	// payloadDigest debe coincidir
 	digest, err := PayloadDigestFor(in.Signed.Payload)
